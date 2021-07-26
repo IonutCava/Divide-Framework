@@ -80,3 +80,16 @@
 [submodule "3rdParty/CurlNoise"]
 	path = 3rdParty/CurlNoise
 	url = https://github.com/rajabala/CurlNoise
+[submodule "3rdParty/imgui"]
+	path = 3rdParty/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking
+[submodule "3rdParty/ImGuiAl"]
+	path = 3rdParty/ImGuiAl
+	url = https://github.com/leiradel/ImGuiAl.git
+[submodule "3rdParty/imgui_club"]
+	path = 3rdParty/imgui_club
+	url = https://github.com/ocornut/imgui_club.git
+[submodule "3rdParty/ImGuizmo"]
+	path = 3rdParty/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo.git
