@@ -93,3 +93,6 @@
 [submodule "3rdParty/ImGuizmo"]
 	path = 3rdParty/ImGuizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo.git
+[submodule "3rdParty/imgui-node-editor"]
+	path = 3rdParty/imgui-node-editor
+	url = https://github.com/thedmd/imgui-node-editor.git
