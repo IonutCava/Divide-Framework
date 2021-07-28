@@ -77,11 +77,14 @@ extern "C" {
     _declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
 }
 
-void* malloc_aligned(const size_t size, const size_t alignment) {
+void* malloc_aligned(const size_t size, const size_t alignment, const size_t offset) {
+    if (offset > 0u) {
+        return _aligned_offset_malloc(size, alignment, offset);
+    }
     return _aligned_malloc(size, alignment);
 }
 
-void  malloc_free(void*& ptr) {
+void  free_aligned(void*& ptr) {
     _aligned_free(ptr);
 }
 
@@ -153,7 +156,7 @@ namespace Divide {
         status.dwLength = sizeof(status);
         const BOOL infoStatus = GlobalMemoryStatusEx(&status);
         if (infoStatus != FALSE) {
-            info._availableRam = status.ullAvailPhys;
+            info._availableRamInBytes = status.ullAvailPhys;
             return true;
         } else {
             CHAR msgText[256];
@@ -169,10 +172,10 @@ namespace Divide {
 #pragma pack(push,8)
     typedef struct tagTHREADNAME_INFO
     {
-        DWORD dwType; // Must be 0x1000.
+        DWORD  dwType; // Must be 0x1000.
         LPCSTR szName; // Pointer to name (in user addr space).
-        DWORD dwThreadID; // Thread ID (-1=caller thread).
-        DWORD dwFlags; // Reserved for future use, must be zero.
+        DWORD  dwThreadID; // Thread ID (-1=caller thread).
+        DWORD  dwFlags; // Reserved for future use, must be zero.
     } THREADNAME_INFO;
 #pragma pack(pop)
 

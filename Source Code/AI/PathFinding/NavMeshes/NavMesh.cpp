@@ -79,7 +79,7 @@ void NavigationMesh::stopThreadedBuild() {
     if (_buildJobGUID != -1){
         _buildJobGUID = -1;
         assert(_buildTask);
-        Wait(*_buildTask);
+        Wait(*_buildTask, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
     }
 }
 
@@ -186,11 +186,10 @@ bool NavigationMesh::build(SceneGraphNode* sgn,
 bool NavigationMesh::buildThreaded() {
     stopThreadedBuild();
 
-    _buildTask = CreateTask(_context,
-                            [this](const Task& /*parentTask*/) {
+    _buildTask = CreateTask([this](const Task& /*parentTask*/) {
                                 buildInternal();
                             });
-    Start(*_buildTask);
+    Start(*_buildTask, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
     _buildJobGUID = 1;
 
     return true;

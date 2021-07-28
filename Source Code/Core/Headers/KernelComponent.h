@@ -39,7 +39,7 @@ class Kernel;
 class KernelComponent : public NonCopyable, NonMovable {
 
 public:
-    KernelComponent(Kernel& parent) noexcept : _parent(parent)
+    explicit KernelComponent(Kernel& parent) noexcept : _parent(parent)
     {
     }
 

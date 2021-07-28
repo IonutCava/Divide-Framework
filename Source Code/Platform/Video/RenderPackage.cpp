@@ -129,14 +129,15 @@ U32 RenderPackage::updateAndRetrieveDrawCommands(const NodeDataIdx dataIndex, U3
 
     }
 
-    const size_t startSize = cmdsInOut.size();
+    U32 cmdCount = 0u;
     for (GFX::CommandBase* const cmd : commands()->get<GFX::DrawCommand>()) {
         for (const GenericDrawCommand& drawCmd : static_cast<GFX::DrawCommand&>(*cmd)._drawCommands) {
             cmdsInOut.push_back(drawCmd._cmd);
+            ++cmdCount;
         }
     }
 
-    return to_U32(cmdsInOut.size() - startSize);
+    return cmdCount;
 }
 
 GFX::CommandBuffer* RenderPackage::commands() {

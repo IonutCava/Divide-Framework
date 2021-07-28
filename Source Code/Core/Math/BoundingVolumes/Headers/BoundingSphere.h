@@ -46,12 +46,9 @@ class BoundingSphere {
 
    public:
     BoundingSphere() noexcept;
-    BoundingSphere(vec3<F32> center, F32 radius) noexcept;
+    explicit BoundingSphere(vec3<F32> center, F32 radius) noexcept;
     explicit BoundingSphere(const vectorEASTL<vec3<F32>>& points) noexcept;
     explicit BoundingSphere(const std::array<vec3<F32>, 8>& points) noexcept;
-
-    BoundingSphere(const BoundingSphere& s) noexcept = default;
-    BoundingSphere& operator=(const BoundingSphere& s) = default;
 
     void fromBoundingBox(const BoundingBox& bBox) noexcept;
     void fromBoundingSphere(const BoundingSphere& bSphere) noexcept;

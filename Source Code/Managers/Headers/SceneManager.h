@@ -117,7 +117,7 @@ public:
     void setSelected(PlayerIndex idx, const vectorEASTL<SceneGraphNode*>& SGNs, bool recursive);
     void onNodeDestroy(SceneGraphNode* node);
     // cull the SceneGraph against the current view frustum. 
-    VisibleNodeList<>& cullSceneGraph(const NodeCullParams& cullParams);
+    VisibleNodeList<>& cullSceneGraph(const NodeCullParams& cullParams, const U16 cullFlags);
     // init default culling values like max cull distance and other scene related states
     void initDefaultCullValues(RenderStage stage, NodeCullParams& cullParamsInOut);
     // get the full list of reflective nodes
@@ -219,7 +219,7 @@ protected:
 protected:
     void initPostLoadState() noexcept;
     Scene* load(const Str256& sceneName);
-    bool   unloadScene(Scene* scene) const;
+    bool   unloadScene(Scene* scene);
 
     // Add a new player to the simulation
     void addPlayerInternal(Scene& parentScene, SceneGraphNode* playerNode);
@@ -393,8 +393,8 @@ class SceneManagerCameraAccessor {
 };
 
 class SceneManagerRenderPass {
-    static VisibleNodeList<>& cullScene(Divide::SceneManager* mgr, const NodeCullParams& cullParams) {
-        return mgr->cullSceneGraph(cullParams);
+    static VisibleNodeList<>& cullScene(Divide::SceneManager* mgr, const NodeCullParams& cullParams, const U16 cullFlags) {
+        return mgr->cullSceneGraph(cullParams, cullFlags);
     }
 
     static void initDefaultCullValues(Divide::SceneManager* mgr, const RenderStage stage, NodeCullParams& cullParamsInOut) {

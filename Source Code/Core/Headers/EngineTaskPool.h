@@ -40,26 +40,6 @@ namespace Divide {
 struct Task;
 struct ParallelForDescriptor;
 
-/**
-* @brief Creates a new Task that runs in a separate thread
-* @param context System context object
-* @param threadedFunction The callback function to call in a separate thread = the job to execute
-* @param allowedInIdle Allow task to run when system is idle
-*/
-template<class Predicate>
-Task* CreateTask(PlatformContext& context, Predicate&& threadedFunction, bool allowedInIdle = true);
-
-/**
-* @brief Creates a new Task that runs in a separate thread
-* @param context System context object
-* @param parentTask The parent task that would need to wait for our newly created task to complete before finishing
-* @param threadedFunction The callback function to call in a separate thread = the job to execute
-* @param allowedInIdle Allow task to run when system is idle
-*/
-
-template<class Predicate>
-Task* CreateTask(PlatformContext& context, Task* parentTask, Predicate&& threadedFunction, bool allowedInIdle = true);
-
 void parallel_for(PlatformContext& context, const ParallelForDescriptor& descriptor);
 
 void WaitForAllTasks(PlatformContext& context, bool yield, bool flushCallbacks);

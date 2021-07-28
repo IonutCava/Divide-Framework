@@ -14,6 +14,7 @@ namespace Divide {
 Trigger::Trigger(ResourceCache* parentCache, const size_t descriptorHash, const Str256& name)
     : SceneNode(parentCache, descriptorHash, name, ResourcePath(name), {}, SceneNodeType::TYPE_TRIGGER, to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS))
 {
+    _taskPool = &parentResourceCache()->context().taskPool(TaskPoolType::HIGH_PRIORITY);
 }
 
 void Trigger::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) {
@@ -64,7 +65,7 @@ bool Trigger::check(Unit* const unit, const vec3<F32>& camEyePos) const {
 
 bool Trigger::trigger() const {
     assert(_triggeredTask != nullptr);
-    Start(*_triggeredTask);
+    Start(*_triggeredTask, *_taskPool);
     return true;
 }
 }

@@ -38,7 +38,6 @@ namespace Divide {
 
 class glLockManager : public GUIDWrapper {
    public:
-    glLockManager() = default;
     virtual ~glLockManager();
 
     void wait(bool blockClient);

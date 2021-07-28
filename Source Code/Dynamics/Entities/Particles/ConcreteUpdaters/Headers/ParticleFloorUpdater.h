@@ -47,8 +47,6 @@ class ParticleFloorUpdater final : public ParticleUpdater {
     {
     }
 
-    ~ParticleFloorUpdater() = default;
-
     void update(U64 deltaTimeUS, ParticleData& p) override;
 };
 }

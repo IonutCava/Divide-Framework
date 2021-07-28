@@ -96,6 +96,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning(pop)
 #endif
 
+#include "Core/TemplateLibraries/Headers/TemplateAllocator.h"
+
 #include <EASTL/include/EASTL/set.h>
 #include <EASTL/include/EASTL/list.h>
 #include <EASTL/include/EASTL/array.h>
@@ -117,14 +119,14 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <random>
 #include <stack>
 #include <any>
+#include <regex>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/deadline_timer.hpp>
-#include <boost/regex.hpp>
+#include <boost/functional/factory.hpp>
 
 #include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
-#include <BetterEnums/include/enum.h>
 #include <Optick/src/optick.h>
 
 #define HAVE_M_PI
@@ -157,7 +159,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fmt/include/fmt/format.h>
 #include <fmt/include/fmt/printf.h>
 
-#include "Platform/Headers/PlatformDataTypes.h"
 #include "Platform/Threading/Headers/SharedMutex.h"
 #include "Platform/Headers/ConditionalWait.h"
 #include "Core/Headers/NonCopyable.h"
@@ -173,16 +174,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Headers/TaskPool.h"
 #include "Core/Headers/Console.h"
 
-#ifndef YES_IMGUIMINIGAMES
-#define YES_IMGUIMINIGAMES
-#endif
-#define NO_IMGUICODEEDITOR 
-#ifndef IMGUI_INCLUDE_IMGUI_USER_H
-#define IMGUI_INCLUDE_IMGUI_USER_H
-#endif
-#ifndef IMGUI_INCLUDE_IMGUI_USER_INL
-#define IMGUI_INCLUDE_IMGUI_USER_INL
-#endif
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif

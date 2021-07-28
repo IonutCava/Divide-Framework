@@ -9,7 +9,7 @@
 namespace Divide {
     SGNComponent::SGNComponent(Key key, const ComponentType type, SceneGraphNode* parentSGN, PlatformContext& context)
         : PlatformContextComponent(context),
-          _editorComponent(*this, type, type._to_string()),
+          _editorComponent(*this, type, TypeUtil::ComponentTypeToString(type)),
           _parentSGN(parentSGN),
           _type(type)
     {

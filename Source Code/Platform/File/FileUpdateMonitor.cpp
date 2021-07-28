@@ -18,32 +18,33 @@ void UpdateListener::addIgnoredEndCharacter(char character) {
     _ignoredEndingCharacters.emplace_back(character);
 }
 
-void UpdateListener::handleFileAction(FW::WatchID watchid, const FW::String& dir, const FW::String& filename, const FW::Action action)
+void UpdateListener::handleFileAction(const FW::WatchID watchid, const FW::String& dir, const FW::String& filename, const FW::Action action)
 {
     ACKNOWLEDGE_UNUSED(watchid);
     ACKNOWLEDGE_UNUSED(dir);
 
     // We can ignore files that end in a specific character. Many text editors, for example, append a '~' at the end of temp files
-    if (!_ignoredEndingCharacters.empty()) {
-        if (eastl::find_if(cbegin(_ignoredEndingCharacters),
-                           cend(_ignoredEndingCharacters),
-                           [filename](const char character) noexcept {
-                               return std::tolower(filename.back()) == std::tolower(character);
-                           }) != cend(_ignoredEndingCharacters)) {
-            return;
-        }
+    if (!_ignoredEndingCharacters.empty() &&
+        eastl::any_of(cbegin(_ignoredEndingCharacters),
+                      cend(_ignoredEndingCharacters),
+                      [filename](const char character) noexcept {
+                          return std::tolower(filename.back()) == std::tolower(character);
+                      }))
+    {
+        return;
     }
 
     // We can specify a list of extensions to ignore for a specific listener to avoid, for example, parsing temporary OS files
-    if (!_ignoredExtensions.empty()) {
-        if (eastl::find_if(cbegin(_ignoredExtensions),
-                           cend(_ignoredExtensions),
-                           [filename](const Str8& extension) {
-                               return hasExtension(filename.c_str(), extension);
-                           }) != cend(_ignoredExtensions)) {
-            return;
-        }
+    if (!_ignoredExtensions.empty() && 
+        eastl::any_of(cbegin(_ignoredExtensions),
+                      cend(_ignoredExtensions),
+                      [filename](const Str8& extension) {
+                          return hasExtension(filename.c_str(), extension);
+                      }))
+    {
+        return;
     }
+
     if (_cbk) {
         FileUpdateEvent evt = FileUpdateEvent::COUNT;
         switch (action)

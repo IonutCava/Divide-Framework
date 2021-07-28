@@ -43,8 +43,6 @@ static constexpr U16 g_AllIndicesID = g_AllPassID;
 
 struct RenderStagePass {
     RenderStagePass() = default;
-    ~RenderStagePass() = default;
-
     explicit RenderStagePass(const RenderStage stage, const RenderPassType passType, const U8 variant = 0u, const U16 index = 0u, const U16 pass = 0u)
         : _stage(stage),
           _passType(passType),

@@ -42,14 +42,13 @@ namespace Divide {
 BEGIN_COMPONENT(Bounds, ComponentType::BOUNDS)
     public:
         BoundsComponent(SceneGraphNode* sgn, PlatformContext& context);
-        ~BoundsComponent() = default;
 
-        const BoundingBox& getBoundingBox() const noexcept { return _boundingBox; }
-        const BoundingSphere& getBoundingSphere() const noexcept { return _boundingSphere; }
+        [[nodiscard]] const BoundingBox& getBoundingBox() const noexcept { return _boundingBox; }
+        [[nodiscard]] const BoundingSphere& getBoundingSphere() const noexcept { return _boundingSphere; }
 
-        const OBB& getOBB() noexcept;
+        [[nodiscard]] const OBB& getOBB() noexcept;
 
-        const BoundingBox& updateAndGetBoundingBox();
+        /*[[nodiscard]]*/ const BoundingBox& updateAndGetBoundingBox();
 
         PROPERTY_R(bool, showAABB, false);
         PROPERTY_R(bool, showBS, false);

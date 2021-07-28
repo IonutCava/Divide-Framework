@@ -22,10 +22,6 @@ class WorldPacket : public ByteBuffer {
     {
     }
 
-    // copy constructor
-    WorldPacket(const WorldPacket& packet) = default;
-    WorldPacket& operator=(const WorldPacket &packet) = default;
-
     void Initialize(const U16 opcode, const size_t newres = 200) {
         clear();
         _storage.reserve(newres);

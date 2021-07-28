@@ -104,7 +104,7 @@ Vegetation::Vegetation(GFXDevice& context,
     renderState().drawState(false);
 
     CachedResource::setState(ResourceState::RES_LOADING);
-    _buildTask = CreateTask(_context.context(),
+    _buildTask = CreateTask(
         [this](const Task& /*parentTask*/) {
             s_bufferUsage.fetch_add(1);
             computeVegetationTransforms(false);
@@ -113,7 +113,7 @@ Vegetation::Vegetation(GFXDevice& context,
             _instanceCountTrees = to_U32(_tempTreeData.size());
         });
 
-    Start(*_buildTask, TaskPriority::DONT_CARE);
+    Start(*_buildTask, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY), TaskPriority::DONT_CARE);
 
     EditorComponentField instanceCountGrassField = {};
     instanceCountGrassField._name = "Num Grass Instances";
@@ -545,7 +545,7 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
     OPTICK_EVENT();
 
     assert(s_buffer != nullptr);
-    Wait(*_buildTask);
+    Wait(*_buildTask, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
 
     bool hasVegetation = false;
     if (_instanceCountGrass > 0u) {
@@ -592,10 +592,11 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
         UniqueLock<SharedMutex> w_lock(g_treeMeshLock);
         if (s_treeMeshes.empty()) {
             for (const ResourcePath& meshName : _treeMeshNames) {
-                if (eastl::find_if(eastl::cbegin(s_treeMeshes), eastl::cend(s_treeMeshes),
-                    [&meshName](const Mesh_ptr& ptr) {
-                    return Util::CompareIgnoreCase(ptr->assetName(), meshName);
-                }) == eastl::cend(s_treeMeshes))
+                if (!eastl::any_of(eastl::cbegin(s_treeMeshes),
+                                   eastl::cend(s_treeMeshes),
+                                   [&meshName](const Mesh_ptr& ptr) {
+                                       return Util::CompareIgnoreCase(ptr->assetName(), meshName);
+                                   }))
                 {
                     ResourceDescriptor model("Tree");
                     model.assetLocation(Paths::g_assetsLocation + "models");
@@ -672,7 +673,7 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
 }
 
 void Vegetation::getStats(U32& maxGrassInstances, U32& maxTreeInstances) const {
-    Wait(*_buildTask);
+    Wait(*_buildTask, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
 
     maxGrassInstances = _instanceCountGrass;
     maxTreeInstances = _instanceCountTrees;

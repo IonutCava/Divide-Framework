@@ -36,7 +36,7 @@ void log_delete(void* p) {
 }
 };  // namespace MemoryManager
 
-SysInfo::SysInfo() : _availableRam(0),
+SysInfo::SysInfo() : _availableRamInBytes(0),
                      _systemResolutionWidth(0),
                      _systemResolutionHeight(0)
 {
@@ -103,7 +103,11 @@ bool PlatformClose() {
 }
 
 void InitSysInfo(SysInfo& info, const I32 argc, char** argv) {
-    GetAvailableMemory(info);
+    if (!GetAvailableMemory(info)) {
+        DebugBreak();
+        // Assume 256Megs as a minimum
+        info._availableRamInBytes = (1 << 8) * 1024 * 1024;
+    }
     info._workingDirectory = getWorkingDirectory();
     info._workingDirectory.append("/");
 }
@@ -199,8 +203,8 @@ void* operator new[](const size_t size, const char* zFile, const size_t nLine) {
 #if defined(_DEBUG)
     Divide::MemoryManager::log_new(ptr, size, zFile, nLine);
 #else
-ACKNOWLEDGE_UNUSED(zFile);
-ACKNOWLEDGE_UNUSED(nLine);
+    ACKNOWLEDGE_UNUSED(zFile);
+    ACKNOWLEDGE_UNUSED(nLine);
 #endif
     return ptr;
 }

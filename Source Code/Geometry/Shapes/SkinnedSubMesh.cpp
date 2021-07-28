@@ -94,12 +94,12 @@ void SkinnedSubMesh::computeBBForAnimation(SceneGraphNode* sgn, I32 animIndex) {
     _boundingBoxesState[animIndex] = BoundingBoxState::Computing;
     AnimationComponent* animComp = sgn->get<AnimationComponent>();
 
-    Task* computeBBTask = CreateTask(_context.context(),
-                                     [this, animIndex, animComp](const Task& parentTask) {
+    Task* computeBBTask = CreateTask([this, animIndex, animComp](const Task& parentTask) {
                                          buildBoundingBoxesForAnim(parentTask, animIndex, animComp);
                                      });
 
     Start(*computeBBTask,
+          _context.context().taskPool(TaskPoolType::HIGH_PRIORITY),
           TaskPriority::DONT_CARE,
           [this, animIndex, animComp]() {
               UniqueLock<Mutex> w_lock2(_bbStateLock);

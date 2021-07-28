@@ -25,6 +25,20 @@ namespace {
 
 
 namespace TypeUtil {
+    const char* MaterialDebugFlagToString(const MaterialDebugFlag materialFlag) noexcept {
+        return Names::materialDebugFlag[to_base(materialFlag)];
+    }
+
+    MaterialDebugFlag StringToMaterialDebugFlag(const stringImpl& name) {
+        for (U8 i = 0; i < to_U8(MaterialDebugFlag::COUNT); ++i) {
+            if (strcmp(name.c_str(), Names::materialDebugFlag[i]) == 0) {
+                return static_cast<MaterialDebugFlag>(i);
+            }
+        }
+
+        return MaterialDebugFlag::COUNT;
+    } 
+    
     const char* TextureUsageToString(const TextureUsage texUsage) noexcept {
         return Names::textureUsage[to_base(texUsage)];
     }
@@ -80,7 +94,7 @@ namespace TypeUtil {
 
         return TextureOperation::COUNT;
     }
-};
+}; //namespace TypeUtil
 
 void Material::ApplyDefaultStateBlocks(Material& target) {
     /// Normal state for final rendering
@@ -412,7 +426,9 @@ I64 Material::computeAndGetProgramGUID(const RenderStagePass& renderStagePass) {
     bool justFinishedLoading = false;
     for (U8 i = 0; i < maxRetries; ++i) {
         if (!canDraw(renderStagePass, justFinishedLoading)) {
-            _context.shaderComputeQueue().stepQueue();
+            if (!_context.shaderComputeQueue().stepQueue()) {
+                NOP();
+            }
         } else {
             return getProgramGUID(renderStagePass);
         }
@@ -762,7 +778,7 @@ bool Material::getTextureData(const RenderStagePass& renderStagePass, TextureDat
             const Texture_ptr& crtTexture = _textures[slot];
             if (crtTexture != nullptr) {
                 // We only need to actually bind NON-RESIDENT textures. 
-                textureData.add({ crtTexture->data(), _samplers[slot], slot });
+                textureData.add(TextureEntry{ crtTexture->data(), _samplers[slot], slot });
                 return true;
             }
         }
@@ -1268,12 +1284,13 @@ void Material::rebuild() {
     recomputeShaders();
 
     // Alternatively we could just copy the maps directly
+    bool skipped = false;
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
             ShaderPerVariant& shaders = _shaderInfo[s][p];
             for (ShaderProgramInfo& info : shaders) {
                 if (info._shaderRef != nullptr && info._shaderRef->getState() == ResourceState::RES_LOADED) {
-                    info._shaderRef->recompile(true);
+                    info._shaderRef->recompile(true, skipped);
                 }
             }
         }

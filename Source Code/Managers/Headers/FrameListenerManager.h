@@ -46,19 +46,18 @@ class FrameListenerManager {
 
   public:
     FrameListenerManager()  = default;
-    ~FrameListenerManager() = default;
 
     void registerFrameListener(FrameListener* listener, U32 callOrder);
     void removeFrameListener(FrameListener* listener);
     void idle();
 
-    bool frameEvent(const FrameEvent& evt);
+    [[nodiscard]] bool frameEvent(const FrameEvent& evt);
 
     /// pass the current time in microseconds as the first parameter
     void createEvent(U64 currentTimeUS, FrameEventType type, FrameEvent& evt);
 
     /// Calls createEvent and frameEvent
-    bool createAndProcessEvent(U64 currentTimeUS, FrameEventType type, FrameEvent& evt);
+    [[nodiscard]] bool createAndProcessEvent(U64 currentTimeUS, FrameEventType type, FrameEvent& evt);
 
   private:
 

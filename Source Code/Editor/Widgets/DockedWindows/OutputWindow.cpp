@@ -94,7 +94,7 @@ namespace Divide {
             ImGui::LogFinish();
         }
         if (_scrollToBottom) {
-            ImGui::SetScrollHere();
+            ImGui::SetScrollHereY();
         }
 
         ImGui::PopStyleVar();
@@ -105,7 +105,7 @@ namespace Divide {
                              _inputBuf,
                              IM_ARRAYSIZE(_inputBuf),
                              ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory,
-                             [](ImGuiTextEditCallbackData* data){
+                             [](ImGuiInputTextCallbackData* data){
                                 OutputWindow* console = static_cast<OutputWindow*>(data->UserData);
                                 return console->TextEditCallback(data);
                              },
@@ -143,7 +143,7 @@ namespace Divide {
         );
     }
 
-    I32 OutputWindow::TextEditCallback(ImGuiTextEditCallbackData* data) {
+    I32 OutputWindow::TextEditCallback(ImGuiInputTextCallbackData* data) {
         switch (data->EventFlag)
         {
             case ImGuiInputTextFlags_CallbackCompletion:

@@ -5,6 +5,7 @@
 namespace Divide {
 
 void ParticleTimeGenerator::generate(Task& packagedTasksParent,
+                                     TaskPool& parentPool,
                                      const U64 deltaTimeUS,
                                      ParticleData& p,
                                      const U32 startIndex,

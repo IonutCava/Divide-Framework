@@ -51,18 +51,18 @@ constexpr auto TASK_NOP = [](Task&) {};
 
 struct alignas(64) Task {
     DELEGATE<void, Task&> _callback;
-    TaskPool* _parentPool = nullptr;
     Task* _parent = nullptr;
     U32 _id = 0;
     std::atomic_ushort _unfinishedJobs = 0u;
     bool _runWhileIdle = true;
 };
 
-Task& Start(Task& task, TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {});
-void Wait(const Task& task);
-bool Finished(const Task& task) noexcept;
-void TaskYield(const Task& task);
+void Start(Task& task, TaskPool& pool, TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {});
+void Wait(const Task& task, TaskPool& pool);
 
+void StartAndWait(Task& task, TaskPool& pool, TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {});
+
+[[nodiscard]] bool Finished(const Task& task) noexcept;
 };  // namespace Divide
 
 #endif

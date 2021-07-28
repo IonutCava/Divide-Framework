@@ -329,6 +329,8 @@ void RenderingComponent::setReflectionAndRefractionType(const ReflectorType refl
 }
 
 void RenderingComponent::retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
+    OPTICK_EVENT();
+
     const U8 stageIdx = to_U8(stagePass._stage);
     const U8 lodLevel = _lodLevels[stageIdx];
     const U16 pkgIndex = RenderStagePass::indexForStage(stagePass);
@@ -348,6 +350,8 @@ bool RenderingComponent::hasDrawCommands(const RenderStagePass& stagePass) {
 }
 
 void RenderingComponent::getMaterialData(NodeMaterialData& dataOut, NodeMaterialTextures& texturesOut) const {
+    OPTICK_EVENT();
+
     if (_materialInstance != nullptr) {
         //ProbeID: 0u = sky cubemap. Shader: (Probe - 1u) = environment cube array index and probe data lookup index
         _materialInstance->getData(*this, _reflectionProbeIndex + 1u, dataOut, texturesOut);
@@ -478,7 +482,7 @@ void RenderingComponent::prepareDrawPackage(const Camera& camera, const SceneRen
             if (refData._texture._textureType != TextureType::COUNT) {
                 const TextureEntry* existingEntry = set._textureData.find(to_U8(TextureUsage::REFLECTION));
                 if (existingEntry == nullptr || !IsValid(*existingEntry)) {
-                    set._textureData.add({ refData._texture, refData._samplerHash, TextureUsage::REFLECTION });
+                    set._textureData.add(TextureEntry{ refData._texture, refData._samplerHash, TextureUsage::REFLECTION });
                 }
             }
         }
@@ -489,7 +493,7 @@ void RenderingComponent::prepareDrawPackage(const Camera& camera, const SceneRen
             if (refData._texture._textureType != TextureType::COUNT) {
                 const TextureEntry* existingEntry = set._textureData.find(to_U8(TextureUsage::REFRACTION));
                 if (existingEntry == nullptr || !IsValid(*existingEntry)) {
-                    set._textureData.add({ refData._texture, refData._samplerHash, TextureUsage::REFRACTION });
+                    set._textureData.add(TextureEntry{ refData._texture, refData._samplerHash, TextureUsage::REFRACTION });
                 }
             }
         }
@@ -713,7 +717,7 @@ void RenderingComponent::drawDebugAxis(GFX::CommandBuffer& bufferInOut) {
 
 void RenderingComponent::drawSkeleton(GFX::CommandBuffer& bufferInOut) {
     const SceneNode& node = _parentSGN->getNode();
-    const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType()._value == ObjectType::SUBMESH;
+    const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH;
     if (!isSubMesh) {
         return;
     }
@@ -748,7 +752,7 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
     }
 
     const SceneNode& node = _parentSGN->getNode();
-    const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType()._value == ObjectType::SUBMESH;
+    const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH;
 
     if (AABB) {
         if (_boundingBoxPrimitive == nullptr) {

@@ -42,7 +42,7 @@
     <ProjectGuid>{87F22E92-2988-41FA-9E23-00033408A869}</ProjectGuid>
     <RootNamespace>DivideHardware</RootNamespace>
     <ProjectName>Divide-Executable</ProjectName>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -184,9 +184,10 @@
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <ProfileGuidedDatabase>$(OutDir)VCData\Build\$(TargetName).pgd</ProfileGuidedDatabase>
+      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
     </Link>
     <Lib>
-      <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName)_d$(TargetExt)</OutputFile>
+      <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName)_d.exe</OutputFile>
       <AdditionalDependencies>
       </AdditionalDependencies>
       <AdditionalLibraryDirectories>
@@ -262,9 +263,10 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <ProfileGuidedDatabase>$(OutDir)VCData\Build\$(TargetName).pgd</ProfileGuidedDatabase>
       <ShowProgress>NotSet</ShowProgress>
+      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
     </Link>
     <Lib>
-      <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName)$(TargetExt)</OutputFile>
+      <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName).exe</OutputFile>
       <AdditionalDependencies>
       </AdditionalDependencies>
     </Lib>
@@ -332,14 +334,14 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
       <AdditionalOptions> /ignore:4099 /debug:fastlink %(AdditionalOptions)</AdditionalOptions>
       <SubSystem>NotSet</SubSystem>
       <LargeAddressAware>true</LargeAddressAware>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <ProfileGuidedDatabase>$(OutDir)VCData\Build\$(TargetName).pgd</ProfileGuidedDatabase>
       <ShowProgress>NotSet</ShowProgress>
       <LinkStatus>false</LinkStatus>
     </Link>
     <Lib>
-      <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName)_p$(TargetExt)</OutputFile>
+      <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName)_p.exe</OutputFile>
     </Lib>
     <PostBuildEvent>
       <Command>

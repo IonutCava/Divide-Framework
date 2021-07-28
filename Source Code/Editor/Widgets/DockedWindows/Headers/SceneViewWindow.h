@@ -42,7 +42,6 @@ namespace Divide {
     class SceneViewWindow final : public DockedWindow {
     public:
         SceneViewWindow(Editor& parent, const Descriptor& descriptor);
-        ~SceneViewWindow() = default;
 
         void drawInternal() override;
 

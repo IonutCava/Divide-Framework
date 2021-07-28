@@ -14,7 +14,6 @@ using namespace AI;
 AIManager::AIManager(Scene& parentScene, TaskPool& pool)
     : SceneComponent(parentScene),
       _parentPool(pool),
-      _activeTask(nullptr),
       _deltaTimeUS(0ULL),
       _currentTimeUS(0ULL),
       _previousTimeUS(0ULL),
@@ -213,9 +212,6 @@ void AIManager::debugDraw(GFX::CommandBuffer& bufferInOut, const bool forceAll) 
 }
 
 bool AIManager::shouldStop() const {
-    if (_activeTask != nullptr) {
-        Wait(*_activeTask);
-    }
     return _shouldStop;
 }
 };  // namespace Divide

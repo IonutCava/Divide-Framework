@@ -46,8 +46,6 @@ class ParticleEulerUpdater final : public ParticleUpdater {
     {
     }
 
-    ~ParticleEulerUpdater() = default;
-
     void update(U64 deltaTimeUS, ParticleData& p) override;
 };
 }

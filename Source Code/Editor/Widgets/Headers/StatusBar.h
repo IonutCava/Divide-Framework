@@ -40,7 +40,6 @@ namespace Divide {
     public:
 
         explicit StatusBar(PlatformContext& context);
-        ~StatusBar() = default;
 
         void draw() const;
         void update(U64 deltaTimeUS);

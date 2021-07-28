@@ -40,8 +40,7 @@ namespace Divide {
 class Sphere3D;
 
 class FreeFlyCamera;
-class PingPongScene : public Scene {
-   public:
+BEGIN_SCENE(PingPongScene)
     explicit PingPongScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
 
     ~PingPongScene() {}
@@ -51,7 +50,7 @@ class PingPongScene : public Scene {
     void processInput(PlayerIndex idx, U64 deltaTimeUS) override;
     void processTasks(U64 deltaTimeUS) override;
     void processGUI(U64 deltaTimeUS) override;
-    U16 registerInputActions() override;
+    U16  registerInputActions() override;
 
    private:
     void test(std::any a, GFX::PushConstantType type);
@@ -75,7 +74,7 @@ class PingPongScene : public Scene {
     bool _freeFly;
     bool _wasInFreeFly;
     F32 _sideDrift;
-};
+END_SCENE(PingPongScene)
 
 }  // namespace Divide
 

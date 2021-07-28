@@ -39,8 +39,7 @@ namespace Divide {
 
 class MotionBlurPreRenderOperator final : public PreRenderOperator {
    public:
-    MotionBlurPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
-    ~MotionBlurPreRenderOperator() = default;
+    explicit MotionBlurPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
 
     [[nodiscard]] bool execute(const Camera* camera, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
 

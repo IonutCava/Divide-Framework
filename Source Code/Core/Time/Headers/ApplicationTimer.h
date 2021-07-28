@@ -51,7 +51,6 @@ class ApplicationTimer {
 
   public:
     ApplicationTimer() noexcept;
-    ~ApplicationTimer() = default;
 
     void update();
     void reset();

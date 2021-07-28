@@ -55,9 +55,9 @@ namespace {
                 // To do so we claim focus back, restore NavId and then process the movement request for yet another frame.
                 // This involve a one-frame delay which isn't very problematic in this situation. We could remove it by scoring in advance for multiple window (probably not worth the hassle/cost)
                 const ImGuiNavLayer layer = ImGuiNavLayer_Menu;
-                IM_ASSERT(window->DC.NavLayerActiveMaskNext & (1 << layer)); // Sanity check
+                IM_ASSERT(window->DC.NavLayersActiveMaskNext & (1 << layer)); // Sanity check
                 ImGui::FocusWindow(window);
-                ImGui::SetNavIDWithRectRel(window->NavLastIds[layer], layer, 0, window->NavRectRel[layer]);
+                ImGui::SetNavID(window->NavLastIds[layer], layer, 0, window->NavRectRel[layer]);
                 g.NavLayer = layer;
                 g.NavDisableHighlight = true; // Hide highlight for the current frame so we don't see the intermediary selection.
                 g.NavMoveRequestForward = ImGuiNavForward_ForwardQueued;
@@ -70,7 +70,7 @@ namespace {
         ImGui::PopClipRect();
         ImGui::PopID();
         window->DC.MenuBarOffset.x = window->DC.CursorPos.x - window->MenuBarRect().Min.x; // Save horizontal position so next append can reuse it. This is kinda equivalent to a per-layer CursorPos.
-        window->DC.GroupStack.back().EmitItem = false;
+        g.GroupStack.back().EmitItem = false;
         ImGui::EndGroup(); // Restore position on layer 0
         window->DC.LayoutType = ImGuiLayoutType_Vertical;
         window->DC.NavLayerCurrent = ImGuiNavLayer_Main;

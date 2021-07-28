@@ -344,13 +344,6 @@ mat2<T>::mat2(const mat4<U> &B) noexcept
 
 template<typename T>
 template<typename U>
-mat2<T>& mat2<T>::operator=(const mat2<U>& other) noexcept {
-    set(other);
-    return *this;
-}
-
-template<typename T>
-template<typename U>
 vec2<T> mat2<T>::operator*(const vec2<U> &v) const noexcept {
     return vec2<T>(mat[0] * v[0] + mat[1] * v[1],
                    mat[2] * v[0] + mat[3] * v[1]);
@@ -852,13 +845,6 @@ mat3<T>::mat3(const vec3<U>& rotStart, const vec3<U>& rotEnd) noexcept
     set(v.x * v.x * k + c, v.y * v.x * k - v.z, v.z * v.x * k + v.y,
         v.x * v.y * k + v.z, v.y * v.y * k + c, v.z * v.y * k - v.x,
         v.x * v.z * k - v.y, v.y * v.z * k + v.x, v.z * v.z * k + c);
-}
-
-template<typename T>
-template<typename U>
-mat3<T>& mat3<T>::operator=(const mat3<U>& other) noexcept {
-    set(other);
-    return *this;
 }
 
 template<typename T>
@@ -1573,13 +1559,6 @@ mat4<T>::mat4(const Plane<U>& reflectionPlane) noexcept
     : mat4()
 {
     reflect(reflectionPlane);
-}
-
-template<typename T>
-template<typename U>
-mat4<T>& mat4<T>::operator=(const mat4<U>& other) noexcept {
-    set(other);
-    return *this;
 }
 
 template<typename T>

@@ -69,6 +69,8 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
 }
 
 void RenderPassExecutor::addTexturesAt(const size_t idx, const NodeMaterialTextures& tempTextures) {
+    OPTICK_EVENT();
+
     // GL_ARB_bindless_texture:
     // In the following four constructors, the low 32 bits of the sampler
     // type correspond to the .x component of the uvec2 and the high 32 bits
@@ -103,8 +105,6 @@ NodeDataIdx RenderPassExecutor::processVisibleNode(const RenderingComponent& rCo
     // ToDo: Cache transforms for static nodes -Ionut
     NodeDataIdx ret = {};
     ret._transformIDX = to_U16(nodeIndex);
-    NodeTransformData& transformOut = _nodeTransformData[ret._transformIDX];
-    transformOut = {};
 
     NodeMaterialData tempData{};
     NodeMaterialTextures tempTextures{};
@@ -115,110 +115,119 @@ NodeDataIdx RenderPassExecutor::processVisibleNode(const RenderingComponent& rCo
     size_t materialHash = HashMaterialData(tempData);
     Util::Hash_combine(materialHash, HashTexturesData(tempTextures));
 
-    PerRingEntryMaterialData& materialData = _materialData[_materialBufferIndex];
-    auto& materialInfo = materialData._nodeMaterialLookupInfo;
-    // Try and match an existing material
-    bool foundMatch = false;
-    U16 idx = 0;
-    for (; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
-        auto& [hash, lifetime] = materialInfo[idx + materialElementOffset];
+    {
+        //SharedLock<SharedMutex> r_lock(_matDataLock);
+        PerRingEntryMaterialData& materialData = _materialData[_materialBufferIndex];
+        auto& materialInfo = materialData._nodeMaterialLookupInfo;
+        // Try and match an existing material
+        bool foundMatch = false;
 
-        if (hash == materialHash) {
-            // Increment lifetime (but clamp it so we don't overflow in time)
-            lifetime = CLAMPED(++lifetime, to_U16(0u), g_maxMaterialFrameLifetime);
-            foundMatch = true;
-            break;
-        }
-    }
-
-    // If we fail, try and find an empty slot
-    if (!foundMatch) {
-        std::pair<U16, U16> bestCandidate = { 0u, 0u };
-
-        idx = 0u;
-        for (; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
-            auto& [hash, lifetime] = materialInfo[idx + materialElementOffset];
-            if (hash == Material::INVALID_MAT_HASH) {
-                foundMatch = true;
-                break;
-            }
-            // Find a candidate to replace in case we fail
-            if (lifetime >= g_maxMaterialFrameLifetime && lifetime > bestCandidate.second) {
-                bestCandidate.first = idx;
-                bestCandidate.second = lifetime;
+        U16 idx = 0;
+        {
+            OPTICK_EVENT("processVisibleNode - try match material");
+            for (; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
+                auto& [hash, framesSinceLastUsed] = materialInfo[idx + materialElementOffset];
+                if (hash == materialHash) {
+                    framesSinceLastUsed = 0u;
+                    foundMatch = true;
+                    break;
+                }
             }
         }
+        // If we fail, try and find an empty slot
         if (!foundMatch) {
-            foundMatch = bestCandidate.second > 0u;
-            idx = bestCandidate.first;
+            OPTICK_EVENT("processVisibleNode - process unmatched material");
+
+            std::pair<U16, U16> bestCandidate = { 0u, 0u };
+
+            idx = 0u;
+            for (; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
+                auto& [hash, framesSinceLastUsed] = materialInfo[idx + materialElementOffset];
+                if (hash == Material::INVALID_MAT_HASH) {
+                    foundMatch = true;
+                    break;
+                }
+
+                if (framesSinceLastUsed >= g_maxMaterialFrameLifetime && framesSinceLastUsed > bestCandidate.second) {
+                    bestCandidate.first = idx;
+                    bestCandidate.second = framesSinceLastUsed;
+                }
+            }
+            if (!foundMatch) {
+                foundMatch = bestCandidate.second > 0u;
+                idx = bestCandidate.first;
+            }
+
+            DIVIDE_ASSERT(foundMatch, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
+
+            auto& range = materialData._matUpdateRange;
+            if (range._firstIDX > idx) {
+                range._firstIDX = idx;
+            }
+            if (range._lastIDX < idx) {
+                range._lastIDX = idx;
+            }
+
+            const U32 offsetIdx = idx + materialElementOffset;
+            materialInfo[offsetIdx] = { materialHash, 0u };
+
+            materialData._nodeMaterialData[offsetIdx] = tempData;
+            addTexturesAt(offsetIdx, tempTextures);
         }
 
-        DIVIDE_ASSERT(foundMatch, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
-
-        auto& range = materialData._matUpdateRange;
-        if (range._firstIDX > idx) {
-            range._firstIDX = idx;
-        }
-        if (range._lastIDX < idx) {
-            range._lastIDX = idx;
-        }
-
-        const U32 offsetIdx = idx + materialElementOffset;
-        materialInfo[offsetIdx] = { materialHash, 0u };
-
-        materialData._nodeMaterialData[offsetIdx] = tempData;
-        addTexturesAt(offsetIdx, tempTextures);
+        ret._materialIDX = idx;
     }
 
-    ret._materialIDX = idx;
- 
     const SceneGraphNode* node = rComp.getSGN();
     const TransformComponent* const transform = node->get<TransformComponent>();
     assert(transform != nullptr);
 
-    // ... get the node's world matrix properly interpolated
-    transform->getPreviousWorldMatrix(transformOut._prevWorldMatrix);
-    if (interpolationFactor < 0.985) {
+    {
+        OPTICK_EVENT("processVisibleNode - process node data");
+        NodeTransformData& transformOut = _nodeTransformData[ret._transformIDX];
+        //transformOut = {}; //We will rewrite everything anyway
+
+        // ... get the node's world matrix properly interpolated
+        transform->getPreviousWorldMatrix(transformOut._prevWorldMatrix);
         transform->getWorldMatrix(interpolationFactor, transformOut._worldMatrix);
-    } else {
-        transform->getWorldMatrix(transformOut._worldMatrix);
+        transformOut._normalMatrixW.set(transformOut._worldMatrix);
+        transformOut._normalMatrixW.setRow(3, 0.0f, 0.0f, 0.0f, 1.0f);
+
+        if (!transform->isUniformScaled()) {
+            // Non-uniform scaling requires an inverseTranspose to negate
+            // scaling contribution but preserve rotation
+            transformOut._normalMatrixW.inverseTranspose();
+        }
+
+        // Get the material property matrix (alpha test, texture count, texture operation, etc.)
+        bool frameTicked = false;
+        U8 boneCount = 0u;
+        AnimationComponent* animComp = node->get<AnimationComponent>();
+        if (animComp && animComp->playAnimations()) {
+            boneCount = animComp->boneCount();
+            frameTicked = animComp->frameTicked();
+        }
+
+        RenderingComponent::NodeRenderingProperties properties = {};
+        rComp.getRenderingProperties(stage, properties);
+
+        // Since the normal matrix is 3x3, we can use the extra row and column to store additional data
+        const BoundsComponent* const bounds = node->get<BoundsComponent>();
+        const vec4<F32> bSphere = bounds->getBoundingSphere().asVec4();
+        const vec3<F32> bBoxHalfExtents = bounds->getBoundingBox().getHalfExtent();
+
+        transformOut._normalMatrixW.setRow(3, vec4<F32>{bSphere.xyz, properties._nodeFlagValue});
+        transformOut._normalMatrixW.element(0, 3) = to_F32(Util::PACK_UNORM4x8(boneCount, properties._lod, frameTicked ? 1u : 0u, properties._occlusionCull ? 1u : 0u));
+        transformOut._normalMatrixW.element(1, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.xy));
+        transformOut._normalMatrixW.element(2, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.z, bSphere.w));
     }
-
-    transformOut._normalMatrixW.set(transformOut._worldMatrix);
-    transformOut._normalMatrixW.setRow(3, 0.0f, 0.0f, 0.0f, 1.0f);
-    if (!transform->isUniformScaled()) {
-        // Non-uniform scaling requires an inverseTranspose to negate
-        // scaling contribution but preserve rotation
-        transformOut._normalMatrixW.inverseTranspose();
-    }
-
-    // Get the material property matrix (alpha test, texture count, texture operation, etc.)
-    bool frameTicked = false;
-    U8 boneCount = 0u;
-    AnimationComponent* animComp = node->get<AnimationComponent>();
-    if (animComp && animComp->playAnimations()) {
-        boneCount = animComp->boneCount();
-        frameTicked = animComp->frameTicked();
-    }
-
-    RenderingComponent::NodeRenderingProperties properties = {};
-    rComp.getRenderingProperties(stage, properties);
-
-    // Since the normal matrix is 3x3, we can use the extra row and column to store additional data
-    const BoundsComponent* const bounds = node->get<BoundsComponent>();
-    const vec4<F32> bSphere = bounds->getBoundingSphere().asVec4();
-    const vec3<F32> bBoxHalfExtents = bounds->getBoundingBox().getHalfExtent();
-
-    transformOut._normalMatrixW.setRow(3, vec4<F32>{bSphere.xyz, properties._nodeFlagValue});
-    transformOut._normalMatrixW.element(0, 3) = to_F32(Util::PACK_UNORM4x8(boneCount, properties._lod, frameTicked ? 1u : 0u, properties._occlusionCull ? 1u : 0u));
-    transformOut._normalMatrixW.element(1, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.xy));
-    transformOut._normalMatrixW.element(2, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.z, bSphere.w));
 
     return ret;
 }
 
 U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
+
     constexpr bool doMainPass = true;
 
     RenderStagePass stagePass = params._stagePass;
@@ -233,7 +242,16 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
         InitMaterialData(_stage, _materialData.emplace_back());
     }
 
-    _materialData[_materialBufferIndex]._matUpdateRange.reset();
+    {
+        PerRingEntryMaterialData& materialData = _materialData[_materialBufferIndex];
+        materialData._matUpdateRange.reset();
+        // Increment material lifetime by 1 (a frame has passed)
+        for (U16 idx = 0u; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
+            auto& [hash, lifetime] = materialData._nodeMaterialLookupInfo[idx + bufferData._materialElementOffset];
+            ++lifetime;
+        }
+    }
+
     _uniqueTextureAddresses.clear();
 
     for (RenderBin::SortedQueue& sQueue : _sortedQueues) {
@@ -334,6 +352,7 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
 }
 
 U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes, const RenderPassParams& params, const bool hasInvalidNodes, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
 
     if (hasInvalidNodes) {
         VisibleNodeList<> tempNodes{};
@@ -380,7 +399,7 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes, const RenderPa
     _renderQueuePackages.reserve(Config::MAX_VISIBLE_NODES);
 
     // Draw everything in the depth pass but only draw stuff from the translucent bin in the OIT Pass and everything else in the colour pass
-    _renderQueue.populateRenderQueues(stagePass, std::make_pair(RenderBinType::RBT_COUNT, true), _renderQueuePackages);
+    _renderQueue.populateRenderQueues(stagePass, std::make_pair(RenderBinType::COUNT, true), _renderQueuePackages);
 
     return buildDrawCommands(params, doPrePass, doOITPass, bufferInOut);
 }
@@ -389,30 +408,32 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params, con
     OPTICK_EVENT();
 
     const RenderStagePass& stagePass = params._stagePass;
-    const RenderBinType targetBin = transparencyPass ? RenderBinType::RBT_TRANSLUCENT : RenderBinType::RBT_COUNT;
+    const RenderBinType targetBin = transparencyPass ? RenderBinType::TRANSLUCENT : RenderBinType::COUNT;
     const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().renderState();
 
     const Camera& cam = *params._camera;
     _renderQueue.refresh(targetBin);
-
-    ParallelForDescriptor descriptor = {};
-    descriptor._iterCount = to_U32(nodes.size());
-    descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
-    descriptor._priority = TaskPriority::DONT_CARE;
-    descriptor._useCurrentThread = true;
-    descriptor._cbk = [&](const Task* /*parentTask*/, const U32 start, const U32 end) {
-        for (U32 i = start; i < end; ++i) {
-            const VisibleNode& node = nodes.node(i);
-            assert(node._materialReady);
-            if (Attorney::SceneGraphNodeRenderPassManager::shouldDraw(node._node, stagePass)) {
-                RenderingComponent * rComp = nodes.node(i)._node->get<RenderingComponent>();
-                Attorney::RenderingCompRenderPass::prepareDrawPackage(*rComp, cam, sceneRenderState, stagePass, false);
-                _renderQueue.addNodeToQueue(node._node, stagePass, node._distanceToCameraSq, targetBin);
+    {
+        OPTICK_EVENT("prepareRenderQueues - parallel gather");
+        ParallelForDescriptor descriptor = {};
+        descriptor._iterCount = to_U32(nodes.size());
+        descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
+        descriptor._priority = TaskPriority::DONT_CARE;
+        descriptor._useCurrentThread = true;
+        descriptor._cbk = [&](const Task* /*parentTask*/, const U32 start, const U32 end) {
+            for (U32 i = start; i < end; ++i) {
+                const VisibleNode& node = nodes.node(i);
+                assert(node._materialReady);
+                if (node._node->getNode().renderState().drawState(stagePass)) {
+                    RenderingComponent* rComp = nodes.node(i)._node->get<RenderingComponent>();
+                    Attorney::RenderingCompRenderPass::prepareDrawPackage(*rComp, cam, sceneRenderState, stagePass, false);
+                    _renderQueue.addNodeToQueue(node._node, stagePass, node._distanceToCameraSq, targetBin);
+                }
             }
-        }
-    };
+        };
 
-    parallel_for(_parent.parent().platformContext(), descriptor);
+        parallel_for(_parent.parent().platformContext(), descriptor);
+    }
 
     // Sort all bins
     _renderQueue.sort(stagePass, targetBin, renderOrder);
@@ -422,8 +443,8 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params, con
 
     // Draw everything in the depth pass but only draw stuff from the translucent bin in the OIT Pass and everything else in the colour pass
     _renderQueue.populateRenderQueues(stagePass, stagePass.isDepthPass()
-                                                   ? std::make_pair(RenderBinType::RBT_COUNT, true)
-                                                   : std::make_pair(RenderBinType::RBT_TRANSLUCENT, transparencyPass),
+                                                   ? std::make_pair(RenderBinType::COUNT, true)
+                                                   : std::make_pair(RenderBinType::TRANSLUCENT, transparencyPass),
                                       _renderQueuePackages);
 
     
@@ -434,12 +455,12 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params, con
 
     static const vectorEASTL<RenderBinType> allBins{};
     static const vectorEASTL<RenderBinType> prePassBins{
-         RenderBinType::RBT_OPAQUE,
-         RenderBinType::RBT_IMPOSTOR,
-         RenderBinType::RBT_TERRAIN,
-         RenderBinType::RBT_TERRAIN_AUX,
-         RenderBinType::RBT_SKY,
-         RenderBinType::RBT_TRANSLUCENT
+         RenderBinType::OPAQUE,
+         RenderBinType::IMPOSTOR,
+         RenderBinType::TERRAIN,
+         RenderBinType::TERRAIN_AUX,
+         RenderBinType::SKY,
+         RenderBinType::TRANSLUCENT
     };
 
     _renderQueue.getSortedQueues(stagePass._passType == RenderPassType::PRE_PASS ? prePassBins : allBins, _sortedQueues);
@@ -569,16 +590,16 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
 
         if (hasHiZ) {
             GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-            descriptorSetCmd._set._textureData.add({ hizTex->data(), hizSampler, TextureUsage::DEPTH });
+            descriptorSetCmd._set._textureData.add(TextureEntry{ hizTex->data(), hizSampler, TextureUsage::DEPTH });
             EnqueueCommand(bufferInOut, descriptorSetCmd);
         } else if (prePassExecuted) {
             GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
             if (params._target._usage == RenderTargetUsage::SCREEN_MS) {
                 const auto& depthAtt = nonMSTarget.getAttachment(RTAttachmentType::Depth, 0);
-                descriptorSetCmd._set._textureData.add({ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
+                descriptorSetCmd._set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
             } else {
                 const auto& depthAtt = target.getAttachment(RTAttachmentType::Depth, 0);
-                descriptorSetCmd._set._textureData.add({ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
+                descriptorSetCmd._set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
             }
             EnqueueCommand(bufferInOut, descriptorSetCmd);
         }
@@ -613,6 +634,8 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
 }
 
 void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
+
     const bool isMSAATarget = params._targetOIT._usage == RenderTargetUsage::OIT_MS;
 
     assert(params._stagePass._passType == RenderPassType::OIT_PASS);
@@ -678,7 +701,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
             const RenderTarget& nonMSTarget = _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN);
             GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
             const auto& colourAtt = nonMSTarget.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-            descriptorSetCmd._set._textureData.add({ colourAtt.texture()->data(), colourAtt.samplerHash(), TextureUsage::POST_FX_DATA });
+            descriptorSetCmd._set._textureData.add(TextureEntry{ colourAtt.texture()->data(), colourAtt.samplerHash(), TextureUsage::POST_FX_DATA });
             EnqueueCommand(bufferInOut, descriptorSetCmd);
         }
 
@@ -738,8 +761,8 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
         const TextureData revealage = revAtt.texture()->data();
 
         GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-        descriptorSetCmd._set._textureData.add({ accum, accumAtt.samplerHash(),to_base(TextureUsage::UNIT0) });
-        descriptorSetCmd._set._textureData.add({ revealage, revAtt.samplerHash(), to_base(TextureUsage::UNIT1) });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ accum, accumAtt.samplerHash(),to_base(TextureUsage::UNIT0) });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ revealage, revAtt.samplerHash(), to_base(TextureUsage::UNIT1) });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         GenericDrawCommand drawCommand = {};
@@ -763,6 +786,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
 
 void RenderPassExecutor::transparencyPass(const VisibleNodeList<>& nodes, const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
+
     if (_stage == RenderStage::SHADOW) {
         return;
     }
@@ -824,6 +848,8 @@ void RenderPassExecutor::postRender(const RenderStagePass& stagePass,
                                     const Camera& camera,
                                     RenderQueue& renderQueue,
                                     GFX::CommandBuffer& bufferInOut) const {
+    OPTICK_EVENT();
+
     SceneManager* sceneManager = _parent.parent().sceneManager();
     const SceneRenderState& activeSceneRenderState = Attorney::SceneManagerRenderPass::renderState(sceneManager);
     renderQueue.postRender(activeSceneRenderState, stagePass, bufferInOut);
@@ -835,6 +861,8 @@ void RenderPassExecutor::postRender(const RenderStagePass& stagePass,
 }
 
 void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const {
+    OPTICK_EVENT();
+
     // If we rendered to the multisampled screen target, we can now copy the colour to our regular buffer as we are done with it at this point
     if (params._target._usage == RenderTargetUsage::SCREEN_MS) {
         EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - Resolve Screen Targets" });
@@ -859,10 +887,10 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
         EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_ResolveScreenTargetsPipeline });
 
         GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-        descriptorSetCmd._set._textureData.add({ albedoTex, albedoAtt.samplerHash(), to_base(TextureUsage::UNIT0) });
-        descriptorSetCmd._set._textureData.add({ velocityTex, velocityAtt.samplerHash(), to_base(TextureUsage::NORMALMAP) });
-        descriptorSetCmd._set._textureData.add({ normalsTex, normalsAtt.samplerHash(), to_base(TextureUsage::HEIGHTMAP) });
-        descriptorSetCmd._set._textureData.add({ specularTex, specularAtt.samplerHash(), to_base(TextureUsage::OPACITY) });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ albedoTex, albedoAtt.samplerHash(), to_base(TextureUsage::UNIT0) });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ velocityTex, velocityAtt.samplerHash(), to_base(TextureUsage::NORMALMAP) });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ normalsTex, normalsAtt.samplerHash(), to_base(TextureUsage::HEIGHTMAP) });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ specularTex, specularAtt.samplerHash(), to_base(TextureUsage::OPACITY) });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         GenericDrawCommand drawCommand = {};
@@ -913,10 +941,16 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
     cullParams._currentCamera = params._camera;
     cullParams._cullMaxDistanceSq = std::min(cullParams._cullMaxDistanceSq, SQUARED(params._camera->getZPlanes().y));
     cullParams._maxLoD = params._maxLoD;
-    cullParams._cullAllDynamicNodes = !BitCompare(params._drawMask, to_U8(1 << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
-    cullParams._cullAllStaticNodes = !BitCompare(params._drawMask, to_U8(1 << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES)));
 
-    VisibleNodeList<>& visibleNodes = Attorney::SceneManagerRenderPass::cullScene(_parent.parent().sceneManager(), cullParams);
+    U16 cullFlags = to_base(CullOptions::DEFAULT_CULL_OPTIONS);
+    if (!BitCompare(params._drawMask, to_U8(1 << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)))) {
+        cullFlags |= to_base(CullOptions::CULL_DYNAMIC_NODES);
+    }
+    if (!BitCompare(params._drawMask, to_U8(1 << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES)))) {
+        cullFlags |= to_base(CullOptions::CULL_STATIC_NODES);
+    }
+
+    VisibleNodeList<>& visibleNodes = Attorney::SceneManagerRenderPass::cullScene(_parent.parent().sceneManager(), cullParams, cullFlags);
 
     if (params._feedBackContainer != nullptr) {
         auto& container = params._feedBackContainer->_visibleNodes;

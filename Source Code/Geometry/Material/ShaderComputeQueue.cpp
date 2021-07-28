@@ -24,7 +24,9 @@ void ShaderComputeQueue::idle() {
     }
 
     Time::ScopedTimer timer(_queueComputeTimer);
-    stepQueue();
+    if (!stepQueue()) {
+        NOP();
+    }
 }
 
 // Processes a queue element on the spot

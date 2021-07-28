@@ -36,7 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
-#include <imgui/addons/imguigizmo/ImGuizmo.h>
+#include <ImGuizmo/ImGuizmo.h>
 
 struct ImGuiContext;
 

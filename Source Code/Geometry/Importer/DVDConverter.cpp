@@ -451,6 +451,8 @@ void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData
                 const size_t target_index_count = std::min(source_indices.size(), to_size(index_count * threshold) / 3 * 3);
 
                 lod_indices.resize(source_indices.size());
+                constexpr F32 target_error = 1e-2f;
+                F32 result_error = 0.f;
                 if_constexpr (g_useSloppyMeshSimplification) {
                     lod_indices.resize(meshopt_simplifySloppy(lod_indices.data(),
                                                               source_indices.data(),
@@ -458,9 +460,10 @@ void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData
                                                               &source_vertices[0].position.x,
                                                               source_vertices.size(),
                                                               sizeof(Import::SubMeshData::Vertex),
-                                                              target_index_count));
+                                                              target_index_count,
+                                                              target_error,
+                                                              &result_error));
                 } else {
-                    constexpr F32 target_error = 1e-2f;
                     lod_indices.resize(meshopt_simplify(lod_indices.data(),
                                                         source_indices.data(),
                                                         source_indices.size(),
@@ -468,7 +471,8 @@ void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData
                                                         source_vertices.size(),
                                                         sizeof(Import::SubMeshData::Vertex),
                                                         target_index_count,
-                                                        target_error));
+                                                        target_error,
+                                                        &result_error));
                 }
             }
 

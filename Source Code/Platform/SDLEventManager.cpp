@@ -11,10 +11,11 @@ namespace Divide {
     void SDLEventManager::registerListener(SDLEventListener& listener) {
         UniqueLock<SharedMutex> lock(s_eventListenerLock);
 
-        assert(eastl::find_if(
-            eastl::cbegin(s_eventListeners), eastl::cend(s_eventListeners), [&](SDLEventListener* l) {
-            return l != nullptr && l->listenerID() == listener.listenerID();
-         }) == eastl::cend(s_eventListeners));
+        assert(!eastl::any_of(eastl::cbegin(s_eventListeners),
+                              eastl::cend(s_eventListeners),
+                              [&listener](SDLEventListener* l) {
+                                    return l != nullptr && l->listenerID() == listener.listenerID();
+                              }));
 
         s_eventListeners.push_back(&listener);
     }
@@ -23,15 +24,12 @@ namespace Divide {
         UniqueLock<SharedMutex> lock(s_eventListenerLock);
 
         const U64 targetID = listener.listenerID();
-
-        const auto *const it = eastl::find_if(
-            cbegin(s_eventListeners), cend(s_eventListeners), [targetID](SDLEventListener* l)
-            {
-                return l && l->listenerID() == targetID;
-            });
-        assert(it != eastl::cend(s_eventListeners));
-
-        s_eventListeners.erase(it);
+        const bool success = dvd_erase_if(s_eventListeners,
+                                          [targetID](SDLEventListener* l)
+                                          {
+                                              return l && l->listenerID() == targetID;
+                                          });
+        DIVIDE_ASSERT(success);
     }
 
     void SDLEventManager::pollEvents() {

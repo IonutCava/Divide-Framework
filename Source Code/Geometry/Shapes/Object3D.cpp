@@ -15,6 +15,22 @@
 
 namespace Divide {
 
+namespace TypeUtil {
+    const char* ObjectTypeToString(const ObjectType objectType) noexcept {
+        return Names::objectType[to_base(objectType)];
+    }
+
+    ObjectType StringToObjectType(const stringImpl& name) {
+        for (U8 i = 0u; i < to_U8(ObjectType::COUNT); ++i) {
+            if (strcmp(name.c_str(), Names::objectType[i]) == 0) {
+                return static_cast<ObjectType>(i);
+            }
+        }
+
+        return ObjectType::COUNT;
+    }
+}; //namespace TypeUtil
+
 Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, const ObjectType type, const U32 flagMask)
     : SceneNode(parentCache,
                 descriptorHash,
@@ -70,10 +86,10 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
 }
 
 bool Object3D::isPrimitive() const noexcept {
-    return _geometryType._value == ObjectType::BOX_3D ||
-           _geometryType._value == ObjectType::QUAD_3D ||
-           _geometryType._value == ObjectType::PATCH_3D ||
-           _geometryType._value == ObjectType::SPHERE_3D;
+    return _geometryType == ObjectType::BOX_3D ||
+           _geometryType == ObjectType::QUAD_3D ||
+           _geometryType == ObjectType::PATCH_3D ||
+           _geometryType == ObjectType::SPHERE_3D;
 }
 
 void Object3D::postLoad(SceneGraphNode* sgn) {
@@ -177,8 +193,8 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
 
     const size_t partitionOffset = geometry->getPartitionOffset(_geometryPartitionIDs[0]);
     const size_t partitionCount = geometry->getPartitionIndexCount(_geometryPartitionIDs[0]);
-    const PrimitiveType type = _geometryType._value == ObjectType::MESH ||
-                               _geometryType._value == ObjectType::SUBMESH
+    const PrimitiveType type = _geometryType == ObjectType::MESH ||
+                               _geometryType == ObjectType::SUBMESH
                                    ? PrimitiveType::TRIANGLES
                                    : PrimitiveType::TRIANGLE_STRIP;
 
@@ -281,7 +297,7 @@ void Object3D::loadCache(ByteBuffer& inputBuffer) {
 
 void Object3D::saveToXML(boost::property_tree::ptree& pt) const {
     if (static_cast<const Object3D*>(this)->isPrimitive()) {
-        pt.put("model", static_cast<const Object3D*>(this)->getObjectType()._to_string());
+        pt.put("model", TypeUtil::ObjectTypeToString(static_cast<const Object3D*>(this)->getObjectType()));
     } else {
         pt.put("model", resourceName().c_str());
     }
@@ -292,8 +308,8 @@ void Object3D::saveToXML(boost::property_tree::ptree& pt) const {
 void Object3D::loadFromXML(const boost::property_tree::ptree& pt) {
     stringImpl temp;
     if (static_cast<const Object3D*>(this)->isPrimitive()) {
-        temp = pt.get("model", getObjectType()._to_string());
-        assert(temp == getObjectType()._to_string());
+        temp = pt.get("model", TypeUtil::ObjectTypeToString(getObjectType()));
+        assert(temp == TypeUtil::ObjectTypeToString(getObjectType()));
     } else {
         temp = pt.get("model", resourceName().c_str());
         assert(temp == resourceName().c_str());

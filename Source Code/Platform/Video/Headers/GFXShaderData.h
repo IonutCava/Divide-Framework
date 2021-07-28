@@ -40,11 +40,7 @@ namespace Divide {
 
 enum class RenderStage : U8;
 
-class GFXShaderData {
-  public:
-      GFXShaderData() = default;
-
-  public:
+struct GFXShaderData {
 #pragma pack(push, 1)
       struct GPUData {
           GPUData() noexcept;
@@ -66,16 +62,17 @@ class GFXShaderData {
           vec4<F32> _otherProperties;
           std::array<Plane<F32>, to_base(FrustumPlane::COUNT)> _frustumPlanes;
           std::array<Plane<F32>, Config::MAX_CLIP_DISTANCES> _clipPlanes;
-
-          [[nodiscard]] inline F32 aspectRatio() const noexcept;
-          [[nodiscard]] inline vec2<F32> cameraZPlanes() const noexcept;
-          [[nodiscard]] inline F32 FoV() const noexcept;
       };
 #pragma pack(pop)
-    GPUData _data;
+    GPUData _data{};
 
     bool _needsUpload = true;
 };
+
+[[nodiscard]] F32 AspectRatio(const GFXShaderData::GPUData& dataIn) noexcept;
+[[nodiscard]] vec2<F32> CameraZPlanes(const GFXShaderData::GPUData& dataIn) noexcept;
+[[nodiscard]] F32 FoV(const GFXShaderData::GPUData& dataIn) noexcept;
+
 //RenderDoc: mat4 projection; mat4 invprojection; mat4 view; mat4 viewproj; vec4 cam; vec4 renderProp; vec4 frustum[6]; vec4 clip[6];
 }; //namespace Divide
 

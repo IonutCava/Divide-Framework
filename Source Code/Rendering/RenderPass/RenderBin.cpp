@@ -73,7 +73,7 @@ void RenderBin::sort(const RenderingOrder renderOrder) {
             // no need to sort
         } break;
         case RenderingOrder::COUNT: {
-            Console::errorfn(Locale::Get(_ID("ERROR_INVALID_RENDER_BIN_SORT_ORDER")), _rbType._to_string());
+            Console::errorfn(Locale::Get(_ID("ERROR_INVALID_RENDER_BIN_SORT_ORDER")), Names::renderBinType[to_base(_rbType)]);
         } break;
     }
 }

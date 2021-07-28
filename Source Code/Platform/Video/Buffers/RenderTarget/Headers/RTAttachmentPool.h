@@ -45,7 +45,6 @@ public:
 
 public:
     explicit RTAttachmentPool(RenderTarget& parent, U8 colourAttCount);
-    ~RTAttachmentPool() = default;
 
     void copy(const RTAttachmentPool& other);
 

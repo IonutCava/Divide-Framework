@@ -55,7 +55,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D8177F00-194F-42AE-8389-63B114DBEE63}</ProjectGuid>
     <RootNamespace>DIVIDENetworking</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -179,7 +179,7 @@
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <AdditionalLibraryDirectories>$(SolutionDir)../3rdParty/boost\lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <TargetMachine>MachineX64</TargetMachine>
       <Verbose>false</Verbose>
@@ -234,7 +234,7 @@
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <AdditionalLibraryDirectories>$(SolutionDir)../3rdParty/boost\lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <Verbose>false</Verbose>
     </Lib>
@@ -285,7 +285,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <AdditionalLibraryDirectories>$(SolutionDir)../3rdParty/boost\lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <Verbose>false</Verbose>
       <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>

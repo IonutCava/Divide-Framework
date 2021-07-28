@@ -358,9 +358,6 @@
     <ClInclude Include="../../Source Code/Core\Headers\Hashable.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/Core\TemplateLibraries\Headers\PolyContainer.h">
-      <Filter>TemplateLibraries</Filter>
-    </ClInclude>
     <ClInclude Include="../../Source Code/Core\Math\Headers\Dimension.h">
       <Filter>Math\Headers</Filter>
     </ClInclude>
@@ -369,6 +366,12 @@
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Core\Math\BoundingVolumes\Headers\OBB.h">
       <Filter>Math\BoundingVolumes\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Core\TemplateLibraries\Headers\CircularBuffer.h">
+      <Filter>TemplateLibraries\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="../../Source Code/Core\TemplateLibraries\Headers\PolyContainer.h">
+      <Filter>TemplateLibraries\Headers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

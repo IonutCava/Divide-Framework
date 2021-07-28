@@ -43,7 +43,6 @@ namespace Divide {
 class glHardwareQuery : public glObject {
 public:
     explicit glHardwareQuery(GFXDevice& context);
-    ~glHardwareQuery() = default;
 
     void create(GLenum queryType);
     void destroy();
@@ -64,7 +63,7 @@ protected:
 class glHardwareQueryRing final : public RingBufferSeparateWrite {
 
 public:
-    glHardwareQueryRing(GFXDevice& context, GLenum queryType, U32 queueLength, U32 id = 0);
+    explicit glHardwareQueryRing(GFXDevice& context, GLenum queryType, U32 queueLength, U32 id = 0);
     ~glHardwareQueryRing();
 
     void resize(I32 queueLength) noexcept override;

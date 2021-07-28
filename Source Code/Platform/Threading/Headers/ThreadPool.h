@@ -35,7 +35,7 @@
 
 namespace Divide {
 
-using PoolTask = std::function<bool(bool/*threadWaitingCall*/)>;
+using PoolTask = DELEGATE_STD<bool, bool/*threadWaitingCall*/>;
 
 class TaskPool;
 

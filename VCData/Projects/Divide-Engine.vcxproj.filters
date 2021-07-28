@@ -878,7 +878,6 @@
     <ClInclude Include="../../Source Code/Rendering\Lighting\ShadowMapping\Headers\SingleShadowMapGenerator.h">
       <Filter>Rendering\Lighting\ShadowMapping\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/readme.h" />
     <ClInclude Include="../../Source Code/Core\Headers\PlatformContextComponent.h">
       <Filter>Core\Headers</Filter>
     </ClInclude>
@@ -914,9 +913,6 @@
     </ClInclude>
     <ClInclude Include="..\..\3rdParty\EntityComponentSystem\include\ECS\SystemManager.h">
       <Filter>ECS\ECSLib\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Source Code\ECS\Events\Headers\EntityEvents.h">
-      <Filter>ECS\ECSLib\Headers\Event</Filter>
     </ClInclude>
     <ClInclude Include="..\..\3rdParty\EntityComponentSystem\include\ECS\Event\Event.h">
       <Filter>ECS\ECSLib\Headers\Event</Filter>

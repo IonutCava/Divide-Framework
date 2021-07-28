@@ -1140,7 +1140,7 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
                                : layerCount > 1 ? _BlurBoxPipelineLayered : _BlurBoxPipelineSingle
             });
 
-        descriptorSetCmd._set._textureData.add({ inputAttachment.texture()->data(), inputAttachment.samplerHash(), TextureUsage::UNIT0 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ inputAttachment.texture()->data(), inputAttachment.samplerHash(), TextureUsage::UNIT0 });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         pushConstantsCommand._constants.countHint(4);
@@ -1183,7 +1183,7 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
             pushConstantsCommand._constants.set(_ID("size"), GFX::PushConstantType::VEC2, vec2<F32>(blurTarget._rt->getResolution()));
         }
 
-        descriptorSetCmd._set._textureData.add({ bufferAttachment.texture()->data(), bufferAttachment.samplerHash(), TextureUsage::UNIT0 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ bufferAttachment.texture()->data(), bufferAttachment.samplerHash(), TextureUsage::UNIT0 });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         EnqueueCommand(bufferInOut, pushConstantsCommand);
@@ -1364,7 +1364,7 @@ void GFXDevice::uploadGPUBlock() {
 
     if (_gpuBlock._needsUpload) {
         _gpuBlock._needsUpload = false;
-        _gpuBlock._data._otherProperties.x = to_F32(materialDebugFlag()._to_integral());
+        _gpuBlock._data._otherProperties.x = to_F32(materialDebugFlag());
         _gfxDataBuffer->writeData(&_gpuBlock._data);
         _gfxDataBuffer->bind(ShaderBufferLocation::GPU_BLOCK);
         _gfxDataBuffer->incQueue();
@@ -1588,6 +1588,8 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
             } break;
             case GFX::CommandType::PUSH_CAMERA: {
                 GFX::PushCameraCommand* crtCmd = commandBuffer.get<GFX::PushCameraCommand>(cmd);
+                DIVIDE_ASSERT(_cameraSnapshots.size() < _cameraSnapshots._Get_container().max_size(), "GFXDevice::flushCommandBuffer error: PUSH_CAMERA stack too deep!");
+
                 _cameraSnapshots.push(_activeCameraSnapshot);
                 renderFromCamera(crtCmd->_cameraSnapshot);
             } break;
@@ -1702,7 +1704,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
 
         // for i > 0, use texture views?
         GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-        descriptorSetCmd._set._textureData.add({ hizData, att.samplerHash(), TextureUsage::DEPTH });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ hizData, att.samplerHash(), TextureUsage::DEPTH });
         EnqueueCommand(cmdBufferInOut, descriptorSetCmd);
 
         // We skip the first level as that's our full resolution image
@@ -1789,7 +1791,7 @@ void GFXDevice::occlusionCull(const RenderStagePass& stagePass,
         shaderBuffer._elementRange = { bufferData._commandElementOffset, cmdCount };
 
         GFX::BindDescriptorSetsCommand bindDescriptorSetsCmd = {};
-        bindDescriptorSetsCmd._set._textureData.add({ depthBuffer->data(), samplerHash, TextureUsage::UNIT0 });
+        bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ depthBuffer->data(), samplerHash, TextureUsage::UNIT0 });
         bindDescriptorSetsCmd._set._buffers.add(shaderBuffer);
 
         if (bufferData._cullCounterBuffer != nullptr) {
@@ -1859,8 +1861,8 @@ void GFXDevice::drawText(const TextElementBatch& batch) {
 void GFXDevice::drawTextureInViewport(const TextureData data, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, GFX::CommandBuffer& bufferInOut) {
     static GFX::BeginDebugScopeCommand beginDebugScopeCmd = { "Draw Texture In Viewport" };
     static GFX::PushCameraCommand push2DCameraCmd = { Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() };
-    static GFX::SendPushConstantsCommand pushConstantsSRGBTrue = {{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, true}}};
-    static GFX::SendPushConstantsCommand pushConstantsSRGBFalse = {{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, false}}};
+    static GFX::SendPushConstantsCommand pushConstantsSRGBTrue{ PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, true}}};
+    static GFX::SendPushConstantsCommand pushConstantsSRGBFalse{ PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, false}}};
 
     GenericDrawCommand drawCmd = {};
     drawCmd._primitiveType = PrimitiveType::TRIANGLES;
@@ -1870,7 +1872,7 @@ void GFXDevice::drawTextureInViewport(const TextureData data, const size_t sampl
     EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ (drawToDepthOnly ? _DrawFSDepthPipeline : _DrawFSTexturePipeline) });
 
     GFX::BindDescriptorSetsCommand bindDescriptorSetsCmd = {};
-    bindDescriptorSetsCmd._set._textureData.add({ data, samplerHash, TextureUsage::UNIT0 });
+    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ data, samplerHash, TextureUsage::UNIT0 });
     EnqueueCommand(bufferInOut, bindDescriptorSetsCmd);
 
     EnqueueCommand(bufferInOut, GFX::PushViewportCommand{ viewport });
@@ -2132,7 +2134,7 @@ void GFXDevice::renderDebugViews(Rect<I32> targetViewport, const I32 padding, GF
         EnqueueCommand(bufferInOut, setViewport);
 
         GFX::BindDescriptorSetsCommand bindDescriptorSets = {};
-        bindDescriptorSets._set._textureData.add({ view._texture->data(), view._samplerHash, view._textureBindSlot });
+        bindDescriptorSets._set._textureData.add(TextureEntry{ view._texture->data(), view._samplerHash, view._textureBindSlot });
         EnqueueCommand(bufferInOut, bindDescriptorSets);
 
         EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
@@ -2193,20 +2195,10 @@ DebugView* GFXDevice::addDebugView(const std::shared_ptr<DebugView>& view) {
 }
 
 bool GFXDevice::removeDebugView(DebugView* view) {
-    if (view != nullptr) {
-        const auto* it = eastl::find_if(eastl::begin(_debugViews),
-                                        eastl::end(_debugViews),
-                                        [view](const std::shared_ptr<DebugView>& entry) noexcept {
-                                           return view->getGUID() == entry->getGUID();
-                                        });
-                         
-        if (it != eastl::cend(_debugViews)) {
-            _debugViews.erase(it);
-            return true;
-        }
-    }
-
-    return false;
+    return dvd_erase_if(_debugViews,
+                        [view](const std::shared_ptr<DebugView>& entry) noexcept {
+                           return view != nullptr && view->getGUID() == entry->getGUID();
+                        });
 }
 
 void GFXDevice::toggleDebugView(const I16 index, const bool state) {

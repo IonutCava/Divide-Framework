@@ -22,7 +22,7 @@ namespace {
     [[nodiscard]] bool IsTransformNode(const SceneNodeType nodeType, const ObjectType objType) noexcept {
         return nodeType == SceneNodeType::TYPE_TRANSFORM ||
                nodeType == SceneNodeType::TYPE_TRIGGER ||
-               objType._value == ObjectType::MESH;
+               objType  == ObjectType::MESH;
     }
 };
 
@@ -47,7 +47,7 @@ SceneGraph::SceneGraph(Scene& parentScene)
                                         1 << to_base(SceneNodeType::TYPE_INFINITEPLANE) |
                                         1 << to_base(SceneNodeType::TYPE_VEGETATION);
 
-    _octree.reset(new Octree(octreeExclusionMask));
+    _octree.reset(new Octree(nullptr, octreeExclusionMask));
     _octreeUpdating = false;
 }
 
@@ -141,7 +141,6 @@ bool SceneGraph::removeNode(SceneGraphNode* node) {
 }
 
 bool SceneGraph::frameStarted(const FrameEvent& evt) {
-    Attorney::SceneGraphNodeSceneGraph::frameStarted(getRoot(), evt);
     {
         UniqueLock<SharedMutex> lock(_pendingDeletionLock);
         if (!_pendingDeletion.empty()) {
@@ -213,7 +212,7 @@ void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
     }
 
     if (_loadComplete) {
-        Start(*CreateTask(context,
+        Task* task = CreateTask(
             [this, deltaTimeUS](const Task& /*parentTask*/) mutable
             {
                 OPTICK_EVENT("Octree Update");
@@ -222,10 +221,13 @@ void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
                     _octree->updateTree();
                 }
                 _octree->update(deltaTimeUS);
-            }), 
-            //TaskPriority::DONT_CARE,
-            TaskPriority::REALTIME,
-            [this]() { _octreeUpdating = false; });
+        });
+
+        Start(*task,
+              context.taskPool(TaskPoolType::HIGH_PRIORITY),
+              //TaskPriority::DONT_CARE,
+              TaskPriority::REALTIME,
+              [this]() { _octreeUpdating = false; });
     }
 }
 
@@ -273,14 +275,19 @@ bool SceneGraph::intersect(const SGNIntersectionParams& params, vectorEASTL<SGNR
         }
     }
 
-    eastl::erase_if(intersectionsOut, [](const SGNRayResult& res) { return res.dist < 0.f || res.sgnGUID == -1; });
+    erase_if(intersectionsOut,
+             [](const SGNRayResult& res) {
+                 return res.dist < 0.f || res.sgnGUID == -1;
+             });
 
     return !intersectionsOut.empty();
 }
 
 void SceneGraph::postLoad() {
     for (const auto& nodes : _nodesByType) {
-        _octree->addNodes(nodes);
+        if (!_octree->addNodes(nodes)) {
+            NOP();
+        }
     }
     _octreeChanged = true;
     _loadComplete = true;

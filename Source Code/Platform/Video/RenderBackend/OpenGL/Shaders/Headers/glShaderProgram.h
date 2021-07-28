@@ -123,7 +123,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     void queueValidation();
     
     bool shouldRecompile() const;
-    bool recompile(bool force) override;
+    bool recompile(bool force, bool& skipped) override;
     /// Creation of a new shader program. Pass in a shader token and use glsw to
     /// load the corresponding effects
     bool load() override;

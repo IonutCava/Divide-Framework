@@ -79,10 +79,10 @@ namespace Divide {
 //ref: http://www.nirfriedman.com/2018/04/29/unforgettable-factory/
 template <typename Base, typename... Args>
 struct Factory {
-    using ConstructFunc = DELEGATE<void, SceneGraphNode*, Args...>;
-    using DestructFunc = DELEGATE<void, SceneGraphNode*>;
-    using FactoryContainerConstruct = ska::bytell_hash_map<ComponentType::_integral, ConstructFunc>;
-    using FactoryContainerDestruct = ska::bytell_hash_map<ComponentType::_integral, DestructFunc>;
+    using ConstructFunc = DELEGATE_STD<void, SceneGraphNode*, Args...>;
+    using DestructFunc = DELEGATE_STD<void, SceneGraphNode*>;
+    using FactoryContainerConstruct = ska::bytell_hash_map<ComponentType, ConstructFunc>;
+    using FactoryContainerDestruct = ska::bytell_hash_map<ComponentType, DestructFunc>;
 
     template <typename... ConstructArgs>
     static void construct(ComponentType type, SceneGraphNode* node, ConstructArgs&&... args) {
@@ -93,7 +93,7 @@ struct Factory {
         destructData().at(type)(node);
     }
 
-    template <typename T, ComponentType::_enumerated C>
+    template <typename T, ComponentType C>
     struct Registrar : ECS::Component<T>,
                        Base
     {
@@ -134,7 +134,7 @@ private:
       private:
         bool _registered = false;
 
-        template <typename T, ComponentType::_enumerated C>
+        template <typename T, ComponentType C>
         friend struct Registrar;
     };
 
@@ -151,7 +151,7 @@ private:
 };
 
 template <typename Base, typename... Args>
-template <typename T, ComponentType::_enumerated C>
+template <typename T, ComponentType C>
 bool Factory<Base, Args...>::Registrar<T, C>::s_registered = RegisterComponentType();
 
 struct EntityOnUpdate;
@@ -168,16 +168,16 @@ class SGNComponent : protected PlatformContextComponent,
         virtual void saveToXML(boost::property_tree::ptree& pt) const;
         virtual void loadFromXML(const boost::property_tree::ptree& pt);
 
-        SceneGraphNode* getSGN() const noexcept { return _parentSGN; }
-        ComponentType type() const noexcept { return _type; }
+        [[nodiscard]] SceneGraphNode* getSGN() const noexcept { return _parentSGN; }
+        [[nodiscard]] ComponentType type() const noexcept { return _type; }
 
-        EditorComponent& getEditorComponent() noexcept { return _editorComponent; }
-        const EditorComponent& getEditorComponent() const noexcept { return _editorComponent; }
+        [[nodiscard]] EditorComponent& getEditorComponent() noexcept { return _editorComponent; }
+        [[nodiscard]] const EditorComponent& getEditorComponent() const noexcept { return _editorComponent; }
 
         virtual bool saveCache(ByteBuffer& outputBuffer) const;
         virtual bool loadCache(ByteBuffer& inputBuffer);
 
-        U64 uniqueID() const;
+        [[nodiscard]] U64 uniqueID() const;
 
         virtual bool enabled() const;
         virtual void enabled(bool state);
@@ -190,7 +190,7 @@ class SGNComponent : protected PlatformContextComponent,
         mutable std::atomic_bool _hasChanged;
 };
 
-template<typename T, ComponentType::_enumerated C>
+template<typename T, ComponentType C>
 using BaseComponentType = SGNComponent::Registrar<T, C>;
 
 #define INIT_COMPONENT(X) static bool X##_registered = X::s_registered

@@ -46,7 +46,6 @@ namespace hashAlg = eastl;
 
 template <typename K, typename V, typename HashFun = HashType<K>, typename Predicate = eastl::equal_to<K>>
 using hashMap = hashAlg::unordered_map<K, V, HashFun, Predicate>;
-
 template <typename K, typename V, typename HashFun = HashType<K>, typename Predicate = eastl::equal_to<K>>
 using hashPairReturn = hashAlg::pair<typename hashMap<K, V, HashFun, Predicate>::iterator, bool>;
 
@@ -124,4 +123,21 @@ hashPairReturn<K, V, HashFun> insert(hashMap<K, V, HashFun, Predicate>& map, K k
 
 } //namespace hashAlg
 
-#endif
+namespace Divide {
+    namespace MemoryManager {
+
+        /// Deletes every element from the map and clears it at the end
+        template <typename K, typename V, typename HashFun = hashAlg::hash<K> >
+        void DELETE_HASHMAP(hashMap<K, V, HashFun>& map) {
+            if (!map.empty()) {
+                for (typename hashMap<K, V, HashFun>::value_type iter : map) {
+                    log_delete(iter.second);
+                    delete iter.second;
+                }
+                map.clear();
+            }
+        }
+
+    } //namespace MemoryManager
+} //namespace Divide
+#endif //_HASH_MAP_H_

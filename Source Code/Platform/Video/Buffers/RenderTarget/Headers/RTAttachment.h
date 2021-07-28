@@ -71,7 +71,6 @@ class RTAttachment final {
     public:
         explicit RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor);
         explicit RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor, RTAttachment_ptr externalAtt);
-        ~RTAttachment() = default;
 
         [[nodiscard]] bool used() const;
         

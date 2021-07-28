@@ -33,10 +33,8 @@
 #ifndef _MATERIAL_ENUMS_H_
 #define _MATERIAL_ENUMS_H_
 
-#include "Platform/Headers/PlatformDataTypes.h"
-
 namespace Divide {
-    BETTER_ENUM(MaterialDebugFlag, U8,
+    enum class MaterialDebugFlag : U8 {
         ALBEDO = 0,
         DEPTH,
         LIGHTING,
@@ -59,7 +57,35 @@ namespace Divide {
         MATERIAL_IDS,
         SSR,
         COUNT
-    );
+    };
+    namespace Names {
+        static const char* materialDebugFlag[] = {
+            "ALBEDO",
+            "DEPTH",
+            "LIGHTING",
+            "SPECULAR",
+            "KS",
+            "UV",
+            "SSAO",
+            "EMISSIVE",
+            "ROUGHNESS",
+            "METALNESS",
+            "NORMALS",
+            "TANGENTS",
+            "BITANGENTS",
+            "SHADOW_MAPS",
+            "CSM_SPLITS",
+            "LIGHT_HEATMAP",
+            "DEPTH_CLUSTERS",
+            "REFLECTIONS",
+            "REFRACTIONS",
+            "MATERIAL_IDS",
+            "SSR",
+            "NONE",
+        };
+    };
+
+    static_assert(ArrayCount(Names::materialDebugFlag) == to_base(MaterialDebugFlag::COUNT) + 1, "MaterialDebugFlag name array out of sync!");
 
     enum class BumpMethod : U8 {
         NONE = 0,
@@ -73,6 +99,8 @@ namespace Divide {
             "NONE", "NORMAL", "PARALLAX", "PARALLAX_OCCLUSION", "UNKNOWN"
         };
     };
+
+    static_assert(ArrayCount(Names::bumpMethod) == to_base(BumpMethod::COUNT) + 1, "BumpMethod name array out of sync!");
 
     /// How should each texture be added
     enum class TextureOperation : U8 {
@@ -93,6 +121,8 @@ namespace Divide {
         };
     };
 
+    static_assert(ArrayCount(Names::textureOperation) == to_base(TextureOperation::COUNT) + 1, "TextureOperation name array out of sync!");
+
     enum class TranslucencySource : U8 {
         ALBEDO_COLOUR,
         ALBEDO_TEX,
@@ -100,6 +130,14 @@ namespace Divide {
         OPACITY_MAP_A, //rgba texture
         COUNT
     };
+
+    namespace Names {
+        static const char* translucencySource[] = {
+            "ALBEDO_COLOUR", "ALBEDO_TEX", "OPACITY_MAP_R", "OPACITY_MAP_A", "NONE"
+        };
+    };
+
+    static_assert(ArrayCount(Names::translucencySource) == to_base(TranslucencySource::COUNT) + 1, "TranslucencySource name array out of sync!");
 
     /// Not used yet but implemented for shading model selection in shaders
     /// This enum matches the ASSIMP one on a 1-to-1 basis
@@ -113,11 +151,14 @@ namespace Divide {
         COOK_TORRANCE,
         COUNT
     };
+
     namespace Names {
         static const char* shadingMode[] = {
             "FLAT", "PHONG", "BLINN_PHONG", "TOON", "OREN_NAYAR", "COOK_TORRANCE", "NONE"
         };
     };
+
+    static_assert(ArrayCount(Names::shadingMode) == to_base(ShadingMode::COUNT) + 1, "ShadingMode name array out of sync!");
 
 }; //namespace Divide
 

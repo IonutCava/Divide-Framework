@@ -41,10 +41,6 @@ void PreRenderOperator::reshape(U16 width, U16 height) {
     ACKNOWLEDGE_UNUSED(height);
 }
 
-void PreRenderOperator::idle(const Configuration& config) {
-    ACKNOWLEDGE_UNUSED(config);
-}
-
 void PreRenderOperator::onToggle(const bool state) {
     _enabled = state;
 }

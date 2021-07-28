@@ -39,7 +39,6 @@ namespace Divide {
 BEGIN_COMPONENT(Script, ComponentType::SCRIPT)
    public:
     explicit ScriptComponent(SceneGraphNode* parentSGN, PlatformContext& context);
-    ~ScriptComponent() = default;
 
 END_COMPONENT(Script);
 

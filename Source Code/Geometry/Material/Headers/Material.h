@@ -87,6 +87,9 @@ constexpr U8 g_ExtraSlots[] = {
 };
 
 namespace TypeUtil {
+    const char* MaterialDebugFlagToString(const MaterialDebugFlag unitType) noexcept;
+    MaterialDebugFlag StringToMaterialDebugFlag(const stringImpl& name);
+
     const char* ShadingModeToString(ShadingMode shadingMode) noexcept;
     ShadingMode StringToShadingMode(const stringImpl& name);
 
@@ -121,21 +124,20 @@ class Material final : public CachedResource {
         Str32 _colourShaderFragVariant = "";
     };
 
-    using CustomShaderUpdateCBK = std::function<bool(Material&, RenderStagePass)>;
+    using CustomShaderUpdateCBK = DELEGATE_STD<bool, Material&, RenderStagePass>;
 
    public:
     explicit Material(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name);
-    ~Material() = default;
 
     static void ApplyDefaultStateBlocks(Material& target);
 
     /// Return a new instance of this material with the name composed of the
     /// base material's name and the give name suffix.
     /// clone calls CreateResource internally!)
-    Material_ptr clone(const Str256& nameSuffix);
-    bool unload() override;
+    [[nodiscard]] Material_ptr clone(const Str256& nameSuffix);
+    [[nodiscard]] bool unload() override;
     /// Returns true if the material changed between update calls
-    bool update(U64 deltaTimeUS);
+    [[nodiscard]] bool update(U64 deltaTimeUS);
     bool setSampler(TextureUsage textureUsageSlot,
                     size_t samplerHash,
                     bool applyToInstances = false);

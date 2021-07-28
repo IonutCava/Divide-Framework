@@ -70,14 +70,13 @@ class glHardwareQueryRing;
 struct BufferLockEntry;
 
 namespace GLUtil {
-    class glVAOCache;
+    struct glVAOCache;
 };
 
 /// OpenGL implementation of the RenderAPIWrapper
 class GL_API final : public RenderAPIWrapper {
     friend class glShader;
     friend class glTexture;
-    friend class GLUtil::glVAOCache;
     friend class glIMPrimitive;
     friend class glFramebuffer;
     friend class glVertexArray;
@@ -86,10 +85,10 @@ class GL_API final : public RenderAPIWrapper {
     friend class glGenericVertexData;
 
     friend struct GLStateTracker;
+    friend struct GLUtil::glVAOCache;
 
 public:
     GL_API(GFXDevice& context, bool glES);
-    ~GL_API() = default;
 
 protected:
 
@@ -143,8 +142,6 @@ protected:
 
     bool setViewport(const Rect<I32>& viewport) override;
     bool bindPipeline(const Pipeline & pipeline, bool& shaderWasReady) const;
-    void sendPushConstants(const PushConstants & pushConstants) const;
-
 public:
     static GLStateTracker& getStateTracker() noexcept;
     static GLUtil::GLMemory::DeviceAllocator& getMemoryAllocator() noexcept;

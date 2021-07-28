@@ -8,6 +8,7 @@
 namespace Divide {
 
 namespace {
+    constexpr I32 g_maxDequeueItems = 5;
     std::atomic_uint g_taskIDCounter = 0u;
     thread_local Task g_taskAllocator[Config::MAX_POOLED_TASKS];
     thread_local U64  g_allocatedTasks = 0u;
@@ -102,31 +103,28 @@ bool TaskPool::enqueue(PoolTask&& task, const TaskPriority priority, const U32 t
     return _poolImpl.addTask(MOV(task));
 }
 
-void TaskPool::runCbkAndClearTask(const U32 taskIdentifier) {
-    auto& cbks = _taskCallbacks[taskIdentifier];
-    for (auto& cbk : cbks) {
-        if (cbk) {
-            cbk();
-        }
-    }
-    cbks.resize(0);
-}
-
-void TaskPool::flushCallbackQueue() {
+size_t TaskPool::flushCallbackQueue() {
     if (USE_OPTICK_PROFILER) {
         OPTICK_EVENT();
     }
 
-    constexpr I32 maxDequeueItems = 10;
-    
-    std::array<U32, maxDequeueItems> taskIndex = {};
-    size_t count;
+    size_t ret = 0u, count = 0u;
+    std::array<U32, g_maxDequeueItems> taskIndex = {};
     do {
-        count = _threadedCallbackBuffer.try_dequeue_bulk(std::begin(taskIndex), maxDequeueItems);
-        for (size_t i = 0; i < count; ++i) {
-            runCbkAndClearTask(taskIndex[i]);
+        count = _threadedCallbackBuffer.try_dequeue_bulk(std::begin(taskIndex), g_maxDequeueItems);
+        for (size_t i = 0u; i < count; ++i) {
+            auto& cbks = _taskCallbacks[taskIndex[i]];
+            for (auto& cbk : cbks) {
+                if (cbk) {
+                    cbk();
+                }
+            }
+            cbks.resize(0);
         }
-    } while (count > 0);
+        ret += count;
+    } while (count > 0u);
+
+    return ret;
 }
 
 void TaskPool::waitForAllTasks(const bool yield, const bool flushCallbacks) {
@@ -153,26 +151,26 @@ void TaskPool::taskCompleted(const U32 taskIndex, const bool hasOnCompletionFunc
     _runningTaskCount.fetch_sub(1);
 }
 
-Task* TaskPool::allocateTask(Task* parentTask, const bool allowedInIdle) {
+Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) {
     Task* task = nullptr;
     do {
         Task& crtTask = g_taskAllocator[g_allocatedTasks++ & Config::MAX_POOLED_TASKS - 1u];
 
-        U16 expected = to_U16(0u);
+        U16 expected = 0u;
         if (crtTask._unfinishedJobs.compare_exchange_strong(expected, 1u)) {
             task = &crtTask;
         }
     } while (task == nullptr);
 
-    task->_parent = parentTask;
-    task->_parentPool = this;
-    task->_runWhileIdle = allowedInIdle;
-    if (task->_parent != nullptr) {
-        task->_parent->_unfinishedJobs.fetch_add(1);
-    }
     if (task->_id == 0) {
         task->_id = g_taskIDCounter.fetch_add(1u);
     }
+    task->_runWhileIdle = allowedInIdle;
+    task->_parent = parentTask;
+    if (task->_parent != nullptr) {
+        task->_parent->_unfinishedJobs.fetch_add(1, std::memory_order_acq_rel);
+    }
+    
 
     return task;
 }
@@ -237,22 +235,22 @@ void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor) {
     for (U32 i = 0; i < adjustedCount; ++i) {
         const U32 start = i * crtPartitionSize;
         const U32 end = start + crtPartitionSize;
-        Task* parallel_job = pool.allocateTask(nullptr, descriptor._allowRunInIdle);
-        parallel_job->_callback = [&cbk, &jobCount, start, end](Task& parentTask) {
+        Task* parallelJob = TaskPool::AllocateTask(nullptr, descriptor._allowRunInIdle);
+        parallelJob->_callback = [&cbk, &jobCount, start, end](Task& parentTask) {
                                       cbk(&parentTask, start, end);
                                       jobCount.fetch_sub(1);
                                   };
   
-        Start(*parallel_job, descriptor._priority);
+        Start(*parallelJob, pool, descriptor._priority);
     }
     if (remainder > 0) {
         const U32 count = descriptor._iterCount;
-        Task* parallel_job = pool.allocateTask(nullptr, descriptor._allowRunInIdle);
-        parallel_job->_callback = [&cbk, &jobCount, count, remainder](Task& parentTask) {
+        Task* parallelJob = TaskPool::AllocateTask(nullptr, descriptor._allowRunInIdle);
+        parallelJob->_callback = [&cbk, &jobCount, count, remainder](Task& parentTask) {
                                       cbk(&parentTask, count - remainder, count);
                                       jobCount.fetch_sub(1);
                                   };
-        Start(*parallel_job, descriptor._priority);
+        Start(*parallelJob, pool, descriptor._priority);
     }
 
     if (descriptor._useCurrentThread) {

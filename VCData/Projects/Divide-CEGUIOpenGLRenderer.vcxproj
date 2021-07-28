@@ -16,8 +16,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F85687BA-FB44-3120-993D-3266FD9CF9BA}</ProjectGuid>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
     <ProjectName>Divide-ThirdPartyLibs</ProjectName>
     <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
@@ -88,7 +87,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/imgui/addons/;$(SolutionDir)/../3rdParty/imgui/addons/log/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ShaderPreprocessor/3rdparty/fcpp;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/..Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/ImGuiAl/msgbox/;$(SolutionDir)/../3rdParty/ImGuiMisc/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/../Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -140,11 +139,12 @@
     </Midl>
     <Lib>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/imgui/addons/;$(SolutionDir)/../3rdParty/imgui/addons/log/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ShaderPreprocessor/3rdparty/fcpp;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/..Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/ImGuiAl/msgbox/;$(SolutionDir)/../3rdParty/ImGuiMisc/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/../Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Release/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -192,11 +192,12 @@
     </Midl>
     <Lib>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/imgui/addons/;$(SolutionDir)/../3rdParty/imgui/addons/log/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ShaderPreprocessor/3rdparty/fcpp;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/..Source Code/Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/ImGuiAl/msgbox/;$(SolutionDir)/../3rdParty/ImGuiMisc/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/../Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Profile/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
@@ -247,6 +248,7 @@
     <Lib>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -283,8 +285,38 @@
     <ClInclude Include="..\..\3rdParty\fmt\include\fmt\posix.h" />
     <ClInclude Include="..\..\3rdParty\fmt\include\fmt\printf.h" />
     <ClInclude Include="..\..\3rdParty\fmt\include\fmt\ranges.h" />
+    <ClInclude Include="..\..\3rdParty\imgui-node-editor\crude_json.h" />
+    <ClInclude Include="..\..\3rdParty\imgui-node-editor\imgui_bezier_math.h" />
+    <ClInclude Include="..\..\3rdParty\imgui-node-editor\imgui_canvas.h" />
+    <ClInclude Include="..\..\3rdParty\imgui-node-editor\imgui_extra_math.h" />
+    <ClInclude Include="..\..\3rdParty\imgui-node-editor\imgui_node_editor.h" />
+    <ClInclude Include="..\..\3rdParty\imgui-node-editor\imgui_node_editor_internal.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiAl\button\imguial_button.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiAl\msgbox\imguial_msgbox.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiAl\sparkline\imguial_sparkline.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiAl\term\imguial_term.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\dirent_portable.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\imguifilesystem.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\crypt.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\ioapi.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\unzip.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\zip.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuiMisc\imguivariouscontrols\imguivariouscontrols.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuizmo\GraphEditor.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuizmo\ImCurveEdit.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuizmo\ImGradient.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuizmo\ImGuizmo.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuizmo\ImSequencer.h" />
+    <ClInclude Include="..\..\3rdParty\ImGuizmo\ImZoomSlider.h" />
+    <ClInclude Include="..\..\3rdParty\imgui\imconfig.h" />
+    <ClInclude Include="..\..\3rdParty\imgui\imgui.h" />
+    <ClInclude Include="..\..\3rdParty\imgui\imgui_internal.h" />
+    <ClInclude Include="..\..\3rdParty\imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\..\3rdParty\imgui\imstb_textedit.h" />
+    <ClInclude Include="..\..\3rdParty\imgui\imstb_truetype.h" />
+    <ClInclude Include="..\..\3rdParty\imgui_club\imgui_memory_editor\imgui_memory_editor.h" />
     <ClInclude Include="..\..\3rdParty\meshoptimizer\src\meshoptimizer.h" />
-    <ClInclude Include="..\..\3rdParty\nv_dds\nv_dds.h" />
     <ClInclude Include="..\..\3rdParty\Optick\src\optick.config.h" />
     <ClInclude Include="..\..\3rdParty\Optick\src\optick.h" />
     <ClInclude Include="..\..\3rdParty\Optick\src\optick_capi.h" />
@@ -332,63 +364,6 @@
     <ClInclude Include="..\..\3rdParty\simplefilewatcher\include\FileWatcher\FileWatcherWin32.h" />
     <ClInclude Include="..\..\3rdParty\SimpleINI\ConvertUTF.h" />
     <ClInclude Include="..\..\3rdParty\SimpleINI\SimpleIni.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\button\imguial_button.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\fonts\IconsFontAwesome_c.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\fonts\IconsKenney_c.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\fonts\IconsMaterialDesign_c.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\fonts\imguial_fonts.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguicodeeditor\imguicodeeditor.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguicodeeditor\utf8helper.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguidatechooser\imguidatechooser.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguifilesystem\dirent_portable.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguifilesystem\imguifilesystem.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguifilesystem\minizip\crypt.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguifilesystem\minizip\ioapi.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguifilesystem\minizip\unzip.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguifilesystem\minizip\zip.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguigizmo\ImCurveEdit.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguigizmo\ImGradient.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguigizmo\ImGuizmo.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguigizmo\ImSequencer.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguihelper\imguihelper.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguilistview\imguilistview.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguinodegrapheditor\imguinodegrapheditor.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguistring\imguistring.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguistyleserializer\imguistyleserializer.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguitoolbar\imguitoolbar.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguivariouscontrols\imguivariouscontrols.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguibz2.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor_plugins\lodepng.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor_plugins\nanosvg.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor_plugins\nanosvgrast.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor_plugins\stb_image_resize.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor_plugins\stb_image_write.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor_plugins\tiny_ico.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor_plugins\tiny_jpeg.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiminigames.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguistringifier.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguitinyfiledialogs.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\imgui_memory_editor\imgui_memory_editor.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\log\imguial_log.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\metrics_gui\metrics_gui.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\metrics_gui\portable\countof.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\metrics_gui\portable\perf_timer.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\metrics_gui\portable\snprintf.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\msgbox\imguial_msgbox.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Include\imgui_node_editor.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\crude_json.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\imgui_bezier_math.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\imgui_canvas.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\imgui_extra_math.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\imgui_node_editor_internal.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\imconfig.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\imgui.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\imgui_internal.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\imgui_user.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\imstb_rectpack.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\imstb_textedit.h" />
-    <ClInclude Include="..\..\3rdParty\imgui\imstb_truetype.h" />
     <ClInclude Include="..\..\3rdParty\TileableVolumeNoise\libtarga.h" />
     <ClInclude Include="..\..\3rdParty\TileableVolumeNoise\TileableVolumeNoise.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\Headers\bstrlib.h" />
@@ -464,6 +439,32 @@
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\fmt\src\format.cc" />
     <ClCompile Include="..\..\3rdParty\fmt\src\os.cc" />
+    <ClCompile Include="..\..\3rdParty\imgui-node-editor\crude_json.cpp" />
+    <ClCompile Include="..\..\3rdParty\imgui-node-editor\imgui_canvas.cpp" />
+    <ClCompile Include="..\..\3rdParty\imgui-node-editor\imgui_node_editor.cpp" />
+    <ClCompile Include="..\..\3rdParty\imgui-node-editor\imgui_node_editor_api.cpp" />
+    <ClCompile Include="..\..\3rdParty\ImGuiAl\msgbox\imguial_msgbox.cpp" />
+    <ClCompile Include="..\..\3rdParty\ImGuiAl\term\imguial_term.cpp" />
+    <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\imguifilesystem.cpp" />
+    <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\ioapi.c" />
+    <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\unzip.c" />
+    <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguifilesystem\minizip\zip.c" />
+    <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguistyleserializer\imguistyleserializer.cpp" />
+    <ClCompile Include="..\..\3rdParty\ImGuiMisc\imguivariouscontrols\imguivariouscontrols.cpp" />
+    <ClCompile Include="..\..\3rdParty\ImGuizmo\GraphEditor.cpp" />
+    <ClCompile Include="..\..\3rdParty\ImGuizmo\ImCurveEdit.cpp" />
+    <ClCompile Include="..\..\3rdParty\ImGuizmo\ImGradient.cpp" />
+    <ClCompile Include="..\..\3rdParty\ImGuizmo\ImGuizmo.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\ImGuizmo\ImSequencer.cpp" />
+    <ClCompile Include="..\..\3rdParty\imgui\imgui.cpp" />
+    <ClCompile Include="..\..\3rdParty\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\..\3rdParty\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\..\3rdParty\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\..\3rdParty\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\..\3rdParty\meshoptimizer\src\allocator.cpp" />
     <ClCompile Include="..\..\3rdParty\meshoptimizer\src\clusterizer.cpp" />
     <ClCompile Include="..\..\3rdParty\meshoptimizer\src\indexcodec.cpp" />
@@ -504,7 +505,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\3rdParty\nv_dds\nv_dds.cpp" />
     <ClCompile Include="..\..\3rdParty\Optick\src\optick_capi.cpp" />
     <ClCompile Include="..\..\3rdParty\Optick\src\optick_core.cpp" />
     <ClCompile Include="..\..\3rdParty\Optick\src\optick_gpu.cpp" />
@@ -557,183 +557,6 @@
     <ClCompile Include="..\..\3rdParty\simplefilewatcher\source\FileWatcherOSX.cpp" />
     <ClCompile Include="..\..\3rdParty\simplefilewatcher\source\FileWatcherWin32.cpp" />
     <ClCompile Include="..\..\3rdParty\SimpleINI\ConvertUTF.c" />
-    <ClCompile Include="..\..\3rdParty\imgui\addons\fonts\imguial_fonts.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguicodeeditor\imguicodeeditor.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguifilesystem\imguifilesystem.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguifilesystem\minizip\ioapi.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguifilesystem\minizip\unzip.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguifilesystem\minizip\zip.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguigizmo\ImCurveEdit.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguigizmo\ImGradient.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguigizmo\ImGuizmo.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguigizmo\ImSequencer.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguihelper\imguihelper.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguilistview\imguilistview.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguinodegrapheditor\imguinodegrapheditor.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguistring\imguistring.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguistyleserializer\imguistyleserializer.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguitoolbar\imguitoolbar.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguivariouscontrols\imguivariouscontrols.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguibz2.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor_plugins\jo_gif.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiimageeditor_plugins\lodepng.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguiminigames.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguistringifier.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguitinyfiledialogs.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\imguiyesaddons\stb_vorbis.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\log\imguial_log.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\metrics_gui\metrics_gui.cpp" />
-    <ClCompile Include="..\..\3rdParty\imgui\addons\metrics_gui\ProggyTiny.cpp" />
-    <ClCompile Include="..\..\3rdParty\imgui\addons\msgbox\imguial_msgbox.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\crude_json.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\imgui_canvas.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\imgui_node_editor.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\imgui_node_editor_api.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\imgui.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\imgui_demo.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\imgui_draw.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\3rdParty\imgui\imgui_widgets.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\..\3rdParty\TileableVolumeNoise\libtarga.c" />
     <ClCompile Include="..\..\3rdParty\TileableVolumeNoise\TileableVolumeNoise.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\bstrlib.c">
@@ -748,11 +571,39 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\3rdParty\imgui\addons\imguiyesaddons\imguimodplug.cpp.inl" />
-    <None Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\imgui_bezier_math.inl" />
-    <None Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\imgui_extra_math.inl" />
-    <None Include="..\..\3rdParty\imgui\addons\Node-editor\NodeEditor\Source\imgui_node_editor_internal.inl" />
-    <None Include="..\..\3rdParty\imgui\imgui_user.inl" />
+    <None Include="..\..\3rdParty\imgui-node-editor\imgui_bezier_math.inl" />
+    <None Include="..\..\3rdParty\imgui-node-editor\imgui_extra_math.inl" />
+    <None Include="..\..\3rdParty\imgui-node-editor\imgui_node_editor_internal.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\CodingFontTobi.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\CousineBold.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\CousineBoldItalic.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\CousineItalic.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\CousineRegular.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\Crisp.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\DroidSans.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\DroidSansBold.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\FontAwesome4.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\FontAwesome5Brands400.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\FontAwesome5Regular400.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\FontAwesome5Solid900.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\ForkAwesome.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\GoogleMaterialDesign.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\Ionicons.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\KarlaBold.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\KarlaBoldItalic.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\KarlaItalic.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\KarlaRegular.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\KenneyIcons.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\MaterialDesign.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\PixelCarnageMono.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\ProggyClean.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\ProggyCleanSZ.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\ProggyCleanSZBP.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\ProggySmall.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\ProggySquare.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\ProggySquareSZ.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\ProggyTiny.inl" />
+    <None Include="..\..\3rdParty\ImGuiAl\fonts\ProggyTinySZ.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -80,7 +80,6 @@ public:
 
 public:
     explicit RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, RenderStage stage);
-    ~RenderPassExecutor() = default;
 
     void doCustomPass(RenderPassParams params, GFX::CommandBuffer& bufferInOut);
     void postInit(const ShaderProgram_ptr& OITCompositionShader, 
@@ -157,6 +156,7 @@ private:
 
     std::array<NodeTransformData, Config::MAX_VISIBLE_NODES> _nodeTransformData{};
 
+    SharedMutex _matDataLock;
     eastl::fixed_vector<PerRingEntryMaterialData, 3, true> _materialData{};
 
     eastl::set<SamplerAddress> _uniqueTextureAddresses{};

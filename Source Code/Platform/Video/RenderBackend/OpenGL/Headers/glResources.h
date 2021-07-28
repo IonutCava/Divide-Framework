@@ -97,10 +97,6 @@ private:
     using VAOData = std::pair<VAOBufferData, VAODivisors>;
 
 public:
-
-    VAOBindings() = default;
-    ~VAOBindings() = default;
-
     void init(U32 maxBindings);
 
     const BufferBindingParams& bindingParams(GLuint vao, GLuint index);

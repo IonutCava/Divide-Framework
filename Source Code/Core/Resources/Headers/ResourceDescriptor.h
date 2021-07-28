@@ -66,22 +66,20 @@ FWD_DECLARE_MANAGED_CLASS(PropertyDescriptor);
 
 class ResourceDescriptor final : public Hashable {
    public:
-       using CBK = DELEGATE<void, CachedResource_wptr>;
+    using CBK = DELEGATE<void, CachedResource_wptr>;
 
     ///resourceName is the name of the resource instance, not an actual asset name! Use "assetName" for that
     explicit ResourceDescriptor(const Str256& resourceName);
 
-    ~ResourceDescriptor() = default;
-
     template <typename T>
-    typename std::enable_if<std::is_base_of<PropertyDescriptor, T>::value, const std::shared_ptr<T>>::type
+    [[nodiscard]] typename std::enable_if<std::is_base_of<PropertyDescriptor, T>::value, const std::shared_ptr<T>>::type
     propertyDescriptor() const { return std::dynamic_pointer_cast<T>(_propertyDescriptor); }
 
     template <typename T>
-    typename std::enable_if<std::is_base_of<PropertyDescriptor, T>::value, void>::type
+    [[nodiscard]] typename std::enable_if<std::is_base_of<PropertyDescriptor, T>::value, void>::type
     propertyDescriptor(const T& descriptor) { _propertyDescriptor.reset(new T(descriptor)); }
 
-    size_t getHash() const noexcept override;
+    [[nodiscard]] size_t getHash() const noexcept override;
 
     PROPERTY_RW(ResourcePath, assetLocation); ///< Can't be fixed size due to the need to handle array textures, cube maps, etc
     PROPERTY_RW(ResourcePath, assetName); ///< Resource instance name (for lookup)

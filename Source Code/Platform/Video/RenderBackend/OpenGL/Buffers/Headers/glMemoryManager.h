@@ -132,7 +132,6 @@ public:
     static U32 getChunkCountForSize(size_t sizeInBytes) noexcept;
 
     VBO() noexcept;
-    ~VBO() = default;
 
     void freeAll();
     [[nodiscard]] U32 handle() const noexcept;

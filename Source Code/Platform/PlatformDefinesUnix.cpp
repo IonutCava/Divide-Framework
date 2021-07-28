@@ -9,12 +9,13 @@
 #include <unistd.h>
 #include <signal.h
 
-void* malloc_aligned(const size_t size, size_t alignment) {
-	return memalign(alignment, size);
+void* malloc_aligned(const size_t size, size_t alignment, size_t offset) {
+    (void)offset;
+    return _mm_malloc(size, alignment);
 }
 
-void  malloc_free(void*& ptr) {
-	free(ptr);
+void  free_aligned(void*& ptr) {
+    _mm_free(ptr);
 }
 
 int _vscprintf (const char * format, va_list pargs) {
@@ -50,7 +51,7 @@ namespace Divide {
     bool GetAvailableMemory(SysInfo& info) {
         long pages = sysconf(_SC_PHYS_PAGES);
         long page_size = sysconf(_SC_PAGESIZE);
-        info._availableRam = pages * page_size;
+        info._availableRamInBytes = pages * page_size;
         return true;
     }
 

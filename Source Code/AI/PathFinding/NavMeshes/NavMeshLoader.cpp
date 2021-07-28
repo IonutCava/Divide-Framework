@@ -334,11 +334,11 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
         if (nodeType == SceneNodeType::TYPE_OBJECT3D) {
             crtType = sgn->getNode<Object3D>().getObjectType();
             // Even though we allow Object3Ds, we do not parse MESH nodes, instead we grab its children so we  get an accurate triangle list per node
-            if (crtType._value == ObjectType::MESH) {
+            if (crtType == ObjectType::MESH) {
                 goto next;
             }
             // This is kind of self-explanatory
-            if (crtType._value == ObjectType::DECAL) {
+            if (crtType == ObjectType::DECAL) {
                 goto next;
             }
         }
@@ -357,7 +357,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
                 if (navComp && !navComp->navMeshDetailOverride() && sgn->usageContext() == NodeUsageContext::NODE_STATIC) {
                     level = MeshDetailLevel::BOUNDINGBOX;
                 }
-                if (crtType._value == ObjectType::TERRAIN) {
+                if (crtType == ObjectType::TERRAIN) {
                     areaType = SamplePolyAreas::SAMPLE_POLYAREA_GROUND;
                 }
             } break;

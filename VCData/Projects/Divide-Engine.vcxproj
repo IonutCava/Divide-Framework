@@ -18,7 +18,7 @@
     <ProjectName>Divide-Engine</ProjectName>
     <ProjectGuid>{8FCA6505-8035-4279-9942-F0BBCCF2FDE7}</ProjectGuid>
     <RootNamespace>Grafica</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -158,7 +158,7 @@
       <AdditionalDependencies>Divide-Platform_d.lib;Divide-Networking_d.lib;Divide-ReCast_d.lib;Divide-Game_d.lib;IL_d.lib;ILU_d.lib;jpeg.lib;libpng.lib;libmng.lib;libtiff.lib;SDL2.lib;SDL2_mixer.lib;zlib.lib;assimp.lib;glu32.lib;opengl32.lib;glfw3.lib;glsl_optimizer_d.lib;OIS_static_d.lib;pcre.lib;libexpat_d.lib;freetype.lib;CEGUIBase_d.lib;CEGUIDevILImageCodec_d.lib;CEGUICoreWindowRendererSet_d.lib;CEGUIExpatParser_d.lib;imagehlp.lib;Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ShowProgress>NotSet</ShowProgress>
       <OutputFile>$(TargetPath)</OutputFile>
-      <AdditionalLibraryDirectories>C:\Program Files %28x86%29\Visual Leak Detector\lib\Win64;$(OutDir)Source Code/Libs/lib;$(SolutionDir)../3rdParty/glslopt\lib;$(SolutionDir)../3rdParty/glfw\lib;$(SolutionDir)../3rdParty/OIS\lib;$(SolutionDir)../3rdParty/GLEW\lib;$(SolutionDir)../3rdParty/sdl\lib;$(SolutionDir)../3rdParty/cegui\lib;$(SolutionDir)../3rdParty/boost\lib;$(SolutionDir)../3rdParty/assimp\lib;$(SolutionDir)../3rdParty/cegui-deps\lib\static;$(SolutionDir)../3rdParty/physx\lib\win64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir)Source Code/Libs/lib;$(SolutionDir)../3rdParty/glslopt\lib;$(SolutionDir)../3rdParty/glfw\lib;$(SolutionDir)../3rdParty/OIS\lib;$(SolutionDir)../3rdParty/GLEW\lib;$(SolutionDir)../3rdParty/sdl\lib;$(SolutionDir)../3rdParty/cegui\lib;$(SolutionDir)../3rdParty/boost\lib;$(SolutionDir)../3rdParty/assimp\lib;$(SolutionDir)../3rdParty/cegui-deps\lib\static;$(SolutionDir)../3rdParty/physx\lib\win64</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>LIBCMT.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -167,7 +167,7 @@
       </LinkStatus>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <Verbose>false</Verbose>
@@ -233,7 +233,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <Verbose>false</Verbose>
@@ -296,7 +296,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <Verbose>false</Verbose>
@@ -530,7 +530,6 @@
     <ClInclude Include="../../Source Code/Graphs\Headers\SceneGraphNode.h" />
     <ClInclude Include="../../Source Code/Graphs\Headers\SceneNode.h" />
     <ClInclude Include="../../Source Code/Graphs\Headers\Octree.h" />
-    <ClInclude Include="../../Source Code/readme.h" />
     <ClInclude Include="../../Source Code/Scripting\Headers\GameScript.h" />
     <ClInclude Include="../../Source Code/Scripting\Headers\Script.h" />
     <ClInclude Include="../../Source Code/Scripting\Headers\ScriptBindings.h" />
@@ -555,7 +554,6 @@
     <ClInclude Include="..\..\Source Code\ECS\Components\Headers\SpotLightComponent.h" />
     <ClInclude Include="..\..\Source Code\ECS\Components\Headers\TransformComponent.h" />
     <ClInclude Include="..\..\Source Code\ECS\Components\Headers\UnitComponent.h" />
-    <ClInclude Include="..\..\Source Code\ECS\Events\Headers\EntityEvents.h" />
     <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\AnimationSystem.h" />
     <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\BoundsSystem.h" />
     <ClInclude Include="..\..\Source Code\ECS\Systems\Headers\DirectionalLightSystem.h" />

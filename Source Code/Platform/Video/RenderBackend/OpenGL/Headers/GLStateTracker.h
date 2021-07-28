@@ -45,7 +45,6 @@ namespace Divide {
     class glBufferLockManager;
 
     struct GLStateTracker {
-        GLStateTracker() = default;
         void init() noexcept;
 
         /// Enable or disable primitive restart and ensure that the correct index size is used

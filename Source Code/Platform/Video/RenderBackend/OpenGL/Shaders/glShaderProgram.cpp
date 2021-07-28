@@ -336,7 +336,9 @@ void glShaderProgram::OnStartup(GFXDevice& /*context*/, ResourceCache* /*parentC
 
         const vectorEASTL<ResourcePath> atomLocations = GetAllAtomLocations();
         for (const ResourcePath& loc : atomLocations) {
-            CreateDirectories(loc);
+            if (!CreateDirectories(loc)) {
+                DebugBreak();
+            }
             watcher().addWatch(loc.c_str(), &g_sFileWatcherListener);
         }
     }
@@ -390,27 +392,29 @@ void glShaderProgram::Idle(PlatformContext& platformContext) {
     }
     // Schedule all of the shader dump to text file
     bool skipBinary = false;
-    TextDumpEntry textOutputCache;
+    static thread_local TextDumpEntry textOutputCache;
     while(g_sDumpToFileQueue.try_dequeue(textOutputCache)) {
-        Start(*CreateTask(platformContext.taskPool(TaskPoolType::LOW_PRIORITY),
+        Start(*CreateTask(
             [&platformContext, cache = MOV(textOutputCache)](const Task &) {
                 if (!ShaderFileWrite(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText, ResourcePath(cache._name), cache._sourceCode.c_str())) {
                     Idle(platformContext);
                 }
-        }));
+        }),
+        platformContext.taskPool(TaskPoolType::LOW_PRIORITY));
         skipBinary = true;
     }
     // Only dump one binary per call and only if we didn't write the text variant first this call
     if (!skipBinary) {
         BinaryDumpEntry binaryOutputCache; 
         if (g_sShaderBinaryDumpQueue.try_dequeue(binaryOutputCache)) {
-            Start(*CreateTask(platformContext.taskPool(TaskPoolType::LOW_PRIORITY),
+            Start(*CreateTask(
                 [cache = MOV(binaryOutputCache), &platformContext](const Task & /*parent*/) {
                 if (!glShader::DumpBinary(cache._handle, cache._name)) {
                     // Move on to the next one
                     Idle(platformContext);
                 }
-            }));
+            }),
+            platformContext.taskPool(TaskPoolType::LOW_PRIORITY));
         }
     }
 }
@@ -556,7 +560,7 @@ glShaderProgram::AtomUniformPair glShaderProgram::loadSourceCode(const Str128& s
 /// Creation of a new shader pipeline. Pass in a shader token and use glsw to load the corresponding effects
 bool glShaderProgram::load() {
     if (_asyncLoad) {
-        Start(*CreateTask(_context.context(), [this](const Task &) {threadedLoad(false); }));
+        Start(*CreateTask([this](const Task &) {threadedLoad(false); }), _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
     } else {
         threadedLoad(false);
     }
@@ -723,9 +727,9 @@ bool glShaderProgram::shouldRecompile() const {
                          });
 }
 
-bool glShaderProgram::recompile(const bool force) {
+bool glShaderProgram::recompile(const bool force, bool& skipped) {
     // Invalid or not loaded yet
-    if (ShaderProgram::recompile(force) &&
+    if (ShaderProgram::recompile(force, skipped) &&
         _handle != GLUtil::k_invalidObjectID && 
         (force || shouldRecompile()))
     {
@@ -743,6 +747,7 @@ bool glShaderProgram::recompile(const bool force) {
                 bind();
             }
         }
+        skipped = false;
     }
 
     return true;
@@ -790,16 +795,16 @@ void glShaderProgram::uploadPushConstants(const PushConstants& constants) {
 }
 
 eastl::string  glShaderProgram::GatherUniformDeclarations(const eastl::string & source, vectorEASTL<UniformDeclaration>& foundUniforms) {
-    static const boost::regex uniformPattern = boost::regex(R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))");
+    static const std::regex uniformPattern { R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
 
     eastl::string ret;
     ret.reserve(source.size());
 
     stringImpl line;
-    boost::smatch matches;
+    std::smatch matches;
     istringstreamImpl input(source.c_str());
     while (std::getline(input, line)) {
-        if (regex_search(line, matches, uniformPattern)) {
+        if (std::regex_search(line, matches, uniformPattern)) {
             foundUniforms.emplace_back(
                 UniformDeclaration{
                     Util::Trim(matches[1].str()), //type
@@ -823,14 +828,14 @@ eastl::string  glShaderProgram::PreprocessIncludes(const ResourcePath& name,
     }
 
     size_t lineNumber = 1;
-    boost::smatch matches;
+    std::smatch matches;
 
     stringImpl line;
     eastl::string output, includeString;
     istringstreamImpl input(source.c_str());
 
     while (std::getline(input, line)) {
-        if (!regex_search(line, matches, Paths::g_includePattern)) {
+        if (!std::regex_search(line, matches, Paths::g_includePattern)) {
             output.append(line.c_str());
         } else {
             const ResourcePath includeFile = ResourcePath(Util::Trim(matches[1].str()));

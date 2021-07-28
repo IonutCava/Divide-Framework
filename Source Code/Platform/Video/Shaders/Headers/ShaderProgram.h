@@ -121,7 +121,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     bool load() override;
     bool unload() override;
 
-    virtual bool recompile(bool force);
+    virtual bool recompile(bool force, bool& skipped);
 
     /** ------ BEGIN EXPERIMENTAL CODE ----- **/
     size_t getFunctionCount(const ShaderType shader) noexcept {
@@ -212,24 +212,24 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static ShaderQueue s_recompileQueue;
     /// Shader program cache
     static ShaderProgramMap s_shaderPrograms;
-
+    static std::pair<I64, ShaderProgramMapEntry> s_lastRequestedShaderProgram;
     static SharedMutex s_programLock;
 
-    private:
-        std::array<vectorEASTL<U32>, to_base(ShaderType::COUNT)> _functionIndex;
-        std::array<vectorEASTL<U32>, to_base(ShaderType::COUNT)> _availableFunctionIndex;
+   private:
+    std::array<vectorEASTL<U32>, to_base(ShaderType::COUNT)> _functionIndex;
+    std::array<vectorEASTL<U32>, to_base(ShaderType::COUNT)> _availableFunctionIndex;
 
-    protected:
-        template <typename T>
-        friend class ImplResourceLoader;
+   protected:
+    template <typename T>
+    friend class ImplResourceLoader;
 
-        const ShaderProgramDescriptor _descriptor;
+    const ShaderProgramDescriptor _descriptor;
 
-        bool _asyncLoad;
+    bool _asyncLoad;
 
-        static bool s_useShaderTextCache;
-        static bool s_useShaderBinaryCache;
-        static std::atomic_int s_shaderCount;
+    static bool s_useShaderTextCache;
+    static bool s_useShaderBinaryCache;
+    static std::atomic_int s_shaderCount;
 };
 
 namespace Attorney {

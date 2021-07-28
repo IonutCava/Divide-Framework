@@ -70,9 +70,11 @@ namespace Divide {
         [[nodiscard]] SunDetails GetDetails() const;
 
     private:
-        F32 _longitude = 0.0f;
-        F32 _latitude = 0.0f;
-        struct tm* _dateTime = {};
+        mutable SunInfo _cachedInfo;
+        F32 _longitude = 0.f;
+        F32 _latitude = 0.f;
+        struct tm* _dateTime = nullptr;
+        mutable bool _dirty = true;
     };
 }  // namespace Divide
 

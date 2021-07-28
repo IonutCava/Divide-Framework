@@ -124,11 +124,6 @@ class mat2 {
         !std::is_same<T, bool>::value,
         "non-arithmetic matrix type");
 public:
-    ~mat2() = default;
-    mat2(mat2&&) noexcept = default;
-    mat2 &operator=(mat2&& other) noexcept = default;
-    mat2 &operator=(const mat2& other) noexcept = default;
-
     mat2() noexcept;
     template<typename U>
     explicit mat2(U m) noexcept;
@@ -144,10 +139,6 @@ public:
     explicit mat2(const mat3<U> &B) noexcept;
     template<typename U>
     explicit mat2(const mat4<U> &B) noexcept;
-
-    
-    template<typename U>
-    mat2 &operator=(const mat2<U>& other) noexcept;
 
     template<typename U>
     [[nodiscard]] vec2<T> operator*(const vec2<U> &v) const noexcept;
@@ -283,11 +274,6 @@ class mat3 {
                   !std::is_same<T, bool>::value,
                   "non-arithmetic matrix type");
    public:
-    ~mat3() = default;
-    mat3(mat3&&) noexcept = default;
-    mat3 &operator=(mat3 && other) noexcept = default;
-    mat3 &operator=(const mat3 & other) noexcept = default;
-
     mat3() noexcept;
     template<typename U>
     explicit mat3(U m) noexcept;
@@ -306,9 +292,6 @@ class mat3 {
     explicit mat3(const mat4<U> &B) noexcept;
     template<typename U>
     explicit mat3(const vec3<U>& rotStart, const vec3<U>& rotEnd) noexcept;
-
-    template<typename U>
-    mat3 &operator=(const mat3<U>& other) noexcept;
 
     template<typename U>
     [[nodiscard]] vec2<U> operator*(const vec2<U> &v) const noexcept;
@@ -470,11 +453,6 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
                   !std::is_same<T, bool>::value,
                   "non-arithmetic matrix type");
    public:
-    ~mat4() = default;
-    mat4(mat4&&) noexcept = default;
-    mat4 &operator=(mat4 && other) noexcept = default;
-    mat4 &operator=(const mat4 & other) noexcept = default;
-
     mat4() noexcept;
     mat4(std::initializer_list<T> matrix) noexcept;
     template<typename U>
@@ -506,9 +484,6 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     explicit mat4(const Rect<U> &orthoRect, const vec2<U> &clip) noexcept;
     template<typename U>
     explicit mat4(const Plane<U>& reflectionPlane) noexcept;
-
-    template<typename U>
-    mat4 &operator=(const mat4<U>& other) noexcept;
 
     template<typename U>
     [[nodiscard]] vec2<U> operator*(const vec2<U> &v) const noexcept;

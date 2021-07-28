@@ -49,7 +49,6 @@ namespace Divide {
     class ContentExplorerWindow final : public DockedWindow {
     public:
         ContentExplorerWindow(Editor& parent, const Descriptor& descriptor);
-        ~ContentExplorerWindow() = default;
 
         void drawInternal() override;
         void init();

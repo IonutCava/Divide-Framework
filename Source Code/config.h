@@ -94,7 +94,7 @@ constexpr unsigned int MIN_SLEEP_THRESHOLD_MS = 5;
 
 /// Minimum required RAM size (in bytes) for the current build. We will probably fail to initialise if this is too low.
 /// Per frame memory arena and GPU object arena both depend on this value for up-front allocations
-constexpr unsigned int REQUIRED_RAM_SIZE = 1 << 11;
+constexpr size_t REQUIRED_RAM_SIZE_IN_BYTES = 2u * (1024u * 1024 * 1024); //2Gb
 
 /// How many tasks should we keep in a per-thread pool to avoid using new/delete (must be power of two)
 constexpr unsigned int MAX_POOLED_TASKS = 1 << 14;

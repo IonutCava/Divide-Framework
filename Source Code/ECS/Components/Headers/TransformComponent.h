@@ -61,14 +61,13 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
     public:
      TransformComponent(SceneGraphNode* parentSGN, PlatformContext& context);
-     ~TransformComponent() = default;
 
      void reset();
 
      void getPreviousWorldMatrix(mat4<F32>& matOut) const;
      void getWorldMatrix(mat4<F32>& matOut) const;
-     mat4<F32> getPreviousWorldMatrix() const;
-     mat4<F32> getWorldMatrix() const;
+     [[nodiscard]] mat4<F32> getPreviousWorldMatrix() const;
+     [[nodiscard]] mat4<F32> getWorldMatrix() const;
 
      void getWorldMatrix(D64 interpolationFactor, mat4<F32>& matrixOut) const;
 

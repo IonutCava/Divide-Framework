@@ -41,8 +41,7 @@ namespace Divide {
 class LocalClient final : public ASIO,
                           public KernelComponent {
 public:
-    LocalClient(Kernel& parent);
-    ~LocalClient() = default;
+    explicit LocalClient(Kernel& parent);
 
 private:
     /// Define this functions to implement various packet handling (a switch

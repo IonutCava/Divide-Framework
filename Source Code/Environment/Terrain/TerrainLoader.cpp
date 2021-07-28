@@ -623,11 +623,13 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     terrain->setMaterialTpl(terrainMaterial);
 
-    Start(*CreateTask(context.taskPool(TaskPoolType::HIGH_PRIORITY), [terrain, terrainDescriptor, &context](const Task&) {
+    Start(*CreateTask([terrain, terrainDescriptor, &context](const Task&) {
         if (!loadThreadedResources(terrain, context, terrainDescriptor)) {
             DIVIDE_UNEXPECTED_CALL();
         }
-    }), threadedLoading ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
+    }), 
+    context.taskPool(TaskPoolType::HIGH_PRIORITY),
+    threadedLoading ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
 
     return true;
 }

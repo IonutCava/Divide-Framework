@@ -87,7 +87,6 @@ class DVDConverter {
   public:
 
     DVDConverter() = default;
-    ~DVDConverter() = default;
 
     explicit DVDConverter(PlatformContext& context, Import::ImportData& target, bool& result);
 

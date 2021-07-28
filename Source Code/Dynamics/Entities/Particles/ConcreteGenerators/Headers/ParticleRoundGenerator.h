@@ -42,6 +42,7 @@ struct ParticleRoundGenerator final : ParticleGenerator {
     F32 _radY = 0.f;
 
     void generate(Task& packagedTasksParent,
+                  TaskPool& parentPool,
                   U64 deltaTimeUS,
                   ParticleData& p,
                   U32 startIndex,

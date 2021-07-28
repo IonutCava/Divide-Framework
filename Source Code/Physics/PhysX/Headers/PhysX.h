@@ -52,7 +52,7 @@ class PxDefaultAllocator final : public physx::PxAllocatorCallback {
     }
 
     void deallocate(void* ptr)  override {
-        malloc_free(ptr);
+        free_aligned(ptr);
     }
 };
 
@@ -61,27 +61,24 @@ class SceneGraphNode;
 class PhysX final : public PhysicsAPIWrapper {
 
 public:
-    PhysX() = default;
-    ~PhysX();
-
-    ErrorCode initPhysicsAPI(U8 targetFrameRate, F32 simSpeed) override;
-    bool closePhysicsAPI() override;
+    [[nodiscard]] ErrorCode initPhysicsAPI(U8 targetFrameRate, F32 simSpeed) override;
+    [[nodiscard]] bool closePhysicsAPI() override;
     void update(U64 deltaTimeUS) override;
     void process(U64 deltaTimeUS) override;
     void idle() override;
 
     void updateTimeStep(U8 timeStepFactor, F32 simSpeed) override;
 
-    bool initPhysicsScene(Scene& scene) override;
-    bool destroyPhysicsScene() override;
+    [[nodiscard]] bool initPhysicsScene(Scene& scene) override;
+    [[nodiscard]] bool destroyPhysicsScene() override;
 
-    bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vectorEASTL<SGNRayResult>& intersectionsOut) const;
+    [[nodiscard]] bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vectorEASTL<SGNRayResult>& intersectionsOut) const;
 
     [[nodiscard]] physx::PxPhysics* getSDK() const noexcept { return _gPhysicsSDK; }
 
-    PhysicsAsset* createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) override;
+    [[nodiscard]] PhysicsAsset* createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) override;
 
-    bool convertActor(PhysicsAsset* actor, PhysicsGroup newGroup) override;
+    [[nodiscard]] bool convertActor(PhysicsAsset* actor, PhysicsGroup newGroup) override;
     void togglePvdConnection() const;
     void createPvdConnection(const char* ip, physx::PxU32 port, physx::PxU32 timeout, bool useFullConnection);
 

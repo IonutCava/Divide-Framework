@@ -75,11 +75,11 @@ public:
     bool init(U32 threadCount, TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const stringImpl& workerName = "DVD_WORKER");
     void shutdown();
 
-    void flushCallbackQueue();
-    void waitForAllTasks(bool yield, bool flushCallbacks);
+    static Task* AllocateTask(Task* parentTask, bool allowedInIdle);
 
-    template<class Predicate>
-    Task* createTask(Task* parentTask, Predicate&& threadedFunction, bool allowedInIdle = true);
+    /// Returns the number of callbacks processed
+    size_t flushCallbackQueue();
+    void waitForAllTasks(bool yield, bool flushCallbacks);
 
     [[nodiscard]] U32 workerThreadCount() const noexcept {
         return _workerThreadCount;
@@ -101,20 +101,14 @@ public:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
     friend struct Task;
     friend void Wait(const Task& task);
-    friend void TaskYield(const Task& task);
 
-    friend Task& Start(Task& task, TaskPriority priority, const DELEGATE<void>& onCompletionFunction);
-
+    friend void Start(Task& task, TaskPool& pool, const TaskPriority priority, const DELEGATE<void>& onCompletionFunction);
     friend void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor);
-    friend void RunLocally(Task& task, TaskPriority priority, bool hasOnCompletionFunction);
+    friend void RunLocally(Task& task, TaskPool& pool, TaskPriority priority, bool hasOnCompletionFunction);
 
     void taskCompleted(U32 taskIndex, bool hasOnCompletionFunction);
     
     bool enqueue(PoolTask&& task, TaskPriority priority, U32 taskIndex, const DELEGATE<void>& onCompletionFunction);
-
-    void runCbkAndClearTask(U32 taskIdentifier);
-
-    Task* allocateTask(Task* parentTask, bool allowedInIdle);
 
     template<bool IsBlocking>
     friend class ThreadPool;
@@ -145,10 +139,10 @@ public:
 };
 
 template<class Predicate>
-Task* CreateTask(TaskPool& pool, Predicate&& threadedFunction, bool allowedInIdle = true);
+Task* CreateTask(Predicate&& threadedFunction, bool allowedInIdle = true);
 
 template<class Predicate>
-Task* CreateTask(TaskPool& pool, Task* parentTask, Predicate&& threadedFunction, bool allowedInIdle = true);
+Task* CreateTask(Task* parentTask, Predicate&& threadedFunction, bool allowedInIdle = true);
 
 void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor);
 

@@ -39,7 +39,6 @@ namespace Divide {
     struct glUniformPushConstantUploader final : glPushConstantUploader
     {
         explicit glUniformPushConstantUploader(GLuint programHandle);
-        ~glUniformPushConstantUploader() = default;
 
         void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) override;
         void cacheUniforms() override;

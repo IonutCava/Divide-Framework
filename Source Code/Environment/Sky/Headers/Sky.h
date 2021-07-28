@@ -73,7 +73,6 @@ class Sky final : public SceneNode {
 
    public:
     explicit Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, U32 diameter);
-    ~Sky() = default;
 
     static void OnStartup(PlatformContext& context);
     // Returns the sun position and intensity details for the specified date-time
@@ -81,8 +80,8 @@ class Sky final : public SceneNode {
     SunDetails setGeographicLocation(SimpleLocation location);
     SunDetails setDateTimeAndLocation(struct tm *dateTime, SimpleLocation location);
 
-    SimpleTime GetTimeOfDay() const noexcept;
-    SimpleLocation GetGeographicLocation() const noexcept;
+    [[nodiscard]] SimpleTime GetTimeOfDay() const noexcept;
+    [[nodiscard]] SimpleLocation GetGeographicLocation() const noexcept;
 
     [[nodiscard]] SunDetails getCurrentDetails() const noexcept;
     [[nodiscard]] bool isDay() const noexcept;

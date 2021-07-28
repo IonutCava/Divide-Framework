@@ -34,6 +34,7 @@
 #define _PLATFORM_DEFINES_H_
 
 #include "config.h"
+#include "PlatformMemoryDefines.h"
 #include "Core/Headers/ErrorCodes.h"
 
 #define EXP( x ) x
@@ -109,7 +110,6 @@ do {                                                \
 #define _FUNCTION_NAME_AND_SIG_ __FUNCTION__
 #endif
 
-
  //ref: https://foonathan.net/2020/09/move-forward/
  // static_cast to rvalue reference
 #define MOV(...) \
@@ -122,10 +122,12 @@ static_cast<std::remove_reference_t<decltype(__VA_ARGS__)>&&>(__VA_ARGS__)
 
 #define ALIAS_TEMPLATE_FUNCTION(highLevelF, lowLevelF) \
 template<typename... Args> \
-inline auto highLevelF(Args&&... args) -> decltype(lowLevelF(FWD(args)...)) \
+constexpr auto highLevelF(Args&&... args) -> decltype(lowLevelF(FWD(args)...)) \
 { \
     return lowLevelF(FWD(args)...); \
 }
+
+ALIAS_TEMPLATE_FUNCTION(ArrayCount, std::size)
 
 //ref: https://vittorioromeo.info/index/blog/passing_functions_to_functions.html
 template <typename TSignature>
@@ -173,29 +175,29 @@ constexpr U32 prime_32_const = 0x1000193;
 constexpr U64 val_64_const = 0xcbf29ce484222325;
 constexpr U64 prime_64_const = 0x100000001b3;
 
-constexpr U64 _ID(const char* const str, const U64 value = val_64_const) noexcept {
+[[nodiscard]] constexpr U64 _ID(const char* const str, const U64 value = val_64_const) noexcept {
     return str[0] == '\0' ? value : _ID(&str[1], (value ^ to_U64(str[0])) * prime_64_const);
 }
 
-constexpr U64 _ID_VIEW(const char* const str, const size_t len, const U64 value = val_64_const) noexcept {
+[[nodiscard]] constexpr U64 _ID_VIEW(const char* const str, const size_t len, const U64 value = val_64_const) noexcept {
     return len == 0 ? value : _ID_VIEW(&str[1], len - 1, (value ^ to_U64(str[0])) * prime_64_const);
 }
 
-constexpr U64 operator ""_id(const char* str, const size_t len) {
+[[nodiscard]] constexpr U64 operator ""_id(const char* str, const size_t len) {
     return _ID_VIEW(str, len);
 }
 
 struct SysInfo {
     SysInfo();
 
-    size_t _availableRam;
+    size_t _availableRamInBytes;
     int _systemResolutionWidth;
     int _systemResolutionHeight;
     stringImpl _workingDirectory;
 };
 
-SysInfo& sysInfo() noexcept;
-const SysInfo& const_sysInfo() noexcept;
+[[nodiscard]] SysInfo& sysInfo() noexcept;
+[[nodiscard]] const SysInfo& const_sysInfo() noexcept;
 
 void InitSysInfo(SysInfo& info, I32 argc, char** argv);
 
@@ -207,35 +209,35 @@ extern void SetThreadName(const char* threadName) noexcept;
 
 extern bool CallSystemCmd(const char* cmd, const char* args);
 
-bool CreateDirectories(const char* path);
-bool CreateDirectories(const ResourcePath& path);
+[[nodiscard]] bool CreateDirectories(const char* path);
+[[nodiscard]] bool CreateDirectories(const ResourcePath& path);
 
 bool DebugBreak(bool condition = true) noexcept;
 
-ErrorCode PlatformInit(int argc, char** argv);
-bool PlatformClose();
-bool GetAvailableMemory(SysInfo& info);
+[[nodiscard]] ErrorCode PlatformInit(int argc, char** argv);
+[[nodiscard]] bool PlatformClose();
+[[nodiscard]] bool GetAvailableMemory(SysInfo& info);
 
-ErrorCode PlatformPreInit(int argc, char** argv);
-ErrorCode PlatformPostInit(int argc, char** argv);
+[[nodiscard]] ErrorCode PlatformPreInit(int argc, char** argv);
+[[nodiscard]] ErrorCode PlatformPostInit(int argc, char** argv);
 
-ErrorCode PlatformInitImpl(int argc, char** argv) noexcept;
-bool PlatformCloseImpl() noexcept;
+[[nodiscard]] ErrorCode PlatformInitImpl(int argc, char** argv) noexcept;
+[[nodiscard]] bool PlatformCloseImpl() noexcept;
 
-const char* GetClipboardText(void* user_data) noexcept;
+[[nodiscard]] const char* GetClipboardText(void* user_data) noexcept;
 void SetClipboardText(void* user_data, const char* text) noexcept;
 
 void ToggleCursor(bool state) noexcept;
 
-bool CursorState() noexcept;
+[[nodiscard]] bool CursorState() noexcept;
 
 /// Converts an arbitrary positive integer value to a bitwise value used for masks
 template<typename T>
-constexpr T toBit(const T X) {
+[[nodiscard]] constexpr T toBit(const T X) {
     return 1 << X;
 }
 
-constexpr U32 powerOfTwo(U32 X) noexcept {
+[[nodiscard]] constexpr U32 powerOfTwo(U32 X) noexcept {
     U32 r = 0;
     while (X >>= 1) {
         r++;
@@ -246,11 +248,11 @@ constexpr U32 powerOfTwo(U32 X) noexcept {
 template<typename T,
 typename = typename std::enable_if<std::is_integral<T>::value>::type,
 typename = typename std::enable_if<std::is_unsigned<T>::value>::type>
-constexpr bool isPowerOfTwo(const T x) noexcept {
+[[nodiscard]] constexpr bool isPowerOfTwo(const T x) noexcept {
     return !(x == 0) && !(x & (x - 1));
 }
 
-constexpr size_t realign_offset(const size_t offset, const size_t align) noexcept {
+[[nodiscard]] constexpr size_t realign_offset(const size_t offset, const size_t align) noexcept {
     return (offset + align - 1) & ~(align - 1);
 }
 
@@ -387,6 +389,7 @@ union Double_t {
     D64 d;
 };
 
+[[nodiscard]]
 inline bool AlmostEqualUlpsAndAbs(const F32 A, const F32 B, const F32 maxDiff, const I32 maxUlpsDiff) noexcept {
     // Check if the numbers are really close -- needed when comparing numbers near zero.
     const F32 absDiff = std::abs(A - B);
@@ -406,6 +409,7 @@ inline bool AlmostEqualUlpsAndAbs(const F32 A, const F32 B, const F32 maxDiff, c
     return std::abs(uA.i - uB.i) <= maxUlpsDiff;
 }
 
+[[nodiscard]]
 inline bool AlmostEqualUlpsAndAbs(const D64 A, const D64 B, const D64 maxDiff, const I32 maxUlpsDiff) noexcept {
     // Check if the numbers are really close -- needed when comparing numbers near zero.
     const D64 absDiff = std::abs(A - B);
@@ -425,6 +429,7 @@ inline bool AlmostEqualUlpsAndAbs(const D64 A, const D64 B, const D64 maxDiff, c
     return std::abs(uA.i - uB.i) <= maxUlpsDiff;
 }
 
+[[nodiscard]]
 inline bool AlmostEqualRelativeAndAbs(const F32 A, const F32 B, const F32 maxDiff, const F32 maxRelDiff)  noexcept {
     // Check if the numbers are really close -- needed when comparing numbers near zero.
     const F32 diff = std::abs(A - B);
@@ -436,6 +441,7 @@ inline bool AlmostEqualRelativeAndAbs(const F32 A, const F32 B, const F32 maxDif
     return diff <= largest * maxRelDiff;
 }
 
+[[nodiscard]]
 inline bool AlmostEqualRelativeAndAbs(D64 A, D64 B, const D64 maxDiff, const D64 maxRelDiff) noexcept {
     // Check if the numbers are really close -- needed when comparing numbers near zero.
     const D64 diff = std::abs(A - B);
@@ -456,144 +462,139 @@ constexpr void NOP() noexcept {
     }
 }
 
+//Andrei Alexandrescu's ScopeGuard macros from "Declarative Control Flow" (CppCon 2015)
+//ref: https://gist.github.com/mmha/6bee3983caf2eab04d80af8e0eaddfbe
 namespace detail {
-    class ScopeGuardImplBase
-    {
-    public:
-        void Dismiss() const noexcept {
-            dismissed_ = true;
-        }
-
-        // Disable assignment
-        ScopeGuardImplBase& operator=(const ScopeGuardImplBase&) = delete;
-        ScopeGuardImplBase(ScopeGuardImplBase&& other) = delete;
-        ScopeGuardImplBase& operator=(ScopeGuardImplBase && other) = delete;
-    protected:
-        ScopeGuardImplBase() noexcept = default;
-
-        ScopeGuardImplBase(const ScopeGuardImplBase& other) noexcept
-            : dismissed_(other.dismissed_)
-        {
-            other.Dismiss();
-        }
-
-        ~ScopeGuardImplBase() = default; // nonvirtual (see below why)
-        mutable bool dismissed_ = false;
-
-    };
-
-    template <typename Fun, typename Parm>
-    class ScopeGuardImpl1 final : public ScopeGuardImplBase
-    {
-    public:
-        ScopeGuardImpl1(const Fun& fun, const Parm& parm)
-            : fun_(fun), parm_(parm) 
-        {
-        }
-
-        ~ScopeGuardImpl1()
-        {
-            if (!dismissed_) {
-                fun_(parm_);
-            }
-        }
-
-    private:
-        Fun fun_;
-        const Parm parm_;
-    };
-
-    template <typename Fun, typename Parm>
-    ScopeGuardImpl1<Fun, Parm> MakeGuard(const Fun& fun, const Parm& parm) {
-        return ScopeGuardImpl1<Fun, Parm>(fun, parm);
-    }
-
-    using ScopeGuard = const ScopeGuardImplBase&;
-
-    enum class ScopeGuardOnExit {};
+    enum class ScopeGuardOnExit{};
+    enum class ScopeGuardOnFail{};
+    enum class ScopeGuardOnSuccess{};
 
     template <typename Fun>
-    ScopeGuard operator+(ScopeGuardOnExit, Fun&& fn) {
+    class ScopeGuard
+    {
+        public:
+            ScopeGuard(Fun &&fn) : fn(std::move(fn)) {}
+            ~ScopeGuard() { fn(); }
+        private:
+            Fun fn;
+    };
+
+    class UncaughtExceptionCounter
+    {
+        int exceptionCount_;
+    public:
+        UncaughtExceptionCounter() : exceptionCount_(std::uncaught_exceptions()) {}
+        bool newUncaughtException() noexcept { return std::uncaught_exceptions() > exceptionCount_; }
+    };
+
+    template <typename FunctionType, bool executeOnException>
+    class ScopeGuardForNewException
+    {
+        FunctionType function_;
+        UncaughtExceptionCounter ec_;
+    public:
+        explicit ScopeGuardForNewException(const FunctionType &fn) : function_(fn) {}
+        explicit ScopeGuardForNewException(FunctionType &&fn) : function_(std::move(fn)) {}
+        ~ScopeGuardForNewException() noexcept(executeOnException) {
+            if (executeOnException == ec_.newUncaughtException()) {
+                function_();
+            }
+        }
+    };
+
+    template <typename Fun>
+    auto operator+(ScopeGuardOnExit, Fun &&fn) 	{
         return ScopeGuard<Fun>(FWD(fn));
     }
-};
 
-#define SCOPE_EXIT \
-    auto ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = detail::ScopeGuardOnExit() + [&]()
+    template <typename Fun>
+    auto operator+(ScopeGuardOnFail, Fun &&fn) 	{
+        return ScopeGuardForNewException<std::decay_t<Fun>, true>(FWD(fn));
+    }
+
+    template <typename Fun>
+    auto operator+(ScopeGuardOnSuccess, Fun &&fn) 	{
+        return ScopeGuardForNewException<std::decay_t<Fun>, false>(FWD(fn));
+    }
+} //namespace detail
+
+#define SCOPE_FAIL auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnFail() + [&]() noexcept
+#define SCOPE_SUCCESS auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnSuccess() + [&]()
+#define SCOPE_EXIT auto ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = detail::ScopeGuardOnExit() + [&]() noexcept
 
 constexpr F32 EPSILON_F32 = std::numeric_limits<F32>::epsilon();
 constexpr D64 EPSILON_D64 = std::numeric_limits<D64>::epsilon();
 
 template <typename T, typename U = T>
-bool IS_IN_RANGE_INCLUSIVE(const T x, const U min, const U max) noexcept {
+[[nodiscard]] bool IS_IN_RANGE_INCLUSIVE(const T x, const U min, const U max) noexcept {
     return x >= min && x <= max;
 }
 template <typename T, typename U = T>
-bool IS_IN_RANGE_EXCLUSIVE(const T x, const U min, const U max) noexcept {
+[[nodiscard]] bool IS_IN_RANGE_EXCLUSIVE(const T x, const U min, const U max) noexcept {
     return x > min && x < max;
 }
 
 template <typename T>
-bool IS_ZERO(const T X) noexcept {
+[[nodiscard]] bool IS_ZERO(const T X) noexcept {
     return X == 0;
 }
 
 template <>
-inline bool IS_ZERO(const F32 X) noexcept {
+[[nodiscard]] inline bool IS_ZERO(const F32 X) noexcept {
     return abs(X) < EPSILON_F32;
 }
 template <>
-inline bool IS_ZERO(const D64 X) noexcept {
+[[nodiscard]] inline bool IS_ZERO(const D64 X) noexcept {
     return abs(X) < EPSILON_D64;
 }
 
 template <typename T>
-bool IS_TOLERANCE(const T X, const T TOLERANCE) noexcept {
+[[nodiscard]] bool IS_TOLERANCE(const T X, const T TOLERANCE) noexcept {
     return abs(X) <= TOLERANCE;
 }
 
 template<typename T, typename U = T>
-bool COMPARE_TOLERANCE(const T X, const U Y, const T TOLERANCE) noexcept {
+[[nodiscard]] bool COMPARE_TOLERANCE(const T X, const U Y, const T TOLERANCE) noexcept {
     return abs(X - static_cast<T>(Y)) <= TOLERANCE;
 }
 
 template<typename T, typename U = T>
-bool COMPARE_TOLERANCE_ACCURATE(const T X, const T Y, const T TOLERANCE) noexcept {
+[[nodiscard]] bool COMPARE_TOLERANCE_ACCURATE(const T X, const T Y, const T TOLERANCE) noexcept {
     return COMPARE_TOLERANCE(X, Y, TOLERANCE);
 }
 
 template<>
-inline bool COMPARE_TOLERANCE_ACCURATE(const F32 X, const F32 Y, const F32 TOLERANCE) noexcept {
+[[nodiscard]] inline bool COMPARE_TOLERANCE_ACCURATE(const F32 X, const F32 Y, const F32 TOLERANCE) noexcept {
     return AlmostEqualUlpsAndAbs(X, Y, TOLERANCE, 4);
 }
 
 template<>
-inline bool COMPARE_TOLERANCE_ACCURATE(const D64 X, const D64 Y, const D64 TOLERANCE) noexcept {
+[[nodiscard]] inline bool COMPARE_TOLERANCE_ACCURATE(const D64 X, const D64 Y, const D64 TOLERANCE) noexcept {
     return AlmostEqualUlpsAndAbs(X, Y, TOLERANCE, 4);
 }
 
 template<typename T, typename U = T>
-bool COMPARE(T X, U Y) noexcept {
+[[nodiscard]] bool COMPARE(T X, U Y) noexcept {
     return X == static_cast<T>(Y);
 }
 
 template<>
-inline bool COMPARE(const F32 X, const F32 Y) noexcept {
+[[nodiscard]] inline bool COMPARE(const F32 X, const F32 Y) noexcept {
     return COMPARE_TOLERANCE(X, Y, EPSILON_F32);
 }
 
 template<>
-inline bool COMPARE(const D64 X, const D64 Y) noexcept {
+[[nodiscard]] inline bool COMPARE(const D64 X, const D64 Y) noexcept {
     return COMPARE_TOLERANCE(X, Y, EPSILON_D64);
 }
 
 /// should be fast enough as the first condition is almost always true
 template <typename T>
-bool IS_GEQUAL(T X, T Y) noexcept {
+[[nodiscard]] bool IS_GEQUAL(T X, T Y) noexcept {
     return X > Y || COMPARE(X, Y);
 }
 template <typename T>
-bool IS_LEQUAL(T X, T Y) noexcept {
+[[nodiscard]] bool IS_LEQUAL(T X, T Y) noexcept {
     return X < Y || COMPARE(X, Y);
 }
 
@@ -674,7 +675,7 @@ struct safe_static_cast_helper<true, true>
 
 
 template <typename TO, typename FROM>
-TO safe_static_cast(FROM from)
+[[nodiscard]] TO safe_static_cast(FROM from)
 {
 #if defined(_DEBUG)
     // delegate the call to the proper helper class, depending on the signedness of both types
@@ -687,13 +688,13 @@ TO safe_static_cast(FROM from)
 }
 
 template <typename TO>
-TO safe_static_cast(F32 from)
+[[nodiscard]] TO safe_static_cast(F32 from)
 {
     return static_cast<TO>(from);
 }
 
 template <typename TO>
-TO safe_static_cast(D64 from)
+[[nodiscard]] TO safe_static_cast(D64 from)
 {
     return static_cast<TO>(from);
 } 
@@ -736,161 +737,20 @@ namespace Assert {
 
                                     
 template <typename Ret, typename... Args >
-using DELEGATE = std::function< Ret(Args...) >;
+using DELEGATE_EASTL = eastl::function< Ret(Args...) >;
 
-U32 HardwareThreadCount() noexcept;
+template <typename Ret, typename... Args >
+using DELEGATE_STD = std::function< Ret(Args...) >;
+
+template <typename Ret, typename... Args >
+using DELEGATE = DELEGATE_EASTL<Ret, Args...>;
+
+[[nodiscard]] U32 HardwareThreadCount() noexcept;
 
 template<typename T, typename U>
 constexpr void assert_type(const U& ) {
     static_assert(std::is_same<U, T>::value, "value type not satisfied");
 }
-};  // namespace Divide
-
-void* malloc_aligned(size_t size, size_t alignment);
-void  malloc_free(void*& ptr);
-
-void* operator new[](size_t size, const char* pName, Divide::I32 flags,
-                     Divide::U32 debugFlags, const char* file,
-                     Divide::I32 line);
-
-void operator delete[](void* ptr, const char* pName, Divide::I32 flags,
-                       Divide::U32 debugFlags, const char* file,
-                       Divide::I32 line);
-
-void* operator new[](size_t size, size_t alignment, size_t alignmentOffset,
-                     const char* pName, Divide::I32 flags,
-                     Divide::U32 debugFlags, const char* file,
-                     Divide::I32 line);
-
-void operator delete[](void* ptr, size_t alignment, size_t alignmentOffset,
-                       const char* pName, Divide::I32 flags,
-                       Divide::U32 debugFlags, const char* file,
-                       Divide::I32 line);
-
-void* operator new(size_t size, const char* zFile, size_t nLine);
-void operator delete(void* ptr, const char* zFile, size_t nLine);
-void* operator new[](size_t size, const char* zFile, size_t nLine);
-void operator delete[](void* ptr, const char* zFile, size_t nLine);
-
-#if !defined(MemoryManager_NEW)
-#define MemoryManager_NEW new (__FILE__, __LINE__)
-#endif
-
-namespace Divide {
-namespace MemoryManager {
-
-void log_delete(void* p);
-
-template <typename T>
-void SAFE_FREE(T*& ptr) {
-    if (ptr != nullptr) {
-        free(ptr);
-        ptr = nullptr;
-    }
-}
-
-/// Deletes and nullifies the specified pointer
-template <typename T>
-void DELETE(T*& ptr) {
-    log_delete(ptr);
-    delete ptr;
-    ptr = nullptr;
-}
-  
-/// Deletes and nullifies the specified pointer
-template <typename T>
-void SAFE_DELETE(T*& ptr) {
-    if (ptr != nullptr) {
-        DELETE(ptr);
-    }
-}
-
-/// Deletes and nullifies the specified array pointer
-template <typename T>
-void DELETE_ARRAY(T*& ptr) {
-    log_delete(ptr);
-
-    delete[] ptr;
-    ptr = nullptr;
-}
-
-/// Deletes and nullifies the specified array pointer
-template <typename T>
-void SAFE_DELETE_ARRAY(T*& ptr) {
-    if (ptr != nullptr) {
-        DELETE_ARRAY(ptr);
-    }
-}
-
-#define SET_DELETE_FRIEND \
-    template <typename T> \
-    friend void MemoryManager::DELETE(T*& ptr); \
-
-#define SET_SAFE_DELETE_FRIEND \
-    SET_DELETE_FRIEND \
-    template <typename T>      \
-    friend void MemoryManager::SAFE_DELETE(T*& ptr);
-
-
-#define SET_DELETE_ARRAY_FRIEND \
-    template <typename T>       \
-    friend void MemoryManager::DELETE_ARRAY(T*& ptr);
-
-#define SET_SAFE_DELETE_ARRAY_FRIEND \
-    SET_DELETE_ARRAY_FRIEND \
-    template <typename T>            \
-    friend void MemoryManager::DELETE_ARRAY(T*& ptr);
-
-/// Deletes every element from the vector and clears it at the end
-template <template <typename, typename> class Container,
-    typename Value,
-    typename Allocator = std::allocator<Value>>
-void DELETE_CONTAINER(Container<Value*, Allocator>& container) {
-    for (Value* iter : container) {
-        log_delete(iter);
-        delete iter;
-    }
-
-    container.clear();
-}
-
-#define SET_DELETE_CONTAINER_FRIEND \
-    template <template <typename, typename> class Container, \
-              typename Value, \
-              typename Allocator> \
-    friend void MemoryManager::DELETE_CONTAINER(Container<Value*, Allocator>& container);
-
-/// Deletes every element from the map and clears it at the end
-template <typename K, typename V, typename HashFun = hashAlg::hash<K> >
-void DELETE_HASHMAP(hashMap<K, V, HashFun>& map) {
-    if (!map.empty()) {
-        for (typename hashMap<K, V, HashFun>::value_type iter : map) {
-            log_delete(iter.second);
-            delete iter.second;
-        }
-        map.clear();
-    }
-}
-#define SET_DELETE_HASHMAP_FRIEND                       \
-    template <typename K, typename V, typename HashFun> \
-    friend void MemoryManager::DELETE_HASHMAP(hashMap<K, V, HashFun>& map);
-
-/// Deletes the object pointed to by "OLD" and redirects that pointer to the
-/// object pointed by "NEW"
-/// "NEW" must be a derived (or same) class of OLD
-template <typename Base, typename Derived>
-void SAFE_UPDATE(Base*& OLD, Derived* const NEW) {
-    static_assert(std::is_base_of<Base, Derived>::value,
-                  "SAFE_UPDATE error: New must be a descendant of Old");
-    SAFE_DELETE(OLD);
-    OLD = NEW;
-}
-#define SET_SAFE_UPDATE_FRIEND                 \
-    template <typename Base, typename Derived> \
-    friend void MemoryManager::SAFE_UPDATE(Base*& OLD, Derived* const NEW);
-
-};  // namespace MemoryManager
-
 
 /// Wrapper that allows usage of atomic variables in containers
 /// Copy is not atomic! (e.g. push/pop from containers is not threadsafe!)

@@ -46,8 +46,7 @@ class AIEntity;
 class WarSceneOrder;
 }
 
-class WarScene : public Scene {
-   public:
+BEGIN_SCENE(WarScene)
     explicit WarScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
     ~WarScene();
 
@@ -57,7 +56,7 @@ class WarScene : public Scene {
     void processTasks(U64 deltaTimeUS) override;
     void processGUI(U64 deltaTimeUS) override;
     void updateSceneStateInternal(U64 deltaTimeUS) override;
-    U16 registerInputActions() override;
+    U16  registerInputActions() override;
 
     void registerPoint(U16 teamID, const stringImpl& unitName);
     void printMessage(U8 eventId, const stringImpl& unitName) const;
@@ -101,7 +100,7 @@ class WarScene : public Scene {
     SceneGraphNode* _firstPersonWeapon = nullptr;
     /// Teams are factions for AIEntites so they can manage friend/foe situations
     AI::AITeam* _faction[2]{nullptr, nullptr};
-};
+END_SCENE(WarScene)
 
 }  // namespace Divide
 

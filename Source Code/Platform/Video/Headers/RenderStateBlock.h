@@ -50,7 +50,7 @@ namespace TypeUtil {
     CullMode StringToCullMode(const char* name) noexcept;
 };
 
-class RenderStateBlock : public GUIDWrapper, public Hashable {
+class RenderStateBlock final : public GUIDWrapper, public Hashable {
     public:
        static void clear();
        /// Retrieve a state block by hash value.
@@ -73,8 +73,9 @@ class RenderStateBlock : public GUIDWrapper, public Hashable {
     public:
         RenderStateBlock() noexcept;
         RenderStateBlock(const RenderStateBlock& other) noexcept = default;
+
         /// Can't assign due to the GUID restrictions
-        RenderStateBlock& operator=(const RenderStateBlock& b) noexcept = delete;
+        RenderStateBlock& operator=(const RenderStateBlock& other) noexcept = delete;
         /// Use "from" instead of "operator=" to bypass the GUID restrictions
         void from(const RenderStateBlock& other) noexcept;
 

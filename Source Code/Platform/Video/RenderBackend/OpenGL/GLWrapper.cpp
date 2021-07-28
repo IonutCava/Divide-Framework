@@ -445,8 +445,9 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_WIDTH "                    + Util::to_string(to_base(AttribLocation::WIDTH)));
     AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_GENERIC "                  + Util::to_string(to_base(AttribLocation::GENERIC)));
 
-    for (MaterialDebugFlag flag : MaterialDebugFlag::_values()) {
-        AppendToShaderHeader(ShaderType::FRAGMENT, Util::StringFormat("#define DEBUG_%s %d", flag._to_string(), flag._to_integral()));
+    for (U8 i = 0u; i < to_U8(MaterialDebugFlag::COUNT) + 1u; ++i) {
+        const MaterialDebugFlag flag = static_cast<MaterialDebugFlag>(i);
+        AppendToShaderHeader(ShaderType::FRAGMENT, Util::StringFormat("#define DEBUG_%s %d", TypeUtil::MaterialDebugFlagToString(flag), i));
     }
 
     const auto addVaryings = [&](const ShaderType type) {
@@ -757,20 +758,6 @@ bool GL_API::bindPipeline(const Pipeline& pipeline, bool& shaderWasReady) const 
     return true;
 }
 
-void GL_API::sendPushConstants(const PushConstants& pushConstants) const {
-    OPTICK_EVENT();
-
-    assert(GL_API::getStateTracker()._activePipeline != nullptr);
-
-    ShaderProgram* program = ShaderProgram::FindShaderProgram(getStateTracker()._activePipeline->shaderProgramHandle());
-    if (program == nullptr) {
-        // Should we skip the upload?
-        program = ShaderProgram::DefaultShader().get();
-    }
-
-    static_cast<glShaderProgram*>(program)->uploadPushConstants(pushConstants);
-}
-
 bool GL_API::draw(const GenericDrawCommand& cmd) const {
     OPTICK_EVENT();
 
@@ -911,13 +898,32 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             }
         } break;
         case GFX::CommandType::SEND_PUSH_CONSTANTS: {
-            if (DIVIDE_ASSERT(getStateTracker()._activePipeline != nullptr, "GL_API::flushCommand: trying to send push constants with no active pipeline!")) {
-                sendPushConstants(commandBuffer.get<GFX::SendPushConstantsCommand>(entry)->_constants);
-            } else if (Config::ENABLE_GPU_VALIDATION) {
-                // Shader failed to compile probably. Dump all shader caches for inspection.
-                glShaderProgram::Idle(_context.context());
-                Console::flush();
+            OPTICK_EVENT();
+
+            const auto dumpLogs = [this]() {
+                Console::d_errorfn(Locale::Get(_ID("ERROR_GLSL_INVALID_PUSH_CONSTANTS")));
+                if (Config::ENABLE_GPU_VALIDATION) {
+                    // Shader failed to compile probably. Dump all shader caches for inspection.
+                    glShaderProgram::Idle(_context.context());
+                    Console::flush();
+                }
+            };
+
+            const Pipeline* activePipeline = getStateTracker()._activePipeline;
+            if (activePipeline == nullptr) {
+                dumpLogs();
+                break;
             }
+
+            ShaderProgram* program = ShaderProgram::FindShaderProgram(activePipeline->shaderProgramHandle());
+            if (program == nullptr) {
+                // Should we skip the upload?
+                dumpLogs();
+                break;
+            }
+
+            const PushConstants& pushConstants = commandBuffer.get<GFX::SendPushConstantsCommand>(entry)->_constants;
+            static_cast<glShaderProgram*>(program)->uploadPushConstants(pushConstants);
         } break;
         case GFX::CommandType::SET_SCISSOR: {
             getStateTracker().setScissor(commandBuffer.get<GFX::SetScissorCommand>(entry)->_rect);
@@ -1075,7 +1081,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                     glMemoryBarrier(MemoryBarrierMask::GL_ALL_BARRIER_BITS);
                 } else {
                     for (U8 i = 0; i < to_U8(MemoryBarrierType::COUNT) + 1; ++i) {
-                        if (BitCompare(barrierMask, to_U32(1 << i))) {
+                        if (BitCompare(barrierMask, 1u << i)) {
                             switch (static_cast<MemoryBarrierType>(1 << i)) {
                                 case MemoryBarrierType::BUFFER_UPDATE:
                                     glMask |= MemoryBarrierMask::GL_BUFFER_UPDATE_BARRIER_BIT;

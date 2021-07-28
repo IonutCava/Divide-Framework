@@ -175,12 +175,12 @@ void PostFX::apply(const Camera* camera, GFX::CommandBuffer& bufferInOut) {
     EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand(_drawConstants));
 
     GFX::BindDescriptorSetsCommand bindDescriptorSetsCmd;
-    bindDescriptorSetsCmd._set._textureData.add({ output, prbAtt.samplerHash(),to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN) });
-    bindDescriptorSetsCmd._set._textureData.add({ data0, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER) });
-    bindDescriptorSetsCmd._set._textureData.add({ data1, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE) });
-    bindDescriptorSetsCmd._set._textureData.add({ data2, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER) });
-    bindDescriptorSetsCmd._set._textureData.add({ fxData, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_POSTFXDATA) });
-    bindDescriptorSetsCmd._set._textureData.add({ ssrData, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR) });
+    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ output, prbAtt.samplerHash(),to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN) });
+    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ data0, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER) });
+    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ data1, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE) });
+    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ data2, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER) });
+    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ fxData, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_POSTFXDATA) });
+    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ ssrData, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR) });
     EnqueueCommand(bufferInOut, bindDescriptorSetsCmd);
 
     GenericDrawCommand drawCommand;
@@ -206,10 +206,8 @@ void PostFX::idle(const Configuration& config) {
         }
 
         _drawConstants.set(_ID("randomCoeffNoise"), GFX::PushConstantType::FLOAT, _randomNoiseCoefficient);
-        _drawConstants.set(_ID("randomCoeffNoise"), GFX::PushConstantType::FLOAT, _randomFlashCoefficient);
+        _drawConstants.set(_ID("randomCoeffFlash"), GFX::PushConstantType::FLOAT, _randomFlashCoefficient);
     }
-
-    _preRenderBatch.idle(config);
 }
 
 void PostFX::update(const U64 deltaTimeUS) {

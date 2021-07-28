@@ -51,7 +51,7 @@ namespace Divide {
     struct UndoEntry final : IUndoEntry {
         T _oldVal = {};
         T _newVal = {};
-        std::function<void(const T&)> _dataSetter = {};
+        DELEGATE_STD<void, const T&> _dataSetter = {};
 
         void swapValues() override {
             std::swap(_oldVal, _newVal);
@@ -73,7 +73,6 @@ namespace Divide {
 
     public:
         explicit UndoManager(U32 maxSize);
-        ~UndoManager() = default;
 
         [[nodiscard]] bool Undo();
         [[nodiscard]] bool Redo();

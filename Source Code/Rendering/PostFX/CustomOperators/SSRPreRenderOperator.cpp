@@ -142,15 +142,15 @@ bool SSRPreRenderOperator::execute(const Camera* camera, const RenderTargetHandl
     EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-    descriptorSetCmd._set._textureData.add({ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });
-    descriptorSetCmd._set._textureData.add({ depthTex, depthAtt.samplerHash(),TextureUsage::UNIT1 });
-    descriptorSetCmd._set._textureData.add({ normalsTex, normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
+    descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });
+    descriptorSetCmd._set._textureData.add(TextureEntry{ depthTex, depthAtt.samplerHash(),TextureUsage::UNIT1 });
+    descriptorSetCmd._set._textureData.add(TextureEntry{ normalsTex, normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
     if (skyTexture == nullptr) {
-        descriptorSetCmd._set._textureData.add({ reflectionTexture->data(), environmentProbeAtt.samplerHash(), TextureUsage::REFLECTION_SKY });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ reflectionTexture->data(), environmentProbeAtt.samplerHash(), TextureUsage::REFLECTION_SKY });
     } else {
-        descriptorSetCmd._set._textureData.add({ skyTexture->data(), skySampler, TextureUsage::REFLECTION_SKY });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ skyTexture->data(), skySampler, TextureUsage::REFLECTION_SKY });
     }
-    descriptorSetCmd._set._textureData.add({ reflectionTexture->data(), environmentProbeAtt.samplerHash(), TextureUsage::REFLECTION_ENV });
+    descriptorSetCmd._set._textureData.add(TextureEntry{ reflectionTexture->data(), environmentProbeAtt.samplerHash(), TextureUsage::REFLECTION_ENV });
 
     EnqueueCommand(bufferInOut, descriptorSetCmd);
 

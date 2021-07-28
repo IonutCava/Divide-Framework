@@ -344,7 +344,7 @@ namespace Divide {
                                 Attorney::EditorGeneralWidget::inspectMemory(_context.editor(), std::make_pair(comp, sizeof(EditorComponent)));
                             }
 
-                            if (comp->parentComponentType()._value != ComponentType::COUNT && !IsRequiredComponentType(sgnNode, comp->parentComponentType())) {
+                            if (comp->parentComponentType() != ComponentType::COUNT && !IsRequiredComponentType(sgnNode, comp->parentComponentType())) {
                                 ImGui::SameLine();
                                 if (ImGui::Button("REMOVE", ImVec2(smallButtonWidth, 20))) {
                                     Attorney::EditorGeneralWidget::inspectMemory(_context.editor(), std::make_pair(nullptr, 0));
@@ -483,11 +483,11 @@ namespace Divide {
 
             //ToDo: Speed this up. Also, how do we handle adding stuff like RenderingComponents and creating materials and the like?
             const auto validComponentToAdd = [this, &crtSelections](const ComponentType type) -> bool {
-                if (type._value == ComponentType::COUNT) {
+                if (type == ComponentType::COUNT) {
                     return false;
                 }
 
-                if (type._value == ComponentType::SCRIPT) {
+                if (type == ComponentType::SCRIPT) {
                     return true;
                 }
 
@@ -517,23 +517,25 @@ namespace Divide {
             static ComponentType selectedType = ComponentType::COUNT;
 
             if (ImGui::BeginPopup("COMP_SELECTION_GROUP")) {
-                for (const ComponentType type : ComponentType::_values()) {
-                    if (type._to_integral() == ComponentType::COUNT || !validComponentToAdd(type)) {
+                for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i) {
+                    const U32 componentBit = 1 << i;
+                    ComponentType type = static_cast<ComponentType>(componentBit);
+                    if (type == ComponentType::COUNT || !validComponentToAdd(type)) {
                         continue;
                     }
 
-                    if (ImGui::Selectable(type._to_string())) {
+                    if (ImGui::Selectable(TypeUtil::ComponentTypeToString(type))) {
                         selectedType = type;
                     }
                 }
                 ImGui::EndPopup();
             }
-            if (selectedType._to_integral() != ComponentType::COUNT) {
+            if (selectedType != ComponentType::COUNT) {
                 ImGui::OpenPopup("Add new component");
             }
 
             if (ImGui::BeginPopupModal("Add new component", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text("Add new %s component?", selectedType._to_string());
+                ImGui::Text("Add new %s component?", TypeUtil::ComponentTypeToString(selectedType));
                 ImGui::Separator();
 
                 if (ImGui::Button("OK", ImVec2(120, 0))) {
@@ -915,10 +917,11 @@ namespace Divide {
                 ImGui::Separator();
                 if (ImGui::Button("Rebuild from source") && !readOnly) {
                     Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Rebuilding shader from source ...", Time::SecondsToMilliseconds<F32>(3));
-                    if (!program->recompile(true)) {
+                    bool skipped = false;
+                    if (!program->recompile(true, skipped)) {
                         Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Failed to rebuild shader from source!", Time::SecondsToMilliseconds<F32>(3));
                     } else {
-                        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Rebuilt shader from source!", Time::SecondsToMilliseconds<F32>(3));
+                        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), skipped ? "Rebuilt shader not needed!" : "Rebuilt shader from source!", Time::SecondsToMilliseconds<F32>(3));
                         ret = true;
                     }
                 }

@@ -77,8 +77,8 @@ bool MotionBlurPreRenderOperator::execute(const Camera* camera, const RenderTarg
     const TextureData velocityTex = velocityAtt.texture()->data();
 
     GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-    descriptorSetCmd._set._textureData.add({ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
-    descriptorSetCmd._set._textureData.add({ velocityTex, velocityAtt.samplerHash(),TextureUsage::UNIT1 });
+    descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
+    descriptorSetCmd._set._textureData.add(TextureEntry{ velocityTex, velocityAtt.samplerHash(),TextureUsage::UNIT1 });
     EnqueueCommand(bufferInOut, descriptorSetCmd);
 
     GFX::BeginRenderPassCommand beginRenderPassCmd = {};

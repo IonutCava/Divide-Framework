@@ -50,7 +50,6 @@ class SkinnedSubMesh final : public SubMesh {
 
    public:
     explicit SkinnedSubMesh(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name);
-    ~SkinnedSubMesh() = default;
 
     void postLoad(SceneGraphNode* sgn) override;
 

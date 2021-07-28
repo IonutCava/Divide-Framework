@@ -227,7 +227,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurPipeline });
 
         TextureData texData = shadowAtt.texture()->data();
-        descriptorSetCmd._set._textureData.add({ texData, shadowAtt.samplerHash(), TextureUsage::UNIT0 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ texData, shadowAtt.samplerHash(), TextureUsage::UNIT0 });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         _shaderConstants.set(_ID("layered"), GFX::PushConstantType::BOOL, true);
@@ -245,7 +245,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         // Blur vertically
         const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
         texData = blurAtt.texture()->data();
-        descriptorSetCmd._set._textureData.add({ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         beginRenderPassCmd._target = g_depthMapID;

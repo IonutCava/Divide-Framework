@@ -79,11 +79,9 @@ void main()
 
     // Get a modified viewing direction of the camera that only takes into account height.
     // ref: https://www.rastertek.com/terdx10tut16.html
-    const vec3 texColour = mix(mix(refractionColour, 
-                                   texture(texReflect, waterUV).rgb,
-                                   Fresnel(incident, normalW)),
-                               refractionColour,
-                               _underwater);
+    const vec3 texColour = (_underwater == 1 ? refractionColour : mix(refractionColour, 
+                                                                      texture(texReflect, waterUV).rgb,
+                                                                      Fresnel(incident, normalW)));
 
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 

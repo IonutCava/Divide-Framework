@@ -18,12 +18,13 @@ RenderQueue::RenderQueue(Kernel& parent, const RenderStage stage)
       _stage(stage),
       _renderBins{nullptr}
 {
-    for (const RenderBinType rbType : RenderBinType::_values()) {
-        if (rbType._value == RenderBinType::RBT_COUNT) {
+    for (U8 i = 0u; i < to_U8(RenderBinType::COUNT); ++i) {
+        const RenderBinType rbType = static_cast<RenderBinType>(i);
+        if (rbType == RenderBinType::COUNT) {
             continue;
         }
 
-        _renderBins[rbType._value] = MemoryManager_NEW RenderBin(rbType, stage);
+        _renderBins[i] = MemoryManager_NEW RenderBin(rbType, stage);
     }
 }
 
@@ -47,29 +48,29 @@ U16 RenderQueue::getRenderQueueStackSize() const {
 RenderingOrder RenderQueue::getSortOrder(const RenderStagePass stagePass, const RenderBinType rbType) const {
     RenderingOrder sortOrder = RenderingOrder::COUNT;
     switch (rbType) {
-        case RenderBinType::RBT_OPAQUE: {
+        case RenderBinType::OPAQUE: {
             // Opaque items should be rendered front to back in depth passes for early-Z reasons
             sortOrder = stagePass.isDepthPass() ? RenderingOrder::FRONT_TO_BACK
                                                 : RenderingOrder::BY_STATE;
         } break;
-        case RenderBinType::RBT_SKY: {
+        case RenderBinType::SKY: {
             sortOrder = RenderingOrder::NONE;
         } break;
-        case RenderBinType::RBT_IMPOSTOR:
-        case RenderBinType::RBT_TERRAIN: {
+        case RenderBinType::IMPOSTOR:
+        case RenderBinType::TERRAIN: {
             sortOrder = RenderingOrder::FRONT_TO_BACK;
         } break;
-        case RenderBinType::RBT_TERRAIN_AUX: {
+        case RenderBinType::TERRAIN_AUX: {
             // Water first, everything else after
             sortOrder = RenderingOrder::WATER_FIRST;
         } break;
-        case RenderBinType::RBT_TRANSLUCENT: {
+        case RenderBinType::TRANSLUCENT: {
             // We are using weighted blended OIT. State is fine (and faster)
             // Use an override one level up from this if we need a regular forward-style pass
             sortOrder = RenderingOrder::BY_STATE;
         } break;
         default:
-        case RenderBinType::RBT_COUNT: {
+        case RenderBinType::COUNT: {
             Console::errorfn(Locale::Get(_ID("ERROR_INVALID_RENDER_BIN_CREATION")));
         } break;
     };
@@ -86,26 +87,26 @@ RenderBin* RenderQueue::getBinForNode(const SceneGraphNode* node, const Material
                 BitCompare(node->componentMask(), ComponentType::DIRECTIONAL_LIGHT) ||
                 BitCompare(node->componentMask(), ComponentType::ENVIRONMENT_PROBE))
             {
-                return _renderBins[RenderBinType::RBT_IMPOSTOR];
+                return _renderBins[to_base(RenderBinType::IMPOSTOR)];
             }
             /*if (BitCompare(node->componentMask(), ComponentType::PARTICLE_EMITTER_COMPONENT) ||
                 BitCompare(node->componentMask(), ComponentType::GRASS_COMPONENT))
             {
-                return _renderBins[RenderBinType::RBT_TRANSLUCENT];
+                return _renderBins[to_base(RenderBinType::TRANSLUCENT)];
             }*/
             return nullptr;
         }
 
         case SceneNodeType::TYPE_VEGETATION:
         case SceneNodeType::TYPE_PARTICLE_EMITTER:
-            return _renderBins[RenderBinType::RBT_TRANSLUCENT];
+            return _renderBins[to_base(RenderBinType::TRANSLUCENT)];
 
         case SceneNodeType::TYPE_SKY:
-            return _renderBins[RenderBinType::RBT_SKY];
+            return _renderBins[to_base(RenderBinType::SKY)];
 
         case SceneNodeType::TYPE_WATER:
         case SceneNodeType::TYPE_INFINITEPLANE:
-            return _renderBins[RenderBinType::RBT_TERRAIN_AUX];
+            return _renderBins[to_base(RenderBinType::TERRAIN_AUX)];
 
         // Water is also opaque as refraction and reflection are separate textures
         // We may want to break this stuff up into mesh rendering components and not care about specifics anymore (i.e. just material checks)
@@ -114,21 +115,21 @@ RenderBin* RenderQueue::getBinForNode(const SceneGraphNode* node, const Material
             if (node->getNode().type() == SceneNodeType::TYPE_OBJECT3D) {
                 switch (node->getNode<Object3D>().getObjectType()) {
                     case ObjectType::TERRAIN:
-                        return _renderBins[RenderBinType::RBT_TERRAIN];
+                        return _renderBins[to_base(RenderBinType::TERRAIN)];
 
                     case ObjectType::DECAL:
-                        return _renderBins[RenderBinType::RBT_TRANSLUCENT];
+                        return _renderBins[to_base(RenderBinType::TRANSLUCENT)];
                     default: break;
                 }
             }
             // Check if the object has a material with transparency/translucency
             if (matInstance != nullptr && matInstance->hasTransparency()) {
                 // Add it to the appropriate bin if so ...
-                return _renderBins[RenderBinType::RBT_TRANSLUCENT];
+                return _renderBins[to_base(RenderBinType::TRANSLUCENT)];
             }
 
             //... else add it to the general geometry bin
-            return _renderBins[RenderBinType::RBT_OPAQUE];
+            return _renderBins[to_base(RenderBinType::OPAQUE)];
         }
         default:
         case SceneNodeType::COUNT:
@@ -149,7 +150,7 @@ void RenderQueue::addNodeToQueue(const SceneGraphNode* sgn,
         RenderBin* rb = getBinForNode(sgn, renderingCmp->getMaterialInstance());
         assert(rb != nullptr);
 
-        if (targetBinType._value == RenderBinType::RBT_COUNT || rb->getType() == targetBinType) {
+        if (targetBinType == RenderBinType::COUNT || rb->getType() == targetBinType) {
             rb->addNodeToBin(sgn, stagePass, minDistToCameraSq);
         }
     }
@@ -157,9 +158,10 @@ void RenderQueue::addNodeToQueue(const SceneGraphNode* sgn,
 
 void RenderQueue::populateRenderQueues(const RenderStagePass stagePass, const std::pair<RenderBinType, bool> binAndFlag, RenderQueuePackages& queueInOut) {
     OPTICK_EVENT();
+
     auto [binType, includeBin] = binAndFlag;
 
-    if (binType._value == RenderBinType::RBT_COUNT) {
+    if (binType == RenderBinType::COUNT) {
         if (!includeBin) {
             // Why are we allowed to exclude everything? idk.
             return;
@@ -185,32 +187,32 @@ void RenderQueue::postRender(const SceneRenderState& renderState, const RenderSt
 }
 
 void RenderQueue::sort(const RenderStagePass& stagePass, const RenderBinType targetBinType, const RenderingOrder renderOrder) {
-
     OPTICK_EVENT();
+
     // How many elements should a render bin contain before we decide that sorting should happen on a separate thread
     constexpr U16 threadBias = 64;
     
-    if (targetBinType._value != RenderBinType::RBT_COUNT)
+    if (targetBinType != RenderBinType::COUNT)
     {
         const RenderingOrder sortOrder = renderOrder == RenderingOrder::COUNT ? getSortOrder(stagePass, targetBinType) : renderOrder;
-        _renderBins[to_base(targetBinType._value)]->sort(sortOrder);
+        _renderBins[to_base(targetBinType)]->sort(sortOrder);
     }
     else
     {
         TaskPool& pool = parent().platformContext().taskPool(TaskPoolType::HIGH_PRIORITY);
-        Task* sortTask = CreateTask(pool, DELEGATE<void, Task&>());
+        Task* sortTask = CreateTask(DELEGATE<void, Task&>());
         for (RenderBin* renderBin : _renderBins) {
             if (renderBin->getBinSize() > threadBias) {
                 const RenderingOrder sortOrder = renderOrder == RenderingOrder::COUNT ? getSortOrder(stagePass, renderBin->getType()) : renderOrder;
-                Start(*CreateTask(pool,
-                                    sortTask,
+                Start(*CreateTask(sortTask,
                                     [renderBin, sortOrder](const Task& /*parentTask*/) {
                                         renderBin->sort(sortOrder);
-                                    }));
+                                    }),
+                      pool);
             }
         }
 
-        Start(*sortTask);
+        Start(*sortTask, pool);
 
         for (RenderBin* renderBin : _renderBins) {
             if (renderBin->getBinSize() <= threadBias) {
@@ -219,12 +221,12 @@ void RenderQueue::sort(const RenderStagePass& stagePass, const RenderBinType tar
             }
         }
 
-        Wait(*sortTask);
+        Wait(*sortTask, pool);
     }
 }
 
 void RenderQueue::refresh(const RenderBinType targetBinType) {
-    if (targetBinType._value == RenderBinType::RBT_COUNT) {
+    if (targetBinType == RenderBinType::COUNT) {
         for (RenderBin* renderBin : _renderBins) {
             renderBin->refresh();
         }
@@ -239,17 +241,18 @@ void RenderQueue::refresh(const RenderBinType targetBinType) {
 
 U16 RenderQueue::getSortedQueues(const vectorEASTL<RenderBinType>& binTypes, RenderBin::SortedQueues& queuesOut) const {
     OPTICK_EVENT();
+
     U16 countOut = 0u;
 
     if (binTypes.empty()) {
         for (const RenderBin* renderBin : _renderBins) {
-            RenderBin::SortedQueue& nodes = queuesOut[renderBin->getType()];
+            RenderBin::SortedQueue& nodes = queuesOut[to_base(renderBin->getType())];
             countOut += renderBin->getSortedNodes(nodes);
         }
     } else {
         for (const RenderBinType type : binTypes) {
-            const RenderBin* renderBin = _renderBins[type];
-            RenderBin::SortedQueue& nodes = queuesOut[type];
+            const RenderBin* renderBin = _renderBins[to_base(type)];
+            RenderBin::SortedQueue& nodes = queuesOut[to_base(type)];
             countOut += renderBin->getSortedNodes(nodes);
         }
     }

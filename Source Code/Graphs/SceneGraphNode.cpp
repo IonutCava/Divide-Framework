@@ -107,22 +107,22 @@ ECS::ECSEngine& SceneGraphNode::GetECSEngine() const noexcept {
 
 void SceneGraphNode::AddComponents(const U32 componentMask, const bool allowDuplicates) {
 
-    for (ComponentType::_integral i = 1; i < ComponentType::COUNT + 1; ++i) {
+    for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i) {
         const U32 componentBit = 1 << i;
 
         // Only add new components;
         if (BitCompare(componentMask, componentBit) && (allowDuplicates || !BitCompare(_componentMask, componentBit))) {
             _componentMask |= componentBit;
-            SGNComponent::construct(ComponentType::_from_integral(componentBit), this);
+            SGNComponent::construct(static_cast<ComponentType>(componentBit), this);
         }
     };
 }
 
 void SceneGraphNode::RemoveComponents(const U32 componentMask) {
-    for (ComponentType::_integral i = 1; i < ComponentType::COUNT + 1; ++i) {
+    for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i) {
         const U32 componentBit = 1 << i;
         if (BitCompare(componentMask, componentBit) && BitCompare(_componentMask, componentBit)) {
-            SGNComponent::destruct(ComponentType::_from_integral(componentBit), this);
+            SGNComponent::destruct(static_cast<ComponentType>(componentBit), this);
         }
     }
 }
@@ -434,15 +434,6 @@ void SceneGraphNode::processDeleteQueue(vectorEASTL<size_t>& childList) {
     }
 }
 
-void SceneGraphNode::frameStarted(const FrameEvent& evt) const {
-    NOP();
-
-    forEachChild([&evt](SceneGraphNode* child, I32 /*childIdx*/) {
-        child->frameStarted(evt);
-        return true;
-    });
-}
-
 /// Please call in MAIN THREAD! Nothing is thread safe here (for now) -Ionut
 void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
     OPTICK_EVENT();
@@ -564,134 +555,127 @@ bool SceneGraphNode::canDraw(const RenderStagePass& stagePass) const {
     return rComp != nullptr && rComp->canDraw(stagePass);
 }
 
-bool SceneGraphNode::shouldDraw(const RenderStagePass& stagePass) const {
-    return _node->renderState().drawState(stagePass);
-}
-
-bool SceneGraphNode::postCullCheck(const NodeCullParams& params,
-                                   const BoundsComponent& bounds,
-                                   F32& distanceToClosestPointSQ) const {
-    OPTICK_EVENT();
-
-    if (!_node->renderState().drawState()) {
-        return false;
-    }
-
-    const F32 upperBound = params._minExtents.maxComponent();
-    if (upperBound > 0.0f && bounds.getBoundingBox().getExtent().maxComponent() < upperBound) {
-        // Node is too small for the current render pass
-        return false;
-    }
-
-    RenderingComponent* rComp = get<RenderingComponent>();
-    const U8 LoDLevel = rComp->getLoDLevel(bounds.getBoundingSphere().getCenter(), params._currentCamera->getEye(), params._stage, params._lodThresholds);
-    if (LoDLevel != RenderingComponent::INVALID_LOD_LEVEL) {
-        const vec2<F32>& renderRange = rComp->renderRange();
-        if (!IS_IN_RANGE_INCLUSIVE(distanceToClosestPointSQ, SIGNED_SQUARED(renderRange.min), SQUARED(renderRange.max))) {
-            return false;
-        }
-
-        if (params._maxLoD > -1 && LoDLevel > params._maxLoD) {
-            // Node has a too high LoD for the current render pass
-            return false;
-        }
-
-        // Draw state has its own lod requirements
-        if (LoDLevel > _node->renderState().maxLodLevel()) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
+// Returns true if the node SHOULD be culled!
 bool SceneGraphNode::cullNode(const NodeCullParams& params,
+                              const U16 cullFlags,
                               FrustumCollision& collisionTypeOut,
                               F32& distanceToClosestPointSQ) const {
     OPTICK_EVENT();
 
     collisionTypeOut = FrustumCollision::FRUSTUM_OUT;
 
+    // If the node is still loading, DO NOT RENDER IT. Bad things happen :D
+    if (hasFlag(Flags::LOADING)) {
+        return true;
+    }
+
+    // Drawing is disabled in general for this node
+    if (!_node->renderState().drawState()) {
+        return true;
+    }
+
     // Some nodes should always render for different reasons (eg, trees are instanced and bound to the parent chunk)
     if (hasFlag(Flags::VISIBILITY_LOCKED)) {
-        if (shouldDraw(RenderStagePass{ params._stage, RenderPassType::COUNT })) {
+        if (_node->renderState().drawState(RenderStagePass{ params._stage, RenderPassType::COUNT })) {
             collisionTypeOut = FrustumCollision::FRUSTUM_IN;
             return false;
         }
 
-        collisionTypeOut = FrustumCollision::FRUSTUM_OUT;
         return true;
     }
 
-    // If the node is still loading, DO NOT RENDER IT. Bad things happen :D
-    if (hasFlag(Flags::LOADING)) {
-        collisionTypeOut = FrustumCollision::FRUSTUM_OUT;
+    const bool isStaticNode = usageContext() == NodeUsageContext::NODE_STATIC;
+    if (BitCompare(cullFlags, CullOptions::CULL_STATIC_NODES) && isStaticNode) {
         return true;
     }
-    
-    const bool isStaticNode = usageContext() == NodeUsageContext::NODE_STATIC;
-    if (( isStaticNode && params._cullAllStaticNodes)  ||
-        (!isStaticNode && params._cullAllDynamicNodes))
-    {
-        collisionTypeOut = FrustumCollision::FRUSTUM_OUT;
+    if (BitCompare(cullFlags, CullOptions::CULL_DYNAMIC_NODES) && !isStaticNode) {
         return true;
     }
 
     const BoundsComponent* bComp = get<BoundsComponent>();
+    const BoundingSphere& boundingSphere = bComp->getBoundingSphere();
+    const BoundingBox& boundingBox = bComp->getBoundingBox();
     STUBBED("ToDo: make this work in a multi-threaded environment -Ionut");
     _frustPlaneCache = -1;
     I8 fakePlaneCache = -1;
 
     // Get camera info
     const vec3<F32>& eye = params._currentCamera->getEye();
-    const BoundingSphere& sphere = bComp->getBoundingSphere();
-    distanceToClosestPointSQ = sphere.getCenter().distanceSquared(eye) - SQUARED(sphere.getRadius());
-    if (distanceToClosestPointSQ > params._cullMaxDistanceSq) {
-        // Node is too far away
-        return true;
+    {
+        OPTICK_EVENT("cullNode - Bounding Sphere Distance Test");
+        distanceToClosestPointSQ = boundingSphere.getCenter().distanceSquared(eye) - SQUARED(boundingSphere.getRadius());
+        if (distanceToClosestPointSQ > params._cullMaxDistanceSq) {
+            // Node is too far away
+            return true;
+        }
+    }
+    {
+        OPTICK_EVENT("cullNode - Bounding Box Distance Test");
+        distanceToClosestPointSQ = boundingBox.nearestPoint(eye).distanceSquared(eye);
+        if (distanceToClosestPointSQ > params._cullMaxDistanceSq) {
+            // Check again using the AABB
+            return true;
+        }
+
+        const F32 upperBound = params._minExtents.maxComponent();
+        if (upperBound > 0.0f && boundingBox.getExtent().maxComponent() < upperBound) {
+            // Node is too small for the current render pass
+            return true;
+        }
+
+    }
+    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_CLIPPING_PLANES)) {
+        OPTICK_EVENT("cullNode - Bounding Sphere - Clipping Planes Test");
+        auto& planes = params._clippingPlanes.planes();
+        auto& states = params._clippingPlanes.planeState();
+        for (U8 i = 0u; i < to_U8(ClipPlaneIndex::COUNT); ++i) {
+            if (states[i]) {
+                collisionTypeOut = PlaneBoundingSphereIntersect(planes[i], boundingSphere);
+                if (collisionTypeOut == FrustumCollision::FRUSTUM_OUT) {
+                    // Fails the clipping plane test
+                    return true;
+                }
+            }
+        }
+    }
+    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM)) {
+        OPTICK_EVENT("cullNode - Bounding Sphere & Box Frustum Test");
+        // Sphere is in range, so check bounds primitives against the frustum
+        if (!boundingBox.containsPoint(eye)) {
+            const Frustum& frustum = params._currentCamera->getFrustum();
+            const F32 radius = boundingSphere.getRadius();
+            const vec3<F32>& center = boundingSphere.getCenter();
+            // Check if the bounding sphere is in the frustum, as Frustum <-> Sphere check is fast
+            collisionTypeOut = frustum.ContainsSphere(center, radius, fakePlaneCache);
+            if (collisionTypeOut == FrustumCollision::FRUSTUM_INTERSECT) {
+                // If the sphere is not completely in the frustum, check the AABB
+                collisionTypeOut = frustum.ContainsBoundingBox(boundingBox, fakePlaneCache);
+            }
+        } else {
+            // We are inside the AABB. So ... intersect?
+            collisionTypeOut = FrustumCollision::FRUSTUM_INTERSECT;
+        }
+    } else {
+        collisionTypeOut = FrustumCollision::FRUSTUM_INTERSECT;
     }
 
-    const BoundingBox& boundingBox = bComp->getBoundingBox();
-    distanceToClosestPointSQ = boundingBox.nearestPoint(eye).distanceSquared(eye);
-    if (distanceToClosestPointSQ > params._cullMaxDistanceSq) {
-        // Check again using the AABB
-        return true;
-    }
+    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_LOD)) {
+        OPTICK_EVENT("cullNode - LoD check")
 
-    auto& planes = params._clippingPlanes.planes();
-    auto& states = params._clippingPlanes.planeState();
-    for (U8 i = 0; i < to_U8(ClipPlaneIndex::COUNT); ++i) {
-        if (states[i]) {
-            collisionTypeOut = PlaneBoundingSphereIntersect(planes[i], sphere);
-            if (collisionTypeOut == FrustumCollision::FRUSTUM_OUT) {
-                // Fails the clipping plane test
-                return true;
+        RenderingComponent* rComp = get<RenderingComponent>();
+        const U8 LoDLevel = rComp->getLoDLevel(boundingSphere.getCenter(), eye, params._stage, params._lodThresholds);
+        if (LoDLevel != RenderingComponent::INVALID_LOD_LEVEL) {
+            const vec2<F32>& renderRange = rComp->renderRange();
+            if (!IS_IN_RANGE_INCLUSIVE(distanceToClosestPointSQ, SIGNED_SQUARED(renderRange.min), SQUARED(renderRange.max)) ||
+                params._maxLoD > -1 && LoDLevel > params._maxLoD || // Node has a too high LoD for the current render pass
+                LoDLevel > _node->renderState().maxLodLevel()) // Draw state has its own lod requirements
+            {
+                collisionTypeOut = FrustumCollision::FRUSTUM_OUT;
             }
         }
     }
 
-    // Sphere is in range, so check bounds primitives against the frustum
-    if (!boundingBox.containsPoint(eye)) {
-        const Frustum& frustum = params._currentCamera->getFrustum();
-        const F32 radius = sphere.getRadius();
-        const vec3<F32>& center = sphere.getCenter();
-        // Check if the bounding sphere is in the frustum, as Frustum <-> Sphere check is fast
-        collisionTypeOut = frustum.ContainsSphere(center, radius, fakePlaneCache);
-        if (collisionTypeOut == FrustumCollision::FRUSTUM_INTERSECT) {
-            // If the sphere is not completely in the frustum, check the AABB
-            collisionTypeOut = frustum.ContainsBoundingBox(boundingBox, fakePlaneCache);
-        }
-    } else {
-        // We are inside the AABB. So ... intersect?
-        collisionTypeOut = FrustumCollision::FRUSTUM_INTERSECT;
-    }
-
-    //If it is in frustum, that doesn't mean that we can render it
-    if (collisionTypeOut != FrustumCollision::FRUSTUM_OUT) {
-        return !postCullCheck(params, *bComp, distanceToClosestPointSQ);
-    }
-
-    return true;
+    return collisionTypeOut == FrustumCollision::FRUSTUM_OUT;
 }
 
 void SceneGraphNode::occlusionCull(const RenderStagePass& stagePass,
@@ -809,10 +793,11 @@ void SceneGraphNode::loadFromXML(const boost::property_tree::ptree& pt) {
     changeUsageContext(pt.get("static", false) ? NodeUsageContext::NODE_STATIC : NodeUsageContext::NODE_DYNAMIC);
 
     U32 componentsToLoad = 0;
-    for (ComponentType::_integral i = 1; i < ComponentType::COUNT + 1; ++i) {
-        ComponentType type = ComponentType::_from_integral(1 << i);
-        if (pt.count(type._to_string()) > 0) {
-            componentsToLoad |= type._to_integral();
+    for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i) {
+        const U32 componentBit = 1 << i;
+        const ComponentType type = static_cast<ComponentType>(componentBit);
+        if (pt.count(TypeUtil::ComponentTypeToString(type)) > 0) {
+            componentsToLoad |= componentBit;
         }
     }
 

@@ -52,7 +52,6 @@ class RenderPassExecutor;
 class RenderingComponent;
 class TransformComponent;
 
-struct FrameEvent;
 struct NodeCullParams;
 
 struct SceneGraphNodeDescriptor {
@@ -240,11 +239,11 @@ public:
 
         SetBit(_componentMask, to_U32(comp->type()));
 
-        if (comp->type()._value == ComponentType::TRANSFORM) {
+        if (comp->type() == ComponentType::TRANSFORM) {
             //Ewww
             Hacks._transformComponentCache = (TransformComponent*)comp;
         }
-        if (comp->type()._value == ComponentType::BOUNDS) {
+        if (comp->type() == ComponentType::BOUNDS) {
             //Ewww x2
             Hacks._boundsComponentCache = (BoundsComponent*)comp;
         }
@@ -270,10 +269,10 @@ public:
             ClearBit(_componentMask, to_U32(comp->type()));
             RemoveComponent<T>();
 
-            if (comp->type()._value == ComponentType::TRANSFORM) {
+            if (comp->type() == ComponentType::TRANSFORM) {
                 Hacks._transformComponentCache = nullptr;
             }
-            if (comp->type()._value == ComponentType::BOUNDS) {
+            if (comp->type() == ComponentType::BOUNDS) {
                 Hacks._boundsComponentCache = nullptr;
             }
         }
@@ -291,10 +290,8 @@ public:
 private:
     /// Process any events that might of queued up during the ECS Update stages
     void processEvents();
-    /// Returns true if the node should be culled (is not visible for the current stage). Calls "preCullNode" internally.
-    bool cullNode(const NodeCullParams& params, FrustumCollision& collisionTypeOut, F32& distanceToClosestPointSQ) const;
-    /// Fast distance-to-camera and min-LoD checks. Part of the cullNode call but useful for quick visibility checks elsewhere
-    bool postCullCheck(const NodeCullParams& params, const BoundsComponent& bounds, F32& distanceToClosestPointSQ) const;
+    /// Returns true if the node SHOULD be culled (is not visible for the current stage). Calls "preCullNode" internally.
+    bool cullNode(const NodeCullParams& params, const U16 cullFlags, FrustumCollision& collisionTypeOut, F32& distanceToClosestPointSQ) const;
     /// Called after preRender and after we rebuild our command buffers. Useful for modifying the command buffer that's going to be used for this RenderStagePass
     void prepareRender(RenderingComponent& rComp, const RenderStagePass& renderStagePass, const Camera& camera, bool refreshData);
     /// Called whenever we send a networking packet from our NetworkingComponent (if any). FrameCount is the frame ID sent with the packet.
@@ -303,8 +300,6 @@ private:
     void getAllNodes(vectorEASTL<SceneGraphNode*>& nodeList);
     /// Destructs all of the nodes specified in the list and removes them from the _children container.
     void processDeleteQueue(vectorEASTL<size_t>& childList);
-    /// Called on every new frame
-    void frameStarted(const FrameEvent& evt) const;
     /// Similar to the saveToXML call but is geared towards temporary state (e.g. save game)
     bool saveCache(ByteBuffer& outputBuffer) const;
     /// Similar to the loadFromXML call but is geared towards temporary state (e.g. save game)
@@ -327,7 +322,7 @@ private:
                        GFX::CommandBuffer& bufferInOut) const;
 
     bool canDraw(const RenderStagePass& stagePass) const;
-    bool shouldDraw(const RenderStagePass& stagePass) const;
+
 private:
     SGNRelationshipCache _relationshipCache;
     vectorEASTL<SceneGraphNode*> _children;
@@ -395,10 +390,6 @@ namespace Attorney {
             node->getAllNodes(nodeList);
         }
 
-        static void frameStarted(SceneGraphNode* node, const FrameEvent& evt) {
-            node->frameStarted(evt);
-        }
-
 ;        static void processDeleteQueue(SceneGraphNode* node, vectorEASTL<size_t>& childList) {
             node->processDeleteQueue(childList);
         }
@@ -434,14 +425,9 @@ namespace Attorney {
 
     class SceneGraphNodeRenderPassCuller {
         // Returns true if the node should be culled (is not visible for the current stage)
-        static bool cullNode(const SceneGraphNode* node, const NodeCullParams& params, FrustumCollision& collisionTypeOut, F32& distanceToClosestPointSQ) {
-            return node->cullNode(params, collisionTypeOut, distanceToClosestPointSQ);
+        static bool cullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags, FrustumCollision& collisionTypeOut, F32& distanceToClosestPointSQ) {
+            return node->cullNode(params, cullFlags, collisionTypeOut, distanceToClosestPointSQ);
         }
-
-        // Returns false if the node should be culled!
-        static bool postCullCheck(const SceneGraphNode* node, const NodeCullParams& params, const BoundsComponent& bounds, F32& distanceToClosestPointSQ) {
-            return node->postCullCheck(params, bounds, distanceToClosestPointSQ);
-        } 
         
         static void visiblePostCulling(SceneGraphNode* node, const bool state) {
             node->visiblePostCulling(state);
@@ -458,10 +444,6 @@ namespace Attorney {
 
         static bool canDraw(const SceneGraphNode* node, const RenderStagePass& stagePass) {
             return node->canDraw(stagePass);
-        }
-
-        static bool shouldDraw(const SceneGraphNode* node, const RenderStagePass& stagePass) {
-            return node->shouldDraw(stagePass);
         }
 
         friend class Divide::RenderPassExecutor;

@@ -46,7 +46,6 @@ public:
     };
 
     NavigationComponent(SceneGraphNode* parentSGN, PlatformContext& context);
-    ~NavigationComponent() = default;
 
     [[nodiscard]] const NavigationContext& navigationContext() const {
         return _navigationContext;

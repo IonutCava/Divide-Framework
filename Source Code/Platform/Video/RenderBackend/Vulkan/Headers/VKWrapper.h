@@ -41,7 +41,6 @@ namespace Divide {
 class VK_API final : public RenderAPIWrapper {
   public:
     VK_API(GFXDevice& context);
-    ~VK_API() = default;
 
   protected:
       void idle(bool fast) override;

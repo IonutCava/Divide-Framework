@@ -40,7 +40,6 @@ class ApplicationTimer;
 class ProfileTimer {
    public:
     ProfileTimer() = default;
-    ~ProfileTimer() = default;
 
     void start();
     void stop();

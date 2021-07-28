@@ -60,7 +60,6 @@ class TerrainChunk {
 
    public:
     TerrainChunk(GFXDevice& context, Terrain* parentTerrain, QuadtreeNode& parentNode);
-    ~TerrainChunk() = default;
 
     void load(U8 depth, const vec2<U32>& pos, U32 targetChunkDimension, const vec2<U32>& HMSize, BoundingBox& bbInOut);
 

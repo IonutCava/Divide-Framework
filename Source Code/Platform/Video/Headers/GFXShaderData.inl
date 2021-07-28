@@ -34,16 +34,16 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-inline F32 GFXShaderData::GPUData::aspectRatio() const noexcept {
-    return _cameraPosition.w;
+inline F32 AspectRatio(const GFXShaderData::GPUData& dataIn) noexcept {
+    return dataIn._cameraPosition.w;
 }
 
-inline vec2<F32> GFXShaderData::GPUData::cameraZPlanes() const noexcept {
-    return _renderProperties.xy;
+inline vec2<F32> CameraZPlanes(const GFXShaderData::GPUData& dataIn) noexcept {
+    return dataIn._renderProperties.xy;
 }
 
-inline F32 GFXShaderData::GPUData::FoV() const noexcept {
-    return _renderProperties.z;
+inline F32 FoV(const GFXShaderData::GPUData& dataIn) noexcept {
+    return dataIn._renderProperties.z;
 }
 
 }; //namespace Divide

@@ -42,7 +42,7 @@
 
 namespace Divide {
 
-class ResourceLoadLock : NonCopyable, NonMovable {
+class ResourceLoadLock final : NonCopyable, NonMovable {
 public:
     explicit ResourceLoadLock(size_t hash, PlatformContext& context);
     ~ResourceLoadLock();

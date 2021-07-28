@@ -42,7 +42,6 @@ namespace Divide {
 class NONE_API final : public RenderAPIWrapper {
   public:
     NONE_API(GFXDevice& context);
-    ~NONE_API() = default;
 
   protected:
       void idle(bool fast) override;

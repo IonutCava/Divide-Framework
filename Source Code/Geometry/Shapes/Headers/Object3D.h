@@ -41,7 +41,7 @@ namespace Divide {
 class BoundingBox;
 enum class RigidBodyShape : U8;
 
-BETTER_ENUM(ObjectType, U8,
+enum class ObjectType : U8 {
     SPHERE_3D,
     BOX_3D,
     QUAD_3D,
@@ -51,7 +51,20 @@ BETTER_ENUM(ObjectType, U8,
     TERRAIN,
     DECAL,
     COUNT
-);
+};
+
+namespace Names {
+    static const char* objectType[] = {
+        "SPHERE_3D", "BOX_3D", "QUAD_3D", "PATCH_3D", "MESH", "SUBMESH", "TERRAIN", "DECAL", "UNKNOW",
+    };
+};
+
+static_assert(ArrayCount(Names::objectType) == to_base(ObjectType::COUNT) + 1, "ObjectType name array out of sync!");
+
+namespace TypeUtil {
+    const char* ObjectTypeToString(const ObjectType objectType) noexcept;
+    ObjectType StringToObjectType(const stringImpl& name);
+};
 
 class Object3D : public SceneNode {
    public:

@@ -91,7 +91,7 @@ void PingPongScene::serveBall() {
 
     removeTask(*g_gameTaskID);
 
-    g_gameTaskID = CreateTask(context(), [this](const Task& /*parent*/) {
+    g_gameTaskID = CreateTask([this](const Task& /*parent*/) {
         test(Random(4), GFX::PushConstantType::INT);
     });
 

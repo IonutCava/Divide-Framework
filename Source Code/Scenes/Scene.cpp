@@ -500,7 +500,7 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
                 case _ID("SUBMESH"): {
                     while (parent->getNode().getState() != ResourceState::RES_LOADED) {
                         if (parentTask != nullptr) {
-                            parentTask->_parentPool->threadWaiting();
+                            idle();
                         }
                     }
                     SceneGraphNode* subMesh = parent->findChild(_ID(sceneNode.name.c_str()), false, false);
@@ -528,10 +528,11 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
             nodeDescriptor._node = ret;
             nodeDescriptor._usageContext = nodeStatic ? NodeUsageContext::NODE_STATIC : NodeUsageContext::NODE_DYNAMIC;
 
-            for (U8 i = 1; i < to_U8(ComponentType::COUNT); ++i) {
-                const ComponentType type = ComponentType::_from_integral(1u << i);
-                if (nodeTree.count(type._to_string()) != 0) {
-                    nodeDescriptor._componentMask |= 1 << i;
+            for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i) {
+                const U32 componentBit = 1u << i;
+                const ComponentType type = static_cast<ComponentType>(componentBit);
+                if (nodeTree.count(TypeUtil::ComponentTypeToString(type)) != 0) {
+                    nodeDescriptor._componentMask |= componentBit;
                 }
             }
 
@@ -1361,7 +1362,7 @@ void Scene::registerTask(Task& taskItem, const bool start, const TaskPriority pr
         _tasks.push_back(&taskItem);
     }
     if (start) {
-        Start(taskItem, priority);
+        Start(taskItem, _context.taskPool(TaskPoolType::HIGH_PRIORITY), priority);
     }
 }
 
@@ -1370,7 +1371,7 @@ void Scene::clearTasks() {
     // Performance shouldn't be an issue here
     UniqueLock<SharedMutex> w_lock(_tasksMutex);
     for (Task* task : _tasks) {
-        Wait(*task);
+        Wait(*task, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
     }
 
     _tasks.clear();
@@ -1380,7 +1381,7 @@ void Scene::removeTask(Task& task) {
     UniqueLock<SharedMutex> w_lock(_tasksMutex);
     for (vectorEASTL<Task*>::iterator it = begin(_tasks); it != end(_tasks); ++it) {
         if ((*it)->_id == task._id) {
-            Wait(**it);
+            Wait(**it, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
             _tasks.erase(it);
             return;
         }
@@ -1601,7 +1602,7 @@ testNode:
             }
 
             if (crtNode->getNode().type() == SceneNodeType::TYPE_OBJECT3D &&
-                crtNode->getNode<Object3D>().getObjectType()._value == ObjectType::SUBMESH)                 {
+                crtNode->getNode<Object3D>().getObjectType() == ObjectType::SUBMESH) {
                 // In normal gameplay, we need to top node for the selection (i.e. a mesh for submeshe intersections)
                 // Because we use either the physics system or a recursive scenegraph intersection loop, we may end up with
                 // child-node data as a result

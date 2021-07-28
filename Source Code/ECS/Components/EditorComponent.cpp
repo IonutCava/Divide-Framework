@@ -18,6 +18,28 @@ namespace Divide {
         }
     }
 
+    namespace TypeUtil {
+        const char* ComponentTypeToString(const ComponentType compType) noexcept {
+            for (U32 i = 1u; i < to_U32(ComponentType::COUNT) + 1; ++i) {
+                if (1u << i == to_base(compType)) {
+                    return Names::componentType[i - 1u];
+                }
+            }
+
+            return Names::componentType[to_base(ComponentType::COUNT)];
+        }
+
+        ComponentType StringToComponentType(const stringImpl& name) {
+            for (U32 i = 1u; i < to_U32(ComponentType::COUNT) + 1; ++i) {
+                if (strcmp(name.c_str(), Names::componentType[i - 1u]) == 0) {
+                    return static_cast<ComponentType>(1 << i);
+                }
+            }
+
+            return ComponentType::COUNT;
+        }
+    }
+
     EditorComponent::EditorComponent(const Str128& name)
         : GUIDWrapper(),
           _name(name)

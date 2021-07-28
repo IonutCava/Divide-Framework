@@ -68,8 +68,6 @@ namespace Divide {
             static_assert(N <= Length, "Fixed String construction: Constructing a smaller fixed string from a larger one!");
         }
 
-        ~Str() = default;
-
         operator std::string_view() const { return std::string_view{c_str()}; }
 
         [[nodiscard]] boost::string_ref as_ref(size_t pos = 0) const {

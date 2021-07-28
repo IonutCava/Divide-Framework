@@ -43,6 +43,7 @@ struct ParticleColourGenerator final : ParticleGenerator {
     FColour4 _maxEndCol = DefaultColours::WHITE;
 
     void generate(Task& packagedTasksParent,
+                  TaskPool& parentPool,
                   U64 deltaTimeUS,
                   ParticleData& p,
                   U32 startIndex,

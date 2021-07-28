@@ -74,7 +74,7 @@ namespace Names {
     };
 };
 
-class CommandBuffer final : GUIDWrapper, NonCopyable {
+class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     friend class CommandBufferPool;
   public:
       using CommandEntry = PolyContainerEntry;
@@ -82,11 +82,6 @@ class CommandBuffer final : GUIDWrapper, NonCopyable {
       using CommandOrderContainer = eastl::fixed_vector<CommandEntry, 256, true>;
 
   public:
-    CommandBuffer() = default;
-    ~CommandBuffer() = default;
-    CommandBuffer(CommandBuffer&& other) = default;
-    CommandBuffer& operator=(CommandBuffer&& other) = delete;
-
     template<typename T>
     typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
     add(const T& command);
@@ -167,8 +162,8 @@ class CommandBuffer final : GUIDWrapper, NonCopyable {
       bool _batched = false;
 };
 
-bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand);
-bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept;
+[[nodiscard]] bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand);
+[[nodiscard]] bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept;
 
 template<typename T>
 typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type

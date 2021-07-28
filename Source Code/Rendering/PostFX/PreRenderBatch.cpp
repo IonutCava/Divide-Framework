@@ -385,14 +385,6 @@ RenderTargetHandle PreRenderBatch::getOutput(const bool hdr) const {
     return getTarget(hdr, hdr ? !_screenRTs._swappedHDR : !_screenRTs._swappedLDR);
 }
 
-void PreRenderBatch::idle(const Configuration& config) {
-    for (OperatorBatch& batch : _operators) {
-        for (auto& op : batch) {
-            op->idle(config);
-        }
-    }
-}
-
 void PreRenderBatch::adaptiveExposureControl(const bool state) noexcept {
     _adaptiveExposureControl = state;
     _context.context().config().rendering.postFX.toneMap.adaptive = state;
@@ -486,7 +478,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
     const TextureData depthTexData = depthAtt.texture()->data();
 
     DescriptorSet depthSet = {};
-    depthSet._textureData.add({ depthTexData, depthAtt.samplerHash(), TextureUsage::DEPTH });
+    depthSet._textureData.add(TextureEntry{ depthTexData, depthAtt.samplerHash(), TextureUsage::DEPTH });
     EnqueueCommand(bufferInOut, GFX::BindDescriptorSetsCommand{ depthSet });
 
     GFX::SendPushConstantsCommand pushConstants = {};
@@ -697,12 +689,12 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         const TextureData specularData = specularAtt.texture()->data();
 
         GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-        descriptorSetCmd._set._textureData.add({ screenData,   screenAtt.samplerHash(),   TextureUsage::UNIT0 });
-        descriptorSetCmd._set._textureData.add({ fxData,       fxDataAtt.samplerHash(),   TextureUsage::OPACITY });
-        descriptorSetCmd._set._textureData.add({ ssrData,      ssrDataAtt.samplerHash(),  TextureUsage::PROJECTION });
-        descriptorSetCmd._set._textureData.add({ specularData, specularAtt.samplerHash(), TextureUsage::UNIT1 });
-        descriptorSetCmd._set._textureData.add({ materialData, materialAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
-        descriptorSetCmd._set._textureData.add({ depthTexData, depthAtt.samplerHash(),    TextureUsage::DEPTH });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ screenData,   screenAtt.samplerHash(),   TextureUsage::UNIT0 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ fxData,       fxDataAtt.samplerHash(),   TextureUsage::OPACITY });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ ssrData,      ssrDataAtt.samplerHash(),  TextureUsage::PROJECTION });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ specularData, specularAtt.samplerHash(), TextureUsage::UNIT1 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ materialData, materialAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ depthTexData, depthAtt.samplerHash(),    TextureUsage::DEPTH });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         GFX::SendPushConstantsCommand pushConstantsCmd{};
@@ -752,9 +744,9 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         lumaSampler.anisotropyLevel(0);
 
         GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-        descriptorSetCmd._set._textureData.add({ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
-        descriptorSetCmd._set._textureData.add({ _currentLuminance->data(), lumaSampler.getHash(), TextureUsage::UNIT1 });
-        descriptorSetCmd._set._textureData.add({ screenDepth->data(), screenDepthAtt.samplerHash(),TextureUsage::DEPTH });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ _currentLuminance->data(), lumaSampler.getHash(), TextureUsage::UNIT1 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ screenDepth->data(), screenDepthAtt.samplerHash(),TextureUsage::DEPTH });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         beginRenderPassCmd._target = getOutput(false)._targetID;
@@ -763,11 +755,11 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
 
         EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ adaptiveExposureControl() ? pipelineToneMapAdaptive : pipelineToneMap });
 
-        const auto mappingFunction = to_base(_context.materialDebugFlag()._value == MaterialDebugFlag::COUNT ? _toneMapParams._function : ToneMapParams::MapFunctions::COUNT);
+        const auto mappingFunction = to_base(_context.materialDebugFlag() == MaterialDebugFlag::COUNT ? _toneMapParams._function : ToneMapParams::MapFunctions::COUNT);
         _toneMapConstants.set(_ID("useAdaptiveExposure"), GFX::PushConstantType::BOOL, adaptiveExposureControl());
         _toneMapConstants.set(_ID("manualExposureFactor"), GFX::PushConstantType::FLOAT, _toneMapParams._manualExposureFactor);
         _toneMapConstants.set(_ID("mappingFunction"), GFX::PushConstantType::INT, mappingFunction);
-        _toneMapConstants.set(_ID("skipToneMapping"), GFX::PushConstantType::BOOL, _context.materialDebugFlag()._value != MaterialDebugFlag::COUNT);
+        _toneMapConstants.set(_ID("skipToneMapping"), GFX::PushConstantType::BOOL, _context.materialDebugFlag() != MaterialDebugFlag::COUNT);
         EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _toneMapConstants });
 
         EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
@@ -786,7 +778,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         const TextureData screenTex = screenAtt.texture()->data();
 
         GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-        descriptorSetCmd._set._textureData.add({ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         RTClearDescriptor clearTarget = {};

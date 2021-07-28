@@ -40,9 +40,7 @@ class GL_API;
 
 namespace GLUtil {
 
-class glVAOPool {
-public:
-    glVAOPool() = default;
+struct glVAOPool {
     ~glVAOPool();
 
     GLuint allocate();

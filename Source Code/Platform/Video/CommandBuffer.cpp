@@ -10,7 +10,7 @@ namespace Divide {
 namespace GFX {
 
 namespace {
-    bool ShouldSkipType(const U8 typeIndex) noexcept {
+    [[nodiscard]] bool ShouldSkipType(const U8 typeIndex) noexcept {
         switch (static_cast<CommandType>(typeIndex)) {
             case CommandType::BEGIN_DEBUG_SCOPE:
             case CommandType::END_DEBUG_SCOPE:
@@ -20,7 +20,7 @@ namespace {
         return false;
     }
 
-    bool IsCameraCommand(const U8 typeIndex) noexcept {
+    [[nodiscard]] bool IsCameraCommand(const U8 typeIndex) noexcept {
         switch (static_cast<CommandType>(typeIndex)) {
             case CommandType::PUSH_CAMERA:
             case CommandType::POP_CAMERA:
@@ -31,7 +31,7 @@ namespace {
         return false;
     }
 
-    bool DoesNotAffectRT(const U8 typeIndex) noexcept {
+    [[nodiscard]] bool DoesNotAffectRT(const U8 typeIndex) noexcept {
         if (ShouldSkipType(typeIndex) || IsCameraCommand(typeIndex)) {
             return true;
         }
@@ -51,12 +51,8 @@ namespace {
         return false;
     }
 
-    const auto RemoveEmptyDrawCommands = [](DrawCommand::CommandContainer& commands) {
-        const size_t startSize = commands.size();
-        erase_if(commands, [](const GenericDrawCommand& cmd) noexcept -> bool {
-            return cmd._drawCount == 0u;
-        });
-        return startSize != commands.size();
+    [[nodiscard]] bool RemoveEmptyDrawCommands(DrawCommand::CommandContainer& commands) {
+        return dvd_erase_if(commands, [](const GenericDrawCommand& cmd) noexcept { return cmd._drawCount == 0u; });
     };
 };
 
@@ -80,11 +76,16 @@ void CommandBuffer::add(CommandBuffer** buffers, const size_t count) {
     for (size_t i = 0; i < count; ++i) {
         CommandBuffer* other = buffers[i];
 
-        _commands.reserveAdditional(other->_commands);
-        for (const CommandEntry& cmd : other->_commandOrder) {
-            other->get<CommandBase>(cmd)->addToBuffer(this);
+        {
+            OPTICK_EVENT("add - reserve additional storage");
+            _commands.reserveAdditional(other->_commands);
         }
-
+        {
+            OPTICK_EVENT("add - inserting commands");
+            for (const CommandEntry& cmd : other->_commandOrder) {
+                other->get<CommandBase>(cmd)->addToBuffer(this);
+            }
+        }
         _batched = false;
     }
 }
@@ -269,8 +270,7 @@ void CommandBuffer::clean() {
                 if (cmds.size() == 1) {
                     erase = cmds.begin()->_drawCount == 0u;
                 } else {
-                    RemoveEmptyDrawCommands(cmds);
-                    erase = cmds.empty();
+                    erase = RemoveEmptyDrawCommands(cmds) && cmds.empty();
                 }
             } break;
             case CommandType::BIND_PIPELINE : {
@@ -571,18 +571,6 @@ bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& curr
 bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand) {
     OPTICK_EVENT();
 
-    const auto BatchCommands = [](DrawCommand::CommandContainer& commands) {
-        const size_t commandCount = commands.size();
-        for (size_t previousCommandIndex = 0, currentCommandIndex = 1;
-             currentCommandIndex < commandCount;
-             ++currentCommandIndex)
-        {
-            if (!BatchDrawCommands(commands[previousCommandIndex], commands[currentCommandIndex])) {
-                previousCommandIndex = currentCommandIndex;
-            }
-        }
-    };
-
     DrawCommand::CommandContainer& commands = prevCommand->_drawCommands;
     commands.insert(cend(commands),
                     eastl::make_move_iterator(begin(crtCommand->_drawCommands)),
@@ -598,7 +586,15 @@ bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand) {
                     });
 
         do {
-            BatchCommands(commands);
+            const size_t commandCount = commands.size();
+            for (size_t previousCommandIndex = 0, currentCommandIndex = 1;
+                currentCommandIndex < commandCount;
+                ++currentCommandIndex)
+            {
+                if (!BatchDrawCommands(commands[previousCommandIndex], commands[currentCommandIndex])) {
+                    previousCommandIndex = currentCommandIndex;
+                }
+            }
         } while (RemoveEmptyDrawCommands(commands));
     }
 

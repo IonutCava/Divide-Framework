@@ -195,13 +195,13 @@ bool PostAAPreRenderOperator::execute(const Camera* camera, const RenderTargetHa
             SamplerDescriptor samplerDescriptor = {};
 
             GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-            descriptorSetCmd._set._textureData.add({ edgesTex, att.samplerHash(),TextureUsage::UNIT0 });
+            descriptorSetCmd._set._textureData.add(TextureEntry{ edgesTex, att.samplerHash(),TextureUsage::UNIT0 });
             samplerDescriptor.minFilter(TextureFilter::LINEAR);
             samplerDescriptor.magFilter(TextureFilter::LINEAR);
-            descriptorSetCmd._set._textureData.add({ areaTex, samplerDescriptor.getHash(), TextureUsage::UNIT1 });
+            descriptorSetCmd._set._textureData.add(TextureEntry{ areaTex, samplerDescriptor.getHash(), TextureUsage::UNIT1 });
             samplerDescriptor.minFilter(TextureFilter::NEAREST);
             samplerDescriptor.magFilter(TextureFilter::NEAREST);
-            descriptorSetCmd._set._textureData.add({ searchTex, samplerDescriptor.getHash(), to_U8(TextureUsage::UNIT1) + 1 });
+            descriptorSetCmd._set._textureData.add(TextureEntry{ searchTex, samplerDescriptor.getHash(), to_U8(TextureUsage::UNIT1) + 1 });
             EnqueueCommand(bufferInOut, descriptorSetCmd);
 
             EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaWeightPipeline });
@@ -222,8 +222,8 @@ bool PostAAPreRenderOperator::execute(const Camera* camera, const RenderTargetHa
             const TextureData blendTex = att.texture()->data();
 
             GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-            descriptorSetCmd._set._textureData.add({screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0});
-            descriptorSetCmd._set._textureData.add({blendTex, att.samplerHash(),TextureUsage::UNIT1 });
+            descriptorSetCmd._set._textureData.add(TextureEntry{screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0});
+            descriptorSetCmd._set._textureData.add(TextureEntry{blendTex, att.samplerHash(),TextureUsage::UNIT1 });
             EnqueueCommand(bufferInOut, descriptorSetCmd);
 
             EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaBlendPipeline });
@@ -245,7 +245,7 @@ bool PostAAPreRenderOperator::execute(const Camera* camera, const RenderTargetHa
         EnqueueCommand(bufferInOut, _pushConstantsCommand);
 
         GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-        descriptorSetCmd._set._textureData.add({ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         EnqueueCommand(bufferInOut, _triangleDrawCmd);

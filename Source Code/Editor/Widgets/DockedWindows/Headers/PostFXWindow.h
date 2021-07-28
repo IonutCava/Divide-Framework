@@ -43,7 +43,6 @@ class PostFX;
 class PostFXWindow final : public DockedWindow, public PlatformContextComponent {
 public:
     PostFXWindow(Editor& parent, PlatformContext& context, const Descriptor& descriptor);
-    ~PostFXWindow() = default;
 
     void drawInternal() override;
 private:

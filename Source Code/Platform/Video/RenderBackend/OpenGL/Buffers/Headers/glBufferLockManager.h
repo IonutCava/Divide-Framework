@@ -59,7 +59,7 @@ inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept 
 // --------------------------------------------------------------------------------------------------------------------
 struct BufferLock {
     BufferLock() = default;
-    BufferLock(const BufferRange range, const GLsync syncObj, const U32 frameID) noexcept
+    explicit BufferLock(const BufferRange range, const GLsync syncObj, const U32 frameID) noexcept
         : _range(range), _syncObj(syncObj), _frameID(frameID)
     {
     }
@@ -73,7 +73,6 @@ struct BufferLock {
 // --------------------------------------------------------------------------------------------------------------------
 class glBufferLockManager final : public glLockManager {
    public:
-    glBufferLockManager() = default;
     ~glBufferLockManager();
 
     /// Returns false if we encountered an error

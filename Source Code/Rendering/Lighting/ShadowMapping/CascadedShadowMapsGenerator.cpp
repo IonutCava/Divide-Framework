@@ -262,7 +262,7 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
                 for (auto& node : prevPassResults) {
                     const SceneNode& sNode = node._node->getNode();
                     if (sNode.type() == SceneNodeType::TYPE_OBJECT3D) {
-                        if (static_cast<const Object3D&>(sNode).getObjectType()._value == ObjectType::SUBMESH) {
+                        if (static_cast<const Object3D&>(sNode).getObjectType() == ObjectType::SUBMESH) {
                             meshAABB.add(node._node->get<BoundsComponent>()->getBoundingBox());
                             validResult = true;
                         }
@@ -434,7 +434,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
 
         EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurPipeline });
 
-        descriptorSetCmd._set._textureData.add({ texData, shadowAtt.samplerHash(),TextureUsage::UNIT0 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ texData, shadowAtt.samplerHash(),TextureUsage::UNIT0 });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         _shaderConstants.set(_ID("verticalBlur"), GFX::PushConstantType::BOOL, false);
@@ -451,7 +451,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
         // Blur vertically
         const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
         texData = blurAtt.texture()->data();
-        descriptorSetCmd._set._textureData.add({ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
+        descriptorSetCmd._set._textureData.add(TextureEntry{ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         beginRenderPassCmd._target = g_depthMapID;

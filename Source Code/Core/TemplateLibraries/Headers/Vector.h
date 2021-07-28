@@ -38,13 +38,13 @@
 #include <EASTL/sort.h>
 #include <EASTL/vector.h>
 
-template <typename Type, typename Allocator = EASTLAllocatorType>
+template <typename Type, typename Allocator = eastl::aligned_allocator>
 using vectorEASTL = eastl::vector<Type, Allocator>;
 template <typename Type>
-using vectorEASTLFast = eastl::vector<Type, eastl::dvd_eastl_allocator>;
+using vectorEASTLFast = eastl::vector<Type, eastl::dvd_allocator>;
 
 template< typename T, typename Pred, typename A>
-typename vectorEASTL<T, A>::iterator insert_sorted(vectorEASTL<T, A>& vec, T const& item, Pred pred)
+typename vectorEASTL<T, A>::iterator insert_sorted(vectorEASTL<T, A>& vec, T const& item, Pred&& pred)
 {
     return vec.insert(eastl::upper_bound(eastl::begin(vec), eastl::end(vec), item, pred), item);
 }
@@ -65,6 +65,13 @@ void insert_unique(vectorEASTL<T, A>& target, const vectorEASTL<T>& source)
         [&target](T const& item) {
         insert_unique(target, item);
     });
+}
+
+template <class T, class Allocator, class Predicate>
+bool dvd_erase_if(eastl::vector<T, Allocator>& vec, Predicate&& pred) {
+    const size_t size = vec.size();
+    erase_if(vec, pred);
+    return vec.size() < size;
 }
 
 template<typename T, typename A>

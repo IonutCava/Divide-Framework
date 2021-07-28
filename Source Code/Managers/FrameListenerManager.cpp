@@ -28,18 +28,8 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
     assert(listener != nullptr);
 
     const I64 targetGUID = listener->getGUID();
-
     UniqueLock<SharedMutex> lock(_listenerLock);
-    const vectorEASTL<FrameListener*>::const_iterator it = 
-        eastl::find_if(cbegin(_listeners), cend(_listeners),
-                       [targetGUID](FrameListener const* fl) -> bool
-                       {
-                           return fl->getGUID() == targetGUID;
-                       });
-
-    if (it != cend(_listeners)) {
-        _listeners.erase(it);
-    } else {
+    if (!dvd_erase_if(_listeners, [targetGUID](FrameListener const* fl) { return fl->getGUID() == targetGUID; })) {
         Console::errorfn(Locale::Get(_ID("ERROR_FRAME_LISTENER_REMOVE")), listener->getListenerName().c_str());
     }
 }

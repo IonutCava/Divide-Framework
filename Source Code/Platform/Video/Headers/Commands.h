@@ -202,7 +202,7 @@ END_COMMAND(SendPushConstantsCommand);
 
 
 BEGIN_COMMAND(DrawCommand, CommandType::DRAW_COMMANDS);
-    using CommandContainer = eastl::fixed_vector<GenericDrawCommand, 4, true, eastl::dvd_eastl_allocator>;
+    using CommandContainer = eastl::fixed_vector<GenericDrawCommand, 4, true, eastl::dvd_allocator>;
 
     static_assert(sizeof(GenericDrawCommand) == 32, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
 
@@ -393,7 +393,7 @@ BEGIN_COMMAND(SetClippingStateCommand, CommandType::SET_CLIPING_STATE)
 END_COMMAND(SetClippingStateCommand);
 
 BEGIN_COMMAND(ExternalCommand, CommandType::EXTERNAL);
-    std::function<void()> _cbk;
+DELEGATE_STD<void> _cbk;
 END_COMMAND(ExternalCommand);
 
 }; //namespace GFX

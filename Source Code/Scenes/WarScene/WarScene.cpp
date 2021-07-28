@@ -229,7 +229,12 @@ void WarScene::processTasks(const U64 deltaTimeUS) {
             const F32 c = i % 2 == 0 ? c1 : c2;
             const F32 s = i % 2 == 0 ? s1 : s2;
 
-            _lightNodeTransforms[i]->setPosition(vec3<F32>{ radius * c, halfRadius * s, radius * s } + initPosLight[i]);
+            const vec3<F32>& initPos = initPosLight[i];
+            _lightNodeTransforms[i]->setPosition(
+                radius * c + initPos.x,
+                halfRadius * s + initPos.y,
+                radius * s + initPos.z
+            );
         }
         _taskTimers[3] = 0.0;
     }
@@ -259,7 +264,7 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
         if (g_terrain == nullptr) {
             auto objects = sceneGraph()->getNodesByType(SceneNodeType::TYPE_OBJECT3D);
             for (SceneGraphNode* object : objects) {
-                if (object->getNode<Object3D>().getObjectType()._value == ObjectType::TERRAIN) {
+                if (object->getNode<Object3D>().getObjectType() == ObjectType::TERRAIN) {
                     g_terrain = object;
                     break;
                 }

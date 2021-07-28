@@ -72,14 +72,22 @@ enum class RenderingOrder : U8 {
 };
 
 //Bins can hold certain node types. This is also the order in which nodes will be rendered!
-BETTER_ENUM(RenderBinType, U8,
-    RBT_OPAQUE,      ///< Opaque objects will occlude a lot of the terrain and terrain is REALLY expensive to render, so maybe draw them first?
-    RBT_TERRAIN_AUX, ///< Water, infinite ground plane, etc. Ground, but not exactly ground. Still oclude a lot of terrain AND cheaper to render
-    RBT_TERRAIN,     ///< Actual terrain. It should cover most of the remaining empty screen space
-    RBT_SKY,         ///< Sky needs to be drawn after ALL opaque geometry to save on fillrate
-    RBT_TRANSLUCENT, ///< Translucent items use a [0.0...1.0] alpha values supplied via an opacity map or the albedo's alpha channel
-    RBT_IMPOSTOR,    ///< Impostors should be overlayed over everything since they are a debugging tool
-    RBT_COUNT);
+enum class RenderBinType : U8 {
+    OPAQUE,      ///< Opaque objects will occlude a lot of the terrain and terrain is REALLY expensive to render, so maybe draw them first?
+    TERRAIN_AUX, ///< Water, infinite ground plane, etc. Ground, but not exactly ground. Still oclude a lot of terrain AND cheaper to render
+    TERRAIN,     ///< Actual terrain. It should cover most of the remaining empty screen space
+    SKY,         ///< Sky needs to be drawn after ALL opaque geometry to save on fillrate
+    TRANSLUCENT, ///< Translucent items use a [0.0...1.0] alpha values supplied via an opacity map or the albedo's alpha channel
+    IMPOSTOR,    ///< Impostors should be overlayed over everything since they are a debugging tool
+    COUNT
+};
+namespace Names {
+    static const char* renderBinType[] = {
+        "OPAQUE", "TERRAIN_AUX", "TERRAIN", "SKY", "TRANSLUCENT", "IMPOSTOR", "UNKNOWN"
+    };
+};
+
+static_assert(ArrayCount(Names::renderBinType) == to_base(RenderBinType::COUNT) + 1, "RenderBinType name array out of sync!");
 
 class RenderPackage;
 class SceneRenderState;
@@ -99,12 +107,11 @@ class RenderBin {
    public:
     using RenderBinStack = eastl::array<RenderBinItem, Config::MAX_VISIBLE_NODES>;
     using SortedQueue = vectorEASTL<RenderingComponent*>;
-    using SortedQueues = std::array<SortedQueue, RenderBinType::RBT_COUNT>;
+    using SortedQueues = std::array<SortedQueue, to_base(RenderBinType::COUNT)>;
 
     friend class RenderQueue;
 
     explicit RenderBin(RenderBinType rbType, RenderStage stage);
-    ~RenderBin() = default;
 
     void sort(RenderingOrder renderOrder);
     void populateRenderQueue(RenderStagePass stagePass, RenderQueuePackages& queueInOut) const;

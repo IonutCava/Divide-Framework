@@ -2,15 +2,16 @@
 
 #include "Headers/ParticleColourGenerator.h"
 
+#include "Core/Headers/PlatformContext.h"
+
 namespace Divide {
 
 void ParticleColourGenerator::generate(Task& packagedTasksParent,
+                                       TaskPool& parentPool,
                                        const U64 deltaTimeUS,
                                        ParticleData& p,
                                        const U32 startIndex,
                                        const U32 endIndex) {
-
-    TaskPool& tp = *packagedTasksParent._parentPool;
 
     using iter_t_start = decltype(std::begin(p._startColour));
     for_each_interval<iter_t_start>(std::begin(p._startColour) + startIndex,
@@ -18,14 +19,15 @@ void ParticleColourGenerator::generate(Task& packagedTasksParent,
                                     ParticleData::g_threadPartitionSize,
                                     [&](iter_t_start from, iter_t_start to)
     {
-        Start(*CreateTask(tp,
+        Start(*CreateTask(
                    &packagedTasksParent,
                    [this, from, to](const Task&) {
                        std::for_each(from, to, [&](FColour4& colour)
                        {
                            colour.set(Random(_minStartCol, _maxStartCol));
                        });
-                   }));
+                   }),
+            parentPool);
     });
 
     using iter_t_end = decltype(std::begin(p._endColour));
@@ -34,14 +36,15 @@ void ParticleColourGenerator::generate(Task& packagedTasksParent,
                                   ParticleData::g_threadPartitionSize,
                                   [&](iter_t_end from, iter_t_end to)
     {
-        Start(*CreateTask(tp,
+        Start(*CreateTask(
                    &packagedTasksParent,
                    [this, from, to](const Task&) {
                        std::for_each(from, to, [&](FColour4& colour)
                        {
                            colour.set(Random(_minEndCol, _maxEndCol));
                        });
-                   }));
+                   }),
+            parentPool);
     });
 }
 }

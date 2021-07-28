@@ -64,22 +64,22 @@ template <size_t Alignment = 16>
 struct AlignedBase {
     void *operator new (const size_t size)
     {
-        return _mm_malloc(size, Alignment);
+        return malloc_aligned(size, Alignment);
     }
 
     void *operator new[](const size_t size)
     {
-        return _mm_malloc(size, Alignment);
+        return malloc_aligned(size, Alignment);
     }
 
     void operator delete (void *mem)
     {
-        _mm_free(mem);
+        free_aligned(mem);
     }
 
     void operator delete[](void *mem)
     {
-        _mm_free(mem);
+        free_aligned(mem);
     }
 };
 
@@ -142,11 +142,6 @@ class vec2 {
     static_assert(std::is_arithmetic<T>::value || std::is_same<T, bool>::value, "non-arithmetic vector type");
 
    public:
-    ~vec2() = default;
-    vec2(vec2&&) noexcept = default;
-    vec2 &operator=(vec2 && other) noexcept = default;
-    vec2 &operator=(const vec2 & other) noexcept = default;
-
     vec2() noexcept : vec2(static_cast<T>(0)) {}
     vec2(T value) noexcept : vec2(value, value) {}
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
@@ -166,11 +161,6 @@ class vec2 {
     vec2(const vec3<U> &v) noexcept : vec2(v.x, v.y) {}
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     vec2(const vec4<U> &v) noexcept : vec2(v.x, v.y) {}
-
-    template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec2 &operator=(U _f) noexcept { this->set(_f); return *this; }
-    template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec2 &operator=(const vec2<U>& other) noexcept { this->set(other); return *this; }
 
     bool operator> (const vec2 &v) const noexcept { return x > v.x && y > v.y; }
     bool operator< (const vec2 &v) const noexcept { return x < v.x && y < v.y; }
@@ -337,11 +327,6 @@ template <typename T>
 class vec3 {
     static_assert(std::is_arithmetic<T>::value || std::is_same<T, bool>::value, "non-arithmetic vector type");
    public:
-    ~vec3() = default;
-    vec3(vec3&&) noexcept = default;
-    vec3 &operator=(vec3 && other) noexcept = default;
-    vec3 &operator=(const vec3 & other) noexcept = default;
-
     vec3() noexcept : vec3(static_cast<T>(0)) {}
     vec3(T value) noexcept : vec3(value, value, value) {}
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
@@ -378,10 +363,6 @@ class vec3 {
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     [[nodiscard]] bool operator==(const vec3<U> &v) const noexcept { return this->compare(v); }
 
-    template <typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec3 &operator=(U _f) noexcept { this->set(_f, _f, _f); return *this; }
-    template <typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec3 &operator=(const vec3<U>& other) noexcept { this->set(other); return *this; }
     template <typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     [[nodiscard]] vec3 operator+(U _f) const noexcept { return vec3(this->x + _f, this->y + _f, this->z + _f); }
     template <typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
@@ -597,11 +578,6 @@ class vec4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     static_assert(std::is_arithmetic<T>::value || std::is_same<T, bool>::value, "non-arithmetic vector type");
 
    public:
-    ~vec4() = default;
-    vec4(vec4&&) noexcept = default;
-    vec4 &operator=(vec4 && other) noexcept = default;
-    vec4 &operator=(const vec4 & other) noexcept = default;
-
     vec4() noexcept : x(0), y(0), z(0), w(1) {}
     vec4(T xIn, T yIn, T zIn, T wIn) noexcept  : x(xIn), y(yIn), z(zIn), w(wIn) {}
     vec4(T xIn, T yIn, T zIn) noexcept : x(xIn), y(yIn), z(zIn), w(static_cast<T>(1)) {}
@@ -638,12 +614,6 @@ class vec4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     [[nodiscard]] bool operator!=(const vec4<U> &v) const noexcept { return !this->compare(v); }
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     [[nodiscard]] bool operator==(const vec4<U> &v) const noexcept { return this->compare(v); }
-
-    vec4 &operator=(T _f) noexcept { this->set(_f); return *this; }
-    template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec4 &operator=(U _f) noexcept { this->set(_f); return *this; }
-    template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
-    vec4 &operator=(const vec4<U>& other) noexcept { this->set(other); return *this; }
 
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     [[nodiscard]] vec4 operator-(U _f) const noexcept { return vec4(this->x - _f, this->y - _f, this->z - _f, this->w - _f); }

@@ -62,7 +62,6 @@ class PreRenderBatch {
 
     [[nodiscard]] PostFX& parent() const noexcept { return _parent; }
 
-    void idle(const Configuration& config);
     void update(U64 deltaTimeUS) noexcept;
 
     void execute(const Camera* camera, U32 filterStack, GFX::CommandBuffer& bufferInOut);

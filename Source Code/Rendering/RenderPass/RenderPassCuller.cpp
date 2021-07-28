@@ -20,7 +20,7 @@ namespace {
     [[nodiscard]] bool isTransformNode(const SceneNodeType nodeType, const ObjectType objType) noexcept {
         return nodeType == SceneNodeType::TYPE_TRANSFORM || 
                nodeType == SceneNodeType::TYPE_TRIGGER || 
-               objType._value == ObjectType::MESH;
+               objType  == ObjectType::MESH;
     }
 
     // Return true if this node should be removed from a shadow pass
@@ -28,7 +28,7 @@ namespace {
         if (sceneNodeType == SceneNodeType::TYPE_SKY ||
             sceneNodeType == SceneNodeType::TYPE_WATER ||
             sceneNodeType == SceneNodeType::TYPE_INFINITEPLANE ||
-            objType._value == ObjectType::DECAL)
+            objType       == ObjectType::DECAL)
         {
             return true;
         }
@@ -79,7 +79,7 @@ void RenderPassCuller::clear() noexcept {
     }
 }
 
-VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, const SceneGraph* sceneGraph, const SceneState* sceneState, PlatformContext& context)
+VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, const U16 cullFlags, const SceneGraph* sceneGraph, const SceneState* sceneState, PlatformContext& context)
 {
     OPTICK_EVENT();
 
@@ -100,7 +100,7 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, c
         descriptor._useCurrentThread = true;
         descriptor._cbk = [&](const Task*, const U32 start, const U32 end) {
                             for (U32 i = start; i < end; ++i) {
-                                frustumCullNode(rootChildren[i], params, 0u, nodeCache);
+                                frustumCullNode(rootChildren[i], params, cullFlags, 0u, nodeCache);
                             }
                         };
         parallel_for(context, descriptor);
@@ -111,7 +111,7 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, c
 }
 
 /// This method performs the visibility check on the given node and all of its children and adds them to the RenderQueue
-void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCullParams& params, U8 recursionLevel, VisibleNodeList<>& nodes) const {
+void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, U8 recursionLevel, VisibleNodeList<>& nodes) const {
     OPTICK_EVENT();
 
     if (params._stage == RenderStage::DISPLAY) {
@@ -141,7 +141,7 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
 
         // Internal node cull (check against camera frustum and all that ...)
         F32 distanceSqToCamera = 0.0f;
-        if (isTransformNode || !Attorney::SceneGraphNodeRenderPassCuller::cullNode(currentNode, params, collisionResult, distanceSqToCamera)) {
+        if (isTransformNode || !Attorney::SceneGraphNodeRenderPassCuller::cullNode(currentNode, params, cullFlags, collisionResult, distanceSqToCamera)) {
             if (!isTransformNode) {
                 VisibleNode node;
                 node._node = currentNode;
@@ -167,27 +167,27 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
                         descriptor._useCurrentThread = true;
                         descriptor._cbk = [&](const Task* /*parentTask*/, const U32 start, const U32 end) {
                             for (U32 i = start; i < end; ++i) {
-                                frustumCullNode(children[i], params, recursionLevel + 1, nodes);
+                                frustumCullNode(children[i], params, cullFlags, recursionLevel + 1, nodes);
                             }
                         };
                         parallel_for(currentNode->context(), descriptor);
                         currentNode->unlockChildrenForRead();
                     } else {
                         currentNode->forEachChild([&](SceneGraphNode* child, I32 /*childIdx*/) {
-                            frustumCullNode(child, params, recursionLevel + 1, nodes);
+                            frustumCullNode(child, params, cullFlags, recursionLevel + 1, nodes);
                             return true;
                         });
                     }
                 }
             } else {
                 // All nodes are in view entirely
-                addAllChildren(currentNode, params, nodes);
+                addAllChildren(currentNode, params, cullFlags, nodes);
             }
         }
     }
 }
 
-void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const NodeCullParams& params, VisibleNodeList<>& nodes) const {
+void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, VisibleNodeList<>& nodes) const {
     OPTICK_EVENT();
 
     currentNode->lockChildrenForRead();
@@ -196,14 +196,20 @@ void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const N
         if (params._stage == RenderStage::DISPLAY) {
             Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(child, false);
         }
+
         if (!child->hasFlag(SceneGraphNode::Flags::ACTIVE)) {
             continue;
         }
-        
+
         bool isTransformNode = false;
         if (!shouldCullNode(params._stage, child, isTransformNode)) {
             F32 distanceSqToCamera = std::numeric_limits<F32>::max();
-            if (Attorney::SceneGraphNodeRenderPassCuller::postCullCheck(child, params, *child->get<BoundsComponent>(), distanceSqToCamera)) {
+            FrustumCollision collisionResult = FrustumCollision::FRUSTUM_OUT;
+            U16 quickCullFlags = cullFlags;
+            // Parent is already in frustum, so no need to check the children
+            ClearBit(quickCullFlags, to_base(CullOptions::CULL_AGAINST_CLIPPING_PLANES));
+            ClearBit(quickCullFlags, to_base(CullOptions::CULL_AGAINST_FRUSTUM));
+            if (!Attorney::SceneGraphNodeRenderPassCuller::cullNode(child, params, cullFlags, collisionResult, distanceSqToCamera)) {
                 VisibleNode node = {};
                 node._node = child;
                 node._distanceToCameraSq = distanceSqToCamera;
@@ -212,16 +218,16 @@ void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const N
                     Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(child, true);
                 }
 
-                addAllChildren(child, params, nodes);
+                addAllChildren(child, params, cullFlags, nodes);
             }
         } else if (isTransformNode) {
-            addAllChildren(child, params, nodes);
+            addAllChildren(child, params, cullFlags, nodes);
         }
     }
     currentNode->unlockChildrenForRead();
 }
 
-void RenderPassCuller::frustumCull(const NodeCullParams& params, const vectorEASTL<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const {
+void RenderPassCuller::frustumCull(const NodeCullParams& params, const U16 cullFlags, const vectorEASTL<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const {
     OPTICK_EVENT();
 
     nodesOut.reset();
@@ -233,7 +239,7 @@ void RenderPassCuller::frustumCull(const NodeCullParams& params, const vectorEAS
             Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(node, false);
         }
         // Internal node cull (check against camera frustum and all that ...)
-        if (!Attorney::SceneGraphNodeRenderPassCuller::cullNode(node, params, collisionResult, distanceSqToCamera)) {
+        if (!Attorney::SceneGraphNodeRenderPassCuller::cullNode(node, params, cullFlags, collisionResult, distanceSqToCamera)) {
             nodesOut.append({ node, distanceSqToCamera });
             if (params._stage == RenderStage::DISPLAY) {
                 Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(node, false);

@@ -81,15 +81,15 @@ enum class TextureUpdateState : U8 {
 struct TextureEntry
 {
     TextureEntry() = default;
-    TextureEntry(const TextureData& data, const size_t samplerHash, const TextureUsage binding) : TextureEntry(data, samplerHash, to_U8(binding)) {}
-    TextureEntry(const TextureData& data, const size_t samplerHash, const U8 binding) 
+    explicit TextureEntry(const TextureData& data, const size_t samplerHash, const TextureUsage binding) : TextureEntry(data, samplerHash, to_U8(binding)) {}
+    explicit TextureEntry(const TextureData& data, const size_t samplerHash, const U8 binding)
       : _data(data),
         _sampler(samplerHash),
         _binding(binding)
     {
     }
 
-    TextureData _data;
+    TextureData _data{};
     size_t _sampler = 0u;
     U8 _binding = 0u;
 };

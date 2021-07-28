@@ -170,7 +170,7 @@ float ComputeBlendFactorForIntersection(in float iterationCount,
 void main() {
     _colourOut = vec4(0.f, 0.f, 0.f, 1.f);
 
-    if (dvd_materialDebugFlag != DEBUG_COUNT && dvd_materialDebugFlag != DEBUG_SSR) {
+    if (dvd_materialDebugFlag != DEBUG_NONE && dvd_materialDebugFlag != DEBUG_SSR) {
         return;
     }
 

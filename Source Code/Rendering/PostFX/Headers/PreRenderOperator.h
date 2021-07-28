@@ -62,7 +62,6 @@ class NOINITVTABLE PreRenderOperator {
 
     [[nodiscard]] FilterType operatorType() const noexcept { return _operatorType; }
 
-    virtual void idle(const Configuration& config);
     virtual void onToggle(bool state);
 
     [[nodiscard]] virtual bool ready() const { return true; }

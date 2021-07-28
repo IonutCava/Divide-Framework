@@ -617,7 +617,6 @@
     <ClInclude Include="../../Source Code/Scenes\WarScene\AESOPActions\Headers\WarSceneActions.h">
       <Filter>Scenes\WarScene\AESOPActions\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/SceneList.h" />
     <ClInclude Include="../../Source Code/Scenes\DefaultScene\Headers\DefaultScene.h">
       <Filter>Scenes\DefaultScene\Headers</Filter>
     </ClInclude>
@@ -672,12 +671,6 @@
     <ClInclude Include="..\..\Source Code\Environment\Sky\Headers\Sun.h">
       <Filter>Environment\Sky\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\AI\PathFinding\NavMeshes\DetourTileCache\Headers\DivideTileCacheCompressor.h">
-      <Filter>AI\PathFinding\NavMeshes\DetourTileCaching\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Source Code\AI\PathFinding\NavMeshes\DetourTileCache\Headers\DivideTileCacheUtil.h">
-      <Filter>AI\PathFinding\NavMeshes\DetourTileCaching\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Source Code\AI\PathFinding\NavMeshes\DetourTileCache\Headers\ReCastConvexHull.h">
       <Filter>AI\PathFinding\NavMeshes\DetourTileCaching\Headers</Filter>
     </ClInclude>
@@ -711,9 +704,6 @@
       <Filter>XML\Scenes</Filter>
     </Xml>
     <Xml Include="..\..\XML\Scenes\defaultScene\assets.xml">
-      <Filter>XML\Scenes\defaultScene</Filter>
-    </Xml>
-    <Xml Include="..\..\XML\Scenes\defaultScene\musicPlaylist.xml">
       <Filter>XML\Scenes\defaultScene</Filter>
     </Xml>
     <Xml Include="..\..\XML\Scenes\WarScene\assets.xml">

@@ -224,7 +224,7 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
             entry._view._layerRange.set(0, useCount);
             descriptorSetCmd._set._textureViews.add(entry);
         } else {
-            descriptorSetCmd._set._textureData.add({ shadowTexture.texture()->data(), shadowTexture.samplerHash(), bindSlot });
+            descriptorSetCmd._set._textureData.add(TextureEntry{ shadowTexture.texture()->data(), shadowTexture.samplerHash(), bindSlot });
         }
     }
     EnqueueCommand(bufferInOut, descriptorSetCmd);

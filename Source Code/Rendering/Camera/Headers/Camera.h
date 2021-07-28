@@ -321,7 +321,6 @@ protected:
     bool unload() noexcept override { return Camera::unload(); }
 
 public:
-    ~StaticCamera() = default;
     static constexpr CameraType Type() noexcept { return CameraType::STATIC; }
 };
 

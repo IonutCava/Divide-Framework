@@ -186,7 +186,7 @@ public:
         REVEALAGE = VELOCITY,
     };
 
-    using ObjectArena = MyArena<Config::REQUIRED_RAM_SIZE / 4>;
+    using ObjectArena = MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 4>;
 
 public:  // GPU interface
     explicit GFXDevice(Kernel& parent);
@@ -484,7 +484,7 @@ private:
     Mutex _pipelineCacheLock;
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;
 
-    std::stack<CameraSnapshot> _cameraSnapshots;
+    std::stack<CameraSnapshot, eastl::fixed_vector<CameraSnapshot, 32, false>> _cameraSnapshots;
     std::stack<Rect<I32>> _viewportStack;
     Mutex _gpuObjectArenaMutex;
     Mutex _imprimitiveMutex;
@@ -531,19 +531,17 @@ namespace Attorney {
 
        static void onResourceDestroy(GFXDevice& device, GraphicsResource::Type type, I64 GUID, U64 nameHash) {
            UniqueLock<Mutex> w_lock(device._graphicsResourceMutex);
-           const auto* it = eastl::find_if(eastl::begin(device._graphicResources),
-               eastl::end(device._graphicResources),
-                [type, GUID, nameHash](const auto& crtEntry) noexcept -> bool {
-                    if (std::get<1>(crtEntry) == GUID) {
-                        assert(std::get<0>(crtEntry) == type && std::get<2>(crtEntry) == nameHash);
-                        ACKNOWLEDGE_UNUSED(type);
-                        ACKNOWLEDGE_UNUSED(nameHash);
-                        return true;
-                    }
-                    return false;
-                });
-           assert(it != eastl::cend(device._graphicResources));
-           device._graphicResources.erase(it);
+           const bool success = dvd_erase_if(device._graphicResources,
+                                             [type, GUID, nameHash](const auto& crtEntry) noexcept -> bool {
+                                                if (std::get<1>(crtEntry) == GUID) {
+                                                   assert(std::get<0>(crtEntry) == type && std::get<2>(crtEntry) == nameHash);
+                                                   ACKNOWLEDGE_UNUSED(type);
+                                                   ACKNOWLEDGE_UNUSED(nameHash);
+                                                   return true;
+                                                }
+                                                return false;
+                                             });
+           DIVIDE_ASSERT(success);
    
        }
        friend class GraphicsResource;

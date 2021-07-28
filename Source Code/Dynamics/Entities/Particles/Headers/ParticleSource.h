@@ -39,8 +39,8 @@ namespace Divide {
 
 class ParticleSource {
    public:
-    ParticleSource(GFXDevice& context);
-    ParticleSource(GFXDevice& context, F32 emitRate);
+    explicit ParticleSource(GFXDevice& context);
+    explicit ParticleSource(GFXDevice& context, F32 emitRate);
     virtual ~ParticleSource() = default;
 
     virtual void emit(U64 deltaTimeUS, const std::shared_ptr<ParticleData>& p);
@@ -54,7 +54,7 @@ class ParticleSource {
     [[nodiscard]] F32 emitRate() const noexcept { return _emitRate; }
 
     void updateTransform(const vec3<F32>& position, const Quaternion<F32>& orientation) {
-        for (const std::shared_ptr<ParticleGenerator>& generator : _particleGenerators) {
+        for (const auto& generator : _particleGenerators) {
             generator->updateTransform(position, orientation);
         }
     }

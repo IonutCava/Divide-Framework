@@ -14,27 +14,29 @@ Mutex Octree::s_pendingInsertLock;
 eastl::queue<SceneGraphNode*> Octree::s_pendingInsertion;
 vectorEASTL<SceneGraphNode*> Octree::s_intersectionsObjectCache;
 
-Octree::Octree(const U16 nodeExclusionMask)
-    : _nodeExclusionMask(nodeExclusionMask)
+Octree::Octree(Octree* parent, const U16 nodeExclusionMask)
+    : _parent(parent),
+      _nodeExclusionMask(nodeExclusionMask)
 {
+    _childNodes.resize(8);
     _region.set(VECTOR3_ZERO, VECTOR3_ZERO);
 }
 
-Octree::Octree(const U16 nodeMask, const BoundingBox& rootAABB)
-    : Octree(nodeMask)
+Octree::Octree(Octree* parent, const U16 nodeMask, const BoundingBox& rootAABB)
+    : Octree(parent, nodeMask)
 {
     _region.set(rootAABB);
 }
 
-Octree::Octree(const U16 nodeExclusionMask,
+Octree::Octree(Octree* parent,
+               const U16 nodeExclusionMask,
                const BoundingBox& rootAABB,
                const vectorEASTL<SceneGraphNode*>& nodes)
-    :  Octree(nodeExclusionMask, rootAABB)
+    :  Octree(parent, nodeExclusionMask, rootAABB)
 {
     _objects.reserve(nodes.size());
     _objects.insert(cend(_objects), cbegin(nodes), cend(nodes));
 }
-
 
 void Octree::update(const U64 deltaTimeUS) {
     if (!s_treeBuilt) {
@@ -68,7 +70,7 @@ void Octree::update(const U64 deltaTimeUS) {
     //recursively update any child nodes.
     for (U8 i = 0; i < 8; ++i) {
         if (_activeNodes[i]) {
-            _childNodes[i]->update(deltaTimeUS);
+            _childNodes[i].update(deltaTimeUS);
         }
     }
 
@@ -86,7 +88,7 @@ void Octree::update(const U64 deltaTimeUS) {
         const BoundingBox& bb = movedObj->get<BoundsComponent>()->getBoundingBox();
         while(!current->_region.containsBox(bb)) {
             if (current->_parent != nullptr) {
-                current = current->_parent.get();
+                current = current->_parent;
             } else {
                 break; //prevent infinite loops when we go out of bounds of the root node region
             }
@@ -106,8 +108,7 @@ void Octree::update(const U64 deltaTimeUS) {
 
     //prune out any dead branches in the tree
     for (U8 i = 0; i < 8; ++i) {
-        if (_activeNodes[i] && _childNodes[i]->_curLife == 0) {
-            _childNodes[i].reset();
+        if (_activeNodes[i] && _childNodes[i]._curLife == 0) {
             _activeNodes[i] = false;
         }
     }
@@ -157,28 +158,28 @@ void Octree::insert(SceneGraphNode* object) {
         return;
     }
 
-    vec3<F32> dimensions(_region.getExtent());
+    const vec3<F32> dimensions(_region.getExtent());
     //Check to see if the dimensions of the box are greater than the minimum dimensions
     if (dimensions.x <= MIN_SIZE && dimensions.y <= MIN_SIZE && dimensions.z <= MIN_SIZE) {
         _objects.push_back(object);
         return;
     }
 
-    vec3<F32> half(dimensions * 0.5f);
-    vec3<F32> center(_region.getMin() + half);
+    const vec3<F32> half(dimensions * 0.5f);
+    const vec3<F32> center(_region.getMin() + half);
 
     //Find or create subdivided regions for each octant in the current region
     BoundingBox childOctant[8];
     const vec3<F32>& regMin = _region.getMin();
     const vec3<F32>& regMax = _region.getMax();
-    childOctant[0].set(_childNodes[0] != nullptr ? _childNodes[0]->_region : BoundingBox(regMin, center));
-    childOctant[1].set(_childNodes[1] != nullptr ? _childNodes[1]->_region : BoundingBox(vec3<F32>(center.x, regMin.y, regMin.z), vec3<F32>(regMax.x, center.y, center.z)));
-    childOctant[2].set(_childNodes[2] != nullptr ? _childNodes[2]->_region : BoundingBox(vec3<F32>(center.x, regMin.y, center.z), vec3<F32>(regMax.x, center.y, regMax.z)));
-    childOctant[3].set(_childNodes[3] != nullptr ? _childNodes[3]->_region : BoundingBox(vec3<F32>(regMin.x, regMin.y, center.z), vec3<F32>(center.x, center.y, regMax.z)));
-    childOctant[4].set(_childNodes[4] != nullptr ? _childNodes[4]->_region : BoundingBox(vec3<F32>(regMin.x, center.y, regMin.z), vec3<F32>(center.x, regMax.y, center.z)));
-    childOctant[5].set(_childNodes[5] != nullptr ? _childNodes[5]->_region : BoundingBox(vec3<F32>(center.x, center.y, regMin.z), vec3<F32>(regMax.x, regMax.y, center.z)));
-    childOctant[6].set(_childNodes[6] != nullptr ? _childNodes[6]->_region : BoundingBox(center, regMax));
-    childOctant[7].set(_childNodes[7] != nullptr ? _childNodes[7]->_region : BoundingBox(vec3<F32>(regMin.x, center.y, center.z), vec3<F32>(center.x, regMax.y, regMax.z)));
+    childOctant[0].set(_activeNodes[0] ? _childNodes[0]._region : BoundingBox(regMin,                                  center));
+    childOctant[1].set(_activeNodes[1] ? _childNodes[1]._region : BoundingBox(vec3<F32>(center.x, regMin.y, regMin.z), vec3<F32>(regMax.x, center.y, center.z)));
+    childOctant[2].set(_activeNodes[2] ? _childNodes[2]._region : BoundingBox(vec3<F32>(center.x, regMin.y, center.z), vec3<F32>(regMax.x, center.y, regMax.z)));
+    childOctant[3].set(_activeNodes[3] ? _childNodes[3]._region : BoundingBox(vec3<F32>(regMin.x, regMin.y, center.z), vec3<F32>(center.x, center.y, regMax.z)));
+    childOctant[4].set(_activeNodes[4] ? _childNodes[4]._region : BoundingBox(vec3<F32>(regMin.x, center.y, regMin.z), vec3<F32>(center.x, regMax.y, center.z)));
+    childOctant[5].set(_activeNodes[5] ? _childNodes[5]._region : BoundingBox(vec3<F32>(center.x, center.y, regMin.z), vec3<F32>(regMax.x, regMax.y, center.z)));
+    childOctant[6].set(_activeNodes[6] ? _childNodes[6]._region : BoundingBox(center,                                   regMax));
+    childOctant[7].set(_activeNodes[7] ? _childNodes[7]._region : BoundingBox(vec3<F32>(regMin.x, center.y, center.z), vec3<F32>(center.x, regMax.y, regMax.z)));
 
     const BoundingBox& bb = object->get<BoundsComponent>()->getBoundingBox();
 
@@ -192,11 +193,10 @@ void Octree::insert(SceneGraphNode* object) {
         for (U8 i = 0; i < 8; ++i)  {
             //is the object fully contained within a quadrant?
             if (childOctant[i].containsBox(bb)) {
-                if (_childNodes[i] != nullptr) {
-                    _childNodes[i]->insert(object);   //Add the item into that tree and let the child tree figure out what to do with it
+                if (_activeNodes[i]) {
+                    _childNodes[i].insert(object);   //Add the item into that tree and let the child tree figure out what to do with it
                 } else {
-                    _childNodes[i] = createNode(childOctant[i], object);   //create a new tree node with the item
-                    _activeNodes[i] = true;
+                    _activeNodes[i] = createNode(_childNodes[i], childOctant[i], object);   //create a new tree node with the item
                 }
                 found = true;
             }
@@ -213,17 +213,20 @@ void Octree::insert(SceneGraphNode* object) {
 
 void Octree::onNodeMoved(const SceneGraphNode& node) {
     //go through and update every object in the current tree node
+    const I64 targetGUID = node.getGUID();
     for (SceneGraphNode* crtNode : _objects) {
-        if (crtNode->getGUID() == node.getGUID()) {
-            _movedObjects.enqueue(crtNode);
-            return;
+        if (crtNode->getGUID() != targetGUID) {
+            continue;
         }
+
+        _movedObjects.enqueue(crtNode);
+        return;
     }
 
     //recursively update any child nodes.
-    for (U8 i = 0; i < 8; ++i) {
+    for (U8 i = 0u; i < 8u; ++i) {
         if (_activeNodes[i]) {
-            _childNodes[i]->onNodeMoved(node);
+            _childNodes[i].onNodeMoved(node);
         }
     }
 }
@@ -300,31 +303,32 @@ void Octree::buildTree() {
 
     //Create child nodes where there are items contained in the bounding region
     for (U8 i = 0; i < 8; ++i) {
-        if (!octList[i].empty()) {
-            _childNodes[i] = createNode(octant[i], octList[i]);
-            if (_childNodes[i]) {
-                _activeNodes[i] = true;
-                _childNodes[i]->buildTree();
-            }
+        if (createNode(_childNodes[i], octant[i], octList[i])) {
+            _activeNodes[i] = true;
+            _childNodes[i].buildTree();
         }
     }
+
     s_treeBuilt = true;
     s_treeReady = true;
 }
 
-std::shared_ptr<Octree> Octree::createNode(const BoundingBox& region, const vectorEASTL<SceneGraphNode*>& objects) {
-    if (objects.empty()) {
-        return nullptr;
+bool Octree::createNode(Octree& newNode, const BoundingBox& region, const vectorEASTL<SceneGraphNode*>& objects) {
+    if (!objects.empty()) {
+        newNode = Octree(this, _nodeExclusionMask, region, objects);
+        return true;
     }
-    std::shared_ptr<Octree> ret = std::make_shared<Octree>(_nodeExclusionMask, region, objects);
-    ret->_parent = shared_from_this();
-    return ret;
+    return false;
 }
 
-std::shared_ptr<Octree> Octree::createNode(const BoundingBox& region, SceneGraphNode* object) {
-    vectorEASTL<SceneGraphNode*> objList;
-    objList.push_back(object);
-    return createNode(region, objList);
+bool Octree::createNode(Octree& newNode, const BoundingBox& region, SceneGraphNode* object) {
+    if (object != nullptr) {
+        vectorEASTL<SceneGraphNode*> objList;
+        objList.push_back(object);
+        return createNode(newNode, region, objList);
+    }
+
+    return false;
 }
 
 void Octree::findEnclosingBox()
@@ -417,10 +421,9 @@ void Octree::updateTree() {
 }
 
 void Octree::getAllRegions(vectorEASTL<BoundingBox>& regionsOut) const {
-    for (U8 i = 0; i < 8; ++i) {
+    for (U8 i = 0u; i < 8u; ++i) {
         if (_activeNodes[i]) {
-            assert(_childNodes[i]);
-            _childNodes[i]->getAllRegions(regionsOut);
+            _childNodes[i].getAllRegions(regionsOut);
         }
     }
     
@@ -428,21 +431,18 @@ void Octree::getAllRegions(vectorEASTL<BoundingBox>& regionsOut) const {
 }
 
 U8 Octree::activeNodes() const {
-    U8 ret = 0;
-    for (U8 i = 0; i < 8; ++i) {
-        if (_activeNodes[i]) {
-            ret++;
-        }
+    U8 ret = 0u;
+    for (const bool state : _activeNodes) {
+        ret += (state ? 1u : 0u);
     }
     return ret;
 }
 
 size_t Octree::getTotalObjectCount() const {
     size_t count = _objects.size();
-    for (U8 i = 0; i < 8; ++i) {
+    for (U8 i = 0u; i < 8u; ++i) {
         if (_activeNodes[i]) {
-            assert(_childNodes[i]);
-            count += _childNodes[i]->getTotalObjectCount();
+            count += _childNodes[i].getTotalObjectCount();
         }
     }
     return count;
@@ -477,10 +477,10 @@ vectorEASTL<IntersectionRecord> Octree::getIntersection(const Frustum& frustum, 
     //test each object in the list for intersection
     for (I32 i = 0; i < 8; ++i) {
         I8 frustPlaneCache = -1;
-        if (_childNodes[i] != nullptr &&
-            frustum.ContainsBoundingBox(_childNodes[i]->_region, frustPlaneCache) != FrustumCollision::FRUSTUM_OUT)
+        if (_activeNodes[i] &&
+            frustum.ContainsBoundingBox(_childNodes[i]._region, frustPlaneCache) != FrustumCollision::FRUSTUM_OUT)
         {
-            vectorEASTL<IntersectionRecord> hitList = _childNodes[i]->getIntersection(frustum, typeFilterMask);
+            vectorEASTL<IntersectionRecord> hitList = _childNodes[i].getIntersection(frustum, typeFilterMask);
             ret.insert(cend(ret), cbegin(hitList), cend(hitList));
         }
     }
@@ -519,8 +519,10 @@ vectorEASTL<IntersectionRecord> Octree::getIntersection(const Ray& intersectRay,
 
     // test each child octant for intersection
     for (I32 i = 0; i < 8; ++i) {
-        if (_childNodes[i] != nullptr && _childNodes[i]->_region.intersect(intersectRay, start, end).hit) {
-            vectorEASTL<IntersectionRecord> hitList = _childNodes[i]->getIntersection(intersectRay, start, end, typeFilterMask);
+        if (_activeNodes[i] &&
+            _childNodes[i]._region.intersect(intersectRay, start, end).hit) 
+        {
+            vectorEASTL<IntersectionRecord> hitList = _childNodes[i].getIntersection(intersectRay, start, end, typeFilterMask);
             ret.insert(cend(ret), cbegin(hitList), cend(hitList));
         }
     }
@@ -557,6 +559,10 @@ void Octree::updateIntersectionCache(vectorEASTL<SceneGraphNode*>& parentObjects
         }
     }
 
+    const auto isStatic = [](const SceneGraphNode * node) {
+        return node->usageContext() == NodeUsageContext::NODE_STATIC;
+    };
+
     //now, check all our local objects against all other local objects in the node
     if (_objects.size() > 1) {
         vectorEASTL<SceneGraphNode*> tmp(_objects);
@@ -589,9 +595,8 @@ void Octree::updateIntersectionCache(vectorEASTL<SceneGraphNode*>& parentObjects
     //each child node will give us a list of intersection records, which we then merge with our own intersection records.
     for (U8 i = 0; i < 8; ++i) {
         if (_activeNodes[i]) {
-            assert(_childNodes[i]);
-            _childNodes[i]->updateIntersectionCache(parentObjects);
-            const vectorEASTL<IntersectionRecord>& hitList = _childNodes[i]->_intersectionsCache;
+            _childNodes[i].updateIntersectionCache(parentObjects);
+            const vectorEASTL<IntersectionRecord>& hitList = _childNodes[i]._intersectionsCache;
             _intersectionsCache.insert(cend(_intersectionsCache), cbegin(hitList), cend(hitList));
         }
     }
@@ -666,10 +671,6 @@ void Octree::handleIntersection(const IntersectionRecord& intersection) const {
     }
 }
 
-bool Octree::isStatic(const SceneGraphNode* node) const {
-    return node->usageContext() == NodeUsageContext::NODE_STATIC;
-}
-
 bool Octree::getIntersection(SceneGraphNode* node, const Frustum& frustum, IntersectionRecord& irOut) const {
     const BoundingBox& bb = node->get<BoundsComponent>()->getBoundingBox();
 
@@ -678,7 +679,7 @@ bool Octree::getIntersection(SceneGraphNode* node, const Frustum& frustum, Inter
     if (frustum.ContainsBoundingBox(bb, _frustPlaneCache) != FrustumCollision::FRUSTUM_OUT) {
         irOut.reset();
         irOut._intersectedObject1 = node;
-        irOut._treeNode = shared_from_this();
+        irOut._treeNode = this;
         irOut._hasHit = true;
         return true;
     }
@@ -695,7 +696,7 @@ bool Octree::getIntersection(SceneGraphNode* node1, SceneGraphNode* node2, Inter
                 irOut.reset();
                 irOut._intersectedObject1 = node1;
                 irOut._intersectedObject2 = node2;
-                irOut._treeNode = shared_from_this();
+                irOut._treeNode = this;
                 irOut._hasHit = true;
                 return true;
             }
@@ -711,7 +712,7 @@ bool Octree::getIntersection(SceneGraphNode* node, const Ray& intersectRay, cons
         irOut.reset();
         irOut._intersectedObject1 = node;
         irOut._ray = intersectRay;
-        irOut._treeNode = shared_from_this();
+        irOut._treeNode = this;
         irOut._hasHit = true;
         return true;
     }

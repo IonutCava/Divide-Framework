@@ -33,33 +33,45 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _TEMPLATE_ALLOCATOR_H_
 #define _TEMPLATE_ALLOCATOR_H_
 
-#include <EASTL/allocator.h>
+#ifndef EASTL_USER_DEFINED_ALLOCATOR
+#define EASTL_USER_DEFINED_ALLOCATOR
+#endif //EASTL_USER_DEFINED_ALLOCATOR
+
+#ifndef EASTLAllocatorType
+#define EASTLAllocatorType eastl::aligned_allocator
+#endif
+
+#ifndef EASTLAllocatorDefault
+#define EASTLAllocatorDefault eastl::GetDefaultDvdAllocator
+#endif
+
 #include <Allocator/stl_allocator.h>
+#include <EASTL/internal/config.h>
+#include "Platform/Headers/PlatformMemoryDefines.h"
+
 template <typename Type>
 using dvd_allocator = stl_allocator<Type>;
 
 namespace eastl {
-    struct dvd_eastl_allocator
-    {
-        dvd_eastl_allocator() = default;
-        dvd_eastl_allocator(const char* pName) noexcept { (void)pName; }
-        dvd_eastl_allocator(const allocator& x, const char* pName) noexcept { (void)x;  (void)pName; }
-        dvd_eastl_allocator& operator=(const dvd_eastl_allocator& EASTL_NAME(x)) = default;
+    class allocator;
 
-        [[nodiscard]] void* allocate(const size_t n, int flags = 0)
-        {
+    struct dvd_allocator
+    {
+        dvd_allocator() = default;
+        dvd_allocator(const char* pName) noexcept { (void)pName; }
+        dvd_allocator(const dvd_allocator& x, const char* pName) noexcept { (void)x;  (void)pName; }
+
+        [[nodiscard]] void* allocate(const size_t n, int flags = 0) {
             (void)flags;
             return xmalloc(n);
         }
 
-        [[nodiscard]] void* allocate(const size_t n, size_t alignment, size_t offset, int flags = 0)
-        {
+        [[nodiscard]] void* allocate(const size_t n, size_t alignment, size_t offset, int flags = 0) {
             (void)flags; (void)offset; (void)alignment;
             return xmalloc(n);
         }
 
-        void deallocate(void* p, size_t n)
-        {
+        void deallocate(void* p, size_t n) {
             (void)n;
             //delete[](char*)p;
             xfree(p);
@@ -67,21 +79,62 @@ namespace eastl {
 
         [[nodiscard]]
         const char* get_name()                  const noexcept { return "dvd custom eastl allocator"; }
-              void  set_name(const char* pName)       noexcept { (void)pName; }
+        void  set_name(const char* pName)       noexcept { (void)pName; }
     };
 
 
     // All allocators are considered equal, as they merely use global new/delete.
-    [[nodiscard]] inline bool operator==(const dvd_eastl_allocator& a, const dvd_eastl_allocator& b) noexcept
-    {
+    [[nodiscard]] inline bool operator==(const dvd_allocator& a, const dvd_allocator& b) noexcept {
         (void)a; (void)b;
         return true;
     }
 
-    [[nodiscard]] inline bool operator!=(const dvd_eastl_allocator& a, const dvd_eastl_allocator& b) noexcept
-    {
+    [[nodiscard]] inline bool operator!=(const dvd_allocator& a, const dvd_allocator& b) noexcept {
         (void)a; (void)b;
         return false;
     }
-}
+
+    struct aligned_allocator
+    {
+        aligned_allocator() = default;
+        aligned_allocator(const char* pName) noexcept { (void)pName; }
+        aligned_allocator(const allocator & x, const char* pName) noexcept { (void)x;  (void)pName; }
+        aligned_allocator& operator=(const aligned_allocator & EASTL_NAME(x)) = default;
+
+        [[nodiscard]] void* allocate(const size_t n, int flags = 0) {
+            (void)flags;
+            constexpr size_t defaultAlignment = alignof(void*);
+            return malloc_aligned(n, defaultAlignment);
+        }
+
+        [[nodiscard]] void* allocate(const size_t n, const size_t alignment, const size_t offset, int flags = 0) {
+            (void)flags;
+            return malloc_aligned(n, alignment, offset);
+        }
+
+        void deallocate(void* p, size_t n) {
+            (void)n;
+            free_aligned(p);
+        }
+
+        [[nodiscard]]
+        const char* get_name()                  const noexcept { return "dvd eastl allocator"; }
+        void  set_name(const char* pName)       noexcept { (void)pName; }
+    };
+
+    // All allocators are considered equal, as they merely use global new/delete.
+    [[nodiscard]] inline bool operator==(const aligned_allocator& a, const aligned_allocator& b) noexcept {
+        (void)a; (void)b;
+        return true;
+    }
+
+    [[nodiscard]] inline bool operator!=(const aligned_allocator& a, const aligned_allocator& b) noexcept {
+        (void)a; (void)b;
+        return false;
+    }
+
+    EASTL_API aligned_allocator* GetDefaultDvdAllocator();
+    EASTL_API aligned_allocator* SetDefaultAllocator(aligned_allocator* pAllocator);
+} //namespace eastl
+
 #endif //_TEMPLATE_ALLOCATOR_H_

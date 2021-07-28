@@ -79,7 +79,7 @@ void GUISplash::render(GFXDevice& context) const {
     EnqueueCommand(buffer, viewportCommand);
 
     GFX::BindDescriptorSetsCommand descriptorSetCmd;
-    descriptorSetCmd._set._textureData.add({ _splashImage->data(), splashSampler.getHash(), TextureUsage::UNIT0 });
+    descriptorSetCmd._set._textureData.add(TextureEntry{ _splashImage->data(), splashSampler.getHash(), TextureUsage::UNIT0 });
     EnqueueCommand(buffer, descriptorSetCmd);
 
     EnqueueCommand(buffer, GFX::DrawCommand{ drawCmd });

@@ -111,6 +111,7 @@
     <ClInclude Include="../../Source Code/Core\TemplateLibraries\Headers\PolyContainer.h" />
     <ClInclude Include="..\..\Source Code\Core\Headers\ObjectPool.h" />
     <ClInclude Include="..\..\Source Code\Core\Math\BoundingVolumes\Headers\OBB.h" />
+    <ClInclude Include="..\..\Source Code\Core\TemplateLibraries\Headers\CircularBuffer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../Source Code/Core\Headers\ByteBuffer.inl" />
@@ -135,7 +136,7 @@
     <ProjectGuid>{4B595495-F8D2-4E58-89D4-DC7257E69676}</ProjectGuid>
     <RootNamespace>DivideHardware</RootNamespace>
     <ProjectName>Divide-Core</ProjectName>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -220,7 +221,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/nv_dds/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -262,7 +263,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <AdditionalDependencies>
       </AdditionalDependencies>
       <AdditionalLibraryDirectories>
@@ -279,7 +280,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/nv_dds/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_RELEASE;NDEBUG</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -320,7 +321,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <AdditionalDependencies>
       </AdditionalDependencies>
       <Verbose>false</Verbose>
@@ -332,7 +333,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/nv_dds/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/</AdditionalIncludeDirectories>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <PreprocessorDefinitions>_PROFILE;NDEBUG</PreprocessorDefinitions>
@@ -373,7 +374,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <Verbose>false</Verbose>
       <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>
     </Lib>

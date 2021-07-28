@@ -47,7 +47,7 @@ FWD_DECLARE_MANAGED_CLASS(SceneNode);
 /// This class manages all of the RenderBins and renders them in the correct order
 class RenderQueue final : public KernelComponent {
   public: 
-    using RenderBinArray = std::array<RenderBin*, RenderBinType::RBT_COUNT>;
+    using RenderBinArray = std::array<RenderBin*, to_base(RenderBinType::COUNT)>;
 
   public:
     explicit RenderQueue(Kernel& parent, RenderStage stage);
@@ -57,13 +57,13 @@ class RenderQueue final : public KernelComponent {
     void populateRenderQueues(RenderStagePass stagePass, std::pair<RenderBinType, bool> binAndFlag, RenderQueuePackages& queueInOut);
 
     void postRender(const SceneRenderState& renderState, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
-    void sort(const RenderStagePass& stagePass, RenderBinType targetBinType = RenderBinType::RBT_COUNT, RenderingOrder renderOrder = RenderingOrder::COUNT);
-    void refresh(RenderBinType targetBinType = RenderBinType::RBT_COUNT);
-    void addNodeToQueue(const SceneGraphNode* sgn, RenderStagePass stagePass, F32 minDistToCameraSq, RenderBinType targetBinType = RenderBinType::RBT_COUNT);
+    void sort(const RenderStagePass& stagePass, RenderBinType targetBinType = RenderBinType::COUNT, RenderingOrder renderOrder = RenderingOrder::COUNT);
+    void refresh(RenderBinType targetBinType = RenderBinType::COUNT);
+    void addNodeToQueue(const SceneGraphNode* sgn, RenderStagePass stagePass, F32 minDistToCameraSq, RenderBinType targetBinType = RenderBinType::COUNT);
     [[nodiscard]] U16 getRenderQueueStackSize() const;
 
     [[nodiscard]] RenderBin* getBin(const RenderBinType rbType) noexcept {
-        return _renderBins[rbType._to_integral()];
+        return _renderBins[to_base(rbType)];
     }
 
     [[nodiscard]] RenderBin* getBin(const U16 renderBin) noexcept {

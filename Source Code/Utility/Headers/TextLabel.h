@@ -83,19 +83,16 @@ struct TextElement {
     using TextType = vectorEASTL<eastl::string>;
 
     TextElement() = default;
-
-    TextElement(const TextLabelStyle& textLabelStyle, const RelativePosition2D& position)
+    explicit TextElement(const TextLabelStyle& textLabelStyle, const RelativePosition2D& position)
         : TextElement(textLabelStyle.getHash(), position)
     {
     }
 
-    TextElement(const size_t textLabelStyleHash, const RelativePosition2D& position)
+    explicit TextElement(const size_t textLabelStyleHash, const RelativePosition2D& position)
         : _textLabelStyleHash(textLabelStyleHash),
           _position(position)
     {
     }
-
-    ~TextElement() = default;
 
     void text(const char* text, const bool multiLine) {
         if (multiLine) {

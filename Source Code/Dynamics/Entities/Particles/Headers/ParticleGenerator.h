@@ -39,10 +39,10 @@ namespace Divide {
 
 class NOINITVTABLE ParticleGenerator {
    public:
-    ParticleGenerator() noexcept = default;
     virtual ~ParticleGenerator() = default;
 
     virtual void generate(Task& packagedTasksParent,
+                          TaskPool& parentPool,
                           U64 deltaTimeUS,
                           ParticleData& p,
                           U32 startIndex,

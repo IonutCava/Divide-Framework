@@ -24,7 +24,7 @@ TEST_MEMBER_FUNCTION(ScriptTestClass, eval, ExternalFunction)
             "something(my_fun)");
 
         I32 variable = 0;
-        auto testFunc = [&variable](const DELEGATE<I32, I32>& t_func) {
+        auto testFunc = [&variable](const DELEGATE_STD<I32, I32>& t_func) {
             variable = t_func(variable);
         };
 

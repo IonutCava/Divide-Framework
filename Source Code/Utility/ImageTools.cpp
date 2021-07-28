@@ -16,8 +16,6 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize.h"
 
-#include "nv_dds.h"
-
 #define IL_STATIC_LIB
 #undef _UNICODE
 #include <IL/il.h>
@@ -298,86 +296,6 @@ bool ImageData::loadDDS_IL(const bool srgb, const U16 refWidth, const U16 refHei
     ilDeleteImage(ilTexture);
     checkError();
     return true;
-}
-
-bool ImageData::loadDDS_NV(const bool srgb, const U16 refWidth, const U16 refHeight, const stringImpl& filename) {
-    ACKNOWLEDGE_UNUSED(srgb);
-    ACKNOWLEDGE_UNUSED(refWidth);
-    ACKNOWLEDGE_UNUSED(refHeight);
-
-    nv_dds::CDDSImage image;
-    image.load(filename, _flip);
-    _alpha = image.get_components() == 4;
-    switch(image.get_type()) {
-        case nv_dds::TextureFlat:
-            _compressedTextureType = image.get_height() == 0 ? TextureType::TEXTURE_1D
-                                                             : TextureType::TEXTURE_2D;
-            break;
-        case nv_dds::Texture3D:
-            _compressedTextureType = TextureType::TEXTURE_3D;
-            break;
-        case nv_dds::TextureCubemap:
-            _compressedTextureType = TextureType::TEXTURE_CUBE_MAP;
-            break;
-        case nv_dds::TextureNone:
-            DIVIDE_UNEXPECTED_CALL();
-            break;
-    }
-
-    _compressed = image.is_compressed();
-    _bpp = image.get_format() == nv_dds::Format::DXT1 ? 8 : 16;
-    switch(image.get_format()) {
-      case nv_dds::Format::DXT1:
-          assert(_compressed);
-          _format = GFXImageFormat::COMPRESSED_RGB_DXT1;
-          break;
-      case nv_dds::Format::DXT3:
-          assert(_compressed);
-          _format = GFXImageFormat::COMPRESSED_RGBA_DXT3;
-          break;
-      case nv_dds::Format::DXT5:
-          assert(_compressed);
-          _format = GFXImageFormat::COMPRESSED_RGBA_DXT5;
-          break;
-      case nv_dds::Format::BGR:
-      case nv_dds::Format::RGB: {
-          assert(!_compressed);
-          _bpp = 24;
-          _format = GFXImageFormat::RGB;
-      } break;
-      case nv_dds::Format::BGRA:
-      case nv_dds::Format::RGBA: {
-          assert(!_compressed);
-          _format = GFXImageFormat::RGBA;
-          _bpp = 32;
-      } break;
-      case nv_dds::Format::LUMINANCE: {
-          assert(!_compressed);
-          assert(false && "LUMINANCE image format is no longer supported!");
-      } break;
-      case nv_dds::Format::COUNT:
-          DIVIDE_UNEXPECTED_CALL();
-          break;
-    }
-
-    _dataType = GFXDataFormat::UNSIGNED_BYTE;
-
-    const U32 numMips = image.get_num_mipmaps();
-    ImageLayer& layer = _layers.emplace_back();
-    if (layer.allocateMip<U8>(static_cast<U8*>(image), image.get_size(), to_U16(image.get_width()), to_U16(image.get_height()), to_U16(image.get_depth()))) {
-
-        for (U8 i = 0; i < numMips; ++i) {
-            const nv_dds::CSurface& mipMap = image.get_mipmap(i);
-            if (!layer.allocateMip<U8>(static_cast<U8*>(mipMap), mipMap.get_size(), to_U16(mipMap.get_width()), to_U16(mipMap.get_height()), to_U16(mipMap.get_depth()))) {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-        }
-
-        image.clear();
-        return true;
-    }
-
-    return false;
 }
 
 UColour4 ImageData::getColour(const I32 x, const I32 y, U32 layer, const U8 mipLevel) const {

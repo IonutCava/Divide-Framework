@@ -55,7 +55,6 @@ public:
     explicit OBB(vec3<F32> pos, vec3<F32> hExtents, OBBAxis axis)  noexcept;
     explicit OBB(const BoundingBox &aabb)  noexcept;
     explicit OBB(const BoundingSphere &bSphere)  noexcept;
-    ~OBB() = default;
 
     void fromBoundingBox(const BoundingBox& aabb)  noexcept;
     void fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix)  noexcept;

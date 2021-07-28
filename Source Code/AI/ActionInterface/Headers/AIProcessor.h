@@ -53,14 +53,10 @@ class NOINITVTABLE AIProcessor : NonCopyable {
     GOAPWorldState& worldState() { return _worldState; }
     const GOAPWorldState& worldState() const { return _worldState; }
 
-    /// Register a specific action.
-    /// This only holds a reference to the action itself and does not create a
-    /// local copy!
+    /// Register a specific action. This only holds a reference to the action itself and does not create a local copy!
     virtual void registerAction(const GOAPAction& action);
     virtual void registerActionSet(const GOAPActionSet& actionSet);
-    /// Register a specific action.
-    /// This only holds a reference to the action itself and does not create a
-    /// local copy!
+    /// Register a specific action. This only holds a reference to the action itself and does not create a local copy!
     void registerGoal(const GOAPGoal& goal);
     void registerGoalList(const GOAPGoalList& goalList);
 
@@ -94,8 +90,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
         }
     }
 
-    /// Although we want the goal to be activated,
-    /// it might not be the most relevant in the current scene state
+    /// Although we want the goal to be activated, it might not be the most relevant in the current scene state
     bool activateGoal(const stringImpl& name) {
         GOAPGoal* goal = findGoal(name);
         if (goal != nullptr) {
@@ -219,11 +214,10 @@ class NOINITVTABLE AIProcessor : NonCopyable {
     virtual bool update(U64 deltaTimeUS, NPC* unitRef = nullptr) = 0;
     virtual void processMessage(AIEntity& sender, AIMsg msg, const std::any& msg_content) = 0;
     void init() {
-        if (_init) {
-            return;
+        if (!_init) {
+            initInternal();
+            _init = true;
         }
-        initInternal();
-        _init = true;
     }
 
     virtual void initInternal() = 0;

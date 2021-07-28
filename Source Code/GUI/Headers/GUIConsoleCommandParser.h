@@ -47,12 +47,11 @@ class PlatformContext;
 class GUIConsoleCommandParser final : public CommandParser, public PlatformContextComponent {
    public:
     GUIConsoleCommandParser(PlatformContext& context, ResourceCache* cache);
-    ~GUIConsoleCommandParser() = default;
 
-    bool processCommand(const stringImpl& commandString) override;
+    [[nodiscard]] bool processCommand(const stringImpl& commandString) override;
 
    private:
-    using CommandMap = hashMap<U64 /*command name*/, std::function<void(stringImpl /*args*/)> >;
+    using CommandMap = hashMap<U64 /*command name*/, DELEGATE_STD<void, stringImpl /*args*/> >;
 
     void handleSayCommand(const stringImpl& args);
     void handleQuitCommand(const stringImpl& args);

@@ -116,7 +116,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     const vectorEASTL<stringImpl>& sourceFileList() const noexcept { return _sourceFileList; }
 #endif
    protected:
-    /// Use STB/NV_DDS to load a file into a Texture Object
+    /// Use STB to load a file into a Texture Object
     bool loadFile(const ResourcePath& name, ImageTools::ImageData& fileData);
     bool checkTransparency(const ResourcePath& name, ImageTools::ImageData& fileData);
     /// Load texture data using the specified file name

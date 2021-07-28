@@ -48,9 +48,6 @@ class LanguageData {
 public:
     using LangCallback = DELEGATE<void, std::string_view/*new language*/>;
 
-    LanguageData() = default;
-    ~LanguageData() = default;
-
     ErrorCode changeLanguage(std::string_view newLanguage);
 
     const char* get(U64 key, const char* defaultValue);

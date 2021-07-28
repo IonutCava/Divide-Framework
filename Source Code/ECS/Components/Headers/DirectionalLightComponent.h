@@ -46,12 +46,11 @@ BEGIN_COMPONENT_EXT1(DirectionalLight, ComponentType::DIRECTIONAL_LIGHT, Light)
    public:
 
     explicit DirectionalLightComponent(SceneGraphNode* sgn, PlatformContext& context);
-    ~DirectionalLightComponent() = default;
 
     void setDirection(const vec3<F32>& direction);
 
     // Quick hack to store previous frame's culling results
-    vectorEASTL<FeedBackContainer>& feedBackContainers() noexcept { return _feedbackContainers; }
+    [[nodiscard]] vectorEASTL<FeedBackContainer>& feedBackContainers() noexcept { return _feedbackContainers; }
 
     PROPERTY_RW(U8, csmSplitCount, 3u);
     /// CSM extra back up distance for light position

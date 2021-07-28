@@ -42,8 +42,7 @@ namespace Divide {
 
 class PostAAPreRenderOperator final : public PreRenderOperator {
    public:
-    PostAAPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
-    ~PostAAPreRenderOperator() = default;
+    explicit PostAAPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
 
     [[nodiscard]] bool execute(const Camera* camera, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;

@@ -139,7 +139,6 @@ namespace Divide {
                 _skeleton = nullptr;
                 _loadedFromFile = false;
             }
-            ~ImportData() = default;
 
             bool saveToFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName);
             bool loadFromFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName);

@@ -179,7 +179,7 @@ class LightPool : public SceneComponent,
         return findLightLocked(GUID, type);
     }
 
-    [[nodiscard]] LightList::const_iterator findLightLocked(I64 GUID, const LightType type) const {
+    [[nodiscard]] LightList::const_iterator findLightLocked(const I64 GUID, const LightType type) const {
         return eastl::find_if(cbegin(_lights[to_U32(type)]), cend(_lights[to_U32(type)]),
                               [&GUID](Light* const light) noexcept {
                                   return light && light->getGUID() == GUID;

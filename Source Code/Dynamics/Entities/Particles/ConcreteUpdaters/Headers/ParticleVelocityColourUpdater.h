@@ -47,8 +47,6 @@ class ParticleVelocityColourUpdater final : public ParticleUpdater {
     {
     }
 
-    ~ParticleVelocityColourUpdater() = default;
-
     void update(U64 deltaTimeUS, ParticleData& p) override;
 };
 }

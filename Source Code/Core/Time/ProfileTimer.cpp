@@ -73,12 +73,11 @@ void ProfileTimer::removeChildTimer(ProfileTimer& child) {
 bool ProfileTimer::hasChildTimer(ProfileTimer& child) const
 {
     const U32 childID = child._globalIndex;
-
-    return eastl::find_if(cbegin(_children),
-                          cend(_children),
-                          [childID](const U32 entry) {
-                              return entry == childID;
-                          }) != cend(_children);
+    return eastl::any_of(cbegin(_children),
+                         cend(_children),
+                         [childID](const U32 entry) {
+                             return entry == childID;
+                         });
 }
 
 U64 ProfileTimer::getChildTotal() const {

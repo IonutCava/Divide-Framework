@@ -8,7 +8,9 @@
 bool PreparePlatform() {
     static Divide::ErrorCode err = Divide::ErrorCode::PLATFORM_INIT_ERROR;
     if (err != Divide::ErrorCode::NO_ERR) {
-        Divide::PlatformClose();
+        if (!Divide::PlatformClose()) {
+            Divide::NOP();
+        }
         const char* data[] = { "--disableCopyright" };
         err = Divide::PlatformInit(1, const_cast<char**>(data));
         if (err != Divide::ErrorCode::NO_ERR) {
@@ -33,7 +35,9 @@ int main(int argc, char **argv) {
         std::cout << "No errors detected!" << std::endl;
     }
 
-    Divide::PlatformClose();
+    if (!Divide::PlatformClose()) {
+        std::cout << "Platform close error!" << std::endl;
+    }
 
     if (argc == 1) {
         system("pause");

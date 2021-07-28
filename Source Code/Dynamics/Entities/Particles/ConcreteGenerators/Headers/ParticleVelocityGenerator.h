@@ -41,6 +41,7 @@ struct ParticleVelocityGenerator final : ParticleGenerator {
     vec3<F32> _maxStartVel = VECTOR3_ZERO;
 
     void generate(Task& packagedTasksParent,
+                  TaskPool& parentPool,
                   U64 deltaTimeUS,
                   ParticleData& p,
                   U32 startIndex,

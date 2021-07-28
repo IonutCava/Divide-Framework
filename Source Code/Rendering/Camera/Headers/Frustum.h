@@ -43,7 +43,6 @@ class BoundingSphere;
 
 class Frustum {
    public:
-    Frustum() = default;
     void Extract(const mat4<F32>& viewMatrix, const mat4<F32>& projectionMatrix);
 
     void set(const Frustum& other);

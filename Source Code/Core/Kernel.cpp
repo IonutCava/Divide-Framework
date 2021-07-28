@@ -103,7 +103,7 @@ void Kernel::startSplashScreen() {
     GUISplash splash(resourceCache(), "divideLogo.jpg", _platformContext.config().runtime.splashScreenSize);
 
     // Load and render the splash screen
-    _splashTask = CreateTask(_platformContext,
+    _splashTask = CreateTask(
         [this, &splash](const Task& /*task*/) {
         U64 previousTimeUS = 0;
         while (_splashScreenUpdating) {
@@ -117,7 +117,7 @@ void Kernel::startSplashScreen() {
             break;
         }
     });
-    Start(*_splashTask, TaskPriority::REALTIME/*HIGH*/);
+    Start(*_splashTask, _platformContext.taskPool(TaskPoolType::HIGH_PRIORITY), TaskPriority::REALTIME/*HIGH*/);
 
     window.swapBuffers(false);
 }
@@ -127,7 +127,7 @@ void Kernel::stopSplashScreen() {
     window.swapBuffers(true);
     const vec2<U16> previousDimensions = window.getPreviousDimensions();
     _splashScreenUpdating = false;
-    Wait(*_splashTask);
+    Wait(*_splashTask, _platformContext.taskPool(TaskPoolType::HIGH_PRIORITY));
 
     window.changeToPreviousType();
     window.decorated(true);
@@ -325,7 +325,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
             _sceneManager->processGUI(deltaTimeUS);
 
             // Flush any pending threaded callbacks
-            for (U32 i = 0; i < to_U32(TaskPoolType::COUNT); ++i) {
+            for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i) {
                 _platformContext.taskPool(static_cast<TaskPoolType>(i)).flushCallbackQueue();
             }
 
@@ -591,7 +591,7 @@ void Kernel::warmup() {
 
 ErrorCode Kernel::initialize(const stringImpl& entryPoint) {
     const SysInfo& systemInfo = const_sysInfo();
-    if (Config::REQUIRED_RAM_SIZE > systemInfo._availableRam) {
+    if (Config::REQUIRED_RAM_SIZE_IN_BYTES > systemInfo._availableRamInBytes) {
         return ErrorCode::NOT_ENOUGH_RAM;
     }
 

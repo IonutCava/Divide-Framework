@@ -48,7 +48,7 @@ namespace Divide {
         class EditorComponentSceneGraphNode;
     }; //namespace Attorney
 
-    BETTER_ENUM(ComponentType, U32,
+    enum class ComponentType : U32 {
         TRANSFORM = toBit(1),
         ANIMATION = toBit(2),
         INVERSE_KINEMATICS = toBit(3),
@@ -66,7 +66,35 @@ namespace Divide {
         SCRIPT = toBit(15),
         ENVIRONMENT_PROBE = toBit(16),
         COUNT = 16
-    );
+    };
+
+    namespace Names {
+        static const char* componentType[] = {
+            "TRANSFORM",
+            "ANIMATION",
+            "INVERSE_KINEMATICS",
+            "RAGDOLL",
+            "NAVIGATION",
+            "BOUNDS",
+            "RENDERING",
+            "NETWORKING",
+            "UNIT",
+            "RIGID_BODY",
+            "SELECTION",
+            "DIRECTIONAL_LIGHT",
+            "POINT_LIGHT",
+            "SPOT_LIGHT",
+            "SCRIPT",
+            "ENVIRONMENT_PROBE",
+            "NONE",
+        };
+    };
+
+    static_assert(ArrayCount(Names::componentType) == to_base(ComponentType::COUNT) + 1u, "ComponentType name array out of sync!");
+    namespace TypeUtil {
+        const char* ComponentTypeToString(const ComponentType compType) noexcept;
+        ComponentType StringToComponentType(const stringImpl & name);
+    };
 
     enum class EditorComponentFieldType : U8 {
         PUSH_TYPE = 0,
@@ -85,9 +113,9 @@ namespace Divide {
 
     struct EditorComponentField
     {
-        std::function<void(void*)> _dataGetter = {};
-        std::function<void(const void*)> _dataSetter = {};
-        std::function<const char*(U8)> _displayNameGetter = {};
+        DELEGATE_STD<void, void*> _dataGetter = {};
+        DELEGATE_STD<void, const void*> _dataSetter = {};
+        DELEGATE_STD<const char*, U8> _displayNameGetter = {};
 
         Str128 _tooltip = "";
         void* _data = nullptr;
@@ -202,8 +230,6 @@ namespace Divide {
         explicit EditorComponent(SGNComponent& parentComp, ComponentType parentComponentType, const Str128& name);
         explicit EditorComponent(const Str128& name);
        
-        virtual ~EditorComponent() = default;
-
         void addHeader(const Str32& name) {
             EditorComponentField field = {};
             field._name = name;

@@ -37,9 +37,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-class DefaultScene final : public Scene {
-public:
-    DefaultScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
+BEGIN_SCENE(DefaultScene)
+    explicit DefaultScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
 
     bool load(const Str256& name) override;
     void postLoadMainThread(const Rect<U16>& targetRenderViewport) override;
@@ -55,7 +54,9 @@ private:
     hashMap<U8, Angle::DEGREES<F32>> _camAngle;
     hashMap<I64, Str256> _buttonToSceneMap;
     Str256 _sceneToLoad;
-};
-}
+
+END_SCENE(DefaultScene)
+
+} // namespace Divide
 
 #endif //_DEFAULT_SCENE_H_

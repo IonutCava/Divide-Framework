@@ -41,6 +41,7 @@ struct ParticleTimeGenerator final : ParticleGenerator {
     F32 _maxTime = 0.0f;
 
     void generate(Task& packagedTasksParent,
+                  TaskPool& parentPool,
                   U64 deltaTimeUS,
                   ParticleData& p,
                   U32 startIndex,

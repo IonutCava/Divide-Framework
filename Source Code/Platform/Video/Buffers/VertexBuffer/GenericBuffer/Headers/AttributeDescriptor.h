@@ -39,7 +39,6 @@ namespace Divide {
 
     struct AttributeDescriptor {
         AttributeDescriptor();
-        ~AttributeDescriptor() = default;
 
         void set(U32 bufferIndex,
                  U32 componentsPerElement,

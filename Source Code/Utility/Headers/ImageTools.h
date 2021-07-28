@@ -61,8 +61,6 @@ struct ImageMip final : LayerData {
         _dimensions.set(width, height, depth);
     }
 
-    ~ImageMip() = default;
-
     [[nodiscard]] bufferPtr data() const override { return (bufferPtr)_data.data(); }
 
 protected:
@@ -108,9 +106,6 @@ private:
 };
 
 struct ImageData final : NonCopyable {
-    ImageData() = default;
-    ~ImageData() = default;
-
     /// image origin information
     void flip(const bool state) noexcept { _flip = state; }
     [[nodiscard]] bool flip() const noexcept { return _flip; }
@@ -153,7 +148,7 @@ struct ImageData final : NonCopyable {
     [[nodiscard]] U8 bpp() const noexcept { return _bpp; }
     /// the filename from which the image is created
     [[nodiscard]] const stringImpl& name() const noexcept { return _name; }
-    /// the image format as given by STB/NV_DDS
+    /// the image format as given by STB
     [[nodiscard]] GFXImageFormat format() const noexcept { return _format; }
 
     [[nodiscard]] GFXDataFormat dataType() const noexcept { return _dataType; }
@@ -175,7 +170,6 @@ struct ImageData final : NonCopyable {
   protected:
     friend class ImageDataInterface;
     [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const stringImpl& filename);
-    [[nodiscard]] bool loadDDS_NV(bool srgb, U16 refWidth, U16 refHeight, const stringImpl& filename);
 
    private:
     //Each entry is a separate mip map.

@@ -37,7 +37,8 @@
 #include "Platform/Video/Headers/CommandBufferPool.h"
 
 #include <imgui_internal.h>
-#include <imgui/addons/imgui_memory_editor/imgui_memory_editor.h>
+#include <imgui_club/imgui_memory_editor/imgui_memory_editor.h>
+#include <ImGuiMisc/imguivariouscontrols/imguivariouscontrols.h>
 
 namespace Divide {
 
@@ -140,7 +141,10 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         return false;
     }
     
-    CreateDirectories((Paths::g_saveLocation + Paths::Editor::g_saveLocation).c_str());
+    if (!CreateDirectories((Paths::g_saveLocation + Paths::Editor::g_saveLocation).c_str())) {
+        DebugBreak();
+    }
+
     _mainWindow = &_context.app().windowManager().getWindow(0u);
 
     IMGUI_CHECKVERSION();
@@ -1556,7 +1560,7 @@ void Editor::queueRemoveNode(const I64 nodeGUID) {
 }
 
 bool Editor::addComponent(SceneGraphNode* selection, const ComponentType newComponentType) const {
-    if (selection != nullptr && newComponentType._value != ComponentType::COUNT) {
+    if (selection != nullptr && newComponentType != ComponentType::COUNT) {
         selection->AddComponents(to_U32(newComponentType), true);
         return BitCompare(selection->componentMask(), to_U32(newComponentType));
     }
@@ -1579,7 +1583,7 @@ bool Editor::addComponent(const Selections& selections, const ComponentType newC
 }
 
 bool Editor::removeComponent(SceneGraphNode* selection, const ComponentType newComponentType) const {
-    if (selection != nullptr && newComponentType._value != ComponentType::COUNT) {
+    if (selection != nullptr && newComponentType != ComponentType::COUNT) {
         selection->RemoveComponents(to_U32(newComponentType));
         return !BitCompare(selection->componentMask(), to_U32(newComponentType));
     }

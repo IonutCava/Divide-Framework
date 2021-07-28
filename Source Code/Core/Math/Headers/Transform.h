@@ -40,13 +40,11 @@ namespace Divide {
 //Not thread safe!
 class Transform final : public ITransform, public GUIDWrapper, NonCopyable {
    public:
+
     Transform() noexcept = default;
-
-    Transform(const Quaternion<F32>& orientation,
-              const vec3<F32>& translation,
-              const vec3<F32>& scale);
-
-    ~Transform() = default;
+    explicit Transform(const Quaternion<F32>& orientation,
+                       const vec3<F32>& translation,
+                       const vec3<F32>& scale);
 
     void setPosition(const vec3<F32>& position) override;
     void setPosition(F32 x, F32 y, F32 z) override;
@@ -107,9 +105,9 @@ class Transform final : public ITransform, public GUIDWrapper, NonCopyable {
 
    private:
     /// The actual scale, rotation and translation values
-    TransformValues _transformValues;
+    TransformValues _transformValues {};
     /// This is the actual model matrix, but it will not convert to world space as it depends on it's parent in graph
-    mat4<F32> _worldMatrix;
+    mat4<F32> _worldMatrix {};
     /// _dirty is set to true whenever a translation, rotation or scale is applied
     bool _dirty = false;
     /// _rebuild is true when a rotation or scale is applied to avoid rebuilding matrices on translation

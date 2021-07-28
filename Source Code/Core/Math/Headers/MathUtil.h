@@ -60,7 +60,7 @@ struct GraphPlot2D final : GraphPlot {
     {
     }
 
-    explicit GraphPlot2D(stringImpl name) : GraphPlot(MOV(name))
+    explicit GraphPlot2D(stringImpl&& name) : GraphPlot(MOV(name))
     {
     }
 
@@ -76,7 +76,7 @@ struct GraphPlot3D final : GraphPlot {
     {
     }
 
-    explicit GraphPlot3D(stringImpl name) : GraphPlot(MOV(name))
+    explicit GraphPlot3D(stringImpl&& name) : GraphPlot(MOV(name))
     {
     }
 

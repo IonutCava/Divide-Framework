@@ -132,7 +132,6 @@ class AIManager final : public SceneComponent
 
   private:
     TaskPool& _parentPool;
-    Task* _activeTask;
     U64 _deltaTimeUS, _currentTimeUS, _previousTimeUS;
     std::atomic_bool _navMeshDebugDraw;
     std::atomic_bool _pauseUpdate;

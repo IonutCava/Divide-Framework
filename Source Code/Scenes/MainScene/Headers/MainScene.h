@@ -40,8 +40,7 @@ namespace Divide {
 class Terrain;
 FWD_DECLARE_MANAGED_CLASS(WaterPlane);
 
-class MainScene final : public Scene {
-   public:
+BEGIN_SCENE(MainScene)
     explicit MainScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
 
     /*General Scene Requirement*/
@@ -56,14 +55,15 @@ class MainScene final : public Scene {
     void processTasks(U64 deltaTimeUS)override;
     void processGUI(U64 deltaTimeUS)override;
     void test();
-    U16 registerInputActions() override;
+    U16  registerInputActions() override;
 
    private:
     bool _musicPlaying;
     bool _freeflyCamera;
     bool _updateLights;
     AudioDescriptor_ptr _beep;
-};
+
+END_SCENE(MainScene)
 
 }  // namespace Divide
 

@@ -54,7 +54,6 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
       
    public:
     explicit AnimationComponent(SceneGraphNode* parentSGN, PlatformContext& context);
-    ~AnimationComponent() = default;
 
     /// Select an animation by name
     bool playAnimation(const stringImpl& name);

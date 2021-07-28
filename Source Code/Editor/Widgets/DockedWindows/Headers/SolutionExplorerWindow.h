@@ -46,7 +46,6 @@ FWD_DECLARE_MANAGED_CLASS(SceneNode);
 class SolutionExplorerWindow final : public DockedWindow, public PlatformContextComponent {
   public:
       SolutionExplorerWindow(Editor& parent, PlatformContext& context, const Descriptor& descriptor);
-      ~SolutionExplorerWindow() = default;
 
       void drawInternal() override;
   protected:

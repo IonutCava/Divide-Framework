@@ -38,80 +38,79 @@
 
 namespace Divide {
 // ref: http://www.gamedev.net/page/resources/_/technical/game-programming/introduction-to-octrees-r3529
-class Octree : public std::enable_shared_from_this<Octree> {
-    public:
-        /// Minimum cube size is 1x1x1
-        static constexpr F32 MIN_SIZE = 1.0f;
-        static constexpr I32 MAX_LIFE_SPAN_LIMIT = 64;
+struct Octree  {
+    /// Minimum cube size is 1x1x1
+    static constexpr F32 MIN_SIZE = 1.0f;
+    static constexpr I32 MAX_LIFE_SPAN_LIMIT = 64;
 
-        Octree(U16 nodeMask);
-        Octree(U16 nodeMask, const BoundingBox& rootAABB);
-        Octree(U16 nodeMask, const BoundingBox& rootAABB, const vectorEASTL<SceneGraphNode*>& nodes);
+    Octree() = default;
 
-        ~Octree() = default;
+    explicit Octree(Octree* parent, U16 nodeMask);
+    explicit Octree(Octree* parent, U16 nodeMask, const BoundingBox& rootAABB);
+    explicit Octree(Octree* parent, U16 nodeMask, const BoundingBox& rootAABB, const vectorEASTL<SceneGraphNode*>& nodes);
 
-        void update(U64 deltaTimeUS);
-        bool addNode(SceneGraphNode* node) const;
-        bool addNodes(const vectorEASTL<SceneGraphNode*>& nodes);
-        void getAllRegions(vectorEASTL<BoundingBox>& regionsOut) const;
+    void update(U64 deltaTimeUS);
+    [[nodiscard]] bool addNode(SceneGraphNode* node) const;
+    [[nodiscard]] bool addNodes(const vectorEASTL<SceneGraphNode*>& nodes);
+    void getAllRegions(vectorEASTL<BoundingBox>& regionsOut) const;
 
-        const BoundingBox& getRegion() const noexcept { return _region; }
+    [[nodiscard]] const BoundingBox& getRegion() const noexcept { return _region; }
 
-        void updateTree();
+    void updateTree();
 
-        vectorEASTL<IntersectionRecord> allIntersections(const Frustum& region, U16 typeFilterMask);
-        vectorEASTL<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end);
-        IntersectionRecord nearestIntersection(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
-        vectorEASTL<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
+    [[nodiscard]] vectorEASTL<IntersectionRecord> allIntersections(const Frustum& region, U16 typeFilterMask);
+    [[nodiscard]] vectorEASTL<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end);
+    [[nodiscard]] IntersectionRecord nearestIntersection(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
+    [[nodiscard]] vectorEASTL<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
 
-    protected:
-        friend class SceneGraph;
-        void onNodeMoved(const SceneGraphNode& node);
+protected:
+    friend class SceneGraph;
+    void onNodeMoved(const SceneGraphNode& node);
 
-    private:
-        U8 activeNodes() const;
-        void buildTree();
-        void insert(SceneGraphNode* object);
-        void findEnclosingBox();
-        void findEnclosingCube();
-        std::shared_ptr<Octree>
-        createNode(const BoundingBox& region, const vectorEASTL<SceneGraphNode*>& objects);
+private:
+    [[nodiscard]] U8 activeNodes() const;
 
-        std::shared_ptr<Octree>
-        createNode(const BoundingBox& region, SceneGraphNode* object);
+    void buildTree();
+    void insert(SceneGraphNode* object);
+    void findEnclosingBox();
+    void findEnclosingCube();
 
-        bool isStatic(const SceneGraphNode* node) const;
-        vectorEASTL<IntersectionRecord> getIntersection(const Frustum& frustum, U16 typeFilterMask) const;
-        vectorEASTL<IntersectionRecord> getIntersection(const Ray& intersectRay, F32 start, F32 end, U16 typeFilterMask) const;
+    [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, const vectorEASTL<SceneGraphNode*>& objects);
+    [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, SceneGraphNode* object);
 
-        size_t getTotalObjectCount() const;
-        void updateIntersectionCache(vectorEASTL<SceneGraphNode*>& parentObjects);
-        
-        void handleIntersection(const IntersectionRecord& intersection) const;
-        bool getIntersection(SceneGraphNode* node, const Frustum& frustum, IntersectionRecord& irOut) const;
-        bool getIntersection(SceneGraphNode* node1, SceneGraphNode* node2, IntersectionRecord& irOut) const;
-        bool getIntersection(SceneGraphNode* node, const Ray& intersectRay, F32 start, F32 end, IntersectionRecord& irOut) const;
-        
+    [[nodiscard]] vectorEASTL<IntersectionRecord> getIntersection(const Frustum& frustum, U16 typeFilterMask) const;
+    [[nodiscard]] vectorEASTL<IntersectionRecord> getIntersection(const Ray& intersectRay, F32 start, F32 end, U16 typeFilterMask) const;
 
-    private:
-        std::array<std::shared_ptr<Octree>, 8> _childNodes = {};
-        vectorEASTL<SceneGraphNode*> _objects;
-        moodycamel::ConcurrentQueue<SceneGraphNode*> _movedObjects;
-        vectorEASTL<IntersectionRecord> _intersectionsCache;
-        BoundingBox _region;
-        std::shared_ptr<Octree> _parent = nullptr;
-        I32 _curLife = -1;
-        I32 _maxLifespan = MAX_LIFE_SPAN_LIMIT / 8;
-        U16 _nodeExclusionMask = 0u;
-        std::array<bool, 8> _activeNodes = {};
-        //ToDo: make this work in a multi-threaded environment
-        mutable I8 _frustPlaneCache = -1;
+    [[nodiscard]] size_t getTotalObjectCount() const;
+    void updateIntersectionCache(vectorEASTL<SceneGraphNode*>& parentObjects);
+    
+    void handleIntersection(const IntersectionRecord& intersection) const;
+    [[nodiscard]] bool getIntersection(SceneGraphNode* node, const Frustum& frustum, IntersectionRecord& irOut) const;
+    [[nodiscard]] bool getIntersection(SceneGraphNode* node1, SceneGraphNode* node2, IntersectionRecord& irOut) const;
+    [[nodiscard]] bool getIntersection(SceneGraphNode* node, const Ray& intersectRay, F32 start, F32 end, IntersectionRecord& irOut) const;
+    
 
-        static vectorEASTL<SceneGraphNode*> s_intersectionsObjectCache;
-        static eastl::queue<SceneGraphNode*> s_pendingInsertion;
-        static Mutex s_pendingInsertLock;
-        static bool s_treeReady;
-        static bool s_treeBuilt;
+private:
+    vectorEASTL<SceneGraphNode*> _objects;
+    moodycamel::ConcurrentQueue<SceneGraphNode*> _movedObjects;
+    vectorEASTL<IntersectionRecord> _intersectionsCache;
+    BoundingBox _region;
+    Octree* _parent = nullptr;
+    I32 _curLife = -1;
+    I32 _maxLifespan = MAX_LIFE_SPAN_LIMIT / 8;
+    U16 _nodeExclusionMask = 0u;
+
+    std::array<bool, 8> _activeNodes = {};
+    vectorEASTL<Octree> _childNodes = {};
+
+    //ToDo: make this work in a multi-threaded environment
+    mutable I8 _frustPlaneCache = -1;
+
+    static vectorEASTL<SceneGraphNode*> s_intersectionsObjectCache;
+    static eastl::queue<SceneGraphNode*> s_pendingInsertion;
+    static Mutex s_pendingInsertLock;
+    static bool s_treeReady;
+    static bool s_treeBuilt;
 };
 
 };  // namespace Divide

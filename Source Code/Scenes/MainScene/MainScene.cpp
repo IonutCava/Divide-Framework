@@ -156,7 +156,7 @@ bool MainScene::load(const Str256& name) {
         _guiTimersMS.push_back(0.0);  // Time
 
         removeTask(*g_boxMoveTaskID);
-        g_boxMoveTaskID = CreateTask(context(), [this](const Task& /*parent*/) {
+        g_boxMoveTaskID = CreateTask([this](const Task& /*parent*/) {
             test();
         });
 
@@ -275,7 +275,7 @@ void MainScene::test() {
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
-        g_boxMoveTaskID = CreateTask(context(), [this](const Task& /*parent*/) {
+        g_boxMoveTaskID = CreateTask([this](const Task& /*parent*/) {
             test();
         });
 

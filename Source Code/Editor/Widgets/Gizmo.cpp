@@ -6,6 +6,34 @@
 
 #include <imgui_internal.h>
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4505) //Unreferenced local function has been removed
+#endif
+#include <ImGuizmo/ImGuizmo.cpp>
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
+
+namespace ImGuizmo {
+    struct GizmoBounds
+    {
+        float  mRadiusSquareCenter = 0.0f;
+        ImVec2 mScreenSquareCenter = { 0.0f, 0.0f };
+        ImVec2 mScreenSquareMin = { 0.0f, 0.0f };
+        ImVec2 mScreenSquareMax = { 0.0f, 0.0f };
+    } gBounds = {};
+    
+    const GizmoBounds& GetBounds() {
+        gBounds.mRadiusSquareCenter = gContext.mRadiusSquareCenter;
+        gBounds.mScreenSquareCenter = gContext.mScreenSquareCenter;
+        gBounds.mScreenSquareMin = gContext.mScreenSquareMin;
+        gBounds.mScreenSquareMax = gContext.mScreenSquareMax;
+        return gBounds;
+    }
+};
+
 namespace Divide {
     namespace {
         constexpr U8 g_maxSelectedNodes = 12;

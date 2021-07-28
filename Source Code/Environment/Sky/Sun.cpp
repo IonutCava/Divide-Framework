@@ -5,6 +5,8 @@
 namespace Divide {
 
 namespace {
+    constexpr D64 g_numSecondsUpdateInterval = 30;
+
     constexpr D64 SunDia = 0.53;         // Sun radius degrees
     constexpr D64 AirRefr = 34.0 / 60.0; // Atmospheric refraction degrees
     constexpr D64 TwoPi = 2 * M_PI;
@@ -185,12 +187,29 @@ D64 SunPosition::CorrectAngle(const D64 angleInRadians) {
 }
 
 void Sun::SetLocation(const F32 longitude, const F32 latitude) {
-    _longitude = longitude;
-    _latitude = latitude;
+    if (!COMPARE(_longitude, longitude)) {
+        _longitude = longitude;
+        _dirty = true;
+    }
+    if (!COMPARE(_latitude, latitude)) {
+        _latitude = latitude;
+        _dirty = true;
+    }
 }
 
 void Sun::SetDate(struct tm *dateTime) {
-    _dateTime = dateTime;
+    if (_dateTime != nullptr) {
+        const time_t t1 = mktime(_dateTime);
+        const time_t t2 = mktime(dateTime);
+        const D64 diffSecs = difftime(t1, t2);
+        if (diffSecs > g_numSecondsUpdateInterval) {
+            _dateTime = dateTime;
+            _dirty = true;
+        }
+    } else {
+        _dateTime = dateTime;
+        _dirty = true;
+    }
 }
 
 SimpleTime Sun::GetTimeOfDay() const noexcept {
@@ -212,12 +231,16 @@ SimpleLocation Sun::GetGeographicLocation() const noexcept {
 }
 
 SunDetails Sun::GetDetails() const {
+    if (_dirty) {
+        _cachedInfo = SunPosition::CalculateSunPosition(_dateTime, _latitude, _longitude);
+        _dirty = false;
+    }
+
     SunDetails ret = {};
-    ret._info = SunPosition::CalculateSunPosition(_dateTime, _latitude, _longitude);
+    ret._info = _cachedInfo;
     ret._eulerDirection.x = -Angle::RadiansToDegrees(ret._info.altitude);
     ret._eulerDirection.y = Angle::RadiansToDegrees(ret._info.azimuth);
     ret._intensity = ret._info.altitude * 100.f;
-
     return ret;
 }
 

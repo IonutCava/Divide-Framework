@@ -38,17 +38,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 namespace GLUtil {
 
-class glVAOCache {
-public:
-    glVAOCache() = default;
+struct glVAOCache {
     ~glVAOCache();
 
     void clear();
 
     // sets vaoOut to an existing or a new VAO that matches the specified attribute specification
     // Returns true if we had a cache-HIT
-    bool getVAO(const AttribFlags& flags, GLuint& vaoOut);
-    bool getVAO(const AttribFlags& flags, GLuint& vaoOut, size_t& hashOut);
+    [[nodiscard]] bool getVAO(const AttribFlags& flags, GLuint& vaoOut);
+    [[nodiscard]] bool getVAO(const AttribFlags& flags, GLuint& vaoOut, size_t& hashOut);
 
 private:
     using VAOMap = hashMap<size_t, GLuint>;

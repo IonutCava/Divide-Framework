@@ -17,7 +17,7 @@ layout(binding = TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
 vec3 error() {
     const float total = floor(VAR._texCoord.x * float(dvd_screenDimensions.x)) +
                         floor(VAR._texCoord.y * float(dvd_screenDimensions.y));
-    return mix(vec3(0.f, 1.f, 0.f), vec3(1.f, 0.f, 0.f), mod(total, 2.f) == 0.f);
+    return (mod(total, 2.f) == 0.f ? vec3(1.f, 0.f, 0.f) : vec3(0.f, 1.f, 0.f));
 }
 
 void main()

@@ -514,7 +514,7 @@ T vec3<T>::distance(const vec3 &v) const noexcept {
 /// compute the vector's squared distance to another specified vector
 template <typename T>
 T vec3<T>::distanceSquared(const vec3 &v) const noexcept {
-    const vec3 d = v - *this;
+    const vec3 d{ v.x - this->x, v.y - this->y, v.z - this->z };
     return Divide::Dot(d, d);
 }
 

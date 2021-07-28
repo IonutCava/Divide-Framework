@@ -150,7 +150,6 @@
     <ClInclude Include="../../Source Code/Environment\Vegetation\Headers\Vegetation.h" />
     <ClInclude Include="../../Source Code/Environment\Water\Headers\Water.h" />
     <ClInclude Include="../../Source Code/GUI\Headers\SceneGUIElements.h" />
-    <ClInclude Include="../../Source Code/SceneList.h" />
     <ClInclude Include="../../Source Code/Scenes\DefaultScene\Headers\DefaultScene.h" />
     <ClInclude Include="../../Source Code/Scenes\Headers\Scene.h" />
     <ClInclude Include="../../Source Code/Scenes\Headers\SceneComponent.h" />
@@ -174,8 +173,6 @@
     <ClInclude Include="..\..\Source Code\AI\ActionInterface\CustomGOAP\Node.h" />
     <ClInclude Include="..\..\Source Code\AI\ActionInterface\CustomGOAP\Planner.h" />
     <ClInclude Include="..\..\Source Code\AI\ActionInterface\CustomGOAP\WorldState.h" />
-    <ClInclude Include="..\..\Source Code\AI\PathFinding\NavMeshes\DetourTileCache\Headers\DivideTileCacheCompressor.h" />
-    <ClInclude Include="..\..\Source Code\AI\PathFinding\NavMeshes\DetourTileCache\Headers\DivideTileCacheUtil.h" />
     <ClInclude Include="..\..\Source Code\AI\PathFinding\NavMeshes\DetourTileCache\Headers\ReCastConvexHull.h" />
     <ClInclude Include="..\..\Source Code\Environment\Sky\Headers\Sun.h" />
   </ItemGroup>
@@ -186,7 +183,6 @@
     <Xml Include="..\..\XML\keyBindings.xml" />
     <Xml Include="..\..\XML\Scenes\defaultScene.xml" />
     <Xml Include="..\..\XML\Scenes\defaultScene\assets.xml" />
-    <Xml Include="..\..\XML\Scenes\defaultScene\musicPlaylist.xml" />
     <Xml Include="..\..\XML\Scenes\WarScene\assets.xml" />
   </ItemGroup>
   <ItemGroup>
@@ -200,7 +196,7 @@
     <ProjectGuid>{3CD700EA-0C66-4FA7-9C66-D8E63CA952CB}</ProjectGuid>
     <RootNamespace>DivideHardware</RootNamespace>
     <ProjectName>Divide-Game</ProjectName>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -327,7 +323,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <AdditionalDependencies>
       </AdditionalDependencies>
       <AdditionalLibraryDirectories>
@@ -385,7 +381,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <AdditionalDependencies>
       </AdditionalDependencies>
       <Verbose>false</Verbose>
@@ -438,7 +434,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
       <Verbose>false</Verbose>
       <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>
     </Lib>

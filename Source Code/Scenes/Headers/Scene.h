@@ -78,8 +78,8 @@ namespace Attorney {
     class SceneInput;
     class SceneEnvironmentProbeComponent;
 }
-
-struct Selections {
+struct Selections
+{
     static constexpr U8 MaxSelections = 254u;
 
     std::array<I64, MaxSelections> _selections;
@@ -91,7 +91,8 @@ struct Selections {
     }
 };
 
-struct DragSelectData {
+struct DragSelectData
+{
     Rect<I32> _sourceViewport;
     Rect<I32> _targetViewport;
     vec2<I32> _startDragPos;
@@ -99,9 +100,44 @@ struct DragSelectData {
     bool _isDragging = false;
 };
 
+namespace SceneList {
+    template<typename T>
+    using SharedPtrFactory = boost::factory<std::shared_ptr<T>>;
+
+    using ScenePtrFactory = std::function<std::shared_ptr<Scene>(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name)>;
+
+    using SceneFactoryMap = hashMap<U64, ScenePtrFactory>;
+    using SceneNameMap = hashMap<U64, Str256>;
+    static SceneFactoryMap g_sceneFactory;
+    static SceneNameMap g_sceneNameMap;
+
+    template<typename T>
+    void registerScene(const char* name, const SharedPtrFactory<T>& scenePtr) {
+        g_sceneFactory[_ID(name)] = scenePtr;
+        g_sceneNameMap[_ID(name)] = name;
+    }
+}
+
+#define STRUCT_NAME(M) BOOST_PP_CAT(M, RegisterStruct)
+
+#define REGISTER_SCENE(SceneName)                                                    \
+class SceneName;                                                                     \
+static struct STRUCT_NAME(SceneName) {                                               \
+  STRUCT_NAME(SceneName)()                                                           \
+  {                                                                                  \
+     SceneList::registerScene(#SceneName, SceneList::SharedPtrFactory<SceneName>()); \
+  }                                                                                  \
+} BOOST_PP_CAT(SceneName, RegisterVariable);
+
+#define BEGIN_SCENE(SceneName)         \
+REGISTER_SCENE(SceneName);             \
+class SceneName final : public Scene { \
+    public:
+
+#define END_SCENE(SceneName) };
+
 /// The scene is a resource (to enforce load/unload and setName) and it has a 2 states:
 /// one for game information and one for rendering information
-
 class Scene : public Resource, public PlatformContextComponent {
     friend class Attorney::SceneManager;
     friend class Attorney::SceneGraph;
@@ -361,7 +397,7 @@ class Scene : public Resource, public PlatformContextComponent {
        vectorEASTL<BoundingBox> _octreeBoundingBoxes;
 
        mutable Mutex _perFrameArenaMutex;
-       mutable MyArena<Config::REQUIRED_RAM_SIZE / 3> _perFrameArena;
+       mutable MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 3> _perFrameArena;
 };
 
 namespace Attorney {

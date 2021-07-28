@@ -125,7 +125,9 @@ bool GUIConsole::Handle_TextSubmitted(const CEGUI::EventArgs& /*e*/) {
     assert(_editBox != nullptr);
     // Since we have that string, lets send it to the TextParser which will
     // handle it from here
-    _cmdParser->processCommand(_inputBuffer.c_str());
+    if (!_cmdParser->processCommand(_inputBuffer.c_str())) {
+        printText({"Failed to parse command!", Console::EntryType::ERR});
+    }
     // Now that we've finished with the text, we need to ensure that we clear
     // out the EditBox.
     // This is what we would expect to happen after we press enter

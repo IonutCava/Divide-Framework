@@ -12,13 +12,13 @@ namespace Divide {
 // We are using third party string libraries (STL, Boost, EASTL) that went through proper testing
 // This list of tests only verifies utility functions
 
-    vectorEASTL<stringImpl> getFiles(const stringImpl& input, const boost::regex& pattern) {
-    boost::smatch matches;
+vectorEASTL<stringImpl> getFiles(const stringImpl& input, const std::regex& pattern) {
+    std::smatch matches;
     istringstreamImpl inputStream(input);
     stringImpl line;
     vectorEASTL<stringImpl> include_file;
     while (std::getline(inputStream, line)) {
-        if (regex_search(line, matches, pattern)) {
+        if (std::regex_search(line, matches, pattern)) {
             include_file.emplace_back(Util::Trim(matches[1].str()));
         }
     }

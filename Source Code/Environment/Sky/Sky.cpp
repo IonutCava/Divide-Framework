@@ -191,16 +191,16 @@ void Sky::OnStartup(PlatformContext& context) {
 
     if (!fileExists(curlNoise)) {
         Console::printfn("Generating Curl Noise 128x128 RGB");
-        tasks[0] = CreateTask(context, [&curlNoise](const Task&) { GenerateCurlNoise(curlNoise.c_str(), 128, 128, 3); });
-        Start(*tasks[0]);
+        tasks[0] = CreateTask([&curlNoise](const Task&) { GenerateCurlNoise(curlNoise.c_str(), 128, 128, 3); });
+        Start(*tasks[0], context.taskPool(TaskPoolType::HIGH_PRIORITY));
         Console::printfn("Done!");
     }
 
     if (!fileExists(weather)) {
         Console::printfn("Generating Perlin Noise for LUT's");
         Console::printfn("Generating weather Noise 512x512 RGB");
-        tasks[1] = CreateTask(context, [&weather](const Task&) { GeneratePerlinNoise(weather.c_str(), 512, 512, 3); });
-        Start(*tasks[1]);
+        tasks[1] = CreateTask([&weather](const Task&) { GeneratePerlinNoise(weather.c_str(), 512, 512, 3); });
+        Start(*tasks[1], context.taskPool(TaskPoolType::HIGH_PRIORITY));
         Console::printfn("Done!");
     }
 
@@ -208,8 +208,8 @@ void Sky::OnStartup(PlatformContext& context) {
         //worley and perlin-worley are from github/sebh/TileableVolumeNoise
         //which is in turn based on noise described in 'real time rendering of volumetric cloudscapes for horizon zero dawn'
         Console::printfn("Generating Worley Noise 32x32x32 RGB");
-        tasks[2] = CreateTask(context, [&worlNoise](const Task&) { GenerateWorleyNoise(worlNoise.c_str(), 32, 32, 3, 32); });
-        Start(*tasks[2]);
+        tasks[2] = CreateTask([&worlNoise](const Task&) { GenerateWorleyNoise(worlNoise.c_str(), 32, 32, 3, 32); });
+        Start(*tasks[2], context.taskPool(TaskPoolType::HIGH_PRIORITY));
         Console::printfn("Done!");
     }
 
@@ -761,11 +761,11 @@ void Sky::buildDrawCommands(SceneGraphNode* sgn,
     pkgInOut.add(pipelineCommand);
 
     GFX::BindDescriptorSetsCommand bindDescriptorSetsCommand = {};
-    bindDescriptorSetsCommand._set._textureData.add({ _skybox->data(), _skyboxSampler, TextureUsage::UNIT0 });
-    bindDescriptorSetsCommand._set._textureData.add({ _weatherTex->data(), _noiseSamplerLinear, TextureUsage::HEIGHTMAP });
-    bindDescriptorSetsCommand._set._textureData.add({ _curlNoiseTex->data(), _noiseSamplerLinear, TextureUsage::OPACITY });
-    bindDescriptorSetsCommand._set._textureData.add({ _worlNoiseTex->data(), _noiseSamplerMipMap, TextureUsage::SPECULAR });
-    bindDescriptorSetsCommand._set._textureData.add({ _perWorlNoiseTex->data(), _noiseSamplerMipMap, TextureUsage::NORMALMAP });
+    bindDescriptorSetsCommand._set._textureData.add(TextureEntry{ _skybox->data(), _skyboxSampler, TextureUsage::UNIT0 });
+    bindDescriptorSetsCommand._set._textureData.add(TextureEntry{ _weatherTex->data(), _noiseSamplerLinear, TextureUsage::HEIGHTMAP });
+    bindDescriptorSetsCommand._set._textureData.add(TextureEntry{ _curlNoiseTex->data(), _noiseSamplerLinear, TextureUsage::OPACITY });
+    bindDescriptorSetsCommand._set._textureData.add(TextureEntry{ _worlNoiseTex->data(), _noiseSamplerMipMap, TextureUsage::SPECULAR });
+    bindDescriptorSetsCommand._set._textureData.add(TextureEntry{ _perWorlNoiseTex->data(), _noiseSamplerMipMap, TextureUsage::NORMALMAP });
 
     pkgInOut.add(bindDescriptorSetsCommand);
 

@@ -50,7 +50,6 @@ struct EditorComponentField;
 class PropertyWindow final : public DockedWindow, public PlatformContextComponent {
     public:
         PropertyWindow(Editor& parent, PlatformContext& context, const Descriptor& descriptor);
-        ~PropertyWindow() = default;
 
         void drawInternal() override;
         void backgroundUpdateInternal() override;

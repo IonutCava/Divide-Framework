@@ -45,7 +45,6 @@ class SceneGUIElements : public GUIInterface,
 
 public:
     SceneGUIElements(Scene& parentScene, GUI& context);
-    ~SceneGUIElements() = default;
 
     void draw(GFXDevice& context, GFX::CommandBuffer& bufferInOut);
 

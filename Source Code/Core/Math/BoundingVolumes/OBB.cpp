@@ -75,11 +75,11 @@ namespace Divide {
     }
 
     BoundingSphere OBB::toEnclosingSphere() const noexcept {
-        return { position(), halfDiagonal().length() };
+        return BoundingSphere{ position(), halfDiagonal().length() };
     }
 
     BoundingSphere OBB::toEnclosedSphere() const noexcept {
-        return { position(), halfExtents().minComponent() };
+        return BoundingSphere{ position(), halfExtents().minComponent() };
     }
 
     vec3<F32> OBB::size() const noexcept {

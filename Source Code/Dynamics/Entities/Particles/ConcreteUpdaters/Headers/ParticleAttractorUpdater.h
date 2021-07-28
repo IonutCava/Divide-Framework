@@ -47,8 +47,6 @@ class ParticleAttractorUpdater final : public ParticleUpdater {
     {
     }
 
-    ~ParticleAttractorUpdater() = default;
-
     void update(U64 deltaTimeUS, ParticleData& p) override;
 
     [[nodiscard]] size_t collectionSize() const { return _attractors.size(); }

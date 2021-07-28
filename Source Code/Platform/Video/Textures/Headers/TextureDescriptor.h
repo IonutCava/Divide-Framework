@@ -44,7 +44,6 @@ namespace Divide {
 struct SamplerDescriptor final : Hashable {
    
     SamplerDescriptor();
-    ~SamplerDescriptor() = default;
 
     [[nodiscard]] size_t getHash() const noexcept override;
 

@@ -73,18 +73,25 @@ physx::PxDefaultAllocator PhysX::_gDefaultAllocatorCallback;
 hashMap<U64, physx::PxTriangleMesh*> PhysX::s_gMeshCache;
 SharedMutex PhysX::s_meshCacheLock;
 
-PhysX::~PhysX()
-{
-    assert(_gPhysicsSDK == nullptr);
-}
-
 ErrorCode PhysX::initPhysicsAPI(const U8 targetFrameRate, const F32 simSpeed) {
+
+    // Make sure we always try to close as much of our API stuff as possible on failure
+    bool init = false;
+    SCOPE_EXIT{
+        if (!init && !closePhysicsAPI()) {
+            Console::errorfn(Locale::Get(_ID("ERROR_START_PHYSX_API")));
+        }
+    };
+
     Console::printfn(Locale::Get(_ID("START_PHYSX_API")));
 
     _simulationSpeed = simSpeed;
     // create foundation object with default error and allocator callbacks.
     _foundation = PxCreateFoundation(PX_PHYSICS_VERSION, _gDefaultAllocatorCallback, g_physxErrorCallback);
-    assert(_foundation != nullptr);
+    if (_foundation == nullptr) {
+        return ErrorCode::PHYSX_INIT_ERROR;
+    }
+
 #if PX_SUPPORT_GPU_PHYSX
     physx::PxCudaContextManagerDesc cudaContextManagerDesc;
     cudaContextManagerDesc.interopMode = physx::PxCudaInteropMode::NO_INTEROP;
@@ -107,15 +114,11 @@ ErrorCode PhysX::initPhysicsAPI(const U8 targetFrameRate, const F32 simSpeed) {
     _gPhysicsSDK = PxCreatePhysics(PX_PHYSICS_VERSION,  *_foundation, toleranceScale, g_recordMemoryAllocations, _pvd);
 
     if (_gPhysicsSDK == nullptr) {
-        closePhysicsAPI();
-
         Console::errorfn(Locale::Get(_ID("ERROR_START_PHYSX_API")));
         return ErrorCode::PHYSX_INIT_ERROR;
     }
 
     if (!PxInitExtensions(*_gPhysicsSDK, _pvd)) {
-        closePhysicsAPI();
-
         Console::errorfn(Locale::Get(_ID("ERROR_EXTENSION_PHYSX_API")));
         return ErrorCode::PHYSX_EXTENSION_ERROR;
     }
@@ -134,7 +137,6 @@ ErrorCode PhysX::initPhysicsAPI(const U8 targetFrameRate, const F32 simSpeed) {
         _cooking = PxCreateCooking(PX_PHYSICS_VERSION, *_foundation, params);
     }
     if (_cooking == nullptr) {
-        closePhysicsAPI();
         Console::errorfn(Locale::Get(_ID("ERROR_START_PHYSX_API")));
         return ErrorCode::PHYSX_INIT_ERROR;
     }
@@ -144,12 +146,11 @@ ErrorCode PhysX::initPhysicsAPI(const U8 targetFrameRate, const F32 simSpeed) {
     //ToDo: Add proper material controls to RigidBodyComponent -Ionut
     _defaultMaterial = _gPhysicsSDK->createMaterial(0.5f, 0.5f, 0.1f);
     if (_defaultMaterial == nullptr) {
-        closePhysicsAPI();
-
         Console::errorfn(Locale::Get(_ID("ERROR_START_PHYSX_API")));
         return ErrorCode::PHYSX_INIT_ERROR;
     }
 
+    init = true;
     updateTimeStep(targetFrameRate, _simulationSpeed);
     Console::printfn(Locale::Get(_ID("START_PHYSX_API_OK")));
 
@@ -257,8 +258,8 @@ void PhysX::idle() {
 }
 
 bool PhysX::initPhysicsScene(Scene& scene) {
-    if (_targetScene != nullptr) {
-        destroyPhysicsScene();
+    if (_targetScene != nullptr && !destroyPhysicsScene()) {
+        DIVIDE_UNEXPECTED_CALL_MSG("Failed to destroy active physics scene!");
     }
 
     DIVIDE_ASSERT(_targetScene == nullptr);
@@ -374,7 +375,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
                     meshDesc.triangles.data = triangles.data();
 
                     physx::PxDefaultFileOutputStream outputStream(cachePath.c_str());
-                    if (obj.getObjectType()._value == ObjectType::TERRAIN) {
+                    if (obj.getObjectType() == ObjectType::TERRAIN) {
                         const auto& verts = node->getNode<Terrain>().getVerts();
                         meshDesc.points.count = static_cast<physx::PxU32>(verts.size());
                         meshDesc.points.data = verts[0]._position._v;

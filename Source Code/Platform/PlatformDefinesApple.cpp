@@ -7,12 +7,13 @@
 #include <SDL_syswm.h>
 #include <signal.h
 
-void* malloc_aligned(const size_t size, size_t alignment) {
-	return malloc(size);
+void* malloc_aligned(const size_t size, size_t alignment, size_t offset) {
+    (void)offset;
+    return _mm_malloc(size, alignment);
 }
 
-void  malloc_free(void*& ptr) {
-	free(ptr);
+void  free_aligned(void*& ptr) {
+    _mm_free(ptr);
 }
 
 namespace Divide {
@@ -44,7 +45,7 @@ namespace Divide {
         if (sysctl(mib, namelen, &size, &len, NULL, 0) < 0) {
             perror("sysctl");
         } else {
-            info._availableRam = to_size(size);
+            info._availableRamInBytes = to_size(size);
         }
 
         return true;

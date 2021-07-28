@@ -145,8 +145,7 @@ void RenderPassManager::render(const RenderParams& params) {
                 RenderPass* pass = _renderPasses[i];
 
                 GFX::CommandBuffer* buf = _renderPassCommandBuffer[i];
-                _renderTasks[i] = CreateTask(pool,
-                                             nullptr,
+                _renderTasks[i] = CreateTask(nullptr,
                                              [pass, buf, &sceneRenderState](const Task & parentTask) {
                                                  OPTICK_EVENT("RenderPass: BuildCommandBuffer");
                                                  buf->clear(false);
@@ -154,14 +153,13 @@ void RenderPassManager::render(const RenderParams& params) {
                                                  buf->batch();
                                              },
                                              false);
-                Start(*_renderTasks[i], g_multiThreadedCommandGeneration ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
+                Start(*_renderTasks[i], pool, g_multiThreadedCommandGeneration ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
             }
             { //PostFX should be pretty fast
                 GFX::CommandBuffer* buf = _postFXCommandBuffer;
 
                 Time::ProfileTimer& timer = *_postFxRenderTimer;
-                postFXTask = CreateTask(pool,
-                                        nullptr,
+                postFXTask = CreateTask(nullptr,
                                         [buf, &gfx, &cam, &timer](const Task & /*parentTask*/) {
                                             OPTICK_EVENT("PostFX: BuildCommandBuffer");
 
@@ -172,7 +170,7 @@ void RenderPassManager::render(const RenderParams& params) {
                                             buf->batch();
                                         },
                                         false);
-                Start(*postFXTask, g_multiThreadedCommandGeneration ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
+                Start(*postFXTask, pool, g_multiThreadedCommandGeneration ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
             }
         }
     }
@@ -228,21 +226,22 @@ void RenderPassManager::render(const RenderParams& params) {
                     }
 
                     // Grab the list of dependencies
-                    const vectorEASTL<U8>& dependencies = _renderPasses[i]->dependencies();
+                    const auto& dependencies = _renderPasses[i]->dependencies();
 
                     bool dependenciesRunning = false;
-                    // For every dependency in the list
-                    for (const U8 dep : dependencies) {
+                    // For every dependency in the list try and see if it's running
+                    for (U8 j = 0u; j < renderPassCount; ++j) {
                         if (dependenciesRunning) {
                             break;
                         }
 
-                        // Try and see if it's running
-                        for (U8 j = 0; j < renderPassCount; ++j) {
-                            // If it is running, we can't render yet
-                            if (j != i && _renderPasses[j]->sortKey() == dep && !completedPasses[j]) {
-                                dependenciesRunning = true;
-                                break;
+                        // If it is running, we can't render yet
+                        if (j != i && !completedPasses[j]) {
+                            for (const auto dep : dependencies) {
+                                if (_renderPasses[j]->sortKey() == dep) {
+                                    dependenciesRunning = true;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -276,7 +275,7 @@ void RenderPassManager::render(const RenderParams& params) {
     }
 
     // Flush the postFX stack
-    Wait(*postFXTask);
+    Wait(*postFXTask, pool);
     _context.flushCommandBuffer(*_postFXCommandBuffer, false);
 
     for (U8 i = 0; i < renderPassCount; ++i) {

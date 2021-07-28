@@ -266,7 +266,7 @@ void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn,
     if (_context.context().config().debug.renderFilter.particles) {
         if (_particleTexture) {
             SamplerDescriptor textureSampler = {};
-            pkgInOut.get<GFX::BindDescriptorSetsCommand>(0)->_set._textureData.add({ _particleTexture->data(), textureSampler.getHash(), TextureUsage::UNIT0 });
+            pkgInOut.get<GFX::BindDescriptorSetsCommand>(0)->_set._textureData.add(TextureEntry{ _particleTexture->data(), textureSampler.getHash(), TextureUsage::UNIT0 });
         }
 
         const Pipeline* pipeline = pkgInOut.get<GFX::BindPipelineCommand>(0)->_pipeline;
@@ -299,7 +299,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
 
     if ( _enabled &&  getAliveParticleCount() > 0) {
         if (_context.context().config().debug.renderFilter.particles) {
-            Wait(*_bufferUpdate);
+            Wait(*_bufferUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
 
             if (refreshData && _buffersDirty[to_U32(renderStagePass._stage)]) {
                 GenericVertexData& buffer = getDataBuffer(renderStagePass._stage, 0);
@@ -335,14 +335,14 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
 
                 parallel_for(_context.context(), descriptor);
 
-                _bufferUpdate = CreateTask(_context.context(),
+                _bufferUpdate = CreateTask(
                     [this, &renderStagePass](const Task&) {
                     // invalidateCache means that the existing particle data is no longer partially sorted
                     _particles->sort();
                     _buffersDirty[to_U32(renderStagePass._stage)] = true;
                 });
 
-                Start(*_bufferUpdate);
+                Start(*_bufferUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
             }
         }
     }
@@ -395,10 +395,9 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
             up->update(g_updateInterval, data);
         }
 
-        Wait(*_bbUpdate);
+        Wait(*_bbUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
 
-        _bbUpdate = CreateTask(_context.context(), 
-              [this, aliveCount, averageEmitRate](const Task&)
+        _bbUpdate = CreateTask([this, aliveCount, averageEmitRate](const Task&)
         {
             BoundingBox aabb;
             for (U32 i = 0; i < aliveCount; i += to_U32(averageEmitRate) / 4) {
@@ -406,7 +405,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
             }
             setBounds(aabb);
         });
-        Start(*_bbUpdate);
+        Start(*_bbUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
     }
 
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);

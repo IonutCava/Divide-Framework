@@ -26,11 +26,14 @@ void ParticleSource::emit(const U64 deltaTimeUS, const std::shared_ptr<ParticleD
     const U32 startID = data.aliveCount();
     const U32 endID = std::min(startID + maxNewParticles, data.totalCount() - 1);
 
-    Task* generateTask = CreateTask(_context.context(), TASK_NOP);
+    TaskPool& pool = _context.context().taskPool(TaskPoolType::HIGH_PRIORITY);
+
+    Task* generateTask = CreateTask(TASK_NOP);
     for (std::shared_ptr<ParticleGenerator>& gen : _particleGenerators) {
-        gen->generate(*generateTask, deltaTimeUS, data, startID, endID);
+        gen->generate(*generateTask, pool, deltaTimeUS, data, startID, endID);
     }
-    Wait(Start(*generateTask));
+
+    StartAndWait(*generateTask, pool);
 
     for (U32 i = startID; i < endID; ++i) {
         p->wake(i);

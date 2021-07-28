@@ -66,7 +66,6 @@ class SceneShaderData {
 
   public:
     explicit SceneShaderData(GFXDevice& context);
-    ~SceneShaderData() = default;
 
     void sunDetails(const vec3<F32>& direction, const FColour3& colour) noexcept {
         _sceneBufferData._sunDirection.set(direction);

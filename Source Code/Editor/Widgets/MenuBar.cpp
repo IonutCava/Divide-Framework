@@ -22,7 +22,7 @@
 #include "ECS/Components/Headers/EnvironmentProbeComponent.h"
 #include "ECS/Systems/Headers/ECSManager.h"
 
-#include <imgui/addons/imguifilesystem/imguifilesystem.h>
+#include <ImGuiMisc/imguifilesystem/imguifilesystem.h>
 
 
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -194,10 +194,10 @@ void MenuBar::draw() {
             }
         }
 
-        if (_newPrimitiveType._value != ObjectType::COUNT) {
+        if (_newPrimitiveType != ObjectType::COUNT) {
             ImGui::OpenPopup("Create Primitive");
             if (ImGui::BeginPopupModal("Create Primitive", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text(Util::StringFormat("Create a new [ %s ]?", _newPrimitiveType._to_string()).c_str());
+                ImGui::Text(Util::StringFormat("Create a new [ %s ]?", TypeUtil::ObjectTypeToString(_newPrimitiveType)).c_str());
                 ImGui::Separator();
 
                 static char buf[64];
@@ -568,9 +568,10 @@ void MenuBar::drawDebugMenu() {
         if (ImGui::BeginMenu("BRDF Settings")) {
             const MaterialDebugFlag debugFlag = _context.gfx().materialDebugFlag();
             bool debug = false;
-            for (MaterialDebugFlag flag : MaterialDebugFlag::_values()) {
+            for (U8 i = 0u; i < to_U8(MaterialDebugFlag::COUNT); ++i) {
+                const MaterialDebugFlag flag = static_cast<MaterialDebugFlag>(i);
                 debug = debugFlag == flag;
-                if (ImGui::MenuItem(flag._to_string(), "", &debug)) {
+                if (ImGui::MenuItem(TypeUtil::MaterialDebugFlagToString(flag), "", &debug)) {
                     _context.gfx().materialDebugFlag(debug ? flag : MaterialDebugFlag::COUNT);
                 }
             }

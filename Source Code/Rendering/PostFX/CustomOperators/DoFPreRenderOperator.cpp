@@ -110,8 +110,8 @@ bool DoFPreRenderOperator::execute(const Camera* camera, const RenderTargetHandl
     const TextureData extraTex = extraAtt.texture()->data();
 
     GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-    descriptorSetCmd._set._textureData.add({ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
-    descriptorSetCmd._set._textureData.add({ extraTex, extraAtt.samplerHash(), TextureUsage::POST_FX_DATA });
+    descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
+    descriptorSetCmd._set._textureData.add(TextureEntry{ extraTex, extraAtt.samplerHash(), TextureUsage::POST_FX_DATA });
     EnqueueCommand(bufferInOut, descriptorSetCmd);
 
     GFX::BeginRenderPassCommand beginRenderPassCmd = {};

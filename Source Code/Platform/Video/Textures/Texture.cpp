@@ -35,10 +35,8 @@ Texture::Texture(GFXDevice& context,
 
 bool Texture::load() {
     if (_asyncLoad) {
-        Start(*CreateTask(_context.context().taskPool(TaskPoolType::HIGH_PRIORITY),
-            [this](const Task & parent) {
-                threadedLoad();
-        }));
+        Start(*CreateTask([this](const Task & parent) { threadedLoad(); }),
+              _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
     } else {
         threadedLoad();
     }

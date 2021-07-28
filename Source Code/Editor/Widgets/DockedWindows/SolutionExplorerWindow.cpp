@@ -70,7 +70,7 @@ namespace Divide {
     void SolutionExplorerWindow::drawContextMenu(SceneGraphNode* sgn) {
         if (ImGui::BeginPopupContextItem("Context menu")) {
             const SceneNode& node = sgn->getNode();
-            const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType()._value == ObjectType::SUBMESH;
+            const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH;
             const bool isRoot = sgn->parent() == nullptr;
 
             ImGui::Text(sgn->name().c_str());
@@ -503,7 +503,7 @@ namespace Divide {
                 componentMask |= to_U32(ComponentType::SELECTION);
             }
 
-            for (ComponentType::_integral i = 1; i < ComponentType::COUNT + 1; ++i) {
+            for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i) {
                 const U32 componentBit = 1 << i;
                 bool required = componentBit == to_U32(ComponentType::TRANSFORM) || 
                                 componentBit == to_U32(ComponentType::BOUNDS);
@@ -527,7 +527,7 @@ namespace Divide {
                 }
 
                 bool componentEnabled = BitCompare(componentMask, componentBit);
-                const char* compLabel = ComponentType::_from_integral(componentBit)._to_string();
+                const char* compLabel = TypeUtil::ComponentTypeToString(static_cast<ComponentType>(componentBit));
                 if (ImGui::Checkbox(compLabel, &componentEnabled)) {
                     SetBit(componentMask, componentBit);
                 }

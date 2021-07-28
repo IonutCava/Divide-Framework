@@ -43,8 +43,6 @@ class ParticleBasicColourUpdater final : public ParticleUpdater {
     {
     }
 
-    ~ParticleBasicColourUpdater() = default;
-
     void update(U64 deltaTimeUS, ParticleData& p) override;
 };
 }

@@ -79,7 +79,6 @@ class AnimEvaluator {
 
    public:
     AnimEvaluator() = default;
-    ~AnimEvaluator() = default;
 
     explicit AnimEvaluator(const aiAnimation* pAnim, U32 idx) noexcept;
 

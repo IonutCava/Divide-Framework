@@ -34,21 +34,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _TASK_POOL_INL_
 
 namespace Divide {
+
     template<class Predicate>
-    Task* TaskPool::createTask(Task* parentTask, Predicate&& threadedFunction, const bool allowedInIdle) {
-        Task* task = allocateTask(parentTask, allowedInIdle);
+    Task* CreateTask(Task* parentTask, Predicate&& threadedFunction, const bool allowedInIdle) {
+        Task* task = TaskPool::AllocateTask(parentTask, allowedInIdle);
         task->_callback = threadedFunction;
         return task;
     }
 
     template<class Predicate>
-    Task* CreateTask(TaskPool& pool, Predicate&& threadedFunction, const bool allowedInIdle) {
-        return CreateTask(pool, nullptr, threadedFunction, allowedInIdle);
-    }
-
-    template<class Predicate>
-    Task* CreateTask(TaskPool& pool, Task* parentTask, Predicate&& threadedFunction, const bool allowedInIdle) {
-        return pool.createTask(parentTask, threadedFunction, allowedInIdle);
+    Task* CreateTask(Predicate&& threadedFunction, const bool allowedInIdle) {
+        Task* task = TaskPool::AllocateTask(nullptr, allowedInIdle);
+        task->_callback = threadedFunction;
+        return task;
     }
 } //namespace Divide
 

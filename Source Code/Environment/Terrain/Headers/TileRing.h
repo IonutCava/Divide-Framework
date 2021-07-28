@@ -72,52 +72,51 @@ namespace Divide {
 //    ###################
 //    ###################
 //
-class TileRing : NonCopyable
+class TileRing final : NonCopyable
 {
 public:
-	struct Adjacency
-	{
-		// These are the size of the neighbours along +/- x or y axes.
-		// For interior tiles this is 1.  For edge tiles it is 0.5 or 2.0.
-		F32 neighbourMinusX = 1.f;
-		F32 neighbourMinusY = 1.f;
-		F32 neighbourPlusX = 1.f;
-		F32 neighbourPlusY = 1.f;
-	};
+    struct Adjacency
+    {
+        // These are the size of the neighbours along +/- x or y axes.
+        // For interior tiles this is 1.  For edge tiles it is 0.5 or 2.0.
+        F32 neighbourMinusX = 1.f;
+        F32 neighbourMinusY = 1.f;
+        F32 neighbourPlusX = 1.f;
+        F32 neighbourPlusY = 1.f;
+    };
 
-	struct VertexData
-	{
-		F32 positionX = 0.0f;
-		F32 positionZ = 0.0f;
-		F32 tileScale = 1.0f;
-		F32 ringID = 0.0f;
-	};
+    struct VertexData
+    {
+        F32 positionX = 0.0f;
+        F32 positionZ = 0.0f;
+        F32 tileScale = 1.0f;
+        F32 ringID = 0.0f;
+    };
 
-	struct InstanceData
-	{
-		VertexData data = {};
-		Adjacency adjacency = {};
-	};
+    struct InstanceData
+    {
+        VertexData data = {};
+        Adjacency adjacency = {};
+    };
 
 public:
-	// holeWidth & outerWidth are nos. of tiles; tileSize is a world-space length
-	explicit TileRing(I32 holeWidth, I32 outerWidth, F32 tileSize);
-	~TileRing() = default;
+    // holeWidth & outerWidth are nos. of tiles; tileSize is a world-space length
+    explicit TileRing(I32 holeWidth, I32 outerWidth, F32 tileSize);
 
-	PROPERTY_R(I32, tileCount, 0);
-	PROPERTY_R(F32, tileSize, 1.f);
+    PROPERTY_R(I32, tileCount, 0);
+    PROPERTY_R(F32, tileSize, 1.f);
 
-	// We use ID as a really hacky LoD system. Ring 0 => LoD 0. Ring 1 => LoD 1 (e.g. no detail normals), etc
-	[[nodiscard]] vectorEASTL<InstanceData> createInstanceDataVB(I32 ringID);
-
-private:
-	[[nodiscard]] bool InRing(I32 x, I32 y) const;
-	void AssignNeighbourSizes(I32 x, I32 y, Adjacency*) const;
+    // We use ID as a really hacky LoD system. Ring 0 => LoD 0. Ring 1 => LoD 1 (e.g. no detail normals), etc
+    [[nodiscard]] vectorEASTL<InstanceData> createInstanceDataVB(I32 ringID);
 
 private:
-	const I32 _holeWidth = 0;
-	const I32 _outerWidth = 0;
-	const I32 _ringWidth = 0;
+    [[nodiscard]] bool InRing(I32 x, I32 y) const;
+    void AssignNeighbourSizes(I32 x, I32 y, Adjacency*) const;
+
+private:
+    const I32 _holeWidth = 0;
+    const I32 _outerWidth = 0;
+    const I32 _ringWidth = 0;
 };
 
 }  // namespace Divide

@@ -53,7 +53,6 @@ public:
     public:
         explicit GameScript(const stringImpl& sourceCode, FrameListenerManager& parent, U32 callOrder);
         explicit GameScript(const stringImpl& scriptPath, FileType fileType, FrameListenerManager& parent, U32 callOrder);
-        ~GameScript() = default;
 
     protected:
         bool frameStarted(const FrameEvent& evt) override;

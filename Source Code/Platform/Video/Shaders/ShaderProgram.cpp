@@ -19,6 +19,7 @@ ShaderProgram_ptr ShaderProgram::s_imShader = nullptr;
 ShaderProgram_ptr ShaderProgram::s_nullShader = nullptr;
 ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
 ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
+std::pair<I64, ShaderProgram::ShaderProgramMapEntry> ShaderProgram::s_lastRequestedShaderProgram = { -1, {} };
 
 SharedMutex ShaderProgram::s_programLock;
 std::atomic_int ShaderProgram::s_shaderCount;
@@ -86,7 +87,8 @@ bool ShaderProgram::unload() {
 
 
 /// Rebuild the specified shader stages from source code
-bool ShaderProgram::recompile(bool force) {
+bool ShaderProgram::recompile(bool force, bool& skipped) {
+    skipped = true;
     return getState() == ResourceState::RES_LOADED;
 }
 
@@ -97,8 +99,15 @@ void ShaderProgram::Idle() {
     // If we don't have any shaders queued for recompilation, return early
     if (!s_recompileQueue.empty()) {
         // Else, recompile the top program from the queue
-        if (!s_recompileQueue.top()->recompile(true)) {
-            // error
+        bool skipped = false;
+        if (s_recompileQueue.top()->recompile(true, skipped)) {
+            if (!skipped) {
+                if (s_recompileQueue.top()->getGUID() == s_lastRequestedShaderProgram.first) {
+                    s_lastRequestedShaderProgram = { -1, {} };
+                }
+            }
+        } else {
+            DIVIDE_UNEXPECTED_CALL();
         }
         //Re-register because the handle is probably different by now
         RegisterShaderProgram(s_recompileQueue.top());
@@ -116,6 +125,8 @@ bool ShaderProgram::RecompileShaderProgram(const Str256& name) {
     for (const auto& [handle, programEntry] : s_shaderPrograms) {
        
         ShaderProgram* program = programEntry.first;
+        assert(program != nullptr);
+
         const Str256& shaderName = program->resourceName();
         // Check if the name matches any of the program's name components    
         if (shaderName.find(name) != Str256::npos || shaderName.compare(name) == 0) {
@@ -172,6 +183,7 @@ void ShaderProgram::OnShutdown() {
         s_recompileQueue.pop();
     }
     s_shaderPrograms.clear();
+    s_lastRequestedShaderProgram = { -1, {} };
 }
 
 bool ShaderProgram::UpdateAll() {
@@ -183,8 +195,12 @@ bool ShaderProgram::UpdateAll() {
     if_constexpr(!Config::Build::IS_RELEASE_BUILD) {
         if (onOddFrame) {
             SharedLock<SharedMutex> r_lock(s_programLock);
+            bool skipped = false;
             for (const auto& [handle, programEntry] : s_shaderPrograms) {
-                programEntry.first->recompile(false);
+                programEntry.first->recompile(false, skipped);
+                if (!skipped && handle == s_lastRequestedShaderProgram.first) {
+                    s_lastRequestedShaderProgram = {-1, {}};
+                }
             }
         }
     }
@@ -205,6 +221,8 @@ void ShaderProgram::RegisterShaderProgram(ShaderProgram* shaderProgram) {
 bool ShaderProgram::UnregisterShaderProgram(size_t shaderHash) {
 
     UniqueLock<SharedMutex> lock(s_programLock);
+    s_lastRequestedShaderProgram = { -1, {} };
+
     if (s_shaderPrograms.empty()) {
         // application shutdown?
         return true;
@@ -218,6 +236,10 @@ bool ShaderProgram::UnregisterShaderProgram(size_t shaderHash) {
         });
 
     if (it != eastl::cend(s_shaderPrograms)) {
+        if (it->first == s_lastRequestedShaderProgram.first) {
+            s_lastRequestedShaderProgram = { -1, {} };
+        }
+
         s_shaderPrograms.erase(it);
         return true;
     }
@@ -228,22 +250,35 @@ bool ShaderProgram::UnregisterShaderProgram(size_t shaderHash) {
 
 ShaderProgram* ShaderProgram::FindShaderProgram(const I64 shaderHandle) {
     SharedLock<SharedMutex> r_lock(s_programLock);
-    const auto& it = s_shaderPrograms.find(shaderHandle);
-    if (it != eastl::cend(s_shaderPrograms)) {
-        return it->second.first;
+    if (shaderHandle == s_lastRequestedShaderProgram.first) {
+        return s_lastRequestedShaderProgram.second.first;
     }
 
+    const auto& it = s_shaderPrograms.find(shaderHandle);
+    if (it != eastl::cend(s_shaderPrograms)) {
+        s_lastRequestedShaderProgram = { shaderHandle, it->second };
+
+        return it->second.first;
+    }
+    s_lastRequestedShaderProgram = { -1, {} };
     return nullptr;
 }
 
 ShaderProgram* ShaderProgram::FindShaderProgram(const size_t shaderHash) {
     SharedLock<SharedMutex> r_lock(s_programLock);
+    if (s_lastRequestedShaderProgram.first != -1 && s_lastRequestedShaderProgram.second.second == shaderHash) {
+        return s_lastRequestedShaderProgram.second.first;
+    }
+
     for (const auto& [handle, programEntry] : s_shaderPrograms) {
         if (programEntry.second == shaderHash) {
+            s_lastRequestedShaderProgram = { handle, programEntry };
+
             return programEntry.first;
         }
     }
 
+    s_lastRequestedShaderProgram = { -1, {} };
     return nullptr;
 }
 

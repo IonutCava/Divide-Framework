@@ -43,7 +43,6 @@ class Unit;
 class Trigger final : public SceneNode {
    public:
     explicit Trigger(ResourceCache* parentCache, size_t descriptorHash, const Str256& name);
-    ~Trigger() = default;
 
     void sceneUpdate(U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) override;
 
@@ -72,6 +71,7 @@ class Trigger final : public SceneNode {
    private:
     /// The Task to be launched when triggered
     Task* _triggeredTask = nullptr;
+    TaskPool* _taskPool = nullptr;
     /// The trigger circle's center position
     vec3<F32> _triggerPosition;
     /// The trigger's radius

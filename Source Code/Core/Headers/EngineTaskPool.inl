@@ -34,15 +34,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _ENGINE_TASK_POOL_INL_
 
 namespace Divide {
-    template<class Predicate>
-    Task* CreateTask(PlatformContext& context, Predicate&& threadedFunction, bool allowedInIdle) {
-        return CreateTask(context.taskPool(TaskPoolType::HIGH_PRIORITY), MOV(threadedFunction), allowedInIdle);
-    }
-
-    template<class Predicate>
-    Task* CreateTask(PlatformContext& context, Task* parentTask, Predicate&& threadedFunction, bool allowedInIdle) {
-        return CreateTask(context.taskPool(TaskPoolType::HIGH_PRIORITY), parentTask, MOV(threadedFunction), allowedInIdle);
-    }
 
 }; //namespace Divide
 

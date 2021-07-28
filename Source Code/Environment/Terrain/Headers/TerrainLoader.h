@@ -46,7 +46,7 @@ class TerrainDescriptor;
 struct VegetationDetails;
 
 FWD_DECLARE_MANAGED_CLASS(Terrain);
-class TerrainLoader : NonCopyable {
+class TerrainLoader final : NonCopyable {
    public:
     [[nodiscard]] static bool loadTerrain(const Terrain_ptr& terrain,
                                           const std::shared_ptr<TerrainDescriptor>& terrainDescriptor,
@@ -61,7 +61,6 @@ class TerrainLoader : NonCopyable {
 
    private:
     TerrainLoader() noexcept = default;
-    ~TerrainLoader() = default;
 
     [[nodiscard]] static bool loadThreadedResources(const Terrain_ptr& terrain,
                                                     PlatformContext& context,

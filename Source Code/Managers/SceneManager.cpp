@@ -120,8 +120,6 @@ bool SceneManager::init(PlatformContext& platformContext, ResourceCache* cache) 
 
         _sceneData = MemoryManager_NEW SceneShaderData(platformContext.gfx());
         _renderPassCuller = MemoryManager_NEW RenderPassCuller();
-        _scenePool->init();
-
         _init = true;
     } else {
         _init = false;
@@ -175,10 +173,10 @@ Scene* SceneManager::load(const Str256& sceneName) {
     return loadingScene;
 }
 
-bool SceneManager::unloadScene(Scene* scene) const {
+bool SceneManager::unloadScene(Scene* scene) {
     assert(scene != nullptr);
     if (_saveTask != nullptr) {
-        Wait(*_saveTask);
+        Wait(*_saveTask, parent().platformContext().taskPool(TaskPoolType::LOW_PRIORITY));
     }
 
     _platformContext->gui().onUnloadScene(scene);
@@ -189,7 +187,7 @@ bool SceneManager::unloadScene(Scene* scene) const {
 void SceneManager::setActiveScene(Scene* const scene) {
     assert(scene != nullptr);
     if (_saveTask != nullptr) {
-        Wait(*_saveTask);
+        Wait(*_saveTask, parent().platformContext().taskPool(TaskPoolType::LOW_PRIORITY));
     }
 
     Attorney::SceneManager::onRemoveActive(_scenePool->defaultSceneActive() ? _scenePool->defaultScene()
@@ -214,7 +212,7 @@ bool SceneManager::switchScene(const Str256& name, bool unloadPrevious, const Re
     }
 
     // We use our rendering task pool for scene changes because we might be creating / loading GPU assets (shaders, textures, buffers, etc)
-    Start(*CreateTask(_platformContext->taskPool(TaskPoolType::HIGH_PRIORITY),
+    Start(*CreateTask(
         [this, name, unloadPrevious, &sceneToUnload](const Task& /*parentTask*/)
         {
             // Load first, unload after to make sure we don't reload common resources
@@ -225,6 +223,7 @@ bool SceneManager::switchScene(const Str256& name, bool unloadPrevious, const Re
                 }
             }
         }),
+        _platformContext->taskPool(TaskPoolType::HIGH_PRIORITY),
         threaded ? TaskPriority::DONT_CARE : TaskPriority::REALTIME, 
         [this, name, targetRenderViewport, unloadPrevious, &sceneToUnload]()
         {
@@ -259,7 +258,7 @@ bool SceneManager::switchScene(const Str256& name, bool unloadPrevious, const Re
             setActiveScene(loadedScene);
 
             if (unloadPrevious) {
-                _scenePool->deleteScene(sceneToUnload);
+                _scenePool->deleteScene(sceneToUnload != nullptr ? sceneToUnload->getGUID() : -1);
             }
 
             _renderPassCuller->clear();
@@ -425,7 +424,7 @@ vectorEASTL<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>&
         if (sNode.type() == SceneNodeType::TYPE_OBJECT3D) {
             auto* sComp = node->get<SelectionComponent>();
             if (sComp == nullptr && 
-                (sNode.type() == SceneNodeType::TYPE_OBJECT3D && node->getNode<Object3D>().getObjectType() == to_base(ObjectType::SUBMESH)))
+                (sNode.type() == SceneNodeType::TYPE_OBJECT3D && node->getNode<Object3D>().getObjectType() == ObjectType::SUBMESH))
             {
                 if (node->parent() != nullptr) {
                     // Already selected. Skip.
@@ -483,7 +482,7 @@ vectorEASTL<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>&
         if (parsedNode != nullptr) {
             while (true) {
                 const SceneNode& node = parsedNode->getNode();
-                if (node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType()._value == ObjectType::SUBMESH) {
+                if (node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH) {
                     parsedNode = parsedNode->parent();
                 } else {
                     break;
@@ -659,7 +658,7 @@ void SceneManager::getSortedReflectiveNodes(const Camera* camera, const RenderSt
         cullParams._currentCamera = camera;
         cullParams._cullMaxDistanceSq = SQUARED(camera->getZPlanes().y);
 
-        _renderPassCuller->frustumCull(cullParams, allNodes, nodesOut);
+        _renderPassCuller->frustumCull(cullParams, to_base(CullOptions::DEFAULT_CULL_OPTIONS), allNodes, nodesOut);
     } else {
         _renderPassCuller->toVisibleNodes(camera, allNodes, nodesOut);
     }
@@ -683,7 +682,7 @@ void SceneManager::getSortedRefractiveNodes(const Camera* camera, const RenderSt
         cullParams._currentCamera = camera;
         cullParams._cullMaxDistanceSq = SQUARED(camera->getZPlanes().y);
 
-        _renderPassCuller->frustumCull(cullParams, allNodes, nodesOut);
+        _renderPassCuller->frustumCull(cullParams, to_base(CullOptions::DEFAULT_CULL_OPTIONS), allNodes, nodesOut);
     } else {
         _renderPassCuller->toVisibleNodes(camera, allNodes, nodesOut);
     }
@@ -702,7 +701,7 @@ void SceneManager::initDefaultCullValues(const RenderStage stage, NodeCullParams
     }
 }
 
-VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params) {
+VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params, const U16 cullFlags) {
     OPTICK_EVENT();
 
     Time::ScopedTimer timer(*_sceneGraphCullTimers[to_U32(params._stage)]);
@@ -710,7 +709,7 @@ VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params) {
     Scene& activeScene = getActiveScene();
     SceneState* sceneState = activeScene.state();
 
-     return _renderPassCuller->frustumCull(params, activeScene.sceneGraph(), sceneState, _parent.platformContext());
+     return _renderPassCuller->frustumCull(params, cullFlags, activeScene.sceneGraph(), sceneState, _parent.platformContext());
 }
 
 void SceneManager::prepareLightData(const RenderStage stage, const vec3<F32>& cameraPos, const mat4<F32>& viewMatrix) {
@@ -974,6 +973,7 @@ bool SceneManager::saveActiveScene(bool toCache, const bool deferred, const DELE
 
     const Scene& activeScene = getActiveScene();
 
+    TaskPool& pool = parent().platformContext().taskPool(TaskPoolType::LOW_PRIORITY);
     if (_saveTask != nullptr) {
         if (!Finished(*_saveTask)) {
             if (toCache) {
@@ -981,17 +981,15 @@ bool SceneManager::saveActiveScene(bool toCache, const bool deferred, const DELE
             }
             DebugBreak();
         }
-        Wait(*_saveTask);
+        Wait(*_saveTask, pool);
     }
 
-    TaskPool& pool = parent().platformContext().taskPool(TaskPoolType::LOW_PRIORITY);
-    _saveTask = CreateTask(pool,
-                           nullptr,
+    _saveTask = CreateTask(nullptr,
                            [&activeScene, msgCallback, finishCallback, toCache](const Task& /*parentTask*/) {
                                LoadSave::saveScene(activeScene, toCache, msgCallback, finishCallback);
                            },
                            false);
-    Start(*_saveTask, deferred ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
+    Start(*_saveTask, pool, deferred ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
 
     return true;
 }

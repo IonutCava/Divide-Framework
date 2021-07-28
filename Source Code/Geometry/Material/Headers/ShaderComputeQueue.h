@@ -54,7 +54,6 @@ public:
 
 public:
     explicit ShaderComputeQueue(ResourceCache* cache);
-    ~ShaderComputeQueue() = default;
 
     // This is the main loop that steps through the queue and processes each entry
     void idle();
@@ -67,10 +66,10 @@ public:
     // Process the first entry in the queue immediately.
     // This is called in a loop in the 'update' call, but can be user called as well if the shader is needed immediately
     // Return true if the queue wasn't empty
-    bool stepQueue();
+    [[nodiscard]] bool stepQueue();
 
 private:
-    bool stepQueueLocked();
+    [[nodiscard]] bool stepQueueLocked();
 
 private:
     ResourceCache* _cache = nullptr;

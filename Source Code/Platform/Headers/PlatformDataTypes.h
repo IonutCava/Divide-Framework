@@ -32,6 +32,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #ifndef _PLATFORM_DATA_TYPES_H_
 #define _PLATFORM_DATA_TYPES_H_
+#include <cassert>
 
 namespace Divide {
 
@@ -128,31 +129,6 @@ struct I24
         assert(val < INT24_MAX && val > -INT24_MAX);
     }
 
-    I24(const I24& val) noexcept
-        : value{ val.value[0], val.value[1], val.value[2] }
-    {
-    }
-
-    I24(I24&& other) noexcept
-        : value{ other.value[0], other.value[1], other.value[2] }
-    {
-    }
-
-    ~I24() = default;
-
-    FORCE_INLINE I24& operator= (I24&& other) noexcept {
-        value[0] = other.value[0];
-        value[1] = other.value[1];
-        value[2] = other.value[2];
-        return *this;
-    }
-
-    FORCE_INLINE I24& operator= (const I24& input) noexcept {
-        const I24 t = input;
-        std::memcpy(value, t.value, sizeof(U8) * 3);
-        return *this;
-    }
-
     FORCE_INLINE I24& operator= (const I32 input) noexcept {
         assert(input < INT24_MAX && input > -INT24_MAX);
 
@@ -239,31 +215,6 @@ struct U24
         : value{ reinterpret_cast<U8*>(&val)[0], reinterpret_cast<U8*>(&val)[1], reinterpret_cast<U8*>(&val)[2] }
     {
         assert(val < UINT24_MAX);
-    }
-
-    U24(const U24& val) noexcept
-        : value{ val.value[0], val.value[1], val.value[2] }
-    {
-    }
-
-    U24(U24&& other) noexcept
-        : value{ other.value[0], other.value[1], other.value[2] }
-    {
-    }
-
-    ~U24() = default;
-
-    FORCE_INLINE U24& operator= (U24&& other) noexcept {
-        value[0] = other.value[0];
-        value[1] = other.value[1];
-        value[2] = other.value[2];
-        return *this;
-    }
-
-    FORCE_INLINE U24& operator= (const U24& input) noexcept {
-        const U24 t = input;
-        std::memcpy(value, t.value, sizeof(U8) * 3);
-        return *this;
     }
 
     FORCE_INLINE U24& operator= (const U32 input) noexcept {

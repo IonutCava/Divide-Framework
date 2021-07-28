@@ -55,7 +55,6 @@ class BoundingBox {
     explicit BoundingBox(const vectorEASTL<vec3<F32>>& points) noexcept;
     explicit BoundingBox(const std::array<vec3<F32>, 8>& points) noexcept;
     explicit BoundingBox(F32 minX, F32 minY, F32 minZ, F32 maxX, F32 maxY, F32 maxZ) noexcept;
-    ~BoundingBox() = default;
 
     BoundingBox(const BoundingBox& b) noexcept;
     BoundingBox& operator=(const BoundingBox& b) noexcept;

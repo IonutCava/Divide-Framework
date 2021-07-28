@@ -44,7 +44,6 @@ namespace Divide {
       public:
 
         explicit MenuBar(PlatformContext& context, bool mainMenu);
-        ~MenuBar() = default;
 
         void draw();
 
