@@ -135,17 +135,17 @@ class SceneNode : public CachedResource {
     virtual void setMaterialTpl(const Material_ptr& material);
     const Material_ptr& getMaterialTpl() const;
 
-    SceneNodeRenderState& renderState() noexcept { return _renderState; }
-    const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
+    inline [[nodiscard]] SceneNodeRenderState& renderState() noexcept { return _renderState; }
+    inline [[nodiscard]] const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
 
     stringImpl getTypeName() const;
 
-    ResourceCache* parentResourceCache() noexcept { return _parentCache; }
-    const ResourceCache* parentResourceCache() const noexcept { return _parentCache; }
+    inline [[nodiscard]] ResourceCache* parentResourceCache() noexcept { return _parentCache; }
+    inline [[nodiscard]] const ResourceCache* parentResourceCache() const noexcept { return _parentCache; }
 
-    const BoundingBox& getBounds() const noexcept { return _boundingBox; }
+    inline [[nodiscard]] const BoundingBox& getBounds() const noexcept { return _boundingBox; }
 
-    U32 requiredComponentMask() const noexcept { return _requiredComponentMask; }
+    inline [[nodiscard]] U32 requiredComponentMask() const noexcept { return _requiredComponentMask; }
 
     virtual void saveCache(ByteBuffer& outputBuffer) const;
     virtual void loadCache(ByteBuffer& inputBuffer);
@@ -162,8 +162,8 @@ class SceneNode : public CachedResource {
 
     void setBounds(const BoundingBox& aabb);
 
-    EditorComponent& getEditorComponent() noexcept { return _editorComponent; }
-    const EditorComponent& getEditorComponent() const noexcept { return _editorComponent; }
+    inline [[nodiscard]] EditorComponent& getEditorComponent() noexcept { return _editorComponent; }
+    inline [[nodiscard]] const EditorComponent& getEditorComponent() const noexcept { return _editorComponent; }
 
     virtual size_t maxReferenceCount() const noexcept { return 1; }
 

@@ -1250,13 +1250,15 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
         texturesOut[i] = _textureAddresses[to_base(g_materialTextures[i])];
     }
 
+    SceneGraphNode* parentSGN = parentComp.getSGN();
+
     F32 selectionFlag = 0.0f;
-    if (parentComp.getSGN()->hasFlag(SceneGraphNode::Flags::HOVERED)) {
+    if (parentSGN->hasFlag(SceneGraphNode::Flags::HOVERED)) {
         selectionFlag = 0.5f;
     }
     // We don't propagate selection flags to children outside of the editor, so check for that
-    if (parentComp.getSGN()->hasFlag(SceneGraphNode::Flags::SELECTED) ||
-        parentComp.getSGN()->parent() && parentComp.getSGN()->parent()->hasFlag(SceneGraphNode::Flags::SELECTED)) {
+    if (parentSGN->hasFlag(SceneGraphNode::Flags::SELECTED) ||
+        parentSGN->parent() && parentSGN->parent()->hasFlag(SceneGraphNode::Flags::SELECTED)) {
         if_constexpr(Config::Build::ENABLE_EDITOR) {
             const Editor& editor = _context.parent().platformContext().editor();
             selectionFlag = (!editor.running() || editor.showEmissiveSelections()) ? 1.0f : selectionFlag;
@@ -1268,6 +1270,7 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
     constexpr F32 reserved = 1.f;
     const FColour4& specColour = specular(); //< For PHONG_SPECULAR
 
+    //ToDo: Maybe store all of these material properties in an internal, cached, NodeMaterialData structure? -Ionut
     dataOut._albedo.set(baseColour());
     dataOut._colourData.set(ambient(), specColour.a);
     dataOut._emissiveAndParallax.set(emissive(), parallaxFactor());

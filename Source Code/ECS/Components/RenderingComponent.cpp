@@ -418,7 +418,7 @@ void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, co
     }
 }
 
-U8 RenderingComponent::getLoDLevel(const vec3<F32>& center, const vec3<F32>& cameraEye, const RenderStage renderStage, const vec4<U16>& lodThresholds) {
+U8 RenderingComponent::getLoDLevel(const F32 distSQtoCenter, const RenderStage renderStage, const vec4<U16>& lodThresholds) {
     OPTICK_EVENT();
 
     const auto&[state, level] = _lodLockLevels[to_base(renderStage)];
@@ -427,9 +427,9 @@ U8 RenderingComponent::getLoDLevel(const vec3<F32>& center, const vec3<F32>& cam
         return CLAMPED(level, to_U8(0u), MAX_LOD_LEVEL);
     }
 
-    const F32 distSQtoCenter = std::max(center.distanceSquared(cameraEye), std::numeric_limits<F32>::epsilon());
+    const F32 distSQtoCenterClamped = std::max(distSQtoCenter, std::numeric_limits<F32>::epsilon());
     for (U8 i = 0; i < MAX_LOD_LEVEL; ++i) {
-        if (distSQtoCenter <= to_F32(SQUARED(lodThresholds[i]))) {
+        if (distSQtoCenterClamped <= to_F32(SQUARED(lodThresholds[i]))) {
             return i;
         }
     }
@@ -457,7 +457,8 @@ void RenderingComponent::prepareDrawPackage(const Camera& camera, const SceneRen
         } else {
             const BoundingBox& aabb = bComp->getBoundingBox();
             const vec3<F32> LoDtarget = renderState.useBoundsCenterForLoD() ? aabb.getCenter() : aabb.nearestPoint(cameraEye);
-            _lodLevels[to_base(renderStagePass._stage)] = getLoDLevel(LoDtarget, cameraEye, renderStagePass._stage, sceneRenderState.lodThresholds(renderStagePass._stage));
+            const F32 distanceSQToCenter = LoDtarget.distanceSquared(cameraEye);
+            _lodLevels[to_base(renderStagePass._stage)] = getLoDLevel(distanceSQToCenter, renderStagePass._stage, sceneRenderState.lodThresholds(renderStagePass._stage));
         }
     }
 

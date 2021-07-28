@@ -199,7 +199,7 @@ public:
     /// Clearing a flag might propagate to child nodes (e.g. selection).
     void clearFlag(Flags flag, bool recursive = true) noexcept;
     /// Returns true only if the current node has the specified flag. Does not check children!
-    bool hasFlag(Flags flag) const noexcept;
+    [[nodiscard]] bool hasFlag(const Flags flag) const noexcept;
 
     /// Always use the level of redirection needed to reduce virtual function overhead.
     /// Use getNode<SceneNode> if you need material properties for ex. or getNode<SkinnedSubMesh> for animation transforms

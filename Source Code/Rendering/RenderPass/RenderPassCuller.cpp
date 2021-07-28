@@ -123,8 +123,10 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
 
         FrustumCollision collisionResult = FrustumCollision::FRUSTUM_OUT;
         const I64 nodeGUID = currentNode->getGUID();
-        for (size_t i = 0; i < params._ignoredGUIDS.second; ++i) {
-            if (nodeGUID == params._ignoredGUIDS.first[i]) {
+        const I64* ignoredGUIDs = params._ignoredGUIDS.first;
+        const size_t guidCount = params._ignoredGUIDS.second;
+        for (size_t i = 0u; i < guidCount; ++i) {
+            if (nodeGUID == ignoredGUIDs[i]) {
                 return;
             }
         }

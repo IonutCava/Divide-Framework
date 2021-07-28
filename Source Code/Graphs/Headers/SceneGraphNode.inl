@@ -34,6 +34,18 @@
 #define _SCENE_GRAPH_NODE_INL_
 
 namespace Divide {
+    inline [[nodiscard]] bool SceneGraphNode::hasFlag(const Flags flag) const noexcept {
+        return BitCompare(_nodeFlags, flag); 
+    }
+
+    inline void SceneGraphNode::occlusionCull(const RenderStagePass& stagePass,
+                                              const Texture_ptr& depthBuffer,
+                                              const Camera& camera,
+                                              GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
+                                              GFX::CommandBuffer& bufferInOut) const {
+        Attorney::SceneNodeSceneGraph::occlusionCullNode(_node.get(), stagePass, depthBuffer, camera, HIZPushConstantsCMDInOut, bufferInOut);
+    }
+
     template<class Predicate>
     bool SceneGraphNode::forEachChild(const U32 start, const U32 end, Predicate predicate) const {
         SharedLock<SharedMutex> r_lock(_childLock);

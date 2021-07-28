@@ -562,6 +562,7 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
                               F32& distanceToClosestPointSQ) const {
     OPTICK_EVENT();
 
+    distanceToClosestPointSQ = std::numeric_limits<F32>::max();
     collisionTypeOut = FrustumCollision::FRUSTUM_OUT;
 
     // If the node is still loading, DO NOT RENDER IT. Bad things happen :D
@@ -569,15 +570,20 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
         return true;
     }
 
+    const SceneNodeRenderState nodeRenderState = _node->renderState();
+
     // Drawing is disabled in general for this node
-    if (!_node->renderState().drawState()) {
+    if (!nodeRenderState.drawState()) {
         return true;
     }
 
     // Some nodes should always render for different reasons (eg, trees are instanced and bound to the parent chunk)
     if (hasFlag(Flags::VISIBILITY_LOCKED)) {
-        if (_node->renderState().drawState(RenderStagePass{ params._stage, RenderPassType::COUNT })) {
+        if (nodeRenderState.drawState(RenderStagePass{ params._stage, RenderPassType::COUNT })) {
             collisionTypeOut = FrustumCollision::FRUSTUM_IN;
+            const vec3<F32>& eye = params._currentCamera->getEye();
+            const BoundingSphere& boundingSphere = get<BoundsComponent>()->getBoundingSphere();
+            distanceToClosestPointSQ = boundingSphere.getCenter().distanceSquared(eye) - SQUARED(boundingSphere.getRadius());
             return false;
         }
 
@@ -595,6 +601,9 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
     const BoundsComponent* bComp = get<BoundsComponent>();
     const BoundingSphere& boundingSphere = bComp->getBoundingSphere();
     const BoundingBox& boundingBox = bComp->getBoundingBox();
+    const vec3<F32>& bSphereCenter = boundingSphere.getCenter();
+    const F32 radius = boundingSphere.getRadius();
+
     STUBBED("ToDo: make this work in a multi-threaded environment -Ionut");
     _frustPlaneCache = -1;
     I8 fakePlaneCache = -1;
@@ -603,7 +612,7 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
     const vec3<F32>& eye = params._currentCamera->getEye();
     {
         OPTICK_EVENT("cullNode - Bounding Sphere Distance Test");
-        distanceToClosestPointSQ = boundingSphere.getCenter().distanceSquared(eye) - SQUARED(boundingSphere.getRadius());
+        distanceToClosestPointSQ = bSphereCenter.distanceSquared(eye) - SQUARED(radius);
         if (distanceToClosestPointSQ > params._cullMaxDistanceSq) {
             // Node is too far away
             return true;
@@ -624,6 +633,7 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
         }
 
     }
+
     if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_CLIPPING_PLANES)) {
         OPTICK_EVENT("cullNode - Bounding Sphere - Clipping Planes Test");
         auto& planes = params._clippingPlanes.planes();
@@ -638,15 +648,14 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
             }
         }
     }
+
     if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM)) {
         OPTICK_EVENT("cullNode - Bounding Sphere & Box Frustum Test");
         // Sphere is in range, so check bounds primitives against the frustum
         if (!boundingBox.containsPoint(eye)) {
             const Frustum& frustum = params._currentCamera->getFrustum();
-            const F32 radius = boundingSphere.getRadius();
-            const vec3<F32>& center = boundingSphere.getCenter();
             // Check if the bounding sphere is in the frustum, as Frustum <-> Sphere check is fast
-            collisionTypeOut = frustum.ContainsSphere(center, radius, fakePlaneCache);
+            collisionTypeOut = frustum.ContainsSphere(bSphereCenter, radius, fakePlaneCache);
             if (collisionTypeOut == FrustumCollision::FRUSTUM_INTERSECT) {
                 // If the sphere is not completely in the frustum, check the AABB
                 collisionTypeOut = frustum.ContainsBoundingBox(boundingBox, fakePlaneCache);
@@ -659,31 +668,26 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
         collisionTypeOut = FrustumCollision::FRUSTUM_INTERSECT;
     }
 
-    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_LOD)) {
+    if (collisionTypeOut != FrustumCollision::FRUSTUM_OUT && BitCompare(cullFlags, CullOptions::CULL_AGAINST_LOD)) {
         OPTICK_EVENT("cullNode - LoD check")
 
         RenderingComponent* rComp = get<RenderingComponent>();
-        const U8 LoDLevel = rComp->getLoDLevel(boundingSphere.getCenter(), eye, params._stage, params._lodThresholds);
-        if (LoDLevel != RenderingComponent::INVALID_LOD_LEVEL) {
-            const vec2<F32>& renderRange = rComp->renderRange();
-            if (!IS_IN_RANGE_INCLUSIVE(distanceToClosestPointSQ, SIGNED_SQUARED(renderRange.min), SQUARED(renderRange.max)) ||
-                params._maxLoD > -1 && LoDLevel > params._maxLoD || // Node has a too high LoD for the current render pass
-                LoDLevel > _node->renderState().maxLodLevel()) // Draw state has its own lod requirements
-            {
+        const vec2<F32>& renderRange = rComp->renderRange();
+        const F32 minDistanceSQ = SQUARED(renderRange.min) * (renderRange.min < 0.f ? -1.f : 1.f); //Keep the sign. Might need it for rays or shadows.
+        const F32 maxDistanceSQ = SQUARED(renderRange.max);
+
+        if (!IS_IN_RANGE_INCLUSIVE(distanceToClosestPointSQ, minDistanceSQ, maxDistanceSQ)) {
+            collisionTypeOut = FrustumCollision::FRUSTUM_OUT;
+        } else {
+            // We are in range, so proceed to LoD checks
+            const U8 LoDLevel = rComp->getLoDLevel(distanceToClosestPointSQ, params._stage, params._lodThresholds);
+            if ((params._maxLoD > -1 && LoDLevel > params._maxLoD) || LoDLevel > nodeRenderState.maxLodLevel()) {
                 collisionTypeOut = FrustumCollision::FRUSTUM_OUT;
             }
         }
     }
 
     return collisionTypeOut == FrustumCollision::FRUSTUM_OUT;
-}
-
-void SceneGraphNode::occlusionCull(const RenderStagePass& stagePass,
-                                   const Texture_ptr& depthBuffer,
-                                   const Camera& camera,
-                                   GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
-                                   GFX::CommandBuffer& bufferInOut) const {
-    Attorney::SceneNodeSceneGraph::occlusionCullNode(_node.get(), stagePass, depthBuffer, camera, HIZPushConstantsCMDInOut, bufferInOut);
 }
 
 void SceneGraphNode::invalidateRelationshipCache(SceneGraphNode* source) {
@@ -852,10 +856,6 @@ void SceneGraphNode::clearFlag(const Flags flag, const bool recursive) noexcept 
             return true;
         });
     }
-}
-
-bool SceneGraphNode::hasFlag(const Flags flag) const noexcept {
-    return BitCompare(_nodeFlags, to_U32(flag));
 }
 
 void SceneGraphNode::SendEvent(ECS::CustomEvent&& event) {

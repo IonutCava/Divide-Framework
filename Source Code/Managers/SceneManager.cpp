@@ -131,7 +131,6 @@ void SceneManager::destroy() {
     if (_init) {
         Vegetation::destroyStaticData();
         MemoryManager::SAFE_DELETE(_sceneData);
-        _platformContext->kernel().frameListenerMgr().removeFrameListener(this);
         Console::printfn(Locale::Get(_ID("STOP_SCENE_MANAGER")));
         // Console::printfn(Locale::Get("SCENE_MANAGER_DELETE"));
         Console::printfn(Locale::Get(_ID("SCENE_MANAGER_REMOVE_SCENES")));

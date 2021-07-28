@@ -207,9 +207,6 @@ template <typename T>
 [[nodiscard]] constexpr T SQUARED(T input) noexcept;
 
 template <typename T>
-[[nodiscard]] constexpr T SIGNED_SQUARED(T input) noexcept;
-
-template <typename T>
 [[nodiscard]] constexpr T MAP(T input, const T in_min, const T in_max, const T out_min, const T out_max) noexcept {
     D64 slope = 0.0;
     return MAP(input, in_min, in_max, out_min, out_max, slope);

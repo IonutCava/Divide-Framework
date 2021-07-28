@@ -110,8 +110,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     friend class Attorney::RenderingComponentSGN;
 
    public:
-       static constexpr U8 INVALID_LOD_LEVEL = std::numeric_limits<U8>::max();
-
        enum class RenderOptions : U16 {
            RENDER_GEOMETRY = toBit(1),
            RENDER_WIREFRAME = toBit(2),
@@ -176,7 +174,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void drawSkeleton(GFX::CommandBuffer& bufferInOut);
     void drawBounds(bool AABB, bool OBB, bool Sphere, GFX::CommandBuffer& bufferInOut);
 
-    [[nodiscard]] U8 getLoDLevel(const vec3<F32>& center, const vec3<F32>& cameraEye, RenderStage renderStage, const vec4<U16>& lodThresholds);
+    [[nodiscard]] U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
     void addShaderBuffer(const ShaderBufferBinding& binding) { _externalBufferBindings.push_back(binding); }
     [[nodiscard]] const auto& getShaderBuffers() const noexcept { return _externalBufferBindings; }

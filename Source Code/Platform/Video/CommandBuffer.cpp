@@ -35,6 +35,7 @@ namespace {
         if (ShouldSkipType(typeIndex) || IsCameraCommand(typeIndex)) {
             return true;
         }
+
         switch (static_cast<CommandType>(typeIndex)) {
             case CommandType::SET_VIEWPORT:
             case CommandType::PUSH_VIEWPORT:
@@ -51,7 +52,7 @@ namespace {
         return false;
     }
 
-    [[nodiscard]] bool RemoveEmptyDrawCommands(DrawCommand::CommandContainer& commands) {
+    FORCE_INLINE [[nodiscard]] bool RemoveEmptyDrawCommands(DrawCommand::CommandContainer& commands) {
         return dvd_erase_if(commands, [](const GenericDrawCommand& cmd) noexcept { return cmd._drawCount == 0u; });
     };
 };

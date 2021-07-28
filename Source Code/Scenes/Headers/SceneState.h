@@ -183,34 +183,34 @@ class SceneState : public SceneComponent {
         onPlayerRemove(index);
     }
 
-    void onPlayerRemove(const U8 index) {
+    inline void onPlayerRemove(const U8 index) {
         _playerState[index].resetAll();
     }
 
-    [[nodiscard]] SceneStatePerPlayer& playerState() {
+    inline [[nodiscard]] SceneStatePerPlayer& playerState() {
         return _playerState[playerPass()];
     }
 
-    [[nodiscard]] const SceneStatePerPlayer& playerState() const {
+    inline [[nodiscard]] const SceneStatePerPlayer& playerState() const {
         return _playerState[playerPass()];
     }
 
-    [[nodiscard]] SceneStatePerPlayer& playerState(const U8 index) {
+    inline [[nodiscard]] SceneStatePerPlayer& playerState(const U8 index) {
         return _playerState[index];
     }
 
-    [[nodiscard]] const SceneStatePerPlayer& playerState(const U8 index) const {
+    inline [[nodiscard]] const SceneStatePerPlayer& playerState(const U8 index) const {
         return _playerState[index];
     }
 
-    [[nodiscard]] SceneRenderState& renderState() noexcept { return _renderState; }
-    [[nodiscard]] MusicPlaylist& music(const MusicType type) noexcept { return _music[to_U32(type)]; }
+    inline [[nodiscard]] SceneRenderState& renderState() noexcept { return _renderState; }
+    inline [[nodiscard]] MusicPlaylist& music(const MusicType type) noexcept { return _music[to_U32(type)]; }
 
-    [[nodiscard]] const SceneRenderState& renderState() const noexcept { return _renderState; }
-    [[nodiscard]] const MusicPlaylist& music(const MusicType type) const noexcept { return _music[to_U32(type)]; }
+    inline [[nodiscard]] const SceneRenderState& renderState() const noexcept { return _renderState; }
+    inline [[nodiscard]] const MusicPlaylist& music(const MusicType type) const noexcept { return _music[to_U32(type)]; }
 
-    [[nodiscard]] vectorEASTL<WaterBodyData>& waterBodies() noexcept { return _waterBodies; }
-    [[nodiscard]] const vectorEASTL<WaterBodyData>& waterBodies() const noexcept { return _waterBodies; }
+    inline [[nodiscard]] vectorEASTL<WaterBodyData>& waterBodies() noexcept { return _waterBodies; }
+    inline [[nodiscard]] const vectorEASTL<WaterBodyData>& waterBodies() const noexcept { return _waterBodies; }
 
     PROPERTY_RW(U8, playerPass, 0u);
     PROPERTY_RW(bool, saveLoadDisabled, false);

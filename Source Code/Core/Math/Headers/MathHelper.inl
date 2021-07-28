@@ -163,12 +163,6 @@ namespace Divide {
     }
 
     template<typename T>
-    constexpr T SIGNED_SQUARED(T input) noexcept {
-        static_assert(std::is_arithmetic<T>::value, "Only arithmetic values can be squared!");
-        return std::copysign(SQUARED(input), input);
-    }
-
-    template<typename T>
     void CLAMP_IN_RECT(T& inout_x, T& inout_y, T rect_x, T rect_y, T rect_z, T rect_w) noexcept {
         CLAMP(inout_x, rect_x, rect_z + rect_x);
         CLAMP(inout_y, rect_y, rect_w + rect_y);
