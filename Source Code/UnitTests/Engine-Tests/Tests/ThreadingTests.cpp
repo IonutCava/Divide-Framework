@@ -359,45 +359,41 @@ TEST(TaskPriorityTest)
     const bool init = test.init(to_U8(HardwareThreadCount()), TaskPool::TaskPoolType::TYPE_BLOCKING);
     CHECK_TRUE(init);
 
-    U32 callbackValue = 0;
+    U32 callbackValue = 0u;
 
-    Task* job = CreateTask([&callbackValue](const Task& parentTask) {
-        ACKNOWLEDGE_UNUSED(parentTask);
-        printLine("TaskPriorityTest: threaded function call (DONT_CARE)");
+    Task* job = CreateTask([&callbackValue](const Task& /*parentTask*/ ) {
         ++callbackValue;
     });
 
-    StartAndWait(*job, test, TaskPriority::DONT_CARE, [&callbackValue]() {
-        printLine("TaskPriorityTest: threaded callback (DONT_CARE)");
+    Start(*job, test, TaskPriority::DONT_CARE, [&callbackValue]() {
         ++callbackValue;
     });
+
+    //StartAndWait calls Wait after Start which MAY call flushCallbackQueue on its own while waiting for the task to finish
+    //Manually waiting fot the task to finish guarantees that we won't call the main thread callback before the CHECK_EQUAL
+    WAIT_FOR_CONDITION(Finished(*job));
     CHECK_EQUAL(callbackValue, 1u);
 
-    printLine("TaskPriorityTest: flushing queue");
     size_t callbackCount = test.flushCallbackQueue();
     CHECK_EQUAL(callbackCount, 1u);
     CHECK_EQUAL(callbackValue, 2u);
 
-    job = CreateTask([&callbackValue](const Task& parentTask) {
-        ACKNOWLEDGE_UNUSED(parentTask);
-        printLine("TaskPriorityTest: threaded function call (NO_CALLBACK)");
+    job = CreateTask([&callbackValue](const Task& /*parentTask*/ ) {
         ++callbackValue;
     });
+
+    // Since we don't have a main thread callback, it's OK to call StartAndWait here
     StartAndWait(*job, test);
     CHECK_EQUAL(callbackValue, 3u);
 
-    printLine("TaskPriorityTest: flushing queue");
     callbackCount = test.flushCallbackQueue();
     CHECK_EQUAL(callbackCount, 0u);
     CHECK_EQUAL(callbackValue, 3u);
 
-    job = CreateTask([&callbackValue](const Task& parentTask) {
-        ACKNOWLEDGE_UNUSED(parentTask);
-        printLine("TaskPriorityTest: threaded function call (REALTIME)");
+    job = CreateTask([&callbackValue](const Task& /*parentTask*/ ) {
         ++callbackValue;
     });
     StartAndWait(*job, test, TaskPriority::REALTIME, [&callbackValue]() {
-        printLine("TaskPriorityTest: threaded callback (REALTIME)");
         ++callbackValue;
     });
     CHECK_EQUAL(callbackValue, 5u);
