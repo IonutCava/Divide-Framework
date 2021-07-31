@@ -135,9 +135,9 @@ protected:
     /// Reset as much of the GL default state as possible within the limitations given
     void clearStates(const DisplayWindow& window, GLStateTracker& stateTracker, bool global) const;
 
-    bool makeTexturesResidentInternal(TextureDataContainer& textureData, U8 offset = 0, U8 count = std::numeric_limits<U8>::max()) const;
-    bool makeTextureViewsResidentInternal(const TextureViews& textureViews, U8 offset = 0, U8 count = std::numeric_limits<U8>::max()) const;
-    bool makeTexturesResident(TextureDataContainer& textureData, const TextureViews& textureViews, U8 offset = 0, U8 count = std::numeric_limits<U8>::max()) const;
+    bool makeTexturesResidentInternal(TextureDataContainer& textureData, U8 offset = 0, U8 count = U8_MAX) const;
+    bool makeTextureViewsResidentInternal(const TextureViews& textureViews, U8 offset = 0, U8 count = U8_MAX) const;
+    bool makeTexturesResident(TextureDataContainer& textureData, const TextureViews& textureViews, U8 offset = 0, U8 count = U8_MAX) const;
     bool makeImagesResident(const Images& images) const;
 
     bool setViewport(const Rect<I32>& viewport) override;

@@ -70,7 +70,7 @@ protected:
 struct ImageLayer {
     template<typename T>
     [[nodiscard]] T* allocateMip(T* data, size_t len, U16 width, U16 height, U16 depth) {
-        assert(_mips.size() < std::numeric_limits<U8>::max() - 1);
+        assert(_mips.size() < U8_MAX - 1);
 
         _mips.emplace_back(eastl::make_unique<ImageMip<T>>(data, len, width, height, depth));
         return static_cast<T*>(_mips.back()->data());

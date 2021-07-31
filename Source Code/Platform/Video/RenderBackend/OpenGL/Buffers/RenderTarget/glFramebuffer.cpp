@@ -629,7 +629,7 @@ void glFramebuffer::drawToLayer(const DrawLayerParams& params) {
 void glFramebuffer::setMipLevel(const U16 writeLevel) {
     OPTICK_EVENT();
 
-    if (writeLevel == std::numeric_limits<U16>::max()) {
+    if (writeLevel == U16_MAX) {
         return;
     }
 

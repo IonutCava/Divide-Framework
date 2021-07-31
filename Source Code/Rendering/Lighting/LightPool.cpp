@@ -184,7 +184,10 @@ bool LightPool::removeLight(Light& light) {
 void LightPool::idle() {
 }
 
+//ToDo: Generate shadow maps in parallel - Ionut
 void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
+
     Time::ScopedTimer timer(_shadowPassTimer);
 
     ShadowMap::clearShadowMapBuffers(bufferInOut);
@@ -321,6 +324,8 @@ U32 LightPool::uploadLightList(const RenderStage stage, const LightList& lights,
 
 // This should be called in a separate thread for each RenderStage
 void LightPool::prepareLightData(const RenderStage stage, const vec3<F32>& eyePos, const mat4<F32>& viewMatrix) {
+    OPTICK_EVENT();
+
     const U8 stageIndex = to_U8(stage);
 
     LightList& sortedLights = _sortedLights[stageIndex];

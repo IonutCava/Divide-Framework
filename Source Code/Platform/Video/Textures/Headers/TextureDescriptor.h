@@ -119,7 +119,7 @@ class TextureDescriptor final : public PropertyDescriptor {
 
     PROPERTY_RW(U16, layerCount, 1);
     PROPERTY_RW(U16, mipBaseLevel, 0);
-    PROPERTY_RW(U16, mipCount, std::numeric_limits<U16>::max());
+    PROPERTY_RW(U16, mipCount, U16_MAX);
     PROPERTY_RW(U8,  msaaSamples, 0);
     PROPERTY_RW(GFXDataFormat,  dataType, GFXDataFormat::COUNT);
     PROPERTY_RW(GFXImageFormat, baseFormat, GFXImageFormat::COUNT);

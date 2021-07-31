@@ -27,7 +27,7 @@ namespace {
     constexpr U32 g_nodesPerPrepareDrawPartition = 16u;
 
     void InitMaterialData(const RenderStage stage, RenderPassExecutor::PerRingEntryMaterialData& data) {
-        data._nodeMaterialLookupInfo.resize(RenderStagePass::totalPassCountForStage(stage) * Config::MAX_CONCURRENT_MATERIALS, { Material::INVALID_MAT_HASH, 0u });
+        data._nodeMaterialLookupInfo.resize(RenderStagePass::totalPassCountForStage(stage) * Config::MAX_CONCURRENT_MATERIALS, { Material::INVALID_MAT_HASH, U16_MAX });
         data._nodeMaterialData.resize(RenderStagePass::totalPassCountForStage(stage) * Config::MAX_CONCURRENT_MATERIALS);
     }
 }
@@ -93,136 +93,146 @@ void RenderPassExecutor::addTexturesAt(const size_t idx, const NodeMaterialTextu
     }
 }
 
-/// Prepare the list of visible nodes for rendering
-NodeDataIdx RenderPassExecutor::processVisibleNode(const RenderingComponent& rComp,
-                                                   const RenderStage stage,
-                                                   const D64 interpolationFactor,
-                                                   const U32 materialElementOffset,
-                                                   U32 nodeIndex) {
+void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp,
+                                                    RenderStage stage,
+                                                    D64 interpolationFactor,
+                                                    U16 nodeIndex) {
     OPTICK_EVENT();
 
     // Rewrite all transforms
     // ToDo: Cache transforms for static nodes -Ionut
-    NodeDataIdx ret = {};
-    ret._transformIDX = to_U16(nodeIndex);
+    NodeTransformData& transformOut = _nodeTransformData[nodeIndex];
+    //transformOut = {}; //We will rewrite everything anyway
+
+    const SceneGraphNode* node = rComp->getSGN();
+    { // Transform
+        const TransformComponent* const transform = node->get<TransformComponent>();
+
+        // Get the node's world matrix properly interpolated
+        transform->getPreviousWorldMatrix(transformOut._prevWorldMatrix);
+        transform->getWorldMatrix(interpolationFactor, transformOut._worldMatrix);
+        transformOut._normalMatrixW.set(transformOut._worldMatrix);
+        transformOut._normalMatrixW.setRow(3, 0.f, 0.f, 0.f, 1.f);
+
+        if (!transform->isUniformScaled()) {
+            // Non-uniform scaling requires an inverseTranspose to negatescaling contribution but preserve rotation
+            transformOut._normalMatrixW.inverseTranspose();
+        }
+    }
+
+    U8 boneCount = 0u;
+    U8 frameTicked = 0u;
+    { //Animation
+        AnimationComponent* animComp = node->get<AnimationComponent>();
+        if (animComp && animComp->playAnimations()) {
+            boneCount = animComp->boneCount();
+            if (animComp->frameTicked()) {
+                frameTicked = 1u;
+            }
+        }
+    }
+    { //Misc
+        const F32 nodeFlagValue = rComp->dataFlag();
+        const U8 lod = rComp->getLodLevel(stage);
+        const U8 occlusionCull = rComp->occlusionCull() ? 1u : 0u;
+
+        // Since the normal matrix is 3x3, we can use the extra row and column to store additional data
+        const BoundsComponent* const bounds = node->get<BoundsComponent>();
+        const BoundingSphere& bSphere = bounds->getBoundingSphere();
+        const vec3<F32>& bSphereCenter = bSphere.getCenter();
+        const vec3<F32> bBoxHalfExtents = bounds->getBoundingBox().getHalfExtent();
+
+        transformOut._normalMatrixW.setRow(3, bSphereCenter.x, bSphereCenter.y, bSphereCenter.z, nodeFlagValue);
+        transformOut._normalMatrixW.element(0, 3) = to_F32(Util::PACK_UNORM4x8(boneCount, lod, frameTicked, occlusionCull));
+        transformOut._normalMatrixW.element(1, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.xy));
+        transformOut._normalMatrixW.element(2, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.z, bSphere.getRadius()));
+    }
+}
+
+U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp, U32 materialElementOffset) {
+    OPTICK_EVENT();
 
     NodeMaterialData tempData{};
     NodeMaterialTextures tempTextures{};
     // Get the colour matrix (base colour, metallic, etc)
-    rComp.getMaterialData(tempData, tempTextures);
+    rComp->getMaterialData(tempData, tempTextures);
 
     // Match materials
     size_t materialHash = HashMaterialData(tempData);
     Util::Hash_combine(materialHash, HashTexturesData(tempTextures));
 
-    {
-        //SharedLock<SharedMutex> r_lock(_matDataLock);
-        PerRingEntryMaterialData& materialData = _materialData[_materialBufferIndex];
+    const auto findMaterialMatch = [](const size_t targetHash, const U32 offset, PerRingEntryMaterialData::LookupInfoContainer& data) -> U16 {
+        for (U16 idx = 0u; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
+            auto& [hash, framesSinceLastUsed] = data[idx + offset];
+            if (hash == targetHash) {
+                framesSinceLastUsed = 0u;
+                return idx;
+            }
+        }
+
+        return U16_MAX;
+    };
+
+    PerRingEntryMaterialData& materialData = _materialData[_materialBufferIndex];
+    {// Try and match an existing material
+        SharedLock<SharedMutex> r_lock(_matDataLock);
+        OPTICK_EVENT("processVisibleNode - try match material");
+        const U16 ret = findMaterialMatch(materialHash, materialElementOffset, materialData._nodeMaterialLookupInfo);
+        if (ret != U16_MAX) {
+            return ret;
+        }
+    }
+
+    {// If we fail, try and find an empty slot and update it
+        OPTICK_EVENT("processVisibleNode - process unmatched material");
+        UniqueLock<SharedMutex> w_lock(_matDataLock);
+
         auto& materialInfo = materialData._nodeMaterialLookupInfo;
-        // Try and match an existing material
-        bool foundMatch = false;
-
-        U16 idx = 0;
-        {
-            OPTICK_EVENT("processVisibleNode - try match material");
-            for (; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
-                auto& [hash, framesSinceLastUsed] = materialInfo[idx + materialElementOffset];
-                if (hash == materialHash) {
-                    framesSinceLastUsed = 0u;
-                    foundMatch = true;
-                    break;
-                }
+        { //Because we released the shared lock and aquired a new lock, search again as that operation isn't atomic
+            U16 idx = findMaterialMatch(materialHash, materialElementOffset, materialInfo);
+            if (idx != U16_MAX) {
+                return idx;
             }
         }
-        // If we fail, try and find an empty slot
-        if (!foundMatch) {
-            OPTICK_EVENT("processVisibleNode - process unmatched material");
 
-            std::pair<U16, U16> bestCandidate = { 0u, 0u };
-
-            idx = 0u;
-            for (; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
-                auto& [hash, framesSinceLastUsed] = materialInfo[idx + materialElementOffset];
-                if (hash == Material::INVALID_MAT_HASH) {
-                    foundMatch = true;
-                    break;
-                }
-
-                if (framesSinceLastUsed >= g_maxMaterialFrameLifetime && framesSinceLastUsed > bestCandidate.second) {
-                    bestCandidate.first = idx;
-                    bestCandidate.second = framesSinceLastUsed;
-                }
+        // No match found (cache miss) so add a new entry.
+        std::pair<U16, U16> bestCandidate = { U16_MAX, 0u };
+        for (U16 idx = 0u; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
+            auto& [hash, framesSinceLastUsed] = materialInfo[idx + materialElementOffset];
+            // Two cases here. We either have empty slots (e.g. startup, cache clear, etc) ...
+            if (hash == Material::INVALID_MAT_HASH) {
+                // ... in which case our current idx is what we are looking for ...
+                bestCandidate.first = idx;
+                bestCandidate.second = g_maxMaterialFrameLifetime;
+                break;
             }
-            if (!foundMatch) {
-                foundMatch = bestCandidate.second > 0u;
-                idx = bestCandidate.first;
+            // ... else we need to find a slot with a stale entry (but not one that is still in flight!)
+            if (framesSinceLastUsed >= std::max(g_maxMaterialFrameLifetime, bestCandidate.second)) {
+                bestCandidate.first = idx;
+                bestCandidate.second = framesSinceLastUsed;
             }
+        }
+        DIVIDE_ASSERT(bestCandidate.first != U16_MAX, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
 
-            DIVIDE_ASSERT(foundMatch, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
-
-            auto& range = materialData._matUpdateRange;
-            if (range._firstIDX > idx) {
-                range._firstIDX = idx;
-            }
-            if (range._lastIDX < idx) {
-                range._lastIDX = idx;
-            }
-
-            const U32 offsetIdx = idx + materialElementOffset;
-            materialInfo[offsetIdx] = { materialHash, 0u };
-
-            materialData._nodeMaterialData[offsetIdx] = tempData;
-            addTexturesAt(offsetIdx, tempTextures);
+        auto& updateRange = materialData._matUpdateRange;
+        if (updateRange._firstIDX > bestCandidate.first) {
+            updateRange._firstIDX = bestCandidate.first;
+        }
+        if (updateRange._lastIDX < bestCandidate.first) {
+            updateRange._lastIDX = bestCandidate.first;
         }
 
-        ret._materialIDX = idx;
+        const U32 offsetIdx = bestCandidate.first + materialElementOffset;
+        materialInfo[offsetIdx] = { materialHash, 0u };
+
+        materialData._nodeMaterialData[offsetIdx] = tempData;
+        addTexturesAt(offsetIdx, tempTextures);
+
+        return bestCandidate.first;
     }
 
-    const SceneGraphNode* node = rComp.getSGN();
-    const TransformComponent* const transform = node->get<TransformComponent>();
-    assert(transform != nullptr);
-
-    {
-        OPTICK_EVENT("processVisibleNode - process node data");
-        NodeTransformData& transformOut = _nodeTransformData[ret._transformIDX];
-        //transformOut = {}; //We will rewrite everything anyway
-
-        // ... get the node's world matrix properly interpolated
-        transform->getPreviousWorldMatrix(transformOut._prevWorldMatrix);
-        transform->getWorldMatrix(interpolationFactor, transformOut._worldMatrix);
-        transformOut._normalMatrixW.set(transformOut._worldMatrix);
-        transformOut._normalMatrixW.setRow(3, 0.0f, 0.0f, 0.0f, 1.0f);
-
-        if (!transform->isUniformScaled()) {
-            // Non-uniform scaling requires an inverseTranspose to negate
-            // scaling contribution but preserve rotation
-            transformOut._normalMatrixW.inverseTranspose();
-        }
-
-        // Get the material property matrix (alpha test, texture count, texture operation, etc.)
-        bool frameTicked = false;
-        U8 boneCount = 0u;
-        AnimationComponent* animComp = node->get<AnimationComponent>();
-        if (animComp && animComp->playAnimations()) {
-            boneCount = animComp->boneCount();
-            frameTicked = animComp->frameTicked();
-        }
-
-        RenderingComponent::NodeRenderingProperties properties = {};
-        rComp.getRenderingProperties(stage, properties);
-
-        // Since the normal matrix is 3x3, we can use the extra row and column to store additional data
-        const BoundsComponent* const bounds = node->get<BoundsComponent>();
-        const vec4<F32> bSphere = bounds->getBoundingSphere().asVec4();
-        const vec3<F32> bBoxHalfExtents = bounds->getBoundingBox().getHalfExtent();
-
-        transformOut._normalMatrixW.setRow(3, vec4<F32>{bSphere.xyz, properties._nodeFlagValue});
-        transformOut._normalMatrixW.element(0, 3) = to_F32(Util::PACK_UNORM4x8(boneCount, properties._lod, frameTicked ? 1u : 0u, properties._occlusionCull ? 1u : 0u));
-        transformOut._normalMatrixW.element(1, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.xy));
-        transformOut._normalMatrixW.element(2, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.z, bSphere.w));
-    }
-
-    return ret;
+    DIVIDE_UNEXPECTED_CALL();
+    return U16_MAX;
 }
 
 U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut) {
@@ -262,52 +272,111 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
     const U16 queueTotalSize = _renderQueue.getSortedQueues({}, _sortedQueues);
 
     for (RenderBin::SortedQueue& queue : _sortedQueues) {
-        erase_if(queue, [&stagePass](RenderingComponent* rComp) {
-            return !Attorney::RenderingCompRenderPass::hasDrawCommands(*rComp, stagePass);
+        erase_if(queue, [&stagePass](std::pair<RenderingComponent* , NodeDataIdx>& item) {
+            return !Attorney::RenderingCompRenderPass::hasDrawCommands(*item.first, stagePass);
         });
     }
 
-    U32& nodeCount = *bufferData._lastNodeCount;
-    nodeCount = 0u;
-    for (RenderBin::SortedQueue& queue : _sortedQueues) {
-        for (RenderingComponent* rComp : queue) {
-            const NodeDataIdx newDataIdx = processVisibleNode(*rComp, stagePass._stage, interpFactor, bufferData._materialElementOffset, nodeCount++);
-            Attorney::RenderingCompRenderPass::setCommandDataIndex(*rComp, stagePass._stage, newDataIdx);
+    TaskPool& pool = _context.context().taskPool(TaskPoolType::HIGH_PRIORITY);
+    Task* updateTask = CreateTask(TASK_NOP);
+
+    {
+        OPTICK_EVENT("buildDrawCommands - process nodes: Transforms")
+
+        U32& nodeCount = *bufferData._lastNodeCount;
+        nodeCount = 0u;
+        const auto parseRange = [this, renderStage = stagePass._stage, interpFactor](const U32 nodeCount, RenderBin::SortedQueue& queue, const U32 start, const U32 end) {
+            for (U32 i = start; i < end; ++i) {
+                auto& [rComp, dataIdx] = queue[i];
+                dataIdx._transformIDX = to_U16(i + nodeCount);
+                processVisibleNodeTransform(rComp, renderStage, interpFactor, dataIdx._transformIDX);
+            }
+        };
+
+        for (RenderBin::SortedQueue& queue : _sortedQueues) {
+            const U32 queueSize = to_U32(queue.size());
+            if (queueSize > g_nodesPerPrepareDrawPartition) {
+                const U32 midPoint = queueSize / 2;
+                Start(*CreateTask(updateTask, [&queue, &parseRange, nodeCount, midPoint](const Task&) {
+                    parseRange(nodeCount, queue, 0u, midPoint);
+                }), pool); 
+                Start(*CreateTask(updateTask, [&queue, &parseRange, nodeCount, midPoint, queueSize](const Task&) {
+                    parseRange(nodeCount, queue, midPoint, queueSize);
+                }), pool);
+            } else {
+                parseRange(nodeCount, queue, 0u, queueSize);
+            }
+            nodeCount += queueSize;
         }
+        assert(nodeCount < Config::MAX_VISIBLE_NODES);
+    }
+    {
+        OPTICK_EVENT("buildDrawCommands - process nodes: Materials")
+        const U32 materialOffset = bufferData._materialElementOffset;
+
+        const auto parseRange = [this](const U32 offset, RenderBin::SortedQueue& queue, const U32 start, const U32 end) {
+            for (U32 i = start; i < end; ++i) {
+                auto& [rComp, dataIdx] = queue[i];
+                dataIdx._materialIDX = processVisibleNodeMaterial(rComp, offset);
+            }
+        };
+
+        for (RenderBin::SortedQueue& queue : _sortedQueues) {
+            const U32 queueSize = to_U32(queue.size());
+            if (queueSize > g_nodesPerPrepareDrawPartition) {
+                const U32 midPoint = queueSize / 2;
+                Start(*CreateTask(updateTask, [&queue, &parseRange, materialOffset, midPoint](const Task&) {
+                    parseRange(materialOffset, queue, 0u, midPoint);
+                }), pool);
+                Start(*CreateTask(updateTask, [&queue, &parseRange, materialOffset, midPoint, queueSize](const Task&) {
+                    parseRange(materialOffset, queue, midPoint, queueSize);
+                }), pool);
+            } else {
+                parseRange(materialOffset, queue, 0u, queueSize);
+            }
+        }
+    }
+    {
+        OPTICK_EVENT("buildDrawCommands - process nodes: Waiting for tasks to finish")
+        StartAndWait(*updateTask, pool);
     }
 
     const U32 cmdOffset = (cmdBuffer->queueWriteIndex() * cmdBuffer->getPrimitiveCount()) + bufferData._commandElementOffset;
+    const RenderPassType prevType = stagePass._passType;
     const auto retrieveCommands = [&]() {
         for (RenderBin::SortedQueue& queue : _sortedQueues) {
-            for (RenderingComponent* rComp : queue) {
-                Attorney::RenderingCompRenderPass::retrieveDrawCommands(*rComp, stagePass, cmdOffset, _drawCommands);
+            for (auto& [rComp, dataIdx] : queue) {
+                Attorney::RenderingCompRenderPass::retrieveDrawCommands(*rComp, stagePass, cmdOffset, dataIdx, _drawCommands);
             }
         }
     };
 
-    const RenderPassType prevType = stagePass._passType;
     if (doPrePass) {
+        OPTICK_EVENT("buildDrawCommands - retrieve draw commands: PRE_PASS")
         stagePass._passType = RenderPassType::PRE_PASS;
         retrieveCommands();
     }
     if (doMainPass) {
+        OPTICK_EVENT("buildDrawCommands - retrieve draw commands: MAIN_PASS")
         stagePass._passType = RenderPassType::MAIN_PASS;
         retrieveCommands();
     }
     if (doOITPass) {
+        OPTICK_EVENT("buildDrawCommands - retrieve draw commands: OIT_PASS")
         stagePass._passType = RenderPassType::OIT_PASS;
         retrieveCommands();
     }
+    
     stagePass._passType = prevType;
 
     *bufferData._lastCommandCount = to_U32(_drawCommands.size());
 
     {
-        OPTICK_EVENT("RenderPassExecutor::buildBufferData - UpdateBuffers");
+        OPTICK_EVENT("buildDrawCommands - update buffers");
 
         cmdBuffer->writeData(bufferData._commandElementOffset, *bufferData._lastCommandCount, _drawCommands.data());
 
-        bufferData._transformBuffer->writeData(bufferData._transformElementOffset, nodeCount, _nodeTransformData.data());
+        bufferData._transformBuffer->writeData(bufferData._transformElementOffset, *bufferData._lastNodeCount, _nodeTransformData.data());
 
         // Copy the same data to the entire ring buffer
         PerRingEntryMaterialData& materialData = _materialData[_materialBufferIndex];
@@ -423,11 +492,13 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params, con
         descriptor._cbk = [&](const Task* /*parentTask*/, const U32 start, const U32 end) {
             for (U32 i = start; i < end; ++i) {
                 const VisibleNode& node = nodes.node(i);
+                SceneGraphNode* sgn = node._node;
+
                 assert(node._materialReady);
-                if (node._node->getNode().renderState().drawState(stagePass)) {
-                    RenderingComponent* rComp = nodes.node(i)._node->get<RenderingComponent>();
+                if (sgn->getNode().renderState().drawState(stagePass)) {
+                    RenderingComponent* rComp = sgn->get<RenderingComponent>();
                     Attorney::RenderingCompRenderPass::prepareDrawPackage(*rComp, cam, sceneRenderState, stagePass, false);
-                    _renderQueue.addNodeToQueue(node._node, stagePass, node._distanceToCameraSq, targetBin);
+                    _renderQueue.addNodeToQueue(sgn, stagePass, node._distanceToCameraSq, targetBin);
                 }
             }
         };
@@ -967,6 +1038,7 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
     const bool doOcclusionPass = doPrePass && params._targetHIZ._usage != RenderTargetUsage::COUNT;
     bool hasInvalidNodes = false;
     {
+        OPTICK_EVENT("doCustomPass: Validate draw")
         const auto ValidateNodesForStagePass = [&visibleNodes, &hasInvalidNodes](const RenderStagePass& stagePass) {
             const I32 nodeCount = to_I32(visibleNodes.size());
             for (I32 i = nodeCount - 1; i >= 0; i--) {

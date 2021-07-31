@@ -57,6 +57,8 @@ struct alignas(64) Task {
     bool _runWhileIdle = true;
 };
 
+static Task EMPTY_TASK{};
+
 void Start(Task& task, TaskPool& pool, TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {});
 void Wait(const Task& task, TaskPool& pool);
 

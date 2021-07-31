@@ -195,6 +195,8 @@ CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateS
 
 void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits) const
 {
+    OPTICK_EVENT();
+
     const SplitDepths splitDepths = calculateSplitDepths(light, shadowCamera.getZPlanes());
 
     const mat4<F32> invViewProj = GetInverse(shadowCamera.viewProjectionMatrix());
@@ -333,6 +335,7 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
 }
 
 void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
 
     auto& dirLight = static_cast<DirectionalLightComponent&>(light);
 
@@ -390,6 +393,8 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
 }
 
 void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& light, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
+
     const RenderTarget& shadowMapRT = _context.renderTargetPool().renderTarget(g_depthMapID);
 
     const I32 layerOffset = to_I32(light.getShadowOffset());

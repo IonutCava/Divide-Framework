@@ -153,7 +153,7 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn,
         U16 prevID = 0;
         for (U8 i = 0; i < to_U8(_geometryPartitionIDs.size()); ++i) {
             U16 id = _geometryPartitionIDs[i];
-            if (id == std::numeric_limits<U16>::max()) {
+            if (id == U16_MAX) {
                 assert(i > 0);
                 id = prevID;
             }

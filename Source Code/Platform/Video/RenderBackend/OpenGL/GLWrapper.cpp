@@ -375,7 +375,7 @@ bool GL_API::InitGLSW(Configuration& config) {
         AppendToShaderHeader(ShaderType::COUNT, "#define USE_BINDLESS_TEXTURES");
     }
 
-    constexpr F32 Z_TEST_SIGMA = 0.00001f;// 1.f / std::numeric_limits<U8>::max();
+    constexpr F32 Z_TEST_SIGMA = 0.00001f;// 1.f / U8_MAX;
 
     AppendToShaderHeader(ShaderType::COUNT,    "#define Z_TEST_SIGMA "                    + Util::to_string(Z_TEST_SIGMA) + "f");
     AppendToShaderHeader(ShaderType::COUNT,    "#define INV_Z_TEST_SIGMA "                + Util::to_string(1.f - Z_TEST_SIGMA) + "f");
@@ -775,7 +775,7 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
         glDrawArrays(GLUtil::glPrimitiveTypeTable[to_U32(cmd._primitiveType)], cmd._cmd.firstIndex, indexCount);
     } else {
         // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-        static PoolHandle lastID = { std::numeric_limits<U16>::max(), 0 };
+        static PoolHandle lastID = { U16_MAX, 0u };
         static VertexDataInterface* lastBuffer = nullptr;
         if (lastID != cmd._sourceBuffer) {
             lastID = cmd._sourceBuffer;
@@ -1275,7 +1275,7 @@ bool GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, con
         const TextureType targetType = textures.front()._data._textureType;
 
         U8 matchingTexCount = 0u;
-        U8 startBinding = std::numeric_limits<U8>::max();
+        U8 startBinding = U8_MAX;
         U8 endBinding = 0u; 
 
         for (U8 idx = offset; idx < offset + count; ++idx) {

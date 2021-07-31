@@ -264,7 +264,7 @@ U16 ShadowMap::findFreeDepthMapOffset(const ShadowType shadowType, const U32 lay
     UniqueLock<Mutex> w_lock(s_depthMapUsageLock);
 
     LayerUsageMask& usageMask = s_depthMapUsage[to_U32(shadowType)];
-    U16 layer = std::numeric_limits<U16>::max();
+    U16 layer = U16_MAX;
     const U16 usageCount = to_U16(usageMask.size());
     for (U16 i = 0; i < usageCount; ++i) {
         if (usageMask[i] == false) {
@@ -313,6 +313,8 @@ U32 ShadowMap::getLightLayerRequirements(const Light& light) {
 }
 
 bool ShadowMap::generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
+
     const U32 layerRequirement = getLightLayerRequirements(light);
     const ShadowType sType = getShadowTypeForLightType(light.getLightType());
     if (layerRequirement == 0u || s_shadowMapGenerators[to_base(sType)] == nullptr) {
@@ -380,7 +382,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
 
                 constexpr I16 Base = 2;
                 for (U8 i = 0; i < splitCount; ++i) {
-                    DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(std::numeric_limits<I16>::max() - 1 - splitCount + i));
+                    DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1 - splitCount + i));
                     shadow->_texture = getDepthMap(LightType::DIRECTIONAL)._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
                     shadow->_samplerHash = getDepthMap(LightType::DIRECTIONAL)._rt->getAttachment(RTAttachmentType::Colour, 0).samplerHash();
                     shadow->_shader = previewShader;
@@ -402,7 +404,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                 shadowPreviewShader.propertyDescriptor(shaderDescriptor);
                 shadowPreviewShader.threaded(false);
 
-                DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(std::numeric_limits<I16>::max() - 1));
+                DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1));
                 shadow->_texture = getDepthMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
                 shadow->_samplerHash = getDepthMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::Colour, 0).samplerHash();
                 shadow->_shader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
@@ -427,7 +429,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
 
                 constexpr I16 Base = 5;
                 for (U32 i = 0; i < 6; ++i) {
-                    DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(std::numeric_limits<I16>::max() - 1 - 6 + i));
+                    DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1 - 6 + i));
                     shadow->_texture = getDepthMap(LightType::POINT)._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
                     shadow->_samplerHash = getDepthMap(LightType::POINT)._rt->getAttachment(RTAttachmentType::Colour, 0).samplerHash();
                     shadow->_shader = previewShader;

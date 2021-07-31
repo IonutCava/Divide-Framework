@@ -49,7 +49,6 @@
 #define NO_INLINE __attribute__ ((noinline))
 #endif //NO_INLINE
 
-#include <limits>
 #include <Carbon/Carbon.h>
 void checkMacEvents();
 

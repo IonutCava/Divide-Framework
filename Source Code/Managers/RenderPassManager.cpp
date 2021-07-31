@@ -139,7 +139,7 @@ void RenderPassManager::render(const RenderParams& params) {
         {
             Time::ScopedTimer timeAll(*_renderPassTimer);
 
-            for (I8 i = 0; i < renderPassCount; ++i)
+            for (I8 i = 0u; i < renderPassCount; ++i)
             { //All of our render passes should run in parallel
 
                 RenderPass* pass = _renderPasses[i];
@@ -266,8 +266,10 @@ void RenderPassManager::render(const RenderParams& params) {
 
                 if (!finished) {
                     OPTICK_EVENT("IDLING");
-                    if (idleCount++ < 2) {
-                        parent().idle(idleCount == 1);
+                    if (idleCount++ % 2 == 0) {
+                        parent().idle(idleCount > 3);
+                    } else {
+                        pool.threadWaiting(true);
                     }
                 }
             }
@@ -278,8 +280,8 @@ void RenderPassManager::render(const RenderParams& params) {
     Wait(*postFXTask, pool);
     _context.flushCommandBuffer(*_postFXCommandBuffer, false);
 
-    for (U8 i = 0; i < renderPassCount; ++i) {
-        _renderPasses[i]->postRender();
+    for (RenderPass* pass : _renderPasses) {
+        pass->postRender();
     }
 
     activeLightPool.postRenderAllPasses();

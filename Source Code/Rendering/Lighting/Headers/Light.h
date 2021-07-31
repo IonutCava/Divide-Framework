@@ -63,7 +63,7 @@ class Light : public GUIDWrapper, public ECS::Event::IEventListener
         std::array<vec4<F32>, 6> _lightPosition{};
         /// light viewProjection matrices
         std::array<mat4<F32>, 6> _lightVP{};
-        U32 _lastShadowIndex = std::numeric_limits<U32>::max();
+        U32 _lastShadowIndex = U32_MAX;
         bool _dirty = false;
     };
 

@@ -12,7 +12,7 @@ Sphere3D::Sphere3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
     const U32 vertexCount = SQUARED(resolution);
     getGeometryVB()->setVertexCount(vertexCount);
     getGeometryVB()->reserveIndexCount(vertexCount);
-    getGeometryVB()->useLargeIndices(vertexCount + 1 > std::numeric_limits<U16>::max());
+    getGeometryVB()->useLargeIndices(vertexCount + 1 > U16_MAX);
     geometryDirty(true);
 }
 

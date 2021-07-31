@@ -712,8 +712,6 @@ VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params, co
 }
 
 void SceneManager::prepareLightData(const RenderStage stage, const vec3<F32>& cameraPos, const mat4<F32>& viewMatrix) {
-    OPTICK_EVENT();
-
     if (stage != RenderStage::SHADOW) {
         getActiveScene().lightPool().prepareLightData(stage, cameraPos, viewMatrix);
     }

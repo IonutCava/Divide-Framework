@@ -297,7 +297,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     for (U8 i = 0; i < 2; ++i) {
         const U8 sampleCount = i == 0 ? 0 : config.rendering.MSAASamples;
         const size_t screenSampler = i == 0 ? samplerHashMips : samplerHash;
-        screenDescriptor.mipCount(i == 0 ? std::numeric_limits<U16>::max() : 1u);
+        screenDescriptor.mipCount(i == 0 ? U16_MAX : 1u);
 
         screenDescriptor.msaaSamples(sampleCount);
         depthDescriptor.msaaSamples(sampleCount);
@@ -978,6 +978,7 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
                                 const vec2<F32>& zPlanes,
                                 GFX::CommandBuffer& commandsInOut,
                                 std::array<Camera*, 6>& cameras) {
+    OPTICK_EVENT();
 
     if (arrayOffset < 0) {
         return;
@@ -1056,6 +1057,8 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
                                           GFX::CommandBuffer& bufferInOut,
                                           std::array<Camera*, 2>& cameras)
 {
+    OPTICK_EVENT();
+
     if (arrayOffset < 0) {
         return;
     }

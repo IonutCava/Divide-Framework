@@ -32,6 +32,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #ifndef _PLATFORM_DATA_TYPES_H_
 #define _PLATFORM_DATA_TYPES_H_
+
 #include <cassert>
 
 namespace Divide {
@@ -67,6 +68,24 @@ using F32_NORM = F32;
 using F32_SNORM = F32;
 
 using bufferPtr = void*;
+
+#define U8_MAX  std::numeric_limits<U8>::max()
+#define U16_MAX std::numeric_limits<U16>::max()
+#define U32_MAX std::numeric_limits<U32>::max()
+#define U64_MAX std::numeric_limits<U64>::max()
+#define I8_MAX  std::numeric_limits<I8>::max()
+#define I16_MAX std::numeric_limits<I16>::max()
+#define I32_MAX std::numeric_limits<I32>::max()
+#define I64_MAX std::numeric_limits<I64>::max()
+
+#define U8x_MAX  std::numeric_limits<U8x>::max()
+#define U16x_MAX std::numeric_limits<U16x>::max()
+#define U32x_MAX std::numeric_limits<U32x>::max()
+#define U64x_MAX std::numeric_limits<U64x>::max()
+#define I8x_MAX  std::numeric_limits<I8x>::max()
+#define I16x_MAX std::numeric_limits<I16x>::max()
+#define I32x_MAX std::numeric_limits<I32x>::max()
+#define I64x_MAX std::numeric_limits<I64x>::max()
 
 #if !defined(CPP_17_SUPPORT)
 #warning "Native byte type not detected. Consider updating language version for current project"

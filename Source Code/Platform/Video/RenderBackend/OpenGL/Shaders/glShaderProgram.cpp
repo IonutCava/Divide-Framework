@@ -61,7 +61,7 @@ namespace Preprocessor{
         }
     };
 
-    constexpr U8 g_maxTagCount = std::numeric_limits<U8>::max();
+    constexpr U8 g_maxTagCount = U8_MAX;
 
     struct WorkData
     {

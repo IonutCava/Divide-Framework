@@ -168,7 +168,7 @@ public:
     void   deallocate(GLuint& handle, U32 frameDelay = 1);
 
 private:
-    static constexpr U32 INVALID_IDX = std::numeric_limits<U32>::max();
+    static constexpr U32 INVALID_IDX = U32_MAX;
 
     vectorEASTL<State>  _usageMap;
 

@@ -261,7 +261,7 @@ void DVDConverter::BuildGeometryBuffers(PlatformContext& context, Import::Import
         }
     }
 
-    vb->useLargeIndices(vertexCount + 1 > std::numeric_limits<U16>::max());
+    vb->useLargeIndices(vertexCount + 1 > U16_MAX);
     vb->setVertexCount(vertexCount);
     vb->reserveIndexCount(indexCount);
 
@@ -380,7 +380,7 @@ void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData
     }
 
     if (source->mNumBones > 0) {
-        assert(source->mNumBones < std::numeric_limits<U8>::max());  ///<Fit in U8
+        assert(source->mNumBones < U8_MAX);  ///<Fit in U8
 
         vectorEASTL<vectorEASTL<vertexWeight> > weightsPerVertex(source->mNumVertices);
         for (U8 a = 0; a < source->mNumBones; ++a) {

@@ -121,12 +121,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
            IS_VISIBLE = toBit(8)
        };
 
-       struct NodeRenderingProperties {
-           F32 _nodeFlagValue = 1.0f;
-           U8 _lod = 0u;
-           bool _occlusionCull = true;
-       };
-
    public:
     explicit RenderingComponent(SceneGraphNode* parentSGN, PlatformContext& context);
     ~RenderingComponent();
@@ -151,8 +145,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     void getMaterialData(NodeMaterialData& dataOut, NodeMaterialTextures& texturesOut) const;
 
-    void getRenderingProperties(RenderStage stage, NodeRenderingProperties& propertiesOut) const;
-
     [[nodiscard]] RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass);
     [[nodiscard]] const RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass) const;
 
@@ -174,6 +166,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void drawSkeleton(GFX::CommandBuffer& bufferInOut);
     void drawBounds(bool AABB, bool OBB, bool Sphere, GFX::CommandBuffer& bufferInOut);
 
+    [[nodiscard]] U8 getLodLevel(RenderStage stage) const;
     [[nodiscard]] U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
     void addShaderBuffer(const ShaderBufferBinding& binding) { _externalBufferBindings.push_back(binding); }
@@ -184,7 +177,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
   protected:
     void toggleBoundsDraw(bool showAABB, bool showBS, bool recursive);
 
-    void retrieveDrawCommands(const RenderStagePass& stagePass, U32 cmdOffset, DrawCommandContainer& cmdsInOut);
+    void retrieveDrawCommands(const RenderStagePass& stagePass, U32 cmdOffset, NodeDataIdx dataIdx, DrawCommandContainer& cmdsInOut);
     [[nodiscard]] bool hasDrawCommands(const RenderStagePass& stagePass);
                   void onRenderOptionChanged(RenderOptions option, bool state);
 
@@ -238,7 +231,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     FlagsPerStage _rebuildDrawCommandsFlags{};
 
     using OffsetsPerPassType = std::array<U32, to_base(RenderPassType::COUNT)>;
-    std::array<NodeDataIdx, to_base(RenderStage::COUNT)> _lastDataIndex{};
 
     RenderCallback _reflectionCallback{};
     RenderCallback _refractionCallback{};
@@ -334,15 +326,11 @@ class RenderingCompRenderPass {
             return renderable.hasDrawCommands(stagePass);
         }
 
-        static void retrieveDrawCommands(RenderingComponent& renderable, const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
-            renderable.retrieveDrawCommands(stagePass, cmdOffset, cmdsInOut);
+        static void retrieveDrawCommands(RenderingComponent& renderable, const RenderStagePass& stagePass, const U32 cmdOffset, const NodeDataIdx dataIdx, DrawCommandContainer& cmdsInOut) {
+            renderable.retrieveDrawCommands(stagePass, cmdOffset, dataIdx, cmdsInOut);
         }
 
-        static void setCommandDataIndex(RenderingComponent& renderable, const RenderStage stage, const NodeDataIdx dataIndex) {
-            renderable._lastDataIndex[to_base(stage)] = dataIndex;
-        }
-
-        friend class Divide::RenderPass;
+          friend class Divide::RenderPass;
         friend class Divide::RenderPassExecutor;
 };
 

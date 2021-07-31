@@ -38,7 +38,7 @@ SceneEnvironmentProbePool::~SceneEnvironmentProbePool()
 }
 
 I16 SceneEnvironmentProbePool::AllocateSlice(bool lock) {
-    static_assert(Config::MAX_REFLECTIVE_PROBES_PER_PASS < std::numeric_limits<I16>::max());
+    static_assert(Config::MAX_REFLECTIVE_PROBES_PER_PASS < I16_MAX);
 
     for (U32 i = 0; i < Config::MAX_REFLECTIVE_PROBES_PER_PASS; ++i) {
         if (s_availableSlices[i].first) {
@@ -148,7 +148,7 @@ const EnvironmentProbeList& SceneEnvironmentProbePool::getLocked() const {
 void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe) {
     UniqueLock<SharedMutex> w_lock(_probeLock);
 
-    assert(_envProbes.size() < std::numeric_limits<U16>::max() - 2u);
+    assert(_envProbes.size() < U16_MAX - 2u);
     _envProbes.emplace_back(probe);
     probe->poolIndex(to_U16(_envProbes.size() - 1u));
 }
@@ -204,7 +204,7 @@ void SceneEnvironmentProbePool::debugProbe(EnvironmentProbeComponent* probe) {
 
         constexpr I32 Base = 10;
         for (U32 i = 0; i < 6; ++i) {
-            DebugView_ptr probeView = std::make_shared<DebugView>(to_I16(std::numeric_limits<I16>::max() - 1 - 6 + i));
+            DebugView_ptr probeView = std::make_shared<DebugView>(to_I16(I16_MAX - 1 - 6 + i));
             probeView->_texture = ReflectionTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
             probeView->_samplerHash = ReflectionTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).samplerHash();
             probeView->_shader = previewShader;

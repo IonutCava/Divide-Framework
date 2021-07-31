@@ -10,7 +10,7 @@
 namespace Divide {
 
 namespace {
-    constexpr U8 g_defaultTargetIndex = std::numeric_limits<U8>::max();
+    constexpr U8 g_defaultTargetIndex = U8_MAX;
 
     // Used to delete resources
     struct DeleteRT {

@@ -27,6 +27,8 @@ CubeShadowMapGenerator::CubeShadowMapGenerator(GFXDevice& context)
 }
 
 void CubeShadowMapGenerator::render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
+
     ACKNOWLEDGE_UNUSED(playerCamera);
 
     const vec3<F32> lightPos = light.getSGN()->get<TransformComponent>()->getPosition();

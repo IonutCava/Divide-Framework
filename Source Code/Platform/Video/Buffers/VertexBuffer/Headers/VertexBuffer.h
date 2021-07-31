@@ -175,7 +175,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
     }
 
     void addIndex(const U32 index) {
-        assert(usesLargeIndices() || index <= std::numeric_limits<U16>::max());
+        assert(usesLargeIndices() || index <= U16_MAX);
         _indices.push_back(index);
     }
 

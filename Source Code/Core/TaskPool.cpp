@@ -175,8 +175,8 @@ Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) {
     return task;
 }
 
-void TaskPool::threadWaiting() {
-    if (Runtime::isMainThread()) {
+void TaskPool::threadWaiting(const bool forceExecute) {
+    if (!forceExecute && Runtime::isMainThread()) {
         flushCallbackQueue();
     } else {
         _poolImpl.threadWaiting();

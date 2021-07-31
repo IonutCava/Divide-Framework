@@ -147,6 +147,8 @@ SingleShadowMapGenerator::~SingleShadowMapGenerator()
 }
 
 void SingleShadowMapGenerator::render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
+
     ACKNOWLEDGE_UNUSED(playerCamera);
     SpotLightComponent& spotLight = static_cast<SpotLightComponent&>(light);
 
@@ -192,6 +194,8 @@ void SingleShadowMapGenerator::render(const Camera& playerCamera, Light& light, 
 }
 
 void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
+
     const RenderTarget& shadowMapRT = _context.renderTargetPool().renderTarget(g_depthMapID);
     const auto& shadowAtt = shadowMapRT.getAttachment(RTAttachmentType::Colour, 0);
 

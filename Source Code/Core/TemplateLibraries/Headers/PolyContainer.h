@@ -38,7 +38,7 @@ namespace Divide {
 #pragma pack(push, 1)
 struct PolyContainerEntry
 {
-    static constexpr U32 INVALID_ENTRY_ID = std::numeric_limits<U32>::max();
+    static constexpr U32 INVALID_ENTRY_ID = U32_MAX;
 
     PolyContainerEntry() noexcept : PolyContainerEntry(0u, 0u) {}
     PolyContainerEntry(const U8 typeIndex, const U24 elementIndex) noexcept : _typeIndex(typeIndex), _elementIndex(elementIndex) {}

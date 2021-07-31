@@ -60,22 +60,23 @@ class RenderPassExecutor
 public:
     struct MaterialUpdateRange
     {
-        U16 _firstIDX = std::numeric_limits<U16>::max();
+        U16 _firstIDX = U16_MAX;
         U16 _lastIDX = 0u;
 
         [[nodiscard]] U16 range() const noexcept { return _lastIDX >= _firstIDX ? _lastIDX - _firstIDX + 1u : 0u; }
 
         void reset() noexcept {
-            _firstIDX = std::numeric_limits<U16>::max();
+            _firstIDX = U16_MAX;
             _lastIDX = 0u;
         }
     };
 
     struct PerRingEntryMaterialData
     {
+        using LookupInfoContainer = vectorEASTL<std::pair<size_t, U16>>;
         MaterialUpdateRange _matUpdateRange{};
         vectorEASTL<NodeMaterialData> _nodeMaterialData{};
-        vectorEASTL<std::pair<size_t, U16>> _nodeMaterialLookupInfo{};
+        LookupInfoContainer _nodeMaterialLookupInfo{};
     };
 
 public:
@@ -125,12 +126,13 @@ private:
                              bool transparencyPass,
                              RenderingOrder renderOrder = RenderingOrder::COUNT);
 
-    
-    NodeDataIdx processVisibleNode(const RenderingComponent& rComp,
-                                   RenderStage stage,
-                                   D64 interpolationFactor,
-                                   U32 materialElementOffset,
-                                   U32 nodeIndex);
+    void processVisibleNodeTransform(RenderingComponent* rComp,
+                                     RenderStage stage,
+                                     D64 interpolationFactor,
+                                     U16 nodeIndex);
+
+    U16 processVisibleNodeMaterial(RenderingComponent* rComp,
+                                   U32 materialElementOffset);
 
     U16 buildDrawCommands(const RenderPassParams& params, bool doPrePass, bool doOITPass, GFX::CommandBuffer& bufferInOut);
     U16 prepareNodeData(VisibleNodeList<>& nodes, const RenderPassParams& params, bool hasInvalidNodes, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut);

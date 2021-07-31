@@ -51,7 +51,7 @@ class RenderPackage {
 
     struct CommandData
     {
-        static constexpr U32 INVALID_VALUE = std::numeric_limits<U32>::max();
+        static constexpr U32 INVALID_VALUE = U32_MAX;
         size_t _lodOffset = INVALID_VALUE;
         size_t _lodIdxCount = INVALID_VALUE;
         U32 _commandOffset = INVALID_VALUE;

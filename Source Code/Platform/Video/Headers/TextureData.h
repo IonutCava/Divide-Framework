@@ -94,7 +94,7 @@ struct TextureEntry
     U8 _binding = 0u;
 };
 
-static constexpr U8 INVALID_TEXTURE_BINDING = std::numeric_limits<U8>::max();
+static constexpr U8 INVALID_TEXTURE_BINDING = U8_MAX;
 
 [[nodiscard]] bool IsValid(const TextureEntry& entry) noexcept;
 bool operator==(const TextureEntry & lhs, const TextureEntry & rhs) noexcept;

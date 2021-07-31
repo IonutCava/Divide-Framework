@@ -97,7 +97,7 @@ bool SceneAnimator::init(PlatformContext& context) {
 bool SceneAnimator::init(PlatformContext& context, Bone* const skeleton, const vectorEASTL<Bone*>& bones) {
     release(false);
 
-    DIVIDE_ASSERT(_bones.size() < std::numeric_limits<U8>::max(), "SceneAnimator::init error: Too many bones for current node!");
+    DIVIDE_ASSERT(_bones.size() < U8_MAX, "SceneAnimator::init error: Too many bones for current node!");
 
     _skeleton = skeleton;
     _bones = bones;

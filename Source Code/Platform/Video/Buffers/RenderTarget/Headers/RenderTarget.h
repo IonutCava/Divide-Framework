@@ -99,7 +99,7 @@ protected:
     BlitIndex _output;
 };
 
-constexpr U16 INVALID_DEPTH_LAYER = std::numeric_limits<U16>::max();
+constexpr U16 INVALID_DEPTH_LAYER = U16_MAX;
 
 struct DepthBlitEntry {
     U16 _inputLayer = INVALID_DEPTH_LAYER;

@@ -126,7 +126,6 @@ U32 RenderPackage::updateAndRetrieveDrawCommands(const NodeDataIdx dataIndex, U3
                 drawCmd._cmd.indexCount = autoIndex ? to_U32(count) : drawCmd._cmd.indexCount;
             }
         }
-
     }
 
     U32 cmdCount = 0u;

@@ -32,7 +32,7 @@ namespace Divide {
 namespace {
     constexpr U8 MAX_LOD_LEVEL = 4u;
 
-    constexpr I16 g_renderRangeLimit = std::numeric_limits<I16>::max();
+    constexpr I16 g_renderRangeLimit = I16_MAX;
 }
 
 RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContext& context)
@@ -328,18 +328,17 @@ void RenderingComponent::setReflectionAndRefractionType(const ReflectorType refl
     }
 }
 
-void RenderingComponent::retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
+void RenderingComponent::retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, const NodeDataIdx dataIdx, DrawCommandContainer& cmdsInOut) {
     OPTICK_EVENT();
 
     const U8 stageIdx = to_U8(stagePass._stage);
     const U8 lodLevel = _lodLevels[stageIdx];
     const U16 pkgIndex = RenderStagePass::indexForStage(stagePass);
     const U16 pkgCount = RenderStagePass::passCountForStagePass(stagePass);
-    const NodeDataIdx dataIdx = _lastDataIndex[stageIdx];
 
     PackagesPerIndex& packages = _renderPackages[stageIdx][to_U8(stagePass._passType)];
     U32 startCmdOffset = cmdOffset + to_U32(cmdsInOut.size());
-    for (U16 i = 0; i < pkgCount; ++i) {
+    for (U16 i = 0u; i < pkgCount; ++i) {
         RenderPackage& pkg = packages[i + pkgIndex];
         startCmdOffset += Attorney::RenderPackageRenderingComponent::updateAndRetrieveDrawCommands(pkg, dataIdx, startCmdOffset, lodLevel, cmdsInOut);
     }
@@ -372,10 +371,8 @@ void RenderingComponent::getMaterialData(NodeMaterialData& dataOut, NodeMaterial
     }
 }
 
-void RenderingComponent::getRenderingProperties(const RenderStage stage, NodeRenderingProperties& propertiesOut) const {
-    propertiesOut._lod = _lodLevels[to_base(stage)];
-    propertiesOut._nodeFlagValue = dataFlag();
-    propertiesOut._occlusionCull = occlusionCull();
+U8 RenderingComponent::getLodLevel(const RenderStage stage) const {
+    return _lodLevels[to_base(stage)];
 }
 
 /// Called after the current node was rendered

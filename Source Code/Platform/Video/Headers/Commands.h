@@ -246,7 +246,7 @@ BEGIN_COMMAND(EndPixelBufferCommand, CommandType::END_PIXEL_BUFFER);
 END_COMMAND(EndPixelBufferCommand);
 
 BEGIN_COMMAND(BeginRenderSubPassCommand, CommandType::BEGIN_RENDER_SUB_PASS);
-    U16 _mipWriteLevel = std::numeric_limits<U16>::max();
+    U16 _mipWriteLevel = U16_MAX;
     vectorEASTL<RenderTarget::DrawLayerParams> _writeLayers;
 END_COMMAND(BeginRenderSubPassCommand);
 

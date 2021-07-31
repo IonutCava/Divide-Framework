@@ -75,7 +75,7 @@ enum class CmdRenderOptions : U8 {
 
 #pragma pack(push, 1)
 struct GenericDrawCommand {
-    static constexpr U8 INVALID_BUFFER_INDEX = std::numeric_limits<U8>::max();
+    static constexpr U8 INVALID_BUFFER_INDEX = U8_MAX;
     IndirectDrawCommand _cmd = {};                                        // 32 bytes
     PoolHandle _sourceBuffer = {};                                        // 12 bytes
     U32 _commandOffset = 0u;                                              // 9  bytes

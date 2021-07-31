@@ -664,7 +664,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
             NOP();
         }
 
-        constexpr F32 ushortMax = std::numeric_limits<U16>::max() + 1.0f;
+        constexpr F32 ushortMax = 1.f + U16_MAX;
 
         I32 terrainWidth = to_I32(terrainDimensions.x);
         I32 terrainHeight = to_I32(terrainDimensions.y);

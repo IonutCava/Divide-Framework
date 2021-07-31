@@ -221,7 +221,7 @@ void WindowManager::close() {
 }
 
 DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, ErrorCode& err, U32& windowIndex ) {
-    windowIndex = std::numeric_limits<U32>::max();
+    windowIndex = U32_MAX;
     auto* window = MemoryManager_NEW DisplayWindow(*this, *_context);
     assert(window != nullptr);
 
