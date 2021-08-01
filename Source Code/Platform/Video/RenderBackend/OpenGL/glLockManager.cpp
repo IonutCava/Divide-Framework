@@ -24,7 +24,7 @@ void glLockManager::wait(const bool blockClient) {
         }
     }
 
-    UniqueLock<SharedMutex> w_lock(_syncMutex);
+    ScopedLock<SharedMutex> w_lock(_syncMutex);
     if (_defaultSync != nullptr) {
         U8 retryCount = 0u;
         Wait(_defaultSync, blockClient, false, retryCount);
@@ -36,7 +36,7 @@ void glLockManager::wait(const bool blockClient) {
 void glLockManager::lock() {
     OPTICK_EVENT();
 
-    UniqueLock<SharedMutex> lock(_syncMutex);
+    ScopedLock<SharedMutex> lock(_syncMutex);
     assert(_defaultSync == nullptr);
 
     _defaultSync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);

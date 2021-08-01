@@ -107,7 +107,7 @@ bool Scene::OnShutdown(PlatformContext& context) {
 }
 
 bool Scene::frameStarted() {
-    UniqueLock<Mutex> lk(_perFrameArenaMutex);
+    ScopedLock<Mutex> lk(_perFrameArenaMutex);
     _perFrameArena.clear();
 
     return true;
@@ -127,7 +127,7 @@ bool Scene::idle() {  // Called when application is idle
         }
     }
 
-    UniqueLock<SharedMutex> r_lock(_tasksMutex);
+    ScopedLock<SharedMutex> r_lock(_tasksMutex);
     _tasks.erase(std::remove_if(begin(_tasks),
                                      end(_tasks),
                                      [](Task* handle) -> bool { 
@@ -1358,7 +1358,7 @@ void Scene::onGainFocus() {
 
 void Scene::registerTask(Task& taskItem, const bool start, const TaskPriority priority) {
     {
-        UniqueLock<SharedMutex> w_lock(_tasksMutex);
+        ScopedLock<SharedMutex> w_lock(_tasksMutex);
         _tasks.push_back(&taskItem);
     }
     if (start) {
@@ -1369,7 +1369,7 @@ void Scene::registerTask(Task& taskItem, const bool start, const TaskPriority pr
 void Scene::clearTasks() {
     Console::printfn(Locale::Get(_ID("STOP_SCENE_TASKS")));
     // Performance shouldn't be an issue here
-    UniqueLock<SharedMutex> w_lock(_tasksMutex);
+    ScopedLock<SharedMutex> w_lock(_tasksMutex);
     for (Task* task : _tasks) {
         Wait(*task, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
     }
@@ -1378,7 +1378,7 @@ void Scene::clearTasks() {
 }
 
 void Scene::removeTask(Task& task) {
-    UniqueLock<SharedMutex> w_lock(_tasksMutex);
+    ScopedLock<SharedMutex> w_lock(_tasksMutex);
     for (vectorEASTL<Task*>::iterator it = begin(_tasks); it != end(_tasks); ++it) {
         if ((*it)->_id == task._id) {
             Wait(**it, _context.taskPool(TaskPoolType::HIGH_PRIORITY));

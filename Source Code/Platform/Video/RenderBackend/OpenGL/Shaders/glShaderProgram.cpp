@@ -878,7 +878,7 @@ eastl::string  glShaderProgram::PreprocessIncludes(const ResourcePath& name,
 }
 
 const stringImpl& glShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vectorEASTL<ResourcePath>& foundAtoms, bool& wasParsed) {
-    UniqueLock<SharedMutex> w_lock(s_atomLock);
+    ScopedLock<SharedMutex> w_lock(s_atomLock);
     return ShaderFileReadLocked(filePath, atomName, recurse, foundAtoms, wasParsed);
 }
 
@@ -941,7 +941,7 @@ void glShaderProgram::OnAtomChange(const std::string_view atomName, const FileUp
     // ADD and MODIFY events should get processed as usual
     {
         // Clear the atom from the cache
-        UniqueLock<SharedMutex> w_lock(s_atomLock);
+        ScopedLock<SharedMutex> w_lock(s_atomLock);
         AtomMap::iterator it = s_atoms.find(atomNameHash);
         if (it != std::cend(s_atoms)) {
             it = s_atoms.erase(it);

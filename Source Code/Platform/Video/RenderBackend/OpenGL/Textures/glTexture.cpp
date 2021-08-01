@@ -95,7 +95,7 @@ SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
     }
     { //Slow path. Cache miss
         assert(_allocatedStorage);
-        UniqueLock<SharedMutex> w_lock(_gpuAddressesLock);
+        ScopedLock<SharedMutex> w_lock(_gpuAddressesLock);
         // Check again as we may have updated this while switching locks
         SamplerAddress address;
         const auto it = _gpuAddresses.find(samplerHash);
@@ -103,11 +103,11 @@ SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
             address = it->second;
         } else {
             if (samplerHash == 0) {
-                UniqueLock<Mutex> w_lock2(s_GLgpuAddressesLock);
+                ScopedLock<Mutex> w_lock2(s_GLgpuAddressesLock);
                 address = glGetTextureHandleARB(_data._textureHandle);
             } else {
                 const GLuint sampler = GL_API::GetSamplerHandle(samplerHash);
-                UniqueLock<Mutex> w_lock2(s_GLgpuAddressesLock);
+                ScopedLock<Mutex> w_lock2(s_GLgpuAddressesLock);
                 address = glGetTextureSamplerHandleARB(_data._textureHandle, sampler);
             }
             emplace(_gpuAddresses, samplerHash, address);

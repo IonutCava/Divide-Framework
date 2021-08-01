@@ -525,12 +525,12 @@ namespace Attorney {
 
     class GFXDeviceGraphicsResource {
        static void onResourceCreate(GFXDevice& device, GraphicsResource::Type type, I64 GUID, U64 nameHash) {
-           UniqueLock<Mutex> w_lock(device._graphicsResourceMutex);
+           ScopedLock<Mutex> w_lock(device._graphicsResourceMutex);
            device._graphicResources.emplace_back(type, GUID, nameHash);
        }
 
        static void onResourceDestroy(GFXDevice& device, GraphicsResource::Type type, I64 GUID, U64 nameHash) {
-           UniqueLock<Mutex> w_lock(device._graphicsResourceMutex);
+           ScopedLock<Mutex> w_lock(device._graphicsResourceMutex);
            const bool success = dvd_erase_if(device._graphicResources,
                                              [type, GUID, nameHash](const auto& crtEntry) noexcept -> bool {
                                                 if (std::get<1>(crtEntry) == GUID) {

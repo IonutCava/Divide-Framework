@@ -179,7 +179,7 @@ Vegetation::~Vegetation()
 
 void Vegetation::destroyStaticData() {
     {
-        UniqueLock<SharedMutex> w_lock(g_treeMeshLock);
+        ScopedLock<SharedMutex> w_lock(g_treeMeshLock);
         s_treeMeshes.clear();
     }
     s_treeMaterial.reset();
@@ -589,7 +589,7 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
     const U32 meshID = to_U32(ID % _treeMeshNames.size());
 
     if (_instanceCountTrees > 0 && !_treeMeshNames.empty()) {
-        UniqueLock<SharedMutex> w_lock(g_treeMeshLock);
+        ScopedLock<SharedMutex> w_lock(g_treeMeshLock);
         if (s_treeMeshes.empty()) {
             for (const ResourcePath& meshName : _treeMeshNames) {
                 if (!eastl::any_of(eastl::cbegin(s_treeMeshes),

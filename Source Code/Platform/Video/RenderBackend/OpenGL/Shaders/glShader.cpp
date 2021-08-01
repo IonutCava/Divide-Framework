@@ -278,7 +278,7 @@ void glShader::removeShader(glShader* s) {
 
     // Try to find it
     const U64 nameHash = s->nameHash();
-    UniqueLock<SharedMutex> w_lock(_shaderNameLock);
+    ScopedLock<SharedMutex> w_lock(_shaderNameLock);
     const ShaderMap::iterator it = _shaderNameMap.find(nameHash);
     if (it != std::end(_shaderNameMap)) {
         // Subtract one reference from it.
@@ -312,7 +312,7 @@ glShader* glShader::loadShader(GFXDevice& context,
     // If we do, and don't need a recompile, just return it
     if (shader == nullptr) {
         // If we can't find it, we create a new one
-        UniqueLock<Mutex> w_lock(context.objectArenaMutex());
+        ScopedLock<Mutex> w_lock(context.objectArenaMutex());
         shader = new (context.objectArena()) glShader(context, name);
         context.objectArena().DTOR(shader);
         newShader = true;
@@ -330,7 +330,7 @@ glShader* glShader::loadShader(glShader * shader,
     if (shader->load(data)) {
         if (isNew) {
             // If we loaded the source code successfully,  register it
-            UniqueLock<SharedMutex> w_lock(_shaderNameLock);
+            ScopedLock<SharedMutex> w_lock(_shaderNameLock);
             _shaderNameMap.insert({ shader->nameHash(), shader });
         }
     }//else ignore. it's somewhere in the object arena

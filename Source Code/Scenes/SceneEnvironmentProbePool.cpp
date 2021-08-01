@@ -146,7 +146,7 @@ const EnvironmentProbeList& SceneEnvironmentProbePool::getLocked() const {
 }
 
 void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe) {
-    UniqueLock<SharedMutex> w_lock(_probeLock);
+    ScopedLock<SharedMutex> w_lock(_probeLock);
 
     assert(_envProbes.size() < U16_MAX - 2u);
     _envProbes.emplace_back(probe);
@@ -155,7 +155,7 @@ void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe) 
 
 void SceneEnvironmentProbePool::unregisterProbe(EnvironmentProbeComponent* probe) {
     if (probe != nullptr) {
-        UniqueLock<SharedMutex> w_lock(_probeLock);
+        ScopedLock<SharedMutex> w_lock(_probeLock);
         I64 probeGUID = probe->getGUID();
         auto it = _envProbes.erase(eastl::remove_if(begin(_envProbes), end(_envProbes),
                                                     [&probeGUID](const auto& p) { return p->getGUID() == probeGUID; }),

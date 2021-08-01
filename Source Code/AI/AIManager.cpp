@@ -33,14 +33,14 @@ AIManager::~AIManager()
 /// Clear up any remaining AIEntities
 void AIManager::destroy() {
     {
-        UniqueLock<Mutex> w_lock(_updateMutex);
+        ScopedLock<Mutex> w_lock(_updateMutex);
         for (AITeamMap::value_type& entity : _aiTeams) {
             MemoryManager::DELETE(entity.second);
         }
         _aiTeams.clear();
     }
     {
-        UniqueLock<SharedMutex> w_lock(_navMeshMutex);
+        ScopedLock<SharedMutex> w_lock(_navMeshMutex);
         for (NavMeshMap::value_type& it : _navMeshes) {
             MemoryManager::DELETE(it.second);
         }
@@ -59,7 +59,7 @@ void AIManager::update(const U64 deltaTimeUS) {
         {
             /// Lock the entities during update() adding or deleting entities is
             /// suspended until this returns
-            UniqueLock<Mutex> r_lock(_updateMutex);
+            ScopedLock<Mutex> r_lock(_updateMutex);
             if (!_aiTeams.empty() && !_pauseUpdate) {
                 _updating = true;
                 if (_sceneCallback) {
@@ -108,7 +108,7 @@ bool AIManager::updateEntities(const U64 deltaTimeUS) {  // react
 }
 
 bool AIManager::registerEntity(const U32 teamID, AIEntity* entity) {
-    UniqueLock<Mutex> w_lock(_updateMutex);
+    ScopedLock<Mutex> w_lock(_updateMutex);
     AITeamMap::const_iterator it = _aiTeams.find(teamID);
     DIVIDE_ASSERT(it != std::end(_aiTeams),
                   "AIManager error: attempt to register an AI Entity to a "
@@ -124,7 +124,7 @@ void AIManager::unregisterEntity(AIEntity* entity) {
 }
 
 void AIManager::unregisterEntity(const U32 teamID, AIEntity* entity) {
-    UniqueLock<Mutex> w_lock(_updateMutex);
+    ScopedLock<Mutex> w_lock(_updateMutex);
     AITeamMap::const_iterator it = _aiTeams.find(teamID);
     DIVIDE_ASSERT(it != std::end(_aiTeams),
                   "AIManager error: attempt to remove an AI Entity from a "
@@ -134,7 +134,7 @@ void AIManager::unregisterEntity(const U32 teamID, AIEntity* entity) {
 
 bool AIManager::addNavMesh(const AIEntity::PresetAgentRadius radius, Navigation::NavigationMesh* const navMesh) {
     {
-        UniqueLock<SharedMutex> w_lock(_navMeshMutex);
+        ScopedLock<SharedMutex> w_lock(_navMeshMutex);
         const NavMeshMap::iterator it = _navMeshes.find(radius);
         DIVIDE_ASSERT(it == std::end(_navMeshes),
                       "AIManager error: NavMesh for specified dimensions already "
@@ -146,7 +146,7 @@ bool AIManager::addNavMesh(const AIEntity::PresetAgentRadius radius, Navigation:
         insert(_navMeshes, radius, navMesh);
     }
     {
-        UniqueLock<Mutex> w_lock(_updateMutex);
+        ScopedLock<Mutex> w_lock(_updateMutex);
         for (AITeamMap::value_type& team : _aiTeams) {
             team.second->addCrowd(radius, navMesh);
         }
@@ -156,7 +156,7 @@ bool AIManager::addNavMesh(const AIEntity::PresetAgentRadius radius, Navigation:
 
 void AIManager::destroyNavMesh(const AIEntity::PresetAgentRadius radius) {
     {
-        UniqueLock<SharedMutex> w_lock(_navMeshMutex);
+        ScopedLock<SharedMutex> w_lock(_navMeshMutex);
         NavMeshMap::iterator it = _navMeshes.find(radius);
         DIVIDE_ASSERT(it != std::end(_navMeshes),
                       "AIManager error: Can't destroy NavMesh for specified radius "
@@ -166,7 +166,7 @@ void AIManager::destroyNavMesh(const AIEntity::PresetAgentRadius radius) {
     }
 
     {
-        UniqueLock<Mutex> w_lock(_updateMutex);
+        ScopedLock<Mutex> w_lock(_updateMutex);
         for (AITeamMap::value_type& team : _aiTeams) {
             team.second->removeCrowd(radius);
         }
@@ -174,7 +174,7 @@ void AIManager::destroyNavMesh(const AIEntity::PresetAgentRadius radius) {
 }
 
 void AIManager::registerTeam(AITeam* const team) {
-    UniqueLock<Mutex> w_lock(_updateMutex);
+    ScopedLock<Mutex> w_lock(_updateMutex);
     const U32 teamID = team->getTeamID();
     DIVIDE_ASSERT(_aiTeams.find(teamID) == std::end(_aiTeams),
                   "AIManager error: attempt to double register an AI team!");
@@ -183,7 +183,7 @@ void AIManager::registerTeam(AITeam* const team) {
 }
 
 void AIManager::unregisterTeam(AITeam* const team) {
-    UniqueLock<Mutex> w_lock(_updateMutex);
+    ScopedLock<Mutex> w_lock(_updateMutex);
     const U32 teamID = team->getTeamID();
     const AITeamMap::iterator it = _aiTeams.find(teamID);
     DIVIDE_ASSERT(it != std::end(_aiTeams),

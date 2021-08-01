@@ -581,7 +581,7 @@ void glTextureViewCache::init(const U32 poolSize)
 void glTextureViewCache::onFrameEnd() {
     OPTICK_EVENT("Texture Pool: onFrameEnd");
 
-    UniqueLock<SharedMutex> w_lock(_lock);
+    ScopedLock<SharedMutex> w_lock(_lock);
     GLuint count = 0;
     const U32 entryCount = to_U32(_tempBuffer.size());
     for (U32 i = 0; i < entryCount; ++i) {
@@ -618,7 +618,7 @@ void glTextureViewCache::onFrameEnd() {
 }
 
 void glTextureViewCache::destroy() {
-    UniqueLock<SharedMutex> w_lock(_lock);
+    ScopedLock<SharedMutex> w_lock(_lock);
     const U32 entryCount = to_U32(_tempBuffer.size());
     glDeleteTextures(static_cast<GLsizei>(entryCount), _handles.data());
     std::memset(_handles.data(), 0, sizeof(GLuint) * entryCount);
@@ -633,7 +633,7 @@ GLuint glTextureViewCache::allocate(const bool retry) {
 
 std::pair<GLuint, bool> glTextureViewCache::allocate(const size_t hash, const bool retry) {
     {
-        UniqueLock<SharedMutex> w_lock(_lock);
+        ScopedLock<SharedMutex> w_lock(_lock);
 
         if (hash != 0u) {
             U32 idx = INVALID_IDX;
@@ -675,7 +675,7 @@ std::pair<GLuint, bool> glTextureViewCache::allocate(const size_t hash, const bo
 
 void glTextureViewCache::deallocate(GLuint& handle, const U32 frameDelay) {
 
-    UniqueLock<SharedMutex> w_lock(_lock);
+    ScopedLock<SharedMutex> w_lock(_lock);
     const U32 count = to_U32(_handles.size());
     for (U32 i = 0; i < count; ++i) {
         if (_handles[i] == handle) {

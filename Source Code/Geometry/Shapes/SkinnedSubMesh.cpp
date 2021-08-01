@@ -53,7 +53,7 @@ void SkinnedSubMesh::buildBoundingBoxesForAnim(const Task& parentTask,
     const size_t partitionOffset = parentVB->getPartitionOffset(_geometryPartitionIDs[0]);
     const size_t partitionCount = parentVB->getPartitionIndexCount(_geometryPartitionIDs[0]);
 
-    UniqueLock<Mutex> w_lock(_bbLock);
+    ScopedLock<Mutex> w_lock(_bbLock);
     BoundingBox& currentBB = _boundingBoxes.at(animationIndex);
     currentBB.reset();
     for (const BoneTransform& transforms : currentAnimation) {
@@ -74,14 +74,14 @@ void SkinnedSubMesh::buildBoundingBoxesForAnim(const Task& parentTask,
 }
 
 void SkinnedSubMesh::updateBB(const I32 animIndex) {
-    UniqueLock<Mutex> r_lock(_bbLock);
+    ScopedLock<Mutex> r_lock(_bbLock);
     setBounds(_boundingBoxes[animIndex]);
     _parentMesh->queueRecomputeBB();
 }
 
 void SkinnedSubMesh::computeBBForAnimation(SceneGraphNode* sgn, I32 animIndex) {
     // Attempt to get the map of BBs for the current animation
-    UniqueLock<Mutex> w_lock(_bbStateLock);
+    ScopedLock<Mutex> w_lock(_bbStateLock);
     const BoundingBoxState state = _boundingBoxesState[animIndex];
 
     if (state != BoundingBoxState::COUNT) {
@@ -102,7 +102,7 @@ void SkinnedSubMesh::computeBBForAnimation(SceneGraphNode* sgn, I32 animIndex) {
           _context.context().taskPool(TaskPoolType::HIGH_PRIORITY),
           TaskPriority::DONT_CARE,
           [this, animIndex, animComp]() {
-              UniqueLock<Mutex> w_lock2(_bbStateLock);
+              ScopedLock<Mutex> w_lock2(_bbStateLock);
               _boundingBoxesState[animIndex] = BoundingBoxState::Computed;
               // We could've changed the animation while waiting for this task to end
               if (animComp->animationIndex() == animIndex) {

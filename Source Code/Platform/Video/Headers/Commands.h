@@ -64,12 +64,12 @@ struct CmdAllocator {
 
     template <class... Args>
     static T* allocate(Args&&... args) {
-        UniqueLock<Mutex> lock(s_PoolMutex);
+        ScopedLock<Mutex> lock(s_PoolMutex);
         return s_Pool.newElement(FWD(args)...);
     }
 
     static void deallocate(T*& ptr) {
-        UniqueLock<Mutex> lock(s_PoolMutex);
+        ScopedLock<Mutex> lock(s_PoolMutex);
         s_Pool.deleteElement(ptr);
     }
 };

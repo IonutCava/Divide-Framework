@@ -429,14 +429,14 @@ void GL_API::QueueFlush() {
 }
 
 void GL_API::QueueComputeMipMap(const GLuint textureHandle) {
-    UniqueLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
+    ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
     if (s_mipmapQueue.find(textureHandle) == std::cend(s_mipmapQueue)) {
         s_mipmapQueue.insert(textureHandle);
     }
 }
 
 void GL_API::DequeueComputeMipMap(const GLuint textureHandle) {
-    UniqueLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
+    ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
     const auto it = s_mipmapQueue.find(textureHandle);
     if (it != std::cend(s_mipmapQueue)) {
         s_mipmapQueue.erase(it);
@@ -445,7 +445,7 @@ void GL_API::DequeueComputeMipMap(const GLuint textureHandle) {
 
 void GL_API::onThreadCreated(const std::thread::id& threadID) {
     // Double check so that we don't run into a race condition!
-    UniqueLock<Mutex> lock(GLUtil::s_glSecondaryContextMutex);
+    ScopedLock<Mutex> lock(GLUtil::s_glSecondaryContextMutex);
     assert(SDL_GL_GetCurrentContext() == NULL);
 
     // This also makes the context current

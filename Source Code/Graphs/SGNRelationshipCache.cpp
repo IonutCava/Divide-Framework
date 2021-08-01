@@ -22,7 +22,7 @@ void SGNRelationshipCache::invalidate() {
 bool SGNRelationshipCache::rebuild() {
     OPTICK_EVENT();
 
-    UniqueLock<SharedMutex> w_lock(_updateMutex);
+    ScopedLock<SharedMutex> w_lock(_updateMutex);
     updateChildren(0, _childrenRecursiveCache);
     updateParents(0, _parentRecursiveCache);
     _isValid = true;

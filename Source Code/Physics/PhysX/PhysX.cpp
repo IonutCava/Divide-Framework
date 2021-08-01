@@ -342,7 +342,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
         }
 
         if (nodeGeometry == nullptr) {
-            UniqueLock<SharedMutex> w_lock(s_meshCacheLock);
+            ScopedLock<SharedMutex> w_lock(s_meshCacheLock);
             // Check again to avoid race conditions
             const auto it = s_gMeshCache.find(nameHash);
             if (it != s_gMeshCache.end()) {

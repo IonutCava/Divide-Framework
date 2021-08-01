@@ -101,7 +101,7 @@ bool QuadtreeNode::computeBoundingBox(BoundingBox& parentBB) {
 void QuadtreeNode::toggleBoundingBoxes() {
     _drawBBoxes = !_drawBBoxes;
     if (!_drawBBoxes) {
-        UniqueLock<Mutex> w_lock(_bbPrimitiveLock);
+        ScopedLock<Mutex> w_lock(_bbPrimitiveLock);
         _context.destroyIMP(_bbPrimitive);
         _bbPrimitive = nullptr;
     }
@@ -109,7 +109,7 @@ void QuadtreeNode::toggleBoundingBoxes() {
 
 void QuadtreeNode::drawBBox(RenderPackage& packageOut) {
     {
-        UniqueLock<Mutex> w_lock(_bbPrimitiveLock);
+        ScopedLock<Mutex> w_lock(_bbPrimitiveLock);
         if (_bbPrimitive == nullptr) {
             _bbPrimitive = _context.newIMP();
             _bbPrimitive->name("QuadtreeBoundingBox");

@@ -13,7 +13,7 @@ namespace {
 
 glBufferLockManager::~glBufferLockManager()
 {
-    const UniqueLock<Mutex> w_lock(_lock);
+    const ScopedLock<Mutex> w_lock(_lock);
     for (const BufferLock& lock : _bufferLocks) {
         glDeleteSync(lock._syncObj);
     }
@@ -30,7 +30,7 @@ bool glBufferLockManager::waitForLockedRange(size_t lockBeginBytes,
     const BufferRange testRange{lockBeginBytes, lockLength};
 
     bool error = false;
-    UniqueLock<Mutex> w_lock(_lock);
+    ScopedLock<Mutex> w_lock(_lock);
     _swapLocks.resize(0);
     for (const BufferLock& lock : _bufferLocks) {
         if (lock._valid && !Overlaps(testRange, lock._range)) {
@@ -62,7 +62,7 @@ bool glBufferLockManager::lockRange(const size_t lockBeginBytes, const size_t lo
     const BufferRange testRange{ lockBeginBytes, lockLength };
 
     // Verify old lock entries and merge if needed
-    UniqueLock<Mutex> w_lock(_lock);
+    ScopedLock<Mutex> w_lock(_lock);
     for (BufferLock& lock : _bufferLocks) {
         // This should avoid any lock leaks, since any fences we haven't waited on will be considered "signaled" eventually
         if (lock._frameID < frameID && frameID - lock._frameID >= g_LockFrameLifetime) {

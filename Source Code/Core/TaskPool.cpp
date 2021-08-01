@@ -58,7 +58,7 @@ bool TaskPool::init(const U32 threadCount, const TaskPoolType poolType, const DE
 }
 
 void TaskPool::shutdown() {
-    waitForAllTasks(true, true);
+    waitForAllTasks(true);
     if (_poolImpl.init()) {
         MemoryManager::SAFE_DELETE(std::get<0>(_poolImpl._poolImpl));
         MemoryManager::SAFE_DELETE(std::get<1>(_poolImpl._poolImpl));
@@ -85,11 +85,36 @@ void TaskPool::onThreadDestroy(const std::thread::id& threadID) {
     }
 }
 
-bool TaskPool::enqueue(PoolTask&& task, const TaskPriority priority, const U32 taskIndex, const DELEGATE<void>& onCompletionFunction) {
+bool TaskPool::enqueue(Task& task, const TaskPriority priority, const U32 taskIndex, const DELEGATE<void>& onCompletionFunction) {
+    const bool hasOnCompletionFunction = priority != TaskPriority::REALTIME && onCompletionFunction;
+
+    //Returing false from a PoolTask lambda will just reschedule it for later execution again. 
+    //This may leave the task in an infinite loop, always re-queuing!
+    auto poolTask = [this, &task, hasOnCompletionFunction](const bool threadWaitingCall) {
+        while (task._unfinishedJobs.load() > 1) {
+            if (threadWaitingCall) {
+                threadWaiting();
+            } else {
+                // Can't be run at this time. It will be executated again later!
+                return false;
+            }
+        }
+
+        if (!threadWaitingCall || task._runWhileIdle) {
+            task._callback(task);
+            taskCompleted(task, hasOnCompletionFunction);
+            return true;
+        }
+
+        return false;
+    };
+
     _runningTaskCount.fetch_add(1);
 
     if (priority == TaskPriority::REALTIME) {
-        WAIT_FOR_CONDITION(task(false));
+        if (!poolTask(false)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
         if (onCompletionFunction) {
             onCompletionFunction();
         }
@@ -100,7 +125,16 @@ bool TaskPool::enqueue(PoolTask&& task, const TaskPriority priority, const U32 t
         _taskCallbacks[taskIndex].push_back(onCompletionFunction);
     }
 
-    return _poolImpl.addTask(MOV(task));
+    return _poolImpl.addTask(MOV(poolTask));
+}
+
+void TaskPool::waitForTask(const Task& task) {
+    if (TaskPool::USE_OPTICK_PROFILER) {
+        OPTICK_EVENT();
+    }
+
+    UniqueLock<Mutex> lock(_taskFinishedMutex);
+    _taskFinishedCV.wait(lock, [&task]() noexcept { return Finished(task); });
 }
 
 size_t TaskPool::flushCallbackQueue() {
@@ -127,13 +161,14 @@ size_t TaskPool::flushCallbackQueue() {
     return ret;
 }
 
-void TaskPool::waitForAllTasks(const bool yield, const bool flushCallbacks) {
+void TaskPool::waitForAllTasks(const bool flushCallbacks) {
     if (!_poolImpl.init()) {
         return;
     }
 
     if (_workerThreadCount > 0u) {
-        WAIT_FOR_CONDITION((_runningTaskCount.load() == 0u), yield);
+        UniqueLock<Mutex> lock(_taskFinishedMutex);
+        _taskFinishedCV.wait(lock, [this]() { return _runningTaskCount.load() == 0u; });
     }
 
     if (flushCallbacks) {
@@ -143,15 +178,31 @@ void TaskPool::waitForAllTasks(const bool yield, const bool flushCallbacks) {
     _poolImpl.waitAndJoin();
 }
 
-void TaskPool::taskCompleted(const U32 taskIndex, const bool hasOnCompletionFunction) {
+void TaskPool::taskCompleted(Task& task, const bool hasOnCompletionFunction) {
     if (hasOnCompletionFunction) {
-        _threadedCallbackBuffer.enqueue(taskIndex);
+        _threadedCallbackBuffer.enqueue(task._id);
     }
 
-    _runningTaskCount.fetch_sub(1);
+    const U32 jobCount = task._unfinishedJobs.fetch_sub(1);
+    assert(jobCount == 1u);
+
+    if (task._parent != nullptr) {
+        const U32 parentJobCount = task._parent->_unfinishedJobs.fetch_sub(1);
+        assert(parentJobCount >= 1u);
+    }
+
+    const U32 test = _runningTaskCount.fetch_sub(1);
+    assert(test >= 1u);
+
+    ScopedLock<Mutex> lock(_taskFinishedMutex);
+    _taskFinishedCV.notify_one();
 }
 
 Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) {
+    if (parentTask != nullptr) {
+        parentTask->_unfinishedJobs.fetch_add(1u);
+    }
+
     Task* task = nullptr;
     do {
         Task& crtTask = g_taskAllocator[g_allocatedTasks++ & Config::MAX_POOLED_TASKS - 1u];
@@ -165,12 +216,8 @@ Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) {
     if (task->_id == 0) {
         task->_id = g_taskIDCounter.fetch_add(1u);
     }
-    task->_runWhileIdle = allowedInIdle;
     task->_parent = parentTask;
-    if (task->_parent != nullptr) {
-        task->_parent->_unfinishedJobs.fetch_add(1, std::memory_order_acq_rel);
-    }
-    
+    task->_runWhileIdle = allowedInIdle;
 
     return task;
 }
@@ -178,13 +225,14 @@ Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) {
 void TaskPool::threadWaiting(const bool forceExecute) {
     if (!forceExecute && Runtime::isMainThread()) {
         flushCallbackQueue();
-    } else {
-        _poolImpl.threadWaiting();
+        return;
     }
+
+    _poolImpl.threadWaiting();
 }
 
-void WaitForAllTasks(TaskPool& pool, const bool yield, const bool flushCallbacks) {
-    pool.waitForAllTasks(yield, flushCallbacks);
+void WaitForAllTasks(TaskPool& pool, const bool flushCallbacks) {
+    pool.waitForAllTasks(flushCallbacks);
 }
 
 bool TaskPool::PoolHolder::init() const noexcept {
@@ -268,4 +316,4 @@ void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor) {
         }
     }
 }
-}
+} //namespace Divide

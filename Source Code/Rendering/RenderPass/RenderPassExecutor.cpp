@@ -183,56 +183,52 @@ U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp, U3
         }
     }
 
-    {// If we fail, try and find an empty slot and update it
-        OPTICK_EVENT("processVisibleNode - process unmatched material");
-        UniqueLock<SharedMutex> w_lock(_matDataLock);
+    // If we fail, try and find an empty slot and update it
+    OPTICK_EVENT("processVisibleNode - process unmatched material");
+    ScopedLock<SharedMutex> w_lock(_matDataLock);
 
-        auto& materialInfo = materialData._nodeMaterialLookupInfo;
-        { //Because we released the shared lock and aquired a new lock, search again as that operation isn't atomic
-            U16 idx = findMaterialMatch(materialHash, materialElementOffset, materialInfo);
-            if (idx != U16_MAX) {
-                return idx;
-            }
+    auto& materialInfo = materialData._nodeMaterialLookupInfo;
+    { //Because we released the shared lock and aquired a new lock, search again as that operation isn't atomic
+        U16 idx = findMaterialMatch(materialHash, materialElementOffset, materialInfo);
+        if (idx != U16_MAX) {
+            return idx;
         }
-
-        // No match found (cache miss) so add a new entry.
-        std::pair<U16, U16> bestCandidate = { U16_MAX, 0u };
-        for (U16 idx = 0u; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
-            auto& [hash, framesSinceLastUsed] = materialInfo[idx + materialElementOffset];
-            // Two cases here. We either have empty slots (e.g. startup, cache clear, etc) ...
-            if (hash == Material::INVALID_MAT_HASH) {
-                // ... in which case our current idx is what we are looking for ...
-                bestCandidate.first = idx;
-                bestCandidate.second = g_maxMaterialFrameLifetime;
-                break;
-            }
-            // ... else we need to find a slot with a stale entry (but not one that is still in flight!)
-            if (framesSinceLastUsed >= std::max(g_maxMaterialFrameLifetime, bestCandidate.second)) {
-                bestCandidate.first = idx;
-                bestCandidate.second = framesSinceLastUsed;
-            }
-        }
-        DIVIDE_ASSERT(bestCandidate.first != U16_MAX, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
-
-        auto& updateRange = materialData._matUpdateRange;
-        if (updateRange._firstIDX > bestCandidate.first) {
-            updateRange._firstIDX = bestCandidate.first;
-        }
-        if (updateRange._lastIDX < bestCandidate.first) {
-            updateRange._lastIDX = bestCandidate.first;
-        }
-
-        const U32 offsetIdx = bestCandidate.first + materialElementOffset;
-        materialInfo[offsetIdx] = { materialHash, 0u };
-
-        materialData._nodeMaterialData[offsetIdx] = tempData;
-        addTexturesAt(offsetIdx, tempTextures);
-
-        return bestCandidate.first;
     }
 
-    DIVIDE_UNEXPECTED_CALL();
-    return U16_MAX;
+    // No match found (cache miss) so add a new entry.
+    std::pair<U16, U16> bestCandidate = { U16_MAX, 0u };
+    for (U16 idx = 0u; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
+        auto& [hash, framesSinceLastUsed] = materialInfo[idx + materialElementOffset];
+        // Two cases here. We either have empty slots (e.g. startup, cache clear, etc) ...
+        if (hash == Material::INVALID_MAT_HASH) {
+            // ... in which case our current idx is what we are looking for ...
+            bestCandidate.first = idx;
+            bestCandidate.second = g_maxMaterialFrameLifetime;
+            break;
+        }
+        // ... else we need to find a slot with a stale entry (but not one that is still in flight!)
+        if (framesSinceLastUsed >= std::max(g_maxMaterialFrameLifetime, bestCandidate.second)) {
+            bestCandidate.first = idx;
+            bestCandidate.second = framesSinceLastUsed;
+        }
+    }
+    DIVIDE_ASSERT(bestCandidate.first != U16_MAX, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
+
+    auto& updateRange = materialData._matUpdateRange;
+    if (updateRange._firstIDX > bestCandidate.first) {
+        updateRange._firstIDX = bestCandidate.first;
+    }
+    if (updateRange._lastIDX < bestCandidate.first) {
+        updateRange._lastIDX = bestCandidate.first;
+    }
+
+    const U32 offsetIdx = bestCandidate.first + materialElementOffset;
+    materialInfo[offsetIdx] = { materialHash, 0u };
+
+    materialData._nodeMaterialData[offsetIdx] = tempData;
+    addTexturesAt(offsetIdx, tempTextures);
+
+    return bestCandidate.first;
 }
 
 U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut) {

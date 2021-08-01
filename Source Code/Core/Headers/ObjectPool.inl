@@ -79,7 +79,7 @@ void ObjectPool<T, N>::deallocate(void* mem, const PoolHandle handle) {
 
 template<typename T, size_t N>
 PoolHandle ObjectPool<T, N>::registerExisting(T& object) {
-    UniqueLock<SharedMutex> w_lock(_poolLock);
+    ScopedLock<SharedMutex> w_lock(_poolLock);
     for (size_t i = 0; i < N; ++i) {
         PoolHandle& handle = _ids[i];
         if (handle._id == 0) {
@@ -95,7 +95,7 @@ PoolHandle ObjectPool<T, N>::registerExisting(T& object) {
 
 template<typename T, size_t N>
 void ObjectPool<T, N>::unregisterExisting(const PoolHandle handle) {
-    UniqueLock<SharedMutex> w_lock(_poolLock);
+    ScopedLock<SharedMutex> w_lock(_poolLock);
     PoolHandle& it = _ids[handle._id - 1];
     if (it._generation == handle._generation) {
         _pool[handle._id - 1] = nullptr;

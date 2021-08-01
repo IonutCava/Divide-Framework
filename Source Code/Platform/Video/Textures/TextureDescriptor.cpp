@@ -64,7 +64,7 @@ namespace Divide {
         Util::Hash_combine(tempHash, _borderColour.b);
         Util::Hash_combine(tempHash, _borderColour.a);
         if (tempHash != _hash) {
-            UniqueLock<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
+            ScopedLock<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
             insert(s_samplerDescriptorMap, tempHash, *this);
             _hash = tempHash;
         }
@@ -72,7 +72,7 @@ namespace Divide {
     }
 
     void SamplerDescriptor::clear() {
-        UniqueLock<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
+        ScopedLock<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
         s_samplerDescriptorMap.clear();
     }
 

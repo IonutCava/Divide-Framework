@@ -219,7 +219,7 @@ void RenderStateBlock::setStencil(const bool enable,
 }
 
 void RenderStateBlock::clear() {
-    UniqueLock<SharedMutex> w_lock(s_stateBlockMapMutex);
+    ScopedLock<SharedMutex> w_lock(s_stateBlockMapMutex);
     s_stateBlockMap.clear();
 }
 
@@ -287,7 +287,7 @@ size_t RenderStateBlock::getHash() const noexcept {
     Util::Hash_combine(_hash, _tessControlPoints);
 
     if (previousCache != _hash) {
-        UniqueLock<SharedMutex> w_lock(s_stateBlockMapMutex);
+        ScopedLock<SharedMutex> w_lock(s_stateBlockMapMutex);
         insert(s_stateBlockMap, _hash, *this);
     }
     _dirty = false;

@@ -213,14 +213,14 @@ void ShaderProgram::RegisterShaderProgram(ShaderProgram* shaderProgram) {
     size_t shaderHash = shaderProgram->descriptorHash();
     UnregisterShaderProgram(shaderHash);
 
-    UniqueLock<SharedMutex> w_lock(s_programLock);
+    ScopedLock<SharedMutex> w_lock(s_programLock);
     s_shaderPrograms[shaderProgram->getGUID()] = { shaderProgram, shaderHash };
 }
 
 /// Unloading/Deleting a program will unregister it from the manager
 bool ShaderProgram::UnregisterShaderProgram(size_t shaderHash) {
 
-    UniqueLock<SharedMutex> lock(s_programLock);
+    ScopedLock<SharedMutex> lock(s_programLock);
     s_lastRequestedShaderProgram = { -1, {} };
 
     if (s_shaderPrograms.empty()) {

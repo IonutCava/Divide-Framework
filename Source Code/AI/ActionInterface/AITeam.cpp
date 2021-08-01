@@ -25,11 +25,11 @@ AITeam::~AITeam()
 {
     _parentManager.unregisterTeam(this);
     {
-        UniqueLock<SharedMutex> w_lock(_crowdMutex);
+        ScopedLock<SharedMutex> w_lock(_crowdMutex);
         MemoryManager::DELETE_HASHMAP(_aiTeamCrowd);
     }
     {
-        UniqueLock<SharedMutex> w_lock(_updateMutex);
+        ScopedLock<SharedMutex> w_lock(_updateMutex);
         for (TeamMap::value_type& entity : _team) {
             Attorney::AIEntityAITeam::setTeamPtr(*entity.second, nullptr);
         }
@@ -173,7 +173,7 @@ bool AITeam::addTeamMember(AIEntity* entity) {
         return false;
     }
     /// If entity already belongs to this team, no need to do anything
-    UniqueLock<SharedMutex> w_lock(_updateMutex);
+    ScopedLock<SharedMutex> w_lock(_updateMutex);
     if (_team.find(entity->getGUID()) != std::end(_team)) {
         return true;
     }
@@ -189,7 +189,7 @@ bool AITeam::removeTeamMember(AIEntity* entity) {
         return false;
     }
 
-    UniqueLock<SharedMutex> w_lock(_updateMutex);
+    ScopedLock<SharedMutex> w_lock(_updateMutex);
     if (_team.find(entity->getGUID()) != std::end(_team)) {
         _team.erase(entity->getGUID());
     }
@@ -198,7 +198,7 @@ bool AITeam::removeTeamMember(AIEntity* entity) {
 
 bool AITeam::addEnemyTeam(const U32 enemyTeamID) {
     if (findEnemyTeamEntry(enemyTeamID) == std::end(_enemyTeams)) {
-        UniqueLock<SharedMutex> w_lock(_updateMutex);
+        ScopedLock<SharedMutex> w_lock(_updateMutex);
         _enemyTeams.push_back(enemyTeamID);
         return true;
     }
@@ -208,7 +208,7 @@ bool AITeam::addEnemyTeam(const U32 enemyTeamID) {
 bool AITeam::removeEnemyTeam(const U32 enemyTeamID) {
     const vectorEASTL<U32>::iterator it = findEnemyTeamEntry(enemyTeamID);
     if (it != end(_enemyTeams)) {
-        UniqueLock<SharedMutex> w_lock(_updateMutex);
+        ScopedLock<SharedMutex> w_lock(_updateMutex);
         _enemyTeams.erase(it);
         return true;
     }

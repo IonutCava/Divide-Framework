@@ -79,36 +79,27 @@ public:
 
     /// Returns the number of callbacks processed
     size_t flushCallbackQueue();
-    void waitForAllTasks(bool yield, bool flushCallbacks);
+    void waitForAllTasks(bool flushCallbacks);
 
-    [[nodiscard]] U32 workerThreadCount() const noexcept {
-        return _workerThreadCount;
-    }
-
-    bool operator==(const TaskPool& other) const noexcept {
-        return getGUID() == other.getGUID();
-    }
-
-    bool operator!=(const TaskPool& other) const noexcept {
-        return getGUID() != other.getGUID();
-    }
-
-    // Called by a task that isn't doing anything (e.g. waiting on child tasks).
-    // Use this to run another task (if any) and return to the previous execution point
+    /// Called by a task that isn't doing anything (e.g. waiting on child tasks).
+    /// Use this to run another task (if any) and return to the previous execution point
+    /// forceExecute only affects the main thread and, if set to true, will steal a task from the thread pool and run it
     void threadWaiting(bool forceExecute = false);
+
+    PROPERTY_R(U32, workerThreadCount, 0u);
 
   private:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
     friend struct Task;
-    friend void Wait(const Task& task);
+    friend void Wait(const Task& task, TaskPool& pool);
 
     friend void Start(Task& task, TaskPool& pool, const TaskPriority priority, const DELEGATE<void>& onCompletionFunction);
     friend void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor);
-    friend void RunLocally(Task& task, TaskPool& pool, TaskPriority priority, bool hasOnCompletionFunction);
 
-    void taskCompleted(U32 taskIndex, bool hasOnCompletionFunction);
+    void taskCompleted(Task& task, bool hasOnCompletionFunction);
     
-    bool enqueue(PoolTask&& task, TaskPriority priority, U32 taskIndex, const DELEGATE<void>& onCompletionFunction);
+    bool enqueue(Task& task, TaskPriority priority, U32 taskIndex, const DELEGATE<void>& onCompletionFunction);
+    void waitForTask(const Task& task);
 
     template<bool IsBlocking>
     friend class ThreadPool;
@@ -131,11 +122,13 @@ public:
      hashMap<U32, vectorEASTL<DELEGATE<void>>> _taskCallbacks{};
      DELEGATE<void, const std::thread::id&> _threadCreateCbk{};
      moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
+     Mutex _taskFinishedMutex;
+     std::condition_variable _taskFinishedCV;
+
      PoolHolder _poolImpl = {};
      stringImpl _threadNamePrefix = "";
      std::atomic_uint _runningTaskCount = 0u;
      std::atomic_uint _threadCount = 0u;
-     U32 _workerThreadCount = 0u;
 };
 
 template<class Predicate>
@@ -146,7 +139,7 @@ Task* CreateTask(Task* parentTask, Predicate&& threadedFunction, bool allowedInI
 
 void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor);
 
-void WaitForAllTasks(TaskPool& pool, bool yield, bool flushCallbacks);
+void WaitForAllTasks(TaskPool& pool, bool flushCallbacks);
 
 } //namespace Divide
 

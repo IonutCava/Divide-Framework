@@ -153,7 +153,7 @@ bool LightPool::addLight(Light& light) {
     const LightType type = light.getLightType();
     const U32 lightTypeIdx = to_base(type);
 
-    UniqueLock<SharedMutex> r_lock(_lightLock);
+    ScopedLock<SharedMutex> r_lock(_lightLock);
     if (findLightLocked(light.getGUID(), type) != end(_lights[lightTypeIdx])) {
 
         Console::errorfn(Locale::Get(_ID("ERROR_LIGHT_POOL_DUPLICATE")),
@@ -168,7 +168,7 @@ bool LightPool::addLight(Light& light) {
 
 // try to remove any leftover lights
 bool LightPool::removeLight(Light& light) {
-    UniqueLock<SharedMutex> lock(_lightLock);
+    ScopedLock<SharedMutex> lock(_lightLock);
     const LightList::const_iterator it = findLightLocked(light.getGUID(), light.getLightType());
 
     if (it == end(_lights[to_U32(light.getLightType())])) {

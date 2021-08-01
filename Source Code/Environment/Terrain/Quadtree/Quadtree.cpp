@@ -31,7 +31,7 @@ Quadtree::~Quadtree()
 void Quadtree::toggleBoundingBoxes() {
     _drawBBoxes = !_drawBBoxes;
     {
-        UniqueLock<Mutex> w_lock(_bbPrimitiveLock);
+        ScopedLock<Mutex> w_lock(_bbPrimitiveLock);
         if (_drawBBoxes) {
             _bbPrimitive = _context.newIMP();
             _bbPrimitive->name("QuadtreeBoundingBox");
@@ -52,7 +52,7 @@ void Quadtree::drawBBox(RenderPackage& packageOut) const {
     _root->drawBBox(packageOut);
  
     {
-        UniqueLock<Mutex> w_lock(_bbPrimitiveLock);
+        ScopedLock<Mutex> w_lock(_bbPrimitiveLock);
         _bbPrimitive->fromBox(_root->getBoundingBox().getMin(),
                               _root->getBoundingBox().getMax(),
                               UColour4(0, 64, 255, 255));

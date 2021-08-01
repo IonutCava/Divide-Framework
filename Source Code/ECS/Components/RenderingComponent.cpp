@@ -557,14 +557,14 @@ bool RenderingComponent::updateReflection(const U16 reflectionIndex,
         _reflectionCallback(passManager, params, bufferInOut);
 
         const auto& targetAtt = _context.renderTargetPool().renderTarget(reflectRTID).getAttachment(RTAttachmentType::Colour, 0u);
-        UniqueLock<SharedMutex> w_lock(refData._lock);
+        ScopedLock<SharedMutex> w_lock(refData._lock);
         refData._texture = targetAtt.texture()->data();
         refData._samplerHash = targetAtt.samplerHash();
         refData._gpuAddress = targetAtt.texture()->getGPUAddress(refData._samplerHash);
         return true;
     }
 
-    UniqueLock<SharedMutex> w_lock(refData._lock);
+    ScopedLock<SharedMutex> w_lock(refData._lock);
     refData._texture = {};
     return false;
 }
@@ -588,14 +588,14 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
         const auto& targetAtt = _context.renderTargetPool().renderTarget(refractRTID).getAttachment(RTAttachmentType::Colour, 0u);
         const Texture_ptr& refractionTexture = targetAtt.texture();
 
-        UniqueLock<SharedMutex> w_lock(refData._lock);
+        ScopedLock<SharedMutex> w_lock(refData._lock);
         refData._texture = refractionTexture->data();
         refData._samplerHash = targetAtt.samplerHash();
         refData._gpuAddress = targetAtt.texture()->getGPUAddress(refData._samplerHash);
         return true;
     }
 
-    UniqueLock<SharedMutex> w_lock(refData._lock);
+    ScopedLock<SharedMutex> w_lock(refData._lock);
     refData._texture = {};
     return false;
 }

@@ -114,7 +114,7 @@ bool Application::step() {
 }
 
 bool Application::onLoop() {
-    UniqueLock<Mutex> r_lock(_taskLock);
+    ScopedLock<Mutex> r_lock(_taskLock);
     if (!_mainThreadCallbacks.empty()) {
         while(!_mainThreadCallbacks.empty()) {
             _mainThreadCallbacks.back()();
@@ -143,10 +143,10 @@ bool Application::onSizeChange(const SizeChangeParams& params) const {
 void Application::mainThreadTask(const DELEGATE<void>& task, const bool wait) {
     std::atomic_bool done = false;
     if (wait) {
-        UniqueLock<Mutex> w_lock(_taskLock);
+        ScopedLock<Mutex> w_lock(_taskLock);
         _mainThreadCallbacks.push_back([&done, &task] { task(); done = true; });
     } else {
-        UniqueLock<Mutex> w_lock(_taskLock);
+        ScopedLock<Mutex> w_lock(_taskLock);
         _mainThreadCallbacks.push_back(task);
     }
 

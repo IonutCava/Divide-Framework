@@ -43,44 +43,14 @@ using TimedMutex = std::timed_mutex;
 using SharedMutex = std::shared_mutex;
 using SharedTimedMutex = std::shared_timed_mutex;
 
-template<typename T>
-using SharedLock = std::shared_lock<T>;
+template<typename mutex>
+using SharedLock = std::shared_lock<mutex>;
 
-template<typename T>
-using UniqueLock = std::unique_lock<T>;
+template<typename mutex>
+using UniqueLock = std::unique_lock<mutex>;
 
-template<typename T>
-struct ScopedLock final : NonCopyable, NonMovable
-{
-    explicit ScopedLock(T& mutex, const bool lock, const bool shared)
-        : _mutex(mutex),
-          _lock(lock),
-          _shared(shared)
-    {
-        if (_lock) {
-            if (_shared) {
-                _mutex.lock_shared();
-            } else {
-                _mutex.lock();
-            }
-        }
-    }
-
-    ~ScopedLock()
-    {
-        if (_lock) {
-            if (_shared) {
-                _mutex.unlock_shared();
-            } else {
-                _mutex.unlock();
-            }
-        }
-    }
-private:
-    T& _mutex;
-    const bool _lock = true;
-    const bool _shared = true;
-};
+template<typename... mutexes>
+using ScopedLock = std::scoped_lock<mutexes...>;
 
 };  // namespace Divide
 

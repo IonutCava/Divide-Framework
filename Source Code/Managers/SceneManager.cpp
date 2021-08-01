@@ -82,7 +82,7 @@ void SceneManager::idle() {
         {
             DIVIDE_UNEXPECTED_CALL();
         }
-        WaitForAllTasks(getActiveScene().context(), true, true);
+        WaitForAllTasks(getActiveScene().context(), true);
         parent().platformContext().gfx().getRenderer().postFX().setFadeIn(2750.0);
     } else {
         if (_playerQueueDirty) {

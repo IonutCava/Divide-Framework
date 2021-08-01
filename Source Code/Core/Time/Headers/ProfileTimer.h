@@ -56,10 +56,6 @@ class ProfileTimer {
 
     static U64 overhead();
 
-    static bool timersEnabled() noexcept;
-    static void enableTimers() noexcept;
-    static void disableTimers() noexcept;
-
    // time data
    protected:
     stringImpl _name = "";
@@ -78,7 +74,6 @@ class ProfileTimer {
    protected:
      vectorEASTL<U32> _children;
      U32 _parent = Config::Profile::MAX_PROFILE_TIMERS + 1;
-     static bool s_enabled;
 };
 
 class ScopedTimer final : NonCopyable {

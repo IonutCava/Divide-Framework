@@ -16,8 +16,6 @@ namespace {
     bool g_timersInit = false;
 }
 
-bool ProfileTimer::s_enabled = true;
-
 ScopedTimer::ScopedTimer(ProfileTimer& timer) 
     : _timer(timer)
 {
@@ -30,21 +28,17 @@ ScopedTimer::~ScopedTimer()
 }
 
 void ProfileTimer::start() {
-    if (timersEnabled()) {
-        _timer = App::ElapsedMicroseconds();
-    }
+    _timer = App::ElapsedMicroseconds();
 }
 
 void ProfileTimer::stop() {
-    if (timersEnabled()) {
-        _timerAverage += App::ElapsedMicroseconds() - _timer;
-        _timerCounter++;
-    }
+    _timerAverage += App::ElapsedMicroseconds() - _timer;
+    _timerCounter++;
 }
 
 void ProfileTimer::reset() noexcept {
-    _timerAverage = 0;
-    _timerCounter = 0;
+    _timerAverage = 0u;
+    _timerCounter = 0u;
 }
 
 void ProfileTimer::addChildTimer(ProfileTimer& child) {
@@ -67,7 +61,7 @@ void ProfileTimer::removeChildTimer(ProfileTimer& child) {
                              return entry == childID;
                          }),
         end(_children));
-    child._parent = Config::Profile::MAX_PROFILE_TIMERS + 1;
+    child._parent = Config::Profile::MAX_PROFILE_TIMERS + 1u;
 }
 
 bool ProfileTimer::hasChildTimer(ProfileTimer& child) const
@@ -81,7 +75,7 @@ bool ProfileTimer::hasChildTimer(ProfileTimer& child) const
 }
 
 U64 ProfileTimer::getChildTotal() const {
-    U64 ret = 0;
+    U64 ret = 0u;
     for (const U32 child : _children) {
         if (g_profileTimersState[child]) {
             ret += g_profileTimers[child].get();
@@ -100,7 +94,7 @@ stringImpl ProfileTimer::print(const U32 level) const {
         }
     }
 
-    for (U32 i = 0; i < level; ++i) {
+    for (U32 i = 0u; i < level; ++i) {
         ret.insert(0, "    ");
     }
 
@@ -108,24 +102,15 @@ stringImpl ProfileTimer::print(const U32 level) const {
 }
 
 U64 ProfileTimer::overhead() {
-    constexpr U8 overheadLoopCount = 3;
+    constexpr U8 overheadLoopCount = 3u;
 
-    U64 overhead = 0;
+    U64 overhead = 0u;
     ProfileTimer test;
-    const bool prevState = timersEnabled();
 
-    if (!prevState) {
-        enableTimers();
-    }
-
-    for (U8 i = 0; i < overheadLoopCount; ++i) {
+    for (U8 i = 0u; i < overheadLoopCount; ++i) {
         test.start();
         test.stop();
         overhead += test.get();
-    }
-
-    if (!prevState) {
-        disableTimers();
     }
 
     return overhead / overheadLoopCount;
@@ -136,10 +121,12 @@ stringImpl ProfileTimer::printAll() {
 
     for (ProfileTimer& entry : g_profileTimers) {
         if (!g_profileTimersState[entry._globalIndex] ||
-                entry._parent < Config::Profile::MAX_PROFILE_TIMERS ||
-                    entry._timerCounter == 0) {
+            entry._parent < Config::Profile::MAX_PROFILE_TIMERS ||
+            entry._timerCounter == 0u)
+        {
             continue;
         }
+
         ret.append(entry.print());
         ret.append("\n");
         entry.reset();
@@ -152,7 +139,7 @@ ProfileTimer& ProfileTimer::getNewTimer(const char* timerName) {
     if (!g_timersInit) {
         g_profileTimersState.fill(false);
 
-        U32 index = 0;
+        U32 index = 0u;
         for (ProfileTimer& entry : g_profileTimers) {
             entry._globalIndex = index++;
         }
@@ -177,18 +164,6 @@ void ProfileTimer::removeTimer(ProfileTimer& timer) {
     if (timer._parent < Config::Profile::MAX_PROFILE_TIMERS) {
         g_profileTimers[timer._parent].removeChildTimer(timer);
     }
-}
-
-bool ProfileTimer::timersEnabled() noexcept {
-    return s_enabled;
-}
-
-void ProfileTimer::enableTimers() noexcept {
-    s_enabled = true;
-}
-
-void ProfileTimer::disableTimers() noexcept {
-    s_enabled = false;
 }
 
 }  // namespace Divide::Time

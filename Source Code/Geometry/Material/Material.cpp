@@ -255,7 +255,7 @@ bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr
     setTextureOperation(textureUsageSlot, op, false);
 
     {
-        UniqueLock<SharedMutex> w_lock(_textureLock);
+        ScopedLock<SharedMutex> w_lock(_textureLock);
         if (_textures[slot]) {
             // Skip adding same texture
             if (texture != nullptr && _textures[slot]->getGUID() == texture->getGUID()) {
@@ -1524,7 +1524,7 @@ void Material::loadTextureDataFromXML(const stringImpl& entryName, const boost::
                 _textureOperations[to_base(usage)] = TypeUtil::StringToTextureOperation(pt.get<stringImpl>(textureNode + ".usage", TypeUtil::TextureOperationToString(_textureOperations[to_base(usage)])));
 
                 {
-                    UniqueLock<SharedMutex> w_lock(_textureLock);
+                    ScopedLock<SharedMutex> w_lock(_textureLock);
                     const Texture_ptr& crtTex = _textures[to_base(usage)];
                     if (crtTex != nullptr &&
                         crtTex->flipped() == flipped &&

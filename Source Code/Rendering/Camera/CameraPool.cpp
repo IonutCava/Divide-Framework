@@ -53,7 +53,7 @@ void Camera::destroyPool() {
 
     _utilityCameras.fill(nullptr);
 
-    UniqueLock<SharedMutex> w_lock(s_cameraPoolLock);
+    ScopedLock<SharedMutex> w_lock(s_cameraPoolLock);
     for (Camera* cam : s_cameraPool) {
         cam->unload();
         MemoryManager::DELETE(cam);
@@ -86,7 +86,7 @@ Camera* Camera::createCameraInternal(const Str256& cameraName, const CameraType 
     }
 
     if (camera != nullptr) {
-        UniqueLock<SharedMutex> w_lock(s_cameraPoolLock);
+        ScopedLock<SharedMutex> w_lock(s_cameraPoolLock);
         s_cameraPool.push_back(camera);
     }
 
@@ -97,7 +97,7 @@ bool Camera::destroyCameraInternal(Camera* camera) {
     if (camera != nullptr) {
         const U64 targetHash = _ID(camera->resourceName().c_str());
         if (camera->unload()) {
-            UniqueLock<SharedMutex> w_lock(s_cameraPoolLock);
+            ScopedLock<SharedMutex> w_lock(s_cameraPoolLock);
             erase_if(s_cameraPool, [targetHash](Camera* cam) { return _ID(cam->resourceName().c_str()) == targetHash; });
             MemoryManager::DELETE(camera);
             return true;

@@ -9,7 +9,7 @@ namespace Divide {
     vectorEASTLFast<SDLEventListener*> SDLEventManager::s_eventListeners;
 
     void SDLEventManager::registerListener(SDLEventListener& listener) {
-        UniqueLock<SharedMutex> lock(s_eventListenerLock);
+        ScopedLock<SharedMutex> lock(s_eventListenerLock);
 
         assert(!eastl::any_of(eastl::cbegin(s_eventListeners),
                               eastl::cend(s_eventListeners),
@@ -21,7 +21,7 @@ namespace Divide {
     }
 
     void SDLEventManager::unregisterListener(SDLEventListener& listener) {
-        UniqueLock<SharedMutex> lock(s_eventListenerLock);
+        ScopedLock<SharedMutex> lock(s_eventListenerLock);
 
         const U64 targetID = listener.listenerID();
         const bool success = dvd_erase_if(s_eventListeners,

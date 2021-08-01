@@ -20,13 +20,13 @@ void CommandBufferPool::reset() {
 }
 
 CommandBuffer* CommandBufferPool::allocateBuffer() {
-    UniqueLock<Mutex> lock(_mutex);
+    ScopedLock<Mutex> lock(_mutex);
     return _pool.newElement();
 }
 
 void CommandBufferPool::deallocateBuffer(CommandBuffer*& buffer) {
     if (buffer != nullptr) {
-        UniqueLock<Mutex> lock(_mutex);
+        ScopedLock<Mutex> lock(_mutex);
         _pool.deleteElement(buffer);
         buffer = nullptr;
     }

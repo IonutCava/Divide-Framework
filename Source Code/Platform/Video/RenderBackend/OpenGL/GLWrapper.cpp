@@ -208,7 +208,7 @@ void GL_API::idle(const bool fast) {
 
     if (!fast) {
         OPTICK_EVENT("GL_API: slow idle");
-        UniqueLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
+        ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
         if (!s_mipmapQueue.empty()) {
             const auto it = s_mipmapQueue.begin();
             glGenerateTextureMipmap(*it);
@@ -1471,7 +1471,7 @@ GLuint GL_API::GetSamplerHandle(const size_t samplerHash) {
         }
         {
 
-            UniqueLock<SharedMutex> w_lock(s_samplerMapLock);
+            ScopedLock<SharedMutex> w_lock(s_samplerMapLock);
             // Check again
             const SamplerObjectMap::const_iterator it = s_samplerMap.find(samplerHash);
             if (it == std::cend(s_samplerMap)) {
@@ -1492,13 +1492,13 @@ U32 GL_API::getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const {
 }
 
 IMPrimitive* GL_API::NewIMP(Mutex& lock, GFXDevice& parent) {
-    UniqueLock<Mutex> w_lock(lock);
+    ScopedLock<Mutex> w_lock(lock);
     return s_IMPrimitivePool.newElement(parent);
 }
 
 bool GL_API::DestroyIMP(Mutex& lock, IMPrimitive*& primitive) {
     if (primitive != nullptr) {
-        UniqueLock<Mutex> w_lock(lock);
+        ScopedLock<Mutex> w_lock(lock);
         s_IMPrimitivePool.deleteElement(static_cast<glIMPrimitive*>(primitive));
         primitive = nullptr;
         return true;

@@ -129,7 +129,7 @@ void Octree::update(const U64 deltaTimeUS) {
 bool Octree::addNode(SceneGraphNode* node) const {
     const U16 nodeType = 1 << to_U16(node->getNode<>().type());
     if (node && !BitCompare(_nodeExclusionMask, nodeType)) {
-        UniqueLock<Mutex> w_lock(s_pendingInsertLock);
+        ScopedLock<Mutex> w_lock(s_pendingInsertLock);
         s_pendingInsertion.push(node);
         s_treeReady = false;
         return true;
@@ -403,7 +403,7 @@ void Octree::findEnclosingCube() {
 }
 
 void Octree::updateTree() {
-    UniqueLock<Mutex> w_lock(s_pendingInsertLock);
+    ScopedLock<Mutex> w_lock(s_pendingInsertLock);
     if (!s_treeBuilt) {
         while (!s_pendingInsertion.empty()) {
             _objects.push_back(s_pendingInsertion.front());

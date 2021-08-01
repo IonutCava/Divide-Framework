@@ -103,19 +103,19 @@ class AITeam final : public GUIDWrapper {
     MemberVariable& getMemberVariable() { return _memberVariable; }
 
     void clearOrders() {
-        UniqueLock<SharedMutex> w_lock(_orderMutex);
+        ScopedLock<SharedMutex> w_lock(_orderMutex);
         _orders.clear();
     }
 
     void addOrder(const OrderPtr& order) {
-        UniqueLock<SharedMutex> w_lock(_orderMutex);
+        ScopedLock<SharedMutex> w_lock(_orderMutex);
         if (findOrder(order->getID()) == std::end(_orders)) {
             _orders.push_back(order);
         }
     }
 
     void removeOrder(const Order& order) {
-        UniqueLock<SharedMutex> w_lock(_orderMutex);
+        ScopedLock<SharedMutex> w_lock(_orderMutex);
         const OrderList::iterator it = findOrder(order);
         if (it != std::end(_orders)) {
             _orders.erase(it);

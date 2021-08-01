@@ -19,7 +19,7 @@ void FrameListenerManager::registerFrameListener(FrameListener* listener, const 
 
     listener->setCallOrder(callOrder);
 
-    UniqueLock<SharedMutex> w_lock(_listenerLock);
+    ScopedLock<SharedMutex> w_lock(_listenerLock);
     insert_sorted(_listeners, listener, eastl::less<>());
 }
 
@@ -28,7 +28,7 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
     assert(listener != nullptr);
 
     const I64 targetGUID = listener->getGUID();
-    UniqueLock<SharedMutex> lock(_listenerLock);
+    ScopedLock<SharedMutex> lock(_listenerLock);
     if (!dvd_erase_if(_listeners, [targetGUID](FrameListener const* fl) { return fl->getGUID() == targetGUID; })) {
         Console::errorfn(Locale::Get(_ID("ERROR_FRAME_LISTENER_REMOVE")), listener->getListenerName().c_str());
     }

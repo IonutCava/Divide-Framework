@@ -108,7 +108,7 @@ namespace Divide {
 
     void TransformComponent::setPosition(const F32 x, const F32 y, const F32 z) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setPosition(x, y, z);
         }
 
@@ -117,7 +117,7 @@ namespace Divide {
 
     void TransformComponent::setScale(const vec3<F32>& amount) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setScale(amount);
             _uniformScaled = amount.isUniform();
         }
@@ -127,7 +127,7 @@ namespace Divide {
 
     void TransformComponent::setRotation(const Quaternion<F32>& quat) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setRotation(quat);
         }
 
@@ -136,7 +136,7 @@ namespace Divide {
 
     void TransformComponent::setRotation(const vec3<F32>& axis, const Angle::DEGREES<F32> degrees) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setRotation(axis, degrees);
         }
 
@@ -145,7 +145,7 @@ namespace Divide {
 
     void TransformComponent::setRotation(const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> roll) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setRotation(pitch, yaw, roll);
         }
 
@@ -154,7 +154,7 @@ namespace Divide {
 
     void TransformComponent::translate(const vec3<F32>& axisFactors) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.translate(axisFactors);
         }
 
@@ -163,7 +163,7 @@ namespace Divide {
 
     void TransformComponent::scale(const vec3<F32>& axisFactors) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.scale(axisFactors);
         }
 
@@ -172,7 +172,7 @@ namespace Divide {
 
     void TransformComponent::rotate(const vec3<F32>& axis, const Angle::DEGREES<F32> degrees) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.rotate(axis, degrees);
         }
 
@@ -181,7 +181,7 @@ namespace Divide {
 
     void TransformComponent::rotate(const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> roll) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.rotate(pitch, yaw, roll);
         }
 
@@ -190,7 +190,7 @@ namespace Divide {
 
     void TransformComponent::rotate(const Quaternion<F32>& quat) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.rotate(quat);
         }
 
@@ -199,7 +199,7 @@ namespace Divide {
 
     void TransformComponent::rotateSlerp(const Quaternion<F32>& quat, const D64 deltaTime) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.rotateSlerp(quat, deltaTime);
         }
 
@@ -208,7 +208,7 @@ namespace Divide {
 
     void TransformComponent::setScaleX(const F32 amount) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setScaleX(amount);
             _uniformScaled = _transformInterface.isUniformScale();
         }
@@ -218,7 +218,7 @@ namespace Divide {
 
     void TransformComponent::setScaleY(const F32 amount) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setScaleY(amount);
             _uniformScaled = _transformInterface.isUniformScale();
         }
@@ -228,7 +228,7 @@ namespace Divide {
 
     void TransformComponent::setScaleZ(const F32 amount) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setScaleZ(amount);
             _uniformScaled = _transformInterface.isUniformScale();
         }
@@ -238,7 +238,7 @@ namespace Divide {
 
     void TransformComponent::scaleX(const F32 amount) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.scaleX(amount);
             _uniformScaled = _transformInterface.isUniformScale();
         }
@@ -248,7 +248,7 @@ namespace Divide {
 
     void TransformComponent::scaleY(const F32 amount) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.scaleY(amount);
             _uniformScaled = _transformInterface.isUniformScale();
         }
@@ -258,7 +258,7 @@ namespace Divide {
 
     void TransformComponent::scaleZ(const F32 amount) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.scaleZ(amount);
             _uniformScaled = _transformInterface.isUniformScale();
         }
@@ -268,7 +268,7 @@ namespace Divide {
 
     void TransformComponent::rotateX(const Angle::DEGREES<F32> angle) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.rotateX(angle);
         }
 
@@ -277,7 +277,7 @@ namespace Divide {
 
     void TransformComponent::rotateY(const Angle::DEGREES<F32> angle) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.rotateY(angle);
         }
 
@@ -286,7 +286,7 @@ namespace Divide {
 
     void TransformComponent::rotateZ(const Angle::DEGREES<F32> angle) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.rotateZ(angle);
         }
 
@@ -295,7 +295,7 @@ namespace Divide {
 
     void TransformComponent::setRotationX(const Angle::DEGREES<F32> angle) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setRotationX(angle);
         }
 
@@ -304,7 +304,7 @@ namespace Divide {
 
     void TransformComponent::setRotationY(const Angle::DEGREES<F32> angle) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setRotationY(angle);
         }
 
@@ -313,7 +313,7 @@ namespace Divide {
 
     void TransformComponent::setRotationZ(const Angle::DEGREES<F32> angle) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setRotationZ(angle);
         }
 
@@ -322,7 +322,7 @@ namespace Divide {
 
     void TransformComponent::setPositionX(const F32 positionX) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setPositionX(positionX);
         }
 
@@ -331,7 +331,7 @@ namespace Divide {
 
     void TransformComponent::setPositionY(const F32 positionY) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setPositionY(positionY);
         }
 
@@ -340,7 +340,7 @@ namespace Divide {
 
     void TransformComponent::setPositionZ(const F32 positionZ) {
         {
-            UniqueLock<SharedMutex> w_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setPositionZ(positionZ);
         }
 
@@ -356,7 +356,7 @@ namespace Divide {
         if (!_transformStack.empty()) {
             _prevTransformValues = _transformStack.top();
             {
-                UniqueLock<SharedMutex> w_lock(_lock);
+                ScopedLock<SharedMutex> w_lock(_lock);
                 _transformInterface.setValues(_prevTransformValues);
             }
 
@@ -370,7 +370,7 @@ namespace Divide {
     
     void TransformComponent::setTransform(const TransformValues& values) {
         {
-            UniqueLock<SharedMutex> r_lock(_lock);
+            ScopedLock<SharedMutex> r_lock(_lock);
             _transformInterface.setValues(values);
         }
         setTransformDirty(TransformType::ALL);
@@ -378,7 +378,7 @@ namespace Divide {
 
     void TransformComponent::setTransforms(const mat4<F32>& transform) {
         {
-            UniqueLock<SharedMutex> r_lock(_lock);
+            ScopedLock<SharedMutex> r_lock(_lock);
             _transformInterface.setTransforms(transform);
         }
         setTransformDirty(TransformType::ALL);
@@ -432,7 +432,7 @@ namespace Divide {
     }
 
     void TransformComponent::updateWorldMatrix() {
-        UniqueLock<SharedMutex> w_lock(_worldMatrixLock);
+        ScopedLock<SharedMutex> w_lock(_worldMatrixLock);
         getMatrix(_worldMatrix[to_base(WorldMatrixType::CURRENT)]);
         _prevWorldMatrixDirty = true;
     }

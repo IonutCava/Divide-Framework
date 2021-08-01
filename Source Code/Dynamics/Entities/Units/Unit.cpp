@@ -46,7 +46,7 @@ bool Unit::moveTo(const vec3<F32>& targetPosition) {
     if (!_node) {
         return false;
     }
-    UniqueLock<SharedMutex> w_lock(_unitUpdateMutex);
+    ScopedLock<SharedMutex> w_lock(_unitUpdateMutex);
     // We receive move request every frame for now (or every task tick)
     // Start plotting a course from our current position
     _currentPosition = _node->get<TransformComponent>()->getPosition();
@@ -129,7 +129,7 @@ bool Unit::moveToX(const F32 targetPosition) {
     }
     {
         /// Update current position
-        UniqueLock<SharedMutex> w_lock(_unitUpdateMutex);
+        ScopedLock<SharedMutex> w_lock(_unitUpdateMutex);
         _currentPosition = _node->get<TransformComponent>()->getPosition();
     }
     return moveTo(vec3<F32>(targetPosition,
@@ -144,7 +144,7 @@ bool Unit::moveToY(const F32 targetPosition) {
     }
     {
         /// Update current position
-        UniqueLock<SharedMutex> w_lock(_unitUpdateMutex);
+        ScopedLock<SharedMutex> w_lock(_unitUpdateMutex);
         _currentPosition = _node->get<TransformComponent>()->getPosition();
     }
     return moveTo(vec3<F32>(_currentPosition.x,
@@ -159,7 +159,7 @@ bool Unit::moveToZ(const F32 targetPosition) {
     }
     {
         /// Update current position
-        UniqueLock<SharedMutex> w_lock(_unitUpdateMutex);
+        ScopedLock<SharedMutex> w_lock(_unitUpdateMutex);
         _currentPosition = _node->get<TransformComponent>()->getPosition();
     }
     return moveTo(vec3<F32>(_currentPosition.x,
@@ -173,7 +173,7 @@ bool Unit::teleportTo(const vec3<F32>& targetPosition) {
     if (!_node) {
         return false;
     }
-    UniqueLock<SharedMutex> w_lock(_unitUpdateMutex);
+    ScopedLock<SharedMutex> w_lock(_unitUpdateMutex);
     /// We receive move request every frame for now (or every task tick)
     /// Check if the current request is already processed
     if (!_currentTargetPosition.compare(targetPosition, 0.00001f)) {

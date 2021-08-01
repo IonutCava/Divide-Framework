@@ -892,7 +892,7 @@ void GFXDevice::closeRenderingAPI() {
     _api->closeRenderingAPI();
     _api.reset();
 
-    UniqueLock<Mutex> lock(_graphicsResourceMutex);
+    ScopedLock<Mutex> lock(_graphicsResourceMutex);
     if (!_graphicResources.empty()) {
         stringImpl list = " [ ";
         for (const std::tuple<GraphicsResource::Type, I64, U64>& res : _graphicResources) {
@@ -2173,7 +2173,7 @@ void GFXDevice::renderDebugViews(Rect<I32> targetViewport, const I32 padding, GF
 }
 
 DebugView* GFXDevice::addDebugView(const std::shared_ptr<DebugView>& view) {
-    UniqueLock<Mutex> lock(_debugViewLock);
+    ScopedLock<Mutex> lock(_debugViewLock);
 
     _debugViews.push_back(view);
     
@@ -2205,7 +2205,7 @@ bool GFXDevice::removeDebugView(DebugView* view) {
 }
 
 void GFXDevice::toggleDebugView(const I16 index, const bool state) {
-    UniqueLock<Mutex> lock(_debugViewLock);
+    ScopedLock<Mutex> lock(_debugViewLock);
     for (auto& view : _debugViews) {
         if (view->_sortIndex == index) {
             view->_enabled = state;
@@ -2215,7 +2215,7 @@ void GFXDevice::toggleDebugView(const I16 index, const bool state) {
 }
 
 void GFXDevice::toggleDebugGroup(I16 group, const bool state) {
-    UniqueLock<Mutex> lock(_debugViewLock);
+    ScopedLock<Mutex> lock(_debugViewLock);
     for (auto& view : _debugViews) {
         if (view->_groupID == group) {
             view->_enabled = state;
@@ -2224,7 +2224,7 @@ void GFXDevice::toggleDebugGroup(I16 group, const bool state) {
 }
 
 bool GFXDevice::getDebugGroupState(I16 group) const {
-    UniqueLock<Mutex> lock(_debugViewLock);
+    ScopedLock<Mutex> lock(_debugViewLock);
     for (const auto& view : _debugViews) {
         if (view->_groupID == group) {
             if (!view->_enabled) {
@@ -2239,7 +2239,7 @@ bool GFXDevice::getDebugGroupState(I16 group) const {
 void GFXDevice::getDebugViewNames(vectorEASTL<std::tuple<stringImpl, I16, I16, bool>>& namesOut) {
     namesOut.resize(0);
 
-    UniqueLock<Mutex> lock(_debugViewLock);
+    ScopedLock<Mutex> lock(_debugViewLock);
     for (auto& view : _debugViews) {
         namesOut.emplace_back(view->_name, view->_groupID, view->_sortIndex, view->_enabled);
     }
@@ -2504,7 +2504,7 @@ GFXDevice::ObjectArena& GFXDevice::objectArena() noexcept {
 RenderTarget* GFXDevice::newRT(const RenderTargetDescriptor& descriptor) {
     RenderTarget* temp = nullptr;
     {
-        UniqueLock<Mutex> w_lock(objectArenaMutex());
+        ScopedLock<Mutex> w_lock(objectArenaMutex());
 
         switch (renderAPI()) {
             case RenderAPI::OpenGL:
@@ -2574,7 +2574,7 @@ bool GFXDevice::destroyIMP(IMPrimitive*& primitive) {
 
 VertexBuffer* GFXDevice::newVB() {
 
-    UniqueLock<Mutex> w_lock(objectArenaMutex());
+    ScopedLock<Mutex> w_lock(objectArenaMutex());
 
     VertexBuffer* temp = nullptr;
     switch (renderAPI()) {
@@ -2602,7 +2602,7 @@ VertexBuffer* GFXDevice::newVB() {
 
 PixelBuffer* GFXDevice::newPB(const PBType type, const char* name) {
 
-    UniqueLock<Mutex> w_lock(objectArenaMutex());
+    ScopedLock<Mutex> w_lock(objectArenaMutex());
 
     PixelBuffer* temp = nullptr;
     switch (renderAPI()) {
@@ -2630,7 +2630,7 @@ PixelBuffer* GFXDevice::newPB(const PBType type, const char* name) {
 
 GenericVertexData* GFXDevice::newGVD(const U32 ringBufferLength, const char* name) {
 
-    UniqueLock<Mutex> w_lock(objectArenaMutex());
+    ScopedLock<Mutex> w_lock(objectArenaMutex());
 
     GenericVertexData* temp = nullptr;
     switch (renderAPI()) {
@@ -2664,7 +2664,7 @@ Texture* GFXDevice::newTexture(const size_t descriptorHash,
                                const bool asyncLoad,
                                const TextureDescriptor& texDescriptor) {
 
-    UniqueLock<Mutex> w_lock(objectArenaMutex());
+    ScopedLock<Mutex> w_lock(objectArenaMutex());
 
     // Texture is a resource! Do not use object arena!
     Texture* temp = nullptr;
@@ -2697,7 +2697,7 @@ Pipeline* GFXDevice::newPipeline(const PipelineDescriptor& descriptor) {
 
     const size_t hash = descriptor.getHash();
 
-    UniqueLock<Mutex> lock(_pipelineCacheLock);
+    ScopedLock<Mutex> lock(_pipelineCacheLock);
     const hashMap<size_t, Pipeline, NoHash<size_t>>::iterator it = _pipelineCache.find(hash);
     if (it == std::cend(_pipelineCache)) {
         return &insert(_pipelineCache, hash, Pipeline(descriptor)).first->second;
@@ -2713,7 +2713,7 @@ ShaderProgram* GFXDevice::newShaderProgram(const size_t descriptorHash,
                                            const ShaderProgramDescriptor& descriptor,
                                            const bool asyncLoad) {
 
-    UniqueLock<Mutex> w_lock(objectArenaMutex());
+    ScopedLock<Mutex> w_lock(objectArenaMutex());
 
     ShaderProgram* temp = nullptr;
     switch (renderAPI()) {
@@ -2741,7 +2741,7 @@ ShaderProgram* GFXDevice::newShaderProgram(const size_t descriptorHash,
 
 ShaderBuffer* GFXDevice::newSB(const ShaderBufferDescriptor& descriptor) {
 
-    UniqueLock<Mutex> w_lock(objectArenaMutex());
+    ScopedLock<Mutex> w_lock(objectArenaMutex());
 
     ShaderBuffer* temp = nullptr;
     switch (renderAPI()) {

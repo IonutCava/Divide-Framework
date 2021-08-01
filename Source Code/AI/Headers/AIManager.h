@@ -98,7 +98,7 @@ class AIManager final : public SceneComponent
     void destroyNavMesh(AIEntity::PresetAgentRadius radius);
 
     void setSceneCallback(const DELEGATE<void>& callback) {
-        UniqueLock<Mutex> w_lock(_updateMutex);
+        ScopedLock<Mutex> w_lock(_updateMutex);
         _sceneCallback = callback;
     }
     void pauseUpdate(const bool state) noexcept { _pauseUpdate = state; }

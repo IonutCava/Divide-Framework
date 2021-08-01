@@ -42,7 +42,7 @@ struct ParallelForDescriptor;
 
 void parallel_for(PlatformContext& context, const ParallelForDescriptor& descriptor);
 
-void WaitForAllTasks(PlatformContext& context, bool yield, bool flushCallbacks);
+void WaitForAllTasks(PlatformContext& context, bool flushCallbacks);
 
 }; //namespace Divide
 

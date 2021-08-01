@@ -41,7 +41,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
 
     // Initial data may not fill the entire buffer
     const bool needsAdditionalData = _params._bufferParams._initialData.second < _params._dataSize;
-    UniqueLock<Mutex> w_lock(g_createBufferLock);
+    ScopedLock<Mutex> w_lock(g_createBufferLock);
     if (needsAdditionalData) {
         if (_params._dataSize > g_zeroMemData.size()) {
             g_zeroMemData.resize(_params._dataSize, Byte{ 0 });
@@ -200,7 +200,7 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
         };
 
         if (zeroMem) {
-            UniqueLock<Mutex> w_lock(g_createBufferLock);
+            ScopedLock<Mutex> w_lock(g_createBufferLock);
             if (rangeInBytes - offsetInBytes > g_zeroMemData.size()) {
                 g_zeroMemData.resize(rangeInBytes - offsetInBytes, Byte{ 0 });
             }
@@ -269,7 +269,7 @@ GLenum glBufferImpl::GetBufferUsage(const BufferUpdateFrequency frequency, const
 }
 
 void glBufferImpl::CleanMemory() noexcept {
-    UniqueLock<Mutex> w_lock(g_createBufferLock);
+    ScopedLock<Mutex> w_lock(g_createBufferLock);
     const size_t crtSize = g_zeroMemData.size();
     if (crtSize > g_MinZeroDataSize) {
         // Speed things along if we are in the megabyte range. Not really needed, but still helps.

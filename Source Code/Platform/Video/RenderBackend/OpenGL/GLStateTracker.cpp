@@ -201,7 +201,7 @@ void GLStateTracker::ProcessMipMapQueue(const GLuint textureCount, const GLuint*
     }
 
     if (!tempHandles.empty()) {
-        UniqueLock<SharedMutex> w_lock(GL_API::s_mipmapQueueSetLock);
+        ScopedLock<SharedMutex> w_lock(GL_API::s_mipmapQueueSetLock);
         for (const GLuint handle : tempHandles) {
             GL_API::s_mipmapQueue.erase(handle);
         }

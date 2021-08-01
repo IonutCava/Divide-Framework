@@ -66,7 +66,7 @@ void SceneGraph::unload()
 }
 
 void SceneGraph::addToDeleteQueue(SceneGraphNode* node, const size_t childIdx) {
-    UniqueLock<SharedMutex> w_lock(_pendingDeletionLock);
+    ScopedLock<SharedMutex> w_lock(_pendingDeletionLock);
     vectorEASTL<size_t>& list = _pendingDeletion[node];
     if (eastl::find(cbegin(list), cend(list), childIdx) == cend(list))
     {
@@ -142,7 +142,7 @@ bool SceneGraph::removeNode(SceneGraphNode* node) {
 
 bool SceneGraph::frameStarted(const FrameEvent& evt) {
     {
-        UniqueLock<SharedMutex> lock(_pendingDeletionLock);
+        ScopedLock<SharedMutex> lock(_pendingDeletionLock);
         if (!_pendingDeletion.empty()) {
             for (auto entry : _pendingDeletion) {
                 if (entry.first != nullptr) {
@@ -294,7 +294,7 @@ void SceneGraph::postLoad() {
 }
 
 SceneGraphNode* SceneGraph::createSceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor) {
-    UniqueLock<Mutex> u_lock(_nodeCreateMutex);
+    ScopedLock<Mutex> u_lock(_nodeCreateMutex);
 
     const ECS::EntityId nodeID = GetEntityManager()->CreateEntity<SceneGraphNode>(sceneGraph, descriptor);
     return static_cast<SceneGraphNode*>(GetEntityManager()->GetEntity(nodeID));

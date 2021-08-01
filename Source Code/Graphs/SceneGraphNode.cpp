@@ -188,7 +188,7 @@ void SceneGraphNode::setParentInternal() {
     {// Add ourselves in the new parent's children map
         {
             _parent->_childCount.fetch_add(1);
-            UniqueLock<SharedMutex> w_lock(_parent->_childLock);
+            ScopedLock<SharedMutex> w_lock(_parent->_childLock);
             _parent->_children.push_back(this);
         }
         Attorney::SceneGraphSGN::onNodeAdd(_sceneGraph, this);
@@ -425,7 +425,7 @@ void SceneGraphNode::getAllNodes(vectorEASTL<SceneGraphNode*>& nodeList) {
 void SceneGraphNode::processDeleteQueue(vectorEASTL<size_t>& childList) {
     // See if we have any children to delete
     if (!childList.empty()) {
-        UniqueLock<SharedMutex> w_lock(_childLock);
+        ScopedLock<SharedMutex> w_lock(_childLock);
         for (const size_t childIdx : childList) {
             _sceneGraph->destroySceneGraphNode(_children[childIdx]);
         }

@@ -36,7 +36,7 @@ void ShaderComputeQueue::process(ShaderQueueElement& element) const {
 }
 
 bool ShaderComputeQueue::stepQueue() {
-    UniqueLock<SharedMutex> lock(_queueLock);
+    ScopedLock<SharedMutex> lock(_queueLock);
     return stepQueueLocked();
 }
 
@@ -51,12 +51,12 @@ bool ShaderComputeQueue::stepQueueLocked() {
 }
 
 void ShaderComputeQueue::addToQueueFront(const ShaderQueueElement& element) {
-    UniqueLock<SharedMutex> w_lock(_queueLock);
+    ScopedLock<SharedMutex> w_lock(_queueLock);
     _shaderComputeQueue.push_front(element);
 }
 
 void ShaderComputeQueue::addToQueueBack(const ShaderQueueElement& element) {
-    UniqueLock<SharedMutex> w_lock(_queueLock);
+    ScopedLock<SharedMutex> w_lock(_queueLock);
     _shaderComputeQueue.push_back(element);
 }
 

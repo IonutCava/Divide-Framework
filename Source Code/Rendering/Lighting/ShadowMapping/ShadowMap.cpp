@@ -192,7 +192,7 @@ void ShadowMap::destroyShadowMaps(GFXDevice& context) {
 }
 
 void ShadowMap::resetShadowMaps() {
-    UniqueLock<Mutex> w_lock(s_depthMapUsageLock);
+    ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
     for (U32 i = 0; i < to_base(ShadowType::COUNT); ++i) {
         s_depthMapUsage[i].resize(0);
         s_shadowPassIndex[i] = 0u;
@@ -248,7 +248,7 @@ void ShadowMap::clearShadowMapBuffers(GFX::CommandBuffer& bufferInOut) {
 }
 
 U16 ShadowMap::lastUsedDepthMapOffset(const ShadowType shadowType) {
-    UniqueLock<Mutex> w_lock(s_depthMapUsageLock);
+    ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
     const LayerUsageMask& usageMask = s_depthMapUsage[to_U32(shadowType)];
 
     for (U16 i = 0; i < to_U16(usageMask.size()); ++i) {
@@ -261,7 +261,7 @@ U16 ShadowMap::lastUsedDepthMapOffset(const ShadowType shadowType) {
 }
 
 U16 ShadowMap::findFreeDepthMapOffset(const ShadowType shadowType, const U32 layerCount) {
-    UniqueLock<Mutex> w_lock(s_depthMapUsageLock);
+    ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
 
     LayerUsageMask& usageMask = s_depthMapUsage[to_U32(shadowType)];
     U16 layer = U16_MAX;
@@ -282,7 +282,7 @@ U16 ShadowMap::findFreeDepthMapOffset(const ShadowType shadowType, const U32 lay
 }
 
 void ShadowMap::commitDepthMapOffset(const ShadowType shadowType, const U32 layerOffest, const U32 layerCount) {
-    UniqueLock<Mutex> w_lock(s_depthMapUsageLock);
+    ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
 
     LayerUsageMask& usageMask = s_depthMapUsage[to_U32(shadowType)];
     for (U32 i = layerOffest; i < layerOffest + layerCount; ++i) {
@@ -291,7 +291,7 @@ void ShadowMap::commitDepthMapOffset(const ShadowType shadowType, const U32 laye
 }
 
 bool ShadowMap::freeDepthMapOffset(const ShadowType shadowType, const U32 layerOffest, const U32 layerCount) {
-    UniqueLock<Mutex> w_lock(s_depthMapUsageLock);
+    ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
 
     LayerUsageMask& usageMask = s_depthMapUsage[to_U32(shadowType)];
     for (U32 i = layerOffest; i < layerOffest + layerCount; ++i) {
