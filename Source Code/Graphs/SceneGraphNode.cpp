@@ -26,6 +26,8 @@
 namespace Divide {
 
 namespace {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+
     bool PropagateFlagToChildren(const SceneGraphNode::Flags flag) noexcept {
         return flag == SceneGraphNode::Flags::SELECTED || 
                flag == SceneGraphNode::Flags::HOVERED ||
@@ -715,35 +717,38 @@ void SceneGraphNode::invalidateRelationshipCache(SceneGraphNode* source) {
 }
 
 bool SceneGraphNode::saveCache(ByteBuffer& outputBuffer) const {
-    getNode().saveCache(outputBuffer);
+    outputBuffer << BYTE_BUFFER_VERSION;
 
-    for (EditorComponent* editorComponent : Hacks._editorComponents) {
-        if (!Attorney::EditorComponentSceneGraphNode::saveCache(*editorComponent, outputBuffer)) {
-            return false;
+    if (getNode().saveCache(outputBuffer)) {
+
+        for (EditorComponent* editorComponent : Hacks._editorComponents) {
+            if (!Attorney::EditorComponentSceneGraphNode::saveCache(*editorComponent, outputBuffer)) {
+                return false;
+            }
         }
+
+        return _sceneGraph->GetECSManager().saveCache(this, outputBuffer);
     }
 
-    if (!_sceneGraph->GetECSManager().saveCache(this, outputBuffer)) {
-        return false;
-    }
-
-    return true;
+    return false;
 }
 
 bool SceneGraphNode::loadCache(ByteBuffer& inputBuffer) {
-    getNode().loadCache(inputBuffer);
+    U16 tempVer = 0u;
+    inputBuffer >> tempVer;
+    if (tempVer == BYTE_BUFFER_VERSION) {
+        if (getNode().loadCache(inputBuffer)) {
+            for (EditorComponent* editorComponent : Hacks._editorComponents) {
+                if (!Attorney::EditorComponentSceneGraphNode::loadCache(*editorComponent, inputBuffer)) {
+                    return false;
+                }
+            }
 
-    for (EditorComponent* editorComponent : Hacks._editorComponents) {
-        if (!Attorney::EditorComponentSceneGraphNode::loadCache(*editorComponent, inputBuffer)) {
-            return false;
+            return _sceneGraph->GetECSManager().loadCache(this, inputBuffer);
         }
     }
 
-    if (!_sceneGraph->GetECSManager().loadCache(this, inputBuffer)) {
-        return false;
-    }
-
-    return true;
+    return false;
 }
 
 void SceneGraphNode::saveToXML(const Str256& sceneLocation, DELEGATE<void, std::string_view> msgCallback) const {

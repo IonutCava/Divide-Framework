@@ -96,20 +96,28 @@ namespace Divide {
     }
 
     bool TransformSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
-        TransformComponent* tComp = sgn->GetComponent<TransformComponent>();
-        if (tComp != nullptr && !tComp->saveCache(outputBuffer)) {
-            return false;
+        if (Parent::saveCache(sgn, outputBuffer)) {
+            TransformComponent* tComp = sgn->GetComponent<TransformComponent>();
+            if (tComp != nullptr && !tComp->saveCache(outputBuffer)) {
+                return false;
+            }
+
+            return true;
         }
 
-        return Parent::saveCache(sgn, outputBuffer);
+        return false;
     }
 
     bool TransformSystem::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) {
-        TransformComponent* tComp = sgn->GetComponent<TransformComponent>();
-        if (tComp != nullptr && !tComp->loadCache(inputBuffer)) {
-            return false;
+        if (Parent::loadCache(sgn, inputBuffer)) {
+            TransformComponent* tComp = sgn->GetComponent<TransformComponent>();
+            if (tComp != nullptr && !tComp->loadCache(inputBuffer)) {
+                return false;
+            }
+
+            return true;
         }
 
-        return Parent::loadCache(sgn, inputBuffer);
+        return false;
     }
 } //namespace Divide

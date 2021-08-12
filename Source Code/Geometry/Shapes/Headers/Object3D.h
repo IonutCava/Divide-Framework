@@ -167,8 +167,8 @@ class Object3D : public SceneNode {
 
     bool isPrimitive() const noexcept;
 
-    void saveCache(ByteBuffer& outputBuffer) const override;
-    void loadCache(ByteBuffer& inputBuffer) override;
+    bool saveCache(ByteBuffer& outputBuffer) const override;
+    bool loadCache(ByteBuffer& inputBuffer) override;
 
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;

@@ -1,7 +1,6 @@
 #include "stdafx.h"
 
 #include "Headers/SceneGraph.h"
-#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/Kernel.h"
 #include "Geometry/Material/Headers/Material.h"
@@ -16,6 +15,7 @@
 namespace Divide {
 
 namespace {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
     constexpr I8 g_cacheMarkerByteValue = -126;
     constexpr U32 g_nodesPerPartition = 32u;
 
@@ -362,69 +362,72 @@ SceneGraphNode* SceneGraph::findNode(const I64 guid) const {
 }
 
 bool SceneGraph::saveCache(ByteBuffer& outputBuffer) const {
-    const bool ret = saveCache(_root, outputBuffer);
+    const std::function<bool(SceneGraphNode*, ByteBuffer&)> saveNodes = [&](SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
+        // Because loading is async, nodes will not be necessarily in the same order. We need a way to find
+        // the node using some sort of ID. Name based ID is bad, but is the only system available at the time of writing -Ionut
+        outputBuffer << _ID(sgn->name().c_str());
+        if (!Attorney::SceneGraphNodeSceneGraph::saveCache(sgn, outputBuffer)) {
+            NOP();
+        }
+        // Data may be bad, so add markers to be able to just jump over the entire node data instead of attempting partial loads
+        outputBuffer << g_cacheMarkerByteValue;
+        outputBuffer << g_cacheMarkerByteValue;
+
+        return sgn->forEachChild([this, &saveNodes, &outputBuffer](SceneGraphNode* child, I32 /*idx*/) {
+            return saveNodes(child, outputBuffer);
+        });
+    };
+
+    outputBuffer << BYTE_BUFFER_VERSION;
     outputBuffer << _ID(_root->name().c_str());
-    return ret;
+
+    return saveNodes(_root, outputBuffer);
 }
 
 bool SceneGraph::loadCache(ByteBuffer& inputBuffer) {
-    const U64 rootID = _ID(_root->name().c_str());
-    U64 nodeID = 0u;
-    I8 marker1 = -1, marker2 = -1;
+    U16 tempVer = 0u;
+    inputBuffer >> tempVer;
+    if (tempVer == BYTE_BUFFER_VERSION) {
+        const U64 rootID = _ID(_root->name().c_str());
+        U64 nodeID = 0u;
+        I8 marker1 = -1, marker2 = -1;
 
-    bool skipRoot = true;
-    bool missingData = false;
-    do {
-        inputBuffer >> nodeID;
-        if (nodeID == rootID && !skipRoot) {
-            break;
-        }
+        bool skipRoot = true;
+        bool missingData = false;
+        do {
+            inputBuffer >> nodeID;
+            if (nodeID == rootID && !skipRoot) {
+                break;
+            }
 
-        SceneGraphNode* node = findNode(nodeID, false);
+            SceneGraphNode* node = findNode(nodeID, false);
 
-        if (node != nullptr && loadCache(node, inputBuffer)) {
-            inputBuffer >> marker1;
-            inputBuffer >> marker2;
-            assert(marker1 == g_cacheMarkerByteValue && marker1 == marker2);
-        } else {
-            missingData = true;
-            while(true) {
+            if (node != nullptr && Attorney::SceneGraphNodeSceneGraph::loadCache(node, inputBuffer)) {
                 inputBuffer >> marker1;
-                if (marker1 == g_cacheMarkerByteValue) {
-                    inputBuffer >> marker2;
-                    if (marker2 == g_cacheMarkerByteValue) {
-                        break;
+                inputBuffer >> marker2;
+                assert(marker1 == g_cacheMarkerByteValue && marker1 == marker2);
+            } else {
+                missingData = true;
+                while(true) {
+                    inputBuffer >> marker1;
+                    if (marker1 == g_cacheMarkerByteValue) {
+                        inputBuffer >> marker2;
+                        if (marker2 == g_cacheMarkerByteValue) {
+                            break;
+                        }
                     }
                 }
             }
-        }
-        if (nodeID == rootID && skipRoot) {
-            skipRoot = false;
-            nodeID = 0u;
-        }
-    } while (nodeID != rootID);
+            if (nodeID == rootID && skipRoot) {
+                skipRoot = false;
+                nodeID = 0u;
+            }
+        } while (nodeID != rootID);
 
-    return !missingData;
-}
-
-bool SceneGraph::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) const {
-    // Because loading is async, nodes will not be necessarily in the same order. We need a way to find
-    // the node using some sort of ID. Name based ID is bad, but is the only system available at the time of writing -Ionut
-    outputBuffer << _ID(sgn->name().c_str());
-    if (!Attorney::SceneGraphNodeSceneGraph::saveCache(sgn, outputBuffer)) {
-        NOP();
+        return !missingData;
     }
-    // Data may be bad, so add markers to be able to just jump over the entire node data instead of attempting partial loads
-    outputBuffer << g_cacheMarkerByteValue;
-    outputBuffer << g_cacheMarkerByteValue;
 
-    return sgn->forEachChild([this, &outputBuffer](SceneGraphNode* child, I32 /*idx*/) {
-        return saveCache(child, outputBuffer);
-    });
-}
-
-bool SceneGraph::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) {
-    return Attorney::SceneGraphNodeSceneGraph::loadCache(sgn, inputBuffer);
+    return false;
 }
 
 namespace {

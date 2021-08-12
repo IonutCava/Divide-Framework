@@ -2,7 +2,6 @@
 
 #include "Headers/Texture.h"
 
-#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
@@ -11,6 +10,7 @@
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 const char* Texture::s_missingTextureFileName = nullptr;
 
@@ -190,10 +190,20 @@ bool Texture::checkTransparency(const ResourcePath& name, ImageTools::ImageData&
     const ResourcePath cacheName = file + ".cache";
 
     ByteBuffer metadataCache = {};
+    bool skip = false;
     if (metadataCache.loadFromFile(cachePath.c_str(), cacheName.c_str())) {
-        metadataCache >> _hasTransparency;
-        metadataCache >> _hasTranslucency;
-    } else {
+        U16 tempVer = 0u;
+        metadataCache >> tempVer;
+        if (tempVer == BYTE_BUFFER_VERSION) {
+            metadataCache >> _hasTransparency;
+            metadataCache >> _hasTranslucency;
+            skip = true;
+        } else {
+            metadataCache.clear();
+        }
+    }
+
+    if (!skip) {
         STUBBED("ToDo: Add support for 16bit and HDR image alpha! -Ionut");
         if (fileData.alpha()) {
 
@@ -221,7 +231,7 @@ bool Texture::checkTransparency(const ResourcePath& name, ImageTools::ImageData&
             };
 
             parallel_for(_context.context(), descriptor);
-
+            metadataCache << BYTE_BUFFER_VERSION;
             metadataCache << _hasTransparency;
             metadataCache << _hasTranslucency;
             if (!metadataCache.dumpToFile(cachePath.c_str(), cacheName.c_str())) {

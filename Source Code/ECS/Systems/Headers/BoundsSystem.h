@@ -34,6 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _BOUNDS_SYSTEM_H_
 
 #include "ECSSystem.h"
+
 #include "Core/Headers/PlatformContextComponent.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 

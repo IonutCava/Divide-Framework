@@ -101,7 +101,10 @@ bool TaskPool::enqueue(Task& task, const TaskPriority priority, const U32 taskIn
         }
 
         if (!threadWaitingCall || task._runWhileIdle) {
-            task._callback(task);
+            if (task._callback) {
+                task._callback(task);
+            }
+
             taskCompleted(task, hasOnCompletionFunction);
             return true;
         }

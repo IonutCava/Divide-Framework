@@ -7,6 +7,8 @@
 #include "ECS/Components/Headers/RenderingComponent.h"
 
 namespace Divide {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+
     SGNComponent::SGNComponent(Key key, const ComponentType type, SceneGraphNode* parentSGN, PlatformContext& context)
         : PlatformContextComponent(context),
           _editorComponent(*this, type, TypeUtil::ComponentTypeToString(type)),
@@ -19,11 +21,19 @@ namespace Divide {
     }
 
     bool SGNComponent::saveCache(ByteBuffer& outputBuffer) const {
+        outputBuffer << BYTE_BUFFER_VERSION;
         outputBuffer << uniqueID();
         return true;
     }
 
     bool SGNComponent::loadCache(ByteBuffer& inputBuffer) {
+        U16 tempVer = 0u;
+        inputBuffer >> tempVer;
+        if (tempVer != BYTE_BUFFER_VERSION) {
+            // Older version
+            return false;
+        }
+
         U64 tempID = 0u;
         inputBuffer >> tempID;
         if (tempID != uniqueID()) {

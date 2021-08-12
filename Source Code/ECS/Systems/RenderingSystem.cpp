@@ -57,20 +57,26 @@ namespace Divide {
     }
 
     bool RenderingSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
-        RenderingComponent* rComp = sgn->GetComponent<RenderingComponent>();
-        if (rComp != nullptr && !rComp->saveCache(outputBuffer)) {
-            return false;
+        if (Parent::saveCache(sgn, outputBuffer)) {
+            RenderingComponent* rComp = sgn->GetComponent<RenderingComponent>();
+            if (rComp != nullptr && !rComp->saveCache(outputBuffer)) {
+                return false;
+            }
+            return true;
         }
 
-        return Parent::saveCache(sgn, outputBuffer);
+        return false;
     }
 
     bool RenderingSystem::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) {
-        RenderingComponent* rComp = sgn->GetComponent<RenderingComponent>();
-        if (rComp != nullptr && !rComp->loadCache(inputBuffer)) {
-            return false;
+        if (Parent::loadCache(sgn, inputBuffer)) {
+            RenderingComponent* rComp = sgn->GetComponent<RenderingComponent>();
+            if (rComp != nullptr && !rComp->loadCache(inputBuffer)) {
+                return false;
+            }
+            return true;
         }
 
-        return Parent::loadCache(sgn, inputBuffer);
+        return false;
     }
 } //namespace Divide

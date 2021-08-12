@@ -174,6 +174,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Math/Headers/Quaternion.h"
 #include "Core/Headers/TaskPool.h"
 #include "Core/Headers/Console.h"
+#include "Core/Headers/ByteBuffer.h"
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS

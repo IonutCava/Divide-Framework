@@ -4,7 +4,6 @@
 #include "Headers/TerrainLoader.h"
 #include "Headers/TerrainDescriptor.h"
 
-#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -17,6 +16,8 @@
 namespace Divide {
 
 namespace {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+
     ResourcePath ClimatesLocation(U8 textureQuality) {
        CLAMP<U8>(textureQuality, 0u, 3u);
 
@@ -654,7 +655,13 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
 
     ByteBuffer terrainCache;
     if (terrainCache.loadFromFile((Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), (terrainRawFile + ".cache").c_str())) {
-        terrainCache >> terrain->_physicsVerts;
+        U16 tempVer = 0u;
+        terrainCache >> tempVer;
+        if (tempVer == BYTE_BUFFER_VERSION) {
+            terrainCache >> terrain->_physicsVerts;
+        } else {
+            terrainCache.clear();
+        }
     }
 
     if (terrain->_physicsVerts.empty()) {
@@ -759,6 +766,8 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
                 terrain->_physicsVerts[idx0]._tangent = terrain->_physicsVerts[idx1]._tangent;
             }
         }
+
+        terrainCache << BYTE_BUFFER_VERSION;
         terrainCache << terrain->_physicsVerts;
         if (!terrainCache.dumpToFile((Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), (terrainRawFile + ".cache").c_str())) {
             DIVIDE_UNEXPECTED_CALL();

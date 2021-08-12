@@ -7,6 +7,8 @@
 #include "ECS/Components/Headers/TransformComponent.h"
 
 namespace Divide {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+
     namespace {
         stringImpl GetFullFieldName(const char* componentName, const Str32& fieldName) {
             constexpr std::array<std::string_view, 6> InvalidXMLStrings = {
@@ -75,14 +77,16 @@ namespace Divide {
 
     // May be wrong endpoint
     bool EditorComponent::saveCache(ByteBuffer& outputBuffer) const {
-        ACKNOWLEDGE_UNUSED(outputBuffer);
+        outputBuffer << BYTE_BUFFER_VERSION;
         return true;
     }
 
     // May be wrong endpoint
     bool EditorComponent::loadCache(ByteBuffer& inputBuffer) {
-        ACKNOWLEDGE_UNUSED(inputBuffer);
-        return true;
+
+        U16 tempVer = 0u;
+        inputBuffer >> tempVer;
+        return tempVer == BYTE_BUFFER_VERSION;
     }
 
 

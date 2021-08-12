@@ -26,31 +26,13 @@ void ByteBuffer::put(const size_t pos, const T& value) {
     put(pos, (Byte*)&value, sizeof(T));
 }
 
+
 template <typename T>
 ByteBuffer& ByteBuffer::operator<<(const T& value) {
     append<T>(value);
     return *this;
 }
 
-template<>
-inline ByteBuffer& ByteBuffer::operator<<(const bool& value) {
-    append(value ? to_I8(1) : to_I8(0));
-    return *this;
-}
-
-template <>
-inline ByteBuffer& ByteBuffer::operator<<(const stringImpl &value) {
-    append(value.c_str(), value.length());
-    append(to_U8(0));
-    return *this;
-}
-
-template <>
-inline ByteBuffer& ByteBuffer::operator<<(const ResourcePath& value) {
-    append(value.c_str(), value.str().length());
-    append(to_U8(0));
-    return *this;
-}
 
 template <typename T>
 ByteBuffer& ByteBuffer::operator>>(T& value) {
@@ -207,27 +189,9 @@ inline U64 ByteBuffer::readPackGUID() {
     return guid;
 }
 
-template <typename T>
-void ByteBuffer::append(const T *src, const size_t cnt) {
-    return append((const Byte*)src, cnt * sizeof(T));
-}
-
-inline void ByteBuffer::append(const stringImpl& str) {
-    append(reinterpret_cast<Byte const*>(str.c_str()), str.length() + 1);
-}
-
-inline void ByteBuffer::append(const ResourcePath& str) {
-    append(reinterpret_cast<Byte const*>(str.c_str()), str.str().length() + 1);
-}
-
-inline void ByteBuffer::append(const ByteBuffer &buffer) {
-    if (buffer.wpos()) {
-        append(buffer.contents(), buffer.wpos());
-    }
-}
 
 inline void ByteBuffer::appendPackXYZ(const F32 x, const F32 y, const F32 z) {
-    U32 packed = 0;
+    U32 packed = 0u;
     packed |= to_I32(x / 0.25f) & 0x7FF;
     packed |= (to_I32(y / 0.25f) & 0x7FF) << 11;
     packed |= (to_I32(z / 0.25f) & 0x3FF) << 22;
@@ -236,7 +200,7 @@ inline void ByteBuffer::appendPackXYZ(const F32 x, const F32 y, const F32 z) {
 
 inline void ByteBuffer::appendPackGUID(U64 guid) {
     U8 packGUID[8 + 1];
-    packGUID[0] = 0;
+    packGUID[0] = 0u;
     size_t size = 1;
     for (U8 i = 0; guid != 0; ++i) {
         if (guid & 0xFF) {
@@ -304,29 +268,59 @@ inline void ByteBuffer::put(const size_t pos, const Byte *src, const size_t cnt)
     memcpy(&_storage[pos], src, cnt);
 }
 
-//private:
 template <typename T>
 void ByteBuffer::append(const T& value) {
     append((const Byte*)&value, sizeof(T));
 }
 
+template <typename T>
+void ByteBuffer::append(const T* src, const size_t cnt) {
+    return append((const Byte*)src, cnt * sizeof(T));
+}
+
+
+template<>
+inline void ByteBuffer::append(const stringImpl& str) {
+    append(str.c_str(), str.length());
+    append(to_U8(0));
+}
+
+template<>
+inline void ByteBuffer::append(const ResourcePath& str) {
+    append(str.c_str(), str.str().length());
+    append(to_U8(0));
+}
+
+template<>
+inline void ByteBuffer::append(const bool& value) {
+    append(value ? to_I8(1) : to_I8(0));
+}
+
+template<>
+inline void ByteBuffer::append(const ByteBuffer& buffer) {
+    if (buffer.wpos()) {
+        append(buffer.contents(), buffer.wpos());
+    }
+}
+
+
 //specializations
 template <typename T>
-ByteBuffer &operator<<(ByteBuffer &b, vec2<T> const &v) {
+inline ByteBuffer& operator<<(ByteBuffer& b, vec2<T> const& v) {
     b << v.x;
     b << v.y;
     return b;
 }
 
 template <typename T>
-ByteBuffer &operator>>(ByteBuffer &b, vec2<T> &v) {
+inline ByteBuffer &operator>>(ByteBuffer &b, vec2<T> &v) {
     b >> v.x;
     b >> v.y;
     return b;
 }
 
 template <typename T>
-ByteBuffer &operator<<(ByteBuffer &b, vec3<T> const &v) {
+inline ByteBuffer &operator<<(ByteBuffer &b, vec3<T> const &v) {
     b << v.x;
     b << v.y;
     b << v.z;
@@ -334,7 +328,7 @@ ByteBuffer &operator<<(ByteBuffer &b, vec3<T> const &v) {
 }
 
 template <typename T>
-ByteBuffer &operator>>(ByteBuffer &b, vec3<T> &v) {
+inline ByteBuffer &operator>>(ByteBuffer &b, vec3<T> &v) {
     b >> v.x;
     b >> v.y;
     b >> v.z;
@@ -342,7 +336,7 @@ ByteBuffer &operator>>(ByteBuffer &b, vec3<T> &v) {
 }
 
 template <typename T>
-ByteBuffer &operator<<(ByteBuffer &b, vec4<T> const &v) {
+inline ByteBuffer &operator<<(ByteBuffer &b, vec4<T> const &v) {
     b << v.x;
     b << v.y;
     b << v.z;
@@ -351,7 +345,7 @@ ByteBuffer &operator<<(ByteBuffer &b, vec4<T> const &v) {
 }
 
 template <typename T>
-ByteBuffer &operator>>(ByteBuffer &b, vec4<T> &v) {
+inline ByteBuffer &operator>>(ByteBuffer &b, vec4<T> &v) {
     b >> v.x;
     b >> v.y;
     b >> v.z;
@@ -359,7 +353,7 @@ ByteBuffer &operator>>(ByteBuffer &b, vec4<T> &v) {
     return b;
 }
 template <typename T>
-ByteBuffer& operator<<(ByteBuffer& b, Quaternion<T> const& q) {
+inline ByteBuffer& operator<<(ByteBuffer& b, Quaternion<T> const& q) {
     b << q.X();
     b << q.Y();
     b << q.Z();
@@ -368,7 +362,7 @@ ByteBuffer& operator<<(ByteBuffer& b, Quaternion<T> const& q) {
 }
 
 template <typename T>
-ByteBuffer& operator>>(ByteBuffer& b, Quaternion<T>& q) {
+inline ByteBuffer& operator>>(ByteBuffer& b, Quaternion<T>& q) {
     vec4<T> elems = {};
     b >> elems.x; q.X(elems.x);
     b >> elems.y; q.Y(elems.y);
@@ -379,7 +373,7 @@ ByteBuffer& operator>>(ByteBuffer& b, Quaternion<T>& q) {
 }
 
 template <typename T>
-ByteBuffer &operator<<(ByteBuffer &b, mat2<T> const &m) {
+inline ByteBuffer &operator<<(ByteBuffer &b, mat2<T> const &m) {
     for (U8 i = 0; i < 4; ++i) {
         b << m[i];
     }
@@ -388,7 +382,7 @@ ByteBuffer &operator<<(ByteBuffer &b, mat2<T> const &m) {
 }
 
 template <typename T>
-ByteBuffer &operator>>(ByteBuffer &b, mat2<T> &m) {
+inline ByteBuffer &operator>>(ByteBuffer &b, mat2<T> &m) {
     for (U8 i = 0; i < 4; ++i) {
         b >> m[i];
     }
@@ -397,7 +391,7 @@ ByteBuffer &operator>>(ByteBuffer &b, mat2<T> &m) {
 }
 
 template <typename T>
-ByteBuffer &operator<<(ByteBuffer &b, mat3<T> const &m) {
+inline ByteBuffer &operator<<(ByteBuffer &b, mat3<T> const &m) {
     for (U8 i = 0; i < 9; ++i) {
         b << m[i];
     }
@@ -406,7 +400,7 @@ ByteBuffer &operator<<(ByteBuffer &b, mat3<T> const &m) {
 }
 
 template <typename T>
-ByteBuffer &operator>>(ByteBuffer &b, mat3<T> &m) {
+inline ByteBuffer &operator>>(ByteBuffer &b, mat3<T> &m) {
     for (U8 i = 0; i < 9; ++i) {
         b >> m[i];
     }
@@ -415,7 +409,7 @@ ByteBuffer &operator>>(ByteBuffer &b, mat3<T> &m) {
 }
 
 template <typename T>
-ByteBuffer &operator<<(ByteBuffer &b, mat4<T> const &m) {
+inline ByteBuffer &operator<<(ByteBuffer &b, mat4<T> const &m) {
     for (U8 i = 0; i < 16; ++i) {
         b << m[i];
     }
@@ -424,7 +418,7 @@ ByteBuffer &operator<<(ByteBuffer &b, mat4<T> const &m) {
 }
 
 template <typename T>
-ByteBuffer &operator>>(ByteBuffer &b, mat4<T> &m) {
+inline ByteBuffer &operator>>(ByteBuffer &b, mat4<T> &m) {
     for (U8 i = 0; i < 16; ++i) {
         b >> m[i];
     }
@@ -432,7 +426,7 @@ ByteBuffer &operator>>(ByteBuffer &b, mat4<T> &m) {
     return b;
 }
 template <typename T, size_t N>
-ByteBuffer &operator<<(ByteBuffer &b, const std::array<T, N>& v) {
+inline ByteBuffer &operator<<(ByteBuffer &b, const std::array<T, N>& v) {
     b << static_cast<U64>(N);
     b.append(v.data(), N);
 
@@ -440,7 +434,7 @@ ByteBuffer &operator<<(ByteBuffer &b, const std::array<T, N>& v) {
 }
 
 template <typename T, size_t N>
-ByteBuffer &operator>>(ByteBuffer &b, std::array<T, N>& a) {
+inline ByteBuffer &operator>>(ByteBuffer &b, std::array<T, N>& a) {
     U64 size;
     b >> size;
     assert(size == static_cast<U64>(N));
@@ -450,7 +444,7 @@ ByteBuffer &operator>>(ByteBuffer &b, std::array<T, N>& a) {
 }
 
 template <size_t N>
-ByteBuffer &operator<<(ByteBuffer &b, const std::array<stringImpl, N>& a) {
+inline ByteBuffer &operator<<(ByteBuffer &b, const std::array<stringImpl, N>& a) {
     b << static_cast<U64>(N);
     for (const stringImpl& str : a) {
         b << str;
@@ -460,7 +454,7 @@ ByteBuffer &operator<<(ByteBuffer &b, const std::array<stringImpl, N>& a) {
 }
 
 template <size_t N>
-ByteBuffer &operator>>(ByteBuffer &b, std::array<stringImpl, N>& a) {
+inline ByteBuffer &operator>>(ByteBuffer &b, std::array<stringImpl, N>& a) {
     U64 size;
     b >> size;
     assert(size == static_cast<U64>(N));
@@ -472,7 +466,7 @@ ByteBuffer &operator>>(ByteBuffer &b, std::array<stringImpl, N>& a) {
 }
 
 template <typename T>
-ByteBuffer &operator<<(ByteBuffer &b, vectorEASTL<T> const &v) {
+inline ByteBuffer &operator<<(ByteBuffer &b, vectorEASTL<T> const &v) {
     b << to_U32(v.size());
     b.append(v.data(), v.size());
 
@@ -480,7 +474,7 @@ ByteBuffer &operator<<(ByteBuffer &b, vectorEASTL<T> const &v) {
 }
 
 template <typename T>
-ByteBuffer &operator>>(ByteBuffer &b, vectorEASTL<T> &v) {
+inline ByteBuffer &operator>>(ByteBuffer &b, vectorEASTL<T> &v) {
     U32 vsize;
     b >> vsize;
     v.resize(vsize);
@@ -509,7 +503,7 @@ inline ByteBuffer &operator>>(ByteBuffer &b, vectorEASTL<stringImpl> &v) {
     return b;
 }
 template <typename T>
-ByteBuffer &operator<<(ByteBuffer &b, std::list<T> const &v) {
+inline ByteBuffer &operator<<(ByteBuffer &b, std::list<T> const &v) {
     b << to_U32(v.size());
     for (const T& i : v) {
         b << i;
@@ -518,7 +512,7 @@ ByteBuffer &operator<<(ByteBuffer &b, std::list<T> const &v) {
 }
 
 template <typename T>
-ByteBuffer &operator>>(ByteBuffer &b, std::list<T> &v) {
+inline ByteBuffer &operator>>(ByteBuffer &b, std::list<T> &v) {
     T t;
     U32 vsize;
     b >> vsize;
@@ -532,7 +526,7 @@ ByteBuffer &operator>>(ByteBuffer &b, std::list<T> &v) {
 }
 
 template <typename K, typename V>
-ByteBuffer &operator<<(ByteBuffer &b, std::map<K, V> &m) {
+inline ByteBuffer &operator<<(ByteBuffer &b, std::map<K, V> &m) {
     b << to_U32(m.size());
     for (typename std::map<K, V>::value_type i : m) {
         b << i.first;
@@ -542,7 +536,7 @@ ByteBuffer &operator<<(ByteBuffer &b, std::map<K, V> &m) {
 }
 
 template <typename K, typename V>
-ByteBuffer &operator>>(ByteBuffer &b, std::map<K, V> &m) {
+inline ByteBuffer &operator>>(ByteBuffer &b, std::map<K, V> &m) {
     K k;
     V v;
     U32 msize;

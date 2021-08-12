@@ -2,7 +2,6 @@
 
 #include "Headers/NavMeshLoader.h"
 
-#include "Core/Headers/ByteBuffer.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Environment/Terrain/Headers/Terrain.h"
@@ -13,6 +12,7 @@
 #include "ECS/Components/Headers/TransformComponent.h"
 
 namespace Divide::AI::Navigation::NavigationMeshLoader {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
     constexpr U32 g_cubeFaces[6][4] = {{0, 4, 6, 2},
                                        {0, 2, 3, 1},
@@ -101,6 +101,12 @@ bool LoadMeshFile(NavModelData& outData, const char* filepath, const char* fileN
         return false;
     }
 
+    U16 tempVer = 0u;
+    tempBuffer >> tempVer;
+    if (tempVer != BYTE_BUFFER_VERSION) {
+        return false;
+    }
+
     char* buf = MemoryManager_NEW char[tempBuffer.size()];
     std::memcpy(buf, reinterpret_cast<const char*>(tempBuffer.contents()), tempBuffer.size());
     char* srcEnd = buf + tempBuffer.size();
@@ -179,6 +185,8 @@ bool SaveMeshFile(const NavModelData& inData, const char* filepath, const char* 
         return false;
 
     ByteBuffer tempBuffer;
+    tempBuffer << BYTE_BUFFER_VERSION;
+
     F32* vStart = inData._vertices;
     I32* tStart = inData._triangles;
     for (U32 i = 0; i < inData.getVertCount(); i++) {

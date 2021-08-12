@@ -2,7 +2,6 @@
 
 #include "Headers/Object3D.h"
 
-#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Geometry/Material/Headers/Material.h"
@@ -272,27 +271,35 @@ void Object3D::playAnimations(const SceneGraphNode* sgn, const bool state) {
     }
 }
 
-void Object3D::saveCache(ByteBuffer& outputBuffer) const {
-    if (isPrimitive()) {
-        outputBuffer << to_U8(getObjectType());
-    } else {
-        outputBuffer << stringImpl(resourceName().c_str());
+bool Object3D::saveCache(ByteBuffer& outputBuffer) const {
+    if (SceneNode::saveCache(outputBuffer)) {
+        if (isPrimitive()) {
+            outputBuffer << to_U8(getObjectType());
+        } else {
+            outputBuffer << stringImpl(resourceName().c_str());
+        }
+        return true;
     }
 
-    SceneNode::saveCache(outputBuffer);
+    return false;
 };
 
-void Object3D::loadCache(ByteBuffer& inputBuffer) {
-    if (isPrimitive()) {
-        U8 index = 0u;
-        inputBuffer >> index;
-        assert(index == to_U8(getObjectType()));
-    } else {
-        stringImpl tempName = {};
-        inputBuffer >> tempName;
-        assert(tempName == resourceName().c_str());
+bool Object3D::loadCache(ByteBuffer& inputBuffer) {
+    if (SceneNode::loadCache(inputBuffer)) {
+        if (isPrimitive()) {
+            U8 index = 0u;
+            inputBuffer >> index;
+            assert(index == to_U8(getObjectType()));
+        } else {
+            stringImpl tempName = {};
+            inputBuffer >> tempName;
+            assert(tempName == resourceName().c_str());
+        }
+
+        return true;
     }
-    SceneNode::loadCache(inputBuffer);
+
+    return false;
 }
 
 void Object3D::saveToXML(boost::property_tree::ptree& pt) const {

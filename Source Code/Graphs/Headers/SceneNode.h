@@ -147,8 +147,8 @@ class SceneNode : public CachedResource {
 
     inline [[nodiscard]] U32 requiredComponentMask() const noexcept { return _requiredComponentMask; }
 
-    virtual void saveCache(ByteBuffer& outputBuffer) const;
-    virtual void loadCache(ByteBuffer& inputBuffer);
+    virtual bool saveCache(ByteBuffer& outputBuffer) const;
+    virtual bool loadCache(ByteBuffer& inputBuffer);
 
     virtual void saveToXML(boost::property_tree::ptree& pt) const;
     virtual void loadFromXML(const boost::property_tree::ptree& pt);

@@ -9,6 +9,7 @@
 #include "ECS/Components/Headers/BoundsComponent.h"
 
 namespace Divide {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 SceneNode::SceneNode(ResourceCache* parentCache, const size_t descriptorHash, const Str256& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 requiredComponentMask)
     : CachedResource(ResourceType::DEFAULT, descriptorHash, name, resourceName, resourceLocation),
@@ -141,12 +142,15 @@ void SceneNode::onNetworkReceive(SceneGraphNode* sgn, WorldPacket& dataIn) const
     ACKNOWLEDGE_UNUSED(dataIn);
 }
 
-void SceneNode::saveCache(ByteBuffer& outputBuffer) const {
-    ACKNOWLEDGE_UNUSED(outputBuffer);
+bool SceneNode::saveCache(ByteBuffer& outputBuffer) const {
+    outputBuffer << BYTE_BUFFER_VERSION;
+    return true;
 }
 
-void SceneNode::loadCache(ByteBuffer& inputBuffer) {
-    ACKNOWLEDGE_UNUSED(inputBuffer);
+bool SceneNode::loadCache(ByteBuffer& inputBuffer) {
+    U16 tempVer = 0u;
+    inputBuffer >> tempVer;
+    return tempVer == BYTE_BUFFER_VERSION;
 }
 
 void SceneNode::saveToXML(boost::property_tree::ptree& pt) const {

@@ -33,6 +33,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _ECS_SYSTEM_INL_
 #define _ECS_SYSTEM_INL_
 namespace Divide {
+    constexpr U16 BYTE_BUFFER_VERSION_ECS_MANAGER = 1u;
+
     template<class T, class U>
     ECSSystem<T, U>::ECSSystem(ECS::ECSEngine& engine)
         : _engine(engine)
@@ -45,15 +47,16 @@ namespace Divide {
     template<class T, class U>
     bool ECSSystem<T, U>::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
         ACKNOWLEDGE_UNUSED(sgn);
-        ACKNOWLEDGE_UNUSED(outputBuffer);
+        outputBuffer << BYTE_BUFFER_VERSION_ECS_MANAGER;
         return true;
     }
 
     template<class T, class U>
     bool ECSSystem<T, U>::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) {
         ACKNOWLEDGE_UNUSED(sgn);
-        ACKNOWLEDGE_UNUSED(inputBuffer);
-        return true;
+        U16 tempVer = 0u;
+        inputBuffer >> tempVer;
+        return tempVer == BYTE_BUFFER_VERSION_ECS_MANAGER;
     }
 
     template<class T, class U>

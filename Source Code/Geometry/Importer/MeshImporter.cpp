@@ -3,7 +3,6 @@
 #include "Headers/MeshImporter.h"
 #include "Headers/DVDConverter.h"
 
-#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Time/Headers/ProfileTimer.h"
@@ -20,6 +19,7 @@
 namespace Divide {
 
 namespace {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
     const char* g_parsedAssetGeometryExt = "DVDGeom";
     const char* g_parsedAssetAnimationExt = "DVDAnim";
 };
@@ -68,6 +68,7 @@ namespace Import {
 
         ByteBuffer tempBuffer;
         assert(_vertexBuffer != nullptr);
+        tempBuffer << BYTE_BUFFER_VERSION;
         tempBuffer << _ID("BufferEntryPoint");
         tempBuffer << _modelName;
         tempBuffer << _modelPath;
@@ -89,27 +90,31 @@ namespace Import {
     bool ImportData::loadFromFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName) {
         ByteBuffer tempBuffer;
         if (tempBuffer.loadFromFile(path.c_str(), (fileName.str() + "." + g_parsedAssetGeometryExt).c_str())) {
-            U64 signature;
-            tempBuffer >> signature;
-            if (signature != _ID("BufferEntryPoint")) {
-                return false;
-            }
-            tempBuffer >> _modelName;
-            tempBuffer >> _modelPath;
-            _vertexBuffer = context.gfx().newVB();
-            if (_vertexBuffer->deserialize(tempBuffer)) {
-                U32 subMeshCount = 0;
-                tempBuffer >> subMeshCount;
-                _subMeshData.resize(subMeshCount);
-                for (SubMeshData& subMesh : _subMeshData) {
-                    if (!subMesh.deserialize(tempBuffer)) {
-                        //handle error
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+            U16 tempVer = 0u;
+            tempBuffer >> tempVer;
+            if (tempVer == BYTE_BUFFER_VERSION) {
+                U64 signature;
+                tempBuffer >> signature;
+                if (signature != _ID("BufferEntryPoint")) {
+                    return false;
                 }
-                tempBuffer >> _hasAnimations;
-                _loadedFromFile = true;
-                return true;
+                tempBuffer >> _modelName;
+                tempBuffer >> _modelPath;
+                _vertexBuffer = context.gfx().newVB();
+                if (_vertexBuffer->deserialize(tempBuffer)) {
+                    U32 subMeshCount = 0;
+                    tempBuffer >> subMeshCount;
+                    _subMeshData.resize(subMeshCount);
+                    for (SubMeshData& subMesh : _subMeshData) {
+                        if (!subMesh.deserialize(tempBuffer)) {
+                            //handle error
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
+                    }
+                    tempBuffer >> _hasAnimations;
+                    _loadedFromFile = true;
+                    return true;
+                }
             }
         }
         return false;
@@ -256,6 +261,7 @@ namespace Import {
         if (dataIn.hasAnimations()) {
             mesh->setObjectFlag(Object3D::ObjectFlag::OBJECT_FLAG_SKINNED);
 
+            // Animation versioning is handled internally.
             ByteBuffer tempBuffer;
             animator.reset(new SceneAnimator());
             if (tempBuffer.loadFromFile((Paths::g_cacheLocation + Paths::g_geometryCacheLocation).c_str(),

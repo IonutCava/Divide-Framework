@@ -82,21 +82,27 @@ namespace Divide {
     }
 
     bool AnimationSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
-        AnimationComponent* aComp = sgn->GetComponent<AnimationComponent>();
-        if (aComp != nullptr && !aComp->saveCache(outputBuffer)) {
-            return false;
+        if (Parent::saveCache(sgn, outputBuffer)) {
+            AnimationComponent* aComp = sgn->GetComponent<AnimationComponent>();
+            if (aComp != nullptr && !aComp->saveCache(outputBuffer)) {
+                return false;
+            }
+            return true;
         }
 
-        return Parent::saveCache(sgn, outputBuffer);
+        return false;
     }
 
     bool AnimationSystem::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) {
-        AnimationComponent* aComp = sgn->GetComponent<AnimationComponent>();
-        if (aComp != nullptr && !aComp->loadCache(inputBuffer)) {
-            return false;
+        if (Parent::loadCache(sgn, inputBuffer)) {
+            AnimationComponent* aComp = sgn->GetComponent<AnimationComponent>();
+            if (aComp != nullptr && !aComp->loadCache(inputBuffer)) {
+                return false;
+            }
+            return true;
         }
 
-        return Parent::loadCache(sgn, inputBuffer);
+        return false;
     }
 
     void AnimationSystem::toggleAnimationState(const bool state) noexcept {

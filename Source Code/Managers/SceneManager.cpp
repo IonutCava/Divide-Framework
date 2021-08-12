@@ -5,7 +5,6 @@
 #include "Headers/RenderPassManager.h"
 
 #include "AI/PathFinding/Headers/DivideRecast.h"
-#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/Kernel.h"
@@ -35,6 +34,7 @@
 #include "ECS/Components/Headers/UnitComponent.h"
 
 namespace Divide {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 bool SceneManager::OnStartup(PlatformContext& context) {
     if (RenderPassCuller::OnStartup(context)) {
@@ -911,13 +911,17 @@ bool LoadSave::loadScene(Scene& activeScene) {
 
     ByteBuffer save;
     if (save.loadFromFile(path.c_str(), saveFile.c_str())) {
-        if (!Attorney::SceneLoadSave::load(activeScene, save)) {
-            //Remove the save and try the backup
-            if (deleteFile(path, saveFile) != FileError::NONE) {
-                NOP();
-            }
-            if (!isLoadFromBackup) {
-                return loadScene(activeScene);
+        U16 tempVer = 0u;
+        save >> tempVer;
+        if (tempVer == BYTE_BUFFER_VERSION) {
+            if (!Attorney::SceneLoadSave::load(activeScene, save)) {
+                //Remove the save and try the backup
+                if (deleteFile(path, saveFile) != FileError::NONE) {
+                    NOP();
+                }
+                if (!isLoadFromBackup) {
+                    return loadScene(activeScene);
+                }
             }
         }
     }
@@ -954,6 +958,7 @@ bool LoadSave::saveScene(const Scene& activeScene, const bool toCache, const DEL
         }
 
         ByteBuffer save;
+        save << BYTE_BUFFER_VERSION;
         if (Attorney::SceneLoadSave::save(activeScene, save)) {
             ret = save.dumpToFile(path.c_str(), saveFile.c_str());
             assert(ret);

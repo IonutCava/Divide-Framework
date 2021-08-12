@@ -2,7 +2,6 @@
 
 #include "Headers/TransformComponent.h"
 
-#include "Core/Headers/ByteBuffer.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {
@@ -625,33 +624,40 @@ namespace Divide {
     }
 
     bool TransformComponent::saveCache(ByteBuffer& outputBuffer) const {
-        outputBuffer << _hasChanged.load();
+        if (Parent::saveCache(outputBuffer)) {
+            outputBuffer << _hasChanged.load();
 
-        if (_hasChanged.exchange(false)) {
-            SharedLock<SharedMutex> r_lock(_lock);
-            const TransformValues values = _transformInterface.getValues();
-            
-            outputBuffer << values._translation;
-            outputBuffer << values._scale;
-            outputBuffer << values._orientation;
+            if (_hasChanged.exchange(false)) {
+                SharedLock<SharedMutex> r_lock(_lock);
+                const TransformValues values = _transformInterface.getValues();
+
+                outputBuffer << values._translation;
+                outputBuffer << values._scale;
+                outputBuffer << values._orientation;
+            }
+            return true;
         }
 
-        return Parent::saveCache(outputBuffer);
+        return false;
     }
 
     bool TransformComponent::loadCache(ByteBuffer& inputBuffer) {
-        bool hasChanged = false;
-        inputBuffer >> hasChanged;
+        if (Parent::loadCache(inputBuffer)) {
+            bool hasChanged = false;
+            inputBuffer >> hasChanged;
 
-        if (hasChanged) {
-            TransformValues valuesIn = {};
-            inputBuffer >> valuesIn._translation;
-            inputBuffer >> valuesIn._scale;
-            inputBuffer >> valuesIn._orientation;
+            if (hasChanged) {
+                TransformValues valuesIn = {};
+                inputBuffer >> valuesIn._translation;
+                inputBuffer >> valuesIn._scale;
+                inputBuffer >> valuesIn._orientation;
 
-            setTransform(valuesIn);
+                setTransform(valuesIn);
+            }
+            return true;
         }
 
-        return Parent::loadCache(inputBuffer);
+        return false;
+        
     }
 } //namespace

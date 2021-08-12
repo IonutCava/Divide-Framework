@@ -20,6 +20,8 @@
 #include "ECS/Components/Headers/SelectionComponent.h"
 #include "ECS/Components/Headers/UnitComponent.h"
 
+#include "Utility/Headers/Localization.h"
+
 namespace Divide {
 
 #define STUB_SYSTEM(Name) \
@@ -78,45 +80,37 @@ ECSManager::ECSManager(PlatformContext& context, ECS::ECSEngine& engine)
 
 bool ECSManager::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) const {
     TransformSystem* tSys = getSystem<TransformSystem>();
-    if (tSys != nullptr) {
-        if (!tSys->saveCache(sgn, outputBuffer)) {
-            return false;
-        }
+    if (tSys != nullptr && !tSys->saveCache(sgn, outputBuffer)) {
+        Console::errorfn(Locale::Get(_ID("ECS_SAVE_ERROR")), "Transform");
     }
+    
     AnimationSystem* aSys = getSystem<AnimationSystem>();
-    if (aSys != nullptr) {
-        if (!aSys->saveCache(sgn, outputBuffer)) {
-            return false;
-        }
+    if (aSys != nullptr && !aSys->saveCache(sgn, outputBuffer)) {
+        Console::errorfn(Locale::Get(_ID("ECS_SAVE_ERROR")), "Animation");
     }
+
     RenderingSystem* rSys = getSystem<RenderingSystem>();
-    if (rSys != nullptr) {
-        if (!rSys->saveCache(sgn, outputBuffer)) {
-            return false;
-        }
+    if (rSys != nullptr && !rSys->saveCache(sgn, outputBuffer)) {
+        Console::errorfn(Locale::Get(_ID("ECS_SAVE_ERROR")), "Rendering");
     }
+
     return true;
 }
 
 bool ECSManager::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) const {
     TransformSystem* tSys = getSystem<TransformSystem>();
-    if (tSys != nullptr) {
-        if (!tSys->loadCache(sgn, inputBuffer)) {
-            return false;
-        }
+    if (tSys != nullptr && !tSys->loadCache(sgn, inputBuffer)) {
+        Console::errorfn(Locale::Get(_ID("ECS_LOAD_ERROR")), "Transform");
     }
     AnimationSystem* aSys = getSystem<AnimationSystem>();
-    if (aSys != nullptr) {
-        if (!aSys->loadCache(sgn, inputBuffer)) {
-            return false;
-        }
+    if (aSys != nullptr && !aSys->loadCache(sgn, inputBuffer)) {
+        Console::errorfn(Locale::Get(_ID("ECS_LOAD_ERROR")), "Animation");
     }
     RenderingSystem* rSys = getSystem<RenderingSystem>();
-    if (rSys != nullptr) {
-        if (!rSys->loadCache(sgn, inputBuffer)) {
-            return false;
-        }
+    if (rSys != nullptr && !rSys->loadCache(sgn, inputBuffer)) {
+        Console::errorfn(Locale::Get(_ID("ECS_LOAD_ERROR")), "Rendering");
     }
+
     return true;
 }
 

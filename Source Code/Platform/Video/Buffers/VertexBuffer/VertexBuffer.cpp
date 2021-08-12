@@ -2,10 +2,10 @@
 
 #include "Headers/VertexBuffer.h"
 
-#include "Core/Headers/ByteBuffer.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
 namespace Divide {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 vectorEASTL<AttribFlags> VertexBuffer::_attribMasks;
 
@@ -136,23 +136,28 @@ void VertexBuffer::fromBuffer(VertexBuffer& other) {
 
 bool VertexBuffer::deserialize(ByteBuffer& dataIn) {
     assert(!dataIn.empty());
-    U64 idString;
-    dataIn >> idString;
-    if (idString == _ID("VB")) {
-        reset();
-        U32 format;
+    U16 tempVer = 0u;
+    dataIn >> tempVer;
 
-        dataIn >> _staticBuffer;
-        dataIn >> _keepDataInMemory;
-        dataIn >> format;
-        _format = static_cast<GFXDataFormat>(format);
-        dataIn >> _partitions;
-        dataIn >> _indices;
-        dataIn >> _data;
-        dataIn >> _attribDirty;
-        dataIn >> _primitiveRestartEnabled;
+    if (tempVer == BYTE_BUFFER_VERSION) {
+        U64 idString;
+        dataIn >> idString;
+        if (idString == _ID("VB")) {
+            reset();
+            U32 format;
 
-        return true;
+            dataIn >> _staticBuffer;
+            dataIn >> _keepDataInMemory;
+            dataIn >> format;
+            _format = static_cast<GFXDataFormat>(format);
+            dataIn >> _partitions;
+            dataIn >> _indices;
+            dataIn >> _data;
+            dataIn >> _attribDirty;
+            dataIn >> _primitiveRestartEnabled;
+
+            return true;
+        }
     }
 
     return false;
@@ -160,6 +165,7 @@ bool VertexBuffer::deserialize(ByteBuffer& dataIn) {
 
 bool VertexBuffer::serialize(ByteBuffer& dataOut) const {
     if (!_data.empty()) {
+        dataOut << BYTE_BUFFER_VERSION;
         dataOut << _ID("VB");
         dataOut << _staticBuffer;
         dataOut << _keepDataInMemory;

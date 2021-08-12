@@ -3,7 +3,6 @@
 #include "Headers/Vegetation.h"
 
 #include "Core/Headers/Kernel.h"
-#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/EngineTaskPool.h"
@@ -29,6 +28,8 @@
 namespace Divide {
 
 namespace {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+
     constexpr U32 WORK_GROUP_SIZE = 64;
     constexpr I16 g_maxRadiusSteps = 512;
     constexpr F32 g_ArBase = 1.0f; // Starting radius of circle A
@@ -863,8 +864,14 @@ void Vegetation::computeVegetationTransforms(bool treeData) {
 
     ByteBuffer chunkCache;
     if (_context.context().config().debug.useVegetationCache && chunkCache.loadFromFile((Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), cacheFileName.c_str())) {
-        container.resize(chunkCache.read<size_t>());
-        chunkCache.read(reinterpret_cast<Byte*>(container.data()), sizeof(VegetationData) * container.size());
+        U16 tempVer = 0u;
+        chunkCache >> tempVer;
+        if (tempVer == BYTE_BUFFER_VERSION) {
+            container.resize(chunkCache.read<size_t>());
+            chunkCache.read(reinterpret_cast<Byte*>(container.data()), sizeof(VegetationData) * container.size());
+        } else {
+            chunkCache.clear();
+        }
     } else {
 
         std::discrete_distribution<> distribution[] = {
@@ -956,6 +963,7 @@ void Vegetation::computeVegetationTransforms(bool treeData) {
         }
 
         container.shrink_to_fit();
+        chunkCache << BYTE_BUFFER_VERSION;
         chunkCache << container.size();
         chunkCache.append(container.data(), container.size());
         if (!chunkCache.dumpToFile((Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), cacheFileName.c_str())) {

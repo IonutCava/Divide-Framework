@@ -4,7 +4,6 @@
 
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Headers/Application.h"
-#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/ParamHandler.h"
@@ -54,6 +53,7 @@
 namespace Divide {
 
 namespace {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
     constexpr const char* const g_defaultPlayerName = "Player_%d";
 }
 
@@ -1883,6 +1883,7 @@ void Scene::setCurrentAtmosphere(const Sky::Atmosphere& atmosphere) const noexce
 }
 
 bool Scene::save(ByteBuffer& outputBuffer) const {
+    outputBuffer << BYTE_BUFFER_VERSION;
     const U8 playerCount = to_U8(_scenePlayers.size());
     outputBuffer << playerCount;
     for (U8 i = 0; i < playerCount; ++i) {
@@ -1896,21 +1897,27 @@ bool Scene::save(ByteBuffer& outputBuffer) const {
 bool Scene::load(ByteBuffer& inputBuffer) {
 
     if (!inputBuffer.empty()) {
-        const U8 currentPlayerCount = to_U8(_scenePlayers.size());
+        U16 tempVer = 0u;
+        inputBuffer >> tempVer;
+        if (tempVer == BYTE_BUFFER_VERSION) {
+            const U8 currentPlayerCount = to_U8(_scenePlayers.size());
 
-        vec3<F32> camPos;
-        Quaternion<F32> camOrientation;
+            vec3<F32> camPos;
+            Quaternion<F32> camOrientation;
 
-        U8 currentPlayerIndex = 0;
-        U8 previousPlayerCount = 0;
-        inputBuffer >> previousPlayerCount;
-        for (U8 i = 0; i < previousPlayerCount; ++i) {
-            inputBuffer >> currentPlayerIndex >> camPos >> camOrientation;
-            if (currentPlayerIndex < currentPlayerCount) {
-                Camera* cam = _scenePlayers[currentPlayerIndex]->camera();
-                cam->setEye(camPos);
-                cam->setRotation(camOrientation);
+            U8 currentPlayerIndex = 0;
+            U8 previousPlayerCount = 0;
+            inputBuffer >> previousPlayerCount;
+            for (U8 i = 0; i < previousPlayerCount; ++i) {
+                inputBuffer >> currentPlayerIndex >> camPos >> camOrientation;
+                if (currentPlayerIndex < currentPlayerCount) {
+                    Camera* cam = _scenePlayers[currentPlayerIndex]->camera();
+                    cam->setEye(camPos);
+                    cam->setRotation(camOrientation);
+                }
             }
+        } else {
+            return false;
         }
     }
 

@@ -137,9 +137,6 @@ class SceneGraph final : NonCopyable,
     bool frameStarted(const FrameEvent& evt) override;
     bool frameEnded(const FrameEvent& evt) override;
 
-    bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) const;
-    bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer);
-
    private:
     ECS::ECSEngine _ecsEngine;
     eastl::unique_ptr<ECSManager> _ecsManager;
