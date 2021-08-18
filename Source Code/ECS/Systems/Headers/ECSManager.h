@@ -49,6 +49,7 @@ namespace Divide {
             [[nodiscard]] T* getSystem() const {
                 return _ecsEngine.GetSystemManager()->GetSystem<T>();
             }
+
         protected:
             ECS::ECSEngine& _ecsEngine;
     };

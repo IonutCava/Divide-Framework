@@ -625,15 +625,16 @@ namespace Divide {
 
     bool TransformComponent::saveCache(ByteBuffer& outputBuffer) const {
         if (Parent::saveCache(outputBuffer)) {
-            outputBuffer << _hasChanged.load();
-
             if (_hasChanged.exchange(false)) {
                 SharedLock<SharedMutex> r_lock(_lock);
                 const TransformValues values = _transformInterface.getValues();
 
+                outputBuffer << true;
                 outputBuffer << values._translation;
                 outputBuffer << values._scale;
                 outputBuffer << values._orientation;
+            } else {
+                outputBuffer << false;
             }
             return true;
         }
@@ -643,10 +644,7 @@ namespace Divide {
 
     bool TransformComponent::loadCache(ByteBuffer& inputBuffer) {
         if (Parent::loadCache(inputBuffer)) {
-            bool hasChanged = false;
-            inputBuffer >> hasChanged;
-
-            if (hasChanged) {
+            if (inputBuffer.read<bool>()) {
                 TransformValues valuesIn = {};
                 inputBuffer >> valuesIn._translation;
                 inputBuffer >> valuesIn._scale;
@@ -658,6 +656,5 @@ namespace Divide {
         }
 
         return false;
-        
     }
 } //namespace

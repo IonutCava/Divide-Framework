@@ -283,13 +283,6 @@ namespace Divide {
         };
 
         class EditorComponentSceneGraphNode {
-            static bool saveCache(const EditorComponent& comp, ByteBuffer& outputBuffer) {
-                return comp.saveCache(outputBuffer);
-            }
-            static bool loadCache(EditorComponent& comp, ByteBuffer& inputBuffer) {
-                return comp.loadCache(inputBuffer);
-            }
-
             static void saveToXML(const EditorComponent& comp, boost::property_tree::ptree& pt) {
                 comp.saveToXML(pt);
             }

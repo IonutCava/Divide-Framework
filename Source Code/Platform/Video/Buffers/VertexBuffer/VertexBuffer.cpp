@@ -136,7 +136,8 @@ void VertexBuffer::fromBuffer(VertexBuffer& other) {
 
 bool VertexBuffer::deserialize(ByteBuffer& dataIn) {
     assert(!dataIn.empty());
-    U16 tempVer = 0u;
+
+    auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
     dataIn >> tempVer;
 
     if (tempVer == BYTE_BUFFER_VERSION) {

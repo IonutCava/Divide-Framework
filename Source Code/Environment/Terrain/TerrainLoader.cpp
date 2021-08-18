@@ -655,7 +655,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
 
     ByteBuffer terrainCache;
     if (terrainCache.loadFromFile((Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), (terrainRawFile + ".cache").c_str())) {
-        U16 tempVer = 0u;
+        auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         terrainCache >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {
             terrainCache >> terrain->_physicsVerts;

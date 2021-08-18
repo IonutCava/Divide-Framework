@@ -16,7 +16,7 @@ namespace Divide {
 
 namespace {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
-    constexpr I8 g_cacheMarkerByteValue = -126;
+    constexpr U32 g_cacheMarkerByteValue[] = { 0xDEADBEEF, 0xBADDCAFE };
     constexpr U32 g_nodesPerPartition = 32u;
 
     [[nodiscard]] bool IsTransformNode(const SceneNodeType nodeType, const ObjectType objType) noexcept {
@@ -369,28 +369,36 @@ bool SceneGraph::saveCache(ByteBuffer& outputBuffer) const {
         if (!Attorney::SceneGraphNodeSceneGraph::saveCache(sgn, outputBuffer)) {
             NOP();
         }
-        // Data may be bad, so add markers to be able to just jump over the entire node data instead of attempting partial loads
-        outputBuffer << g_cacheMarkerByteValue;
-        outputBuffer << g_cacheMarkerByteValue;
 
-        return sgn->forEachChild([this, &saveNodes, &outputBuffer](SceneGraphNode* child, I32 /*idx*/) {
+        // Data may be bad, so add markers to be able to just jump over the entire node data instead of attempting partial loads
+        outputBuffer << g_cacheMarkerByteValue[0];
+        outputBuffer << g_cacheMarkerByteValue[1];
+
+        sgn->forEachChild([this, &saveNodes, &outputBuffer](SceneGraphNode* child, I32 /*idx*/) {
             return saveNodes(child, outputBuffer);
         });
+
+        return true;
     };
 
     outputBuffer << BYTE_BUFFER_VERSION;
-    outputBuffer << _ID(_root->name().c_str());
 
-    return saveNodes(_root, outputBuffer);
+    if (saveNodes(_root, outputBuffer)) {
+        outputBuffer << _ID(_root->name().c_str());
+        return true;
+    }
+
+    return false;
 }
 
 bool SceneGraph::loadCache(ByteBuffer& inputBuffer) {
-    U16 tempVer = 0u;
+    auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
     inputBuffer >> tempVer;
     if (tempVer == BYTE_BUFFER_VERSION) {
         const U64 rootID = _ID(_root->name().c_str());
+
         U64 nodeID = 0u;
-        I8 marker1 = -1, marker2 = -1;
+        U32 tempMarker = 0u;
 
         bool skipRoot = true;
         bool missingData = false;
@@ -403,21 +411,25 @@ bool SceneGraph::loadCache(ByteBuffer& inputBuffer) {
             SceneGraphNode* node = findNode(nodeID, false);
 
             if (node != nullptr && Attorney::SceneGraphNodeSceneGraph::loadCache(node, inputBuffer)) {
-                inputBuffer >> marker1;
-                inputBuffer >> marker2;
-                assert(marker1 == g_cacheMarkerByteValue && marker1 == marker2);
+                inputBuffer >> tempMarker;
+                assert(tempMarker == g_cacheMarkerByteValue[0]);
+                inputBuffer >> tempMarker;
+                assert(tempMarker == g_cacheMarkerByteValue[1]);
             } else {
                 missingData = true;
-                while(true) {
-                    inputBuffer >> marker1;
-                    if (marker1 == g_cacheMarkerByteValue) {
-                        inputBuffer >> marker2;
-                        if (marker2 == g_cacheMarkerByteValue) {
-                            break;
-                        }
+
+                do {
+                    while (!inputBuffer.empty() && tempMarker != g_cacheMarkerByteValue[0]) {
+                        inputBuffer >> tempMarker;
                     }
-                }
+                    assert(tempMarker == g_cacheMarkerByteValue[0]);
+                    inputBuffer >> tempMarker;
+                    if (tempMarker == g_cacheMarkerByteValue[1]) {
+                        break;
+                    }
+                } while (!inputBuffer.empty());
             }
+
             if (nodeID == rootID && skipRoot) {
                 skipRoot = false;
                 nodeID = 0u;

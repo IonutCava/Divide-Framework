@@ -69,7 +69,7 @@ struct RenderTargetID {
     }
 };
 
-constexpr I16 INVALID_COLOUR_LAYER = std::numeric_limits<I16>::min();
+constexpr I16 INVALID_COLOUR_LAYER = std::numeric_limits<I16>::lowest();
 
 struct BlitIndex {
     I16 _layer = INVALID_COLOUR_LAYER;

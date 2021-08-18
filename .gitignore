@@ -1000,3 +1000,6 @@ VCData/VisualStudioProjects/Profile_ReCast/
 *.pch
 *.idb
 Intermediate
+/Build
+/Source Code/Libs
+*.ilk

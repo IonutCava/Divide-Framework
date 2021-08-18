@@ -582,11 +582,11 @@ void Kernel::warmup() {
     onLoop();
     _platformContext.paramHandler().setParam(_ID("freezeLoopTime"), false);
 
-    Attorney::SceneManagerKernel::initPostLoadState(_sceneManager);
-
     _timingData.update(Time::App::ElapsedMicroseconds());
 
     stopSplashScreen();
+
+    Attorney::SceneManagerKernel::initPostLoadState(_sceneManager);
 }
 
 ErrorCode Kernel::initialize(const stringImpl& entryPoint) {

@@ -41,6 +41,7 @@ namespace Divide {
         , _compManager(engine.GetComponentManager())
         , _container(_compManager->GetComponentContainer<U>())
     {
+        _serializer._parent = this;
         _componentCache.reserve(Config::MAX_VISIBLE_NODES);
     }
 
@@ -54,7 +55,7 @@ namespace Divide {
     template<class T, class U>
     bool ECSSystem<T, U>::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) {
         ACKNOWLEDGE_UNUSED(sgn);
-        U16 tempVer = 0u;
+        auto tempVer = decltype(BYTE_BUFFER_VERSION_ECS_MANAGER){0};
         inputBuffer >> tempVer;
         return tempVer == BYTE_BUFFER_VERSION_ECS_MANAGER;
     }
