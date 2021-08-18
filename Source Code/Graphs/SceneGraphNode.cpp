@@ -719,36 +719,17 @@ void SceneGraphNode::invalidateRelationshipCache(SceneGraphNode* source) {
 bool SceneGraphNode::saveCache(ByteBuffer& outputBuffer) const {
     outputBuffer << BYTE_BUFFER_VERSION;
 
-    if (getNode().saveCache(outputBuffer)) {
-
-        for (EditorComponent* editorComponent : Hacks._editorComponents) {
-            if (!Attorney::EditorComponentSceneGraphNode::saveCache(*editorComponent, outputBuffer)) {
-                return false;
-            }
-        }
-
-        return _sceneGraph->GetECSManager().saveCache(this, outputBuffer);
-    }
-
-    return false;
+    return getNode().saveCache(outputBuffer) &&
+           _sceneGraph->GetECSManager().saveCache(this, outputBuffer);
 }
 
 bool SceneGraphNode::loadCache(ByteBuffer& inputBuffer) {
-    U16 tempVer = 0u;
+    auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
     inputBuffer >> tempVer;
-    if (tempVer == BYTE_BUFFER_VERSION) {
-        if (getNode().loadCache(inputBuffer)) {
-            for (EditorComponent* editorComponent : Hacks._editorComponents) {
-                if (!Attorney::EditorComponentSceneGraphNode::loadCache(*editorComponent, inputBuffer)) {
-                    return false;
-                }
-            }
 
-            return _sceneGraph->GetECSManager().loadCache(this, inputBuffer);
-        }
-    }
-
-    return false;
+    return tempVer == BYTE_BUFFER_VERSION &&
+           getNode().loadCache(inputBuffer) &&
+           _sceneGraph->GetECSManager().loadCache(this, inputBuffer);
 }
 
 void SceneGraphNode::saveToXML(const Str256& sceneLocation, DELEGATE<void, std::string_view> msgCallback) const {

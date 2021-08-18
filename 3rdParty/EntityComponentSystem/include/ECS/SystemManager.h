@@ -72,10 +72,20 @@ namespace ECS
         void PostUpdate(f32 dt_ms);
 		void OnFrameStart();
 		void OnFrameEnd();
+
 	public:
 
 		SystemManager();
 		~SystemManager();
+
+		template<class Predicate>
+		void ForEachSystem(Predicate&& pred)
+		{
+			for (ISystem* system : this->m_SystemWorkOrder)
+			{
+				pred(system);
+			}
+		}
 
 		///-------------------------------------------------------------------------------------------------
 		/// Fn:	template<class T, class... ARGS> T* SystemManager::AddSystem(ARGS&&... systemArgs)

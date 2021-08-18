@@ -1897,7 +1897,7 @@ bool Scene::save(ByteBuffer& outputBuffer) const {
 bool Scene::load(ByteBuffer& inputBuffer) {
 
     if (!inputBuffer.empty()) {
-        U16 tempVer = 0u;
+        auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         inputBuffer >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {
             const U8 currentPlayerCount = to_U8(_scenePlayers.size());

@@ -36,10 +36,30 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
     class ByteBuffer;
     class SceneGraphNode;
+    template<class T, class U>
+    class ECSSystem;
+
+    struct ECSSerializerProxy : ECS::ISystemSerializer {
+        virtual bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) = 0;
+        virtual bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) = 0;
+    };
+
+    template<class T, class U>
+    struct ECSSerializer : ECSSerializerProxy {
+        bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) override {
+            return _parent->saveCache(sgn, outputBuffer);
+        }
+        bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) override {
+            return _parent->loadCache(sgn, inputBuffer);
+        }
+
+        ECSSystem<T, U>* _parent = nullptr;
+    };
 
     template<class T, class U>
     class ECSSystem : public ECS::System<T> {
     public:
+
         explicit ECSSystem(ECS::ECSEngine& engine);
         virtual ~ECSSystem() = default;
 
@@ -52,12 +72,17 @@ namespace Divide {
         void OnFrameStart() override;
         void OnFrameEnd() override;
 
+        [[nodiscard]] ECS::ISystemSerializer& GetSerializer() override { return _serializer; };
+        [[nodiscard]] const ECS::ISystemSerializer& GetSerializer() const override { return _serializer; };
+
     protected:
         ECS::ECSEngine& _engine;
         ECS::ComponentManager* _compManager = nullptr;
         ECS::ComponentManager::ComponentContainer<U>* _container = nullptr;
 
+        ECSSerializer<T, U> _serializer;
         vectorEASTLFast<U*> _componentCache;
+
     };
 }
 

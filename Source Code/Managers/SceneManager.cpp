@@ -13,6 +13,7 @@
 #include "Core/Headers/StringHelper.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
+#include "Editor/Headers/Editor.h"
 #include "GUI/Headers/GUI.h"
 #include "GUI/Headers/GUIButton.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
@@ -276,6 +277,15 @@ vectorEASTL<Str256> SceneManager::sceneNameList(const bool sorted) const {
 
 void SceneManager::initPostLoadState() noexcept {
     _processInput = true;
+    if_constexpr(Config::Build::IS_EDITOR_BUILD) {
+        static_assert(Config::Build::ENABLE_EDITOR);
+        DisplayWindow& window = _platformContext->mainWindow();
+        if (window.type() == WindowType::WINDOW) {
+            window.maximized(true);
+        }
+
+        _platformContext->editor().toggle(true);
+    }
 }
 
 void SceneManager::onSizeChange(const SizeChangeParams& params) {
@@ -911,7 +921,7 @@ bool LoadSave::loadScene(Scene& activeScene) {
 
     ByteBuffer save;
     if (save.loadFromFile(path.c_str(), saveFile.c_str())) {
-        U16 tempVer = 0u;
+        auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         save >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {
             if (!Attorney::SceneLoadSave::load(activeScene, save)) {

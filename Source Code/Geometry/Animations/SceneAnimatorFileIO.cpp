@@ -71,7 +71,8 @@ void AnimEvaluator::save(const AnimEvaluator& evaluator, ByteBuffer& dataOut) {
 
 void AnimEvaluator::load(AnimEvaluator& evaluator, ByteBuffer& dataIn) {
     Console::d_printfn(Locale::Get(_ID("CREATE_ANIMATION_BEGIN")), evaluator._name.c_str());
-    U16 tempVer = 0u;
+
+    auto tempVer = decltype(BYTE_BUFFER_VERSION_EVALUATOR){0};
     dataIn >> tempVer;
     if (tempVer == BYTE_BUFFER_VERSION_EVALUATOR) {
         // the animation name
@@ -168,7 +169,7 @@ void SceneAnimator::load(PlatformContext& context, ByteBuffer& dataIn) {
 
     _skeleton = loadSkeleton(dataIn, nullptr);
 
-    U16 tempVer = 0u;
+    auto tempVer = decltype(BYTE_BUFFER_VERSION_ANIMATOR){0};
     dataIn >> tempVer;
     if (tempVer == BYTE_BUFFER_VERSION_ANIMATOR) {
 
@@ -219,7 +220,8 @@ void SceneAnimator::saveSkeleton(ByteBuffer& dataOut, Bone* parent) const {
 }
 
 Bone* SceneAnimator::loadSkeleton(ByteBuffer& dataIn, Bone* parent) {
-    U16 tempVer = 0u;
+
+    auto tempVer = decltype(BYTE_BUFFER_VERSION_SKELETON){0};
     dataIn >> tempVer;
     if (tempVer == BYTE_BUFFER_VERSION_SKELETON) {
 

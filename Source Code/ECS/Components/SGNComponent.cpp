@@ -7,7 +7,7 @@
 #include "ECS/Components/Headers/RenderingComponent.h"
 
 namespace Divide {
-    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+    constexpr U16 BYTE_BUFFER_VERSION = 17805u;
 
     SGNComponent::SGNComponent(Key key, const ComponentType type, SceneGraphNode* parentSGN, PlatformContext& context)
         : PlatformContextComponent(context),
@@ -21,27 +21,35 @@ namespace Divide {
     }
 
     bool SGNComponent::saveCache(ByteBuffer& outputBuffer) const {
-        outputBuffer << BYTE_BUFFER_VERSION;
-        outputBuffer << uniqueID();
-        return true;
+        if (_editorComponent.saveCache(outputBuffer)) {
+            outputBuffer << BYTE_BUFFER_VERSION;
+            outputBuffer << uniqueID();
+            return true;
+        }
+
+        return false;
     }
 
     bool SGNComponent::loadCache(ByteBuffer& inputBuffer) {
-        U16 tempVer = 0u;
-        inputBuffer >> tempVer;
-        if (tempVer != BYTE_BUFFER_VERSION) {
-            // Older version
-            return false;
+        if (_editorComponent.loadCache(inputBuffer)) {
+            auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
+            inputBuffer >> tempVer;
+            if (tempVer != BYTE_BUFFER_VERSION) {
+                // Older version
+                return false;
+            }
+
+            U64 tempID = 0u;
+            inputBuffer >> tempID;
+            if (tempID != uniqueID()) {
+                // corrupt save
+                return false;
+            }
+
+            return true;
         }
 
-        U64 tempID = 0u;
-        inputBuffer >> tempID;
-        if (tempID != uniqueID()) {
-            // corrupt save
-            return false;
-        }
-
-        return true;
+        return false;
     }
 
     void SGNComponent::saveToXML(boost::property_tree::ptree& pt) const {

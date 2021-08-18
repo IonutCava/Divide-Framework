@@ -95,13 +95,13 @@ I32 ParseFace(char* row, I32* data, const I32 n, const I32 vcnt) {
 
 bool LoadMeshFile(NavModelData& outData, const char* filepath, const char* fileName) {
     STUBBED("ToDo: Rework load/save to properly use a ByteBuffer instead of this const char* hackery. -Ionut");
-    
+
     ByteBuffer tempBuffer;
     if (!tempBuffer.loadFromFile(filepath, fileName)) {
         return false;
     }
 
-    U16 tempVer = 0u;
+    auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
     tempBuffer >> tempVer;
     if (tempVer != BYTE_BUFFER_VERSION) {
         return false;

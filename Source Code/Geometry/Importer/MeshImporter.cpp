@@ -90,7 +90,8 @@ namespace Import {
     bool ImportData::loadFromFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName) {
         ByteBuffer tempBuffer;
         if (tempBuffer.loadFromFile(path.c_str(), (fileName.str() + "." + g_parsedAssetGeometryExt).c_str())) {
-            U16 tempVer = 0u;
+
+            auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
             tempBuffer >> tempVer;
             if (tempVer == BYTE_BUFFER_VERSION) {
                 U64 signature;

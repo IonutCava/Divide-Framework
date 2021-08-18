@@ -56,7 +56,14 @@ namespace Build {
 
     // Set IS_SHIPPING_BUILD to true to disable non-required functionality for shipped games: editors, debug code, etc
     constexpr bool IS_SHIPPING_BUILD = IS_RELEASE_BUILD && false;
+#if defined(_START_IN_EDITOR)
+    constexpr bool IS_EDITOR_BUILD = true;
+    constexpr bool ENABLE_EDITOR = true;
+#else //_START_IN_EDITOR
+    constexpr bool IS_EDITOR_BUILD = false;
     constexpr bool ENABLE_EDITOR = !IS_SHIPPING_BUILD;
+#endif //_START_IN_EDITOR
+
 } //namespace Build
 
 namespace Assert {

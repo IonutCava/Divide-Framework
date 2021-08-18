@@ -44,6 +44,10 @@ namespace ECS
 
 	struct Data;
 
+	struct ISystemSerializer {
+
+	};
+
 	class ECS_API ISystem
 	{
 		friend class SystemManager;
@@ -79,6 +83,9 @@ namespace ECS
 		virtual void PostUpdate(f32 dt) = 0;
 		virtual void OnFrameStart() = 0;
 		virtual void OnFrameEnd() = 0;
+
+		virtual ISystemSerializer& GetSerializer() = 0;
+		virtual const ISystemSerializer& GetSerializer() const = 0;
 	};
 }
 

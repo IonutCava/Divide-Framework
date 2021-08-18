@@ -864,7 +864,7 @@ void Vegetation::computeVegetationTransforms(bool treeData) {
 
     ByteBuffer chunkCache;
     if (_context.context().config().debug.useVegetationCache && chunkCache.loadFromFile((Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), cacheFileName.c_str())) {
-        U16 tempVer = 0u;
+        auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         chunkCache >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {
             container.resize(chunkCache.read<size_t>());

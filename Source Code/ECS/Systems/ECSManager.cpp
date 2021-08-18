@@ -23,6 +23,7 @@
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 #define STUB_SYSTEM(Name) \
     class Name##System final : public ECSSystem<Name##System, Name##Component> {\
@@ -47,7 +48,6 @@ ECSManager::ECSManager(PlatformContext& context, ECS::ECSEngine& engine)
     auto* PlSys = _ecsEngine.GetSystemManager()->AddSystem<PointLightSystem>(_ecsEngine, _context);
     auto* SlSys = _ecsEngine.GetSystemManager()->AddSystem<SpotLightSystem>(_ecsEngine, _context);
     auto* DlSys = _ecsEngine.GetSystemManager()->AddSystem<DirectionalLightSystem>(_ecsEngine, _context);
-
     auto* IKSys = _ecsEngine.GetSystemManager()->AddSystem<IKSystem>(_ecsEngine);
     auto* NavSys = _ecsEngine.GetSystemManager()->AddSystem<NavigationSystem>(_ecsEngine, _context);
     auto* NetSys = _ecsEngine.GetSystemManager()->AddSystem<NetworkingSystem>(_ecsEngine);
@@ -79,39 +79,42 @@ ECSManager::ECSManager(PlatformContext& context, ECS::ECSEngine& engine)
 }
 
 bool ECSManager::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) const {
-    TransformSystem* tSys = getSystem<TransformSystem>();
-    if (tSys != nullptr && !tSys->saveCache(sgn, outputBuffer)) {
-        Console::errorfn(Locale::Get(_ID("ECS_SAVE_ERROR")), "Transform");
-    }
-    
-    AnimationSystem* aSys = getSystem<AnimationSystem>();
-    if (aSys != nullptr && !aSys->saveCache(sgn, outputBuffer)) {
-        Console::errorfn(Locale::Get(_ID("ECS_SAVE_ERROR")), "Animation");
-    }
+    outputBuffer << BYTE_BUFFER_VERSION;
 
-    RenderingSystem* rSys = getSystem<RenderingSystem>();
-    if (rSys != nullptr && !rSys->saveCache(sgn, outputBuffer)) {
-        Console::errorfn(Locale::Get(_ID("ECS_SAVE_ERROR")), "Rendering");
-    }
+    const auto saveSystemCache = [sgn, &outputBuffer](ECS::ISystem* system) {
+        ECSSerializerProxy& serializer = static_cast<ECSSerializerProxy&>(system->GetSerializer());
+        if (!serializer.saveCache(sgn, outputBuffer)) {
+            Console::errorfn(Locale::Get(_ID("ECS_SAVE_ERROR")), system->GetSystemTypeName());
+            return false;
+        }
 
+        return true;
+    };
+
+
+    _ecsEngine.GetSystemManager()->ForEachSystem(saveSystemCache);
     return true;
 }
 
 bool ECSManager::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) const {
-    TransformSystem* tSys = getSystem<TransformSystem>();
-    if (tSys != nullptr && !tSys->loadCache(sgn, inputBuffer)) {
-        Console::errorfn(Locale::Get(_ID("ECS_LOAD_ERROR")), "Transform");
-    }
-    AnimationSystem* aSys = getSystem<AnimationSystem>();
-    if (aSys != nullptr && !aSys->loadCache(sgn, inputBuffer)) {
-        Console::errorfn(Locale::Get(_ID("ECS_LOAD_ERROR")), "Animation");
-    }
-    RenderingSystem* rSys = getSystem<RenderingSystem>();
-    if (rSys != nullptr && !rSys->loadCache(sgn, inputBuffer)) {
-        Console::errorfn(Locale::Get(_ID("ECS_LOAD_ERROR")), "Rendering");
+    auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
+    inputBuffer >> tempVer;
+    if (tempVer == BYTE_BUFFER_VERSION) {
+        const auto loadSystemCache = [sgn, &inputBuffer](ECS::ISystem* system) {
+            ECSSerializerProxy& serializer = static_cast<ECSSerializerProxy&>(system->GetSerializer());
+            if (!serializer.loadCache(sgn, inputBuffer)) {
+                Console::errorfn(Locale::Get(_ID("ECS_LOAD_ERROR")), system->GetSystemTypeName());
+                return false;
+            }
+
+            return true;
+        };
+
+        _ecsEngine.GetSystemManager()->ForEachSystem(loadSystemCache);
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 } //namespace Divide

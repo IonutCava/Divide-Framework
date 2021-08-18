@@ -1,8 +1,20 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug-Editor|x64">
+      <Configuration>Debug-Editor</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-Editor|x64">
+      <Configuration>Profile-Editor</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-Editor|x64">
+      <Configuration>Release-Editor</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
@@ -29,6 +41,13 @@
     <PreferredToolArchitecture>x64</PreferredToolArchitecture>
     <EnableASAN>false</EnableASAN>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+    <EnableASAN>false</EnableASAN>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
@@ -37,7 +56,23 @@
     <EnableASAN>false</EnableASAN>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+    <EnableASAN>false</EnableASAN>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <EnableASAN>false</EnableASAN>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v142</PlatformToolset>
@@ -55,19 +90,37 @@
   <PropertyGroup>
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectName)_d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">$(ProjectName)_d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">.lib</TargetExt>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectName)</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">$(ProjectName)</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">.lib</TargetExt>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(ProjectName)_p</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">$(ProjectName)_p</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">.lib</TargetExt>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <EnableMicrosoftCodeAnalysis>false</EnableMicrosoftCodeAnalysis>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
@@ -79,13 +132,82 @@
     <EnableMicrosoftCodeAnalysis>false</EnableMicrosoftCodeAnalysis>
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
+    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
+    <EnableMicrosoftCodeAnalysis>false</EnableMicrosoftCodeAnalysis>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
     <EnableMicrosoftCodeAnalysis>false</EnableMicrosoftCodeAnalysis>
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
+    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
+    <EnableMicrosoftCodeAnalysis>false</EnableMicrosoftCodeAnalysis>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/ImGuiAl/msgbox/;$(SolutionDir)/../3rdParty/ImGuiMisc/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/../Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Debug/</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <OpenMPSupport>true</OpenMPSupport>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableModules>false</EnableModules>
+      <StringPooling>true</StringPooling>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <ConformanceMode>false</ConformanceMode>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <AdditionalOptions>/bigobj /Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
+      <SmallerTypeCheck>false</SmallerTypeCheck>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;CEGUI_STATIC;CEGUI_BUILD_STATIC_FACTORY_MODULE;_CRT_SECURE_NO_WARNINGS;NOMINMAX;GLEW_STATIC;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>H:/Libs/cegui-0.8.7\build\cegui\include;H:/Libs/cegui-0.8.7\cegui\include;H:/Libs/cegui-0.8.7\cegui\include/RendererModules\OpenGL;H:/Libs/cegui-0.8.7\dependencies\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>H:/Libs/cegui-0.8.7\build\cegui\include;H:/Libs/cegui-0.8.7\cegui\include;H:/Libs/cegui-0.8.7\cegui\include/RendererModules\OpenGL;H:/Libs/cegui-0.8.7\dependencies\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/ImGuiAl/msgbox/;$(SolutionDir)/../3rdParty/ImGuiMisc/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/../Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
@@ -195,7 +317,116 @@
       <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/ImGuiAl/msgbox/;$(SolutionDir)/../3rdParty/ImGuiMisc/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/../Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Release/</AssemblerListingLocation>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_RELEASE;NDEBUG</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <AdditionalOptions>/bigobj /Zc:twoPhase- </AdditionalOptions>
+      <OpenMPSupport>true</OpenMPSupport>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <StringPooling>true</StringPooling>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableModules>false</EnableModules>
+      <ConformanceMode>false</ConformanceMode>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CEGUI_STATIC;CEGUI_BUILD_STATIC_FACTORY_MODULE;_CRT_SECURE_NO_WARNINGS;NOMINMAX;GLEW_STATIC;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>H:/Libs/cegui-0.8.7\build\cegui\include;H:/Libs/cegui-0.8.7\cegui\include;H:/Libs/cegui-0.8.7\cegui\include/RendererModules\OpenGL;H:/Libs/cegui-0.8.7\dependencies\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>H:/Libs/cegui-0.8.7\build\cegui\include;H:/Libs/cegui-0.8.7\cegui\include;H:/Libs/cegui-0.8.7\cegui\include/RendererModules\OpenGL;H:/Libs/cegui-0.8.7\dependencies\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
+    </Lib>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/ImGuiAl/msgbox/;$(SolutionDir)/../3rdParty/ImGuiMisc/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/../Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Profile/</AssemblerListingLocation>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_PROFILE;NDEBUG</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <OpenMPSupport>true</OpenMPSupport>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <StringPooling>true</StringPooling>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableModules>false</EnableModules>
+      <ConformanceMode>false</ConformanceMode>
+      <AdditionalOptions>/bigobj /Zc:twoPhase-  /Zc:twoPhase-   /d2cgsummary</AdditionalOptions>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CEGUI_STATIC;CEGUI_BUILD_STATIC_FACTORY_MODULE;_CRT_SECURE_NO_WARNINGS;NOMINMAX;GLEW_STATIC;CMAKE_INTDIR=\"Profile\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>H:/Libs/cegui-0.8.7\build\cegui\include;H:/Libs/cegui-0.8.7\cegui\include;H:/Libs/cegui-0.8.7\cegui\include/RendererModules\OpenGL;H:/Libs/cegui-0.8.7\dependencies\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>H:/Libs/cegui-0.8.7\build\cegui\include;H:/Libs/cegui-0.8.7\cegui\include;H:/Libs/cegui-0.8.7\cegui\include/RendererModules\OpenGL;H:/Libs/cegui-0.8.7\dependencies\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>
+      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/ImGuiAl/msgbox/;$(SolutionDir)/../3rdParty/ImGuiMisc/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/../Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Profile/</AssemblerListingLocation>
@@ -380,13 +611,19 @@
     <ClCompile Include="..\..\3rdParty\ChaiScript\src\libfuzzer_client.cpp" />
     <ClCompile Include="..\..\3rdParty\ChaiScript\src\main.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\ChaiScript\src\sanity_checks.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\ChaiScript\src\sha3.cpp" />
     <ClCompile Include="..\..\3rdParty\ChaiScript\src\stl_extra.cpp" />
@@ -409,33 +646,51 @@
     <ClCompile Include="..\..\3rdParty\EASTL\source\thread_support.cpp" />
     <ClCompile Include="..\..\3rdParty\fcpp\cpp1.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\fcpp\cpp2.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\fcpp\cpp3.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\fcpp\cpp4.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\fcpp\cpp5.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\fcpp\cpp6.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\fmt\src\format.cc" />
     <ClCompile Include="..\..\3rdParty\fmt\src\os.cc" />
@@ -456,8 +711,11 @@
     <ClCompile Include="..\..\3rdParty\ImGuizmo\ImGradient.cpp" />
     <ClCompile Include="..\..\3rdParty\ImGuizmo\ImGuizmo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\ImGuizmo\ImSequencer.cpp" />
     <ClCompile Include="..\..\3rdParty\imgui\imgui.cpp" />
@@ -482,41 +740,62 @@
     <ClCompile Include="..\..\3rdParty\meshoptimizer\src\vfetchoptimizer.cpp" />
     <ClCompile Include="..\..\3rdParty\meshoptimizer\tools\codecbench.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\meshoptimizer\tools\meshloader.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\meshoptimizer\tools\vcachetester.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\meshoptimizer\tools\vcachetuner.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\meshoptimizer\tools\wasmstubs.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\Optick\src\optick_capi.cpp" />
     <ClCompile Include="..\..\3rdParty\Optick\src\optick_core.cpp" />
     <ClCompile Include="..\..\3rdParty\Optick\src\optick_gpu.cpp" />
     <ClCompile Include="..\..\3rdParty\Optick\src\optick_gpu.d3d12.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\Optick\src\optick_gpu.vulkan.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\Optick\src\optick_message.cpp" />
     <ClCompile Include="..\..\3rdParty\Optick\src\optick_miniz.cpp" />
@@ -561,13 +840,19 @@
     <ClCompile Include="..\..\3rdParty\TileableVolumeNoise\TileableVolumeNoise.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\bstrlib.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\glsw.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

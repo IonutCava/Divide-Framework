@@ -148,7 +148,7 @@ bool SceneNode::saveCache(ByteBuffer& outputBuffer) const {
 }
 
 bool SceneNode::loadCache(ByteBuffer& inputBuffer) {
-    U16 tempVer = 0u;
+    auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
     inputBuffer >> tempVer;
     return tempVer == BYTE_BUFFER_VERSION;
 }

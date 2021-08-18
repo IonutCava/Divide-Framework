@@ -98,6 +98,7 @@ namespace ECS
 
 		virtual void OnFrameEnd()
 		{}
+
 	}; // class System<T>
 
 	template<class T>

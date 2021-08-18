@@ -78,15 +78,21 @@ namespace Divide {
     // May be wrong endpoint
     bool EditorComponent::saveCache(ByteBuffer& outputBuffer) const {
         outputBuffer << BYTE_BUFFER_VERSION;
+        outputBuffer << to_U32(_parentComponentType);
         return true;
     }
 
     // May be wrong endpoint
     bool EditorComponent::loadCache(ByteBuffer& inputBuffer) {
-
-        U16 tempVer = 0u;
+        auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         inputBuffer >> tempVer;
-        return tempVer == BYTE_BUFFER_VERSION;
+        U32 tempCompType = 0u;
+        inputBuffer >> tempCompType;
+        if (tempVer == BYTE_BUFFER_VERSION && static_cast<ComponentType>(tempCompType) == _parentComponentType) {
+            return true;
+        }
+
+        return false;
     }
 
 

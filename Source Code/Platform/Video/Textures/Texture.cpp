@@ -192,7 +192,7 @@ bool Texture::checkTransparency(const ResourcePath& name, ImageTools::ImageData&
     ByteBuffer metadataCache = {};
     bool skip = false;
     if (metadataCache.loadFromFile(cachePath.c_str(), cacheName.c_str())) {
-        U16 tempVer = 0u;
+        auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         metadataCache >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {
             metadataCache >> _hasTransparency;

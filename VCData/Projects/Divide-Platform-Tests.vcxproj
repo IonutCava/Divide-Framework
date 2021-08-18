@@ -1,12 +1,24 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug-Editor|x64">
+      <Configuration>Debug-Editor</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-Editor|x64">
+      <Configuration>Profile-Editor</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Profile|x64">
       <Configuration>Profile</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-Editor|x64">
+      <Configuration>Release-Editor</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
@@ -44,7 +56,24 @@
     <PreferredToolArchitecture>x64</PreferredToolArchitecture>
     <EnableASAN>false</EnableASAN>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+    <EnableASAN>false</EnableASAN>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+    <EnableASAN>false</EnableASAN>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -62,20 +91,41 @@
     <PreferredToolArchitecture>x64</PreferredToolArchitecture>
     <EnableASAN>false</EnableASAN>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+    <EnableASAN>false</EnableASAN>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)/../Build/</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
     <OutDir>$(SolutionDir)/../Build/</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -88,13 +138,39 @@
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
+    <IntDir>Intermediate\$(Configuration)_Engine-Tests/</IntDir>
+    <TargetName>$(ProjectName)_d</TargetName>
+    <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
+    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <EnableCppCoreCheck>true</EnableCppCoreCheck>
+    <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
+    <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)/../Build/</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
     <OutDir>$(SolutionDir)/../Build/</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <OutDir>$(SolutionDir)/../Build/</OutDir>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
+    <OutDir>$(SolutionDir)/../Build/</OutDir>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IntDir>Intermediate\$(Configuration)_Engine-Tests/</IntDir>
+    <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
+    <EnableCppCoreCheck>true</EnableCppCoreCheck>
+    <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
+    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
+    <LinkIncremental>false</LinkIncremental>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
     <IntDir>Intermediate\$(Configuration)_Engine-Tests/</IntDir>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
@@ -120,12 +196,94 @@
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
+    <IntDir>Intermediate\$(Configuration)_Engine-Tests/</IntDir>
+    <TargetName>$(ProjectName)_p</TargetName>
+    <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
+    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <ExecutablePath>$(ExecutablePath)</ExecutablePath>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(LibraryPath)</LibraryPath>
+    <SourcePath>$(SourcePath)</SourcePath>
+    <EnableCppCoreCheck>true</EnableCppCoreCheck>
+    <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
+    <LinkIncremental>false</LinkIncremental>
+    <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG</PreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <UndefineAllPreprocessorDefinitions>false</UndefineAllPreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4913;4512;4201;4100;4503;4127;4996</DisableSpecificWarnings>
+      <MinimalRebuild>false</MinimalRebuild>
+      <SmallerTypeCheck>false</SmallerTypeCheck>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <OpenMPSupport>true</OpenMPSupport>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <StringPooling>true</StringPooling>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <ConformanceMode>false</ConformanceMode>
+      <EnableModules>false</EnableModules>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <AdditionalOptions>/Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
+      <SupportJustMyCode>false</SupportJustMyCode>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
+      <AdditionalDependencies>Divide-Game_d.lib;Divide-Platform_d.lib;Divide-Engine_d.lib;Divide-Networking_d.lib;Divide-Core_d.lib;Divide-Editor_d.lib;Divide-ThirdPartyLibs_d.lib;Divide-PCH_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Debug\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ShowProgress>NotSet</ShowProgress>
+      <IgnoreSpecificDefaultLibraries>LIBCMT.lib</IgnoreSpecificDefaultLibraries>
+      <Profile>false</Profile>
+      <AdditionalOptions>/OPT:NOLBR /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
+      <SubSystem>Console</SubSystem>
+      <LargeAddressAware>true</LargeAddressAware>
+      <OptimizeReferences>false</OptimizeReferences>
+      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+    </Link>
+    <Lib>
+      <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName)_d.exe</OutputFile>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
+    </Lib>
+    <PostBuildEvent>
+      <Command>cd $(TargetDir)..\ 
+$(TargetPath) nopause</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_DEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <UndefineAllPreprocessorDefinitions>false</UndefineAllPreprocessorDefinitions>
@@ -245,6 +403,65 @@ $(TargetPath) nopause</Command>
 $(TargetPath) nopause</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_RELEASE;NDEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <SmallerTypeCheck>false</SmallerTypeCheck>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <OpenMPSupport>true</OpenMPSupport>
+      <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <StringPooling>true</StringPooling>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <ConformanceMode>false</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableModules>false</EnableModules>
+      <AdditionalOptions> /Zc:twoPhase-</AdditionalOptions>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Divide-Game.lib;Divide-Platform.lib;Divide-Engine.lib;Divide-Networking.lib;Divide-Core.lib;Divide-Editor.lib;Divide-ThirdPartyLibs.lib;Divide-PCH.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <SubSystem>Console</SubSystem>
+      <AdditionalOptions>/OPT:NOLBR /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
+      <LargeAddressAware>true</LargeAddressAware>
+      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+    </Link>
+    <Lib>
+      <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName).exe</OutputFile>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+    </Lib>
+    <PostBuildEvent>
+      <Command>cd $(TargetDir)..\ 
+$(TargetPath) nopause</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
@@ -255,6 +472,66 @@ $(TargetPath) nopause</Command>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <PreprocessorDefinitions>_PROFILE;NDEBUG</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <MinimalRebuild>false</MinimalRebuild>
+      <SmallerTypeCheck>false</SmallerTypeCheck>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <OpenMPSupport>true</OpenMPSupport>
+      <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <EnablePREfast>false</EnablePREfast>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <ConformanceMode>false</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableModules>false</EnableModules>
+      <AdditionalOptions> /Zc:twoPhase- /Zc:twoPhase- /d2cgsummary</AdditionalOptions>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Divide-Game_p.lib;Divide-Platform_p.lib;Divide-Engine_p.lib;Divide-Networking_p.lib;Divide-Core_p.lib;Divide-Editor_p.lib;Divide-ThirdPartyLibs_p.lib;Divide-PCH_p.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\profile;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <Profile>true</Profile>
+      <SubSystem>Console</SubSystem>
+      <AdditionalOptions>/OPT:NOLBR /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
+      <LargeAddressAware>true</LargeAddressAware>
+      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+    </Link>
+    <Lib>
+      <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName)_p.exe</OutputFile>
+    </Lib>
+    <PostBuildEvent>
+      <Command>cd $(TargetDir)..\ 
+$(TargetPath) nopause</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <PreprocessorDefinitions>_PROFILE;NDEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
       <SmallerTypeCheck>false</SmallerTypeCheck>

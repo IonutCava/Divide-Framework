@@ -367,7 +367,7 @@ void DisplayWindow::handleChangeWindowType(const WindowType newWindowType) {
 
     _previousType = _type;
     _type = newWindowType;
-    I32 switchState;
+    I32 switchState = -1;
 
     grabState(false);
     switch (newWindowType) {
@@ -380,17 +380,17 @@ void DisplayWindow::handleChangeWindowType(const WindowType newWindowType) {
             switchState = SDL_SetWindowFullscreen(_sdlWindow, SDL_WINDOW_FULLSCREEN_DESKTOP);
             assert(switchState >= 0);
             decorated(false);
+            centerWindowPosition();
         } break;
         case WindowType::FULLSCREEN: {
             switchState = SDL_SetWindowFullscreen(_sdlWindow, SDL_WINDOW_FULLSCREEN);
             assert(switchState >= 0);
             decorated(false);
             grabState(true);
+            centerWindowPosition();
         } break;
         default: break;
     };
-
-    centerWindowPosition();
 
     SDLEventManager::pollEvents();
 }
@@ -412,20 +412,26 @@ bool DisplayWindow::setDimensions(U16 width, U16 height) {
 
     I32 newW = to_I32(width);
     I32 newH = to_I32(height);
-    if (_type == WindowType::FULLSCREEN) {
-        // Find a decent resolution close to our dragged dimensions
-        SDL_DisplayMode mode, closestMode = {};
-        SDL_GetCurrentDisplayMode(currentDisplayIndex(), &mode);
-        mode.w = width;
-        mode.h = height;
-        SDL_GetClosestDisplayMode(currentDisplayIndex(), &mode, &closestMode);
-        width = to_U16(closestMode.w);
-        height = to_U16(closestMode.h);
-        SDL_SetWindowDisplayMode(_sdlWindow, &closestMode);
-    } else if (_type == WindowType::FULLSCREEN_WINDOWED) {
-    } else {
-        SDL_SetWindowSize(_sdlWindow, newW, newH);
-        SDL_GetWindowSize(_sdlWindow, &newW, &newH);
+    switch(_type) {
+        case WindowType::FULLSCREEN: {
+            // Find a decent resolution close to our dragged dimensions
+            SDL_DisplayMode mode, closestMode = {};
+            SDL_GetCurrentDisplayMode(currentDisplayIndex(), &mode);
+            mode.w = width;
+            mode.h = height;
+            SDL_GetClosestDisplayMode(currentDisplayIndex(), &mode, &closestMode);
+            width = to_U16(closestMode.w);
+            height = to_U16(closestMode.h);
+            SDL_SetWindowDisplayMode(_sdlWindow, &closestMode);
+        } break;
+        case WindowType::FULLSCREEN_WINDOWED: //fall-through
+            changeType(WindowType::WINDOW);
+        default:
+        case WindowType::WINDOW: {
+            maximized(false);
+            SDL_SetWindowSize(_sdlWindow, newW, newH);
+            SDL_GetWindowSize(_sdlWindow, &newW, &newH);
+        } break;
     }
 
     SDLEventManager::pollEvents();
