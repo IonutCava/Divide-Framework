@@ -39,18 +39,6 @@ using PoolTask = DELEGATE_STD<bool, bool/*threadWaitingCall*/>;
 
 class TaskPool;
 
-template<bool IsBlocking>
-struct Queue {};
-
-template<>
-struct Queue<false> {
-    moodycamel::ConcurrentQueue<PoolTask> _container;
-};
-
-template<>
-struct Queue<true> {
-    moodycamel::BlockingConcurrentQueue<PoolTask> _container;
-};
 // Dead simple ThreadPool class
 template<bool IsBlocking>
 class ThreadPool
@@ -75,12 +63,13 @@ public:
 
 protected:
     bool dequeTask(bool waitForTask, PoolTask& taskOut);
-    void onThreadCreate(const std::thread::id& threadID) const;
-    void onThreadDestroy(const std::thread::id& threadID) const;
 
 protected:
     TaskPool& _parent;
-    Queue<IsBlocking> _queue;
+
+    using QueueType = std::conditional_t<IsBlocking, moodycamel::BlockingConcurrentQueue<PoolTask>, moodycamel::ConcurrentQueue<PoolTask>>;
+    QueueType _queue;
+
     std::atomic_int _tasksLeft = 0;
     bool _isRunning = false;
 };

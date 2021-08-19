@@ -86,7 +86,8 @@ namespace Divide {
             }
 
             ImGui::PushStyleColor(ImGuiCol_Text, colours[to_U8(message._type)]);
-            ImGui::TextUnformatted(message._text.c_str());
+            const stringImpl& str = message._text;
+            ImGui::TextUnformatted(str.c_str(), str.c_str() + str.length());
             ImGui::PopStyleColor();
         }
         

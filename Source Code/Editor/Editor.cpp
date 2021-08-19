@@ -668,8 +668,7 @@ bool Editor::render(const U64 deltaTime) {
     ImGui::PopStyleVar();
     ImGui::PopStyleVar(2);
 
-    const ImGuiID dockspaceId = ImGui::GetID("EditorDockspace");
-    ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), opt_flags);
+    ImGui::DockSpace(ImGui::GetID("EditorDockspace"), ImVec2(0.0f, 0.0f), opt_flags);
 
     if (scenePreviewFocused() || optionsVisible) {
         PushReadOnly();

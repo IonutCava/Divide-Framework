@@ -87,6 +87,7 @@ public:
     void threadWaiting(bool forceExecute = false);
 
     PROPERTY_R(U32, workerThreadCount, 0u);
+    PROPERTY_R_IW(TaskPoolType, type, TaskPoolType::COUNT);
 
   private:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
@@ -104,31 +105,23 @@ public:
     template<bool IsBlocking>
     friend class ThreadPool;
 
-    void onThreadCreate(const std::thread::id& threadID);
+    void onThreadCreate(const U32 threadIndex, const std::thread::id& threadID);
     void onThreadDestroy(const std::thread::id& threadID);
 
+    void waitAndJoin() const;
+
   private:
-      struct PoolHolder {
-          template<bool IsBlocking>
-          using PoolImpl = ThreadPool<IsBlocking>;
-          std::pair<PoolImpl<true>*, PoolImpl<false>*> _poolImpl = {nullptr, nullptr};
-
-          [[nodiscard]] bool addTask(PoolTask&& job) const;
-          [[nodiscard]] bool init() const noexcept;
-          void waitAndJoin() const;
-          void threadWaiting() const;
-      };
-
      hashMap<U32, vectorEASTL<DELEGATE<void>>> _taskCallbacks{};
      DELEGATE<void, const std::thread::id&> _threadCreateCbk{};
      moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
      Mutex _taskFinishedMutex;
      std::condition_variable _taskFinishedCV;
 
-     PoolHolder _poolImpl = {};
+     ThreadPool<true>*  _blockingPool = nullptr;
+     ThreadPool<false>* _lockFreePool = nullptr;
+
      stringImpl _threadNamePrefix = "";
      std::atomic_uint _runningTaskCount = 0u;
-     std::atomic_uint _threadCount = 0u;
 };
 
 template<class Predicate>
@@ -138,8 +131,6 @@ template<class Predicate>
 Task* CreateTask(Task* parentTask, Predicate&& threadedFunction, bool allowedInIdle = true);
 
 void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor);
-
-void WaitForAllTasks(TaskPool& pool, bool flushCallbacks);
 
 } //namespace Divide
 

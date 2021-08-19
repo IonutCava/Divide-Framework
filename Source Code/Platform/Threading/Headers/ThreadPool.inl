@@ -42,17 +42,16 @@ namespace Divide {
         std::atomic_init(&_tasksLeft, 0u);
         _threads.reserve(threadCount);
 
-        for (U32 idx = 0; idx < threadCount; ++idx) {
+        for (U32 idx = 0u; idx < threadCount; ++idx) {
             _threads.emplace_back(
             [&]{
                 const std::thread::id threadID = std::this_thread::get_id();
-                onThreadCreate(threadID);
-
+                _parent.onThreadCreate(idx, threadID);
                 while (_isRunning) {
                     executeOneTask(true);
                 }
 
-                onThreadDestroy(threadID);
+                _parent.onThreadDestroy(threadID);
             });
         }
     }
@@ -93,18 +92,8 @@ namespace Divide {
     }
 
     template<bool IsBlocking>
-    void ThreadPool<IsBlocking>::onThreadCreate(const std::thread::id& threadID) const {
-        _parent.onThreadCreate(threadID);
-    }
-
-    template<bool IsBlocking>
-    void ThreadPool<IsBlocking>::onThreadDestroy(const std::thread::id& threadID) const {
-        _parent.onThreadDestroy(threadID);
-    }
-
-    template<bool IsBlocking>
     bool ThreadPool<IsBlocking>::addTask(PoolTask&& job) {
-        if (_queue._container.enqueue(MOV(job))) {
+        if (_queue.enqueue(MOV(job))) {
             _tasksLeft.fetch_add(1);
             return true;
         }
@@ -126,8 +115,8 @@ namespace Divide {
     template<>
     inline bool ThreadPool<true>::dequeTask(const bool waitForTask, PoolTask& taskOut) {
         if (waitForTask) {
-            _queue._container.wait_dequeue(taskOut);
-        } else if (!_queue._container.try_dequeue(taskOut)) {
+            _queue.wait_dequeue(taskOut);
+        } else if (!_queue.try_dequeue(taskOut)) {
             return false;
         }
         
@@ -137,10 +126,10 @@ namespace Divide {
     template<>
     inline bool ThreadPool<false>::dequeTask(const bool waitForTask, PoolTask& taskOut) {
         if (waitForTask) {
-            while (!_queue._container.try_dequeue(taskOut)) {
+            while (!_queue.try_dequeue(taskOut)) {
                 std::this_thread::yield();
             }
-        } else if (!_queue._container.try_dequeue(taskOut)) {
+        } else if (!_queue.try_dequeue(taskOut)) {
             return false;
         }
         

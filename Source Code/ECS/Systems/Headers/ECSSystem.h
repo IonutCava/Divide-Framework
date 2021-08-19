@@ -45,11 +45,15 @@ namespace Divide {
     };
 
     template<class T, class U>
-    struct ECSSerializer : ECSSerializerProxy {
-        bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) override {
+    struct ECSSerializer final : ECSSerializerProxy {
+        [[nodiscard]] bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) override {
+            assert(_parent != nullptr);
+
             return _parent->saveCache(sgn, outputBuffer);
         }
-        bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) override {
+        [[nodiscard]] bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) override {
+            assert(_parent != nullptr);
+
             return _parent->loadCache(sgn, inputBuffer);
         }
 

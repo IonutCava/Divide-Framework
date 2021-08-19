@@ -34,21 +34,21 @@ TaskPool::~TaskPool()
 }
 
 bool TaskPool::init(const U32 threadCount, const TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate, const stringImpl& workerName) {
-    if (threadCount == 0 || _poolImpl.init()) {
+    if (threadCount == 0u || _blockingPool != nullptr || _lockFreePool != nullptr) {
         return false;
     }
 
+    type(poolType);
     _threadNamePrefix = workerName;
     _threadCreateCbk = onThreadCreate;
-    _workerThreadCount = threadCount;
 
-    switch (poolType) {
+    switch (type()) {
         case TaskPoolType::TYPE_LOCKFREE: {
-            std::get<1>(_poolImpl._poolImpl) = MemoryManager_NEW ThreadPool<false>(*this, _workerThreadCount);
+            _lockFreePool = MemoryManager_NEW ThreadPool<false>(*this, threadCount);
             return true;
         }
         case TaskPoolType::TYPE_BLOCKING: {
-            std::get<0>(_poolImpl._poolImpl) = MemoryManager_NEW ThreadPool<true>(*this, _workerThreadCount);
+            _blockingPool = MemoryManager_NEW ThreadPool<true>(*this, threadCount);
             return true;
         }
         case TaskPoolType::COUNT: break;
@@ -59,14 +59,12 @@ bool TaskPool::init(const U32 threadCount, const TaskPoolType poolType, const DE
 
 void TaskPool::shutdown() {
     waitForAllTasks(true);
-    if (_poolImpl.init()) {
-        MemoryManager::SAFE_DELETE(std::get<0>(_poolImpl._poolImpl));
-        MemoryManager::SAFE_DELETE(std::get<1>(_poolImpl._poolImpl));
-    }
+    MemoryManager::SAFE_DELETE(_lockFreePool);
+    MemoryManager::SAFE_DELETE(_blockingPool);
 }
 
-void TaskPool::onThreadCreate(const std::thread::id& threadID) {
-    const stringImpl threadName = _threadNamePrefix + Util::to_string(_threadCount.fetch_add(1));
+void TaskPool::onThreadCreate(const U32 threadIndex, const std::thread::id& threadID) {
+    const stringImpl threadName = _threadNamePrefix + Util::to_string(threadIndex);
     if (USE_OPTICK_PROFILER) {
         OPTICK_START_THREAD(threadName.c_str());
     }
@@ -86,12 +84,13 @@ void TaskPool::onThreadDestroy(const std::thread::id& threadID) {
 }
 
 bool TaskPool::enqueue(Task& task, const TaskPriority priority, const U32 taskIndex, const DELEGATE<void>& onCompletionFunction) {
-    const bool hasOnCompletionFunction = priority != TaskPriority::REALTIME && onCompletionFunction;
+    const bool isRealtime = priority == TaskPriority::REALTIME;
+    const bool hasOnCompletionFunction = !isRealtime && onCompletionFunction;
 
     //Returing false from a PoolTask lambda will just reschedule it for later execution again. 
     //This may leave the task in an infinite loop, always re-queuing!
-    auto poolTask = [this, &task, hasOnCompletionFunction](const bool threadWaitingCall) {
-        while (task._unfinishedJobs.load() > 1) {
+    const auto poolTask = [this, &task, hasOnCompletionFunction](const bool threadWaitingCall) {
+        while (task._unfinishedJobs.load() > 1u) {
             if (threadWaitingCall) {
                 threadWaiting();
             } else {
@@ -112,23 +111,26 @@ bool TaskPool::enqueue(Task& task, const TaskPriority priority, const U32 taskIn
         return false;
     };
 
-    _runningTaskCount.fetch_add(1);
+    _runningTaskCount.fetch_add(1u);
 
-    if (priority == TaskPriority::REALTIME) {
-        if (!poolTask(false)) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+    if (!isRealtime) {
         if (onCompletionFunction) {
-            onCompletionFunction();
+            _taskCallbacks[taskIndex].push_back(onCompletionFunction);
         }
-        return true;
+
+        return (type() == TaskPoolType::TYPE_BLOCKING)
+                    ? _blockingPool->addTask(MOV(poolTask))
+                    : _lockFreePool->addTask(MOV(poolTask));
     }
 
+    if (!poolTask(false)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
     if (onCompletionFunction) {
-        _taskCallbacks[taskIndex].push_back(onCompletionFunction);
+        onCompletionFunction();
     }
 
-    return _poolImpl.addTask(MOV(poolTask));
+    return true;
 }
 
 void TaskPool::waitForTask(const Task& task) {
@@ -165,20 +167,18 @@ size_t TaskPool::flushCallbackQueue() {
 }
 
 void TaskPool::waitForAllTasks(const bool flushCallbacks) {
-    if (!_poolImpl.init()) {
-        return;
-    }
+    if (type() != TaskPoolType::COUNT) {
+        {
+            UniqueLock<Mutex> lock(_taskFinishedMutex);
+            _taskFinishedCV.wait(lock, [this]() { return _runningTaskCount.load() == 0u; });
+        }
 
-    if (_workerThreadCount > 0u) {
-        UniqueLock<Mutex> lock(_taskFinishedMutex);
-        _taskFinishedCV.wait(lock, [this]() { return _runningTaskCount.load() == 0u; });
-    }
+        if (flushCallbacks) {
+            flushCallbackQueue();
+        }
 
-    if (flushCallbacks) {
-        flushCallbackQueue();
+        waitAndJoin();
     }
-
-    _poolImpl.waitAndJoin();
 }
 
 void TaskPool::taskCompleted(Task& task, const bool hasOnCompletionFunction) {
@@ -187,15 +187,15 @@ void TaskPool::taskCompleted(Task& task, const bool hasOnCompletionFunction) {
     }
 
     const U32 jobCount = task._unfinishedJobs.fetch_sub(1);
-    assert(jobCount == 1u);
+    DIVIDE_ASSERT(jobCount == 1u);
 
     if (task._parent != nullptr) {
         const U32 parentJobCount = task._parent->_unfinishedJobs.fetch_sub(1);
-        assert(parentJobCount >= 1u);
+        DIVIDE_ASSERT(parentJobCount >= 1u);
     }
 
     const U32 test = _runningTaskCount.fetch_sub(1);
-    assert(test >= 1u);
+    DIVIDE_ASSERT(test >= 1u);
 
     ScopedLock<Mutex> lock(_taskFinishedMutex);
     _taskFinishedCV.notify_one();
@@ -216,7 +216,7 @@ Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) {
         }
     } while (task == nullptr);
 
-    if (task->_id == 0) {
+    if (task->_id == 0u) {
         task->_id = g_taskIDCounter.fetch_add(1u);
     }
     task->_parent = parentTask;
@@ -228,62 +228,45 @@ Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) {
 void TaskPool::threadWaiting(const bool forceExecute) {
     if (!forceExecute && Runtime::isMainThread()) {
         flushCallbackQueue();
-        return;
-    }
-
-    _poolImpl.threadWaiting();
-}
-
-void WaitForAllTasks(TaskPool& pool, const bool flushCallbacks) {
-    pool.waitForAllTasks(flushCallbacks);
-}
-
-bool TaskPool::PoolHolder::init() const noexcept {
-    return _poolImpl.first != nullptr || 
-           _poolImpl.second != nullptr;
-}
-
-void TaskPool::PoolHolder::waitAndJoin() const {
-    if (_poolImpl.first != nullptr) {
-        _poolImpl.first->wait();
-        _poolImpl.first->join();
-        return;
-    }
-
-    _poolImpl.second->wait();
-    _poolImpl.second->join();
-}
-
-void TaskPool::PoolHolder::threadWaiting() const {
-    if (_poolImpl.first != nullptr) {
-        _poolImpl.first->executeOneTask(false);
     } else {
-        _poolImpl.second->executeOneTask(false);
+        if (type() == TaskPoolType::TYPE_BLOCKING) {
+            _blockingPool->executeOneTask(false);
+        } else {
+            _lockFreePool->executeOneTask(false);
+        }
     }
 }
 
-bool TaskPool::PoolHolder::addTask(PoolTask&& job) const {
-    if (_poolImpl.first != nullptr) {
-        return _poolImpl.first->addTask(MOV(job));
-    }
+void TaskPool::waitAndJoin() const {
+    if (type() == TaskPoolType::TYPE_BLOCKING) {
+        assert(_blockingPool != nullptr);
 
-    return _poolImpl.second->addTask(MOV(job));
+        _blockingPool->wait();
+        _blockingPool->join();
+    } else if (type() == TaskPoolType::TYPE_LOCKFREE) {
+        assert(_lockFreePool != nullptr);
+
+        _lockFreePool->wait();
+        _lockFreePool->join();
+    } else {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor) {
-    if (descriptor._iterCount == 0) {
+    if (descriptor._iterCount == 0u) {
         return;
     }
 
     const U32 crtPartitionSize = std::min(descriptor._partitionSize, descriptor._iterCount);
     const U32 partitionCount = descriptor._iterCount / crtPartitionSize;
     const U32 remainder = descriptor._iterCount % crtPartitionSize;
-    const U32 adjustedCount = descriptor._useCurrentThread ? partitionCount - 1 : partitionCount;
+    const U32 adjustedCount = descriptor._useCurrentThread ? partitionCount - 1u : partitionCount;
 
-    std::atomic_uint jobCount = adjustedCount + (remainder > 0 ? 1 : 0);
+    std::atomic_uint jobCount = adjustedCount + (remainder > 0u ? 1u : 0u);
     const auto& cbk = descriptor._cbk;
 
-    for (U32 i = 0; i < adjustedCount; ++i) {
+    for (U32 i = 0u; i < adjustedCount; ++i) {
         const U32 start = i * crtPartitionSize;
         const U32 end = start + crtPartitionSize;
         Task* parallelJob = TaskPool::AllocateTask(nullptr, descriptor._allowRunInIdle);
@@ -294,7 +277,7 @@ void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor) {
   
         Start(*parallelJob, pool, descriptor._priority);
     }
-    if (remainder > 0) {
+    if (remainder > 0u) {
         const U32 count = descriptor._iterCount;
         Task* parallelJob = TaskPool::AllocateTask(nullptr, descriptor._allowRunInIdle);
         parallelJob->_callback = [&cbk, &jobCount, count, remainder](Task& parentTask) {
