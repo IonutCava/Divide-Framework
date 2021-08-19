@@ -24,6 +24,7 @@
 
 namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
+    constexpr std::array<U32, 2> g_cacheMarkerByteValue = { 0xBADDCAFE, 0xDEADBEEF };
 
 #define STUB_SYSTEM(Name) \
     class Name##System final : public ECSSystem<Name##System, Name##Component> {\
@@ -85,9 +86,9 @@ bool ECSManager::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) 
         ECSSerializerProxy& serializer = static_cast<ECSSerializerProxy&>(system->GetSerializer());
         if (!serializer.saveCache(sgn, outputBuffer)) {
             Console::errorfn(Locale::Get(_ID("ECS_SAVE_ERROR")), system->GetSystemTypeName());
-            return false;
         }
 
+        outputBuffer.addMarker(g_cacheMarkerByteValue);
         return true;
     };
 
@@ -104,9 +105,8 @@ bool ECSManager::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) const {
             ECSSerializerProxy& serializer = static_cast<ECSSerializerProxy&>(system->GetSerializer());
             if (!serializer.loadCache(sgn, inputBuffer)) {
                 Console::errorfn(Locale::Get(_ID("ECS_LOAD_ERROR")), system->GetSystemTypeName());
-                return false;
             }
-
+            inputBuffer.readSkipToMarker(g_cacheMarkerByteValue);
             return true;
         };
 

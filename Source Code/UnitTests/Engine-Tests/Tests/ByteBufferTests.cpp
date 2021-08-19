@@ -92,6 +92,71 @@ TEST(ByteBufferRWPOD)
     CHECK_TRUE(COMPARE(outputD64, inputD64));
 }
 
+TEST(ByteBufferSimpleMarker)
+{
+    constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
+
+    constexpr U8 input = 122u;
+
+    ByteBuffer test;
+    test << stringImpl{ "StringTest Whatever" };
+    test << U32{ 123456u };
+    test.addMarker(testMarker);
+    test << input;
+
+    test.readSkipToMarker(testMarker);
+
+    U8 output = 0u;
+    test >> output;
+    CHECK_EQUAL(input, output);
+}
+
+TEST(ByteBufferEvenNoMarker)
+{
+    constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
+
+    ByteBuffer test;
+    test << stringImpl{ "StringTest Whatever" };
+    test << U32{ 123456u }; //Multiple of our marker size
+
+    test.readSkipToMarker(testMarker);
+
+    // Should just skip to the end
+    CHECK_TRUE(test.bufferEmpty());
+}
+
+TEST(ByteBufferOddNoMarker)
+{
+    constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
+
+    ByteBuffer test;
+    test << stringImpl{ "StringTest Whatever" };
+    test << U32{ 123456u }; //Multiple of our marker size
+    test << U8{ 122u }; //Extra byte to check proper skipping
+
+    test.readSkipToMarker(testMarker);
+
+    // Should just skip to the end, but we use 16bit markers and we have 5 x 8bit values in the buffer
+    // So we will fall short by a single byte. Hopefully, we skip it automatically
+    CHECK_TRUE(test.bufferEmpty());
+}
+
+TEST(ByteBufferWrongMarker)
+{
+    std::array<U16, 3> testMarker{ 444u, 555u, 777u };
+
+    ByteBuffer test;
+    test << stringImpl{ "StringTest Whatever" };
+    test << U32{ 123456u };
+    test.addMarker(testMarker);
+    test << U8{122u};
+
+    testMarker[2] -= 1;
+    test.readSkipToMarker(testMarker);
+
+    // Should just skip to the end
+    CHECK_TRUE(test.bufferEmpty());
+}
 
 TEST(ByteBufferRWString)
 {

@@ -189,7 +189,7 @@ bool Texture::checkTransparency(const ResourcePath& name, ImageTools::ImageData&
     const ResourcePath cachePath = Paths::g_cacheLocation + Paths::Textures::g_metadataLocation + path + "/" ;
     const ResourcePath cacheName = file + ".cache";
 
-    ByteBuffer metadataCache = {};
+    ByteBuffer metadataCache;
     bool skip = false;
     if (metadataCache.loadFromFile(cachePath.c_str(), cacheName.c_str())) {
         auto tempVer = decltype(BYTE_BUFFER_VERSION){0};

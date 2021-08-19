@@ -25,19 +25,15 @@ void ByteBufferException::printPosError() const {
                      _size);
 }
 
-ByteBuffer::ByteBuffer() : ByteBuffer(DEFAULT_SIZE)
-{
-}
-
 // constructor
-ByteBuffer::ByteBuffer(const size_t res) : _rpos(0), _wpos(0)
+ByteBuffer::ByteBuffer(const size_t res)
 {
     _storage.reserve(res);
 }
 
 void ByteBuffer::clear() noexcept {
     _storage.clear();
-    _rpos = _wpos = 0;
+    _rpos = _wpos = 0u;
 }
 
 void ByteBuffer::append(const Byte *src, const size_t cnt) {
@@ -52,18 +48,18 @@ void ByteBuffer::append(const Byte *src, const size_t cnt) {
 }
 
 
-bool ByteBuffer::dumpToFile(const char* path, const char* fileName) {
-    if (!_storage.empty() && _storage.back() != BUFFER_FORMAT_VERSION) {
-        append(BUFFER_FORMAT_VERSION);
+bool ByteBuffer::dumpToFile(const char* path, const char* fileName, const U8 version) {
+    if (!_storage.empty() && to_U8(_storage.back()) != version) {
+        append(version);
     }
 
     return writeFile(path, fileName, _storage.data(), _storage.size(), FileType::BINARY) == FileError::NONE;
 }
 
-bool ByteBuffer::loadFromFile(const char* path, const char* fileName) {
+bool ByteBuffer::loadFromFile(const char* path, const char* fileName, const U8 version) {
     clear();
     if (readFile(path, fileName, _storage, FileType::BINARY) == FileError::NONE) {
-        return _storage.back() == BUFFER_FORMAT_VERSION;
+        return version == 0u || to_U8(_storage.back()) == version;
     }
 
     return false;

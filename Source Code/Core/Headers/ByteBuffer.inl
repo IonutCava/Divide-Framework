@@ -15,11 +15,78 @@
 * along with this program; if not, write to the Free Software
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
+/*
+Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2009 Ionut Cava
+
+This file is part of DIVIDE Framework.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software
+and associated documentation files (the "Software"), to deal in the Software
+without restriction,
+including without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software
+is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE
+OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+*/
 
 #ifndef _CORE_BYTE_BUFFER_INL_
 #define _CORE_BYTE_BUFFER_INL_
 
 namespace Divide {
+
+template<class T, size_t N>
+void ByteBuffer::addMarker(const std::array<T, N>& pattern) {
+    for (const T& entry : pattern) {
+        append<T>(entry);
+    }
+}
+
+template<class T, size_t N>
+void ByteBuffer::readSkipToMarker(const std::array<T, N>& pattern) {
+    T tempMarker{0};
+    bool found = false;
+    do {
+        while (bufferSize() >= sizeof(T) && tempMarker != pattern[0]) {
+            tempMarker = read<T>();
+        }
+        if (bufferSize() >= sizeof(T)) {
+            assert(tempMarker == pattern[0]);
+            found = true;
+            for (size_t i = 1u; i < N; ++i) {
+                tempMarker = read<T>();
+                if (tempMarker != pattern[i]) {
+                    found = false;
+                    break;
+                }
+            }
+        }
+    } while (bufferSize() >= sizeof(T) && !found);
+
+    // We wanted to skip to a marker. None was found so we need to skip to the end!
+    if (!found) {
+        // Consume a byte at a time until we reach the end.
+        while (!bufferEmpty()) {
+            read<Byte>();
+        }
+    }
+}
 
 template <typename T>
 void ByteBuffer::put(const size_t pos, const T& value) {
@@ -50,7 +117,7 @@ template<>
 inline ByteBuffer& ByteBuffer::operator>>(stringImpl& value) {
     value.clear();
     // prevent crash at wrong string format in packet
-    while (rpos() < size()) {
+    while (rpos() < storageSize()) {
         const char c = read<char>();
         if (c == to_U8(0)) {
             break;
@@ -71,21 +138,21 @@ inline ByteBuffer& ByteBuffer::operator>>(ResourcePath& value) {
 }
 
 template <typename T>
-void ByteBuffer::read_noskip(T& value) {
-    value = read<T>(_rpos);
+void ByteBuffer::readNoSkip(T& value) {
+    value = readNoSkipFrom<T>(_rpos);
 }
 
 template <>
-inline void ByteBuffer::read_noskip(bool& value) {
-    value = read<I8>(_rpos) == to_I8(1);
+inline void ByteBuffer::readNoSkip(bool& value) {
+    value = readNoSkipFrom<I8>(_rpos) == to_I8(1);
 }
 
 template <>
-inline void ByteBuffer::read_noskip(stringImpl& value) {
+inline void ByteBuffer::readNoSkip(stringImpl& value) {
     value.clear();
     size_t inc = 0;
     // prevent crash at wrong string format in packet
-    while (rpos() < size()) {
+    while (rpos() < storageSize()) {
         const char c = read<char>(); ++inc;
         if (c == to_U8(0)) {
             break;
@@ -96,9 +163,9 @@ inline void ByteBuffer::read_noskip(stringImpl& value) {
 }
 
 template <>
-inline void ByteBuffer::read_noskip(ResourcePath& value) {
+inline void ByteBuffer::readNoSkip(ResourcePath& value) {
     stringImpl temp{};
-    read_noskip(temp);
+    readNoSkip(temp);
     value = ResourcePath(temp);
 }
 
@@ -106,33 +173,33 @@ template <typename U>
 ByteBuffer& ByteBuffer::operator>>(Unused<U>& value) {
     ACKNOWLEDGE_UNUSED(value);
 
-    read_skip<U>();
+    readSkip<U>();
     return *this;
 }
 
 template <typename T>
-void ByteBuffer::read_skip() {
-    read_skip(sizeof(T));
+void ByteBuffer::readSkip() {
+    readSkip(sizeof(T));
 }
 
 template <>
-inline void ByteBuffer::read_skip<char *>() {
+inline void ByteBuffer::readSkip<char *>() {
     stringImpl temp;
     *this >> temp;
 }
 
 template <>
-inline void ByteBuffer::read_skip<char const *>() {
-    read_skip<char *>();
+inline void ByteBuffer::readSkip<char const *>() {
+    readSkip<char *>();
 }
 
 template <>
-inline void ByteBuffer::read_skip<stringImpl>() {
-    read_skip<char *>();
+inline void ByteBuffer::readSkip<stringImpl>() {
+    readSkip<char *>();
 }
 
-inline void ByteBuffer::read_skip(const size_t skip) {
-    if (_rpos + skip > size()) {
+inline void ByteBuffer::readSkip(const size_t skip) {
+    if (_rpos + skip > storageSize()) {
         DIVIDE_UNEXPECTED_CALL();
     }
     _rpos += skip;
@@ -140,14 +207,14 @@ inline void ByteBuffer::read_skip(const size_t skip) {
 
 template <typename T>
 T ByteBuffer::read() {
-    T r = read<T>(_rpos);
+    T r = readNoSkipFrom<T>(_rpos);
     _rpos += sizeof(T);
     return r;
 }
 
 template <typename T>
-T ByteBuffer::read(const size_t pos) const {
-    if (pos + sizeof(T) > size()) {
+T ByteBuffer::readNoSkipFrom(const size_t pos) const {
+    if (pos + sizeof(T) > storageSize()) {
         DIVIDE_UNEXPECTED_CALL();
     }
 
@@ -157,7 +224,7 @@ T ByteBuffer::read(const size_t pos) const {
 }
 
 inline void ByteBuffer::read(Byte *dest, const size_t len) {
-    if (_rpos + len > size()) {
+    if (_rpos + len > storageSize()) {
         DIVIDE_UNEXPECTED_CALL();
     }
 
@@ -216,7 +283,7 @@ inline void ByteBuffer::appendPackGUID(U64 guid) {
 }
 
 inline Byte ByteBuffer::operator[](const size_t pos) const {
-    return read<Byte>(pos);
+    return readNoSkipFrom<Byte>(pos);
 }
 
 inline size_t ByteBuffer::rpos() const noexcept {
@@ -237,22 +304,30 @@ inline size_t ByteBuffer::wpos(const size_t wpos_) noexcept {
     return _wpos;
 }
 
-inline size_t ByteBuffer::size() const noexcept {
+inline size_t ByteBuffer::bufferSize() const noexcept {
+    return _wpos - _rpos;
+}
+
+inline bool ByteBuffer::bufferEmpty() const noexcept {
+    return bufferSize() == 0u;
+}
+
+inline size_t ByteBuffer::storageSize() const noexcept {
     return _storage.size();
 }
 
-inline bool ByteBuffer::empty() const noexcept {
+inline bool ByteBuffer::storageEmpty() const noexcept {
     return _storage.empty();
 }
 
 inline void ByteBuffer::resize(const size_t newsize) {
     _storage.resize(newsize);
     _rpos = 0;
-    _wpos = size();
+    _wpos = storageSize();
 }
 
 inline void ByteBuffer::reserve(const size_t resize) {
-    if (resize > size()) {
+    if (resize > storageSize()) {
         _storage.reserve(resize);
     }
 }
@@ -262,7 +337,7 @@ inline const Byte* ByteBuffer::contents() const noexcept {
 }
 
 inline void ByteBuffer::put(const size_t pos, const Byte *src, const size_t cnt) {
-    if (pos + cnt > size()) {
+    if (pos + cnt > storageSize()) {
         DIVIDE_UNEXPECTED_CALL();
     }
     memcpy(&_storage[pos], src, cnt);

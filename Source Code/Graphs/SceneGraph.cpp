@@ -16,7 +16,7 @@ namespace Divide {
 
 namespace {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
-    constexpr U32 g_cacheMarkerByteValue[] = { 0xDEADBEEF, 0xBADDCAFE };
+    constexpr std::array<U32, 2> g_cacheMarkerByteValue = { 0xDEADBEEF, 0xBADDCAFE };
     constexpr U32 g_nodesPerPartition = 32u;
 
     [[nodiscard]] bool IsTransformNode(const SceneNodeType nodeType, const ObjectType objType) noexcept {
@@ -371,8 +371,7 @@ bool SceneGraph::saveCache(ByteBuffer& outputBuffer) const {
         }
 
         // Data may be bad, so add markers to be able to just jump over the entire node data instead of attempting partial loads
-        outputBuffer << g_cacheMarkerByteValue[0];
-        outputBuffer << g_cacheMarkerByteValue[1];
+        outputBuffer.addMarker(g_cacheMarkerByteValue);
 
         sgn->forEachChild([this, &saveNodes, &outputBuffer](SceneGraphNode* child, I32 /*idx*/) {
             return saveNodes(child, outputBuffer);
@@ -398,7 +397,6 @@ bool SceneGraph::loadCache(ByteBuffer& inputBuffer) {
         const U64 rootID = _ID(_root->name().c_str());
 
         U64 nodeID = 0u;
-        U32 tempMarker = 0u;
 
         bool skipRoot = true;
         bool missingData = false;
@@ -410,25 +408,11 @@ bool SceneGraph::loadCache(ByteBuffer& inputBuffer) {
 
             SceneGraphNode* node = findNode(nodeID, false);
 
-            if (node != nullptr && Attorney::SceneGraphNodeSceneGraph::loadCache(node, inputBuffer)) {
-                inputBuffer >> tempMarker;
-                assert(tempMarker == g_cacheMarkerByteValue[0]);
-                inputBuffer >> tempMarker;
-                assert(tempMarker == g_cacheMarkerByteValue[1]);
-            } else {
+            if (node == nullptr || !Attorney::SceneGraphNodeSceneGraph::loadCache(node, inputBuffer)) {
                 missingData = true;
-
-                do {
-                    while (!inputBuffer.empty() && tempMarker != g_cacheMarkerByteValue[0]) {
-                        inputBuffer >> tempMarker;
-                    }
-                    assert(tempMarker == g_cacheMarkerByteValue[0]);
-                    inputBuffer >> tempMarker;
-                    if (tempMarker == g_cacheMarkerByteValue[1]) {
-                        break;
-                    }
-                } while (!inputBuffer.empty());
             }
+
+            inputBuffer.readSkipToMarker(g_cacheMarkerByteValue);
 
             if (nodeID == rootID && skipRoot) {
                 skipRoot = false;

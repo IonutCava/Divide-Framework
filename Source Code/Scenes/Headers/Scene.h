@@ -103,18 +103,15 @@ struct DragSelectData
 namespace SceneList {
     template<typename T>
     using SharedPtrFactory = boost::factory<std::shared_ptr<T>>;
-
     using ScenePtrFactory = std::function<std::shared_ptr<Scene>(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name)>;
+    using SceneFactoryMap = std::unordered_map<U64, ScenePtrFactory>;
+    using SceneNameMap = std::unordered_map<U64, Str256>;
 
-    using SceneFactoryMap = hashMap<U64, ScenePtrFactory>;
-    using SceneNameMap = hashMap<U64, Str256>;
-    static SceneFactoryMap g_sceneFactory;
-    static SceneNameMap g_sceneNameMap;
+    void registerSceneFactory(const char* name, const ScenePtrFactory& factoryFunc);
 
     template<typename T>
-    void registerScene(const char* name, const SharedPtrFactory<T>& scenePtr) {
-        g_sceneFactory[_ID(name)] = scenePtr;
-        g_sceneNameMap[_ID(name)] = name;
+    inline void registerScene(const char* name, const SharedPtrFactory<T>& scenePtr) {
+        registerSceneFactory(name, scenePtr);
     }
 }
 

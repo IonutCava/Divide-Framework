@@ -1896,7 +1896,7 @@ bool Scene::save(ByteBuffer& outputBuffer) const {
 
 bool Scene::load(ByteBuffer& inputBuffer) {
 
-    if (!inputBuffer.empty()) {
+    if (!inputBuffer.bufferEmpty()) {
         auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         inputBuffer >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {

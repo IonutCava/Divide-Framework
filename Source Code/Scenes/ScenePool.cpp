@@ -12,10 +12,27 @@
 
 namespace Divide {
 
+namespace SceneList {
+    [[nodiscard]] SceneFactoryMap& sceneFactoryMap() {
+        static SceneFactoryMap sceneFactory{};
+        return sceneFactory;
+    }
+
+    [[nodiscard]] SceneNameMap& sceneNameMap() {
+        static SceneNameMap sceneNameMap{};
+        return sceneNameMap;
+    }
+
+    void registerSceneFactory(const char* name, const ScenePtrFactory& factoryFunc) {
+        sceneNameMap()[_ID(name)] = name;
+        sceneFactoryMap()[_ID(name)] = factoryFunc;
+    }
+}
+
 ScenePool::ScenePool(SceneManager& parentMgr)
   : _parentMgr(parentMgr)
 {
-    assert(!SceneList::g_sceneFactory.empty());
+    assert(!SceneList::sceneFactoryMap().empty());
 }
 
 ScenePool::~ScenePool()
@@ -80,7 +97,7 @@ Scene* ScenePool::getOrCreateScene(PlatformContext& context, ResourceCache* cach
     }
 
     if (ret == nullptr) {
-        const auto creationFunc = SceneList::g_sceneFactory[_ID(name.c_str())];
+        const auto creationFunc = SceneList::sceneFactoryMap()[_ID(name.c_str())];
         if (creationFunc) {
             ret = creationFunc(context, cache, parent, name);
         } else {
@@ -129,7 +146,7 @@ bool ScenePool::deleteScene(const I64 targetGUID) {
 
 vectorEASTL<Str256> ScenePool::sceneNameList(const bool sorted) const {
     vectorEASTL<Str256> scenes;
-    for (SceneList::SceneNameMap::value_type it : SceneList::g_sceneNameMap) {
+    for (SceneList::SceneNameMap::value_type it : SceneList::sceneNameMap()) {
         scenes.push_back(it.second);
     }
 

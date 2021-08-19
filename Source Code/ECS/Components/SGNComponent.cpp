@@ -7,7 +7,7 @@
 #include "ECS/Components/Headers/RenderingComponent.h"
 
 namespace Divide {
-    constexpr U16 BYTE_BUFFER_VERSION = 17805u;
+    constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
     SGNComponent::SGNComponent(Key key, const ComponentType type, SceneGraphNode* parentSGN, PlatformContext& context)
         : PlatformContextComponent(context),

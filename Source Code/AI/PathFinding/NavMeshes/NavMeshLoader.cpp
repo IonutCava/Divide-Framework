@@ -107,9 +107,9 @@ bool LoadMeshFile(NavModelData& outData, const char* filepath, const char* fileN
         return false;
     }
 
-    char* buf = MemoryManager_NEW char[tempBuffer.size()];
-    std::memcpy(buf, reinterpret_cast<const char*>(tempBuffer.contents()), tempBuffer.size());
-    char* srcEnd = buf + tempBuffer.size();
+    char* buf = MemoryManager_NEW char[tempBuffer.storageSize()];
+    std::memcpy(buf, reinterpret_cast<const char*>(tempBuffer.contents()), tempBuffer.storageSize());
+    char* srcEnd = buf + tempBuffer.storageSize();
 
     char* src = buf;
 
