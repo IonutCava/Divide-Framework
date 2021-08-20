@@ -237,17 +237,12 @@ namespace Divide {
             ACKNOWLEDGE_UNUSED(rw_flag);
         }
 
-        void resize(const std::pair<Byte*, size_t>& ptr, const vec2<U16>& dimensions) override {
-            ACKNOWLEDGE_UNUSED(ptr);
-            ACKNOWLEDGE_UNUSED(dimensions);
-        }
-
         void loadData(const ImageTools::ImageData& imageLayers) override {
             ACKNOWLEDGE_UNUSED(imageLayers);
         }
 
-        void loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& dimensions) override {
-            ACKNOWLEDGE_UNUSED(data);
+        void loadData(const std::pair<Byte*, size_t>& ptr, const vec2<U16>& dimensions) override {
+            ACKNOWLEDGE_UNUSED(ptr);
             ACKNOWLEDGE_UNUSED(dimensions);
         }
 

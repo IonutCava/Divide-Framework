@@ -26,11 +26,10 @@ Texture::Texture(GFXDevice& context,
       GraphicsResource(context, Type::TEXTURE, getGUID(), _ID(name.c_str())),
       _descriptor(texDescriptor),
       _data{0u, TextureType::COUNT},
-      _numLayers(texDescriptor._layerCount),
+      _numLayers(texDescriptor.layerCount()),
       _flipped(isFlipped),
       _asyncLoad(asyncLoad)
 {
-    _width = _height = 0;
 }
 
 bool Texture::load() {
@@ -102,7 +101,7 @@ void Texture::threadedLoad() {
 
     if (loadedFromFile) {
         // Create a new Rendering API-dependent texture object
-        _descriptor._compressed = dataStorage.compressed();
+        _descriptor.compressed(dataStorage.compressed());
         _descriptor.baseFormat(dataStorage.format());
         _descriptor.dataType(dataStorage.dataType());
         // Uploading to the GPU dependents on the rendering API
@@ -250,40 +249,10 @@ bool Texture::checkTransparency(const ResourcePath& name, ImageTools::ImageData&
 
 void Texture::setSampleCount(U8 newSampleCount) noexcept { 
     CLAMP(newSampleCount, to_U8(0u), _context.gpuState().maxMSAASampleCount());
-    if (_descriptor._msaaSamples != newSampleCount) {
-        _descriptor._msaaSamples = newSampleCount;
-        resize({nullptr, 0 }, { width(), height() });
+    if (_descriptor.msaaSamples() != newSampleCount) {
+        _descriptor.msaaSamples(newSampleCount);
+        loadData({nullptr, 0 }, { width(), height() });
     }
-}
-
-void Texture::validateDescriptor() {
-    
-    // Select the proper colour space internal format
-    if (_descriptor.baseFormat() == GFXImageFormat::RED ||
-        _descriptor.baseFormat() == GFXImageFormat::RG ||
-        _descriptor.baseFormat() == GFXImageFormat::DEPTH_COMPONENT)
-    {
-        // We only support 8 bit per pixel - 3 & 4 channel textures
-        assert(!_descriptor.srgb());
-    }
-
-    switch (_descriptor.baseFormat()) {
-        case GFXImageFormat::COMPRESSED_RGB_DXT1:
-        case GFXImageFormat::COMPRESSED_RGBA_DXT1:
-        case GFXImageFormat::COMPRESSED_RGBA_DXT3:
-        case GFXImageFormat::COMPRESSED_RGBA_DXT5: {
-            _descriptor._compressed = true;
-        } break;
-        default: break;
-    }
-
-    // Cap upper mip count limit
-    _descriptor.mipCount(std::min(ComputeMipCount(_width, _height), _descriptor.mipCount()));
-}
-
-U16 Texture::ComputeMipCount(const U16 width, const U16 height) noexcept {
-    //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
-    return to_U16(std::floorf(std::log2f(std::fmaxf(to_F32(width), to_F32(height))))) + 1;
 }
 
 };

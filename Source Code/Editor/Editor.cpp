@@ -43,6 +43,8 @@
 namespace Divide {
 
 namespace {
+    constexpr F32 DEFAULT_MONITOR_DPI = 96.0f;
+    const char* g_editorFontFile = "Arial.ttf";
     const char* g_editorSaveFile = "Editor.xml";
     const char* g_editorSaveFileBak = "Editor.xml.bak";
 
@@ -133,6 +135,45 @@ void Editor::idle() {
     OPTICK_EVENT()
 }
 
+void Editor::createFontTexture(const F32 DPIScaleFactor) {
+    constexpr F32 fontSize = 13.f;
+
+    if (!_fontTexture) {
+        TextureDescriptor texDescriptor(TextureType::TEXTURE_2D,
+                                        GFXImageFormat::RGBA,
+                                        GFXDataFormat::UNSIGNED_BYTE);
+
+        ResourceDescriptor resDescriptor("IMGUI_font_texture");
+        resDescriptor.threaded(false);
+        resDescriptor.flag(true);
+        resDescriptor.propertyDescriptor(texDescriptor);
+        ResourceCache* parentCache = _context.kernel().resourceCache();
+        _fontTexture = CreateResource<Texture>(parentCache, resDescriptor);
+    }
+    assert(_fontTexture);
+
+    ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
+    U8* pPixels = nullptr;
+    I32 iWidth = 0;
+    I32 iHeight = 0;
+    ResourcePath fontPath(Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath + g_editorFontFile);
+
+    ImFontConfig font_cfg;
+    font_cfg.OversampleH = font_cfg.OversampleV = 1;
+    font_cfg.PixelSnapH = true;
+    font_cfg.SizePixels = fontSize * DPIScaleFactor;
+    font_cfg.EllipsisChar = (ImWchar)0x0085;
+    font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / fontSize);  // Add +1 offset per 13 units
+    ImFormatString(font_cfg.Name, IM_ARRAYSIZE(font_cfg.Name), "%s, %dpx", g_editorFontFile, (int)font_cfg.SizePixels);
+
+    io.Fonts->Clear();
+    io.Fonts->AddFontFromFileTTF(fontPath.c_str(), fontSize * DPIScaleFactor, &font_cfg);
+    io.Fonts->GetTexDataAsRGBA32(&pPixels, &iWidth, &iHeight);
+    _fontTexture->loadData({ (Byte*)pPixels, iWidth * iHeight * 4 }, vec2<U16>(iWidth, iHeight));
+    // Store our identifier as reloding data may change the handle!
+    io.Fonts->TexID = (void*)(intptr_t)_fontTexture->data()._textureHandle;
+}
+
 bool Editor::init(const vec2<U16>& renderResolution) {
     ACKNOWLEDGE_UNUSED(renderResolution);
 
@@ -151,25 +192,10 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     assert(_imguiContexts[to_base(ImGuiContextType::Editor)] == nullptr);
 
     _imguiContexts[to_base(ImGuiContextType::Editor)] = ImGui::CreateContext();
-    ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
 
-    U8* pPixels = nullptr;
-    I32 iWidth = 0;
-    I32 iHeight = 0;
-    io.Fonts->AddFontDefault();
-    io.Fonts->GetTexDataAsRGBA32(&pPixels, &iWidth, &iHeight);
-
-    TextureDescriptor texDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::UNSIGNED_BYTE);
-
-    ResourceDescriptor resDescriptor("IMGUI_font_texture");
-    resDescriptor.threaded(false);
-    resDescriptor.flag(true);
-    resDescriptor.propertyDescriptor(texDescriptor);
+    createFontTexture(1.f);
 
     ResourceCache* parentCache = _context.kernel().resourceCache();
-    _fontTexture = CreateResource<Texture>(parentCache, resDescriptor);
-    assert(_fontTexture);
-    _fontTexture->loadData({(Byte*)pPixels, iWidth * iHeight * 4 }, vec2<U16>(iWidth, iHeight));
 
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
@@ -187,9 +213,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     shaderResDescriptor.propertyDescriptor(shaderDescriptor);
     _imguiProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
 
-    // Store our identifier
-    io.Fonts->TexID = (void *)(intptr_t)_fontTexture->data()._textureHandle;
-
+    ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
     ImGui::ResetStyle(_currentTheme);
 
     io.ConfigViewportsNoDecoration = true;
@@ -387,6 +411,17 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         }
     };
 
+    platform_io.Platform_OnChangedViewport = [](ImGuiViewport* viewport) {
+        static F32 previousDPIScale = 1.f;
+        if (ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData) {
+            if (viewport->DpiScale != previousDPIScale) {
+                previousDPIScale = viewport->DpiScale;
+                ImGui::GetStyle().ScaleAllSizes(previousDPIScale);
+                data->_window->context().editor().createFontTexture(previousDPIScale);
+            }
+        }
+    };
+
     const vectorEASTL<WindowManager::MonitorData>& monitors = g_windowManager->monitorData();
     const I32 monitorCount = to_I32(monitors.size());
 
@@ -402,9 +437,8 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 
         imguiMonitor.MainSize = ImVec2(to_F32(monitor.viewport.z), to_F32(monitor.viewport.w));
         imguiMonitor.WorkSize = ImVec2(to_F32(monitor.drawableArea.z), to_F32(monitor.drawableArea.w));
-        imguiMonitor.DpiScale = monitor.dpi / 96.0f;
+        imguiMonitor.DpiScale = monitor.dpi / DEFAULT_MONITOR_DPI;
     }
-
     ImGuiViewportData* data = IM_NEW(ImGuiViewportData)();
     data->_window = _mainWindow;
     data->_windowOwned = false;
@@ -1271,12 +1305,12 @@ void Editor::onSizeChange(const SizeChangeParams& params) {
 
         const vec2<U16> displaySize = _mainWindow->getDrawableSize();
 
-        for (U8 i = 0; i < to_U8(ImGuiContextType::COUNT); ++i) {
+        for (U8 i = 0u; i < to_U8(ImGuiContextType::COUNT); ++i) {
             ImGuiIO& io = _imguiContexts[i]->IO;
             io.DisplaySize.x = to_F32(params.width);
             io.DisplaySize.y = to_F32(params.height);
-            io.DisplayFramebufferScale = ImVec2(params.width > 0 ? to_F32(displaySize.width) / params.width : 0.f,
-                                                params.height > 0 ? to_F32(displaySize.height) / params.height : 0.f);
+            io.DisplayFramebufferScale = ImVec2(params.width > 0u ? to_F32(displaySize.width) / params.width : 0.f,
+                                                params.height > 0u ? to_F32(displaySize.height) / params.height : 0.f);
         }
     }
 }

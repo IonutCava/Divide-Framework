@@ -128,6 +128,7 @@ struct ImageData final : NonCopyable {
     [[nodiscard]] const vectorEASTL<ImageLayer>& imageLayers() const noexcept {
         return _layers;
     }
+
     /// image width, height and depth
     [[nodiscard]] const vec3<U16>& dimensions(const U32 layer, const U8 mipLevel = 0u) const {
         assert(mipLevel < mipCount());

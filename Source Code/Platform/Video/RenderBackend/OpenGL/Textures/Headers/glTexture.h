@@ -57,11 +57,8 @@ class glTexture final : public Texture,
 
     void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rwFlag) override;
 
-    void resize(const std::pair<Byte*, size_t>& ptr, const vec2<U16>& dimensions) override;
-
-    void loadData(const ImageTools::ImageData& imageData) override;
-
-    void loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& dimensions) override;
+    void loadData(const ImageTools::ImageData& imageLayers) override;
+    void loadData(const std::pair<Byte*, size_t>& ptr, const vec2<U16>& dimensions) override;
 
     void clearData(const UColour4& clearColour, U8 level) const override;
     void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const override;
@@ -77,16 +74,18 @@ class glTexture final : public Texture,
     void reserveStorage(bool fromFile) const;
     void updateMipsInternal() const;
 
-    void processTextureType() noexcept;
-    void validateDescriptor() override;
     void loadDataCompressed(const ImageTools::ImageData& imageData);
 
     void loadDataUncompressed(const ImageTools::ImageData& imageData) const;
     void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
 
+    void prepareTextureData(U16 width, U16 height);
+    void submitTextureData();
+
+    void validateDescriptor();
+
    private:
     GLenum _type;
-    std::atomic_bool _allocatedStorage;
     TextureData _loadingData;
     glLockManager* _lockManager;
 

@@ -90,8 +90,6 @@ public:
 /// Use to define a texture with details such as type, image formats, etc
 /// We do not define copy constructors as we must define descriptors only with POD
 class TextureDescriptor final : public PropertyDescriptor {
-    friend class Texture;
-
    public:
     TextureDescriptor() noexcept
         : TextureDescriptor(TextureType::TEXTURE_2D)

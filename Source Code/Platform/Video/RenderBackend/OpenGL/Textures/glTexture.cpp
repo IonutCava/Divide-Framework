@@ -25,57 +25,16 @@ glTexture::glTexture(GFXDevice& context,
 
     : Texture(context, descriptorHash, name, resourceName, resourceLocation, isFlipped, asyncLoad, texDescriptor),
       glObject(glObjectType::TYPE_TEXTURE, context),
+     _type(GL_NONE),
      _loadingData(_data),
      _lockManager(MemoryManager_NEW glLockManager())
 {
-    _allocatedStorage = false;
-
-    processTextureType();
-    _loadingData._textureType = _descriptor.texType();
-
-    _type = GLUtil::glTextureTypeTable[to_U32(_descriptor.texType())];
-
-    glCreateTextures(GLUtil::glTextureTypeTable[to_base(_descriptor.texType())], 1, &_loadingData._textureHandle);
-    assert(_loadingData._textureHandle != 0u);
-
-    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-        glObjectLabel(GL_TEXTURE, _loadingData._textureHandle, -1, name.c_str());
-    }
-
-    // Loading from file usually involves data that doesn't change, so call this here.
-    addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
-        _data = _loadingData;
-    });
 }
 
 glTexture::~glTexture()
 {
     unload();
     MemoryManager::DELETE(_lockManager);
-}
-
-void glTexture::processTextureType() noexcept {
-    if (_descriptor.msaaSamples() == 0) {
-        if (_descriptor.texType() == TextureType::TEXTURE_2D_MS) {
-            _descriptor.texType(TextureType::TEXTURE_2D);
-        }
-        if (_descriptor.texType() == TextureType::TEXTURE_2D_ARRAY_MS) {
-            _descriptor.texType(TextureType::TEXTURE_2D_ARRAY);
-        }
-    }
-    else {
-        if (_descriptor.texType() == TextureType::TEXTURE_2D) {
-            _descriptor.texType(TextureType::TEXTURE_2D_MS);
-        }
-        if (_descriptor.texType() == TextureType::TEXTURE_2D_ARRAY) {
-            _descriptor.texType(TextureType::TEXTURE_2D_ARRAY_MS);
-        }
-    }
-}
-
-void glTexture::validateDescriptor() {
-    Texture::validateDescriptor();
-    _loadingData._textureType = _descriptor.texType();
 }
 
 SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
@@ -94,7 +53,6 @@ SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
         }
     }
     { //Slow path. Cache miss
-        assert(_allocatedStorage);
         ScopedLock<SharedMutex> w_lock(_gpuAddressesLock);
         // Check again as we may have updated this while switching locks
         SamplerAddress address;
@@ -137,32 +95,6 @@ void glTexture::threadedLoad() {
     Texture::threadedLoad();
     _lockManager->lock();
     CachedResource::load();
-}
-
-void glTexture::resize(const std::pair<Byte*, size_t>& ptr, const vec2<U16>& dimensions) {
-
-    _loadingData = _data;
-    _data = {};
-
-    processTextureType();
-    _loadingData._textureType = _descriptor.texType();
-    _type = GLUtil::glTextureTypeTable[to_U32(_descriptor.texType())];
-
-    if (_loadingData._textureHandle > 0 && _allocatedStorage) {
-        // Immutable storage requires us to create a new texture object 
-        U32 tempHandle = 0u;
-        glCreateTextures(GLUtil::glTextureTypeTable[to_base(_descriptor.texType())], 1, &tempHandle);
-
-        assert(tempHandle != 0 && "glTexture error: failed to generate new texture handle!");
-
-        glDeleteTextures(1, &_loadingData._textureHandle);
-        _loadingData._textureHandle = tempHandle;
-    }
-
-    _allocatedStorage = false;
-    loadData(ptr, dimensions);
-
-    _data = _loadingData;
 }
 
 void glTexture::reserveStorage(const bool fromFile) const {
@@ -239,24 +171,82 @@ void glTexture::updateMipsInternal() const  {
     }
 }
 
+void glTexture::validateDescriptor() {
+
+    // Select the proper colour space internal format
+    if (_descriptor.baseFormat() == GFXImageFormat::RED ||
+        _descriptor.baseFormat() == GFXImageFormat::RG ||
+        _descriptor.baseFormat() == GFXImageFormat::DEPTH_COMPONENT)
+    {
+        // We only support 8 bit per pixel - 3 & 4 channel textures
+        assert(!_descriptor.srgb());
+    }
+
+    switch (_descriptor.baseFormat()) {
+        case GFXImageFormat::COMPRESSED_RGB_DXT1:
+        case GFXImageFormat::COMPRESSED_RGBA_DXT1:
+        case GFXImageFormat::COMPRESSED_RGBA_DXT3:
+        case GFXImageFormat::COMPRESSED_RGBA_DXT5: {
+            _descriptor.compressed(true);
+        } break;
+        default: break;
+    }
+
+    // Cap upper mip count limit
+    if (_width > 0 && _height > 0) {
+        //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
+        const U16 mipCount = to_U16(std::floorf(std::log2f(std::fmaxf(to_F32(_width), to_F32(_height))))) + 1;
+        _descriptor.mipCount(std::min(mipCount, _descriptor.mipCount()));
+    }
+
+    if (_descriptor.msaaSamples() == 0u) {
+        if (_descriptor.texType() == TextureType::TEXTURE_2D_MS) {
+            _descriptor.texType(TextureType::TEXTURE_2D);
+        }
+        else if (_descriptor.texType() == TextureType::TEXTURE_2D_ARRAY_MS) {
+            _descriptor.texType(TextureType::TEXTURE_2D_ARRAY);
+        }
+    }
+}
+
+void glTexture::prepareTextureData(const U16 width, const U16 height) {
+    _loadingData = _data;
+    _data = {};
+
+    _width = width;
+    _height = height;
+    assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
+
+    validateDescriptor();
+    _loadingData._textureType = _descriptor.texType();
+
+    _type = GLUtil::glTextureTypeTable[to_U32(_loadingData._textureType)];
+
+    if (_loadingData._textureHandle > 0u) {
+        // Immutable storage requires us to create a new texture object 
+        glDeleteTextures(1, &_loadingData._textureHandle);
+    }
+
+    glCreateTextures(GLUtil::glTextureTypeTable[to_base(_descriptor.texType())], 1, &_loadingData._textureHandle);
+
+    assert(_loadingData._textureHandle != 0 && "glTexture error: failed to generate new texture handle!");
+    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+        glObjectLabel(GL_TEXTURE, _loadingData._textureHandle, -1, resourceName().c_str());
+    }
+}
+
+void glTexture::submitTextureData() {
+    updateMipsInternal();
+    _data = _loadingData;
+}
+
 void glTexture::loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& dimensions) {
-    // Create a new Rendering API-dependent texture object
-    _descriptor.texType( _loadingData._textureType);
+    prepareTextureData(dimensions.width, dimensions.height);
 
     // This should never be called for compressed textures                            
     assert(!_descriptor.compressed());
-    _width = dimensions.width;
-    _height = dimensions.height;
- 
-    validateDescriptor();
-    assert(_width > 0 && _height > 0);
 
-    bool expected = false;
-    if (_allocatedStorage.compare_exchange_strong(expected, true)) {
-        reserveStorage(false);
-    }
-
-    assert(_allocatedStorage);
+    reserveStorage(false);
 
     if (data.first != nullptr && data.second > 0) {
         ImageTools::ImageData imgData = {};
@@ -266,26 +256,13 @@ void glTexture::loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& 
         }
     }
 
-    if (getState() == ResourceState::RES_LOADED) {
-        _data = _loadingData;
-    }
-
-    updateMipsInternal();
+    submitTextureData();
 }
 
 void glTexture::loadData(const ImageTools::ImageData& imageData) {
-    _width = imageData.dimensions(0u, 0u).width;
-    _height = imageData.dimensions(0u, 0u).height;
 
-    assert(_width > 0 && _height > 0);
-
-    validateDescriptor();
-
-    bool expected = false;
-    if (_allocatedStorage.compare_exchange_strong(expected, true)) {
-        reserveStorage(true);
-    }
-    assert(_allocatedStorage);
+    prepareTextureData(imageData.dimensions(0u, 0u).width, imageData.dimensions(0u, 0u).height);
+    reserveStorage(true);
 
     if (_descriptor.compressed()) {
         loadDataCompressed(imageData);
@@ -293,12 +270,7 @@ void glTexture::loadData(const ImageTools::ImageData& imageData) {
         loadDataUncompressed(imageData);
     }
 
-    assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
-    if (getState() == ResourceState::RES_LOADED) {
-        _data = _loadingData;
-    }
-
-    updateMipsInternal();
+    submitTextureData();
 }
 
 void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {

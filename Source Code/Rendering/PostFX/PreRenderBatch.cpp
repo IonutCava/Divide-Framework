@@ -128,7 +128,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         texture.waitForReady(true);
         _currentLuminance = CreateResource<Texture>(cache, texture);
 
-        F32 val = 1.0f;
+        F32 val = 1.f;
         _currentLuminance->loadData({ (Byte*)&val, 1 * sizeof(F32) }, vec2<U16>(1u));
     }
 

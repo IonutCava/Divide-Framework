@@ -212,7 +212,8 @@ class Editor final : public PlatformContextComponent,
     void loadNode(SceneGraphNode* sgn) const;
     void queueRemoveNode(I64 nodeGUID);
     void onPreviewFocus(bool state) const;
-
+    /// Destroys the old font, if any, before loading the new one
+    void createFontTexture(F32 DPIScaleFactor);
     [[nodiscard]] static ImGuiViewport* FindViewportByPlatformHandle(ImGuiContext* context, DisplayWindow* window);
 
     [[nodiscard]] U32 saveItemCount() const  noexcept;

@@ -78,15 +78,12 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     /// Bind a single level
     virtual void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rw_flag) = 0;
 
-    /// Resize the texture to the specified dimensions and upload the new data
-    virtual void resize(const std::pair<Byte*, size_t>& ptr, const vec2<U16>& dimensions) = 0;
-    /// Change the number of MSAA samples for this current texture
-    void setSampleCount(U8 newSampleCount) noexcept;
-
-    // API-dependent loading function that uploads ptr data to the GPU using the
-    // specified parameters
+    /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
     virtual void loadData(const ImageTools::ImageData& imageData) = 0;
     virtual void loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& dimensions) = 0;
+
+    /// Change the number of MSAA samples for this current texture
+    void setSampleCount(U8 newSampleCount) noexcept;
 
     virtual void clearData(const UColour4& clearColour, U8 level) const = 0;
     virtual void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const = 0;
@@ -111,7 +108,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     [[nodiscard]] U8 numChannels() const noexcept;
 
-    static U16 ComputeMipCount(U16 width, U16 height) noexcept;
 #if defined(_DEBUG)
     const vectorEASTL<stringImpl>& sourceFileList() const noexcept { return _sourceFileList; }
 #endif
@@ -122,8 +118,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     /// Load texture data using the specified file name
     bool load() override;
     virtual void threadedLoad();
-
-    virtual void validateDescriptor();
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Texture"; }
 
