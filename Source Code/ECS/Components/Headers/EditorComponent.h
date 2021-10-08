@@ -93,7 +93,7 @@ namespace Divide {
     static_assert(ArrayCount(Names::componentType) == to_base(ComponentType::COUNT) + 1u, "ComponentType name array out of sync!");
     namespace TypeUtil {
         const char* ComponentTypeToString(const ComponentType compType) noexcept;
-        ComponentType StringToComponentType(const stringImpl & name);
+        ComponentType StringToComponentType(const string & name);
     };
 
     enum class EditorComponentFieldType : U8 {
@@ -240,8 +240,8 @@ namespace Divide {
 
         void registerField(EditorComponentField&& field);
 
-        [[nodiscard]] vectorEASTL<EditorComponentField>& fields() noexcept { return _fields; }
-        [[nodiscard]] const vectorEASTL<EditorComponentField>& fields() const noexcept { return _fields; }
+        [[nodiscard]] vector<EditorComponentField>& fields() noexcept { return _fields; }
+        [[nodiscard]] const vector<EditorComponentField>& fields() const noexcept { return _fields; }
 
         void onChangedCbk(const DELEGATE<void, std::string_view>& cbk) { _onChangedCbk = cbk; }
         void onChangedCbk(DELEGATE<void, std::string_view>&& cbk) { _onChangedCbk = MOV(cbk); }
@@ -263,16 +263,16 @@ namespace Divide {
       protected:
         SGNComponent* _parentComp = nullptr;
         DELEGATE<void, std::string_view> _onChangedCbk;
-        vectorEASTL<EditorComponentField> _fields;
+        vector<EditorComponentField> _fields;
     };
 
     namespace Attorney {
         class EditorComponentEditor {
-            static vectorEASTL<EditorComponentField>& fields(EditorComponent& comp) noexcept {
+            static vector<EditorComponentField>& fields(EditorComponent& comp) noexcept {
                 return comp._fields;
             }
 
-            static const vectorEASTL<EditorComponentField>& fields(const EditorComponent& comp) noexcept {
+            static const vector<EditorComponentField>& fields(const EditorComponent& comp) noexcept {
                 return comp._fields;
             }
 

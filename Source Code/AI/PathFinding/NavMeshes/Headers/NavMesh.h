@@ -214,7 +214,7 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
     Str256 _fileName;
     Str256 _filePath;
     /// Configuration file
-    stringImpl _configFile;
+    string _configFile;
     /// NavMesh extents
     vec3<F32> _extents;
     ///  Query object used for this mesh

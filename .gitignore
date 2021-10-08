@@ -1003,3 +1003,26 @@ Intermediate
 /Build
 /Source Code/Libs
 *.ilk
+/VCData/Projects/Profile_Platform
+/VCData/Projects/Profile_ThirdPartyLibs
+/VCData/Projects/Profile_ReCast
+/VCData/Projects/Release_Core
+/VCData/Projects/Release_Engine
+/VCData/Projects/Release_Game
+/VCData/Projects/Release_Platform
+/VCData/Projects/Release_ThirdPartyLibs
+/VCData/Projects/Release_ReCast
+/VCData/Projects/Release_Networking
+/VCData/Projects/Release_Engine-Tests
+/VCData/Projects/Release_Platform-Tests
+/VCData/Projects/Release_Editor
+/VCData/Projects/Release_Executable
+/VCData/Projects/Profile_Platform-Tests
+/VCData/Projects/Profile_Networking
+/VCData/Projects/Profile_Game
+/VCData/Projects/Profile_Engine
+/VCData/Projects/Profile_Executable
+/VCData/Projects/Profile_Engine-Tests
+/VCData/Projects/Profile_Editor
+/VCData/Projects/Profile_Core
+/VCData/Projects/Debug_ThirdPartyLibs

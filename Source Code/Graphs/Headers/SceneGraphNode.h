@@ -158,7 +158,7 @@ public:
     bool forEachChild(Predicate predicate) const;
 
     /// A "locked" call assumes that either access is guaranteed thread-safe or that the child lock is already acquired
-    const vectorEASTL<SceneGraphNode*>& getChildrenLocked() const noexcept { return _children; }
+    const vector<SceneGraphNode*>& getChildrenLocked() const noexcept { return _children; }
 
     /// Return the current number of children that the current node has
     U32 getChildCount() const noexcept { return _childCount.load(); }
@@ -190,7 +190,7 @@ public:
     void postLoad();
 
     /// Find the graph nodes whom's bounding boxes intersects the given ray
-    bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vectorEASTL<SGNRayResult>& intersections) const;
+    bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersections) const;
 
     void changeUsageContext(const NodeUsageContext& newContext);
 
@@ -297,9 +297,9 @@ private:
     /// Called whenever we send a networking packet from our NetworkingComponent (if any). FrameCount is the frame ID sent with the packet.
     void onNetworkSend(U32 frameCount) const;
     /// Returns a bottom-up list(leafs -> root) of all of the nodes parented under the current one.
-    void getAllNodes(vectorEASTL<SceneGraphNode*>& nodeList);
+    void getAllNodes(vector<SceneGraphNode*>& nodeList);
     /// Destructs all of the nodes specified in the list and removes them from the _children container.
-    void processDeleteQueue(vectorEASTL<size_t>& childList);
+    void processDeleteQueue(vector<size_t>& childList);
     /// Similar to the saveToXML call but is geared towards temporary state (e.g. save game)
     bool saveCache(ByteBuffer& outputBuffer) const;
     /// Similar to the loadFromXML call but is geared towards temporary state (e.g. save game)
@@ -325,12 +325,12 @@ private:
 
 private:
     SGNRelationshipCache _relationshipCache;
-    vectorEASTL<SceneGraphNode*> _children;
+    vector<SceneGraphNode*> _children;
     std::atomic_uint _childCount;
 
     // ToDo: Remove this HORRIBLE hack -Ionut
     struct hacks {
-        vectorEASTLFast<EditorComponent*> _editorComponents;
+        vector_fast<EditorComponent*> _editorComponents;
         TransformComponent* _transformComponentCache = nullptr;
         BoundsComponent* _boundsComponentCache = nullptr;
     } Hacks;
@@ -366,11 +366,11 @@ private:
 
 namespace Attorney {
     class SceneGraphNodeEditor {
-        static vectorEASTLFast<EditorComponent*>& editorComponents(SceneGraphNode* node) noexcept {
+        static vector_fast<EditorComponent*>& editorComponents(SceneGraphNode* node) noexcept {
             return node->Hacks._editorComponents;
         }
 
-        static const vectorEASTLFast<EditorComponent*>& editorComponents(const SceneGraphNode* node) noexcept {
+        static const vector_fast<EditorComponent*>& editorComponents(const SceneGraphNode* node) noexcept {
             return node->Hacks._editorComponents;
         }
 
@@ -386,11 +386,11 @@ namespace Attorney {
             node->onNetworkSend(frameCount);
         }
 
-        static void getAllNodes(SceneGraphNode* node, vectorEASTL<SceneGraphNode*>& nodeList) {
+        static void getAllNodes(SceneGraphNode* node, vector<SceneGraphNode*>& nodeList) {
             node->getAllNodes(nodeList);
         }
 
-;        static void processDeleteQueue(SceneGraphNode* node, vectorEASTL<size_t>& childList) {
+;        static void processDeleteQueue(SceneGraphNode* node, vector<size_t>& childList) {
             node->processDeleteQueue(childList);
         }
 

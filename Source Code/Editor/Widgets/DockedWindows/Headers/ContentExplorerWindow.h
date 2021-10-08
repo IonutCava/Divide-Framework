@@ -41,9 +41,9 @@ namespace Divide {
     FWD_DECLARE_MANAGED_CLASS(Mesh);
 
     struct Directory {
-        stringImpl _path;
-        vectorEASTLFast<std::pair<Str256, Str64>> _files;
-        vectorEASTLFast<std::shared_ptr<Directory>> _children;
+        string _path;
+        vector_fast<std::pair<Str256, Str64>> _files;
+        vector_fast<std::shared_ptr<Directory>> _children;
     };
 
     class ContentExplorerWindow final : public DockedWindow {
@@ -65,7 +65,7 @@ namespace Divide {
         Texture_ptr _fileIcon = nullptr;
         std::array<Texture_ptr, to_base(GeometryFormat::COUNT) + 1> _geometryIcons = {};
         mutable const Directory* _selectedDir = nullptr;
-        vectorEASTLFast<Directory> _currentDirectories;
+        vector_fast<Directory> _currentDirectories;
 
         hashMap<size_t, Texture_ptr> _loadedTextures;
         hashMap<size_t, Mesh_ptr> _loadedModels;

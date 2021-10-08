@@ -185,7 +185,7 @@ class Plane {
 
 template<size_t N>
 using PlaneList = std::array<Plane<F32>, N>;
-using PlaneDynamicList = vectorEASTL<Plane<F32>>;
+using PlaneDynamicList = vector<Plane<F32>>;
 
 static const Plane<F32> DEFAULT_PLANE = {WORLD_Y_AXIS, 0.0f };
 }  // namespace Divide

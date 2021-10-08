@@ -19,7 +19,7 @@ namespace TypeUtil {
         return Names::objectType[to_base(objectType)];
     }
 
-    ObjectType StringToObjectType(const stringImpl& name) {
+    ObjectType StringToObjectType(const string& name) {
         for (U8 i = 0u; i < to_U8(ObjectType::COUNT); ++i) {
             if (strcmp(name.c_str(), Names::objectType[i]) == 0) {
                 return static_cast<ObjectType>(i);
@@ -170,7 +170,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
         _geometryTriangles.resize(partitionID + 1);
     }
 
-    vectorEASTL<vec3<U32>>& triangles = _geometryTriangles[partitionID];
+    vector<vec3<U32>>& triangles = _geometryTriangles[partitionID];
     if (!force && !triangles.empty()) {
         return true;
     }
@@ -207,7 +207,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
         const size_t indiceEnd = indiceCount + partitionOffset;
         vec3<U32> curTriangle;
         triangles.reserve(indiceCount / 2);
-        const vectorEASTL<U32>& indices = geometry->getIndices();
+        const vector<U32>& indices = geometry->getIndices();
         for (size_t i = indiceStart; i < indiceEnd; i++) {
             curTriangle.set(indices[i - 2], indices[i - 1], indices[i]);
             // Check for correct winding
@@ -219,7 +219,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
     } else if (type == PrimitiveType::TRIANGLES) {
         indiceCount /= 3;
         triangles.reserve(indiceCount);
-        const vectorEASTL<U32>& indices = geometry->getIndices();
+        const vector<U32>& indices = geometry->getIndices();
         for (size_t i = 0; i < indiceCount; i += 3) {
             triangles.push_back(vec3<U32>(indices[i + 0],
                                           indices[i + 1],
@@ -241,8 +241,8 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
     return true;
 }
 
-vectorEASTL<SceneGraphNode*> Object3D::filterByType(const vectorEASTL<SceneGraphNode*>& nodes, const ObjectType filter) {
-    vectorEASTL<SceneGraphNode*> result;
+vector<SceneGraphNode*> Object3D::filterByType(const vector<SceneGraphNode*>& nodes, const ObjectType filter) {
+    vector<SceneGraphNode*> result;
     result.reserve(nodes.size());
 
     for (SceneGraphNode* ptr : nodes) {
@@ -276,7 +276,7 @@ bool Object3D::saveCache(ByteBuffer& outputBuffer) const {
         if (isPrimitive()) {
             outputBuffer << to_U8(getObjectType());
         } else {
-            outputBuffer << stringImpl(resourceName().c_str());
+            outputBuffer << string(resourceName().c_str());
         }
         return true;
     }
@@ -291,7 +291,7 @@ bool Object3D::loadCache(ByteBuffer& inputBuffer) {
             inputBuffer >> index;
             assert(index == to_U8(getObjectType()));
         } else {
-            stringImpl tempName = {};
+            string tempName = {};
             inputBuffer >> tempName;
             assert(tempName == resourceName().c_str());
         }
@@ -313,7 +313,7 @@ void Object3D::saveToXML(boost::property_tree::ptree& pt) const {
 }
 
 void Object3D::loadFromXML(const boost::property_tree::ptree& pt) {
-    stringImpl temp;
+    string temp;
     if (static_cast<const Object3D*>(this)->isPrimitive()) {
         temp = pt.get("model", TypeUtil::ObjectTypeToString(getObjectType()));
         assert(temp == TypeUtil::ObjectTypeToString(getObjectType()));

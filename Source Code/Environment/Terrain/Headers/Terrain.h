@@ -120,7 +120,7 @@ class Terrain final : public Object3D {
 
     void toggleBoundingBoxes();
 
-    [[nodiscard]] const vectorEASTL<VertexBuffer::Vertex>& getVerts() const;
+    [[nodiscard]] const vector<VertexBuffer::Vertex>& getVerts() const;
     [[nodiscard]] Vert      getVert(F32 x_clampf, F32 z_clampf, bool smooth) const;
     [[nodiscard]] Vert      getVertFromGlobal(F32 x, F32 z, bool smooth) const;
     [[nodiscard]] vec2<U16> getDimensions() const noexcept;
@@ -130,7 +130,7 @@ class Terrain final : public Object3D {
 
     void getVegetationStats(U32& maxGrassInstances, U32& maxTreeInstances) const;
 
-    [[nodiscard]] const vectorEASTL<TerrainChunk*>& terrainChunks() const noexcept { return _terrainChunks; }
+    [[nodiscard]] const vector<TerrainChunk*>& terrainChunks() const noexcept { return _terrainChunks; }
     [[nodiscard]] const std::shared_ptr<TerrainDescriptor>& descriptor() const noexcept { return _descriptor; }
 
     void saveToXML(boost::property_tree::ptree& pt) const override;
@@ -162,16 +162,16 @@ class Terrain final : public Object3D {
     PROPERTY_R(TessellationParams, tessParams);
 
    public:
-     vectorEASTL<VertexBuffer::Vertex> _physicsVerts;
+     vector<VertexBuffer::Vertex> _physicsVerts;
 
    protected:
 
     VegetationDetails _vegDetails;
 
     Quadtree _terrainQuadtree;
-    vectorEASTL<TerrainChunk*> _terrainChunks;
+    vector<TerrainChunk*> _terrainChunks;
     GenericVertexData* _terrainBuffer = nullptr;
-    vectorEASTL<eastl::unique_ptr<TileRing>> _tileRings;
+    vector<eastl::unique_ptr<TileRing>> _tileRings;
 
     bool _initialSetupDone = false;
 

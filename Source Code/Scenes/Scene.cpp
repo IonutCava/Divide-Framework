@@ -1039,7 +1039,7 @@ bool Scene::load(const Str256& name) {
     loadDefaultCamera();
 
     SceneGraphNode* rootNode = _sceneGraph->getRoot();
-    vectorEASTL<XML::SceneNode>& rootChildren = _xmlSceneGraphRootNode.children;
+    vector<XML::SceneNode>& rootChildren = _xmlSceneGraphRootNode.children;
     const size_t childCount = rootChildren.size();
     Attorney::SceneGraphNodeScene::reserveChildCount(rootNode, childCount);
 
@@ -1136,7 +1136,7 @@ void Scene::rebuildShaders() {
     }
 }
 
-stringImpl Scene::GetPlayerSGNName(const PlayerIndex idx) {
+string Scene::GetPlayerSGNName(const PlayerIndex idx) {
     return Util::StringFormat(g_defaultPlayerName, idx + 1);
 }
 
@@ -1194,7 +1194,7 @@ void Scene::addPlayerInternal(const bool queue) {
         return;
     }
 
-    const stringImpl playerName = GetPlayerSGNName(static_cast<PlayerIndex>(_parent.getActivePlayerCount()));
+    const string playerName = GetPlayerSGNName(static_cast<PlayerIndex>(_parent.getActivePlayerCount()));
     
     SceneGraphNode* playerSGN(_sceneGraph->findNode(playerName));
     if (!playerSGN) {
@@ -1379,7 +1379,7 @@ void Scene::clearTasks() {
 
 void Scene::removeTask(Task& task) {
     ScopedLock<SharedMutex> w_lock(_tasksMutex);
-    for (vectorEASTL<Task*>::iterator it = begin(_tasks); it != end(_tasks); ++it) {
+    for (vector<Task*>::iterator it = begin(_tasks); it != end(_tasks); ++it) {
         if ((*it)->_id == task._id) {
             Wait(**it, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
             _tasks.erase(it);
@@ -1674,7 +1674,7 @@ void Scene::resetSelection(const PlayerIndex idx) {
     playerSelections.reset();
 }
 
-void Scene::setSelected(const PlayerIndex idx, const vectorEASTL<SceneGraphNode*>& SGNs, const bool recursive) {
+void Scene::setSelected(const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive) {
     Selections& playerSelections = _currentSelection[idx];
 
     for (SceneGraphNode* sgn : SGNs) {
@@ -1804,7 +1804,7 @@ void Scene::updateSelectionData(PlayerIndex idx, DragSelectData& data, bool rema
         clearHoverTarget(idx);
         _parent.resetSelection(idx);
         Camera* crtCamera = getPlayerForIndex(idx)->camera();
-        vectorEASTL<SceneGraphNode*> nodes = Attorney::SceneManagerScene::getNodesInScreenRect(_parent, selectionRect, *crtCamera, data._targetViewport);
+        vector<SceneGraphNode*> nodes = Attorney::SceneManagerScene::getNodesInScreenRect(_parent, selectionRect, *crtCamera, data._targetViewport);
         _parent.setSelected(idx, nodes, false);
     }
 }

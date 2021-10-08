@@ -16,8 +16,8 @@ void PushConstants::set(const GFX::PushConstant& constant) {
 }
 
 bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial) {
-    vectorEASTL<GFX::PushConstant>& ourConstants = lhs._data;
-    const vectorEASTL<GFX::PushConstant>& otherConstants = rhs._data;
+    vector<GFX::PushConstant>& ourConstants = lhs._data;
+    const vector<GFX::PushConstant>& otherConstants = rhs._data;
 
     // Check stage
     for (const GFX::PushConstant& ourConstant : ourConstants) {

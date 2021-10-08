@@ -63,7 +63,7 @@ static_assert(ArrayCount(Names::objectType) == to_base(ObjectType::COUNT) + 1, "
 
 namespace TypeUtil {
     const char* ObjectTypeToString(const ObjectType objectType) noexcept;
-    ObjectType StringToObjectType(const stringImpl& name);
+    ObjectType StringToObjectType(const string& name);
 };
 
 class Object3D : public SceneNode {
@@ -137,7 +137,7 @@ class Object3D : public SceneNode {
         }
     }
 
-    [[nodiscard]] vectorEASTL<vec3<U32>>& getTriangles(const U16 partitionID) noexcept {
+    [[nodiscard]] vector<vec3<U32>>& getTriangles(const U16 partitionID) noexcept {
         if (partitionID >= _geometryTriangles.size()) {
             _geometryTriangles.resize(partitionID + 1);
         }
@@ -145,12 +145,12 @@ class Object3D : public SceneNode {
         return _geometryTriangles[std::min(partitionID, to_U16(_geometryTriangles.size()))];
     }
 
-    [[nodiscard]] const vectorEASTL<vec3<U32>>& getTriangles(const U16 partitionID) const noexcept {
+    [[nodiscard]] const vector<vec3<U32>>& getTriangles(const U16 partitionID) const noexcept {
         DIVIDE_ASSERT(partitionID < _geometryTriangles.size());
         return _geometryTriangles[std::min(partitionID, to_U16(_geometryTriangles.size()))];
     }
 
-    void addTriangles(const U16 partitionID, const vectorEASTL<vec3<U32>>& triangles) {
+    void addTriangles(const U16 partitionID, const vector<vec3<U32>>& triangles) {
         if (partitionID >= _geometryTriangles.size()) {
             _geometryTriangles.resize(partitionID + 1);
         }
@@ -163,7 +163,7 @@ class Object3D : public SceneNode {
     // Create a list of triangles from the vertices + indices lists based on primitive type
     bool computeTriangleList(U16 partitionID, bool force = false);
 
-    static vectorEASTL<SceneGraphNode*> filterByType(const vectorEASTL<SceneGraphNode*>& nodes, ObjectType filter);
+    static vector<SceneGraphNode*> filterByType(const vector<SceneGraphNode*>& nodes, ObjectType filter);
 
     bool isPrimitive() const noexcept;
 
@@ -198,7 +198,7 @@ class Object3D : public SceneNode {
     /// 3 indices, pointing to position values, that form a triangle in the mesh.
     /// used, for example, for cooking collision meshes
     /// We keep separate triangle lists per partition
-    vectorEASTL<vectorEASTL<vec3<U32>>> _geometryTriangles;
+    vector<vector<vec3<U32>>> _geometryTriangles;
 
   private:
      /// A custom, override vertex buffer

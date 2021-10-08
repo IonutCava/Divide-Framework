@@ -94,7 +94,7 @@ bool SceneAnimator::init(PlatformContext& context) {
 }
 
 /// This will build the skeleton based on the scene passed to it and CLEAR EVERYTHING
-bool SceneAnimator::init(PlatformContext& context, Bone* const skeleton, const vectorEASTL<Bone*>& bones) {
+bool SceneAnimator::init(PlatformContext& context, Bone* const skeleton, const vector<Bone*>& bones) {
     release(false);
 
     DIVIDE_ASSERT(_bones.size() < U8_MAX, "SceneAnimator::init error: Too many bones for current node!");
@@ -128,13 +128,13 @@ void SceneAnimator::UpdateTransforms(Bone* pNode) {
     }
 }
 
-Bone* SceneAnimator::boneByName(const stringImpl& name) const {
+Bone* SceneAnimator::boneByName(const string& name) const {
     assert(_skeleton != nullptr);
 
     return _skeleton->find(name);
 }
 
-I32 SceneAnimator::boneIndex(const stringImpl& bName) const {
+I32 SceneAnimator::boneIndex(const string& bName) const {
     Bone* bone = boneByName(bName);
 
     if (bone != nullptr) {
@@ -145,7 +145,7 @@ I32 SceneAnimator::boneIndex(const stringImpl& bName) const {
 }
 
 /// Renders the current skeleton pose at time index dt
-const vectorEASTL<Line>& SceneAnimator::skeletonLines(const I32 animationIndex, const D64 dt) {
+const vector<Line>& SceneAnimator::skeletonLines(const I32 animationIndex, const D64 dt) {
     const I32 frameIndex = std::max(_animations[animationIndex]->frameIndexAt(dt)._curr - 1, 0);
     I32& vecIndex = _skeletonLines.at(animationIndex).at(frameIndex);
 
@@ -155,7 +155,7 @@ const vectorEASTL<Line>& SceneAnimator::skeletonLines(const I32 animationIndex, 
     }
 
     // create all the needed points
-    vectorEASTL<Line>& lines = _skeletonLinesContainer.at(vecIndex);
+    vector<Line>& lines = _skeletonLinesContainer.at(vecIndex);
     if (lines.empty()) {
         lines.reserve(boneCount());
         // Construct skeleton
@@ -170,7 +170,7 @@ const vectorEASTL<Line>& SceneAnimator::skeletonLines(const I32 animationIndex, 
 /// Create animation skeleton
 I32 SceneAnimator::CreateSkeleton(Bone* piNode,
                                   const mat4<F32>& parent,
-                                  vectorEASTL<Line>& lines) {
+                                  vector<Line>& lines) {
     static Line s_line = { VECTOR3_ZERO, VECTOR3_UNIT, DefaultColours::RED_U8, DefaultColours::RED_U8, 2.0f, 2.0f };
     const mat4<F32>& me = piNode->_globalTransform;
 

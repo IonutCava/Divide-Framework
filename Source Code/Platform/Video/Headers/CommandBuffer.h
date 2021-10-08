@@ -138,7 +138,7 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     [[nodiscard]] inline bool empty() const noexcept;
 
     // Multi-line. indented list of all commands (and params for some of them)
-    [[nodiscard]] stringImpl toString() const;
+    [[nodiscard]] string toString() const;
 
     template<typename T>
     [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, size_t>::type
@@ -152,7 +152,7 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
     allocateCommand();
 
-    static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, stringImpl& out);
+    static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
 
   protected:
       CommandOrderContainer _commandOrder;

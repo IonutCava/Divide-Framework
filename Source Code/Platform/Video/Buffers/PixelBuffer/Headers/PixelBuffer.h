@@ -78,7 +78,7 @@ class NOINITVTABLE PixelBuffer : public GUIDWrapper, public GraphicsResource {
     U32 _pixelBufferHandle;
     TextureType _textureType;
 
-    stringImpl _name;
+    string _name;
 };
 
 };  // namespace Divide

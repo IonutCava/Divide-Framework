@@ -27,8 +27,8 @@ namespace {
 
 vec3<F32> WarSceneAIProcessor::_initialFlagPositions[2];
 GlobalWorkingMemory WarSceneAIProcessor::_globalWorkingMemory;
-DELEGATE<void, U8, const stringImpl&> WarSceneAIProcessor::_scoreCallback;
-DELEGATE<void, U8, const stringImpl&> WarSceneAIProcessor::_messageCallback;
+DELEGATE<void, U8, const string&> WarSceneAIProcessor::_scoreCallback;
+DELEGATE<void, U8, const string&> WarSceneAIProcessor::_messageCallback;
 
 WarSceneAIProcessor::WarSceneAIProcessor(const AIType type, AIManager& parentManager)
     : AIProcessor(parentManager),
@@ -870,7 +870,7 @@ bool WarSceneAIProcessor::performActionStep(const GOAPAction::operationsIterator
     return true;
 }
 
-const stringImpl& WarSceneAIProcessor::printActionStats(const GOAPAction& planStep) const {
+const string& WarSceneAIProcessor::printActionStats(const GOAPAction& planStep) const {
     PRINT("Action [ %s ]", planStep.name().c_str());
     return planStep.name();
 }
@@ -879,12 +879,12 @@ void WarSceneAIProcessor::printWorkingMemory() const {
     PRINT(toString(true).c_str());
 }
 
-stringImpl WarSceneAIProcessor::toString(bool state) const {
+string WarSceneAIProcessor::toString(bool state) const {
     const AITeam* const currentTeam = _entity->getTeam();
     const U32 ownTeamID = currentTeam->getTeamID();
     const U32 enemyTeamID = 1 - ownTeamID;
 
-    stringImpl ret(Util::StringFormat("Unit: [ %s ]\n", _entity->name().c_str()));
+    string ret(Util::StringFormat("Unit: [ %s ]\n", _entity->name().c_str()));
     ret.append("--------------- Working memory state BEGIN ----------------------------\n");
     ret.append(Util::StringFormat(
         "        Current position: - [ %4.1f , %4.1f, %4.1f]\n",

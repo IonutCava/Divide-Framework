@@ -75,24 +75,24 @@ public:
 
     virtual GUIText* addText(const char* name,
                              const RelativePosition2D& position,
-                             const stringImpl& font,
+                             const string& font,
                              const UColour4& colour,
-                             const stringImpl& text,
+                             const string& text,
                              bool multiLine = false,
                              U8 fontSize = 16u);
 
-    virtual GUIText* modifyText(const char* name, const stringImpl& text, bool multiLine);
+    virtual GUIText* modifyText(const char* name, const string& text, bool multiLine);
 
     virtual GUIMessageBox* addMsgBox(const char* name,
-                                     const stringImpl& title,
-                                     const stringImpl& message,
+                                     const string& title,
+                                     const string& message,
                                      const vec2<I32>& offsetFromCentre = vec2<I32>(0));
 
     virtual GUIButton* addButton(const char* name,
-                                 const stringImpl& text,
+                                 const string& text,
                                  const RelativePosition2D& offset,
                                  const RelativeScale2D& size,
-                                 const stringImpl& rootSheetID = "");
+                                 const string& rootSheetID = "");
 
     virtual GUIFlash* addFlash(const char* name,
                                const RelativePosition2D& position,

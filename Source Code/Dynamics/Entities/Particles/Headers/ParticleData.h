@@ -59,29 +59,29 @@ class ParticleData {
     static constexpr U32 g_threadPartitionSize = 256;
 
     /// helper array used for sorting
-    vectorEASTLFast<std::pair<U32, F32>> _indices;
-    vectorEASTL<vec4<F32>> _renderingPositions;
-    vectorEASTL<UColour4>  _renderingColours;
+    vector_fast<std::pair<U32, F32>> _indices;
+    vector<vec4<F32>> _renderingPositions;
+    vector<UColour4>  _renderingColours;
     /// x,y,z = position; w = size
-    vectorEASTL<vec4<F32>> _position;
+    vector<vec4<F32>> _position;
     /// x,y,z = _velocity; w = angle;
-    vectorEASTL<vec4<F32>> _velocity;
+    vector<vec4<F32>> _velocity;
     /// x,y,z = _acceleration; w = weight;
-    vectorEASTL<vec4<F32>> _acceleration;
+    vector<vec4<F32>> _acceleration;
     /// x = time; y = interpolation; z = 1 / time;  w = distance to camera sq;
-    vectorEASTL<vec4<F32>> _misc;
+    vector<vec4<F32>> _misc;
     /// r,g,b,a = colour and transparency
-    vectorEASTL<FColour4> _colour;
+    vector<FColour4> _colour;
     /// r,g,b,a = colour and transparency
-    vectorEASTL<FColour4> _startColour;
+    vector<FColour4> _startColour;
     /// r,g,b,a = colour and transparency
-    vectorEASTL<FColour4> _endColour;
+    vector<FColour4> _endColour;
     /// Location of the texture file. Leave blank for colour only
-    stringImpl _textureFileName;
+    string _textureFileName;
 
 
-    void setParticleGeometry(const vectorEASTL<vec3<F32>>& particleGeometryVertices,
-                             const vectorEASTL<U32>& particleGeometryIndices,
+    void setParticleGeometry(const vector<vec3<F32>>& particleGeometryVertices,
+                             const vector<U32>& particleGeometryIndices,
                              PrimitiveType particleGeometryType);
 
     void setBillboarded(bool state);
@@ -90,11 +90,11 @@ class ParticleData {
         return _particleGeometryType;
     }
 
-    [[nodiscard]] const vectorEASTL<vec3<F32>>& particleGeometryVertices() const noexcept {
+    [[nodiscard]] const vector<vec3<F32>>& particleGeometryVertices() const noexcept {
         return _particleGeometryVertices;
     }
 
-    [[nodiscard]] const vectorEASTL<U32>& particleGeometryIndices() const noexcept {
+    [[nodiscard]] const vector<U32>& particleGeometryIndices() const noexcept {
         return _particleGeometryIndices;
     }
 
@@ -123,8 +123,8 @@ class ParticleData {
     U32 _aliveCount = 0u;
 
     bool _isBillboarded = true;
-    vectorEASTL<vec3<F32>> _particleGeometryVertices;
-    vectorEASTL<U32> _particleGeometryIndices;
+    vector<vec3<F32>> _particleGeometryVertices;
+    vector<U32> _particleGeometryIndices;
     PrimitiveType _particleGeometryType = PrimitiveType::COUNT;
 
     GFXDevice& _context;

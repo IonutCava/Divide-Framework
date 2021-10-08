@@ -52,7 +52,7 @@ void MainScene::processInput(PlayerIndex idx, const U64 deltaTimeUS) {
             F32 terrainHeight = 0.0f;
             vec3<F32> eyePosition = cam.getEye();
 
-            vectorEASTL<SceneGraphNode*> terrains = Object3D::filterByType(_sceneGraph->getNodesByType(SceneNodeType::TYPE_OBJECT3D), ObjectType::TERRAIN);
+            vector<SceneGraphNode*> terrains = Object3D::filterByType(_sceneGraph->getNodesByType(SceneNodeType::TYPE_OBJECT3D), ObjectType::TERRAIN);
 
             for (SceneGraphNode* terrainNode : terrains) {
                 const Terrain& ter = terrainNode->getNode<Terrain>();
@@ -117,7 +117,7 @@ void MainScene::processTasks(const U64 deltaTimeUS) {
     constexpr D64 SunDisplay = Time::SecondsToMilliseconds(1.50);
 
     if (_taskTimers[0] >= SunDisplay) {
-        vectorEASTL<SceneGraphNode*> terrains = Object3D::filterByType(_sceneGraph->getNodesByType(SceneNodeType::TYPE_OBJECT3D), ObjectType::TERRAIN);
+        vector<SceneGraphNode*> terrains = Object3D::filterByType(_sceneGraph->getNodesByType(SceneNodeType::TYPE_OBJECT3D), ObjectType::TERRAIN);
 
         //for (SceneGraphNode* terrainNode : terrains) {
             //terrainNode.lock()->get<TransformComponent>()->setPositionY(terrainNode.lock()->get<TransformComponent>()->getPosition().y - 0.5f);
@@ -221,7 +221,7 @@ U16 MainScene::registerInputActions() {
         PressReleaseActions::Entry actionEntry = {};
         actionEntry.releaseIDs().insert(actionID);
         if (!_input->actionList().registerInputAction(actionID, [this](InputParams /*param*/) {
-            vectorEASTL<SceneGraphNode*> terrains = Object3D::filterByType(_sceneGraph->getNodesByType(SceneNodeType::TYPE_OBJECT3D), ObjectType::TERRAIN);
+            vector<SceneGraphNode*> terrains = Object3D::filterByType(_sceneGraph->getNodesByType(SceneNodeType::TYPE_OBJECT3D), ObjectType::TERRAIN);
 
             for (SceneGraphNode* terrainNode : terrains) {
                 terrainNode->getNode<Terrain>().toggleBoundingBoxes();

@@ -53,12 +53,12 @@ void AITeam::removeCrowd(const AIEntity::PresetAgentRadius radius) {
     _aiTeamCrowd.erase(it);
 }
 
-vectorEASTL<AIEntity*> AITeam::getEntityList() const {
+vector<AIEntity*> AITeam::getEntityList() const {
     //ToDo: Cache this? -Ionut
     SharedLock<SharedMutex> r2_lock(_updateMutex);
 
     U32 i = 0;
-    vectorEASTL<AIEntity*> entities(_team.size(), nullptr);
+    vector<AIEntity*> entities(_team.size(), nullptr);
     for (const TeamMap::value_type& entity : _team) {
         entities[i++] = entity.second;
     }
@@ -75,7 +75,7 @@ bool AITeam::update(TaskPool& parentPool, const U64 deltaTimeUS) {
         }
     }
 
-    vectorEASTL<AIEntity*> entities = getEntityList();
+    vector<AIEntity*> entities = getEntityList();
     for (AIEntity* entity : entities) {
         if (!Attorney::AIEntityAITeam::update(*entity, deltaTimeUS)) {
             return false;
@@ -106,7 +106,7 @@ bool AITeam::update(TaskPool& parentPool, const U64 deltaTimeUS) {
 }
 
 bool AITeam::processInput(TaskPool& parentPool, const U64 deltaTimeUS) {
-    vectorEASTL<AIEntity*> entities = getEntityList();
+    vector<AIEntity*> entities = getEntityList();
 
     const U16 entityCount = to_U16(entities.size());
     if (entityCount <= g_entityThreadedThreashold) {
@@ -134,7 +134,7 @@ bool AITeam::processInput(TaskPool& parentPool, const U64 deltaTimeUS) {
 }
 
 bool AITeam::processData(TaskPool& parentPool, const U64 deltaTimeUS) {
-    vectorEASTL<AIEntity*> entities = getEntityList();
+    vector<AIEntity*> entities = getEntityList();
 
     const U16 entityCount = to_U16(entities.size());
     if (entityCount <= g_entityThreadedThreashold) {
@@ -162,7 +162,7 @@ bool AITeam::processData(TaskPool& parentPool, const U64 deltaTimeUS) {
 }
 
 void AITeam::resetCrowd() {
-    vectorEASTL<AIEntity*> entities = getEntityList();
+    vector<AIEntity*> entities = getEntityList();
     for (AIEntity* entity : entities) {
         entity->resetCrowd();
     }
@@ -206,7 +206,7 @@ bool AITeam::addEnemyTeam(const U32 enemyTeamID) {
 }
 
 bool AITeam::removeEnemyTeam(const U32 enemyTeamID) {
-    const vectorEASTL<U32>::iterator it = findEnemyTeamEntry(enemyTeamID);
+    const vector<U32>::iterator it = findEnemyTeamEntry(enemyTeamID);
     if (it != end(_enemyTeams)) {
         ScopedLock<SharedMutex> w_lock(_updateMutex);
         _enemyTeams.erase(it);

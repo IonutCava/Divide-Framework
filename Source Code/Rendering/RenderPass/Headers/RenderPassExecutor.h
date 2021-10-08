@@ -73,9 +73,9 @@ public:
 
     struct PerRingEntryMaterialData
     {
-        using LookupInfoContainer = vectorEASTL<std::pair<size_t, U16>>;
+        using LookupInfoContainer = vector<std::pair<size_t, U16>>;
         MaterialUpdateRange _matUpdateRange{};
-        vectorEASTL<NodeMaterialData> _nodeMaterialData{};
+        vector<NodeMaterialData> _nodeMaterialData{};
         LookupInfoContainer _nodeMaterialLookupInfo{};
     };
 

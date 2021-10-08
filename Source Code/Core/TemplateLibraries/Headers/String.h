@@ -50,8 +50,8 @@ namespace Divide {
         Str() noexcept : Base() {}
 
         template<typename T_str,
-                 typename std::enable_if<std::is_same<stringImpl, T_str>::value || 
-                                         std::is_same<stringImplFast, T_str>::value, I32>::type = 0>
+                 typename std::enable_if<std::is_same<string_impl<false>, T_str>::value || 
+                                         std::is_same<string_impl<true>, T_str>::value, I32>::type = 0>
         Str(const T_str& str) : Base(str.c_str(), str.length())
         {
         }
@@ -93,15 +93,15 @@ namespace Divide {
         }
 
         template<typename T_str>
-        typename std::enable_if<std::is_same<stringImpl, T_str>::value || 
-                                std::is_same<stringImplFast, T_str>::value, Str>::type
+        typename std::enable_if<std::is_same<string_impl<false>, T_str>::value ||
+                                std::is_same<string_impl<true>, T_str>::value, Str>::type
         operator+(const T_str& other) const {
             return *this + other.c_str();
         }
 
         template<typename T_str>
-        typename std::enable_if<std::is_same<stringImpl, T_str>::value ||
-                                std::is_same<stringImplFast, T_str>::value, Str&>::type
+        typename std::enable_if<std::is_same<string_impl<false>, T_str>::value ||
+                                std::is_same<string_impl<true>, T_str>::value, Str&>::type
         append(const T_str& other) {
             *this = Str((this->c_str() + other).c_str());
             return *this;
@@ -174,7 +174,7 @@ namespace Divide {
 
         Str& replace(const size_t start, const size_t length, const char* s) {
             //Barf
-            *this = stringImpl(Base::c_str()).replace(start, length, s).c_str();
+            *this = string(Base::c_str()).replace(start, length, s).c_str();
             return *this;
         }
     };

@@ -115,7 +115,7 @@ public:
     void clear();
     bool add(const Entry& entry);
     
-    PROPERTY_R(vectorEASTL<Entry>, entries);
+    PROPERTY_R(vector<Entry>, entries);
 };
 
 struct InputAction {

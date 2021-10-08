@@ -4,8 +4,8 @@
 
 namespace Divide::AI {
 
-GOAPGoal::GOAPGoal(const stringImpl& name, const U32 ID)
-    : WorldState(), _relevancy(0.0f)
+GOAPGoal::GOAPGoal(const string& name, const U32 ID)
+    : WorldState(), _relevancy(0.f)
 {
     _ID = ID;
     name_ = name;

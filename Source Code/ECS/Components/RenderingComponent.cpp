@@ -733,7 +733,7 @@ void RenderingComponent::drawSkeleton(GFX::CommandBuffer& bufferInOut) {
         AnimationComponent* animComp = _parentSGN->get<AnimationComponent>();
         if (animComp != nullptr) {
             // Get the skeleton lines from the submesh's animation component
-            const vectorEASTL<Line>& skeletonLines = animComp->skeletonLines();
+            const vector<Line>& skeletonLines = animComp->skeletonLines();
             // Submit the skeleton lines to the GPU for rendering
             _skeletonPrimitive->fromLines(skeletonLines.data(), skeletonLines.size());
             _skeletonPrimitive->worldMatrix(_worldMatrixCache);

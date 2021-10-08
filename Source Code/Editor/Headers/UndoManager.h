@@ -40,7 +40,7 @@ namespace Divide {
         virtual ~IUndoEntry() = default;
 
         GFX::PushConstantType _type = GFX::PushConstantType::COUNT;
-        stringImpl _name = "";
+        string _name = "";
         DELEGATE<void, std::string_view> _onChangedCbk;
 
         virtual void swapValues() = 0;
@@ -80,7 +80,7 @@ namespace Divide {
         [[nodiscard]] size_t UndoStackSize() const noexcept { return _undoStack.size(); }
         [[nodiscard]] size_t RedoStackSize() const noexcept { return _redoStack.size(); }
 
-        [[nodiscard]] const stringImpl& lasActionName() const;
+        [[nodiscard]] const string& lasActionName() const;
 
         template<typename T>
         void registerUndoEntry(const UndoEntry<T>& entry) {
@@ -98,7 +98,7 @@ namespace Divide {
         const U32 _maxSize = 10;
         UndoStack _undoStack;
         UndoStack _redoStack;
-        stringImpl _lastActionName;
+        string _lastActionName;
     };
 
 } //namespace Divide

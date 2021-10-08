@@ -209,8 +209,8 @@ class SceneState : public SceneComponent {
     inline [[nodiscard]] const SceneRenderState& renderState() const noexcept { return _renderState; }
     inline [[nodiscard]] const MusicPlaylist& music(const MusicType type) const noexcept { return _music[to_U32(type)]; }
 
-    inline [[nodiscard]] vectorEASTL<WaterBodyData>& waterBodies() noexcept { return _waterBodies; }
-    inline [[nodiscard]] const vectorEASTL<WaterBodyData>& waterBodies() const noexcept { return _waterBodies; }
+    inline [[nodiscard]] vector<WaterBodyData>& waterBodies() noexcept { return _waterBodies; }
+    inline [[nodiscard]] const vector<WaterBodyData>& waterBodies() const noexcept { return _waterBodies; }
 
     PROPERTY_RW(U8, playerPass, 0u);
     PROPERTY_RW(bool, saveLoadDisabled, false);
@@ -224,7 +224,7 @@ protected:
     SceneRenderState _renderState;
     std::array<MusicPlaylist, to_base(MusicType::COUNT)> _music;
     std::array<SceneStatePerPlayer, Config::MAX_LOCAL_PLAYER_COUNT> _playerState;
-    vectorEASTL<WaterBodyData> _waterBodies;
+    vector<WaterBodyData> _waterBodies;
 };
 
 }  // namespace Divide

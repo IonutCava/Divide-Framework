@@ -122,9 +122,9 @@ namespace Divide {
             PROPERTY_RW(vec3<F32>, maxPos);
 
             std::array<U16, MAX_LOD_LEVELS> _partitionIDs = {0u, 0u, 0u};
-            vectorEASTL<vec3<U32>> _triangles[MAX_LOD_LEVELS];
-            vectorEASTL<U32> _indices[MAX_LOD_LEVELS];
-            vectorEASTL<Vertex> _vertices[MAX_LOD_LEVELS];
+            vector<vec3<U32>> _triangles[MAX_LOD_LEVELS];
+            vector<U32> _indices[MAX_LOD_LEVELS];
+            vector<Vertex> _vertices[MAX_LOD_LEVELS];
 
             MaterialData _material;
         };
@@ -155,9 +155,9 @@ namespace Divide {
             PROPERTY_RW(ResourcePath, modelName);
             PROPERTY_RW(ResourcePath, modelPath);
             PROPERTY_RW(bool, fromFile, false);
-            vectorEASTL<Bone*> _bones;
-            vectorEASTL<SubMeshData> _subMeshData;
-            vectorEASTL<std::shared_ptr<AnimEvaluator>> _animations;
+            vector<Bone*> _bones;
+            vector<SubMeshData> _subMeshData;
+            vector<std::shared_ptr<AnimEvaluator>> _animations;
         };
     };
 

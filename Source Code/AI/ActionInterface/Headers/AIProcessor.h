@@ -60,7 +60,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
     void registerGoal(const GOAPGoal& goal);
     void registerGoalList(const GOAPGoalList& goalList);
 
-    virtual GOAPGoal* findGoal(const stringImpl& goalName) {
+    virtual GOAPGoal* findGoal(const string& goalName) {
         const GOAPGoalList::iterator it = 
             eastl::find_if(begin(_goals),
                            end(_goals),
@@ -91,7 +91,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
     }
 
     /// Although we want the goal to be activated, it might not be the most relevant in the current scene state
-    bool activateGoal(const stringImpl& name) {
+    bool activateGoal(const string& name) {
         GOAPGoal* goal = findGoal(name);
         if (goal != nullptr) {
             _activeGoals.push_back(goal);
@@ -175,11 +175,11 @@ class NOINITVTABLE AIProcessor : NonCopyable {
         return false;
     }
 
-    stringImpl printPlan() const {
+    string printPlan() const {
         if (_activeGoal == nullptr) {
             return "no active goal!";
         }
-        stringImpl returnString;
+        string returnString;
         const GOAPPlan& plan = _activeGoal->getCurrentPlan();
         for (const GOAPAction* action : plan) {
             returnString.append(" - " + printActionStats(*action) + "\n");
@@ -204,9 +204,9 @@ class NOINITVTABLE AIProcessor : NonCopyable {
 
     GOAPGoal* getActiveGoal() const { return _activeGoal; }
 
-    const stringImpl& getPlanLog() const { return _planLog; }
+    const string& getPlanLog() const { return _planLog; }
 
-    virtual const stringImpl& printActionStats(const GOAPAction& planStep) const;
+    virtual const string& printActionStats(const GOAPAction& planStep) const;
     virtual bool performActionStep(GOAPAction::operationsIterator step) = 0;
     virtual bool performAction(const GOAPAction& planStep) = 0;
     virtual bool processData(U64 deltaTimeUS) = 0;
@@ -222,7 +222,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
 
     virtual void initInternal() = 0;
     
-    virtual stringImpl toString(bool state = false) const = 0;
+    virtual string toString(bool state = false) const = 0;
 
    protected:
     AIEntity* _entity;
@@ -235,10 +235,10 @@ class NOINITVTABLE AIProcessor : NonCopyable {
     GOAPWorldState _worldState;
 
     GOAPGoalList _goals;
-    vectorEASTL<GOAPGoal*> _activeGoals;
+    vector<GOAPGoal*> _activeGoals;
     std::atomic_bool _init;
 
-    stringImpl _planLog;
+    string _planLog;
 };
 
 }  // namespace AI

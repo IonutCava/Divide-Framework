@@ -54,13 +54,13 @@ struct Configuration final : XML::IXMLSerializable {
             bool sky = true;
             bool particles = true;
         } renderFilter = {};
-        stringImpl memFile = "none";
+        string memFile = "none";
     } debug = {};
     
-    stringImpl language = "enGB";
+    string language = "enGB";
     
     struct Runtime {
-        stringImpl title = "DIVIDE Framework";
+        string title = "DIVIDE Framework";
         U8 targetDisplay = 0;
         U8 targetRenderingAPI = 0;
         I16 maxWorkerThreads = -1;
@@ -82,7 +82,7 @@ struct Configuration final : XML::IXMLSerializable {
         struct CEGUI {
             bool enabled = true;
         } cegui = {};
-        stringImpl consoleLayoutFile = "console.layout";
+        string consoleLayoutFile = "console.layout";
     } gui;
 
     struct ShadowSettings {
@@ -132,7 +132,7 @@ struct Configuration final : XML::IXMLSerializable {
         vec4<U16> lodThresholds = { 25u, 45u, 85u, 165u };
         struct PostFX {
             struct PostAA {
-                stringImpl type = "FXAA";
+                string type = "FXAA";
                 U8 qualityLevel = 2;
             } postAA;
             struct ToneMap {
@@ -141,7 +141,7 @@ struct Configuration final : XML::IXMLSerializable {
                 F32 minLogLuminance = -4.f;
                 F32 maxLogLuminance = 3.f;
                 F32 tau = 1.1f;
-                stringImpl mappingFunction = "UNCHARTED_2";
+                string mappingFunction = "UNCHARTED_2";
             } toneMap;
             struct DOF
             {
@@ -149,7 +149,7 @@ struct Configuration final : XML::IXMLSerializable {
                 vec2<F32> focalPoint = { 0.5f };
                 F32 focalDepth = 10.0f;
                 F32 focalLength = 12.0f;
-                stringImpl fStop = "f/1.4";
+                string fStop = "f/1.4";
                 F32 ndofstart = 1.0f;
                 F32 ndofdist = 2.0f;
                 F32 fdofstart = 1.0f;
@@ -204,8 +204,8 @@ struct Configuration final : XML::IXMLSerializable {
         } shadowMapping = {};
     } rendering = {};
     struct DefaultAssetLocation {
-        stringImpl textures = "textures/";
-        stringImpl shaders = "shaders/";
+        string textures = "textures/";
+        string shaders = "shaders/";
     } defaultAssetLocation;
 
     PROPERTY_RW(bool, changed, false);

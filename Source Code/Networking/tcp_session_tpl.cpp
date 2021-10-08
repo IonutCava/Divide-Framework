@@ -63,7 +63,7 @@ void tcp_session_tpl::sendPacket(const WorldPacket& p) {
     _nonEmptyOutputQueue.expires_at(boost::posix_time::neg_infin);
 }
 
-void tcp_session_tpl::sendFile(const stringImpl& fileName) {
+void tcp_session_tpl::sendFile(const string& fileName) {
     _outputFileQueue.push_back(fileName);
 }
 
@@ -140,7 +140,7 @@ void tcp_session_tpl::start_write() {
     ar & p;  // Archive the packet
 
     size_t header = buf.size();
-    vectorEASTL<boost::asio::const_buffer> buffers;
+    vector<boost::asio::const_buffer> buffers;
     buffers.push_back(boost::asio::buffer(&header, sizeof header));
     buffers.push_back(buf.data());
     // Start an asynchronous operation to send a message.
@@ -160,7 +160,7 @@ void tcp_session_tpl::handle_write_file(const boost::system::error_code& ec) {
     ACKNOWLEDGE_UNUSED(ec);
 
     boost::asio::streambuf request_;
-    const stringImpl filePath = _outputFileQueue.front();
+    const string filePath = _outputFileQueue.front();
     std::ifstream source_file;
     source_file.open(filePath.c_str(),
                      std::ios_base::binary | std::ios_base::ate);
@@ -240,7 +240,7 @@ void udp_broadcaster::sendPacket(const WorldPacket& p) {
     ar& p;  // Archive the packet
 
     size_t header = buf.size();
-    vectorEASTL<boost::asio::const_buffer> buffers;
+    vector<boost::asio::const_buffer> buffers;
     buffers.push_back(boost::asio::buffer(&header, sizeof header));
     buffers.push_back(buf.data());
     boost::system::error_code ignored_ec;
@@ -288,7 +288,7 @@ void tcp_session_tpl::HandlePingOpCode(WorldPacket& p) {
 }
 
 void tcp_session_tpl::HandleDisconnectOpCode(WorldPacket& p) {
-    stringImpl client;
+    string client;
     p >> client;
     ASIO::LOG_PRINT(("Received [ CMSG_REQUEST_DISCONNECT ] from: [ " + client + " ]").c_str());
     WorldPacket r(OPCodes::SMSG_DISCONNECT);

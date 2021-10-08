@@ -133,8 +133,8 @@ void ParticleData::swapData(const U32 indexA, const U32 indexB) {
     _misc[indexA].set(_misc[indexB]);
 }
 
-void ParticleData::setParticleGeometry(const vectorEASTL<vec3<F32>>& particleGeometryVertices,
-                                       const vectorEASTL<U32>& particleGeometryIndices,
+void ParticleData::setParticleGeometry(const vector<vec3<F32>>& particleGeometryVertices,
+                                       const vector<U32>& particleGeometryIndices,
                                        const PrimitiveType particleGeometryType) {
     _particleGeometryVertices = particleGeometryVertices;
     _particleGeometryIndices = particleGeometryIndices;

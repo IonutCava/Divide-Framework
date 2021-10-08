@@ -210,7 +210,7 @@ bool DVDConverter::load(PlatformContext& context, Import::ImportData& target) co
             continue;
         }
 
-        stringImpl fullName = currentMesh->mName.C_Str();
+        string fullName = currentMesh->mName.C_Str();
         if (fullName.length() >= 64) {
             fullName = fullName.substr(0, 64);
         }
@@ -349,7 +349,7 @@ void DVDConverter::BuildGeometryBuffers(PlatformContext& context, Import::Import
 }
 
 void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData) const {
-    vectorEASTL<U32> input_indices;
+    vector<U32> input_indices;
     input_indices.reserve(source->mNumFaces * 3);
     for (U32 k = 0; k < source->mNumFaces; k++) {
         // guaranteed to be 3 thanks to aiProcess_Triangulate 
@@ -358,7 +358,7 @@ void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData
         }
     }
 
-    vectorEASTL<Import::SubMeshData::Vertex> vertices(source->mNumVertices);
+    vector<Import::SubMeshData::Vertex> vertices(source->mNumVertices);
 
     for (U32 j = 0; j < source->mNumVertices; ++j) {
         vertices[j].position.set(source->mVertices[j].x, source->mVertices[j].y, source->mVertices[j].z);
@@ -382,7 +382,7 @@ void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData
     if (source->mNumBones > 0) {
         assert(source->mNumBones < U8_MAX);  ///<Fit in U8
 
-        vectorEASTL<vectorEASTL<vertexWeight> > weightsPerVertex(source->mNumVertices);
+        vector<vector<vertexWeight> > weightsPerVertex(source->mNumVertices);
         for (U8 a = 0; a < source->mNumBones; ++a) {
             const aiBone* bone = source->mBones[a];
             for (U32 b = 0; b < bone->mNumWeights; ++b) {
@@ -414,7 +414,7 @@ void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData
     target_indices.resize(index_count);
 
     { //Remap VB & IB
-        vectorEASTL<U32> remap(source->mNumVertices);
+        vector<U32> remap(source->mNumVertices);
         const size_t vertex_count = meshopt_generateVertexRemap(&remap[0], input_indices.data(), input_indices.size(), &vertices[0], source->mNumVertices, sizeof(Import::SubMeshData::Vertex));
 
         meshopt_remapIndexBuffer(&target_indices[0], &input_indices[0], input_indices.size(), &remap[0]);

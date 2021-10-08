@@ -58,8 +58,8 @@ BEGIN_SCENE(WarScene)
     void updateSceneStateInternal(U64 deltaTimeUS) override;
     U16  registerInputActions() override;
 
-    void registerPoint(U16 teamID, const stringImpl& unitName);
-    void printMessage(U8 eventId, const stringImpl& unitName) const;
+    void registerPoint(U16 teamID, const string& unitName);
+    void printMessage(U8 eventId, const string& unitName) const;
     void debugDraw(const Camera* activeCamera, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut) override;
 
    private:
@@ -79,9 +79,9 @@ BEGIN_SCENE(WarScene)
 
    private:
     GUIMessageBox* _infoBox = nullptr;
-    vectorEASTL<TransformComponent*> _lightNodeTransforms;
-    vectorEASTL<std::pair<SceneGraphNode*, bool>> _lightNodes2;
-    vectorEASTL<SceneGraphNode*> _lightNodes3;
+    vector<TransformComponent*> _lightNodeTransforms;
+    vector<std::pair<SceneGraphNode*, bool>> _lightNodes2;
+    vector<SceneGraphNode*> _lightNodes3;
 
    private:  // Game
     U32  _timeLimitMinutes;
@@ -93,7 +93,7 @@ BEGIN_SCENE(WarScene)
     bool _terrainMode = false;
     U64 _lastNavMeshBuildTime = 0UL;
     /// NPC's are the actual game entities
-    vectorEASTL<SceneGraphNode*> _armyNPCs[2];
+    vector<SceneGraphNode*> _armyNPCs[2];
     IMPrimitive* _targetLines = nullptr;
     SceneGraphNode* _flag[2]{nullptr, nullptr};
     SceneGraphNode* _particleEmitter = nullptr;

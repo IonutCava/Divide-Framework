@@ -48,7 +48,7 @@ class Console : NonCopyable {
     };
 
     struct OutputEntry {
-        stringImpl _text{};
+        string _text{};
         EntryType _type = EntryType::INFO;
     };
 
@@ -147,7 +147,7 @@ class Console : NonCopyable {
     static void printToFile(const OutputEntry& entry);
 
    private:
-    static vectorEASTL<ConsolePrintCallback> _guiConsoleCallbacks;
+    static vector<ConsolePrintCallback> _guiConsoleCallbacks;
     static bool _timestamps;
     static bool _threadID;
     static bool _enabled;

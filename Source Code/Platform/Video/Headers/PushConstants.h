@@ -41,7 +41,7 @@ struct PushConstants {
     explicit PushConstants(const GFX::PushConstant& constant) : _data{ constant } {}
     explicit PushConstants(GFX::PushConstant&& constant) : _data{ MOV(constant) } {}
 
-    vectorEASTL<GFX::PushConstant> _data;
+    vector<GFX::PushConstant> _data;
 
     void set(const GFX::PushConstant& constant);
 
@@ -64,7 +64,7 @@ struct PushConstants {
     }
 
     template<typename T>
-    void set(U64 bindingHash, GFX::PushConstantType type, const vectorEASTL<T>& values) {
+    void set(U64 bindingHash, GFX::PushConstantType type, const vector<T>& values) {
         set(bindingHash, type, values.data(), values.size());
     }
 
@@ -77,8 +77,8 @@ struct PushConstants {
     [[nodiscard]] bool empty() const noexcept { return _data.empty(); }
     void countHint(const size_t count) { _data.reserve(count); }
 
-    vectorEASTL<GFX::PushConstant>& data() noexcept { return _data; }
-    [[nodiscard]] const vectorEASTL<GFX::PushConstant>& data() const noexcept { return _data; }
+    vector<GFX::PushConstant>& data() noexcept { return _data; }
+    [[nodiscard]] const vector<GFX::PushConstant>& data() const noexcept { return _data; }
 };
 
 bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);

@@ -42,11 +42,11 @@ class GUIText final : public GUIElementBase<GUIType::GUI_TEXT>, public TextEleme
     friend class GUIInterface;
 
    public:
-    GUIText(const stringImpl& name,
-            const stringImpl& text,
+    GUIText(const string& name,
+            const string& text,
             bool  multiLine,
             const RelativePosition2D& relativePosition,
-            const stringImpl& font,
+            const string& font,
             const UColour4& colour,
             CEGUI::Window* parent,
             U8 fontSize = 16u);

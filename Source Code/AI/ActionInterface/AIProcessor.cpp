@@ -47,8 +47,8 @@ void AIProcessor::registerGoalList(const GOAPGoalList& goalList) {
     }
 }
 
-const stringImpl& AIProcessor::printActionStats(const GOAPAction& planStep) const {
-    static const stringImpl placeholder("");
+const string& AIProcessor::printActionStats(const GOAPAction& planStep) const {
+    static const string placeholder("");
     return placeholder;
 }
 

@@ -44,7 +44,7 @@ struct GPUState : private NonCopyable {
         // bits per pixel;
         U8 _bitDepth = 0;
         // format name;
-        stringImpl _formatName;
+        string _formatName;
         // Max supported
         U8 _refreshRate = 0u;
 
@@ -65,7 +65,7 @@ struct GPUState : private NonCopyable {
         return _supportedDisplayModes.size();
     }
 
-    [[nodiscard]] const vectorEASTL<GPUVideoMode>& getDisplayModes(const size_t displayIndex) const noexcept {
+    [[nodiscard]] const vector<GPUVideoMode>& getDisplayModes(const size_t displayIndex) const noexcept {
         assert(displayIndex < _supportedDisplayModes.size());
         return _supportedDisplayModes[displayIndex];
     }
@@ -76,7 +76,7 @@ struct GPUState : private NonCopyable {
 
    protected:
     // Display system
-    std::array<vectorEASTL<GPUVideoMode>, g_maxDisplays> _supportedDisplayModes;
+    std::array<vector<GPUVideoMode>, g_maxDisplays> _supportedDisplayModes;
 };
 
 };  // namespace Divide

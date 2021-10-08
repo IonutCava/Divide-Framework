@@ -19,7 +19,7 @@ namespace goap {
         typedef eastl::unordered_map<int, bool>::const_iterator operationsIterator;
 
     private:
-        stringImpl name_; // The human-readable action name
+        Divide::string name_; // The human-readable action name
         int cost_;        // The numeric cost of this action
 
         // Preconditions are things that must be satisfied before this
@@ -31,7 +31,7 @@ namespace goap {
 
     public:
         Action();
-        Action(const stringImpl& name, int cost);
+        Action(const Divide::string& name, int cost);
 
         /**
          Is this action eligible to operate on the given worldstate?
@@ -70,7 +70,7 @@ namespace goap {
 
         int cost() const { return cost_; }
 
-        const stringImpl& name() const { return name_; }
+        const Divide::string& name() const { return name_; }
 
         virtual bool checkImplDependentCondition() const {
             return true;

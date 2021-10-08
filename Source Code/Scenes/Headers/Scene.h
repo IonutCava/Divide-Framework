@@ -147,7 +147,7 @@ class Scene : public Resource, public PlatformContextComponent {
    protected:
     static bool OnStartup(PlatformContext& context);
     static bool OnShutdown(PlatformContext& context);
-    static stringImpl GetPlayerSGNName(PlayerIndex idx);
+    static string GetPlayerSGNName(PlayerIndex idx);
 
    public:
        static constexpr U32 SUN_LIGHT_TAG  = 0xFFF0F0;
@@ -341,7 +341,7 @@ class Scene : public Resource, public PlatformContextComponent {
     void currentPlayerPass(PlayerIndex idx);
 
     void resetSelection(PlayerIndex idx);
-    void setSelected(PlayerIndex idx, const vectorEASTL<SceneGraphNode*>& SGNs, bool recursive);
+    void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
 
     bool lockCameraToPlayerMouse(PlayerIndex index, bool lockState) const;
 
@@ -358,10 +358,10 @@ class Scene : public Resource, public PlatformContextComponent {
        eastl::unique_ptr<AI::AIManager> _aiManager;
        eastl::unique_ptr<SceneGUIElements> _GUI;
 
-       vectorEASTL<Player*> _scenePlayers;
+       vector<Player*> _scenePlayers;
        U64 _sceneTimerUS = 0ULL;
-       vectorEASTL<D64> _taskTimers;
-       vectorEASTL<D64> _guiTimersMS;
+       vector<D64> _taskTimers;
+       vector<D64> _guiTimersMS;
        /// Datablocks for models,vegetation,terrains,tasks etc
        std::atomic_uint _loadingTasks;
        XML::SceneNode _xmlSceneGraphRootNode;
@@ -379,10 +379,10 @@ class Scene : public Resource, public PlatformContextComponent {
 
    private:
        SharedMutex _tasksMutex;
-       vectorEASTL<Task*> _tasks;
+       vector<Task*> _tasks;
        /// Contains all game related info for the scene (wind speed, visibility ranges, etc)
        eastl::unique_ptr<SceneState> _sceneState;
-       vectorEASTL<SGNRayResult> _sceneSelectionCandidates;
+       vector<SGNRayResult> _sceneSelectionCandidates;
 
    protected:
        eastl::unique_ptr<LightPool> _lightPool;
@@ -390,8 +390,8 @@ class Scene : public Resource, public PlatformContextComponent {
        eastl::unique_ptr<SceneEnvironmentProbePool> _envProbePool;
 
        IMPrimitive* _linesPrimitive = nullptr;
-       vectorEASTL<IMPrimitive*> _octreePrimitives;
-       vectorEASTL<BoundingBox> _octreeBoundingBoxes;
+       vector<IMPrimitive*> _octreePrimitives;
+       vector<BoundingBox> _octreeBoundingBoxes;
 
        mutable Mutex _perFrameArenaMutex;
        mutable MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 3> _perFrameArena;
@@ -475,7 +475,7 @@ class SceneManager {
         scene.resetSelection(idx);
     }
 
-    static void setSelected(Scene& scene, const PlayerIndex idx, const vectorEASTL<SceneGraphNode*>& sgns, const bool recursive) {
+    static void setSelected(Scene& scene, const PlayerIndex idx, const vector<SceneGraphNode*>& sgns, const bool recursive) {
         scene.setSelected(idx, sgns, recursive);
     }
 

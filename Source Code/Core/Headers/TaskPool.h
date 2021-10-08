@@ -68,11 +68,11 @@ public:
   public:
 
     explicit TaskPool();
-    explicit TaskPool(U32 threadCount, TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const stringImpl& workerName = "DVD_WORKER");
+    explicit TaskPool(U32 threadCount, TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const string& workerName = "DVD_WORKER");
 
     ~TaskPool();
     
-    bool init(U32 threadCount, TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const stringImpl& workerName = "DVD_WORKER");
+    bool init(U32 threadCount, TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const string& workerName = "DVD_WORKER");
     void shutdown();
 
     static Task* AllocateTask(Task* parentTask, bool allowedInIdle);
@@ -111,7 +111,7 @@ public:
     void waitAndJoin() const;
 
   private:
-     hashMap<U32, vectorEASTL<DELEGATE<void>>> _taskCallbacks{};
+     hashMap<U32, vector<DELEGATE<void>>> _taskCallbacks{};
      DELEGATE<void, const std::thread::id&> _threadCreateCbk{};
      moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
      Mutex _taskFinishedMutex;
@@ -120,7 +120,7 @@ public:
      ThreadPool<true>*  _blockingPool = nullptr;
      ThreadPool<false>* _lockFreePool = nullptr;
 
-     stringImpl _threadNamePrefix = "";
+     string _threadNamePrefix = "";
      std::atomic_uint _runningTaskCount = 0u;
 };
 

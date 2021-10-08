@@ -43,7 +43,7 @@ inline U64 ProfileTimer::get() const {
     return _timerAverage / std::max(_timerCounter, 1u);
 }
 
-inline const stringImpl& ProfileTimer::name() const noexcept {
+inline const string& ProfileTimer::name() const noexcept {
     return _name;
 }
 
@@ -59,7 +59,7 @@ inline void STOP_TIMER(ProfileTimer& timer) {
     timer.stop();
 }
 
-inline stringImpl PRINT_TIMER(ProfileTimer& timer) {
+inline string PRINT_TIMER(ProfileTimer& timer) {
     return timer.print();
 }
 

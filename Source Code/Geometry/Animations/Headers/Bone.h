@@ -41,7 +41,7 @@ namespace Divide {
 
 class Bone {
    protected:
-       stringImpl _name;
+       string _name;
        U64        _nameKey;
    public:
     I32 _boneID;
@@ -51,10 +51,10 @@ class Bone {
     mat4<F32> _originalLocalTransform;
 
     Bone* _parent;
-    vectorEASTL<Bone*> _children;
+    vector<Bone*> _children;
 
     // index in the current animation's channel array.
-    Bone(const stringImpl& name) noexcept
+    Bone(const string& name) noexcept
         : _name(name),
           _nameKey(_ID(name.c_str())),
           _boneID(-1),
@@ -80,7 +80,7 @@ class Bone {
         return size;
     }
 
-    [[nodiscard]] Bone* find(const stringImpl& name) {
+    [[nodiscard]] Bone* find(const string& name) {
         return find(_ID(name.c_str()));
     }
 
@@ -99,18 +99,18 @@ class Bone {
         return nullptr;
     }
 
-    void createBoneList(vectorEASTL<Bone*>& boneList) {
+    void createBoneList(vector<Bone*>& boneList) {
         boneList.push_back(this);
         for (Bone* child : _children) {
             child->createBoneList(boneList);
         }
     }
 
-    [[nodiscard]] const stringImpl& name() const noexcept {
+    [[nodiscard]] const string& name() const noexcept {
         return _name;
     }
 
-    void name(const stringImpl& name) {
+    void name(const string& name) {
         _name = name;
         _nameKey = _ID(name.c_str());
     }

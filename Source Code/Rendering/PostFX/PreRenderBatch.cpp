@@ -33,7 +33,7 @@ namespace TypeUtil {
         return Names::toneMapFunctions[to_base(stop)];
     }
 
-    ToneMapParams::MapFunctions StringToToneMapFunctions(const stringImpl& name) {
+    ToneMapParams::MapFunctions StringToToneMapFunctions(const string& name) {
         for (U8 i = 0; i < to_U8(ToneMapParams::MapFunctions::COUNT); ++i) {
             if (strcmp(name.c_str(), Names::toneMapFunctions[i]) == 0) {
                 return static_cast<ToneMapParams::MapFunctions>(i);

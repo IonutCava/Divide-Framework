@@ -182,8 +182,8 @@ inline bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rh
     return 0u;
 }
 namespace XMLParser {
-    void saveToXML(const SamplerDescriptor& sampler, const stringImpl& entryName, boost::property_tree::ptree& pt);
-    [[nodiscard]] size_t loadFromXML(const stringImpl& entryName, const boost::property_tree::ptree& pt);
+    void saveToXML(const SamplerDescriptor& sampler, const string& entryName, boost::property_tree::ptree& pt);
+    [[nodiscard]] size_t loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
 };
 };  // namespace Divide
 #endif

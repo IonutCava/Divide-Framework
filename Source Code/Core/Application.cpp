@@ -36,7 +36,7 @@ Application::~Application()
     assert(!_isInitialized);
 }
 
-ErrorCode Application::start(const stringImpl& entryPoint, const I32 argc, char** argv) {
+ErrorCode Application::start(const string& entryPoint, const I32 argc, char** argv) {
     assert(!entryPoint.empty());
 
     _isInitialized = true;
@@ -87,7 +87,7 @@ void Application::stop() {
             MemoryManager::MemoryTracker::Ready = false;
             bool leakDetected = false;
             size_t sizeLeaked = 0;
-            const stringImpl allocLog = MemoryManager::AllocTracer.Dump(leakDetected, sizeLeaked);
+            const string allocLog = MemoryManager::AllocTracer.Dump(leakDetected, sizeLeaked);
             if (leakDetected) {
                 Console::errorfn(Locale::Get(_ID("ERROR_MEMORY_NEW_DELETE_MISMATCH")), to_I32(std::ceil(sizeLeaked / 1024.0f)));
             }

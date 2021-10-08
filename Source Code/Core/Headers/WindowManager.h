@@ -61,7 +61,7 @@ struct WindowDescriptor {
         SHARE_CONTEXT = toBit(11)
     };
 
-    stringImpl title = "";
+    string title = "";
     FColour4 clearColour = DefaultColours::BLACK;
     vec2<I16> position = {};
     vec2<U16> dimensions = {};
@@ -138,7 +138,7 @@ public:
 
     [[nodiscard]] inline U32 getWindowCount() const noexcept;
 
-    [[nodiscard]] inline const vectorEASTL<MonitorData>& monitorData() const noexcept;
+    [[nodiscard]] inline const vector<MonitorData>& monitorData() const noexcept;
 
     static vec2<U16> GetFullscreenResolution() noexcept;
 
@@ -166,8 +166,8 @@ protected:
     I64 _mainWindowGUID = -1;
 
     PlatformContext* _context = nullptr;
-    vectorEASTL<MonitorData> _monitors;
-    vectorEASTL<DisplayWindow*> _windows;
+    vector<MonitorData> _monitors;
+    vector<DisplayWindow*> _windows;
 
     static hashMap<CursorStyle, SDL_Cursor*> s_cursors;
 };

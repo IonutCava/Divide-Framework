@@ -145,7 +145,7 @@ class Editor final : public PlatformContextComponent,
 
     void toggle(bool state);
     void onSizeChange(const SizeChangeParams& params);
-    void selectionChangeCallback(PlayerIndex idx, const vectorEASTL<SceneGraphNode*>& nodes) const;
+    void selectionChangeCallback(PlayerIndex idx, const vector<SceneGraphNode*>& nodes) const;
 
     [[nodiscard]] bool Undo() const;
     [[nodiscard]] inline size_t UndoStackSize() const noexcept;
@@ -167,7 +167,7 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] inline const TransformSettings& getTransformSettings() const noexcept;
     inline void setTransformSettings(const TransformSettings& settings) const noexcept;
 
-    void showStatusMessage(const stringImpl& message, F32 durationMS) const;
+    void showStatusMessage(const string& message, F32 durationMS) const;
 
   protected: //frame listener
     [[nodiscard]] bool frameStarted(const FrameEvent& evt) override;
@@ -236,7 +236,7 @@ class Editor final : public PlatformContextComponent,
     // Returns true if the modal window was closed
     [[nodiscard]] bool modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const;
     // Return true if the model was spawned as a scene node
-    [[nodiscard]] bool spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const stringImpl& name) const;
+    [[nodiscard]] bool spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const string& name) const;
 
     [[nodiscard]] ECSManager& getECSManager() const;
     [[nodiscard]] LightPool& getActiveLightPool() const;
@@ -269,7 +269,7 @@ class Editor final : public PlatformContextComponent,
     std::array<DockedWindow*, to_base(WindowType::COUNT)> _dockedWindows = {};
 
     hashMap<I64, CameraSnapshot> _cameraSnapshots;
-    stringImpl                   _externalTextEditorPath = "";
+    string                   _externalTextEditorPath = "";
 
     U32            _stepQueue = 1u;
     ImGuiStyleEnum _currentTheme = ImGuiStyle_Count;
@@ -400,11 +400,11 @@ namespace Attorney {
             editor._currentTheme = newTheme;
         }
 
-        [[nodiscard]] static const stringImpl& externalTextEditorPath(const Editor& editor) noexcept {
+        [[nodiscard]] static const string& externalTextEditorPath(const Editor& editor) noexcept {
             return editor._externalTextEditorPath;
         }
 
-        static void externalTextEditorPath(Editor& editor, const stringImpl& path) {
+        static void externalTextEditorPath(Editor& editor, const string& path) {
             editor._externalTextEditorPath = path;
         }
 
@@ -508,11 +508,11 @@ namespace Attorney {
             return editor.removeComponent(selections, newComponentType);
         }
 
-        static void showStatusMessage(const Editor& editor, const stringImpl& message, const F32 durationMS) {
+        static void showStatusMessage(const Editor& editor, const string& message, const F32 durationMS) {
             editor.showStatusMessage(message, durationMS);
         }
 
-        [[nodiscard]] static const stringImpl& externalTextEditorPath(const Editor& editor) noexcept {
+        [[nodiscard]] static const string& externalTextEditorPath(const Editor& editor) noexcept {
             return editor._externalTextEditorPath;
         }
 

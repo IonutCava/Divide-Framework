@@ -127,8 +127,8 @@ PathErrorCode DivideRecast::FindPath(const NavigationMesh& navMesh,
     return PathErrorCode::PATH_ERROR_NONE;
 }
 
-vectorEASTL<vec3<F32> > DivideRecast::getPath(const I32 pathSlot) {
-    vectorEASTL<vec3<F32> > result;
+vector<vec3<F32> > DivideRecast::getPath(const I32 pathSlot) {
+    vector<vec3<F32> > result;
     if (!IS_IN_RANGE_INCLUSIVE(pathSlot, 0, MAX_PATHSLOT - 1) ||
         _pathStore[pathSlot].MaxVertex <= 0) {
 

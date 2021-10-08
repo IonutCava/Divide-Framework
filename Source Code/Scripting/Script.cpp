@@ -22,7 +22,7 @@ I64 Script::s_scriptFileWatcher = -1;
 Script::ScriptMap Script::s_scripts;
 bool Script::s_scriptsReady = false;
 
-Script::Script(const stringImpl& scriptPathOrCode, const FileType fileType)
+Script::Script(const string& scriptPathOrCode, const FileType fileType)
     : GUIDWrapper(),
       _script(nullptr),
       _scriptFileType(fileType)
@@ -119,15 +119,15 @@ void Script::bootstrap() {
     _script->add(chaiscript::fun(&Script::handleOutput), "handle_output");
 }
 
-void Script::preprocessIncludes(const stringImpl& source, const I32 level /*= 0 */) {
+void Script::preprocessIncludes(const string& source, const I32 level /*= 0 */) {
     if (level > 32) {
         Console::errorfn(Locale::Get(_ID("ERROR_SCRIPT_INCLUD_LIMIT")));
     }
 
     std::smatch matches;
-    stringImpl line, include_string;
+    string line, include_string;
 
-    istringstreamImpl input(source);
+    istringstream input(source);
     while (std::getline(input, line)) {
         if (std::regex_search(line, matches, Paths::g_usePattern)) {
             ResourcePath include_file = ResourcePath{ Util::Trim(matches[1].str()).c_str() };
@@ -164,7 +164,7 @@ void Script::handleOutput(const std::string &msg) {
 }
 
 void Script::onScriptModify(const std::string_view script, FileUpdateEvent& /*evt*/) {
-    vectorEASTL<Script*> scriptsToReload;
+    vector<Script*> scriptsToReload;
 
     for (ScriptMap::value_type it : s_scripts) {
         for (const ResourcePath& atom : it.second->_usedAtoms) {

@@ -75,13 +75,13 @@ namespace Divide {
         GLint activeMembers = 0;
         glGetActiveUniformBlockiv(_programHandle, blockIndex, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, &activeMembers);
 
-        vectorEASTL<GLuint> blockIndices(activeMembers);
+        vector<GLuint> blockIndices(activeMembers);
         glGetActiveUniformBlockiv(_programHandle, blockIndex, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, reinterpret_cast<GLint*>(&blockIndices[0]));
 
-        vectorEASTL<GLint> nameLengthOut(activeMembers);
-        vectorEASTL<GLint> offsetsOut(activeMembers);
-        vectorEASTL<GLint> uniArrayStride(activeMembers);
-        vectorEASTL<GLint> uniMatStride(activeMembers);
+        vector<GLint> nameLengthOut(activeMembers);
+        vector<GLint> offsetsOut(activeMembers);
+        vector<GLint> uniArrayStride(activeMembers);
+        vector<GLint> uniMatStride(activeMembers);
         glGetActiveUniformsiv(_programHandle, activeMembers, blockIndices.data(), GL_UNIFORM_NAME_LENGTH, &nameLengthOut[0]);
         glGetActiveUniformsiv(_programHandle, activeMembers, blockIndices.data(), GL_UNIFORM_OFFSET, &offsetsOut[0]);
         glGetActiveUniformsiv(_programHandle, activeMembers, blockIndices.data(), GL_UNIFORM_ARRAY_STRIDE, &uniArrayStride[0]);
@@ -133,18 +133,18 @@ namespace Divide {
             }
         }
 
-        vectorEASTL<BlockMember> arrayMembers;
+        vector<BlockMember> arrayMembers;
         for (GLint idx = 0; idx < activeMembers; ++idx) {
             BlockMember& member = _blockMembers[idx];
             if (member._name.length() > 3) {
                 if (Util::BeginsWith(member._name, "WIP", true)) {
-                    const stringImpl newName = member._name.c_str();
+                    const string newName = member._name.c_str();
                     member._name = newName.substr(3, newName.length() - 3);
                     member._nameHash = _ID(member._name.c_str());
                 }
                 if (member._arraySize >= 1 && Util::GetTrailingCharacters(member._name, 3) == "[0]") {
                     // Array uniform. Use non-indexed version as an equally-valid alias
-                    const stringImpl newName = member._name.c_str();
+                    const string newName = member._name.c_str();
                     member._name = newName.substr(0, newName.length() - 3);
                     member._nameHash = _ID(member._name.c_str());
                     const size_t elementSize = member._size / member._arraySize;

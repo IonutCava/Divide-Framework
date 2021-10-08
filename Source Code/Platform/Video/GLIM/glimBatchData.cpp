@@ -204,8 +204,8 @@ unsigned int glimBatchData::AddVertex(float x, float y, float z) {
     m_PositionData.emplace_back(y);
     m_PositionData.emplace_back(z);
 
-    hashMap<unsigned int, GlimArrayData>::iterator it = std::begin(m_Attributes);
-    hashMap<unsigned int, GlimArrayData>::const_iterator itend = std::cend(m_Attributes);
+    Divide::hashMap<unsigned int, GlimArrayData>::iterator it = begin(m_Attributes);
+    Divide::hashMap<unsigned int, GlimArrayData>::const_iterator itend = cend(m_Attributes);
 
     it->second.m_ArrayData.reserve(m_Attributes.size());
     for (; it != itend; ++it) {
@@ -307,9 +307,9 @@ void glimBatchData::GenerateSignature(void) {
 unsigned int glimBatchData::getVertexDataSize(void) const {
     unsigned int uiVertexDataSize = sizeof(float) * 3;
 
-    hashMap<unsigned int, GlimArrayData>::const_iterator itend = m_Attributes.end();
+    Divide::hashMap<unsigned int, GlimArrayData>::const_iterator itend = m_Attributes.end();
 
-    for (hashMap<unsigned int, GlimArrayData>::const_iterator it = m_Attributes.begin(); it != itend; ++it) {
+    for (Divide::hashMap<unsigned int, GlimArrayData>::const_iterator it = m_Attributes.begin(); it != itend; ++it) {
         switch (it->second.m_DataType) {
             // 4 byte data
             case GLIM_ENUM::GLIM_1I:
@@ -364,9 +364,9 @@ void glimBatchData::BindOGL(Divide::I64 uiCurrentProgram) {
     Divide::GL_API::getStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, m_uiVertexBufferID);
     Divide::GL_API::getStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    hashMap<unsigned int, GlimArrayData>::iterator itend = m_Attributes.end();
+    Divide::hashMap<unsigned int, GlimArrayData>::iterator itend = m_Attributes.end();
 
-    for (hashMap<unsigned int, GlimArrayData>::iterator it = m_Attributes.begin(); it != itend; ++it) {
+    for (Divide::hashMap<unsigned int, GlimArrayData>::iterator it = m_Attributes.begin(); it != itend; ++it) {
         int iAttributeArray = 0;
         GlimArrayData::AttributeLocationMap& attribs = it->second.m_programAttribLocation;
         GlimArrayData::AttributeLocationMap::const_iterator it2 = attribs.find(uiCurrentProgram);
@@ -493,8 +493,8 @@ void glimBatchData::UploadOGL() {
 
     // space reservation pre-pass;
     size_t bufferSize = m_PositionData.size();
-    hashMap<unsigned int, GlimArrayData>::iterator it = std::begin(m_Attributes);
-    hashMap<unsigned int, GlimArrayData>::iterator itend = std::end(m_Attributes);
+    Divide::hashMap<unsigned int, GlimArrayData>::iterator it = begin(m_Attributes);
+    Divide::hashMap<unsigned int, GlimArrayData>::iterator itend = end(m_Attributes);
     for (; it != itend; ++it) {
         bufferSize += it->second.m_ArrayData.size();
     }

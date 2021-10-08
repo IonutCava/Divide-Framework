@@ -40,7 +40,7 @@ void threadedMeshLoad(MeshLoadData loadData, Import::ImportData tempMeshData) {
     } else {
         loadData._mesh.reset();
         //handle error
-        const stringImpl msg = Util::StringFormat("Failed to import mesh [ %s ]!", loadData._descriptor.assetName().c_str());
+        const string msg = Util::StringFormat("Failed to import mesh [ %s ]!", loadData._descriptor.assetName().c_str());
         DIVIDE_UNEXPECTED_CALL_MSG(msg.c_str());
     }
 

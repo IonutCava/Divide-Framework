@@ -57,7 +57,7 @@ class tcp_session_tpl : public subscriber,
     void sendPacket(const WorldPacket& p) override;
 
     // Push a new file in the output queue
-    virtual void sendFile(const stringImpl& fileName);
+    virtual void sendFile(const string& fileName);
 
    private:
     virtual void stop();
@@ -100,7 +100,7 @@ class tcp_session_tpl : public subscriber,
     boost::asio::streambuf _inputBuffer;
     boost::asio::deadline_timer _inputDeadline;
     eastl::deque<WorldPacket> _outputQueue;
-    eastl::deque<stringImpl> _outputFileQueue;
+    eastl::deque<string> _outputFileQueue;
     boost::asio::deadline_timer _nonEmptyOutputQueue;
     boost::asio::deadline_timer _outputDeadline;
     time_t _startTime;

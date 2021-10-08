@@ -62,15 +62,15 @@ class SceneAnimator {
     friend class Attorney::SceneAnimatorMeshImporter;
    public:
     // index = frameIndex; entry = vectorIndex;
-    using LineMap = vectorEASTL<I32>;
+    using LineMap = vector<I32>;
     // index = animationID;
-    using LineCollection = vectorEASTL<LineMap>;
+    using LineCollection = vector<LineMap>;
 
     SceneAnimator();
     ~SceneAnimator();
 
     /// This must be called to fill the SceneAnimator with valid data
-    bool init(PlatformContext& context, Bone* skeleton, const vectorEASTL<Bone*>& bones);
+    bool init(PlatformContext& context, Bone* skeleton, const vector<Bone*>& bones);
     /// Frees all memory and initializes everything to a default state
     void release(bool releaseAnimations = true);
     void save(PlatformContext& context, ByteBuffer& dataOut) const;
@@ -132,15 +132,15 @@ class SceneAnimator {
         return _animations[animationIndex]->frameCount();
     }
 
-    const vectorEASTL<std::shared_ptr<AnimEvaluator>>& animations() const noexcept {
+    const vector<std::shared_ptr<AnimEvaluator>>& animations() const noexcept {
         return _animations;
     }
 
-    const stringImpl& animationName(const I32 animationIndex) const {
+    const string& animationName(const I32 animationIndex) const {
         return _animations[animationIndex]->name();
     }
 
-    I32 animationID(const stringImpl& animationName) {
+    I32 animationID(const string& animationName) {
         const hashMap<U64, U32>::iterator itr = _animationNameToID.find(_ID(animationName.c_str()));
         if (itr != std::end(_animationNameToID)) {
             return itr->second;
@@ -151,7 +151,7 @@ class SceneAnimator {
     /// Be careful with this to make sure and send the correct dt. If the dt is
     /// different from what the model is currently at,
     /// the transform will be off
-    const mat4<F32>& boneTransform(const I32 animationIndex, const D64 dt, const stringImpl& bName) {
+    const mat4<F32>& boneTransform(const I32 animationIndex, const D64 dt, const string& bName) {
         const I32 boneID = boneIndex(bName);
         if (boneID != -1) {
             return boneTransform(animationIndex, dt, boneID);
@@ -172,7 +172,7 @@ class SceneAnimator {
     }
 
     /// Get the bone's global transform
-    const mat4<F32>& boneOffsetTransform(const stringImpl& bName) {
+    const mat4<F32>& boneOffsetTransform(const string& bName) {
         const Bone* bone = boneByName(bName);
         if (bone != nullptr) {
             _boneTransformCache = bone->_offsetMatrix;
@@ -180,12 +180,12 @@ class SceneAnimator {
         return _boneTransformCache;
     }
 
-    Bone* boneByName(const stringImpl& name) const;
+    Bone* boneByName(const string& name) const;
     /// GetBoneIndex will return the index of the bone given its name.
     /// The index can be used to index directly into the vector returned from
     /// GetTransform
-    I32 boneIndex(const stringImpl& bName) const;
-    const vectorEASTL<Line>& skeletonLines(I32 animationIndex, D64 dt);
+    I32 boneIndex(const string& bName) const;
+    const vector<Line>& skeletonLines(I32 animationIndex, D64 dt);
 
     /// Returns the frame count of the longest registered animation
     U32 getMaxAnimationFrames() const noexcept {
@@ -206,7 +206,7 @@ class SceneAnimator {
     void calculate(I32 animationIndex, D64 pTime);
     static I32 CreateSkeleton(Bone* piNode,
                               const mat4<F32>& parent,
-                              vectorEASTL<Line>& lines);
+                              vector<Line>& lines);
 
    private:
     /// Frame count of the longest registered animation
@@ -214,19 +214,19 @@ class SceneAnimator {
     /// Root node of the internal scene structure
     Bone* _skeleton;
     I16   _skeletonDepthCache;
-    vectorEASTL<Bone*> _bones;
+    vector<Bone*> _bones;
     /// A vector that holds each animation
-    vectorEASTL<AnimEvaluator_ptr> _animations;
+    vector<AnimEvaluator_ptr> _animations;
     /// find animations quickly
     hashMap<U64, U32> _animationNameToID;
     mat4<F32> _boneTransformCache;
     LineCollection _skeletonLines;
-    vectorEASTL<vectorEASTL<Line>> _skeletonLinesContainer;
+    vector<vector<Line>> _skeletonLinesContainer;
 };
 
 namespace Attorney {
     class SceneAnimatorMeshImporter {
-        static void registerAnimations(SceneAnimator& animator, const vectorEASTL<std::shared_ptr<AnimEvaluator>>& animations) {
+        static void registerAnimations(SceneAnimator& animator, const vector<std::shared_ptr<AnimEvaluator>>& animations) {
             const size_t animationCount = animations.size();
             animator._animations.reserve(animationCount);
             for (size_t i = 0; i < animationCount; ++i) {

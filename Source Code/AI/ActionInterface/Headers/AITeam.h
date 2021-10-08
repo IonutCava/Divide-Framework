@@ -69,7 +69,7 @@ class AITeam final : public GUIDWrapper {
     using MemberVariable = hashMap<AIEntity*, F32>;
     using TeamMap = hashMap<I64, AIEntity*>;
     using OrderPtr = std::shared_ptr<Order>;
-    using OrderList = vectorEASTL<OrderPtr>;
+    using OrderList = vector<OrderPtr>;
 
    public:
     AITeam(U32 id, AIManager& parentManager);
@@ -135,7 +135,7 @@ class AITeam final : public GUIDWrapper {
     void removeCrowd(AIEntity::PresetAgentRadius radius);
 
    protected:
-    [[nodiscard]] vectorEASTL<AIEntity*> getEntityList() const;
+    [[nodiscard]] vector<AIEntity*> getEntityList() const;
 
     [[nodiscard]] OrderList::iterator findOrder(const Order& order) {
         return findOrder(order.getID());
@@ -150,7 +150,7 @@ class AITeam final : public GUIDWrapper {
             });
     }
 
-    [[nodiscard]] vectorEASTL<U32>::iterator findEnemyTeamEntry(U32 enemyTeamID) {
+    [[nodiscard]] vector<U32>::iterator findEnemyTeamEntry(U32 enemyTeamID) {
         return eastl::find_if(
             begin(_enemyTeams), end(_enemyTeams),
             [&enemyTeamID](const U32 id) -> bool { return id == enemyTeamID; });
@@ -168,7 +168,7 @@ class AITeam final : public GUIDWrapper {
     AITeamCrowd _aiTeamCrowd;
     mutable SharedMutex _updateMutex;
     mutable SharedMutex _crowdMutex;
-    vectorEASTL<U32> _enemyTeams;
+    vector<U32> _enemyTeams;
     OrderList _orders;
 };
 

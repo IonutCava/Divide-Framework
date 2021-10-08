@@ -34,8 +34,8 @@ WarScene::WarScene(PlatformContext& context, ResourceCache* cache, SceneManager&
     _timeLimitMinutes(5),
     _scoreLimit(3)
 {
-    parent.addSelectionCallback([&](PlayerIndex /*idx*/, const vectorEASTL<SceneGraphNode*>& node) {
-        stringImpl selectionText;
+    parent.addSelectionCallback([&](PlayerIndex /*idx*/, const vector<SceneGraphNode*>& node) {
+        string selectionText;
         for (SceneGraphNode* it : node) {
             selectionText.append("\n");
             selectionText.append(it->name().c_str());
@@ -56,7 +56,7 @@ void WarScene::processGUI(const U64 deltaTimeUS) {
     constexpr D64 FpsDisplay = Time::SecondsToMilliseconds(0.3);
     static SceneGraphNode* terrain = nullptr;
     if (terrain == nullptr) {
-        vectorEASTL<SceneGraphNode*> terrains = Object3D::filterByType(_sceneGraph->getNodesByType(SceneNodeType::TYPE_OBJECT3D), ObjectType::TERRAIN);
+        vector<SceneGraphNode*> terrains = Object3D::filterByType(_sceneGraph->getNodesByType(SceneNodeType::TYPE_OBJECT3D), ObjectType::TERRAIN);
         if (!terrains.empty()) {
             terrain = terrains.front();
         }
@@ -100,7 +100,7 @@ void WarScene::processGUI(const U64 deltaTimeUS) {
     }
 
     if (_guiTimersMS[1] >= Time::SecondsToMilliseconds(1)) {
-        stringImpl selectionText;
+        string selectionText;
         const Selections& selections = _currentSelection[0];
         for (U8 i = 0u; i < selections._selectionCount; ++i) {
             SceneGraphNode* node = sceneGraph()->findNode(selections._selections[i]);
@@ -149,7 +149,7 @@ void WarScene::processGUI(const U64 deltaTimeUS) {
 namespace {
     F32 phiLight = 0.0f;
     bool initPosSetLight = false;
-    vectorEASTL<vec3<F32>> initPosLight;
+    vector<vec3<F32>> initPosLight;
 }
 
 void WarScene::toggleTerrainMode() {
@@ -318,7 +318,7 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
         vec3<F32> tempDestination;
         UColour4 redLine(255, 0, 0, 128);
         UColour4 blueLine(0, 0, 255, 128);
-        vectorEASTL<Line> paths;
+        vector<Line> paths;
         paths.reserve(_armyNPCs[0].size() + _armyNPCs[1].size());
         for (U8 i = 0; i < 2; ++i) {
             for (SceneGraphNode* node : _armyNPCs[i]) {
@@ -385,7 +385,7 @@ bool WarScene::load(const Str256& name) {
     const Material_ptr& matInstance = cylinder[0]->getChild(0).get<RenderingComponent>()->getMaterialInstance();
     matInstance->shininess(200);
     */
-    stringImpl currentName;
+    string currentName;
 #if 0
     SceneNode_ptr cylinderMeshNW = cylinder[1]->getNode();
     SceneNode_ptr cylinderMeshNE = cylinder[2]->getNode();
@@ -560,11 +560,11 @@ bool WarScene::load(const Str256& name) {
 
     AI::WarSceneAIProcessor::registerFlags(_flag[0], _flag[1]);
 
-    AI::WarSceneAIProcessor::registerScoreCallback([&](U8 teamID, const stringImpl& unitName) {
+    AI::WarSceneAIProcessor::registerScoreCallback([&](U8 teamID, const string& unitName) {
         registerPoint(teamID, unitName);
     });
 
-    AI::WarSceneAIProcessor::registerMessageCallback([&](U8 eventID, const stringImpl& unitName) {
+    AI::WarSceneAIProcessor::registerMessageCallback([&](U8 eventID, const string& unitName) {
         printMessage(eventID, unitName);
     });
 #endif

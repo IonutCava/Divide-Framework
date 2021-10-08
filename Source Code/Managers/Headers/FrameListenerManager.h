@@ -77,7 +77,7 @@ class FrameListenerManager {
 
    private:
     mutable SharedMutex _listenerLock;
-    vectorEASTL<FrameListener*> _listeners;
+    vector<FrameListener*> _listeners;
     std::array<EventTimeMap, to_base(FrameEventType::FRAME_EVENT_ENDED) + 1> _eventTimers;
 
 };

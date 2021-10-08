@@ -193,7 +193,7 @@ struct SysInfo {
     size_t _availableRamInBytes;
     int _systemResolutionWidth;
     int _systemResolutionHeight;
-    stringImpl _workingDirectory;
+    string _workingDirectory;
 };
 
 [[nodiscard]] SysInfo& sysInfo() noexcept;

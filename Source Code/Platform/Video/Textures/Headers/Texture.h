@@ -45,10 +45,10 @@ namespace Divide {
 
 namespace TypeUtil {
     const char* WrapModeToString(TextureWrap wrapMode) noexcept;
-    TextureWrap StringToWrapMode(const stringImpl& wrapMode);
+    TextureWrap StringToWrapMode(const string& wrapMode);
 
     const char* TextureFilterToString(TextureFilter filter) noexcept;
-    TextureFilter StringToTextureFilter(const stringImpl& filter);
+    TextureFilter StringToTextureFilter(const string& filter);
 };
 
  TYPEDEF_SMART_POINTERS_FOR_TYPE(Texture);
@@ -109,7 +109,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     [[nodiscard]] U8 numChannels() const noexcept;
 
 #if defined(_DEBUG)
-    const vectorEASTL<stringImpl>& sourceFileList() const noexcept { return _sourceFileList; }
+    const vector<string>& sourceFileList() const noexcept { return _sourceFileList; }
 #endif
    protected:
     /// Use STB to load a file into a Texture Object
@@ -124,7 +124,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
   protected:
     bool _asyncLoad;
 #if defined(_DEBUG)
-    vectorEASTL<stringImpl> _sourceFileList;
+    vector<string> _sourceFileList;
 #endif
 
   protected:

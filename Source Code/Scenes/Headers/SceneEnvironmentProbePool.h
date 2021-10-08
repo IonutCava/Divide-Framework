@@ -47,7 +47,7 @@ FWD_DECLARE_MANAGED_STRUCT(DebugView);
 
 class Camera;
 class EnvironmentProbeComponent;
-using EnvironmentProbeList = vectorEASTL<EnvironmentProbeComponent*>;
+using EnvironmentProbeList = vector<EnvironmentProbeComponent*>;
 
 class GFXDevice;
 class SceneRenderState;
@@ -73,7 +73,7 @@ public:
     void debugProbe(EnvironmentProbeComponent* probe);
     POINTER_R(EnvironmentProbeComponent, debugProbe, nullptr);
 
-    static vectorEASTL<Camera*>& ProbeCameras() noexcept { return s_probeCameras; }
+    static vector<Camera*>& ProbeCameras() noexcept { return s_probeCameras; }
 
     static I16  AllocateSlice(bool lock);
     static void UnlockSlice(I16 slice);
@@ -88,8 +88,8 @@ protected:
     mutable SharedMutex _probeLock;
     EnvironmentProbeList _envProbes;
 
-    static vectorEASTL<DebugView_ptr> s_debugViews;
-    static vectorEASTL<Camera*> s_probeCameras;
+    static vector<DebugView_ptr> s_debugViews;
+    static vector<Camera*> s_probeCameras;
     static bool s_probesDirty;
 
 private:

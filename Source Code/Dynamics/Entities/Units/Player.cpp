@@ -12,7 +12,7 @@ Player::Player(const U8 index, FrameListenerManager& parent, const U32 callOrder
     : Character(CharacterType::CHARACTER_TYPE_PLAYER, parent, callOrder),
       _index(index)
 {
-     const stringImpl& cameraName = Util::StringFormat("Player_Cam_%d", getGUID());
+     const string& cameraName = Util::StringFormat("Player_Cam_%d", getGUID());
      _camera = Camera::createCamera<FreeFlyCamera>(cameraName);
 }
 

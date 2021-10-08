@@ -41,7 +41,7 @@ void DefaultScene::processGUI(const U64 deltaTimeUS) {
 
 void DefaultScene::postLoadMainThread(const Rect<U16>& targetRenderViewport) {
     // Replace buttons with nice, animated elements? images?
-    const vectorEASTL<Str256>& scenes = _parent.sceneNameList();
+    const vector<Str256>& scenes = _parent.sceneNameList();
 
     const vec2<U16>& resolution = _context.gfx().renderingResolution();
 

@@ -47,12 +47,12 @@ protected:
     bool toXML(const char* xmlFile) const override;
 
 public:
-    stringImpl scriptLocation;
-    stringImpl config;
-    stringImpl startupScene;
-    stringImpl scenesLocation;
-    stringImpl assetsLocation;
-    stringImpl serverAddress;
+    string scriptLocation;
+    string config;
+    string startupScene;
+    string scenesLocation;
+    string assetsLocation;
+    string serverAddress;
 };
 }; //namespace Divide
 

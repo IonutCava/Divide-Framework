@@ -60,7 +60,7 @@ void GUIConsole::createCEGUIWindow() {
         Console::errorfn(Locale::Get(_ID("ERROR_CONSOLE_DOUBLE_INIT")));
     }
     // load the console Window from the layout file
-    const stringImpl layoutFile(_context.config().gui.consoleLayoutFile);
+    const string layoutFile(_context.config().gui.consoleLayoutFile);
     _consoleWindow = CEGUI::WindowManager::getSingletonPtr()->loadLayoutFromFile(layoutFile.c_str());
 
     if (_consoleWindow) {

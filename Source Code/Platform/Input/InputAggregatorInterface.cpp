@@ -7,7 +7,7 @@
 namespace Divide {
 namespace Input {
 
-MouseButton mouseButtonByName(const stringImpl& buttonName) {
+MouseButton mouseButtonByName(const string& buttonName) {
     if (Util::CompareIgnoreCase("MB_" + buttonName, "MB_Left")) {
         return MouseButton::MB_Left;
     } else if (Util::CompareIgnoreCase("MB_" + buttonName, "MB_Right")) {
@@ -27,7 +27,7 @@ MouseButton mouseButtonByName(const stringImpl& buttonName) {
     return MouseButton::MB_Button7;
 }
 
-JoystickElement joystickElementByName(const stringImpl& elementName) {
+JoystickElement joystickElementByName(const string& elementName) {
     JoystickElement ret = {};
 
     if (Util::CompareIgnoreCase(elementName, "POV")) {
@@ -45,10 +45,10 @@ JoystickElement joystickElementByName(const stringImpl& elementName) {
     // Else, we have a button
     ret._type = JoystickElementType::BUTTON_PRESS;
 
-    vectorEASTL<stringImpl> buttonElements = Util::Split<vectorEASTL<stringImpl>, stringImpl>(elementName.c_str(), '_');
+    vector<string> buttonElements = Util::Split<vector<string>, string>(elementName.c_str(), '_');
     assert(buttonElements.size() == 2 && "Invalid joystick element name!");
     assert(Util::CompareIgnoreCase(buttonElements[0], "BUTTON"));
-    ret._elementIndex = Util::ConvertData<U32, stringImpl>(buttonElements[1]);
+    ret._elementIndex = Util::ConvertData<U32, string>(buttonElements[1]);
 
     return ret;
 }

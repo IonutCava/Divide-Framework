@@ -107,8 +107,8 @@ class glGenericVertexData final : public GenericVertexData,
     GLuint _indexBufferSize;
     GLenum _indexBufferUsage;
     GLuint _vertexArray;
-    vectorEASTL<glGenericBuffer*> _bufferObjects;
-    vectorEASTL<U32> _instanceDivisor;
+    vector<glGenericBuffer*> _bufferObjects;
+    vector<U32> _instanceDivisor;
     eastl::fixed_vector<BufferLockEntry, 64, true> _bufferLockQueue;
 };
 

@@ -7,7 +7,7 @@ namespace Divide {
         constexpr U32 g_updateFrameInterval = 60;
     }
 
-    vectorEASTL<std::pair<eastl::unique_ptr<FileWatcher>, U32>> FileWatcherManager::s_fileWatchers;
+    vector<std::pair<eastl::unique_ptr<FileWatcher>, U32>> FileWatcherManager::s_fileWatchers;
 
     FileWatcher& FileWatcherManager::allocateWatcher() {
         s_fileWatchers.emplace_back(std::make_pair(eastl::make_unique<FileWatcher>(), g_updateFrameInterval));

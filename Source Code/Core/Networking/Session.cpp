@@ -40,7 +40,7 @@ void Session::HandleGeometryListOpCode(WorldPacket& p) {
     p >> dataIn.size;
     ASIO::LOG_PRINT(("Received [ CMSG_GEOMERTY_LIST ] with : " + Util::to_string(dataIn.size) + " models").c_str());
     for (U32 i = 0; i < dataIn.size; i++) {
-        stringImpl name, modelname;
+        string name, modelname;
         p >> name;
         p >> modelname;
         dataIn.name.push_back(name);
@@ -72,7 +72,7 @@ void Session::HandleGeometryListOpCode(WorldPacket& p) {
 }
 
 void Session::HandleRequestGeometry(WorldPacket& p) {
-    stringImpl file;
+    string file;
     p >> file;
 
     ASIO::LOG_PRINT(("Sending SMSG_SEND_FILE with item: " + file).c_str());

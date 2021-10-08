@@ -44,13 +44,13 @@ class ProfileTimer {
     void start();
     void stop();
     void reset() noexcept;
-    [[nodiscard]] stringImpl print(U32 level = 0) const;
+    [[nodiscard]] string print(U32 level = 0) const;
 
     [[nodiscard]] U64 get() const;
     [[nodiscard]] U64 getChildTotal() const;
-    [[nodiscard]] const stringImpl& name() const noexcept;
+    [[nodiscard]] const string& name() const noexcept;
 
-    static stringImpl printAll();
+    static string printAll();
     static ProfileTimer& getNewTimer(const char* timerName);
     static void removeTimer(ProfileTimer& timer);
 
@@ -58,7 +58,7 @@ class ProfileTimer {
 
    // time data
    protected:
-    stringImpl _name = "";
+    string _name = "";
     U64 _timer = 0UL;
     U64 _timerAverage = 0UL;
     U32 _timerCounter = 0;
@@ -72,7 +72,7 @@ class ProfileTimer {
     bool hasChildTimer(ProfileTimer& child) const;
 
    protected:
-     vectorEASTL<U32> _children;
+     vector<U32> _children;
      U32 _parent = Config::Profile::MAX_PROFILE_TIMERS + 1;
 };
 
@@ -90,7 +90,7 @@ void REMOVE_TIMER(ProfileTimer*& timer);
 
 void START_TIMER(ProfileTimer& timer);
 void STOP_TIMER(ProfileTimer& timer);
-stringImpl PRINT_TIMER(ProfileTimer& timer);
+string PRINT_TIMER(ProfileTimer& timer);
 
 }  // namespace Time
 }  // namespace Divide

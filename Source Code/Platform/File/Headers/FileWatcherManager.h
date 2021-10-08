@@ -50,7 +50,7 @@ namespace Divide {
         static void deallocateWatcher(const FileWatcher& fw);
 
       private:
-        static vectorEASTL<std::pair<eastl::unique_ptr<FileWatcher>, U32>> s_fileWatchers;
+        static vector<std::pair<eastl::unique_ptr<FileWatcher>, U32>> s_fileWatchers;
     }; //FileWatcherManager
 }; //namespace Divide
 

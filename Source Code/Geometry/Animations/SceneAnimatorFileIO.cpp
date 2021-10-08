@@ -173,7 +173,7 @@ void SceneAnimator::load(PlatformContext& context, ByteBuffer& dataIn) {
     dataIn >> tempVer;
     if (tempVer == BYTE_BUFFER_VERSION_ANIMATOR) {
 
-        stringImpl boneName;
+        string boneName;
         uint32_t nsize = 0;
         dataIn >> nsize;
         _bones.resize(nsize);
@@ -214,7 +214,7 @@ void SceneAnimator::saveSkeleton(ByteBuffer& dataOut, Bone* parent) const {
     const uint32_t nsize = static_cast<uint32_t>(parent->_children.size());
     dataOut << nsize;
     // continue for all children
-    for (vectorEASTL<Bone*>::iterator it = std::begin(parent->_children); it != std::end(parent->_children); ++it) {
+    for (vector<Bone*>::iterator it = std::begin(parent->_children); it != std::end(parent->_children); ++it) {
         saveSkeleton(dataOut, *it);
     }
 }
@@ -225,7 +225,7 @@ Bone* SceneAnimator::loadSkeleton(ByteBuffer& dataIn, Bone* parent) {
     dataIn >> tempVer;
     if (tempVer == BYTE_BUFFER_VERSION_SKELETON) {
 
-        stringImpl tempString;
+        string tempString;
         // create a node
         Bone* internalNode = MemoryManager_NEW Bone();
         // set the parent, in the case this is the root node, it will be null

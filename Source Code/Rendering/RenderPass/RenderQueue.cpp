@@ -239,7 +239,7 @@ void RenderQueue::refresh(const RenderBinType targetBinType) {
     }
 }
 
-U16 RenderQueue::getSortedQueues(const vectorEASTL<RenderBinType>& binTypes, RenderBin::SortedQueues& queuesOut) const {
+U16 RenderQueue::getSortedQueues(const vector<RenderBinType>& binTypes, RenderBin::SortedQueues& queuesOut) const {
     OPTICK_EVENT();
 
     U16 countOut = 0u;

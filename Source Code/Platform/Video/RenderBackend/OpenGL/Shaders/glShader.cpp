@@ -107,7 +107,7 @@ bool glShader::uploadToGPU() {
                     GL_API::DeleteShaderPrograms(1, &_programHandle);
                 }
 
-                vectorEASTL<const char*> sourceCodeCstr;
+                vector<const char*> sourceCodeCstr;
                 eastl::transform(cbegin(data.sourceCode), cend(data.sourceCode), back_inserter(sourceCodeCstr), std::mem_fn(&eastl::string::c_str));
                 _programHandle = glCreateShaderProgramv(GLUtil::glShaderStageTable[shaderIdx], static_cast<GLsizei>(sourceCodeCstr.size()), sourceCodeCstr.data());
                 if (_programHandle == 0 || _programHandle == GLUtil::k_invalidObjectID) {
@@ -134,7 +134,7 @@ bool glShader::uploadToGPU() {
                 for (U8 i = 0; i < to_base(ShaderType::COUNT); ++i) {
                     const LoadData& data = _loadData._data[i];
 
-                    vectorEASTL<const char*> sourceCodeCstr;
+                    vector<const char*> sourceCodeCstr;
                     eastl::transform(cbegin(data.sourceCode), cend(data.sourceCode), back_inserter(sourceCodeCstr), std::mem_fn(&eastl::string::c_str));
                     if (!data.sourceCode.empty()) {
                         const GLuint shader = glCreateShader(GLUtil::glShaderStageTable[i]);
@@ -148,7 +148,7 @@ bool glShader::uploadToGPU() {
                                 // error
                                 GLint logSize = 0;
                                 glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
-                                stringImpl validationBuffer;
+                                string validationBuffer;
                                 validationBuffer.resize(logSize);
 
                                 glGetShaderInfoLog(shader, logSize, &logSize, &validationBuffer[0]);
@@ -191,7 +191,7 @@ bool glShader::uploadToGPU() {
             if (linkStatus == GL_FALSE) {
                 GLint logSize = 0;
                 glGetProgramiv(_programHandle, GL_INFO_LOG_LENGTH, &logSize);
-                stringImpl validationBuffer;
+                string validationBuffer;
                 validationBuffer.resize(logSize);
 
                 glGetProgramInfoLog(_programHandle, logSize, nullptr, &validationBuffer[0]);
@@ -240,7 +240,7 @@ bool glShader::load(const ShaderLoadData& data) {
     _loadData = data;
 
     const GLuint blockIndex = to_U32(ShaderBufferLocation::UNIFORM_BLOCK) + _loadData._uniformIndex;
-    const stringImpl uniformBlock = Util::StringFormat(_loadData._uniformBlock, blockIndex, getUniformBufferName());
+    const string uniformBlock = Util::StringFormat(_loadData._uniformBlock, blockIndex, getUniformBufferName());
 
     for (LoadData& it : _loadData._data) {
         if (it._type != ShaderType::COUNT) {
@@ -259,7 +259,7 @@ bool glShader::load(const ShaderLoadData& data) {
         return false;
     }
 
-    stringImpl concatSource;
+    string concatSource;
     for (const LoadData& it : _loadData._data) {
         concatSource.resize(0);
         for (const auto& src : it.sourceCode) {
@@ -344,7 +344,7 @@ bool glShader::loadFromBinary() {
     // Load the program from the binary file, if available and allowed, to avoid linking.
     if (ShaderProgram::UseShaderBinaryCache()) {
         // Load the program's binary format from file
-        vectorEASTL<Byte> data;
+        vector<Byte> data;
         if (readFile(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin,
                      ResourcePath((glShaderProgram::decorateFileName(_name) + ".fmt").c_str()),
                      data,
@@ -422,7 +422,7 @@ bool glShader::DumpBinary(const GLuint handle, const Str256& name) {
 }
 
 
-stringImpl glShader::getUniformBufferName() const noexcept {
+string glShader::getUniformBufferName() const noexcept {
     return "dvd_UniformBlock_" + Util::to_string(getGUID());
 }
 
@@ -443,7 +443,7 @@ void glShader::prepare() const {
 }
 
 /// Add a define to the shader. The defined must not have been added previously
-void glShader::addShaderDefine(const stringImpl& define, bool appendPrefix) {
+void glShader::addShaderDefine(const string& define, bool appendPrefix) {
     // Find the string in the list of program defines
     const auto* it = std::find(std::begin(_definesList), std::end(_definesList), std::make_pair(define, appendPrefix));
     // If we can't find it, we add it
@@ -457,7 +457,7 @@ void glShader::addShaderDefine(const stringImpl& define, bool appendPrefix) {
 }
 
 /// Remove a define from the shader. The defined must have been added previously
-void glShader::removeShaderDefine(const stringImpl& define) {
+void glShader::removeShaderDefine(const string& define) {
     // Find the string in the list of program defines
     const auto* it = eastl::find(eastl::begin(_definesList), eastl::end(_definesList), std::make_pair(define, true));
         if (it == eastl::end(_definesList)) {

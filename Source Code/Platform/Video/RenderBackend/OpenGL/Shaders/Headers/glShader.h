@@ -55,12 +55,12 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
         Str256 _fileName = "";
         bool _hasUniforms = false;
         eastl::unordered_set<U64> atoms;
-        vectorEASTL<eastl::string> sourceCode;
+        vector<eastl::string> sourceCode;
     };
 
     struct ShaderLoadData {
         eastl::array<LoadData, to_base(ShaderType::COUNT)> _data;
-        stringImpl _uniformBlock = {};
+        string _uniformBlock = {};
         U8 _uniformIndex = 0u;
     };
 
@@ -83,7 +83,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     bool SubRef() noexcept { return _refCount.fetch_sub(1) == 1; }
     [[nodiscard]] size_t GetRef() const { return _refCount.load(); }
 
-    [[nodiscard]] stringImpl getUniformBufferName() const noexcept;
+    [[nodiscard]] string getUniformBufferName() const noexcept;
 
    public:
     // ======================= static data ========================= //
@@ -111,9 +111,9 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
     void prepare() const;
     /// Add a define to the shader. The defined must not have been added previously
-    void addShaderDefine(const stringImpl& define, bool appendPrefix);
+    void addShaderDefine(const string& define, bool appendPrefix);
     /// Remove a define from the shader. The defined must have been added previously
-    void removeShaderDefine(const stringImpl& define);
+    void removeShaderDefine(const string& define);
     void initialiseUniformBuffer();
     [[nodiscard]] UseProgramStageMask stageMask() const noexcept { return _stageMask;  }
 
@@ -128,7 +128,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
   private:
     ShaderLoadData _loadData;
     /// A list of preprocessor defines (if the bool in the pair is true, #define is automatically added
-    vectorEASTL<std::pair<stringImpl, bool>> _definesList;
+    vector<std::pair<string, bool>> _definesList;
     eastl::unique_ptr<glPushConstantUploader> _constantUploader = nullptr;
     Str256 _name;
     std::atomic_size_t _refCount;

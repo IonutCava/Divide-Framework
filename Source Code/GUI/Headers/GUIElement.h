@@ -67,14 +67,14 @@ struct TypeHelper {
 class GUIElement : public GUIDWrapper {
     friend class GUI;
   public:
-    GUIElement(stringImpl name, CEGUI::Window* parent);
+    GUIElement(string name, CEGUI::Window* parent);
     virtual ~GUIElement() = default;
     
-    virtual void setTooltip(const stringImpl& tooltipText) {
+    virtual void setTooltip(const string& tooltipText) {
         ACKNOWLEDGE_UNUSED(tooltipText);
     }
 
-    PROPERTY_RW(stringImpl, name, "");
+    PROPERTY_RW(string, name, "");
 
     VIRTUAL_PROPERTY_RW(bool, visible, true);
     VIRTUAL_PROPERTY_RW(bool, active, false);
@@ -90,7 +90,7 @@ class GUIElement : public GUIDWrapper {
 template<GUIType EnumVal>
 struct GUIElementBase : GUIElement {
 
-    GUIElementBase(const stringImpl& name, CEGUI::Window* const parent)
+    GUIElementBase(const string& name, CEGUI::Window* const parent)
         : GUIElement(name, parent)
     {}
 

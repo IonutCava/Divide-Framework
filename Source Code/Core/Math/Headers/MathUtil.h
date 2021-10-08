@@ -46,12 +46,12 @@ namespace Divide {
 namespace Util {
 
 struct NOINITVTABLE GraphPlot {
-    explicit GraphPlot(stringImpl name) : _plotName(MOV(name))
+    explicit GraphPlot(string name) : _plotName(MOV(name))
     {
     }
     virtual ~GraphPlot() = default;
 
-    stringImpl _plotName;
+    string _plotName;
     [[nodiscard]] virtual bool empty() const noexcept = 0;
 };
 
@@ -60,11 +60,11 @@ struct GraphPlot2D final : GraphPlot {
     {
     }
 
-    explicit GraphPlot2D(stringImpl&& name) : GraphPlot(MOV(name))
+    explicit GraphPlot2D(string&& name) : GraphPlot(MOV(name))
     {
     }
 
-    vectorEASTL<vec2<F32>> _coords;
+    vector<vec2<F32>> _coords;
      
     [[nodiscard]] bool empty() const noexcept override {
         return _coords.empty();
@@ -76,11 +76,11 @@ struct GraphPlot3D final : GraphPlot {
     {
     }
 
-    explicit GraphPlot3D(stringImpl&& name) : GraphPlot(MOV(name))
+    explicit GraphPlot3D(string&& name) : GraphPlot(MOV(name))
     {
     }
 
-    vectorEASTL<vec3<F32>> _coords;
+    vector<vec3<F32>> _coords;
 
     [[nodiscard]] bool empty() const noexcept override {
         return _coords.empty();

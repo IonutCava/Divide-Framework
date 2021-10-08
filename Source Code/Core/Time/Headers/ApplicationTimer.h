@@ -62,7 +62,7 @@ class ApplicationTimer {
 
     PROPERTY_R(F32, speedfactor, 1.0f);
     PROPERTY_R(U32, targetFrameRate, Config::TARGET_FRAME_RATE);
-    PROPERTY_R(stringImpl, benchmarkReport, "");
+    PROPERTY_R(string, benchmarkReport, "");
 
   private:
     FrameRateHandler _frameRateHandler;

@@ -114,7 +114,7 @@ inline ByteBuffer& ByteBuffer::operator>>(bool& value) {
 }
 
 template<>
-inline ByteBuffer& ByteBuffer::operator>>(stringImpl& value) {
+inline ByteBuffer& ByteBuffer::operator>>(string& value) {
     value.clear();
     // prevent crash at wrong string format in packet
     while (rpos() < storageSize()) {
@@ -129,7 +129,7 @@ inline ByteBuffer& ByteBuffer::operator>>(stringImpl& value) {
 
 template<>
 inline ByteBuffer& ByteBuffer::operator>>(ResourcePath& value) {
-    stringImpl temp{};
+    string temp{};
 
     *this >> temp;
      value = ResourcePath(temp);
@@ -148,7 +148,7 @@ inline void ByteBuffer::readNoSkip(bool& value) {
 }
 
 template <>
-inline void ByteBuffer::readNoSkip(stringImpl& value) {
+inline void ByteBuffer::readNoSkip(string& value) {
     value.clear();
     size_t inc = 0;
     // prevent crash at wrong string format in packet
@@ -164,7 +164,7 @@ inline void ByteBuffer::readNoSkip(stringImpl& value) {
 
 template <>
 inline void ByteBuffer::readNoSkip(ResourcePath& value) {
-    stringImpl temp{};
+    string temp{};
     readNoSkip(temp);
     value = ResourcePath(temp);
 }
@@ -184,7 +184,7 @@ void ByteBuffer::readSkip() {
 
 template <>
 inline void ByteBuffer::readSkip<char *>() {
-    stringImpl temp;
+    string temp;
     *this >> temp;
 }
 
@@ -194,7 +194,7 @@ inline void ByteBuffer::readSkip<char const *>() {
 }
 
 template <>
-inline void ByteBuffer::readSkip<stringImpl>() {
+inline void ByteBuffer::readSkip<string>() {
     readSkip<char *>();
 }
 
@@ -355,7 +355,7 @@ void ByteBuffer::append(const T* src, const size_t cnt) {
 
 
 template<>
-inline void ByteBuffer::append(const stringImpl& str) {
+inline void ByteBuffer::append(const string& str) {
     append(str.c_str(), str.length());
     append(to_U8(0));
 }
@@ -519,9 +519,9 @@ inline ByteBuffer &operator>>(ByteBuffer &b, std::array<T, N>& a) {
 }
 
 template <size_t N>
-inline ByteBuffer &operator<<(ByteBuffer &b, const std::array<stringImpl, N>& a) {
+inline ByteBuffer &operator<<(ByteBuffer &b, const std::array<string, N>& a) {
     b << static_cast<U64>(N);
-    for (const stringImpl& str : a) {
+    for (const string& str : a) {
         b << str;
     }
 
@@ -529,11 +529,11 @@ inline ByteBuffer &operator<<(ByteBuffer &b, const std::array<stringImpl, N>& a)
 }
 
 template <size_t N>
-inline ByteBuffer &operator>>(ByteBuffer &b, std::array<stringImpl, N>& a) {
+inline ByteBuffer &operator>>(ByteBuffer &b, std::array<string, N>& a) {
     U64 size;
     b >> size;
     assert(size == static_cast<U64>(N));
-    for (stringImpl& str : a) {
+    for (string& str : a) {
         b >> str;
     }
 
@@ -541,7 +541,7 @@ inline ByteBuffer &operator>>(ByteBuffer &b, std::array<stringImpl, N>& a) {
 }
 
 template <typename T>
-inline ByteBuffer &operator<<(ByteBuffer &b, vectorEASTL<T> const &v) {
+inline ByteBuffer &operator<<(ByteBuffer &b, vector<T> const &v) {
     b << to_U32(v.size());
     b.append(v.data(), v.size());
 
@@ -549,7 +549,7 @@ inline ByteBuffer &operator<<(ByteBuffer &b, vectorEASTL<T> const &v) {
 }
 
 template <typename T>
-inline ByteBuffer &operator>>(ByteBuffer &b, vectorEASTL<T> &v) {
+inline ByteBuffer &operator>>(ByteBuffer &b, vector<T> &v) {
     U32 vsize;
     b >> vsize;
     v.resize(vsize);
@@ -558,9 +558,9 @@ inline ByteBuffer &operator>>(ByteBuffer &b, vectorEASTL<T> &v) {
 }
 
 template <>
-inline ByteBuffer &operator<<(ByteBuffer &b, vectorEASTL<stringImpl> const &v) {
+inline ByteBuffer &operator<<(ByteBuffer &b, vector<string> const &v) {
     b << to_U32(v.size());
-    for (const stringImpl& str : v) {
+    for (const string& str : v) {
         b << str;
     }
 
@@ -568,11 +568,11 @@ inline ByteBuffer &operator<<(ByteBuffer &b, vectorEASTL<stringImpl> const &v) {
 }
 
 template <>
-inline ByteBuffer &operator>>(ByteBuffer &b, vectorEASTL<stringImpl> &v) {
+inline ByteBuffer &operator>>(ByteBuffer &b, vector<string> &v) {
     U32 vsize;
     b >> vsize;
     v.resize(vsize);
-    for (stringImpl& str : v) {
+    for (string& str : v) {
         b >> str;
     }
     return b;

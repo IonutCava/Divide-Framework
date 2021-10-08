@@ -49,7 +49,7 @@ class Server {
     ~Server();
 
     void init(U16 port,
-              const stringImpl& broadcast_endpoint_address,
+              const string& broadcast_endpoint_address,
               bool debugOutput);
 
     void close();

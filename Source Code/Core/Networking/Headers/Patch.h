@@ -44,16 +44,16 @@ struct FileData {
 };
 
 struct PatchData {
-    vectorEASTL<stringImpl> name;
-    vectorEASTL<stringImpl> modelName;
-    stringImpl sceneName = "";
+    vector<string> name;
+    vector<string> modelName;
+    string sceneName = "";
     U32 size = 0u;
 };
 
 namespace Patch {
     bool compareData(const PatchData& data);
     void addGeometry(const FileData& data);
-    const vectorEASTL<FileData>& modelData() noexcept;
+    const vector<FileData>& modelData() noexcept;
     void clearModelData() noexcept;
 };
 

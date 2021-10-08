@@ -217,7 +217,7 @@ void GL_API::idle(const bool fast) {
     }
 }
 
-void GL_API::AppendToShaderHeader(const ShaderType type, const stringImpl& entry) {
+void GL_API::AppendToShaderHeader(const ShaderType type, const string& entry) {
     glswAddDirectiveToken(type != ShaderType::COUNT ? Names::shaderTypes[to_U8(type)] : "", entry.c_str());
 }
 
@@ -249,13 +249,13 @@ bool GL_API::InitGLSW(Configuration& config) {
                                               "#define float4x4 mat4\n"
                                               "#define lerp mix";
 
-    const auto getPassData = [&](const ShaderType type) -> stringImpl {
-        stringImpl baseString = "     _out.%s = _in[index].%s;";
+    const auto getPassData = [&](const ShaderType type) -> string {
+        string baseString = "     _out.%s = _in[index].%s;";
         if (type == ShaderType::TESSELLATION_CTRL) {
             baseString = "    _out[gl_InvocationID].%s = _in[index].%s;";
         }
 
-        stringImpl passData("void PassData(in int index) {");
+        string passData("void PassData(in int index) {");
         passData.append("\n");
         for (const auto& [varType, name] : shaderVaryings) {
             passData.append(Util::StringFormat(baseString.c_str(), name, name));
@@ -1296,8 +1296,8 @@ bool GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, con
         }
 
         if (matchingTexCount >= k_textureThreshold) {
-            static vectorEASTL<GLuint> handles{};
-            static vectorEASTL<GLuint> samplers{};
+            static vector<GLuint> handles{};
+            static vector<GLuint> samplers{};
             static bool init = false;
             if (!init) {
                 init = true;

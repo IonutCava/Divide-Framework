@@ -39,79 +39,79 @@ namespace Divide {
     namespace Util {
         bool FindCommandLineArgument(int argc, char** argv, const char* target_arg, const char* arg_prefix = "--");
 
-        template<size_t N, typename T_str = stringImpl>
+        template<size_t N, typename T_str = string>
         bool ReplaceStringInPlace(T_str& subject, const std::array<std::string_view, N>& search, std::string_view replace, bool recursive = false);
 
-        template<size_t N, typename T_str = stringImpl>
+        template<size_t N, typename T_str = string>
         T_str ReplaceString(std::string_view subject, const std::array<std::string_view, N>& search, std::string_view replace, bool recursive = false);
 
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         bool ReplaceStringInPlace(T_str& subject, std::string_view search, std::string_view replace, bool recursive = false);
         
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         T_str ReplaceString(std::string_view subject, std::string_view search, std::string_view replace, bool recursive = false);
 
-        template<typename T_str = stringImpl>
-        void GetPermutations(std::string_view subject, vectorEASTL<T_str>& permutationContainer);
+        template<typename T_str = string>
+        void GetPermutations(std::string_view subject, vector<T_str>& permutationContainer);
 
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         bool IsNumber(const T_str& s);
 
         bool IsNumber(const char* s);
 
-        template<typename T_strA = stringImpl, typename T_strB = stringImpl>
+        template<typename T_strA = string, typename T_strB = string>
         bool BeginsWith(const T_strA& input, const T_strB& compare, bool ignoreWhitespace);
 
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         T_str GetTrailingCharacters(const T_str& input, size_t count);
 
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         T_str GetStartingCharacters(const T_str& input, size_t count);
 
-        template<typename T_strA = stringImpl, typename T_strB = stringImpl>
+        template<typename T_strA = string, typename T_strB = string>
         bool CompareIgnoreCase(const T_strA& a, const T_strB& b) noexcept;
 
         bool CompareIgnoreCase(const char* a, const char* b) noexcept;
 
         /// http://stackoverflow.com/questions/236129/split-a-string-in-c
-        template<typename T_vec, typename T_str = stringImpl>
-        typename std::enable_if<std::is_same<T_vec, vectorEASTLFast<T_str>>::value ||
-                                std::is_same<T_vec, vectorEASTL<T_str>>::value, T_vec>::type
+        template<typename T_vec, typename T_str = string>
+        typename std::enable_if<std::is_same<T_vec, vector_fast<T_str>>::value ||
+                                std::is_same<T_vec, vector<T_str>>::value, T_vec>::type
         Split(const char* input, char delimiter);
 
-        template<typename T_vec, typename T_str = stringImpl>
-        typename std::enable_if<std::is_same<T_vec, vectorEASTL<T_str>>::value ||
-                                std::is_same<T_vec, vectorEASTLFast<T_str>>::value, T_vec&>::type
+        template<typename T_vec, typename T_str = string>
+        typename std::enable_if<std::is_same<T_vec, vector<T_str>>::value ||
+                                std::is_same<T_vec, vector_fast<T_str>>::value, T_vec&>::type
         Split(const char* input, char delimiter, T_vec& elems);
 
-        template<typename T_str = stringImpl> vectorEASTL<T_str>&
-        Split(const char* input, char delimiter, vectorEASTL<T_str>& elems);
+        template<typename T_str = string> vector<T_str>&
+        Split(const char* input, char delimiter, vector<T_str>& elems);
 
         /// http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         T_str& Ltrim(T_str& s);
 
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         T_str Ltrim(const T_str& s);
 
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         T_str& Rtrim(T_str& s);
 
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         T_str Rtrim(const T_str& s);
 
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         T_str& Trim(T_str& s);
 
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         T_str  Trim(const T_str& s);
 
         ALIAS_TEMPLATE_FUNCTION(StringFormat, fmt::sprintf)
 
         template<typename T>
-        stringImpl to_string(T value);
+        string to_string(T value);
 
-        template<typename T_str = stringImpl>
+        template<typename T_str = string>
         U32 LineCount(const T_str& str);
 
         void CStringRemoveChar(char* str, char charToRemove) noexcept;

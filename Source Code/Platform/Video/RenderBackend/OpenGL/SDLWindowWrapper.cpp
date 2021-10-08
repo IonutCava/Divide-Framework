@@ -66,7 +66,7 @@ namespace {
             return false;
         }
 
-        vectorEASTL<std::pair<SDL_GLContext, bool /*in use*/>> _contexts;
+        vector<std::pair<SDL_GLContext, bool /*in use*/>> _contexts;
     } g_ContextPool;
 };
 

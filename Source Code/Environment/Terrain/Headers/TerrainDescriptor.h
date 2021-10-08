@@ -40,23 +40,23 @@ namespace Divide {
 
 class TerrainDescriptor final : public PropertyDescriptor {
    public:
-    explicit TerrainDescriptor(const stringImpl& name) noexcept;
+    explicit TerrainDescriptor(const string& name) noexcept;
     virtual ~TerrainDescriptor();
 
-    bool loadFromXML(const boost::property_tree::ptree& pt, const stringImpl& name);
+    bool loadFromXML(const boost::property_tree::ptree& pt, const string& name);
 
-    void addVariable(const stringImpl& name, const stringImpl& value);
-    void addVariable(const stringImpl& name, F32 value);
+    void addVariable(const string& name, const string& value);
+    void addVariable(const string& name, F32 value);
 
-    [[nodiscard]] stringImpl getVariable(const stringImpl& name) const {
-        const hashMap<U64, stringImpl>::const_iterator it = _variables.find(_ID(name.c_str()));
+    [[nodiscard]] string getVariable(const string& name) const {
+        const hashMap<U64, string>::const_iterator it = _variables.find(_ID(name.c_str()));
         if (it != std::end(_variables)) {
             return it->second;
         }
         return "";
     }
 
-    [[nodiscard]] F32 getVariablef(const stringImpl& name) const {
+    [[nodiscard]] F32 getVariablef(const string& name) const {
         const hashMap<U64, F32>::const_iterator it = _variablesf.find(_ID(name.c_str()));
         if (it != std::end(_variablesf)) {
             return it->second;
@@ -100,9 +100,9 @@ class TerrainDescriptor final : public PropertyDescriptor {
     }
 
 private:
-    hashMap<U64, stringImpl> _variables{};
+    hashMap<U64, string> _variables{};
     hashMap<U64, F32> _variablesf{};
-    const stringImpl& _name;
+    const string& _name;
 
 protected:
     friend class Terrain;

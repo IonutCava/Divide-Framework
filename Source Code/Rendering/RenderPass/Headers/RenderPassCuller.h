@@ -79,7 +79,7 @@ struct VisibleNode {
 
 struct FeedBackContainer
 {
-    vectorEASTL<VisibleNode> _visibleNodes;
+    vector<VisibleNode> _visibleNodes;
 };
 
 template<size_t N = Config::MAX_VISIBLE_NODES>
@@ -124,8 +124,8 @@ class RenderPassCuller {
 
         VisibleNodeList<>& frustumCull(const NodeCullParams& params, const U16 cullFlags, const SceneGraph* sceneGraph, const SceneState* sceneState, PlatformContext& context);
 
-        void frustumCull(const NodeCullParams& params, const U16 cullFlags, const vectorEASTL<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const;
-        void toVisibleNodes(const Camera* camera, const vectorEASTL<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const;
+        void frustumCull(const NodeCullParams& params, const U16 cullFlags, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const;
+        void toVisibleNodes(const Camera* camera, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const;
 
         VisibleNodeList<>& getNodeCache(const RenderStage stage) noexcept { return _visibleNodes[to_U32(stage)]; }
         const VisibleNodeList<>& getNodeCache(const RenderStage stage) const noexcept { return _visibleNodes[to_U32(stage)]; }

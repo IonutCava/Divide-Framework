@@ -74,11 +74,11 @@ FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 struct VegetationDetails {
     U16 billboardCount = 0;
     Str256 name = "";
-    stringImpl billboardTextureArray = "";
+    string billboardTextureArray = "";
     std::shared_ptr<ImageTools::ImageData> grassMap;
     std::shared_ptr<ImageTools::ImageData> treeMap;
     Terrain_wptr parentTerrain;
-    vectorEASTL<ResourcePath> treeMeshes;
+    vector<ResourcePath> treeMeshes;
     vec4<F32> grassScales, treeScales;
     std::array<vec3<F32>, 4> treeRotations;
 };
@@ -141,7 +141,7 @@ class Vegetation final : public SceneNode {
     std::array<vec3<F32>, 4> _treeRotations;
     vec4<F32> _grassExtents = VECTOR4_UNIT;
     vec4<F32> _treeExtents = VECTOR4_UNIT;
-    vectorEASTL<ResourcePath> _treeMeshNames;
+    vector<ResourcePath> _treeMeshNames;
     std::shared_ptr<ImageTools::ImageData> _grassMap = nullptr;  ///< Dispersion map for grass placement
     std::shared_ptr<ImageTools::ImageData> _treeMap = nullptr;  ///< Dispersion map for tree placement
 
@@ -157,8 +157,8 @@ class Vegetation final : public SceneNode {
 
     Pipeline* _cullPipelineGrass = nullptr;
     Pipeline* _cullPipelineTrees = nullptr;
-    vectorEASTL<VegetationData> _tempGrassData;
-    vectorEASTL<VegetationData> _tempTreeData;
+    vector<VegetationData> _tempGrassData;
+    vector<VegetationData> _tempTreeData;
 
     static std::array<U16, 3> s_lodPartitions;
     static U32 s_maxGrassInstances;
@@ -169,7 +169,7 @@ class Vegetation final : public SceneNode {
     static VertexBuffer* s_buffer;
     static ShaderBuffer* s_treeData;
     static ShaderBuffer* s_grassData;
-    static vectorEASTL<Mesh_ptr> s_treeMeshes;
+    static vector<Mesh_ptr> s_treeMeshes;
 
     static eastl::unordered_set<vec2<F32>> s_treePositions;
     static eastl::unordered_set<vec2<F32>> s_grassPositions;

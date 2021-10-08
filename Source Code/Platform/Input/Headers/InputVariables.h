@@ -61,7 +61,7 @@ class Variable {
 
     virtual void setValue(const D64 dValue) { _dValue = dValue; }
 
-    [[nodiscard]] virtual stringImpl toString() const {
+    [[nodiscard]] virtual string toString() const {
         return Util::to_string(_dValue);
     }
 
@@ -199,8 +199,8 @@ class VariableEffect {
         _pfApplyVariables(_mapVariables, _pEffect);
     }
 
-    [[nodiscard]] stringImpl toString() const {
-        stringImpl str;
+    [[nodiscard]] string toString() const {
+        string str;
         for (MapVariables::const_iterator iterVars = std::begin(_mapVariables);
              iterVars != std::end(_mapVariables); ++iterVars) {
            str += iterVars->first + ":" + iterVars->second->toString() + " ";

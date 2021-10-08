@@ -253,7 +253,7 @@ void Kernel::onLoop() {
         if (frameCount % 4 == 0u) {
         
             DisplayWindow& window = _platformContext.mainWindow();
-            static stringImpl originalTitle;
+            static string originalTitle;
             if (originalTitle.empty()) {
                 originalTitle = window.title();
             }
@@ -389,7 +389,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
     return presentToScreen(evt);
 }
 
-void ComputeViewports(const Rect<I32>& mainViewport, vectorEASTL<Rect<I32>>& targetViewports, const U8 count) {
+void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetViewports, const U8 count) {
     
     assert(count > 0);
     const I32 xOffset = mainViewport.x;
@@ -421,8 +421,8 @@ void ComputeViewports(const Rect<I32>& mainViewport, vectorEASTL<Rect<I32>>& tar
     // to the previous row and add a new entry to the end of the
     // current row
 
-    using ViewportRow = vectorEASTL<Rect<I32>>;
-    using ViewportRows = vectorEASTL<ViewportRow>;
+    using ViewportRow = vector<Rect<I32>>;
+    using ViewportRows = vector<ViewportRow>;
     ViewportRows rows;
 
     // Allocates storage for a N x N matrix of viewports that will hold numViewports
@@ -486,7 +486,7 @@ void ComputeViewports(const Rect<I32>& mainViewport, vectorEASTL<Rect<I32>>& tar
     }
 }
 
-Time::ProfileTimer& getTimer(Time::ProfileTimer& parentTimer, vectorEASTL<Time::ProfileTimer*>& timers, const U8 index, const char* name) {
+Time::ProfileTimer& getTimer(Time::ProfileTimer& parentTimer, vector<Time::ProfileTimer*>& timers, const U8 index, const char* name) {
     while (timers.size() < to_size(index) + 1) {
         timers.push_back(&Time::ADD_TIMER(Util::StringFormat("%s %d", name, timers.size()).c_str()));
         parentTimer.addChildTimer(*timers.back());
@@ -589,7 +589,7 @@ void Kernel::warmup() {
     Attorney::SceneManagerKernel::initPostLoadState(_sceneManager);
 }
 
-ErrorCode Kernel::initialize(const stringImpl& entryPoint) {
+ErrorCode Kernel::initialize(const string& entryPoint) {
     const SysInfo& systemInfo = const_sysInfo();
     if (Config::REQUIRED_RAM_SIZE_IN_BYTES > systemInfo._availableRamInBytes) {
         return ErrorCode::NOT_ENOUGH_RAM;
@@ -626,9 +626,9 @@ ErrorCode Kernel::initialize(const stringImpl& entryPoint) {
 
     ASIO::SET_LOG_FUNCTION([](const std::string_view msg, const bool isError) {
         if (isError) {
-            Console::errorfn(stringImpl(msg).c_str());
+            Console::errorfn(string(msg).c_str());
         } else {
-            Console::printfn(stringImpl(msg).c_str());
+            Console::printfn(string(msg).c_str());
         }
     });
 
@@ -781,7 +781,7 @@ ErrorCode Kernel::initialize(const stringImpl& entryPoint) {
         if (!_platformContext.editor().init(config.runtime.resolution)) {
             return ErrorCode::EDITOR_INIT_ERROR;
         }
-        _sceneManager->addSelectionCallback([&](const PlayerIndex idx, const vectorEASTL<SceneGraphNode*>& nodes) {
+        _sceneManager->addSelectionCallback([&](const PlayerIndex idx, const vector<SceneGraphNode*>& nodes) {
             _platformContext.editor().selectionChangeCallback(idx, nodes);
         });
     }

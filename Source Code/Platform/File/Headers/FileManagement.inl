@@ -40,7 +40,7 @@ template<typename T,
 typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true_type>::value, bool>::type*>
 FileError readFile(const char* filePath, const char* fileName, T& contentOut, const FileType fileType) {
     if (!Util::IsEmptyOrNull(filePath) && !Util::IsEmptyOrNull(fileName) && pathExists(filePath)) {
-        std::ifstream streamIn(stringImpl{ filePath } +fileName,
+        std::ifstream streamIn(string{ filePath } +fileName,
                                fileType == FileType::BINARY
                                          ? std::ios::in | std::ios::binary
                                          : std::ios::in);
@@ -54,7 +54,7 @@ FileError readFile(const char* filePath, const char* fileName, T& contentOut, co
                 optional_reserve(contentOut, fileSize);
 
                 static_assert(sizeof(char) == sizeof(Byte), "readFile: Platform error!");
-                contentOut.assign(stringImpl
+                contentOut.assign(string
                     {
                         std::istreambuf_iterator<char>(streamIn),
                         std::istreambuf_iterator<char>()
@@ -82,9 +82,9 @@ FileError readFile(const ResourcePath& filePath, const ResourcePath& fileName, T
 
 //Optimized variant for vectors
 template<>
-inline FileError readFile(const char* filePath, const char* fileName, vectorEASTL<Byte>& contentOut, const FileType fileType) {
+inline FileError readFile(const char* filePath, const char* fileName, vector<Byte>& contentOut, const FileType fileType) {
     if (!Util::IsEmptyOrNull(filePath) && !Util::IsEmptyOrNull(fileName) && pathExists(filePath)) {
-        std::ifstream streamIn(stringImpl{ filePath } +fileName,
+        std::ifstream streamIn(string{ filePath } +fileName,
                                fileType == FileType::BINARY
                                          ? std::ios::in | std::ios::binary
                                          : std::ios::in);

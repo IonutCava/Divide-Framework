@@ -183,10 +183,10 @@ ErrorCode GFXDevice::initRenderingAPI(const I32 argc, char** argv, const RenderA
         return hardwareState;
     }
 
-    stringImpl refreshRates;
+    string refreshRates;
     const size_t displayCount = gpuState().getDisplayCount();
     for (size_t idx = 0; idx < displayCount; ++idx) {
-        const vectorEASTL<GPUState::GPUVideoMode>& registeredModes = gpuState().getDisplayModes(idx);
+        const vector<GPUState::GPUVideoMode>& registeredModes = gpuState().getDisplayModes(idx);
         if (!registeredModes.empty()) {
             Console::printfn(Locale::Get(_ID("AVAILABLE_VIDEO_MODES")), idx, registeredModes.size());
 
@@ -492,7 +492,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         const RTAttachment_ptr& specularAttachment = screenTarget.getAttachmentPtr(RTAttachmentType::Colour, to_U8(ScreenTargets::SPECULAR));
         const RTAttachment_ptr& screenDepthAttachment = screenTarget.getAttachmentPtr(RTAttachmentType::Depth, 0);
         
-        vectorEASTL<ExternalRTAttachmentDescriptor> externalAttachments = {
+        vector<ExternalRTAttachmentDescriptor> externalAttachments = {
             { screenNormalsAttachment, RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES) },
             { specularAttachment,      RTAttachmentType::Colour, to_U8(ScreenTargets::SPECULAR) },
             { screenDepthAttachment,   RTAttachmentType::Depth }
@@ -523,7 +523,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             const RenderTarget& reflectTarget = _rtPool->renderTarget(RenderTargetID(RenderTargetUsage::REFLECTION_PLANAR, i));
             const RTAttachment_ptr& depthAttachment = reflectTarget.getAttachmentPtr(RTAttachmentType::Depth, 0);
 
-            vectorEASTL<ExternalRTAttachmentDescriptor> externalAttachments = {
+            vector<ExternalRTAttachmentDescriptor> externalAttachments = {
                  { depthAttachment,  RTAttachmentType::Depth }
             };
 
@@ -894,7 +894,7 @@ void GFXDevice::closeRenderingAPI() {
 
     ScopedLock<Mutex> lock(_graphicsResourceMutex);
     if (!_graphicResources.empty()) {
-        stringImpl list = " [ ";
+        string list = " [ ";
         for (const std::tuple<GraphicsResource::Type, I64, U64>& res : _graphicResources) {
             list.append(TypeUtil::GraphicResourceTypeToName(std::get<0>(res)));
             list.append(" _ ");
@@ -1219,7 +1219,7 @@ void GFXDevice::stepResolution(const bool increment) {
 
     WindowManager& winManager = _parent.platformContext().app().windowManager();
 
-    const vectorEASTL<GPUState::GPUVideoMode>& displayModes = _state.getDisplayModes(winManager.mainWindow()->currentDisplayIndex());
+    const vector<GPUState::GPUVideoMode>& displayModes = _state.getDisplayModes(winManager.mainWindow()->currentDisplayIndex());
 
     bool found = false;
     vec2<U16> foundRes;
@@ -2109,7 +2109,7 @@ void GFXDevice::renderDebugViews(Rect<I32> targetViewport, const I32 padding, GF
     PipelineDescriptor pipelineDesc = {};
     pipelineDesc._stateHash = _state2DRenderingHash;
 
-    vectorEASTLFast <std::pair<stringImpl, Rect<I32>>> labelStack;
+    vector_fast <std::pair<string, Rect<I32>>> labelStack;
 
     GFX::SetViewportCommand setViewport = {};
     GFX::SendPushConstantsCommand pushConstants = {};
@@ -2236,7 +2236,7 @@ bool GFXDevice::getDebugGroupState(I16 group) const {
     return true;
 }
 
-void GFXDevice::getDebugViewNames(vectorEASTL<std::tuple<stringImpl, I16, I16, bool>>& namesOut) {
+void GFXDevice::getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& namesOut) {
     namesOut.resize(0);
 
     ScopedLock<Mutex> lock(_debugViewLock);
@@ -2779,14 +2779,14 @@ const ShaderComputeQueue& GFXDevice::shaderComputeQueue() const {
 }
 
 /// Extract the pixel data from the main render target's first colour attachment and save it as a TGA image
-void GFXDevice::screenshot(const stringImpl& filename) const {
+void GFXDevice::screenshot(const string& filename) const {
     // Get the screen's resolution
     const RenderTarget& screenRT = _rtPool->screenTarget();
     const U16 width = screenRT.getWidth();
     const U16 height = screenRT.getHeight();
     // Allocate sufficiently large buffers to hold the pixel data
     const U32 bufferSize = width * height * 4;
-    vectorEASTL<U8> imageData(bufferSize, 0u);
+    vector<U8> imageData(bufferSize, 0u);
     // Read the pixels from the main render target (RGBA16F)
     screenRT.readData(GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE, (bufferPtr)imageData.data());
     // Save to file

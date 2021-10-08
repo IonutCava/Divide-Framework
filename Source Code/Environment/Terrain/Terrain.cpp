@@ -29,9 +29,9 @@ namespace {
     // more important things to pull my hair over :/
     constexpr bool USE_BASE_VERTEX_OFFSETS = false;
 
-    vectorEASTLFast<U16> CreateTileQuadListIB()
+    vector_fast<U16> CreateTileQuadListIB()
     {
-        vectorEASTLFast<U16> indices(TessellationParams::QUAD_LIST_INDEX_COUNT, 0u);
+        vector_fast<U16> indices(TessellationParams::QUAD_LIST_INDEX_COUNT, 0u);
 
         U16 index = 0;
 
@@ -171,7 +171,7 @@ void Terrain::postBuild() {
     const U16 terrainHeight = _descriptor->dimensions().height;
 
     // Generate index buffer
-    vectorEASTL<vec3<U32>>& triangles = getTriangles(0u);
+    vector<vec3<U32>>& triangles = getTriangles(0u);
     triangles.reserve((terrainWidth - 1) * (terrainHeight - 1) * 2);
 
     //Ref : https://www.3dgep.com/multi-textured-terrain-in-opengl/
@@ -215,7 +215,7 @@ void Terrain::postBuild() {
         // The non-debug rendering works fine either way, but crazy flickering of the debug patches 
         // makes understanding much harder.
         _tessParams.SnapGridSize(tessParams().WorldScale() * _tileRings[ringCount - 1]->tileSize() / TessellationParams::PATCHES_PER_TILE_EDGE);
-        vectorEASTLFast<U16> indices = CreateTileQuadListIB();
+        vector_fast<U16> indices = CreateTileQuadListIB();
 
         { // Create a single buffer to hold the data for all of our tile rings
             GenericVertexData::IndexBuffer idxBuff = {};
@@ -240,11 +240,11 @@ void Terrain::postBuild() {
             }
             _terrainBuffer->setIndexBuffer(idxBuff, BufferUpdateFrequency::ONCE);
             if_constexpr(USE_BASE_VERTEX_OFFSETS) {
-                vectorEASTL<TileRing::InstanceData> vbData;
+                vector<TileRing::InstanceData> vbData;
                 vbData.reserve(TessellationParams::QUAD_LIST_INDEX_COUNT * ringCount);
 
                 for (size_t i = 0; i < ringCount; ++i) {
-                    vectorEASTL<TileRing::InstanceData> ringData = _tileRings[i]->createInstanceDataVB(to_I32(i));
+                    vector<TileRing::InstanceData> ringData = _tileRings[i]->createInstanceDataVB(to_I32(i));
                     vbData.insert(cend(vbData), cbegin(ringData), cend(ringData));
                     params._bufferParams._elementCount += to_U32(ringData.size());
                 }
@@ -254,7 +254,7 @@ void Terrain::postBuild() {
             } else {
 
                 for (size_t i = 0; i < ringCount; ++i) {
-                    vectorEASTL<TileRing::InstanceData> ringData = _tileRings[i]->createInstanceDataVB(to_I32(i));
+                    vector<TileRing::InstanceData> ringData = _tileRings[i]->createInstanceDataVB(to_I32(i));
                     params._buffer = to_U32(i);
                     params._bufferParams._initialData = { (Byte*)ringData.data(), ringData.size() * sizeof(TileRing::InstanceData) };
                     params._bufferParams._elementCount = to_U32(ringData.size());
@@ -362,7 +362,7 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn,
     Object3D::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
 }
 
-const vectorEASTL<VertexBuffer::Vertex>& Terrain::getVerts() const {
+const vector<VertexBuffer::Vertex>& Terrain::getVerts() const {
     return _physicsVerts;
 }
 

@@ -64,7 +64,7 @@ struct ImageMip final : LayerData {
     [[nodiscard]] bufferPtr data() const override { return (bufferPtr)_data.data(); }
 
 protected:
-    vectorEASTL<T> _data;
+    vector<T> _data;
 };
 
 struct ImageLayer {
@@ -102,7 +102,7 @@ struct ImageLayer {
     }
 
 private:
-    vectorEASTL<eastl::unique_ptr<LayerData>> _mips;
+    vector<eastl::unique_ptr<LayerData>> _mips;
 };
 
 struct ImageData final : NonCopyable {
@@ -125,7 +125,7 @@ struct ImageData final : NonCopyable {
         return nullptr;
     }
 
-    [[nodiscard]] const vectorEASTL<ImageLayer>& imageLayers() const noexcept {
+    [[nodiscard]] const vector<ImageLayer>& imageLayers() const noexcept {
         return _layers;
     }
 
@@ -148,7 +148,7 @@ struct ImageData final : NonCopyable {
     /// image depth information
     [[nodiscard]] U8 bpp() const noexcept { return _bpp; }
     /// the filename from which the image is created
-    [[nodiscard]] const stringImpl& name() const noexcept { return _name; }
+    [[nodiscard]] const string& name() const noexcept { return _name; }
     /// the image format as given by STB
     [[nodiscard]] GFXImageFormat format() const noexcept { return _format; }
 
@@ -166,16 +166,16 @@ struct ImageData final : NonCopyable {
 
     [[nodiscard]] bool addLayer(Byte* data, size_t size, U16 width, U16 height, U16 depth);
     /// creates this image instance from the specified data
-    [[nodiscard]] bool addLayer(bool srgb, U16 refWidth, U16 refHeight, const stringImpl& fileName);
+    [[nodiscard]] bool addLayer(bool srgb, U16 refWidth, U16 refHeight, const string& fileName);
 
   protected:
     friend class ImageDataInterface;
-    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const stringImpl& filename);
+    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const string& filename);
 
    private:
     //Each entry is a separate mip map.
-    vectorEASTL<ImageLayer> _layers{};
-    vectorEASTL<U8> _decompressedData{};
+    vector<ImageLayer> _layers{};
+    vector<U8> _decompressedData{};
     /// is the image stored as a regular image or in a compressed format? (eg. DXT1 / DXT3 / DXT5)
     bool _compressed = false;
     /// should we flip the image's origin on load?
@@ -193,7 +193,7 @@ struct ImageData final : NonCopyable {
     /// used by compressed images to load 2D/3D/cubemap textures etc
     TextureType _compressedTextureType = TextureType::COUNT;
     /// the actual image filename
-    stringImpl _name{};
+    string _name{};
     /// image's bits per pixel
     U8 _bpp = 0;
 };
@@ -209,9 +209,9 @@ protected:
 };
 
 /// save a single file to TGA
-I8 SaveToTGA(const stringImpl& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept;
+I8 SaveToTGA(const string& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept;
 /// save a single file to tga using a sequential naming pattern
-I8 SaveSeries(const stringImpl& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData);
+I8 SaveSeries(const string& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData);
 
 }  // namespace ImageTools
 }  // namespace Divide

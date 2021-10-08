@@ -14,8 +14,8 @@
 
 namespace Divide {
 
-vectorEASTL<DebugView_ptr> SceneEnvironmentProbePool::s_debugViews;
-vectorEASTL<Camera*> SceneEnvironmentProbePool::s_probeCameras;
+vector<DebugView_ptr> SceneEnvironmentProbePool::s_debugViews;
+vector<Camera*> SceneEnvironmentProbePool::s_probeCameras;
 bool SceneEnvironmentProbePool::s_probesDirty = true;
 
 std::array<std::pair<bool, bool>, Config::MAX_REFLECTIVE_PROBES_PER_PASS> SceneEnvironmentProbePool::s_availableSlices;

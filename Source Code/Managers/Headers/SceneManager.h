@@ -98,7 +98,7 @@ public:
 
     void idle();
 
-    [[nodiscard]] vectorEASTL<Str256> sceneNameList(bool sorted = true) const;
+    [[nodiscard]] vector<Str256> sceneNameList(bool sorted = true) const;
 
     Scene& getActiveScene();
     [[nodiscard]] const Scene& getActiveScene() const;
@@ -110,11 +110,11 @@ public:
 
     [[nodiscard]] U8 getActivePlayerCount() const noexcept { return _activePlayerCount; }
 
-    void addSelectionCallback(const DELEGATE<void, U8, const vectorEASTL<SceneGraphNode*>&>& selectionCallback) {
+    void addSelectionCallback(const DELEGATE<void, U8, const vector<SceneGraphNode*>&>& selectionCallback) {
         _selectionChangeCallbacks.push_back(selectionCallback);
     }
     void resetSelection(PlayerIndex idx);
-    void setSelected(PlayerIndex idx, const vectorEASTL<SceneGraphNode*>& SGNs, bool recursive);
+    void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
     void onNodeDestroy(SceneGraphNode* node);
     // cull the SceneGraph against the current view frustum. 
     VisibleNodeList<>& cullSceneGraph(const NodeCullParams& cullParams, const U16 cullFlags);
@@ -234,7 +234,7 @@ protected:
     // Returns true if the player was previously registered
     // On success, player pointer will be reset
     void removePlayer(Scene& parentScene, SceneGraphNode* playerNode, bool queue);
-    [[nodiscard]] vectorEASTL<SceneGraphNode*> getNodesInScreenRect(const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport) const;
+    [[nodiscard]] vector<SceneGraphNode*> getNodesInScreenRect(const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport) const;
 
 protected:
     [[nodiscard]] bool frameStarted(const FrameEvent& evt) override;
@@ -280,7 +280,7 @@ private:
     eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerRemoveQueue;
     eastl::unique_ptr<AI::Navigation::DivideRecast> _recast = nullptr;
 
-    vectorEASTL<DELEGATE<void, U8 /*player index*/, const vectorEASTL<SceneGraphNode*>& /*nodes*/> > _selectionChangeCallbacks;
+    vector<DELEGATE<void, U8 /*player index*/, const vector<SceneGraphNode*>& /*nodes*/> > _selectionChangeCallbacks;
 
     struct SwitchSceneTarget {
         Str256 _targetSceneName = "";
@@ -302,7 +302,7 @@ class SceneManagerScene {
         manager.removePlayer(parentScene, playerNode, queue);
     }
 
-    static vectorEASTL<SceneGraphNode*> getNodesInScreenRect(const Divide::SceneManager& manager, const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport) {
+    static vector<SceneGraphNode*> getNodesInScreenRect(const Divide::SceneManager& manager, const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport) {
         return manager.getNodesInScreenRect(screenRect, camera, viewport);
     }
 

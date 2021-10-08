@@ -40,7 +40,7 @@ eastl::vector<goap::Node>::iterator goap::Planner::memberOfOpen(const WorldState
     return std::find_if(std::begin(open_), std::end(open_), [&](const Node& n) { return n.ws_ == ws; });
 }
 
-void goap::Planner::printOpenList(stringImpl& output) const {
+void goap::Planner::printOpenList(Divide::string& output) const {
     std::stringstream ss;
     for (const auto& n : open_) {
         ss << n << "\n";
@@ -48,7 +48,7 @@ void goap::Planner::printOpenList(stringImpl& output) const {
     output = ss.str();
 }
 
-void goap::Planner::printClosedList(stringImpl& output) const {
+void goap::Planner::printClosedList(Divide::string& output) const {
     std::stringstream ss;
     for (const auto& n : closed_) {
         ss << n << "\n";

@@ -49,7 +49,7 @@ public:
     void deallocate(glHardwareQueryRing& query);
 
 private:
-    hashMap<GLenum, vectorEASTL<glHardwareQueryRing*>> _queryPool;
+    hashMap<GLenum, vector<glHardwareQueryRing*>> _queryPool;
     hashMap<GLenum, U32> _index;
 
     GFXDevice& _context;

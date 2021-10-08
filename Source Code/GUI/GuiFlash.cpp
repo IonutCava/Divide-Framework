@@ -4,7 +4,7 @@
 
 namespace Divide {
 
-GUIFlash::GUIFlash(const stringImpl& name, CEGUI::Window* parent)
+GUIFlash::GUIFlash(const string& name, CEGUI::Window* parent)
     : GUIElementBase(name, parent)
 {
 }

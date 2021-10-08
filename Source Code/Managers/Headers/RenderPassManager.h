@@ -110,7 +110,7 @@ public:
     RenderPass& addRenderPass(const Str64& renderPassName,
                               U8 orderKey,
                               RenderStage renderStage,
-                              const vectorEASTL<U8>& dependencies = {},
+                              const vector<U8>& dependencies = {},
                               bool usePerformanceCounters = false);
 
     /// Find a render pass by name and remove it from the manager
@@ -132,9 +132,9 @@ private:
     ShaderProgram_ptr _OITCompositionShaderMS = nullptr;
     ShaderProgram_ptr _screenResolveShader = nullptr;
 
-    vectorEASTL<Task*> _renderTasks{};
-    vectorEASTL<RenderPass*> _renderPasses{};
-    vectorEASTL<GFX::CommandBuffer*> _renderPassCommandBuffer{};
+    vector<Task*> _renderTasks{};
+    vector<RenderPass*> _renderPasses{};
+    vector<GFX::CommandBuffer*> _renderPassCommandBuffer{};
 
     std::array<std::unique_ptr<RenderPassExecutor>, to_base(RenderStage::COUNT)> _executors;
     std::array<Time::ProfileTimer*, to_base(RenderStage::COUNT)> _processCommandBufferTimer{};

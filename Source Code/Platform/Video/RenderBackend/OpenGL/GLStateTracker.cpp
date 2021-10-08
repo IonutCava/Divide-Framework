@@ -180,7 +180,7 @@ bool GLStateTracker::bindSamplers(const GLushort unitOffset,
 }
 
 void GLStateTracker::ProcessMipMapQueue(const GLuint textureCount, const GLuint* const textureHandles) {
-    static vectorEASTL<GLuint> tempHandles;
+    static vector<GLuint> tempHandles;
 
     if (textureCount > 0 && textureHandles != nullptr && !GL_API::s_mipmapQueue.empty()) {
         // Avoids a lock, but we still need to double check if we get here

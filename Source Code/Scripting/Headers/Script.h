@@ -43,7 +43,7 @@ enum class FileUpdateEvent : U8;
 
 class Script : public GUIDWrapper {
 public:
-    explicit Script(const stringImpl& scriptPathOrCode, FileType fileType = FileType::TEXT);
+    explicit Script(const string& scriptPathOrCode, FileType fileType = FileType::TEXT);
     virtual ~Script();
 
     static void idle();
@@ -68,19 +68,19 @@ protected:
     void compile();
     void bootstrap();
     void extractAtoms();
-    void preprocessIncludes(const stringImpl& source, I32 level /*= 0 */);
+    void preprocessIncludes(const string& source, I32 level /*= 0 */);
     void caughtException(const char* message, bool isEvalException) const;
 
 protected:
-    static void handleOutput(const stringImpl& msg);
+    static void handleOutput(const string& msg);
 
 protected:
     //ToDo: Move this somewhere else to avoid having the include in this file -Ionut
     eastl::unique_ptr<chaiscript::ChaiScript> _script;
-    stringImpl  _scriptSource;
+    string  _scriptSource;
     FileAndPath _scriptFile;
     FileType    _scriptFileType;
-    vectorEASTL<ResourcePath> _usedAtoms;
+    vector<ResourcePath> _usedAtoms;
 
     static I64 s_scriptFileWatcher;
 

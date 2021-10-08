@@ -28,7 +28,7 @@ Mutex ShadowMap::s_depthMapUsageLock;
 std::array<ShadowMap::LayerUsageMask, to_base(ShadowType::COUNT)> ShadowMap::s_depthMapUsage;
 std::array<ShadowMapGenerator*, to_base(ShadowType::COUNT)> ShadowMap::s_shadowMapGenerators;
 
-vectorEASTL<DebugView_ptr> ShadowMap::s_debugViews;
+vector<DebugView_ptr> ShadowMap::s_debugViews;
 std::array<RenderTargetHandle, to_base(ShadowType::COUNT)> ShadowMap::s_shadowMaps;
 Light* ShadowMap::s_shadowPreviewLight = nullptr;
 

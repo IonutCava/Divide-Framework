@@ -92,8 +92,8 @@ public:
     using BufferBindingParams = std::tuple<GLuint, size_t, size_t>;
 
 private:
-    using VAOBufferData = vectorEASTL<BufferBindingParams>;
-    using VAODivisors = vectorEASTL<GLuint>;
+    using VAOBufferData = vector<BufferBindingParams>;
+    using VAODivisors = vector<GLuint>;
     using VAOData = std::pair<VAOBufferData, VAODivisors>;
 
 public:
@@ -170,11 +170,11 @@ public:
 private:
     static constexpr U32 INVALID_IDX = U32_MAX;
 
-    vectorEASTL<State>  _usageMap;
+    vector<State>  _usageMap;
 
-    vectorEASTL<U32>    _lifeLeft;
-    vectorEASTL<GLuint> _handles;
-    vectorEASTL<GLuint> _tempBuffer;
+    vector<U32>    _lifeLeft;
+    vector<GLuint> _handles;
+    vector<GLuint> _tempBuffer;
 
     hashMap<size_t, U32> _cache;
 

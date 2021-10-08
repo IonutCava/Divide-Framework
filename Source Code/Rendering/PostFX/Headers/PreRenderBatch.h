@@ -43,7 +43,7 @@ namespace Names {
 
 namespace TypeUtil {
     const char* ToneMapFunctionsToString(ToneMapParams::MapFunctions stop) noexcept;
-    ToneMapParams::MapFunctions StringToToneMapFunctions(const stringImpl& name);
+    ToneMapParams::MapFunctions StringToToneMapFunctions(const string& name);
 };
 
 class ResourceCache;
@@ -151,7 +151,7 @@ class PreRenderBatch {
     [[nodiscard]] RenderTargetHandle getTarget(bool hdr, bool swapped) const;
 
   private:
-    using OperatorBatch = vectorEASTL<eastl::unique_ptr<PreRenderOperator>>;
+    using OperatorBatch = vector<eastl::unique_ptr<PreRenderOperator>>;
     std::array<OperatorBatch, to_base(FilterSpace::COUNT)> _operators;
 
     GFXDevice& _context;

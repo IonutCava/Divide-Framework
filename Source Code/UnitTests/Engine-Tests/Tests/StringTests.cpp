@@ -12,11 +12,11 @@ namespace Divide {
 // We are using third party string libraries (STL, Boost, EASTL) that went through proper testing
 // This list of tests only verifies utility functions
 
-vectorEASTL<stringImpl> getFiles(const stringImpl& input, const std::regex& pattern) {
+vector<string> getFiles(const string& input, const std::regex& pattern) {
     std::smatch matches;
-    istringstreamImpl inputStream(input);
-    stringImpl line;
-    vectorEASTL<stringImpl> include_file;
+    istringstream inputStream(input);
+    string line;
+    vector<string> include_file;
     while (std::getline(inputStream, line)) {
         if (std::regex_search(line, matches, pattern)) {
             include_file.emplace_back(Util::Trim(matches[1].str()));
@@ -30,31 +30,31 @@ TEST(RegexSuccessTest)
 {
     if (PreparePlatform()) {
         {
-            const stringImpl& inputInclude1("#include \"blaBla.h\"");
-            const stringImpl& inputInclude2("#include <blaBla.h>");
-            const stringImpl& inputInclude3("# include \"blaBla.h\"");
-            const stringImpl& inputInclude4("   #include <  blaBla.h>");
-            const stringImpl& resultInclude("blaBla.h");
+            const string& inputInclude1("#include \"blaBla.h\"");
+            const string& inputInclude2("#include <blaBla.h>");
+            const string& inputInclude3("# include \"blaBla.h\"");
+            const string& inputInclude4("   #include <  blaBla.h>");
+            const string& resultInclude("blaBla.h");
 
-            vectorEASTL<stringImpl> temp1 = getFiles(inputInclude1, Paths::g_includePattern);
+            vector<string> temp1 = getFiles(inputInclude1, Paths::g_includePattern);
             CHECK_TRUE(temp1.size() == 1);
             if (!temp1.empty()) {
                 CHECK_EQUAL(resultInclude, temp1.front());
             }
 
-            vectorEASTL<stringImpl> temp2 = getFiles(inputInclude2, Paths::g_includePattern);
+            vector<string> temp2 = getFiles(inputInclude2, Paths::g_includePattern);
             CHECK_TRUE(temp2.size() == 1);
             if (!temp2.empty()) {
                 CHECK_EQUAL(resultInclude, temp2.front());
             }
 
-            vectorEASTL<stringImpl> temp3 = getFiles(inputInclude3, Paths::g_includePattern);
+            vector<string> temp3 = getFiles(inputInclude3, Paths::g_includePattern);
             CHECK_TRUE(temp3.size() == 1);
             if (!temp3.empty()) {
                 CHECK_EQUAL(resultInclude, temp3.front());
             }
 
-            vectorEASTL<stringImpl> temp4 = getFiles(inputInclude4, Paths::g_includePattern);
+            vector<string> temp4 = getFiles(inputInclude4, Paths::g_includePattern);
             CHECK_TRUE(temp4.size() == 1);
             if (!temp4.empty()) {
                 CHECK_EQUAL(resultInclude, temp4.front());
@@ -62,31 +62,31 @@ TEST(RegexSuccessTest)
 
         }
         {
-            const stringImpl& inputUse1("use(\"blaBla.h\")");
-            const stringImpl& inputUse2("use( \"blaBla.h\")");
-            const stringImpl& inputUse3("      use         (\"blaBla.h\")");
-            const stringImpl& inputUse4("use(\"blaBla.h\"         )");
-            const stringImpl& resultUse("blaBla.h");
+            const string& inputUse1("use(\"blaBla.h\")");
+            const string& inputUse2("use( \"blaBla.h\")");
+            const string& inputUse3("      use         (\"blaBla.h\")");
+            const string& inputUse4("use(\"blaBla.h\"         )");
+            const string& resultUse("blaBla.h");
 
-            vectorEASTL<stringImpl> temp1 = getFiles(inputUse1, Paths::g_usePattern);
+            vector<string> temp1 = getFiles(inputUse1, Paths::g_usePattern);
             CHECK_TRUE(temp1.size() == 1);
             if (!temp1.empty()) {
                 CHECK_EQUAL(resultUse, temp1.front());
             }
 
-            vectorEASTL<stringImpl> temp2 = getFiles(inputUse2, Paths::g_usePattern);
+            vector<string> temp2 = getFiles(inputUse2, Paths::g_usePattern);
             CHECK_TRUE(temp2.size() == 1);
             if (!temp2.empty()) {
                 CHECK_EQUAL(resultUse, temp2.front());
             }
 
-            vectorEASTL<stringImpl> temp3 = getFiles(inputUse3, Paths::g_usePattern);
+            vector<string> temp3 = getFiles(inputUse3, Paths::g_usePattern);
             CHECK_TRUE(temp3.size() == 1);
             if (!temp3.empty()) {
                 CHECK_EQUAL(resultUse, temp3.front());
             }
 
-            vectorEASTL<stringImpl> temp4 = getFiles(inputUse4, Paths::g_usePattern);
+            vector<string> temp4 = getFiles(inputUse4, Paths::g_usePattern);
             CHECK_TRUE(temp4.size() == 1);
             if (!temp4.empty()) {
                 CHECK_EQUAL(resultUse, temp4.front());
@@ -98,41 +98,41 @@ TEST(RegexSuccessTest)
 TEST(RegexFailTest)
 {
     {
-        const stringImpl& inputInclude1("#include\"blaBla.h\"");
-        const stringImpl& inputInclude2("#include<blaBla.h>");
-        const stringImpl& inputInclude3("# include \"blaBla.h");
-        const stringImpl& inputInclude4("   include <  blaBla.h>");
+        const string& inputInclude1("#include\"blaBla.h\"");
+        const string& inputInclude2("#include<blaBla.h>");
+        const string& inputInclude3("# include \"blaBla.h");
+        const string& inputInclude4("   include <  blaBla.h>");
 
-        const vectorEASTL<stringImpl> temp1 = getFiles(inputInclude1, Paths::g_includePattern);
+        const vector<string> temp1 = getFiles(inputInclude1, Paths::g_includePattern);
         CHECK_FALSE(temp1.size() == 1);
-        const vectorEASTL<stringImpl> temp2 = getFiles(inputInclude2, Paths::g_includePattern);
+        const vector<string> temp2 = getFiles(inputInclude2, Paths::g_includePattern);
         CHECK_FALSE(temp2.size() == 1);
-        const vectorEASTL<stringImpl> temp3 = getFiles(inputInclude3, Paths::g_includePattern);
+        const vector<string> temp3 = getFiles(inputInclude3, Paths::g_includePattern);
         CHECK_FALSE(temp3.size() == 1);
-        const vectorEASTL<stringImpl> temp4 = getFiles(inputInclude4, Paths::g_includePattern);
+        const vector<string> temp4 = getFiles(inputInclude4, Paths::g_includePattern);
         CHECK_FALSE(temp4.size() == 1);
     }
     {
-        const stringImpl& inputUse1("use(\"blaBla.h)");
-        const stringImpl& inputUse2("usadfse( \"blaBla.h\")");
-        const stringImpl& inputUse3("      use    ---   (\"blaBla.h\")");
+        const string& inputUse1("use(\"blaBla.h)");
+        const string& inputUse2("usadfse( \"blaBla.h\")");
+        const string& inputUse3("      use    ---   (\"blaBla.h\")");
 
-        const vectorEASTL<stringImpl> temp1 = getFiles(inputUse1, Paths::g_usePattern);
+        const vector<string> temp1 = getFiles(inputUse1, Paths::g_usePattern);
         CHECK_FALSE(temp1.size() == 1);
-        const vectorEASTL<stringImpl> temp2 = getFiles(inputUse2, Paths::g_usePattern);
+        const vector<string> temp2 = getFiles(inputUse2, Paths::g_usePattern);
         CHECK_FALSE(temp2.size() == 1);
-        const vectorEASTL<stringImpl> temp3 = getFiles(inputUse3, Paths::g_usePattern);
+        const vector<string> temp3 = getFiles(inputUse3, Paths::g_usePattern);
         CHECK_FALSE(temp3.size() == 1);
     }
 }
 
 TEST(TestReplaceInPlace)
 {
-    stringImpl input("STRING TO BE TESTED");
+    string input("STRING TO BE TESTED");
 
-    const stringImpl match("TO BE");
-    const stringImpl replacement("HAS BEEN");
-    const stringImpl output("STRING HAS BEEN TESTED");
+    const string match("TO BE");
+    const string replacement("HAS BEEN");
+    const string output("STRING HAS BEEN TESTED");
 
     Util::ReplaceStringInPlace(input, match, replacement);
     CHECK_EQUAL(input, output);
@@ -140,24 +140,24 @@ TEST(TestReplaceInPlace)
 
 TEST(TestPermutations)
 {
-    const stringImpl input("ABC");
-    vectorEASTL<stringImpl> permutations;
+    const string input("ABC");
+    vector<string> permutations;
     Util::GetPermutations(input, permutations);
     CHECK_TRUE(permutations.size() == 6);
 }
 
 TEST(TestNumberParse)
 {
-    const stringImpl input1("2");
-    const stringImpl input2("b");
+    const string input1("2");
+    const string input2("b");
     CHECK_TRUE(Util::IsNumber(input1));
     CHECK_FALSE(Util::IsNumber(input2));
 }
 
 TEST(TestCharTrail)
 {
-    const stringImpl input("abcdefg");
-    const stringImpl extension("efg");
+    const string input("abcdefg");
+    const string extension("efg");
     CHECK_TRUE(Util::GetTrailingCharacters(input, 3) == extension);
     CHECK_TRUE(Util::GetTrailingCharacters(input, 20) == input);
 
@@ -167,9 +167,9 @@ TEST(TestCharTrail)
 
 TEST(TestCmpNoCase)
 {
-    const stringImpl inputA("aBcdEf");
-    const stringImpl inputB("ABCdef");
-    const stringImpl inputC("abcdefg");
+    const string inputA("aBcdEf");
+    const string inputB("ABCdef");
+    const string inputC("abcdefg");
     CHECK_TRUE(Util::CompareIgnoreCase(inputA, inputA));
     CHECK_TRUE(Util::CompareIgnoreCase(inputA, inputB));
     CHECK_FALSE(Util::CompareIgnoreCase(inputB, inputC));
@@ -184,21 +184,21 @@ TEST(TestExtension) {
 }
 
 TEST(TestStringSplit) {
-    const stringImpl input1("a b c d");
-    const vectorEASTL<stringImpl> result = {"a", "b", "c", "d"};
+    const string input1("a b c d");
+    const vector<string> result = {"a", "b", "c", "d"};
 
-    CHECK_EQUAL((Util::Split<vectorEASTL<stringImpl>, stringImpl>(input1.c_str(), ' ')), result);
-    CHECK_TRUE((Util::Split<vectorEASTL<stringImpl>, stringImpl>(input1.c_str(), ',').size()) == 1);
-    CHECK_TRUE((Util::Split<vectorEASTL<stringImpl>, stringImpl>(input1.c_str(), ',')[0]) == input1);
+    CHECK_EQUAL((Util::Split<vector<string>, string>(input1.c_str(), ' ')), result);
+    CHECK_TRUE((Util::Split<vector<string>, string>(input1.c_str(), ',').size()) == 1);
+    CHECK_TRUE((Util::Split<vector<string>, string>(input1.c_str(), ',')[0]) == input1);
 
-    const stringImpl input2("a,b,c,d");
-    CHECK_EQUAL((Util::Split<vectorEASTL<stringImpl>, stringImpl>(input2.c_str(), ',')), result);
+    const string input2("a,b,c,d");
+    CHECK_EQUAL((Util::Split<vector<string>, string>(input2.c_str(), ',')), result);
 }
 
 TEST(TestFilePathSplit) {
     const char* input = "/path/path2/path4/file.test";
-    const stringImpl result1("file.test");
-    const stringImpl result2("/path/path2/path4");
+    const string result1("file.test");
+    const string result2("/path/path2/path4");
 
     const auto[name, path] = splitPathToNameAndLocation(input);
     CHECK_EQUAL(path, result2);
@@ -207,9 +207,9 @@ TEST(TestFilePathSplit) {
 
 TEST(TestLineCount) {
 
-    const stringImpl input1("bla");
-    const stringImpl input2("bla\nbla");
-    const stringImpl input3("bla\nbla\nbla");
+    const string input1("bla");
+    const string input2("bla\nbla");
+    const string input3("bla\nbla\nbla");
 
     CHECK_EQUAL(Util::LineCount(input1), 1u);
     CHECK_EQUAL(Util::LineCount(input2), 2u);
@@ -217,10 +217,10 @@ TEST(TestLineCount) {
 }
 
 TEST(TestStringTrim) {
-    const stringImpl input1("  abc");
-    const stringImpl input2("abc  ");
-    const stringImpl input3("  abc  ");
-    const stringImpl result("abc");
+    const string input1("  abc");
+    const string input2("abc  ");
+    const string input3("  abc  ");
+    const string result("abc");
 
     CHECK_EQUAL(Util::Ltrim(input1), result);
     CHECK_EQUAL(Util::Ltrim(input2), input2);
@@ -241,8 +241,8 @@ TEST(TestStringTrim) {
 TEST(TestStringFormat) {
     const char* input1("A %s b is %d %s");
     const char* input2("%2.2f");
-    const stringImpl result1("A is ok, b is 2 \n");
-    const stringImpl result2("12.21");
+    const string result1("A is ok, b is 2 \n");
+    const string result2("12.21");
 
     CHECK_EQUAL(Util::StringFormat(input1, "is ok,", 2, "\n"), result1);
     CHECK_EQUAL(Util::StringFormat(input2, 12.2111f), result2);
@@ -286,16 +286,16 @@ TEST(TestRuntimeID)
     const U64 input2 = _ID_VIEW(str2.data(), str2.length());
 
     CHECK_EQUAL(input1, _ID(str));
-    CHECK_EQUAL(_ID(str), _ID(stringImpl(str).c_str()));
-    CHECK_EQUAL(input1, _ID(stringImpl(str).c_str()));
+    CHECK_EQUAL(_ID(str), _ID(string(str).c_str()));
+    CHECK_EQUAL(input1, _ID(string(str).c_str()));
     CHECK_EQUAL(input1, input2);
 }
 
 TEST(TestStringAllocator)
 {
     const char* input = "TEST test TEST";
-    stringImpl input1(input);
-    stringImplFast input2(input);
+    string input1(input);
+    string_fast input2(input);
     for( size_t i = 0; i < input1.size(); ++i) {
         CHECK_EQUAL(input1[i], input2[i]);
     }
@@ -303,17 +303,17 @@ TEST(TestStringAllocator)
 
 TEST(TestStringStream)
 {
-    stringImpl result1;
-    stringImplFast result2;
-    stringstreamImplFast s;
+    string result1;
+    string_fast result2;
+    stringstream_fast s;
     const char* input = "TEST-test-TEST";
     s << input;
     s >> result1;
-    CHECK_EQUAL(result1, stringImpl(input));
+    CHECK_EQUAL(result1, string(input));
     s.clear();
     s << input;
     s >> result2;
-    CHECK_EQUAL(result2, stringImplFast(input));
+    CHECK_EQUAL(result2, string_fast(input));
 }
 
 } //namespace Divide

@@ -41,13 +41,13 @@ class DebugInterface final : public KernelComponent {
 public:
     explicit DebugInterface(Kernel& parent) noexcept;
 
-    [[nodiscard]] const stringImpl& output() const noexcept;
+    [[nodiscard]] const string& output() const noexcept;
     void toggle(bool state) noexcept;
     [[nodiscard]] bool enabled() const noexcept;
     void idle();
 
 private:
-    stringImpl _output{};
+    string _output{};
     bool _enabled = false;
 };
 

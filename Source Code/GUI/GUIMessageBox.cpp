@@ -5,9 +5,9 @@
 #include <CEGUI/CEGUI.h>
 namespace Divide {
 
-GUIMessageBox::GUIMessageBox(const stringImpl& name,
-                             const stringImpl& title,
-                             const stringImpl& message,
+GUIMessageBox::GUIMessageBox(const string& name,
+                             const string& title,
+                             const string& message,
                              const vec2<I32>& offsetFromCentre,
                              CEGUI::Window* parent)
     : GUIElementBase(name, parent)
@@ -53,11 +53,11 @@ void GUIMessageBox::active(const bool& active) noexcept {
     GUIElement::active(active);
 }
 
-void GUIMessageBox::setTitle(const stringImpl& titleText) {
+void GUIMessageBox::setTitle(const string& titleText) {
     _msgBoxWindow->setText(titleText.c_str());
 }
 
-void GUIMessageBox::setMessage(const stringImpl& message) {
+void GUIMessageBox::setMessage(const string& message) {
     _msgBoxWindow->getChild("MessageText")->setText(message.c_str());
 }
 

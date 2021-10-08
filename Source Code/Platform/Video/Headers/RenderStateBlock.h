@@ -58,9 +58,9 @@ class RenderStateBlock final : public GUIDWrapper, public Hashable {
        static const RenderStateBlock& get(size_t renderStateBlockHash);
        /// Returns false if the specified hash is not found in the map
        static const RenderStateBlock& get(size_t renderStateBlockHash, bool& blockFound);
-       static void saveToXML(const RenderStateBlock& block, const stringImpl& entryName, boost::property_tree::ptree& pt);
+       static void saveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt);
 
-       static size_t loadFromXML(const stringImpl& entryName, const boost::property_tree::ptree& pt);
+       static size_t loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
 
        static size_t defaultHash() noexcept;
 

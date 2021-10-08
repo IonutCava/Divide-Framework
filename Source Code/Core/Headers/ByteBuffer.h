@@ -189,7 +189,7 @@ class ByteBuffer {
 
    protected:
     size_t _rpos = 0u, _wpos = 0u;
-    vectorEASTL<Byte> _storage;
+    vector<Byte> _storage;
 };
 
 }  // namespace Divide

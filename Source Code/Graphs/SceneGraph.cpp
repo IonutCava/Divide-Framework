@@ -67,7 +67,7 @@ void SceneGraph::unload()
 
 void SceneGraph::addToDeleteQueue(SceneGraphNode* node, const size_t childIdx) {
     ScopedLock<SharedMutex> w_lock(_pendingDeletionLock);
-    vectorEASTL<size_t>& list = _pendingDeletion[node];
+    vector<size_t>& list = _pendingDeletion[node];
     if (eastl::find(cbegin(list), cend(list), childIdx) == cend(list))
     {
         list.push_back(childIdx);
@@ -239,7 +239,7 @@ void SceneGraph::onNetworkSend(const U32 frameCount) {
     Attorney::SceneGraphNodeSceneGraph::onNetworkSend(_root, frameCount);
 }
 
-bool SceneGraph::intersect(const SGNIntersectionParams& params, vectorEASTL<SGNRayResult>& intersectionsOut) const {
+bool SceneGraph::intersect(const SGNIntersectionParams& params, vector<SGNRayResult>& intersectionsOut) const {
     intersectionsOut.resize(0);
 
     // Try to leverage our physics system as it will always be way more faster and accurate
@@ -319,7 +319,7 @@ size_t SceneGraph::getTotalNodeCount() const noexcept {
 
     return ret;
 }
-const vectorEASTL<SceneGraphNode*>& SceneGraph::getNodesByType(const SceneNodeType type) const {
+const vector<SceneGraphNode*>& SceneGraph::getNodesByType(const SceneNodeType type) const {
     return _nodesByType[to_base(type)];
 }
 

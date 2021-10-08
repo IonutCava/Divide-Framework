@@ -92,7 +92,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
     using AttributeMap = hashMap<U32, AttributeDescriptor>;
     AttributeMap _attributeMapDraw;
 
-    stringImpl _name;
+    string _name;
     IndexBuffer _idxBuffer;
 };
 

@@ -46,11 +46,11 @@ namespace Divide {
 
         [[nodiscard]] F32 height() const;
 
-        void showMessage(const stringImpl& message, F32 durationMS);
+        void showMessage(const string& message, F32 durationMS);
 
     private:
         F32 _lastMessageDurationMS;
-        stringImpl _lastMessage;
+        string _lastMessage;
     };
 } //namespace Divide
 

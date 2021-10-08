@@ -152,7 +152,7 @@ Scene* SceneManager::load(const Str256& sceneName) {
         return nullptr;
     }
 
-    _platformContext->paramHandler().setParam(_ID("currentScene"), stringImpl(sceneName.c_str()));
+    _platformContext->paramHandler().setParam(_ID("currentScene"), string(sceneName.c_str()));
 
     const bool sceneNotLoaded = loadingScene->getState() != ResourceState::RES_LOADED;
 
@@ -271,7 +271,7 @@ bool SceneManager::switchScene(const Str256& name, bool unloadPrevious, const Re
     return true;
 }
 
-vectorEASTL<Str256> SceneManager::sceneNameList(const bool sorted) const {
+vector<Str256> SceneManager::sceneNameList(const bool sorted) const {
     return _scenePool->sceneNameList(sorted);
 }
 
@@ -375,7 +375,7 @@ void SceneManager::removePlayerInternal(Scene& parentScene, SceneGraphNode* play
     }
 }
 
-vectorEASTL<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport) const {
+vector<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport) const {
     OPTICK_EVENT();
     constexpr std::array<SceneNodeType, 6> s_ignoredNodes = {
         SceneNodeType::TYPE_TRANSFORM,
@@ -385,7 +385,7 @@ vectorEASTL<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>&
         SceneNodeType::TYPE_INFINITEPLANE,
         SceneNodeType::TYPE_VEGETATION
     };
-    static vectorEASTL<SGNRayResult> rayResults = {};
+    static vector<SGNRayResult> rayResults = {};
 
     const SceneGraph* sceneGraph = getActiveScene().sceneGraph();
     const vec3<F32>& eye = camera.getEye();
@@ -456,7 +456,7 @@ vectorEASTL<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>&
     };
 
     //Step 1: Grab ALL nodes in rect
-    vectorEASTL<SceneGraphNode*> ret = {};
+    vector<SceneGraphNode*> ret = {};
 
     VisibleNodeList<1024> inRectList;
     const VisibleNodeList<>& visNodes = _renderPassCuller->getNodeCache(RenderStage::DISPLAY);
@@ -559,7 +559,7 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
 
     U8 index = 0;
 
-    const vectorEASTL<WaterBodyData>& waterBodies = activeSceneState->waterBodies();
+    const vector<WaterBodyData>& waterBodies = activeSceneState->waterBodies();
     for (const auto& body : waterBodies) {
         _sceneData->waterDetails(index++, body);
     }
@@ -651,7 +651,7 @@ bool SceneManager::loadNode(SceneGraphNode* targetNode) const {
 void SceneManager::getSortedReflectiveNodes(const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut) const {
     OPTICK_EVENT();
 
-    static vectorEASTL<SceneGraphNode*> allNodes = {};
+    static vector<SceneGraphNode*> allNodes = {};
     getActiveScene().sceneGraph()->getNodesByType({ SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_OBJECT3D }, allNodes);
 
     erase_if(allNodes,
@@ -676,7 +676,7 @@ void SceneManager::getSortedReflectiveNodes(const Camera* camera, const RenderSt
 void SceneManager::getSortedRefractiveNodes(const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut) const {
     OPTICK_EVENT();
 
-    static vectorEASTL<SceneGraphNode*> allNodes = {};
+    static vector<SceneGraphNode*> allNodes = {};
     getActiveScene().sceneGraph()->getNodesByType({ SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_OBJECT3D }, allNodes);
 
     erase_if(allNodes,
@@ -750,7 +750,7 @@ void SceneManager::resetSelection(const PlayerIndex idx) {
     }
 }
 
-void SceneManager::setSelected(const PlayerIndex idx, const vectorEASTL<SceneGraphNode*>& SGNs, const bool recursive) {
+void SceneManager::setSelected(const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive) {
     Attorney::SceneManager::setSelected(getActiveScene(), idx, SGNs, recursive);
     for (auto& cbk : _selectionChangeCallbacks) {
         cbk(idx, SGNs);

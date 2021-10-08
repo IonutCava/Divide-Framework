@@ -69,7 +69,7 @@ static constexpr std::array<F32, to_base(FStops::COUNT)> g_FStopValues = {
 
 namespace TypeUtil {
     const char* FStopsToString(FStops stop) noexcept;
-    FStops StringToFStops(const stringImpl& name);
+    FStops StringToFStops(const string& name);
 };
 
 class GFXDevice;
@@ -297,7 +297,7 @@ class Camera : public Resource {
      static Camera* findCameraInternal(U64 nameHash);
 
    private:
-    using CameraPool = vectorEASTL<Camera*>;
+    using CameraPool = vector<Camera*>;
 
     static std::array<Camera*, to_base(UtilityCamera::COUNT)> _utilityCameras;
 

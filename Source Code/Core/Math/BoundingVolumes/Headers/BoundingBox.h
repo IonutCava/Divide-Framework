@@ -52,7 +52,7 @@ class BoundingBox {
     explicit BoundingBox(const OBB& obb) noexcept;
     explicit BoundingBox(const BoundingSphere& bSphere) noexcept;
     explicit BoundingBox(vec3<F32> min, vec3<F32> max) noexcept;
-    explicit BoundingBox(const vectorEASTL<vec3<F32>>& points) noexcept;
+    explicit BoundingBox(const vector<vec3<F32>>& points) noexcept;
     explicit BoundingBox(const std::array<vec3<F32>, 8>& points) noexcept;
     explicit BoundingBox(F32 minX, F32 minY, F32 minZ, F32 maxX, F32 maxY, F32 maxZ) noexcept;
 
@@ -73,7 +73,7 @@ class BoundingBox {
     /// Optimized method
     [[nodiscard]] RayResult intersect(const Ray& r, F32 t0, F32 t1) const noexcept;
 
-    void createFromPoints(const vectorEASTL<vec3<F32>>& points) noexcept;
+    void createFromPoints(const vector<vec3<F32>>& points) noexcept;
     void createFromPoints(const std::array<vec3<F32>, 8>& points) noexcept;
     void createFromSphere(const BoundingSphere& bSphere) noexcept;
     void createFromSphere(const vec3<F32>& center, F32 radius) noexcept;

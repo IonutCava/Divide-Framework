@@ -51,7 +51,7 @@ class AudioDescriptor final : public CachedResource {
         return true;
     }
 
-    void setAudioFile(const stringImpl& filePath) {
+    void setAudioFile(const string& filePath) {
         const auto[name, path] = splitPathToNameAndLocation(filePath.c_str());
         assetName(name);
         assetLocation(path);

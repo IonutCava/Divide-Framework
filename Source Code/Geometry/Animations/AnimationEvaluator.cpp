@@ -67,7 +67,7 @@ bool AnimEvaluator::initBuffers(GFXDevice& context) {
     const U32 numberOfFrames = frameCount();
 
     using FrameData = std::array<mat4<F32>, Config::MAX_BONE_COUNT_PER_NODE>;
-    using TempContainer = vectorEASTL<FrameData>;
+    using TempContainer = vector<FrameData>;
 
     TempContainer animationData;
 

@@ -107,7 +107,7 @@ public:
     PROPERTY_R(F32, tileSize, 1.f);
 
     // We use ID as a really hacky LoD system. Ring 0 => LoD 0. Ring 1 => LoD 1 (e.g. no detail normals), etc
-    [[nodiscard]] vectorEASTL<InstanceData> createInstanceDataVB(I32 ringID);
+    [[nodiscard]] vector<InstanceData> createInstanceDataVB(I32 ringID);
 
 private:
     [[nodiscard]] bool InRing(I32 x, I32 y) const;

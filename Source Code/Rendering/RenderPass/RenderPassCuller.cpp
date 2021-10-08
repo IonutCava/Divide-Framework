@@ -91,7 +91,7 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, c
         sceneState->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME))
     {
         sceneGraph->getRoot()->lockChildrenForRead();
-        const vectorEASTL<SceneGraphNode*>& rootChildren = sceneGraph->getRoot()->getChildrenLocked();
+        const vector<SceneGraphNode*>& rootChildren = sceneGraph->getRoot()->getChildrenLocked();
 
         ParallelForDescriptor descriptor = {};
         descriptor._iterCount = sceneGraph->getRoot()->getChildCount();
@@ -160,7 +160,7 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
                 if (childCount > 0u) {
                     if (childCount > g_nodesPerCullingPartition) {
                         currentNode->lockChildrenForRead();
-                        const vectorEASTL<SceneGraphNode*>& children = currentNode->getChildrenLocked();
+                        const vector<SceneGraphNode*>& children = currentNode->getChildrenLocked();
 
                         ParallelForDescriptor descriptor = {};
                         descriptor._iterCount = childCount;
@@ -193,7 +193,7 @@ void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const N
     OPTICK_EVENT();
 
     currentNode->lockChildrenForRead();
-    const vectorEASTL<SceneGraphNode*>& children = currentNode->getChildrenLocked();
+    const vector<SceneGraphNode*>& children = currentNode->getChildrenLocked();
     for (SceneGraphNode* child : children) {
         if (params._stage == RenderStage::DISPLAY) {
             Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(child, false);
@@ -229,7 +229,7 @@ void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const N
     currentNode->unlockChildrenForRead();
 }
 
-void RenderPassCuller::frustumCull(const NodeCullParams& params, const U16 cullFlags, const vectorEASTL<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const {
+void RenderPassCuller::frustumCull(const NodeCullParams& params, const U16 cullFlags, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const {
     OPTICK_EVENT();
 
     nodesOut.reset();
@@ -250,7 +250,7 @@ void RenderPassCuller::frustumCull(const NodeCullParams& params, const U16 cullF
     }
 }
 
-void RenderPassCuller::toVisibleNodes(const Camera* camera, const vectorEASTL<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const {
+void RenderPassCuller::toVisibleNodes(const Camera* camera, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const {
     OPTICK_EVENT();
 
     nodesOut.reset();

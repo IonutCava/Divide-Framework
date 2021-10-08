@@ -62,7 +62,7 @@ namespace Attorney {
     class ShaderProgramKernel;
 }
 
-using ModuleDefines = vectorEASTL<std::pair<stringImpl, bool>>;
+using ModuleDefines = vector<std::pair<string, bool>>;
 
 
 struct ShaderModuleDescriptor {
@@ -84,7 +84,7 @@ public:
 
     size_t getHash() const noexcept override;
 
-    vectorEASTL<ShaderModuleDescriptor> _modules;
+    vector<ShaderModuleDescriptor> _modules;
 };
 
 class NOINITVTABLE ShaderProgram : public CachedResource,
@@ -99,11 +99,11 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     };
     using ShaderProgramMapEntry = std::pair<ShaderProgram*, size_t>;
     using ShaderProgramMap = ska::bytell_hash_map<I64 /*handle*/, ShaderProgramMapEntry>;
-    using AtomMap = ska::bytell_hash_map<U64 /*name hash*/, stringImpl>;
-    //using AtomInclusionMap = ska::bytell_hash_map<U64 /*name hash*/, vectorEASTL<ResourcePath>>;
-    using AtomInclusionMap = hashMap<U64 /*name hash*/, vectorEASTL<ResourcePath>>;
-    using UniformsInclusionMap = hashMap<U64 /*name hash*/, vectorEASTL<UniformDeclaration>>;
-    using ShaderQueue = eastl::stack<ShaderProgram*, vectorEASTLFast<ShaderProgram*> >;
+    using AtomMap = ska::bytell_hash_map<U64 /*name hash*/, string>;
+    //using AtomInclusionMap = ska::bytell_hash_map<U64 /*name hash*/, vector<ResourcePath>>;
+    using AtomInclusionMap = hashMap<U64 /*name hash*/, vector<ResourcePath>>;
+    using UniformsInclusionMap = hashMap<U64 /*name hash*/, vector<UniformDeclaration>>;
+    using ShaderQueue = eastl::stack<ShaderProgram*, vector_fast<ShaderProgram*> >;
 
 
    public:
@@ -183,7 +183,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     static void RebuildAllShaders();
 
-    static vectorEASTL<ResourcePath> GetAllAtomLocations();
+    static vector<ResourcePath> GetAllAtomLocations();
 
     static bool UseShaderTexCache() noexcept { return s_useShaderTextCache; }
     static bool UseShaderBinaryCache() noexcept { return s_useShaderBinaryCache; }
@@ -216,8 +216,8 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static SharedMutex s_programLock;
 
    private:
-    std::array<vectorEASTL<U32>, to_base(ShaderType::COUNT)> _functionIndex;
-    std::array<vectorEASTL<U32>, to_base(ShaderType::COUNT)> _availableFunctionIndex;
+    std::array<vector<U32>, to_base(ShaderType::COUNT)> _functionIndex;
+    std::array<vector<U32>, to_base(ShaderType::COUNT)> _availableFunctionIndex;
 
    protected:
     template <typename T>

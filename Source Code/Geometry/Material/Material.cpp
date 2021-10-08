@@ -29,7 +29,7 @@ namespace TypeUtil {
         return Names::materialDebugFlag[to_base(materialFlag)];
     }
 
-    MaterialDebugFlag StringToMaterialDebugFlag(const stringImpl& name) {
+    MaterialDebugFlag StringToMaterialDebugFlag(const string& name) {
         for (U8 i = 0; i < to_U8(MaterialDebugFlag::COUNT); ++i) {
             if (strcmp(name.c_str(), Names::materialDebugFlag[i]) == 0) {
                 return static_cast<MaterialDebugFlag>(i);
@@ -43,7 +43,7 @@ namespace TypeUtil {
         return Names::textureUsage[to_base(texUsage)];
     }
 
-    TextureUsage StringToTextureUsage(const stringImpl& name) {
+    TextureUsage StringToTextureUsage(const string& name) {
         for (U8 i = 0; i < to_U8(TextureUsage::COUNT); ++i) {
             if (strcmp(name.c_str(), Names::textureUsage[i]) == 0) {
                 return static_cast<TextureUsage>(i);
@@ -57,7 +57,7 @@ namespace TypeUtil {
         return Names::bumpMethod[to_base(bumpMethod)];
     }
 
-    BumpMethod StringToBumpMethod(const stringImpl& name) {
+    BumpMethod StringToBumpMethod(const string& name) {
         for (U8 i = 0; i < to_U8(BumpMethod::COUNT); ++i) {
             if (strcmp(name.c_str(), Names::bumpMethod[i]) == 0) {
                 return static_cast<BumpMethod>(i);
@@ -71,7 +71,7 @@ namespace TypeUtil {
         return Names::shadingMode[to_base(shadingMode)];
     }
 
-    ShadingMode StringToShadingMode(const stringImpl& name) {
+    ShadingMode StringToShadingMode(const string& name) {
         for (U8 i = 0; i < to_U8(ShadingMode::COUNT); ++i) {
             if (strcmp(name.c_str(), Names::shadingMode[i]) == 0) {
                 return static_cast<ShadingMode>(i);
@@ -85,7 +85,7 @@ namespace TypeUtil {
         return Names::textureOperation[to_base(textureOp)];
     }
 
-    TextureOperation StringToTextureOperation(const stringImpl& operation) {
+    TextureOperation StringToTextureOperation(const string& operation) {
         for (U8 i = 0; i < to_U8(TextureOperation::COUNT); ++i) {
             if (strcmp(operation.c_str(), Names::textureOperation[i]) == 0) {
                 return static_cast<TextureOperation>(i);
@@ -1300,7 +1300,7 @@ void Material::rebuild() {
     }
 }
 
-void Material::saveToXML(const stringImpl& entryName, boost::property_tree::ptree& pt) const {
+void Material::saveToXML(const string& entryName, boost::property_tree::ptree& pt) const {
     pt.put(entryName + ".version", g_materialXMLVersion);
 
     pt.put(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingMode()));
@@ -1345,7 +1345,7 @@ void Material::saveToXML(const stringImpl& entryName, boost::property_tree::ptre
     saveTextureDataToXML(entryName, pt);
 }
 
-void Material::loadFromXML(const stringImpl& entryName, const boost::property_tree::ptree& pt) {
+void Material::loadFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     if (ignoreXMLData()) {
         return;
     }
@@ -1356,7 +1356,7 @@ void Material::loadFromXML(const stringImpl& entryName, const boost::property_tr
         return;
     }
 
-    shadingMode(TypeUtil::StringToShadingMode(pt.get<stringImpl>(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingMode()))), false);
+    shadingMode(TypeUtil::StringToShadingMode(pt.get<string>(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingMode()))), false);
 
     baseColour(FColour4(pt.get<F32>(entryName + ".colour.<xmlattr>.r", baseColour().r),
                         pt.get<F32>(entryName + ".colour.<xmlattr>.g", baseColour().g),
@@ -1386,7 +1386,7 @@ void Material::loadFromXML(const stringImpl& entryName, const boost::property_tr
 
     ignoreTexDiffuseAlpha(pt.get<bool>(entryName + ".ignoreTexDiffuseAlpha", ignoreTexDiffuseAlpha()), false);
 
-    bumpMethod(TypeUtil::StringToBumpMethod(pt.get<stringImpl>(entryName + ".bumpMethod", TypeUtil::BumpMethodToString(bumpMethod()))), false);
+    bumpMethod(TypeUtil::StringToBumpMethod(pt.get<string>(entryName + ".bumpMethod", TypeUtil::BumpMethodToString(bumpMethod()))), false);
 
     parallaxFactor(pt.get<F32>(entryName + ".parallaxFactor", parallaxFactor()), false);
 
@@ -1398,7 +1398,7 @@ void Material::loadFromXML(const stringImpl& entryName, const boost::property_tr
     loadTextureDataFromXML(entryName, pt);
 }
 
-void Material::saveRenderStatesToXML(const stringImpl& entryName, boost::property_tree::ptree& pt) const {
+void Material::saveRenderStatesToXML(const string& entryName, boost::property_tree::ptree& pt) const {
     hashMap<size_t, U32> previousHashValues;
 
     U32 blockIndex = 0u;
@@ -1434,7 +1434,7 @@ void Material::saveRenderStatesToXML(const stringImpl& entryName, boost::propert
     }
 }
 
-void Material::loadRenderStatesFromXML(const stringImpl& entryName, const boost::property_tree::ptree& pt) {
+void Material::loadRenderStatesFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     hashMap<U32, size_t> previousHashValues;
 
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
@@ -1464,7 +1464,7 @@ void Material::loadRenderStatesFromXML(const stringImpl& entryName, const boost:
     }
 }
 
-void Material::saveTextureDataToXML(const stringImpl& entryName, boost::property_tree::ptree& pt) const {
+void Material::saveTextureDataToXML(const string& entryName, boost::property_tree::ptree& pt) const {
     hashMap<size_t, U32> previousHashValues;
 
     U32 samplerCount = 0u;
@@ -1474,7 +1474,7 @@ void Material::saveTextureDataToXML(const stringImpl& entryName, boost::property
             const Texture_ptr texture = tex.lock();
 
 
-            const stringImpl textureNode = entryName + ".texture." + TypeUtil::TextureUsageToString(usage);
+            const string textureNode = entryName + ".texture." + TypeUtil::TextureUsageToString(usage);
 
             pt.put(textureNode + ".name", texture->assetName().str());
             pt.put(textureNode + ".path", texture->assetLocation().str());
@@ -1493,15 +1493,15 @@ void Material::saveTextureDataToXML(const stringImpl& entryName, boost::property
     }
 }
 
-void Material::loadTextureDataFromXML(const stringImpl& entryName, const boost::property_tree::ptree& pt) {
+void Material::loadTextureDataFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     hashMap<U32, size_t> previousHashValues;
 
     for (const TextureUsage usage : g_materialTextures) {
         if (pt.get_child_optional(entryName + ".texture." + TypeUtil::TextureUsageToString(usage) + ".name")) {
-            const stringImpl textureNode = entryName + ".texture." + TypeUtil::TextureUsageToString(usage);
+            const string textureNode = entryName + ".texture." + TypeUtil::TextureUsageToString(usage);
 
-            const ResourcePath texName = ResourcePath(pt.get<stringImpl>(textureNode + ".name", ""));
-            const ResourcePath texPath = ResourcePath(pt.get<stringImpl>(textureNode + ".path", ""));
+            const ResourcePath texName = ResourcePath(pt.get<string>(textureNode + ".name", ""));
+            const ResourcePath texPath = ResourcePath(pt.get<string>(textureNode + ".path", ""));
             const bool flipped = pt.get(textureNode + ".flipped", false);
 
             if (!texName.empty()) {
@@ -1521,7 +1521,7 @@ void Material::loadTextureDataFromXML(const stringImpl& entryName, const boost::
                 }
 
                 TextureOperation op = TextureOperation::NONE;
-                _textureOperations[to_base(usage)] = TypeUtil::StringToTextureOperation(pt.get<stringImpl>(textureNode + ".usage", TypeUtil::TextureOperationToString(_textureOperations[to_base(usage)])));
+                _textureOperations[to_base(usage)] = TypeUtil::StringToTextureOperation(pt.get<string>(textureNode + ".usage", TypeUtil::TextureOperationToString(_textureOperations[to_base(usage)])));
 
                 {
                     ScopedLock<SharedMutex> w_lock(_textureLock);

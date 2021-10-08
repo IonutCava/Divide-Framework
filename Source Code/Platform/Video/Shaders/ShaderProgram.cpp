@@ -297,8 +297,8 @@ void ShaderProgram::RebuildAllShaders() {
     }
 }
 
-vectorEASTL<ResourcePath> ShaderProgram::GetAllAtomLocations() {
-    static vectorEASTL<ResourcePath> atomLocations;
+vector<ResourcePath> ShaderProgram::GetAllAtomLocations() {
+    static vector<ResourcePath> atomLocations;
     if (atomLocations.empty()) {
         // General
         atomLocations.emplace_back(Paths::g_assetsLocation +

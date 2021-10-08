@@ -44,7 +44,7 @@ public:
     using ParamMap = hashMap<HashType, std::any>;
 
     /// A special map for string types (small perf. optimization for add/retrieve)
-    using ParamStringMap = hashMap<HashType, stringImpl>;
+    using ParamStringMap = hashMap<HashType, string>;
     /// A special map for boolean types (small perf. optimization for add/retrieve)
     /// Used a lot as option toggles
     using ParamBoolMap = hashMap<HashType, bool>;

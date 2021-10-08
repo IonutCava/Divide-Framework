@@ -58,7 +58,7 @@ class EnvironmentProbeComponent;
 
 struct RenderBinItem;
 
-using EnvironmentProbeList = vectorEASTL<EnvironmentProbeComponent*>;
+using EnvironmentProbeList = vector<EnvironmentProbeComponent*>;
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);
 
@@ -220,7 +220,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void OnData(const ECS::CustomEvent& data) override;
 
    protected:
-    using PackagesPerIndex = vectorEASTLFast<RenderPackage>;
+    using PackagesPerIndex = vector_fast<RenderPackage>;
     using PackagesPerPassType = std::array<PackagesPerIndex, to_base(RenderPassType::COUNT)>;
     using PackagesPerStage = std::array<PackagesPerPassType, to_base(RenderStage::COUNT)>;
     PackagesPerStage _renderPackages{};
@@ -252,8 +252,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     // One for the reflection pass and one for the other passes
     std::array<ReflectRefractData, to_base(DataType::COUNT)> _reflectRefractData{};
 
-    vectorEASTL<EnvironmentProbeComponent*> _envProbes{};
-    vectorEASTL<ShaderBufferBinding> _externalBufferBindings{};
+    vector<EnvironmentProbeComponent*> _envProbes{};
+    vector<ShaderBufferBinding> _externalBufferBindings{};
 
     Material_ptr _materialInstance = nullptr;
     GFXDevice& _context;

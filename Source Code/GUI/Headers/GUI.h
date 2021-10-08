@@ -150,7 +150,7 @@ public:
     void setRenderer(CEGUI::Renderer& renderer);
 
     PROPERTY_R(bool, showDebugCursor, false);
-    PROPERTY_R(stringImpl, defaultGUIScheme, "GWEN");
+    PROPERTY_R(string, defaultGUIScheme, "GWEN");
     void showDebugCursor(bool state);
 
 protected:
@@ -180,7 +180,7 @@ private:
     Pipeline* _postCEGUIPipeline = nullptr;
     U32 _debugVarCacheCount = 0;
     // GROUP, VAR
-    vectorEASTL<std::pair<I64, I64>> _debugDisplayEntries{};
+    vector<std::pair<I64, I64>> _debugDisplayEntries{};
 
     /// All the GUI elements created per scene
     GUIMapPerScene _guiStack{};

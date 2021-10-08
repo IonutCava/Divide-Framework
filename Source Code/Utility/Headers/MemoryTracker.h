@@ -124,15 +124,15 @@ class MemoryTracker {
         }
     }
 
-    stringImpl Dump(bool& leakDetected, size_t& sizeLeaked) {
-        stringImpl output;
+    string Dump(bool& leakDetected, size_t& sizeLeaked) {
+        string output;
         sizeLeaked = 0;
         leakDetected = false;
 
         Lock lock(*this);
         ScopedLock<Mutex> w_lock(_mutex);
         if (!_allocations.empty()) {
-            stringImpl msg;
+            string msg;
             if (LogAllAllocations) {
                 msg = "memory allocations detected";
             } else {

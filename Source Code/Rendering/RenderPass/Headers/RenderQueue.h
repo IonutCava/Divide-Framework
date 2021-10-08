@@ -74,7 +74,7 @@ class RenderQueue final : public KernelComponent {
         return _renderBins;
     }
 
-    U16 getSortedQueues(const vectorEASTL<RenderBinType>& binTypes, RenderBin::SortedQueues& queuesOut) const;
+    U16 getSortedQueues(const vector<RenderBinType>& binTypes, RenderBin::SortedQueues& queuesOut) const;
 
   private:
 

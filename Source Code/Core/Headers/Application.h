@@ -70,7 +70,7 @@ class Application : public SDLEventListener {
      ~Application();
 
     /// Startup and shutdown
-    ErrorCode start(const stringImpl& entryPoint, I32 argc, char** argv);
+    ErrorCode start(const string& entryPoint, I32 argc, char** argv);
     void      stop();
 
     bool step();
@@ -129,11 +129,11 @@ class Application : public SDLEventListener {
     Str256 _memLogBuffer;
     /// A list of callback functions that get called when the application instance
     /// is destroyed
-    vectorEASTL<DELEGATE<void> > _shutdownCallback;
+    vector<DELEGATE<void> > _shutdownCallback;
 
     /// A list of callbacks to execute on the main thread
     mutable Mutex _taskLock;
-    vectorEASTL<DELEGATE<void> > _mainThreadCallbacks;
+    vector<DELEGATE<void> > _mainThreadCallbacks;
 };
 
 };  // namespace Divide

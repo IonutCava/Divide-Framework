@@ -67,7 +67,7 @@ void glVAOPool::allocate(const U32 count, GLuint* vaosOUT) {
 void glVAOPool::deallocate(GLuint& vao) {
     assert(Runtime::isMainThread());
 
-    vectorEASTL<std::pair<GLuint, bool>>::iterator it = eastl::find_if(eastl::begin(_pool),
+    vector<std::pair<GLuint, bool>>::iterator it = eastl::find_if(eastl::begin(_pool),
                                                                        eastl::end(_pool),
                                                                        [vao](std::pair<GLuint, bool>& entry) noexcept
                                                                        {

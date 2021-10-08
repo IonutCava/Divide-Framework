@@ -104,7 +104,7 @@ class LightPool : public SceneComponent,
         std::array<Light*, Config::Lighting::MAX_SHADOW_CASTING_LIGHTS> _entries{};
     };
 
-    using LightList = vectorEASTL<Light*>;
+    using LightList = vector<Light*>;
 
     explicit LightPool(Scene& parentScene, PlatformContext& context);
     ~LightPool();

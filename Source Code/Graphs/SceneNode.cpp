@@ -28,7 +28,7 @@ SceneNode::SceneNode(ResourceCache* parentCache, const size_t descriptorHash, co
     });
 }
 
-stringImpl SceneNode::getTypeName() const {
+string SceneNode::getTypeName() const {
     if (_type == SceneNodeType::TYPE_OBJECT3D) {
         const Object3D* obj = static_cast<const Object3D*>(this);
         if (obj->getObjectType() != ObjectType::COUNT) {

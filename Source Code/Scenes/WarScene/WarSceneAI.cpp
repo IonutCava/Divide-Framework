@@ -20,8 +20,8 @@ namespace {
     bool g_navMeshStarted = false;
 }
 
-void WarScene::printMessage(const U8 eventId, const stringImpl& unitName) const {
-    stringImpl eventName;
+void WarScene::printMessage(const U8 eventId, const string& unitName) const {
+    string eventName;
     switch (eventId) {
         case 0:
           eventName = "Captured flag";
@@ -108,7 +108,7 @@ void WarScene::checkGameCompletion() {
     }
 }
 
-void WarScene::registerPoint(const U16 teamID, const stringImpl& unitName) {
+void WarScene::registerPoint(const U16 teamID, const string& unitName) {
     if (!_resetUnits) {
         _resetUnits = true;
 
@@ -278,7 +278,7 @@ bool WarScene::addUnits() {
     SceneNode_ptr currentMesh;
 
     vec3<F32> currentScale;
-    stringImpl currentName;
+    string currentName;
 
     constexpr U32 normalMask = to_base(ComponentType::NAVIGATION) |
                                 to_base(ComponentType::TRANSFORM) |
@@ -505,7 +505,7 @@ void WarScene::startSimulation(I64 /*btnGUID*/) {
                 AI::WarSceneOrder::WarOrder::RECOVER_FLAG));
         }
     } else {
-        stringImpl info(
+        string info(
             "Can't reload the navigation mesh this soon.\n Please wait \\[ ");
         info.append(
             Util::to_string(Time::MicrosecondsToSeconds<I32>(diffTime)));

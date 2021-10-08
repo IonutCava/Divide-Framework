@@ -10,12 +10,12 @@ namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
     namespace {
-        stringImpl GetFullFieldName(const char* componentName, const Str32& fieldName) {
+        string GetFullFieldName(const char* componentName, const Str32& fieldName) {
             constexpr std::array<std::string_view, 6> InvalidXMLStrings = {
                 " ", "[", "]", "...", "..", "."
             };
 
-            const stringImpl temp = Util::ReplaceString(fieldName.c_str(), InvalidXMLStrings, "__");
+            const string temp = Util::ReplaceString(fieldName.c_str(), InvalidXMLStrings, "__");
             return Util::StringFormat("%s.%s", componentName, temp.c_str());
         }
     }
@@ -31,7 +31,7 @@ namespace Divide {
             return Names::componentType[to_base(ComponentType::COUNT)];
         }
 
-        ComponentType StringToComponentType(const stringImpl& name) {
+        ComponentType StringToComponentType(const string& name) {
             for (U32 i = 1u; i < to_U32(ComponentType::COUNT) + 1; ++i) {
                 if (strcmp(name.c_str(), Names::componentType[i - 1u]) == 0) {
                     return static_cast<ComponentType>(1 << i);
@@ -259,7 +259,7 @@ namespace Divide {
 
     namespace {
         template<typename T, size_t num_comp>
-        void saveVector(const stringImpl& entryName, const EditorComponentField& field, boost::property_tree::ptree& pt) {
+        void saveVector(const string& entryName, const EditorComponentField& field, boost::property_tree::ptree& pt) {
             T data = {};
             field.get<T>(data);
 
@@ -274,7 +274,7 @@ namespace Divide {
         }
 
         template<typename T, size_t num_comp>
-        void loadVector(const stringImpl& entryName, EditorComponentField& field, const boost::property_tree::ptree& pt) {
+        void loadVector(const string& entryName, EditorComponentField& field, const boost::property_tree::ptree& pt) {
             T data = field.get<T>();
 
             data.x = pt.get((entryName + ".<xmlattr>.x").c_str(), data.x);
@@ -290,7 +290,7 @@ namespace Divide {
         }
 
         template<typename T, size_t num_rows>
-        void saveMatrix(const stringImpl& entryName, const EditorComponentField& field, boost::property_tree::ptree& pt) {
+        void saveMatrix(const string& entryName, const EditorComponentField& field, boost::property_tree::ptree& pt) {
             T data = {};
             field.get<T>(data);
 
@@ -319,7 +319,7 @@ namespace Divide {
         }
 
         template<typename T, size_t num_rows>
-        void loadMatrix(const stringImpl& entryName, EditorComponentField& field, const boost::property_tree::ptree& pt) {
+        void loadMatrix(const string& entryName, EditorComponentField& field, const boost::property_tree::ptree& pt) {
             T data = field.get<T>();
 
             data.m[0][0] = pt.get((entryName + ".<xmlattr>.00").c_str(), data.m[0][0]);

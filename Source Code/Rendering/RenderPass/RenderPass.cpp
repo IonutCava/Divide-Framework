@@ -47,7 +47,7 @@ namespace {
     }
 }
 
-RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, Str64 name, const U8 sortKey, const RenderStage passStageFlag, const vectorEASTL<U8>& dependencies, const bool performanceCounters)
+RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, Str64 name, const U8 sortKey, const RenderStage passStageFlag, const vector<U8>& dependencies, const bool performanceCounters)
     : _context(context),
       _parent(parent),
       _config(context.context().config()),

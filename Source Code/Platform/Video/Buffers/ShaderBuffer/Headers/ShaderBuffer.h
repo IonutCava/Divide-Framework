@@ -124,7 +124,7 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     const U32 _flags;
     const Usage _usage;
 
-    stringImpl _name;
+    string _name;
 };
 
 /// If initialData is NULL, the buffer contents are undefined (good for CPU -> GPU transfers),
@@ -136,7 +136,7 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
 /// if _bufferParams._sync is set to false, the buffer will not use sync mechanism regardless of the NO_SYNC flag (see ShaderBuffer constructor)
 struct ShaderBufferDescriptor {
     BufferParams _bufferParams;
-    stringImpl _name = "";
+    string _name = "";
     U32 _flags = to_U32(ShaderBuffer::Flags::NONE);
     U32 _ringBufferLength = 1u;
     ShaderBuffer::Usage _usage = ShaderBuffer::Usage::COUNT;

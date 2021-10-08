@@ -84,7 +84,7 @@ void ParamHandler::delParam(HashType nameID) {
 }
 
 template <>
-inline stringImpl ParamHandler::getParam(HashType nameID, stringImpl defaultValue) const {
+inline string ParamHandler::getParam(HashType nameID, string defaultValue) const {
     SharedLock<SharedMutex> r_lock(_mutex);
     const ParamStringMap::const_iterator it = _paramsStr.find(nameID);
     if (it != std::cend(_paramsStr)) {
@@ -96,7 +96,7 @@ inline stringImpl ParamHandler::getParam(HashType nameID, stringImpl defaultValu
 }
 
 template <>
-inline void ParamHandler::setParam(const HashType nameID, stringImpl&& value) {
+inline void ParamHandler::setParam(const HashType nameID, string&& value) {
     ScopedLock<SharedMutex> w_lock(_mutex);
     const ParamStringMap::iterator it = _paramsStr.find(nameID);
     if (it == std::end(_paramsStr)) {
@@ -108,15 +108,15 @@ inline void ParamHandler::setParam(const HashType nameID, stringImpl&& value) {
 }
 
 template <>
-inline bool ParamHandler::isParam<stringImpl>(const HashType nameID) const {
+inline bool ParamHandler::isParam<string>(const HashType nameID) const {
     SharedLock<SharedMutex> r_lock(_mutex);
     return _paramsStr.find(nameID) != std::cend(_paramsStr);
 }
 
 
 template <>
-inline void ParamHandler::delParam<stringImpl>(HashType nameID) {
-    if (isParam<stringImpl>(nameID)) {
+inline void ParamHandler::delParam<string>(HashType nameID) {
+    if (isParam<string>(nameID)) {
         if (_logState) {
             Console::printfn(Locale::Get(_ID("PARAM_REMOVE")), nameID);
         }

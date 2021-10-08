@@ -41,7 +41,7 @@ void ASIO::disconnect() {
     sendPacket(p);
 }
 
-bool ASIO::init(const stringImpl& address, const U16 port) {
+bool ASIO::init(const string& address, const U16 port) {
     try {
         boost::asio::ip::tcp::resolver res(io_service_);
         _localClient = new Client(this, io_service_, _debugOutput);
@@ -55,7 +55,7 @@ bool ASIO::init(const stringImpl& address, const U16 port) {
         _connected = true;
     } catch (std::exception& e) {
         if (_debugOutput) {
-            LOG_PRINT((stringImpl("[ASIO] Exception: ") + e.what()).c_str(), true);
+            LOG_PRINT((string("[ASIO] Exception: ") + e.what()).c_str(), true);
         }
         _connected = false;
     }
@@ -63,7 +63,7 @@ bool ASIO::init(const stringImpl& address, const U16 port) {
     return _connected;
 }
 
-bool ASIO::connect(const stringImpl& address, const U16 port) {
+bool ASIO::connect(const string& address, const U16 port) {
     if (_connected) {
         close();
     }

@@ -54,7 +54,7 @@ protected:
     void destroy();
 
 protected:
-    vectorEASTL<std::pair<GLuint, bool>> _pool;
+    vector<std::pair<GLuint, bool>> _pool;
 };
 
 }; //namespace GLUtil

@@ -65,8 +65,8 @@ namespace Divide {
         bool _savePopup = false;
         ObjectType _newPrimitiveType = ObjectType::COUNT;
 
-        stringImpl _errorMsg = "";
-        vectorEASTL<Texture_ptr> _previewTextures;
+        string _errorMsg = "";
+        vector<Texture_ptr> _previewTextures;
     };
 } //namespace Divide
 

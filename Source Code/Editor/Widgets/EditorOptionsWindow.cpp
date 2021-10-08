@@ -65,7 +65,7 @@ namespace Divide {
 
         ImGui::Separator();
 
-        stringImpl externalTextEditorPath = Attorney::EditorOptionsWindow::externalTextEditorPath(_context.editor());
+        string externalTextEditorPath = Attorney::EditorOptionsWindow::externalTextEditorPath(_context.editor());
         ImGui::InputText("Text Editor", externalTextEditorPath.data(), externalTextEditorPath.size(), ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
         const bool openDialog = ImGui::Button("Select");

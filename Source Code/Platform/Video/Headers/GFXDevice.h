@@ -126,7 +126,7 @@ struct DebugView final : GUIDWrapper {
     }
 
     PushConstants _shaderData;
-    stringImpl _name;
+    string _name;
     ShaderProgram_ptr _shader = nullptr;
     Texture_ptr _texture = nullptr;
     size_t _samplerHash = 0;
@@ -251,7 +251,7 @@ public:  // GPU interface
     void setShadowMSAASampleCount(ShadowType type, U8 sampleCount);
 
     /// Save a screenshot in TGA format
-    void screenshot(const stringImpl& filename) const;
+    void screenshot(const string& filename) const;
 
     ShaderComputeQueue& shaderComputeQueue();
     const ShaderComputeQueue& shaderComputeQueue() const;
@@ -276,7 +276,7 @@ public:  // Accessors and Mutators
     void toggleDebugView(I16 index, bool state);
     void toggleDebugGroup(I16 groupID, bool state);
     bool getDebugGroupState(I16 groupID) const;
-    void getDebugViewNames(vectorEASTL<std::tuple<stringImpl, I16, I16, bool>>& namesOut);
+    void getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& namesOut);
 
     [[nodiscard]] inline PerformanceMetrics getPerformanceMetrics() const noexcept;
 
@@ -469,7 +469,7 @@ private:
     Pipeline* _textRenderPipeline = nullptr;
         
     Mutex _graphicsResourceMutex;
-    vectorEASTL<std::tuple<GraphicsResource::Type, I64, U64>> _graphicResources;
+    vector<std::tuple<GraphicsResource::Type, I64, U64>> _graphicResources;
 
     Rect<I32> _viewport;
     vec2<U16> _renderingResolution;
@@ -477,7 +477,7 @@ private:
     GFXShaderData _gpuBlock;
 
     mutable Mutex _debugViewLock;
-    vectorEASTL<DebugView_ptr> _debugViews;
+    vector<DebugView_ptr> _debugViews;
     
     ShaderBuffer* _gfxDataBuffer = nullptr;
    

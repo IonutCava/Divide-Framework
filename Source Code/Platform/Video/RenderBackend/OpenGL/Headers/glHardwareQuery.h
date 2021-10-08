@@ -94,7 +94,7 @@ protected:
 
 protected:
     GFXDevice& _context;
-    vectorEASTL<glHardwareQuery> _queries;
+    vector<glHardwareQuery> _queries;
     U32 _id = 0u;
     GLenum _queryType = GL_NONE;
 };

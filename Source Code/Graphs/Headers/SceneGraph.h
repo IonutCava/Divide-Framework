@@ -79,7 +79,7 @@ class SceneGraph final : NonCopyable,
     void sceneUpdate(U64 deltaTimeUS, SceneState& sceneState);
     void onStartUpdateLoop(U8 loopNumber);
 
-    bool intersect(const SGNIntersectionParams& params, vectorEASTL<SGNRayResult>& intersectionsOut) const;
+    bool intersect(const SGNIntersectionParams& params, vector<SGNRayResult>& intersectionsOut) const;
 
     SceneGraphNode* createSceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor);
 
@@ -92,12 +92,12 @@ class SceneGraph final : NonCopyable,
     // If this function returns true, nodes of the specified type were successfully removed (or queued for removal)
     bool removeNodesByType(SceneNodeType nodeType);
 
-    const vectorEASTL<SceneGraphNode*>& getNodesByType(SceneNodeType type) const;
+    const vector<SceneGraphNode*>& getNodesByType(SceneNodeType type) const;
 
-    void getNodesByType(std::initializer_list<SceneNodeType> types, vectorEASTL<SceneGraphNode*>& nodesOut) const {
+    void getNodesByType(std::initializer_list<SceneNodeType> types, vector<SceneGraphNode*>& nodesOut) const {
         nodesOut.resize(0);
         for (const SceneNodeType type : types) {
-            const vectorEASTL<SceneGraphNode*>& nodes = getNodesByType(type);
+            const vector<SceneGraphNode*>& nodes = getNodesByType(type);
             nodesOut.insert(cend(nodesOut), cbegin(nodes), cend(nodes));
         }
     }
@@ -148,13 +148,13 @@ class SceneGraph final : NonCopyable,
     SceneGraphNode* _root = nullptr;
     std::shared_ptr<Octree> _octree;
     std::atomic_bool _octreeUpdating;
-    vectorEASTL<SceneGraphNode*> _nodeList;
+    vector<SceneGraphNode*> _nodeList;
 
-    std::array<vectorEASTL<SceneGraphNode*>, to_base(SceneNodeType::COUNT)> _nodesByType;
+    std::array<vector<SceneGraphNode*>, to_base(SceneNodeType::COUNT)> _nodesByType;
 
     mutable Mutex _nodeCreateMutex;
     mutable SharedMutex _pendingDeletionLock;
-    hashMap<SceneGraphNode*, vectorEASTL<size_t>> _pendingDeletion;
+    hashMap<SceneGraphNode*, vector<size_t>> _pendingDeletion;
 };
 
 namespace Attorney {

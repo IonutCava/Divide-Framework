@@ -6,7 +6,7 @@
 namespace Divide {
 
     SharedMutex SDLEventManager::s_eventListenerLock;
-    vectorEASTLFast<SDLEventListener*> SDLEventManager::s_eventListeners;
+    vector_fast<SDLEventListener*> SDLEventManager::s_eventListeners;
 
     void SDLEventManager::registerListener(SDLEventListener& listener) {
         ScopedLock<SharedMutex> lock(s_eventListenerLock);

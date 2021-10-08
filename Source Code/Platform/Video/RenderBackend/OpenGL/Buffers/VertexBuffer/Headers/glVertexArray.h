@@ -84,7 +84,7 @@ class glVertexArray final : public VertexBuffer,
     /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer
     size_t populateAttributeSize();
 
-    bool getMinimalData(const vectorEASTL<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
+    bool getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
 
     static void cleanup();
 

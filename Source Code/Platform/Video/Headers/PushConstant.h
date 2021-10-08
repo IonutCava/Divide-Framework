@@ -125,7 +125,7 @@ namespace GFX {
             set(&value, 1);
         } else {
             //Slooow. Avoid using in the rendering loop. Try caching
-            vectorEASTL<I32> temp(count);
+            vector<I32> temp(count);
             std::transform(data, data + count, std::back_inserter(temp),
                 [](const bool e) noexcept { return e ? 1 : 0; });
             set(temp.data(), count);

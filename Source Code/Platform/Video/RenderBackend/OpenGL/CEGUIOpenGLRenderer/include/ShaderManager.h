@@ -32,9 +32,6 @@
 #include "CEGUI/Base.h"
 #include "GL.h"
 
-#include <map>
-#include <string>
-
 #if defined(_MSC_VER)
 #   pragma warning(push)
 #   pragma warning(disable : 4251)

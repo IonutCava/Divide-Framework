@@ -93,7 +93,7 @@ void GFXRTPool::set(const RenderTargetID target, const std::shared_ptr<RenderTar
 }
 
 RenderTargetHandle GFXRTPool::add(const RenderTargetUsage targetUsage, const std::shared_ptr<RenderTarget>& newTarget, const U8 index) {
-    vectorEASTL<std::shared_ptr<RenderTarget>>& rts = _renderTargets[to_U32(targetUsage)];
+    vector<std::shared_ptr<RenderTarget>>& rts = _renderTargets[to_U32(targetUsage)];
     if (index == g_defaultTargetIndex) {
         for (U16 i = 0; i < to_U16(rts.size()); ++i) {
             if (rts[i] == nullptr) {

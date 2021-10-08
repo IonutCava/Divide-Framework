@@ -20,7 +20,7 @@ TaskPool::TaskPool()
 {
 }
 
-TaskPool::TaskPool(const U32 threadCount, const TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate, const stringImpl& workerName)
+TaskPool::TaskPool(const U32 threadCount, const TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate, const string& workerName)
     : TaskPool()
 {
     if (!init(threadCount, poolType, onThreadCreate, workerName)) {
@@ -33,7 +33,7 @@ TaskPool::~TaskPool()
     shutdown();
 }
 
-bool TaskPool::init(const U32 threadCount, const TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate, const stringImpl& workerName) {
+bool TaskPool::init(const U32 threadCount, const TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate, const string& workerName) {
     if (threadCount == 0u || _blockingPool != nullptr || _lockFreePool != nullptr) {
         return false;
     }
@@ -64,7 +64,7 @@ void TaskPool::shutdown() {
 }
 
 void TaskPool::onThreadCreate(const U32 threadIndex, const std::thread::id& threadID) {
-    const stringImpl threadName = _threadNamePrefix + Util::to_string(threadIndex);
+    const string threadName = _threadNamePrefix + Util::to_string(threadIndex);
     if (USE_OPTICK_PROFILER) {
         OPTICK_START_THREAD(threadName.c_str());
     }

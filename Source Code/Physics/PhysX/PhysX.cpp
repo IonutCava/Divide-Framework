@@ -38,7 +38,7 @@ namespace {
                 PX_UNUSED(actor);
                 /*
                 removeRenderActorsFromPhysicsActor(actor);
-                vectorEASTL<physx::PxRigidActor*>::iterator actorIter = std::find(_physicsActors.begin(), _physicsActors.end(), actor);
+                vector<physx::PxRigidActor*>::iterator actorIter = std::find(_physicsActors.begin(), _physicsActors.end(), actor);
                 if (actorIter != _physicsActors.end()) {
                     _physicsActors.erase(actorIter);
                 }
@@ -322,7 +322,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
 
     newActor->_actor->userData = node;
     SceneNode& sNode = node->getNode();
-    const stringImpl meshName = sNode.assetName().empty() ? sNode.resourceName().c_str() : sNode.assetName().str();
+    const string meshName = sNode.assetName().empty() ? sNode.resourceName().c_str() : sNode.assetName().str();
     const U64 nameHash = _ID(meshName.c_str());
 
     const ResourcePath collMeshPath = Paths::g_cacheLocation + Paths::g_collisionMeshCacheLocation;
@@ -353,7 +353,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
                 const U8 lodCount = obj.getGeometryPartitionCount();
                 const U16 partitionID = obj.getGeometryPartitionID(lodCount - 1);
                 obj.computeTriangleList(partitionID);
-                const vectorEASTL<vec3<U32>>& triangles = obj.getTriangles(partitionID);
+                const vector<vec3<U32>>& triangles = obj.getTriangles(partitionID);
 
                 if (triangles.empty()) {
                     MemoryManager::DELETE(newActor);
@@ -470,7 +470,7 @@ bool PhysX::convertActor(PhysicsAsset* actor, const PhysicsGroup newGroup) {
         DIVIDE_ASSERT(newActor != nullptr);
 
         const physx::PxU32 nShapes = targetActor->_actor->getNbShapes();
-        vectorEASTL<physx::PxShape*> shapes(nShapes);
+        vector<physx::PxShape*> shapes(nShapes);
         targetActor->_actor->getShapes(shapes.data(), nShapes);
         for (physx::PxU32 i = 0; i < nShapes; ++i) {
             newActor->attachShape(*shapes[i]);
@@ -484,7 +484,7 @@ bool PhysX::convertActor(PhysicsAsset* actor, const PhysicsGroup newGroup) {
     return false;
 }
 
-bool PhysX::intersect(const Ray& intersectionRay, const vec2<F32>& range, vectorEASTL<SGNRayResult>& intersectionsOut) const {
+bool PhysX::intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const {
     return _targetScene->intersect(intersectionRay, range, intersectionsOut);
 }
 

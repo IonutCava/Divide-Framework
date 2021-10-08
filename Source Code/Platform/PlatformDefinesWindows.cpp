@@ -214,7 +214,7 @@ namespace Divide {
         PROCESS_INFORMATION pi;
         ZeroMemory(&pi, sizeof(pi));
 
-        const stringImpl commandLine = Util::StringFormat("\"%s\" %s", cmd, args);
+        const string commandLine = Util::StringFormat("\"%s\" %s", cmd, args);
         char* lpCommandLine = const_cast<char*>(commandLine.c_str());
 
         const BOOL ret = CreateProcess(nullptr, lpCommandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);

@@ -47,10 +47,10 @@ IMPLEMENT_COMMAND(ClearBufferDataCommand);
 IMPLEMENT_COMMAND(SetClippingStateCommand);
 IMPLEMENT_COMMAND(ExternalCommand);
 
-stringImpl ToString(const BindPipelineCommand& cmd, const U16 indent) {
+string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     assert(cmd._pipeline != nullptr);
 
-    stringImpl ret = "\n";
+    string ret = "\n";
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
@@ -65,8 +65,8 @@ stringImpl ToString(const BindPipelineCommand& cmd, const U16 indent) {
     return ret;
 }
 
-stringImpl ToString(const SendPushConstantsCommand& cmd, const U16 indent) {
-    stringImpl ret = "\n";
+string ToString(const SendPushConstantsCommand& cmd, const U16 indent) {
+    string ret = "\n";
 
     for (const auto& it : cmd._constants.data()) {
         ret.append("    ");
@@ -79,8 +79,8 @@ stringImpl ToString(const SendPushConstantsCommand& cmd, const U16 indent) {
     return ret;
 }
 
-stringImpl ToString(const DrawCommand& cmd, const U16 indent)  {
-    stringImpl ret = "\n";
+string ToString(const DrawCommand& cmd, const U16 indent)  {
+    string ret = "\n";
     size_t i = 0;
     for (const GenericDrawCommand& drawCmd : cmd._drawCommands) {
         ret.append("    ");
@@ -93,23 +93,23 @@ stringImpl ToString(const DrawCommand& cmd, const U16 indent)  {
     return ret;
 }
 
-stringImpl ToString(const SetViewportCommand& cmd, U16 indent) {
+string ToString(const SetViewportCommand& cmd, U16 indent) {
     return Util::StringFormat(" [%d, %d, %d, %d]", cmd._viewport.x, cmd._viewport.y, cmd._viewport.z, cmd._viewport.w);
 }
 
-stringImpl ToString(const PushViewportCommand& cmd, U16 indent) {
+string ToString(const PushViewportCommand& cmd, U16 indent) {
     return Util::StringFormat(" [%d, %d, %d, %d]", cmd._viewport.x, cmd._viewport.y, cmd._viewport.z, cmd._viewport.w);
 }
 
-stringImpl ToString(const BeginRenderPassCommand& cmd, U16 indent) {
-    return " [ " + stringImpl(cmd._name.c_str()) + " ]";
+string ToString(const BeginRenderPassCommand& cmd, U16 indent) {
+    return " [ " + string(cmd._name.c_str()) + " ]";
 }
-stringImpl ToString(const SetScissorCommand& cmd, U16 indent) {
+string ToString(const SetScissorCommand& cmd, U16 indent) {
     return Util::StringFormat(" [%d, %d, %d, %d]", cmd._rect.x, cmd._rect.y, cmd._rect.z, cmd._rect.w);
 }
 
-stringImpl ToString(const SetClipPlanesCommand& cmd, const U16 indent) {
-    stringImpl ret = "\n";
+string ToString(const SetClipPlanesCommand& cmd, const U16 indent) {
+    string ret = "\n";
 
     auto& planes = cmd._clippingPlanes.planes();
     auto& states = cmd._clippingPlanes.planeState();
@@ -129,14 +129,14 @@ stringImpl ToString(const SetClipPlanesCommand& cmd, const U16 indent) {
     return ret;
 }
 
-stringImpl ToString(const SetCameraCommand& cmd, U16 indent) {
-    stringImpl ret = "    ";
+string ToString(const SetCameraCommand& cmd, U16 indent) {
+    string ret = "    ";
     ret.append(Util::StringFormat("[ Camera position (eye): [ %5.2f %5.2f %5.2f]\n", cmd._cameraSnapshot._eye.x, cmd._cameraSnapshot._eye.y, cmd._cameraSnapshot._eye.z));
     return ret;
 }
 
-stringImpl ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
-    stringImpl ret = Util::StringFormat(" [ Buffers: %d, Textures: %d ]\n", cmd._set._buffers.count(), cmd._set._textureData.count());
+string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
+    string ret = Util::StringFormat(" [ Buffers: %d, Textures: %d ]\n", cmd._set._buffers.count(), cmd._set._textureData.count());
 
     for (U8 i = 0; i < cmd._set._buffers.count(); ++i) {
         const auto& it = cmd._set._buffers._entries[i];
@@ -178,17 +178,17 @@ stringImpl ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
     return ret;
 }
 
-stringImpl ToString(const BeginDebugScopeCommand& cmd, const U16 indent) {
-    stringImpl ret = "\n";
+string ToString(const BeginDebugScopeCommand& cmd, const U16 indent) {
+    string ret = "\n";
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
 }
-    ret.append( " [ " + stringImpl(cmd._scopeName.c_str()) + " ]");
+    ret.append( " [ " + string(cmd._scopeName.c_str()) + " ]");
     return ret;
 }
 
-stringImpl ToString(const SetTexturesResidencyCommand& cmd, const U16 indent) {
-    stringImpl ret = "\n";
+string ToString(const SetTexturesResidencyCommand& cmd, const U16 indent) {
+    string ret = "\n";
     for (const SamplerAddress& address : cmd._addresses) {
         ret.append("    ");
         for (U16 j = 0; j < indent; ++j) {
@@ -199,15 +199,15 @@ stringImpl ToString(const SetTexturesResidencyCommand& cmd, const U16 indent) {
     return ret;
 }
 
-stringImpl ToString(const DrawTextCommand& cmd, const U16 indent) {
-    stringImpl ret = "\n";
+string ToString(const DrawTextCommand& cmd, const U16 indent) {
+    string ret = "\n";
     size_t i = 0;
     for (const TextElement& element : cmd._batch.data()) {
         ret.append("    ");
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        stringImpl string;
+        string string;
         for (const auto& it : element.text()) {
             string.append(it.c_str());
             string.append("\n");
@@ -217,20 +217,20 @@ stringImpl ToString(const DrawTextCommand& cmd, const U16 indent) {
     return ret;
 }
 
-stringImpl ToString(const DispatchComputeCommand& cmd, U16 indent) {
+string ToString(const DispatchComputeCommand& cmd, U16 indent) {
     return Util::StringFormat(" [ Group sizes: %d %d %d]", cmd._computeGroupSize.x, cmd._computeGroupSize.y, cmd._computeGroupSize.z);
 }
 
-stringImpl ToString(const MemoryBarrierCommand& cmd, U16 indent) {
+string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
     return Util::StringFormat(" [ Mask: %d ]", cmd._barrierMask);
 }
 
-stringImpl ToString(const SetClippingStateCommand& cmd, U16 indent) {
+string ToString(const SetClippingStateCommand& cmd, U16 indent) {
     return Util::StringFormat(" [ Origin: %s ] [ Depth: %s ]", cmd._lowerLeftOrigin ? "LOWER_LEFT" : "UPPER_LEFT", cmd._negativeOneToOneDepth ? "-1 to 1 " : "0 to 1");
 }
 
-stringImpl ToString(const CommandBase& cmd, const U16 indent) {
-    stringImpl ret(indent, ' ');
+string ToString(const CommandBase& cmd, const U16 indent) {
+    string ret(indent, ' ');
     ret.append(cmd.Name());
 
     switch (cmd.Type()) {

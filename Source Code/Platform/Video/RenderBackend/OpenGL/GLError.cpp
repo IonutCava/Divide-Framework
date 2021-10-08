@@ -70,7 +70,7 @@ void DebugCallback(const GLenum source,
         }
 
         // Print the message and the details
-        const stringImpl outputError = Util::StringFormat(
+        const string outputError = Util::StringFormat(
             "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Program : %d][Bound Pipeline : %d][DebugGroup: %s][Message: %s]",
             userParam == nullptr ? "Main" : "Worker",
             gl_source,

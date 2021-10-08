@@ -99,7 +99,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         return _data.size();
     }
 
-    [[nodiscard]] const vectorEASTL<Vertex>& getVertices() const noexcept {
+    [[nodiscard]] const vector<Vertex>& getVertices() const noexcept {
         return _data;
     }
 
@@ -170,7 +170,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         return _indices[index];
     }
 
-    [[nodiscard]] const vectorEASTL<U32>& getIndices() const noexcept {
+    [[nodiscard]] const vector<U32>& getIndices() const noexcept {
         return _indices;
     }
 
@@ -180,7 +180,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
     }
 
     template <typename T>
-    void addIndices(const vectorEASTLFast<T>& indices, const bool containsRestartIndex) {
+    void addIndices(const vector_fast<T>& indices, const bool containsRestartIndex) {
         eastl::transform(eastl::cbegin(indices),
                          eastl::cend(indices),
                          back_inserter(_indices),
@@ -200,13 +200,13 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         addIndex(usesLargeIndices() ? PRIMITIVE_RESTART_INDEX_L : PRIMITIVE_RESTART_INDEX_S);
      }
 
-    void modifyPositionValues(const U32 indexOffset, const vectorEASTL<vec3<F32>>& newValues) {
+    void modifyPositionValues(const U32 indexOffset, const vector<vec3<F32>>& newValues) {
        assert(indexOffset + newValues.size() - 1 < _data.size());
        DIVIDE_ASSERT(_staticBuffer == false ||
            _staticBuffer == true && !_data.empty(),
            "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
-       vectorEASTL<Vertex>::iterator it = _data.begin() + indexOffset;
+       vector<Vertex>::iterator it = _data.begin() + indexOffset;
        for (const vec3<F32>& value : newValues) {
             it++->_position.set(value);
        }
@@ -379,7 +379,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
     virtual void computeTangents();
 
    protected:
-    static vectorEASTL<AttribFlags> _attribMasks;
+    static vector<AttribFlags> _attribMasks;
 
     virtual bool refresh() = 0;
     virtual bool createInternal();
@@ -396,10 +396,10 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
     /// The format of the buffer data
     GFXDataFormat _format = GFXDataFormat::UNSIGNED_SHORT;
     // first: offset, second: count
-    vectorEASTL<std::pair<size_t, size_t>> _partitions;
+    vector<std::pair<size_t, size_t>> _partitions;
     /// Used for creating an "IB". If it's empty, then an outside source should provide the indices
-    vectorEASTL<U32> _indices;
-    vectorEASTL<Vertex> _data;
+    vector<U32> _indices;
+    vector<Vertex> _data;
     /// Cache system to update only required data
     std::array<bool, to_base(AttribLocation::COUNT)> _attribDirty{};
     bool _primitiveRestartEnabled = false;;

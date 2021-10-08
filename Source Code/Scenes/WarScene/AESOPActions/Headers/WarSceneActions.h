@@ -60,7 +60,7 @@ enum class Fact : U8 {
     COUNT
 };
 
-inline stringImpl WarSceneFactName(GOAPFact fact) {
+inline string WarSceneFactName(GOAPFact fact) {
     switch (static_cast<Fact>(fact)) {
         case Fact::NEAR_ENEMY_FLAG:
             return "NEAR ENEMY FLAG";
@@ -83,7 +83,7 @@ inline stringImpl WarSceneFactName(GOAPFact fact) {
 class WarSceneAIProcessor;
 class WarSceneAction final : public GOAPAction {
    public:
-    WarSceneAction(ActionType type, const stringImpl& name, F32 cost = 1.0f);
+    WarSceneAction(ActionType type, const string& name, F32 cost = 1.0f);
     virtual ~WarSceneAction() = default;
 
     ActionType actionType() const noexcept { return _type; }

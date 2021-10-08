@@ -35,37 +35,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "TemplateAllocator.h"
 #include <string>
-namespace stringAlg = std;
 
-using stringImplFast = stringAlg::basic_string<char, stringAlg::char_traits<char>, dvd_allocator<char>>;
-using wstringImplFast = stringAlg::basic_string<wchar_t, stringAlg::char_traits<wchar_t>, dvd_allocator<wchar_t>>;
-using stringstreamImplFast = stringAlg::basic_stringstream<char, stringAlg::char_traits<char>, dvd_allocator<char>>;
-using ostringstreamImplFast = stringAlg::basic_ostringstream<char, stringAlg::char_traits<char>, dvd_allocator<char>>;
-using wstringstreamImplFast = stringAlg::basic_stringstream<wchar_t, stringAlg::char_traits<wchar_t>, dvd_allocator<wchar_t>>;
-using wostringstreamImplFast = stringAlg::basic_ostringstream<wchar_t, stringAlg::char_traits<wchar_t>, dvd_allocator<wchar_t>>;
-using istringstreamImplFast = stringAlg::basic_istringstream<char, stringAlg::char_traits<char>, dvd_allocator<char>>;
-using wistringstreamImplFast = stringAlg::basic_istringstream<wchar_t, stringAlg::char_traits<wchar_t>, dvd_allocator<wchar_t>>;
-using stringbufImplFast = stringAlg::basic_stringbuf<char, stringAlg::char_traits<char>, dvd_allocator<char>>;
-using wstringbufImplFast = stringAlg::basic_stringbuf<wchar_t, stringAlg::char_traits<wchar_t>, dvd_allocator<wchar_t>>;
-
-using stringImpl = stringAlg::basic_string<char, stringAlg::char_traits<char>, stringAlg::allocator<char>>;
-using wstringImpl = stringAlg::basic_string<wchar_t, stringAlg::char_traits<wchar_t>, stringAlg::allocator<wchar_t>>;
-using stringstreamImpl = stringAlg::basic_stringstream<char, stringAlg::char_traits<char>, stringAlg::allocator<char>>;
-using ostringstreamImpl = stringAlg::basic_ostringstream<char, stringAlg::char_traits<char>, stringAlg::allocator<char>>;
-using wstringstreamImpl = stringAlg::basic_stringstream<wchar_t, stringAlg::char_traits<wchar_t>, stringAlg::allocator<wchar_t>>;
-using wostringstreamImpl = stringAlg::basic_ostringstream<wchar_t, stringAlg::char_traits<wchar_t>, stringAlg::allocator<wchar_t>>;
-using istringstreamImpl = stringAlg::basic_istringstream<char, stringAlg::char_traits<char>, stringAlg::allocator<char>>;
-using wistringstreamImpl = stringAlg::basic_istringstream<wchar_t, stringAlg::char_traits<wchar_t>, stringAlg::allocator<wchar_t>>;
-using stringbufImpl = stringAlg::basic_stringbuf<char, stringAlg::char_traits<char>, stringAlg::allocator<char>>;
-using wstringbufImpl = stringAlg::basic_stringbuf<wchar_t, stringAlg::char_traits<wchar_t>, stringAlg::allocator<wchar_t>>;
-
-namespace std {
-    using stringSize = size_t;
+namespace Divide {
+    /// dvd_allocator uses xmalloc/xfree for memory management whereas std::allocator uses the classic new/delete pair.
+    template<bool Fast, class Elem>
+    using string_allocator = typename std::conditional<Fast, dvd_allocator<Elem>, std::allocator<Elem>>::type;
 
     //ref: http://www.gotw.ca/gotw/029.htm
-    struct ci_char_traits : char_traits<char>
-        // just inherit all the other functions
-        //  that we don't need to override
+    struct ci_char_traits : std::char_traits<char>
+        // just inherit all the other functions that we don't need to override
     {
         static bool eq(const char c1, const char c2) noexcept
         {
@@ -95,9 +73,57 @@ namespace std {
             return s;
         }
     }; //ci_string
-} //namespace std
 
-using stringImpl_IgnoreCase = stringAlg::basic_string<char, stringAlg::ci_char_traits>;
+    template<bool Fast>
+    using string_ignore_case_impl = std::basic_string<char, ci_char_traits, string_allocator<Fast, char>>;
+    template<bool Fast>
+    using wstring_ignore_case_impl = std::basic_string<wchar_t, ci_char_traits, string_allocator<Fast, wchar_t>>;
+    template<bool Fast>
+    using string_impl = std::basic_string<char, std::char_traits<char>, string_allocator<Fast, char>>;
+    template<bool Fast>
+    using wstring_impl = std::basic_string<wchar_t, std::char_traits<wchar_t>, string_allocator<Fast, wchar_t>>;
+    template<bool Fast>
+    using stringstream_impl = std::basic_stringstream<char, std::char_traits<char>, string_allocator<Fast, char>>;
+    template<bool Fast>
+    using ostringstream_imp = std::basic_ostringstream<char, std::char_traits<char>, string_allocator<Fast, char>>;
+    template<bool Fast>
+    using wstringstream_imp = std::basic_stringstream<wchar_t, std::char_traits<wchar_t>, string_allocator<Fast, wchar_t>>;
+    template<bool Fast>
+    using wostringstream_imp = std::basic_ostringstream<wchar_t, std::char_traits<wchar_t>, string_allocator<Fast, wchar_t>>;
+    template<bool Fast>
+    using istringstream_imp = std::basic_istringstream<char, std::char_traits<char>, string_allocator<Fast, char>>;
+    template<bool Fast>
+    using wistringstream_imp = std::basic_istringstream<wchar_t, std::char_traits<wchar_t>, string_allocator<Fast, wchar_t>>;
+    template<bool Fast>
+    using stringbuf_imp = std::basic_stringbuf<char, std::char_traits<char>, string_allocator<Fast, char>>;
+    template<bool Fast>
+    using wstringbuf_imp = std::basic_stringbuf<wchar_t, std::char_traits<wchar_t>, string_allocator<Fast, wchar_t>>;
 
+    using string = string_impl<false>;
+    using string_fast = string_impl<true>;
+    using string_ignore_case = string_ignore_case_impl<false>;
+    using string_ignore_case_fast = string_ignore_case_impl<true>;
+    using wstring_ignore_case = wstring_ignore_case_impl<false>;
+    using wstring_ignore_case_fast = wstring_ignore_case_impl<true>;
+    using wstring = wstring_impl<false>;
+    using wstring_fast = wstring_impl<true>;
+    using stringstream = stringstream_impl<false>;
+    using stringstream_fast = stringstream_impl<true>;
+    using ostringstream = ostringstream_imp<false>;
+    using ostringstream_fast = ostringstream_imp<true>;
+    using wstringstream = wstringstream_imp<false>;
+    using wstringstream_fast = wstringstream_imp<true>;
+    using wostringstream = wostringstream_imp<false>;
+    using wostringstream_fast = wostringstream_imp<true>;
+    using istringstream = istringstream_imp<false>;
+    using istringstream_fast = istringstream_imp<true>;
+    using wistringstream = wistringstream_imp<false>;
+    using wistringstream_fast = wistringstream_imp<true>;
+    using stringbuf = stringbuf_imp<false>;
+    using stringbuf_fast = stringbuf_imp<true>;
+    using wstringbuf = wstringbuf_imp<false>;
+    using wstringbuf_fast = wstringbuf_imp<true>;
+
+}; //namespace Divide
 #endif //_STL_STRING_H_
 

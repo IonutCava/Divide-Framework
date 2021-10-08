@@ -167,7 +167,7 @@ class WarSceneOrder final : public Order {
 struct GOAPPackage {
     GOAPWorldState _worldState;
     GOAPGoalList _goalList;
-    vectorEASTL<WarSceneAction> _actionSet;
+    vector<WarSceneAction> _actionSet;
 };
 
 namespace Attorney {
@@ -202,11 +202,11 @@ class WarSceneAIProcessor : public AIProcessor {
         _globalWorkingMemory._flags[1].value(flag2);
     }
 
-    static void registerScoreCallback(const DELEGATE<void, U8, const stringImpl&>& cbk) {
+    static void registerScoreCallback(const DELEGATE<void, U8, const string&>& cbk) {
         _scoreCallback = cbk;
     }
 
-    static void registerMessageCallback(const DELEGATE<void, U8, const stringImpl&>& cbk) {
+    static void registerMessageCallback(const DELEGATE<void, U8, const string&>& cbk) {
         _messageCallback = cbk;
     }
 
@@ -227,7 +227,7 @@ class WarSceneAIProcessor : public AIProcessor {
     bool postAction(ActionType type, const WarSceneAction* warAction);
     bool checkCurrentActionComplete(const GOAPAction& planStep);
     void invalidateCurrentPlan() override;
-    stringImpl toString(bool state = false) const override;
+    string toString(bool state = false) const override;
 
    private:
     bool DIE();
@@ -235,7 +235,7 @@ class WarSceneAIProcessor : public AIProcessor {
     void updatePositions();
     bool performAction(const GOAPAction& planStep) override;
     bool performActionStep(GOAPAction::operationsIterator step) override;
-    const stringImpl& printActionStats(const GOAPAction& planStep) const override;
+    const string& printActionStats(const GOAPAction& planStep) const override;
     void printWorkingMemory() const;
     void initInternal() override;
     void beginPlan(const GOAPGoal& currentGoal);
@@ -253,17 +253,17 @@ class WarSceneAIProcessor : public AIProcessor {
     U64 _deltaTime = 0ULL;
     U8 _visualSensorUpdateCounter = 0;
     U64 _attackTimer = 0ULL;
-    stringImpl _planStatus = "None";
-    stringImpl _tempString;
+    string _planStatus = "None";
+    string _tempString;
     VisualSensor* _visualSensor = nullptr;
     AudioSensor* _audioSensor = nullptr;
     LocalWorkingMemory _localWorkingMemory;
     /// Keep this in memory at this level
-    vectorEASTL<WarSceneAction> _actionList;
+    vector<WarSceneAction> _actionList;
     NodeToUnitMap _nodeToUnitMap[2];
     std::array<bool, to_base(ActionType::COUNT)> _actionState;
-    static DELEGATE<void, U8, const stringImpl&> _scoreCallback;
-    static DELEGATE<void, U8, const stringImpl&> _messageCallback;
+    static DELEGATE<void, U8, const string&> _scoreCallback;
+    static DELEGATE<void, U8, const string&> _messageCallback;
     static GlobalWorkingMemory _globalWorkingMemory;
     static vec3<F32> _initialFlagPositions[2];
 

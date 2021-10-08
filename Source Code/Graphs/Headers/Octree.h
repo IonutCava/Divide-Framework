@@ -47,21 +47,21 @@ struct Octree  {
 
     explicit Octree(Octree* parent, U16 nodeMask);
     explicit Octree(Octree* parent, U16 nodeMask, const BoundingBox& rootAABB);
-    explicit Octree(Octree* parent, U16 nodeMask, const BoundingBox& rootAABB, const vectorEASTL<SceneGraphNode*>& nodes);
+    explicit Octree(Octree* parent, U16 nodeMask, const BoundingBox& rootAABB, const vector<SceneGraphNode*>& nodes);
 
     void update(U64 deltaTimeUS);
     [[nodiscard]] bool addNode(SceneGraphNode* node) const;
-    [[nodiscard]] bool addNodes(const vectorEASTL<SceneGraphNode*>& nodes);
-    void getAllRegions(vectorEASTL<BoundingBox>& regionsOut) const;
+    [[nodiscard]] bool addNodes(const vector<SceneGraphNode*>& nodes);
+    void getAllRegions(vector<BoundingBox>& regionsOut) const;
 
     [[nodiscard]] const BoundingBox& getRegion() const noexcept { return _region; }
 
     void updateTree();
 
-    [[nodiscard]] vectorEASTL<IntersectionRecord> allIntersections(const Frustum& region, U16 typeFilterMask);
-    [[nodiscard]] vectorEASTL<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end);
+    [[nodiscard]] vector<IntersectionRecord> allIntersections(const Frustum& region, U16 typeFilterMask);
+    [[nodiscard]] vector<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end);
     [[nodiscard]] IntersectionRecord nearestIntersection(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
-    [[nodiscard]] vectorEASTL<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
+    [[nodiscard]] vector<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
 
 protected:
     friend class SceneGraph;
@@ -75,14 +75,14 @@ private:
     void findEnclosingBox();
     void findEnclosingCube();
 
-    [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, const vectorEASTL<SceneGraphNode*>& objects);
+    [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, const vector<SceneGraphNode*>& objects);
     [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, SceneGraphNode* object);
 
-    [[nodiscard]] vectorEASTL<IntersectionRecord> getIntersection(const Frustum& frustum, U16 typeFilterMask) const;
-    [[nodiscard]] vectorEASTL<IntersectionRecord> getIntersection(const Ray& intersectRay, F32 start, F32 end, U16 typeFilterMask) const;
+    [[nodiscard]] vector<IntersectionRecord> getIntersection(const Frustum& frustum, U16 typeFilterMask) const;
+    [[nodiscard]] vector<IntersectionRecord> getIntersection(const Ray& intersectRay, F32 start, F32 end, U16 typeFilterMask) const;
 
     [[nodiscard]] size_t getTotalObjectCount() const;
-    void updateIntersectionCache(vectorEASTL<SceneGraphNode*>& parentObjects);
+    void updateIntersectionCache(vector<SceneGraphNode*>& parentObjects);
     
     void handleIntersection(const IntersectionRecord& intersection) const;
     [[nodiscard]] bool getIntersection(SceneGraphNode* node, const Frustum& frustum, IntersectionRecord& irOut) const;
@@ -91,9 +91,9 @@ private:
     
 
 private:
-    vectorEASTL<SceneGraphNode*> _objects;
+    vector<SceneGraphNode*> _objects;
     moodycamel::ConcurrentQueue<SceneGraphNode*> _movedObjects;
-    vectorEASTL<IntersectionRecord> _intersectionsCache;
+    vector<IntersectionRecord> _intersectionsCache;
     BoundingBox _region;
     Octree* _parent = nullptr;
     I32 _curLife = -1;
@@ -101,12 +101,12 @@ private:
     U16 _nodeExclusionMask = 0u;
 
     std::array<bool, 8> _activeNodes = {};
-    vectorEASTL<Octree> _childNodes = {};
+    vector<Octree> _childNodes = {};
 
     //ToDo: make this work in a multi-threaded environment
     mutable I8 _frustPlaneCache = -1;
 
-    static vectorEASTL<SceneGraphNode*> s_intersectionsObjectCache;
+    static vector<SceneGraphNode*> s_intersectionsObjectCache;
     static eastl::queue<SceneGraphNode*> s_pendingInsertion;
     static Mutex s_pendingInsertLock;
     static bool s_treeReady;

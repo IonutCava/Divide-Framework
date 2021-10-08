@@ -218,7 +218,7 @@ namespace Divide {
         Attorney::EditorGizmo::renderDrawList(_parent, ImGui::GetDrawData(), targetViewport, -1, bufferInOut);
     }
 
-    void Gizmo::updateSelections(const vectorEASTL<SceneGraphNode*>& nodes) {
+    void Gizmo::updateSelections(const vector<SceneGraphNode*>& nodes) {
          _selectedNodes.resize(0);
          for (SceneGraphNode* node : nodes) {
             if (node->get<TransformComponent>() != nullptr) {

@@ -84,8 +84,8 @@ U64 ProfileTimer::getChildTotal() const {
     return ret;
 }
 
-stringImpl ProfileTimer::print(const U32 level) const {
-    stringImpl ret(Util::StringFormat("[ %s ] : [ %5.3f ms]",
+string ProfileTimer::print(const U32 level) const {
+    string ret(Util::StringFormat("[ %s ] : [ %5.3f ms]",
                                         _name.c_str(),
                                         MicrosecondsToMilliseconds<F32>(get())));
     for (const U32 child : _children) {
@@ -116,8 +116,8 @@ U64 ProfileTimer::overhead() {
     return overhead / overheadLoopCount;
 }
 
-stringImpl ProfileTimer::printAll() {
-    stringImpl ret(Util::StringFormat("Profiler overhead: [%d us]\n", overhead()));
+string ProfileTimer::printAll() {
+    string ret(Util::StringFormat("Profiler overhead: [%d us]\n", overhead()));
 
     for (ProfileTimer& entry : g_profileTimers) {
         if (!g_profileTimersState[entry._globalIndex] ||

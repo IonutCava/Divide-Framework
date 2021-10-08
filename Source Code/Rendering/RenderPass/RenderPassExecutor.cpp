@@ -520,8 +520,8 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params, con
         sQueue.reserve(Config::MAX_VISIBLE_NODES);
     }
 
-    static const vectorEASTL<RenderBinType> allBins{};
-    static const vectorEASTL<RenderBinType> prePassBins{
+    static const vector<RenderBinType> allBins{};
+    static const vector<RenderBinType> prePassBins{
          RenderBinType::OPAQUE,
          RenderBinType::IMPOSTOR,
          RenderBinType::TERRAIN,

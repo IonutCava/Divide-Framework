@@ -68,7 +68,7 @@ namespace GLMemory{
         PROPERTY_RW(MapBufferAccessMask, accessMask, MapBufferAccessMask::GL_NONE_BIT);
 
     protected:
-        vectorEASTL<Block> _blocks;
+        vector<Block> _blocks;
         Byte* _ptr = nullptr;
         size_t _size = 0u;
         GLuint _bufferHandle = 0u;
@@ -112,7 +112,7 @@ namespace GLMemory{
 
     private:
         std::unique_ptr<ChunkAllocator> _chunkAllocator = nullptr;
-        vectorEASTL<std::shared_ptr<Chunk>> _chunks;
+        vector<std::shared_ptr<Chunk>> _chunks;
     };
 } // namespace GLMemory
 

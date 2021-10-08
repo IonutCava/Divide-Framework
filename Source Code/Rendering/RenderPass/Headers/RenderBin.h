@@ -100,13 +100,13 @@ enum class RenderQueueListType : U8 {
 };
 
 class RenderBin;
-using RenderQueuePackages = vectorEASTLFast<RenderPackage*>;
+using RenderQueuePackages = vector_fast<RenderPackage*>;
 
 /// This class contains a list of "RenderBinItem"'s and stores them sorted depending on designation
 class RenderBin {
    public:
     using RenderBinStack = eastl::array<RenderBinItem, Config::MAX_VISIBLE_NODES>;
-    using SortedQueue = vectorEASTL<std::pair<RenderingComponent*, NodeDataIdx>>;
+    using SortedQueue = vector<std::pair<RenderingComponent*, NodeDataIdx>>;
     using SortedQueues = std::array<SortedQueue, to_base(RenderBinType::COUNT)>;
 
     friend class RenderQueue;

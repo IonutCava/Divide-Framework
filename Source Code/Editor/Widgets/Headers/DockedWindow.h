@@ -43,7 +43,7 @@ class DockedWindow : NonCopyable, NonMovable {
             ImVec2 position;
             ImVec2 minSize = ImVec2(0, 0);
             ImVec2 maxSize = ImVec2(FLT_MAX, FLT_MAX);
-            stringImpl name;
+            string name;
             ImGuiWindowFlags flags = 0;
         };
 

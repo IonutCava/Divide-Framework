@@ -36,7 +36,7 @@ namespace Divide {
     void TransformSystem::Update(const F32 dt) {
         OPTICK_EVENT();
 
-        static vectorEASTL<std::pair<TransformComponent*, U32>> events;
+        static vector<std::pair<TransformComponent*, U32>> events;
 
         Parent::Update(dt);
 

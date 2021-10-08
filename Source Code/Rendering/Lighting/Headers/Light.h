@@ -40,7 +40,7 @@ namespace Divide {
 
 namespace TypeUtil {
     const char* LightTypeToString(LightType lightType) noexcept;
-    LightType StringToLightType(const stringImpl& name);
+    LightType StringToLightType(const string& name);
 };
 
 struct TransformUpdated;

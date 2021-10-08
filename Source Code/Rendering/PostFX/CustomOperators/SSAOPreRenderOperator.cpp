@@ -20,9 +20,9 @@ namespace {
     constexpr U8 SSAO_BLUR_SIZE = SSAO_NOISE_SIZE / 2;
     constexpr U8 MAX_KERNEL_SIZE = 64;
     constexpr U8 MIN_KERNEL_SIZE = 8;
-    vectorEASTL<vec4<F32>> g_kernels;
+    vector<vec4<F32>> g_kernels;
 
-    [[nodiscard]] const vectorEASTL<vec4<F32>>& ComputeKernel(const U8 sampleCount) {
+    [[nodiscard]] const vector<vec4<F32>>& ComputeKernel(const U8 sampleCount) {
         g_kernels.resize(sampleCount);
         for (U16 i = 0; i < sampleCount; ++i) {
             vec3<F32>& k = g_kernels[i].xyz;

@@ -7,7 +7,7 @@
 namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
-vectorEASTL<AttribFlags> VertexBuffer::_attribMasks;
+vector<AttribFlags> VertexBuffer::_attribMasks;
 
 VertexBuffer::VertexBuffer(GFXDevice& context)
     : VertexDataInterface(context)
@@ -42,7 +42,7 @@ void VertexBuffer::computeNormals() {
     const size_t vertCount = getVertexCount();
     const size_t indexCount = getIndexCount();
 
-    vectorEASTL<vec3<F32>> normalBuffer(vertCount, 0.0f);
+    vector<vec3<F32>> normalBuffer(vertCount, 0.0f);
     for (U32 i = 0; i < indexCount; i += 3) {
 
         const U32 idx0 = getIndex(i + 0);

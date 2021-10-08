@@ -28,7 +28,7 @@ namespace {
 }
 
 namespace detail {
-    bool LoadSave::read(const stringImpl& path, const stringImpl& rootNode) {
+    bool LoadSave::read(const string& path, const string& rootNode) {
         _loadPath = path;
         _rootNodePath = rootNode;
 
@@ -36,7 +36,7 @@ namespace detail {
         return !XmlTree.empty();
     }
 
-    bool LoadSave::prepareSaveFile(const stringImpl& path) const {
+    bool LoadSave::prepareSaveFile(const string& path) const {
         _savePath = path;
         return createFile(_savePath.c_str(), true);
     }
@@ -50,7 +50,7 @@ namespace detail {
 }
 
 void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& entryOut) {
-    static vectorEASTL<std::string> modifiersOut, actionsUpOut, actionsDownOut;
+    static vector<std::string> modifiersOut, actionsUpOut, actionsDownOut;
 
     entryOut.clear();
     modifiersOut.resize(0);
@@ -61,7 +61,7 @@ void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& 
 
     const std::string modifiers = attributes.get<std::string>("modifier", "");
     if (!modifiers.empty()) {
-        Util::Split<vectorEASTL<std::string>, std::string>(modifiers.c_str(), ',', modifiersOut);
+        Util::Split<vector<std::string>, std::string>(modifiers.c_str(), ',', modifiersOut);
         for (const auto& it : modifiersOut) {
             for (U8 i = 0; i < to_base(PressReleaseActions::Modifier::COUNT); ++i) {
                 if (it == PressReleaseActions::s_modifierNames[i]) {
@@ -74,7 +74,7 @@ void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& 
 
     const std::string actionsUp = attributes.get<std::string>("actionUp", "");
     if (!actionsUp.empty()) {
-        Util::Split<vectorEASTL<std::string>, std::string>(actionsUp.c_str(), ',', actionsUpOut);
+        Util::Split<vector<std::string>, std::string>(actionsUp.c_str(), ',', actionsUpOut);
         for (const auto& it : actionsUpOut) {
             if (!it.empty()) {
                 std::stringstream ss(Util::Trim(it));
@@ -88,7 +88,7 @@ void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& 
 
     const std::string actionsDown = attributes.get<std::string>("actionDown", "");
     if (!actionsDown.empty()) {
-        Util::Split<vectorEASTL<std::string>, std::string>(actionsDown.c_str(), ',', actionsDownOut);
+        Util::Split<vector<std::string>, std::string>(actionsDown.c_str(), ',', actionsDownOut);
         for (const auto& it : actionsDownOut) {
             if (!it.empty()) {
                 std::stringstream ss(Util::Trim(it));
@@ -101,7 +101,7 @@ void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& 
     }
 }
 
-void loadDefaultKeyBindings(const stringImpl &file, Scene* scene) {
+void loadDefaultKeyBindings(const string &file, Scene* scene) {
     ptree pt;
     Console::printfn(Locale::Get(_ID("XML_LOAD_DEFAULT_KEY_BINDINGS")), file.c_str());
     read_xml(file, pt);
@@ -109,7 +109,7 @@ void loadDefaultKeyBindings(const stringImpl &file, Scene* scene) {
     for(const auto & [tag, data] : pt.get_child("actions", g_emptyPtree))
     {
         const ptree & attributes = data.get_child("<xmlattr>", g_emptyPtree);
-        scene->input()->actionList().getInputAction(attributes.get<U16>("id", 0)).displayName(attributes.get<stringImpl>("name", "").c_str());
+        scene->input()->actionList().getInputAction(attributes.get<U16>("id", 0)).displayName(attributes.get<string>("name", "").c_str());
     }
 
     PressReleaseActions::Entry entry = {};
@@ -141,7 +141,7 @@ void loadDefaultKeyBindings(const stringImpl &file, Scene* scene) {
         scene->input()->addMouseMapping(btn, entry);
     }
 
-    const stringImpl label("joystickButtons.joystick");
+    const string label("joystickButtons.joystick");
     for (U32 i = 0 ; i < to_base(Input::Joystick::COUNT); ++i) {
         const Input::Joystick joystick = static_cast<Input::Joystick>(i);
         
@@ -164,7 +164,7 @@ void loadDefaultKeyBindings(const stringImpl &file, Scene* scene) {
 void loadMusicPlaylist(const Str256& scenePath, const Str64& fileName, Scene* const scene, const Configuration& config) {
     ACKNOWLEDGE_UNUSED(config);
 
-    const stringImpl file = (scenePath + "/" + fileName).c_str();
+    const string file = (scenePath + "/" + fileName).c_str();
 
     if (!fileExists(file.c_str())) {
         return;
@@ -177,18 +177,18 @@ void loadMusicPlaylist(const Str256& scenePath, const Str64& fileName, Scene* co
     {
         const ptree & attributes = data.get_child("<xmlattr>", g_emptyPtree);
         scene->addMusic(MusicType::TYPE_BACKGROUND,
-                        attributes.get<stringImpl>("name", "").c_str(),
-                        Paths::g_assetsLocation + attributes.get<stringImpl>("src", ""));
+                        attributes.get<string>("name", "").c_str(),
+                        Paths::g_assetsLocation + attributes.get<string>("src", ""));
     }
 }
 
-void writeXML(const stringImpl& path, const ptree& tree) {
+void writeXML(const string& path, const ptree& tree) {
     static boost::property_tree::xml_writer_settings<std::string> settings(' ', 4);
 
     write_xml(path, tree, std::locale(), settings);
 }
 
-void readXML(const stringImpl& path, ptree& tree) {
+void readXML(const string& path, ptree& tree) {
     try {
         read_xml(path, tree);
     } catch (const boost::property_tree::xml_parser_error& e) {

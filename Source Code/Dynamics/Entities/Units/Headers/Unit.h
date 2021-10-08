@@ -61,7 +61,7 @@ namespace Names {
 
 namespace TypeUtil {
     const char* UnitTypeToString(UnitType unitType) noexcept;
-    UnitType StringToUnitType(const stringImpl& name);
+    UnitType StringToUnitType(const string& name);
 }
 
 /// Unit interface

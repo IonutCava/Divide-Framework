@@ -56,7 +56,7 @@ ShaderBuffer* Vegetation::s_grassData = nullptr;
 VertexBuffer* Vegetation::s_buffer = nullptr;
 ShaderProgram_ptr Vegetation::s_cullShaderGrass = nullptr;
 ShaderProgram_ptr Vegetation::s_cullShaderTrees = nullptr;
-vectorEASTL<Mesh_ptr> Vegetation::s_treeMeshes;
+vector<Mesh_ptr> Vegetation::s_treeMeshes;
 std::atomic_uint Vegetation::s_bufferUsage = 0;
 U32 Vegetation::s_maxChunks = 0u;
 std::array<U16, 3> Vegetation::s_lodPartitions;
@@ -240,7 +240,7 @@ void Vegetation::precomputeStaticData(GFXDevice& gfxDevice, const U32 chunkSize,
             }
         };
 
-        vectorEASTL<vec3<F32>> vertices{};
+        vector<vec3<F32>> vertices{};
 
         constexpr U8 billboardsPlaneCount = to_U8(sizeof(transform) / sizeof(transform[0]));
         vertices.reserve(billboardsPlaneCount * 4);
@@ -857,10 +857,10 @@ void Vegetation::computeVegetationTransforms(bool treeData) {
     const Terrain& terrain = _terrainChunk.parent();
     const U32 ID = _terrainChunk.ID();
 
-    const stringImpl cacheFileName = Util::StringFormat("%s_%s_%s_%d.cache", terrain.resourceName().c_str(), resourceName().c_str(), treeData ? "trees" : "grass", ID);
+    const string cacheFileName = Util::StringFormat("%s_%s_%s_%d.cache", terrain.resourceName().c_str(), resourceName().c_str(), treeData ? "trees" : "grass", ID);
     Console::printfn(Locale::Get(treeData ? _ID("CREATE_TREE_START") : _ID("CREATE_GRASS_BEGIN")), ID);
 
-    vectorEASTL<VegetationData>& container = treeData ? _tempTreeData : _tempGrassData;
+    vector<VegetationData>& container = treeData ? _tempTreeData : _tempGrassData;
 
     ByteBuffer chunkCache;
     if (_context.context().config().debug.useVegetationCache && chunkCache.loadFromFile((Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), cacheFileName.c_str())) {

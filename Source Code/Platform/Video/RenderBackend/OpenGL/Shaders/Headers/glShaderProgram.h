@@ -89,30 +89,30 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     void uploadPushConstants(const PushConstants& constants);
 
     static void OnAtomChange(std::string_view atomName, FileUpdateEvent evt);
-    static const stringImpl& ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vectorEASTL<ResourcePath>& foundAtoms, bool& wasParsed);
-    static const stringImpl& ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vectorEASTL<ResourcePath>& foundAtoms, bool& wasParsed);
+    static const string& ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed);
+    static const string& ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed);
 
     static bool ShaderFileRead(const ResourcePath& filePath, const ResourcePath& fileName, eastl::string& sourceCodeOut);
     static bool ShaderFileWrite(const ResourcePath& filePath, const ResourcePath& fileName, const char* sourceCode);
     static eastl::string PreprocessIncludes(const ResourcePath& name,
                                             const eastl::string& source,
                                             GLint level,
-                                            vectorEASTL<ResourcePath>& foundAtoms,
+                                            vector<ResourcePath>& foundAtoms,
                                             bool lock);
 
-    static eastl::string GatherUniformDeclarations(const eastl::string& source, vectorEASTL<UniformDeclaration>& foundUniforms);
+    static eastl::string GatherUniformDeclarations(const eastl::string& source, vector<UniformDeclaration>& foundUniforms);
 
-    static void QueueShaderWriteToFile(const stringImpl& sourceCode, const Str256& fileName);
+    static void QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName);
   protected:
    struct AtomUniformPair {
-       vectorEASTL<ResourcePath> _atoms;
-       vectorEASTL<UniformDeclaration> _uniforms;
+       vector<ResourcePath> _atoms;
+       vector<UniformDeclaration> _uniforms;
    };
 
     /// return a list of atom names
    AtomUniformPair loadSourceCode(const Str128& stageName,
                                   const Str8& extension,
-                                  const stringImpl& header,
+                                  const string& header,
                                   size_t definesHash,
                                   bool reloadExisting,
                                   Str256& fileNameOut,
@@ -146,7 +146,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
 
     bool _validationQueued = false;
     bool _hasUniformBlockBuffer = false;
-    vectorEASTL<glShader*> _shaderStage;
+    vector<glShader*> _shaderStage;
 
     static I64 s_shaderFileWatcherID;
 

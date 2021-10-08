@@ -78,7 +78,7 @@ bool DebugInterface::enabled() const noexcept {
     return _enabled;
 }
 
-const stringImpl& DebugInterface::output() const noexcept {
+const string& DebugInterface::output() const noexcept {
     return _output;
 }
 

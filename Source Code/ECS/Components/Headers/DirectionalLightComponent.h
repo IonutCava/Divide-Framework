@@ -50,7 +50,7 @@ BEGIN_COMPONENT_EXT1(DirectionalLight, ComponentType::DIRECTIONAL_LIGHT, Light)
     void setDirection(const vec3<F32>& direction);
 
     // Quick hack to store previous frame's culling results
-    [[nodiscard]] vectorEASTL<FeedBackContainer>& feedBackContainers() noexcept { return _feedbackContainers; }
+    [[nodiscard]] vector<FeedBackContainer>& feedBackContainers() noexcept { return _feedbackContainers; }
 
     PROPERTY_RW(U8, csmSplitCount, 3u);
     /// CSM extra back up distance for light position
@@ -67,7 +67,7 @@ protected:
 
 protected:
     //Used to adjust ortho-matrix's near/far planes per pass
-    vectorEASTL<FeedBackContainer> _feedbackContainers;
+    vector<FeedBackContainer> _feedbackContainers;
 END_COMPONENT(DirectionalLight);
 
 }  // namespace Divide

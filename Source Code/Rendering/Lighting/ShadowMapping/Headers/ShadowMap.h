@@ -110,19 +110,19 @@ class NOINITVTABLE ShadowMap {
 
     static void setMSAASampleCount(ShadowType type, U8 sampleCount);
 
-    static vectorEASTL<Camera*>& shadowCameras(const ShadowType type) noexcept { return s_shadowCameras[to_base(type)]; }
+    static vector<Camera*>& shadowCameras(const ShadowType type) noexcept { return s_shadowCameras[to_base(type)]; }
 
   protected:
-    using LayerUsageMask = vectorEASTL<bool>;
+    using LayerUsageMask = vector<bool>;
     static Mutex s_depthMapUsageLock;
     static std::array<LayerUsageMask, to_base(ShadowType::COUNT)> s_depthMapUsage;
     static std::array<ShadowMapGenerator*, to_base(ShadowType::COUNT)> s_shadowMapGenerators;
 
     static std::array<RenderTargetHandle, to_base(ShadowType::COUNT)> s_shadowMaps;
-    static vectorEASTL<DebugView_ptr> s_debugViews;
+    static vector<DebugView_ptr> s_debugViews;
 
     static Light* s_shadowPreviewLight;
-    using ShadowCameraPool = vectorEASTL<Camera*>;
+    using ShadowCameraPool = vector<Camera*>;
     static std::array<U16, to_base(ShadowType::COUNT)> s_shadowPassIndex;
     static std::array<ShadowCameraPool, to_base(ShadowType::COUNT)> s_shadowCameras;
 };

@@ -67,7 +67,7 @@ void AnimationComponent::resetTimers() noexcept {
 }
 
 /// Select an animation by name
-bool AnimationComponent::playAnimation(const stringImpl& name) {
+bool AnimationComponent::playAnimation(const string& name) {
     if (!_animator) {
         return false;
     }
@@ -134,7 +134,7 @@ bool AnimationComponent::playPreviousAnimation() {
     return oldIndex != _currentAnimIndex;
 }
 
-const vectorEASTL<Line>& AnimationComponent::skeletonLines() const {
+const vector<Line>& AnimationComponent::skeletonLines() const {
     assert(_animator != nullptr);
 
     const D64 animTimeStamp = Time::MillisecondsToSeconds<D64>(_currentTimeStamp);

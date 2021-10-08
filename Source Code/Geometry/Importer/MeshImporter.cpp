@@ -150,7 +150,7 @@ namespace Import {
     bool MaterialData::serialize(ByteBuffer& dataOut) const {
         dataOut << _ignoreTexDiffuseAlpha;
         dataOut << _doubleSided;
-        dataOut << stringImpl(_name.c_str());
+        dataOut << string(_name.c_str());
         dataOut << to_U32(_shadingMode);
         dataOut << to_U32(_bumpMethod);
         dataOut << baseColour();
@@ -173,7 +173,7 @@ namespace Import {
     bool MaterialData::deserialize(ByteBuffer& dataIn) {
         FColour3 tempColourRGB = {};
         FColour4 tempColourRGBA = {};
-        stringImpl tempStr = "";
+        string tempStr = "";
         U32 temp = {};
         F32 temp2 = {};
 

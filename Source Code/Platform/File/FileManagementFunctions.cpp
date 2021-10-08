@@ -31,7 +31,7 @@ FileError writeFile(const char* filePath, const char* fileName, const char* cont
             return FileError::FILE_NOT_FOUND;
         }
 
-        std::ofstream outputFile(stringImpl{ filePath } +fileName,
+        std::ofstream outputFile(string{ filePath } +fileName,
                                  fileType == FileType::BINARY
                                            ? std::ios::out | std::ios::binary
                                            : std::ios::out);
@@ -48,8 +48,8 @@ FileError writeFile(const char* filePath, const char* fileName, const char* cont
     return FileError::FILE_NOT_FOUND;
 }
 
-stringImpl stripQuotes(const char* input) {
-    stringImpl ret = input;
+string stripQuotes(const char* input) {
+    string ret = input;
 
     if (!ret.empty()) {
         ret.erase(std::remove(std::begin(ret), std::end(ret), '\"'), std::end(ret));
@@ -133,7 +133,7 @@ bool fileExists(const char* filePathAndName) {
 }
 
 bool fileExists(const char* filePath, const char* fileName) {
-    return is_regular_file(std::filesystem::path(stringImpl{ filePath } + fileName));
+    return is_regular_file(std::filesystem::path(string{ filePath } + fileName));
 }
 
 bool createFile(const char* filePathAndName, const bool overwriteExisting) {
@@ -170,7 +170,7 @@ FileError openFile(const char* cmd, const char* filePath, const char* fileName) 
         "//", "\\"
     };
 
-    const stringImpl file = "\"" + Util::ReplaceString(
+    const string file = "\"" + Util::ReplaceString(
         ResourcePath{ const_sysInfo()._workingDirectory + filePath + fileName }.str(),
         searchPattern, 
         "/", 
@@ -193,7 +193,7 @@ FileError deleteFile(const char* filePath, const char* fileName) {
     if (Util::IsEmptyOrNull(fileName)) {
         return FileError::FILE_NOT_FOUND;
     }
-    const std::filesystem::path file(stringImpl{ filePath } +fileName);
+    const std::filesystem::path file(string{ filePath } +fileName);
     if (std::filesystem::remove(file)) {
         return FileError::NONE;
     }
@@ -209,14 +209,14 @@ FileError copyFile(const char* sourcePath, const char* sourceName, const char* t
     if (Util::IsEmptyOrNull(sourceName) || Util::IsEmptyOrNull(targetName)) {
         return FileError::FILE_NOT_FOUND;
     }
-    stringImpl source{ sourcePath };
+    string source{ sourcePath };
     source.append(sourceName);
 
     if (!fileExists(source.c_str())) {
         return FileError::FILE_NOT_FOUND;
     }
 
-    stringImpl target{ targetPath };
+    string target{ targetPath };
     target.append(targetName);
 
     if (!overwrite && fileExists(target.c_str())) {
@@ -232,11 +232,11 @@ FileError copyFile(const char* sourcePath, const char* sourceName, const char* t
     return FileError::FILE_COPY_ERROR;
 }
 
-FileError findFile(const ResourcePath& filePath, const char* fileName, stringImpl& foundPath) {
+FileError findFile(const ResourcePath& filePath, const char* fileName, string& foundPath) {
     return findFile(filePath.c_str(), fileName, foundPath);
 }
 
-FileError findFile(const char* filePath, const char* fileName, stringImpl& foundPath) {
+FileError findFile(const char* filePath, const char* fileName, string& foundPath) {
     const std::filesystem::path dir_path(filePath);
     std::filesystem::path file_name(fileName);
 
@@ -260,7 +260,7 @@ bool hasExtension(const ResourcePath& filePath, const Str16& extension) {
 
 bool hasExtension(const char* filePath, const Str16& extension) {
     const Str16 ext("." + extension);
-    return Util::CompareIgnoreCase(Util::GetTrailingCharacters(stringImplFast{ filePath }, ext.length()), ext);
+    return Util::CompareIgnoreCase(Util::GetTrailingCharacters(string_fast{ filePath }, ext.length()), ext);
 }
 
 bool deleteAllFiles(const ResourcePath& filePath, const char* extension) {

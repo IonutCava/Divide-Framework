@@ -27,7 +27,7 @@ namespace Divide {
         bool s_onlyVisibleNodes = false;
         constexpr U8 g_maxEntryCount = 32;
         eastl::deque<F32> g_framerateBuffer;
-        vectorEASTL<F32> g_framerateBufferCont;
+        vector<F32> g_framerateBufferCont;
         SceneNodeType g_currentNodeType = SceneNodeType::TYPE_TRANSFORM;
         SceneGraphNodeDescriptor g_nodeDescriptor;
         std::shared_ptr<ParticleData> g_particleEmitterData = nullptr;
@@ -229,7 +229,7 @@ namespace Divide {
         ImGui::Text("All scenes");
         ImGui::Separator();
 
-        const vectorEASTL<Str256>& scenes = sceneManager->sceneNameList();
+        const vector<Str256>& scenes = sceneManager->sceneNameList();
         for (const Str256& scene : scenes) {
             if (scene != activeScene.resourceName()) {
                 if (ImGui::TreeNodeEx(scene.c_str(), ImGuiTreeNodeFlags_Leaf)) {

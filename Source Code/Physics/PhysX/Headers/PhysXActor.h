@@ -102,7 +102,7 @@ protected:
 
     physx::PxRigidActor* _actor = nullptr;
     physx::PxGeometryType::Enum _type = physx::PxGeometryType::eINVALID;
-    stringImpl _actorName;
+    string _actorName;
     F32 _userData = 0.0f;
 
     mat4<F32> _cachedLocalMatrix;

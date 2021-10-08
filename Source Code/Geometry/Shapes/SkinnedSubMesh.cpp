@@ -47,7 +47,7 @@ void SkinnedSubMesh::buildBoundingBoxesForAnim(const Task& parentTask,
         return;
     }
 
-    const vectorEASTL<BoneTransform>& currentAnimation = animComp->getAnimationByIndex(animationIndex).transforms();
+    const vector<BoneTransform>& currentAnimation = animComp->getAnimationByIndex(animationIndex).transforms();
 
     VertexBuffer* parentVB = _parentMesh->getGeometryVB();
     const size_t partitionOffset = parentVB->getPartitionOffset(_geometryPartitionIDs[0]);

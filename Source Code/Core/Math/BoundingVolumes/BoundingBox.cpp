@@ -24,7 +24,7 @@ BoundingBox::BoundingBox(const F32 minX, const F32 minY, const F32 minZ, const F
 {
 }
 
-BoundingBox::BoundingBox(const vectorEASTL<vec3<F32>>& points) noexcept
+BoundingBox::BoundingBox(const vector<vec3<F32>>& points) noexcept
     : BoundingBox()
 {
     createFromPoints(points);

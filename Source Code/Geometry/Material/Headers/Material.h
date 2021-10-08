@@ -88,19 +88,19 @@ constexpr U8 g_ExtraSlots[] = {
 
 namespace TypeUtil {
     const char* MaterialDebugFlagToString(const MaterialDebugFlag unitType) noexcept;
-    MaterialDebugFlag StringToMaterialDebugFlag(const stringImpl& name);
+    MaterialDebugFlag StringToMaterialDebugFlag(const string& name);
 
     const char* ShadingModeToString(ShadingMode shadingMode) noexcept;
-    ShadingMode StringToShadingMode(const stringImpl& name);
+    ShadingMode StringToShadingMode(const string& name);
 
     const char* TextureUsageToString(TextureUsage texUsage) noexcept;
-    TextureUsage StringToTextureUsage(const stringImpl& name);
+    TextureUsage StringToTextureUsage(const string& name);
 
     const char* TextureOperationToString(TextureOperation textureOp) noexcept;
-    TextureOperation StringToTextureOperation(const stringImpl& operation);
+    TextureOperation StringToTextureOperation(const string& operation);
 
     const char* BumpMethodToString(BumpMethod bumpMethod) noexcept;
-    BumpMethod StringToBumpMethod(const stringImpl& name);
+    BumpMethod StringToBumpMethod(const string& name);
 };
 
 class Material final : public CachedResource {
@@ -210,8 +210,8 @@ class Material final : public CachedResource {
 
     bool canDraw(const RenderStagePass& renderStagePass, bool& shaderJustFinishedLoading);
 
-    void saveToXML(const stringImpl& entryName, boost::property_tree::ptree& pt) const;
-    void loadFromXML(const stringImpl& entryName, const boost::property_tree::ptree& pt);
+    void saveToXML(const string& entryName, boost::property_tree::ptree& pt) const;
+    void loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
 
     // type == ShaderType::Count = add to all stages
     void addShaderDefine(ShaderType type, const Str128& define, bool addPrefix);
@@ -242,11 +242,11 @@ class Material final : public CachedResource {
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Material"; }
 
-    void saveRenderStatesToXML(const stringImpl& entryName, boost::property_tree::ptree& pt) const;
-    void loadRenderStatesFromXML(const stringImpl& entryName, const boost::property_tree::ptree& pt);
+    void saveRenderStatesToXML(const string& entryName, boost::property_tree::ptree& pt) const;
+    void loadRenderStatesFromXML(const string& entryName, const boost::property_tree::ptree& pt);
 
-    void saveTextureDataToXML(const stringImpl& entryName, boost::property_tree::ptree& pt) const;
-    void loadTextureDataFromXML(const stringImpl& entryName, const boost::property_tree::ptree& pt);
+    void saveTextureDataToXML(const string& entryName, boost::property_tree::ptree& pt) const;
+    void loadTextureDataFromXML(const string& entryName, const boost::property_tree::ptree& pt);
 
     PROPERTY_RW(bool, ignoreXMLData, false);
     PROPERTY_RW(ShaderData, baseShaderData);
@@ -317,7 +317,7 @@ class Material final : public CachedResource {
     I32 _textureKeyCache = -1;
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> _extraShaderDefines{};
 
-    vectorEASTL<Material*> _instances{};
+    vector<Material*> _instances{};
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);

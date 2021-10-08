@@ -12,7 +12,7 @@ namespace TypeUtil {
         return Names::unitType[to_base(unitType)];
     }
 
-    UnitType StringToUnitType(const stringImpl& name) {
+    UnitType StringToUnitType(const string& name) {
         for (U8 i = 0; i < to_U8(UnitType::COUNT); ++i) {
             if (strcmp(name.c_str(), Names::unitType[i]) == 0) {
                 return static_cast<UnitType>(i);

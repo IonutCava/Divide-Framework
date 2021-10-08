@@ -40,7 +40,7 @@ namespace Divide {
 class RenderTarget;
 class RTAttachmentPool {
 public:
-    using PoolEntry = vectorEASTLFast<RTAttachment_ptr>;
+    using PoolEntry = vector_fast<RTAttachment_ptr>;
     using AttachmentPool = std::array<PoolEntry, to_base(RTAttachmentType::COUNT)>;
 
 public:

@@ -13,7 +13,7 @@ namespace {
     constexpr size_t g_MinZeroDataSize = 1 * 1024; //1Kb
     constexpr I32 g_maxFlushQueueLength = 16;
 
-    vectorEASTL<Byte> g_zeroMemData(g_MinZeroDataSize, Byte{ 0 });
+    vector<Byte> g_zeroMemData(g_MinZeroDataSize, Byte{ 0 });
 };
 
 glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)

@@ -27,9 +27,9 @@ namespace ECS { namespace Event {
 		// allow IEventListener access private methods for Add/Remove callbacks
 		friend class ECS::ECSEngine;
 
-		using EventDispatcherMap = hashMap<EventTypeId, Internal::IEventDispatcher*>;
+		using EventDispatcherMap = Divide::hashMap<EventTypeId, Internal::IEventDispatcher*>;
 	
-		using EventStorage = vectorEASTL<IEvent*>;
+		using EventStorage = Divide::vector<IEvent*>;
 	
 		using EventMemoryAllocator = Memory::Allocator::LinearAllocator;
 	

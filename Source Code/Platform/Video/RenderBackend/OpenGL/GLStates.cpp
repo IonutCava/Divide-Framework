@@ -23,7 +23,7 @@ bool GL_API::s_UseBindlessTextures = false;
 SharedMutex GL_API::s_mipmapQueueSetLock;
 eastl::unordered_set<GLuint> GL_API::s_mipmapQueue;
 
-vectorEASTL<GL_API::ResidentTexture> GL_API::s_residentTextures;
+vector<GL_API::ResidentTexture> GL_API::s_residentTextures;
 
 SharedMutex GL_API::s_samplerMapLock;
 GL_API::SamplerObjectMap GL_API::s_samplerMap;

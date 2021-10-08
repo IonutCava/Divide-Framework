@@ -158,7 +158,7 @@ protected:
     CommandType EType = CommandType::COUNT;
 };
 
-stringImpl ToString(const CommandBase& cmd, U16 indent);
+string ToString(const CommandBase& cmd, U16 indent);
 
 template<typename T, CommandType EnumVal>
 struct Command : CommandBase {
@@ -247,7 +247,7 @@ END_COMMAND(EndPixelBufferCommand);
 
 BEGIN_COMMAND(BeginRenderSubPassCommand, CommandType::BEGIN_RENDER_SUB_PASS);
     U16 _mipWriteLevel = U16_MAX;
-    vectorEASTL<RenderTarget::DrawLayerParams> _writeLayers;
+    vector<RenderTarget::DrawLayerParams> _writeLayers;
 END_COMMAND(BeginRenderSubPassCommand);
 
 BEGIN_COMMAND(SetBlendStateCommand, CommandType::SET_BLEND_STATE);

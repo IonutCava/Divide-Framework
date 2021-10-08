@@ -30,7 +30,6 @@ author:     Lukas E Meindl
 
 #include "CEGUI/Exceptions.h"
 #include "RendererBase.h"
-#include <string>
 
 #if defined(_MSC_VER)
 #   pragma warning(push)

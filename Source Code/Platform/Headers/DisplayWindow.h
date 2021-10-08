@@ -227,7 +227,7 @@ private:
     [[nodiscard]] vec2<U16> getDrawableSizeInternal() const;
 
 private:
-    using EventListeners = vectorEASTL<DELEGATE<bool, WindowEventArgs>>;
+    using EventListeners = vector<DELEGATE<bool, WindowEventArgs>>;
     std::array<EventListeners, to_base(WindowEvent::COUNT)> _eventListeners;
     DELEGATE<void> _destroyCbk;
 

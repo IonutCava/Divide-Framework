@@ -9,7 +9,7 @@ namespace TypeUtil {
         return Names::fStops[to_base(stop)];
     }
 
-    FStops StringToFStops(const stringImpl& name) {
+    FStops StringToFStops(const string& name) {
         for (U8 i = 0; i < to_U8(FStops::COUNT); ++i) {
             if (strcmp(name.c_str(), Names::fStops[i]) == 0) {
                 return static_cast<FStops>(i);

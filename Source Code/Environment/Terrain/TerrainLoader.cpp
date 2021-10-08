@@ -27,11 +27,11 @@ namespace {
                                                           : Paths::g_climatesLowResLocation);
     }
 
-    std::pair<U8, bool> FindOrInsert(const U8 textureQuality, vectorEASTL<stringImpl>& container, const stringImpl& texture, stringImpl materialName) {
+    std::pair<U8, bool> FindOrInsert(const U8 textureQuality, vector<string>& container, const string& texture, string materialName) {
         if (!fileExists((ClimatesLocation(textureQuality) + "/" + materialName + "/" + texture).c_str())) {
             materialName = "std_default";
         }
-        const stringImpl item = materialName + "/" + texture;
+        const string item = materialName + "/" + texture;
         const auto* const it = eastl::find(eastl::cbegin(container),
                                     eastl::cend(container),
                                     item);
@@ -49,7 +49,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                                 PlatformContext& context,
                                 bool threadedLoading) {
 
-    const stringImpl& name = terrainDescriptor->getVariable("terrainName");
+    const string& name = terrainDescriptor->getVariable("terrainName");
 
     ResourcePath terrainLocation = Paths::g_assetsLocation + Paths::g_heightmapLocation;
     terrainLocation += terrainDescriptor->getVariable("descriptor");
@@ -77,25 +77,25 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     textureExtraMaps.flag(true);
 
     //temp data
-    stringImpl layerOffsetStr;
-    stringImpl currentMaterial;
+    string layerOffsetStr;
+    string currentMaterial;
 
     U8 layerCount = terrainDescriptor->textureLayers();
 
-    const vectorEASTL<std::pair<stringImpl, TerrainTextureChannel>> channels = {
+    const vector<std::pair<string, TerrainTextureChannel>> channels = {
         {"red", TerrainTextureChannel::TEXTURE_RED_CHANNEL},
         {"green", TerrainTextureChannel::TEXTURE_GREEN_CHANNEL},
         {"blue", TerrainTextureChannel::TEXTURE_BLUE_CHANNEL},
         {"alpha", TerrainTextureChannel::TEXTURE_ALPHA_CHANNEL}
     };
 
-    vectorEASTL<stringImpl> textures[to_base(TerrainTextureType::COUNT)] = {};
-    vectorEASTL<stringImpl> splatTextures = {};
+    vector<string> textures[to_base(TerrainTextureType::COUNT)] = {};
+    vector<string> splatTextures = {};
 
     size_t idxCount = layerCount * to_size(TerrainTextureChannel::COUNT);
-    std::array<vectorEASTL<U16>, to_base(TerrainTextureType::COUNT)> indices;
+    std::array<vector<U16>, to_base(TerrainTextureType::COUNT)> indices;
     std::array<U16, to_base(TerrainTextureType::COUNT)> offsets{};
-    vectorEASTL<U8> channelCountPerLayer(layerCount, 0u);
+    vector<U8> channelCountPerLayer(layerCount, 0u);
 
     for (auto& it : indices) {
         it.resize(idxCount, 255u);
@@ -141,21 +141,21 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     ResourcePath extraMapArray = {};
 
     U16 extraMapCount = 0;
-    for (const stringImpl& tex : textures[to_base(TerrainTextureType::ALBEDO_ROUGHNESS)]) {
+    for (const string& tex : textures[to_base(TerrainTextureType::ALBEDO_ROUGHNESS)]) {
         albedoMapArray.append(tex + ",");
     }
-    for (const stringImpl& tex : textures[to_base(TerrainTextureType::NORMAL)]) {
+    for (const string& tex : textures[to_base(TerrainTextureType::NORMAL)]) {
         normalMapArray.append(tex + ",");
     }
 
     for (U8 i = to_U8(TerrainTextureType::DISPLACEMENT_AO); i < to_U8(TerrainTextureType::COUNT); ++i) {
-        for (const stringImpl& tex : textures[i]) {
+        for (const string& tex : textures[i]) {
             extraMapArray.append(tex + ",");
             ++extraMapCount;
         }
     }
 
-    for (const stringImpl& tex : splatTextures) {
+    for (const string& tex : splatTextures) {
         blendMapArray.append(tex + ",");
     }
 
@@ -242,8 +242,8 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     terrainMaterial->toggleTransparency(false);
 
     U8 totalLayerCount = 0;
-    stringImpl layerCountDataStr = Util::StringFormat("const uint CURRENT_LAYER_COUNT[ %d ] = {", layerCount);
-    stringImpl blendAmntStr = "INSERT_BLEND_AMNT_ARRAY float blendAmount[TOTAL_LAYER_COUNT] = {";
+    string layerCountDataStr = Util::StringFormat("const uint CURRENT_LAYER_COUNT[ %d ] = {", layerCount);
+    string blendAmntStr = "INSERT_BLEND_AMNT_ARRAY float blendAmount[TOTAL_LAYER_COUNT] = {";
     for (U8 i = 0; i < layerCount; ++i) {
         layerCountDataStr.append(Util::StringFormat("%d,", channelCountPerLayer[i]));
         for (U8 j = 0; j < channelCountPerLayer[i]; ++j) {
@@ -258,7 +258,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     blendAmntStr.append("};");
 
     const TerrainDescriptor::LayerData& layerTileData = terrainDescriptor->layerDataEntries();
-    stringImpl tileFactorStr = "const vec2 CURRENT_TILE_FACTORS[TOTAL_LAYER_COUNT] = {\n";
+    string tileFactorStr = "const vec2 CURRENT_TILE_FACTORS[TOTAL_LAYER_COUNT] = {\n";
     for (U8 i = 0; i < layerCount; ++i) {
         const TerrainDescriptor::LayerDataEntry& entry = layerTileData[i];
         for (U8 j = 0; j < channelCountPerLayer[i]; ++j) {
@@ -275,9 +275,9 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         "ALBEDO_IDX", "NORMAL_IDX", "DISPLACEMENT_IDX"
     };
 
-    std::array<stringImpl, to_base(TerrainTextureType::COUNT)> indexData = {};
+    std::array<string, to_base(TerrainTextureType::COUNT)> indexData = {};
     for (U8 i = 0; i < to_base(TerrainTextureType::COUNT); ++i) {
-        stringImpl& dataStr = indexData[i];
+        string& dataStr = indexData[i];
         dataStr = Util::StringFormat("const uint %s[ %d ] = {", idxNames[i], indices[i].size());
         for (const U16 idxTemp : indices[i]) {
             dataStr.append(Util::StringFormat("%d,", idxTemp));
@@ -371,10 +371,10 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
         shaderDescriptor._modules.push_back(fragModule);
 
-        stringImpl propName;
+        string propName;
         bool hasParallax = false;
         for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
-            stringImpl shaderPropName;
+            string shaderPropName;
 
             if (wMode != Terrain::WireframeMode::NONE) {
                 if (hasGeometryPass) {
@@ -452,7 +452,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                 shaderModule._defines.emplace_back(Util::StringFormat("TOTAL_LAYER_COUNT %d", totalLayerCount), true);
                 shaderModule._defines.emplace_back(layerCountDataStr, false);
                 shaderModule._defines.emplace_back(tileFactorStr, false);
-                for (const stringImpl& str : indexData) {
+                for (const string& str : indexData) {
                     shaderModule._defines.emplace_back(str, false);
                 }
 
@@ -666,7 +666,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
 
     if (terrain->_physicsVerts.empty()) {
 
-        vectorEASTL<Byte> data(to_size(terrainDimensions.width) * terrainDimensions.height * (sizeof(U16) / sizeof(char)), Byte{0});
+        vector<Byte> data(to_size(terrainDimensions.width) * terrainDimensions.height * (sizeof(U16) / sizeof(char)), Byte{0});
         if (readFile((terrainMapLocation + "/").c_str(), terrainRawFile.c_str(), data, FileType::BINARY) != FileError::NONE) {
             NOP();
         }
@@ -800,7 +800,7 @@ VegetationDetails& TerrainLoader::initializeVegetationDetails(const Terrain_ptr&
     Vegetation::precomputeStaticData(context.gfx(), chunkSize, maxChunkCount);
 
     for (I32 i = 1; i < 5; ++i) {
-        stringImpl currentMesh = terrainDescriptor->getVariable(Util::StringFormat("treeMesh%d", i));
+        string currentMesh = terrainDescriptor->getVariable(Util::StringFormat("treeMesh%d", i));
         if (!currentMesh.empty()) {
             vegDetails.treeMeshes.push_back(ResourcePath{ currentMesh });
         }
@@ -824,7 +824,7 @@ VegetationDetails& TerrainLoader::initializeVegetationDetails(const Terrain_ptr&
         terrainDescriptor->getVariablef("treeScale3"),
         terrainDescriptor->getVariablef("treeScale4"));
  
-    stringImpl currentImage = terrainDescriptor->getVariable("grassBillboard1");
+    string currentImage = terrainDescriptor->getVariable("grassBillboard1");
     if (!currentImage.empty()) {
         vegDetails.billboardTextureArray += currentImage;
         vegDetails.billboardCount++;

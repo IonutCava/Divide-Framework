@@ -68,9 +68,9 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
     };
 
    public:
-    void setTooltip(const stringImpl& tooltipText) override;
+    void setTooltip(const string& tooltipText) override;
     void setText(const std::string_view& text) const;
-    void setFont(const stringImpl& fontName, const stringImpl& fontFileName, U32 size) const;
+    void setFont(const string& fontName, const string& fontFileName, U32 size) const;
     void active(const bool& active) noexcept override;
     void visible(const bool& visible) noexcept override;
 
@@ -82,9 +82,9 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
     static bool soundCallback(const AudioCallback& cbk);
 
    protected:
-    GUIButton(const stringImpl& name,
-              const stringImpl& text,
-              const stringImpl& guiScheme, 
+    GUIButton(const string& name,
+              const string& text,
+              const string& guiScheme, 
               const RelativePosition2D& offset,
               const RelativeScale2D& size,
               CEGUI::Window* parent);

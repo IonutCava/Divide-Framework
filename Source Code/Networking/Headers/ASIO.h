@@ -50,10 +50,10 @@ class ASIO {
     /// Send a packet to the target server
     virtual bool sendPacket(WorldPacket& p) const;
     /// Init a connection to the target address:port
-    virtual bool init(const stringImpl& address, U16 port);
+    virtual bool init(const string& address, U16 port);
     /// Connect to target address:port only if we have a new IP:PORT combo or
     /// our connection timed out
-    virtual bool connect(const stringImpl& address, U16 port);
+    virtual bool connect(const string& address, U16 port);
     /// Disconnect from the server
     virtual void disconnect();
     /// Check connection state;
@@ -86,7 +86,7 @@ class ASIO {
     bool _connected;
     bool _debugOutput;
     boost::asio::io_service io_service_;
-    stringImpl _address, _port;
+    string _address, _port;
 
     static LOG_CBK _logCBK;
 };

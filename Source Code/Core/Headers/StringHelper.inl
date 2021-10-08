@@ -41,8 +41,8 @@ namespace Divide {
 namespace Util {
 
 template<typename T_vec, typename T_str>
-typename std::enable_if<std::is_same<T_vec, vectorEASTL<T_str>>::value ||
-                        std::is_same<T_vec, vectorEASTLFast<T_str>>::value, T_vec&>::type
+typename std::enable_if<std::is_same<T_vec, vector<T_str>>::value ||
+                        std::is_same<T_vec, vector_fast<T_str>>::value, T_vec&>::type
 Split(const char* input, const char delimiter, T_vec& elems) {
     if (input != nullptr) {
         {
@@ -55,8 +55,8 @@ Split(const char* input, const char delimiter, T_vec& elems) {
             input = o;
         }
 
-        stringImpl item;
-        istringstreamImpl ss(input);
+        string item;
+        istringstream ss(input);
         size_t idx = 0;
         while (std::getline(ss, item, delimiter)) {
             elems[idx++] = MOV(item);
@@ -69,7 +69,7 @@ Split(const char* input, const char delimiter, T_vec& elems) {
 }
 
 template<typename T_str>
-vectorEASTL<T_str>& Split(const char* input, char delimiter, vectorEASTL<T_str>& elems) {
+vector<T_str>& Split(const char* input, char delimiter, vector<T_str>& elems) {
     assert(input != nullptr);
 
     const T_str original(input);
@@ -102,8 +102,8 @@ vectorEASTL<T_str>& Split(const char* input, char delimiter, vectorEASTL<T_str>&
 }
 
 template<typename T_vec, typename T_str>
-typename std::enable_if<std::is_same<T_vec, vectorEASTLFast<T_str>>::value ||
-                        std::is_same<T_vec, vectorEASTL<T_str>>::value, T_vec>::type
+typename std::enable_if<std::is_same<T_vec, vector_fast<T_str>>::value ||
+                        std::is_same<T_vec, vector<T_str>>::value, T_vec>::type
 Split(const char* input, const char delimiter) {
     T_vec elems;
     return Split<T_vec, T_str>(input, delimiter, elems);
@@ -115,7 +115,7 @@ bool IsNumber(const T_str& s) {
 }
 
 template<typename T_str>
-void GetPermutations(std::string_view subject, vectorEASTL<T_str>& permutationContainer) {
+void GetPermutations(std::string_view subject, vector<T_str>& permutationContainer) {
     permutationContainer.clear();
     T_str tempCpy(subject);
     std::sort(std::begin(tempCpy), std::end(tempCpy));
@@ -261,7 +261,7 @@ bool CompareIgnoreCase(const T_strA& a, const std::string_view b)  {
 }
 
 template<>
-inline bool CompareIgnoreCase(const stringImpl& a, const stringImpl& b) {
+inline bool CompareIgnoreCase(const string& a, const string& b) {
     if (a.length() == b.length()) {
         return std::equal(std::cbegin(b),
                           std::cend(b),
@@ -275,7 +275,7 @@ inline bool CompareIgnoreCase(const stringImpl& a, const stringImpl& b) {
 }
 
 template<>
-inline bool CompareIgnoreCase(const stringImplFast& a, const stringImplFast& b) {
+inline bool CompareIgnoreCase(const string_fast& a, const string_fast& b) {
     if (a.length() == b.length()) {
         return std::equal(std::cbegin(b),
                           std::cend(b),
@@ -341,7 +341,7 @@ T_str Trim(const T_str& s) {
 }
 
 template<typename T>
-stringImpl to_string(T value) {
+string to_string(T value) {
     return fmt::format("{}", value);
 }
 

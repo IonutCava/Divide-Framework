@@ -52,10 +52,10 @@ namespace Divide {
 struct PressReleaseActionCbks {
     struct Entry {
         std::set<Input::KeyCode> _modifiers;
-        std::array<vectorEASTL<DELEGATE<void, InputParams>>, to_base(PressReleaseActions::Action::COUNT)> _actions;
+        std::array<vector<DELEGATE<void, InputParams>>, to_base(PressReleaseActions::Action::COUNT)> _actions;
     };
 
-    vectorEASTL<Entry> _entries;
+    vector<Entry> _entries;
 
     void from(const PressReleaseActions& actions, const InputActionList& actionList);
 };
@@ -74,8 +74,8 @@ class SceneInput final : public Input::InputAggregatorInterface {
     using JoystickMapEntry = ska::bytell_hash_map<JoystickMapKey, PressReleaseActions, pair_hash>;
     using JoystickMap = ska::bytell_hash_map<std::underlying_type_t<Input::Joystick>, JoystickMapEntry>;
 
-    using KeyLog = vectorEASTL<std::pair<Input::KeyCode, Input::InputState>>;
-    using MouseBtnLog = vectorEASTL<std::tuple<Input::MouseButton, Input::InputState, vec2<I32>>>;
+    using KeyLog = vector<std::pair<Input::KeyCode, Input::InputState>>;
+    using MouseBtnLog = vector<std::tuple<Input::MouseButton, Input::InputState, vec2<I32>>>;
 
     explicit SceneInput(Scene &parentScene);
 

@@ -22,18 +22,18 @@ void ParticleEulerUpdater::update(const U64 deltaTimeUS, ParticleData& p) {
     descriptor._iterCount = endID;
     descriptor._partitionSize = g_partitionSize;
     descriptor._cbk = [&p, dt, globalA](const Task*, const U32 start, const U32 end) -> void {
-        vectorEASTL<vec4<F32>>& acceleration = p._acceleration;
+        vector<vec4<F32>>& acceleration = p._acceleration;
         for (U32 i = start; i < end; ++i) {
             vec4<F32>& acc = acceleration[i];
             acc.xyz = (acc + globalA).xyz;
         }
-        vectorEASTL<vec4<F32>>& velocity = p._velocity;
+        vector<vec4<F32>>& velocity = p._velocity;
         for (U32 i = start; i < end; ++i) {
             vec4<F32>& vel = velocity[i];
             vel.xyz = (vel + dt * acceleration[i]).xyz;
         }
 
-        vectorEASTL<vec4<F32>>& position = p._position;
+        vector<vec4<F32>>& position = p._position;
         for (U32 i = start; i < end; ++i) {
             vec4<F32>& pos = position[i];
             pos.xyz = (pos + dt * velocity[i]).xyz;

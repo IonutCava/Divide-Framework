@@ -46,8 +46,8 @@ using GOAPFact = I32;
 using GOAPValue = bool;
 using GOAPAction = goap::Action;
 using GOAPWorldState = goap::WorldState;
-using GOAPActionSet = vectorEASTL<const GOAPAction*>;
-using GOAPPlan = vectorEASTL<const GOAPAction*>;
+using GOAPActionSet = vector<const GOAPAction*>;
+using GOAPPlan = vector<const GOAPAction*>;
 
 inline const char* GOAPValueName(const GOAPValue val) {
     return val ? "true" : "false";
@@ -55,26 +55,26 @@ inline const char* GOAPValueName(const GOAPValue val) {
 
 class GOAPGoal : public goap::WorldState {
    public:
-    GOAPGoal(const stringImpl& name, U32 ID);
+    GOAPGoal(const Divide::string& name, U32 ID);
     virtual ~GOAPGoal() = default;
 
     [[nodiscard]] F32 relevancy() const { return _relevancy; }
     void relevancy(const F32 relevancy) { _relevancy = relevancy; }
 
-    [[nodiscard]] const stringImpl& name() const { return name_; }
+    [[nodiscard]] const Divide::string& name() const { return name_; }
     [[nodiscard]] U32 getID() const { return _ID; }
     [[nodiscard]] virtual bool plan(const GOAPWorldState& worldState, const GOAPActionSet& actionSet);
 
     [[nodiscard]] const GOAPPlan& getCurrentPlan() const;
 
-    [[nodiscard]] stringImpl getOpenList() const {
-        stringImpl ret;
+    [[nodiscard]] Divide::string getOpenList() const {
+        string ret;
         _planner.printOpenList(ret);
         return ret;
     }
 
-    [[nodiscard]] stringImpl getClosedList() const {
-        stringImpl ret;
+    [[nodiscard]] Divide::string getClosedList() const {
+        string ret;
         _planner.printClosedList(ret);
         return ret;
     }
@@ -85,7 +85,7 @@ class GOAPGoal : public goap::WorldState {
     GOAPPlan _currentPlan;
 };
 
-using GOAPGoalList = vectorEASTL<GOAPGoal>;
+using GOAPGoalList = vector<GOAPGoal>;
 
 } // namespace AI
 } // namespace Divide

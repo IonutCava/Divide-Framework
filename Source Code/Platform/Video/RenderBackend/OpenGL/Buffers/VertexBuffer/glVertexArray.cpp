@@ -14,7 +14,7 @@ namespace {
 // Once vertex buffers reach a certain size, the for loop grows really really fast up to millions of iterations.
 // Multiple if-checks per loop are not an option, so do some template hacks to speed this function up
 template<bool TexCoords, bool Normals, bool Tangents, bool Colour, bool Bones>
-void FillSmallData5(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataOut) noexcept
+void FillSmallData5(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut) noexcept
 {
     for (const VertexBuffer::Vertex& data : dataIn) {
         std::memcpy(dataOut, data._position._v, sizeof data._position);
@@ -51,7 +51,7 @@ void FillSmallData5(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataO
 }
 
 template <bool TexCoords, bool Normals, bool Tangents, bool Colour>
-void FillSmallData4(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool bones) noexcept
+void FillSmallData4(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool bones) noexcept
 {
     if (bones) {
         FillSmallData5<TexCoords, Normals, Tangents, Colour, true>(dataIn, dataOut);
@@ -61,7 +61,7 @@ void FillSmallData4(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataO
 }
 
 template <bool TexCoords, bool Normals, bool Tangents>
-void FillSmallData3(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool colour, const bool bones) noexcept
+void FillSmallData3(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool colour, const bool bones) noexcept
 {
     if (colour) {
         FillSmallData4<TexCoords, Normals, Tangents, true>(dataIn, dataOut, bones);
@@ -71,7 +71,7 @@ void FillSmallData3(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataO
 }
 
 template <bool TexCoords, bool Normals>
-void FillSmallData2(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool tangents, const bool colour, const bool bones) noexcept
+void FillSmallData2(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool tangents, const bool colour, const bool bones) noexcept
 {
     if (tangents) {
         FillSmallData3<TexCoords, Normals, true>(dataIn, dataOut, colour, bones);
@@ -81,7 +81,7 @@ void FillSmallData2(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataO
 }
 
 template <bool TexCoords>
-void FillSmallData1(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool normals, const bool tangents, const bool colour, const bool bones) noexcept
+void FillSmallData1(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool normals, const bool tangents, const bool colour, const bool bones) noexcept
 {
     if (normals) {
         FillSmallData2<TexCoords, true>(dataIn, dataOut, tangents, colour, bones);
@@ -90,7 +90,7 @@ void FillSmallData1(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataO
     }
 }
 
-void FillSmallData(const vectorEASTL<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool texCoords, const bool normals, const bool tangents, const bool colour, const bool bones) noexcept
+void FillSmallData(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool texCoords, const bool normals, const bool tangents, const bool colour, const bool bones) noexcept
 {
     if (texCoords) {
         FillSmallData1<true>(dataIn, dataOut, normals, tangents, colour, bones);
@@ -161,7 +161,7 @@ size_t glVertexArray::populateAttributeSize() {
 }
 
 /// Trim down the Vertex vector to only upload the minimal amount of data to the GPU
-bool glVertexArray::getMinimalData(const vectorEASTL<Vertex>& dataIn, Byte* dataOut, const size_t dataOutBufferLength) {
+bool glVertexArray::getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, const size_t dataOutBufferLength) {
     assert(dataOut != nullptr);
 
     if (dataOutBufferLength == dataIn.size() * _effectiveEntrySize) {
@@ -252,7 +252,7 @@ bool glVertexArray::refresh() {
 
     // Allocate sufficient space in our buffer
     {
-        vectorEASTLFast<Byte> smallData(_data.size() * _effectiveEntrySize);
+        vector_fast<Byte> smallData(_data.size() * _effectiveEntrySize);
         if (getMinimalData(_data, smallData.data(), smallData.size())) {
             glNamedBufferSubData(_VBHandle._id, _VBHandle._offset * GLUtil::VBO::MAX_VBO_CHUNK_SIZE_BYTES, smallData.size(), (bufferPtr)smallData.data());
         } else {
@@ -273,7 +273,7 @@ bool glVertexArray::refresh() {
             // Update our IB
             glNamedBufferData(_IBid, nSizeIndices, data, GL_STATIC_DRAW);
         } else {
-            vectorEASTL<U16> smallIndices;
+            vector<U16> smallIndices;
             smallIndices.reserve(getIndexCount());
             transform(cbegin(_indices),
                       cend(_indices),
@@ -297,7 +297,7 @@ void glVertexArray::upload() {
 
     constexpr size_t stageCount = to_size(to_base(RenderStage::COUNT) * to_base(RenderPassType::COUNT));
 
-    vectorEASTL<GLuint> vaos;
+    vector<GLuint> vaos;
     vaos.reserve(stageCount);
     std::array<AttribFlags, stageCount> attributesPerStage = {};
 

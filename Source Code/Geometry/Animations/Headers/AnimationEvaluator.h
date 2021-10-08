@@ -49,11 +49,11 @@ class ByteBuffer;
 class ShaderBuffer;
 
 struct AnimationChannel {
-    vectorEASTL<aiVectorKey> _positionKeys;
-    vectorEASTL<aiQuatKey>   _rotationKeys;
-    vectorEASTL<aiVectorKey> _scalingKeys;
+    vector<aiVectorKey> _positionKeys;
+    vector<aiQuatKey>   _rotationKeys;
+    vector<aiVectorKey> _scalingKeys;
     U64 _nameKey = 0ULL;
-    stringImpl _name = "";
+    string _name = "";
     /** The number of position keys */
     U32 _numPositionKeys = 0u;
     U32 _numRotationKeys = 0u;
@@ -62,7 +62,7 @@ struct AnimationChannel {
 
 struct BoneTransform
 {
-    using Container = vectorEASTL<mat4<F32>>;
+    using Container = vector<mat4<F32>>;
     PROPERTY_RW(Container, matrices);
 
     [[nodiscard]] size_t count() const noexcept { return matrices().size(); }
@@ -88,9 +88,9 @@ class AnimEvaluator {
 
     [[nodiscard]] U32 frameCount() const noexcept { return to_U32(_transforms.size()); }
 
-    [[nodiscard]] vectorEASTL<BoneTransform>& transforms() noexcept { return _transforms; }
+    [[nodiscard]] vector<BoneTransform>& transforms() noexcept { return _transforms; }
     
-    [[nodiscard]] const vectorEASTL<BoneTransform>& transforms() const noexcept { return _transforms; }
+    [[nodiscard]] const vector<BoneTransform>& transforms() const noexcept { return _transforms; }
 
     [[nodiscard]] BoneTransform& transforms(const U32 frameIndex) {
         assert(frameIndex < to_U32(_transforms.size()));
@@ -130,17 +130,17 @@ class AnimEvaluator {
     PROPERTY_RW(D64, ticksPerSecond, 0.0);
     PROPERTY_RW(bool, playAnimationForward, true);
     PROPERTY_R_IW(D64, duration, 0.0);
-    PROPERTY_R_IW(stringImpl, name, "");
+    PROPERTY_R_IW(string, name, "");
 
     /// GPU buffer to hold bone transforms
     POINTER_R_IW(ShaderBuffer, boneBuffer, nullptr);
 
    protected:
     /// Array to return transformations results inside.
-    vectorEASTL<BoneTransform> _transforms;
-    vectorEASTL<vec3<U32>> _lastPositions;
+    vector<BoneTransform> _transforms;
+    vector<vec3<U32>> _lastPositions;
     /// vector that holds all bone channels
-    vectorEASTL<AnimationChannel> _channels;
+    vector<AnimationChannel> _channels;
     D64 _lastTime = 0.0;
 };
 

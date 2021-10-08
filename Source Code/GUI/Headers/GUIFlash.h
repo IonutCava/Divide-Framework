@@ -39,7 +39,7 @@ namespace Divide {
 
 class GUIFlash final : public GUIElementBase<GUIType::GUI_FLASH> {
    public:
-    GUIFlash(const stringImpl& name, CEGUI::Window* parent);
+    GUIFlash(const string& name, CEGUI::Window* parent);
 };
 
 };  // namespace Divide

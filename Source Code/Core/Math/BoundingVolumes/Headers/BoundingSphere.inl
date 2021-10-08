@@ -90,7 +90,7 @@ inline void BoundingSphere::addRadius(const vec3<F32>& point) noexcept {
     }
 }
 
-inline void BoundingSphere::createFromPoints(const vectorEASTL<vec3<F32>>& points) noexcept {
+inline void BoundingSphere::createFromPoints(const vector<vec3<F32>>& points) noexcept {
     _radius = 0;
     const F32 numPoints = to_F32(points.size());
 

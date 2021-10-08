@@ -392,9 +392,9 @@ class DivideTileCache {
 
     TileSelection getBounds(void);
 
-    bool saveAll(const stringImpl& filename);
+    bool saveAll(const string& filename);
 
-    bool loadAll(const stringImpl& filename);
+    bool loadAll(const string& filename);
 
     /**
       * Update (tick) the tilecache.
@@ -623,7 +623,7 @@ class DivideTileCache {
     /**
       * Debug draw a navmesh poly
       **/
-    void drawPolyMesh(const stringImpl& tileName,
+    void drawPolyMesh(const string& tileName,
                       const struct dtTileCachePolyMesh& mesh, const F32* orig,
                       const F32 cs, const F32 ch,
                       const struct dtTileCacheLayer& regionLayers,

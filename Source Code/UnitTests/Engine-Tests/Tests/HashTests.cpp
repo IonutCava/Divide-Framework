@@ -9,8 +9,8 @@ namespace Divide {
 
 TEST(HashCombineStr)
 {
-    const stringImpl inputA = "bla1";
-    const stringImpl inputB = "bla1";
+    const string inputA = "bla1";
+    const string inputB = "bla1";
 
     size_t seed1 = 0, seed2 = 0;
     Util::Hash_combine(seed1, inputA);

@@ -41,10 +41,10 @@ class NOINITVTABLE CommandParser {
     CommandParser() = default;
     virtual ~CommandParser() = default;
     /// If we need a parser , just override this
-    virtual bool processCommand(const stringImpl& commandString) = 0;
+    virtual bool processCommand(const string& commandString) = 0;
 
    protected:
-    hashMap<U64 /*command name*/, DELEGATE<void, stringImpl /*args*/> > _commands;
+    hashMap<U64 /*command name*/, DELEGATE<void, string /*args*/> > _commands;
 };
 }
 

@@ -186,14 +186,14 @@ typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true
 [[nodiscard]] FileError copyFile(const char* sourcePath, const char* sourceName, const char* targetPath, const char* targetName, bool overwrite);
 [[nodiscard]] FileError copyFile(const ResourcePath& sourcePath, const ResourcePath&  sourceName, const ResourcePath&  targetPath, const ResourcePath& targetName, bool overwrite);
 
-[[nodiscard]] FileError findFile(const char* filePath, const char* fileName, stringImpl& foundPath);
-[[nodiscard]] FileError findFile(const ResourcePath& filePath, const char* fileName, stringImpl& foundPath);
+[[nodiscard]] FileError findFile(const char* filePath, const char* fileName, string& foundPath);
+[[nodiscard]] FileError findFile(const ResourcePath& filePath, const char* fileName, string& foundPath);
 
 /// will add '.' automatically at the start of 'extension'
 [[nodiscard]] bool hasExtension(const char* filePath, const Str16& extension);
 [[nodiscard]] bool hasExtension(const ResourcePath& filePath, const Str16& extension);
 
-[[nodiscard]] stringImpl stripQuotes(const char* input);
+[[nodiscard]] string stripQuotes(const char* input);
 
 [[nodiscard]] FileAndPath splitPathToNameAndLocation(const char* input);
 [[nodiscard]] FileAndPath splitPathToNameAndLocation(const ResourcePath& input);

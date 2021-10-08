@@ -35,14 +35,14 @@ namespace {
     SceneGraphNodeDescriptor g_nodeDescriptor;
     SceneNodeType g_currentNodeType = SceneNodeType::TYPE_OBJECT3D;
 
-    const stringImpl s_messages[] = {
+    const string s_messages[] = {
         "Please wait while saving current scene! App may appear frozen or stuttery for up to 30 seconds ...",
         "Saved scene succesfully",
         "Failed to save the current scene"
     };
 
     struct SaveSceneParams {
-        stringImpl _saveMessage = "";
+        string _saveMessage = "";
         U32 _saveElementCount = 0u;
         U32 _saveProgress = 0u;
         bool _closePopup = false;
@@ -106,7 +106,7 @@ void MenuBar::draw() {
 
         ImGui::EndMenuBar();
 
-       for (vectorEASTL<Texture_ptr>::iterator it = std::begin(_previewTextures); it != std::end(_previewTextures); ) {
+       for (vector<Texture_ptr>::iterator it = std::begin(_previewTextures); it != std::end(_previewTextures); ) {
             if (Attorney::EditorGeneralWidget::modalTextureView(_context.editor(), Util::StringFormat("Image Preview: %s", (*it)->resourceName().c_str()).c_str(), (*it).get(), vec2<F32>(512, 512), true, false)) {
                 it = _previewTextures.erase(it);
             } else {
@@ -179,7 +179,7 @@ void MenuBar::draw() {
                 ImGui::Text("Saving Scene!\n\n%s", g_saveSceneParams._saveMessage.c_str());
                 ImGui::Separator();
 
-                stringImpl progress;
+                string progress;
                 for (U32 i = 0; i < maxSize; ++i) {
                     progress.append(i < ident ? "=" : " ");
                 }
@@ -780,7 +780,7 @@ void MenuBar::drawDebugMenu() {
 
         if (ImGui::BeginMenu("Debug Views"))
         {
-            vectorEASTL<std::tuple<stringImpl, I16, I16, bool>> viewNames = {};
+            vector<std::tuple<string, I16, I16, bool>> viewNames = {};
             _context.gfx().getDebugViewNames(viewNames);
 
             eastl::set<I16> groups = {};
@@ -789,7 +789,7 @@ void MenuBar::drawDebugMenu() {
                     groups.insert(groupID);
                 }
 
-                const stringImpl label = groupID == -1 ? name : Util::StringFormat("(%d) %s", groupID, name.c_str());
+                const string label = groupID == -1 ? name : Util::StringFormat("(%d) %s", groupID, name.c_str());
                 if (ImGui::MenuItem(label.c_str(), "", &enabled)) {
                     _context.gfx().toggleDebugView(index, enabled);
                 }

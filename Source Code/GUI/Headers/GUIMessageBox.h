@@ -56,8 +56,8 @@ class GUIMessageBox : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
     };
 
     bool onConfirm(const CEGUI::EventArgs& /*e*/);
-    void setTitle(const stringImpl& titleText);
-    void setMessage(const stringImpl& message);
+    void setTitle(const string& titleText);
+    void setMessage(const string& message);
     void setOffset(const vec2<I32>& offsetFromCentre);
     void setMessageType(MessageType type);
 
@@ -67,9 +67,9 @@ class GUIMessageBox : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
     }
 
    protected:
-    GUIMessageBox(const stringImpl& name,
-                  const stringImpl& title,
-                  const stringImpl& message,
+    GUIMessageBox(const string& name,
+                  const string& title,
+                  const string& message,
                   const vec2<I32>& offsetFromCentre = vec2<I32>(0),
                   CEGUI::Window* parent = nullptr);
     ~GUIMessageBox();

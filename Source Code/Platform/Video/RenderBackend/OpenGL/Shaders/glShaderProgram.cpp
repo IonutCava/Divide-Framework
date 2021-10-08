@@ -52,7 +52,7 @@ namespace Preprocessor{
                 const auto& temp = (*itBegin).get_value();
                 if (temp == "version" || temp == "extension") {
                     // handle #version and #extension directives
-                    copy(cbegin(line), itEnd, stringAlg::back_inserter(pending));
+                    copy(cbegin(line), itEnd, back_inserter(pending));
                     return true;
                 }
             }
@@ -146,7 +146,7 @@ namespace Preprocessor{
             return source;
         }
 
-        vectorEASTL<char> temp(source.size() + 1);
+        vector<char> temp(source.size() + 1);
         {
             const char* in  = source.data();
                   char* out = temp.data();
@@ -281,7 +281,7 @@ namespace {
 
     struct TextDumpEntry
     {
-        stringImpl _sourceCode;
+        string _sourceCode;
         Str256 _name;
     };
     moodycamel::BlockingConcurrentQueue<TextDumpEntry> g_sDumpToFileQueue;
@@ -334,7 +334,7 @@ void glShaderProgram::OnStartup(GFXDevice& /*context*/, ResourceCache* /*parentC
         g_sFileWatcherListener.addIgnoredEndCharacter('~');
         g_sFileWatcherListener.addIgnoredExtension("tmp");
 
-        const vectorEASTL<ResourcePath> atomLocations = GetAllAtomLocations();
+        const vector<ResourcePath> atomLocations = GetAllAtomLocations();
         for (const ResourcePath& loc : atomLocations) {
             if (!CreateDirectories(loc)) {
                 DebugBreak();
@@ -370,7 +370,7 @@ void glShaderProgram::Idle(PlatformContext& platformContext) {
             glGetProgramPipelineiv(g_validationOutputCache._handle, GL_INFO_LOG_LENGTH, &length);
             // If we actually have something in the validation log
             if (length > 1) {
-                stringImpl validationBuffer;
+                string validationBuffer;
                 validationBuffer.resize(length);
                 glGetProgramPipelineInfoLog(g_validationOutputCache._handle, length, nullptr, &validationBuffer[0]);
 
@@ -521,7 +521,7 @@ void glShaderProgram::threadedLoad(const bool reloadExisting) {
 
 glShaderProgram::AtomUniformPair glShaderProgram::loadSourceCode(const Str128& stageName,
                                                                  const Str8& extension,
-                                                                 const stringImpl& header,
+                                                                 const string& header,
                                                                  size_t definesHash,
                                                                  const bool reloadExisting,
                                                                  Str256& fileNameOut,
@@ -573,10 +573,10 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
     glswSetPath((assetLocation() + "/" + Paths::Shaders::GLSL::g_parentShaderLoc).c_str(), ".glsl");
 
     U64 batchCounter = 0;
-    hashMap<U64, vectorEASTL<ShaderModuleDescriptor>> modulesByFile;
+    hashMap<U64, vector<ShaderModuleDescriptor>> modulesByFile;
     for (const ShaderModuleDescriptor& shaderDescriptor : _descriptor._modules) {
         const U64 fileHash = shaderDescriptor._batchSameFile ? _ID(shaderDescriptor._sourceFile.data()) : batchCounter++;
-        vectorEASTL<ShaderModuleDescriptor>& modules = modulesByFile[fileHash];
+        vector<ShaderModuleDescriptor>& modules = modulesByFile[fileHash];
         modules.push_back(shaderDescriptor);
     }
 
@@ -584,7 +584,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
 
     U8 uniformIndex = 0u;
     for (const auto& it : modulesByFile) {
-        const vectorEASTL<ShaderModuleDescriptor>& modules = it.second;
+        const vector<ShaderModuleDescriptor>& modules = it.second;
         assert(!modules.empty());
 
         glShader::ShaderLoadData loadData;
@@ -600,7 +600,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
             const size_t definesHash = DefinesHash(shaderDescriptor._defines);
 
             const U8 shaderIdx = to_U8(type);
-            stringImpl header;
+            string header;
             for (const auto& [defineString, appendPrefix] : shaderDescriptor._defines) {
                 // Placeholders are ignored
                 if (defineString != "DEFINE_PLACEHOLDER") {
@@ -629,7 +629,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
 
             glShader::LoadData& stageData = loadData._data[shaderIdx];
             stageData._type = shaderDescriptor._moduleType;
-            stageData._name = Str128(stringImpl(shaderDescriptor._sourceFile.data()).substr(0, shaderDescriptor._sourceFile.find_first_of(".")));
+            stageData._name = Str128(string(shaderDescriptor._sourceFile.data()).substr(0, shaderDescriptor._sourceFile.find_first_of(".")));
             stageData._name.append(".");
             stageData._name.append(Names::shaderTypes[shaderIdx]);
 
@@ -668,7 +668,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
         }
 
         if (!allUniforms.empty()) {
-            vectorEASTL<UniformDeclaration> sortedUniforms(begin(allUniforms), end(allUniforms));
+            vector<UniformDeclaration> sortedUniforms(begin(allUniforms), end(allUniforms));
             allUniforms.clear();
             eastl::sort(begin(sortedUniforms), end(sortedUniforms), g_UniformSortPred);
 
@@ -715,7 +715,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
     return !_shaderStage.empty();
 }
 
-void glShaderProgram::QueueShaderWriteToFile(const stringImpl& sourceCode, const Str256& fileName) {
+void glShaderProgram::QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName) {
     g_sDumpToFileQueue.enqueue({ sourceCode, fileName });
 }
 
@@ -794,15 +794,15 @@ void glShaderProgram::uploadPushConstants(const PushConstants& constants) {
     }
 }
 
-eastl::string  glShaderProgram::GatherUniformDeclarations(const eastl::string & source, vectorEASTL<UniformDeclaration>& foundUniforms) {
+eastl::string  glShaderProgram::GatherUniformDeclarations(const eastl::string & source, vector<UniformDeclaration>& foundUniforms) {
     static const std::regex uniformPattern { R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
 
     eastl::string ret;
     ret.reserve(source.size());
 
-    stringImpl line;
+    string line;
     std::smatch matches;
-    istringstreamImpl input(source.c_str());
+    istringstream input(source.c_str());
     while (std::getline(input, line)) {
         if (std::regex_search(line, matches, uniformPattern)) {
             foundUniforms.emplace_back(
@@ -821,7 +821,7 @@ eastl::string  glShaderProgram::GatherUniformDeclarations(const eastl::string & 
 eastl::string  glShaderProgram::PreprocessIncludes(const ResourcePath& name,
                                                    const eastl::string & source,
                                                    GLint level,
-                                                   vectorEASTL<ResourcePath>& foundAtoms,
+                                                   vector<ResourcePath>& foundAtoms,
                                                    bool lock) {
     if (level > 32) {
         Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INCLUD_LIMIT")));
@@ -830,9 +830,9 @@ eastl::string  glShaderProgram::PreprocessIncludes(const ResourcePath& name,
     size_t lineNumber = 1;
     std::smatch matches;
 
-    stringImpl line;
+    string line;
     eastl::string output, includeString;
-    istringstreamImpl input(source.c_str());
+    istringstream input(source.c_str());
 
     while (std::getline(input, line)) {
         if (!std::regex_search(line, matches, Paths::g_includePattern)) {
@@ -877,13 +877,13 @@ eastl::string  glShaderProgram::PreprocessIncludes(const ResourcePath& name,
     return output;
 }
 
-const stringImpl& glShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vectorEASTL<ResourcePath>& foundAtoms, bool& wasParsed) {
+const string& glShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed) {
     ScopedLock<SharedMutex> w_lock(s_atomLock);
     return ShaderFileReadLocked(filePath, atomName, recurse, foundAtoms, wasParsed);
 }
 
 /// Open the file found at 'filePath' matching 'atomName' and return it's source code
-const stringImpl& glShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vectorEASTL<ResourcePath>& foundAtoms, bool& wasParsed) {
+const string& glShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed) {
     const U64 atomNameHash = _ID(atomName.c_str());
     // See if the atom was previously loaded and still in cache
     const AtomMap::iterator it = s_atoms.find(atomNameHash);
@@ -906,8 +906,8 @@ const stringImpl& glShaderProgram::ShaderFileReadLocked(const ResourcePath& file
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    vectorEASTL<ResourcePath> atoms = {};
-    vectorEASTL<UniformDeclaration> uniforms = {};
+    vector<ResourcePath> atoms = {};
+    vector<UniformDeclaration> uniforms = {};
     if (recurse) {
         output = PreprocessIncludes(atomName, output, 0, atoms, false);
     }

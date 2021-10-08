@@ -68,7 +68,7 @@ class AIEntity final : public GUIDWrapper {
         COUNT
     };
 
-    AIEntity(const vec3<F32>& currentPosition, stringImpl name);
+    AIEntity(const vec3<F32>& currentPosition, string name);
     ~AIEntity();
 
     void load(const vec3<F32>& position);
@@ -85,7 +85,7 @@ class AIEntity final : public GUIDWrapper {
 
     [[nodiscard]] AITeam* getTeam() const noexcept { return _teamPtr; }
     [[nodiscard]] I32 getTeamID() const;
-    [[nodiscard]] const stringImpl& name() const noexcept { return _name; }
+    [[nodiscard]] const string& name() const noexcept { return _name; }
 
     void addUnitRef(NPC* npc);
     [[nodiscard]] NPC* getUnitRef() const noexcept { return _unitRef; }
@@ -153,7 +153,7 @@ class AIEntity final : public GUIDWrapper {
     /// Returns true if this character is moving.
     [[nodiscard]] bool isMoving() const { return !_stopped || !IS_ZERO(getSpeed()); }
 
-    [[nodiscard]] stringImpl toString() const;
+    [[nodiscard]] string toString() const;
 
    protected:
     /**
@@ -174,7 +174,7 @@ class AIEntity final : public GUIDWrapper {
     [[nodiscard]] bool update(U64 deltaTimeUS);
 
    private:
-    stringImpl _name;
+    string _name;
     AITeam* _teamPtr;
     AIProcessor* _processor;
 

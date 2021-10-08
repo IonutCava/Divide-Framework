@@ -51,14 +51,14 @@ namespace XML {
 namespace detail {
     struct LoadSave {
         bool _saveFileOK = false;
-        stringImpl _loadPath = "";
-        stringImpl _rootNodePath = "";
+        string _loadPath = "";
+        string _rootNodePath = "";
 
-        mutable stringImpl _savePath = "";
+        mutable string _savePath = "";
         mutable boost::property_tree::iptree XmlTree;
 
-        bool read(const stringImpl& path, const stringImpl& rootNode);
-        bool prepareSaveFile(const stringImpl& path) const;
+        bool read(const string& path, const string& rootNode);
+        bool prepareSaveFile(const string& path) const;
         void write() const;
     };
 }
@@ -98,17 +98,17 @@ protected:
 bool loadFromXML(IXMLSerializable& object, const char* file);
 bool saveToXML(const IXMLSerializable& object, const char* file);
 
-void writeXML(const stringImpl& path, const boost::property_tree::ptree& tree);
-void readXML(const stringImpl& path, boost::property_tree::ptree& tree);
+void writeXML(const string& path, const boost::property_tree::ptree& tree);
+void readXML(const string& path, boost::property_tree::ptree& tree);
 /// Child Functions
-void loadDefaultKeyBindings(const stringImpl &file, Scene* scene);
+void loadDefaultKeyBindings(const string &file, Scene* scene);
 
 
 struct SceneNode {
     Str64 name;
     U64 typeHash;
 
-    vectorEASTL<SceneNode> children;
+    vector<SceneNode> children;
 };
 
 void loadMusicPlaylist(const Str256& scenePath, const Str64& fileName, Scene* scene, const Configuration& config);

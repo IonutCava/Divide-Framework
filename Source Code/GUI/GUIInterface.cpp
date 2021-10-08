@@ -104,10 +104,10 @@ GUIElement* GUIInterface::getGUIElementImpl(const I64 elementID, const GUIType t
 }
 
 GUIButton* GUIInterface::addButton(const char* name,
-                                   const stringImpl& text,
+                                   const string& text,
                                    const RelativePosition2D& offset,
                                    const RelativeScale2D& size,
-                                   const stringImpl& rootSheetID) {
+                                   const string& rootSheetID) {
     const U64 guiID = _ID(name);
 
     assert(getGUIElement<GUIButton>(guiID) == nullptr);
@@ -137,8 +137,8 @@ GUIButton* GUIInterface::addButton(const char* name,
 }
 
 GUIMessageBox* GUIInterface::addMsgBox(const char* name,
-                                       const stringImpl& title,
-                                       const stringImpl& message,
+                                       const string& title,
+                                       const string& message,
                                        const vec2<I32>& offsetFromCentre) {
     const U64 guiID = _ID(name);
 
@@ -156,9 +156,9 @@ GUIMessageBox* GUIInterface::addMsgBox(const char* name,
 
 GUIText* GUIInterface::addText(const char* name,
                                const RelativePosition2D& position,
-                               const stringImpl& font,
+                               const string& font,
                                const UColour4& colour,
-                               const stringImpl& text,
+                               const string& text,
                                const bool multiLine,
                                const U8 fontSize) {
     const U64 guiID = _ID(name);
@@ -193,7 +193,7 @@ GUIFlash* GUIInterface::addFlash(const char* name,
     return flash;
 }
 
-GUIText* GUIInterface::modifyText(const char* name, const stringImpl& text, const bool multiLine) {
+GUIText* GUIInterface::modifyText(const char* name, const string& text, const bool multiLine) {
     const U64 guiID = _ID(name);
 
     const GUIMap::iterator it = _guiElements[to_base(GUIType::GUI_TEXT)].find(guiID);

@@ -180,7 +180,7 @@ private:
     static bool DeInitGLSW();
 
     /// Use GLSW to append tokens to shaders. Use ShaderType::COUNT to append to all stages
-    static void AppendToShaderHeader(ShaderType type, const stringImpl& entry);
+    static void AppendToShaderHeader(ShaderType type, const string& entry);
 
 protected:
     /// Number of available texture units
@@ -235,7 +235,7 @@ private:
         U8  _frameCount = 0u;
     };
 
-    static vectorEASTL<ResidentTexture> s_residentTextures;
+    static vector<ResidentTexture> s_residentTextures;
 
     /// The main VAO pool. We use a pool to avoid multithreading issues with VAO states
     static GLUtil::glVAOPool s_vaoPool;

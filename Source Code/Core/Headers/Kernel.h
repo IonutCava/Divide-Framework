@@ -194,7 +194,7 @@ class Kernel final : public Input::InputAggregatorInterface,
     PROPERTY_R(PlatformContext, platformContext);
     PlatformContext& platformContext() noexcept { return _platformContext; }
    private:
-    ErrorCode initialize(const stringImpl& entryPoint);
+    ErrorCode initialize(const string& entryPoint);
     void warmup();
     void shutdown();
     void startSplashScreen();
@@ -218,8 +218,8 @@ class Kernel final : public Input::InputAggregatorInterface,
 
     std::array<InputAggregatorInterface*, to_base(InputConsumerType::COUNT)> _inputConsumers{};
 
-    vectorEASTL<Rect<I32>> _editorViewports{};
-    vectorEASTL<Rect<I32>> _targetViewports{};
+    vector<Rect<I32>> _editorViewports{};
+    vector<Rect<I32>> _targetViewports{};
 
     std::atomic_bool _splashScreenUpdating{};
     Task* _splashTask = nullptr;
@@ -236,7 +236,7 @@ class Kernel final : public Input::InputAggregatorInterface,
     Time::ProfileTimer& _flushToScreenTimer;
     Time::ProfileTimer& _preRenderTimer;
     Time::ProfileTimer& _postRenderTimer;
-    vectorEASTL<Time::ProfileTimer*> _renderTimer{};
+    vector<Time::ProfileTimer*> _renderTimer{};
 
     // Command line arguments
     I32 _argc;
@@ -248,7 +248,7 @@ class Kernel final : public Input::InputAggregatorInterface,
 
 namespace Attorney {
     class KernelApplication {
-        static ErrorCode initialize(Kernel* kernel, const stringImpl& entryPoint) {
+        static ErrorCode initialize(Kernel* kernel, const string& entryPoint) {
             return kernel->initialize(entryPoint);
         }
 

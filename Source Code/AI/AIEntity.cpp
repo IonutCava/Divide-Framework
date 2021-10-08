@@ -19,7 +19,7 @@ constexpr D64 DESTINATION_RADIUS_SQ = DESTINATION_RADIUS *
 constexpr F32 DESTINATION_RADIUS_F = to_F32(DESTINATION_RADIUS);
 constexpr F32 DESTINATION_RADIUS_SQ_F = to_F32(DESTINATION_RADIUS_SQ);
 
-AIEntity::AIEntity(const vec3<F32>& currentPosition, stringImpl name)
+AIEntity::AIEntity(const vec3<F32>& currentPosition, string name)
     : GUIDWrapper(),
       _name(MOV(name)),
       _teamPtr(nullptr),
@@ -425,7 +425,7 @@ D64 AIEntity::getMaxAcceleration() const {
     return isAgentLoaded() ? getAgent()->params.maxAcceleration : 0.0;
 }
 
-stringImpl AIEntity::toString() const {
+string AIEntity::toString() const {
     if (_processor) {
         return _processor->toString();
     }

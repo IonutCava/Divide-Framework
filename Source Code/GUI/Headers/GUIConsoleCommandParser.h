@@ -48,20 +48,20 @@ class GUIConsoleCommandParser final : public CommandParser, public PlatformConte
    public:
     GUIConsoleCommandParser(PlatformContext& context, ResourceCache* cache);
 
-    [[nodiscard]] bool processCommand(const stringImpl& commandString) override;
+    [[nodiscard]] bool processCommand(const string& commandString) override;
 
    private:
-    using CommandMap = hashMap<U64 /*command name*/, DELEGATE_STD<void, stringImpl /*args*/> >;
+    using CommandMap = hashMap<U64 /*command name*/, DELEGATE_STD<void, string /*args*/> >;
 
-    void handleSayCommand(const stringImpl& args);
-    void handleQuitCommand(const stringImpl& args);
-    void handleHelpCommand(const stringImpl& args);
-    void handleEditParamCommand(const stringImpl& args);
-    void handlePlaySoundCommand(const stringImpl& args);
-    void handleNavMeshCommand(const stringImpl& args);
-    void handleShaderRecompileCommand(const stringImpl& args);
-    void handleFOVCommand(const stringImpl& args);
-    void handleInvalidCommand(const stringImpl& args);
+    void handleSayCommand(const string& args);
+    void handleQuitCommand(const string& args);
+    void handleHelpCommand(const string& args);
+    void handleEditParamCommand(const string& args);
+    void handlePlaySoundCommand(const string& args);
+    void handleNavMeshCommand(const string& args);
+    void handleShaderRecompileCommand(const string& args);
+    void handleFOVCommand(const string& args);
+    void handleInvalidCommand(const string& args);
 
    private:
     ResourceCache* _resCache = nullptr;

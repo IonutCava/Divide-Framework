@@ -59,7 +59,7 @@ public:
 
     void executeOneTask(bool waitForTask);
 
-    PROPERTY_R(vectorEASTL<std::thread>, threads);
+    PROPERTY_R(vector<std::thread>, threads);
 
 protected:
     bool dequeTask(bool waitForTask, PoolTask& taskOut);

@@ -48,7 +48,7 @@ bool UndoManager::apply(const std::shared_ptr<IUndoEntry>& entry) {
 }
 
 
-const stringImpl& UndoManager::lasActionName() const {
+const string& UndoManager::lasActionName() const {
     return _lastActionName;
 }
 } //namespace Divide 

@@ -23,7 +23,7 @@ struct SceneNodeRenderState {
     PROPERTY_RW(U8, maxLodLevel, 255u);
 
    protected:
-    vectorEASTL<RenderStagePass> _exclusionStagePasses;
+    vector<RenderStagePass> _exclusionStagePasses;
 };
 
 };  // namespace Divide

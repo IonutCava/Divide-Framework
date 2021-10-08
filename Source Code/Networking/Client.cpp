@@ -127,7 +127,7 @@ void Client::handle_read_file(const boost::system::error_code& ec, const size_t 
     ASIO::LOG_PRINT(ss.str().c_str());
 
     std::istream request_stream(&_requestBuf);
-    stringImpl file_path;
+    string file_path;
     request_stream >> file_path;
     request_stream >> _fileSize;
     request_stream.read(_buf.data(), 2);  // eat the "\n\n"
@@ -138,7 +138,7 @@ void Client::handle_read_file(const boost::system::error_code& ec, const size_t 
     ASIO::LOG_PRINT(ss.str().c_str());
 
     const size_t pos = file_path.find_last_of('\\');
-    if (pos != stringImpl::npos) file_path = file_path.substr(pos + 1);
+    if (pos != string::npos) file_path = file_path.substr(pos + 1);
     _outputFile.open(file_path.c_str(), std::ios_base::binary);
     if (!_outputFile) {
         ASIO::LOG_PRINT(("[ASIO]: failed to open " + file_path).c_str(), true);
@@ -192,7 +192,7 @@ void Client::start_write() {
     ar & p;
 
     size_t header = buf.size();
-    vectorEASTL<boost::asio::const_buffer> buffers;
+    vector<boost::asio::const_buffer> buffers;
     buffers.push_back(boost::asio::buffer(&header, sizeof header));
     buffers.push_back(buf.data());
     async_write(_socket, buffers, [&](const boost::system::error_code ec, const size_t ) {handle_write(ec);});

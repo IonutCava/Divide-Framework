@@ -87,7 +87,7 @@ class Mesh final : public Object3D {
         return _animator; 
     }
 
-    const vectorEASTL<SubMesh_ptr>& subMeshList() const noexcept {
+    const vector<SubMesh_ptr>& subMeshList() const noexcept {
         return _subMeshList;
     }
 
@@ -106,7 +106,7 @@ class Mesh final : public Object3D {
     U64 _lastTimeStamp = 0ull;
     /// Animation player to animate the mesh if necessary
     std::shared_ptr<SceneAnimator> _animator;
-    vectorEASTL<SubMesh_ptr> _subMeshList;
+    vector<SubMesh_ptr> _subMeshList;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Mesh);

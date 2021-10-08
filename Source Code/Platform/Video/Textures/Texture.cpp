@@ -52,8 +52,8 @@ void Texture::threadedLoad() {
 
 
     // Each texture face/layer must be in a comma separated list
-    stringstreamImpl textureLocationList(assetLocation().str());
-    stringstreamImpl textureFileList(assetName().c_str());
+    stringstream textureLocationList(assetLocation().str());
+    stringstream textureFileList(assetName().c_str());
 
 #if defined(_DEBUG)
     _sourceFileList.reserve(6);
@@ -68,8 +68,8 @@ void Texture::threadedLoad() {
 
     bool loadedFromFile = false;
     // We loop over every texture in the above list and store it in this temporary string
-    stringImpl currentTextureFile;
-    stringImpl currentTextureLocation;
+    string currentTextureFile;
+    string currentTextureLocation;
     ResourcePath currentTextureFullPath;
     while (std::getline(textureLocationList, currentTextureLocation, ',') &&
            std::getline(textureFileList, currentTextureFile, ','))

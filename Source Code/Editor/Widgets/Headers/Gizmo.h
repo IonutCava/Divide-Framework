@@ -81,7 +81,7 @@ namespace Divide {
     protected:
         void update(U64 deltaTimeUS);
         void render(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
-        void updateSelections(const vectorEASTL<SceneGraphNode*>& nodes);
+        void updateSelections(const vector<SceneGraphNode*>& nodes);
         void setTransformSettings(const TransformSettings& settings) noexcept;
         [[nodiscard]] const TransformSettings& getTransformSettings() const noexcept;
         void onSceneFocus(bool state) noexcept;
@@ -91,7 +91,7 @@ namespace Divide {
         bool _enabled = false;
         bool _wasUsed = false;
         bool _shouldRegisterUndo = false;
-        vectorEASTL<SceneGraphNode*> _selectedNodes;
+        vector<SceneGraphNode*> _selectedNodes;
         ImGuiContext* _imguiContext = nullptr;
         TransformSettings _transformSettings;
         TransformValues _workValues;
@@ -103,7 +103,7 @@ namespace Divide {
                 gizmo->render(camera, targetViewport, bufferInOut);
             }
 
-            static void updateSelection(Gizmo* gizmo, const vectorEASTL<SceneGraphNode*>& nodes) {
+            static void updateSelection(Gizmo* gizmo, const vector<SceneGraphNode*>& nodes) {
                 gizmo->updateSelections(nodes);
             }
 

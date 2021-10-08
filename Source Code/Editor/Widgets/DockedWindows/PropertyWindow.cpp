@@ -308,7 +308,7 @@ namespace Divide {
                     if (sgnNode->parent() == nullptr) {
                         ImGui::Separator();
                     }
-                    vectorEASTLFast<EditorComponent*>& editorComp = Attorney::SceneGraphNodeEditor::editorComponents(sgnNode);
+                    vector_fast<EditorComponent*>& editorComp = Attorney::SceneGraphNodeEditor::editorComponents(sgnNode);
                     for (EditorComponent* comp : editorComp) {
                         const char* fieldName = comp->name().c_str();
                         const U64 fieldHash = _ID(fieldName);
@@ -357,7 +357,7 @@ namespace Divide {
                             }
 
                             ImGui::Separator();
-                            vectorEASTL<EditorComponentField>& fields = Attorney::EditorComponentEditor::fields(*comp);
+                            vector<EditorComponentField>& fields = Attorney::EditorComponentEditor::fields(*comp);
                             for (EditorComponentField& field : fields) {
                                 if (processField(field) && !field._readOnly) {
                                     Attorney::EditorComponentEditor::onChanged(*comp, field);
@@ -876,7 +876,7 @@ namespace Divide {
         }
 
         size_t stateHash = 0;
-        stringImpl shaderName = "None";
+        string shaderName = "None";
         ShaderProgram* program = nullptr;
         if (currentStagePass._stage != RenderStage::COUNT && currentStagePass._passType != RenderPassType::COUNT) {
             const I64 shaderGUID = material->computeAndGetProgramGUID(currentStagePass);
@@ -903,7 +903,7 @@ namespace Divide {
                             ImGui::Text(text.c_str());
                         }
                         if (ImGui::Button("Open Source File")) {
-                            const stringImpl& textEditor = Attorney::EditorGeneralWidget::externalTextEditorPath(_context.editor());
+                            const string& textEditor = Attorney::EditorGeneralWidget::externalTextEditorPath(_context.editor());
                             if (textEditor.empty()) {
                                 Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: No text editor specified!", Time::SecondsToMilliseconds<F32>(3));
                             } else {

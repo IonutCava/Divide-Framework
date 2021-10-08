@@ -80,7 +80,7 @@ size_t DEFAULT_RES(U8) { return 0; }
 
 template<typename T, U8 N, PolyContainerDeleter<T> DEL = DEFAULT_DEL<T>, PolyContainerReserver<T> RES = DEFAULT_RES<T>>
 struct PolyContainer {
-    using EntryList = vectorEASTLFast<T*>;
+    using EntryList = vector_fast<T*>;
 
     PolyContainer()
     {

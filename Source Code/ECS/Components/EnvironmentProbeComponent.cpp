@@ -165,7 +165,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut) {
 
     EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("EnvironmentProbePass Id: [ %d ]", rtLayerIndex()).c_str()));
 
-    vectorEASTL<Camera*>& probeCameras = SceneEnvironmentProbePool::ProbeCameras();
+    vector<Camera*>& probeCameras = SceneEnvironmentProbePool::ProbeCameras();
 
     std::array<Camera*, 6> cameras = {};
     std::copy_n(std::begin(probeCameras), std::min(cameras.size(), probeCameras.size()), std::begin(cameras));
@@ -292,7 +292,7 @@ std::array<Camera*, 6> EnvironmentProbeComponent::probeCameras() const noexcept 
         vec3<F32>( 0.0f,  0.0f, -1.0f)  //Neg Z
     };
 
-    vectorEASTL<Camera*>& probeCameras = SceneEnvironmentProbePool::ProbeCameras();
+    vector<Camera*>& probeCameras = SceneEnvironmentProbePool::ProbeCameras();
 
     std::array<Camera*, 6> cameras = {};
     std::copy_n(std::begin(probeCameras), std::min(cameras.size(), probeCameras.size()), std::begin(cameras));

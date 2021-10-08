@@ -4,11 +4,11 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 
 namespace Divide {
-GUIText::GUIText(const stringImpl& name,
-                 const stringImpl& text,
+GUIText::GUIText(const string& name,
+                 const string& text,
                  const bool  multiLine,
                  const RelativePosition2D& relativePosition,
-                 const stringImpl& font,
+                 const string& font,
                  const UColour4& colour,
                  CEGUI::Window* parent,
                  const U8 fontSize)

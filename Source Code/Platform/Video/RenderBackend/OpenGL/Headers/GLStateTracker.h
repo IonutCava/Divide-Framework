@@ -183,8 +183,8 @@ namespace Divide {
         using PerBufferConfig = hashMap<GLenum /*target*/, BindConfig>;
         PerBufferConfig g_currentBindConfig;
 
-        vectorEASTL<BlendingProperties> _blendProperties;
-        vectorEASTL<GLboolean> _blendEnabled;
+        vector<BlendingProperties> _blendProperties;
+        vector<GLboolean> _blendEnabled;
         GLenum    _currentCullMode = GL_BACK;
         GLenum    _currentFrontFace = GL_CCW;
         UColour4  _blendColour = UColour4(0, 0, 0, 0);
@@ -197,17 +197,17 @@ namespace Divide {
         bool _rasterizationEnabled = true;
 
         /// /*hash: texture slot  - array /*texture handle - texture type*/ hash
-        using TextureBoundMapDef = std::array<vectorEASTL<GLuint>, to_base(TextureType::COUNT)>;
+        using TextureBoundMapDef = std::array<vector<GLuint>, to_base(TextureType::COUNT)>;
         TextureBoundMapDef _textureBoundMap = {};
 
-        using ImageBoundMapDef = vectorEASTL<ImageBindSettings>;
+        using ImageBoundMapDef = vector<ImageBindSettings>;
         ImageBoundMapDef _imageBoundMap = {};
 
         /// /*texture slot*/ /*sampler handle*/
-        using SamplerBoundMapDef = vectorEASTL<GLuint>;
+        using SamplerBoundMapDef = vector<GLuint>;
         SamplerBoundMapDef _samplerBoundMap = {};
 
-        using TextureTypeBoundMapDef = vectorEASTL<TextureType>;
+        using TextureTypeBoundMapDef = vector<TextureType>;
         TextureTypeBoundMapDef _textureTypeBoundMap = {};
 
         VAOBindings _vaoBufferData;

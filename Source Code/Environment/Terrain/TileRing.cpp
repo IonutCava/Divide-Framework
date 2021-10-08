@@ -95,9 +95,9 @@ void TileRing::AssignNeighbourSizes(const I32 x, const I32 y, Adjacency* pAdj) c
 	}
 }
 
-vectorEASTL<TileRing::InstanceData> TileRing::createInstanceDataVB(const I32 ringID)
+vector<TileRing::InstanceData> TileRing::createInstanceDataVB(const I32 ringID)
 {
-	vectorEASTL<InstanceData> ret(tileCount());
+	vector<InstanceData> ret(tileCount());
 
 	I32 index = 0;
 	const F32 halfWidth = 0.5f * to_F32(_outerWidth);

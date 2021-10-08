@@ -31,7 +31,7 @@ bool ImageData::addLayer(Byte* data, const size_t size, const U16 width, const U
     return layer.allocateMip(data, size, width, height, depth);
 }
 
-bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeight, const stringImpl& fileName) {
+bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeight, const string& fileName) {
     _name = fileName;
 
     if (Util::CompareIgnoreCase(_name.substr(_name.find_last_of('.') + 1), "DDS")) {
@@ -87,7 +87,7 @@ bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeigh
         _bpp *= 2;
     }
 
-    vectorEASTL<U32> resizedData(refWidth * refHeight, 0u);
+    vector<U32> resizedData(refWidth * refHeight, 0u);
     if (refWidth != 0 && refHeight != 0 && (refWidth != width || refHeight != height)) {
         I32 ret;
         if (is16Bit()) {
@@ -131,7 +131,7 @@ bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeigh
     return ret;
 }
 
-bool ImageData::loadDDS_IL(const bool srgb, const U16 refWidth, const U16 refHeight, const stringImpl& filename) {
+bool ImageData::loadDDS_IL(const bool srgb, const U16 refWidth, const U16 refHeight, const string& filename) {
     ACKNOWLEDGE_UNUSED(refWidth);
     ACKNOWLEDGE_UNUSED(refHeight);
 
@@ -359,7 +359,7 @@ bool ImageDataInterface::CreateImageData(const ResourcePath& filename, const U16
     return false;
 }
 
-I8 SaveToTGA(const stringImpl& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept {
+I8 SaveToTGA(const string& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept {
     const U8 cGarbage = 0;
     const I16 iGarbage = 0;
     const U16 width = dimensions.width;
@@ -406,11 +406,11 @@ I8 SaveToTGA(const stringImpl& filename, const vec2<U16>& dimensions, U8 pixelDe
 }
 
 /// saves a series of files with names "filenameX.tga"
-I8 SaveSeries(const stringImpl& filename, const vec2<U16>& dimensions, const U8 pixelDepth, U8* imageData) {
+I8 SaveSeries(const string& filename, const vec2<U16>& dimensions, const U8 pixelDepth, U8* imageData) {
     static I32 savedImages = 0;
     // compute the new filename by adding the
     // series number and the extension
-    const stringImpl newFilename(Util::StringFormat("%s_%d.tga", filename.c_str(), savedImages));
+    const string newFilename(Util::StringFormat("%s_%d.tga", filename.c_str(), savedImages));
 
     // save the image
     const I8 status = SaveToTGA(newFilename, dimensions, pixelDepth, imageData);

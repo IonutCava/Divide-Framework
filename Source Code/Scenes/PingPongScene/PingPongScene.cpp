@@ -100,7 +100,7 @@ void PingPongScene::serveBall() {
 
 void PingPongScene::test(std::any a, GFX::PushConstantType type) {
     bool updated = false;
-    stringImpl message;
+    string message;
     TransformComponent* ballTransform =
         _ballSGN->get<TransformComponent>();
     vec3<F32> ballPosition = ballTransform->getPosition();

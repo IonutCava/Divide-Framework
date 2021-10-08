@@ -37,7 +37,7 @@ ScenePool::ScenePool(SceneManager& parentMgr)
 
 ScenePool::~ScenePool()
 {
-    vectorEASTL<std::shared_ptr<Scene>> tempScenes;
+    vector<std::shared_ptr<Scene>> tempScenes;
     {   
         SharedLock<SharedMutex> r_lock(_sceneLock);
         tempScenes.insert(eastl::cend(tempScenes),
@@ -144,8 +144,8 @@ bool ScenePool::deleteScene(const I64 targetGUID) {
     return false;
 }
 
-vectorEASTL<Str256> ScenePool::sceneNameList(const bool sorted) const {
-    vectorEASTL<Str256> scenes;
+vector<Str256> ScenePool::sceneNameList(const bool sorted) const {
+    vector<Str256> scenes;
     for (SceneList::SceneNameMap::value_type it : SceneList::sceneNameMap()) {
         scenes.push_back(it.second);
     }

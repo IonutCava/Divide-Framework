@@ -55,7 +55,7 @@ constexpr U32 MAX_SOUND_BUFFERS = 64;
 /// Audio Programming Interface
 class NOINITVTABLE AudioAPIWrapper {
    public:
-     using MusicPlaylist = std::pair<U32, vectorEASTL<AudioDescriptor_ptr>>;
+     using MusicPlaylist = std::pair<U32, vector<AudioDescriptor_ptr>>;
      using MusicPlaylists = hashMap<U32, MusicPlaylist>;
 
    public:

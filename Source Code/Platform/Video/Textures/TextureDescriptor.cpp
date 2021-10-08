@@ -9,7 +9,7 @@ namespace Divide {
             return Names::textureWrap[to_base(wrapMode)];
         }
 
-        TextureWrap StringToWrapMode(const stringImpl& wrapMode) {
+        TextureWrap StringToWrapMode(const string& wrapMode) {
             for (U8 i = 0; i < to_U8(TextureWrap::COUNT); ++i) {
                 if (strcmp(wrapMode.c_str(), Names::textureWrap[i]) == 0) {
                     return static_cast<TextureWrap>(i);
@@ -23,7 +23,7 @@ namespace Divide {
             return Names::textureFilter[to_base(filter)];
         }
 
-        TextureFilter StringToTextureFilter(const stringImpl& filter) {
+        TextureFilter StringToTextureFilter(const string& filter) {
             for (U8 i = 0; i < to_U8(TextureFilter::COUNT); ++i) {
                 if (strcmp(filter.c_str(), Names::textureFilter[i]) == 0) {
                     return static_cast<TextureFilter>(i);
@@ -117,7 +117,7 @@ namespace Divide {
     }
 
     namespace XMLParser {
-        void saveToXML(const SamplerDescriptor& sampler, const stringImpl& entryName, boost::property_tree::ptree& pt) {
+        void saveToXML(const SamplerDescriptor& sampler, const string& entryName, boost::property_tree::ptree& pt) {
             pt.put(entryName + ".Sampler.Filter.<xmlattr>.min", TypeUtil::TextureFilterToString(sampler.minFilter()));
             pt.put(entryName + ".Sampler.Filter.<xmlattr>.mag", TypeUtil::TextureFilterToString(sampler.magFilter()));
             pt.put(entryName + ".Sampler.Map.<xmlattr>.U", TypeUtil::WrapModeToString(sampler.wrapU()));
@@ -135,13 +135,13 @@ namespace Divide {
             pt.put(entryName + ".Sampler.borderColour.<xmlattr>.a", sampler.borderColour().a);
         }
 
-        size_t loadFromXML(const stringImpl& entryName, const boost::property_tree::ptree& pt) {
+        size_t loadFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
             SamplerDescriptor sampler = {};
-            sampler.minFilter(TypeUtil::StringToTextureFilter(pt.get<stringImpl>(entryName + ".Sampler.Filter.<xmlattr>.min", TypeUtil::TextureFilterToString(TextureFilter::LINEAR))));
-            sampler.magFilter(TypeUtil::StringToTextureFilter(pt.get<stringImpl>(entryName + ".Sampler.Filter.<xmlattr>.mag", TypeUtil::TextureFilterToString(TextureFilter::LINEAR))));
-            sampler.wrapU(TypeUtil::StringToWrapMode(pt.get<stringImpl>(entryName + ".Sampler.Map.<xmlattr>.U", TypeUtil::WrapModeToString(TextureWrap::REPEAT))));
-            sampler.wrapV(TypeUtil::StringToWrapMode(pt.get<stringImpl>(entryName + ".Sampler.Map.<xmlattr>.V", TypeUtil::WrapModeToString(TextureWrap::REPEAT))));
-            sampler.wrapW(TypeUtil::StringToWrapMode(pt.get<stringImpl>(entryName + ".Sampler.Map.<xmlattr>.W", TypeUtil::WrapModeToString(TextureWrap::REPEAT))));
+            sampler.minFilter(TypeUtil::StringToTextureFilter(pt.get<string>(entryName + ".Sampler.Filter.<xmlattr>.min", TypeUtil::TextureFilterToString(TextureFilter::LINEAR))));
+            sampler.magFilter(TypeUtil::StringToTextureFilter(pt.get<string>(entryName + ".Sampler.Filter.<xmlattr>.mag", TypeUtil::TextureFilterToString(TextureFilter::LINEAR))));
+            sampler.wrapU(TypeUtil::StringToWrapMode(pt.get<string>(entryName + ".Sampler.Map.<xmlattr>.U", TypeUtil::WrapModeToString(TextureWrap::REPEAT))));
+            sampler.wrapV(TypeUtil::StringToWrapMode(pt.get<string>(entryName + ".Sampler.Map.<xmlattr>.V", TypeUtil::WrapModeToString(TextureWrap::REPEAT))));
+            sampler.wrapW(TypeUtil::StringToWrapMode(pt.get<string>(entryName + ".Sampler.Map.<xmlattr>.W", TypeUtil::WrapModeToString(TextureWrap::REPEAT))));
             sampler.useRefCompare(pt.get(entryName + ".Sampler.useRefCompare", false));
             sampler.cmpFunc(TypeUtil::StringToComparisonFunction(pt.get(entryName + ".Sampler.comparisonFunction", "LEQUAL").c_str()));
             sampler.anisotropyLevel(to_U8(pt.get(entryName + ".Sampler.anisotropy", 255u)));

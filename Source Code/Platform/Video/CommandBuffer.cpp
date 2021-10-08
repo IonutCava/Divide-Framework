@@ -500,9 +500,9 @@ ErrorType CommandBuffer::validate() const {
     }
 }
 
-void CommandBuffer::ToString(const CommandBase& cmd, const CommandType type, I32& crtIndent, stringImpl& out)
+void CommandBuffer::ToString(const CommandBase& cmd, const CommandType type, I32& crtIndent, string& out)
 {
-    const auto append = [](stringImpl& target, const stringImpl& text, const I32 indent) {
+    const auto append = [](string& target, const string& text, const I32 indent) {
         for (I32 i = 0; i < indent; ++i) {
             target.append("    ");
         }
@@ -530,9 +530,9 @@ void CommandBuffer::ToString(const CommandBase& cmd, const CommandType type, I32
     }
 }
 
-stringImpl CommandBuffer::toString() const {
+string CommandBuffer::toString() const {
     I32 crtIndent = 0;
-    stringImpl out = "\n\n\n\n";
+    string out = "\n\n\n\n";
     for (const CommandEntry& cmd : _commandOrder) {
         ToString(*get<CommandBase>(cmd), static_cast<CommandType>(cmd._typeIndex), crtIndent, out);
         out.append("\n");

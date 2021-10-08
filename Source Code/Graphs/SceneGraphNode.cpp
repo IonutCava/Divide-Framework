@@ -386,8 +386,8 @@ SceneGraphNode* SceneGraphNode::findChild(const I64 GUID, const bool sceneNodeGu
     return nullptr;
 }
 
-bool SceneGraphNode::intersect(const Ray& intersectionRay, const vec2<F32>& range, vectorEASTL<SGNRayResult>& intersections) const {
-    vectorEASTL<SGNRayResult> ret = {};
+bool SceneGraphNode::intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersections) const {
+    vector<SGNRayResult> ret = {};
 
     // Root has its own intersection routine, so we ignore it
     if (_sceneGraph->getRoot()->getGUID() == this->getGUID()) {
@@ -412,7 +412,7 @@ bool SceneGraphNode::intersect(const Ray& intersectionRay, const vec2<F32>& rang
     return !intersections.empty();
 }
 
-void SceneGraphNode::getAllNodes(vectorEASTL<SceneGraphNode*>& nodeList) {
+void SceneGraphNode::getAllNodes(vector<SceneGraphNode*>& nodeList) {
     // Compute from leaf to root to ensure proper calculations
     {
         SharedLock<SharedMutex> r_lock(_childLock);
@@ -424,7 +424,7 @@ void SceneGraphNode::getAllNodes(vectorEASTL<SceneGraphNode*>& nodeList) {
     nodeList.push_back(this);
 }
 
-void SceneGraphNode::processDeleteQueue(vectorEASTL<size_t>& childList) {
+void SceneGraphNode::processDeleteQueue(vector<size_t>& childList) {
     // See if we have any children to delete
     if (!childList.empty()) {
         ScopedLock<SharedMutex> w_lock(_childLock);

@@ -32,7 +32,7 @@ void Server::close() {
     thread_.reset();
 }
 
-void Server::init(const U16 port, const stringImpl& broadcast_endpoint_address, const bool debugOutput) {
+void Server::init(const U16 port, const string& broadcast_endpoint_address, const bool debugOutput) {
     if (thread_) {
         return;
     }
@@ -62,7 +62,7 @@ void Server::init(const U16 port, const stringImpl& broadcast_endpoint_address, 
         }));
 
     } catch (std::exception& e) {
-        ASIO::LOG_PRINT((stringImpl("SERVER: ") + e.what()).c_str(), true);
+        ASIO::LOG_PRINT((string("SERVER: ") + e.what()).c_str(), true);
     }
 }
 

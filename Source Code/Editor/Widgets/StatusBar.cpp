@@ -140,7 +140,7 @@ void StatusBar::update(const U64 deltaTimeUS) {
     }
 }
 
-void StatusBar::showMessage(const stringImpl& message, const F32 durationMS) {
+void StatusBar::showMessage(const string& message, const F32 durationMS) {
     _lastMessage = message;
     _lastMessageDurationMS = durationMS;
 }

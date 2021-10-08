@@ -51,8 +51,8 @@ public:
     class GameScript final : public Script,
                              public FrameListener {
     public:
-        explicit GameScript(const stringImpl& sourceCode, FrameListenerManager& parent, U32 callOrder);
-        explicit GameScript(const stringImpl& scriptPath, FileType fileType, FrameListenerManager& parent, U32 callOrder);
+        explicit GameScript(const string& sourceCode, FrameListenerManager& parent, U32 callOrder);
+        explicit GameScript(const string& scriptPath, FileType fileType, FrameListenerManager& parent, U32 callOrder);
 
     protected:
         bool frameStarted(const FrameEvent& evt) override;

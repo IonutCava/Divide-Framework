@@ -59,12 +59,12 @@ class PhysXSceneInterface final : public PhysicsSceneInterface {
     void updateRigidActor(physx::PxRigidActor* oldActor, physx::PxRigidActor* newActor) const;
     physx::PxScene* getPhysXScene() const noexcept { return _gScene; }
 
-    bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vectorEASTL<SGNRayResult>& intersectionsOut) const;
+    bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const;
    protected:
     static void UpdateActor(physx::PxActor* actor);
 
    private:
-    using RigidMap = vectorEASTL<PhysXActor*>;
+    using RigidMap = vector<PhysXActor*>;
     physx::PxScene* _gScene = nullptr;
     physx::PxDefaultCpuDispatcher* _cpuDispatcher = nullptr;
     RigidMap _sceneRigidActors;

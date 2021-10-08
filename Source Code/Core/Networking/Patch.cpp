@@ -5,7 +5,7 @@
 namespace Divide {
 
 namespace {
-    vectorEASTL<FileData> s_ModelData;
+    vector<FileData> s_ModelData;
 };
 
 namespace Patch {
@@ -41,7 +41,7 @@ namespace Patch {
         // that needs patching;
         return updated;
     }
-    const vectorEASTL<FileData>& modelData() noexcept {
+    const vector<FileData>& modelData() noexcept {
         return s_ModelData;
     }
 

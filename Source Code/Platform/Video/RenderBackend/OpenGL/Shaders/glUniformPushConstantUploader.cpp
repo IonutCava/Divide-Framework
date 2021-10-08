@@ -22,15 +22,15 @@ namespace Divide {
         GLint numActiveUniforms = 0;
         glGetProgramInterfaceiv(_programHandle, GL_UNIFORM, GL_ACTIVE_RESOURCES, &numActiveUniforms);
 
-        vectorEASTL<GLchar> nameData(256);
-        vectorEASTL<GLenum> properties;
+        vector<GLchar> nameData(256);
+        vector<GLenum> properties;
         properties.push_back(GL_NAME_LENGTH);
         properties.push_back(GL_TYPE);
         properties.push_back(GL_ARRAY_SIZE);
         properties.push_back(GL_BLOCK_INDEX);
         properties.push_back(GL_LOCATION);
 
-        vectorEASTL<GLint> values(properties.size());
+        vector<GLint> values(properties.size());
 
         for (GLint attrib = 0; attrib < numActiveUniforms; ++attrib) {
             glGetProgramResourceiv(_programHandle, GL_UNIFORM, attrib, static_cast<GLsizei>(properties.size()), properties.data(), static_cast<GLsizei>(values.size()), nullptr, &values[0]);

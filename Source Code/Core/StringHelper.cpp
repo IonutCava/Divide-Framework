@@ -5,7 +5,7 @@
 namespace Divide::Util {
 
 bool FindCommandLineArgument(const int argc, char** argv, const char* target_arg, const char* arg_prefix) {
-    stringImpl tempArg(arg_prefix);
+    string tempArg(arg_prefix);
     tempArg += target_arg;
     const char* target = tempArg.c_str();
 
@@ -19,7 +19,7 @@ bool FindCommandLineArgument(const int argc, char** argv, const char* target_arg
 
 bool IsNumber(const char* s) {
     F32 number = 0.0f;
-    if (istringstreamImpl(s) >> number) {
+    if (istringstream(s) >> number) {
         return !(IS_ZERO(number) && s[0] != 0);
     }
     return false;

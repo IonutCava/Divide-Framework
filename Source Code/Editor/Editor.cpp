@@ -422,7 +422,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         }
     };
 
-    const vectorEASTL<WindowManager::MonitorData>& monitors = g_windowManager->monitorData();
+    const vector<WindowManager::MonitorData>& monitors = g_windowManager->monitorData();
     const I32 monitorCount = to_I32(monitors.size());
 
     platform_io.Monitors.resize(monitorCount);
@@ -908,7 +908,7 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
 }
 
-void Editor::selectionChangeCallback(const PlayerIndex idx, const vectorEASTL<SceneGraphNode*>& nodes) const {
+void Editor::selectionChangeCallback(const PlayerIndex idx, const vector<SceneGraphNode*>& nodes) const {
     if (idx != 0) {
         return;
     }
@@ -1511,11 +1511,11 @@ bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const 
     return closed;
 }
 
-void Editor::showStatusMessage(const stringImpl& message, const F32 durationMS) const {
+void Editor::showStatusMessage(const string& message, const F32 durationMS) const {
     _statusBar->showMessage(message, durationMS);
 }
 
-bool Editor::spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const stringImpl& name) const {
+bool Editor::spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const string& name) const {
     constexpr U32 normalMask = to_base(ComponentType::TRANSFORM) |
                                to_base(ComponentType::BOUNDS) |
                                to_base(ComponentType::NETWORKING) |
@@ -1682,7 +1682,7 @@ bool Editor::loadFromXML() {
         _autoSaveCamera = pt.get("autoSaveCamera", false);
         _autoFocusEditor = pt.get("autoFocusEditor", true);
         _showEmissiveSelections = pt.get("showEmissiveSelections", true);
-        _externalTextEditorPath = pt.get<stringImpl>("textEditor", "");
+        _externalTextEditorPath = pt.get<string>("textEditor", "");
         _currentTheme = static_cast<ImGuiStyleEnum>(pt.get("themeIndex", to_I32(_currentTheme)));
         ImGui::ResetStyle(_currentTheme);
 

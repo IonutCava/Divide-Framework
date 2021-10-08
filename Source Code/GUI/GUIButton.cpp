@@ -9,9 +9,9 @@ namespace Divide {
 
 GUIButton::AudioCallback GUIButton::s_soundCallback;
 
-GUIButton::GUIButton(const stringImpl& name,
-                     const stringImpl& text,
-                     const stringImpl& guiScheme,
+GUIButton::GUIButton(const string& name,
+                     const string& text,
+                     const string& guiScheme,
                      const RelativePosition2D& offset,
                      const RelativeScale2D& size,
                      CEGUI::Window* parent)
@@ -19,7 +19,7 @@ GUIButton::GUIButton(const stringImpl& name,
       _btnWindow(nullptr)
 {
     
-    static stringImpl buttonInfo = guiScheme + "/Button";
+    static string buttonInfo = guiScheme + "/Button";
 
     _btnWindow = CEGUI::WindowManager::getSingleton().createWindow(buttonInfo.c_str(), name.c_str());
 
@@ -106,12 +106,12 @@ void GUIButton::setText(const std::string_view& text) const {
     _btnWindow->setText(CEGUI::String{ text.data(), text.length() });
 }
 
-void GUIButton::setTooltip(const stringImpl& tooltipText) {
+void GUIButton::setTooltip(const string& tooltipText) {
     _btnWindow->setTooltipText(tooltipText.c_str());
 }
 
-void GUIButton::setFont(const stringImpl& fontName,
-                        const stringImpl& fontFileName, const U32 size) const
+void GUIButton::setFont(const string& fontName,
+                        const string& fontFileName, const U32 size) const
 {
     if (!fontName.empty()) {
         if (!CEGUI::FontManager::getSingleton().isDefined(fontName.c_str())) {

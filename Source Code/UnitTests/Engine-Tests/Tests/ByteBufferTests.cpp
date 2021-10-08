@@ -7,7 +7,7 @@
 namespace Divide{
 
 template<typename T>
-bool compareVectors(const vectorEASTL<T>& a, const vectorEASTL<T>& b) {
+bool compareVectors(const vector<T>& a, const vector<T>& b) {
     if (a.size() == b.size()) {
         for (size_t i = 0; i < a.size(); ++i) {
             if (a[i] != b[i]) {
@@ -99,7 +99,7 @@ TEST(ByteBufferSimpleMarker)
     constexpr U8 input = 122u;
 
     ByteBuffer test;
-    test << stringImpl{ "StringTest Whatever" };
+    test << string{ "StringTest Whatever" };
     test << U32{ 123456u };
     test.addMarker(testMarker);
     test << input;
@@ -116,7 +116,7 @@ TEST(ByteBufferEvenNoMarker)
     constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
 
     ByteBuffer test;
-    test << stringImpl{ "StringTest Whatever" };
+    test << string{ "StringTest Whatever" };
     test << U32{ 123456u }; //Multiple of our marker size
 
     test.readSkipToMarker(testMarker);
@@ -130,7 +130,7 @@ TEST(ByteBufferOddNoMarker)
     constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
 
     ByteBuffer test;
-    test << stringImpl{ "StringTest Whatever" };
+    test << string{ "StringTest Whatever" };
     test << U32{ 123456u }; //Multiple of our marker size
     test << U8{ 122u }; //Extra byte to check proper skipping
 
@@ -146,7 +146,7 @@ TEST(ByteBufferWrongMarker)
     std::array<U16, 3> testMarker{ 444u, 555u, 777u };
 
     ByteBuffer test;
-    test << stringImpl{ "StringTest Whatever" };
+    test << string{ "StringTest Whatever" };
     test << U32{ 123456u };
     test.addMarker(testMarker);
     test << U8{122u};
@@ -160,12 +160,12 @@ TEST(ByteBufferWrongMarker)
 
 TEST(ByteBufferRWString)
 {
-    const stringImpl input = "StringTest Whatever";
+    const string input = "StringTest Whatever";
 
     ByteBuffer test;
     test << input;
 
-    stringImpl output = "Output";
+    string output = "Output";
 
     test >> output;
 
@@ -175,12 +175,12 @@ TEST(ByteBufferRWString)
 
 TEST(ByteBufferRWVectorInt)
 {
-    const vectorEASTL<I32> input = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
+    const vector<I32> input = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
 
     ByteBuffer test;
     test << input;
 
-    vectorEASTL<I32> output;
+    vector<I32> output;
 
     test >> output;
 
@@ -190,12 +190,12 @@ TEST(ByteBufferRWVectorInt)
 
 TEST(ByteBufferRWVectorString)
 {
-    const vectorEASTL<stringImpl> input = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
+    const vector<string> input = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
 
     ByteBuffer test;
     test << input;
 
-    vectorEASTL<stringImpl> output;
+    vector<string> output;
 
     test >> output;
 
@@ -219,12 +219,12 @@ TEST(ByteBufferRWArrayInt)
 
 TEST(ByteBufferRWArrayString)
 {
-    const std::array<stringImpl, 11> input = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
+    const std::array<string, 11> input = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
 
     ByteBuffer test;
     test << input;
 
-    std::array<stringImpl, 11> output;
+    std::array<string, 11> output;
 
     test >> output;
 
@@ -235,10 +235,10 @@ TEST(ByteBufferRWArrayString)
 TEST(ByteBufferRWMixedData)
 {
     const bool inputBool = false;
-    const vectorEASTL<I32> inputVectorInt = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
-    const vectorEASTL<stringImpl> inputVectorStr = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
+    const vector<I32> inputVectorInt = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
+    const vector<string> inputVectorStr = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
     const std::array<I32, 11> inputArrayInt = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
-    const std::array<stringImpl, 11> inputArrayStr = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
+    const std::array<string, 11> inputArrayStr = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
     const U8  inputU8 = 2;
     const U16 inputU16 = 4;
     const U32 inputU32 = 6;
@@ -246,14 +246,14 @@ TEST(ByteBufferRWMixedData)
     const I16 inputI16 = 40;
     const I32 inputI32 = -6;
     const F32 inputF32 = 3.45632f;
-    const stringImpl inputStr = "StringTest Whatever";
+    const string inputStr = "StringTest Whatever";
     const D64 inputD64 = 1.14159;
 
     bool outputBool = true;
-    vectorEASTL<I32> outputVectorInt;
-    vectorEASTL<stringImpl> outputVectorStr;
+    vector<I32> outputVectorInt;
+    vector<string> outputVectorStr;
     std::array<I32, 11> outputArrayInt{};
-    std::array<stringImpl, 11> outputArrayStr;
+    std::array<string, 11> outputArrayStr;
     U8  outputU8 = 0;
     U16 outputU16 = 0;
     U32 outputU32 = 0;
@@ -261,7 +261,7 @@ TEST(ByteBufferRWMixedData)
     I16 outputI16 = 0;
     I32 outputI32 = 0;
     F32 outputF32 = 0.0f;
-    stringImpl outputStr = "Output";
+    string outputStr = "Output";
     D64 outputD64 = 0.0;
 
     ByteBuffer test;

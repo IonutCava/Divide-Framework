@@ -56,7 +56,7 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     explicit AnimationComponent(SceneGraphNode* parentSGN, PlatformContext& context);
 
     /// Select an animation by name
-    bool playAnimation(const stringImpl& name);
+    bool playAnimation(const string& name);
     /// Select an animation by index
     bool playAnimation(I32 pAnimIndex);
     /// Select next available animation
@@ -69,7 +69,7 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     [[nodiscard]] U8 boneCount() const;
     [[nodiscard]] bool frameTicked() const noexcept;
 
-    [[nodiscard]] const vectorEASTL<Line>& skeletonLines() const;
+    [[nodiscard]] const vector<Line>& skeletonLines() const;
     [[nodiscard]] AnimData getAnimationData() const;
     
     [[nodiscard]] AnimEvaluator& getAnimationByIndex(I32 animationID) const;

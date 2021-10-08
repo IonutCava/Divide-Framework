@@ -67,7 +67,7 @@ namespace Divide {
         void prepare() override;
 
     private:
-        vectorEASTL<BlockMember> _blockMembers;
+        vector<BlockMember> _blockMembers;
         eastl::string _uniformBufferName;
         eastl::string _parentShaderName;
         Byte* _uniformBlockBuffer = nullptr;

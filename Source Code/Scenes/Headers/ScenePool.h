@@ -59,14 +59,14 @@ protected:
     const Scene& activeScene() const;
     void         activeScene(Scene& scene);
 
-    vectorEASTL<Str256> sceneNameList(bool sorted) const;
+    vector<Str256> sceneNameList(bool sorted) const;
 
 private:
     /// Pointer to the currently active scene
     Scene* _activeScene = nullptr;
     Scene* _loadedScene = nullptr;
     Scene* _defaultScene = nullptr;
-    vectorEASTL<std::shared_ptr<Scene>> _createdScenes;
+    vector<std::shared_ptr<Scene>> _createdScenes;
 
     SceneManager& _parentMgr;
 

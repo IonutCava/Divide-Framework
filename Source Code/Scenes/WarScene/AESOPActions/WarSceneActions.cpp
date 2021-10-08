@@ -7,7 +7,7 @@
 namespace Divide::AI {
 
 WarSceneAction::WarSceneAction(const ActionType type,
-                               const stringImpl& name,
+                               const string& name,
                                const F32 cost)
     : GOAPAction(name, to_I32(cost)),
     _type(type)

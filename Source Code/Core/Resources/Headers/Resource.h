@@ -112,7 +112,7 @@ public:
     virtual bool load();
     virtual bool unload();
 
-    [[nodiscard]] stringImpl assetPath() const { return assetLocation().str() + "/" + assetName().str(); }
+    [[nodiscard]] string assetPath() const { return assetLocation().str() + "/" + assetName().str(); }
     void addStateCallback(ResourceState targetState, const DELEGATE<void, CachedResource*>& cbk);
 
 protected:
@@ -121,7 +121,7 @@ protected:
     void flushStateCallbacks();
 
 protected:
-    using CallbackList = vectorEASTL<DELEGATE<void, CachedResource*>>;
+    using CallbackList = vector<DELEGATE<void, CachedResource*>>;
     std::array<CallbackList, to_base(ResourceState::COUNT)> _loadingCallbacks{};
     mutable Mutex _callbackLock{};
     PROPERTY_RW(ResourcePath, assetLocation);
@@ -134,7 +134,7 @@ struct TerrainInfo {
     /// "variables" contains the various strings needed for each terrain such as
     /// texture names,
     /// terrain name etc.
-    hashMap<U64, stringImpl> variables;
+    hashMap<U64, string> variables;
     F32 grassScale = 1.0f;
     F32 treeScale = 1.0f;
     vec3<F32> position;

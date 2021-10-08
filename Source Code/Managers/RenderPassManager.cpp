@@ -36,7 +36,7 @@ RenderPassManager::RenderPassManager(Kernel& parent, GFXDevice& context)
 {
     _flushCommandBufferTimer->addChildTimer(*_buildCommandBufferTimer);
     for (U8 i = 0; i < to_base(RenderStage::COUNT); ++i) {
-        const stringImpl timerName = Util::StringFormat("Process Command Buffers [ %s ]", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+        const string timerName = Util::StringFormat("Process Command Buffers [ %s ]", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
         _processCommandBufferTimer[i] = &Time::ADD_TIMER(timerName.c_str());
         _flushCommandBufferTimer->addChildTimer(*_processCommandBufferTimer[i]);
     }
@@ -293,7 +293,7 @@ void RenderPassManager::render(const RenderParams& params) {
 RenderPass& RenderPassManager::addRenderPass(const Str64& renderPassName,
                                              const U8 orderKey,
                                              const RenderStage renderStage,
-                                             const vectorEASTL<U8>& dependencies,
+                                             const vector<U8>& dependencies,
                                              const bool usePerformanceCounters) {
     assert(!renderPassName.empty());
     assert(_renderPasses.size() < g_maxRenderPasses);
@@ -317,7 +317,7 @@ RenderPass& RenderPassManager::addRenderPass(const Str64& renderPassName,
 }
 
 void RenderPassManager::removeRenderPass(const Str64& name) {
-    for (vectorEASTL<RenderPass*>::iterator it = begin(_renderPasses); it != end(_renderPasses); ++it) {
+    for (vector<RenderPass*>::iterator it = begin(_renderPasses); it != end(_renderPasses); ++it) {
          if ((*it)->name().compare(name) == 0) {
              _executors[to_base((*it)->stageFlag())].reset();
             _renderPasses.erase(it);
