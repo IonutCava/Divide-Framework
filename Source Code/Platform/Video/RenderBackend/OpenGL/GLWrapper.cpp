@@ -39,8 +39,6 @@ namespace {
     constexpr bool g_runAllQueriesInSameFrame = false;
     // Keep resident textures in memory for a max of 30 frames
     constexpr U8 g_maxTextureResidencyFrameCount = Config::TARGET_FRAME_RATE / 2;
-    // Will try and reduce memory usage by static data that we may not be need anymore
-    const U32 g_clearMemoryFrameInterval = Config::TARGET_FRAME_RATE;
 }
 
 GLStateTracker GL_API::s_stateTracker;
@@ -165,10 +163,6 @@ void GL_API::endFrame(DisplayWindow& window, const bool global) {
                         texture = {};
                     }
                 }
-            }
-            if (_context.frameCount() % g_clearMemoryFrameInterval == 0) {
-                glBufferImpl::CleanMemory();
-                glTexture::CleanMemory();
             }
         }
     }

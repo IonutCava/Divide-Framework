@@ -67,8 +67,6 @@ class glTexture final : public Texture,
 
     std::pair<std::shared_ptr<Byte[]>, size_t> readData(U16 mipLevel, GFXDataFormat desiredFormat) const override;
 
-    static void CleanMemory() noexcept;
-
    protected:
     void threadedLoad() override;
     void reserveStorage(bool fromFile) const;

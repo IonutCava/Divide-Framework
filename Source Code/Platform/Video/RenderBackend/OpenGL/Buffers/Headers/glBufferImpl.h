@@ -70,7 +70,6 @@ public:
 
 public:
     static GLenum GetBufferUsage(BufferUpdateFrequency frequency, BufferUpdateUsage usage) noexcept;
-    static void CleanMemory() noexcept;
 
 public:
     PROPERTY_R(BufferImplParams, params);

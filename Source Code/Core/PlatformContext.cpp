@@ -28,10 +28,10 @@ PlatformContext::PlatformContext(Application& app, Kernel& kernel)
   ,  _gui(MemoryManager_NEW GUI(_kernel))               // Audio
   ,  _sfx(MemoryManager_NEW SFXDevice(_kernel))         // Physics
   ,  _pfx(MemoryManager_NEW PXDevice(_kernel))          // Graphical User Interface
-  ,  _entryData(MemoryManager_NEW XMLEntryData())          // Initial XML data
-  ,  _config(MemoryManager_NEW Configuration())            // XML based configuration
+  ,  _entryData(MemoryManager_NEW XMLEntryData())       // Initial XML data
+  ,  _config(MemoryManager_NEW Configuration())         // XML based configuration
   ,  _client(MemoryManager_NEW LocalClient(_kernel))    // Network client
-  ,  _server(MemoryManager_NEW Server())                   // Network server
+  ,  _server(MemoryManager_NEW Server())                // Network server
   ,  _debug(MemoryManager_NEW DebugInterface(_kernel))  // Debug Interface
   ,  _editor(Config::Build::ENABLE_EDITOR ? MemoryManager_NEW Editor(*this) : nullptr)
   ,  _inputHandler(MemoryManager_NEW Input::InputHandler(_kernel, _app))

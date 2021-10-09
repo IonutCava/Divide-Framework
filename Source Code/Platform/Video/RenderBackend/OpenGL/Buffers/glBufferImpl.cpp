@@ -8,12 +8,7 @@
 
 namespace Divide {
 namespace {
-    Mutex g_createBufferLock;
-
-    constexpr size_t g_MinZeroDataSize = 1 * 1024; //1Kb
     constexpr I32 g_maxFlushQueueLength = 16;
-
-    vector<Byte> g_zeroMemData(g_MinZeroDataSize, Byte{ 0 });
 };
 
 glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
@@ -41,16 +36,6 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
 
     // Initial data may not fill the entire buffer
     const bool needsAdditionalData = _params._bufferParams._initialData.second < _params._dataSize;
-    ScopedLock<Mutex> w_lock(g_createBufferLock);
-    if (needsAdditionalData) {
-        if (_params._dataSize > g_zeroMemData.size()) {
-            g_zeroMemData.resize(_params._dataSize, Byte{ 0 });
-        }
-        std::memset(&g_zeroMemData[_params._bufferParams._initialData.second], 0, _params._dataSize - _params._bufferParams._initialData.second);
-        if (_params._bufferParams._initialData.second > 0) {
-            std::memcpy(g_zeroMemData.data(), _params._bufferParams._initialData.first, _params._bufferParams._initialData.second);
-        }
-    }
 
     // Create all buffers with zero mem and then write the actual data that we have (If we want to initialise all memory)
     if (!usePersistentMapping) {
@@ -60,7 +45,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
         GLUtil::createAndAllocBuffer(_params._dataSize, 
                                      usage,
                                      _memoryBlock._bufferHandle,
-                                     needsAdditionalData ? g_zeroMemData.data() : _params._bufferParams._initialData.first,
+                                     needsAdditionalData ? nullptr : _params._bufferParams._initialData.first,
                                      _params._name);
 
         _memoryBlock._offset = 0;
@@ -81,8 +66,21 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
             accessMask |= GL_MAP_COHERENT_BIT;
         }
   
-        _memoryBlock = GL_API::getMemoryAllocator().allocate(_params._dataSize, storageMask, accessMask, _params._name, needsAdditionalData ? g_zeroMemData.data() : _params._bufferParams._initialData.first);
+        _memoryBlock = GL_API::getMemoryAllocator().allocate(_params._dataSize, storageMask, accessMask, _params._name, needsAdditionalData ? nullptr : _params._bufferParams._initialData.first);
         assert(_memoryBlock._ptr != nullptr && _memoryBlock._size == _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!");
+    }
+
+    // In this scenario, we have storage allocated but our contents are undefined so we need to do 2 writes to the buffer:
+    if (needsAdditionalData) {
+        const BufferUpdateFrequency crtFrequency = _params._bufferParams._updateFrequency;
+        _params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+        //1) Zero the buffer memory
+        writeOrClearBytes(0, _params._dataSize, nullptr, true);
+        //2) Write the data at the start (if any)
+        if (_params._bufferParams._initialData.second > 0) {
+            writeOrClearBytes(0, _params._bufferParams._initialData.second, _params._bufferParams._initialData.first, false);
+        }
+        _params._bufferParams._updateFrequency = crtFrequency;
     }
 }
 
@@ -200,11 +198,8 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
         };
 
         if (zeroMem) {
-            ScopedLock<Mutex> w_lock(g_createBufferLock);
-            if (rangeInBytes - offsetInBytes > g_zeroMemData.size()) {
-                g_zeroMemData.resize(rangeInBytes - offsetInBytes, Byte{ 0 });
-            }
-            writeBuffer(g_zeroMemData.data());
+            GLfloat zero = 0.f;
+            glClearNamedBufferData(_memoryBlock._bufferHandle, GL_R32F, GL_RED, GL_FLOAT, &zero);
         } else {
             writeBuffer(data);
         }
@@ -266,16 +261,6 @@ GLenum glBufferImpl::GetBufferUsage(const BufferUpdateFrequency frequency, const
 
     DIVIDE_UNEXPECTED_CALL();
     return GL_NONE;
-}
-
-void glBufferImpl::CleanMemory() noexcept {
-    ScopedLock<Mutex> w_lock(g_createBufferLock);
-    const size_t crtSize = g_zeroMemData.size();
-    if (crtSize > g_MinZeroDataSize) {
-        // Speed things along if we are in the megabyte range. Not really needed, but still helps.
-        const U8 reduceFactor = crtSize > g_MinZeroDataSize * 100 ? 4 : 2;
-        g_zeroMemData.resize(std::max(g_zeroMemData.size() / reduceFactor, g_MinZeroDataSize));
-    }
 }
 
 }; //namespace Divide

@@ -573,7 +573,4 @@ std::pair<std::shared_ptr<Byte[]>, size_t> glTexture::readData(U16 mipLevel, con
     return { grabData, to_size( size) };
 }
 
-void glTexture::CleanMemory() noexcept {
-}
-
 };

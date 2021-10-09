@@ -84,7 +84,7 @@ U16 RenderBin::getSortedNodes(SortedQueue& nodes) const {
     const U16 binSize = getBinSize();
 
     nodes.resize(binSize);
-    for (U16 i = 0; i < binSize; ++i) {
+    for (U16 i = 0u; i < binSize; ++i) {
         nodes[i].first = _renderBinStack[i]._renderable;
         nodes[i].second = {};
     }
