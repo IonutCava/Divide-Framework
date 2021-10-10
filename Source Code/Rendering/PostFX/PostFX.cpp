@@ -210,11 +210,11 @@ void PostFX::idle(const Configuration& config) {
     }
 }
 
-void PostFX::update(const U64 deltaTimeUS) {
+void PostFX::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
     OPTICK_EVENT();
 
     if (_fadeActive) {
-        _currentFadeTimeMS += Time::MicrosecondsToMilliseconds<D64>(deltaTimeUS);
+        _currentFadeTimeMS += Time::MicrosecondsToMilliseconds<D64>(deltaTimeUSApp);
         F32 fadeStrength = to_F32(std::min(_currentFadeTimeMS / _targetFadeTimeMS , 1.0));
         if (!_fadeOut) {
             fadeStrength = 1.0f - fadeStrength;
@@ -227,7 +227,7 @@ void PostFX::update(const U64 deltaTimeUS) {
                     _fadeOutComplete = DELEGATE<void>();
                 }
             } else {
-                _fadeWaitDurationMS -= Time::MicrosecondsToMilliseconds<D64>(deltaTimeUS);
+                _fadeWaitDurationMS -= Time::MicrosecondsToMilliseconds<D64>(deltaTimeUSApp);
             }
         }
 
@@ -243,7 +243,7 @@ void PostFX::update(const U64 deltaTimeUS) {
         }
     }
 
-    _preRenderBatch.update(deltaTimeUS);
+    _preRenderBatch.update(deltaTimeUSApp);
 }
 
 void PostFX::setFadeOut(const UColour3& targetColour, const D64 durationMS, const D64 waitDurationMS, DELEGATE<void> onComplete) {

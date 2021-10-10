@@ -393,8 +393,8 @@ class Scene : public Resource, public PlatformContextComponent {
        vector<IMPrimitive*> _octreePrimitives;
        vector<BoundingBox> _octreeBoundingBoxes;
 
-       mutable Mutex _perFrameArenaMutex;
-       mutable MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 3> _perFrameArena;
+       static Mutex s_perFrameArenaMutex;
+       static MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 3> s_perFrameArena;
 };
 
 namespace Attorney {

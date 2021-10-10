@@ -28,7 +28,8 @@ namespace {
 
     void InitMaterialData(const RenderStage stage, RenderPassExecutor::PerRingEntryMaterialData& data) {
         data._nodeMaterialLookupInfo.resize(RenderStagePass::totalPassCountForStage(stage) * Config::MAX_CONCURRENT_MATERIALS, { Material::INVALID_MAT_HASH, U16_MAX });
-        data._nodeMaterialData.resize(RenderStagePass::totalPassCountForStage(stage) * Config::MAX_CONCURRENT_MATERIALS);
+        data._nodeMaterialData.reserve(RenderStagePass::totalPassCountForStage(stage));
+        data._nodeMaterialData.emplace_back();
     }
 }
 
@@ -68,8 +69,14 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
     }
 }
 
-void RenderPassExecutor::addTexturesAt(const size_t idx, const NodeMaterialTextures& tempTextures) {
+void RenderPassExecutor::setMaterialInfoAt(const size_t idx, PerRingEntryMaterialData::MaterialDataContainer& dataInOut, const NodeMaterialData& tempData, const NodeMaterialTextures& tempTextures) {
     OPTICK_EVENT();
+
+    if (idx >= dataInOut.size()) {
+        dataInOut.resize(to_size(std::ceil(idx * 1.5f)));
+    }
+    NodeMaterialData& target = dataInOut[idx];
+    target = tempData;
 
     // GL_ARB_bindless_texture:
     // In the following four constructors, the low 32 bits of the sampler
@@ -79,8 +86,6 @@ void RenderPassExecutor::addTexturesAt(const size_t idx, const NodeMaterialTextu
     // any sampler type(uvec2)     // Converts a pair of 32-bit unsigned integers to a sampler type
     // uvec2(any image type)       // Converts an image type to a pair of 32-bit unsigned integers
     // any image type(uvec2)       // Converts a pair of 32-bit unsigned integers to an image type
-
-    NodeMaterialData& target = _materialData[_materialBufferIndex]._nodeMaterialData[idx];
     for (U8 i = 0; i < MATERIAL_TEXTURE_COUNT; ++i) {
         const SamplerAddress combined = tempTextures[i];
         target._textures[i / 2][(i % 2) * 2 + 0] = to_U32(combined & 0xFFFFFFFF); //low
@@ -88,7 +93,7 @@ void RenderPassExecutor::addTexturesAt(const size_t idx, const NodeMaterialTextu
     }
 
     // second loop for cache reasons. 0u is fine as an address since we filter it at graphics API level.
-    for (U8 i = 0; i < MATERIAL_TEXTURE_COUNT; ++i) {
+    for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
         _uniqueTextureAddresses.insert(tempTextures[i]);
     }
 }
@@ -224,9 +229,7 @@ U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp, U3
 
     const U32 offsetIdx = bestCandidate.first + materialElementOffset;
     materialInfo[offsetIdx] = { materialHash, 0u };
-
-    materialData._nodeMaterialData[offsetIdx] = tempData;
-    addTexturesAt(offsetIdx, tempTextures);
+    setMaterialInfoAt(offsetIdx, materialData._nodeMaterialData, tempData, tempTextures);
 
     return bestCandidate.first;
 }

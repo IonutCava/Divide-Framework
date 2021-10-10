@@ -925,9 +925,9 @@ void GFXDevice::idle(const bool fast) const {
     ShaderProgram::Idle();
 }
 
-void GFXDevice::update(const U64 deltaTimeUS) {
-    getRenderer().postFX().update(deltaTimeUS);
-    _gpuBlock._data._renderProperties.w += Time::MicrosecondsToMilliseconds<F32>(deltaTimeUS);
+void GFXDevice::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
+    getRenderer().postFX().update(deltaTimeUSFixed, deltaTimeUSApp);
+    _gpuBlock._data._renderProperties.w += Time::MicrosecondsToMilliseconds<F32>(deltaTimeUSFixed);
     _gpuBlock._needsUpload = true;
 }
 

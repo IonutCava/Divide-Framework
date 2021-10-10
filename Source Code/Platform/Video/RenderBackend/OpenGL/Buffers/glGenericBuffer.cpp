@@ -86,19 +86,27 @@ void glVertexDataContainer::rebuildCountAndIndexData(const U32 drawCount, const 
     if (_lastDrawCount == drawCount && _lastIndexCount == indexCount && _lastFirstIndex == firstIndex) {
         return;
     }
+    if (_indexInfo == nullptr) {
+        _indexInfo = eastl::make_unique<glVertexDataIndexContainer>();
+    }
 
     if (_lastDrawCount != drawCount || _lastIndexCount != indexCount) {
-        eastl::fill(eastl::begin(_countData), eastl::begin(_countData) + drawCount, indexCount);
+        if (drawCount >= _indexInfo->_countData.size()) {
+            _indexInfo->_countData.resize(drawCount);
+        }
+
+        eastl::fill(begin(_indexInfo->_countData), begin(_indexInfo->_countData) + drawCount, indexCount);
     }
 
     if (indexBufferSize > 0 && (_lastDrawCount != drawCount || _lastFirstIndex != firstIndex)) {
         const U32 idxCountInternal = to_U32(drawCount * indexBufferSize);
 
-        if (_indexOffsetData.size() < idxCountInternal) {
-            _indexOffsetData.resize(idxCountInternal, firstIndex);
+        if (idxCountInternal >= _indexInfo->_indexOffsetData.size()) {
+            _indexInfo->_indexOffsetData.resize(idxCountInternal);
         }
+
         if (_lastFirstIndex != firstIndex) {
-            eastl::fill(begin(_indexOffsetData), end(_indexOffsetData), firstIndex);
+            eastl::fill(begin(_indexInfo->_indexOffsetData), begin(_indexInfo->_indexOffsetData) + idxCountInternal, firstIndex);
         }
     }
     _lastDrawCount = drawCount;

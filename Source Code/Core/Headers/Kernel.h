@@ -120,10 +120,6 @@ struct LoopTimingData {
         }
     }
 
-    /// Returns 0 if the loop is frozen
-    [[nodiscard]] U64 timeDeltaUS() const noexcept {
-        return _freezeLoopTime ? 0ULL : _currentTimeDeltaUS;
-    }
 };
 
 namespace Attorney {
@@ -200,9 +196,9 @@ class Kernel final : public Input::InputAggregatorInterface,
     void startSplashScreen();
     void stopSplashScreen();
     bool mainLoopScene(FrameEvent& evt,
-                       U64 deltaTimeUS,     //Framerate independent deltaTime. Can be paused. (e.g. used by scene updates)
-                       U64 realDeltaTimeUS, //Framerate dependent deltaTime. Can be paused. (e.g. used by physics)
-                       U64 appDeltaTimeUS); //Real app delta time between frames. Can't be paused (e.g. used by editor)
+                       U64 deltaTimeUSFixed, //Framerate independent deltaTime. Can be paused. (e.g. used by scene updates)
+                       U64 deltaTimeUSReal,  //Framerate dependent deltaTime. Can be paused. (e.g. used by physics)
+                       U64 deltaTimeUSApp);  //Real app delta time between frames. Can't be paused (e.g. used by editor)
     bool presentToScreen(FrameEvent& evt);
     /// Update all engine components that depend on the current screen size. Returns true if the rendering viewport and the window viewport have differnt aspect ratios
     bool onSizeChange(const SizeChangeParams& params);

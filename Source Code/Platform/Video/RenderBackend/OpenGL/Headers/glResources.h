@@ -117,14 +117,23 @@ private:
     U32 _maxBindings = 0u;
 };
 
-struct glVertexDataContainer {
-    GLuint _lastDrawCount = 0;
-    GLuint _lastIndexCount = 0;
-    GLuint _lastFirstIndex = 0;
-    std::array<size_t, Config::MAX_VISIBLE_NODES> _countData{};
-    eastl::fixed_vector<GLuint, Config::MAX_VISIBLE_NODES * 256> _indexOffsetData;
+struct glVertexDataContainer;
+struct glVertexDataIndexContainer {
+    vector_fast<size_t> _countData;
+    vector_fast<GLuint> _indexOffsetData;
+};
 
-    void rebuildCountAndIndexData(U32 drawCount, U32 indexCount, U32 firstIndex, size_t indexBufferSize);
+struct glVertexDataContainer {
+    GLuint _lastDrawCount = 0u;
+    GLuint _lastIndexCount = 0u;
+    GLuint _lastFirstIndex = 0u;
+
+    eastl::unique_ptr<glVertexDataIndexContainer> _indexInfo;
+
+    void rebuildCountAndIndexData(U32 drawCount,
+                                  U32 indexCount,
+                                  U32 firstIndex,
+                                  size_t indexBufferSize);
 };
 
 enum class glObjectType : U8 {

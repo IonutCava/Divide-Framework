@@ -57,6 +57,9 @@ namespace {
     constexpr const char* const g_defaultPlayerName = "Player_%d";
 }
 
+Mutex Scene::s_perFrameArenaMutex{};
+MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 3> Scene::s_perFrameArena{};
+
 Scene::Scene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name)
     : Resource(ResourceType::DEFAULT, name),
       PlatformContextComponent(context),
@@ -107,8 +110,8 @@ bool Scene::OnShutdown(PlatformContext& context) {
 }
 
 bool Scene::frameStarted() {
-    ScopedLock<Mutex> lk(_perFrameArenaMutex);
-    _perFrameArena.clear();
+    ScopedLock<Mutex> lk(s_perFrameArenaMutex);
+    s_perFrameArena.clear();
 
     return true;
 }

@@ -355,7 +355,7 @@ public:
     PROPERTY_R_IW(U32, lastCullCount, 0u);
 
 protected:
-    void update(U64 deltaTimeUS);
+    void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
 
     /// Create and return a new framebuffer.
     RenderTarget* newRT(const RenderTargetDescriptor& descriptor);
@@ -515,8 +515,8 @@ namespace Attorney {
             return device.onSizeChange(params);
         }
         
-        static void update(GFXDevice& device, const U64 deltaTimeUS) {
-            device.update(deltaTimeUS);
+        static void update(GFXDevice& device, const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
+            device.update(deltaTimeUSFixed, deltaTimeUSApp);
         }
 
         friend class Kernel;

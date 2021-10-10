@@ -78,7 +78,7 @@ public:
     void apply(const Camera* camera, GFX::CommandBuffer& bufferInOut);
 
     void idle(const Configuration& config);
-    void update(U64 deltaTimeUS);
+    void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
 
     void updateResolution(U16 newWidth, U16 newHeight);
 

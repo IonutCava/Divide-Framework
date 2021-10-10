@@ -14,15 +14,11 @@ glGenericVertexData::glGenericVertexData(GFXDevice& context, const U32 ringBuffe
     : GenericVertexData(context, ringBufferLength, name)
     , _smallIndices(false)
     , _idxBufferDirty(false)
-    , _indexBuffer(0)
-    , _indexBufferSize(0)
+    , _indexBuffer(0u)
+    , _indexBufferSize(0u)
     , _indexBufferUsage(GL_NONE)
-    , _vertexArray(0)
+    , _vertexArray(0u)
 {
-    _lastDrawCount = 0;
-    _lastIndexCount = 0;
-    _lastFirstIndex = 0;
-    _countData.fill(0);
 }
 
 glGenericVertexData::~glGenericVertexData()
@@ -69,10 +65,18 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
     }    
     // Submit the draw command
     if (renderIndirect()) {
-        GLUtil::SubmitRenderCommand(command, _indexBuffer > 0, true, _smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
+        GLUtil::SubmitRenderCommand(command,
+                                    _indexBuffer > 0,
+                                    true,
+                                    _smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
     } else {
         rebuildCountAndIndexData(command._drawCount, command._cmd.indexCount, command._cmd.firstIndex, indexBuffer().count);
-        GLUtil::SubmitRenderCommand(command, _indexBuffer > 0, false, _smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, _countData.data(), (bufferPtr)_indexOffsetData.data());
+        GLUtil::SubmitRenderCommand(command,
+                                    _indexBuffer > 0,
+                                    false,
+                                    _smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
+                                    _indexInfo->_countData.data(),
+                                    (bufferPtr)_indexInfo->_indexOffsetData.data());
     }
 }
 

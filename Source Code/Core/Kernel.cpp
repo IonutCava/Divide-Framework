@@ -199,15 +199,14 @@ void Kernel::onLoop() {
             // Launch the FRAME_STARTED event
             _timingData.keepAlive(frameListenerMgr().createAndProcessEvent(Time::Game::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_STARTED, evt));
 
-            const U64 deltaTimeUSApp = _timingData.currentTimeDeltaUS();
-            const U64 deltaTimeUSReal = _timingData.timeDeltaUS();
+            const bool timeFrozen = _timingData.freezeLoopTime();
 
-            const U64 deltaTimeUS = _timingData.freezeLoopTime() 
-                                               ? 0ULL
-                                               : Time::SecondsToMicroseconds(1) / TICKS_PER_SECOND;
+            const U64 deltaTimeUSApp   = _timingData.currentTimeDeltaUS();
+            const U64 deltaTimeUSReal  = timeFrozen ? 0ULL : deltaTimeUSApp;
+            const U64 deltaTimeUSFixed = timeFrozen ? 0ULL : Time::SecondsToMicroseconds(1) / TICKS_PER_SECOND;
 
             // Process the current frame
-            _timingData.keepAlive(_timingData.keepAlive() && mainLoopScene(evt, deltaTimeUS, deltaTimeUSReal, deltaTimeUSApp));
+            _timingData.keepAlive(_timingData.keepAlive() && mainLoopScene(evt, deltaTimeUSFixed, deltaTimeUSReal, deltaTimeUSApp));
 
             // Launch the FRAME_PROCESS event (a.k.a. the frame processing has ended event)
             _timingData.keepAlive(_timingData.keepAlive() && frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_PROCESS, evt));
@@ -268,7 +267,7 @@ void Kernel::onLoop() {
 
     // Cap FPS
     const I16 frameLimit = _platformContext.config().runtime.frameRateLimit;
-    const F32 deltaMilliseconds = Time::MicrosecondsToMilliseconds<F32>(_timingData.timeDeltaUS());
+    const F32 deltaMilliseconds = Time::MicrosecondsToMilliseconds<F32>(_timingData.currentTimeDeltaUS());
     const F32 targetFrameTime = 1000.0f / frameLimit;
 
     if (deltaMilliseconds < targetFrameTime) {
@@ -285,18 +284,18 @@ void Kernel::onLoop() {
 }
 
 bool Kernel::mainLoopScene(FrameEvent& evt,
-                           const U64 deltaTimeUS,     //Frame rate independent deltaTime. Can be paused. (e.g. used by scene updates)
-                           const U64 realDeltaTimeUS, //Frame rate dependent deltaTime. Can be paused. (e.g. used by physics)
-                           const U64 appDeltaTimeUS)  //Real app delta time between frames. Can't be paused (e.g. used by editor)
+                           U64 deltaTimeUSFixed, //Framerate independent deltaTime. Can be paused. (e.g. used by scene updates)
+                           U64 deltaTimeUSReal,  //Framerate dependent deltaTime. Can be paused. (e.g. used by physics)
+                           U64 deltaTimeUSApp)   //Real app delta time between frames. Can't be paused (e.g. used by editor)
 {
     OPTICK_EVENT();
 
     Time::ScopedTimer timer(_appScenePass);
     {
         Time::ScopedTimer timer2(_cameraMgrTimer);
-        // Update cameras 
+        // Update cameras. Always use app timing as pausing time would freeze the cameras in place
         // ToDo: add a speed slider in the editor -Ionut
-        Camera::update(_timingData.freezeLoopTime() ? appDeltaTimeUS / 2 : deltaTimeUS);
+        Camera::update(deltaTimeUSApp);
     }
 
     if (_platformContext.mainWindow().minimized()) {
@@ -305,9 +304,9 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
         return true;
     }
 
-    {
+    {// We should pause physics simulations if needed, but the framerate dependency is handled by whatever 3rd party pfx library we are using
         Time::ScopedTimer timer2(_physicsProcessTimer);
-        _platformContext.pfx().process(realDeltaTimeUS);
+        _platformContext.pfx().process(deltaTimeUSReal);
     }
     {
         Time::ScopedTimer timer2(_sceneUpdateTimer);
@@ -316,13 +315,15 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
 
         U8 loopCount = 0;
         while (_timingData.runUpdateLoop()) {
+            // Everything inside here should use fixed timesteps, apart from GFX updates which should use both!
+            // Some things (e.g. tonemaping) need to resolve even if the simulation is paused (might not remain true in the future)
 
             if (loopCount == 0) {
                 _sceneUpdateLoopTimer.start();
             }
             _sceneManager->onStartUpdateLoop(loopCount);
 
-            _sceneManager->processGUI(deltaTimeUS);
+            _sceneManager->processGUI(deltaTimeUSFixed);
 
             // Flush any pending threaded callbacks
             for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i) {
@@ -331,20 +332,20 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
 
             // Update scene based on input
             for (U8 i = 0; i < playerCount; ++i) {
-                _sceneManager->processInput(i, deltaTimeUS);
+                _sceneManager->processInput(i, deltaTimeUSFixed);
             }
             // process all scene events
-            _sceneManager->processTasks(deltaTimeUS);
+            _sceneManager->processTasks(deltaTimeUSFixed);
             // Update the scene state based on current time (e.g. animation matrices)
-            _sceneManager->updateSceneState(deltaTimeUS);
+            _sceneManager->updateSceneState(deltaTimeUSFixed);
             // Update visual effect timers as well
-            Attorney::GFXDeviceKernel::update(_platformContext.gfx(), deltaTimeUS);
+            Attorney::GFXDeviceKernel::update(_platformContext.gfx(), deltaTimeUSFixed, deltaTimeUSApp);
 
             if (loopCount == 0) {
                 _sceneUpdateLoopTimer.stop();
             }
 
-            _timingData.endUpdateLoop(deltaTimeUS, true);
+            _timingData.endUpdateLoop(deltaTimeUSFixed, true);
             ++loopCount;
         }
     }
@@ -362,7 +363,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
 
     D64 interpolationFactor = 1.0;
     if (!_timingData.freezeLoopTime()) {
-        interpolationFactor = static_cast<D64>(_timingData.currentTimeUS() + deltaTimeUS - _timingData.nextGameTickUS()) / deltaTimeUS;
+        interpolationFactor = static_cast<D64>(_timingData.currentTimeUS() + deltaTimeUSApp - _timingData.nextGameTickUS()) / deltaTimeUSApp;
         CLAMP_01(interpolationFactor);
     }
 
@@ -372,18 +373,18 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
     SDLEventManager::pollEvents();
 
     WindowManager& winManager = _platformContext.app().windowManager();
-    winManager.update(appDeltaTimeUS);
+    winManager.update(deltaTimeUSApp);
     {
         Time::ScopedTimer timer3(_physicsUpdateTimer);
         // Update physics
-        _platformContext.pfx().update(realDeltaTimeUS);
+        _platformContext.pfx().update(deltaTimeUSReal);
     }
 
     // Update the graphical user interface
-    _platformContext.gui().update(deltaTimeUS);
+    _platformContext.gui().update(deltaTimeUSReal);
 
     if_constexpr(Config::Build::ENABLE_EDITOR) {
-        _platformContext.editor().update(appDeltaTimeUS);
+        _platformContext.editor().update(deltaTimeUSApp);
     }
 
     return presentToScreen(evt);

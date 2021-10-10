@@ -74,8 +74,9 @@ public:
     struct PerRingEntryMaterialData
     {
         using LookupInfoContainer = vector<std::pair<size_t, U16>>;
+        using MaterialDataContainer = vector<NodeMaterialData>;
         MaterialUpdateRange _matUpdateRange{};
-        vector<NodeMaterialData> _nodeMaterialData{};
+        MaterialDataContainer _nodeMaterialData{};
         LookupInfoContainer _nodeMaterialLookupInfo{};
     };
 
@@ -142,7 +143,7 @@ private:
 
     [[nodiscard]] U32 renderQueueSize(RenderPackage::MinQuality qualityRequirement = RenderPackage::MinQuality::COUNT) const;
 
-    void addTexturesAt(size_t idx, const NodeMaterialTextures& tempTextures);
+    void setMaterialInfoAt(size_t idx, PerRingEntryMaterialData::MaterialDataContainer& dataInOut, const NodeMaterialData& tempData, const NodeMaterialTextures& tempTextures);
 
     void resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const;
 private:
