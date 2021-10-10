@@ -30,9 +30,10 @@ struct MeshLoadData {
 
 };
 
-void threadedMeshLoad(MeshLoadData loadData, Import::ImportData tempMeshData) {
+void threadedMeshLoad(MeshLoadData loadData, ResourcePath modelPath, ResourcePath modelName) {
     OPTICK_EVENT();
 
+    Import::ImportData tempMeshData(modelPath, modelName);
     if (MeshImporter::loadMeshDataFromFile(*loadData._context, tempMeshData)) {
         if (!MeshImporter::loadMesh(tempMeshData.loadedFromFile(), loadData._mesh, *loadData._context, loadData._cache, tempMeshData)) {
             loadData._mesh.reset();
@@ -40,7 +41,7 @@ void threadedMeshLoad(MeshLoadData loadData, Import::ImportData tempMeshData) {
     } else {
         loadData._mesh.reset();
         //handle error
-        const string msg = Util::StringFormat("Failed to import mesh [ %s ]!", loadData._descriptor.assetName().c_str());
+        const string msg = Util::StringFormat("Failed to import mesh [ %s ]!", modelName.c_str());
         DIVIDE_UNEXPECTED_CALL_MSG(msg.c_str());
     }
 
@@ -51,13 +52,12 @@ void threadedMeshLoad(MeshLoadData loadData, Import::ImportData tempMeshData) {
 
 template<>
 CachedResource_ptr ImplResourceLoader<Mesh>::operator()() {
-    Import::ImportData tempMeshData(_descriptor.assetLocation(), _descriptor.assetName());
     Mesh_ptr ptr(MemoryManager_NEW Mesh(_context.gfx(),
                                         _cache,
                                         _loadingDescriptorHash,
                                         _descriptor.resourceName(),
-                                        tempMeshData.modelName(),
-                                        tempMeshData.modelPath()),
+                                        _descriptor.assetName(),
+                                        _descriptor.assetLocation()),
                                 DeleteResource(_cache));
 
     if (ptr) {
@@ -66,13 +66,15 @@ CachedResource_ptr ImplResourceLoader<Mesh>::operator()() {
 
     MeshLoadData loadingData(ptr, _cache, &_context, _descriptor);
     if (_descriptor.threaded()) {
-        Task* task = CreateTask([this, tempMeshData, loadingData](const Task &) {
-                                    threadedMeshLoad(loadingData, tempMeshData);
+        const ResourcePath assetLocaltion = _descriptor.assetLocation();
+        const ResourcePath assetName = _descriptor.assetName();
+        Task* task = CreateTask([this, assetLocaltion, assetName, loadingData](const Task &) {
+                                    threadedMeshLoad(loadingData, assetLocaltion, assetName);
                                 });
 
         Start(*task, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
     } else {
-        threadedMeshLoad(loadingData, tempMeshData);
+        threadedMeshLoad(loadingData, _descriptor.assetLocation(), _descriptor.assetName());
     }
     return ptr;
 }
