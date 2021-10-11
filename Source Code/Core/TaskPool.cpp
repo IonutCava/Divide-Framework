@@ -186,16 +186,25 @@ void TaskPool::taskCompleted(Task& task, const bool hasOnCompletionFunction) {
         _threadedCallbackBuffer.enqueue(task._id);
     }
 
-    const U32 jobCount = task._unfinishedJobs.fetch_sub(1);
-    DIVIDE_ASSERT(jobCount == 1u);
-
     if (task._parent != nullptr) {
-        const U32 parentJobCount = task._parent->_unfinishedJobs.fetch_sub(1);
-        DIVIDE_ASSERT(parentJobCount >= 1u);
+        if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+            DIVIDE_ASSERT(task._parent->_unfinishedJobs.fetch_sub(1) >= 1u);
+        } else {
+            task._parent->_unfinishedJobs.fetch_sub(1);
+        }
     }
 
-    const U32 test = _runningTaskCount.fetch_sub(1);
-    DIVIDE_ASSERT(test >= 1u);
+    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+        DIVIDE_ASSERT(task._unfinishedJobs.fetch_sub(1) == 1u);
+    } else {
+        task._unfinishedJobs.fetch_sub(1);
+    }
+
+    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+        DIVIDE_ASSERT(_runningTaskCount.fetch_sub(1) >= 1u);
+    } else {
+        _runningTaskCount.fetch_sub(1);
+    }
 
     ScopedLock<Mutex> lock(_taskFinishedMutex);
     _taskFinishedCV.notify_one();

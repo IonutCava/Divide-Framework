@@ -149,6 +149,28 @@ void MenuBar::draw() {
             }
         }
 
+        if (_newScenePopup) {
+            ImGui::OpenPopup("Create New Scene");
+            if (ImGui::BeginPopupModal("Create New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                static char buf[256];
+                if (ImGui::InputText("New Scene Name", &buf[0], 254)) {
+
+                }
+                if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                    ImGui::CloseCurrentPopup();
+                    _newScenePopup = false;
+                }
+                ImGui::SetItemDefaultFocus();
+                ImGui::SameLine();
+                if (ImGui::Button("Create", ImVec2(120, 0))) {
+                    ImGui::CloseCurrentPopup();
+                    _newScenePopup = false;
+                    //ToDo: Create a new scene and switch to it when everything is ready (e.g. files)
+                }
+                ImGui::EndPopup();
+            }
+        }
+
         if (_quitPopup) {
             ImGui::OpenPopup("Confirm Quit");
             if (ImGui::BeginPopupModal("Confirm Quit", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -285,41 +307,50 @@ void MenuBar::draw() {
 void MenuBar::drawFileMenu() {
     bool showFileOpenDialog = false;
 
+    const auto saveSceneCbk = [this]() {
+        _savePopup = true;
+        g_saveSceneParams._closePopup = false;
+        g_saveSceneParams._saveProgress = 0u;
+        g_saveSceneParams._saveElementCount = Attorney::EditorGeneralWidget::saveItemCount(_context.editor());
+
+        const auto messageCbk = [](const std::string_view msg) {
+            g_saveSceneParams._saveMessage = msg;
+            ++g_saveSceneParams._saveProgress;
+        };
+
+        const auto closeDialog = [this](const bool success) {
+            Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), s_messages[success ? 1 : 2], Time::SecondsToMilliseconds<F32>(6));
+            g_saveSceneParams._closePopup = true;
+        };
+
+        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), s_messages[0], Time::SecondsToMilliseconds<F32>(6));
+        if (!Attorney::EditorGeneralWidget::saveSceneChanges(_context.editor(), messageCbk, closeDialog)) {
+            _errorMsg.append("Error occured while saving the current scene!\n Try again or check the logs for errors!\n");
+        }
+    };
+
     if (ImGui::BeginMenu("File"))
     {
         const bool hasUnsavedElements = Attorney::EditorGeneralWidget::hasUnsavedSceneChanges(_context.editor());
 
-        if (ImGui::MenuItem("New", "Ctrl+N", false, false))
+        if (ImGui::MenuItem("New Scene", "Ctrl+N", false, false))
         {
+            if (hasUnsavedElements) {
+                saveSceneCbk();
+            }
+            _newScenePopup = true;
         }
 
-        showFileOpenDialog = ImGui::MenuItem("Open", "Ctrl+O");
+        showFileOpenDialog = ImGui::MenuItem("Open Scene", "Ctrl+O");
+
         if (ImGui::BeginMenu("Open Recent"))
         {
             ImGui::Text("Empty");
             ImGui::EndMenu();
         }
 
-        if (ImGui::MenuItem(hasUnsavedElements ? "Save Scene*" : "Save Scene")) {
-            _savePopup = true;
-            g_saveSceneParams._closePopup = false;
-            g_saveSceneParams._saveProgress = 0u;
-            g_saveSceneParams._saveElementCount = Attorney::EditorGeneralWidget::saveItemCount(_context.editor());
-
-            const auto messageCbk = [](const std::string_view msg) {
-                g_saveSceneParams._saveMessage = msg;
-                ++g_saveSceneParams._saveProgress;
-            };
-
-            const auto closeDialog = [this](const bool success) {
-                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), s_messages[success ? 1 : 2], Time::SecondsToMilliseconds<F32>(6));
-                g_saveSceneParams._closePopup = true;
-            };
-
-            Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), s_messages[0], Time::SecondsToMilliseconds<F32>(6));
-            if (!Attorney::EditorGeneralWidget::saveSceneChanges(_context.editor(), messageCbk, closeDialog)) {
-                _errorMsg.append("Error occured while saving the current scene!\n Try again or check the logs for errors!\n");
-            }
+        if (ImGui::MenuItem("Save Scene", "", false, hasUnsavedElements)) {
+            saveSceneCbk();
         }
 
         ImGui::Separator();
@@ -372,6 +403,23 @@ void MenuBar::drawFileMenu() {
         bool& options = Attorney::EditorMenuBar::optionWindowEnabled(_context.editor());
         ImGui::MenuItem("Editor options", "", &options);
 
+        ImGui::Separator();
+        if (ImGui::BeginMenu("Export Game"))
+        {
+            for (auto platform : Editor::g_supportedExportPlatforms) {
+                if (ImGui::MenuItem(platform, "", false, true)) {
+                    if (hasUnsavedElements) {
+                        saveSceneCbk();
+                    }
+                    Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Exported game for [%s]!", platform), Time::SecondsToMilliseconds<F32>(3.0f));
+                    break;
+                }
+            }
+           
+            ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
         if (ImGui::MenuItem("Close Editor"))
         {
             if (hasUnsavedElements) {

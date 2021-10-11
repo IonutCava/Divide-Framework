@@ -441,8 +441,8 @@ bool SSAOPreRenderOperator::execute(const Camera* camera, const RenderTargetHand
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
 
-        const mat4<F32> projectionMatrix = camera->projectionMatrix();
-        mat4<F32> invProjectionMatrix = GetInverse(projectionMatrix);
+        const mat4<F32>& projectionMatrix    = camera->projectionMatrix();
+        const mat4<F32>  invProjectionMatrix = GetInverse(projectionMatrix);
 
         _ssaoGenerateConstants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
         _ssaoGenerateConstants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, projectionMatrix);

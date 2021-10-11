@@ -572,7 +572,7 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
         return true;
     }
 
-    const SceneNodeRenderState nodeRenderState = _node->renderState();
+    const SceneNodeRenderState& nodeRenderState = _node->renderState();
 
     // Drawing is disabled in general for this node
     if (!nodeRenderState.drawState()) {

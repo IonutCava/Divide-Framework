@@ -116,6 +116,7 @@ class Editor final : public PlatformContextComponent,
 
   public:
     static std::array<Input::MouseButton, 5> g_oisButtons;
+    static std::array<const char*, 3> g_supportedExportPlatforms;
 
     enum class WindowType : U8 {
         PostFX = 0,

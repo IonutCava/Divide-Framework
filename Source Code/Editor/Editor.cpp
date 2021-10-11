@@ -105,6 +105,12 @@ std::array<Input::MouseButton, 5> Editor::g_oisButtons = {
         Input::MouseButton::MB_Button4,
 };
 
+std::array<const char*, 3> Editor::g_supportedExportPlatforms = {
+    "Windows",
+    "Linux",
+    "macOS"
+};
+
 Editor::Editor(PlatformContext& context, const ImGuiStyleEnum theme)
     : PlatformContextComponent(context),
       FrameListener("Editor", context.kernel().frameListenerMgr(), 9999),

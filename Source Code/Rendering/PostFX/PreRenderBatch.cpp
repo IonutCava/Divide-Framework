@@ -634,30 +634,30 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         EnqueueCommand(bufferInOut, computeMipMapsCommand);
     }
 
-    const auto executeHDROp = [this, &camera](PreRenderOperator* op, GFX::CommandBuffer& bufferInOut) {
-        EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute HDR (1) operator [ %s ]", PostFX::FilterName(op->operatorType())).c_str() });
-        if (op->execute(camera, getInput(true), getOutput(true), bufferInOut)) {
-            _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
-        }
-        EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
-    };
-
     // Execute all HDR based operators that need to loop back to the screen target (SSAO, SSR, etc)
-    for (auto& op : hdrBatch) {
-        if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
-            executeHDROp(op.get(), bufferInOut);
-        }
-    }
-
+    bool autoSSR = false;
     if (!BitCompare(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS))) {
         // We need at least environment mapped reflections if we decided to disable SSR
-        for (auto& op : hdrBatch) {
-            if (op->operatorType() == FilterType::FILTER_SS_REFLECTIONS) {
-                executeHDROp(op.get(), bufferInOut);
-                break;
+        autoSSR = true;
+        SetBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS));
+    }
+
+    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "PostFX: Execute HDR(1) operators"});
+    for (auto& op : hdrBatch) {
+        if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
+            EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
+            if (op->execute(camera, getInput(true), getOutput(true), bufferInOut)) {
+                _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
             }
+            EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
         }
     }
+    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+
+    if (autoSSR) {
+        ClearBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS));
+    }
+
     { // Apply HDR batch to main target ... somehow
         EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{"PostFX: Apply SSAO and SSR"});
 
