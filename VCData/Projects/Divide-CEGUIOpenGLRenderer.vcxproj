@@ -86,29 +86,53 @@
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectName)_d</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">$(ProjectName)_d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">.lib</TargetExt>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectName)</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">$(ProjectName)</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">.lib</TargetExt>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">Intermediate\$(Configuration)_ThirdPartyLibs\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(ProjectName)_p</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">$(ProjectName)_p</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">.lib</TargetExt>
@@ -156,7 +180,7 @@
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Sync</ExceptionHandling>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -186,9 +210,10 @@
       <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;CEGUI_STATIC;CEGUI_BUILD_STATIC_FACTORY_MODULE;_CRT_SECURE_NO_WARNINGS;NOMINMAX;GLEW_STATIC;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -213,7 +238,7 @@
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Sync</ExceptionHandling>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -243,9 +268,10 @@
       <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;CEGUI_STATIC;CEGUI_BUILD_STATIC_FACTORY_MODULE;_CRT_SECURE_NO_WARNINGS;NOMINMAX;GLEW_STATIC;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -279,7 +305,7 @@
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_RELEASE;NDEBUG</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalOptions>/bigobj /Zc:twoPhase- </AdditionalOptions>
       <OpenMPSupport>true</OpenMPSupport>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -298,7 +324,8 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CEGUI_STATIC;CEGUI_BUILD_STATIC_FACTORY_MODULE;_CRT_SECURE_NO_WARNINGS;NOMINMAX;GLEW_STATIC;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -332,7 +359,7 @@
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_RELEASE;NDEBUG</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalOptions>/bigobj /Zc:twoPhase- </AdditionalOptions>
       <OpenMPSupport>true</OpenMPSupport>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -351,7 +378,8 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CEGUI_STATIC;CEGUI_BUILD_STATIC_FACTORY_MODULE;_CRT_SECURE_NO_WARNINGS;NOMINMAX;GLEW_STATIC;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -375,7 +403,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/ImGuiAl/msgbox/;$(SolutionDir)/../3rdParty/ImGuiMisc/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/../Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Profile/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Sync</ExceptionHandling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -405,8 +433,9 @@
       <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CEGUI_STATIC;CEGUI_BUILD_STATIC_FACTORY_MODULE;_CRT_SECURE_NO_WARNINGS;NOMINMAX;GLEW_STATIC;CMAKE_INTDIR=\"Profile\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -431,7 +460,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/glm/;$(SolutionDir)/../3rdParty/STB/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../3rdParty/ImGuiAl/msgbox/;$(SolutionDir)/../3rdParty/ImGuiMisc/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/simplefilewatcher/;$(SolutionDir)/../3rdParty/ChaiScript/include/;$(SolutionDir)/../3rdParty\EntityComponentSystem/include/;$(SolutionDir)/../3rdParty/imgui/addons/Node-editor/NodeEditor/Include/;$(SolutionDir)/../3rdParty/boost\;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/ReCast/Recast/Include/;$(SolutionDir)/../3rdParty/ReCast/Detour/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/Include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/Include/;$(SolutionDir)/../3rdParty/ReCast/RecastDemo/Include/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/Include/;$(SolutionDir)/../3rdParty/simplefilewatcher/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty\ZLib\include/;$(SolutionDir)/../Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Profile/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Sync</ExceptionHandling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -461,8 +490,9 @@
       <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CEGUI_STATIC;CEGUI_BUILD_STATIC_FACTORY_MODULE;_CRT_SECURE_NO_WARNINGS;NOMINMAX;GLEW_STATIC;CMAKE_INTDIR=\"Profile\";%(PreprocessorDefinitions)</PreprocessorDefinitions>

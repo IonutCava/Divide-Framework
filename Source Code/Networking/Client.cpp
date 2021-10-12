@@ -268,7 +268,7 @@ void Client::handle_connect(const boost::system::error_code& ec, boost::asio::ip
     // the timeout handler must have run first.
     if (!_socket.is_open()) {
         if (_debugOutput) {
-            ASIO::LOG_PRINT("[ASIO]: Connect timed out");
+            ASIO::LOG_PRINT("[ASIO]: Connect timed out", true);
         }
         // Try the next available endpoint.
         start_connect(++endpoint_iter);

@@ -73,9 +73,15 @@ void Console::decorate(std::ostream& outStream, const char* text, const bool new
         outStream << "[ " << std::this_thread::get_id() << " ] ";
     }
 
-    outStream << (type == EntryType::ERR ? " Error: " : type == EntryType::WARNING ? " Warning: " : "");
+    if (type == EntryType::WARNING || type == EntryType::ERR) {
+        outStream << (type == EntryType::ERR ? " Error: " : " Warning: ");
+    }
+
     outStream << text;
-    outStream << (newline ? "\n" : "");
+
+    if (newline) {
+        outStream << "\n";
+    }
 }
 
 void Console::output(std::ostream& outStream, const char* text, const bool newline, const EntryType type) {

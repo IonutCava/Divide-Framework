@@ -109,32 +109,38 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)../Source Code/Libs/</OutDir>
+    <OutDir>$(SolutionDir)Outputs\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
-    <OutDir>$(SolutionDir)../Source Code/Libs/</OutDir>
+    <OutDir>$(SolutionDir)Outputs\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IntDir>Intermediate\$(Configuration)_PCH\</IntDir>
-    <TargetName>$(ProjectName)_d</TargetName>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
@@ -143,8 +149,8 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
-    <IntDir>Intermediate\$(Configuration)_PCH\</IntDir>
-    <TargetName>$(ProjectName)_d</TargetName>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
@@ -153,19 +159,19 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)../Source Code/Libs/</OutDir>
+    <OutDir>$(SolutionDir)Outputs\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
-    <OutDir>$(SolutionDir)../Source Code/Libs/</OutDir>
+    <OutDir>$(SolutionDir)Outputs\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
-    <OutDir>$(SolutionDir)../Source Code/Libs/</OutDir>
+    <OutDir>$(SolutionDir)Outputs\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
-    <OutDir>$(SolutionDir)../Source Code/Libs/</OutDir>
+    <OutDir>$(SolutionDir)Outputs\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IntDir>Intermediate\$(Configuration)_PCH\</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
@@ -174,7 +180,7 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
-    <IntDir>Intermediate\$(Configuration)_PCH\</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
@@ -183,8 +189,8 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
-    <IntDir>Intermediate\$(Configuration)_PCH\</IntDir>
-    <TargetName>$(ProjectName)_p</TargetName>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
@@ -194,8 +200,8 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
-    <IntDir>Intermediate\$(Configuration)_PCH\</IntDir>
-    <TargetName>$(ProjectName)_p</TargetName>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
@@ -233,7 +239,7 @@
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableModules>false</EnableModules>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -241,16 +247,16 @@
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <AdditionalOptions>/Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
-      <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
+      <ProgramDataBaseFileName>$(SharedPdb)</ProgramDataBaseFileName>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalDependencies>
       </AdditionalDependencies>
       <AdditionalLibraryDirectories>
@@ -290,7 +296,7 @@
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableModules>false</EnableModules>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -298,16 +304,16 @@
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <AdditionalOptions>/Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
-      <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
+      <ProgramDataBaseFileName>$(SharedPdb)</ProgramDataBaseFileName>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalDependencies>
       </AdditionalDependencies>
       <AdditionalLibraryDirectories>
@@ -344,7 +350,7 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <OmitFramePointers>true</OmitFramePointers>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions> /Zc:twoPhase-</AdditionalOptions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -355,9 +361,9 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
-      <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
+      <ProgramDataBaseFileName>$(SharedPdb)</ProgramDataBaseFileName>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -365,7 +371,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalDependencies>
       </AdditionalDependencies>
       <Verbose>false</Verbose>
@@ -397,7 +403,7 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <OmitFramePointers>true</OmitFramePointers>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions> /Zc:twoPhase-</AdditionalOptions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -408,9 +414,9 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
-      <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
+      <ProgramDataBaseFileName>$(SharedPdb)</ProgramDataBaseFileName>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -418,7 +424,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalDependencies>
       </AdditionalDependencies>
       <Verbose>false</Verbose>
@@ -450,7 +456,7 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
@@ -460,9 +466,9 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
-      <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
+      <ProgramDataBaseFileName>$(SharedPdb)</ProgramDataBaseFileName>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
@@ -471,7 +477,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <Verbose>false</Verbose>
       <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>
     </Lib>
@@ -502,7 +508,7 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
@@ -512,9 +518,9 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
-      <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
+      <ProgramDataBaseFileName>$(SharedPdb)</ProgramDataBaseFileName>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
@@ -523,7 +529,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <OutputFile>$(OutDir)$(TargetName).lib</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <Verbose>false</Verbose>
       <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>
     </Lib>

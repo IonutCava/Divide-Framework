@@ -351,7 +351,6 @@
     <ClInclude Include="../../Source Code/Core\Headers\ByteBuffer.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/stdafx.h" />
     <ClInclude Include="../../Source Code/Core\Headers\RingBuffer.h">
       <Filter>Headers</Filter>
     </ClInclude>

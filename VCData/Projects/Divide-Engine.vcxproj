@@ -86,39 +86,51 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Intermediate\$(Configuration)_Engine\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">Intermediate\$(Configuration)_Engine\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</EmbedManifest>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">true</EmbedManifest>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">$(SolutionDir)../Source Code/Libs/</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Intermediate\$(Configuration)_Engine\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">Intermediate\$(Configuration)_Engine\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Intermediate\$(Configuration)_Engine\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">Intermediate\$(Configuration)_Engine\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</EmbedManifest>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">true</EmbedManifest>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</EmbedManifest>
@@ -209,7 +221,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <EnablePREfast>false</EnablePREfast>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
@@ -240,7 +252,7 @@
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <ProjectReference>
@@ -274,7 +286,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <EnablePREfast>false</EnablePREfast>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4913;4512;4201;4100;4503</DisableSpecificWarnings>
@@ -305,7 +317,7 @@
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <ProjectReference>
@@ -343,7 +355,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <EnablePREfast>false</EnablePREfast>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -368,7 +380,7 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
@@ -409,7 +421,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <EnablePREfast>false</EnablePREfast>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -434,7 +446,7 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
@@ -475,7 +487,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <EnablePREfast>false</EnablePREfast>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -501,7 +513,7 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
@@ -539,7 +551,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level4</WarningLevel>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <EnablePREfast>false</EnablePREfast>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -565,7 +577,7 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>

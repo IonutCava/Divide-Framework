@@ -112,25 +112,35 @@ class Console : NonCopyable {
     template <typename... T>
     NO_INLINE static void d_errorf(std::ofstream& outStream, const char* format, T&&... args);
 
+    [[nodiscard]]
     static bool timeStampsEnabled() noexcept { return _timestamps; }
     static void toggleTimeStamps(const bool state) noexcept { _timestamps = state; }
 
+    [[nodiscard]]
     static bool threadIDEnabled() noexcept { return _threadID; }
     static void togglethreadID(const bool state) noexcept { _threadID = state; }
 
+    static void toggleTextDecoration(const bool state) { toggleTimeStamps(state); togglethreadID(state); }
+
+    [[nodiscard]]
     static bool enabled() noexcept { return _enabled; }
     static void toggle(const bool state) noexcept { _enabled = state; }
 
+    [[nodiscard]]
     static bool immediateModeEnabled() noexcept { return _immediateMode; }
     static void toggleImmediateMode(const bool state) noexcept { _immediateMode = state; }
 
+    [[nodiscard]]
     static bool errorStreamEnabled() noexcept { return _errorStreamEnabled; }
     static void toggleErrorStream(const bool state) noexcept { _errorStreamEnabled = state; }
+
+    [[nodiscard]]
     static size_t bindConsoleOutput(const ConsolePrintCallback& guiConsoleCallback) {
         _guiConsoleCallbacks.push_back(guiConsoleCallback);
         return _guiConsoleCallbacks.size() - 1;
     }
 
+    [[nodiscard]]
     static bool unbindConsoleOutput(size_t& index) {
         if (index < _guiConsoleCallbacks.size()) {
             _guiConsoleCallbacks.erase(std::begin(_guiConsoleCallbacks) + index);
@@ -139,7 +149,9 @@ class Console : NonCopyable {
         }
         return false;
     }
+
    protected:
+    [[nodiscard]]
     static const char* formatText(const char* format, ...) noexcept;
     static void output(const char* text, bool newline, EntryType type);
     static void output(std::ostream& outStream, const char* text, bool newline, EntryType type);

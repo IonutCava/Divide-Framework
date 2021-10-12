@@ -42,7 +42,9 @@ GUIConsole::GUIConsole(GUI& parent, PlatformContext& context, ResourceCache* cac
 
 GUIConsole::~GUIConsole()
 {
-    Console::unbindConsoleOutput(_consoleCallbackIndex);
+    if (!Console::unbindConsoleOutput(_consoleCallbackIndex)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
     _closing = true;
 
     if (_consoleWindow) {

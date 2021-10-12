@@ -22,7 +22,7 @@ robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ Build\ PhysXFoun
 robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ Build\ PhysXCooking_64.dll /NP /NJH /NJS
 robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ Build\ PhysXGPU_64.dll /NP /NJH /NJS
 ECHO Launching Executable
-Build\Divide-Executable.exe %*
+Build\Divide.exe %*
 exit /b
 
 :run_Profile
@@ -35,7 +35,7 @@ robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ Build\ PhysXFoun
 robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ Build\ PhysXCooking_64.dll /NP /NJH /NJS
 robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ Build\ PhysXGPU_64.dll /NP /NJH /NJS
 ECHO Launching Executable
-Build\Divide-Executable_p.exe %*
+Build\Divide_p.exe %*
 exit /b
 
 :run_Debug
@@ -48,5 +48,5 @@ robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ Build\ PhysXFounda
 robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ Build\ PhysXCooking_64.dll /NP /NJH /NJS
 robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ Build\ PhysXGPU_64.dll /NP /NJH /NJS
 ECHO Launching Executable
-Build\Divide-Executable_d.exe %*
+Build\Divide_d.exe %*
 exit /b

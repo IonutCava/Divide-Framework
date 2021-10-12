@@ -71,8 +71,7 @@ ErrorCode PlatformPostInit(const int argc, char** argv) {
             if (!Util::FindCommandLineArgument(argc, argv, "disableCopyright")) {
                 Console::printCopyrightNotice();
             }
-            Console::toggleTimeStamps(true);
-            Console::togglethreadID(true);
+            Console::toggleTextDecoration(true);
         }
     }
 

@@ -165,7 +165,7 @@ void tcp_session_tpl::handle_write_file(const boost::system::error_code& ec) {
     source_file.open(filePath.c_str(),
                      std::ios_base::binary | std::ios_base::ate);
     if (!source_file) {
-        ASIO::LOG_PRINT(("failed to open " + filePath).c_str());
+        ASIO::LOG_PRINT(("failed to open " + filePath).c_str(), true);
         return;
     }
     const size_t file_size = sizeof source_file;  //.tellg();

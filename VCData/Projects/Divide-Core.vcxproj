@@ -109,7 +109,6 @@
     <ClInclude Include="../../Source Code/Core\Time\Headers\ApplicationTimer.h" />
     <ClInclude Include="../../Source Code/Core\Time\Headers\FrameRateHandler.h" />
     <ClInclude Include="../../Source Code/Core\Time\Headers\ProfileTimer.h" />
-    <ClInclude Include="../../Source Code/stdafx.h" />
     <ClInclude Include="../../Source Code/Utility\Headers\Colours.h" />
     <ClInclude Include="../../Source Code/Utility\Headers\CommandParser.h" />
     <ClInclude Include="../../Source Code/Utility\Headers\CRC.h" />
@@ -208,21 +207,33 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -232,7 +243,7 @@
     <OutDir>$(SolutionDir)../Source Code/Libs/</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IntDir>Intermediate\$(Configuration)_Core\</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
@@ -242,7 +253,7 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
-    <IntDir>Intermediate\$(Configuration)_Core\</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
@@ -264,7 +275,7 @@
     <OutDir>$(SolutionDir)../Source Code/Libs/</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IntDir>Intermediate\$(Configuration)_Core\</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
@@ -273,7 +284,7 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
-    <IntDir>Intermediate\$(Configuration)_Core\</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
@@ -282,7 +293,7 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
-    <IntDir>Intermediate\$(Configuration)_Core\</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)_p</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
@@ -293,7 +304,7 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
-    <IntDir>Intermediate\$(Configuration)_Core\</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)_p</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
@@ -340,8 +351,8 @@
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <AdditionalOptions>/Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
@@ -397,8 +408,8 @@
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <AdditionalOptions>/Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
@@ -454,8 +465,8 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
@@ -507,8 +518,8 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
@@ -559,8 +570,8 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
@@ -611,8 +622,8 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
@@ -626,6 +637,19 @@
       <Verbose>false</Verbose>
       <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>
     </Lib>
+    <CustomBuildStep>
+      <Command>if EXIST "$(SharedPdb)" xcopy /Y /F "$(SharedPdb)" "$(IntDir)"
+if EXIST "$(SharedIdb)" xcopy /Y /F "$(SharedIdb)" "$(IntDir)"</Command>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Message>Performing Custom Build Step</Message>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Outputs>$(IntDir)vc$(PlatformToolsetVersion).pdb;</Outputs>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Inputs>$(SharedPdb)</Inputs>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -293,15 +293,15 @@ bool glVertexArray::refresh() {
 }
 
 void glVertexArray::upload() {
-    Console::printfn("VAO HASHES: ");
-
     constexpr size_t stageCount = to_size(to_base(RenderStage::COUNT) * to_base(RenderPassType::COUNT));
 
-    vector<GLuint> vaos;
-    vaos.reserve(stageCount);
+    hashMap<size_t, vector<std::pair<RenderStage, RenderPassType>>> vaoHashes;
+
+    vector<GLuint> vaoHandles;
+    vaoHandles.reserve(stageCount);
     std::array<AttribFlags, stageCount> attributesPerStage = {};
 
-    for (size_t i = 0; i < stageCount; ++i) {
+    for (size_t i = 0u; i < stageCount; ++i) {
         const AttribFlags& stageMask = _attribMasks[i];
 
         AttribFlags& stageUsage = attributesPerStage[i];
@@ -309,25 +309,42 @@ void glVertexArray::upload() {
             stageUsage[j] = _useAttribute[j] && stageMask[j];
         }
 
-        size_t crtHash = 0;
+        size_t crtHash = 0u;
         // Dirty on a VAO map cache miss
         if (!_VAOMap.getVAO(stageUsage, _vaoCaches[i], crtHash)) {
             const GLuint crtVao = _vaoCaches[i];
-            if (eastl::find(cbegin(vaos), cend(vaos), crtVao) == cend(vaos)) {
-                vaos.push_back(crtVao);
+            if (eastl::find(cbegin(vaoHandles), cend(vaoHandles), crtVao) == cend(vaoHandles)) {
+                vaoHandles.push_back(crtVao);
                 // Set vertex attribute pointers
                 uploadVBAttributes(crtVao);
             }
         }
-        const RenderStage stage = static_cast<RenderStage>(i % to_base(RenderStage::COUNT));
-        const RenderPassType pass = static_cast<RenderPassType>(i / to_base(RenderStage::COUNT));
-        Console::printfn("      %s : %zu (pass: %s)", TypeUtil::RenderStageToString(stage), crtHash, TypeUtil::RenderPassTypeToString(pass));
+        DIVIDE_ASSERT(crtHash != 0u);
+
+        if_constexpr(Config::Build::IS_PROFILE_BUILD) {
+            const RenderStage stage = static_cast<RenderStage>(i % to_base(RenderStage::COUNT));
+            const RenderPassType pass = static_cast<RenderPassType>(i / to_base(RenderStage::COUNT));
+            vaoHashes[crtHash].push_back(std::make_pair(stage, pass));
+        }
+    }
+
+    if_constexpr(Config::Build::IS_PROFILE_BUILD) {
+        Console::printfn("VAO HASHES: ");
+        Console::toggleTextDecoration(false);
+        for (const auto& it : vaoHashes) {
+            Console::printf("Vao [ %d ]: ", it.first);
+            for (const auto& entry : it.second) {
+                Console::printf(" [%s : %s] ", TypeUtil::RenderStageToString(entry.first), TypeUtil::RenderPassTypeToString(entry.second));
+            }
+            Console::printfn("");
+        }
+        Console::toggleTextDecoration(true);
     }
 
     _uploadQueued = false;
 }
-/// This method creates the initial VAO and VB OpenGL objects and queues a
-/// Refresh call
+
+/// This method creates the initial VAO and VB OpenGL objects and queues a refresh call
 bool glVertexArray::createInternal() {
     // Avoid double create calls
     assert(_VBHandle._id == 0 && "glVertexArray error: Attempted to double create a VB");

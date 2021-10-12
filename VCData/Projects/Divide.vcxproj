@@ -121,21 +121,33 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
+    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -145,8 +157,8 @@
     <OutDir>$(SolutionDir)/../Build/</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IntDir>Intermediate\$(Configuration)_Executable/</IntDir>
-    <TargetName>$(ProjectName)_d</TargetName>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>Divide_d</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
@@ -155,7 +167,7 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
-    <IntDir>Intermediate\$(Configuration)_Executable/</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>Divide-Editor_d</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
@@ -177,7 +189,7 @@
     <OutDir>$(SolutionDir)/../Build/</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IntDir>Intermediate\$(Configuration)_Executable/</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
@@ -185,9 +197,10 @@
     <LinkIncremental>false</LinkIncremental>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <TargetName>Divide</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
-    <IntDir>Intermediate\$(Configuration)_Executable/</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
@@ -198,8 +211,8 @@
     <TargetName>Divide-Editor</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
-    <IntDir>Intermediate\$(Configuration)_Executable/</IntDir>
-    <TargetName>$(ProjectName)_p</TargetName>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>Divide_p</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
@@ -214,7 +227,7 @@
     <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
-    <IntDir>Intermediate\$(Configuration)_Executable/</IntDir>
+    <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>Divide-Editor_p</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
@@ -266,14 +279,14 @@
       <EnableModules>false</EnableModules>
       <AdditionalOptions>/Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Divide-Game_d.lib;Divide-Platform_d.lib;Divide-Networking_d.lib;Divide-Engine_d.lib;Divide-Core_d.lib;Divide-Editor_d.lib;Divide-ThirdPartyLibs_d.lib;Divide-PCH_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Debug\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Divide-PCH.lib;Divide-Game_d.lib;Divide-Platform_d.lib;Divide-Networking_d.lib;Divide-Engine_d.lib;Divide-Core_d.lib;Divide-Editor_d.lib;Divide-ThirdPartyLibs_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Debug\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ShowProgress>NotSet</ShowProgress>
       <IgnoreSpecificDefaultLibraries>LIBCMT.lib</IgnoreSpecificDefaultLibraries>
       <Profile>false</Profile>
@@ -283,7 +296,7 @@
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <ProfileGuidedDatabase>$(OutDir)VCData\Build\$(TargetName).pgd</ProfileGuidedDatabase>
-      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Lib>
       <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName)_d.exe</OutputFile>
@@ -298,7 +311,7 @@
     </PostBuildEvent>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
-      <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
     </ProjectReference>
     <PreBuildEvent>
       <Command>robocopy $(TargetDir)..\3rdParty\assimp\bin\Debug\ $(OutDir)\ assimp-vc142-mtd.dll /NP /NJH /NJS
@@ -347,14 +360,14 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
       <EnableModules>false</EnableModules>
       <AdditionalOptions>/Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_d.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Divide-Game_d.lib;Divide-Platform_d.lib;Divide-Networking_d.lib;Divide-Engine_d.lib;Divide-Core_d.lib;Divide-Editor_d.lib;Divide-ThirdPartyLibs_d.lib;Divide-PCH_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Debug\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Divide-PCH.lib;Divide-Game_d.lib;Divide-Platform_d.lib;Divide-Networking_d.lib;Divide-Engine_d.lib;Divide-Core_d.lib;Divide-Editor_d.lib;Divide-ThirdPartyLibs_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Debug\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ShowProgress>NotSet</ShowProgress>
       <IgnoreSpecificDefaultLibraries>LIBCMT.lib</IgnoreSpecificDefaultLibraries>
       <Profile>false</Profile>
@@ -364,7 +377,7 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <ProfileGuidedDatabase>$(OutDir)VCData\Build\$(TargetName).pgd</ProfileGuidedDatabase>
-      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Lib>
       <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName)_d.exe</OutputFile>
@@ -379,7 +392,7 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PostBuildEvent>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
-      <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
     </ProjectReference>
     <PreBuildEvent>
       <Command>robocopy $(TargetDir)..\3rdParty\assimp\bin\Debug\ $(OutDir)\ assimp-vc142-mtd.dll /NP /NJH /NJS
@@ -428,22 +441,22 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>Divide-Game.lib;Divide-Platform.lib;Divide-Networking.lib;Divide-Engine.lib;Divide-Core.lib;Divide-Editor.lib;Divide-ThirdPartyLibs.lib;Divide-PCH.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Divide-PCH.lib;Divide-Game.lib;Divide-Platform.lib;Divide-Networking.lib;Divide-Engine.lib;Divide-Core.lib;Divide-Editor.lib;Divide-ThirdPartyLibs.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions> /ignore:4099  /debug:fastlink %(AdditionalOptions)</AdditionalOptions>
       <SubSystem>NotSet</SubSystem>
       <LargeAddressAware>true</LargeAddressAware>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <ProfileGuidedDatabase>$(OutDir)VCData\Build\$(TargetName).pgd</ProfileGuidedDatabase>
       <ShowProgress>NotSet</ShowProgress>
-      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Lib>
       <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName).exe</OutputFile>
@@ -501,22 +514,22 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>Divide-Game.lib;Divide-Platform.lib;Divide-Networking.lib;Divide-Engine.lib;Divide-Core.lib;Divide-Editor.lib;Divide-ThirdPartyLibs.lib;Divide-PCH.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Divide-PCH.lib;Divide-Game.lib;Divide-Platform.lib;Divide-Networking.lib;Divide-Engine.lib;Divide-Core.lib;Divide-Editor.lib;Divide-ThirdPartyLibs.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions> /ignore:4099  /debug:fastlink %(AdditionalOptions)</AdditionalOptions>
       <SubSystem>NotSet</SubSystem>
       <LargeAddressAware>true</LargeAddressAware>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <ProfileGuidedDatabase>$(OutDir)VCData\Build\$(TargetName).pgd</ProfileGuidedDatabase>
       <ShowProgress>NotSet</ShowProgress>
-      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Lib>
       <OutputFile>$(SolutionDir)../Source Code/Libs/$(ProjectName).exe</OutputFile>
@@ -573,21 +586,21 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
       <AdditionalOptions> /Zc:twoPhase- /Zc:twoPhase- </AdditionalOptions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>Divide-Game_p.lib;Divide-Platform_p.lib;Divide-Networking_p.lib;Divide-Engine_p.lib;Divide-Core_p.lib;Divide-Editor_p.lib;Divide-ThirdPartyLibs_p.lib;Divide-PCH_p.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\profile;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Divide-PCH.lib;Divide-Game_p.lib;Divide-Platform_p.lib;Divide-Networking_p.lib;Divide-Engine_p.lib;Divide-Core_p.lib;Divide-Editor_p.lib;Divide-ThirdPartyLibs_p.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\profile;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <Profile>true</Profile>
       <AdditionalOptions> /ignore:4099 /debug:fastlink %(AdditionalOptions)</AdditionalOptions>
       <SubSystem>NotSet</SubSystem>
       <LargeAddressAware>true</LargeAddressAware>
-      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <ProfileGuidedDatabase>$(OutDir)VCData\Build\$(TargetName).pgd</ProfileGuidedDatabase>
       <ShowProgress>NotSet</ShowProgress>
@@ -646,21 +659,21 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
       <AdditionalOptions> /Zc:twoPhase- /Zc:twoPhase- </AdditionalOptions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode>false</SupportJustMyCode>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(IntDir)..\pch_p.pch</PrecompiledHeaderOutputFile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>Divide-Game_p.lib;Divide-Platform_p.lib;Divide-Networking_p.lib;Divide-Engine_p.lib;Divide-Core_p.lib;Divide-Editor_p.lib;Divide-ThirdPartyLibs_p.lib;Divide-PCH_p.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\profile;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Divide-PCH.lib;Divide-Game_p.lib;Divide-Platform_p.lib;Divide-Networking_p.lib;Divide-Engine_p.lib;Divide-Core_p.lib;Divide-Editor_p.lib;Divide-ThirdPartyLibs_p.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SharedPchDir)../../../../$(Platform)/$(Configuration);$(SolutionDir)../Source Code/Libs/;$(SolutionDir)../3rdParty/assimp\lib\Release\;$(SolutionDir)../3rdParty/boost\lib\;$(SolutionDir)../3rdParty/cegui\lib\;$(SolutionDir)../3rdParty/ZLib\lib\;$(SolutionDir)../3rdParty/freetype/lib\;$(SolutionDir)../3rdParty/imageLibs/lib\;$(SolutionDir)../3rdParty/OpenCL\lib\;$(SolutionDir)../3rdParty/OpenAL\libs\;$(SolutionDir)../3rdParty/glbinding\lib\;$(SolutionDir)../3rdParty/physx\PxShared\Lib\vc15win64\;$(SolutionDir)../3rdParty/OIS\lib\;$(SolutionDir)../3rdParty/sdl\lib\;$(SolutionDir)../3rdParty/DevIL\lib\;$(SolutionDir)../3rdParty/AntTweakBar\lib\;$(SolutionDir)../3rdParty/physx4\physx\bin\win.x86_64.vc142.mt\profile;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <Profile>true</Profile>
       <AdditionalOptions> /ignore:4099 /debug:fastlink %(AdditionalOptions)</AdditionalOptions>
       <SubSystem>NotSet</SubSystem>
       <LargeAddressAware>true</LargeAddressAware>
-      <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <ProfileGuidedDatabase>$(OutDir)VCData\Build\$(TargetName).pgd</ProfileGuidedDatabase>
       <ShowProgress>NotSet</ShowProgress>
