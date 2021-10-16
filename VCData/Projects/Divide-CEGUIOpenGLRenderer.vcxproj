@@ -210,7 +210,7 @@
       <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
@@ -268,7 +268,7 @@
       <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
@@ -324,7 +324,7 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <ResourceCompile>
@@ -378,7 +378,7 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <ResourceCompile>
@@ -433,7 +433,7 @@
       <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
     </ClCompile>
@@ -490,7 +490,7 @@
       <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <PrecompiledHeaderOutputFile>$(SharedPch)_thirdParty</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ProgramDataBaseFileName>$(OutDir)$(TargetName)_tp.pdb</ProgramDataBaseFileName>
     </ClCompile>

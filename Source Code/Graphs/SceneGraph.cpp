@@ -519,7 +519,7 @@ void SceneGraph::loadFromXML(const char* assetsFile) {
     readNode(node_pt, rootNode, readNode);
     // This may not be needed;
     assert(rootNode.typeHash == _ID("TRANSFORM"));
-    parentScene().addSceneGraphToLoad(rootNode);
+    Attorney::SceneGraph::addSceneGraphToLoad(parentScene(), MOV(rootNode));
 }
 
 bool SceneGraph::saveNodeToXML(const SceneGraphNode* node) const {

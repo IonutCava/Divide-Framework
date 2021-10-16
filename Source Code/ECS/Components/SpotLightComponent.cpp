@@ -11,7 +11,7 @@ namespace Divide {
 
 SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& context)
      : BaseComponentType<SpotLightComponent, ComponentType::SPOT_LIGHT>(sgn, context),
-       Light(sgn, 30.0f, LightType::SPOT, sgn->sceneGraph()->parentScene().lightPool())
+       Light(sgn, 30.0f, LightType::SPOT, *sgn->sceneGraph()->parentScene().lightPool())
 {
     _shadowProperties._lightDetails.z = 0.0001f;
 

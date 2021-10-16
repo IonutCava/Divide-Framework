@@ -218,8 +218,8 @@ namespace Divide {
                 worldMatrixField._type = EditorComponentFieldType::PUSH_TYPE;
                 worldMatrixField._readOnly = true;
                 worldMatrixField._data = &viewMatrix;
-                if (!processBasicField(worldMatrixField)) {
-                    DIVIDE_UNEXPECTED_CALL();
+                if (processBasicField(worldMatrixField)) {
+                    // Value changed
                 }
             }
             {
@@ -232,8 +232,8 @@ namespace Divide {
                 projMatrixField._readOnly = true;
                 projMatrixField._name = "Projection Matrix";
                 projMatrixField._data = &projMatrix;
-                if (!processBasicField(projMatrixField)) {
-                    DIVIDE_UNEXPECTED_CALL();
+                if (processBasicField(projMatrixField)) {
+                    // Value changed
                 }
             }
             {
@@ -303,7 +303,7 @@ namespace Divide {
                     ImGui::Separator();
 
                     SceneManager* sceneManager = context().kernel().sceneManager();
-                    SceneState* activeSceneState = sceneManager->getActiveScene().state();
+                    auto& activeSceneState = sceneManager->getActiveScene().state();
                     // Root
                     if (sgnNode->parent() == nullptr) {
                         ImGui::Separator();

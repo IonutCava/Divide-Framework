@@ -47,14 +47,6 @@ BEGIN_SCENE(DefaultScene)
     void processGUI(U64 deltaTimeUS) override;
 
     void onSetActive() override;
-private:
-    void loadScene(I64 btnGUID);
-
-private:
-    hashMap<U8, Angle::DEGREES<F32>> _camAngle;
-    hashMap<I64, Str256> _buttonToSceneMap;
-    Str256 _sceneToLoad;
-
 END_SCENE(DefaultScene)
 
 } // namespace Divide

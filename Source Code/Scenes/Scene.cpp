@@ -53,6 +53,8 @@
 namespace Divide {
 
 namespace {
+    constexpr F32 DEFAULT_CAMERA_MOVE_SPEED = 40.f;
+    constexpr F32 DEFAULT_CAMERA_TURN_SPEED = 50.f;
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
     constexpr const char* const g_defaultPlayerName = "Player_%d";
 }
@@ -64,12 +66,11 @@ Scene::Scene(PlatformContext& context, ResourceCache* cache, SceneManager& paren
     : Resource(ResourceType::DEFAULT, name),
       PlatformContextComponent(context),
       _parent(parent),
-      _resCache(cache),
-      _LRSpeedFactor(5.0f)
+      _resourceCache(cache)
 {
     _loadingTasks.store(0);
 
-    _sceneState = eastl::make_unique<SceneState>(*this);
+    _state = eastl::make_unique<SceneState>(*this);
     _input = eastl::make_unique<SceneInput>(*this);
     _sceneGraph = eastl::make_unique<SceneGraph>(*this);
     _aiManager = eastl::make_unique<AI::AIManager>(*this, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
@@ -149,7 +150,7 @@ void Scene::addMusic(const MusicType type, const Str64& name, const ResourcePath
     music.assetLocation(musicFilePath);
     music.flag(true);
 
-    insert(state()->music(type), _ID(name.c_str()), CreateResource<AudioDescriptor>(_resCache, music));
+    insert(state()->music(type), _ID(name.c_str()), CreateResource<AudioDescriptor>(resourceCache(), music));
 }
 
 bool Scene::saveNodeToXML(const SceneGraphNode* node) const {
@@ -309,22 +310,22 @@ bool Scene::loadXML(const Str256& name) {
     _dayNightData._resetTime = true;
 
     if (pt.get_child_optional("options.cameraStartPosition")) {
-        par.setParam(_ID((name + ".options.cameraStartPosition.x").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.x", 0.0f));
-        par.setParam(_ID((name + ".options.cameraStartPosition.y").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.y", 0.0f));
-        par.setParam(_ID((name + ".options.cameraStartPosition.z").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.z", 0.0f));
-        par.setParam(_ID((name + ".options.cameraStartOrientation.xOffsetDegrees").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.xOffsetDegrees", 0.0f));
-        par.setParam(_ID((name + ".options.cameraStartOrientation.yOffsetDegrees").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.yOffsetDegrees", 0.0f));
+        par.setParam(_ID((name + ".options.cameraStartPosition.x").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.x", 0.f));
+        par.setParam(_ID((name + ".options.cameraStartPosition.y").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.y", 0.f));
+        par.setParam(_ID((name + ".options.cameraStartPosition.z").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.z", 0.f));
+        par.setParam(_ID((name + ".options.cameraStartOrientation.xOffsetDegrees").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.xOffsetDegrees", 0.f));
+        par.setParam(_ID((name + ".options.cameraStartOrientation.yOffsetDegrees").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.yOffsetDegrees", 0.f));
         par.setParam(_ID((name + ".options.cameraStartPositionOverride").c_str()), true);
     } else {
         par.setParam(_ID((name + ".options.cameraStartPositionOverride").c_str()), false);
     }
 
     if (pt.get_child_optional("options.cameraSpeed")) {
-        par.setParam(_ID((name + ".options.cameraSpeed.move").c_str()), pt.get("options.cameraSpeed.<xmlattr>.move", 35.0f));
-        par.setParam(_ID((name + ".options.cameraSpeed.turn").c_str()), pt.get("options.cameraSpeed.<xmlattr>.turn", 35.0f));
+        par.setParam(_ID((name + ".options.cameraSpeed.move").c_str()), pt.get("options.cameraSpeed.<xmlattr>.move", DEFAULT_CAMERA_MOVE_SPEED));
+        par.setParam(_ID((name + ".options.cameraSpeed.turn").c_str()), pt.get("options.cameraSpeed.<xmlattr>.turn", DEFAULT_CAMERA_TURN_SPEED));
     } else {
-        par.setParam(_ID((name + ".options.cameraSpeed.move").c_str()), 35.0f);
-        par.setParam(_ID((name + ".options.cameraSpeed.turn").c_str()), 35.0f);
+        par.setParam(_ID((name + ".options.cameraSpeed.move").c_str()), DEFAULT_CAMERA_MOVE_SPEED);
+        par.setParam(_ID((name + ".options.cameraSpeed.turn").c_str()), DEFAULT_CAMERA_TURN_SPEED);
     }
 
     FogDetails details = {};
@@ -362,10 +363,10 @@ bool Scene::loadXML(const Str256& name) {
 
 SceneNode_ptr Scene::createNode(const SceneNodeType type, const ResourceDescriptor& descriptor) const {
     switch (type) {
-        case SceneNodeType::TYPE_WATER:            return CreateResource<WaterPlane>(_resCache, descriptor);
-        case SceneNodeType::TYPE_TRIGGER:          return CreateResource<Trigger>(_resCache, descriptor);
-        case SceneNodeType::TYPE_PARTICLE_EMITTER: return CreateResource<ParticleEmitter>(_resCache, descriptor);
-        case SceneNodeType::TYPE_INFINITEPLANE:    return CreateResource<InfinitePlane>(_resCache, descriptor);
+        case SceneNodeType::TYPE_WATER:            return CreateResource<WaterPlane>(resourceCache(), descriptor);
+        case SceneNodeType::TYPE_TRIGGER:          return CreateResource<Trigger>(resourceCache(), descriptor);
+        case SceneNodeType::TYPE_PARTICLE_EMITTER: return CreateResource<ParticleEmitter>(resourceCache(), descriptor);
+        case SceneNodeType::TYPE_INFINITEPLANE:    return CreateResource<InfinitePlane>(resourceCache(), descriptor);
         default: break;
     }
 
@@ -429,15 +430,15 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
                 item.assetName(modelName);
 
                 if (Util::CompareIgnoreCase(modelName, "BOX_3D")) {
-                    ret = CreateResource<Box3D>(_resCache, item);
+                    ret = CreateResource<Box3D>(resourceCache(), item);
                 } else if (Util::CompareIgnoreCase(modelName, "SPHERE_3D")) {
-                    ret = CreateResource<Sphere3D>(_resCache, item);
+                    ret = CreateResource<Sphere3D>(resourceCache(), item);
                 } else if (Util::CompareIgnoreCase(modelName, "QUAD_3D")) {
                     P32 quadMask;
                     quadMask.i = 0;
                     quadMask.b[0] = 1;
                     item.mask(quadMask);
-                    ret = CreateResource<Quad3D>(_resCache, item);
+                    ret = CreateResource<Quad3D>(resourceCache(), item);
 
                     Quad3D* quad = static_cast<Quad3D*>(ret.get());
                     quad->setCorner(Quad3D::CornerLocation::TOP_LEFT,     vec3<F32>(0, 1, 0));
@@ -450,7 +451,7 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
             }
             if (ret != nullptr) {
                 ResourceDescriptor materialDescriptor(sceneNode.name + "_material");
-                Material_ptr tempMaterial = CreateResource<Material>(_resCache, materialDescriptor);
+                Material_ptr tempMaterial = CreateResource<Material>(resourceCache(), materialDescriptor);
                 tempMaterial->shadingMode(ShadingMode::BLINN_PHONG);
                 ret->setMaterialTpl(tempMaterial);
                 ret->addStateCallback(ResourceState::RES_LOADED, loadModelComplete);
@@ -473,7 +474,9 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
                 case _ID("INFINITE_PLANE"): {
                     _loadingTasks.fetch_add(1);
                     normalMask |= to_base(ComponentType::RENDERING);
-                    addInfPlane(parent, nodeTree, sceneNode.name);
+                    if (!addInfPlane(parent, nodeTree, sceneNode.name)) {
+                        DIVIDE_UNEXPECTED_CALL();
+                    }
                 } break;
                 case _ID("WATER"): {
                     _loadingTasks.fetch_add(1);
@@ -489,7 +492,7 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
                         model.flag(true);
                         model.threaded(false);
                         model.waitForReady(false);
-                        Mesh_ptr meshPtr = CreateResource<Mesh>(_resCache, model);
+                        Mesh_ptr meshPtr = CreateResource<Mesh>(resourceCache(), model);
                         if (meshPtr->getObjectFlag(Object3D::ObjectFlag::OBJECT_FLAG_SKINNED)) {
                             nodeStatic = false;
                         }
@@ -502,8 +505,8 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
                 // SubMesh (change component properties, as the meshes should already be loaded)
                 case _ID("SUBMESH"): {
                     while (parent->getNode().getState() != ResourceState::RES_LOADED) {
-                        if (parentTask != nullptr) {
-                            idle();
+                        if (parentTask != nullptr && !idle()) {
+                            NOP();
                         }
                     }
                     SceneGraphNode* subMesh = parent->findChild(_ID(sceneNode.name.c_str()), false, false);
@@ -514,7 +517,9 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
                 case _ID("SKY"): {
                     //ToDo: Change this - Currently, just load the default sky.
                     normalMask |= to_base(ComponentType::RENDERING);
-                    addSky(parent, nodeTree, sceneNode.name);
+                    if (!addSky(parent, nodeTree, sceneNode.name)) {
+                        DIVIDE_UNEXPECTED_CALL();
+                    }
                 } break;
                 // Everything else
                 default:
@@ -572,7 +577,7 @@ SceneGraphNode* Scene::addParticleEmitter(const Str64& name,
                   "Scene::addParticleEmitter error: invalid name specified!");
 
     const ResourceDescriptor particleEmitter(name);
-    std::shared_ptr<ParticleEmitter> emitter = CreateResource<ParticleEmitter>(_resCache, particleEmitter);
+    std::shared_ptr<ParticleEmitter> emitter = CreateResource<ParticleEmitter>(resourceCache(), particleEmitter);
 
     DIVIDE_ASSERT(emitter != nullptr,
                   "Scene::addParticleEmitter error: Could not instantiate emitter!");
@@ -637,7 +642,7 @@ void Scene::addTerrain(SceneGraphNode* parentNode, const boost::property_tree::p
     descriptor.threaded(false);
     descriptor.flag(ter->active());
     descriptor.waitForReady(false);
-    Terrain_ptr ret = CreateResource<Terrain>(_resCache, descriptor);
+    Terrain_ptr ret = CreateResource<Terrain>(resourceCache(), descriptor);
     ret->addStateCallback(ResourceState::RES_LOADED, registerTerrain);
 }
 
@@ -677,7 +682,7 @@ SceneGraphNode* Scene::addSky(SceneGraphNode* parentNode, const boost::property_
     ResourceDescriptor skyDescriptor("DefaultSky_"+ nodeName);
     skyDescriptor.ID(to_U32(std::floor(Camera::utilityCamera(Camera::UtilityCamera::DEFAULT)->getZPlanes().y * 2)));
 
-    std::shared_ptr<Sky> skyItem = CreateResource<Sky>(_resCache, skyDescriptor);
+    std::shared_ptr<Sky> skyItem = CreateResource<Sky>(resourceCache(), skyDescriptor);
     DIVIDE_ASSERT(skyItem != nullptr, "Scene::addSky error: Could not create sky resource!");
     skyItem->loadFromXML(pt);
 
@@ -698,7 +703,7 @@ SceneGraphNode* Scene::addSky(SceneGraphNode* parentNode, const boost::property_
 }
 
 void Scene::addWater(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName) {
-    auto registerWater = [this, nodeName, &parentNode, pt](CachedResource* res) {
+    const auto registerWater = [this, nodeName, &parentNode, pt](CachedResource* res) {
         SceneGraphNodeDescriptor waterNodeDescriptor;
         waterNodeDescriptor._name = nodeName;
         waterNodeDescriptor._node = std::static_pointer_cast<WaterPlane>(res->shared_from_this());
@@ -719,7 +724,7 @@ void Scene::addWater(SceneGraphNode* parentNode, const boost::property_tree::ptr
 
     ResourceDescriptor waterDescriptor("Water_" + nodeName);
     waterDescriptor.waitForReady(false);
-    WaterPlane_ptr ret = CreateResource<WaterPlane>(_resCache, waterDescriptor);
+    WaterPlane_ptr ret = CreateResource<WaterPlane>(resourceCache(), waterDescriptor);
     ret->addStateCallback(ResourceState::RES_LOADED, registerWater);
 }
 
@@ -730,7 +735,7 @@ SceneGraphNode* Scene::addInfPlane(SceneGraphNode* parentNode, const boost::prop
 
     planeDescriptor.ID(to_U32(baseCamera->getZPlanes().max));
 
-    auto planeItem = CreateResource<InfinitePlane>(_resCache, planeDescriptor);
+    auto planeItem = CreateResource<InfinitePlane>(resourceCache(), planeDescriptor);
 
     DIVIDE_ASSERT(planeItem != nullptr, "Scene::addInfPlane error: Could not create infinite plane resource!");
     planeItem->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) noexcept {
@@ -971,10 +976,6 @@ U16 Scene::registerInputActions() {
     return actionID;
 }
 
-void Scene::loadKeyBindings() {
-    XML::loadDefaultKeyBindings((Paths::g_xmlDataLocation + "keyBindings.xml").str(), this);
-}
-
 bool Scene::lockCameraToPlayerMouse(const PlayerIndex index, const bool lockState) const
 {
     static bool hadWindowGrab = false;
@@ -1034,6 +1035,9 @@ void Scene::loadDefaultCamera() {
 }
 
 bool Scene::load(const Str256& name) {
+
+    bool errorState = false;
+
     setState(ResourceState::RES_LOADING);
     std::atomic_init(&_loadingTasks, 0u);
 
@@ -1081,9 +1085,18 @@ bool Scene::load(const Str256& name) {
         initDayNightCycle(currentSky, *sun);
     }
 
-    _loadComplete = true;
+    if (errorState) {
+        Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD")), "scene load function");
+        return false;
+    }
 
-    return _loadComplete;
+    loadComplete(true);
+    const U16 lastActionID = registerInputActions();
+    ACKNOWLEDGE_UNUSED(lastActionID);
+
+    XML::loadDefaultKeyBindings((Paths::g_xmlDataLocation + "keyBindings.xml").str(), this);
+
+    return true;
 }
 
 bool Scene::unload() {
@@ -1101,8 +1114,13 @@ bool Scene::unload() {
 
     clearTasks();
     _context.pfx().destroyPhysicsScene();
-    clearObjects();
-    _loadComplete = false;
+
+    /// Unload scenegraph
+    _xmlSceneGraphRootNode = {};
+    _flashLight.clear();
+    _sceneGraph->unload();
+
+    loadComplete(false);
     assert(_scenePlayers.empty());
 
     return true;
@@ -1122,19 +1140,17 @@ void Scene::postLoadMainThread(const Rect<U16>& targetRenderViewport) {
     setState(ResourceState::RES_LOADED);
 }
 
-void Scene::rebuildShaders() {
-    bool rebuilt = false;
-    for (auto& [playerIdx, selections] : _currentSelection) {
-        for (U8 i = 0u; i < selections._selectionCount; ++i) {
-            SceneGraphNode* node = sceneGraph()->findNode(selections._selections[i]);
-            if (node != nullptr) {
-                node->get<RenderingComponent>()->rebuildMaterial();
-                rebuilt = true;
+void Scene::rebuildShaders(const bool selectionOnly) const {
+    if (selectionOnly) {
+        for (auto& [playerIdx, selections] : _currentSelection) {
+            for (U8 i = 0u; i < selections._selectionCount; ++i) {
+                SceneGraphNode* node = sceneGraph()->findNode(selections._selections[i]);
+                if (node != nullptr) {
+                    node->get<RenderingComponent>()->rebuildMaterial();
+                }
             }
         }
-    }
-
-    if (!rebuilt) {
+    } else {
         ShaderProgram::RebuildAllShaders();
     }
 }
@@ -1145,7 +1161,7 @@ string Scene::GetPlayerSGNName(const PlayerIndex idx) {
 
 void Scene::currentPlayerPass(const PlayerIndex idx) {
     //ToDo: These don't necessarily need to match -Ionut
-    renderState().renderPass(idx);
+    state()->renderState().renderPass(idx);
     state()->playerPass(idx);
 
     if (state()->playerState().cameraUnderwater()) {
@@ -1205,7 +1221,7 @@ void Scene::addPlayerInternal(const bool queue) {
 
         SceneGraphNodeDescriptor playerNodeDescriptor;
         playerNodeDescriptor._serialize = false;
-        playerNodeDescriptor._node = std::make_shared<SceneNode>(_resCache, to_size(generateGUID() + _parent.getActivePlayerCount()), playerName, ResourcePath{ playerName }, ResourcePath{}, SceneNodeType::TYPE_TRANSFORM, 0u);
+        playerNodeDescriptor._node = std::make_shared<SceneNode>(resourceCache(), to_size(generateGUID() + _parent.getActivePlayerCount()), playerName, ResourcePath{ playerName }, ResourcePath{}, SceneNodeType::TYPE_TRANSFORM, 0u);
         playerNodeDescriptor._name = playerName;
         playerNodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
         playerNodeDescriptor._componentMask = to_base(ComponentType::UNIT) |
@@ -1269,12 +1285,6 @@ U8 Scene::getPlayerIndexForDevice(const U8 deviceIndex) const {
     return input()->getPlayerIndexForDevice(deviceIndex);
 }
 
-void Scene::clearObjects() {
-    _xmlSceneGraphRootNode = {};
-    _flashLight.clear();
-    _sceneGraph->unload();
-}
-
 bool Scene::mouseMoved(const Input::MouseMoveEvent& arg) {
     if (!arg.wheelEvent()) {
         const PlayerIndex idx = getPlayerIndexForDevice(arg._deviceIndex);
@@ -1331,10 +1341,11 @@ bool Scene::updateCameraControls(const PlayerIndex idx) const {
 void Scene::updateSceneState(const U64 deltaTimeUS) {
     OPTICK_EVENT()
 
-    _sceneTimerUS += deltaTimeUS;
+    sceneRuntimeUS(sceneRuntimeUS() + deltaTimeUS);
+
     updateSceneStateInternal(deltaTimeUS);
-    _sceneState->waterBodies().clear();
-    _sceneGraph->sceneUpdate(deltaTimeUS, *_sceneState);
+    _state->waterBodies().clear();
+    _sceneGraph->sceneUpdate(deltaTimeUS, *_state);
     _aiManager->update(deltaTimeUS);
 }
 
@@ -1344,19 +1355,23 @@ void Scene::onStartUpdateLoop(const U8 loopNumber) const {
     _sceneGraph->onStartUpdateLoop(loopNumber);
 }
 
-void Scene::onLostFocus() {
-    //Add a focus flag and ignore redundant calls
-
-    for (const Player* player : _scenePlayers) {
-        state()->playerState(player->index()).resetMovement();
-        endDragSelection(player->index(), false);
-    }
-    _parent.wantsMouse(false);
-    //_paramHandler.setParam(_ID("freezeLoopTime"), true);
+void Scene::updateSceneStateInternal(const U64 deltaTimeUS) {
+    ACKNOWLEDGE_UNUSED(deltaTimeUS);
 }
 
-void Scene::onGainFocus() {
-    //Add a focus flag and ignore redundant calls
+void Scene::onChangeFocus(const bool hasFocus) {
+    if (!hasFocus) {
+        //Add a focus flag and ignore redundant calls
+
+        for (const Player* player : _scenePlayers) {
+            state()->playerState(player->index()).resetMovement();
+            endDragSelection(player->index(), false);
+        }
+        _parent.wantsMouse(false);
+        //_paramHandler.setParam(_ID("freezeLoopTime"), true);
+    } else {
+        NOP();
+    }
 }
 
 void Scene::registerTask(Task& taskItem, const bool start, const TaskPriority priority) {
@@ -1482,7 +1497,7 @@ void Scene::drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bu
 
 void Scene::debugDraw(const Camera* activeCamera, const RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut) {
     if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {
-        if (renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_OCTREE_REGIONS)) {
+        if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_OCTREE_REGIONS)) {
             _octreeBoundingBoxes.resize(0);
             sceneGraph()->getOctree().getAllRegions(_octreeBoundingBoxes);
 
@@ -1688,6 +1703,15 @@ void Scene::setSelected(const PlayerIndex idx, const vector<SceneGraphNode*>& SG
     }
 }
 
+Selections Scene::getCurrentSelection(const PlayerIndex index) const {
+    const auto it = _currentSelection.find(index);
+    if (it != cend(_currentSelection)) {
+        return it->second;
+    }
+
+    return {};
+}
+
 bool Scene::findSelection(const PlayerIndex idx, const bool clearOld) {
     // Clear old selection
     if (clearOld) {
@@ -1821,7 +1845,9 @@ void Scene::endDragSelection(const PlayerIndex idx, const bool clearSelection) {
     _parent.wantsMouse(false);
     data._isDragging = false;
     if (data._startDragPos.distanceSquared(data._endDragPos) < DRAG_SELECTION_THRESHOLD_PX_SQ) {
-        findSelection(idx, clearSelection);
+        if (!findSelection(idx, clearSelection)) {
+            NOP();
+        }
     }
 }
 
@@ -1925,10 +1951,6 @@ bool Scene::load(ByteBuffer& inputBuffer) {
     }
 
     return _sceneGraph->loadCache(inputBuffer);
-}
-
-SceneShaderData* Scene::shaderData() const noexcept {
-    return _parent.sceneData();
 }
 
 Camera* Scene::playerCamera() const {

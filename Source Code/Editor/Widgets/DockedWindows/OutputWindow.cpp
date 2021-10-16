@@ -12,7 +12,6 @@ namespace Divide {
 
     OutputWindow::OutputWindow(Editor& parent, const Descriptor& descriptor)
         : DockedWindow(parent, descriptor),
-         _scrollToBottom(true),
          _inputBuf{}
     {
         memset(_inputBuf, 0, sizeof _inputBuf);
@@ -20,6 +19,7 @@ namespace Divide {
         std::atomic_init(&g_writeIndex, 0);
         _consoleCallbackIndex = Console::bindConsoleOutput([this](const Console::OutputEntry& entry) {
             PrintText(entry);
+            _scrollToButtomReset = true;
         });
     }
 
@@ -49,7 +49,7 @@ namespace Divide {
 
         const bool copy_to_clipboard = ImGui::SmallButton("Copy");
         ImGui::SameLine();
-        if (ImGui::Checkbox("Scroll to bottom", &_scrollToBottom)) {
+        if (ImGui::Checkbox("Auto-scroll to bottom", &_scrollToBottom)) {
             
         }
 
@@ -81,7 +81,7 @@ namespace Divide {
         };
 
         const size_t start = g_writeIndex.load();
-        for (U16 i = 0; i < g_maxLogEntries;  ++i) {
+        for (U16 i = 0u; i < g_maxLogEntries;  ++i) {
             const size_t index = (start + 1 + i) % g_maxLogEntries;
             const Console::OutputEntry& message = g_log[index];
             if (!_filter.PassFilter(message._text.c_str())) {
@@ -97,9 +97,10 @@ namespace Divide {
         if (copy_to_clipboard) {
             ImGui::LogFinish();
         }
-        if (_scrollToBottom) {
+        if (_scrollToBottom && _scrollToButtomReset) {
             ImGui::SetScrollHereY();
         }
+        _scrollToButtomReset = false;
 
         ImGui::PopStyleVar();
         ImGui::EndChild();
@@ -145,6 +146,7 @@ namespace Divide {
                 Console::EntryType::COMMAND
             }
         );
+        _scrollToButtomReset = true;
     }
 
     I32 OutputWindow::TextEditCallback(ImGuiInputTextCallbackData* data) {

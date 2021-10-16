@@ -225,7 +225,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     const ShaderProgramDescriptor _descriptor;
 
-    bool _asyncLoad;
+    bool _asyncLoad = true;
 
     static bool s_useShaderTextCache;
     static bool s_useShaderBinaryCache;

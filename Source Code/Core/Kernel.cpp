@@ -534,7 +534,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
 
     RenderPassManager::RenderParams renderParams = {};
     renderParams._editorRunning = editorRunning;
-    renderParams._sceneRenderState = &_sceneManager->getActiveScene().renderState();
+    renderParams._sceneRenderState = &_sceneManager->getActiveScene().state()->renderState();
 
     for (U8 i = 0; i < playerCount; ++i) {
         if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_SCENERENDER_START, evt)) {
@@ -723,11 +723,11 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     Attorney::ShaderProgramKernel::UseShaderBinaryCache(config.debug.useShaderBinaryCache);
 
     winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [this](const DisplayWindow::WindowEventArgs& ) {
-        _sceneManager->onLostFocus();
+        _sceneManager->onChangeFocus(false);
         return true;
     });
     winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS, [this](const DisplayWindow::WindowEventArgs& ) {
-        _sceneManager->onGainFocus();
+        _sceneManager->onChangeFocus(true);
         return true;
     });
 
@@ -765,14 +765,26 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     _sceneManager->init(_platformContext, resourceCache());
     _platformContext.gfx().idle(true);
 
-    if (!_sceneManager->switchScene(entryData.startupScene.c_str(), true, {0, 0, config.runtime.resolution.width, config.runtime.resolution.height}, false)) {
-        Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD")), entryData.startupScene.c_str());
+    const char* firstLoadedScene = Config::Build::ENABLE_EDITOR 
+                                        ? Config::DEFAULT_SCENE_NAME
+                                        : entryData.startupScene.c_str();
+
+    if (!_sceneManager->switchScene(firstLoadedScene, 
+                                    true,
+                                    {
+                                        0u,
+                                        0u,
+                                        config.runtime.resolution.width,
+                                        config.runtime.resolution.height
+                                    },
+                                    false))
+    {
+        Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD")), firstLoadedScene);
         return ErrorCode::MISSING_SCENE_DATA;
     }
 
-    if (!_sceneManager->checkLoadFlag()) {
-        Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD_NOT_CALLED")),
-                         entryData.startupScene.c_str());
+    if (!_sceneManager->loadComplete()) {
+        Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD_NOT_CALLED")), firstLoadedScene);
         return ErrorCode::MISSING_SCENE_LOAD_CALL;
     }
 

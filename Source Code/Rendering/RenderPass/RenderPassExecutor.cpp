@@ -435,7 +435,7 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes, const RenderPa
     }
 
     const RenderStagePass& stagePass = params._stagePass;
-    const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().renderState();
+    const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
     const Camera& cam = *params._camera;
 
     _renderQueue.refresh();
@@ -477,7 +477,7 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params, con
 
     const RenderStagePass& stagePass = params._stagePass;
     const RenderBinType targetBin = transparencyPass ? RenderBinType::TRANSLUCENT : RenderBinType::COUNT;
-    const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().renderState();
+    const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
 
     const Camera& cam = *params._camera;
     _renderQueue.refresh(targetBin);

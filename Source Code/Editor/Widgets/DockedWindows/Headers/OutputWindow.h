@@ -54,7 +54,8 @@ class OutputWindow final : public DockedWindow {
     protected:
         size_t _consoleCallbackIndex;
 
-        bool _scrollToBottom;
+        bool _scrollToBottom = true;
+        bool _scrollToButtomReset = false;
         char _inputBuf[256];
         ImGuiTextFilter _filter;
 };

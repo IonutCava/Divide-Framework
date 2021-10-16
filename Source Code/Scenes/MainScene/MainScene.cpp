@@ -129,13 +129,13 @@ void MainScene::processTasks(const U64 deltaTimeUS) {
 
 bool MainScene::load(const Str256& name) {
     // Load scene resources
-    const bool loadState = SCENE_LOAD(name);
+    const bool loadState = Scene::load(name);
     FreeFlyCamera* baseCamera = Camera::utilityCamera<FreeFlyCamera>(Camera::UtilityCamera::DEFAULT);
     baseCamera->setMoveSpeedFactor(10.0f);
 
     ResourceDescriptor infiniteWater("waterEntity");
     infiniteWater.data(vec3<U16>(baseCamera->getZPlanes().y));
-    const WaterPlane_ptr water = CreateResource<WaterPlane>(_resCache, infiniteWater);
+    const WaterPlane_ptr water = CreateResource<WaterPlane>(resourceCache(), infiniteWater);
 
     SceneGraphNodeDescriptor waterNodeDescriptor;
     waterNodeDescriptor._node = water;
@@ -165,7 +165,7 @@ bool MainScene::load(const Str256& name) {
         ResourceDescriptor beepSound("beep sound");
         beepSound.assetName(ResourcePath{ "beep.wav" });
         beepSound.assetLocation(Paths::g_assetsLocation + Paths::g_soundsLocation);
-        _beep = CreateResource<AudioDescriptor>(_resCache, beepSound);
+        _beep = CreateResource<AudioDescriptor>(resourceCache(), beepSound);
 
         return true;
     }

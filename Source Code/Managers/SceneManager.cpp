@@ -35,7 +35,8 @@
 #include "ECS/Components/Headers/UnitComponent.h"
 
 namespace Divide {
-    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+
+constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 bool SceneManager::OnStartup(PlatformContext& context) {
     if (RenderPassCuller::OnStartup(context)) {
@@ -100,7 +101,9 @@ void SceneManager::idle() {
             _playerQueueDirty = false;
         }
 
-        getActiveScene().idle();
+        if (getActiveScene().idle()) {
+            NOP();
+        }
     }
 }
 
@@ -387,7 +390,7 @@ vector<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& scre
     };
     static vector<SGNRayResult> rayResults = {};
 
-    const SceneGraph* sceneGraph = getActiveScene().sceneGraph();
+    const auto& sceneGraph = getActiveScene().sceneGraph();
     const vec3<F32>& eye = camera.getEye();
     const vec2<F32>& zPlanes = camera.getZPlanes();
 
@@ -548,7 +551,7 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
     fog._colourSunScatter.rgb = sunColour;
     _sceneData->fogDetails(fog);
 
-    const SceneState* activeSceneState = activeScene.state();
+    const auto& activeSceneState = activeScene.state();
     _sceneData->windDetails(activeSceneState->windDirX(),
                             0.0f,
                             activeSceneState->windDirZ(),
@@ -589,7 +592,7 @@ void SceneManager::debugDraw(const RenderStagePass& stagePass, const Camera* cam
 
     Attorney::SceneManager::debugDraw(activeScene, camera, stagePass, bufferInOut);
     // Draw bounding boxes, skeletons, axis gizmo, etc.
-    _platformContext->gfx().debugDraw(activeScene.renderState(), camera, bufferInOut);
+    _platformContext->gfx().debugDraw(activeScene.state()->renderState(), camera, bufferInOut);
 }
 
 Camera* SceneManager::playerCamera(const PlayerIndex idx) const {
@@ -699,12 +702,11 @@ void SceneManager::getSortedRefractiveNodes(const Camera* camera, const RenderSt
 
 void SceneManager::initDefaultCullValues(const RenderStage stage, NodeCullParams& cullParamsInOut) {
     Scene& activeScene = getActiveScene();
-    SceneState* sceneState = activeScene.state();
 
     cullParamsInOut._stage = stage;
-    cullParamsInOut._lodThresholds = sceneState->renderState().lodThresholds(stage);
+    cullParamsInOut._lodThresholds = activeScene.state()->renderState().lodThresholds(stage);
     if (stage != RenderStage::SHADOW) {
-        cullParamsInOut._cullMaxDistanceSq = SQUARED(sceneState->renderState().generalVisibility());
+        cullParamsInOut._cullMaxDistanceSq = SQUARED(activeScene.state()->renderState().generalVisibility());
     } else {
         cullParamsInOut._cullMaxDistanceSq = std::numeric_limits<F32>::max();
     }
@@ -716,31 +718,20 @@ VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params, co
     Time::ScopedTimer timer(*_sceneGraphCullTimers[to_U32(params._stage)]);
 
     Scene& activeScene = getActiveScene();
-    SceneState* sceneState = activeScene.state();
-
-     return _renderPassCuller->frustumCull(params, cullFlags, activeScene.sceneGraph(), sceneState, _parent.platformContext());
+    return _renderPassCuller->frustumCull(params, cullFlags, *activeScene.sceneGraph(), *activeScene.state(), _parent.platformContext());
 }
 
 void SceneManager::prepareLightData(const RenderStage stage, const vec3<F32>& cameraPos, const mat4<F32>& viewMatrix) {
     if (stage != RenderStage::SHADOW) {
-        getActiveScene().lightPool().prepareLightData(stage, cameraPos, viewMatrix);
+        getActiveScene().lightPool()->prepareLightData(stage, cameraPos, viewMatrix);
     }
 }
 
-void SceneManager::onLostFocus() {
+void SceneManager::onChangeFocus(const bool hasFocus) {
     if (!_init) {
         return;
     }
-
-    getActiveScene().onLostFocus();
-}
-
-void SceneManager::onGainFocus() {
-    if (!_init) {
-        return;
-    }
-
-    getActiveScene().onGainFocus();
+    getActiveScene().onChangeFocus(hasFocus);
 }
 
 void SceneManager::resetSelection(const PlayerIndex idx) {
@@ -940,16 +931,16 @@ bool LoadSave::loadScene(Scene& activeScene) {
 
 
 bool LoadSave::saveNodeToXML(const Scene& activeScene, const SceneGraphNode* node) {
-    return activeScene.saveNodeToXML(node);
+    return Attorney::SceneLoadSave::saveNodeToXML(activeScene, node);
 }
 
 bool LoadSave::loadNodeFromXML(const Scene& activeScene, SceneGraphNode* node) {
-    return activeScene.loadNodeFromXML(node);
+    return Attorney::SceneLoadSave::loadNodeFromXML(activeScene, node);
 }
 
 bool LoadSave::saveScene(const Scene& activeScene, const bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) {
     if (!toCache) {
-        return activeScene.saveXML(msgCallback, finishCallback);
+        return Attorney::SceneLoadSave::saveXML(activeScene, msgCallback, finishCallback);
     }
 
     bool ret = false;

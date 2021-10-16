@@ -79,7 +79,7 @@ void RenderPassCuller::clear() noexcept {
     }
 }
 
-VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, const U16 cullFlags, const SceneGraph* sceneGraph, const SceneState* sceneState, PlatformContext& context)
+VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, const U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context)
 {
     OPTICK_EVENT();
 
@@ -87,14 +87,14 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, c
     VisibleNodeList<>& nodeCache = getNodeCache(stage);
     nodeCache.reset();
 
-    if (sceneState->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY) ||
-        sceneState->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME))
+    if (sceneState.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY) ||
+        sceneState.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME))
     {
-        sceneGraph->getRoot()->lockChildrenForRead();
-        const vector<SceneGraphNode*>& rootChildren = sceneGraph->getRoot()->getChildrenLocked();
+        sceneGraph.getRoot()->lockChildrenForRead();
+        const vector<SceneGraphNode*>& rootChildren = sceneGraph.getRoot()->getChildrenLocked();
 
         ParallelForDescriptor descriptor = {};
-        descriptor._iterCount = sceneGraph->getRoot()->getChildCount();
+        descriptor._iterCount = sceneGraph.getRoot()->getChildCount();
         descriptor._partitionSize = g_nodesPerCullingPartition;
         descriptor._priority = TaskPriority::DONT_CARE;
         descriptor._useCurrentThread = true;
@@ -104,7 +104,7 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, c
                             }
                         };
         parallel_for(context, descriptor);
-        sceneGraph->getRoot()->unlockChildrenForRead();
+        sceneGraph.getRoot()->unlockChildrenForRead();
     }
 
     return nodeCache;

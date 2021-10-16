@@ -122,7 +122,7 @@ class RenderPassCuller {
 
         void clear() noexcept;
 
-        VisibleNodeList<>& frustumCull(const NodeCullParams& params, const U16 cullFlags, const SceneGraph* sceneGraph, const SceneState* sceneState, PlatformContext& context);
+        VisibleNodeList<>& frustumCull(const NodeCullParams& params, const U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context);
 
         void frustumCull(const NodeCullParams& params, const U16 cullFlags, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const;
         void toVisibleNodes(const Camera* camera, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const;

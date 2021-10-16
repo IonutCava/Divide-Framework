@@ -103,11 +103,11 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
         grassVisibilityDistanceField._range = { 0.01f, 10000.0f };
         grassVisibilityDistanceField._serialise = false;
         grassVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) {
-            const SceneRenderState& rState = sMgr->getActiveScene().renderState();
+            const SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
             *static_cast<F32*>(dataOut) = rState.grassVisibility();
         };
         grassVisibilityDistanceField._dataSetter = [sMgr](const void* data) {
-            SceneRenderState& rState = sMgr->getActiveScene().renderState();
+            SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
             rState.grassVisibility(*static_cast<const F32*>(data)); 
         };
         grassVisibilityDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
@@ -120,11 +120,11 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
         treeVisibilityDistanceField._range = { 0.01f, 10000.0f };
         treeVisibilityDistanceField._serialise = false;
         treeVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) {
-            const SceneRenderState& rState = sMgr->getActiveScene().renderState();
+            const SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
             *static_cast<F32*>(dataOut) = rState.treeVisibility();
         };
         treeVisibilityDistanceField._dataSetter = [sMgr](const void* data) {
-            SceneRenderState& rState = sMgr->getActiveScene().renderState();
+            SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
             rState.treeVisibility(*static_cast<const F32*>(data));
         };
         treeVisibilityDistanceField._type = EditorComponentFieldType::PUSH_TYPE;

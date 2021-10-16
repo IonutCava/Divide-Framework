@@ -282,10 +282,10 @@ bool PingPongScene::load(const Str256& name) {
     _wasInFreeFly = false;
 
     // Load scene resources
-    const bool loadState = SCENE_LOAD(name);
+    const bool loadState = Scene::load(name);
 
     const ResourceDescriptor ballDescriptor("Ping Pong Ball");
-    _ball = CreateResource<Sphere3D>(_resCache, ballDescriptor);
+    _ball = CreateResource<Sphere3D>(resourceCache(), ballDescriptor);
     _ball->setResolution(16);
     _ball->setRadius(0.1f);
     _ball->getMaterialTpl()->shadingMode(ShadingMode::COOK_TORRANCE);

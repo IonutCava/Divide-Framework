@@ -157,7 +157,7 @@ void WarScene::toggleTerrainMode() {
 }
 
 void WarScene::debugDraw(const Camera* activeCamera, const RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut) {
-    if (renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_CUSTOM_PRIMITIVES)) {
+    if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_CUSTOM_PRIMITIVES)) {
         if (!_targetLines) {
             _targetLines = _context.gfx().newIMP();
 
@@ -349,7 +349,7 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
 
 bool WarScene::load(const Str256& name) {
     // Load scene resources
-    const bool loadState = SCENE_LOAD(name);
+    const bool loadState = Scene::load(name);
     setDayNightCycleTimeFactor(24);
 
     // Position camera

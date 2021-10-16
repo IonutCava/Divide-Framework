@@ -524,12 +524,11 @@ void Editor::onPreviewFocus(const bool state) const {
     ImGuiIO& io = ImGui::GetIO();
     if (state) {
         io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
-        _context.kernel().sceneManager()->onGainFocus();
     } else {
         io.ConfigFlags &= ~ImGuiConfigFlags_NavNoCaptureKeyboard;
-        _context.kernel().sceneManager()->onLostFocus();
     }
 
+    _context.kernel().sceneManager()->onChangeFocus(state);
     Attorney::GizmoEditor::onSceneFocus(_gizmo.get(),  state);
 }
 
@@ -1335,7 +1334,7 @@ bool Editor::saveSceneChanges(const DELEGATE<void, std::string_view>& msgCallbac
 U32 Editor::saveItemCount() const noexcept {
     U32 ret = 10u; // All of the scene stuff (settings, music, etc)
 
-    const SceneGraph* graph = _context.kernel().sceneManager()->getActiveScene().sceneGraph();
+    const auto& graph = _context.kernel().sceneManager()->getActiveScene().sceneGraph();
     ret += to_U32(graph->getTotalNodeCount());
 
     return ret;
@@ -1555,7 +1554,7 @@ ECSManager& Editor::getECSManager() const {
 
 LightPool& Editor::getActiveLightPool() const {
     Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
-    return activeScene.lightPool();
+    return *activeScene.lightPool();
 }
 
 SceneEnvironmentProbePool* Editor::getActiveEnvProbePool() const {

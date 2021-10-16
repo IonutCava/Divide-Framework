@@ -152,7 +152,7 @@ void GUIConsoleCommandParser::handlePlaySoundCommand(const string& args) {
 
 void GUIConsoleCommandParser::handleNavMeshCommand(const string& args) {
     SceneManager* sMgr = _context.kernel().sceneManager();
-    SceneGraph* sceneGraph = sMgr->getActiveScene().sceneGraph();
+    auto& sceneGraph = sMgr->getActiveScene().sceneGraph();
     if (!args.empty()) {
         SceneGraphNode* sgn = sceneGraph->findNode(args.c_str());
         if (!sgn) {
@@ -160,9 +160,9 @@ void GUIConsoleCommandParser::handleNavMeshCommand(const string& args) {
             return;
         }
     }
-    AI::AIManager& aiManager = sceneGraph->parentScene().aiManager();
+    auto& aiManager = sceneGraph->parentScene().aiManager();
     // Check if we already have a NavMesh created
-    AI::Navigation::NavigationMesh* temp = aiManager.getNavMesh(AI::AIEntity::PresetAgentRadius::AGENT_RADIUS_SMALL);
+    AI::Navigation::NavigationMesh* temp = aiManager->getNavMesh(AI::AIEntity::PresetAgentRadius::AGENT_RADIUS_SMALL);
     // Create a new NavMesh if we don't currently have one
     if (!temp) {
         temp = MemoryManager_NEW AI::Navigation::NavigationMesh(_context, *sMgr->recast());
@@ -181,7 +181,7 @@ void GUIConsoleCommandParser::handleNavMeshCommand(const string& args) {
     }
     // If we loaded/built the NavMesh correctly, add it to the AIManager
     if (loaded) {
-        aiManager.addNavMesh(AI::AIEntity::PresetAgentRadius::AGENT_RADIUS_SMALL, temp);
+        aiManager->addNavMesh(AI::AIEntity::PresetAgentRadius::AGENT_RADIUS_SMALL, temp);
     }
 }
 

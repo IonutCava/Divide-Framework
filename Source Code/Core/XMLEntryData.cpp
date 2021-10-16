@@ -10,7 +10,7 @@ XMLEntryData::XMLEntryData() : IXMLSerializable()
 {
     scriptLocation = "XML";
     config = "config.xml";
-    startupScene = "DefaultScene";
+    startupScene = Config::DEFAULT_SCENE_NAME;
     scenesLocation = "Scenes";
     assetsLocation = "assets";
     serverAddress = "192.168.0.2";

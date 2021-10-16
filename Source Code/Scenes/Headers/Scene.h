@@ -37,10 +37,8 @@
 #include "SceneInput.h"
 #include "Platform/Threading/Headers/Task.h"
 
-/*All these includes are useful for a scene, so instead of forward declaring the
-  classes, we include the headers
-  to make them available in every scene source file. To reduce compile times,
-  forward declare the "Scene" class instead
+/*All these includes are useful for a scene, so instead of forward declaring the classes, we include the headers
+  to make them available in every scene source file. To reduce compile times, forward declare the "Scene" class instead
 */
 
 #include "GUI/Headers/GUI.h"
@@ -78,11 +76,12 @@ namespace Attorney {
     class SceneInput;
     class SceneEnvironmentProbeComponent;
 }
+
 struct Selections
 {
-    static constexpr U8 MaxSelections = 254u;
+    static constexpr U8 MAX_SELECTIONS = 254u;
 
-    std::array<I64, MaxSelections> _selections;
+    std::array<I64, MAX_SELECTIONS> _selections;
     U8 _selectionCount = 0u;
 
     void reset() noexcept {
@@ -100,12 +99,13 @@ struct DragSelectData
     bool _isDragging = false;
 };
 
+#pragma region Scene Factory
 namespace SceneList {
     template<typename T>
     using SharedPtrFactory = boost::factory<std::shared_ptr<T>>;
-    using ScenePtrFactory = std::function<std::shared_ptr<Scene>(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name)>;
-    using SceneFactoryMap = std::unordered_map<U64, ScenePtrFactory>;
-    using SceneNameMap = std::unordered_map<U64, Str256>;
+    using ScenePtrFactory  = std::function<std::shared_ptr<Scene>(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name)>;
+    using SceneFactoryMap  = std::unordered_map<U64, ScenePtrFactory>;
+    using SceneNameMap     = std::unordered_map<U64, Str256>;
 
     void registerSceneFactory(const char* name, const ScenePtrFactory& factoryFunc);
 
@@ -116,7 +116,6 @@ namespace SceneList {
 }
 
 #define STRUCT_NAME(M) BOOST_PP_CAT(M, RegisterStruct)
-
 #define REGISTER_SCENE(SceneName)                                                    \
 class SceneName;                                                                     \
 static struct STRUCT_NAME(SceneName) {                                               \
@@ -125,16 +124,13 @@ static struct STRUCT_NAME(SceneName) {                                          
      SceneList::registerScene(#SceneName, SceneList::SharedPtrFactory<SceneName>()); \
   }                                                                                  \
 } BOOST_PP_CAT(SceneName, RegisterVariable);
-
 #define BEGIN_SCENE(SceneName)         \
 REGISTER_SCENE(SceneName);             \
 class SceneName final : public Scene { \
     public:
-
 #define END_SCENE(SceneName) };
+#pragma endregion
 
-/// The scene is a resource (to enforce load/unload and setName) and it has a 2 states:
-/// one for game information and one for rendering information
 class Scene : public Resource, public PlatformContextComponent {
     friend class Attorney::SceneManager;
     friend class Attorney::SceneGraph;
@@ -144,257 +140,204 @@ class Scene : public Resource, public PlatformContextComponent {
     friend class Attorney::SceneInput;
     friend class Attorney::SceneEnvironmentProbeComponent;
 
-   protected:
-    static bool OnStartup(PlatformContext& context);
-    static bool OnShutdown(PlatformContext& context);
-    static string GetPlayerSGNName(PlayerIndex idx);
+    public:
+        static constexpr U32 SUN_LIGHT_TAG  = 0xFFF0F0;
 
-   public:
-       static constexpr U32 SUN_LIGHT_TAG  = 0xFFF0F0;
+        struct DayNightData
+        {
+            Sky* _skyInstance = nullptr;
+            DirectionalLightComponent* _sunLight = nullptr;
+            F32 _speedFactor = 1.0f;
+            F32 _timeAccumulatorSec = 0.0f;
+            F32 _timeAccumulatorHour = 0.0f;
+            SimpleTime _time = { 14u, 30u };
+            SimpleLocation _location = { 51.4545f, -2.5879f };
+            bool _resetTime = true;
+        };
 
-       struct DayNightData
-       {
-           Sky* _skyInstance = nullptr;
-           DirectionalLightComponent* _sunLight = nullptr;
-           F32 _speedFactor = 1.0f;
-           F32 _timeAccumulatorSec = 0.0f;
-           F32 _timeAccumulatorHour = 0.0f;
-           SimpleTime _time = { 14u, 30u };
-           SimpleLocation _location = { 51.4545f, -2.5879f };
-           bool _resetTime = true;
-       };
+    protected:
+        static Mutex s_perFrameArenaMutex;
+        static MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 3> s_perFrameArena;
 
-   public:
+    protected:
+        static bool OnStartup(PlatformContext& context);
+        static bool OnShutdown(PlatformContext& context);
+        static string GetPlayerSGNName(PlayerIndex idx);
 
-    explicit Scene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
-    virtual ~Scene();
+    public:
 
-    /**Begin scene logic loop*/
-    /// Get all input commands from the user
-    virtual void processInput(PlayerIndex idx, U64 deltaTimeUS);
-    /// Update the scene based on the inputs
-    virtual void processTasks(U64 deltaTimeUS);
-    virtual void processGUI(U64 deltaTimeUS);
-    /// Scene is rendering, so add intensive tasks here to save CPU cycles
-    bool idle();  
-    /// The application has lost focus
-    void onLostFocus();  
-    void onGainFocus();
-    /**End scene logic loop*/
+        explicit Scene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
+        virtual ~Scene();
 
-    /// Update animations, network data, sounds, triggers etc.
-    void updateSceneState(U64 deltaTimeUS);
-    void onStartUpdateLoop(U8 loopNumber) const;
-    /// Override this for Scene specific updates
-    virtual void updateSceneStateInternal(U64 deltaTimeUS) { ACKNOWLEDGE_UNUSED(deltaTimeUS); }
+        /// Scene is rendering, so add intensive tasks here to save CPU cycles
+        [[nodiscard]] bool idle();
 
-    SceneRenderState& renderState() { return _sceneState->renderState(); }
-    const SceneRenderState& renderState() const { return _sceneState->renderState(); }
+#pragma region Logic Loop
+        /// Get all input commands from the user
+        virtual void processInput(PlayerIndex idx, U64 deltaTimeUS);
+        /// Update the scene based on the inputs
+        virtual void processTasks(U64 deltaTimeUS);
+        virtual void processGUI(U64 deltaTimeUS);
+        /// The application has lost or gained focus
+        virtual void onChangeFocus(bool hasFocus);
+        virtual void updateSceneStateInternal(U64 deltaTimeUS);
+        /// Update animations, network data, sounds, triggers etc.
+        void updateSceneState(U64 deltaTimeUS);
+        void onStartUpdateLoop(U8 loopNumber) const;
+#pragma endregion
 
-    SceneState* state()      const noexcept { return _sceneState.get(); }
-    SceneInput* input()      const noexcept { return _input.get(); }
-    SceneGraph* sceneGraph() const noexcept { return _sceneGraph.get(); }
+#pragma region Task Management
+        void registerTask(Task& taskItem, bool start = true, TaskPriority priority = TaskPriority::DONT_CARE);
+        void clearTasks();
+        void removeTask(Task& task);
+#pragma endregion
 
-    void registerTask(Task& taskItem, bool start = true, TaskPriority priority = TaskPriority::DONT_CARE);
-    void clearTasks();
-    void removeTask(Task& task);
-    void addSceneGraphToLoad(XML::SceneNode& rootNode) { _xmlSceneGraphRootNode = rootNode; }
+#pragma region Object Picking
+        [[nodiscard]] Selections getCurrentSelection(const PlayerIndex index = 0) const;
+        [[nodiscard]] bool       findSelection(PlayerIndex idx, bool clearOld);
 
-    void addMusic(MusicType type, const Str64& name, const ResourcePath& srcFile) const;
+        void resetSelection(PlayerIndex idx);
+        void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
 
-    SceneGraphNode* addSky(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName = "");
-    SceneGraphNode* addInfPlane(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName = "");
-    void addWater(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName = "");
-    void addTerrain(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName = "");
+        void beginDragSelection(PlayerIndex idx, const vec2<I32>& mousePos);
+        void endDragSelection(PlayerIndex idx, bool clearSelection);
+#pragma endregion
 
-    /// Object picking
-    Selections getCurrentSelection(const PlayerIndex index = 0) const {
-        const auto it = _currentSelection.find(index);
-        if (it != cend(_currentSelection)) {
-            return it->second;
-        }
+#pragma region Entity Management
+                      void            addMusic(MusicType type, const Str64& name, const ResourcePath& srcFile) const;
+        [[nodiscard]] SceneGraphNode* addSky(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName = "");
+        [[nodiscard]] SceneGraphNode* addInfPlane(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName = "");
+                      void            addWater(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName = "");
+                      void            addTerrain(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName = "");
+        [[nodiscard]] SceneGraphNode* addParticleEmitter(const Str64& name, std::shared_ptr<ParticleData> data,SceneGraphNode* parentNode) const;
+#pragma endregion
 
-        return {};
-    }
+#pragma region Time Of Day
+        void initDayNightCycle(Sky& skyInstance, DirectionalLightComponent& sunLight) noexcept;
 
-    bool findSelection(PlayerIndex idx, bool clearOld);
-    void beginDragSelection(PlayerIndex idx, const vec2<I32>& mousePos);
-    void endDragSelection(PlayerIndex idx, bool clearSelection);
+                      /// Negative values should work
+                      void setDayNightCycleTimeFactor(F32 factor) noexcept;
+        [[nodiscard]] F32  getDayNightCycleTimeFactor() const noexcept;
 
-    SceneGraphNode* addParticleEmitter(const Str64& name,
-                                       std::shared_ptr<ParticleData> data,
-                                       SceneGraphNode* parentNode) const;
+                      void              setTimeOfDay(const SimpleTime& time) noexcept;
+        [[nodiscard]] const SimpleTime& getTimeOfDay() const noexcept;
 
-    AI::AIManager& aiManager() noexcept { return *_aiManager; }
-    const AI::AIManager& aiManager() const noexcept { return *_aiManager; }
+                      void                  setGeographicLocation(const SimpleLocation& location) noexcept;
+        [[nodiscard]] const SimpleLocation& getGeographicLocation() const noexcept;
 
-    ResourceCache* resourceCache() noexcept { return _resCache; }
-    const ResourceCache* resourceCache() const noexcept { return _resCache; }
+        [[nodiscard]] SunDetails      getCurrentSunDetails() const noexcept;
+        [[nodiscard]] Sky::Atmosphere getCurrentAtmosphere() const noexcept;
+                      void            setCurrentAtmosphere(const Sky::Atmosphere& atmosphere) const noexcept;
+#pragma endregion
 
-    SceneShaderData* shaderData() const noexcept;
+#pragma region Player Camera
+        [[nodiscard]] Camera* playerCamera() const;
+        [[nodiscard]] Camera* playerCamera(U8 index) const;
+        bool lockCameraToPlayerMouse(PlayerIndex index, bool lockState) const;
+#pragma endregion
 
-    Camera* playerCamera() const;
-    Camera* playerCamera(U8 index) const;
+        /// Contains all game related info for the scene (wind speed, visibility ranges, etc)
+        PROPERTY_R(eastl::unique_ptr<SceneState>, state);
+        PROPERTY_RW(bool, dayNightCycleEnabled, true);
+        PROPERTY_R_IW(DayNightData, dayNightData);
+        PROPERTY_R(eastl::unique_ptr<SceneGraph>, sceneGraph);
+        PROPERTY_R(eastl::unique_ptr<AI::AIManager>, aiManager);
+        PROPERTY_R(eastl::unique_ptr<SceneGUIElements>, GUI);
+        POINTER_R(ResourceCache, resourceCache, nullptr);
+        PROPERTY_R(eastl::unique_ptr<LightPool>, lightPool);
+        PROPERTY_R(eastl::unique_ptr<SceneInput>, input);
+        PROPERTY_R(eastl::unique_ptr<SceneEnvironmentProbePool>, envProbePool);
+        PROPERTY_R_IW(bool, loadComplete, false);
+        PROPERTY_R_IW(U64, sceneRuntimeUS, 0ULL);
+    protected:
+                      virtual void onSetActive();
+                      virtual void onRemoveActive();
+        [[nodiscard]] virtual bool frameStarted();
+        [[nodiscard]] virtual bool frameEnded();
 
-    LightPool& lightPool() noexcept { return *_lightPool; }
-    const LightPool& lightPool() const noexcept { return *_lightPool; }
+        /// Returns the first available action ID
+        [[nodiscard]] virtual U16 registerInputActions();
 
-    // can save at any time, I guess?
-    virtual bool saveXML(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) const;
+        void rebuildShaders(bool selectionOnly = true) const;
 
-    bool saveNodeToXML(const SceneGraphNode* node) const;
-    bool loadNodeFromXML(SceneGraphNode* node) const;
+        void          onNodeDestroy(SceneGraphNode* node);
+        SceneNode_ptr createNode(SceneNodeType type, const ResourceDescriptor& descriptor) const;
+        void          loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, SceneGraphNode* parent);
 
-    void initDayNightCycle(Sky& skyInstance, DirectionalLightComponent& sunLight) noexcept;
+        /// Draw debug entities
+        virtual void debugDraw(const Camera* activeCamera, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
+        /// Draw custom ui elements
+        virtual void drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
+        /// Return true if input was consumed
+        [[nodiscard]] virtual bool mouseMoved(const Input::MouseMoveEvent& arg);
 
-    // negative values should work
-    void setDayNightCycleTimeFactor(F32 factor) noexcept;
-    F32 getDayNightCycleTimeFactor() const noexcept;
+#pragma region Save Load
+        [[nodiscard]] virtual bool save(ByteBuffer& outputBuffer) const;
+        [[nodiscard]] virtual bool load(ByteBuffer& inputBuffer);
 
-    void setTimeOfDay(const SimpleTime& time) noexcept;
-    const SimpleTime& getTimeOfDay() const noexcept;
+        /// Can save at any time, I guess?
+        [[nodiscard]] virtual bool saveXML(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) const;
 
-    void setGeographicLocation(const SimpleLocation& location) noexcept;
-    const SimpleLocation& getGeographicLocation() const noexcept;
+        [[nodiscard]]         bool saveNodeToXML(const SceneGraphNode* node) const;
+        [[nodiscard]]         bool loadNodeFromXML(SceneGraphNode* node) const;
+        [[nodiscard]] virtual bool loadXML(const Str256& name);
 
-    SunDetails getCurrentSunDetails() const noexcept;
-    Sky::Atmosphere getCurrentAtmosphere() const noexcept;
-    void setCurrentAtmosphere(const Sky::Atmosphere& atmosphere) const noexcept;
+        [[nodiscard]] virtual bool load(const Str256& name);
+        [[nodiscard]] virtual bool unload();
+        [[nodiscard]] virtual void postLoad();
+        /// Gets called on the main thread when the scene finishes loading (e.g. used by the GUI system)
+        /// We may be rendering in a different viewport (splash screen, loading screen, etc) but we need our GUI stuff
+        /// to be ready for our game viewport, so we pass it here to make sure we are using the proper one
+        virtual void postLoadMainThread(const Rect<U16>& targetRenderViewport);
+#pragma endregion
 
-    PROPERTY_RW(bool, dayNightCycleEnabled, true);
-    PROPERTY_R_IW(DayNightData, dayNightData);
+#pragma region Player Management
+        void findHoverTarget(PlayerIndex idx, const vec2<I32>& aimPos);
+        void clearHoverTarget(PlayerIndex idx);
+        void toggleFlashlight(PlayerIndex idx);
 
-   protected:
-    virtual void rebuildShaders();
-    virtual void onSetActive();
-    virtual void onRemoveActive();
-    // returns the first available action ID
-    virtual U16 registerInputActions();
-    virtual void loadKeyBindings();
+        void addPlayerInternal(bool queue);
+        void removePlayerInternal(PlayerIndex idx);
+        void onPlayerAdd(const Player_ptr& player);
+        void onPlayerRemove(const Player_ptr& player);
+        void currentPlayerPass(PlayerIndex idx);
 
-    void onNodeDestroy(SceneGraphNode* node);
-    void findHoverTarget(PlayerIndex idx, const vec2<I32>& aimPos);
-    void clearHoverTarget(PlayerIndex idx);
+        [[nodiscard]] U8      getSceneIndexForPlayer(PlayerIndex idx) const;
+        [[nodiscard]] Player* getPlayerForIndex(PlayerIndex idx) const;
+        [[nodiscard]] U8      getPlayerIndexForDevice(U8 deviceIndex) const;
+#pragma endregion
 
-    bool checkCameraUnderwater(PlayerIndex idx) const;
-    bool checkCameraUnderwater(const Camera& camera) const;
-    void toggleFlashlight(PlayerIndex idx);
+    private:
+        void loadDefaultCamera();
+        /// Returns true if the camera was moved/rotated/etc
+        bool updateCameraControls(PlayerIndex idx) const;
+        void updateSelectionData(PlayerIndex idx, DragSelectData& data, bool remapped);
+        [[nodiscard]] bool checkCameraUnderwater(PlayerIndex idx) const;
+        [[nodiscard]] bool checkCameraUnderwater(const Camera& camera) const;
+        [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Scene"; }
 
-    SceneNode_ptr createNode(SceneNodeType type, const ResourceDescriptor& descriptor) const;
+    protected:
+        SceneManager&                         _parent;
+        vector<Player*>                       _scenePlayers;
+        vector<D64>                           _taskTimers;
+        vector<D64>                           _guiTimersMS;
+        std::atomic_uint                      _loadingTasks;
+        XML::SceneNode                        _xmlSceneGraphRootNode;
+        hashMap<PlayerIndex, Selections>      _currentSelection;
+        hashMap<PlayerIndex, I64>             _currentHoverTarget;
+        hashMap<PlayerIndex, DragSelectData>  _dragSelectData;
+        hashMap<PlayerIndex, SceneGraphNode*> _flashLight;
+        hashMap<PlayerIndex, U32>             _cameraUpdateListeners;
 
-    virtual bool save(ByteBuffer& outputBuffer) const;
-    virtual bool load(ByteBuffer& inputBuffer);
+    private:
+        SharedMutex          _tasksMutex;
+        vector<Task*>        _tasks;
+        vector<SGNRayResult> _sceneSelectionCandidates;
 
-    virtual bool frameStarted();
-    virtual bool frameEnded();
-
-    virtual void loadDefaultCamera();
-
-    virtual bool loadXML(const Str256& name);
-
-    virtual bool load(const Str256& name);
-    void loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, SceneGraphNode* parent);
-    virtual bool unload();
-    virtual void postLoad();
-    // gets called on the main thread when the scene finishes loading (e.g. used by the GUI system)
-    // We may be rendering in a different viewport (splash screen, loading screen, etc) but we need our GUI stuff
-    // to be ready for our game viewport, so we pass it here to make sure we are using the proper one
-    virtual void postLoadMainThread(const Rect<U16>& targetRenderViewport);
-    /// Check if Scene::load() was called
-    bool checkLoadFlag() const noexcept { return _loadComplete; }
-    /// Unload scenegraph
-    void clearObjects();
-    /**End loading and unloading logic*/
-    /// returns true if the camera was moved/rotated/etc
-    bool updateCameraControls(PlayerIndex idx) const;
-    /// Draw debug entities
-    virtual void debugDraw(const Camera* activeCamera, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
-    /// Draw custom ui elements
-    virtual void drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
-
-    //Return true if input was consumed
-    virtual bool mouseMoved(const Input::MouseMoveEvent& arg);
-    
-    U8 getSceneIndexForPlayer(PlayerIndex idx) const;
-    Player* getPlayerForIndex(PlayerIndex idx) const;
-
-    U8 getPlayerIndexForDevice(U8 deviceIndex) const;
-
-    void addPlayerInternal(bool queue);
-    void removePlayerInternal(PlayerIndex idx);
-    void onPlayerAdd(const Player_ptr& player);
-    void onPlayerRemove(const Player_ptr& player);
-
-    /// simple function to load the scene elements.
-    bool SCENE_LOAD(const Str256& name) {
-        if (!Scene::load(name)) {
-            Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD")), "scene load function");
-            return false;
-        }
-
-        registerInputActions();
-        loadKeyBindings();
-
-        return true;
-    }
-
-    void currentPlayerPass(PlayerIndex idx);
-
-    void resetSelection(PlayerIndex idx);
-    void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
-
-    bool lockCameraToPlayerMouse(PlayerIndex index, bool lockState) const;
-
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Scene"; }
-
-    void updateSelectionData(PlayerIndex idx, DragSelectData& data, bool remapped);
-
-   protected:
-       /// Global info
-       SceneManager& _parent;
-       ResourceCache* _resCache = nullptr;
-
-       eastl::unique_ptr<SceneGraph>    _sceneGraph;
-       eastl::unique_ptr<AI::AIManager> _aiManager;
-       eastl::unique_ptr<SceneGUIElements> _GUI;
-
-       vector<Player*> _scenePlayers;
-       U64 _sceneTimerUS = 0ULL;
-       vector<D64> _taskTimers;
-       vector<D64> _guiTimersMS;
-       /// Datablocks for models,vegetation,terrains,tasks etc
-       std::atomic_uint _loadingTasks;
-       XML::SceneNode _xmlSceneGraphRootNode;
-
-       F32 _LRSpeedFactor = 1.0f;
-       /// Current selection
-       hashMap<PlayerIndex, Selections> _currentSelection;
-       hashMap<PlayerIndex, I64> _currentHoverTarget;
-       hashMap<PlayerIndex, DragSelectData> _dragSelectData;
-
-       hashMap<PlayerIndex, SceneGraphNode*> _flashLight;
-       hashMap<PlayerIndex, U32> _cameraUpdateListeners;
-       /// Scene::load must be called by every scene. Add a load flag to make sure!
-       bool _loadComplete = false;
-
-   private:
-       SharedMutex _tasksMutex;
-       vector<Task*> _tasks;
-       /// Contains all game related info for the scene (wind speed, visibility ranges, etc)
-       eastl::unique_ptr<SceneState> _sceneState;
-       vector<SGNRayResult> _sceneSelectionCandidates;
-
-   protected:
-       eastl::unique_ptr<LightPool> _lightPool;
-       eastl::unique_ptr<SceneInput> _input;
-       eastl::unique_ptr<SceneEnvironmentProbePool> _envProbePool;
-
-       IMPrimitive* _linesPrimitive = nullptr;
-       vector<IMPrimitive*> _octreePrimitives;
-       vector<BoundingBox> _octreeBoundingBoxes;
-
-       static Mutex s_perFrameArenaMutex;
-       static MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 3> s_perFrameArena;
+    protected:
+        IMPrimitive*         _linesPrimitive = nullptr;
+        vector<IMPrimitive*> _octreePrimitives;
+        vector<BoundingBox>  _octreeBoundingBoxes;
 };
 
 namespace Attorney {
@@ -404,8 +347,8 @@ class SceneManager {
         return scene.updateCameraControls(idx);
     }
 
-    static bool checkLoadFlag(const Scene& scene) noexcept {
-        return scene.checkLoadFlag();
+    static bool loadComplete(const Scene& scene) noexcept {
+        return scene.loadComplete();
     }
 
     static void onPlayerAdd(Scene& scene, const Player_ptr& player) {
@@ -420,7 +363,6 @@ class SceneManager {
         scene.currentPlayerPass(idx);
     }
 
-    /// Draw debug entities
     static void debugDraw(Scene& scene, const Camera* activeCamera, const RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut) {
         scene.debugDraw(activeCamera, stagePass, bufferInOut);
     }
@@ -429,12 +371,18 @@ class SceneManager {
         scene.drawCustomUI(targetViewport, bufferInOut);
     }
 
-    static bool frameStarted(Scene& scene) { return scene.frameStarted(); }
-    static bool frameEnded(Scene& scene) { return scene.frameEnded(); }
+    static bool frameStarted(Scene& scene) { 
+        return scene.frameStarted();
+    }
+
+    static bool frameEnded(Scene& scene) {
+        return scene.frameEnded();
+    }
 
     static bool loadXML(Scene& scene, const Str256& name) {
         return scene.loadXML(name);
     }
+
     static bool load(Scene& scene, const Str256& name) {
         return scene.load(name);
     }
@@ -528,6 +476,19 @@ class SceneLoadSave {
         return scene.load(inputBuffer);
     }
 
+
+    static bool saveNodeToXML(const Scene& scene, const SceneGraphNode* node) {
+        return scene.saveNodeToXML(node);
+    }
+
+    static bool loadNodeFromXML(const Scene& scene, SceneGraphNode* node) {
+        return scene.loadNodeFromXML(node);
+    }  
+    
+    static bool saveXML(const Scene& scene, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) {
+        return scene.saveXML(msgCallback, finishCallback);
+    }
+
     friend class Divide::LoadSave;
 };
 
@@ -538,6 +499,10 @@ class SceneGraph {
 
     static SceneEnvironmentProbePool* getEnvProbes(const Scene& scene) noexcept {
         return scene._envProbePool.get();
+    }
+
+    static void addSceneGraphToLoad(Scene& scene, XML::SceneNode&& rootNode) { 
+        scene._xmlSceneGraphRootNode = rootNode; 
     }
 
     friend class Divide::SceneGraph;

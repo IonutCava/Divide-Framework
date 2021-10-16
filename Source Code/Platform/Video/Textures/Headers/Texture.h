@@ -108,9 +108,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     [[nodiscard]] U8 numChannels() const noexcept;
 
-#if defined(_DEBUG)
-    const vector<string>& sourceFileList() const noexcept { return _sourceFileList; }
-#endif
    protected:
     /// Use STB to load a file into a Texture Object
     bool loadFile(const ResourcePath& name, ImageTools::ImageData& fileData);
@@ -122,10 +119,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Texture"; }
 
   protected:
-    bool _asyncLoad;
-#if defined(_DEBUG)
-    vector<string> _sourceFileList;
-#endif
+    bool _asyncLoad = true;
 
   protected:
     static const char* s_missingTextureFileName;

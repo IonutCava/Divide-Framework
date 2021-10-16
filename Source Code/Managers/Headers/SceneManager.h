@@ -125,12 +125,11 @@ public:
     // get the full list of refractive nodes
     void getSortedRefractiveNodes(const Camera* camera, RenderStage stage, bool inView, VisibleNodeList<>& nodesOut) const;
 
-    void onLostFocus();
-    void onGainFocus();
+    void onChangeFocus(bool hasFocus);
 
     /// Check if the scene was loaded properly
-    [[nodiscard]] bool checkLoadFlag() const {
-        return Attorney::SceneManager::checkLoadFlag(getActiveScene());
+    [[nodiscard]] bool loadComplete() const {
+        return Attorney::SceneManager::loadComplete(getActiveScene());
     }
     /// Update animations, network data, sounds, triggers etc.
     void updateSceneState(U64 deltaTimeUS);
@@ -422,11 +421,11 @@ class SceneManagerRenderPass {
     }
 
     static LightPool& lightPool(Divide::SceneManager* mgr) {
-        return mgr->getActiveScene().lightPool();
+        return *mgr->getActiveScene().lightPool();
     }
 
     static  SceneRenderState& renderState(Divide::SceneManager* mgr) {
-        return mgr->getActiveScene().renderState();
+        return mgr->getActiveScene().state()->renderState();
     }
 
     friend class Divide::RenderPass;

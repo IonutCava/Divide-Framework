@@ -183,6 +183,8 @@ constexpr bool ENABLE_GPU_VALIDATION = !Build::IS_SHIPPING_BUILD;
 /// Scan changes to shader source files, script files, etc to hot-reload assets. Isn't needed in shipping builds or without the editor enabled
 constexpr bool ENABLE_LOCALE_FILE_WATCHER = !Build::IS_SHIPPING_BUILD && Build::ENABLE_EDITOR;
 
+constexpr auto DEFAULT_SCENE_NAME = "DefaultScene";
+
 }  // namespace Config
 }  // namespace Divide
 
