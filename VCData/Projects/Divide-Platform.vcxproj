@@ -394,33 +394,33 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -531,7 +531,7 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
+      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase-</AdditionalOptions>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableModules>false</EnableModules>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -588,7 +588,7 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
+      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase-</AdditionalOptions>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableModules>false</EnableModules>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -749,7 +749,7 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zc:twoPhase- /d2cgsummary</AdditionalOptions>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <EnableModules>false</EnableModules>
@@ -801,7 +801,7 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/bigobj %(AdditionalOptions) /Zc:twoPhase- /Zc:twoPhase- /d2cgsummary</AdditionalOptions>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <EnableModules>false</EnableModules>

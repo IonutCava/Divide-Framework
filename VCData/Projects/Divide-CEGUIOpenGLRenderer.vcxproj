@@ -87,28 +87,28 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
-    <Import Project="C:\Users\Kingp\Downloads\SharedPch.props" />
-    <Import Project="C:\Users\Kingp\Downloads\CustomBuildStep.props" />
+    <Import Project="$(SolutionDir)SharedPch.props" />
+    <Import Project="$(SolutionDir)CustomBuildStep.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
@@ -204,7 +204,7 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <ConformanceMode>false</ConformanceMode>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
-      <AdditionalOptions>/bigobj /Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
+      <AdditionalOptions>/bigobj /Zc:twoPhase-</AdditionalOptions>
       <SmallerTypeCheck>false</SmallerTypeCheck>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
@@ -262,7 +262,7 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <ConformanceMode>false</ConformanceMode>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
-      <AdditionalOptions>/bigobj /Zc:twoPhase- /Zc:twoPhase-</AdditionalOptions>
+      <AdditionalOptions>/bigobj /Zc:twoPhase-</AdditionalOptions>
       <SmallerTypeCheck>false</SmallerTypeCheck>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <DisableSpecificWarnings>4100;4267;4456;4457;4458;4505;4702;4706;4244</DisableSpecificWarnings>
@@ -423,7 +423,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableModules>false</EnableModules>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalOptions>/bigobj /Zc:twoPhase-  /Zc:twoPhase-   /d2cgsummary</AdditionalOptions>
+      <AdditionalOptions>/bigobj</AdditionalOptions>
       <FloatingPointModel>Fast</FloatingPointModel>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -480,7 +480,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableModules>false</EnableModules>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalOptions>/bigobj /Zc:twoPhase-  /Zc:twoPhase-   /d2cgsummary</AdditionalOptions>
+      <AdditionalOptions>/bigobj</AdditionalOptions>
       <FloatingPointModel>Fast</FloatingPointModel>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
