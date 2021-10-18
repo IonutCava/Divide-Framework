@@ -24,17 +24,11 @@ RenderTargetHandle SceneEnvironmentProbePool::s_reflection;
 SceneEnvironmentProbePool::SceneEnvironmentProbePool(Scene& parentScene)
     : SceneComponent(parentScene)
 {
-    for (U32 i = 0; i < 6; ++i) {
-        s_probeCameras.emplace_back(Camera::createCamera<FreeFlyCamera>(Util::StringFormat("ProbeCamera_%d", i)));
-    }
+
 }
 
 SceneEnvironmentProbePool::~SceneEnvironmentProbePool() 
 {
-    for (U32 i = 0; i < 6; ++i) {
-        Camera::destroyCamera(s_probeCameras[i]);
-    }
-    s_probeCameras.clear();
 }
 
 I16 SceneEnvironmentProbePool::AllocateSlice(bool lock) {
@@ -59,6 +53,10 @@ void SceneEnvironmentProbePool::UnlockSlice(const I16 slice) {
 }
 
 void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
+    for (U32 i = 0; i < 6; ++i) {
+        s_probeCameras.emplace_back(Camera::createCamera<FreeFlyCamera>(Util::StringFormat("ProbeCamera_%d", i)));
+    }
+
     s_availableSlices.fill({ true, false });
 
     // Reflection Targets
@@ -98,6 +96,10 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
 
 void SceneEnvironmentProbePool::OnShutdown(GFXDevice& context) {
     context.renderTargetPool().deallocateRT(s_reflection);
+    for (U32 i = 0; i < 6; ++i) {
+        Camera::destroyCamera(s_probeCameras[i]);
+    }
+    s_probeCameras.clear();
 }
 
 RenderTargetHandle SceneEnvironmentProbePool::ReflectionTarget() {

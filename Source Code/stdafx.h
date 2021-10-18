@@ -169,6 +169,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/TemplateLibraries/Headers/HashMap.h"
 #include "Core/TemplateLibraries/Headers/Vector.h"
 #include "Core/TemplateLibraries/Headers/String.h"
+#include "Core/TemplateLibraries/Headers/CircularBuffer.h"
 #include "Platform/File/Headers/ResourcePath.h"
 #include "Core/Math/Headers/MathMatrices.h"
 #include "Core/Math/Headers/Quaternion.h"

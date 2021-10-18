@@ -35,6 +35,8 @@ namespace {
     SceneGraphNodeDescriptor g_nodeDescriptor;
     SceneNodeType g_currentNodeType = SceneNodeType::TYPE_OBJECT3D;
 
+    static ResourcePath g_scenePath;
+
     const string s_messages[] = {
         "Please wait while saving current scene! App may appear frozen or stuttery for up to 30 seconds ...",
         "Saved scene succesfully",
@@ -43,6 +45,7 @@ namespace {
 
     struct SaveSceneParams {
         string _saveMessage = "";
+        const char* _saveNameOverride = "";
         U32 _saveElementCount = 0u;
         U32 _saveProgress = 0u;
         bool _closePopup = false;
@@ -87,8 +90,11 @@ namespace {
 
 MenuBar::MenuBar(PlatformContext& context, const bool mainMenu)
     : PlatformContextComponent(context),
-      _isMainMenu(mainMenu)
+      _isMainMenu(mainMenu),
+      _sceneOpenDialog(true, true),
+      _sceneSaveDialog(true)
 {
+    g_scenePath = Paths::g_rootPath + Paths::g_xmlDataLocation + Paths::g_scenesLocation;
 }
 
 void MenuBar::draw() {
@@ -153,6 +159,7 @@ void MenuBar::draw() {
             ImGui::OpenPopup("Create New Scene");
             if (ImGui::BeginPopupModal("Create New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 static char buf[256];
+                ImGui::Text("WARNING: All unsaved changes will be lost!");
                 if (ImGui::InputText("New Scene Name", &buf[0], 254)) {
 
                 }
@@ -165,7 +172,24 @@ void MenuBar::draw() {
                 if (ImGui::Button("Create", ImVec2(120, 0))) {
                     ImGui::CloseCurrentPopup();
                     _newScenePopup = false;
-                    //ToDo: Create a new scene and switch to it when everything is ready (e.g. files)
+                    string sceneName(buf);
+                    if (!Util::CompareIgnoreCase(sceneName, Config::DEFAULT_SCENE_NAME)) {
+                        FileError ret = copyDirectory(g_scenePath + "/" + Config::DEFAULT_SCENE_NAME, g_scenePath + "/" + sceneName, true, true);
+                        if (ret != FileError::NONE) {
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
+                        ret = copyFile(g_scenePath.c_str(),
+                                       (Config::DEFAULT_SCENE_NAME + string(".xml")).c_str(),
+                                       g_scenePath.c_str(),
+                                       (sceneName + ".xml").c_str(),
+                                       true);
+                        if (ret != FileError::NONE) {
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
+                        Attorney::EditorGeneralWidget::switchScene(_context.editor(), (g_scenePath + "/" + sceneName).c_str());
+                    } else {
+                        _errorMsg.append("Tried to use a reserved name for a new scene! Try a differeng name. \n");
+                    }
                 }
                 ImGui::EndPopup();
             }
@@ -305,10 +329,14 @@ void MenuBar::draw() {
 }
 
 void MenuBar::drawFileMenu() {
-    bool showFileOpenDialog = false;
+    bool showSceneOpenDialog = false;
+    bool showSceneSaveDialog = false;
 
-    const auto saveSceneCbk = [this]() {
+    const auto saveSceneCbk = [this](const char* sceneName = "") {
         _savePopup = true;
+
+        const ResourcePath parentFolder = splitPathToNameAndLocation(sceneName).first;
+        g_saveSceneParams._saveNameOverride = parentFolder.c_str();
         g_saveSceneParams._closePopup = false;
         g_saveSceneParams._saveProgress = 0u;
         g_saveSceneParams._saveElementCount = Attorney::EditorGeneralWidget::saveItemCount(_context.editor());
@@ -324,7 +352,7 @@ void MenuBar::drawFileMenu() {
         };
 
         Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), s_messages[0], Time::SecondsToMilliseconds<F32>(6));
-        if (!Attorney::EditorGeneralWidget::saveSceneChanges(_context.editor(), messageCbk, closeDialog)) {
+        if (!Attorney::EditorGeneralWidget::saveSceneChanges(_context.editor(), messageCbk, closeDialog, g_saveSceneParams._saveNameOverride)) {
             _errorMsg.append("Error occured while saving the current scene!\n Try again or check the logs for errors!\n");
         }
     };
@@ -332,27 +360,41 @@ void MenuBar::drawFileMenu() {
     if (ImGui::BeginMenu("File"))
     {
         const bool hasUnsavedElements = Attorney::EditorGeneralWidget::hasUnsavedSceneChanges(_context.editor());
+        const bool isDefaultScene = Attorney::EditorGeneralWidget::isDefaultScene(_context.editor());
 
-        if (ImGui::MenuItem("New Scene", "Ctrl+N", false, false))
+        if (ImGui::MenuItem("New Scene", "Ctrl+N", false, true))
         {
-            if (hasUnsavedElements) {
+            if (hasUnsavedElements && !isDefaultScene) {
                 saveSceneCbk();
             }
             _newScenePopup = true;
         }
 
-        showFileOpenDialog = ImGui::MenuItem("Open Scene", "Ctrl+O");
+        showSceneOpenDialog = ImGui::MenuItem("Open Scene", "Ctrl+O");
 
-        if (ImGui::BeginMenu("Open Recent"))
+        const auto& recentSceneList = Attorney::EditorMenuBar::getRecentSceneList(_context.editor());
+        if (ImGui::BeginMenu("Open Recent", !recentSceneList.empty()))
         {
-            ImGui::Text("Empty");
+            for (size_t i = 0u; i < recentSceneList.size(); ++i) {
+                if (ImGui::MenuItem(recentSceneList.get(i).c_str()))
+                {
+                    Attorney::EditorGeneralWidget::switchScene(_context.editor(), (g_scenePath + "/" + recentSceneList.get(i)).c_str());
+                }
+            }
+
             ImGui::EndMenu();
         }
 
-        if (ImGui::MenuItem("Save Scene", "", false, hasUnsavedElements)) {
-            saveSceneCbk();
+        if (ImGui::MenuItem("Save Scene", "", false, hasUnsavedElements || isDefaultScene)) {
+            if (isDefaultScene) {
+                showSceneSaveDialog = true;
+            } else {
+                saveSceneCbk();
+            }
         }
-
+        if (ImGui::MenuItem("Save Scene As", "", false, !isDefaultScene)) {
+            showSceneSaveDialog = true;
+        }
         ImGui::Separator();
         if (ImGui::BeginMenu("Options"))
         {
@@ -437,11 +479,16 @@ void MenuBar::drawFileMenu() {
         ImGui::EndMenu();
     }
 
-    static ImGuiFs::Dialog s_fileOpenDialog(true, true);
-    s_fileOpenDialog.chooseFileDialog(showFileOpenDialog);
+    const char* sceneOpenPath = _sceneOpenDialog.chooseFolderDialog(showSceneOpenDialog, g_scenePath.c_str());
+    if (strlen(sceneOpenPath) > 0) {
+        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Chosen scene load directory: \"%s\"", sceneOpenPath), Time::SecondsToMilliseconds<F32>(3.0f));
+        Attorney::EditorGeneralWidget::switchScene(_context.editor(), sceneOpenPath);
+    }
 
-    if (strlen(s_fileOpenDialog.getChosenPath()) > 0) {
-        ImGui::Text("Chosen file: \"%s\"", s_fileOpenDialog.getChosenPath());
+    const char* sceneSavePath = _sceneSaveDialog.chooseFolderDialog(showSceneSaveDialog, g_scenePath.c_str());
+    if (strlen(sceneSavePath) > 0) {
+        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Chosen scene save directory: \"%s\"", sceneSavePath), Time::SecondsToMilliseconds<F32>(3.0f));
+        saveSceneCbk(sceneSavePath);
     }
 }
 

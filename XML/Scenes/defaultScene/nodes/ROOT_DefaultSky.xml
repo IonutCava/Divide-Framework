@@ -1,25 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<static>false</static>
+<static>true</static>
+<SKY>
+    <Sun__Intensity>30</Sun__Intensity>
+    <Sun__Scale>0.25</Sun__Scale>
+    <Distance__Multplier__x10>1000</Distance__Multplier__x10>
+    <Ray__Offset:____-10__10__m>0</Ray__Offset:____-10__10__m>
+    <Planet__Radius____0__1__100__x>0.5</Planet__Radius____0__1__100__x>
+    <Atmosphere__Offset____1m__-__1000m__>100</Atmosphere__Offset____1m__-__1000m__>
+    <Cloud__layer__height__range__(m) x="900" y="2300"/>
+    <Rayleigh__Coefficients x="5.5" y="13" z="22.3999996"/>
+    <Rayleigh__Scale__Field>8</Rayleigh__Scale__Field>
+    <Mie__Coefficients>21</Mie__Coefficients>
+    <Mie__Scale__Height>1.20000005</Mie__Scale__Height>
+    <Weather__Scale__(__x__1e-5)>8</Weather__Scale__(__x__1e-5)>
+    <Use__Day__Skybox>false</Use__Day__Skybox>
+    <Use__Night__Skybox>true</Use__Night__Skybox>
+    <Enable__Procedural__Clouds>true</Enable__Procedural__Clouds>
+    <Night__Colour r="0" g="0" b="0" a="1"/>
+    <Moon__Colour r="1.10000002" g="1" b="0.800000012" a="1"/>
+    <Moon__Scale>0.00999999978</Moon__Scale>
+</SKY>
 <TRANSFORM>
     <Transform>
         <position x="0" y="0" z="0"/>
-        <orientation x="0" y="0" z="0"/>
+        <orientation x="-179.999985" y="3.68578744" z="-179.999985"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
-    <WorldMat 00="1" 01="0" 02="0" 03="0" 10="0" 11="1" 12="0" 13="0" 20="0" 21="0" 22="1" 23="0" 30="0" 31="0" 32="0" 33="1"/>
 </TRANSFORM>
 <BOUNDS/>
-<RENDERING>
-    <Material>
-        <colour r="0.666666687" g="0.666666687" b="0.666666687" a="1"/>
-        <emissive r="0" g="0" b="0" a="1"/>
-        <specular r="0.800000012" g="0.800000012" b="0.800000012" a="1"/>
-        <shininess>5</shininess>
-        <doubleSided>false</doubleSided>
-        <bumpMethod>NONE</bumpMethod>
-        <shadingMode>BLINN_PHONG</shadingMode>
-        <parallaxFactor>1</parallaxFactor>
-    </Material>
-</RENDERING>
+<RENDERING/>
 <NETWORKING/>
-<OBJECT3D/>
+<SCRIPT/>

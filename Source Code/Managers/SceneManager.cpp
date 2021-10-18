@@ -77,11 +77,7 @@ const Scene& SceneManager::getActiveScene() const {
 void SceneManager::idle() {
     if (_sceneSwitchTarget._isSet) {
         parent().platformContext().gfx().getRenderer().postFX().setFadeOut(UColour3(0), 1000.0, 0.0);
-        if (!switchScene(_sceneSwitchTarget._targetSceneName,
-                         _sceneSwitchTarget._unloadPreviousScene,
-                         _sceneSwitchTarget._targetViewRect,
-                         _sceneSwitchTarget._loadInSeparateThread))
-        {
+        if (!switchSceneInternal()) {
             DIVIDE_UNEXPECTED_CALL();
         }
         WaitForAllTasks(getActiveScene().context(), true);
@@ -203,20 +199,39 @@ void SceneManager::setActiveScene(Scene* const scene) {
     }
 
     _platformContext->gui().onChangeScene(scene);
-    _platformContext->paramHandler().setParam(_ID("activeScene"), scene->resourceName());
 }
 
-bool SceneManager::switchScene(const Str256& name, bool unloadPrevious, const Rect<U16>& targetRenderViewport, const bool threaded) {
+bool SceneManager::switchScene(const Str256& name, bool unloadPrevious, bool deferToIdle, const bool threaded) {
+    const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation + name;
+    const ResourcePath sceneFile = scenePath + ".xml";
+    if (!pathExists(scenePath) || !fileExists(sceneFile)) {
+        return false;
+    }
+
+    _sceneSwitchTarget = { name, unloadPrevious, threaded, true };
+
+    if (!deferToIdle) {
+        return switchSceneInternal();
+    }
+
+    return true;
+}
+
+bool SceneManager::switchSceneInternal() {
+    assert(_sceneSwitchTarget._isSet);
+
+    const Str256 name = _sceneSwitchTarget._targetSceneName;
+    const bool unloadPrevious = _sceneSwitchTarget._unloadPreviousScene;
+    const bool threaded = _sceneSwitchTarget._loadInSeparateThread;
+    _sceneSwitchTarget = {};
+
     assert(!name.empty());
 
-    Scene* sceneToUnload = nullptr;
-    if (!_scenePool->defaultSceneActive()) {
-        sceneToUnload = &_scenePool->activeScene();
-    }
+    Scene* sceneToUnload = &_scenePool->activeScene();
 
     // We use our rendering task pool for scene changes because we might be creating / loading GPU assets (shaders, textures, buffers, etc)
     Start(*CreateTask(
-        [this, name, unloadPrevious, &sceneToUnload](const Task& /*parentTask*/)
+        [this, unloadPrevious, &name, &sceneToUnload](const Task& /*parentTask*/)
         {
             // Load first, unload after to make sure we don't reload common resources
             if (load(name) != nullptr) {
@@ -228,34 +243,14 @@ bool SceneManager::switchScene(const Str256& name, bool unloadPrevious, const Re
         }),
         _platformContext->taskPool(TaskPoolType::HIGH_PRIORITY),
         threaded ? TaskPriority::DONT_CARE : TaskPriority::REALTIME, 
-        [this, name, targetRenderViewport, unloadPrevious, &sceneToUnload]()
+        [this, name, unloadPrevious, &sceneToUnload]()
         {
             bool foundInCache = false;
             Scene* loadedScene = _scenePool->getOrCreateScene(*_platformContext, parent().resourceCache(), *this, name, foundInCache);
             assert(loadedScene != nullptr && foundInCache);
 
             if(loadedScene->getState() == ResourceState::RES_LOADING) {
-                Attorney::SceneManager::postLoadMainThread(*loadedScene, targetRenderViewport);
-                if (loadedScene->getGUID() != _scenePool->defaultScene().getGUID())
-                {
-                    SceneGUIElements* gui = Attorney::SceneManager::gui(*loadedScene);
-                    GUIButton* btn = gui->addButton("Back",
-                                                    "Back",
-                                                    pixelPosition(15, 15),
-                                                    pixelScale(50, 25));
-                    
-                    btn->setEventCallback(GUIButton::Event::MouseClick,
-                        [this, &targetRenderViewport](I64 /*btnGUID*/)
-                        {
-                            _sceneSwitchTarget = {
-                                _scenePool->defaultScene().resourceName(),
-                                targetRenderViewport, 
-                                true,
-                                false,
-                                true
-                            };
-                        });
-                }
+                Attorney::SceneManager::postLoadMainThread(*loadedScene);
             }
             assert(loadedScene->getState() == ResourceState::RES_LOADED);
             setActiveScene(loadedScene);
@@ -268,8 +263,6 @@ bool SceneManager::switchScene(const Str256& name, bool unloadPrevious, const Re
             _parent.platformContext().app().timer().resetFPSCounter();
             
         });
-
-    _sceneSwitchTarget = {};
 
     return true;
 }
@@ -341,7 +334,7 @@ void SceneManager::addPlayerInternal(Scene& parentScene, SceneGraphNode* playerN
     }
 
     if (i < Config::MAX_LOCAL_PLAYER_COUNT) {
-        const Player_ptr player = std::make_shared<Player>(to_U8(i), parent().frameListenerMgr(), 666 + i);
+        const Player_ptr player = std::make_shared<Player>(to_U8(i));
         player->camera()->fromCamera(*Camera::utilityCamera(Camera::UtilityCamera::DEFAULT));
         player->camera()->setFixedYawAxis(true);
         _players[i] = playerNode->get<UnitComponent>();
@@ -569,7 +562,9 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
     _saveTimer += deltaTimeUS;
 
     if (_saveTimer >= Time::SecondsToMicroseconds(Config::Build::IS_DEBUG_BUILD ? 5 : 10)) {
-        saveActiveScene(true, true);
+        if (!saveActiveScene(true, true)) {
+            NOP();
+        }
         _saveTimer = 0ULL;
     }
     if (dayNightData._skyInstance != nullptr) {
@@ -737,14 +732,14 @@ void SceneManager::onChangeFocus(const bool hasFocus) {
 void SceneManager::resetSelection(const PlayerIndex idx) {
     Attorney::SceneManager::resetSelection(getActiveScene(), idx);
     for (auto& cbk : _selectionChangeCallbacks) {
-        cbk(idx, {});
+        cbk.second(idx, {});
     }
 }
 
 void SceneManager::setSelected(const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive) {
     Attorney::SceneManager::setSelected(getActiveScene(), idx, SGNs, recursive);
     for (auto& cbk : _selectionChangeCallbacks) {
-        cbk(idx, SGNs);
+        cbk.second(idx, SGNs);
     }
 }
 
@@ -938,9 +933,9 @@ bool LoadSave::loadNodeFromXML(const Scene& activeScene, SceneGraphNode* node) {
     return Attorney::SceneLoadSave::loadNodeFromXML(activeScene, node);
 }
 
-bool LoadSave::saveScene(const Scene& activeScene, const bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) {
+bool LoadSave::saveScene(const Scene& activeScene, const bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride) {
     if (!toCache) {
-        return Attorney::SceneLoadSave::saveXML(activeScene, msgCallback, finishCallback);
+        return Attorney::SceneLoadSave::saveXML(activeScene, msgCallback, finishCallback, sceneNameOverride);
     }
 
     bool ret = false;
@@ -971,10 +966,15 @@ bool LoadSave::saveScene(const Scene& activeScene, const bool toCache, const DEL
     return ret;
 }
 
-bool SceneManager::saveActiveScene(bool toCache, const bool deferred, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) {
+bool SceneManager::saveActiveScene(bool toCache, const bool deferred, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride) {
     OPTICK_EVENT();
 
     const Scene& activeScene = getActiveScene();
+
+    // Ignore any auto-save (or manuall saves) on the default scene
+    if (Util::IsEmptyOrNull(sceneNameOverride) && activeScene.getGUID() == Scene::DEFAULT_SCENE_GUID) {
+        return false;
+    }
 
     TaskPool& pool = parent().platformContext().taskPool(TaskPoolType::LOW_PRIORITY);
     if (_saveTask != nullptr) {
@@ -988,8 +988,8 @@ bool SceneManager::saveActiveScene(bool toCache, const bool deferred, const DELE
     }
 
     _saveTask = CreateTask(nullptr,
-                           [&activeScene, msgCallback, finishCallback, toCache](const Task& /*parentTask*/) {
-                               LoadSave::saveScene(activeScene, toCache, msgCallback, finishCallback);
+                           [&activeScene, msgCallback, finishCallback, sceneNameStr = string(sceneNameOverride), toCache](const Task& /*parentTask*/) {
+                               LoadSave::saveScene(activeScene, toCache, msgCallback, finishCallback, sceneNameStr.c_str());
                            },
                            false);
     Start(*_saveTask, pool, deferred ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);

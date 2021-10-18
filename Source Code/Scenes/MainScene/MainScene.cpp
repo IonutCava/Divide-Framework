@@ -282,7 +282,7 @@ void MainScene::test() {
         registerTask(*g_boxMoveTaskID);
 }
 
-void MainScene::postLoadMainThread(const Rect<U16>& targetRenderViewport) {
+void MainScene::postLoadMainThread() {
     _GUI->addText("timeDisplay", pixelPosition(60, 80), Font::DIVIDE_DEFAULT,
         UColour4(164, 64, 64, 255),
         Util::StringFormat("Elapsed time: %5.0f", Time::Game::ElapsedSeconds()));
@@ -300,7 +300,7 @@ void MainScene::postLoadMainThread(const Rect<U16>& targetRenderViewport) {
         Util::StringFormat("Position [ X: %5.0f | Y: %5.0f | Z: %5.0f ] [Pitch: %5.2f | Yaw: %5.2f]",
             eyePos.x, eyePos.y, eyePos.z, euler.pitch, euler.yaw));
 
-    Scene::postLoadMainThread(targetRenderViewport);
+    Scene::postLoadMainThread();
 }
 
 }

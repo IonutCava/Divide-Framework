@@ -130,6 +130,10 @@ bool PhysXSceneInterface::init() {
     return true;
 }
 
+bool PhysXSceneInterface::isInit() const {
+    return _gScene != nullptr;
+}
+
 #define SAFE_RELEASE(X) if (X != nullptr) { X->release(); X = nullptr;}
 void PhysXSceneInterface::release() {
     Console::d_printfn(Locale::Get(_ID("STOP_PHYSX_SCENE_INTERFACE")));

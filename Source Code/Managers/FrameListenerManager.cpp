@@ -3,33 +3,36 @@
 #include "Headers/FrameListenerManager.h"
 
 #include "Core/Headers/StringHelper.h"
-
 #include "Utility/Headers/Localization.h"
+#include "Platform/Headers/PlatformRuntime.h"
 
 namespace Divide {
 
 /// Register a new Frame Listener to be processed every frame
 void FrameListenerManager::registerFrameListener(FrameListener* listener, const U32 callOrder) {
+    assert(Runtime::isMainThread());
     assert(listener != nullptr);
 
-    // Check if the listener has a name or we should assign an id
+    listener->setCallOrder(callOrder);
     if (listener->getListenerName().empty()) {
         listener->name(Util::StringFormat("generic_f_listener_%d", listener->getGUID()).c_str());
     }
-
-    listener->setCallOrder(callOrder);
-
-    ScopedLock<SharedMutex> w_lock(_listenerLock);
     insert_sorted(_listeners, listener, eastl::less<>());
+    listener->enabled(true);
+
 }
 
 /// Remove an existent Frame Listener from our collection
 void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
-    assert(listener != nullptr);
+    assert(Runtime::isMainThread());
 
-    const I64 targetGUID = listener->getGUID();
-    ScopedLock<SharedMutex> lock(_listenerLock);
-    if (!dvd_erase_if(_listeners, [targetGUID](FrameListener const* fl) { return fl->getGUID() == targetGUID; })) {
+    assert(listener != nullptr);
+    listener->enabled(false);
+    if (!dvd_erase_if(_listeners,
+                      [targetGUID = listener->getGUID()](FrameListener const* fl) {
+                            return fl->getGUID() == targetGUID;
+                       }))
+    {
         Console::errorfn(Locale::Get(_ID("ERROR_FRAME_LISTENER_REMOVE")), listener->getListenerName().c_str());
     }
 }
@@ -55,9 +58,8 @@ bool FrameListenerManager::frameEvent(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameStarted(const FrameEvent& evt) {
-    SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (!listener->frameStarted(evt)) {
+        if (listener->enabled() && !listener->frameStarted(evt)) {
             return false;
         }
     }
@@ -65,9 +67,8 @@ bool FrameListenerManager::frameStarted(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::framePreRenderStarted(const FrameEvent& evt) {
-    SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (!listener->framePreRenderStarted(evt)) {
+        if (listener->enabled() && !listener->framePreRenderStarted(evt)) {
             return false;
         }
     }
@@ -75,9 +76,8 @@ bool FrameListenerManager::framePreRenderStarted(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::framePreRenderEnded(const FrameEvent& evt) {
-    SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (!listener->framePreRenderEnded(evt)) {
+        if (listener->enabled() && !listener->framePreRenderEnded(evt)) {
             return false;
         }
     }
@@ -85,9 +85,8 @@ bool FrameListenerManager::framePreRenderEnded(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameSceneRenderStarted(const FrameEvent& evt) {
-    SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (!listener->frameSceneRenderStarted(evt)) {
+        if (listener->enabled() && !listener->frameSceneRenderStarted(evt)) {
             return false;
         }
     }
@@ -95,9 +94,8 @@ bool FrameListenerManager::frameSceneRenderStarted(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameSceneRenderEnded(const FrameEvent& evt) {
-    SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (!listener->frameSceneRenderEnded(evt)) {
+        if (listener->enabled() && !listener->frameSceneRenderEnded(evt)) {
             return false;
         }
     }
@@ -105,9 +103,8 @@ bool FrameListenerManager::frameSceneRenderEnded(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameRenderingQueued(const FrameEvent& evt) {
-    SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (!listener->frameRenderingQueued(evt)) {
+        if (listener->enabled() && !listener->frameRenderingQueued(evt)) {
             return false;
         }
     }
@@ -115,9 +112,8 @@ bool FrameListenerManager::frameRenderingQueued(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::framePostRenderStarted(const FrameEvent& evt) {
-    SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (!listener->framePostRenderStarted(evt)) {
+        if (listener->enabled() && !listener->framePostRenderStarted(evt)) {
             return false;
         }
     }
@@ -125,9 +121,8 @@ bool FrameListenerManager::framePostRenderStarted(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::framePostRenderEnded(const FrameEvent& evt) {
-    SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (!listener->framePostRenderEnded(evt)) {
+        if (listener->enabled() && !listener->framePostRenderEnded(evt)) {
             return false;
         }
     }
@@ -135,18 +130,16 @@ bool FrameListenerManager::framePostRenderEnded(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameEnded(const FrameEvent& evt) {
-    SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
         if (!listener->frameEnded(evt)) {
             return false;
         }
     }
+
+
     return true;
 }
 
-/// When the application is idle, we should really clear up old events
-void FrameListenerManager::idle() {
-}
 
 /// Please see the Ogre3D documentation about this
 void FrameListenerManager::createEvent(const U64 currentTimeUS, const FrameEventType type, FrameEvent& evt) {

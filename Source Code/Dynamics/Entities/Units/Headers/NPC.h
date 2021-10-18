@@ -46,7 +46,7 @@ class AIEntity;
 class NPC final : public Character {
    public:
     /// NPCs don't need AI by default
-    explicit NPC(AI::AIEntity* aiEntity, FrameListenerManager& parent, U32 callOrder);
+    explicit NPC(AI::AIEntity* aiEntity);
     ~NPC() = default;
     void update(U64 deltaTimeUS) override;
     

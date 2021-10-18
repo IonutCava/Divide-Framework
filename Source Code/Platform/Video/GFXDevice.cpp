@@ -211,11 +211,10 @@ ErrorCode GFXDevice::initRenderingAPI(const I32 argc, char** argv, const RenderA
 ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     std::atomic_uint loadTasks = 0;
     ResourceCache* cache = parent().resourceCache();
-    Configuration& config = _parent.platformContext().config();
+    const Configuration& config = _parent.platformContext().config();
 
     // Initialize the shader manager
     ShaderProgram::OnStartup(cache);
-    SceneEnvironmentProbePool::OnStartup(*this);
     GFX::InitPools();
 
     // Create a shader buffer to store the GFX rendering info (matrices, options, etc)
@@ -865,7 +864,6 @@ void GFXDevice::closeRenderingAPI() {
 
     RenderStateBlock::clear();
 
-    SceneEnvironmentProbePool::OnShutdown(*this);
     GFX::DestroyPools();
     MemoryManager::SAFE_DELETE(_rtPool);
 

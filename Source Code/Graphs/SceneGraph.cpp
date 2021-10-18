@@ -141,18 +141,6 @@ bool SceneGraph::removeNode(SceneGraphNode* node) {
 }
 
 bool SceneGraph::frameStarted(const FrameEvent& evt) {
-    {
-        ScopedLock<SharedMutex> lock(_pendingDeletionLock);
-        if (!_pendingDeletion.empty()) {
-            for (auto entry : _pendingDeletion) {
-                if (entry.first != nullptr) {
-                    Attorney::SceneGraphNodeSceneGraph::processDeleteQueue(entry.first, entry.second);
-                }
-            }
-            _pendingDeletion.clear();
-        }
-    }
-
     // Gather all nodes at the start of the frame only if we added/removed any of them
     if (_nodeListChanged) {
         // Very rarely called
@@ -173,7 +161,17 @@ bool SceneGraph::frameEnded(const FrameEvent& evt) {
         OPTICK_EVENT("ECS::OnFrameEnd");
         GetECSEngine().OnFrameEnd();
     }
-
+    {
+        ScopedLock<SharedMutex> lock(_pendingDeletionLock);
+        if (!_pendingDeletion.empty()) {
+            for (auto entry : _pendingDeletion) {
+                if (entry.first != nullptr) {
+                    Attorney::SceneGraphNodeSceneGraph::processDeleteQueue(entry.first, entry.second);
+                }
+            }
+            _pendingDeletion.clear();
+        }
+    }
     return true;
 }
 
@@ -445,19 +443,25 @@ namespace {
     }
 };
 
-void SceneGraph::saveToXML(const char* assetsFile, DELEGATE<void, std::string_view> msgCallback) const {
+void SceneGraph::saveToXML(const char* assetsFile, DELEGATE<void, std::string_view> msgCallback, const char* overridePath) const {
     const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
-    ResourcePath sceneLocation(scenePath + "/" + parentScene().resourceName());
+    ResourcePath sceneLocation(scenePath + (strlen(overridePath) > 0 ? Str256(overridePath) : parentScene().resourceName()));
 
     {
         boost::property_tree::ptree pt;
         pt.put("version", g_sceneGraphVersion);
         pt.add_child("entities.node", dumpSGNtoAssets(getRoot()));
 
-        if (copyFile(sceneLocation + "/", ResourcePath(assetsFile), sceneLocation + "/", ResourcePath("assets.xml.bak"), true) == FileError::NONE) {
-            XML::writeXML((sceneLocation + "/" + assetsFile).str(), pt);
+        const FileError backupReturnCode = copyFile(sceneLocation + "/", ResourcePath(assetsFile), sceneLocation + "/", ResourcePath("assets.xml.bak"), true);
+        if (backupReturnCode != FileError::NONE &&
+            backupReturnCode != FileError::FILE_NOT_FOUND &&
+            backupReturnCode != FileError::FILE_EMPTY)
+        {
+            if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         } else {
-            DIVIDE_UNEXPECTED_CALL();
+            XML::writeXML((sceneLocation + "/" + assetsFile).str(), pt);
         }
     }
 
@@ -471,11 +475,11 @@ namespace {
     boost::property_tree::ptree g_emptyPtree;
 }
 
-void SceneGraph::loadFromXML(const char* assetsFile) {
+void SceneGraph::loadFromXML(const char* assetsFile, const char* overridePath) {
     using boost::property_tree::ptree;
     static const auto& scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
 
-    const ResourcePath file = scenePath + "/" + parentScene().resourceName() + "/" + assetsFile;
+    const ResourcePath file = scenePath + "/" + (strlen(overridePath) > 0 ? Str256(overridePath) : parentScene().resourceName()) + "/" + assetsFile;
 
     if (!fileExists(file)) {
         return;

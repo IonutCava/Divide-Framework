@@ -52,7 +52,7 @@ BEGIN_SCENE(WarScene)
 
     bool load(const Str256& name) override;
     bool unload() override;
-    void postLoadMainThread(const Rect<U16>& targetRenderViewport) override;
+    void postLoadMainThread() override;
     void processTasks(U64 deltaTimeUS) override;
     void processGUI(U64 deltaTimeUS) override;
     void updateSceneStateInternal(U64 deltaTimeUS) override;

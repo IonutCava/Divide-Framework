@@ -5,6 +5,7 @@
 #include "Headers/PhysXSceneInterface.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 #include "Utility/Headers/Localization.h"
+#include "Scenes/Headers/Scene.h"
 
 // Connecting the SDK to Visual Debugger
 #include <extensions/PxDefaultAllocator.h>
@@ -258,22 +259,36 @@ void PhysX::idle() {
 }
 
 bool PhysX::initPhysicsScene(Scene& scene) {
-    if (_targetScene != nullptr && !destroyPhysicsScene()) {
-        DIVIDE_UNEXPECTED_CALL_MSG("Failed to destroy active physics scene!");
+    if (_targetScene != nullptr) {
+        const I64 currentScene = _targetScene->parentScene().getGUID();
+        const I64 callingScene = scene.getGUID();
+        if (currentScene == callingScene) {
+            if (!_targetScene->isInit()) {
+                if (!_targetScene->init()) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            }
+            // nothing to do.
+            return true;
+        }
+
+        if (!destroyPhysicsScene(_targetScene->parentScene())) {
+            DIVIDE_UNEXPECTED_CALL_MSG("Failed to destroy active physics scene!");
+        }
     }
 
     DIVIDE_ASSERT(_targetScene == nullptr);
     _targetScene = eastl::make_unique<PhysXSceneInterface>(scene);
-    if (_targetScene != nullptr) {
-        _targetScene->init();
-        return true;
-    }
-
-    return false;
+    return _targetScene->init();
 }
 
-bool PhysX::destroyPhysicsScene() { 
+bool PhysX::destroyPhysicsScene(const Scene& scene) {
     if (_targetScene != nullptr) {
+        // Because we can load scenes in the background, our current active scene might not
+        // be the one the calling scene wants to destroy.
+        if (_targetScene->parentScene().getGUID() != scene.getGUID()) {
+            return false;
+        }
         /// Destroy physics (:D)
         _targetScene->release();
         _targetScene.reset();

@@ -151,8 +151,6 @@ void Kernel::idle(const bool fast) {
     _sceneManager->idle();
     Script::idle();
 
-    frameListenerMgr().idle();
-
     if (!fast && --g_printTimer == 0) {
         Console::flush();
         g_printTimer = g_printTimerBase;
@@ -174,7 +172,9 @@ void Kernel::onLoop() {
     if (!_timingData.keepAlive()) {
         // exiting the rendering loop will return us to the last control point
         _platformContext.app().mainLoopActive(false);
-        sceneManager()->saveActiveScene(true, false);
+        if (!sceneManager()->saveActiveScene(true, false)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
         return;
     }
 
@@ -249,7 +249,7 @@ void Kernel::onLoop() {
     }
 
     if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
-        if (frameCount % 4 == 0u) {
+        if (frameCount % 6 == 0u) {
         
             DisplayWindow& window = _platformContext.mainWindow();
             static string originalTitle;
@@ -259,9 +259,10 @@ void Kernel::onLoop() {
 
             F32 fps = 0.f, frameTime = 0.f;
             _platformContext.app().timer().getFrameRateAndTime(fps, frameTime);
+            const Str256& activeSceneName = _sceneManager->getActiveScene().resourceName();
             constexpr const char* buildType = Config::Build::IS_DEBUG_BUILD ? "DEBUG" : Config::Build::IS_PROFILE_BUILD ? "PROFILE" : "RELEASE";
-            constexpr const char* titleString = "[%s] %s - %5.2f FPS - %3.2f ms - FrameIndex: %d";
-            window.title(titleString, buildType, originalTitle.c_str(), fps, frameTime, platformContext().gfx().frameCount());
+            constexpr const char* titleString = "[%s] - %s - %s - %5.2f FPS - %3.2f ms - FrameIndex: %d";
+            window.title(titleString, buildType, originalTitle.c_str(), activeSceneName.c_str(), fps, frameTime, platformContext().gfx().frameCount());
         }
     }
 
@@ -661,7 +662,6 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     }
 
     Camera::initPool();
-
     initError = _platformContext.gfx().initRenderingAPI(_argc, _argv, renderingAPI);
 
     // If we could not initialize the graphics device, exit
@@ -701,7 +701,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
         return initError;
     }
     winManager.postInit();
-
+    SceneEnvironmentProbePool::OnStartup(_platformContext.gfx());
     _inputConsumers.fill(nullptr);
 
     if_constexpr(Config::Build::ENABLE_EDITOR) {
@@ -769,16 +769,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
                                         ? Config::DEFAULT_SCENE_NAME
                                         : entryData.startupScene.c_str();
 
-    if (!_sceneManager->switchScene(firstLoadedScene, 
-                                    true,
-                                    {
-                                        0u,
-                                        0u,
-                                        config.runtime.resolution.width,
-                                        config.runtime.resolution.height
-                                    },
-                                    false))
-    {
+    if (!_sceneManager->switchScene(firstLoadedScene, true, false, false)) {
         Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD")), firstLoadedScene);
         return ErrorCode::MISSING_SCENE_DATA;
     }
@@ -823,6 +814,7 @@ void Kernel::shutdown() {
     ShadowMap::destroyShadowMaps(_platformContext.gfx());
     MemoryManager::SAFE_DELETE(_renderPassManager);
 
+    SceneEnvironmentProbePool::OnShutdown(_platformContext.gfx());
     Camera::destroyPool();
     _platformContext.terminate();
     resourceCache()->clear();

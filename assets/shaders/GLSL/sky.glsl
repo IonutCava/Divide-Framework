@@ -16,11 +16,11 @@ void main(void){
 #include "sceneData.cmn"
 #include "vbInputData.vert"
 
-uniform vec3 dvd_nightSkyColour;
-uniform vec3 dvd_moonColour;
+uniform vec3  dvd_nightSkyColour;
+uniform vec3  dvd_moonColour;
 uniform ivec2 dvd_useSkyboxes;
-uniform vec3 dvd_RayleighCoeff;
-uniform vec2 dvd_cloudLayerMinMaxHeight;
+uniform vec3  dvd_RayleighCoeff;
+uniform vec2  dvd_cloudLayerMinMaxHeight;
 uniform uint  dvd_raySteps;
 uniform float dvd_moonScale;
 uniform float dvd_weatherScale;
@@ -44,17 +44,17 @@ layout(location = 14) out vec3 vBetaM;
 #define UP_DIR vec3(0.0, 1.0, 0.0)
 
 // wavelength of used primaries, according to preetham
-//#define lambda vec3(680E-9, 550E-9, 450E-9)
+const vec3 lambda = vec3(680E-9, 550E-9, 450E-9);
 // this pre-calcuation replaces older TotalRayleigh(vec3 lambda) function:
 // (8.0 * pow(pi, 3.0) * pow(pow(n, 2.0) - 1.0, 2.0) * (6.0 + 3.0 * pn)) / (3.0 * N * pow(lambda, vec3(4.0)) * (6.0 - 7.0 * pn))
-#define totalRayleigh vec3(5.804542996261093E-6, 1.3562911419845635E-5, 3.0265902468824876E-5)
+const vec3 totalRayleigh = vec3(5.804542996261093E-6, 1.3562911419845635E-5, 3.0265902468824876E-5);
 
 // mie stuff
 // K coefficient for the primaries
-//const float v = 4.f;
-//const vec3  K = vec3(0.686f, 0.678f, 0.666f);
+const float v = 4.f;
+const vec3  K = vec3(0.686f, 0.678f, 0.666f);
 // MieConst = pi * pow( ( 2.0 * pi ) / lambda, vec3( v - 2.0 ) ) * K
-#define MieConst vec3(1.8399918514433978E14, 2.7798023919660528E14, 4.0790479543861094E14)
+const vec3 MieConst = vec3(1.8399918514433978E14, 2.7798023919660528E14, 4.0790479543861094E14);
 
 /*
 Atmospheric scattering based off of: https://www.shadertoy.com/view/XtBXDz
@@ -113,7 +113,7 @@ bool getSunLight(const in ray_t ray, inout float optical_depthR, inout float opt
 #define rayleigh_phase_func(MU) (3.f * (1.f + MU * MU) / (16.f * M_PI))
 #define HG(costheta, g) (0.0795774715459f * (1.f - g * g) / (pow(1.f + g * g - 2.f * g * costheta, 1.5f)))
 
-vec3 getIncidentLight(const in ray_t ray) {
+vec3 getIncidentLight(const in ray_t ray, const in vec3 sun_dir) {
     // "pierce" the atmosphere with the viewing ray
     float t0 = 0.f;
     float t1 = 0.f;
@@ -129,7 +129,6 @@ vec3 getIncidentLight(const in ray_t ray) {
 
     const float march_step = t1 / float(dvd_raySteps);
 
-    const vec3 sun_dir = normalize(-dvd_sunDirection.xyz);
     // cosine of angle between view and light directions
     const float mu = dot(ray.direction, sun_dir);
 
@@ -179,7 +178,7 @@ vec3 getIncidentLight(const in ray_t ray) {
                                sumM * phaseM * betaM);
 }
 
-float sunIntensity(in float zenithAngleCos) {
+float sunIntensity(float zenithAngleCos) {
     // constants for atmospheric scattering
     const float e = 2.71828182845904523536028747135266249775724709369995957;
     // earth shadow hack
@@ -187,40 +186,45 @@ float sunIntensity(in float zenithAngleCos) {
     const float cutoffAngle = 1.6110731556870734f;
     const float steepness = 1.5f;
     const float EE = 1000.f * dvd_sunScale;
+    zenithAngleCos = clamp(zenithAngleCos, -1.f, 1.f);
 
-    return EE * max(0.f, 1.f - pow(e, -((cutoffAngle - acos(clamp(zenithAngleCos, -1.f, 1.f))) / steepness)));
+    return EE * max(0.f, 1.f - pow(e, -((cutoffAngle - acos(zenithAngleCos)) / steepness)));
 }
 
-#define totalMie(T) (0.434f * ((0.2f * T) * 10E-18) * MieConst)
+vec3 totalMie(in float T) {
+    const float c = (0.2f * T) * 10E-18;
+    return 0.434f * c * MieConst;
+}
 
 void main() {
-    const float rayleigh = 2.0f;
-    const float turbidity = 10.0f;
+    const float rayleigh = 1.f;
+    const float turbidity = 2.f;
     const float mieCoefficient = 0.005f;
 
     const NodeTransformData data = fetchInputData();
     VAR._vertexW = data._worldMatrix * dvd_Vertex + vec4(dvd_cameraPosition.xyz, 0.f);
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
 
-    const float lerpValue = saturate(2.95f * (dvd_sunDirection.y + 0.15f));
+    vSunDirection.xyz = normalize(-dvd_sunDirection.xyz);
 
-    vSunDirection.xyz = -dvd_sunDirection.xyz;
     vSunColour.a = sunIntensity(dot(vSunDirection.xyz, UP_DIR));
 
     vSunDirection.a = 1.f - saturate(1.f - exp((-dvd_sunDirection.y / 450000.0f)));
 
     const float rayleighCoefficient = rayleigh - (1.f * (1.f - vSunDirection.a));
+
     // extinction (absorbtion + out scattering)
     // rayleigh coefficients
     vBetaR = totalRayleigh * rayleighCoefficient;
+
     // mie coefficients
     vBetaM = totalMie(turbidity) * mieCoefficient;
 
     ray_t ray = ray_t(vec3(0.f, dvd_planetRadius + 1.f, 0.f), normalize(vSunDirection.xyz + vec3(0.01f, 0.01f, 0.f)));
-    vSunColour.rgb = getIncidentLight(ray);
+    vSunColour.rgb = getIncidentLight(ray, vSunDirection.xyz);
 
     ray = ray_t(vec3(0.f, dvd_planetRadius + 1.f, 0.f), normalize(vec3(0.4f, 0.1f, 0.f)));
-    vAmbient = getIncidentLight(ray);
+    vAmbient = getIncidentLight(ray, vSunDirection.xyz);
 
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
     gl_Position.z = gl_Position.w - Z_TEST_SIGMA;
@@ -289,6 +293,11 @@ const float sky_t_radius = dvd_planetRadius + dvd_cloudLayerMinMaxHeight.y;//top
 //precomputed 1/U2Tone(40)
 #define cwhiteScale 1.1575370919881305f
 
+// 3.0 / ( 16.0 * pi )
+#define THREE_OVER_SIXTEENPI 0.05968310365946075f
+// 1.0 / ( 4.0 * pi )
+#define ONE_OVER_FOURPI 0.07957747154594767
+
 vec3 U2Tone(const vec3 x) {
 #   define _A 0.15f
 #   define _B 0.50f
@@ -309,8 +318,6 @@ vec3 ACESFilm(in vec3 x) {
 
     return saturate((x * (_tA * x + _tB)) / (x * (_tC * x + _tD) + _tE));
 }
-
-#define HG(costheta, g) (0.0795774715459f * (1.f - g * g) / (pow(1.f + g * g - 2.f * g * costheta, 1.5f)))
 
 // the maximal dimness of a dot ( 0.0->1.0   0.0 = all dots bright,  1.0 = maximum variation )
 float SimplexPolkaDot3D(in vec3 P, in float density)
@@ -388,24 +395,35 @@ float SimplexPolkaDot3D(in vec3 P, in float density)
     return dot(b, point_distance * point_distance * point_distance);
 }
 
+float rayleighPhase(in float cosTheta) {
+    return THREE_OVER_SIXTEENPI * (1.f + pow(cosTheta, 2.f));
+}
+
+float hgPhase(float cosTheta, float g) {
+    float g2 = pow(g, 2.0);
+    float inverse = 1.0 / pow(1.0 - 2.0 * g * cosTheta + g2, 1.5);
+    return ONE_OVER_FOURPI * ((1.0 - g2) * inverse);
+}
 
 //This implementation of the preetham model is a modified: https://github.com/mrdoob/three.js/blob/master/examples/js/objects/Sky.js
 //written by: zz85 / https://github.com/zz85
-vec3 preetham(in vec3 vWorldPosition) {
+vec3 preetham(in vec3 rayDirection) {
     const float mieDirectionalG = 0.8f;
     // optical length at zenith for molecules
     const float rayleighZenithLength = 8.4E3;
     const float mieZenithLength = 1.25E3;
     const float whiteScale = 1.0748724675633854f; // 1.0 / Uncharted2Tonemap(1000.0)
 
-    // 3.0 / ( 16.0 * pi )
-    const float THREE_OVER_SIXTEENPI = 0.05968310365946075f;
+    const vec3 sunDirection = vSunDirection.xyz;
+    const float sunFade = vSunDirection.a;
+    const float sunIntensity = vSunColour.a;
+
     // 66 arc seconds -> degrees, and the cosine of that
     const float sunAngularDiameterCos = 0.999956676946448443553574619906976478926848692873900859324;
 
     // optical length
     // cutoff angle at 90 to avoid singularity in next formula.
-    const float zenithAngle = acos(max(0.f, dot(UP_DIR, normalize(vWorldPosition))));
+    const float zenithAngle = acos(max(0.f, dot(UP_DIR, rayDirection)));
     const float inv = 1.f / (cos(zenithAngle) + 0.15f * pow(93.885f - ((zenithAngle * 180.f) / M_PI), -1.253f));
     const float sR = rayleighZenithLength * inv;
     const float sM = mieZenithLength * inv;
@@ -414,26 +432,25 @@ vec3 preetham(in vec3 vWorldPosition) {
     const vec3 Fex = exp(-(vBetaR * sR + vBetaM * sM));
 
     // in scattering
-    const float cosTheta = dot(normalize(vWorldPosition), vSunDirection.xyz);
-
-    const float rPhase = THREE_OVER_SIXTEENPI * (1.f + pow(cosTheta * 0.5f + 0.5f, 2.f));
+    const float cosTheta = dot(rayDirection, sunDirection);
+    const float rPhase = rayleighPhase(cosTheta * 0.5f + 0.5f);
     const vec3 betaRTheta = vBetaR * rPhase;
 
-    const float mPhase = HG(cosTheta, mieDirectionalG);
+    const float mPhase = hgPhase(cosTheta, mieDirectionalG);
     const vec3 betaMTheta = vBetaM * mPhase;
 
-    vec3 Lin = pow(vSunColour.a * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * (1.f - Fex), vec3(1.5f));
-    Lin *= mix(vec3(1.f), pow(vSunColour.a * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * Fex, vec3(0.5f)), saturate(pow(1.f - dot(UP_DIR, vSunDirection.xyz), 5.f)));
+    vec3 Lin = pow(sunIntensity * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * (1.f - Fex), vec3(1.5f));
+    Lin *= mix(vec3(1.f), pow(sunIntensity * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * Fex, vec3(0.5f)), saturate(pow(1.f - dot(UP_DIR, sunDirection), 5.f)));
 
     vec3 L0 = vec3(0.5f) * Fex;
 
     // composition + solar disc
     const float sundisk = smoothstep(sunAngularDiameterCos, sunAngularDiameterCos + 0.00002, cosTheta);
-    L0 += (vSunColour.a * 19000.f * Fex) * sundisk;
+    L0 += (sunIntensity * 19000.f * Fex) * sundisk;
 
     const vec3 texColor = (Lin + L0) * 0.04f + vec3(0.f, 0.0003f, 0.00075f);
 
-    return pow(U2Tone(texColor) * whiteScale, vec3(1.f / (1.2f + (1.2f * vSunDirection.a))));
+    return pow(U2Tone(texColor) * whiteScale, vec3(1.f / (1.2f + (1.2f * sunFade))));
 }
 
 const vec3 RANDOM_VECTORS[6] = vec3[6]
@@ -521,7 +538,7 @@ vec4 march(in vec3 colourIn, in vec3 ambientIn, in vec3 pos, in vec3 end, in vec
     vec3 L = vec3(0.f);
 
     const float costheta = dot(normalize(ldir), normalize(dir));
-    const float phase = max(max(HG(costheta, 0.6f), HG(costheta, (0.99f - 1.3f * normalize(ldir).y))), HG(costheta, -0.3f));
+    const float phase = max(max(hgPhase(costheta, 0.6f), hgPhase(costheta, (0.99f - 1.3f * normalize(ldir).y))), hgPhase(costheta, -0.3f));
 
     for (int i = 0; i < depth; ++i) {
         p += dir;
@@ -590,9 +607,10 @@ vec3 nightColour(in vec3 rayDirection, in float lerpValue) {
     //Need to add a little bit of atmospheric effects, both for when the moon is high and for the end when color comes into the sky
     //For moon halo
     const vec3 moonpos = -vSunDirection.xyz;
-    const float d = length(rayDirection - normalize(moonpos));
+    const vec3 moonposNorm = normalize(moonpos);
+    const float d = length(rayDirection - moonposNorm);
 
-    const vec3 moonColour = vec3(smoothstep(1.0f - (dvd_moonScale), 1.f, dot(rayDirection, normalize(moonpos)))) +
+    const vec3 moonColour = vec3(smoothstep(1.0f - (dvd_moonScale), 1.f, dot(rayDirection, moonposNorm))) +
                             0.4f * exp(-4.f * d) * dvd_moonColour +
                             0.2f * exp(-2.f * d);
 
@@ -600,17 +618,17 @@ vec3 nightColour(in vec3 rayDirection, in float lerpValue) {
 }
 
 vec3 dayColour(in vec3 rayDirection, in float lerpValue) {
-    const vec3 dayColour = preetham(rayDirection);
+    const vec3 colour = preetham(rayDirection);
 
     if (dvd_useDaySkybox && lerpValue < 0.2f) {
         const vec3 sky = texture(texSky, vec4(rayDirection, 0.f)).rgb;
 
-        return mix((dayColour + sky) - (dayColour * sky),
-                   dayColour,
-                   Luminance(dayColour.rgb));
+        return mix((colour + sky) - (colour * sky),
+                   colour,
+                   Luminance(colour.rgb));
     }
 
-    return dayColour;
+    return colour;
 }
 
 vec3 computeClouds(in vec3 rayDirection, in vec3 skyColour, in float lerpValue) {
@@ -651,7 +669,7 @@ vec3 getRawAlbedo(in vec3 rayDirection, in float lerpValue) {
 }
 
 vec3 atmosphereColour(in vec3 rayDirection, in float lerpValue) {
-    if (rayDirection.y > -0.2f) {
+    if (rayDirection.y > -0.02f) {
         const vec3 skyColour = getSkyColour(rayDirection, lerpValue);
         return dvd_enableClouds ? computeClouds(rayDirection, skyColour, lerpValue) : skyColour;
     }

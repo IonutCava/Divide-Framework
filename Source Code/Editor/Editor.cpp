@@ -116,7 +116,8 @@ Editor::Editor(PlatformContext& context, const ImGuiStyleEnum theme)
       FrameListener("Editor", context.kernel().frameListenerMgr(), 9999),
       _editorUpdateTimer(Time::ADD_TIMER("Editor Update Timer")),
       _editorRenderTimer(Time::ADD_TIMER("Editor Render Timer")),
-      _currentTheme(theme)
+      _currentTheme(theme),
+      _recentSceneList(10)
 {
     _menuBar = eastl::make_unique<MenuBar>(context, true);
     _statusBar = eastl::make_unique<StatusBar>(context);
@@ -138,7 +139,7 @@ Editor::~Editor()
 }
 
 void Editor::idle() {
-    OPTICK_EVENT()
+    NOP();
 }
 
 void Editor::createFontTexture(const F32 DPIScaleFactor) {
@@ -181,8 +182,6 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
 }
 
 bool Editor::init(const vec2<U16>& renderResolution) {
-    ACKNOWLEDGE_UNUSED(renderResolution);
-
     if (isInit()) {
         // double init
         return false;
@@ -497,6 +496,10 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 }
 
 void Editor::close() {
+    if (saveToXML()) {
+        _context.config().save();
+    }
+
     _fontTexture.reset();
     _imguiProgram.reset();
     _gizmo.reset();
@@ -1320,8 +1323,8 @@ void Editor::onSizeChange(const SizeChangeParams& params) {
     }
 }
 
-bool Editor::saveSceneChanges(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) const {
-    if (_context.kernel().sceneManager()->saveActiveScene(false, true, msgCallback, finishCallback)) {
+bool Editor::saveSceneChanges(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride) const {
+    if (_context.kernel().sceneManager()->saveActiveScene(false, true, msgCallback, finishCallback, sceneNameOverride)) {
         if (saveToXML()) {
             _context.config().save();
             return true;
@@ -1331,6 +1334,43 @@ bool Editor::saveSceneChanges(const DELEGATE<void, std::string_view>& msgCallbac
     return false;
 }
 
+bool Editor::switchScene(const char* scenePath) {
+    static CircularBuffer<Str256> tempBuffer(10);
+
+    if (Util::IsEmptyOrNull(scenePath)) {
+        return false;
+    }
+
+    const auto [sceneName, _] = splitPathToNameAndLocation(scenePath);
+    if (Util::CompareIgnoreCase(sceneName, Config::DEFAULT_SCENE_NAME)) {
+        showStatusMessage("Error: can't load default scene! Selected scene is only used as a template!", Time::SecondsToMilliseconds<F32>(3.f));
+        return false;
+    }
+
+    if (!_context.kernel().sceneManager()->switchScene(sceneName.c_str(), true, true, false)) {
+        Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD")), sceneName.c_str());
+        showStatusMessage(Util::StringFormat(Locale::Get(_ID("ERROR_SCENE_LOAD")), sceneName.c_str()), Time::SecondsToMilliseconds<F32>(3.f));
+        return false;
+    }
+
+    tempBuffer.reset();
+    const Str256 nameToAdd(sceneName.c_str());
+    for (size_t i = 0u; i < _recentSceneList.size(); ++i) {
+        const Str256& crtEntry = _recentSceneList.get(i);
+        if (crtEntry != nameToAdd) {
+            tempBuffer.put(crtEntry);
+        }
+    }
+    tempBuffer.put(nameToAdd);
+    _recentSceneList.reset();
+    size_t i = tempBuffer.size();
+    while(i--) {
+        _recentSceneList.put(tempBuffer.get(i));
+    }
+    
+    return true;
+}
+
 U32 Editor::saveItemCount() const noexcept {
     U32 ret = 10u; // All of the scene stuff (settings, music, etc)
 
@@ -1338,6 +1378,11 @@ U32 Editor::saveItemCount() const noexcept {
     ret += to_U32(graph->getTotalNodeCount());
 
     return ret;
+}
+
+bool Editor::isDefaultScene() const noexcept {
+    const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+    return activeScene.getGUID() == Scene::DEFAULT_SCENE_GUID;
 }
 
 bool Editor::modalTextureView(const char* modalName, const Texture* tex, const vec2<F32>& dimensions, const bool preserveAspect, const bool useModal) const {
@@ -1658,7 +1703,9 @@ bool Editor::saveToXML() const {
     pt.put("showEmissiveSelections", _showEmissiveSelections);
     pt.put("themeIndex", to_I32(_currentTheme));
     pt.put("textEditor", _externalTextEditorPath);
-
+    for (size_t i = 0u; i < _recentSceneList.size(); ++i) {
+        pt.put("recentScene.entry.<xmlattr>.name", _recentSceneList.get(i).c_str());
+    }
     if (createDirectory(editorPath.c_str())) {
         if (copyFile(editorPath.c_str(), g_editorSaveFile, editorPath.c_str(), g_editorSaveFileBak, true) == FileError::NONE) {
             XML::writeXML((editorPath + g_editorSaveFile).str(), pt);
@@ -1670,6 +1717,8 @@ bool Editor::saveToXML() const {
 }
 
 bool Editor::loadFromXML() {
+    static boost::property_tree::ptree g_emptyPtree;
+
     boost::property_tree::ptree pt;
     const ResourcePath editorPath = Paths::g_xmlDataLocation + Paths::Editor::g_saveLocation;
     if (!fileExists((editorPath + g_editorSaveFile).c_str())) {
@@ -1687,9 +1736,21 @@ bool Editor::loadFromXML() {
         _autoSaveCamera = pt.get("autoSaveCamera", false);
         _autoFocusEditor = pt.get("autoFocusEditor", true);
         _showEmissiveSelections = pt.get("showEmissiveSelections", true);
-        _externalTextEditorPath = pt.get<string>("textEditor", "");
         _currentTheme = static_cast<ImGuiStyleEnum>(pt.get("themeIndex", to_I32(_currentTheme)));
         ImGui::ResetStyle(_currentTheme);
+        _externalTextEditorPath = pt.get<string>("textEditor", "");
+        for (const auto& [tag, data] : pt.get_child("recentScene", g_emptyPtree))
+        {
+            if (tag == "<xmlcomment>") {
+                continue;
+            }
+            const boost::property_tree::ptree& attributes = data.get_child("<xmlattr>", g_emptyPtree);
+            const std::string name = attributes.get<std::string>("name", "");
+            if (!name.empty()) {
+                _recentSceneList.put(name);
+            }
+        }
+
 
         return true;
     }

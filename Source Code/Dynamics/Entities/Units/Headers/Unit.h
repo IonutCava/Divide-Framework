@@ -65,14 +65,14 @@ namespace TypeUtil {
 }
 
 /// Unit interface
-class Unit : public FrameListener {
+class Unit : public GUIDWrapper {
    public:
     using AttributeMap = hashMap<U32, I32>;
     friend class Attorney::UnitComponent;
 
    public:
 
-    explicit Unit(UnitType type, FrameListenerManager& parent, U32 callOrder);
+    explicit Unit(UnitType type);
     virtual ~Unit() = default;
 
     /// moveTo makes the unit follow a path from it's current position to the
@@ -116,8 +116,6 @@ class Unit : public FrameListener {
     [[nodiscard]] F32 getMovementTolerance() const { return _moveTolerance; }
     /// Get bound node
     [[nodiscard]] SceneGraphNode* getBoundNode() const { return _node; }
-    /// Just before we render the frame
-    [[nodiscard]] bool frameRenderingQueued(const FrameEvent& evt) override { ACKNOWLEDGE_UNUSED(evt); return true; }
 
     virtual void setAttribute(U32 attributeID, I32 initialValue);
     [[nodiscard]] virtual I32 getAttribute(U32 attributeID) const;

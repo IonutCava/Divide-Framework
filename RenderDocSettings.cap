@@ -5,13 +5,13 @@
         "commandLine": "",
         "environment": [
         ],
-        "executable": "D:\\Divide-Framework\\Build\\Divide-Executable_p.exe",
+        "executable": "G:\\Divide-Framework\\Build\\Divide-Editor_p.exe",
         "inject": false,
         "numQueuedFrames": 0,
         "options": {
             "allowFullscreen": true,
             "allowVSync": true,
-            "apiValidation": true,
+            "apiValidation": false,
             "captureAllCmdLists": false,
             "captureCallstacks": false,
             "captureCallstacksOnlyDraws": false,
@@ -19,9 +19,9 @@
             "delayForDebugger": 0,
             "hookIntoChildren": false,
             "refAllResources": false,
-            "verifyBufferAccess": true
+            "verifyBufferAccess": false
         },
         "queuedFrameCap": 0,
-        "workingDir": "D:\\Divide-Framework\\"
+        "workingDir": "G:/Divide-Framework/"
     }
 }

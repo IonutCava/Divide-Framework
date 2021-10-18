@@ -90,7 +90,7 @@ ErrorCode Init(const char* newLanguage) {
             detail::g_LanguageFileWatcher.reset(new FW::FileWatcher());
             detail::g_fileWatcherListener.addIgnoredEndCharacter('~');
             detail::g_fileWatcherListener.addIgnoredExtension("tmp");
-            detail::g_LanguageFileWatcher->addWatch(FW::String((Paths::g_exePath + Paths::g_localisationPath).str()), &detail::g_fileWatcherListener);
+            detail::g_LanguageFileWatcher->addWatch(FW::String((Paths::g_rootPath + Paths::g_localisationPath).str()), &detail::g_fileWatcherListener);
         }
     }
 

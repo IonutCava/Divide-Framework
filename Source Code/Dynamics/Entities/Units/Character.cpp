@@ -8,8 +8,8 @@
 
 namespace Divide {
 
-Character::Character(const CharacterType type, FrameListenerManager& parent, const U32 callOrder)
-    : Unit(UnitType::UNIT_TYPE_CHARACTER, parent, callOrder),
+Character::Character(const CharacterType type)
+    : Unit(UnitType::UNIT_TYPE_CHARACTER),
       _characterType(type)
 {
     _positionDirty = false;
@@ -57,15 +57,6 @@ void Character::update(const U64 deltaTimeUS) {
     _oldPosition.lerp(_curPosition, to_F32(GFXDevice::FrameInterpolationFactor()));
     nodeTransformComponent->setPosition(_oldPosition);
     nodeTransformComponent->rotateSlerp(nodeTransformComponent->getOrientation() * RotationFromVToU(sourceDirection, _curVelocity), to_F32(GFXDevice::FrameInterpolationFactor()));
-}
-
-/// Just before we render the frame
-bool Character::frameRenderingQueued(const FrameEvent& evt) {
-    if (!getBoundNode()) {
-        return false;
-    }
-
-    return true;
 }
 
 void Character::setPosition(const vec3<F32>& newPosition) {

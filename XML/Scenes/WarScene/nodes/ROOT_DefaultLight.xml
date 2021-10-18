@@ -2,7 +2,7 @@
 <static>true</static>
 <TRANSFORM>
     <Transform>
-        <position x="140.618729" y="0" z="0"/>
+        <position x="0" y="0" z="0"/>
         <orientation x="-76.5799637" y="-78.7468796" z="-8.75020396e-06"/>
         <scale x="0.99987042" y="0.999870777" z="0.999772847"/>
     </Transform>

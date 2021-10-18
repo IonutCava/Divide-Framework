@@ -88,7 +88,7 @@ class Character : public Unit {
         COUNT
     };
 
-    explicit Character(CharacterType type, FrameListenerManager& parent, U32 callOrder);
+    explicit Character(CharacterType type);
     virtual ~Character() = default;
 
     /**
@@ -116,8 +116,6 @@ class Character : public Unit {
     [[nodiscard]] virtual vec3<F32> getLookingDirection();
     /// Rotate the character to look at another character
     virtual void lookAt(const vec3<F32>& targetPos);
-    /// Just before we render the frame
-    [[nodiscard]] bool frameRenderingQueued(const FrameEvent& evt) override;
 
     [[nodiscard]] const vec3<F32>& getRelativeLookingDirection() const noexcept { return _lookingDirection; }
     void setRelativeLookingDirection(const vec3<F32>& direction) noexcept { _lookingDirection = direction; }

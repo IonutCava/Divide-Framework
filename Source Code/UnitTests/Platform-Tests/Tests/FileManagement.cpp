@@ -23,7 +23,7 @@ TEST(PathExistanceCheck)
     const char* invalidPath = "abccba";
 
     if (PreparePlatform()) {
-        CHECK_TRUE(Divide::pathExists(Divide::Paths::g_exePath + Divide::Paths::g_assetsLocation));
+        CHECK_TRUE(Divide::pathExists(Divide::Paths::g_rootPath + Divide::Paths::g_assetsLocation));
         CHECK_FALSE(Divide::pathExists(invalidPath));
     }
 }

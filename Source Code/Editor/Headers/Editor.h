@@ -217,7 +217,9 @@ class Editor final : public PlatformContextComponent,
     void createFontTexture(F32 DPIScaleFactor);
     [[nodiscard]] static ImGuiViewport* FindViewportByPlatformHandle(ImGuiContext* context, DisplayWindow* window);
 
-    [[nodiscard]] U32 saveItemCount() const  noexcept;
+    [[nodiscard]] U32 saveItemCount() const noexcept;
+
+    [[nodiscard]] bool isDefaultScene() const noexcept;
 
     PROPERTY_R_IW(bool, running, false);
     PROPERTY_R_IW(bool, showEmissiveSelections, true);
@@ -230,7 +232,12 @@ class Editor final : public PlatformContextComponent,
   protected: // attorney
     void renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, GFX::CommandBuffer& bufferInOut) const;
 
-    [[nodiscard]] bool saveSceneChanges(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) const;
+    /// Saves all new changes to the current scene and uses the provided callbacks to return progress messages. msgCallback gets called per save-step/process, finishCallback gets called once at the end
+    /// sceneNameOverride should be left empty to save the scene in its own folder. Any string passed will create a new scene with the name specified and save everything to that folder instead, leaving the original scene untouched
+    /// This is usefull for creating a new scene from the editor's default one.
+    [[nodiscard]] bool saveSceneChanges(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "") const;
+    [[nodiscard]] bool switchScene(const char* scenePath);
+
     void updateCameraSnapshot();
     // Returns true if the window was closed
     [[nodiscard]] bool modalTextureView(const char* modalName, const Texture* tex, const vec2<F32>& dimensions, bool preserveAspect, bool useModal) const;
@@ -270,7 +277,7 @@ class Editor final : public PlatformContextComponent,
     std::array<DockedWindow*, to_base(WindowType::COUNT)> _dockedWindows = {};
 
     hashMap<I64, CameraSnapshot> _cameraSnapshots;
-    string                   _externalTextEditorPath = "";
+    string                       _externalTextEditorPath = "";
 
     U32            _stepQueue = 1u;
     ImGuiStyleEnum _currentTheme = ImGuiStyle_Count;
@@ -280,6 +287,8 @@ class Editor final : public PlatformContextComponent,
     bool           _showOptionsWindow = false;
     bool           _showMemoryEditor = false;
     bool           _isScenePaused = false;
+
+    CircularBuffer<Str256> _recentSceneList;
 }; //Editor
 
 namespace Attorney {
@@ -428,6 +437,10 @@ namespace Attorney {
         [[nodiscard]] static bool& optionWindowEnabled(Editor& editor) noexcept {
             return editor._showOptionsWindow;
         }
+        
+        [[nodiscard]] static const CircularBuffer<Str256>& getRecentSceneList(const Editor& editor) noexcept {
+             return editor._recentSceneList;
+        }
 
         friend class Divide::MenuBar;
     };
@@ -468,13 +481,21 @@ namespace Attorney {
         [[nodiscard]] static bool hasUnsavedSceneChanges(const Editor& editor) noexcept {
             return editor.unsavedSceneChanges();
         }
+        
+        [[nodiscard]] static bool isDefaultScene(const Editor& editor) noexcept {
+            return editor.isDefaultScene();
+        }
 
         static void registerUnsavedSceneChanges(Editor& editor) noexcept {
             editor.unsavedSceneChanges(true);
         }
 
-        [[nodiscard]] static bool saveSceneChanges(Editor& editor, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) {
-            return editor.saveSceneChanges(msgCallback, finishCallback);
+        [[nodiscard]] static bool saveSceneChanges(const Editor& editor, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "") {
+            return editor.saveSceneChanges(msgCallback, finishCallback, sceneNameOverride);
+        }
+        
+        static bool switchScene(Editor& editor, const char* scenePath) {
+            return editor.switchScene(scenePath);
         }
 
         static void inspectMemory(Editor& editor, const std::pair<bufferPtr, size_t> data) noexcept {

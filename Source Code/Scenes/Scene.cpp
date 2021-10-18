@@ -59,6 +59,7 @@ namespace {
     constexpr const char* const g_defaultPlayerName = "Player_%d";
 }
 
+I64 Scene::DEFAULT_SCENE_GUID = 0;
 Mutex Scene::s_perFrameArenaMutex{};
 MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 3> Scene::s_perFrameArena{};
 
@@ -162,15 +163,16 @@ bool Scene::loadNodeFromXML(SceneGraphNode* node) const {
     return sceneGraph()->loadNodeFromXML(assetsFile, node);
 }
 
-bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) const {
+bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride) const {
     using boost::property_tree::ptree;
     const char* assetsFile = "assets.xml";
+    Str256 saveSceneName = Str256(strlen(sceneNameOverride) > 0 ? sceneNameOverride : resourceName().c_str());
 
-    Console::printfn(Locale::Get(_ID("XML_SAVE_SCENE_START")), resourceName().c_str());
+    Console::printfn(Locale::Get(_ID("XML_SAVE_SCENE_START")), saveSceneName.c_str());
 
     const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
 
-    const ResourcePath sceneLocation(scenePath + "/" + resourceName().c_str());
+    const ResourcePath sceneLocation(scenePath + saveSceneName);
     const ResourcePath sceneDataFile(sceneLocation + ".xml");
 
     if (msgCallback) {
@@ -231,19 +233,23 @@ bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const D
         pt.put("dayNight.location.<xmlattr>.longitude", _dayNightData._location._longitude);
         pt.put("dayNight.timeOfDay.<xmlattr>.timeFactor", _dayNightData._speedFactor);
 
-        if (copyFile(scenePath.c_str(), (resourceName() + ".xml").c_str(), scenePath.c_str(), (resourceName() + ".xml.bak").c_str(), true) == FileError::NONE) {
-            XML::writeXML(sceneDataFile.c_str(), pt);
-        } else {
-            if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {
+        const FileError backupReturnCode = copyFile(scenePath.c_str(), (saveSceneName + ".xml").c_str(), scenePath.c_str(), (saveSceneName + ".xml.bak").c_str(), true);
+        if (backupReturnCode != FileError::NONE &&
+            backupReturnCode != FileError::FILE_NOT_FOUND &&
+            backupReturnCode != FileError::FILE_EMPTY)
+        {
+            if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
                 DIVIDE_UNEXPECTED_CALL();
             }
+        } else {
+            XML::writeXML(sceneDataFile.c_str(), pt);
         }
     }
 
     if (msgCallback) {
         msgCallback("Saving scene graph data ...");
     }
-    sceneGraph()->saveToXML(assetsFile, msgCallback);
+    sceneGraph()->saveToXML(assetsFile, msgCallback, sceneNameOverride);
 
     //save music
     {
@@ -260,7 +266,7 @@ bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const D
         }
     }
 
-    Console::printfn(Locale::Get(_ID("XML_SAVE_SCENE_END")), resourceName().c_str());
+    Console::printfn(Locale::Get(_ID("XML_SAVE_SCENE_END")), saveSceneName.c_str());
 
     if (finishCallback) {
         finishCallback(true);
@@ -1113,7 +1119,13 @@ bool Scene::unload() {
     }
 
     clearTasks();
-    _context.pfx().destroyPhysicsScene();
+
+    for (const size_t idx : _selectionCallbackIndices) {
+        _parent.removeSelectionCallback(idx);
+    }
+    _selectionCallbackIndices.clear();
+
+    _context.pfx().destroyPhysicsScene(*this);
 
     /// Unload scenegraph
     _xmlSceneGraphRootNode = {};
@@ -1134,9 +1146,8 @@ void Scene::postLoad() {
     }
 }
 
-void Scene::postLoadMainThread(const Rect<U16>& targetRenderViewport) {
+void Scene::postLoadMainThread() {
     assert(Runtime::isMainThread());
-    ACKNOWLEDGE_UNUSED(targetRenderViewport);
     setState(ResourceState::RES_LOADED);
 }
 
@@ -1193,8 +1204,6 @@ void Scene::onSetActive() {
 
     assert(_parent.getActivePlayerCount() == 0);
     addPlayerInternal(false);
-
-    _context.mainWindow().title("%s - %s", _context.mainWindow().title(), resourceName().c_str());
 }
 
 void Scene::onRemoveActive() {

@@ -9,7 +9,7 @@ namespace Divide {
 
 ResourcePath Paths::g_logPath = ResourcePath("logs/");
 
-ResourcePath Paths::g_exePath;
+ResourcePath Paths::g_rootPath;
 ResourcePath Paths::g_assetsLocation;
 ResourcePath Paths::g_shadersLocation;
 ResourcePath Paths::g_texturesLocation;
@@ -74,7 +74,7 @@ std::regex Paths::g_definePattern;
 std::regex Paths::g_usePattern;
 
 void Paths::initPaths(const SysInfo& info) {
-    g_exePath = ResourcePath(info._workingDirectory);
+    g_rootPath = ResourcePath(info._workingDirectory);
     g_logPath = ResourcePath("logs/");
 
     g_assetsLocation = ResourcePath("assets/");

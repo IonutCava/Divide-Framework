@@ -241,7 +241,7 @@ Sky::Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, 
 
     time_t t = time(nullptr);
     _sun.SetLocation(-2.589910f, 51.45414f); // Bristol :D
-    _sun.SetDate(localtime(&t));
+    _sun.SetDate(*localtime(&t));
 
     _renderState.addToDrawExclusionMask(RenderStage::SHADOW);
 
@@ -641,7 +641,7 @@ void Sky::postLoad(SceneGraphNode* sgn) {
 }
 
 SunDetails Sky::setDateTime(struct tm *dateTime) {
-    _sun.SetDate(dateTime);
+    _sun.SetDate(*dateTime);
     return getCurrentDetails();
 }
 
@@ -652,7 +652,7 @@ SunDetails Sky::setGeographicLocation(const SimpleLocation location) {
 
 SunDetails Sky::setDateTimeAndLocation(struct tm *dateTime, SimpleLocation location) {
     _sun.SetLocation(location._longitude, location._latitude);
-    _sun.SetDate(dateTime);
+    _sun.SetDate(*dateTime);
     return getCurrentDetails();
 }
 

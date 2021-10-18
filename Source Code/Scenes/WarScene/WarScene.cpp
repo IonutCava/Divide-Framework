@@ -34,7 +34,7 @@ WarScene::WarScene(PlatformContext& context, ResourceCache* cache, SceneManager&
     _timeLimitMinutes(5),
     _scoreLimit(3)
 {
-    parent.addSelectionCallback([&](PlayerIndex /*idx*/, const vector<SceneGraphNode*>& node) {
+    const size_t idx = parent.addSelectionCallback([&](PlayerIndex /*idx*/, const vector<SceneGraphNode*>& node) {
         string selectionText;
         for (SceneGraphNode* it : node) {
             selectionText.append("\n");
@@ -43,6 +43,8 @@ WarScene::WarScene(PlatformContext& context, ResourceCache* cache, SceneManager&
 
         _GUI->modifyText("entityState", selectionText, true);
     });
+
+    _selectionCallbackIndices.push_back(idx);
 }
 
 WarScene::~WarScene()
@@ -717,7 +719,9 @@ void WarScene::toggleCamera(const InputParams param) {
     }
 }
 
-void WarScene::postLoadMainThread(const Rect<U16>& targetRenderViewport) {
+void WarScene::postLoadMainThread() {
+    const vec2<U16> screenResolution = _context.gfx().renderTargetPool().screenTarget().getResolution();
+    const Rect<U16> targetRenderViewport = { 0u, 0u, screenResolution.width, screenResolution.height };
 
     GUIButton* btn = _GUI->addButton("Simulate",
                                      "Simulate",
@@ -795,7 +799,7 @@ void WarScene::postLoadMainThread(const Rect<U16>& targetRenderViewport) {
     _taskTimers.push_back(0.0); // animation team 2
     _taskTimers.push_back(0.0); // light timer
 
-    Scene::postLoadMainThread(targetRenderViewport);
+    Scene::postLoadMainThread();
 }
 
 void WarScene::onSetActive() {

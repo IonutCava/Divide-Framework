@@ -24,6 +24,7 @@ namespace Divide {
 DefaultScene::DefaultScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name)
     : Scene(context, cache, parent, name)
 {
+    Scene::DEFAULT_SCENE_GUID = getGUID();
 }
 
 bool DefaultScene::load(const Str256& name) {
@@ -36,8 +37,8 @@ void DefaultScene::processGUI(const U64 deltaTimeUS) {
     Scene::processGUI(deltaTimeUS);
 }
 
-void DefaultScene::postLoadMainThread(const Rect<U16>& targetRenderViewport) {
-    Scene::postLoadMainThread(targetRenderViewport);
+void DefaultScene::postLoadMainThread() {
+    Scene::postLoadMainThread();
 }
 
 void DefaultScene::processInput(const PlayerIndex idx, const U64 deltaTimeUS) {

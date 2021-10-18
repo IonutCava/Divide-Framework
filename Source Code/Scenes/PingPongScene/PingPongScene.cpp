@@ -361,8 +361,10 @@ U16 PingPongScene::registerInputActions() {
     return actionID++;
 }
 
-void PingPongScene::postLoadMainThread(const Rect<U16>& targetRenderViewport) {
-    
+void PingPongScene::postLoadMainThread() {
+    const vec2<U16> screenResolution = _context.gfx().renderTargetPool().screenTarget().getResolution();
+    const Rect<U16> targetRenderViewport = { 0u, 0u, screenResolution.width, screenResolution.height };
+
     // Buttons and text labels
     GUIButton* btn = _GUI->addButton("Serve",
                                      "Serve",
@@ -394,7 +396,7 @@ void PingPongScene::postLoadMainThread(const Rect<U16>& targetRenderViewport) {
                   UColour4(0, 255, 0, 255),
         "");
 
-    Scene::postLoadMainThread(targetRenderViewport);
+    Scene::postLoadMainThread();
 }
 
 }

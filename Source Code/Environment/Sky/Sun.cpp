@@ -83,18 +83,18 @@ namespace {
     }
 }
 
-SunInfo SunPosition::CalculateSunPosition(struct tm *dateTime, const F32 latitude, const F32 longitude) {
+SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const F32 latitude, const F32 longitude) {
 
     const D64 longit = to_D64(longitude);
     const D64 latit = to_D64(latitude);
     const D64 latit_rad = Angle::DegreesToRadians(latit);
 
     // this is Y2K compliant method
-    const I32 year = dateTime->tm_year + 1900;
-    const I32 m = dateTime->tm_mon + 1;
-    const I32 day = dateTime->tm_mday;
+    const I32 year = dateTime.tm_year + 1900;
+    const I32 m = dateTime.tm_mon + 1;
+    const I32 day = dateTime.tm_mday;
     // clock time just now
-    const D64 h = dateTime->tm_hour + dateTime->tm_min / 60.0;
+    const D64 h = dateTime.tm_hour + dateTime.tm_min / 60.0;
     const D64 tzone = _timezone;
 
     // year = 1990; m=4; day=19; h=11.99;	// local time
@@ -197,33 +197,24 @@ void Sun::SetLocation(const F32 longitude, const F32 latitude) {
     }
 }
 
-void Sun::SetDate(struct tm *dateTime) {
-    if (_dateTime != nullptr) {
-        const time_t t1 = mktime(_dateTime);
-        const time_t t2 = mktime(dateTime);
-        const D64 diffSecs = difftime(t1, t2);
-        if (diffSecs > g_numSecondsUpdateInterval) {
-            _dateTime = dateTime;
-            _dirty = true;
-        }
-    } else {
+void Sun::SetDate(struct tm &dateTime) {
+    const time_t t1 = mktime(&_dateTime);
+    const time_t t2 = mktime(&dateTime);
+    const D64 diffSecs = std::abs(difftime(t1, t2));
+    if (t1 == -1 || diffSecs > g_numSecondsUpdateInterval) {
         _dateTime = dateTime;
         _dirty = true;
     }
 }
 
 SimpleTime Sun::GetTimeOfDay() const noexcept {
-    assert(_dateTime != nullptr);
-
     return SimpleTime{
-        to_U8(_dateTime->tm_hour),
-        to_U8(_dateTime->tm_min)
+        to_U8(_dateTime.tm_hour),
+        to_U8(_dateTime.tm_min)
     };
 }
 
 SimpleLocation Sun::GetGeographicLocation() const noexcept {
-    assert(_dateTime != nullptr);
-
     return SimpleLocation{
         _latitude,
         _longitude

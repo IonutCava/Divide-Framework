@@ -60,7 +60,7 @@ enum class FileError : U8 {
 struct SysInfo;
 class PlatformContext;
 struct Paths {
-    static ResourcePath g_exePath;
+    static ResourcePath g_rootPath;
     static ResourcePath g_logPath;
     static ResourcePath g_assetsLocation;
     static ResourcePath g_shadersLocation;
@@ -156,6 +156,9 @@ using asPath = std::filesystem::path;
 [[nodiscard]] bool fileExists(const char* filePathAndName);
 [[nodiscard]] bool fileExists(const ResourcePath& filePathAndName);
 [[nodiscard]] bool fileExists(const char* filePath, const char* filename);
+[[nodiscard]] bool fileIsEmpty(const char* filePathAndName);
+[[nodiscard]] bool fileIsEmpty(const ResourcePath& filePathAndName);
+[[nodiscard]] bool fileIsEmpty(const char* filePath, const char* filename);
 [[nodiscard]] bool createDirectory(const char* path);
 [[nodiscard]] bool createDirectory(const ResourcePath& path);
 [[nodiscard]] bool createFile(const char* filePathAndName, bool overwriteExisting);
@@ -185,6 +188,9 @@ typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true
 
 [[nodiscard]] FileError copyFile(const char* sourcePath, const char* sourceName, const char* targetPath, const char* targetName, bool overwrite);
 [[nodiscard]] FileError copyFile(const ResourcePath& sourcePath, const ResourcePath&  sourceName, const ResourcePath&  targetPath, const ResourcePath& targetName, bool overwrite);
+
+[[nodiscard]] FileError copyDirectory(const char* sourcePath, const char* targetPath, bool recursively, bool overwrite);
+[[nodiscard]] FileError copyDirectory(const ResourcePath& sourcePath, const ResourcePath& targetPath, bool recursively, bool overwrite);
 
 [[nodiscard]] FileError findFile(const char* filePath, const char* fileName, string& foundPath);
 [[nodiscard]] FileError findFile(const ResourcePath& filePath, const char* fileName, string& foundPath);

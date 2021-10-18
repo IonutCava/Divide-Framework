@@ -66,7 +66,7 @@ public:
     bool convertActor(PhysicsAsset* actor, PhysicsGroup newGroup) override;
 
     bool initPhysicsScene(Scene& scene) override;
-    bool destroyPhysicsScene() override;
+    bool destroyPhysicsScene(const Scene& scene) override;
 
     PhysicsAsset* createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) override;
 

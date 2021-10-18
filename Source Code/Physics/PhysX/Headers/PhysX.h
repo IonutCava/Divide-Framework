@@ -70,7 +70,7 @@ public:
     void updateTimeStep(U8 timeStepFactor, F32 simSpeed) override;
 
     [[nodiscard]] bool initPhysicsScene(Scene& scene) override;
-    [[nodiscard]] bool destroyPhysicsScene() override;
+    [[nodiscard]] bool destroyPhysicsScene(const Scene& scene) override;
 
     [[nodiscard]] bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const;
 

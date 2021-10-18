@@ -74,7 +74,7 @@ class NOINITVTABLE PhysicsAPIWrapper {
     virtual void process(U64 deltaTimeUS) = 0;
     virtual void idle() = 0;
     virtual bool initPhysicsScene(Scene& scene) = 0;
-    virtual bool destroyPhysicsScene() = 0;
+    virtual bool destroyPhysicsScene(const Scene& scene) = 0;
 
     virtual PhysicsAsset* createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) = 0;
 

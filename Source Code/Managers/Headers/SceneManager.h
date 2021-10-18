@@ -41,7 +41,7 @@ namespace Divide {
 class LoadSave {
 public:
     static bool loadScene(Scene& activeScene);
-    static bool saveScene(const Scene& activeScene, bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback);
+    static bool saveScene(const Scene& activeScene, bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "");
 
     static bool saveNodeToXML(const Scene& activeScene, const SceneGraphNode* node);
     static bool loadNodeFromXML(const Scene& activeScene, SceneGraphNode* node);
@@ -110,9 +110,19 @@ public:
 
     [[nodiscard]] U8 getActivePlayerCount() const noexcept { return _activePlayerCount; }
 
-    void addSelectionCallback(const DELEGATE<void, U8, const vector<SceneGraphNode*>&>& selectionCallback) {
-        _selectionChangeCallbacks.push_back(selectionCallback);
+    // returns selection callback id
+    size_t addSelectionCallback(const DELEGATE<void, U8, const vector<SceneGraphNode*>&>& selectionCallback) {
+        static std::atomic_size_t index = 0u;
+
+        const size_t idx = index.fetch_add(1u);
+        _selectionChangeCallbacks.push_back(std::make_pair(idx, selectionCallback));
+        return idx;
     }
+
+    bool removeSelectionCallback(const size_t idx) {
+        return dvd_erase_if(_selectionChangeCallbacks, [idx](const auto& entry) noexcept { return entry.first == idx; });
+    }
+
     void resetSelection(PlayerIndex idx);
     void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
     void onNodeDestroy(SceneGraphNode* node);
@@ -167,7 +177,7 @@ public:
         return factory.register_creator(id, new_ptr<T>());
     }
 
-    bool saveActiveScene(bool toCache, bool deferred, const DELEGATE<void, std::string_view>& msgCallback = {}, const DELEGATE<void, bool>& finishCallback = {});
+    [[nodiscard]] bool saveActiveScene(bool toCache, bool deferred, const DELEGATE<void, std::string_view>& msgCallback = {}, const DELEGATE<void, bool>& finishCallback = {}, const char* sceneNameOverride = "");
 
     [[nodiscard]] AI::Navigation::DivideRecast* recast() const noexcept { return _recast.get(); }
 
@@ -199,10 +209,7 @@ public:  /// Input
 
     [[nodiscard]] bool onUTF8(const Input::UTF8Event& arg) override;
 
-    [[nodiscard]] bool switchScene(const Str256& name,
-                                   bool unloadPrevious,
-                                   const Rect<U16>& targetRenderViewport,
-                                   bool threaded = true);
+    [[nodiscard]] bool switchScene(const Str256& name, bool unloadPrevious, bool deferToIdle = true, bool threaded = true);
 
 
     /// Called if a mouse move event was captured by a different system (editor, gui, etc).
@@ -234,6 +241,8 @@ protected:
     // On success, player pointer will be reset
     void removePlayer(Scene& parentScene, SceneGraphNode* playerNode, bool queue);
     [[nodiscard]] vector<SceneGraphNode*> getNodesInScreenRect(const Rect<I32>& screenRect, const Camera& camera, const Rect<I32>& viewport) const;
+
+    [[nodiscard]] bool switchSceneInternal();
 
 protected:
     [[nodiscard]] bool frameStarted(const FrameEvent& evt) override;
@@ -279,11 +288,10 @@ private:
     eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerRemoveQueue;
     eastl::unique_ptr<AI::Navigation::DivideRecast> _recast = nullptr;
 
-    vector<DELEGATE<void, U8 /*player index*/, const vector<SceneGraphNode*>& /*nodes*/> > _selectionChangeCallbacks;
+    vector<std::pair<size_t, DELEGATE<void, U8 /*player index*/, const vector<SceneGraphNode*>& /*nodes*/>> > _selectionChangeCallbacks;
 
     struct SwitchSceneTarget {
         Str256 _targetSceneName = "";
-        Rect<U16> _targetViewRect = { 0, 0, 1, 1 };
         bool _unloadPreviousScene = true;
         bool _loadInSeparateThread = true;
         bool _isSet = false;

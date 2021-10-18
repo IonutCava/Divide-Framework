@@ -45,11 +45,9 @@ class FrameListenerManager {
     using EventTimeMap = eastl::fixed_vector<U64, 16, false>;
 
   public:
-    FrameListenerManager()  = default;
 
     void registerFrameListener(FrameListener* listener, U32 callOrder);
     void removeFrameListener(FrameListener* listener);
-    void idle();
 
     [[nodiscard]] bool frameEvent(const FrameEvent& evt);
 
@@ -76,7 +74,6 @@ class FrameListenerManager {
     U64 calculateEventTime(U64 currentTimeUS, FrameEventType type);
 
    private:
-    mutable SharedMutex _listenerLock;
     vector<FrameListener*> _listeners;
     std::array<EventTimeMap, to_base(FrameEventType::FRAME_EVENT_ENDED) + 1> _eventTimers;
 

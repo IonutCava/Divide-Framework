@@ -54,7 +54,7 @@ class Vehicle : public Unit {
         COUNT
     };
 
-    explicit Vehicle(FrameListenerManager& parent, U32 callOrder);
+    explicit Vehicle();
     virtual ~Vehicle() = default;
 
     /// A vehicle can be of multiple types at once

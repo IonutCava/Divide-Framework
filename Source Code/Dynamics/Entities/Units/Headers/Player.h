@@ -41,7 +41,7 @@ namespace Divide {
 class FreeFlyCamera;
 class Player final : public Character {
    public:
-    explicit Player(U8 index, FrameListenerManager& parent, U32 callOrder);
+    explicit Player(U8 index);
     ~Player();
 
     /// Do not allow or allow the user again to control this player

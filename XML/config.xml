@@ -96,7 +96,7 @@
 				<qualityLevel>2</qualityLevel>
 			</postAA>
 			<toneMap>
-				<adaptive>true</adaptive>
+				<adaptive>false</adaptive>
 				<manualExposureFactor>1</manualExposureFactor>
 				<minLogLuminance>-4</minLogLuminance>
 				<maxLogLuminance>3</maxLogLuminance>

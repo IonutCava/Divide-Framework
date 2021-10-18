@@ -37,6 +37,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Platform/Headers/PlatformDefines.h"
 
+#include <ImGuiMisc/imguifilesystem/imguifilesystem.h>
+
 namespace Divide {
     FWD_DECLARE_MANAGED_CLASS(Texture);
 
@@ -68,6 +70,9 @@ namespace Divide {
 
         string _errorMsg = "";
         vector<Texture_ptr> _previewTextures;
+
+        ImGuiFs::Dialog _sceneOpenDialog;
+        ImGuiFs::Dialog _sceneSaveDialog;
     };
 } //namespace Divide
 

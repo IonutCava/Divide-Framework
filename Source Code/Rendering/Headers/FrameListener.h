@@ -112,13 +112,14 @@ class FrameListener : public GUIDWrapper {
     /// frameEnded is called after the buffers have been swapped
     [[nodiscard]] virtual bool frameEnded(const FrameEvent& evt) { ACKNOWLEDGE_UNUSED(evt); return true; }
 
+    PROPERTY_R_IW(bool, enabled, false);
    private:
     FrameListenerManager& _mgr;
     /// not _name so that it doesn't conflict with Resource base class
     Str64 _listenerName;
     /// if multiple frame listeners are handling the same event, this call order
     /// variable is used for sorting
-    U32 _callOrder;
+    U32 _callOrder = 0;
 };
 
 }  // namespace Divide

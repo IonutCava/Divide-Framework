@@ -39,8 +39,8 @@ namespace Divide {
 template <class T>
 class CircularBuffer {
 public:
-    explicit CircularBuffer(size_t bufferSize) :
-        _buffer(std::make_unique<T[]>(size)),
+    explicit CircularBuffer(const size_t bufferSize) :
+        _buffer(std::make_unique<T[]>(bufferSize)),
         _maxSize(bufferSize) {
 
     }
@@ -94,8 +94,8 @@ public:
         }
 
         return (_head >= _tail) 
-                       ? _head - _tail;
-                       : _MaxSize + _head - _tail;
+                       ? _head - _tail
+                       : _maxSize + _head - _tail;
     }
 
     [[nodiscard]] inline bool empty() const { return (!full() && (_head == _tail)); }
@@ -103,7 +103,7 @@ public:
     [[nodiscard]] inline size_t capacity() const { return _maxSize; }
 
 private:
-    Mutex _lock;
+    mutable Mutex _lock;
     std::unique_ptr<T[]> _buffer;
     size_t _head = 0u;
     size_t _tail = 0u;

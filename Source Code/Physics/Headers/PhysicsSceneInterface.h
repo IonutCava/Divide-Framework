@@ -47,6 +47,8 @@ class PhysicsSceneInterface : public SceneComponent,
     virtual ~PhysicsSceneInterface() = default;
     /// Pre PHYSICS_DEVICE initialisation call
     virtual bool init() = 0;
+    /// Should return true if init() was called successfully.
+    virtual bool isInit() const = 0;
     /// Called on interface destruction
     virtual void release() = 0;
     /// Custom physics idle calls

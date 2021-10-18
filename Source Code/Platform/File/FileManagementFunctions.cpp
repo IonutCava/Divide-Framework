@@ -12,7 +12,6 @@ std::string getWorkingDirectory() {
     return std::filesystem::current_path().generic_string();
 }
 
-
 FileError writeFile(const ResourcePath& filePath, const ResourcePath& fileName, const bufferPtr content, const size_t length, const FileType fileType) {
     return writeFile(filePath.c_str(), fileName.c_str(), static_cast<const char*>(content), length, fileType);
 }
@@ -136,6 +135,18 @@ bool fileExists(const char* filePath, const char* fileName) {
     return is_regular_file(std::filesystem::path(string{ filePath } + fileName));
 }
 
+bool fileIsEmpty(const ResourcePath& filePathAndName) {
+    return fileIsEmpty(filePathAndName.c_str());
+}
+
+bool fileIsEmpty(const char* filePathAndName) {
+    return std::filesystem::is_empty(std::filesystem::path(filePathAndName));
+}
+
+bool fileIsEmpty(const char* filePath, const char* fileName) {
+    return std::filesystem::is_empty(std::filesystem::path(string{ filePath } + fileName));
+}
+
 bool createFile(const char* filePathAndName, const bool overwriteExisting) {
     if (overwriteExisting && fileExists(filePathAndName)) {
         const bool ret = std::ofstream(filePathAndName, std::fstream::in | std::fstream::trunc).good();
@@ -210,6 +221,7 @@ FileError copyFile(const char* sourcePath, const char* sourceName, const char* t
         return FileError::FILE_NOT_FOUND;
     }
     string source{ sourcePath };
+    source.append("/");
     source.append(sourceName);
 
     if (!fileExists(source.c_str())) {
@@ -230,6 +242,36 @@ FileError copyFile(const char* sourcePath, const char* sourceName, const char* t
     }
 
     return FileError::FILE_COPY_ERROR;
+}
+
+FileError copyDirectory(const char* sourcePath, const char* targetPath, bool recursively, bool overwrite) {
+    if (Util::IsEmptyOrNull(sourcePath) || Util::IsEmptyOrNull(targetPath)) {
+        return FileError::FILE_NOT_FOUND;
+    }
+    if (!pathExists(sourcePath)) {
+        return FileError::FILE_NOT_FOUND;
+    }
+    if (!overwrite && pathExists(targetPath)) {
+        return FileError::FILE_OVERWRITE_ERROR;
+    }
+    try
+    {
+        std::filesystem::copy(sourcePath, 
+                              targetPath,
+                              (overwrite ? std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none) | 
+                               (recursively ? std::filesystem::copy_options::recursive : std::filesystem::copy_options::none));
+    }
+    catch (std::exception& e)
+    {
+        std::cout << e.what();
+        return FileError::FILE_COPY_ERROR;
+    }
+
+    return FileError::NONE;
+}
+
+FileError copyDirectory(const ResourcePath& sourcePath, const ResourcePath& targetPath, bool recursively, bool overwrite) {
+    return copyDirectory(sourcePath.c_str(), targetPath.c_str(), recursively, overwrite);
 }
 
 FileError findFile(const ResourcePath& filePath, const char* fileName, string& foundPath) {

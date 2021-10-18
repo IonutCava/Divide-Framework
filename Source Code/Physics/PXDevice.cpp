@@ -83,8 +83,8 @@ bool PXDevice::initPhysicsScene(Scene& scene) {
     return _api->initPhysicsScene(scene);
 }
 
-bool PXDevice::destroyPhysicsScene() {
-    return _api->destroyPhysicsScene();
+bool PXDevice::destroyPhysicsScene(const Scene& scene) {
+    return _api->destroyPhysicsScene(scene);
 }
 
 PhysicsAsset* PXDevice::createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) {

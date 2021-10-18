@@ -59,6 +59,7 @@ bool TaskPool::init(const U32 threadCount, const TaskPoolType poolType, const DE
 
 void TaskPool::shutdown() {
     waitForAllTasks(true);
+    waitAndJoin();
     MemoryManager::SAFE_DELETE(_lockFreePool);
     MemoryManager::SAFE_DELETE(_blockingPool);
 }
@@ -129,7 +130,7 @@ bool TaskPool::enqueue(Task& task, const TaskPriority priority, const U32 taskIn
     if (onCompletionFunction) {
         onCompletionFunction();
     }
-
+    
     return true;
 }
 
@@ -176,12 +177,11 @@ void TaskPool::waitForAllTasks(const bool flushCallbacks) {
         if (flushCallbacks) {
             flushCallbackQueue();
         }
-
-        waitAndJoin();
     }
 }
 
 void TaskPool::taskCompleted(Task& task, const bool hasOnCompletionFunction) {
+    task._callback = {}; //<Needed to cleanup any stale resources (e.g. captured by lamdas)
     if (hasOnCompletionFunction) {
         _threadedCallbackBuffer.enqueue(task._id);
     }

@@ -23,9 +23,8 @@ namespace TypeUtil {
     }
 }
 
-Unit::Unit(const UnitType type, FrameListenerManager& parent, const U32 callOrder)
-    : FrameListener(TypeUtil::UnitTypeToString(type), parent, callOrder),
-      _type(type),
+Unit::Unit(const UnitType type)
+    : _type(type),
       _moveSpeed(Metric::Base(1.0f)),
       _acceleration(Metric::Base(1.0f)),
       _moveTolerance(0.1f),

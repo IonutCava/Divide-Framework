@@ -62,7 +62,7 @@ ErrorCode PlatformPostInit(const int argc, char** argv) {
     Paths::initPaths(sysInfo());
 
     ErrorCode err = ErrorCode::WRONG_WORKING_DIRECTORY;
-    if (pathExists(Paths::g_exePath + Paths::g_assetsLocation)) {
+    if (pathExists(Paths::g_rootPath + Paths::g_assetsLocation)) {
         // Read language table
         err = Locale::Init();
         if (err == ErrorCode::NO_ERR) {

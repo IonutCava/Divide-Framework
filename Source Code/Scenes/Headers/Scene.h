@@ -143,6 +143,8 @@ class Scene : public Resource, public PlatformContextComponent {
     public:
         static constexpr U32 SUN_LIGHT_TAG  = 0xFFF0F0;
 
+        static I64 DEFAULT_SCENE_GUID;
+
         struct DayNightData
         {
             Sky* _skyInstance = nullptr;
@@ -276,7 +278,7 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] virtual bool load(ByteBuffer& inputBuffer);
 
         /// Can save at any time, I guess?
-        [[nodiscard]] virtual bool saveXML(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) const;
+        [[nodiscard]] virtual bool saveXML(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "") const;
 
         [[nodiscard]]         bool saveNodeToXML(const SceneGraphNode* node) const;
         [[nodiscard]]         bool loadNodeFromXML(SceneGraphNode* node) const;
@@ -286,9 +288,7 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] virtual bool unload();
         [[nodiscard]] virtual void postLoad();
         /// Gets called on the main thread when the scene finishes loading (e.g. used by the GUI system)
-        /// We may be rendering in a different viewport (splash screen, loading screen, etc) but we need our GUI stuff
-        /// to be ready for our game viewport, so we pass it here to make sure we are using the proper one
-        virtual void postLoadMainThread(const Rect<U16>& targetRenderViewport);
+        virtual void postLoadMainThread();
 #pragma endregion
 
 #pragma region Player Management
@@ -338,6 +338,7 @@ class Scene : public Resource, public PlatformContextComponent {
         IMPrimitive*         _linesPrimitive = nullptr;
         vector<IMPrimitive*> _octreePrimitives;
         vector<BoundingBox>  _octreeBoundingBoxes;
+        vector<size_t>       _selectionCallbackIndices;
 };
 
 namespace Attorney {
@@ -395,8 +396,8 @@ class SceneManager {
         scene.postLoad();
     }
 
-    static void postLoadMainThread(Scene& scene, const Rect<U16>& targetRenderViewport) {
-        scene.postLoadMainThread(targetRenderViewport);
+    static void postLoadMainThread(Scene& scene) {
+        scene.postLoadMainThread();
     }
 
     static void onSetActive(Scene& scene) {
@@ -485,8 +486,8 @@ class SceneLoadSave {
         return scene.loadNodeFromXML(node);
     }  
     
-    static bool saveXML(const Scene& scene, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) {
-        return scene.saveXML(msgCallback, finishCallback);
+    static bool saveXML(const Scene& scene, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "") {
+        return scene.saveXML(msgCallback, finishCallback, sceneNameOverride);
     }
 
     friend class Divide::LoadSave;

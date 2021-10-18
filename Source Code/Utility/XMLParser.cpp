@@ -28,20 +28,53 @@ namespace {
 }
 
 namespace detail {
-    bool LoadSave::read(const string& path, const string& rootNode) {
-        _loadPath = path;
+    bool LoadSave::read(const string& loadPath, const string& rootNode) {
+        _loadPath = loadPath;
         _rootNodePath = rootNode;
 
+        const ResourcePath testPath(_loadPath);
+        if (!fileExists(testPath) || fileIsEmpty(testPath)) {
+            const auto [path, file] = splitPathToNameAndLocation(testPath);
+            const FileError backupReturnCode = copyFile(path, file + ".bak", path, file, true);
+            if (backupReturnCode != FileError::NONE &&
+                backupReturnCode != FileError::FILE_NOT_FOUND &&
+                backupReturnCode != FileError::FILE_EMPTY)
+            {
+                if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            }
+        }
         read_xml(_loadPath, XmlTree, boost::property_tree::xml_parser::trim_whitespace);
         return !XmlTree.empty();
     }
 
     bool LoadSave::prepareSaveFile(const string& path) const {
         _savePath = path;
-        return createFile(_savePath.c_str(), true);
+        return true;
     }
 
     void LoadSave::write() const {
+        if (fileExists(_savePath.c_str())) {
+            const auto[file, path] = splitPathToNameAndLocation(_savePath.c_str());
+
+            const FileError backupReturnCode = copyFile(path, file, path, file + ".bak", true);
+            if (backupReturnCode != FileError::NONE &&
+                backupReturnCode != FileError::FILE_NOT_FOUND &&
+                backupReturnCode != FileError::FILE_EMPTY)
+            {
+                if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            } else {
+                if (!createFile(_savePath.c_str(), true)) {
+                    if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+                        DIVIDE_UNEXPECTED_CALL();
+                    }
+                }
+            }
+        }
+
         write_xml(_savePath,
             XmlTree,
             std::locale(),
