@@ -508,7 +508,7 @@ void glShaderProgram::threadedLoad(const bool reloadExisting) {
     }
 
     // NULL shader means use shaderProgram(0), so bypass the normal loading routine
-    if (resourceName().compare("NULL") == 0) {
+    if (getGUID() == ShaderProgram::NullShaderGUID()) {
         _handle = 0;
     } else {
         reloadShaders(reloadExisting);
@@ -719,25 +719,23 @@ void glShaderProgram::QueueShaderWriteToFile(const string& sourceCode, const Str
     g_sDumpToFileQueue.enqueue({ sourceCode, fileName });
 }
 
-bool glShaderProgram::shouldRecompile() const {
-    return eastl::any_of(begin(_shaderStage),
-                         end(_shaderStage),
-                         [](glShader* shader) {
-                            return shader->shouldRecompile();
-                         });
-}
-
 bool glShaderProgram::recompile(const bool force, bool& skipped) {
-    // Invalid or not loaded yet
-    if (ShaderProgram::recompile(force, skipped) &&
-        _handle != GLUtil::k_invalidObjectID && 
-        (force || shouldRecompile()))
-    {
-        if (resourceName().compare("NULL") == 0) {
-            _handle = 0;
-        } else {
-            // Remember bind state
-            const bool wasBound = isBound();
+    if (!ShaderProgram::recompile(force, skipped)) {
+        return false;
+    }
+
+    if (!isValid()) {
+        return false;
+    }
+
+    if (force || shouldRecompile()) {
+        skipped = false;
+
+        shouldRecompile(false);
+
+        if (getGUID() != ShaderProgram::NullShaderGUID()) {
+            // Remember bind state and unbind it if needed
+            const bool wasBound = GL_API::getStateTracker()._activeShaderPipeline == _handle;
             if (wasBound) {
                 GL_API::getStateTracker().setActiveShaderPipeline(0u);
             }
@@ -746,8 +744,9 @@ bool glShaderProgram::recompile(const bool force, bool& skipped) {
             if (wasBound) {
                 bind();
             }
+        } else {
+            _handle = 0u;
         }
-        skipped = false;
     }
 
     return true;
@@ -757,10 +756,6 @@ bool glShaderProgram::recompile(const bool force, bool& skipped) {
 bool glShaderProgram::isValid() const {
     // null shader is a valid shader
     return _handle != GLUtil::k_invalidObjectID;
-}
-
-bool glShaderProgram::isBound() const noexcept {
-    return GL_API::getStateTracker()._activeShaderPipeline == _handle;
 }
 
 /// Bind this shader program
@@ -775,6 +770,9 @@ std::pair<bool/*success*/, bool/*was bound*/>  glShaderProgram::bind() {
         for (glShader* shader : _shaderStage) {
             if (shader->valid()) {
                 shader->prepare();
+            }
+            if (shader->shouldRecompile()) {
+                shouldRecompile(true);
             }
         }
         return { true, !newBind };

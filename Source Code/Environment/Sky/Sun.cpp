@@ -221,18 +221,17 @@ SimpleLocation Sun::GetGeographicLocation() const noexcept {
     };
 }
 
-SunDetails Sun::GetDetails() const {
+const SunDetails& Sun::GetDetails() const {
     if (_dirty) {
-        _cachedInfo = SunPosition::CalculateSunPosition(_dateTime, _latitude, _longitude);
+        _cachedDetails = {};
+        _cachedDetails._info = SunPosition::CalculateSunPosition(_dateTime, _latitude, _longitude);
+        _cachedDetails._eulerDirection.x = -Angle::RadiansToDegrees(_cachedDetails._info.altitude);
+        _cachedDetails._eulerDirection.y = Angle::RadiansToDegrees(_cachedDetails._info.azimuth);
+        _cachedDetails._intensity = _cachedDetails._info.altitude * 100.f;
         _dirty = false;
     }
 
-    SunDetails ret = {};
-    ret._info = _cachedInfo;
-    ret._eulerDirection.x = -Angle::RadiansToDegrees(ret._info.altitude);
-    ret._eulerDirection.y = Angle::RadiansToDegrees(ret._info.azimuth);
-    ret._intensity = ret._info.altitude * 100.f;
-    return ret;
+    return _cachedDetails;
 }
 
 } //namespace Divide

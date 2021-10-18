@@ -281,20 +281,20 @@ void Quaternion<T>::slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, cons
     F32 k0, k1;
     T cosomega = q0.dot(q1);
     Quaternion<T> q;
-    if (cosomega < 0.0) {
+    if (cosomega < 0.f) {
         cosomega = -cosomega;
         q._elements.set(-q1._elements);
     } else {
         q._elements.set(q1._elements);
     }
 
-    if (1.0 - cosomega > 1e-6) {
+    if (1.f - cosomega > 1e-6) {
         const F32 omega = to_F32(std::acos(cosomega));
         const F32 sinomega = to_F32(std::sin(omega));
-        k0 = to_F32(std::sin((1.0f - t) * omega) / sinomega);
+        k0 = to_F32(std::sin((1.f - t) * omega) / sinomega);
         k1 = to_F32(std::sin(t * omega) / sinomega);
     } else {
-        k0 = 1.0f - t;
+        k0 = 1.f - t;
         k1 = t;
     }
     _elements.set(q0._elements * k0 + q._elements * k1);
@@ -313,13 +313,13 @@ void Quaternion<T>::fromEuler(const vec3<Angle::DEGREES<T>>& v) {
 
 template <typename T>
 void Quaternion<T>::fromEuler(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, Angle::DEGREES<T> roll) {
-    const vec3<D64> eulerAngles(Angle::to_RADIANS(pitch) * 0.5, 
-                                Angle::to_RADIANS(yaw)   * 0.5,
-                                Angle::to_RADIANS(roll)  * 0.5);
-    const vec3<D64> c(std::cos(eulerAngles.x),
+    const vec3<F32> eulerAngles(Angle::to_RADIANS(pitch) * 0.5f, 
+                                Angle::to_RADIANS(yaw)   * 0.5f,
+                                Angle::to_RADIANS(roll)  * 0.5f);
+    const vec3<F32> c(std::cos(eulerAngles.x),
                       std::cos(eulerAngles.y),
                       std::cos(eulerAngles.z));
-    const vec3<D64> s(std::sin(eulerAngles.x),
+    const vec3<F32> s(std::sin(eulerAngles.x),
                       std::sin(eulerAngles.y),
                       std::sin(eulerAngles.z));
 
@@ -330,16 +330,17 @@ void Quaternion<T>::fromEuler(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, An
     // normalize(); this method does produce a normalized quaternion
 }
 
+
 //ref: https://gamedev.stackexchange.com/questions/15070/orienting-a-model-to-face-a-target
 template <typename T>
 void Quaternion<T>::fromRotation(const vec3<T>& sourceDirection, const vec3<T>& destinationDirection, const vec3<T>& up) {
     const F32 dot = to_F32(Dot(sourceDirection, destinationDirection));
 
-    if (std::abs(dot - -1.0f) < EPSILON_F32) {
+    if (std::abs(dot - -1.f) < EPSILON_F32) {
         // vector a and b point exactly in the opposite direction, 
         // so it is a 180 degrees turn around the up-axis
         fromAxisAngle(up, M_PI);
-    } else if (std::abs(dot - 1.0f) < EPSILON_F32) {
+    } else if (std::abs(dot - 1.f) < EPSILON_F32) {
         // vector a and b point exactly in the same direction
         // so we return the identity quaternion
         identity();

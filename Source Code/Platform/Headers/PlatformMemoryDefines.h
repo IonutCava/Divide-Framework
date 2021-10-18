@@ -43,7 +43,12 @@ void  operator delete[](void* ptr,   const char* pName, int flags, unsigned int 
 void* operator new[](   size_t size, size_t alignment, size_t alignmentOffset, const char* pName, int flags, unsigned int debugFlags, const char* file, int line);
 void  operator delete[](void* ptr,   size_t alignment, size_t alignmentOffset, const char* pName, int flags, unsigned int debugFlags, const char* file, int line);
 
-void* operator new(     size_t size, const char* zFile, size_t nLine);
+#if defined(_DEBUG)
+void* operator new(size_t size, const char* zFile, size_t nLine);
+#else
+void* operator new(size_t size, const char* zFile, size_t nLine) noexcept;
+#endif //!_DEBUG
+
 void  operator delete(  void* ptr,   const char* zFile, size_t nLine);
 void* operator new[](   size_t size, const char* zFile, size_t nLine);
 void  operator delete[](void* ptr,   const char* zFile, size_t nLine);

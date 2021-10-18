@@ -105,7 +105,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     using UniformsInclusionMap = hashMap<U64 /*name hash*/, vector<UniformDeclaration>>;
     using ShaderQueue = eastl::stack<ShaderProgram*, vector_fast<ShaderProgram*> >;
 
-
    public:
     explicit ShaderProgram(GFXDevice& context,
                            size_t descriptorHash,
@@ -117,7 +116,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     virtual ~ShaderProgram();
 
     /// Is the shader ready for drawing?
-    virtual bool isValid() const = 0;
+    [[nodiscard]] virtual bool isValid() const = 0;
     bool load() override;
     bool unload() override;
 
@@ -172,27 +171,28 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     /// Add a shaderProgram to the program cache
     static void RegisterShaderProgram(ShaderProgram* shaderProgram);
     /// Find a specific shader program by handle.
-    static ShaderProgram* FindShaderProgram(I64 shaderHandle);
+    [[nodiscard]] static ShaderProgram* FindShaderProgram(I64 shaderHandle);
     /// Find a specific shader program by descriptor hash.
-    static ShaderProgram* FindShaderProgram(size_t shaderHash);
+    [[nodiscard]] static ShaderProgram* FindShaderProgram(size_t shaderHash);
 
     /// Return a default shader used for general purpose rendering
-    static const ShaderProgram_ptr& DefaultShader();
+    [[nodiscard]] static const ShaderProgram_ptr& DefaultShader();
 
-    static const ShaderProgram_ptr& NullShader();
+    [[nodiscard]] static const ShaderProgram_ptr& NullShader();
+    [[nodiscard]] static const I64                NullShaderGUID();
 
     static void RebuildAllShaders();
 
-    static vector<ResourcePath> GetAllAtomLocations();
+    [[nodiscard]] static vector<ResourcePath> GetAllAtomLocations();
 
-    static bool UseShaderTexCache() noexcept { return s_useShaderTextCache; }
-    static bool UseShaderBinaryCache() noexcept { return s_useShaderBinaryCache; }
+    [[nodiscard]] static bool UseShaderTexCache() noexcept { return s_useShaderTextCache; }
+    [[nodiscard]] static bool UseShaderBinaryCache() noexcept { return s_useShaderBinaryCache; }
 
-    static size_t DefinesHash(const ModuleDefines& defines);
+    [[nodiscard]] static size_t DefinesHash(const ModuleDefines& defines);
 
-    static I32 ShaderProgramCount() noexcept { return s_shaderCount.load(std::memory_order_relaxed); }
+    [[nodiscard]] static I32 ShaderProgramCount() noexcept { return s_shaderCount.load(std::memory_order_relaxed); }
 
-    const ShaderProgramDescriptor& descriptor() const noexcept { return _descriptor; }
+    [[nodiscard]] const ShaderProgramDescriptor& descriptor() const noexcept { return _descriptor; }
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "ShaderProgram"; }
 

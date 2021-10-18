@@ -166,7 +166,9 @@ void SetClipboardText(void* user_data, const char* text) noexcept
 
 void ToggleCursor(const bool state) noexcept
 {
-    SDL_ShowCursor(state ? SDL_TRUE : SDL_FALSE);
+    if (CursorState() != state) {
+        SDL_ShowCursor(state ? SDL_TRUE : SDL_FALSE);
+    }
 }
 
 bool CursorState() noexcept
@@ -176,7 +178,11 @@ bool CursorState() noexcept
 
 };  // namespace Divide
 
-void* operator new(const size_t size, const char* zFile, const size_t nLine) {
+void* operator new(const size_t size, const char* zFile, const size_t nLine) 
+#if !defined(_DEBUG)
+noexcept
+#endif //!_DEBUG
+{
     void* ptr = malloc(size);
 #if defined(_DEBUG)
     Divide::MemoryManager::log_new(ptr, size, zFile, nLine);

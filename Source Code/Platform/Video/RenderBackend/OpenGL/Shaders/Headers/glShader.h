@@ -83,7 +83,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     bool SubRef() noexcept { return _refCount.fetch_sub(1) == 1; }
     [[nodiscard]] size_t GetRef() const { return _refCount.load(); }
 
-    [[nodiscard]] string getUniformBufferName() const noexcept;
+    [[nodiscard]] string getUniformBufferName() const;
 
    public:
     // ======================= static data ========================= //
@@ -112,9 +112,6 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     void prepare() const;
     /// Add a define to the shader. The defined must not have been added previously
     void addShaderDefine(const string& define, bool appendPrefix);
-    /// Remove a define from the shader. The defined must have been added previously
-    void removeShaderDefine(const string& define);
-    void initialiseUniformBuffer();
     [[nodiscard]] UseProgramStageMask stageMask() const noexcept { return _stageMask;  }
 
     PROPERTY_R(bool, valid, false);

@@ -341,7 +341,7 @@ private:
         static constexpr size_t EVENT_QUEUE_SIZE = 128;
         std::array<ECS::CustomEvent, EVENT_QUEUE_SIZE> _events;
         std::array<std::atomic_bool, EVENT_QUEUE_SIZE> _eventsFreeList;
-        size_t _eventsCount = 0;
+        std::atomic_size_t _eventsCount = 0u;
     } Events;
 
     mutable SharedMutex _childLock;

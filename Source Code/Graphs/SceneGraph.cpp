@@ -192,18 +192,25 @@ void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
         GetECSEngine().PostUpdate(msTime);
     }
 
-    PlatformContext& context = parentScene().context();
+    const U32 nodeCount = to_U32(_nodeList.size());
 
-    ParallelForDescriptor descriptor = {};
-    descriptor._iterCount = to_U32(_nodeList.size());
-    descriptor._partitionSize = g_nodesPerPartition;
-    descriptor._cbk = [this](const Task* /*parentTask*/, const U32 start, const U32 end) {
-        for (U32 i = start; i < end; ++i) {
-            Attorney::SceneGraphNodeSceneGraph::processEvents(_nodeList[i]);
+    // Only do a parallel for if we have at least 2 partitions to run in parallel, otherwise we just waste a lot of time on setup and destruction
+    if (nodeCount > g_nodesPerPartition * 2) {
+        ParallelForDescriptor descriptor = {};
+        descriptor._iterCount = to_U32(_nodeList.size());
+        descriptor._partitionSize = g_nodesPerPartition;
+        descriptor._cbk = [this](const Task* /*parentTask*/, const U32 start, const U32 end) {
+            for (U32 i = start; i < end; ++i) {
+                Attorney::SceneGraphNodeSceneGraph::processEvents(_nodeList[i]);
+            }
+        };
+
+        parallel_for(parentScene().context(), descriptor);
+    } else {
+        for (SceneGraphNode* node : _nodeList) {
+            Attorney::SceneGraphNodeSceneGraph::processEvents(node);
         }
-    };
-
-    parallel_for(context, descriptor);
+    }
 
     for (SceneGraphNode* node : _nodeList) {
         node->sceneUpdate(deltaTimeUS, sceneState);
@@ -222,7 +229,7 @@ void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
         });
 
         Start(*task,
-              context.taskPool(TaskPoolType::HIGH_PRIORITY),
+              parentScene().context().taskPool(TaskPoolType::HIGH_PRIORITY),
               //TaskPriority::DONT_CARE,
               TaskPriority::REALTIME,
               [this]() { _octreeUpdating = false; });

@@ -165,8 +165,9 @@ void GUI::update(const U64 deltaTimeUS) {
 
     if (parent().platformContext().config().gui.cegui.enabled) {
         _ceguiInput.update(deltaTimeUS);
-        CEGUI::System::getSingleton().injectTimePulse(Time::MicrosecondsToSeconds<F32>(deltaTimeUS));
-        CEGUI::System::getSingleton().getDefaultGUIContext().injectTimePulse(Time::MicrosecondsToSeconds<F32>(deltaTimeUS));
+        auto& ceguiSystem = CEGUI::System::getSingleton();
+        ceguiSystem.injectTimePulse(Time::MicrosecondsToSeconds<F32>(deltaTimeUS));
+        ceguiSystem.getDefaultGUIContext().injectTimePulse(Time::MicrosecondsToSeconds<F32>(deltaTimeUS));
     }
 
     if (_console) {

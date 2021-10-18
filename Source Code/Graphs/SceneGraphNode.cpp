@@ -48,6 +48,7 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
       _usageContext(descriptor._usageContext)
 {
     std::atomic_init(&_childCount, 0u);
+    std::atomic_init(&Events._eventsCount, 0u);
     for (auto& it : Events._eventsFreeList) {
         std::atomic_init(&it, true);
     }
@@ -475,10 +476,15 @@ void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) 
 
 void SceneGraphNode::processEvents() {
     OPTICK_EVENT();
+    if (Events._eventsCount.load() == 0u) {
+        return;
+    }
+
     const ECS::EntityId id = GetEntityID();
-    
-    for (size_t idx = 0; idx < Events.EVENT_QUEUE_SIZE; ++idx) {
-        if (!Events._eventsFreeList[idx].exchange(true)) {
+    for (size_t idx = 0u; idx < Events.EVENT_QUEUE_SIZE; ++idx) {
+        if (!Events._eventsFreeList[idx]) {
+            Events._eventsCount.fetch_sub(1u);
+
             const ECS::CustomEvent& evt = Events._events[idx];
 
             switch (evt._type) {
@@ -507,6 +513,7 @@ void SceneGraphNode::processEvents() {
             }
 
             _compManager->PassDataToAllComponents(id, evt);
+            Events._eventsFreeList[idx] = true;
         }
     }
 }
@@ -850,6 +857,7 @@ void SceneGraphNode::SendEvent(ECS::CustomEvent&& event) {
         bool flush = false;
         {
             if (Events._eventsFreeList[idx].exchange(false)) {
+                Events._eventsCount.fetch_add(1u);
                 Events._events[idx] = MOV(event);
                 return;
             }

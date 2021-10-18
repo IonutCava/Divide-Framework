@@ -76,14 +76,14 @@ class Sky final : public SceneNode {
 
     static void OnStartup(PlatformContext& context);
     // Returns the sun position and intensity details for the specified date-time
-    SunDetails setDateTime(struct tm *dateTime);
-    SunDetails setGeographicLocation(SimpleLocation location);
-    SunDetails setDateTimeAndLocation(struct tm *dateTime, SimpleLocation location);
+    const SunDetails& setDateTime(struct tm *dateTime);
+    const SunDetails& setGeographicLocation(SimpleLocation location);
+    const SunDetails& setDateTimeAndLocation(struct tm *dateTime, SimpleLocation location);
 
     [[nodiscard]] SimpleTime GetTimeOfDay() const noexcept;
     [[nodiscard]] SimpleLocation GetGeographicLocation() const noexcept;
 
-    [[nodiscard]] SunDetails getCurrentDetails() const noexcept;
+    [[nodiscard]] const SunDetails& getCurrentDetails() const noexcept;
     [[nodiscard]] bool isDay() const noexcept;
 
     PROPERTY_R(Atmosphere, atmosphere);

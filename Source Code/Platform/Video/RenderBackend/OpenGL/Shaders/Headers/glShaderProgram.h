@@ -122,7 +122,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     bool validatePreBind();
     void queueValidation();
     
-    bool shouldRecompile() const;
     bool recompile(bool force, bool& skipped) override;
     /// Creation of a new shader program. Pass in a shader token and use glsw to
     /// load the corresponding effects
@@ -136,10 +135,8 @@ class glShaderProgram final : public ShaderProgram, public glObject {
 
     /// Bind this shader program (returns false if the program was ready/failed validation)
     std::pair<bool/*success*/, bool/*was bound*/> bind();
-    /// Returns true if the shader is currently active
-    bool isBound() const noexcept;
 
-    void initialiseUniformBuffer();
+    PROPERTY_R_IW(bool, shouldRecompile, false);
 
    private:
     GLuint _handle = GLUtil::k_invalidObjectID;

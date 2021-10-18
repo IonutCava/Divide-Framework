@@ -791,7 +791,7 @@ bool Editor::framePostRenderStarted(const FrameEvent& evt) {
         const I32 fb_width = to_I32(pDrawData->DisplaySize.x * ImGui::GetIO().DisplayFramebufferScale.x);
         const I32 fb_height = to_I32(pDrawData->DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y);
         renderDrawList(pDrawData, Rect<I32>(0, 0, fb_width, fb_height), _mainWindow->getGUID(), buffer);
-        _context.gfx().flushCommandBuffer(buffer);
+        _context.gfx().flushCommandBuffer(buffer, false);
 
 
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
@@ -835,6 +835,12 @@ Rect<I32> Editor::scenePreviewRect(bool globalCoords) const {
 // Needs to be rendered immediately. *IM*GUI. IMGUI::NewFrame invalidates this data
 void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, GFX::CommandBuffer& bufferInOut) const
 {
+    static bool s_initDrawCmds = false;
+    static GFX::BindPipelineCommand s_pipelineCmd = {};
+    static GFX::SendPushConstantsCommand s_pushConstantsCommand = {};
+    static GFX::SetBlendCommand s_blendCmd = {};
+    static GFX::BeginDebugScopeCommand s_beginDebugScope{ "Render IMGUI" };
+
     if (windowGUID == -1) {
         windowGUID = _mainWindow->getGUID();
     }
@@ -851,42 +857,39 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         return;
     }
 
-    RenderStateBlock state = {};
-    state.setCullMode(CullMode::NONE);
-    state.depthTestEnabled(false);
-    state.setScissorTest(true);
+    if (!s_initDrawCmds) {
+        RenderStateBlock state = {};
+        state.setCullMode(CullMode::NONE);
+        state.depthTestEnabled(false);
+        state.setScissorTest(true);
 
-    PipelineDescriptor pipelineDesc = {};
-    pipelineDesc._stateHash = state.getHash();
-    pipelineDesc._shaderProgramHandle = _imguiProgram->getGUID();
+        PipelineDescriptor pipelineDesc = {};
+        pipelineDesc._stateHash = state.getHash();
+        pipelineDesc._shaderProgramHandle = _imguiProgram->getGUID();
+        s_pipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDesc);
 
-    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Render IMGUI" });
+        PushConstants pushConstants = {};
+        pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, vec4<I32>(1, 1, 1, 1));
+        pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::INT, 0);
+        pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, vec2<F32>(0.0f, 1.0f));
 
-    GFX::SetBlendCommand blendCmd = {};
-    blendCmd._blendProperties = BlendingProperties{
-        BlendProperty::SRC_ALPHA,
-        BlendProperty::INV_SRC_ALPHA,
-        BlendOperation::ADD
-    };
-    blendCmd._blendProperties._enabled = true;
-    EnqueueCommand(bufferInOut, blendCmd);
+        s_pushConstantsCommand._constants = pushConstants;
 
-    GFX::BindPipelineCommand pipelineCmd = {};
-    pipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDesc);
-    EnqueueCommand(bufferInOut, pipelineCmd);
+        s_blendCmd._blendProperties = BlendingProperties{
+            BlendProperty::SRC_ALPHA,
+            BlendProperty::INV_SRC_ALPHA,
+            BlendOperation::ADD
+        };
+        s_initDrawCmds = true;
+    }
 
-    PushConstants pushConstants = {};
-    pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, vec4<I32>(1, 1, 1, 1));
-    pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::INT, 0);
-    pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, vec2<F32>(0.0f, 1.0f));
+    EnqueueCommand(bufferInOut, s_beginDebugScope);
 
-    GFX::SendPushConstantsCommand pushConstantsCommand = {};
-    pushConstantsCommand._constants = pushConstants;
-    EnqueueCommand(bufferInOut, pushConstantsCommand);
-
-    GFX::SetViewportCommand viewportCmd = {};
-    viewportCmd._viewport = targetViewport;
-    EnqueueCommand(bufferInOut, viewportCmd);
+    s_blendCmd._blendProperties._enabled = true;
+    EnqueueCommand(bufferInOut, s_blendCmd);
+    EnqueueCommand(bufferInOut, s_pipelineCmd);
+    EnqueueCommand(bufferInOut, s_pushConstantsCommand);
+    EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
 
     const F32 L = pDrawData->DisplayPos.x;
     const F32 R = pDrawData->DisplayPos.x + pDrawData->DisplaySize.x;
@@ -910,8 +913,8 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     drawIMGUI._windowGUID = windowGUID;
     EnqueueCommand(bufferInOut, drawIMGUI);
 
-    blendCmd._blendProperties._enabled = false;
-    EnqueueCommand(bufferInOut, blendCmd);
+    s_blendCmd._blendProperties._enabled = false;
+    EnqueueCommand(bufferInOut, s_blendCmd);
 
     EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
 }

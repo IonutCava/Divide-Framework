@@ -422,10 +422,9 @@ bool glShader::DumpBinary(const GLuint handle, const Str256& name) {
 }
 
 
-string glShader::getUniformBufferName() const noexcept {
+string glShader::getUniformBufferName() const {
     return "dvd_UniformBlock_" + Util::to_string(getGUID());
 }
-
 
 void glShader::uploadPushConstants(const PushConstants& constants) const {
     if (valid()) {
@@ -453,23 +452,6 @@ void glShader::addShaderDefine(const string& define, bool appendPrefix) {
     } else {
         // If we did find it, we'll show an error message in debug builds about double add
         Console::d_errorfn(Locale::Get(_ID("ERROR_INVALID_DEFINE_ADD")), define.c_str(), _name.c_str());
-    }
-}
-
-/// Remove a define from the shader. The defined must have been added previously
-void glShader::removeShaderDefine(const string& define) {
-    // Find the string in the list of program defines
-    const auto* it = eastl::find(eastl::begin(_definesList), eastl::end(_definesList), std::make_pair(define, true));
-        if (it == eastl::end(_definesList)) {
-            it = eastl::find(eastl::begin(_definesList), eastl::end(_definesList), std::make_pair(define, false));
-        }
-    // If we find it, we remove it
-    if (it != eastl::end(_definesList)) {
-        _definesList.erase(it);
-        shouldRecompile(true);
-    } else {
-        // If we did not find it, we'll show an error message in debug builds
-        Console::d_errorfn(Locale::Get(_ID("ERROR_INVALID_DEFINE_DELETE")), define.c_str(), _name.c_str());
     }
 }
 

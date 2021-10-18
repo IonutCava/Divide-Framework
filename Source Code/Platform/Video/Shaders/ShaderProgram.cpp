@@ -290,6 +290,10 @@ const ShaderProgram_ptr& ShaderProgram::NullShader() {
     return s_nullShader;
 }
 
+const I64 ShaderProgram::NullShaderGUID() {
+    return s_nullShader != nullptr ? s_nullShader->getGUID() : -1;
+}
+
 void ShaderProgram::RebuildAllShaders() {
     SharedLock<SharedMutex> r_lock(s_programLock);
     for (const auto& [handle, programEntry] : s_shaderPrograms) {

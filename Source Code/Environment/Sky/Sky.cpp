@@ -640,23 +640,23 @@ void Sky::postLoad(SceneGraphNode* sgn) {
     SceneNode::postLoad(sgn);
 }
 
-SunDetails Sky::setDateTime(struct tm *dateTime) {
+const SunDetails& Sky::setDateTime(struct tm *dateTime) {
     _sun.SetDate(*dateTime);
     return getCurrentDetails();
 }
 
-SunDetails Sky::setGeographicLocation(const SimpleLocation location) {
+const SunDetails& Sky::setGeographicLocation(const SimpleLocation location) {
     _sun.SetLocation(location._longitude, location._latitude);
     return getCurrentDetails();
 }
 
-SunDetails Sky::setDateTimeAndLocation(struct tm *dateTime, SimpleLocation location) {
+const SunDetails& Sky::setDateTimeAndLocation(struct tm *dateTime, SimpleLocation location) {
     _sun.SetLocation(location._longitude, location._latitude);
     _sun.SetDate(*dateTime);
     return getCurrentDetails();
 }
 
-SunDetails Sky::getCurrentDetails() const noexcept {
+const SunDetails& Sky::getCurrentDetails() const noexcept {
     return _sun.GetDetails();
 }
 

@@ -67,10 +67,10 @@ namespace Divide {
         SimpleTime GetTimeOfDay() const noexcept;
         SimpleLocation GetGeographicLocation() const noexcept;
 
-        [[nodiscard]] SunDetails GetDetails() const;
+        [[nodiscard]] const SunDetails& GetDetails() const;
 
     private:
-        mutable SunInfo _cachedInfo;
+        mutable SunDetails _cachedDetails;
         F32 _longitude = 0.f;
         F32 _latitude = 0.f;
         struct tm _dateTime;
