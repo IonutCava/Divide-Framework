@@ -3,12 +3,11 @@
 #include "Headers/Scene.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
-#include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/ParamHandler.h"
-#include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
+#include "Core/Headers/Kernel.h"
 #include "Editor/Headers/Editor.h"
 
 #include "Managers/Headers/SceneManager.h"
@@ -133,12 +132,9 @@ bool Scene::idle() {  // Called when application is idle
     }
 
     ScopedLock<SharedMutex> r_lock(_tasksMutex);
-    _tasks.erase(std::remove_if(begin(_tasks),
-                                     end(_tasks),
-                                     [](Task* handle) -> bool { 
-                                              return handle != nullptr && Finished(*handle);
-                                          }),
-                 end(_tasks));
+    dvd_erase_if(_tasks, [](Task* handle) -> bool {
+        return handle != nullptr && Finished(*handle);
+    });
 
     return true;
 }
@@ -821,7 +817,9 @@ U16 Scene::registerInputActions() {
     const auto turnDown       = [this](const InputParams param) { state()->playerState(getPlayerIndexForDevice(param._deviceIndex)).angleUD(MoveDirection::POSITIVE); };
     const auto stopTurnUpDown = [this](const InputParams param) { state()->playerState(getPlayerIndexForDevice(param._deviceIndex)).angleUD(MoveDirection::NONE); };
 
-    const auto togglePauseState = [this](const InputParams /*param*/){ _context.paramHandler().setParam(_ID("freezeLoopTime"), !_context.paramHandler().getParam(_ID("freezeLoopTime"), false)); };
+    const auto togglePauseState = [this](const InputParams /*param*/){ 
+        _context.kernel().timingData().freezeTime(!_context.kernel().timingData().freezeLoopTime());
+    };
 
     const auto takeScreenShot = [this](const InputParams param) { ACKNOWLEDGE_UNUSED(param); _context.gfx().screenshot("screenshot_"); };
 
@@ -1377,7 +1375,7 @@ void Scene::onChangeFocus(const bool hasFocus) {
             endDragSelection(player->index(), false);
         }
         _parent.wantsMouse(false);
-        //_paramHandler.setParam(_ID("freezeLoopTime"), true);
+        //_context.kernel().timingData().freezeTime(true);
     } else {
         NOP();
     }

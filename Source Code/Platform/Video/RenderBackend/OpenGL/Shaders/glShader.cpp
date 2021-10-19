@@ -15,6 +15,8 @@
 namespace Divide {
 
 namespace {
+    constexpr const char* g_binaryBinExtension = ".bin";
+    constexpr const char* g_binaryFmtExtension = ".fmt";
 
     size_t g_validationBufferMaxSize = 4096 * 16;
 
@@ -261,6 +263,10 @@ bool glShader::load(const ShaderLoadData& data) {
 
     string concatSource;
     for (const LoadData& it : _loadData._data) {
+        if (it._type == ShaderType::COUNT) {
+            continue;
+        }
+
         concatSource.resize(0);
         for (const auto& src : it.sourceCode) {
             concatSource.append(src.c_str());
@@ -343,35 +349,33 @@ bool glShader::loadFromBinary() {
 
     // Load the program from the binary file, if available and allowed, to avoid linking.
     if (ShaderProgram::UseShaderBinaryCache()) {
+
+        const Str256 decoratedName{ glShaderProgram::decorateFileName(_name) };
+        const ResourcePath binaryPath{ decoratedName + g_binaryBinExtension };
+        const ResourcePath formatPath{ decoratedName + g_binaryFmtExtension };
+        const ResourcePath cachePath{ Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin };
+
         // Load the program's binary format from file
         vector<Byte> data;
-        if (readFile(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin,
-                     ResourcePath((glShaderProgram::decorateFileName(_name) + ".fmt").c_str()),
-                     data,
-                     FileType::BINARY) == FileError::NONE &&
-            !data.empty())
-        {
+        FileError err = readFile(cachePath, formatPath, data, FileType::BINARY);
+        if (err == FileError::NONE && !data.empty()) {
+
             const GLenum binaryFormat = *reinterpret_cast<GLenum*>(data.data());
             if (binaryFormat != GL_NONE) {
-                data.resize(0);
-                if (readFile(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin,
-                    ResourcePath((glShaderProgram::decorateFileName(_name) + ".bin").c_str()),
-                             data,
-                             FileType::BINARY) == FileError::NONE &&
-                    !data.empty())
-                {
-                    // Load binary code on the GPU
-                    _programHandle = glCreateProgram();
-                    glProgramBinary(_programHandle, binaryFormat, (bufferPtr)data.data(), static_cast<GLint>(data.size()));
-                    // Check if the program linked successfully on load
-                    GLboolean success = 0;
-                    glGetProgramiv(_programHandle, GL_LINK_STATUS, &success);
-                    // If it loaded properly set all appropriate flags (this also prevents low level access to the program's shaders)
-                    if (success == GL_TRUE) {
-                        _loadedFromBinary = true;
-                        _valid = true;
-                    }
-                }
+                return false;
+            }
+
+            err = readFile(cachePath, binaryPath, data, FileType::BINARY);
+            if (err == FileError::NONE && !data.empty()) {
+
+                // Load binary code on the GPU
+                _programHandle = glCreateProgram();
+                glProgramBinary(_programHandle, binaryFormat, (bufferPtr)data.data(), static_cast<GLint>(data.size()));
+                // Check if the program linked successfully on load
+                GLboolean success = GL_FALSE;
+                glGetProgramiv(_programHandle, GL_LINK_STATUS, &success);
+                // If it loaded properly set all appropriate flags (this also prevents low level access to the program's shaders)
+                _loadedFromBinary = _valid = success == GL_TRUE;
             }
         }
     }
@@ -381,13 +385,18 @@ bool glShader::loadFromBinary() {
 
 bool glShader::DumpBinary(const GLuint handle, const Str256& name) {
     static eastl::set<GLuint> s_dumpedBinaries;
-    if (!s_dumpedBinaries.insert(handle).second) {
-        return false;
+    static Mutex s_dumpedBinariesLock;
+    {
+        UniqueLock<Mutex> w_lock(s_dumpedBinariesLock);
+        if (!s_dumpedBinaries.insert(handle).second) {
+            //Already dumped!
+            return true;
+        }
     }
 
     bool ret = false;
     // Get the size of the binary code
-    GLint binaryLength = 0;
+    GLsizei binaryLength = 0;
     glGetProgramiv(handle, GL_PROGRAM_BINARY_LENGTH, &binaryLength);
     // allocate a big enough buffer to hold it
     char* binary = MemoryManager_NEW char[binaryLength];
@@ -397,22 +406,17 @@ bool glShader::DumpBinary(const GLuint handle, const Str256& name) {
     GLenum binaryFormat = GL_NONE;
     glGetProgramBinary(handle, binaryLength, nullptr, &binaryFormat, binary);
     if (binaryFormat != GL_NONE) {
+        const Str256 decoratedName{ glShaderProgram::decorateFileName(name) };
+        const ResourcePath binaryPath { decoratedName + g_binaryBinExtension };
+        const ResourcePath formatPath { decoratedName + g_binaryFmtExtension };
+        const ResourcePath cachePath  { Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin };
+
         // dump the buffer to file
-        if (writeFile(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin,
-            ResourcePath((glShaderProgram::decorateFileName(name) + ".bin").c_str()),
-                      binary,
-                      static_cast<size_t>(binaryLength),
-                      FileType::BINARY) == FileError::NONE)
-        {
+        FileError err = writeFile(cachePath, binaryPath, binary, to_size(binaryLength), FileType::BINARY);
+        if (err == FileError::NONE) {
             // dump the format to a separate file (highly non-optimised. Should dump formats to a database instead)
-            if (writeFile(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin,
-                ResourcePath((glShaderProgram::decorateFileName(name) + ".fmt").c_str()),
-                          &binaryFormat,
-                          sizeof(GLenum),
-                          FileType::BINARY) == FileError::NONE)
-            {
-                ret = true;
-            }
+            err = writeFile(cachePath, formatPath, &binaryFormat, sizeof(GLenum), FileType::BINARY);
+            ret = err == FileError::NONE;
         }
     }
 

@@ -37,11 +37,11 @@ FileError writeFile(const char* filePath, const char* fileName, const char* cont
 
         outputFile.write(content, length);
         outputFile.close();
-        if (outputFile.good()) {
-            return FileError::NONE;
+        if (!outputFile) {
+            return FileError::FILE_WRITE_ERROR;
         }
 
-        return FileError::FILE_WRITE_ERROR;
+        return FileError::NONE;
     }
 
     return FileError::FILE_NOT_FOUND;

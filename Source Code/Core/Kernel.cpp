@@ -156,15 +156,11 @@ void Kernel::idle(const bool fast) {
         g_printTimer = g_printTimerBase;
     }
 
-    constexpr U64 flagHash = _ID("freezeLoopTime");
-    bool freezeLoopTime = _platformContext.paramHandler().getParam(flagHash, false);
-
     if_constexpr(Config::Build::ENABLE_EDITOR) {
-        freezeLoopTime = _platformContext.editor().simulationPauseRequested() || freezeLoopTime;
-    }
-
-    if (_timingData.freezeTime(freezeLoopTime)) {
-        _platformContext.app().mainLoopPaused(freezeLoopTime);
+        const bool freezeLoopTime = _platformContext.editor().simulationPauseRequested();
+        if (_timingData.freezeTime(freezeLoopTime)) {
+            _platformContext.app().mainLoopPaused(_timingData.freezeLoopTime());
+        }
     }
 }
 
@@ -580,9 +576,9 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
 void Kernel::warmup() {
     Console::printfn(Locale::Get(_ID("START_RENDER_LOOP")));
 
-    _platformContext.paramHandler().setParam(_ID("freezeLoopTime"), true);
+    _timingData.freezeTime(true);
     onLoop();
-    _platformContext.paramHandler().setParam(_ID("freezeLoopTime"), false);
+    _timingData.freezeTime(false);
 
     _timingData.update(Time::App::ElapsedMicroseconds());
 

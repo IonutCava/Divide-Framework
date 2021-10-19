@@ -178,7 +178,7 @@ class Kernel final : public Input::InputAggregatorInterface,
 
     bool onUTF8(const Input::UTF8Event& arg) override;
 
-    PROPERTY_R(LoopTimingData, timingData);
+    PROPERTY_RW(LoopTimingData, timingData);
     POINTER_R(ResourceCache, resourceCache, nullptr);
     POINTER_R(SceneManager, sceneManager, nullptr)
     POINTER_R(RenderPassManager, renderPassManager, nullptr);

@@ -45,6 +45,25 @@ class GL_API;
 class glShader;
 class glLockManager;
 
+struct TextDumpEntry
+{
+    string _sourceCode;
+    Str256 _name;
+};
+
+struct BinaryDumpEntry
+{
+    Str256 _name;
+    GLuint _handle = 0u;
+};
+
+struct ValidationEntry
+{
+    Str256 _name;
+    GLuint _handle = 0u;
+    UseProgramStageMask _stageMask = UseProgramStageMask::GL_NONE_BIT;
+};
+
 namespace Attorney {
     class GLAPIShaderProgram;
 };
@@ -103,6 +122,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     static eastl::string GatherUniformDeclarations(const eastl::string& source, vector<UniformDeclaration>& foundUniforms);
 
     static void QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName);
+
   protected:
    struct AtomUniformPair {
        vector<ResourcePath> _atoms;
@@ -137,6 +157,10 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     std::pair<bool/*success*/, bool/*was bound*/> bind();
 
     PROPERTY_R_IW(bool, shouldRecompile, false);
+
+    static void ProcessValidationQueue();
+    static void DumpShaderTextCacheToDisk(const TextDumpEntry& entry);
+    static void DumpShaderBinaryCacheToDisk(const BinaryDumpEntry& entry);
 
    private:
     GLuint _handle = GLUtil::k_invalidObjectID;

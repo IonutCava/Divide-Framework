@@ -971,9 +971,9 @@ bool SceneManager::saveActiveScene(bool toCache, const bool deferred, const DELE
 
     const Scene& activeScene = getActiveScene();
 
-    // Ignore any auto-save (or manuall saves) on the default scene
+    // Ignore any auto-save (or manual saves) on the default scene
     if (Util::IsEmptyOrNull(sceneNameOverride) && activeScene.getGUID() == Scene::DEFAULT_SCENE_GUID) {
-        return false;
+        return true;
     }
 
     TaskPool& pool = parent().platformContext().taskPool(TaskPoolType::LOW_PRIORITY);
