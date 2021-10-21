@@ -150,19 +150,19 @@ ErrorCode WindowManager::init(PlatformContext& context,
     if (err == ErrorCode::NO_ERR) {
         _mainWindowGUID = window->getGUID();
 
-        window->addEventListener(WindowEvent::MINIMIZED, [this](const DisplayWindow::WindowEventArgs& args) noexcept {
+        window->addEventListener(WindowEvent::MINIMIZED, [ctx = _context](const DisplayWindow::WindowEventArgs& args) noexcept {
             ACKNOWLEDGE_UNUSED(args);
-            _context->app().mainLoopPaused(true);
+            ctx->app().mainLoopPaused(true);
             return true;
         });
-        window->addEventListener(WindowEvent::MAXIMIZED, [this](const DisplayWindow::WindowEventArgs& args) noexcept {
+        window->addEventListener(WindowEvent::MAXIMIZED, [ctx = _context](const DisplayWindow::WindowEventArgs& args) noexcept {
             ACKNOWLEDGE_UNUSED(args);
-            _context->app().mainLoopPaused(false);
+            ctx->app().mainLoopPaused(false);
             return true;
         });
-        window->addEventListener(WindowEvent::RESTORED, [this](const DisplayWindow::WindowEventArgs& args) noexcept {
+        window->addEventListener(WindowEvent::RESTORED, [ctx = _context](const DisplayWindow::WindowEventArgs& args) noexcept {
             ACKNOWLEDGE_UNUSED(args);
-            _context->app().mainLoopPaused(false);
+            ctx->app().mainLoopPaused(false);
             return true;
         });
 
@@ -288,7 +288,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
  
     windowIndex = to_U32(_windows.size());
     _windows.emplace_back(window);
-    window->addEventListener(WindowEvent::SIZE_CHANGED, [this](const DisplayWindow::WindowEventArgs& args) {
+    window->addEventListener(WindowEvent::SIZE_CHANGED, [ctx = _context](const DisplayWindow::WindowEventArgs& args) {
         SizeChangeParams params;
         params.width = to_U16(args.x);
         params.height = to_U16(args.y);
@@ -297,7 +297,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         params.winGUID = args._windowGUID;
 
         // Only if rendering window
-        return _context->app().onSizeChange(params);
+        return ctx->app().onSizeChange(params);
     });
 
     if (!descriptor.externalClose) {
@@ -331,13 +331,8 @@ bool WindowManager::destroyWindow(DisplayWindow*& window) {
     }
 
     SDL_HideWindow(window->getRawWindow());
-    I64 targetGUID = window->getGUID();
     if (window->destroyWindow() == ErrorCode::NO_ERR) {
-        _windows.erase(
-            std::remove_if(std::begin(_windows), std::end(_windows),
-                           [&targetGUID](DisplayWindow* win) noexcept
-                               -> bool { return win->getGUID() == targetGUID;}),
-            std::end(_windows));
+        erase_if(_windows, [targetGUID = window->getGUID()](DisplayWindow* win) noexcept { return win->getGUID() == targetGUID;});
         MemoryManager::SAFE_DELETE(window);
         return true;
     }

@@ -45,83 +45,80 @@ namespace Divide {
                set._images.empty();
     }
 
+    namespace {
+        FORCE_INLINE const TextureEntry* FindTextureDataEntry(const TextureDataContainer& source, const U8 binding) {
+            for (const TextureEntry& it : source._entries) {
+                if (it._binding == binding) {
+                    return &it;
+                }
+            }
+
+            return nullptr;
+        };
+
+        FORCE_INLINE const TextureViewEntry* FindTextureViewEntry(const TextureViews& source, const U8 binding) {
+            for (const TextureViewEntry& it : source._entries) {
+                if (it._binding == binding) {
+                    return &it;
+                }
+            }
+
+            return nullptr;
+        };
+
+        FORCE_INLINE const Image* FindImage(const Images& source, const U8 binding) {
+            for (const auto& it : source._entries) {
+                if (it._binding == binding) {
+                    return &it;
+                }
+            }
+
+            return nullptr;
+        };
+    };
+
     bool Merge(const DescriptorSet &lhs, DescriptorSet &rhs, bool& partial) {
-        if (rhs._textureData.count() > 0) {
-            const auto findTextureDataEntry = [](const TextureDataContainer& source, const U8 binding) -> const TextureEntry* {
-                for (const TextureEntry& it : source._entries) {
-                    if (it._binding == binding) {
-                        return &it;
-                    }
-                }
+        for (auto* it = begin(rhs._textureData._entries); it != end(rhs._textureData._entries);) {
+            if (it->_binding != INVALID_TEXTURE_BINDING) {
+                ++it;
+                continue;
+            }
 
-                return nullptr;
-            };
-
-            const auto& rhsTextures = rhs._textureData._entries;
-            for (auto* it = begin(rhsTextures); it != end(rhsTextures);) {
-
-                if (it->_binding == INVALID_TEXTURE_BINDING) {
-                    continue;
-                }
-
-                const TextureEntry* texData = findTextureDataEntry(lhs._textureData, it->_binding);
-                if (texData != nullptr && *texData == *it) {
-                    rhs._textureData.remove(it->_binding);
-                    partial = true;
-                } else {
-                    ++it;
-                }
+            const TextureEntry* texData = FindTextureDataEntry(lhs._textureData, it->_binding);
+            if (texData != nullptr && *texData == *it) {
+                rhs._textureData.remove(it->_binding);
+                partial = true;
+            } else {
+                ++it;
             }
         }
 
-        const auto findTextureViewEntry = [](const TextureViews& source, const U8 binding) -> const TextureViewEntry* {
-            for (const auto& it : source._entries) {
-                if (it._binding == binding) {
-                    return &it;
-                }
-            }
-
-            return nullptr;
-        };
-
-        TextureViews& otherViewList = rhs._textureViews;
-        for (auto* it = begin(otherViewList._entries); it != end(otherViewList._entries);) {
-            const TextureViewEntry* texViewData = findTextureViewEntry(lhs._textureViews, it->_binding);
+        for (auto* it = begin(rhs._textureViews._entries); it != end(rhs._textureViews._entries);) {
+            const TextureViewEntry* texViewData = FindTextureViewEntry(lhs._textureViews, it->_binding);
             if (texViewData != nullptr && texViewData->_view == it->_view) {
-                it = otherViewList._entries.erase(it);
+                it = rhs._textureViews._entries.erase(it);
                 partial = true;
             } else {
                 ++it;
             }
         }
 
-        const auto findImage = [](const Images& source, const U8 binding) -> const Image* {
-            for (const auto& it : source._entries) {
-                if (it._binding == binding) {
-                    return &it;
-                }
-            }
 
-            return nullptr;
-        };
-
-        Images& otherImageList = rhs._images;
-        for (auto* it = begin(otherImageList._entries); it != end(otherImageList._entries);) {
-            const Image* image = findImage(lhs._images, it->_binding);
+        for (auto* it = begin(rhs._images._entries); it != end(rhs._images._entries);) {
+            const Image* image = FindImage(lhs._images, it->_binding);
             if (image != nullptr && *image == *it) {
-                it = otherImageList._entries.erase(it);
+                it = rhs._images._entries.erase(it);
                 partial = true;
             } else {
                 ++it;
             }
         }
 
-        ShaderBuffers& otherShaderBuffers = rhs._buffers;
-        for (U8 i = 0; i < otherShaderBuffers.count(); ++i) {
-            ShaderBufferBinding& it = otherShaderBuffers._entries[i];
+        for (U8 i = 0u; i < rhs._buffers.count(); ++i) {
+            const ShaderBufferBinding& it = rhs._buffers._entries[i];
             const ShaderBufferBinding* binding = lhs._buffers.find(it._binding);
             if (binding != nullptr && *binding == it) {
-                partial = otherShaderBuffers.remove(it._binding) || partial;
+                partial = rhs._buffers.remove(it._binding) || partial;
             }
         }
 

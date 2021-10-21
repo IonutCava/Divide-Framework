@@ -43,7 +43,6 @@ class BoundingSphere;
 
 class Frustum {
    public:
-    void Extract(const mat4<F32>& viewMatrix, const mat4<F32>& projectionMatrix);
 
     void set(const Frustum& other);
 
@@ -67,14 +66,12 @@ class Frustum {
     }
 
     // Get the frustum corners in WorldSpace. cornerWS must be a vector with at least 8 allocated slots
-    void getCornersWorldSpace(std::array<vec3<F32>, 8>& cornersWS) const noexcept;
-    // Get the frustum corners in ViewSpace. cornerVS must be a vector with at least 8 allocated slots
-    void getCornersViewSpace(const mat4<F32>& viewMatrix, std::array<vec3<F32>, 8>& cornersVS) const;
+    void getCornersWorldSpace(std::array<vec3<F32>, to_base(FrustumPoints::COUNT)>& cornersWS) const noexcept;
 
-    void computePlanes(const mat4<F32>& viewProjMatrix);
+    const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& computePlanes(const mat4<F32>& viewProjMatrix);
 
-    bool operator==(const Frustum& other) const noexcept {
-        for (U8 i = 0; i < to_U8(FrustumPlane::COUNT); ++i) {
+    [[nodiscard]] bool operator==(const Frustum& other) const noexcept {
+        for (U8 i = 0u; i < to_U8(FrustumPlane::COUNT); ++i) {
             if (_frustumPlanes[i] != other._frustumPlanes[i]) {
                 return false;
             }
@@ -83,8 +80,8 @@ class Frustum {
         return true;
     }
 
-    bool operator!=(const Frustum& other) const noexcept {
-        for (U8 i = 0; i < to_U8(FrustumPlane::COUNT); ++i) {
+    [[nodiscard]] bool operator!=(const Frustum& other) const noexcept {
+        for (U8 i = 0u; i < to_U8(FrustumPlane::COUNT); ++i) {
             if (_frustumPlanes[i] != other._frustumPlanes[i]) {
                 return true;
             }
@@ -102,13 +99,10 @@ class Frustum {
     [[nodiscard]] FrustumCollision PlanePointIntersect(const FrustumPlane* frustumPlanes, U8 count, const vec3<F32>& point) const noexcept;
     [[nodiscard]] FrustumCollision PlaneSphereIntersect(const FrustumPlane* frustumPlanes, U8 count, const vec3<F32>& center, F32 radius) const noexcept;
 
-    void updatePoints() noexcept;
-
-    const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& planes() const noexcept { return _frustumPlanes; }
+    [[nodiscard]] const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& planes() const noexcept { return _frustumPlanes; }
 
    private:
     std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>  _frustumPlanes = create_array<to_base(FrustumPlane::COUNT)>(DEFAULT_PLANE);
-    std::array<vec3<F32>,  to_base(FrustumPoints::COUNT)> _frustumPoints = create_array<to_base(FrustumPoints::COUNT)>(VECTOR3_ZERO);
 };
 
 [[nodiscard]] FrustumCollision PlaneBoundingBoxIntersect(const Plane<F32>& plane, const BoundingBox& bbox) noexcept;

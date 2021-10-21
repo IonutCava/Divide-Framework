@@ -71,9 +71,10 @@ class Renderer final : public PlatformContextComponent {
     ShaderBuffer*     _lightGridBuffer = nullptr;
     ShaderBuffer*     _globalIndexCountBuffer = nullptr;
     ShaderBuffer*     _lightClusterAABBsBuffer = nullptr;
-    Pipeline*         _lightCullPipeline = nullptr;
-    Pipeline*         _lightBuildClusteredAABBsPipeline = nullptr;
     eastl::unique_ptr<PostFX> _postFX = nullptr;
+
+    GFX::BindPipelineCommand _lightCullPipelineCmd;
+    GFX::BindPipelineCommand _lightBuildClusteredAABBsPipelineCmd;
 };
 
 };  // namespace Divide

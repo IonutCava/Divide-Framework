@@ -26,19 +26,22 @@ std::array<TextureUsage, to_base(ShadowType::COUNT)> LightPool::_shadowLocation 
 }};
 
 namespace {
+    constexpr U8 DataBufferRingSize = 4u;
+
     constexpr bool g_GroupSortedLightsByType = true;
 
     LightPool::LightList g_sortedLightsContainer = {};
-    const auto MaxLights = [](const LightType type) noexcept {
+
+    FORCE_INLINE I32 GetMaxLights(const LightType type) noexcept {
         switch (type) {
             case LightType::DIRECTIONAL: return to_I32(Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS);
-            case LightType::POINT: return to_I32(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS);
-            case LightType::SPOT: return to_I32(Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS);
-            case LightType::COUNT: break;
+            case LightType::POINT      : return to_I32(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS);
+            case LightType::SPOT       : return to_I32(Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS);
+            case LightType::COUNT      : break;
         }
 
         return 0;
-    };
+    }
 
     U32 LightBufferIndex(const RenderStage stage) noexcept{
         assert(stage != RenderStage::SHADOW);
@@ -79,7 +82,7 @@ void LightPool::init() {
 
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
-    bufferDescriptor._ringBufferLength = 3;
+    bufferDescriptor._ringBufferLength = DataBufferRingSize;
     bufferDescriptor._separateReadWrite = false;
     bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
@@ -201,7 +204,7 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
 
         const LightType lType = light->getLightType();
         I32& counter = indexCounter[to_base(lType)];
-        if (counter == MaxLights(lType)) {
+        if (counter == GetMaxLights(lType)) {
             continue;
         }
 
@@ -462,7 +465,7 @@ void LightPool::preRenderAllPasses(const Camera* playerCamera) {
         if (light->enabled() && light->castsShadows()) {
             const LightType lType = light->getLightType();
             I32& counter = indexCounter[to_base(lType)];
-            if (counter == MaxLights(lType) || !IsLightInViewFrustum(camFrustum, light)) {
+            if (counter == GetMaxLights(lType) || !IsLightInViewFrustum(camFrustum, light)) {
                 continue;
             }
 

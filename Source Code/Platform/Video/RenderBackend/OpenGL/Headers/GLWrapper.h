@@ -165,7 +165,8 @@ public:
     static bool DeleteVAOs(GLuint count, GLuint* vaos);
     static bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
 
-    static void RegisterBufferBind(BufferLockEntry&& data, bool fenceAfterFirstDraw);
+    static void RegisterSyncDelete(GLsync fenceSync);
+    static void RegisterBufferBind(const BufferLockEntry&& data, bool fenceAfterFirstDraw);
 
     using IMPrimitivePool = MemoryPool<glIMPrimitive, 2048>;
 
@@ -254,8 +255,9 @@ private:
     static GLUtil::glTextureViewCache s_textureViewCache;
 
     static IMPrimitivePool s_IMPrimitivePool;
-    static eastl::fixed_vector<BufferLockEntry, 64, true> s_bufferLockQueueMidFlush;
-    static eastl::fixed_vector<BufferLockEntry, 64, true> s_bufferLockQueueEndOfBuffer;
+    static moodycamel::ConcurrentQueue<GLsync> s_fenceSyncDeletionQueue;
+    static eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> s_bufferLockQueueMidFlush;
+    static eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> s_bufferLockQueueEndOfBuffer;
 };
 
 };  // namespace Divide

@@ -127,6 +127,12 @@ private:
                              bool transparencyPass,
                              RenderingOrder renderOrder = RenderingOrder::COUNT);
 
+    void prepareVisibleNode(const VisibleNode& node,
+                            const RenderBinType targetBin,
+                            const RenderStagePass& stagePass,
+                            const SceneRenderState& sceneRenderState,
+                            const Camera& cam);
+
     void processVisibleNodeTransform(RenderingComponent* rComp,
                                      RenderStage stage,
                                      D64 interpolationFactor,
@@ -146,6 +152,7 @@ private:
     void setMaterialInfoAt(size_t idx, PerRingEntryMaterialData::MaterialDataContainer& dataInOut, const NodeMaterialData& tempData, const NodeMaterialTextures& tempTextures);
 
     void resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const;
+
 private:
     RenderPassManager& _parent;
     GFXDevice& _context;
@@ -160,7 +167,7 @@ private:
     std::array<NodeTransformData, Config::MAX_VISIBLE_NODES> _nodeTransformData{};
 
     SharedMutex _matDataLock;
-    eastl::fixed_vector<PerRingEntryMaterialData, 3, true> _materialData{};
+    eastl::fixed_vector<PerRingEntryMaterialData, 3, true, eastl::dvd_allocator> _materialData{};
 
     eastl::set<SamplerAddress> _uniqueTextureAddresses{};
 

@@ -79,9 +79,12 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
   public:
       using CommandEntry = PolyContainerEntry;
       using Container = PolyContainer<CommandBase, to_base(CommandType::COUNT), DELETE_CMD, RESERVE_CMD>;
-      using CommandOrderContainer = eastl::fixed_vector<CommandEntry, 256, true>;
+      using CommandOrderContainer = eastl::fixed_vector<CommandEntry, 512, true, eastl::dvd_allocator>;
 
   public:
+    template<typename T>
+    typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
+    add();
     template<typename T>
     typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
     add(const T& command);
@@ -164,6 +167,12 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
 
 [[nodiscard]] bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand);
 [[nodiscard]] bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept;
+
+template<typename T>
+typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
+EnqueueCommand(CommandBuffer& buffer) {
+    return buffer.add<T>();
+}
 
 template<typename T>
 typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type

@@ -66,10 +66,10 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     postFXShaderDescriptor._modules.push_back(vertModule);
     postFXShaderDescriptor._modules.push_back(fragModule);
 
-    _drawConstants.set(_ID("_noiseTile"), GFX::PushConstantType::FLOAT, 0.1f);
-    _drawConstants.set(_ID("_noiseFactor"), GFX::PushConstantType::FLOAT, 0.02f);
-    _drawConstants.set(_ID("_fadeActive"), GFX::PushConstantType::BOOL, false);
-    _drawConstants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, vec2<F32>(0.01f, 500.0f));
+    _drawConstantsCmd._constants.set(_ID("_noiseTile"),   GFX::PushConstantType::FLOAT, 0.1f);
+    _drawConstantsCmd._constants.set(_ID("_noiseFactor"), GFX::PushConstantType::FLOAT, 0.02f);
+    _drawConstantsCmd._constants.set(_ID("_fadeActive"),  GFX::PushConstantType::BOOL,  false);
+    _drawConstantsCmd._constants.set(_ID("_zPlanes"),     GFX::PushConstantType::VEC2,  vec2<F32>(0.01f, 500.0f));
 
     TextureDescriptor texDescriptor(TextureType::TEXTURE_2D);
 
@@ -109,6 +109,8 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
         _drawPipeline = context.gfx().newPipeline(pipelineDescriptor);
     });
 
+    _setCameraCmd._cameraSnapshot = Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot();
+
     WAIT_FOR_CONDITION(loadTasks.load() == 0);
 }
 
@@ -123,74 +125,70 @@ void PostFX::updateResolution(const U16 newWidth, const U16 newHeight) {
     _resolutionCache.set(newWidth, newHeight);
 
     _preRenderBatch.reshape(newWidth, newHeight);
+    _setCameraCmd._cameraSnapshot = Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot();
 }
 
 void PostFX::apply(const Camera* camera, GFX::CommandBuffer& bufferInOut) {
+    static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: Apply" };
+    static GFX::BeginRenderPassCommand s_beginRenderPassCmd{};
+    static GFX::BindDescriptorSetsCommand s_descriptorSetCmd{};
+    static GFX::DrawCommand s_drawCommand{};
+
     static size_t s_samplerHash = 0u;
     if (s_samplerHash == 0u) {
         SamplerDescriptor defaultSampler = {};
         defaultSampler.wrapUVW(TextureWrap::REPEAT);
         s_samplerHash = defaultSampler.getHash();
+
+        s_beginRenderPassCmd._target = RenderTargetID(RenderTargetUsage::SCREEN);
+        s_beginRenderPassCmd._descriptor = _postFXTarget;
+        s_beginRenderPassCmd._name = "DO_POSTFX_PASS";
+
+        GenericDrawCommand drawCommand;
+        drawCommand._primitiveType = PrimitiveType::TRIANGLES;
+        drawCommand._drawCount = 1;
+        s_drawCommand._drawCommands = { {drawCommand} };
+
+        TextureDataContainer& textureContainer = s_descriptorSetCmd._set._textureData;
+        textureContainer.add(TextureEntry{ _underwaterTexture->data(),   s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER) });
+        textureContainer.add(TextureEntry{ _noise->data(),               s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE) });
+        textureContainer.add(TextureEntry{ _screenBorder->data(),        s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER) });
     }
 
-    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "PostFX: Apply" });
-
-    EnqueueCommand(bufferInOut, GFX::SetCameraCommand{Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot()});
+    GFX::EnqueueCommand(bufferInOut, s_beginScopeCmd);
+    GFX::EnqueueCommand(bufferInOut, _setCameraCmd);
 
     _preRenderBatch.execute(camera, _filterStack | _overrideFilterStack, bufferInOut);
-    
-    const auto& prbAtt = _preRenderBatch.getOutput(false)._rt->getAttachment(RTAttachmentType::Colour, 0);
-    const TextureData output = prbAtt.texture()->data();
-    const TextureData data0 = _underwaterTexture->data();
-    const TextureData data1 = _noise->data();
-    const TextureData data2 = _screenBorder->data();
 
-    RenderTarget& fxDataRT = context().gfx().renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::POSTFX_DATA));
-    const auto& fxDataAtt = fxDataRT.getAttachment(RTAttachmentType::Colour, 0);
-    const TextureData fxData = fxDataAtt.texture()->data();
-
-    RenderTarget& ssrDataRT = context().gfx().renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SSR_RESULT));
-    const auto& ssrDataAtt = ssrDataRT.getAttachment(RTAttachmentType::Colour, 0);
-    const TextureData ssrData = ssrDataAtt.texture()->data();
-
-    GFX::BeginRenderPassCommand beginRenderPassCmd{};
-    beginRenderPassCmd._target = RenderTargetID(RenderTargetUsage::SCREEN);
-    beginRenderPassCmd._descriptor = _postFXTarget;
-    beginRenderPassCmd._name = "DO_POSTFX_PASS";
-    EnqueueCommand(bufferInOut, beginRenderPassCmd);
-
-    GFX::BindPipelineCommand bindPipelineCmd;
-    bindPipelineCmd._pipeline = _drawPipeline;
-    EnqueueCommand(bufferInOut, bindPipelineCmd);
+    GFX::EnqueueCommand(bufferInOut, s_beginRenderPassCmd);
+    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _drawPipeline });
 
     if (_filtersDirty) {
-        _drawConstants.set(_ID("vignetteEnabled"), GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_VIGNETTE));
-        _drawConstants.set(_ID("noiseEnabled"), GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_NOISE));
-        _drawConstants.set(_ID("underwaterEnabled"), GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_UNDERWATER));
-        _drawConstants.set(_ID("lutCorrectionEnabled"), GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_LUT_CORECTION));
+        _drawConstantsCmd._constants.set(_ID("vignetteEnabled"),      GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_VIGNETTE));
+        _drawConstantsCmd._constants.set(_ID("noiseEnabled"),         GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_NOISE));
+        _drawConstantsCmd._constants.set(_ID("underwaterEnabled"),    GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_UNDERWATER));
+        _drawConstantsCmd._constants.set(_ID("lutCorrectionEnabled"), GFX::PushConstantType::BOOL, getFilterState(FilterType::FILTER_LUT_CORECTION));
         _filtersDirty = false;
     };
 
-    _drawConstants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
-    EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand(_drawConstants));
+    _drawConstantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
+    GFX::EnqueueCommand(bufferInOut, _drawConstantsCmd);
 
-    GFX::BindDescriptorSetsCommand bindDescriptorSetsCmd;
-    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ output, prbAtt.samplerHash(),to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN) });
-    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ data0, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER) });
-    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ data1, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE) });
-    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ data2, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER) });
-    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ fxData, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_POSTFXDATA) });
-    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ ssrData, s_samplerHash, to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR) });
-    EnqueueCommand(bufferInOut, bindDescriptorSetsCmd);
+    const auto& prbAtt = _preRenderBatch.getOutput(false)._rt->getAttachment(RTAttachmentType::Colour, 0);
+    const auto& fxDataAtt = context().gfx().renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::POSTFX_DATA)).getAttachment(RTAttachmentType::Colour, 0);
+    const auto& ssrDataAtt = context().gfx().renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SSR_RESULT)).getAttachment(RTAttachmentType::Colour, 0);
 
-    GenericDrawCommand drawCommand;
-    drawCommand._primitiveType = PrimitiveType::TRIANGLES;
-    drawCommand._drawCount = 1;
-    EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCommand });
+    TextureDataContainer& textureContainer = s_descriptorSetCmd._set._textureData;
+    textureContainer.add(TextureEntry{ prbAtt.texture()->data(),     prbAtt.samplerHash(),to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN) });
+    textureContainer.add(TextureEntry{ fxDataAtt.texture()->data(),  s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_POSTFXDATA) });
+    textureContainer.add(TextureEntry{ ssrDataAtt.texture()->data(), s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR) });
+    GFX::EnqueueCommand(bufferInOut, s_descriptorSetCmd);
 
-    EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+    GFX::EnqueueCommand(bufferInOut, s_drawCommand);
 
-    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+
+    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
 }
 
 void PostFX::idle(const Configuration& config) {
@@ -205,8 +203,8 @@ void PostFX::idle(const Configuration& config) {
             _randomFlashCoefficient = Random(1000) * 0.001f;
         }
 
-        _drawConstants.set(_ID("randomCoeffNoise"), GFX::PushConstantType::FLOAT, _randomNoiseCoefficient);
-        _drawConstants.set(_ID("randomCoeffFlash"), GFX::PushConstantType::FLOAT, _randomFlashCoefficient);
+        _drawConstantsCmd._constants.set(_ID("randomCoeffNoise"), GFX::PushConstantType::FLOAT, _randomNoiseCoefficient);
+        _drawConstantsCmd._constants.set(_ID("randomCoeffFlash"), GFX::PushConstantType::FLOAT, _randomFlashCoefficient);
     }
 }
 
@@ -231,11 +229,11 @@ void PostFX::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
             }
         }
 
-        _drawConstants.set(_ID("_fadeStrength"), GFX::PushConstantType::FLOAT, fadeStrength);
+        _drawConstantsCmd._constants.set(_ID("_fadeStrength"), GFX::PushConstantType::FLOAT, fadeStrength);
         
         _fadeActive = fadeStrength > std::numeric_limits<D64>::epsilon();
         if (!_fadeActive) {
-            _drawConstants.set(_ID("_fadeActive"), GFX::PushConstantType::BOOL, false);
+            _drawConstantsCmd._constants.set(_ID("_fadeActive"), GFX::PushConstantType::BOOL, false);
             if (_fadeInComplete) {
                 _fadeInComplete();
                 _fadeInComplete = DELEGATE<void>();
@@ -247,8 +245,8 @@ void PostFX::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
 }
 
 void PostFX::setFadeOut(const UColour3& targetColour, const D64 durationMS, const D64 waitDurationMS, DELEGATE<void> onComplete) {
-    _drawConstants.set(_ID("_fadeColour"), GFX::PushConstantType::VEC4, Util::ToFloatColour(targetColour));
-    _drawConstants.set(_ID("_fadeActive"), GFX::PushConstantType::BOOL, true);
+    _drawConstantsCmd._constants.set(_ID("_fadeColour"), GFX::PushConstantType::VEC4, Util::ToFloatColour(targetColour));
+    _drawConstantsCmd._constants.set(_ID("_fadeActive"), GFX::PushConstantType::BOOL, true);
     _targetFadeTimeMS = durationMS;
     _currentFadeTimeMS = 0.0;
     _fadeWaitDurationMS = waitDurationMS;
@@ -264,7 +262,7 @@ void PostFX::setFadeIn(const D64 durationMS, DELEGATE<void> onComplete) {
     _currentFadeTimeMS = 0.0;
     _fadeOut = false;
     _fadeActive = true;
-    _drawConstants.set(_ID("_fadeActive"), GFX::PushConstantType::BOOL, true);
+    _drawConstantsCmd._constants.set(_ID("_fadeActive"), GFX::PushConstantType::BOOL, true);
     _fadeInComplete = MOV(onComplete);
 }
 

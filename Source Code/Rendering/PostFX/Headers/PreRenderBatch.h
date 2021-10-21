@@ -192,7 +192,7 @@ class PreRenderBatch {
     ShaderProgram_ptr _lineariseDepthBuffer = nullptr;
     std::array<ShaderProgram_ptr, to_base(EdgeDetectionMethod::COUNT)> _edgeDetection = {};
     std::array<Pipeline*, to_base(EdgeDetectionMethod::COUNT)> _edgeDetectionPipelines = {};
-    PushConstants     _toneMapConstants;
+    GFX::SendPushConstantsCommand _toneMapConstantsCmd;
 
     U64 _lastDeltaTimeUS = 0u;
 };

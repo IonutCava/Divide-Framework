@@ -49,6 +49,7 @@ static void setupMBP(physx::PxScene& scene) {
 PhysXSceneInterface::PhysXSceneInterface(Scene& parentScene)
     : PhysicsSceneInterface(parentScene)
 {
+    std::atomic_init(&_rigidActorsQueued, false);
 }
 
 PhysXSceneInterface::~PhysXSceneInterface()
@@ -149,10 +150,13 @@ void PhysXSceneInterface::idle() {
         return;
     }
 
-    PhysXActor* crtActor = nullptr;
-    while (_sceneRigidQueue.try_dequeue(crtActor)) {
-        _sceneRigidActors.push_back(crtActor);
-        _gScene->addActor(*(crtActor->_actor));
+    bool expected = true;
+    if (_rigidActorsQueued.compare_exchange_strong(expected, false)) {
+        PhysXActor* crtActor = nullptr;
+        while (_sceneRigidQueue.try_dequeue(crtActor)) {
+            _sceneRigidActors.push_back(crtActor);
+            _gScene->addActor(*(crtActor->_actor));
+        }
     }
 }
 
@@ -204,6 +208,7 @@ void PhysXSceneInterface::addRigidActor(PhysXActor* const actor) {
     assert(actor != nullptr);
     // We DO NOT take ownership of actors. Ownership remains with RigidBodyComponent
     _sceneRigidQueue.enqueue(actor);
+    _rigidActorsQueued.store(true);
 }
 
 void PhysXSceneInterface::updateRigidActor(physx::PxRigidActor* oldActor, physx::PxRigidActor* newActor) const { 

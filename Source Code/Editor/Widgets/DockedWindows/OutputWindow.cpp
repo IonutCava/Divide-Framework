@@ -81,19 +81,33 @@ namespace Divide {
         };
 
         const size_t start = g_writeIndex.load();
+
+        bool typePushed = false;
+        Console::EntryType previousType = Console::EntryType::INFO;
         for (U16 i = 0u; i < g_maxLogEntries;  ++i) {
             const size_t index = (start + 1 + i) % g_maxLogEntries;
             const Console::OutputEntry& message = g_log[index];
-            if (!_filter.PassFilter(message._text.c_str())) {
+            const char* textStart = message._text.c_str();
+            const char* textEnd = textStart + message._text.length();
+
+            if (!_filter.PassFilter(textStart, textEnd)) {
                 continue;
             }
-
-            ImGui::PushStyleColor(ImGuiCol_Text, colours[to_U8(message._type)]);
-            const string& str = message._text;
-            ImGui::TextUnformatted(str.c_str(), str.c_str() + str.length());
+            const Console::EntryType currentType = message._type;
+            if (previousType != currentType) {
+                if (typePushed) {
+                    ImGui::PopStyleColor();
+                }
+                ImGui::PushStyleColor(ImGuiCol_Text, colours[to_U8(currentType)]);
+                typePushed = true;
+                previousType = currentType;
+            }
+            
+            ImGui::TextUnformatted(textStart, textEnd);
+        }
+        if (typePushed) {
             ImGui::PopStyleColor();
         }
-        
         if (copy_to_clipboard) {
             ImGui::LogFinish();
         }

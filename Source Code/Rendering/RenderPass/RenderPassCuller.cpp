@@ -93,17 +93,24 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, c
         sceneGraph.getRoot()->lockChildrenForRead();
         const vector<SceneGraphNode*>& rootChildren = sceneGraph.getRoot()->getChildrenLocked();
 
-        ParallelForDescriptor descriptor = {};
-        descriptor._iterCount = sceneGraph.getRoot()->getChildCount();
-        descriptor._partitionSize = g_nodesPerCullingPartition;
-        descriptor._priority = TaskPriority::DONT_CARE;
-        descriptor._useCurrentThread = true;
-        descriptor._cbk = [&](const Task*, const U32 start, const U32 end) {
-                            for (U32 i = start; i < end; ++i) {
-                                frustumCullNode(rootChildren[i], params, cullFlags, 0u, nodeCache);
-                            }
-                        };
-        parallel_for(context, descriptor);
+        const U32 childCount = sceneGraph.getRoot()->getChildCount();
+        if (childCount > g_nodesPerCullingPartition * 2) {
+            ParallelForDescriptor descriptor = {};
+            descriptor._iterCount = childCount;
+            descriptor._partitionSize = g_nodesPerCullingPartition;
+            descriptor._priority = TaskPriority::DONT_CARE;
+            descriptor._useCurrentThread = true;
+            descriptor._cbk = [&](const Task*, const U32 start, const U32 end) {
+                                for (U32 i = start; i < end; ++i) {
+                                    frustumCullNode(rootChildren[i], params, cullFlags, 0u, nodeCache);
+                                }
+                            };
+            parallel_for(context, descriptor);
+        } else {
+            for (SceneGraphNode* node : rootChildren) {
+                frustumCullNode(node, params, cullFlags, 0u, nodeCache);
+            }
+        }
         sceneGraph.getRoot()->unlockChildrenForRead();
     }
 
@@ -158,28 +165,27 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
 
                 const U32 childCount = currentNode->getChildCount();
                 if (childCount > 0u) {
-                    if (childCount > g_nodesPerCullingPartition) {
-                        currentNode->lockChildrenForRead();
-                        const vector<SceneGraphNode*>& children = currentNode->getChildrenLocked();
+                    currentNode->lockChildrenForRead();
+                    const vector<SceneGraphNode*>& children = currentNode->getChildrenLocked();
 
+                    if (childCount > g_nodesPerCullingPartition * 2) {
                         ParallelForDescriptor descriptor = {};
                         descriptor._iterCount = childCount;
                         descriptor._partitionSize = g_nodesPerCullingPartition;
                         descriptor._priority = recursionLevel < 2 ? TaskPriority::DONT_CARE : TaskPriority::REALTIME;
                         descriptor._useCurrentThread = true;
-                        descriptor._cbk = [&](const Task* /*parentTask*/, const U32 start, const U32 end) {
+                        descriptor._cbk = [&](const Task*, const U32 start, const U32 end) {
                             for (U32 i = start; i < end; ++i) {
                                 frustumCullNode(children[i], params, cullFlags, recursionLevel + 1, nodes);
                             }
                         };
                         parallel_for(currentNode->context(), descriptor);
-                        currentNode->unlockChildrenForRead();
                     } else {
-                        currentNode->forEachChild([&](SceneGraphNode* child, I32 /*childIdx*/) {
+                        for (SceneGraphNode* child : children) {
                             frustumCullNode(child, params, cullFlags, recursionLevel + 1, nodes);
-                            return true;
-                        });
+                        };
                     }
+                    currentNode->unlockChildrenForRead();
                 }
             } else {
                 // All nodes are in view entirely

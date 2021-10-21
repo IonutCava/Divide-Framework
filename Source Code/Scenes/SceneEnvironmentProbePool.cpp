@@ -117,7 +117,7 @@ const EnvironmentProbeList& SceneEnvironmentProbePool::sortAndGetLocked(const ve
 }
 
 void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
-    for (U16 i = 0; i < Config::MAX_REFLECTIVE_PROBES_PER_PASS; ++i) {
+    for (U16 i = 0u; i < Config::MAX_REFLECTIVE_PROBES_PER_PASS; ++i) {
         if (!s_availableSlices[i].second) {
             s_availableSlices[i].first = true;
         }
@@ -158,9 +158,8 @@ void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe) 
 void SceneEnvironmentProbePool::unregisterProbe(EnvironmentProbeComponent* probe) {
     if (probe != nullptr) {
         ScopedLock<SharedMutex> w_lock(_probeLock);
-        I64 probeGUID = probe->getGUID();
         auto it = _envProbes.erase(eastl::remove_if(begin(_envProbes), end(_envProbes),
-                                                    [&probeGUID](const auto& p) { return p->getGUID() == probeGUID; }),
+                                                    [probeGUID = probe->getGUID()](const auto& p) { return p->getGUID() == probeGUID; }),
                                    end(_envProbes));
         while (it != cend(_envProbes)) {
             (*it)->poolIndex((*it)->poolIndex() - 1);

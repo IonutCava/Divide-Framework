@@ -52,24 +52,14 @@ void ProfileTimer::addChildTimer(ProfileTimer& child) {
 }
 
 void ProfileTimer::removeChildTimer(ProfileTimer& child) {
-    const U32 childID = child._globalIndex;
-
-    _children.erase(
-        eastl::remove_if(begin(_children),
-                         end(_children),
-                         [childID](const U32 entry) {
-                             return entry == childID;
-                         }),
-        end(_children));
+    erase_if(_children, [childID = child._globalIndex](const U32 entry) { return entry == childID; });
     child._parent = Config::Profile::MAX_PROFILE_TIMERS + 1u;
 }
 
-bool ProfileTimer::hasChildTimer(ProfileTimer& child) const
-{
-    const U32 childID = child._globalIndex;
+bool ProfileTimer::hasChildTimer(ProfileTimer& child) const {
     return eastl::any_of(cbegin(_children),
                          cend(_children),
-                         [childID](const U32 entry) {
+                         [childID = child._globalIndex](const U32 entry) {
                              return entry == childID;
                          });
 }

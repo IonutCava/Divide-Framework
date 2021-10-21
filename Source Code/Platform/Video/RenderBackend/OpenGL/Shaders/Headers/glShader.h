@@ -83,8 +83,6 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     bool SubRef() noexcept { return _refCount.fetch_sub(1) == 1; }
     [[nodiscard]] size_t GetRef() const { return _refCount.load(); }
 
-    [[nodiscard]] string getUniformBufferName() const;
-
    public:
     // ======================= static data ========================= //
     /// Remove a shader from the cache

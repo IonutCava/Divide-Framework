@@ -1563,19 +1563,19 @@ mat4<T>::mat4(const Plane<U>& reflectionPlane) noexcept
 
 template<typename T>
 template<typename U>
-vec2<U> mat4<T>::operator*(const vec2<U> &v) const noexcept {
+FORCE_INLINE vec2<U> mat4<T>::operator*(const vec2<U> &v) const noexcept {
     return *this * vec4<U>(v);
 }
 
 template<typename T>
 template<typename U>
-vec3<U> mat4<T>::operator*(const vec3<U> &v) const noexcept {
+FORCE_INLINE vec3<U> mat4<T>::operator*(const vec3<U> &v) const noexcept {
     return *this * vec4<U>(v);
 }
 
 template<typename T>
 template<typename U>
-vec4<U> mat4<T>::operator*(const vec4<U> &v) const noexcept {
+FORCE_INLINE vec4<U> mat4<T>::operator*(const vec4<U> &v) const noexcept {
     return vec4<U>(mat[0] * v.x + mat[4] * v.y + mat[8]  * v.z + mat[12] * v.w,
                    mat[1] * v.x + mat[5] * v.y + mat[9]  * v.z + mat[13] * v.w,
                    mat[2] * v.x + mat[6] * v.y + mat[10] * v.z + mat[14] * v.w,
@@ -1612,22 +1612,22 @@ mat4<T> mat4<T>::operator-(const mat4<U> &matrix) const noexcept {
 
 template<typename T>
 template<typename U>
-mat4<T>& mat4<T>::operator*=(const mat4<U> &matrix) noexcept {
+FORCE_INLINE mat4<T>& mat4<T>::operator*=(const mat4<U> &matrix) noexcept {
     Multiply(*this, matrix, *this);
     return *this;
 }
 
 template<typename T>
 template<typename U>
-mat4<T>& mat4<T>::operator/=(const mat4<U> &matrix) {
+FORCE_INLINE mat4<T>& mat4<T>::operator/=(const mat4<U> &matrix) {
     Multiply(*this, matrix.getInverse(), *this);
     return *this;
 }
 
 template<typename T>
 template<typename U>
-mat4<T>& mat4<T>::operator+=(const mat4<U> &matrix) noexcept {
-    for (U8 i = 0; i < 4; ++i) {
+FORCE_INLINE mat4<T>& mat4<T>::operator+=(const mat4<U> &matrix) noexcept {
+    for (U8 i = 0u; i < 4u; ++i) {
         _vec[i] += matrix._vec[i];
     }
     return *this;
@@ -1635,8 +1635,8 @@ mat4<T>& mat4<T>::operator+=(const mat4<U> &matrix) noexcept {
 
 template<typename T>
 template<typename U>
-mat4<T>& mat4<T>::operator-=(const mat4<U> &matrix) noexcept {
-    for (U8 i = 0; i < 4; ++i) {
+FORCE_INLINE mat4<T>& mat4<T>::operator-=(const mat4<U> &matrix) noexcept {
+    for (U8 i = 0u; i < 4u; ++i) {
         _vec[i] -= matrix._vec[i];
     }
 
@@ -1645,32 +1645,32 @@ mat4<T>& mat4<T>::operator-=(const mat4<U> &matrix) noexcept {
 
 template<typename T>
 template<typename U>
-mat4<T> mat4<T>::operator*(U f) const noexcept {
+FORCE_INLINE mat4<T> mat4<T>::operator*(const U f) const noexcept {
     return mat4(*this) *= f;
 }
 
 template<typename T>
 template<typename U>
-mat4<T> mat4<T>::operator/(U f) const {
+FORCE_INLINE mat4<T> mat4<T>::operator/(const U f) const {
     return mat4(*this) /= f;
 }
 
 template<typename T>
 template<typename U>
-mat4<T> mat4<T>::operator+(U f) const noexcept {
+FORCE_INLINE mat4<T> mat4<T>::operator+(const U f) const noexcept {
     return mat4(*this) += f;
 }
 
 template<typename T>
 template<typename U>
-mat4<T> mat4<T>::operator-(U f) const noexcept {
+FORCE_INLINE mat4<T> mat4<T>::operator-(const U f) const noexcept {
     return mat4(*this) -= f;
 }
 
 template<typename T>
 template<typename U>
-mat4<T>& mat4<T>::operator*=(U f) noexcept {
-    for (U8 i = 0; i < 4; ++i) {
+FORCE_INLINE mat4<T>& mat4<T>::operator*=(const U f) noexcept {
+    for (U8 i = 0u; i < 4u; ++i) {
         _vec[i] *= f;
     }
 
@@ -1679,8 +1679,8 @@ mat4<T>& mat4<T>::operator*=(U f) noexcept {
 
 template<typename T>
 template<typename U>
-mat4<T>& mat4<T>::operator/=(U f) {
-    for (U8 i = 0; i < 4; ++i) {
+FORCE_INLINE mat4<T>& mat4<T>::operator/=(const U f) {
+    for (U8 i = 0u; i < 4u; ++i) {
         _vec[i] /= f;
     }
 
@@ -1689,8 +1689,8 @@ mat4<T>& mat4<T>::operator/=(U f) {
 
 template<typename T>
 template<typename U>
-mat4<T>& mat4<T>::operator+=(U f) noexcept {
-    for (U8 i = 0; i < 4; ++i) {
+FORCE_INLINE mat4<T>& mat4<T>::operator+=(const U f) noexcept {
+    for (U8 i = 0u; i < 4u; ++i) {
         _vec[i] += f;
     }
 
@@ -1699,8 +1699,8 @@ mat4<T>& mat4<T>::operator+=(U f) noexcept {
 
 template<typename T>
 template<typename U>
-mat4<T>& mat4<T>::operator-=(U f) noexcept {
-    for (U8 i = 0; i < 4; ++i) {
+FORCE_INLINE mat4<T>& mat4<T>::operator-=(const U f) noexcept {
+    for (U8 i = 0u; i < 4u; ++i) {
         _vec[i] -= f;
     }
 
@@ -1709,7 +1709,7 @@ mat4<T>& mat4<T>::operator-=(U f) noexcept {
 
 template<typename T>
 bool mat4<T>::operator==(const mat4& B) const noexcept {
-    for (U8 i = 0; i < 4; ++i) {
+    for (U8 i = 0u; i < 4u; ++i) {
         if (_reg[i] != B._reg[i]) {
             return false;
         }
@@ -1720,7 +1720,7 @@ bool mat4<T>::operator==(const mat4& B) const noexcept {
 
 template<typename T>
 bool mat4<T>::operator!=(const mat4 &B) const noexcept {
-    for (U8 i = 0; i < 4; ++i) {
+    for (U8 i = 0u; i < 4u; ++i) {
         if (_reg[i] != B._reg[i]) {
             return true;
         }
@@ -1739,8 +1739,8 @@ bool mat4<T>::operator==(const mat4<U>& B) const noexcept {
         return false;
     }
     */
-    for (U8 i = 0; i < 4; ++i) {
-        for (U8 j = 0; j < 4; ++j) {
+    for (U8 i = 0u; i < 4u; ++i) {
+        for (U8 j = 0u; j < 4u; ++j) {
             if (!COMPARE(m[i][j], B.m[i][j])) {
                 return false;
             }
@@ -1759,8 +1759,8 @@ bool mat4<T>::operator!=(const mat4<U> &B) const noexcept {
         return true;
     }
     */
-    for (U8 i = 0; i < 4; ++i) {
-        for (U8 j = 0; j < 4; ++j) {
+    for (U8 i = 0u; i < 4u; ++i) {
+        for (U8 j = 0u; j < 4u; ++j) {
             if (!COMPARE(m[i][j], B.m[i][j])) {
                 return true;
             }
@@ -1771,8 +1771,8 @@ bool mat4<T>::operator!=(const mat4<U> &B) const noexcept {
 }
 
 template<typename T>
-bool mat4<T>::compare(const mat4 &B, F32 epsilon) const noexcept {
-    for (U8 i = 0; i < 16; ++i) {
+FORCE_INLINE bool mat4<T>::compare(const mat4 &B, F32 epsilon) const noexcept {
+    for (U8 i = 0u; i < 16u; ++i) {
         if (!COMPARE_TOLERANCE(mat[i], B.mat[i], epsilon)) {
             return false;
         }
@@ -1783,8 +1783,8 @@ bool mat4<T>::compare(const mat4 &B, F32 epsilon) const noexcept {
 
 template<typename T>
 template<typename U>
-bool mat4<T>::compare(const mat4<U> &B, F32 epsilon) const noexcept {
-    for (U8 i = 0; i < 16; ++i) {
+FORCE_INLINE bool mat4<T>::compare(const mat4<U> &B, F32 epsilon) const noexcept {
+    for (U8 i = 0u; i < 16u; ++i) {
         if (!COMPARE_TOLERANCE(mat[i], B.mat[i], epsilon)) {
             return false;
         }
@@ -1794,47 +1794,47 @@ bool mat4<T>::compare(const mat4<U> &B, F32 epsilon) const noexcept {
 }
 
 template<typename T>
-mat4<T>::operator T *() noexcept {
+FORCE_INLINE mat4<T>::operator T *() noexcept {
     return mat;
 }
 
 template<typename T>
-mat4<T>::operator const T *() const noexcept {
+FORCE_INLINE mat4<T>::operator const T *() const noexcept {
     return mat;
 }
 
 template<typename T>
-T& mat4<T>::operator[](I32 i) noexcept {
+FORCE_INLINE T& mat4<T>::operator[](I32 i) noexcept {
     return mat[i];
 }
 
 template<typename T>
-const T& mat4<T>::operator[](I32 i) const noexcept {
+FORCE_INLINE const T& mat4<T>::operator[](I32 i) const noexcept {
     return mat[i];
 }
 
 template<typename T>
-T& mat4<T>::element(I8 row, I8 column) noexcept {
+FORCE_INLINE T& mat4<T>::element(I8 row, I8 column) noexcept {
     return m[row][column];
 }
 
 template<typename T>
-const T& mat4<T>::element(I8 row, I8 column) const noexcept {
+FORCE_INLINE const T& mat4<T>::element(I8 row, I8 column) const noexcept {
     return m[row][column];
 }
 
 template<typename T>
-void mat4<T>::set(std::initializer_list<T> matrix) noexcept {
+FORCE_INLINE void mat4<T>::set(std::initializer_list<T> matrix) noexcept {
     set(matrix.begin());
 }
 
 template<typename T>
 template<typename U>
-void mat4<T>::set(U const *matrix) noexcept {
+FORCE_INLINE void mat4<T>::set(U const *matrix) noexcept {
     if_constexpr (sizeof(T) == sizeof(U)) {
         std::memcpy(mat, matrix, sizeof(U) * 16);
     } else {
-        for (U8 i = 0; i < 16; ++i) {
+        for (U8 i = 0u; i < 16u; ++i) {
             mat[i] = static_cast<T>(matrix[i]);
         }
     }
@@ -1842,7 +1842,7 @@ void mat4<T>::set(U const *matrix) noexcept {
 
 template<typename T>
 template<typename U>
-void mat4<T>::set(const mat2<U> &matrix) noexcept {
+FORCE_INLINE void mat4<T>::set(const mat2<U> &matrix) noexcept {
     memset(mat, 0, 16 * sizeof(T));
 
     mat[0] = matrix[0];  mat[1] = matrix[1];
@@ -1851,7 +1851,7 @@ void mat4<T>::set(const mat2<U> &matrix) noexcept {
 
 template<typename T>
 template<typename U>
-void mat4<T>::set(const mat3<U> &matrix) noexcept {
+FORCE_INLINE void mat4<T>::set(const mat3<U> &matrix) noexcept {
     memset(mat, 0, 16 * sizeof(T));
 
     mat[0] = matrix[0]; mat[1] = matrix[1]; mat[2]  = matrix[2];
@@ -1861,7 +1861,7 @@ void mat4<T>::set(const mat3<U> &matrix) noexcept {
 
 template<typename T>
 template<typename U>
-void mat4<T>::set(const mat4<U> &matrix) noexcept {
+FORCE_INLINE void mat4<T>::set(const mat4<U> &matrix) noexcept {
     set(matrix.mat);
 }
 
@@ -1878,36 +1878,36 @@ void mat4<T>::set(const vec3<U> &translation, const vec3<U> &scale, const mat4<U
 
 template<typename T>
 template<typename U>
-void mat4<T>::setRow(I32 index, const U value) noexcept {
+FORCE_INLINE void mat4<T>::setRow(I32 index, const U value) noexcept {
     _vec[index].set(value);
 }
 
 template<typename T>
 template<typename U>
-void mat4<T>::setRow(I32 index, const vec4<U> &value) noexcept {
+FORCE_INLINE void mat4<T>::setRow(I32 index, const vec4<U> &value) noexcept {
     _vec[index].set(value);
 }
 
 template<typename T>
 template<typename U>
-void mat4<T>::setRow(I32 index, const U x, const U y, const U z, const U w) noexcept {
+FORCE_INLINE void mat4<T>::setRow(I32 index, const U x, const U y, const U z, const U w) noexcept {
     _vec[index].set(x, y, z, w);
 }
 
 template<typename T>
-const vec4<T>& mat4<T>::getRow(I32 index) const noexcept {
+FORCE_INLINE const vec4<T>& mat4<T>::getRow(I32 index) const noexcept {
     return _vec[index];
 }
 
 template<typename T>
 template<typename U>
-void mat4<T>::setCol(I32 index, const vec4<U> &value) noexcept {
+FORCE_INLINE void mat4<T>::setCol(I32 index, const vec4<U> &value) noexcept {
     setCol(index, value.x, value.y, value.z, value.w);
 }
 
 template<typename T>
 template<typename U>
-void mat4<T>::setCol(I32 index, const U value) noexcept {
+FORCE_INLINE void mat4<T>::setCol(I32 index, const U value) noexcept {
     m[0][index] = static_cast<T>(value);
     m[1][index] = static_cast<T>(value);
     m[2][index] = static_cast<T>(value);
@@ -1916,7 +1916,7 @@ void mat4<T>::setCol(I32 index, const U value) noexcept {
 
 template<typename T>
 template<typename U>
-void mat4<T>::setCol(I32 index, const U x, const U y, const U z, const U w) noexcept {
+FORCE_INLINE void mat4<T>::setCol(I32 index, const U x, const U y, const U z, const U w) noexcept {
     m[0][index] = static_cast<T>(x);
     m[1][index] = static_cast<T>(y);
     m[2][index] = static_cast<T>(z);
@@ -1924,7 +1924,7 @@ void mat4<T>::setCol(I32 index, const U x, const U y, const U z, const U w) noex
 }
 
 template<typename T>
-vec4<T> mat4<T>::getCol(I32 index) const noexcept {
+FORCE_INLINE vec4<T> mat4<T>::getCol(const I32 index) const noexcept {
     return {
         m[0][index],
         m[1][index],
@@ -1934,23 +1934,23 @@ vec4<T> mat4<T>::getCol(I32 index) const noexcept {
 }
 
 template<typename T>
-void mat4<T>::zero() noexcept {
+FORCE_INLINE void mat4<T>::zero() noexcept {
     memset(mat, 0, sizeof(T) * 16);
 }
 
 template<typename T>
-void mat4<T>::identity() noexcept {
+FORCE_INLINE void mat4<T>::identity() noexcept {
     memset(mat, 0, 16 * sizeof(T));
     m[0][0] = m[1][1] = m[2][2] = m[3][3] = static_cast<T>(1);
 }
 
 template<typename T>
-bool mat4<T>::isIdentity() const noexcept {
+FORCE_INLINE bool mat4<T>::isIdentity() const noexcept {
     return *this == MAT4_IDENTITY;
 }
 
 template<typename T>
-bool mat4<T>::isUniformScale() const noexcept {
+FORCE_INLINE bool mat4<T>::isUniformScale() const noexcept {
     return getScale().isUniform();
 }
 
@@ -1985,14 +1985,14 @@ void mat4<T>::swap(mat4 &B) noexcept {
 }
 
 template<typename T>
-T mat4<T>::det() const noexcept {
+FORCE_INLINE T mat4<T>::det() const noexcept {
     return mat[0] * mat[5] * mat[10] + mat[4] * mat[9] * mat[2] +
-        mat[8] * mat[1] * mat[6]  - mat[8] * mat[5] * mat[2] -
-        mat[4] * mat[1] * mat[10] - mat[0] * mat[9] * mat[6];
+           mat[8] * mat[1] * mat[6]  - mat[8] * mat[5] * mat[2] -
+           mat[4] * mat[1] * mat[10] - mat[0] * mat[9] * mat[6];
 }
 
 template<typename T>
-T mat4<T>::elementSum() const noexcept {
+FORCE_INLINE T mat4<T>::elementSum() const noexcept {
     return mat[0]  + mat[1]  + mat[2]  + mat[3]  +
            mat[4]  + mat[5]  + mat[6]  + mat[7]  +
            mat[8]  + mat[9]  + mat[10] + mat[11] +
@@ -2000,14 +2000,14 @@ T mat4<T>::elementSum() const noexcept {
 }
 
 template<typename T>
-void mat4<T>::orthoNormalize() {
+FORCE_INLINE void mat4<T>::orthoNormalize() {
     _comp.right.normalize();
     _comp.up.normalize();
     _comp.dir.normalize();
 }
 
 template<typename T>
-void mat4<T>::inverse() noexcept {
+FORCE_INLINE void mat4<T>::inverse() noexcept {
     Inverse(mat, mat);
 }
 
@@ -2019,7 +2019,7 @@ inline void mat4<F32>::inverse() noexcept {
 }
 
 template<typename T>
-void mat4<T>::transpose() noexcept {
+FORCE_INLINE void mat4<T>::transpose() noexcept {
     set({
         mat[0], mat[4], mat[8],  mat[12],
         mat[1], mat[5], mat[9],  mat[13],
@@ -2036,7 +2036,7 @@ void mat4<T>::inverseTranspose() noexcept {
 }
 
 template<typename T>
-mat4<T> mat4<T>::transposeRotation() const noexcept {
+FORCE_INLINE mat4<T> mat4<T>::transposeRotation() const noexcept {
     set({ mat[0],   mat[4],  mat[8], mat[3],
           mat[1],   mat[5],  mat[9], mat[7],
           mat[2],   mat[6], mat[10], mat[11],
@@ -2059,17 +2059,17 @@ inline mat4<F32> mat4<F32>::getInverse() const noexcept {
 }
 
 template<typename T>
-void mat4<T>::getInverse(mat4 &ret) const noexcept {
+FORCE_INLINE void mat4<T>::getInverse(mat4 &ret) const noexcept {
     Inverse(mat, ret.mat);
 }
 
 template<>
-inline void mat4<F32>::getInverse(mat4<F32> &ret) const noexcept {
+FORCE_INLINE void mat4<F32>::getInverse(mat4<F32> &ret) const noexcept {
     AVX::GetInverse(*this, ret);
 }
 
 template<typename T>
-mat4<T> mat4<T>::getTranspose() const noexcept {
+FORCE_INLINE mat4<T> mat4<T>::getTranspose() const noexcept {
     return mat4({mat[0], mat[4], mat[8],  mat[12],
                  mat[1], mat[5], mat[9],  mat[13],
                  mat[2], mat[6], mat[10], mat[14],
@@ -2077,7 +2077,7 @@ mat4<T> mat4<T>::getTranspose() const noexcept {
 }
 
 template<typename T>
-void mat4<T>::getTranspose(mat4 &out) const noexcept {
+FORCE_INLINE void mat4<T>::getTranspose(mat4 &out) const noexcept {
     out.set({mat[0], mat[4], mat[8],  mat[12],
              mat[1], mat[5], mat[9],  mat[13],
              mat[2], mat[6], mat[10], mat[14],
@@ -2101,13 +2101,13 @@ inline mat4<F32> mat4<F32>::getInverseTranspose() const noexcept {
 }
 
 template<typename T>
-void mat4<T>::getInverseTranspose(mat4 &ret) const noexcept {
+FORCE_INLINE void mat4<T>::getInverseTranspose(mat4 &ret) const noexcept {
     Inverse(mat, ret.mat);
     ret.transpose();
 }
 
 template<>
-inline void mat4<F32>::getInverseTranspose(mat4<F32> &ret) const noexcept {
+FORCE_INLINE void mat4<F32>::getInverseTranspose(mat4<F32> &ret) const noexcept {
     AVX::GetInverse(*this, ret);
     ret.transpose();
 }
@@ -2121,7 +2121,7 @@ mat4<T> mat4<T>::getTransposeRotation() const noexcept {
 }
 
 template<typename T>
-void mat4<T>::getTransposeRotation(mat4 &ret) const noexcept {
+FORCE_INLINE void mat4<T>::getTransposeRotation(mat4 &ret) const noexcept {
     ret.set(mat[0],  mat[4],  mat[8],  mat[3],
             mat[1],  mat[5],  mat[9],  mat[7],
             mat[2],  mat[6],  mat[10], mat[11],
@@ -2155,7 +2155,7 @@ void mat4<T>::fromRotation(U x, U y, U z, Angle::RADIANS<U> angle) {
 
 template<typename T>
 template<typename U>
-void mat4<T>::fromXRotation(Angle::RADIANS<U> angle) noexcept {
+FORCE_INLINE void mat4<T>::fromXRotation(Angle::RADIANS<U> angle) noexcept {
     const U c = std::cos(angle);
     const U s = std::sin(angle);
 
@@ -2167,7 +2167,7 @@ void mat4<T>::fromXRotation(Angle::RADIANS<U> angle) noexcept {
 
 template<typename T>
 template<typename U>
-void mat4<T>::fromYRotation(Angle::RADIANS<U> angle) noexcept {
+FORCE_INLINE void mat4<T>::fromYRotation(Angle::RADIANS<U> angle) noexcept {
     const U c = std::cos(angle);
     const U s = std::sin(angle);
 
@@ -2179,7 +2179,7 @@ void mat4<T>::fromYRotation(Angle::RADIANS<U> angle) noexcept {
 
 template<typename T>
 template<typename U>
-void mat4<T>::fromZRotation(Angle::RADIANS<U> angle) noexcept {
+FORCE_INLINE void mat4<T>::fromZRotation(Angle::RADIANS<U> angle) noexcept {
     const U c = std::cos(angle);
     const U s = std::sin(angle);
 
@@ -2191,13 +2191,13 @@ void mat4<T>::fromZRotation(Angle::RADIANS<U> angle) noexcept {
 
 template<typename T>
 template<typename U>
-void mat4<T>::setTranslation(const vec3<U> &v) noexcept {
+FORCE_INLINE void mat4<T>::setTranslation(const vec3<U> &v) noexcept {
     setTranslation(v.x, v.y, v.z);
 }
 
 template<typename T>
 template<typename U>
-void mat4<T>::setTranslation(U x, U y, U z) noexcept {
+FORCE_INLINE void mat4<T>::setTranslation(U x, U y, U z) noexcept {
     mat[12] = static_cast<T>(x);
     mat[13] = static_cast<T>(y);
     mat[14] = static_cast<T>(z);
@@ -2205,7 +2205,7 @@ void mat4<T>::setTranslation(U x, U y, U z) noexcept {
 
 template<typename T>
 template<typename U>
-void mat4<T>::setScale(U x, U y, U z) noexcept {
+FORCE_INLINE void mat4<T>::setScale(U x, U y, U z) noexcept {
     mat[0]  = static_cast<T>(x);
     mat[5]  = static_cast<T>(y);
     mat[10] = static_cast<T>(z);
@@ -2213,12 +2213,12 @@ void mat4<T>::setScale(U x, U y, U z) noexcept {
 
 template<typename T>
 template<typename U>
-void mat4<T>::setScale(const vec3<U> &v) noexcept {
+FORCE_INLINE void mat4<T>::setScale(const vec3<U> &v) noexcept {
     setScale(v.x, v.y, v.z);
 }
 
 template<typename T>
-vec3<T> mat4<T>::getScale() const noexcept {
+FORCE_INLINE vec3<T> mat4<T>::getScale() const noexcept {
     return vec3<T>(getCol(0).xyz().length(),
                    getCol(1).xyz().length(),
                    getCol(2).xyz().length());
@@ -2226,17 +2226,17 @@ vec3<T> mat4<T>::getScale() const noexcept {
 
 template<typename T>
 template<typename U>
-vec3<U> mat4<T>::transform(const vec3<U> &v, bool homogeneous) const {
+FORCE_INLINE vec3<U> mat4<T>::transform(const vec3<U> &v, bool homogeneous) const {
     return  homogeneous ? transformHomogeneous(v)
                         : transformNonHomogeneous(v);
 }
 
 template<typename T>
 template<typename U>
-vec3<U> mat4<T>::transformHomogeneous(const vec3<U> &v) const {
+FORCE_INLINE vec3<U> mat4<T>::transformHomogeneous(const vec3<U> &v) const {
     //Transforms the given 3-D vector by the matrix, projecting the result back into <i>w</i> = 1. (OGRE reference)
-    F32 fInvW = 1.0f / (m[0][3] * v.x + m[1][3] * v.y +
-                        m[2][3] * v.z + m[3][3]);
+    const F32 fInvW = 1.f / (m[0][3] * v.x + m[1][3] * v.y +
+                             m[2][3] * v.z + m[3][3]);
 
     return vec3<U>((m[0][0] * v.x + m[1][1] * v.y + m[2][0] * v.z + m[3][0]) * fInvW,
                    (m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1]) * fInvW,
@@ -2245,19 +2245,19 @@ vec3<U> mat4<T>::transformHomogeneous(const vec3<U> &v) const {
 
 template<typename T>
 template<typename U>
-vec3<U> mat4<T>::transformNonHomogeneous(const vec3<U> &v) const noexcept {
+FORCE_INLINE vec3<U> mat4<T>::transformNonHomogeneous(const vec3<U> &v) const noexcept {
     return *this * vec4<U>(v, static_cast<U>(0));
 }
 
 template<typename T>
 template<typename U>
-void mat4<T>::translate(const vec3<U> &v) noexcept {
+FORCE_INLINE void mat4<T>::translate(const vec3<U> &v) noexcept {
     translate(v.x, v.y, v.z);
 }
 
 template<typename T>
 template<typename U>
-void mat4<T>::translate(U x, U y, U z) noexcept {
+FORCE_INLINE void mat4<T>::translate(U x, U y, U z) noexcept {
     mat[12] += static_cast<T>(x);
     mat[13] += static_cast<T>(y);
     mat[14] += static_cast<T>(z);
@@ -2288,7 +2288,7 @@ void mat4<T>::scale(U x, U y, U z) noexcept {
 
 template<typename T>
 template<typename U>
-vec3<U> mat4<T>::getTranslation() const noexcept {
+FORCE_INLINE vec3<U> mat4<T>::getTranslation() const noexcept {
     return vec3<U>(mat[12], mat[13], mat[14]);
 }
 
@@ -2307,7 +2307,7 @@ mat4<T> mat4<T>::getRotation() const {
 
 template<typename T>
 template<typename U>
-const mat4<T>& mat4<T>::reflect(U x, U y, U z, U w) {
+FORCE_INLINE const mat4<T>& mat4<T>::reflect(U x, U y, U z, U w) {
     return reflect(Plane<U>(x, y, z, w));
 }
 
@@ -2335,26 +2335,23 @@ const mat4<T>& mat4<T>::reflect(const Plane<U> &plane) {
 template<typename T>
 template<typename U>
 void mat4<T>::lookAt(const vec3<U> &eye, const vec3<U> &target, const vec3<U> &up) {
-    vec3<U> zAxis(eye - target);
-    zAxis.normalize();
-    vec3<U> xAxis(Cross(up, zAxis));
-    xAxis.normalize();
-    vec3<U> yAxis(Cross(zAxis, xAxis));
-    yAxis.normalize();
+    const vec3<U> zAxis(Normalized(eye - target));
+    const vec3<U> xAxis(Normalized(Cross(up, zAxis)));
+    const vec3<U> yAxis(Normalized(Cross(zAxis, xAxis)));
 
-    m[0][0] = static_cast<T>(xAxis.x);
-    m[1][0] = static_cast<T>(xAxis.y);
-    m[2][0] = static_cast<T>(xAxis.z);
+    m[0][0] = static_cast<T>( xAxis.x);
+    m[1][0] = static_cast<T>( xAxis.y);
+    m[2][0] = static_cast<T>( xAxis.z);
     m[3][0] = static_cast<T>(-xAxis.dot(eye));
 
-    m[0][1] = static_cast<T>(yAxis.x);
-    m[1][1] = static_cast<T>(yAxis.y);
-    m[2][1] = static_cast<T>(yAxis.z);
+    m[0][1] = static_cast<T>( yAxis.x);
+    m[1][1] = static_cast<T>( yAxis.y);
+    m[2][1] = static_cast<T>( yAxis.z);
     m[3][1] = static_cast<T>(-yAxis.dot(eye));
 
-    m[0][2] = static_cast<T>(zAxis.x);
-    m[1][2] = static_cast<T>(zAxis.y);
-    m[2][2] = static_cast<T>(zAxis.z);
+    m[0][2] = static_cast<T>( zAxis.x);
+    m[1][2] = static_cast<T>( zAxis.y);
+    m[2][2] = static_cast<T>( zAxis.z);
     m[3][2] = static_cast<T>(-zAxis.dot(eye));
 
     m[0][3] = static_cast<T>(0);
@@ -2440,21 +2437,21 @@ mat4<T> mat4<T>::Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB) noexce
 }
 
 template<>
-inline void mat4<F32>::Multiply(const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret) noexcept {
+FORCE_INLINE void mat4<F32>::Multiply(const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret) noexcept {
 #if !defined(USE_AVX)
-    auto& retReg = ret._reg;
-    const auto& inputReg = matrixA._reg;
-    for (U8 i = 0; i < 4; ++i) {
-        retReg[i]._reg = AVX::lincomb_SSE(inputReg[i]._reg, matrixB);
-    }
-#else
+    ret._reg[0]._reg = AVX::lincomb_SSE(matrixA._reg[0]._reg, matrixB);
+    ret._reg[1]._reg = AVX::lincomb_SSE(matrixA._reg[1]._reg, matrixB);
+    ret._reg[2]._reg = AVX::lincomb_SSE(matrixA._reg[2]._reg, matrixB);
+    ret._reg[3]._reg = AVX::lincomb_SSE(matrixA._reg[3]._reg, matrixB);
+#else //!USE_AVX
     // using AVX instructions, 4-wide
     // this can be better if A is in memory.
     _mm256_zeroupper();
-    for (U8 i = 0; i < 4; ++i) {
-        ret._reg[i] = SimdVector<F32>(AVX::lincomb_AVX_4mem(matrixA.m[i], matrixB));
-    }
-#endif
+    ret._reg[0]._reg = AVX::lincomb_AVX_4mem(matrixA.m[0], matrixB);
+    ret._reg[1]._reg = AVX::lincomb_AVX_4mem(matrixA.m[1], matrixB);
+    ret._reg[2]._reg = AVX::lincomb_AVX_4mem(matrixA.m[2], matrixB);
+    ret._reg[3]._reg = AVX::lincomb_AVX_4mem(matrixA.m[3], matrixB);
+#endif //!USE_AVX
 }
 
 // Copyright 2011 The Closure Library Authors. All Rights Reserved.

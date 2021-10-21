@@ -120,14 +120,14 @@ void RenderBin::populateRenderQueue(const RenderStagePass stagePass, RenderQueue
     OPTICK_EVENT();
 
     const U16 binSize = getBinSize();
-    for (U16 i = 0; i < binSize; ++i) {
+    for (U16 i = 0u; i < binSize; ++i) {
         queueInOut.push_back(&_renderBinStack[i]._renderable->getDrawPackage(stagePass));
     }
 }
 
 void RenderBin::postRender(const SceneRenderState& renderState, const RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut) {
     const U16 binSize = getBinSize();
-    for (U16 i = 0; i < binSize; ++i) {
+    for (U16 i = 0u; i < binSize; ++i) {
         Attorney::RenderingCompRenderBin::postRender(_renderBinStack[i]._renderable, renderState, stagePass, bufferInOut);
     }
 }

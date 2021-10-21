@@ -118,7 +118,7 @@ Camera* Camera::findCameraInternal(U64 nameHash) {
 }
 
 bool Camera::removeChangeListener(const U32 id) {
-    const ListenerMap::const_iterator it = s_changeCameraListeners.find(id);
+    const auto it = s_changeCameraListeners.find(id);
     if (it != std::cend(s_changeCameraListeners)) {
         s_changeCameraListeners.erase(it);
         return true;
@@ -127,7 +127,7 @@ bool Camera::removeChangeListener(const U32 id) {
     return false;
 }
 
-U32 Camera::addChangeListener(const DELEGATE<void, const Camera&>& f) {
+U32 Camera::addChangeListener(const CameraListener& f) {
     insert(s_changeCameraListeners, ++s_changeCameraId, f);
     return s_changeCameraId;
 }

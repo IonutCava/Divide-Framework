@@ -45,12 +45,12 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _ssrShader->getGUID();
-        _pipeline = _context.newPipeline(pipelineDescriptor);
+        _pipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
     });
 
     const vec2<U16>& res = _parent.screenRT()._rt->getResolution();
 
-    _constants.set(_ID("size"), GFX::PushConstantType::VEC2, res);
+    _constantsCmd._constants.set(_ID("size"), GFX::PushConstantType::VEC2, res);
 
     const vec2<F32> s = res * 0.5f;
     _projToPixelBasis = mat4<F32>
@@ -74,16 +74,16 @@ bool SSRPreRenderOperator::ready() const {
 void SSRPreRenderOperator::parametersChanged() noexcept {
 
     const auto& parameters = _context.context().config().rendering.postFX.ssr;
-    _constants.set(_ID("maxSteps"), GFX::PushConstantType::FLOAT, to_F32(parameters.maxSteps));
-    _constants.set(_ID("binarySearchIterations"), GFX::PushConstantType::FLOAT, to_F32(parameters.binarySearchIterations));
-    _constants.set(_ID("jitterAmount"), GFX::PushConstantType::FLOAT, parameters.jitterAmount);
-    _constants.set(_ID("maxDistance"), GFX::PushConstantType::FLOAT, parameters.maxDistance);
-    _constants.set(_ID("stride"), GFX::PushConstantType::FLOAT, parameters.stride);
-    _constants.set(_ID("zThickness"), GFX::PushConstantType::FLOAT, parameters.zThickness);
-    _constants.set(_ID("strideZCutoff"), GFX::PushConstantType::FLOAT, parameters.strideZCutoff);
-    _constants.set(_ID("screenEdgeFadeStart"), GFX::PushConstantType::FLOAT, parameters.screenEdgeFadeStart);
-    _constants.set(_ID("eyeFadeStart"), GFX::PushConstantType::FLOAT, parameters.eyeFadeStart);
-    _constants.set(_ID("eyeFadeEnd"), GFX::PushConstantType::FLOAT, parameters.eyeFadeEnd);
+    _constantsCmd._constants.set(_ID("maxSteps"), GFX::PushConstantType::FLOAT, to_F32(parameters.maxSteps));
+    _constantsCmd._constants.set(_ID("binarySearchIterations"), GFX::PushConstantType::FLOAT, to_F32(parameters.binarySearchIterations));
+    _constantsCmd._constants.set(_ID("jitterAmount"), GFX::PushConstantType::FLOAT, parameters.jitterAmount);
+    _constantsCmd._constants.set(_ID("maxDistance"), GFX::PushConstantType::FLOAT, parameters.maxDistance);
+    _constantsCmd._constants.set(_ID("stride"), GFX::PushConstantType::FLOAT, parameters.stride);
+    _constantsCmd._constants.set(_ID("zThickness"), GFX::PushConstantType::FLOAT, parameters.zThickness);
+    _constantsCmd._constants.set(_ID("strideZCutoff"), GFX::PushConstantType::FLOAT, parameters.strideZCutoff);
+    _constantsCmd._constants.set(_ID("screenEdgeFadeStart"), GFX::PushConstantType::FLOAT, parameters.screenEdgeFadeStart);
+    _constantsCmd._constants.set(_ID("eyeFadeStart"), GFX::PushConstantType::FLOAT, parameters.eyeFadeStart);
+    _constantsCmd._constants.set(_ID("eyeFadeEnd"), GFX::PushConstantType::FLOAT, parameters.eyeFadeEnd);
     _constantsDirty = true;
 }
 
@@ -119,14 +119,14 @@ bool SSRPreRenderOperator::execute(const Camera* camera, const RenderTargetHandl
                     : skyTexture->descriptor().mipCount()
     };
 
-    _constants.set(_ID("projToPixel"), GFX::PushConstantType::MAT4, camera->projectionMatrix() * _projToPixelBasis);
-    _constants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, camera->projectionMatrix());
-    _constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, GetInverse(camera->projectionMatrix()));
-    _constants.set(_ID("invViewMatrix"), GFX::PushConstantType::MAT4, camera->worldMatrix());
-    _constants.set(_ID("mipCounts"), GFX::PushConstantType::UVEC3, mipCounts);
-    _constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
-    _constants.set(_ID("skyLayer"), GFX::PushConstantType::UINT, _context.getRenderer().postFX().isDayTime() ?  0u : 1u);
-    _constants.set(_ID("ssrEnabled"), GFX::PushConstantType::BOOL, _enabled);
+    _constantsCmd._constants.set(_ID("projToPixel"), GFX::PushConstantType::MAT4, camera->projectionMatrix() * _projToPixelBasis);
+    _constantsCmd._constants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, camera->projectionMatrix());
+    _constantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, GetInverse(camera->projectionMatrix()));
+    _constantsCmd._constants.set(_ID("invViewMatrix"), GFX::PushConstantType::MAT4, camera->worldMatrix());
+    _constantsCmd._constants.set(_ID("mipCounts"), GFX::PushConstantType::UVEC3, mipCounts);
+    _constantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
+    _constantsCmd._constants.set(_ID("skyLayer"), GFX::PushConstantType::UINT, _context.getRenderer().postFX().isDayTime() ?  0u : 1u);
+    _constantsCmd._constants.set(_ID("ssrEnabled"), GFX::PushConstantType::BOOL, _enabled);
 
     const auto& normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
     const auto& depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
@@ -136,37 +136,33 @@ bool SSRPreRenderOperator::execute(const Camera* camera, const RenderTargetHandl
     const TextureData depthTex = depthAtt.texture()->data();
 
     /// We need mipmaps for roughness based LoD lookup
-    GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-    computeMipMapsCommand._texture = screenAtt.texture().get();
-    computeMipMapsCommand._defer = false;
-    EnqueueCommand(bufferInOut, computeMipMapsCommand);
+    GFX::ComputeMipMapsCommand* mipCmd = GFX::EnqueueCommand<GFX::ComputeMipMapsCommand>(bufferInOut);
+    mipCmd->_texture = screenAtt.texture().get();
+    mipCmd->_defer = false;
 
-    GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-    descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });
-    descriptorSetCmd._set._textureData.add(TextureEntry{ depthTex, depthAtt.samplerHash(),TextureUsage::UNIT1 });
-    descriptorSetCmd._set._textureData.add(TextureEntry{ normalsTex, normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
+    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+    set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });
+    set._textureData.add(TextureEntry{ depthTex, depthAtt.samplerHash(),TextureUsage::UNIT1 });
+    set._textureData.add(TextureEntry{ normalsTex, normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
     if (skyTexture == nullptr) {
-        descriptorSetCmd._set._textureData.add(TextureEntry{ reflectionTexture->data(), environmentProbeAtt.samplerHash(), TextureUsage::REFLECTION_SKY });
+        set._textureData.add(TextureEntry{ reflectionTexture->data(), environmentProbeAtt.samplerHash(), TextureUsage::REFLECTION_SKY });
     } else {
-        descriptorSetCmd._set._textureData.add(TextureEntry{ skyTexture->data(), skySampler, TextureUsage::REFLECTION_SKY });
+        set._textureData.add(TextureEntry{ skyTexture->data(), skySampler, TextureUsage::REFLECTION_SKY });
     }
-    descriptorSetCmd._set._textureData.add(TextureEntry{ reflectionTexture->data(), environmentProbeAtt.samplerHash(), TextureUsage::REFLECTION_ENV });
+    set._textureData.add(TextureEntry{ reflectionTexture->data(), environmentProbeAtt.samplerHash(), TextureUsage::REFLECTION_ENV });
 
-    EnqueueCommand(bufferInOut, descriptorSetCmd);
+    GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+    renderPassCmd->_target = { RenderTargetUsage::SSR_RESULT };
+    renderPassCmd->_descriptor = _screenOnlyDraw;
+    renderPassCmd->_name = "DO_SSR_PASS";
 
-    GFX::BeginRenderPassCommand beginRenderPassCmd = {};
-    beginRenderPassCmd._target = { RenderTargetUsage::SSR_RESULT };
-    beginRenderPassCmd._descriptor = _screenOnlyDraw;
-    beginRenderPassCmd._name = "DO_SSR_PASS";
-    EnqueueCommand(bufferInOut, beginRenderPassCmd);
+    GFX::EnqueueCommand(bufferInOut, _pipelineCmd);
 
-    EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipeline });
+    GFX::EnqueueCommand(bufferInOut, _constantsCmd);
 
-    EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _constants });
+    GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
 
-    EnqueueCommand(bufferInOut, _triangleDrawCmd);
-
-    EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+    GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 
     return false;
 }

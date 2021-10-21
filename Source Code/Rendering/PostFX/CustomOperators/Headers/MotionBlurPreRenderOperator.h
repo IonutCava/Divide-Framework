@@ -50,8 +50,7 @@ class MotionBlurPreRenderOperator final : public PreRenderOperator {
     PROPERTY_RW(U8, maxSamples, 16u);
    private:
     ShaderProgram_ptr _blurApply = nullptr;
-    Pipeline* _blurApplyPipeline = nullptr;
-    PushConstants _blurApplyConstants;
+    GFX::BindPipelineCommand      _blurApplyPipelineCmd;
 };
 
 }  // namespace Divide

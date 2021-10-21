@@ -145,7 +145,7 @@ bool Camera::updateLookAt() {
     cameraUpdated = updateFrustum() || cameraUpdated;
     
     if (cameraUpdated) {
-        viewProjectionMatrix(mat4<F32>::Multiply(viewMatrix(), projectionMatrix()));
+        mat4<F32>::Multiply(_data._viewMatrix, _data._projectionMatrix, _viewProjectionMatrix);
 
         for (const auto& it : _updateCameraListeners) {
             it.second(*this);
@@ -176,7 +176,7 @@ bool Camera::removeUpdateListener(const U32 id) {
     return false;
 }
 
-U32 Camera::addUpdateListener(const DELEGATE<void, const Camera&>& f) {
+U32 Camera::addUpdateListener(const CameraListener& f) {
     insert(_updateCameraListeners, ++_updateCameraId, f);
     return _updateCameraId;
 }
@@ -311,8 +311,11 @@ bool Camera::updateFrustum() {
         return false;
     }
 
-    _frustum.Extract(viewMatrix(), projectionMatrix());
-    _data._frustumPlanes = _frustum.planes();
+    _frustumLocked = true;
+    updateLookAt();
+    _frustumLocked = false;
+
+    _data._frustumPlanes = _frustum.computePlanes(_viewProjectionMatrix);
     _frustumDirty = false;
 
     return true;

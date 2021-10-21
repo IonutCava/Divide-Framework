@@ -95,9 +95,8 @@ void Octree::update(const U64 deltaTimeUS) {
         }
 
         //now, remove the object from the current node and insert it into the current containing node.
-        const I64 guid = movedObj->getGUID();
         erase_if(_objects,
-                 [guid](SceneGraphNode* updatedNode) -> bool {
+                 [guid = movedObj->getGUID()](SceneGraphNode* updatedNode) -> bool {
                      SceneGraphNode* node = updatedNode;
                      return node && node->getGUID() == guid;
                  });

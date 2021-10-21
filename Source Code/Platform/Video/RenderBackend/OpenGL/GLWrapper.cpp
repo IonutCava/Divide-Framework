@@ -43,10 +43,11 @@ namespace {
 
 GLStateTracker GL_API::s_stateTracker;
 std::atomic_bool GL_API::s_glFlushQueued;
-GLUtil::glTextureViewCache GL_API::s_textureViewCache = {};
-GL_API::IMPrimitivePool GL_API::s_IMPrimitivePool = {};
-eastl::fixed_vector<BufferLockEntry, 64, true> GL_API::s_bufferLockQueueMidFlush;
-eastl::fixed_vector<BufferLockEntry, 64, true> GL_API::s_bufferLockQueueEndOfBuffer;
+GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
+GL_API::IMPrimitivePool GL_API::s_IMPrimitivePool{};
+moodycamel::ConcurrentQueue<GLsync> GL_API::s_fenceSyncDeletionQueue{};
+eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> GL_API::s_bufferLockQueueMidFlush;
+eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> GL_API::s_bufferLockQueueEndOfBuffer;
 
 //1GB for buffers?
 GLUtil::GLMemory::DeviceAllocator GL_API::s_memoryAllocator;
@@ -163,6 +164,12 @@ void GL_API::endFrame(DisplayWindow& window, const bool global) {
                         texture = {};
                     }
                 }
+            }
+
+            GLsync fence = nullptr;
+            while (s_fenceSyncDeletionQueue.try_dequeue(fence)) {
+                assert(fence != nullptr);
+                glDeleteSync(fence);
             }
         }
     }
@@ -760,9 +767,9 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
 
         U32 indexCount = 0u;
         switch (cmd._primitiveType) {
-            case PrimitiveType::TRIANGLES  : indexCount = cmd._drawCount * 3; break;
-            case PrimitiveType::API_POINTS : indexCount = cmd._drawCount; break;
-            case PrimitiveType::COUNT      : DIVIDE_UNEXPECTED_CALL(); break;
+            case PrimitiveType::TRIANGLES  : indexCount = cmd._drawCount * 3;  break;
+            case PrimitiveType::API_POINTS : indexCount = cmd._drawCount * 1;  break;
+            case PrimitiveType::COUNT      : DIVIDE_UNEXPECTED_CALL();         break;
             default                        : indexCount = cmd._cmd.indexCount; break;
         }
 
@@ -1144,7 +1151,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         {
             OPTICK_EVENT();
             const U32 frameIndex = _context.frameCount();
-            for (BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
+            for (const BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
                 if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
                     DIVIDE_UNEXPECTED_CALL();
                 }
@@ -1154,7 +1161,11 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
     }
 }
 
-void GL_API::RegisterBufferBind(BufferLockEntry&& data, const bool fenceAfterFirstDraw) {
+void GL_API::RegisterSyncDelete(GLsync fenceSync) {
+    s_fenceSyncDeletionQueue.enqueue(fenceSync);
+}
+
+void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAfterFirstDraw) {
     assert(Runtime::isMainThread());
     if (fenceAfterFirstDraw) {
         s_bufferLockQueueMidFlush.push_back(data);
@@ -1445,8 +1456,6 @@ bool GL_API::makeTexturesResident(TextureDataContainer& textureData, const Textu
 }
 
 bool GL_API::setViewport(const Rect<I32>& viewport) {
-    OPTICK_EVENT();
-
     return getStateTracker().setViewport(viewport);
 }
 

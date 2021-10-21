@@ -37,7 +37,7 @@
 #include <array>
 
 #include "ShadowMap.h"
-#include "Platform/Video/Headers/PushConstants.h"
+#include "Platform/Video/Headers/Commands.h"
 
 namespace Divide {
 
@@ -75,7 +75,7 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
   protected:
     Pipeline* _blurPipeline = nullptr;
     ShaderProgram_ptr _blurDepthMapShader = nullptr;
-    PushConstants     _shaderConstants;
+    GFX::SendPushConstantsCommand  _shaderConstantsCmd;
     RenderTargetHandle _drawBufferDepth;
     RenderTargetHandle _blurBuffer;
 };

@@ -141,12 +141,8 @@ void RenderPassManager::render(const RenderParams& params) {
 
             for (I8 i = 0u; i < renderPassCount; ++i)
             { //All of our render passes should run in parallel
-
-                RenderPass* pass = _renderPasses[i];
-
-                GFX::CommandBuffer* buf = _renderPassCommandBuffer[i];
                 _renderTasks[i] = CreateTask(nullptr,
-                                             [pass, buf, &sceneRenderState](const Task & parentTask) {
+                                             [pass = _renderPasses[i], buf = _renderPassCommandBuffer[i], &sceneRenderState](const Task & parentTask) {
                                                  OPTICK_EVENT("RenderPass: BuildCommandBuffer");
                                                  buf->clear(false);
                                                  pass->render(parentTask, sceneRenderState, *buf);
@@ -156,16 +152,13 @@ void RenderPassManager::render(const RenderParams& params) {
                 Start(*_renderTasks[i], pool, g_multiThreadedCommandGeneration ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
             }
             { //PostFX should be pretty fast
-                GFX::CommandBuffer* buf = _postFXCommandBuffer;
-
-                Time::ProfileTimer& timer = *_postFxRenderTimer;
                 postFXTask = CreateTask(nullptr,
-                                        [buf, &gfx, &cam, &timer](const Task & /*parentTask*/) {
+                                        [buf = _postFXCommandBuffer, &gfx, &cam, timer = _postFxRenderTimer](const Task & /*parentTask*/) {
                                             OPTICK_EVENT("PostFX: BuildCommandBuffer");
 
                                             buf->clear(false);
 
-                                            Time::ScopedTimer time(timer);
+                                            Time::ScopedTimer time(*timer);
                                             gfx.getRenderer().postFX().apply(cam, *buf);
                                             buf->batch();
                                         },

@@ -718,12 +718,12 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     Attorney::ShaderProgramKernel::UseShaderTextCache(config.debug.useShaderTextCache);
     Attorney::ShaderProgramKernel::UseShaderBinaryCache(config.debug.useShaderBinaryCache);
 
-    winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [this](const DisplayWindow::WindowEventArgs& ) {
-        _sceneManager->onChangeFocus(false);
+    winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _sceneManager](const DisplayWindow::WindowEventArgs& ) {
+        mgr->onChangeFocus(false);
         return true;
     });
-    winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS, [this](const DisplayWindow::WindowEventArgs& ) {
-        _sceneManager->onChangeFocus(true);
+    winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS, [mgr = _sceneManager](const DisplayWindow::WindowEventArgs& ) {
+        mgr->onChangeFocus(true);
         return true;
     });
 
@@ -781,8 +781,8 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
         if (!_platformContext.editor().init(config.runtime.resolution)) {
             return ErrorCode::EDITOR_INIT_ERROR;
         }
-        _sceneManager->addSelectionCallback([&](const PlayerIndex idx, const vector<SceneGraphNode*>& nodes) {
-            _platformContext.editor().selectionChangeCallback(idx, nodes);
+        _sceneManager->addSelectionCallback([ctx = &_platformContext](const PlayerIndex idx, const vector<SceneGraphNode*>& nodes) {
+            ctx->editor().selectionChangeCallback(idx, nodes);
         });
     }
     Console::printfn(Locale::Get(_ID("INITIAL_DATA_LOADED")));

@@ -79,9 +79,9 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
     PipelineDescriptor pipelineDescriptor = {};
     pipelineDescriptor._stateHash = _context.get2DStateBlock();
 
-    _shaderConstants.set(_ID("layerCount"), GFX::PushConstantType::INT, to_I32(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
-    _shaderConstants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, to_I32(0));
-    _shaderConstants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, to_I32(0));
+    _shaderConstantsCmd._constants.set(_ID("layerCount"),       GFX::PushConstantType::INT, to_I32(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
+    _shaderConstantsCmd._constants.set(_ID("layerOffsetRead"),  GFX::PushConstantType::INT, to_I32(0));
+    _shaderConstantsCmd._constants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, to_I32(0));
 
     std::array<vec2<F32>, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT> blurSizes;
     blurSizes.fill({1.0f / g_shadowSettings.csm.shadowMapResolution});
@@ -90,7 +90,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         blurSizes[i] = blurSizes[i - 1] / 2;
     }
 
-    _shaderConstants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSizes);
+    _shaderConstantsCmd._constants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSizes);
 
     SamplerDescriptor sampler = {};
     sampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
@@ -400,79 +400,81 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
     const I32 layerOffset = to_I32(light.getShadowOffset());
     const I32 layerCount = to_I32(light.csmSplitCount());
 
-    GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
-    blitRenderTargetCommand._source = _drawBufferDepth._targetID;
-    blitRenderTargetCommand._destination = g_depthMapID;
-
-    for (U8 i = 0; i < light.csmSplitCount(); ++i) {
-        blitRenderTargetCommand._blitColours[i].set(0u, 0u, i, to_U16(layerOffset + i));
+    GFX::BlitRenderTargetCommand* blitRenderTargetCommand = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>(bufferInOut);
+    blitRenderTargetCommand->_source = _drawBufferDepth._targetID;
+    blitRenderTargetCommand->_destination = g_depthMapID;
+    for (U8 i = 0u; i < light.csmSplitCount(); ++i) {
+        blitRenderTargetCommand->_blitColours[i].set(0u, 0u, i, to_U16(layerOffset + i));
     }
-
-    EnqueueCommand(bufferInOut, blitRenderTargetCommand);
 
     // Now we can either blur our target or just skip to mipmap computation
     if (g_shadowSettings.csm.enableBlurring) {
-        _shaderConstants.set(_ID("layerCount"), GFX::PushConstantType::INT, layerCount);
+        _shaderConstantsCmd._constants.set(_ID("layerCount"), GFX::PushConstantType::INT, layerCount);
 
-        GenericDrawCommand pointsCmd = {};
-        pointsCmd._primitiveType = PrimitiveType::API_POINTS;
-        pointsCmd._drawCount = 1;
+        static GFX::DrawCommand s_drawCmd{};
+        static GFX::BeginRenderPassCommand s_beginRenderPassHorizontalCmd{};
+        static GFX::BeginRenderPassCommand s_beginRenderPassVerticalCmd{};
+        static GFX::BindPipelineCommand s_blurPipelineCmd{};
 
-        GFX::DrawCommand drawCmd = { pointsCmd };
-        GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-        GFX::BeginRenderPassCommand beginRenderPassCmd = {};
-        GFX::SendPushConstantsCommand pushConstantsCommand = {};
+        static bool s_commandsInit = false;
+        if (!s_commandsInit) {
+            s_commandsInit = true;
 
+            GenericDrawCommand pointsCmd = {};
+            pointsCmd._primitiveType = PrimitiveType::API_POINTS;
+            pointsCmd._drawCount = 1;
+            s_drawCmd._drawCommands.push_back(pointsCmd);
+
+            s_beginRenderPassHorizontalCmd._target = _blurBuffer._targetID;
+            s_beginRenderPassHorizontalCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
+
+            s_beginRenderPassVerticalCmd._target = g_depthMapID;
+            s_beginRenderPassVerticalCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
+
+            s_blurPipelineCmd._pipeline = _blurPipeline;
+        }
+        
         // Blur horizontally
-        beginRenderPassCmd._target = _blurBuffer._targetID;
-        beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
-
         const auto& shadowAtt = shadowMapRT.getAttachment(RTAttachmentType::Colour, 0);
         TextureData texData = shadowAtt.texture()->data();
 
-        GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
+        GFX::ComputeMipMapsCommand computeMipMapsCommand{};
         computeMipMapsCommand._texture = shadowAtt.texture().get();
         computeMipMapsCommand._clearOnly = true;
-        EnqueueCommand(bufferInOut, computeMipMapsCommand);
+        GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
-        EnqueueCommand(bufferInOut, beginRenderPassCmd);
+        GFX::EnqueueCommand(bufferInOut, s_beginRenderPassHorizontalCmd);
 
-        EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurPipeline });
+        GFX::EnqueueCommand(bufferInOut, s_blurPipelineCmd);
 
-        descriptorSetCmd._set._textureData.add(TextureEntry{ texData, shadowAtt.samplerHash(),TextureUsage::UNIT0 });
-        EnqueueCommand(bufferInOut, descriptorSetCmd);
+        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ texData, shadowAtt.samplerHash(),TextureUsage::UNIT0 });
 
-        _shaderConstants.set(_ID("verticalBlur"), GFX::PushConstantType::BOOL, false);
-        _shaderConstants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, layerOffset);
-        _shaderConstants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, 0);
+        _shaderConstantsCmd._constants.set(_ID("verticalBlur"),     GFX::PushConstantType::BOOL, false);
+        _shaderConstantsCmd._constants.set(_ID("layerOffsetRead"),  GFX::PushConstantType::INT,  layerOffset);
+        _shaderConstantsCmd._constants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT,  0);
 
-        pushConstantsCommand._constants = _shaderConstants;
-        EnqueueCommand(bufferInOut, pushConstantsCommand);
+        GFX::EnqueueCommand(bufferInOut, _shaderConstantsCmd);
 
-        EnqueueCommand(bufferInOut, drawCmd);
+        GFX::EnqueueCommand(bufferInOut, s_drawCmd);
 
-        EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 
         // Blur vertically
         const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
         texData = blurAtt.texture()->data();
-        descriptorSetCmd._set._textureData.add(TextureEntry{ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
-        EnqueueCommand(bufferInOut, descriptorSetCmd);
+        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
 
-        beginRenderPassCmd._target = g_depthMapID;
-        beginRenderPassCmd._descriptor = {};
-        beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
-        EnqueueCommand(bufferInOut, beginRenderPassCmd);
+        GFX::EnqueueCommand(bufferInOut, s_beginRenderPassVerticalCmd);
 
-        pushConstantsCommand._constants.set(_ID("verticalBlur"), GFX::PushConstantType::BOOL, true);
-        pushConstantsCommand._constants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, 0);
-        pushConstantsCommand._constants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, layerOffset);
+        _shaderConstantsCmd._constants.set(_ID("verticalBlur"),     GFX::PushConstantType::BOOL, true);
+        _shaderConstantsCmd._constants.set(_ID("layerOffsetRead"),  GFX::PushConstantType::INT,  0);
+        _shaderConstantsCmd._constants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT,  layerOffset);
 
-        EnqueueCommand(bufferInOut, pushConstantsCommand);
+        GFX::EnqueueCommand(bufferInOut, _shaderConstantsCmd);
 
-        EnqueueCommand(bufferInOut, drawCmd);
+        GFX::EnqueueCommand(bufferInOut, s_drawCmd);
 
-        EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
     }
 }
 

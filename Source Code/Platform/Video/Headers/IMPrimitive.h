@@ -160,7 +160,6 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
     bool _forceWireframe = false;
     TextureEntry _textureEntry;
     Rect<I32> _viewport = {-1, -1, -1, -1};
-
    private:
     /// The transform matrix for this element
     mat4<F32> _worldMatrix;

@@ -44,14 +44,14 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _blurApply->getGUID();
 
-        _blurApplyPipeline = _context.newPipeline(pipelineDescriptor);
+        _blurApplyPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
     });
 
     parametersChanged();
 }
 
 bool MotionBlurPreRenderOperator::ready() const {
-    if (_blurApplyPipeline != nullptr) {
+    if (_blurApplyPipelineCmd._pipeline != nullptr) {
         return PreRenderOperator::ready();
     }
 
@@ -64,35 +64,31 @@ void MotionBlurPreRenderOperator::parametersChanged() {
 
 bool MotionBlurPreRenderOperator::execute(const Camera* camera, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
 
-    const F32 fps = _context.parent().platformContext().app().timer().getFps();
-    const F32 velocityScale = _context.context().config().rendering.postFX.motionBlur.velocityScale;
-    const F32 velocityFactor = fps / Config::TARGET_FRAME_RATE * velocityScale;
-    _blurApplyConstants.set(_ID("dvd_velocityScale"), GFX::PushConstantType::FLOAT, velocityFactor);
-    _blurApplyConstants.set(_ID("dvd_maxSamples"), GFX::PushConstantType::INT, to_I32(maxSamples()));
-
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
     const auto& velocityAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY));
 
-    const TextureData screenTex = screenAtt.texture()->data();
-    const TextureData velocityTex = velocityAtt.texture()->data();
+    const F32 fps = _context.parent().platformContext().app().timer().getFps();
+    const F32 velocityScale = _context.context().config().rendering.postFX.motionBlur.velocityScale;
+    const F32 velocityFactor = fps / Config::TARGET_FRAME_RATE * velocityScale;
 
-    GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-    descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
-    descriptorSetCmd._set._textureData.add(TextureEntry{ velocityTex, velocityAtt.samplerHash(),TextureUsage::UNIT1 });
-    EnqueueCommand(bufferInOut, descriptorSetCmd);
+    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+    set._textureData.add(TextureEntry{ screenAtt.texture()->data(),   screenAtt.samplerHash(),   TextureUsage::UNIT0 });
+    set._textureData.add(TextureEntry{ velocityAtt.texture()->data(), velocityAtt.samplerHash(), TextureUsage::UNIT1 });
 
-    GFX::BeginRenderPassCommand beginRenderPassCmd = {};
-    beginRenderPassCmd._target = output._targetID;
-    beginRenderPassCmd._descriptor = _screenOnlyDraw;
-    beginRenderPassCmd._name = "DO_MOTION_BLUR_PASS";
-    EnqueueCommand(bufferInOut, beginRenderPassCmd);
+    GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+    beginRenderPassCmd->_name = "DO_MOTION_BLUR_PASS";
+    beginRenderPassCmd->_target = output._targetID;
+    beginRenderPassCmd->_descriptor = _screenOnlyDraw;
 
-    EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurApplyPipeline });
-    EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _blurApplyConstants });
+    GFX::EnqueueCommand(bufferInOut, _blurApplyPipelineCmd);
 
-    EnqueueCommand(bufferInOut, _triangleDrawCmd);
+    PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants;
+    constants.set(_ID("dvd_velocityScale"), GFX::PushConstantType::FLOAT, velocityFactor);
+    constants.set(_ID("dvd_maxSamples"),    GFX::PushConstantType::INT,   to_I32(maxSamples()));
 
-    EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{ });
+    GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+
+    GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{ });
 
     return true;
 }

@@ -23,9 +23,8 @@ namespace Divide {
     void SDLEventManager::unregisterListener(SDLEventListener& listener) {
         ScopedLock<SharedMutex> lock(s_eventListenerLock);
 
-        const U64 targetID = listener.listenerID();
         const bool success = dvd_erase_if(s_eventListeners,
-                                          [targetID](SDLEventListener* l)
+                                          [targetID = listener.listenerID()](SDLEventListener* l)
                                           {
                                               return l && l->listenerID() == targetID;
                                           });

@@ -275,6 +275,8 @@ TEST(HashIsConstantExpr)
 
     constexpr U64 value2 = _ID_VIEW(str2.data(), str2.length());
     CHECK_EQUAL(value2, value);
+
+    CHECK_EQUAL(value, "TEST test TEST"_id);
 }
 
 TEST(TestRuntimeID)

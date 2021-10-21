@@ -188,34 +188,34 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
     _bufferObjects[buffer]->writeData(elementCountRange, elementCountOffset, queueIndex(), data);
 }
 
+void glGenericVertexData::bindBufferInternal(const U32 bufferIdx, const  U32 location) {
+    glGenericBuffer* buffer = _bufferObjects[bufferIdx];
+    const size_t elementSize = buffer->bufferImpl()->params()._bufferParams._elementSize;
+
+    BufferLockEntry entry;
+    entry._buffer = buffer->bufferImpl();
+    entry._length = buffer->elementCount() * elementSize;
+    entry._offset = entry._length * queueIndex();
+
+    GL_API::getStateTracker().bindActiveBuffer(_vertexArray, location, buffer->bufferHandle(), _instanceDivisor[bufferIdx], entry._offset, elementSize);
+    if (!buffer->bufferImpl()->params()._bufferParams._sync) {
+        _bufferLockQueue.push_back(entry);
+    } else {
+        GL_API::RegisterBufferBind(MOV(entry), true);
+    }
+}
+
 void glGenericVertexData::setBufferBindings(const GenericDrawCommand& command) {
     if (_bufferObjects.empty()) {
         return;
     }
 
-    const auto bindBuffer = [&](const U32 bufferIdx, const  U32 location) {
-        glGenericBuffer* buffer = _bufferObjects[bufferIdx];
-        const size_t elementSize = buffer->bufferImpl()->params()._bufferParams._elementSize;
-
-        BufferLockEntry entry;
-        entry._buffer = buffer->bufferImpl();
-        entry._length = buffer->elementCount() * elementSize;
-        entry._offset = entry._length * queueIndex();
-
-        GL_API::getStateTracker().bindActiveBuffer(_vertexArray, location, buffer->bufferHandle(), _instanceDivisor[bufferIdx], entry._offset, elementSize);
-        if (!buffer->bufferImpl()->params()._bufferParams._sync) {
-            _bufferLockQueue.push_back(entry);
-        } else {
-            GL_API::RegisterBufferBind(MOV(entry), true);
-        }
-    };
-
     if (command._bufferIndex == GenericDrawCommand::INVALID_BUFFER_INDEX) {
-        for (U32 i = 0; i < _bufferObjects.size(); ++i) {
-            bindBuffer(i, i);
+        for (U32 i = 0u; i < _bufferObjects.size(); ++i) {
+            bindBufferInternal(i, i);
         }
     } else {
-        bindBuffer(command._bufferIndex, 0u);
+        bindBufferInternal(command._bufferIndex, 0u);
     }
 }
 

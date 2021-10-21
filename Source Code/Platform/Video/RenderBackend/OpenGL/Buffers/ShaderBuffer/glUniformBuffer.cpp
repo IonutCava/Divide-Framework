@@ -93,9 +93,9 @@ void glUniformBuffer::writeBytes(const ptrdiff_t offsetInBytes, const ptrdiff_t 
 }
 
 bool glUniformBuffer::bindByteRange(const U8 bindIndex, const ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes) {
-    OPTICK_EVENT();
-
     if (rangeInBytes > 0) {
+        OPTICK_EVENT();
+
         assert(to_size(rangeInBytes) <= _maxSize && "glUniformBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
 
         return bufferImpl()->bindByteRange(bindIndex, getCorrectedOffset(offsetInBytes), getCorrectedRange(rangeInBytes));

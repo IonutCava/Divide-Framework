@@ -28,7 +28,7 @@ void glLockManager::wait(const bool blockClient) {
     if (_defaultSync != nullptr) {
         U8 retryCount = 0u;
         Wait(_defaultSync, blockClient, false, retryCount);
-        glDeleteSync(_defaultSync);
+        GL_API::RegisterSyncDelete(_defaultSync);
         _defaultSync = nullptr;
     }
 }
@@ -38,7 +38,6 @@ void glLockManager::lock() {
 
     ScopedLock<SharedMutex> lock(_syncMutex);
     assert(_defaultSync == nullptr);
-
     _defaultSync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 }
 

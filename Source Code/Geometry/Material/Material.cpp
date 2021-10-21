@@ -817,9 +817,8 @@ bool Material::unload() {
     }
     
     if (_baseMaterial != nullptr) {
-        const I64 guid = getGUID();
         erase_if(_baseMaterial->_instances,
-                 [guid](Material* instance) {
+                 [guid = getGUID()](Material* instance) {
                      return instance->getGUID() == guid;
                  });
     }

@@ -436,34 +436,30 @@ template <typename T>
 vec3<Angle::RADIANS<T>> Quaternion<T>::getEuler() const {
     vec3<Angle::RADIANS<T>> euler;
 
-    T& yaw = euler.yaw;
-    T& pitch = euler.pitch;
-    T& roll = euler.roll;
-
     const T& x = X();
     const T& y = Y();
     const T& z = Z();
     const T& w = W();
-    T sqx = x * x;
-    T sqy = y * y;
-    T sqz = z * z;
-    T sqw = w * w;
-    T test = x * y + z * w;
+    const T sqx = x * x;
+    const T sqy = y * y;
+    const T sqz = z * z;
+    const T sqw = w * w;
+    const T test = x * y + z * w;
     // if normalized is one, otherwise is correction factor
-    T unit = sqx + sqy + sqz + sqw;  
+    const T unit = sqx + sqy + sqz + sqw;  
 
     if (test > (0.5f - EPSILON_F32) * unit) {  // singularity at north pole
-        roll = 0;
-        pitch = 2 * std::atan2(x, w);
-        yaw = -static_cast<T>(M_PI2);
+        euler.roll  = 0;
+        euler.pitch = 2 * std::atan2(x, w);
+        euler.yaw   = -static_cast<T>(M_PI2);
     } else if (test < -(0.5f - EPSILON_F32) * unit) {  // singularity at south pole
-        roll = 0;
-        pitch = -2 * std::atan2(x, w);
-        yaw = static_cast<T>(M_PI2);
+        euler.roll  = 0;
+        euler.pitch = -2 * std::atan2(x, w);
+        euler.yaw   = static_cast<T>(M_PI2);
     } else {
-        roll  = std::atan2(2 * x * y + 2 * w * z, sqw + sqx - sqy - sqz);
-        pitch = std::atan2(2 * y * z + 2 * w * x, sqw - sqx - sqy + sqz);
-        yaw   = std::asin(-2 * (x * z - w * y));
+        euler.roll  = std::atan2(2 * x * y + 2 * w * z, sqw + sqx - sqy - sqz);
+        euler.pitch = std::atan2(2 * y * z + 2 * w * x, sqw - sqx - sqy + sqz);
+        euler.yaw   = std::asin(-2 * (x * z - w * y));
     }
 
     return euler;
@@ -473,7 +469,7 @@ template <typename T>
 void Quaternion<T>::fromAxes(const vec3<T>* axis) {
 
     mat3<T> rot;
-    for (U8 col = 0; col < 3; col++) {
+    for (U8 col = 0u; col < 3u; col++) {
         rot.setCol(col, axis[col]);
     }
 

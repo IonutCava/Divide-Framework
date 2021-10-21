@@ -267,6 +267,7 @@ BEGIN_COMMAND(BlitRenderTargetCommand, CommandType::BLIT_RT);
 END_COMMAND(BlitRenderTargetCommand);
 
 BEGIN_COMMAND(ClearRenderTargetCommand, CommandType::CLEAR_RT);
+    ClearRenderTargetCommand(const RenderTargetID& target, const RTClearDescriptor& descriptor) noexcept : _target(target), _descriptor(descriptor) {}
     RenderTargetID _target;
     RTClearDescriptor _descriptor;
 END_COMMAND(ClearRenderTargetCommand);
@@ -366,11 +367,16 @@ BEGIN_COMMAND(DrawIMGUICommand, CommandType::DRAW_IMGUI);
 END_COMMAND(DrawIMGUICommand);
 
 BEGIN_COMMAND(DispatchComputeCommand, CommandType::DISPATCH_COMPUTE);
+    DispatchComputeCommand(const U32 xGroupSize, const U32 yGroupSize, const U32 zGroupSize) noexcept : _computeGroupSize(xGroupSize, yGroupSize, zGroupSize) {}
+    DispatchComputeCommand(const vec3<U32>& groupSize) noexcept : _computeGroupSize(groupSize) {}
+
     vec3<U32> _computeGroupSize;
 END_COMMAND(DispatchComputeCommand);
 
 BEGIN_COMMAND(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);
-    U32 _barrierMask = 0;
+    MemoryBarrierCommand(const U32 mask) noexcept : _barrierMask(mask) {}
+
+    U32 _barrierMask = 0u;
 END_COMMAND(MemoryBarrierCommand);
 
 BEGIN_COMMAND(ReadBufferDataCommand, CommandType::READ_BUFFER_DATA);

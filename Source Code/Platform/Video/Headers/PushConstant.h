@@ -110,7 +110,7 @@ namespace GFX {
         void clear();
 
         // Most often than not, data will be the size of a mat4 or lower, otherwise we'd just use shader storage buffers
-        eastl::fixed_vector<Byte, sizeof(F32) * 16, true> _buffer;
+        eastl::fixed_vector<Byte, sizeof(F32) * 16, true, eastl::dvd_allocator> _buffer;
         U64               _bindingHash;
         PushConstantType  _type = PushConstantType::COUNT;
     };
@@ -126,8 +126,7 @@ namespace GFX {
         } else {
             //Slooow. Avoid using in the rendering loop. Try caching
             vector<I32> temp(count);
-            std::transform(data, data + count, std::back_inserter(temp),
-                [](const bool e) noexcept { return e ? 1 : 0; });
+            std::transform(data, data + count, std::back_inserter(temp), [](const bool e) noexcept { return e ? 1 : 0; });
             set(temp.data(), count);
         }
     }

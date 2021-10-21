@@ -132,11 +132,7 @@ bool ScenePool::deleteScene(const I64 targetGUID) {
 
         {
             ScopedLock<SharedMutex> w_lock(_sceneLock);
-            eastl::erase_if(_createdScenes,
-                           [&targetGUID](const auto& s) -> bool
-                           {
-                               return s->getGUID() == targetGUID;
-                           });
+            erase_if(_createdScenes, [&targetGUID](const auto& s) -> bool { return s->getGUID() == targetGUID; });
         }
         return true;
     }

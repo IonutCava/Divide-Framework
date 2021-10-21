@@ -22,9 +22,9 @@ namespace {
 
     std::array<Console::OutputEntry, 16> g_outputCache;
 
-    moodycamel::BlockingConcurrentQueue<Console::OutputEntry>& outBuffer() {
-        static moodycamel::BlockingConcurrentQueue<Console::OutputEntry> buf;
-        return buf;
+    moodycamel::BlockingConcurrentQueue<Console::OutputEntry>& OutBuffer() {
+        static moodycamel::BlockingConcurrentQueue<Console::OutputEntry> s_OutputBuffer;
+        return s_OutputBuffer;
     }
 }
 
@@ -101,7 +101,7 @@ void Console::output(const char* text, const bool newline, const EntryType type)
         if (_immediateMode) {
             printToFile(entry);
         } else {
-            if (!outBuffer().enqueue(entry)) {
+            if (!OutBuffer().enqueue(entry)) {
                 // ToDo: Something happened. Handle it, maybe? -Ionut
                 printToFile(entry);
             }
@@ -127,7 +127,7 @@ void Console::flush() {
 
     size_t count;
     do {
-        count = outBuffer().try_dequeue_bulk(std::begin(g_outputCache), g_outputCache.size());
+        count = OutBuffer().try_dequeue_bulk(std::begin(g_outputCache), g_outputCache.size());
 
         for (size_t i = 0; i < count; ++i) {
             printToFile(g_outputCache[i]);

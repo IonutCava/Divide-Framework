@@ -25,7 +25,7 @@ namespace Divide {
 
 namespace {
     // Size factor for command and data buffers
-    constexpr U8 DataBufferRingSize = 3u;
+    constexpr U8 DataBufferRingSize = 4u;
 
     // We need a proper, time-based system, to check reflection budget
     namespace ReflectionUtil {
@@ -77,7 +77,7 @@ void RenderPass::initBufferData() {
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-    bufferDescriptor._bufferParams._syncEndOfCmdBuffer = true;
+    bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
 
     bufferDescriptor._ringBufferLength = DataBufferRingSize;
     bufferDescriptor._separateReadWrite = false;

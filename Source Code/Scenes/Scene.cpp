@@ -124,17 +124,20 @@ bool Scene::frameEnded() {
 bool Scene::idle() {  // Called when application is idle
     LightPool::idle();
 
-    {
-        SharedLock<SharedMutex> r_lock(_tasksMutex);
-        if (_tasks.empty()) {
-            return true;
+    if (!_tasks.empty()) {
+        // Check again to avoid race conditions
+        {
+            SharedLock<SharedMutex> r_lock(_tasksMutex);
+            if (_tasks.empty()) {
+                return true;
+            }
         }
-    }
 
-    ScopedLock<SharedMutex> r_lock(_tasksMutex);
-    dvd_erase_if(_tasks, [](Task* handle) -> bool {
-        return handle != nullptr && Finished(*handle);
-    });
+        ScopedLock<SharedMutex> r_lock(_tasksMutex);
+        dvd_erase_if(_tasks, [](Task* handle) -> bool {
+            return handle != nullptr && Finished(*handle);
+        });
+    }
 
     return true;
 }

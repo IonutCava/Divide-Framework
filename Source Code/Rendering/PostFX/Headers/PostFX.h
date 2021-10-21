@@ -165,7 +165,8 @@ private:
     bool _filtersDirty = true;
 
     Pipeline* _drawPipeline = nullptr;
-    PushConstants _drawConstants;
+    GFX::SendPushConstantsCommand _drawConstantsCmd;
+    GFX::SetCameraCommand _setCameraCmd;
 };
 
 }  // namespace Divide

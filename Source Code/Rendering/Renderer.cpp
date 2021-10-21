@@ -36,7 +36,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         _lightCullComputeShader = CreateResource<ShaderProgram>(cache, cullShaderDesc);
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._shaderProgramHandle = _lightCullComputeShader->getGUID();
-        _lightCullPipeline = _context.gfx().newPipeline(pipelineDescriptor);
+        _lightCullPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
     {
         computeDescriptor._sourceFile = "lightBuildClusteredAABBs.glsl";
@@ -48,7 +48,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._shaderProgramHandle = _lightBuildClusteredAABBsComputeShader->getGUID();
-        _lightBuildClusteredAABBsPipeline = _context.gfx().newPipeline(pipelineDescriptor);
+        _lightBuildClusteredAABBsPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
 
 
@@ -116,8 +116,8 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         _postFX->pushFilter(FilterType::FILTER_BLOOM);
     }
 
-    WAIT_FOR_CONDITION(_lightBuildClusteredAABBsPipeline != nullptr);
-    WAIT_FOR_CONDITION(_lightCullPipeline != nullptr);
+    WAIT_FOR_CONDITION(_lightCullPipelineCmd._pipeline != nullptr);
+    WAIT_FOR_CONDITION(_lightBuildClusteredAABBsPipelineCmd._pipeline != nullptr);
 }
 
 Renderer::~Renderer()
@@ -144,44 +144,24 @@ void Renderer::preRender(RenderStagePass stagePass,
         return;
     }
 
-    const Configuration& config = _context.config();
-    const U32 gridSizeZ = to_U32(config.rendering.lightClusteredSizes.z);
-    const U32 zThreads = gridSizeZ / Config::Lighting::ClusteredForward::CLUSTER_Z_THREADS;
-
-    GFX::BindPipelineCommand bindPipelineCmd = {};
-    GFX::DispatchComputeCommand computeCmd = {};
-    GFX::MemoryBarrierCommand memCmd = {};
+    const U32 zThreads = to_U32(_context.config().rendering.lightClusteredSizes.z) / Config::Lighting::ClusteredForward::CLUSTER_Z_THREADS;
 
     const mat4<F32>& projectionMatrix = camera->projectionMatrix();
     if (_previousProjMatrix != projectionMatrix) {
         _previousProjMatrix = projectionMatrix;
 
-        EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
-
-        bindPipelineCmd._pipeline = _lightBuildClusteredAABBsPipeline;
-        EnqueueCommand(bufferInOut, bindPipelineCmd);
-
-        computeCmd._computeGroupSize.set(1, 1, zThreads);
-        EnqueueCommand(bufferInOut, computeCmd);
-
-        memCmd._barrierMask = to_base(MemoryBarrierType::SHADER_STORAGE);
-        EnqueueCommand(bufferInOut, memCmd);
-
-        EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
+        GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
+        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, zThreads });
+        GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
+        GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
     }
 
-    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Cull Lights" });
-
-    bindPipelineCmd._pipeline = _lightCullPipeline;
-    EnqueueCommand(bufferInOut, bindPipelineCmd);
-
-    computeCmd._computeGroupSize.set(1, 1, zThreads);
-    EnqueueCommand(bufferInOut, computeCmd);
-
-    memCmd._barrierMask = to_base(MemoryBarrierType::BUFFER_UPDATE);
-    EnqueueCommand(bufferInOut, memCmd);
-
-    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Cull Lights" });
+    GFX::EnqueueCommand(bufferInOut, _lightCullPipelineCmd);
+    GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, zThreads });
+    GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::BUFFER_UPDATE) });
+    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
 }
 
 void Renderer::idle() const {

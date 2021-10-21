@@ -48,7 +48,7 @@ namespace Preprocessor{
             auto itBegin = cbegin(line);
             const auto itEnd = cend(line);
 
-            boost::wave::token_id ret = boost::wave::util::impl::skip_whitespace(itBegin, itEnd);
+            const boost::wave::token_id ret = boost::wave::util::impl::skip_whitespace(itBegin, itEnd);
 
             if (ret == boost::wave::T_IDENTIFIER) {
                 const auto& temp = (*itBegin).get_value();
@@ -267,6 +267,7 @@ namespace {
     moodycamel::BlockingConcurrentQueue<BinaryDumpEntry> g_sShaderBinaryDumpQueue;
     moodycamel::BlockingConcurrentQueue<TextDumpEntry>   g_sDumpToFileQueue;
     moodycamel::BlockingConcurrentQueue<ValidationEntry> g_sValidationQueue;
+    std::atomic_bool                                     g_newValidationQueueEntry;
 }
 
 void glShaderProgram::InitStaticData() {
@@ -291,6 +292,8 @@ void glShaderProgram::InitStaticData() {
     for (U8 i = 0u; i < to_base(ShaderType::COUNT) + 1; ++i) {
         shaderAtomExtensionHash[i] = _ID(shaderAtomExtensionName[i].c_str());
     }
+
+    std::atomic_init(&g_newValidationQueueEntry, false);
 }
 
 void glShaderProgram::DestroyStaticData() {
@@ -300,7 +303,7 @@ void glShaderProgram::DestroyStaticData() {
     }
 }
 
-void glShaderProgram::OnStartup(GFXDevice& /*context*/, ResourceCache* /*parentCache*/) {
+void glShaderProgram::OnStartup() {
     if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {
         FileWatcher& watcher = FileWatcherManager::allocateWatcher();
         s_shaderFileWatcherID = watcher.getGUID();
@@ -323,43 +326,46 @@ void glShaderProgram::OnShutdown() {
 }
 
 void glShaderProgram::ProcessValidationQueue() {
-    static ValidationEntry validationOutputCache;
+    bool expected = true;
+    if (g_newValidationQueueEntry.compare_exchange_strong(expected, false)) {
+        
+        ValidationEntry s_validationOutputCache;
+        if (g_sValidationQueue.try_dequeue(s_validationOutputCache)) {
+            glValidateProgramPipeline(s_validationOutputCache._handle);
 
-    if (g_sValidationQueue.try_dequeue(validationOutputCache)) {
-        glValidateProgramPipeline(validationOutputCache._handle);
-
-        GLint status = 1;
-        if (validationOutputCache._stageMask != UseProgramStageMask::GL_COMPUTE_SHADER_BIT) {
-            glGetProgramPipelineiv(validationOutputCache._handle, GL_VALIDATE_STATUS, &status);
-        }
-
-        // we print errors in debug and in release, but everything else only in debug
-        // the validation log is only retrieved if we request it. (i.e. in release,
-        // if the shader is validated, it isn't retrieved)
-        if (status == 0) {
-            // Query the size of the log
-            GLint length = 0;
-            glGetProgramPipelineiv(validationOutputCache._handle, GL_INFO_LOG_LENGTH, &length);
-            // If we actually have something in the validation log
-            if (length > 1) {
-                string validationBuffer;
-                validationBuffer.resize(length);
-                glGetProgramPipelineInfoLog(validationOutputCache._handle, length, nullptr, &validationBuffer[0]);
-
-                // To avoid overflowing the output buffers (both CEGUI and Console), limit the maximum output size
-                if (validationBuffer.size() > g_validationBufferMaxSize) {
-                    // On some systems, the program's disassembly is printed, and that can get quite large
-                    validationBuffer.resize(std::strlen(Locale::Get(_ID("GLSL_LINK_PROGRAM_LOG"))) + g_validationBufferMaxSize);
-                    // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
-                    validationBuffer.append(" ... ");
-                }
-                // Return the final message, whatever it may contain
-                Console::errorfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), validationOutputCache._handle, validationOutputCache._name.c_str(), validationBuffer.c_str());
-            } else {
-                Console::errorfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), validationOutputCache._handle, validationOutputCache._name.c_str(), "[ Couldn't retrieve info log! ]");
+            GLint status = 1;
+            if (s_validationOutputCache._stageMask != UseProgramStageMask::GL_COMPUTE_SHADER_BIT) {
+                glGetProgramPipelineiv(s_validationOutputCache._handle, GL_VALIDATE_STATUS, &status);
             }
-        } else {
-            Console::d_printfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), validationOutputCache._handle, validationOutputCache._name.c_str(), "[ OK! ]");
+
+            // we print errors in debug and in release, but everything else only in debug
+            // the validation log is only retrieved if we request it. (i.e. in release,
+            // if the shader is validated, it isn't retrieved)
+            if (status == 0) {
+                // Query the size of the log
+                GLint length = 0;
+                glGetProgramPipelineiv(s_validationOutputCache._handle, GL_INFO_LOG_LENGTH, &length);
+                // If we actually have something in the validation log
+                if (length > 1) {
+                    string validationBuffer;
+                    validationBuffer.resize(length);
+                    glGetProgramPipelineInfoLog(s_validationOutputCache._handle, length, nullptr, &validationBuffer[0]);
+
+                    // To avoid overflowing the output buffers (both CEGUI and Console), limit the maximum output size
+                    if (validationBuffer.size() > g_validationBufferMaxSize) {
+                        // On some systems, the program's disassembly is printed, and that can get quite large
+                        validationBuffer.resize(std::strlen(Locale::Get(_ID("GLSL_LINK_PROGRAM_LOG"))) + g_validationBufferMaxSize);
+                        // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
+                        validationBuffer.append(" ... ");
+                    }
+                    // Return the final message, whatever it may contain
+                    Console::errorfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), validationBuffer.c_str());
+                } else {
+                    Console::errorfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ Couldn't retrieve info log! ]");
+                }
+            } else {
+                Console::d_printfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ OK! ]");
+            }
         }
     }
 }
@@ -464,12 +470,15 @@ void glShaderProgram::queueValidation() {
 
         if_constexpr(Config::ENABLE_GPU_VALIDATION) {
             g_sValidationQueue.enqueue({ resourceName(), _handle, stageMask });
+            g_newValidationQueueEntry.store(true);
         }
     }
 }
 
 bool glShaderProgram::validatePreBind() {
     if (!isValid()) {
+        OPTICK_EVENT();
+
         assert(getState() == ResourceState::RES_LOADED);
         glCreateProgramPipelines(1, &_handle);
         glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
@@ -711,7 +720,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
 }
 
 void glShaderProgram::QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName) {
-    g_sDumpToFileQueue.enqueue({ sourceCode, fileName });
+    g_sDumpToFileQueue.enqueue({ fileName, sourceCode });
 }
 
 bool glShaderProgram::recompile(const bool force, bool& skipped) {
@@ -755,10 +764,10 @@ bool glShaderProgram::isValid() const {
 
 /// Bind this shader program
 std::pair<bool/*success*/, bool/*was bound*/>  glShaderProgram::bind() {
-    OPTICK_EVENT()
-
     // If the shader isn't ready or failed to link, stop here
     if (validatePreBind()) {
+        OPTICK_EVENT()
+
         // Set this program as the currently active one
         const bool newBind = GL_API::getStateTracker().setActiveShaderPipeline(_handle);
         queueValidation();

@@ -175,7 +175,7 @@ void IMPrimitive::fromLines(const Line* lines, const size_t count) {
             // Set the mode to line rendering
             begin(PrimitiveType::LINES);
                 // Add every line in the list to the batch
-                for (size_t i = 0; i < count; ++i) {
+                for (size_t i = 0u; i < count; ++i) {
                     const Line& line = lines[i];
                     attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line.colourStart()));
                     vertex(line.positionStart());
@@ -209,38 +209,26 @@ GFX::CommandBuffer& IMPrimitive::toCommandBuffer() const {
 
         DIVIDE_ASSERT(_pipeline->shaderProgramHandle() != 0, "IMPrimitive error: Draw call received without a valid shader defined!");
 
-        GenericDrawCommand cmd;
-        cmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
-        cmd._sourceBuffer = handle();
+        GFX::EnqueueCommand(*_cmdBuffer, GFX::BindPipelineCommand{ _pipeline });
 
-        PushConstants pushConstants;
+        PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(*_cmdBuffer)->_constants;
         // Inform the shader if we have (or don't have) a texture
-        pushConstants.set(_ID("useTexture"), GFX::PushConstantType::BOOL, IsValid(_textureEntry));
+        constants.set(_ID("useTexture"), GFX::PushConstantType::BOOL, IsValid(_textureEntry));
         // Upload the primitive's world matrix to the shader
-        pushConstants.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix());
-
-        GFX::BindPipelineCommand pipelineCommand;
-        pipelineCommand._pipeline = _pipeline;
-        EnqueueCommand(*_cmdBuffer, pipelineCommand);
-
-        GFX::SendPushConstantsCommand pushConstantsCommand;
-        pushConstantsCommand._constants = pushConstants;
-        EnqueueCommand(*_cmdBuffer, pushConstantsCommand);
+        constants.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix());
 
         if (IsValid(_textureEntry)) {
-            GFX::BindDescriptorSetsCommand descriptorSetCmd;
-            descriptorSetCmd._set._textureData.add(_textureEntry);
-            EnqueueCommand(*_cmdBuffer, descriptorSetCmd);
+            GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(*_cmdBuffer)->_set._textureData.add(_textureEntry);
         }
 
         if (_viewport != Rect<I32>(-1)) {
-            GFX::SetViewportCommand viewportCmd = {};
-            viewportCmd._viewport = _viewport;
-            EnqueueCommand(*_cmdBuffer, viewportCmd);
+            GFX::EnqueueCommand(*_cmdBuffer, GFX::SetViewportCommand{ _viewport });
         }
 
-        GFX::DrawCommand drawCommand = { cmd };
-        EnqueueCommand(*_cmdBuffer, drawCommand);
+        GenericDrawCommand cmd{};
+        cmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
+        cmd._sourceBuffer = handle();
+        GFX::EnqueueCommand(*_cmdBuffer, GFX::DrawCommand{ cmd });
 
         _cmdBufferDirty = false;
     }

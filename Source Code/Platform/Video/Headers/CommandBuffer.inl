@@ -41,16 +41,12 @@ void Command<T, EnumVal>::addToBuffer(CommandBuffer* buffer) const {
     buffer->add(static_cast<const T&>(*this));
 }
 
-inline void DELETE_CMD(CommandBase*& cmd) noexcept {
-    assert(cmd != nullptr);
-    const Deleter& deleter = cmd->getDeleter();
-    deleter.del(cmd);
-    assert(cmd == nullptr);
+FORCE_INLINE void DELETE_CMD(CommandBase*& cmd) noexcept {
+    cmd->getDeleter().del(cmd);
 }
 
-inline size_t RESERVE_CMD(U8 typeIndex) noexcept {
-    const CommandType cmdType = static_cast<CommandType>(typeIndex);
-    switch (cmdType) {
+FORCE_INLINE size_t RESERVE_CMD(const U8 typeIndex) noexcept {
+    switch (static_cast<CommandType>(typeIndex)) {
         case CommandType::BIND_DESCRIPTOR_SETS: return 2;
         case CommandType::SEND_PUSH_CONSTANTS : return 3;
         case CommandType::DRAW_COMMANDS       : return 4;
@@ -63,11 +59,25 @@ inline size_t RESERVE_CMD(U8 typeIndex) noexcept {
 template<typename T>
 typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
 CommandBuffer::allocateCommand() {
-    CommandEntry& newEntry = _commandOrder.emplace_back();
-    newEntry._typeIndex = static_cast<U8>(T::EType);
-    newEntry._elementIndex = _commandCount[newEntry._typeIndex]++;
+    const CommandEntry& newEntry = _commandOrder.emplace_back(to_U8(T::EType), _commandCount[to_U8(T::EType)]++);
 
-    return static_cast<T*>(_commands.get(newEntry));
+    return get<T>(newEntry);
+}
+
+template<typename T>
+typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
+CommandBuffer::add() {
+    T* mem = allocateCommand<T>();
+
+    if (mem != nullptr) {
+        *mem = {};
+    } else {
+        mem = CmdAllocator<T>::allocate();
+        _commands.insert<T>(to_base(mem->Type()), mem);
+    }
+
+    _batched = false;
+    return mem;
 }
 
 template<typename T>
@@ -79,7 +89,7 @@ CommandBuffer::add(const T& command) {
         *mem = command;
     } else {
         mem = CmdAllocator<T>::allocate(command);
-        _commands.insert<T>(to_base(command.Type()), mem);
+        _commands.insert<T>(to_base(mem->Type()), mem);
     }
 
     _batched = false;
@@ -90,11 +100,12 @@ template<typename T>
 typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
 CommandBuffer::add(const T&& command) {
     T* mem = allocateCommand<T>();
+
     if (mem != nullptr) {
         *mem = MOV(command);
     } else {
         mem = CmdAllocator<T>::allocate(MOV(command));
-        _commands.insert<T>(to_base(T::EType), mem);
+        _commands.insert<T>(to_base(mem->Type()), mem);
     }
 
     _batched = false;

@@ -102,10 +102,10 @@ void CommandBuffer::batch() {
 
     CommandBase* prevCommand;
 
-    const auto  EraseEmptyCommands = [this]() {
-        const size_t initialSize = _commandOrder.size();
-        erase_if(_commandOrder, [](const CommandEntry& entry) noexcept { return entry._data == PolyContainerEntry::INVALID_ENTRY_ID; });
-        return initialSize != _commandOrder.size();
+    const auto EraseEmptyCommands = [](CommandOrderContainer& commandOrder) {
+        const size_t initialSize = commandOrder.size();
+        erase_if(commandOrder, [](const CommandEntry& entry) noexcept { return entry._data == PolyContainerEntry::INVALID_ENTRY_ID; });
+        return initialSize != commandOrder.size();
     };
 
     do {
@@ -163,7 +163,7 @@ void CommandBuffer::batch() {
                 }
             }
         }
-    } while (EraseEmptyCommands());
+    } while (EraseEmptyCommands(_commandOrder));
 
     // Now try and merge ONLY End/Begin render pass (don't unbind a render target if we immediately bind a new one
     prevCommand = nullptr;
@@ -247,11 +247,11 @@ void CommandBuffer::batch() {
 }
 
 void CommandBuffer::clean() {
-    OPTICK_EVENT();
-
     if (_commandOrder.empty()) {
         return;
     }
+
+    OPTICK_EVENT();
 
     const Pipeline* prevPipeline = nullptr;
     const Rect<I32>* prevScissorRect = nullptr;

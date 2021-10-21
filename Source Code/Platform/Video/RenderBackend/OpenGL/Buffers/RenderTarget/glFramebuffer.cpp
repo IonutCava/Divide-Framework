@@ -126,11 +126,11 @@ void glFramebuffer::initAttachment(const RTAttachmentType type, const U8 index) 
 }
 
 void glFramebuffer::toggleAttachment(const RTAttachment& attachment, const AttachmentState state, bool layeredRendering) {
-    OPTICK_EVENT()
-
     if (!attachment.used()) {
         return;
     }
+
+    OPTICK_EVENT();
 
     const Texture_ptr& tex = attachment.texture(false);
     if (layeredRendering && tex->numLayers() == 1 && !IsCubeTexture(tex->descriptor().texType())) {
@@ -627,11 +627,11 @@ void glFramebuffer::drawToLayer(const DrawLayerParams& params) {
 }
 
 void glFramebuffer::setMipLevel(const U16 writeLevel) {
-    OPTICK_EVENT();
-
     if (writeLevel == U16_MAX) {
         return;
     }
+
+    OPTICK_EVENT();
 
     // This is needed because certain drivers need all attachments to use the same mip level
     // This is also VERY SLOW so it might be worth optimising it per-driver version / IHV
@@ -701,11 +701,11 @@ void glFramebuffer::queueCheckStatus() noexcept {
 }
 
 bool glFramebuffer::checkStatus() {
-    OPTICK_EVENT();
-
     if (!_statusCheckQueued) {
         return true;
     }
+
+    OPTICK_EVENT();
 
     _statusCheckQueued = false;
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {

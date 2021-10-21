@@ -37,11 +37,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 struct PushConstants {
+    PROPERTY_R_IW(vector_fast<GFX::PushConstant>, data);
+
     PushConstants() = default;
     explicit PushConstants(const GFX::PushConstant& constant) : _data{ constant } {}
     explicit PushConstants(GFX::PushConstant&& constant) : _data{ MOV(constant) } {}
-
-    vector<GFX::PushConstant> _data;
 
     void set(const GFX::PushConstant& constant);
 
@@ -77,8 +77,7 @@ struct PushConstants {
     [[nodiscard]] bool empty() const noexcept { return _data.empty(); }
     void countHint(const size_t count) { _data.reserve(count); }
 
-    vector<GFX::PushConstant>& data() noexcept { return _data; }
-    [[nodiscard]] const vector<GFX::PushConstant>& data() const noexcept { return _data; }
+    friend bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
 };
 
 bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);

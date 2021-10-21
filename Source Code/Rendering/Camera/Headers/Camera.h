@@ -75,6 +75,8 @@ namespace TypeUtil {
 class GFXDevice;
 class Camera : public Resource {
    public:
+    using CameraListener = DELEGATE<void, const Camera&>;
+
     static constexpr F32 s_minNearZ = 0.1f;
 
     enum class CameraType : U8 {
@@ -211,7 +213,7 @@ class Camera : public Resource {
     [[nodiscard]] vec2<F32> project(const vec3<F32>& worldCoords, const Rect<I32>& viewport) const noexcept;
 
     [[nodiscard]] bool removeUpdateListener(U32 id);
-    [[nodiscard]] U32 addUpdateListener(const DELEGATE<void, const Camera& /*updated camera*/>& f);
+    [[nodiscard]] U32 addUpdateListener(const CameraListener& f);
 
                   void flag(const U8 flag)       noexcept { _data._flag = flag; }
     [[nodiscard]] U8   flag()              const noexcept { return _data._flag; }
@@ -232,7 +234,7 @@ class Camera : public Resource {
     explicit Camera(const Str256& name, const CameraType& type, const vec3<F32>& eye = VECTOR3_ZERO);
 
    protected:
-    using ListenerMap = hashMap<U32, DELEGATE<void, const Camera&>>;
+    using ListenerMap = hashMap<U32, CameraListener>;
     ListenerMap _updateCameraListeners;
 
     CameraSnapshot _data;
@@ -288,7 +290,7 @@ class Camera : public Resource {
     }
 
     static bool removeChangeListener(U32 id);
-    static U32  addChangeListener(const DELEGATE<void, const Camera& /*new camera*/>& f);
+    static U32  addChangeListener(const CameraListener& f);
 
    private:
      static bool    destroyCameraInternal(Camera* camera);

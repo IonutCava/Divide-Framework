@@ -200,7 +200,7 @@ void RenderQueue::sort(const RenderStagePass& stagePass, const RenderBinType tar
     else
     {
         TaskPool& pool = parent().platformContext().taskPool(TaskPoolType::HIGH_PRIORITY);
-        Task* sortTask = CreateTask(DELEGATE<void, Task&>());
+        Task* sortTask = CreateTask(TASK_NOP);
         for (RenderBin* renderBin : _renderBins) {
             if (renderBin->getBinSize() > threadBias) {
                 const RenderingOrder sortOrder = renderOrder == RenderingOrder::COUNT ? getSortOrder(stagePass, renderBin->getType()) : renderOrder;

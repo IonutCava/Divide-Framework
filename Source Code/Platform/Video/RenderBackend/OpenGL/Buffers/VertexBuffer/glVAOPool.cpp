@@ -68,11 +68,11 @@ void glVAOPool::deallocate(GLuint& vao) {
     assert(Runtime::isMainThread());
 
     vector<std::pair<GLuint, bool>>::iterator it = eastl::find_if(eastl::begin(_pool),
-                                                                       eastl::end(_pool),
-                                                                       [vao](std::pair<GLuint, bool>& entry) noexcept
-                                                                       {
-                                                                           return entry.first == vao;
-                                                                       });
+                                                                  eastl::end(_pool),
+                                                                  [vao](std::pair<GLuint, bool>& entry) noexcept
+                                                                  {
+                                                                      return entry.first == vao;
+                                                                  });
 
     assert(it != eastl::cend(_pool));
     // We don't know what kind of state we may have in the current VAO so delete it and create a new one.

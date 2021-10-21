@@ -154,6 +154,7 @@ public:
     void showDebugCursor(bool state);
 
 protected:
+    void CEGUIDrawInternal();
     [[nodiscard]] GUIElement* getGUIElementImpl(I64 sceneID, U64 elementName, GUIType type) const;
     [[nodiscard]] GUIElement* getGUIElementImpl(I64 sceneID, I64 elementID, GUIType type) const;
     [[nodiscard]] TextureData getCEGUIRenderTextureData() const;

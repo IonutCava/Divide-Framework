@@ -47,8 +47,8 @@ class glLockManager;
 
 struct TextDumpEntry
 {
-    string _sourceCode;
     Str256 _name;
+    string _sourceCode;
 };
 
 struct BinaryDumpEntry
@@ -85,7 +85,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
 
     static void InitStaticData();
     static void DestroyStaticData();
-    static void OnStartup(GFXDevice& context, ResourceCache* parentCache);
+    static void OnStartup();
     static void OnShutdown();
     static void Idle(PlatformContext& platformContext);
 

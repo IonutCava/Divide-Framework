@@ -647,168 +647,194 @@ protected: \
 protected: \
     Type _##Name = Val; \
     PROPERTY_GET(Type, Name) \
+public:
 
 #define PROPERTY_R_IW_3_ARGS(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
     PROPERTY_GET(Type, Name) \
-    PROPERTY_SET_INTERNAL(Type, Name)
+    PROPERTY_SET_INTERNAL(Type, Name) \
+public:
 
 #define PROPERTY_RW_3_ARGS(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
-    PROPERTY_GET_SET(Type, Name)
+    PROPERTY_GET_SET(Type, Name) \
+public:
 
 #define PROPERTY_R_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
     PROPERTY_GET(Type, Name) \
+public:
 
 #define PROPERTY_R_IW_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
     PROPERTY_GET(Type, Name) \
-    PROPERTY_SET_INTERNAL(Type, Name)
+    PROPERTY_SET_INTERNAL(Type, Name) \
+public:
 
 #define PROPERTY_RW_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
-    PROPERTY_GET_SET(Type, Name)
+    PROPERTY_GET_SET(Type, Name) \
+public:
 
 //------------- PROPERTY_RW_INTERNAL
 #define PROPERTY_RW_3_ARGS_INTERNAL(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
-    PROPERTY_GET_SET_INTERNAL(Type, Name)
+    PROPERTY_GET_SET_INTERNAL(Type, Name) \
+public:
 
 #define PROPERTY_RW_2_ARGS_INTERNAL(Type, Name) \
 protected: \
     Type _##Name; \
-    PROPERTY_GET_SET_INTERNAL(Type, Name)
-
+    PROPERTY_GET_SET_INTERNAL(Type, Name)\
+public:
 
 //------------------- VIRTUAL_PROPERTY_RW
 #define VIRTUAL_PROPERTY_R_3_ARGS(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
     VIRTUAL_PROPERTY_GET(Type, Name) \
+public:
 
 #define VIRTUAL_PROPERTY_R_IW_3_ARGS(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
     VIRTUAL_PROPERTY_GET(Type, Name) \
-    VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name)
+    VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name) \
+public:
 
 #define VIRTUAL_PROPERTY_RW_3_ARGS(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
-    VIRTUAL_PROPERTY_GET_SET(Type, Name)
-
+    VIRTUAL_PROPERTY_GET_SET(Type, Name) \
+public:
 
 #define VIRTUAL_PROPERTY_R_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
     VIRTUAL_PROPERTY_GET(Type, Name) \
+public:
 
 #define VIRTUAL_PROPERTY_R_IW_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
     VIRTUAL_PROPERTY_GET(Type, Name) \
-    VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name)
+    VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name) \
+public:
 
 #define VIRTUAL_PROPERTY_RW_2_ARGS(Type, Name) \
 protected: \
     Type _##Name; \
-    VIRTUAL_PROPERTY_GET_SET(Type, Name)
+    VIRTUAL_PROPERTY_GET_SET(Type, Name) \
+public:
 
 //------------------- VIRTUAL_PROPERTY_RW_INTERNAL
 #define VIRTUAL_PROPERTY_RW_3_ARGS_INTERNAL(Type, Name, Val) \
 protected: \
     Type _##Name = Val; \
-    VIRTUAL_PROPERTY_GET_SET_INTERNAL(Type, Name)
+    VIRTUAL_PROPERTY_GET_SET_INTERNAL(Type, Name) \
+public:
 
 #define VIRTUAL_PROPERTY_RW_2_ARGS_INTERNAL(Type, Name) \
 protected: \
     Type _##Name; \
-    VIRTUAL_PROPERTY_GET_SET_INTERNAL(Type, Name)
+    VIRTUAL_PROPERTY_GET_SET_INTERNAL(Type, Name) \
+public:
 
 //-------------------- POINTER_RW
 #define POINTER_R_3_ARGS(Type, Name, Val) \
 protected: \
     Type* _##Name = Val; \
     POINTER_GET(Type, Name) \
+public:
 
 #define POINTER_R_IW_3_ARGS(Type, Name, Val) \
 protected: \
     Type* _##Name = Val; \
     POINTER_GET(Type, Name) \
-    POINTER_SET_INTERNAL(Type, Name)
+    POINTER_SET_INTERNAL(Type, Name) \
+public:
 
 #define POINTER_RW_3_ARGS(Type, Name, Val) \
 protected: \
     Type* _##Name = Val; \
-    POINTER_GET_SET(Type, Name)
-
+    POINTER_GET_SET(Type, Name) \
+public:
 
 #define POINTER_R_2_ARGS(Type, Name) \
 protected: \
     Type* _##Name; \
     POINTER_GET(Type, Name) \
+public:
 
 #define POINTER_R_IW_2_ARGS(Type, Name) \
 protected: \
     Type* _##Name; \
     POINTER_GET(Type, Name) \
-    POINTER_SET_INTERNAL(Type, Name)
+    POINTER_SET_INTERNAL(Type, Name) \
+public:
 
 #define POINTER_RW_2_ARGS(Type, Name) \
 protected: \
     Type* _##Name; \
-    POINTER_GET_SET(Type, Name)
+    POINTER_GET_SET(Type, Name) \
+public:
 
 //-------------------- POINTER_RW_INTERNAL
 #define POINTER_RW_3_ARGS_INTERNAL(Type, Name, Val) \
 protected: \
     Type* _##Name = Val; \
-    POINTER_GET_SET_INTERNAL(Type, Name)
+    POINTER_GET_SET_INTERNAL(Type, Name) \
+public:
 
 #define POINTER_RW_2_ARGS_INTERNAL(Type, Name) \
 protected: \
     Type* _##Name; \
-    POINTER_GET_SET_INTERNAL(Type, Name)
+    POINTER_GET_SET_INTERNAL(Type, Name) \
+public:
 
 //-------------------- REFERENCE_RW
 #define REFERENCE_R_3_ARGS(Type, Name, Val) \
 protected: \
     Type& _##Name = Val; \
     PROPERTY_GET(Type, Name) \
+public:
 
 #define REFERENCE_RW_3_ARGS(Type, Name, Val) \
 protected: \
     Type& _##Name = Val; \
-    PROPERTY_GET_SET(Type, Name)
-
+    PROPERTY_GET_SET(Type, Name) \
+public:
 
 #define REFERENCE_R_2_ARGS(Type, Name) \
 protected: \
     Type& _##Name; \
     PROPERTY_GET(Type, Name) \
+public:
 
 #define REFERENCE_RW_2_ARGS(Type, Name) \
 protected: \
     Type& _##Name; \
-    PROPERTY_GET_SET(Type, Name)
+    PROPERTY_GET_SET(Type, Name) \
+public:
 
 //-------------------- REFERENCE_RW_INTERNAL
 #define REFERENCE_RW_3_ARGS_INTERNAL(Type, Name, Val) \
 protected: \
     Type& _##Name = Val; \
-    PROPERTY_GET_SET_INTERNAL(Type, Name)
+    PROPERTY_GET_SET_INTERNAL(Type, Name) \
+public:
 
 #define REFERENCE_RW_2_ARGS_INTERNAL(Type, Name) \
 protected: \
     Type& _##Name; \
-    PROPERTY_GET_SET_INTERNAL(Type, Name)
+    PROPERTY_GET_SET_INTERNAL(Type, Name) \
+public:
 
 #define ___DETAIL_PROPERTY_RW_INTERNAL(...) EXP(GET_4TH_ARG(__VA_ARGS__, PROPERTY_RW_3_ARGS_INTERNAL, PROPERTY_RW_2_ARGS_INTERNAL, PROPERTY_RW_1_ARGS_INTERNAL, ))
 #define ___DETAIL_VIRTUAL_PROPERTY_RW_INTERNAL(...) EXP(GET_4TH_ARG(__VA_ARGS__, VIRTUAL_PROPERTY_RW_3_ARGS_INTERNAL, VIRTUAL_PROPERTY_RW_2_ARGS_INTERNAL, VIRTUAL_PROPERTY_RW_1_ARGS_INTERNAL, ))

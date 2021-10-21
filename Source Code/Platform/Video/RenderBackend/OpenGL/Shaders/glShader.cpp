@@ -20,7 +20,7 @@ namespace {
 
     size_t g_validationBufferMaxSize = 4096 * 16;
 
-    ShaderType GetShaderType(const UseProgramStageMask mask) noexcept {
+    FORCE_INLINE ShaderType GetShaderType(const UseProgramStageMask mask) noexcept {
         if (BitCompare(to_U32(mask), UseProgramStageMask::GL_VERTEX_SHADER_BIT)) {
             return ShaderType::VERTEX;
         }
@@ -44,7 +44,7 @@ namespace {
         return ShaderType::COUNT;
     }
 
-    UseProgramStageMask GetStageMask(const ShaderType type) noexcept {
+    FORCE_INLINE UseProgramStageMask GetStageMask(const ShaderType type) noexcept {
         switch (type) {
             case ShaderType::VERTEX: return UseProgramStageMask::GL_VERTEX_SHADER_BIT;
             case ShaderType::TESSELLATION_CTRL: return UseProgramStageMask::GL_TESS_CONTROL_SHADER_BIT;
@@ -56,6 +56,10 @@ namespace {
         }
 
         return UseProgramStageMask::GL_NONE_BIT;
+    }
+
+    FORCE_INLINE string GetUniformBufferName(glShader* shader) {
+        return "dvd_UniformBlock_" + Util::to_string(shader->getGUID());
     }
 }
 
@@ -219,7 +223,7 @@ bool glShader::uploadToGPU() {
             if_constexpr(glShaderProgram::g_useUniformConstantBuffer) {
                 glBufferedPushConstantUploaderDescriptor bufferDescriptor = {};
                 bufferDescriptor._programHandle = _programHandle;
-                bufferDescriptor._uniformBufferName = getUniformBufferName().c_str();
+                bufferDescriptor._uniformBufferName = GetUniformBufferName(this).c_str();
                 bufferDescriptor._parentShaderName = _name.c_str();
                 bufferDescriptor._blockIndex = blockIndex;
                 _constantUploader = eastl::make_unique<glBufferedPushConstantUploader>(bufferDescriptor);
@@ -242,7 +246,7 @@ bool glShader::load(const ShaderLoadData& data) {
     _loadData = data;
 
     const GLuint blockIndex = to_U32(ShaderBufferLocation::UNIFORM_BLOCK) + _loadData._uniformIndex;
-    const string uniformBlock = Util::StringFormat(_loadData._uniformBlock, blockIndex, getUniformBufferName());
+    const string uniformBlock = Util::StringFormat(_loadData._uniformBlock, blockIndex, GetUniformBufferName(this));
 
     for (LoadData& it : _loadData._data) {
         if (it._type != ShaderType::COUNT) {
@@ -425,14 +429,9 @@ bool glShader::DumpBinary(const GLuint handle, const Str256& name) {
     return ret;
 }
 
-
-string glShader::getUniformBufferName() const {
-    return "dvd_UniformBlock_" + Util::to_string(getGUID());
-}
-
 void glShader::uploadPushConstants(const PushConstants& constants) const {
     if (valid()) {
-        for (const auto& constant : constants._data) {
+        for (const GFX::PushConstant& constant : constants.data()) {
             _constantUploader->uploadPushConstant(constant);
         }
         _constantUploader->commit();

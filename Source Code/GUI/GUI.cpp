@@ -90,6 +90,13 @@ void GUI::onUnloadScene(Scene* const scene) {
     }
 }
 
+void GUI::CEGUIDrawInternal() {
+    _ceguiRenderer->beginRendering();
+    _ceguiRenderTextureTarget->clear();
+    _ceguiContext->draw();
+    _ceguiRenderer->endRendering();
+}
+
 void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut) {
     if (!_init || !_activeScene) {
         return;
@@ -129,14 +136,7 @@ void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer
     const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
 
     if (guiConfig.cegui.enabled) {
-        GFX::ExternalCommand ceguiDraw = {};
-        ceguiDraw._cbk = [this]() {
-            _ceguiRenderer->beginRendering();
-            _ceguiRenderTextureTarget->clear();
-            getCEGUIContext().draw();
-            _ceguiRenderer->endRendering();
-        };
-        EnqueueCommand(bufferInOut, ceguiDraw);
+        GFX::EnqueueCommand<GFX::ExternalCommand>(bufferInOut)->_cbk = [this]() { CEGUIDrawInternal(); };
 
         GFX::SetBlendCommand blendCmd = {};
         blendCmd._blendProperties = BlendingProperties{
@@ -145,7 +145,7 @@ void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer
             BlendOperation::ADD
         };
         blendCmd._blendProperties._enabled = true;
-        EnqueueCommand(bufferInOut, blendCmd);
+        GFX::EnqueueCommand(bufferInOut, blendCmd);
 
         context.drawTextureInViewport(getCEGUIRenderTextureData(), 0u, viewport, false, false, bufferInOut);
     }

@@ -349,7 +349,7 @@ ErrorCode GL_API::initRenderingAPI(GLint argc, char** argv, Configuration& confi
     // Initialize shader buffers
     glUniformBuffer::OnGLInit();
     // Init static program data
-    glShaderProgram::OnStartup(_context, _context.parent().resourceCache());
+    glShaderProgram::OnStartup();
     // We need a dummy VAO object for point rendering
     s_dummyVAO = s_vaoPool.allocate();
 

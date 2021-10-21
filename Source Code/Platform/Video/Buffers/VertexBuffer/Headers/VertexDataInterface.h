@@ -49,7 +49,7 @@ struct BufferParams
     U32 _elementCount = 0;
     size_t _elementSize = 0;     ///< Buffer primitive size in bytes
     bool _sync = true;
-    bool _syncEndOfCmdBuffer = true; ///< If true, a fence will be issued after the current command buffer finished flushing, otherwise it will be issued after the first draw/dispatch command
+    bool _syncAtEndOfCmdBuffer = true; ///< If true, a fence will be issued after the current command buffer finished flushing, otherwise it will be issued after the first draw/dispatch command
     bool _usePersistentMapping = true;
 
     BufferUpdateFrequency _updateFrequency = BufferUpdateFrequency::COUNT;

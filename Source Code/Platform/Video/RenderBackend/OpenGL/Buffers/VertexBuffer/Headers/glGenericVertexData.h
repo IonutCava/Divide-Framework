@@ -95,6 +95,7 @@ class glGenericVertexData final : public GenericVertexData,
     void draw(const GenericDrawCommand& command) override;
 
    protected:
+    void bindBufferInternal(U32 bufferIdx, U32 location);
     void setBufferBindings(const GenericDrawCommand& command);
     void setAttributes(const GenericDrawCommand& command);
     void setAttributeInternal(const GenericDrawCommand& command, AttributeDescriptor& descriptor) const;
@@ -109,7 +110,7 @@ class glGenericVertexData final : public GenericVertexData,
     GLuint _vertexArray;
     vector<glGenericBuffer*> _bufferObjects;
     vector<U32> _instanceDivisor;
-    eastl::fixed_vector<BufferLockEntry, 64, true> _bufferLockQueue;
+    eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> _bufferLockQueue;
 };
 
 };  // namespace Divide

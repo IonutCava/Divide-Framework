@@ -39,10 +39,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
     // Can be anything really, but we can just have a series of Bind commands in a row as well
+
     constexpr U8 MAX_BUFFERS_PER_SET = 4u;
     constexpr U8 MAX_TEXTURE_VIEWS_PER_SET = 3u;
     constexpr U8 MAX_IMAGES_PER_SET = 2u;
-    constexpr U8 MAX_TEXTURES_PER_SET = to_base(TextureUsage::COUNT);
+    constexpr U8 MAX_TEXTURES_PER_SET = to_base(TextureUsage::COUNT) / 2;
 
     class ShaderBuffer;
     struct ShaderBufferBinding
@@ -99,11 +100,15 @@ namespace Divide {
     template<typename Item, size_t Count, typename SearchType, bool CanExpand = false>
     struct SetContainerStorage
     {
-        eastl::fixed_vector<Item, Count, CanExpand> _entries;
+        template<bool Dynamic>
+        using vector_allocator = typename std::conditional<Dynamic, eastl::dvd_allocator, eastl::aligned_allocator>::type;
+
+        eastl::fixed_vector<Item, Count, CanExpand, vector_allocator<CanExpand>> _entries;
 
         [[nodiscard]] const Item* find(SearchType search) const;
-        [[nodiscard]] bool empty() const noexcept { return _entries.empty(); }
-        [[nodiscard]] size_t count() const noexcept { return _entries.size(); }
+
+        FORCE_INLINE [[nodiscard]] bool   empty() const noexcept { return _entries.empty(); }
+        FORCE_INLINE [[nodiscard]] size_t count() const noexcept { return _entries.size(); }
     };
 
     template<typename Item, size_t Count, typename SearchType, bool CanExpand = false>
@@ -116,6 +121,7 @@ namespace Divide {
     using ShaderBuffers = SetContainer<ShaderBufferBinding, MAX_BUFFERS_PER_SET, ShaderBufferLocation>;
     using TextureViews = SetContainer<TextureViewEntry, MAX_TEXTURE_VIEWS_PER_SET, U8>;
     using Images = SetContainer<Image, MAX_IMAGES_PER_SET, U8>;
+
     struct TextureDataContainer final : SetContainerStorage<TextureEntry, MAX_TEXTURES_PER_SET, U8, true>
     {
         TextureUpdateState add(const TextureEntry& entry);

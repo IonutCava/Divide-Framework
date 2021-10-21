@@ -16,12 +16,8 @@ void PushConstants::set(const GFX::PushConstant& constant) {
 }
 
 bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial) {
-    vector<GFX::PushConstant>& ourConstants = lhs._data;
-    const vector<GFX::PushConstant>& otherConstants = rhs._data;
-
-    // Check stage
-    for (const GFX::PushConstant& ourConstant : ourConstants) {
-        for (const GFX::PushConstant& otherConstant : otherConstants) {
+    for (const GFX::PushConstant& ourConstant : lhs._data) {
+        for (const GFX::PushConstant& otherConstant : rhs._data) {
             // If we have the same binding, but different data, merging isn't possible
             if (ourConstant._bindingHash == otherConstant._bindingHash &&
                 ourConstant._buffer != otherConstant._buffer)
@@ -33,7 +29,7 @@ bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial) {
 
     // Merge stage
     partial = true;
-    insert_unique(ourConstants, otherConstants);
+    insert_unique(lhs._data, rhs._data);
 
     return true;
 }

@@ -226,7 +226,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         bufferDescriptor._name = "DVD_GPU_DATA";
         bufferDescriptor._flags = to_base(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
         bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._bufferParams._syncEndOfCmdBuffer = false;
+        bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = false;
         bufferDescriptor._bufferParams._usePersistentMapping = false;
         bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::GPUData);
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
@@ -700,7 +700,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
-                _BlurBoxPipelineSingle = newPipeline(pipelineDescriptor);
+                _blurBoxPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
         {
@@ -718,7 +718,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
-                _BlurBoxPipelineLayered = newPipeline(pipelineDescriptor);
+                _blurBoxPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
     }
@@ -749,7 +749,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
-                _BlurGaussianPipelineSingle = newPipeline(pipelineDescriptor);
+                _blurGaussianPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
         {
@@ -770,7 +770,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
-                _BlurGaussianPipelineLayered = newPipeline(pipelineDescriptor);
+                _blurGaussianPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
     }
@@ -795,7 +795,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor = {};
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = _displayShader->getGUID();
-                _DrawFSTexturePipeline = newPipeline(pipelineDescriptor);
+                _drawFSTexturePipelineCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
         {
@@ -806,7 +806,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor = {};
                 pipelineDescriptor._stateHash = _stateDepthOnlyRenderingHash;
                 pipelineDescriptor._shaderProgramHandle = _depthShader->getGUID();
-                _DrawFSDepthPipeline = newPipeline(pipelineDescriptor);
+                _drawFSDepthPipelineCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
     }
@@ -816,9 +816,9 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         PipelineDescriptor pipelineDesc;
         pipelineDesc._stateHash = getDefaultStateBlock(true);
         pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->getGUID();
-        _AxisGizmoPipeline = newPipeline(pipelineDesc);
+        _axisGizmoPipeline = newPipeline(pipelineDesc);
         pipelineDesc._stateHash = getDefaultStateBlock(false);
-        _DebugGizmoPipeline = newPipeline(pipelineDesc);
+        _debugGizmoPipeline = newPipeline(pipelineDesc);
     }
     _renderer = eastl::make_unique<Renderer>(context(), cache);
 
@@ -1124,79 +1124,74 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
     const auto& inputAttachment = blurSource._rt->getAttachment(att, index);
     const auto& bufferAttachment = blurBuffer._rt->getAttachment(att, index);
 
-    GFX::BeginRenderPassCommand beginRenderPassCmd{};
-    GFX::SendPushConstantsCommand pushConstantsCommand{};
-    GFX::BindDescriptorSetsCommand descriptorSetCmd{};
-    GenericDrawCommand drawCmd = {};
-    drawCmd._primitiveType = gaussian ? PrimitiveType::API_POINTS : PrimitiveType::TRIANGLES;
+    static GFX::SendPushConstantsCommand s_pushConstantsCommand{};
+    static GFX::DrawCommand s_drawCmd{ GenericDrawCommand{} };
+
+    s_drawCmd._drawCommands.front()._primitiveType = gaussian ? PrimitiveType::API_POINTS : PrimitiveType::TRIANGLES;
+
     const U8 loopCount = gaussian ? 1u : layerCount;
 
     {// Blur horizontally
-        beginRenderPassCmd._target = blurBuffer._targetID;
-        beginRenderPassCmd._name = "BLUR_RENDER_TARGET_HORIZONTAL";
-        EnqueueCommand(bufferInOut, beginRenderPassCmd);
+        GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+        renderPassCmd->_target = blurBuffer._targetID;
+        renderPassCmd->_name = "BLUR_RENDER_TARGET_HORIZONTAL";
 
-        EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{
-                           gaussian ? (layerCount > 1 ? _BlurGaussianPipelineLayered : _BlurGaussianPipelineSingle)
-                               : layerCount > 1 ? _BlurBoxPipelineLayered : _BlurBoxPipelineSingle
-            });
+        GFX::EnqueueCommand(bufferInOut, gaussian ? (layerCount > 1 ? _blurGaussianPipelineLayeredCmd : _blurGaussianPipelineSingleCmd)
+                                                  : (layerCount > 1 ? _blurBoxPipelineLayeredCmd      : _blurBoxPipelineSingleCmd));
 
-        descriptorSetCmd._set._textureData.add(TextureEntry{ inputAttachment.texture()->data(), inputAttachment.samplerHash(), TextureUsage::UNIT0 });
-        EnqueueCommand(bufferInOut, descriptorSetCmd);
+        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ inputAttachment.texture()->data(), inputAttachment.samplerHash(), TextureUsage::UNIT0 });
 
-        pushConstantsCommand._constants.countHint(4);
-        pushConstantsCommand._constants.set(_ID("verticalBlur"), GFX::PushConstantType::INT, false);
+        s_pushConstantsCommand._constants.set(_ID("verticalBlur"), GFX::PushConstantType::INT, false);
         if (gaussian) {
             vec2<F32> blurSize(1.0f / blurBuffer._rt->getResolution().width, 1.0f / blurBuffer._rt->getResolution().height);
-            pushConstantsCommand._constants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSize);
-            pushConstantsCommand._constants.set(_ID("layerCount"), GFX::PushConstantType::INT, to_I32(layerCount));
-            pushConstantsCommand._constants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, 0);
-            pushConstantsCommand._constants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, 0);
+            s_pushConstantsCommand._constants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSize);
+            s_pushConstantsCommand._constants.set(_ID("layerCount"), GFX::PushConstantType::INT, to_I32(layerCount));
+            s_pushConstantsCommand._constants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, 0);
+            s_pushConstantsCommand._constants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, 0);
         } else {
-            pushConstantsCommand._constants.set(_ID("kernelSize"), GFX::PushConstantType::INT, kernelSize);
-            pushConstantsCommand._constants.set(_ID("size"), GFX::PushConstantType::VEC2, vec2<F32>(blurBuffer._rt->getResolution()));
+            s_pushConstantsCommand._constants.set(_ID("kernelSize"), GFX::PushConstantType::INT, kernelSize);
+            s_pushConstantsCommand._constants.set(_ID("size"), GFX::PushConstantType::VEC2, vec2<F32>(blurBuffer._rt->getResolution()));
             if (layerCount > 1) {
-                pushConstantsCommand._constants.set(_ID("layer"), GFX::PushConstantType::INT, 0);
+                s_pushConstantsCommand._constants.set(_ID("layer"), GFX::PushConstantType::INT, 0);
             }
         }
-        EnqueueCommand(bufferInOut, pushConstantsCommand);
+        GFX::EnqueueCommand(bufferInOut, s_pushConstantsCommand);
 
         for (U8 loop = 0u; loop < loopCount; ++loop) {
             if (!gaussian && loop > 0u) {
-                pushConstantsCommand._constants.set(_ID("layer"), GFX::PushConstantType::INT, to_I32(loop));
-                EnqueueCommand(bufferInOut, pushConstantsCommand);
+                s_pushConstantsCommand._constants.set(_ID("layer"), GFX::PushConstantType::INT, to_I32(loop));
+                GFX::EnqueueCommand(bufferInOut, s_pushConstantsCommand);
             }
-            EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
+            GFX::EnqueueCommand(bufferInOut, s_drawCmd);
         }
 
-        EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
     }
     {// Blur vertically
-        beginRenderPassCmd._target = blurTarget._targetID;
-        beginRenderPassCmd._name = "BLUR_RENDER_TARGET_VERTICAL";
-        EnqueueCommand(bufferInOut, beginRenderPassCmd);
+        GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+        renderPassCmd->_target = blurTarget._targetID;
+        renderPassCmd->_name = "BLUR_RENDER_TARGET_VERTICAL";
 
-        pushConstantsCommand._constants.set(_ID("verticalBlur"), GFX::PushConstantType::INT, true);
+        s_pushConstantsCommand._constants.set(_ID("verticalBlur"), GFX::PushConstantType::INT, true);
         if (gaussian) {
             vec2<F32> blurSize(1.0f / blurTarget._rt->getResolution().width, 1.0f / blurTarget._rt->getResolution().height);
-            pushConstantsCommand._constants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSize);
+            s_pushConstantsCommand._constants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSize);
         } else {
-            pushConstantsCommand._constants.set(_ID("size"), GFX::PushConstantType::VEC2, vec2<F32>(blurTarget._rt->getResolution()));
+            s_pushConstantsCommand._constants.set(_ID("size"), GFX::PushConstantType::VEC2, vec2<F32>(blurTarget._rt->getResolution()));
         }
 
-        descriptorSetCmd._set._textureData.add(TextureEntry{ bufferAttachment.texture()->data(), bufferAttachment.samplerHash(), TextureUsage::UNIT0 });
-        EnqueueCommand(bufferInOut, descriptorSetCmd);
+        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ bufferAttachment.texture()->data(), bufferAttachment.samplerHash(), TextureUsage::UNIT0 });
+        GFX::EnqueueCommand(bufferInOut, s_pushConstantsCommand);
 
-        EnqueueCommand(bufferInOut, pushConstantsCommand);
         for (U8 loop = 0u; loop < loopCount; ++loop) {
             if (!gaussian && loop > 0u) {
-                pushConstantsCommand._constants.set(_ID("layer"), GFX::PushConstantType::INT, to_I32(loop));
-                EnqueueCommand(bufferInOut, pushConstantsCommand);
+                s_pushConstantsCommand._constants.set(_ID("layer"), GFX::PushConstantType::INT, to_I32(loop));
+                GFX::EnqueueCommand(bufferInOut, s_pushConstantsCommand);
             }
-            EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
+            GFX::EnqueueCommand(bufferInOut, s_drawCmd);
         }
 
-        EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
     }
 }
 #pragma endregion
@@ -1397,7 +1392,7 @@ void GFXDevice::setClipPlanes(const FrustumClipPlanes& clipPlanes) {
 
 void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
     OPTICK_EVENT();
-    constexpr F32 reserved = 1.0f;
+    constexpr F32 reserved = 1.f;
 
     GFXShaderData::GPUData& data = _gpuBlock._data;
 
@@ -1431,16 +1426,18 @@ void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
     if (data._renderProperties != cameraProperties) {
         data._renderProperties.set(cameraProperties);
 
-        const U32 gridSizeZ = to_U32(_context.config().rendering.lightClusteredSizes.z);
-        const F32 zFar = cameraSnapshot._zPlanes.max;
-        const F32 zNear = cameraSnapshot._zPlanes.min;
+        if (cameraSnapshot._isOrthoCamera) {
+            data._lightingProperties.z = 1.f; //scale
+            data._lightingProperties.w = 0.f; //bias
+        } else {
+            const F32 gridSizeZ = to_F32(_context.config().rendering.lightClusteredSizes.z);
+            const F32 zFar = cameraSnapshot._zPlanes.max;
+            const F32 zNear = cameraSnapshot._zPlanes.min;
+            const F32 zLogRatio = std::log2f(zFar / zNear);
 
-        //scale
-        data._lightingProperties.z = cameraSnapshot._isOrthoCamera ? 1.0f : to_F32(gridSizeZ) / std::log2f(zFar / zNear);
-
-        //bias
-        data._lightingProperties.w = cameraSnapshot._isOrthoCamera ? 0.0f : -(to_F32(gridSizeZ) * std::log2f(zNear) / std::log2f(zFar / zNear));
-
+            data._lightingProperties.z = cameraSnapshot._isOrthoCamera ? 1.0f : gridSizeZ / zLogRatio; //scale
+            data._lightingProperties.w = cameraSnapshot._isOrthoCamera ? 0.0f : -(gridSizeZ * std::log2f(zNear) / zLogRatio); //bias
+        }
         needsUpdate = true;
     }
 
@@ -1510,7 +1507,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     const GFX::ErrorType error = commandBuffer.validate();
     if (error != GFX::ErrorType::NONE) {
         Console::errorfn(Locale::Get(_ID("ERROR_GFX_INVALID_COMMAND_BUFFER")), commandBuffer.toString().c_str());
-        DIVIDE_ASSERT(false, Util::StringFormat("GFXDevice::flushCommandBuffer error [ %s ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base(error)]).c_str());
+        DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("GFXDevice::flushCommandBuffer error [ %s ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base(error)]).c_str());
         return;
     }
 
@@ -1625,20 +1622,11 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
 /// Based on RasterGrid implementation: http://rastergrid.com/blog/2010/10/hierarchical-z-map-based-occlusion-culling/
 /// Modified with nVidia sample code: https://github.com/nvpro-samples/gl_occlusion_culling
 std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut) {
-    static GFX::PushCameraCommand push2DCameraCmd = { Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() };
-
+    static GFX::SendPushConstantsCommand s_pushConstantsCommand{};
     assert(depthBuffer != HiZTarget);
 
     GenericDrawCommand drawCmd = {};
     drawCmd._primitiveType = PrimitiveType::TRIANGLES;
-
-    // We use a special shader that downsamples the buffer
-    // We will use a state block that disables colour writes as we will render only a depth image,
-    // disables depth testing but allows depth writes
-    RTDrawDescriptor colourOnlyTarget;
-    colourOnlyTarget.setViewport(false);
-    colourOnlyTarget.drawMask().disableAll();
-    colourOnlyTarget.drawMask().setEnabled(RTAttachmentType::Depth, 0, true);
 
     // The depth buffer's resolution should be equal to the screen's resolution
     RenderTarget& renderTarget = _rtPool->renderTarget(HiZTarget);
@@ -1650,63 +1638,60 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     // Store the current width and height of each mip
     const Rect<I32> previousViewport(_viewport);
 
-    EnqueueCommand(cmdBufferInOut, GFX::BeginDebugScopeCommand{ "Construct Hi-Z" });
+    GFX::EnqueueCommand(cmdBufferInOut, GFX::BeginDebugScopeCommand{ "Construct Hi-Z" });
 
-    RTClearDescriptor clearTarget = {};
-    clearTarget.clearDepth(true);
-    clearTarget.clearColours(true);
-
-    GFX::ClearRenderTargetCommand clearRenderTargetCmd = {};
-    clearRenderTargetCmd._target = HiZTarget;
-    clearRenderTargetCmd._descriptor = clearTarget;
-    EnqueueCommand(cmdBufferInOut, clearRenderTargetCmd);
+    GFX::ClearRenderTargetCommand* clearCmd = GFX::EnqueueCommand<GFX::ClearRenderTargetCommand>(cmdBufferInOut);
+    clearCmd->_target = HiZTarget;
+    clearCmd->_descriptor = {};
+    clearCmd->_descriptor.clearDepth(true);
+    clearCmd->_descriptor.clearColours(true);
 
     { // Copy depth buffer to the colour target for compute shaders to use later on
 
-        GFX::BeginRenderPassCommand beginRenderPassCmd;
-        beginRenderPassCmd._target = HiZTarget;
-        beginRenderPassCmd._descriptor = {};
-        beginRenderPassCmd._name = "CONSTRUCT_HI_Z_DEPTH";
-        EnqueueCommand(cmdBufferInOut, beginRenderPassCmd);
+        GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(cmdBufferInOut);
+        beginRenderPassCmd->_target = HiZTarget;
+        beginRenderPassCmd->_descriptor = {};
+        beginRenderPassCmd->_name = "CONSTRUCT_HI_Z_DEPTH";
+        
 
-        RenderTarget& depthSource = _rtPool->renderTarget(depthBuffer);
-        const auto& att = depthSource.getAttachment(RTAttachmentType::Depth, 0);
-        const Texture_ptr& depthTex = att.texture();
+        const auto& att = _rtPool->renderTarget(depthBuffer).getAttachment(RTAttachmentType::Depth, 0);
+        drawTextureInViewport(att.texture()->data(),
+                              att.samplerHash(),
+                              Rect<I32>{0, 0, renderTarget.getWidth(), renderTarget.getHeight()},
+                              false,
+                              true,
+                              cmdBufferInOut);
 
-        const Rect<I32> viewport(0, 0, renderTarget.getWidth(), renderTarget.getHeight());
-        drawTextureInViewport(depthTex->data(), att.samplerHash(), viewport, false, true, cmdBufferInOut);
-
-        EnqueueCommand(cmdBufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(cmdBufferInOut, GFX::EndRenderPassCommand{});
     }
 
     const auto& att = renderTarget.getAttachment(RTAttachmentType::Depth, 0);
     const Texture_ptr& hizDepthTex = att.texture();
-    const size_t hiZSampler = att.samplerHash();
 
     const TextureData hizData = hizDepthTex->data();
     if (!hizDepthTex->descriptor().autoMipMaps()) {
-        GFX::BeginRenderPassCommand beginRenderPassCmd;
-        beginRenderPassCmd._target = HiZTarget;
-        beginRenderPassCmd._descriptor = colourOnlyTarget;
-        beginRenderPassCmd._name = "CONSTRUCT_HI_Z";
-        EnqueueCommand(cmdBufferInOut, beginRenderPassCmd);
-        EnqueueCommand(cmdBufferInOut, push2DCameraCmd);
+        // We use a special shader that downsamples the buffer
+        // We will use a state block that disables colour writes as we will render only a depth image,
+        // disables depth testing but allows depth writes
+        GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(cmdBufferInOut);
+        beginRenderPassCmd->_name = "CONSTRUCT_HI_Z";
+        beginRenderPassCmd->_target = HiZTarget;
+        beginRenderPassCmd->_descriptor = {};
+        beginRenderPassCmd->_descriptor.setViewport(false);
+        beginRenderPassCmd->_descriptor.drawMask().disableAll();
+        beginRenderPassCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, true);
 
-        GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-        computeMipMapsCommand._texture = att.texture().get();
+        GFX::EnqueueCommand(cmdBufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+
+        GFX::ComputeMipMapsCommand computeMipMapsCommand{};
+        computeMipMapsCommand._texture   = hizDepthTex.get();
         computeMipMapsCommand._clearOnly = true;
-        EnqueueCommand(cmdBufferInOut, computeMipMapsCommand);
+        GFX::EnqueueCommand(cmdBufferInOut, computeMipMapsCommand);
 
-        EnqueueCommand(cmdBufferInOut, GFX::BindPipelineCommand{ _HIZPipeline });
-
-        GFX::SetViewportCommand viewportCommand = {};
-        GFX::SendPushConstantsCommand pushConstantsCommand = {};
-        GFX::BeginRenderSubPassCommand beginRenderSubPassCmd = {};
+        GFX::EnqueueCommand(cmdBufferInOut, GFX::BindPipelineCommand{ _HIZPipeline });
 
         // for i > 0, use texture views?
-        GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-        descriptorSetCmd._set._textureData.add(TextureEntry{ hizData, att.samplerHash(), TextureUsage::DEPTH });
-        EnqueueCommand(cmdBufferInOut, descriptorSetCmd);
+        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(cmdBufferInOut)->_set._textureData.add(TextureEntry{ hizData, att.samplerHash(), TextureUsage::DEPTH });
 
         // We skip the first level as that's our full resolution image
         U16 twidth = width;
@@ -1720,21 +1705,19 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
                 theight = theight < 1 ? 1 : theight;
 
                 // Bind next mip level for rendering but first restrict fetches only to previous level
-                beginRenderSubPassCmd._mipWriteLevel = level;
-                EnqueueCommand(cmdBufferInOut, beginRenderSubPassCmd);
+                GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(cmdBufferInOut)->_mipWriteLevel = level;
 
                 // Update the viewport with the new resolution
-                viewportCommand._viewport.set(0, 0, twidth, theight);
-                EnqueueCommand(cmdBufferInOut, viewportCommand);
+                GFX::EnqueueCommand<GFX::SetViewportCommand>(cmdBufferInOut)->_viewport.set(0, 0, twidth, theight);
 
-                pushConstantsCommand._constants.set(_ID("depthInfo"), GFX::PushConstantType::IVEC2, vec2<I32>(level - 1, wasEven ? 1 : 0));
-                pushConstantsCommand._constants.set(_ID("LastMipSize"), GFX::PushConstantType::IVEC2, vec2<I32>(owidth, oheight));
-                EnqueueCommand(cmdBufferInOut, pushConstantsCommand);
+                s_pushConstantsCommand._constants.set(_ID("depthInfo"),   GFX::PushConstantType::IVEC2, vec2<I32>(level - 1, wasEven ? 1 : 0));
+                s_pushConstantsCommand._constants.set(_ID("LastMipSize"), GFX::PushConstantType::IVEC2, vec2<I32>(owidth, oheight));
+                GFX::EnqueueCommand(cmdBufferInOut, s_pushConstantsCommand);
 
                 // Dummy draw command as the full screen quad is generated completely in the vertex shader
-                EnqueueCommand(cmdBufferInOut, GFX::DrawCommand{ drawCmd });
+                GFX::EnqueueCommand(cmdBufferInOut, GFX::DrawCommand{ drawCmd });
 
-                EnqueueCommand(cmdBufferInOut, GFX::EndRenderSubPassCommand{});
+                GFX::EnqueueCommand(cmdBufferInOut, GFX::EndRenderSubPassCommand{});
             }
 
             // Calculate next viewport size
@@ -1748,20 +1731,22 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
         }
 
         // Restore mip level
-        beginRenderSubPassCmd._mipWriteLevel = 0;
-        EnqueueCommand(cmdBufferInOut, beginRenderSubPassCmd);
+        GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(cmdBufferInOut)->_mipWriteLevel = 0u;
 
-        EnqueueCommand(cmdBufferInOut, GFX::EndRenderSubPassCommand{});
+        GFX::EnqueueCommand(cmdBufferInOut, GFX::EndRenderSubPassCommand{});
 
-        viewportCommand._viewport.set(previousViewport);
-        EnqueueCommand(cmdBufferInOut, viewportCommand);
+        // Restore viewport
+        GFX::EnqueueCommand(cmdBufferInOut, GFX::SetViewportCommand{previousViewport});
 
-        EnqueueCommand(cmdBufferInOut, GFX::PopCameraCommand{});
-        EnqueueCommand(cmdBufferInOut, GFX::EndRenderPassCommand{});
+        // Restore camera
+        GFX::EnqueueCommand(cmdBufferInOut, GFX::PopCameraCommand{});
+
+        GFX::EnqueueCommand(cmdBufferInOut, GFX::EndRenderPassCommand{});
     }
-    EnqueueCommand(cmdBufferInOut, GFX::EndDebugScopeCommand{});
 
-    return { hizDepthTex, hiZSampler };
+    GFX::EnqueueCommand(cmdBufferInOut, GFX::EndDebugScopeCommand{});
+
+    return { hizDepthTex, att.samplerHash() };
 }
 
 void GFXDevice::occlusionCull(const RenderStagePass& stagePass,
@@ -1777,45 +1762,42 @@ void GFXDevice::occlusionCull(const RenderStagePass& stagePass,
 
     const U32 cmdCount = *bufferData._lastCommandCount;
     const U32 threadCount = (cmdCount + GROUP_SIZE_AABB - 1) / GROUP_SIZE_AABB;
-    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull" });
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull" });
 
     // Not worth the overhead for a handful of items and the Pre-Z pass should handle overdraw just fine
     if (threadCount < 3u) {
-        EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("Skipped. In-Frustum Nodes: % d", cmdCount).c_str() });
-        EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Skipped. Node count too low." });
+        GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
     } else {
-        EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _HIZCullPipeline });
+        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _HIZCullPipeline });
 
         ShaderBufferBinding shaderBuffer = {};
         shaderBuffer._binding = ShaderBufferLocation::GPU_COMMANDS;
         shaderBuffer._buffer = bufferData._commandBuffer;
         shaderBuffer._elementRange = { bufferData._commandElementOffset, cmdCount };
 
-        GFX::BindDescriptorSetsCommand bindDescriptorSetsCmd = {};
-        bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ depthBuffer->data(), samplerHash, TextureUsage::UNIT0 });
-        bindDescriptorSetsCmd._set._buffers.add(shaderBuffer);
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._textureData.add(TextureEntry{ depthBuffer->data(), samplerHash, TextureUsage::UNIT0 });
+        set._buffers.add(shaderBuffer);
 
         if (bufferData._cullCounterBuffer != nullptr) {
             ShaderBufferBinding atomicCount = {};
             atomicCount._binding = ShaderBufferLocation::ATOMIC_COUNTER;
             atomicCount._buffer = bufferData._cullCounterBuffer;
             atomicCount._elementRange.set(0, 1);
-            bindDescriptorSetsCmd._set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
+            set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
         }
-        EnqueueCommand(bufferInOut, bindDescriptorSetsCmd);
 
         HIZPushConstantsCMDInOut._constants.set(_ID("dvd_countCulledItems"), GFX::PushConstantType::UINT, bufferData._cullCounterBuffer != nullptr ? 1u : 0u);
         HIZPushConstantsCMDInOut._constants.set(_ID("dvd_numEntities"), GFX::PushConstantType::UINT, cmdCount);
         HIZPushConstantsCMDInOut._constants.set(_ID("dvd_viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(depthBuffer->width(), depthBuffer->height()));
 
-        EnqueueCommand(bufferInOut, HIZPushConstantsCMDInOut);
+        GFX::EnqueueCommand(bufferInOut, HIZPushConstantsCMDInOut);
 
-        GFX::DispatchComputeCommand computeCmd = {};
-        computeCmd._computeGroupSize.set(threadCount, 1, 1);
-        EnqueueCommand(bufferInOut, computeCmd);
+        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ threadCount, 1, 1 });
     }
 
-    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
 }
 
 void GFXDevice::updateCullCount(const RenderPass::BufferData& bufferData, GFX::CommandBuffer& cmdBufferInOut) {
@@ -1860,32 +1842,27 @@ void GFXDevice::drawText(const TextElementBatch& batch) {
 }
 
 void GFXDevice::drawTextureInViewport(const TextureData data, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, GFX::CommandBuffer& bufferInOut) {
-    static GFX::BeginDebugScopeCommand beginDebugScopeCmd = { "Draw Texture In Viewport" };
-    static GFX::PushCameraCommand push2DCameraCmd = { Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() };
-    static GFX::SendPushConstantsCommand pushConstantsSRGBTrue{ PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, true}}};
-    static GFX::SendPushConstantsCommand pushConstantsSRGBFalse{ PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, false}}};
+    static GFX::BeginDebugScopeCommand   s_beginDebugScopeCmd = { "Draw Texture In Viewport" };
+    static GFX::SendPushConstantsCommand s_pushConstantsSRGBTrue{ PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, true}}};
+    static GFX::SendPushConstantsCommand s_pushConstantsSRGBFalse{ PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, false}}};
 
     GenericDrawCommand drawCmd = {};
     drawCmd._primitiveType = PrimitiveType::TRIANGLES;
 
-    EnqueueCommand(bufferInOut, beginDebugScopeCmd);
-    EnqueueCommand(bufferInOut, push2DCameraCmd);
-    EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ (drawToDepthOnly ? _DrawFSDepthPipeline : _DrawFSTexturePipeline) });
-
-    GFX::BindDescriptorSetsCommand bindDescriptorSetsCmd = {};
-    bindDescriptorSetsCmd._set._textureData.add(TextureEntry{ data, samplerHash, TextureUsage::UNIT0 });
-    EnqueueCommand(bufferInOut, bindDescriptorSetsCmd);
-
-    EnqueueCommand(bufferInOut, GFX::PushViewportCommand{ viewport });
+    GFX::EnqueueCommand(bufferInOut, s_beginDebugScopeCmd);
+    GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    GFX::EnqueueCommand(bufferInOut, drawToDepthOnly ? _drawFSDepthPipelineCmd : _drawFSTexturePipelineCmd);
+    GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ data, samplerHash, TextureUsage::UNIT0 });
+    GFX::EnqueueCommand(bufferInOut, GFX::PushViewportCommand{ viewport });
 
     if (!drawToDepthOnly) {
-        EnqueueCommand(bufferInOut, convertToSrgb ? pushConstantsSRGBTrue : pushConstantsSRGBFalse);
+        GFX::EnqueueCommand(bufferInOut, convertToSrgb ? s_pushConstantsSRGBTrue : s_pushConstantsSRGBFalse);
     }
 
-    EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
-    EnqueueCommand(bufferInOut, GFX::PopViewportCommand{});
-    EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
-    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
+    GFX::EnqueueCommand(bufferInOut, GFX::PopViewportCommand{});
+    GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
+    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
 }
 #pragma endregion
 
@@ -2254,7 +2231,7 @@ void GFXDevice::debugDrawLines(GFX::CommandBuffer& bufferInOut) {
         if (linePrimitive == nullptr) {
             linePrimitive = newIMP();
             linePrimitive->name(Util::StringFormat("DebugLine_%d", f));
-            linePrimitive->pipeline(*_DebugGizmoPipeline);
+            linePrimitive->pipeline(*_debugGizmoPipeline);
             linePrimitive->skipPostFX(true);
         }
 
@@ -2278,7 +2255,7 @@ void GFXDevice::debugDrawBoxes(GFX::CommandBuffer& bufferInOut) {
         if (boxPrimitive == nullptr) {
             boxPrimitive = newIMP();
             boxPrimitive->name(Util::StringFormat("DebugBox_%d", f));
-            boxPrimitive->pipeline(*_DebugGizmoPipeline);
+            boxPrimitive->pipeline(*_debugGizmoPipeline);
             boxPrimitive->skipPostFX(true);
         }
 
@@ -2302,7 +2279,7 @@ void GFXDevice::debugDrawSpheres(GFX::CommandBuffer& bufferInOut) {
         if (spherePrimitive == nullptr) {
             spherePrimitive = newIMP();
             spherePrimitive->name(Util::StringFormat("DebugSphere_%d", f));
-            spherePrimitive->pipeline(*_DebugGizmoPipeline);
+            spherePrimitive->pipeline(*_debugGizmoPipeline);
             spherePrimitive->skipPostFX(true);
         }
 
@@ -2326,7 +2303,7 @@ void GFXDevice::debugDrawCones(GFX::CommandBuffer& bufferInOut) {
         if (conePrimitive == nullptr) {
             conePrimitive = newIMP();
             conePrimitive->name(Util::StringFormat("DebugCone_%d", f));
-            conePrimitive->pipeline(*_DebugGizmoPipeline);
+            conePrimitive->pipeline(*_debugGizmoPipeline);
             conePrimitive->skipPostFX(true);
         }
 
@@ -2354,11 +2331,10 @@ void GFXDevice::debugDrawFrustums(GFX::CommandBuffer& bufferInOut) {
         if (frustumPrimitive == nullptr) {
             frustumPrimitive = newIMP();
             frustumPrimitive->name(Util::StringFormat("DebugFrustum_%d", f));
-            frustumPrimitive->pipeline(*_DebugGizmoPipeline);
+            frustumPrimitive->pipeline(*_debugGizmoPipeline);
             frustumPrimitive->skipPostFX(true);
         }
 
-        //_debugFrustums[f].first.getCornersViewSpace(_debugFrustums[f].second, corners);
         _debugFrustums._debugData[f].first.getCornersWorldSpace(corners);
         const FColour3& endColour = _debugFrustums._debugData[f].second;
         const FColour3 startColour = endColour * 0.25f;
@@ -2465,7 +2441,7 @@ void GFXDevice::debugDraw(const SceneRenderState& sceneRenderState, const Camera
             if (!_axisGizmo) {
                 _axisGizmo = newIMP();
                 _axisGizmo->name("GFXDeviceAxisGizmo");
-                _axisGizmo->pipeline(*_AxisGizmoPipeline);
+                _axisGizmo->pipeline(*_axisGizmoPipeline);
                 _axisGizmo->skipPostFX(true);
             }
 

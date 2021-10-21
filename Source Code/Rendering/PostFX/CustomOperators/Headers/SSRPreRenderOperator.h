@@ -51,8 +51,8 @@ class SSRPreRenderOperator final : public PreRenderOperator {
 
    private:
      ShaderProgram_ptr _ssrShader = nullptr;
-     Pipeline* _pipeline = nullptr;
-     PushConstants _constants;
+     GFX::BindPipelineCommand _pipelineCmd;
+     GFX::SendPushConstantsCommand _constantsCmd;
      mat4<F32> _projToPixelBasis;
      vec2<F32> _cachedZPlanes = VECTOR2_UNIT;
      bool _constantsDirty = true;

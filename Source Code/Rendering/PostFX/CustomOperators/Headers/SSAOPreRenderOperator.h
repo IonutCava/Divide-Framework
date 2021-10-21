@@ -80,8 +80,8 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
     [[nodiscard]] bool ready() const override;
 
    private:
-    PushConstants _ssaoGenerateConstants;
-    PushConstants _ssaoBlurConstants;
+    GFX::SendPushConstantsCommand _ssaoGenerateConstantsCmd;
+    GFX::SendPushConstantsCommand _ssaoBlurConstantsCmd;
     ShaderProgram_ptr _ssaoGenerateShader = nullptr;
     ShaderProgram_ptr _ssaoGenerateHalfResShader = nullptr;
     ShaderProgram_ptr _ssaoBlurShaderHorizontal = nullptr;

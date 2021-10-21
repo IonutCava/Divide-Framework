@@ -456,17 +456,17 @@ private:
     
     Pipeline* _HIZPipeline = nullptr;
     Pipeline* _HIZCullPipeline = nullptr;
-    Pipeline* _DrawFSTexturePipeline = nullptr;
-    Pipeline* _DrawFSDepthPipeline = nullptr;
-    Pipeline* _AxisGizmoPipeline = nullptr;
-    Pipeline* _DebugGizmoPipeline = nullptr;
-    Pipeline* _BlurBoxPipelineSingle = nullptr;
-    Pipeline* _BlurBoxPipelineLayered = nullptr;
-    Pipeline* _BlurGaussianPipelineSingle = nullptr;
-    Pipeline* _BlurGaussianPipelineLayered = nullptr;
+    Pipeline* _axisGizmoPipeline = nullptr;
+    Pipeline* _debugGizmoPipeline = nullptr;
+    GFX::BindPipelineCommand _drawFSTexturePipelineCmd;
+    GFX::BindPipelineCommand _drawFSDepthPipelineCmd;
+    GFX::BindPipelineCommand _blurBoxPipelineSingleCmd;
+    GFX::BindPipelineCommand _blurBoxPipelineLayeredCmd;
+    GFX::BindPipelineCommand _blurGaussianPipelineSingleCmd;
+    GFX::BindPipelineCommand _blurGaussianPipelineLayeredCmd;
 
     PushConstants _textRenderConstants;
-    Pipeline* _textRenderPipeline = nullptr;
+    Pipeline*     _textRenderPipeline = nullptr;
         
     Mutex _graphicsResourceMutex;
     vector<std::tuple<GraphicsResource::Type, I64, U64>> _graphicResources;
