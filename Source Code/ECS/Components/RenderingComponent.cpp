@@ -530,15 +530,6 @@ bool RenderingComponent::getRebuildFlag(const RenderStagePass& renderStagePass) 
     return _rebuildDrawCommandsFlags[s][p][i];
 }
 
-size_t RenderingComponent::getSortKeyHash(const RenderStagePass& renderStagePass) const {
-    const RenderPackage& pkg = getDrawPackage(renderStagePass);
-    if (pkg.count<GFX::BindPipelineCommand>() > 0) {
-        return pkg.get<GFX::BindPipelineCommand>(0)->_pipeline->getHash();
-    }
-
-    return 0u;
-}
-
 bool RenderingComponent::updateReflection(const U16 reflectionIndex,
                                           const bool inBudget,
                                           Camera* camera,

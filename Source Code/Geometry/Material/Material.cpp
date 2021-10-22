@@ -290,7 +290,7 @@ bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr
         {
             bool isOpacity = true;
             if (textureUsageSlot == TextureUsage::UNIT0) {
-                _textureKeyCache = texture == nullptr ? -1 : (_useBindlessTextures ? 0u : texture->data()._textureHandle);
+                _textureKeyCache = texture == nullptr ? std::numeric_limits<I32>::lowest() : (_useBindlessTextures ? 0u : texture->data()._textureHandle);
                 isOpacity = false;
             }
 
@@ -358,6 +358,10 @@ void Material::setShaderProgramInternal(const ShaderProgram_ptr& shader,
     shaderInfo._shaderCompStage = shader == nullptr || shader->getState() == ResourceState::RES_LOADED
                                                      ? (shaderInfo._customShader ? ShaderBuildStage::COMPUTED : ShaderBuildStage::READY)
                                                      : ShaderBuildStage::COMPUTED;
+
+    if (shader != nullptr && shaderInfo._shaderCompStage == ShaderBuildStage::READY) {
+        shaderInfo._shaderKeyCache = shaderInfo._shaderRef->getGUID();
+    }
 }
 
 void Material::setShaderProgramInternal(const ResourceDescriptor& shaderDescriptor,
@@ -413,6 +417,10 @@ void Material::recomputeShaders() {
                         shaderInfo._shaderCompStage = ShaderBuildStage::READY;
                     } else if (shaderInfo._shaderCompStage == ShaderBuildStage::READY && _customShaderCBK) {
                         _customShaderCBK(*this, stagePass);
+                    }
+
+                    if (shaderInfo._shaderRef != nullptr && shaderInfo._shaderCompStage == ShaderBuildStage::READY) {
+                        shaderInfo._shaderKeyCache = shaderInfo._shaderRef->getGUID();
                     }
                 }
             }
@@ -477,6 +485,7 @@ bool Material::canDraw(const RenderStagePass& renderStagePass, bool& shaderJustF
         // Once it has finished loading, it is ready for drawing
         shaderJustFinishedLoading = true;
         info._shaderCompStage = ShaderBuildStage::READY;
+        info._shaderKeyCache = info._shaderRef->getGUID();
     }
 
     // If the shader isn't ready it may have not passed through the computational stage yet (e.g. the first time this method is called)
@@ -1175,11 +1184,8 @@ size_t Material::getRenderStateBlock(const RenderStagePass& renderStagePass) con
 }
 
 void Material::getSortKeys(const RenderStagePass& renderStagePass, I64& shaderKey, I32& textureKey) const {
-    textureKey = _textureKeyCache == -1 ? std::numeric_limits<I32>::lowest() : _textureKeyCache;
-
-    const ShaderProgramInfo& info = shaderInfo(renderStagePass);
-    shaderKey = info._shaderCompStage == ShaderBuildStage::READY ? info._shaderRef->getGUID()
-                                                                 : std::numeric_limits<I64>::lowest();
+    shaderKey = shaderInfo(renderStagePass)._shaderKeyCache;
+    textureKey = _textureKeyCache;
 }
 
 FColour4 Material::getBaseColour(bool& hasTextureOverride, Texture*& textureOut) const noexcept {
@@ -1266,7 +1272,6 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
         }
     }
 
-    constexpr F32 reserved = 1.f;
     const FColour4& specColour = specular(); //< For PHONG_SPECULAR
 
     //ToDo: Maybe store all of these material properties in an internal, cached, NodeMaterialData structure? -Ionut
@@ -1274,7 +1279,7 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
     dataOut._colourData.set(ambient(), specColour.a);
     dataOut._emissiveAndParallax.set(emissive(), parallaxFactor());
     dataOut._data.x = Util::PACK_UNORM4x8(occlusion(), metallic(), roughness(), selectionFlag);
-    dataOut._data.y = Util::PACK_UNORM4x8(specColour.r, specColour.g, specColour.b, reserved);
+    dataOut._data.y = Util::PACK_UNORM4x8(specColour.r, specColour.g, specColour.b, 1.f);
     dataOut._data.z = Util::PACK_UNORM4x8(to_U8(_textureOperations[to_base(TextureUsage::UNIT0)]),
                                           to_U8(_textureOperations[to_base(TextureUsage::UNIT1)]),
                                           to_U8(_textureOperations[to_base(TextureUsage::SPECULAR)]),

@@ -151,8 +151,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
                   void setRebuildFlag(const RenderStagePass& renderStagePass, bool state);
     [[nodiscard]] bool getRebuildFlag(const RenderStagePass& renderStagePass) const;
 
-    [[nodiscard]] size_t getSortKeyHash(const RenderStagePass& renderStagePass) const;
-
     [[nodiscard]] const Material_ptr& getMaterialInstance() const noexcept { return _materialInstance; }
 
     void rebuildMaterial();

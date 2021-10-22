@@ -19,13 +19,11 @@ RenderBin::RenderBin(const RenderBinType rbType, const RenderStage stage)
     std::atomic_init(&_renderBinIndex, 0u);
 }
 
-const RenderBinItem& RenderBin::getItem(const U16 index) const {
-    assert(index < _renderBinIndex.load());
-    return _renderBinStack[index];
-}
-
 void RenderBin::sort(const RenderingOrder renderOrder) {
     OPTICK_EVENT();
+
+    const auto binStartIt = begin(_renderBinStack);
+    const auto binEndIt = binStartIt + getBinSize();
 
     switch (renderOrder) {
         case RenderingOrder::BY_STATE: {
@@ -33,38 +31,39 @@ void RenderBin::sort(const RenderingOrder renderOrder) {
             // 1: sort by shaders
             // 2: if the shader is identical, sort by state hash
             // 3: if shader is identical and state hash is identical, sort by albedo ID
-            eastl::sort(begin(_renderBinStack),
-                        begin(_renderBinStack) + getBinSize(),
+            // 4: finally, sort by distance to camera (front to back)
+            eastl::sort(binStartIt,
+                        binEndIt,
                         [](const RenderBinItem& a, const RenderBinItem& b) -> bool {
                             // Sort by shader in all states The sort key is the shader id (for now)
-                            if (a._shaderKey != b._shaderKey) return a._shaderKey < b._shaderKey;
+                            if (a._shaderKey != b._shaderKey) { return a._shaderKey < b._shaderKey; }
                             // If the shader values are the same, we use the state hash for sorting
                             // The _stateHash is a CRC value created based on the RenderState.
-                            if (a._stateHash != b._stateHash) return a._stateHash < b._stateHash;
+                            if (a._stateHash != b._stateHash) { return a._stateHash < b._stateHash; }
                             // If both the shader are the same and the state hashes match,
                             // we sort by the secondary key (usually the texture id)
-                            if (a._textureKey != b._textureKey) return a._textureKey < b._textureKey;
+                            if (a._textureKey != b._textureKey) { return a._textureKey < b._textureKey; }
                             // ... and then finally fallback to front to back
                             return a._distanceToCameraSq < b._distanceToCameraSq;
                         });
         } break;
         case RenderingOrder::BACK_TO_FRONT: {
-            eastl::sort(begin(_renderBinStack),
-                        begin(_renderBinStack) + getBinSize(),
+            eastl::sort(binStartIt,
+                        binEndIt,
                         [](const RenderBinItem& a, const RenderBinItem& b) -> bool {
                             return a._distanceToCameraSq > b._distanceToCameraSq;
                         });
         } break;
         case RenderingOrder::FRONT_TO_BACK: {
-            eastl::sort(begin(_renderBinStack),
-                        begin(_renderBinStack) + getBinSize(),
+            eastl::sort(binStartIt,
+                        binEndIt,
                         [](const RenderBinItem& a, const RenderBinItem& b) -> bool {
                             return a._distanceToCameraSq < b._distanceToCameraSq;
                         });
         } break;
         case RenderingOrder::WATER_FIRST: {
             eastl::sort(begin(_renderBinStack),
-                        begin(_renderBinStack) + getBinSize(),
+                        binEndIt,
                         [](const RenderBinItem& a, const RenderBinItem&) -> bool {
                             return a._renderable->getSGN()->getNode().type() == SceneNodeType::TYPE_WATER;
                         });
@@ -85,35 +84,25 @@ U16 RenderBin::getSortedNodes(SortedQueue& nodes) const {
 
     nodes.resize(binSize);
     for (U16 i = 0u; i < binSize; ++i) {
-        nodes[i].first = _renderBinStack[i]._renderable;
-        nodes[i].second = {};
+        nodes[i] = std::make_pair( _renderBinStack[i]._renderable, NodeDataIdx{});
     }
 
-    return to_U16(binSize);
+    return binSize;
 }
 
-void RenderBin::refresh() {
-    _renderBinIndex.store(0u);
-}
-
-void RenderBin::addNodeToBin(const SceneGraphNode* sgn, const RenderStagePass& renderStagePass, const F32 minDistToCameraSq)
-{
-    RenderingComponent* const rComp = sgn->get<RenderingComponent>();
-
-    RenderBinItem item = {};
-    item._renderable = rComp;
+void RenderBin::addNodeToBin(const SceneGraphNode* sgn, const RenderStagePass& renderStagePass, const F32 minDistToCameraSq) {
+    RenderBinItem& item = _renderBinStack[_renderBinIndex.fetch_add(1)];
+    item._distanceToCameraSq = minDistToCameraSq;
+    item._renderable = sgn->get<RenderingComponent>();
 
     // Sort by state hash depending on the current rendering stage
     // Save the render state hash value for sorting
-    item._stateHash = rComp->getSortKeyHash(renderStagePass);
-    item._distanceToCameraSq = minDistToCameraSq;
+    item._stateHash = item._renderable->getDrawPackage(renderStagePass).sortKeyHashCache();
 
-    const Material_ptr& nodeMaterial = rComp->getMaterialInstance();
+    const Material_ptr& nodeMaterial = item._renderable->getMaterialInstance();
     if (nodeMaterial) {
-        nodeMaterial->getSortKeys(renderStagePass, item._shaderKey, item._textureKey);
+        Attorney::MaterialRenderBin::getSortKeys(*nodeMaterial, renderStagePass, item._shaderKey, item._textureKey);
     }
-
-    _renderBinStack[_renderBinIndex.fetch_add(1)] = item;
 }
 
 void RenderBin::populateRenderQueue(const RenderStagePass stagePass, RenderQueuePackages& queueInOut) const {
@@ -130,10 +119,6 @@ void RenderBin::postRender(const SceneRenderState& renderState, const RenderStag
     for (U16 i = 0u; i < binSize; ++i) {
         Attorney::RenderingCompRenderBin::postRender(_renderBinStack[i]._renderable, renderState, stagePass, bufferInOut);
     }
-}
-
-U16 RenderBin::getBinSize() const {
-    return _renderBinIndex.load();
 }
 
 } // namespace Divide

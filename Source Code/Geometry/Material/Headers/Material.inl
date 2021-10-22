@@ -39,43 +39,39 @@ inline Texture_wptr Material::getTexture(const TextureUsage textureUsage) const 
     return _textures[to_U32(textureUsage)];
 }
 
-
-inline bool Material::hasTransparency() const {
+inline bool Material::hasTransparency() const noexcept {
     return _translucencySource != TranslucencySource::COUNT && _transparencyEnabled;
 }
 
-inline bool Material::isPBRMaterial() const {
+inline bool Material::isPBRMaterial() const noexcept {
     return shadingMode() == ShadingMode::OREN_NAYAR || shadingMode() == ShadingMode::COOK_TORRANCE;
 }
 
-inline bool Material::reflective() const {
+inline bool Material::reflective() const noexcept {
     return metallic() > 0.05f && roughness() < 0.99f;
 }
 
-inline bool Material::refractive() const {
+inline bool Material::refractive() const noexcept {
     return hasTransparency() && _isRefractive;
 }
 
-
 inline ShaderProgramInfo& Material::shaderInfo(const RenderStagePass& renderStagePass) {
-    ShaderPerVariant& variantMap = _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)];
     assert(renderStagePass._variant < g_maxVariantsPerPass);
 
-    return variantMap[renderStagePass._variant];
+    return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][renderStagePass._variant];
 }
 
 inline const ShaderProgramInfo& Material::shaderInfo(const RenderStagePass& renderStagePass) const {
-    const ShaderPerVariant& variantMap = _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)];
     assert(renderStagePass._variant < g_maxVariantsPerPass);
 
-    return variantMap[renderStagePass._variant];
+    return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][renderStagePass._variant];
 }
 
 inline void Material::addShaderDefine(const ShaderType type, const Str128& define, const bool addPrefix) {
     if (type != ShaderType::COUNT) {
         addShaderDefineInternal(type, define, addPrefix);
     } else {
-        for (U8 i = 0; i < to_U8(ShaderType::COUNT); ++i) {
+        for (U8 i = 0u; i < to_U8(ShaderType::COUNT); ++i) {
             addShaderDefine(static_cast<ShaderType>(i), define, addPrefix);
         }
     }

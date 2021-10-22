@@ -18,6 +18,7 @@ void RenderPackage::clear() {
         _prevCommandData = {};
     }
     textureDataDirty(true);
+    sortKeyHashCache(0u);
     _isInstanced = false;
 }
 
@@ -52,8 +53,16 @@ void RenderPackage::addDrawCommand(const GFX::DrawCommand& cmd) {
     _prevCommandData = {};
 }
 
+void RenderPackage::addBindPipelineCommand(const GFX::BindPipelineCommand& cmd) {
+    if (empty() || count<GFX::BindPipelineCommand>() == 0) {
+        sortKeyHashCache(cmd._pipeline->getHash());
+    }
+
+    commands()->add(cmd);
+}
+
 void RenderPackage::addPushConstantsCommand(const GFX::SendPushConstantsCommand& cmd) {
-    _commands->add(cmd);
+    commands()->add(cmd);
     _prevCommandData = {};
 }
 

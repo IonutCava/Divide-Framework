@@ -50,6 +50,10 @@
 
 namespace Divide {
 
+namespace Attorney {
+    class MaterialRenderBin;
+}
+
 class RenderingComponent;
 struct NodeMaterialData;
 
@@ -104,6 +108,8 @@ namespace TypeUtil {
 };
 
 class Material final : public CachedResource {
+    friend class Attorney::MaterialRenderBin;
+
    public:
     /// Since most variants come from different light sources, this seems like a good idea (famous last words ...)
     static constexpr size_t g_maxVariantsPerPass = 3;
@@ -125,6 +131,7 @@ class Material final : public CachedResource {
     };
 
     using CustomShaderUpdateCBK = DELEGATE_STD<bool, Material&, RenderStagePass>;
+    using TexOpArray = std::array<TextureOperation, to_base(TextureUsage::COUNT)>;
 
    public:
     explicit Material(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name);
@@ -188,8 +195,6 @@ class Material final : public CachedResource {
     /// e.g. a RenderPassType::COUNT will use the block in the specified stage+variant combo but for all of the passes
     void setRenderStateBlock(size_t renderStateBlockHash, RenderStage stage, RenderPassType pass, U8 variant = g_AllVariantsID);
 
-    void getSortKeys(const RenderStagePass& renderStagePass, I64& shaderKey, I32& textureKey) const;
-
     // Returns the material's hash value (just for the uploadable data)
     void getData(const RenderingComponent& parentComp, U32 bestProbeID, NodeMaterialData& dataOut, NodeMaterialTextures& texturesOut);
 
@@ -202,11 +207,11 @@ class Material final : public CachedResource {
     I64 computeAndGetProgramGUID(const RenderStagePass& renderStagePass);
 
     void rebuild();
-    bool hasTransparency() const;
 
-    bool isPBRMaterial() const;
-    bool reflective() const;
-    bool refractive() const;
+    bool hasTransparency() const noexcept;
+    bool isPBRMaterial() const noexcept;
+    bool reflective() const noexcept;
+    bool refractive() const noexcept;
 
     bool canDraw(const RenderStagePass& renderStagePass, bool& shaderJustFinishedLoading);
 
@@ -216,6 +221,9 @@ class Material final : public CachedResource {
     // type == ShaderType::Count = add to all stages
     void addShaderDefine(ShaderType type, const Str128& define, bool addPrefix);
     const ModuleDefines& shaderDefines(ShaderType type) const;
+
+   protected:
+       void getSortKeys(const RenderStagePass& renderStagePass, I64& shaderKey, I32& textureKey) const;
 
    private:
     /// Constructs a shader for the specified renderStatePass
@@ -285,7 +293,6 @@ class Material final : public CachedResource {
 
     PROPERTY_R(bool, useBindlessTextures, false);
 
-    using TexOpArray = std::array<TextureOperation, to_base(TextureUsage::COUNT)>;
     PROPERTY_R(TexOpArray, textureOperations);
 
    private:
@@ -314,13 +321,23 @@ class Material final : public CachedResource {
 
     std::array<SamplerAddress, to_base(TextureUsage::COUNT)> _textureAddresses = {};
 
-    I32 _textureKeyCache = -1;
+    I32 _textureKeyCache = std::numeric_limits<I32>::lowest();
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> _extraShaderDefines{};
 
     vector<Material*> _instances{};
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);
+
+namespace Attorney {
+class MaterialRenderBin {
+    static void getSortKeys(const Material& material, const RenderStagePass& renderStagePass, I64& shaderKey, I32& textureKey) {
+        material.getSortKeys(renderStagePass, shaderKey, textureKey);
+    }
+
+    friend class RenderBin;
+};
+} //namespace Attorney
 
 };  // namespace Divide
 

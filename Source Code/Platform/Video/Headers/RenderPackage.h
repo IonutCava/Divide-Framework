@@ -78,7 +78,7 @@ public:
 
     template<typename T>
     [[nodiscard]] typename std::enable_if<std::is_base_of<GFX::CommandBase, T>::value, size_t>::type
-    count() const { return _commands->count<T>(); }
+    count() const noexcept { return _commands->count<T>(); }
 
     [[nodiscard]] bool empty() const noexcept { return _commands == nullptr || _commands->empty(); }
 
@@ -93,11 +93,13 @@ public:
 
     PROPERTY_RW(bool, textureDataDirty, true);
     PROPERTY_RW(MinQuality, qualityRequirement, MinQuality::FULL);
+    PROPERTY_RW(size_t, sortKeyHashCache, 0u);
 
 protected:
     [[nodiscard]] U32 updateAndRetrieveDrawCommands(NodeDataIdx dataIndex, U32 startOffset, U8 lodLevel, DrawCommandContainer& cmdsInOut);
     [[nodiscard]] GFX::CommandBuffer* commands();
     void addDrawCommand(const GFX::DrawCommand& cmd);
+    void addBindPipelineCommand(const GFX::BindPipelineCommand& cmd);
     void addPushConstantsCommand(const GFX::SendPushConstantsCommand& cmd);
 
     [[nodiscard]] bool setCommandDataIfDifferent(U32 startOffset, U32 dataIdx, size_t lodOffset, size_t lodCount) noexcept;
@@ -121,6 +123,10 @@ inline void RenderPackage::add<GFX::SendPushConstantsCommand>(const GFX::SendPus
     addPushConstantsCommand(command);
 }
 
+template <>
+inline void RenderPackage::add<GFX::BindPipelineCommand>(const GFX::BindPipelineCommand& command) {
+    addBindPipelineCommand(command);
+}
 
 namespace Attorney {
     class RenderPackageRenderPassExecutor {

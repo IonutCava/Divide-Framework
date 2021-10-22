@@ -57,8 +57,8 @@ namespace GFX {
 struct RenderBinItem {
     RenderingComponent* _renderable = nullptr;
     size_t _stateHash = 0u;
-    I64 _shaderKey = -1;
-    I32 _textureKey = -1;
+    I64 _shaderKey = std::numeric_limits<I64>::lowest();
+    I32 _textureKey = std::numeric_limits<I32>::lowest();
     F32 _distanceToCameraSq = 0.f;
 };
 
@@ -116,19 +116,16 @@ class RenderBin {
     void sort(RenderingOrder renderOrder);
     void populateRenderQueue(RenderStagePass stagePass, RenderQueuePackages& queueInOut) const;
     void postRender(const SceneRenderState& renderState, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
-    void refresh();
 
     void addNodeToBin(const SceneGraphNode* sgn, const RenderStagePass& renderStagePass, F32 minDistToCameraSq);
 
-    [[nodiscard]] const RenderBinItem& getItem(U16 index) const;
-
     [[nodiscard]] U16 getSortedNodes(SortedQueue& nodes) const;
 
-    [[nodiscard]] U16 getBinSize() const;
-
-    [[nodiscard]] bool empty() const { return getBinSize() == 0; }
-
-    [[nodiscard]] RenderBinType getType() const noexcept { return _rbType; }
+    FORCE_INLINE               void                 refresh()                      noexcept { _renderBinIndex.store(0u); }
+    FORCE_INLINE [[nodiscard]] const RenderBinItem& getItem(const U16 index) const          { assert(index < getBinSize()); return _renderBinStack[index]; }
+    FORCE_INLINE [[nodiscard]] U16                  getBinSize()             const noexcept { return _renderBinIndex.load(); }
+    FORCE_INLINE [[nodiscard]] bool                 empty()                  const noexcept { return getBinSize() == 0; }
+    FORCE_INLINE [[nodiscard]] RenderBinType        getType()                const noexcept { return _rbType; }
 
    private:
     const RenderBinType _rbType;

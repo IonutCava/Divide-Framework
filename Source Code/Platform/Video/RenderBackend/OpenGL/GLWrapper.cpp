@@ -818,21 +818,24 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
     switch (cmdType) {
         case GFX::CommandType::BEGIN_RENDER_PASS: {
-            GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(entry);
+            const GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(entry);
+
             glFramebuffer& rt = static_cast<glFramebuffer&>(_context.renderTargetPool().renderTarget(crtCmd->_target));
             Attorney::GLAPIRenderTarget::begin(rt, crtCmd->_descriptor);
             getStateTracker()._activeRenderTarget = &rt;
             PushDebugMessage(crtCmd->_name.c_str());
         }break;
         case GFX::CommandType::END_RENDER_PASS: {
-            GFX::EndRenderPassCommand* crtCmd = commandBuffer.get<GFX::EndRenderPassCommand>(entry);
+            const GFX::EndRenderPassCommand* crtCmd = commandBuffer.get<GFX::EndRenderPassCommand>(entry);
+
             assert(GL_API::getStateTracker()._activeRenderTarget != nullptr);
             PopDebugMessage();
             glFramebuffer& fb = *getStateTracker()._activeRenderTarget;
             Attorney::GLAPIRenderTarget::end(fb, crtCmd->_setDefaultRTState);
         }break;
         case GFX::CommandType::BEGIN_PIXEL_BUFFER: {
-            GFX::BeginPixelBufferCommand* crtCmd = commandBuffer.get<GFX::BeginPixelBufferCommand>(entry);
+            const GFX::BeginPixelBufferCommand* crtCmd = commandBuffer.get<GFX::BeginPixelBufferCommand>(entry);
+
             assert(crtCmd->_buffer != nullptr);
             glPixelBuffer* buffer = static_cast<glPixelBuffer*>(crtCmd->_buffer);
             const bufferPtr data = Attorney::GLAPIPixelBuffer::begin(*buffer);
@@ -846,8 +849,9 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             Attorney::GLAPIPixelBuffer::end(*getStateTracker()._activePixelBuffer);
         }break;
         case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
+            const GFX::BeginRenderSubPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderSubPassCommand>(entry);
+
             assert(GL_API::getStateTracker()._activeRenderTarget != nullptr);
-            GFX::BeginRenderSubPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderSubPassCommand>(entry);
             for (const RenderTarget::DrawLayerParams& params : crtCmd->_writeLayers) {
                 getStateTracker()._activeRenderTarget->drawToLayer(params);
             }
@@ -857,18 +861,20 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::END_RENDER_SUB_PASS: {
         }break;
         case GFX::CommandType::SET_BLEND_STATE: {
+            const GFX::SetBlendStateCommand* crtCmd = commandBuffer.get<GFX::SetBlendStateCommand>(entry);
+
             assert(GL_API::getStateTracker()._activeRenderTarget != nullptr);
-            GFX::SetBlendStateCommand* crtCmd = commandBuffer.get<GFX::SetBlendStateCommand>(entry);
             getStateTracker()._activeRenderTarget->setBlendState(crtCmd->_blendStates);
         }break;
         case GFX::CommandType::COPY_TEXTURE: {
-            GFX::CopyTextureCommand* crtCmd = commandBuffer.get<GFX::CopyTextureCommand>(entry);
+            const GFX::CopyTextureCommand* crtCmd = commandBuffer.get<GFX::CopyTextureCommand>(entry);
+
             glTexture::copy(crtCmd->_source, crtCmd->_destination, crtCmd->_params);
         }break;
         case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
             GFX::BindDescriptorSetsCommand* crtCmd = commandBuffer.get<GFX::BindDescriptorSetsCommand>(entry);
-            DescriptorSet& set = crtCmd->_set;
 
+            DescriptorSet& set = crtCmd->_set;
             if (!makeTexturesResident(set._textureData, set._textureViews)) {
                 //Error
             }
@@ -877,7 +883,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             }
 
             OPTICK_EVENT("Bind Shader Buffers");
-            for (U8 i = 0; i < set._buffers.count(); ++i) {
+            for (U8 i = 0u; i < set._buffers.count(); ++i) {
                 const ShaderBufferBinding& binding = set._buffers._entries[i];
                 if (binding._binding == ShaderBufferLocation::COUNT) {
                     // might be leftover from a batching call
@@ -885,8 +891,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                 }
 
                 assert(binding._buffer != nullptr);
-                glUniformBuffer* buffer = static_cast<glUniformBuffer*>(binding._buffer);
-                buffer->bindRange(to_U8(binding._binding), binding._elementRange.min, binding._elementRange.max);
+                binding._buffer->bindRange(binding._binding, binding._elementRange.min, binding._elementRange.max);
             }
 
         }break;
@@ -932,21 +937,22 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::SET_BLEND: {
             getStateTracker().setBlending(commandBuffer.get<GFX::SetBlendCommand>(entry)->_blendProperties);
         }break;
-        case GFX::CommandType::SET_TEXTURE_RESIDENCY:
-        {
-            GFX::SetTexturesResidencyCommand* crtCmd = commandBuffer.get<GFX::SetTexturesResidencyCommand>(entry);
+        case GFX::CommandType::SET_TEXTURE_RESIDENCY: {
+            const GFX::SetTexturesResidencyCommand* crtCmd = commandBuffer.get<GFX::SetTexturesResidencyCommand>(entry);
+
             if (crtCmd->_state) {
-                for (SamplerAddress address : crtCmd->_addresses) {
+                for (const SamplerAddress address : crtCmd->_addresses) {
                     MakeTexturesResidentInternal(address);
                 }
             } else {
-                for (SamplerAddress address : crtCmd->_addresses) {
+                for (const SamplerAddress address : crtCmd->_addresses) {
                     MakeTexturesNonResidentInternal(address);
                 }
             }
         }break;
         case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
-             GFX::BeginDebugScopeCommand* crtCmd = commandBuffer.get<GFX::BeginDebugScopeCommand>(entry);
+             const GFX::BeginDebugScopeCommand* crtCmd = commandBuffer.get<GFX::BeginDebugScopeCommand>(entry);
+
              PushDebugMessage(crtCmd->_scopeName.c_str());
         } break;
         case GFX::CommandType::END_DEBUG_SCOPE: {
@@ -954,7 +960,8 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         } break;
         case GFX::CommandType::COMPUTE_MIPMAPS: {
             OPTICK_EVENT("GL: Compute MipMaps");
-            GFX::ComputeMipMapsCommand* crtCmd = commandBuffer.get<GFX::ComputeMipMapsCommand>(entry);
+            const GFX::ComputeMipMapsCommand* crtCmd = commandBuffer.get<GFX::ComputeMipMapsCommand>(entry);
+
             if (!crtCmd->_clearOnly) {
                 if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
                     if (crtCmd->_defer) {
@@ -1032,19 +1039,19 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         }break;
         case GFX::CommandType::DRAW_TEXT: {
             if (getStateTracker()._activePipeline != nullptr) {
-                GFX::DrawTextCommand* crtCmd = commandBuffer.get<GFX::DrawTextCommand>(entry);
+                const GFX::DrawTextCommand* crtCmd = commandBuffer.get<GFX::DrawTextCommand>(entry);
                 drawText(crtCmd->_batch);
             }
         }break;
         case GFX::CommandType::DRAW_IMGUI: {
             if (getStateTracker()._activePipeline != nullptr) {
-                GFX::DrawIMGUICommand* crtCmd = commandBuffer.get<GFX::DrawIMGUICommand>(entry);
+                const GFX::DrawIMGUICommand* crtCmd = commandBuffer.get<GFX::DrawIMGUICommand>(entry);
                 drawIMGUI(crtCmd->_data, crtCmd->_windowGUID);
             }
         }break;
         case GFX::CommandType::DRAW_COMMANDS : {
             const GLStateTracker& stateTracker = getStateTracker();
-            const auto& drawCommands = commandBuffer.get<GFX::DrawCommand>(entry)->_drawCommands;
+            const GFX::DrawCommand::CommandContainer& drawCommands = commandBuffer.get<GFX::DrawCommand>(entry)->_drawCommands;
 
             U32 drawCount = 0u;
 
@@ -1060,18 +1067,21 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             _context.registerDrawCalls(drawCount);
         }break;
         case GFX::CommandType::DISPATCH_COMPUTE: {
-            GFX::DispatchComputeCommand* crtCmd = commandBuffer.get<GFX::DispatchComputeCommand>(entry);
+            const GFX::DispatchComputeCommand* crtCmd = commandBuffer.get<GFX::DispatchComputeCommand>(entry);
+
             if(getStateTracker()._activePipeline != nullptr) {
                 OPTICK_EVENT("GL: Dispatch Compute");
                 glDispatchCompute(crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z);
             }
         }break;
         case GFX::CommandType::SET_CLIPING_STATE: {
-            GFX::SetClippingStateCommand* crtCmd = commandBuffer.get<GFX::SetClippingStateCommand>(entry);
+            const GFX::SetClippingStateCommand* crtCmd = commandBuffer.get<GFX::SetClippingStateCommand>(entry);
+
             getStateTracker().setClippingPlaneState(crtCmd->_lowerLeftOrigin, crtCmd->_negativeOneToOneDepth);
         } break;
         case GFX::CommandType::MEMORY_BARRIER: {
-            GFX::MemoryBarrierCommand* crtCmd = commandBuffer.get<GFX::MemoryBarrierCommand>(entry);
+            const GFX::MemoryBarrierCommand* crtCmd = commandBuffer.get<GFX::MemoryBarrierCommand>(entry);
+
             MemoryBarrierMask glMask = MemoryBarrierMask::GL_NONE_BIT;
             const U32 barrierMask = crtCmd->_barrierMask;
             if (barrierMask != 0) {
@@ -1478,7 +1488,7 @@ GLuint GL_API::GetSamplerHandle(const size_t samplerHash) {
             // Check again
             const SamplerObjectMap::const_iterator it = s_samplerMap.find(samplerHash);
             if (it == std::cend(s_samplerMap)) {
-                //Cache miss. Create the sampler object now.
+                // Cache miss. Create the sampler object now.
                 // Create and store the newly created sample object. GL_API is responsible for deleting these!
                 const GLuint sampler = glSamplerObject::construct(SamplerDescriptor::get(samplerHash));
                 emplace(s_samplerMap, samplerHash, sampler);
