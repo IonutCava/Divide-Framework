@@ -62,7 +62,7 @@ namespace Divide {
     }
 
 
-    void glUniformPushConstantUploader::uploadPushConstant(const GFX::PushConstant& constant, const bool force) {
+    void glUniformPushConstantUploader::uploadPushConstant(const GFX::PushConstant& constant, const bool force) noexcept {
         const I32 binding = cachedValueUpdate(constant, force);
         uniform(binding, constant._type, constant._buffer.data(), static_cast<GLsizei>(constant._buffer.size()));
     }
@@ -91,7 +91,7 @@ namespace Divide {
         return -1;
     }
 
-    void glUniformPushConstantUploader::uniform(const I32 binding, const GFX::PushConstantType type, const Byte* const values, const GLsizei byteCount) const {
+    void glUniformPushConstantUploader::uniform(const I32 binding, const GFX::PushConstantType type, const Byte* const values, const GLsizei byteCount) const noexcept {
         if (binding == -1) {
             return;
         }

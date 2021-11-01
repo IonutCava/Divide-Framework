@@ -7,7 +7,6 @@
 namespace Divide {
 
 constexpr GLuint64 kOneSecondInNanoSeconds = 1000000000;
-constexpr U8 kMaxWaitRetry = 5;
 
 glLockManager::~glLockManager()
 {
@@ -78,7 +77,7 @@ bool glLockManager::Wait(const GLsync syncObj, const bool blockClient, const boo
         waitFlags = SyncObjectMask::GL_SYNC_FLUSH_COMMANDS_BIT;
         waitTimeout = kOneSecondInNanoSeconds;
 
-        if (++retryCount > kMaxWaitRetry) {
+        if (++retryCount > g_MaxLockWaitRetries) {
             if (waitRet != GL_TIMEOUT_EXPIRED) {
                 Console::errorfn("glLockManager::wait error: Lock timeout");
             }

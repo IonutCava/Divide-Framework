@@ -681,7 +681,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
             loadData._uniformBlock = "layout(binding = %d, std140) uniform %s {";
 
             for (const UniformDeclaration& uniform : allUniforms) {
-                loadData._uniformBlock.append(Util::StringFormat(g_useUniformConstantBuffer ? "\n    %s %s;" : "\n    %s WIP%s;", uniform._type.c_str(), uniform._name.c_str()));
+                loadData._uniformBlock.append(Util::StringFormat(g_useUniformConstantBuffer ? "\n    %s %s;" : "\n    %s UBM%s;", uniform._type.c_str(), uniform._name.c_str()));
             }
             loadData._uniformBlock.append("\n};");
             loadData._uniformIndex = uniformIndex++;

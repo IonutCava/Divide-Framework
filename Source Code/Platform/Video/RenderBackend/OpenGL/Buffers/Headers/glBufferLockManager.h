@@ -57,6 +57,12 @@ inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept 
 }
 
 // --------------------------------------------------------------------------------------------------------------------
+enum class BufferLockState : U8 {
+    ACTIVE = 0,
+    EXPIRED,
+    ERROR
+};
+
 struct BufferLock {
     BufferLock() = default;
     explicit BufferLock(const BufferRange range, const GLsync syncObj, const U32 frameID) noexcept
@@ -67,7 +73,7 @@ struct BufferLock {
     BufferRange _range{};
     GLsync _syncObj = nullptr;
     U32 _frameID = 0;
-    bool _valid = true;
+    BufferLockState _state = BufferLockState::ACTIVE;
 };
 
 // --------------------------------------------------------------------------------------------------------------------

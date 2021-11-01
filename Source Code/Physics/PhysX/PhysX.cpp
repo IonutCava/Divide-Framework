@@ -30,13 +30,9 @@ namespace {
     physx::PxU32 g_pvd_target_timeout_ms = 10;
 
     struct DeletionListener final : physx::PxDeletionListener {
-        void onRelease(const physx::PxBase* observed, void* userData, physx::PxDeletionEventFlag::Enum deletionEvent) override {
-            PX_UNUSED(userData);
-            PX_UNUSED(deletionEvent);
-
+        void onRelease(const physx::PxBase* observed, [[maybe_unused]] void* userData, [[maybe_unused]] physx::PxDeletionEventFlag::Enum deletionEvent) override {
             if (observed->is<physx::PxRigidActor>()) 	{
-                const physx::PxRigidActor* actor = static_cast<const physx::PxRigidActor*>(observed);
-                PX_UNUSED(actor);
+                [[maybe_unused]] const physx::PxRigidActor* actor = static_cast<const physx::PxRigidActor*>(observed);
                 /*
                 removeRenderActorsFromPhysicsActor(actor);
                 vector<physx::PxRigidActor*>::iterator actorIter = std::find(_physicsActors.begin(), _physicsActors.end(), actor);
@@ -53,16 +49,16 @@ namespace {
     {
         void reportError(const physx::PxErrorCode::Enum code, const char* message, const char* file, const int line) override {
             switch(code) {
-                case physx::PxErrorCode::eNO_ERROR: Console::printfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "None", message, file, line);  return;
-                case physx::PxErrorCode::eDEBUG_INFO:  Console::d_printfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "Debug Msg", message, file, line); return;
-                case physx::PxErrorCode::eDEBUG_WARNING:  Console::d_warnf(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "Debug Warn", message, file, line); return;
-                case physx::PxErrorCode::eINVALID_PARAMETER:  Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "Invalid Parameter", message, file, line); return;
-                case physx::PxErrorCode::eINVALID_OPERATION:  Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "Invalid Operation", message, file, line); return;
-                case physx::PxErrorCode::eOUT_OF_MEMORY:  Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "Mem", message, file, line); return;
-                case physx::PxErrorCode::eINTERNAL_ERROR:  Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "Internal", message, file, line); return;
-                case physx::PxErrorCode::eABORT:  Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "Abort", message, file, line); return;
-                case physx::PxErrorCode::ePERF_WARNING:  Console::warnfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "Perf", message, file, line); return;
-                case physx::PxErrorCode::eMASK_ALL:  Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "ALL", message, file, line); return;
+                case physx::PxErrorCode::eNO_ERROR:           Console::printfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")),   "None",              message, file, line); return;
+                case physx::PxErrorCode::eDEBUG_INFO:         Console::d_printfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "Debug Msg",         message, file, line); return;
+                case physx::PxErrorCode::eDEBUG_WARNING:      Console::d_warnf(Locale::Get(_ID("ERROR_PHYSX_GENERIC")),   "Debug Warn",        message, file, line); return;
+                case physx::PxErrorCode::eINVALID_PARAMETER:  Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")),   "Invalid Parameter", message, file, line); return;
+                case physx::PxErrorCode::eINVALID_OPERATION:  Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")),   "Invalid Operation", message, file, line); return;
+                case physx::PxErrorCode::eOUT_OF_MEMORY:      Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")),   "Mem",               message, file, line); return;
+                case physx::PxErrorCode::eINTERNAL_ERROR:     Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")),   "Internal",          message, file, line); return;
+                case physx::PxErrorCode::eABORT:              Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")),   "Abort",             message, file, line); return;
+                case physx::PxErrorCode::ePERF_WARNING:       Console::warnfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")),    "Perf",              message, file, line); return;
+                case physx::PxErrorCode::eMASK_ALL:           Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")),   "ALL",               message, file, line); return;
             }
             Console::errorfn(Locale::Get(_ID("ERROR_PHYSX_GENERIC")), "UNKNOWN", message, file, line);
         }
@@ -466,7 +462,6 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
             crtPose.p.y -= hExtent.y;
             shape->setLocalPose(crtPose);
         }
-        PX_UNUSED(shape);
     } else {
         DIVIDE_UNEXPECTED_CALL();
     }

@@ -55,13 +55,12 @@ namespace Divide {
             GLint  _index = -1;
             GLint  _arraySize = -1;
             GLenum _type = GL_NONE;
-            bool   _wasWrittenTo = false;
         };
 
         explicit glBufferedPushConstantUploader(const glBufferedPushConstantUploaderDescriptor& descriptor);
         ~glBufferedPushConstantUploader();
 
-        void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) override;
+        void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept override;
         void cacheUniforms() override;
         void commit() override;
         void prepare() override;

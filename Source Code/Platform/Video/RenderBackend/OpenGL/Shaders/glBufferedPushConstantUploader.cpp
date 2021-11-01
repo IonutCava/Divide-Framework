@@ -90,7 +90,6 @@ namespace Divide {
         _blockMembers.resize(activeMembers);
         for (GLint member = 0; member < activeMembers; ++member) {
             BlockMember& bMember = _blockMembers[member];
-            bMember._wasWrittenTo = false;
             bMember._name.resize(nameLengthOut[member]);
             glGetActiveUniform(_programHandle, blockIndices[member], static_cast<GLsizei>(bMember._name.size()), nullptr, &bMember._arraySize, &bMember._type, &bMember._name[0]);
             bMember._name.pop_back();
@@ -99,7 +98,7 @@ namespace Divide {
             bMember._index = blockIndices[member];
             bMember._offset = offsetsOut[member];
             if (uniArrayStride[member] > 0) {
-                bMember._size = bMember._arraySize * uniArrayStride[member];
+                bMember._size = to_size(bMember._arraySize) * uniArrayStride[member];
             } else if (uniMatStride[member] > 0) {
                 switch (bMember._type) {
                     case GL_FLOAT_MAT2:
@@ -108,7 +107,7 @@ namespace Divide {
                     case GL_DOUBLE_MAT2:
                     case GL_DOUBLE_MAT2x3:
                     case GL_DOUBLE_MAT2x4:
-                        bMember._size = 2 * uniMatStride[member];
+                        bMember._size = to_size(uniMatStride[member]) * 2;
                         break;
                     case GL_FLOAT_MAT3:
                     case GL_FLOAT_MAT3x2:
@@ -116,7 +115,7 @@ namespace Divide {
                     case GL_DOUBLE_MAT3:
                     case GL_DOUBLE_MAT3x2:
                     case GL_DOUBLE_MAT3x4:
-                        bMember._size = 3 * uniMatStride[member];
+                        bMember._size = to_size(uniMatStride[member]) * 3;
                         break;
                     case GL_FLOAT_MAT4:
                     case GL_FLOAT_MAT4x2:
@@ -124,7 +123,7 @@ namespace Divide {
                     case GL_DOUBLE_MAT4:
                     case GL_DOUBLE_MAT4x2:
                     case GL_DOUBLE_MAT4x3:
-                        bMember._size = 4 * uniMatStride[member];
+                        bMember._size = to_size(uniMatStride[member]) * 4;
                         break;
                     default: break;
                 }
@@ -137,7 +136,7 @@ namespace Divide {
         for (GLint idx = 0; idx < activeMembers; ++idx) {
             BlockMember& member = _blockMembers[idx];
             if (member._name.length() > 3) {
-                if (Util::BeginsWith(member._name, "WIP", true)) {
+                if (Util::BeginsWith(member._name, "UBM", true)) { //UBM: UNIFORM BLOCK MARKER
                     const string newName = member._name.c_str();
                     member._name = newName.substr(3, newName.length() - 3);
                     member._nameHash = _ID(member._name.c_str());
@@ -170,7 +169,7 @@ namespace Divide {
     }
 
 
-    void glBufferedPushConstantUploader::uploadPushConstant(const GFX::PushConstant& constant, bool force) {
+    void glBufferedPushConstantUploader::uploadPushConstant(const GFX::PushConstant& constant, bool force) noexcept {
         if (_uniformBlockBufferHandle == GLUtil::k_invalidObjectID ||
             constant._type == GFX::PushConstantType::COUNT ||
             constant._bindingHash == 0u)         
@@ -188,10 +187,8 @@ namespace Divide {
                 const Byte*  src      = constant._buffer.data();
                 const size_t numBytes = constant._buffer.size();
 
-                if (!member._wasWrittenTo || std::memcmp(dst, src, numBytes) != 0) {
+                if (std::memcmp(dst, src, numBytes) != 0) {
                     std::memcpy(dst, src, numBytes);
-                    member._wasWrittenTo = true;
-
                     _uniformBlockDirty = true;
                 }
                 return;

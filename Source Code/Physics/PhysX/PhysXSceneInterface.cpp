@@ -111,16 +111,15 @@ bool PhysXSceneInterface::init() {
     }
 
     physx::PxSceneWriteLock scopedLock(*_gScene);
-    const physx::PxSceneFlags flag = _gScene->getFlags();
-    PX_UNUSED(flag);
+    [[maybe_unused]] const physx::PxSceneFlags flag = _gScene->getFlags();
     //_gScene->setVisualizationParameter(physx::PxVisualizationParameter::eSCALE, 1.0);
     //_gScene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
     
     if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
         physx::PxPvdSceneClient* pvdClient = _gScene->getScenePvdClient();
         if (pvdClient != nullptr) {
-            pvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS, true);
-            pvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
+            pvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS,  true);
+            pvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_CONTACTS,     true);
             pvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_SCENEQUERIES, true);
         }
     }

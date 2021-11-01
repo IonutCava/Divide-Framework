@@ -33,19 +33,31 @@ bool glBufferLockManager::waitForLockedRange(size_t lockBeginBytes,
     ScopedLock<Mutex> w_lock(_lock);
     _swapLocks.resize(0);
     for (const BufferLock& lock : _bufferLocks) {
-        if (lock._valid && !Overlaps(testRange, lock._range)) {
-            _swapLocks.push_back(lock);
-        } else {
-            U8 retryCount = 0u;
-            if (!lock._valid || Wait(lock._syncObj, blockClient, quickCheck, retryCount)) {
-                GL_API::RegisterSyncDelete(lock._syncObj);
-                if (retryCount > 4) {
-                    Console::errorfn("glBufferLockManager: Wait (%p) [%d - %d] %s - %d retries", this, lockBeginBytes, lockLength, blockClient ? "true" : "false", retryCount);
+        switch (lock._state) {
+            case BufferLockState::ACTIVE: {
+                if (!Overlaps(testRange, lock._range)) {
+                    _swapLocks.push_back(lock);
+                } else {
+                    U8 retryCount = 0u;
+                    if (Wait(lock._syncObj, blockClient, quickCheck, retryCount)) {
+                        GL_API::RegisterSyncDelete(lock._syncObj);
+                        if (retryCount > g_MaxLockWaitRetries - 1) {
+                            Console::errorfn("glBufferLockManager: Wait (%p) [%d - %d] %s - %d retries", this, lockBeginBytes, lockLength, blockClient ? "true" : "false", retryCount);
+                        }
+                    } else if (!quickCheck) {
+                        error = true;
+                        _swapLocks.push_back(lock);
+                        _swapLocks.back()._state = BufferLockState::ERROR;
+                    }
                 }
-            } else if (!quickCheck) {
-                error = true;
-            }
-        }
+            } break;
+            case BufferLockState::EXPIRED: {
+                GL_API::RegisterSyncDelete(lock._syncObj);
+            } break;
+            case BufferLockState::ERROR: {
+                DebugBreak();
+            } break;
+        };
     }
 
     _bufferLocks.swap(_swapLocks);
@@ -60,17 +72,24 @@ bool glBufferLockManager::lockRange(const size_t lockBeginBytes, const size_t lo
 
     const BufferRange testRange{ lockBeginBytes, lockLength };
 
-    // Verify old lock entries and merge if needed
     ScopedLock<Mutex> w_lock(_lock);
-    for (BufferLock& lock : _bufferLocks) {
-        // This should avoid any lock leaks, since any fences we haven't waited on will be considered "signaled" eventually
-        if (lock._frameID < frameID && frameID - lock._frameID >= g_LockFrameLifetime) {
-            lock._valid = false;
-        }
 
-        // See if we can reuse the old lock. Ignore the old fence since the new one will guard the same mem region. Right?
-        if (Overlaps(testRange, lock._range) && lock._valid) {
+    // This should avoid any lock leaks, since any fences we haven't waited on will be considered "signaled" eventually
+    for (BufferLock& lock : _bufferLocks) {
+        if (lock._frameID < frameID && frameID - lock._frameID >= g_LockFrameLifetime) {
+            lock._state = BufferLockState::EXPIRED;
+        }
+    }
+
+    // See if we can reuse an old lock. Ignore the old fence since the new one will guard the same mem region. (Right?)
+    for (BufferLock& lock : _bufferLocks) {
+        if (Overlaps(testRange, lock._range) && 
+            (lock._state == BufferLockState::ACTIVE ||
+             lock._state == BufferLockState::ERROR))
+        
+        {
             GL_API::RegisterSyncDelete(lock._syncObj);
+
             lock._range._startOffset = std::min(testRange._startOffset, lock._range._startOffset);
             lock._range._length = std::max(testRange._length, lock._range._length);
             lock._frameID = frameID;
@@ -79,6 +98,7 @@ bool glBufferLockManager::lockRange(const size_t lockBeginBytes, const size_t lo
         }
     }
 
+    // No luck with our reuse search. Add a new lock.
     _bufferLocks.emplace_back(
         testRange,
         glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0),

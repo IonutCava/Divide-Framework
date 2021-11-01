@@ -320,6 +320,7 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(O
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(OutDir) PhysXFoundation_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(OutDir) PhysXCooking_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(OutDir) PhysXGPU_64.dll /NP /NJH /NJS
+robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
@@ -401,6 +402,7 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(O
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(OutDir) PhysXFoundation_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(OutDir) PhysXCooking_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(OutDir) PhysXGPU_64.dll /NP /NJH /NJS
+robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
@@ -474,6 +476,7 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $(OutDir) PhysXFoundation_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $(OutDir) PhysXCooking_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $(OutDir) PhysXGPU_64.dll /NP /NJH /NJS
+robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
@@ -547,6 +550,7 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $(OutDir) PhysXFoundation_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $(OutDir) PhysXCooking_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $(OutDir) PhysXGPU_64.dll /NP /NJH /NJS
+robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
@@ -620,6 +624,7 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $(OutDir) PhysXFoundation_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $(OutDir) PhysXCooking_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $(OutDir) PhysXGPU_64.dll /NP /NJH /NJS
+robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
@@ -693,6 +698,7 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $(OutDir) PhysXFoundation_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $(OutDir) PhysXCooking_64.dll /NP /NJH /NJS
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $(OutDir) PhysXGPU_64.dll /NP /NJH /NJS
+robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>

@@ -36,6 +36,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
+constexpr U8 g_MaxLockWaitRetries = 5u;
+
 class glLockManager : public GUIDWrapper {
    public:
     virtual ~glLockManager();
