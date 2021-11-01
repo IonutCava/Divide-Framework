@@ -77,8 +77,7 @@ void LocalClient::HandleGeometryAppendOpCode(WorldPacket& p) {
     _parentScene.addPatch(patch);*/
 }
 
-void LocalClient::HandleHeartBeatOpCode(WorldPacket& p) {
-    ACKNOWLEDGE_UNUSED(p);
+void LocalClient::HandleHeartBeatOpCode([[maybe_unused]] WorldPacket& p) {
     /// nothing. Heartbeats keep us alive \:D/
 }
 

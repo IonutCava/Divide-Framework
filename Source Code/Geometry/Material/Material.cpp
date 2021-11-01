@@ -208,8 +208,7 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
     return cloneMat;
 }
 
-bool Material::update(const U64 deltaTimeUS) {
-    ACKNOWLEDGE_UNUSED(deltaTimeUS);
+bool Material::update([[maybe_unused]] const U64 deltaTimeUS) {
 
     if (_needsNewShader) {
         recomputeShaders();

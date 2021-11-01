@@ -165,14 +165,13 @@ bool glFramebuffer::create() {
     }
 
     // For every attachment, be it a colour or depth attachment ...
-    GLuint attachmentCountTotal = 0u;
+    [[maybe_unused]] GLuint attachmentCountTotal = 0u;
     for (U8 i = 0; i < to_base(RTAttachmentType::COUNT); ++i) {
         for (U8 j = 0; j < _attachmentPool->attachmentCount(static_cast<RTAttachmentType>(i)); ++j) {
             initAttachment(static_cast<RTAttachmentType>(i), j);
             assert(GL_API::s_maxFBOAttachments > ++attachmentCountTotal);
         }
     }
-    ACKNOWLEDGE_UNUSED(attachmentCountTotal);
 
     setDefaultState({});
 

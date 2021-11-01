@@ -76,8 +76,7 @@ void TaskPool::onThreadCreate(const U32 threadIndex, const std::thread::id& thre
     }
 }
 
-void TaskPool::onThreadDestroy(const std::thread::id& threadID) {
-    ACKNOWLEDGE_UNUSED(threadID);
+void TaskPool::onThreadDestroy([[maybe_unused]] const std::thread::id& threadID) {
 
     if (USE_OPTICK_PROFILER) {
         OPTICK_STOP_THREAD();

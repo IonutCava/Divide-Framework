@@ -80,9 +80,7 @@ void tcp_session_tpl::start_read() {
             }));
 }
 
-void tcp_session_tpl::handle_read_body(const boost::system::error_code& ec, size_t bytes_transfered) {
-    ACKNOWLEDGE_UNUSED(bytes_transfered);
-
+void tcp_session_tpl::handle_read_body(const boost::system::error_code& ec, [[maybe_unused]] size_t bytes_transfered) {
     if (stopped()) {
         return;
     }
@@ -100,8 +98,7 @@ void tcp_session_tpl::handle_read_body(const boost::system::error_code& ec, size
     }
 }
 
-void tcp_session_tpl::handle_read_packet(const boost::system::error_code& ec, const size_t bytes_transfered) {
-    ACKNOWLEDGE_UNUSED(bytes_transfered);
+void tcp_session_tpl::handle_read_packet(const boost::system::error_code& ec, [[maybe_unused]] const size_t bytes_transfered) {
 
     if (stopped()) {
         return;
@@ -156,8 +153,7 @@ void tcp_session_tpl::start_write() {
                 [&](const boost::system::error_code code, const size_t) {handle_write(code); }));
     }
 }
-void tcp_session_tpl::handle_write_file(const boost::system::error_code& ec) {
-    ACKNOWLEDGE_UNUSED(ec);
+void tcp_session_tpl::handle_write_file([[maybe_unused]] const boost::system::error_code& ec) {
 
     boost::asio::streambuf request_;
     const string filePath = _outputFileQueue.front();
@@ -269,9 +265,7 @@ void tcp_session_tpl::handlePacket(WorldPacket& p) {
     }
 }
 
-void tcp_session_tpl::HandleHeartBeatOpCode(WorldPacket& p) {
-    ACKNOWLEDGE_UNUSED(p);
-
+void tcp_session_tpl::HandleHeartBeatOpCode([[maybe_unused]] WorldPacket& p) {
     WorldPacket r(OPCodes::MSG_HEARTBEAT);
     ASIO::LOG_PRINT("Sending  [ MSG_HEARTBEAT]");
     r << (I8)0;

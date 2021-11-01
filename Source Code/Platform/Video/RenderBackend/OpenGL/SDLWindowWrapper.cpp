@@ -450,9 +450,8 @@ void GL_API::onThreadCreated(const std::thread::id& threadID) {
 
     // This also makes the context current
     assert(GLUtil::s_glSecondaryContext == nullptr && "GL_API::syncToThread: double init context for current thread!");
-    const bool ctxFound = g_ContextPool.getAvailableContext(GLUtil::s_glSecondaryContext);
+    [[maybe_unused]] const bool ctxFound = g_ContextPool.getAvailableContext(GLUtil::s_glSecondaryContext);
     assert(ctxFound && "GL_API::syncToThread: context not found for current thread!");
-    ACKNOWLEDGE_UNUSED(ctxFound);
 
     SDL_GL_MakeCurrent(GLUtil::s_glMainRenderWindow->getRawWindow(), GLUtil::s_glSecondaryContext);
     glbinding::Binding::initialize([](const char* proc) noexcept {

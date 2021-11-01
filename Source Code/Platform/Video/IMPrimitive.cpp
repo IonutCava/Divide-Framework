@@ -22,17 +22,17 @@ IMPrimitive::~IMPrimitive()
 }
 
 void IMPrimitive::reset() {
-    _worldMatrix.identity();
+    resetWorldMatrix();
+    resetViewport();
     _textureEntry = {};
     _cmdBufferDirty = true;
-    _viewport.set(-1);
     clearBatch();
 }
 
 void IMPrimitive::fromOBB(const OBB& obb, const UColour4& colour) {
     OBB::OOBBEdgeList edges = obb.edgeList();
     std::array<Line, 12> lines = {};
-    for (U8 i = 0; i < 12; ++i)
+    for (U8 i = 0u; i < 12u; ++i)
     {
         lines[i].positionStart(edges[i]._start);
         lines[i].positionEnd(edges[i]._end);
@@ -192,15 +192,22 @@ void IMPrimitive::fromLines(const Line* lines, const size_t count) {
 }
 
 void IMPrimitive::pipeline(const Pipeline& pipeline) noexcept {
-    _pipeline = &pipeline;
-    _cmdBufferDirty = true;
+    if (_pipeline == nullptr || *_pipeline != pipeline) {
+        _pipeline = &pipeline;
+        _cmdBufferDirty = true;
+    }
 }
 
 void IMPrimitive::texture(const Texture& texture, const size_t samplerHash) {
-    _textureEntry._data = texture.data();
-    _textureEntry._sampler = samplerHash;
-    _textureEntry._binding = to_U8(TextureUsage::UNIT0);
-    _cmdBufferDirty = true;
+    TextureEntry tempEntry{};
+    tempEntry._data = texture.data();
+    tempEntry._sampler = samplerHash;
+    tempEntry._binding = to_U8(TextureUsage::UNIT0);
+
+    if (_textureEntry != tempEntry) {
+        _textureEntry = tempEntry;
+        _cmdBufferDirty = true;
+    }
 }
 
 GFX::CommandBuffer& IMPrimitive::toCommandBuffer() const {

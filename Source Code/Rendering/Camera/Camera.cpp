@@ -38,9 +38,7 @@ const CameraSnapshot& Camera::snapshot() const noexcept {
     return _data;
 }
 
-void Camera::fromCamera(const Camera& camera, const bool flag) {
-    ACKNOWLEDGE_UNUSED(flag);
-
+void Camera::fromCamera(const Camera& camera, [[maybe_unused]] const bool flag) {
     _reflectionPlane = camera._reflectionPlane;
     _reflectionActive = camera._reflectionActive;
     _accumPitchDegrees = camera._accumPitchDegrees;
@@ -74,10 +72,7 @@ void Camera::fromSnapshot(const CameraSnapshot& snapshot) {
     updateLookAt();
 }
 
-void Camera::update(const F32 deltaTimeMS) noexcept {
-    ACKNOWLEDGE_UNUSED(deltaTimeMS);
-
-    NOP();
+void Camera::update([[maybe_unused]] const F32 deltaTimeMS) noexcept {
 }
 
 vec3<F32> ExtractCameraPos2(const mat4<F32>& a_modelView)

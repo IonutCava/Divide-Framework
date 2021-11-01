@@ -236,8 +236,7 @@ void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
     }
 }
 
-void SceneGraph::onStartUpdateLoop(const U8 loopNumber) {
-    ACKNOWLEDGE_UNUSED(loopNumber);
+void SceneGraph::onStartUpdateLoop([[maybe_unused]] const U8 loopNumber) {
 }
 
 void SceneGraph::onNetworkSend(const U32 frameCount) {
@@ -540,9 +539,7 @@ bool SceneGraph::saveNodeToXML(const SceneGraphNode* node) const {
     return true;
 }
 
-bool SceneGraph::loadNodeFromXML(const char* assetsFile, SceneGraphNode* node) const {
-    ACKNOWLEDGE_UNUSED(assetsFile);
-
+bool SceneGraph::loadNodeFromXML([[maybe_unused]] const char* assetsFile, SceneGraphNode* node) const {
     const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
     const ResourcePath sceneLocation(scenePath + "/" + parentScene().resourceName());
     node->loadFromXML(sceneLocation.str());

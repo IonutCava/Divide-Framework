@@ -145,16 +145,13 @@ namespace Input {
         return KeyCodeFromSDLKey(SDL_GetKeyFromName(keyName));
     }
 
-    InputState GetKeyState(U8 deviceIndex, const KeyCode key) {
-        ACKNOWLEDGE_UNUSED(deviceIndex);
+    InputState GetKeyState([[maybe_unused]] const U8 deviceIndex, const KeyCode key) {
         const Uint8 *state = SDL_GetKeyboardState(nullptr);
 
         return state[SDL_GetScancodeFromKey(SDLKeyCodeFromKey(key))] ? InputState::PRESSED : InputState::RELEASED;
     }
 
-    InputState GetMouseButtonState(U8 deviceIndex, const MouseButton button) noexcept {
-        ACKNOWLEDGE_UNUSED(deviceIndex);
-
+    InputState GetMouseButtonState([[maybe_unused]] const U8 deviceIndex, const MouseButton button) noexcept {
         I32 x = -1, y = -1;
         const U32 state = SDL_GetMouseState(&x, &y);
 

@@ -105,8 +105,7 @@ bool Scene::OnStartup(PlatformContext& context) {
     return true;
 }
 
-bool Scene::OnShutdown(PlatformContext& context) {
-    ACKNOWLEDGE_UNUSED(context);
+bool Scene::OnShutdown([[maybe_unused]] PlatformContext& context) {
     return true;
 }
 
@@ -256,9 +255,7 @@ bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const D
             msgCallback("Saving music data ...");
         }
 
-        ptree pt = {};
-        ACKNOWLEDGE_UNUSED(pt); //ToDo: Save music data :)
-
+        ptree pt = {}; //ToDo: Save music data :)
 
         if (copyFile((sceneLocation + "/").c_str(), "musicPlaylist.xml", (sceneLocation + "/").c_str(), "musicPlaylist.xml.bak", true) == FileError::NONE) {
             XML::writeXML((sceneLocation + "/" + "musicPlaylist.xml.dev").c_str(), pt);
@@ -743,8 +740,7 @@ SceneGraphNode* Scene::addInfPlane(SceneGraphNode* parentNode, const boost::prop
     auto planeItem = CreateResource<InfinitePlane>(resourceCache(), planeDescriptor);
 
     DIVIDE_ASSERT(planeItem != nullptr, "Scene::addInfPlane error: Could not create infinite plane resource!");
-    planeItem->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) noexcept {
-        ACKNOWLEDGE_UNUSED(res);
+    planeItem->addStateCallback(ResourceState::RES_LOADED, [this]([[maybe_unused]] CachedResource* res) noexcept {
         _loadingTasks.fetch_sub(1);
     });
     planeItem->loadFromXML(pt);
@@ -765,7 +761,7 @@ SceneGraphNode* Scene::addInfPlane(SceneGraphNode* parentNode, const boost::prop
 U16 Scene::registerInputActions() {
     _input->flushCache();
 
-    const auto none = [](const InputParams param) noexcept { ACKNOWLEDGE_UNUSED(param); };
+    const auto none = []([[maybe_unused]] const InputParams param) noexcept { };
 
     const auto deleteSelection = [this](const InputParams param) {
         const PlayerIndex idx = getPlayerIndexForDevice(param._deviceIndex);
@@ -797,8 +793,8 @@ U16 Scene::registerInputActions() {
         }
     };
 
-    const auto increaseResolution = [this](const InputParams param) { ACKNOWLEDGE_UNUSED(param); _context.gfx().increaseResolution(); };
-    const auto decreaseResolution = [this](const InputParams param) { ACKNOWLEDGE_UNUSED(param); _context.gfx().decreaseResolution(); };
+    const auto increaseResolution = [this]([[maybe_unused]] const InputParams param) {_context.gfx().increaseResolution(); };
+    const auto decreaseResolution = [this]([[maybe_unused]] const InputParams param) { _context.gfx().decreaseResolution(); };
 
     const auto moveForward    = [this](const InputParams param) { state()->playerState(getPlayerIndexForDevice(param._deviceIndex)).moveFB(MoveDirection::POSITIVE); };
     const auto moveBackwards  = [this](const InputParams param) { state()->playerState(getPlayerIndexForDevice(param._deviceIndex)).moveFB(MoveDirection::NEGATIVE); };
@@ -824,9 +820,9 @@ U16 Scene::registerInputActions() {
         _context.kernel().timingData().freezeTime(!_context.kernel().timingData().freezeLoopTime());
     };
 
-    const auto takeScreenShot = [this](const InputParams param) { ACKNOWLEDGE_UNUSED(param); _context.gfx().screenshot("screenshot_"); };
+    const auto takeScreenShot = [this]([[maybe_unused]] const InputParams param) { _context.gfx().screenshot("screenshot_"); };
 
-    const auto toggleFullScreen = [this](const InputParams param) { ACKNOWLEDGE_UNUSED(param); _context.gfx().toggleFullScreen(); };
+    const auto toggleFullScreen = [this]([[maybe_unused]] const InputParams param) { _context.gfx().toggleFullScreen(); };
 
     const auto toggleFlashLight = [this](const InputParams param) { toggleFlashlight(getPlayerIndexForDevice(param._deviceIndex)); };
 
@@ -841,7 +837,7 @@ U16 Scene::registerInputActions() {
         }
     };
 
-    const auto shutdown = [this](const InputParams param) noexcept { ACKNOWLEDGE_UNUSED(param); _context.app().RequestShutdown();};
+    const auto shutdown = [this]([[maybe_unused]] const InputParams param) noexcept { _context.app().RequestShutdown();};
 
     const auto povNavigation = [this](const InputParams param) {
         const U32 povMask = param._var[0];
@@ -912,23 +908,17 @@ U16 Scene::registerInputActions() {
         }
     };
 
-    const auto toggleDebugInterface = [this](const InputParams param) noexcept {
-        ACKNOWLEDGE_UNUSED(param);
-
+    const auto toggleDebugInterface = [this]([[maybe_unused]] const InputParams param) noexcept {
         _context.debug().toggle(!_context.debug().enabled());
     };
 
-    const auto toggleEditor = [this](const InputParams param) {
-        ACKNOWLEDGE_UNUSED(param);
-
+    const auto toggleEditor = [this]([[maybe_unused]] const InputParams param) {
         if_constexpr(Config::Build::ENABLE_EDITOR) {
             _context.editor().toggle(!_context.editor().running());
         }
     };
 
-    const auto toggleConsole = [this](const InputParams param) {
-        ACKNOWLEDGE_UNUSED(param);
-
+    const auto toggleConsole = [this]([[maybe_unused]] const InputParams param) {
         if_constexpr(Config::Build::ENABLE_EDITOR) {
             _context.gui().getConsole().setVisible(!_context.gui().getConsole().isVisible());
         }
@@ -1098,8 +1088,7 @@ bool Scene::load(const Str256& name) {
     }
 
     loadComplete(true);
-    const U16 lastActionID = registerInputActions();
-    ACKNOWLEDGE_UNUSED(lastActionID);
+    [[maybe_unused]] const U16 lastActionID = registerInputActions();
 
     XML::loadDefaultKeyBindings((Paths::g_xmlDataLocation + "keyBindings.xml").str(), this);
 
@@ -1365,8 +1354,7 @@ void Scene::onStartUpdateLoop(const U8 loopNumber) const {
     _sceneGraph->onStartUpdateLoop(loopNumber);
 }
 
-void Scene::updateSceneStateInternal(const U64 deltaTimeUS) {
-    ACKNOWLEDGE_UNUSED(deltaTimeUS);
+void Scene::updateSceneStateInternal([[maybe_unused]] const U64 deltaTimeUS) {
 }
 
 void Scene::onChangeFocus(const bool hasFocus) {
@@ -1416,9 +1404,7 @@ void Scene::removeTask(Task& task) {
     }
 }
 
-void Scene::processInput(PlayerIndex idx, const U64 deltaTimeUS) {
-    ACKNOWLEDGE_UNUSED(idx);
-    ACKNOWLEDGE_UNUSED(deltaTimeUS);
+void Scene::processInput([[maybe_unused]] PlayerIndex idx, [[maybe_unused]] const U64 deltaTimeUS) {
 }
 
 void Scene::processGUI(const U64 deltaTimeUS) {
@@ -1497,9 +1483,7 @@ void Scene::processTasks(const U64 deltaTimeUS) {
     }
 }
 
-void Scene::drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {
-    ACKNOWLEDGE_UNUSED(targetViewport);
-
+void Scene::drawCustomUI([[maybe_unused]] const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {
     if (_linesPrimitive->hasBatch()) {
         bufferInOut.add(_linesPrimitive->toCommandBuffer());
     }

@@ -132,7 +132,7 @@ class CommandBuffer;
 struct CommandBase;
 struct Deleter {
     virtual ~Deleter() = default;
-    virtual void del(CommandBase*& cmd) const { ACKNOWLEDGE_UNUSED(cmd); }
+    virtual void del([[maybe_unused]] CommandBase*& cmd) const { }
 };
 
 template<typename T>

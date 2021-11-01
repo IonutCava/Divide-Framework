@@ -128,13 +128,11 @@ Renderer::~Renderer()
 
 void Renderer::preRender(RenderStagePass stagePass,
                          const Texture_ptr& hizColourTexture,
-                         const size_t samplerHash,
+                         [[maybe_unused]] const size_t samplerHash,
                          LightPool& lightPool,
                          const Camera* camera,
                          GFX::CommandBuffer& bufferInOut)
 {
-    ACKNOWLEDGE_UNUSED(samplerHash);
-
     if (stagePass._stage == RenderStage::SHADOW) {
         return;
     }

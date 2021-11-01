@@ -164,9 +164,7 @@ bool CEGUIInput::joystickRemap(const Input::JoystickEvent &arg) {
     return consumed;
 }
 
-bool CEGUIInput::onUTF8(const Input::UTF8Event& arg) {
-    ACKNOWLEDGE_UNUSED(arg);
-
+bool CEGUIInput::onUTF8([[maybe_unused]] const Input::UTF8Event& arg) {
     return false;
 }
 };

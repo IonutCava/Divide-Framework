@@ -108,9 +108,7 @@ void Scale(PxSphereGeometry& geometry, PxTransform& pose, const PxVec3& scaling)
 }
 
 // Scales the given shape as precisely as possible.
-void Scale(PxPlaneGeometry& geometry, PxTransform& pose, const PxVec3& scaling) {
-    ACKNOWLEDGE_UNUSED(geometry);
-
+void Scale([[maybe_unused]] PxPlaneGeometry& geometry, PxTransform& pose, const PxVec3& scaling) {
     pose.p = pose.p.multiply(scaling);
 }
 

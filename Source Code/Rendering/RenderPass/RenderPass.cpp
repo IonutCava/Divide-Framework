@@ -124,10 +124,8 @@ RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass& stagePas
     return ret;
 }
 
-void RenderPass::render(const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut) const {
+void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut) const {
     OPTICK_EVENT();
-
-    ACKNOWLEDGE_UNUSED(parentTask);
 
     switch(_stageFlag) {
         case RenderStage::DISPLAY: {

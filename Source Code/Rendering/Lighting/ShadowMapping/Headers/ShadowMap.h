@@ -74,7 +74,7 @@ protected:
     friend class ShadowMap;
     virtual void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) = 0;
 
-    virtual void updateMSAASampleCount(const U8 sampleCount) { ACKNOWLEDGE_UNUSED(sampleCount); }
+    virtual void updateMSAASampleCount([[maybe_unused]] const U8 sampleCount) { }
 
 protected:
     GFXDevice& _context;
@@ -89,8 +89,8 @@ class NOINITVTABLE ShadowMap {
     static void initShadowMaps(GFXDevice& context);
     static void destroyShadowMaps(GFXDevice& context);
 
-    // Reset usage flags
-    static void resetShadowMaps();
+    // Reset usage flags and set render targets back to default settings
+    static void resetShadowMaps(GFX::CommandBuffer& bufferInOut);
 
     static void bindShadowMaps(GFX::CommandBuffer& bufferInOut);
     static U16  lastUsedDepthMapOffset(ShadowType shadowType);
@@ -98,7 +98,6 @@ class NOINITVTABLE ShadowMap {
     static U32  getLightLayerRequirements(const Light& light);
     static void commitDepthMapOffset(ShadowType shadowType, U32 layerOffest, U32 layerCount);
     static bool freeDepthMapOffset(ShadowType shadowType, U32 layerOffest, U32 layerCount);
-    static void clearShadowMapBuffers(GFX::CommandBuffer& bufferInOut);
     static bool generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut);
 
     static ShadowType getShadowTypeForLightType(LightType type) noexcept;

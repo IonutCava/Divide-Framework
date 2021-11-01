@@ -991,7 +991,7 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
     const vec2<U16> targetResolution = cubeMapTarget.getResolution();
 
     // Everyone's innocent until proven guilty
-    bool isValidFB;
+    bool isValidFB = false;
     if (hasColour) {
         const RTAttachment& colourAttachment = cubeMapTarget.getAttachment(RTAttachmentType::Colour, 0);
         // We only need the colour attachment
@@ -1020,7 +1020,6 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
     }};
 
     // For each of the environment's faces (TOP, DOWN, NORTH, SOUTH, EAST, WEST)
-    RenderPassManager* passMgr = parent().renderPassManager();
     params._passName = "CubeMap";
     params._layerParams._type = hasColour ? RTAttachmentType::Colour : RTAttachmentType::Depth;
     params._layerParams._includeDepth = hasColour && hasDepth;
@@ -1028,7 +1027,19 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
 
     const D64 aspect = to_D64(targetResolution.width) / targetResolution.height;
 
-    for (U8 i = 0; i < 6; ++i) {
+    // Let's clear only our target layers
+    GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(commandsInOut);
+    beginRenderPassCmd->_name = "Clear Target Layers";
+    beginRenderPassCmd->_target = params._target;
+
+    GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(commandsInOut)->_mipWriteLevel = arrayOffset;
+    GFX::EnqueueCommand<GFX::ClearRenderTargetCommand>(commandsInOut)->_target = params._target;
+    // No need to reset back to zero. We will be drawing into it anyway.
+    GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(commandsInOut);
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(commandsInOut);
+
+    RenderPassManager* passMgr = parent().renderPassManager();
+    for (U8 i = 0u; i < 6u; ++i) {
         // Draw to the current cubemap face
         params._layerParams._layer = i + arrayOffset * 6;
 
@@ -1067,7 +1078,7 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
     const bool hasDepth = paraboloidTarget.hasAttachment(RTAttachmentType::Depth, 0);
     const vec2<U16> targetResolution = paraboloidTarget.getResolution();
 
-    bool isValidFB;
+    bool isValidFB = false;
     if (hasColour) {
         const RTAttachment& colourAttachment = paraboloidTarget.getAttachment(RTAttachmentType::Colour, 0);
         // We only need the colour attachment
@@ -1084,13 +1095,25 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
         return;
     }
 
-    RenderPassManager* passMgr = parent().renderPassManager();
     params._passName = "DualParaboloid";
     params._layerParams._type = hasColour ? RTAttachmentType::Colour : RTAttachmentType::Depth;
     params._layerParams._index = 0;
 
     const D64 aspect = to_D64(targetResolution.width) / targetResolution.height;
-    for (U8 i = 0; i < 2; ++i) {
+
+    // Let's clear only our target layers
+    GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+    beginRenderPassCmd->_name = "Clear Target Layers";
+    beginRenderPassCmd->_target = params._target;
+
+    GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_mipWriteLevel = arrayOffset;
+    GFX::EnqueueCommand<GFX::ClearRenderTargetCommand>(bufferInOut)->_target = params._target;
+    // No need to reset back to zero. We will be drawing into it anyway.
+    GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+
+    RenderPassManager* passMgr = parent().renderPassManager();
+    for (U8 i = 0u; i < 2u; ++i) {
         Camera* camera = cameras[i];
         if (!camera) {
             camera = Camera::utilityCamera(Camera::UtilityCamera::DUAL_PARABOLOID);
@@ -1292,6 +1315,15 @@ bool GFXDevice::onSizeChange(const SizeChangeParams& params) {
 
         _renderingResolution.set(w, h);
 
+        // Update the 2D camera so it matches our new rendering viewport
+        if (Camera::utilityCamera(Camera::UtilityCamera::_2D)->setProjection(vec4<F32>(0, to_F32(w), 0, to_F32(h)), vec2<F32>(-1, 1))) {
+            Camera::utilityCamera(Camera::UtilityCamera::_2D)->updateFrustum();
+        }
+
+        if (Camera::utilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->setProjection(vec4<F32>(0, to_F32(w), to_F32(h), 0), vec2<F32>(-1, 1))) {
+            Camera::utilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->updateFrustum();
+        }
+
         // Update render targets with the new resolution
         _rtPool->resizeTargets(RenderTargetUsage::SCREEN, w, h);
         _rtPool->resizeTargets(RenderTargetUsage::SCREEN_MS, w, h);
@@ -1306,14 +1338,6 @@ bool GFXDevice::onSizeChange(const SizeChangeParams& params) {
 
         // Update post-processing render targets and buffers
         _renderer->updateResolution(w, h);
-
-        // Update the 2D camera so it matches our new rendering viewport
-        if (Camera::utilityCamera(Camera::UtilityCamera::_2D)->setProjection(vec4<F32>(0, to_F32(w), 0, to_F32(h)), vec2<F32>(-1, 1))) {
-            Camera::utilityCamera(Camera::UtilityCamera::_2D)->updateFrustum();
-        }
-        if (Camera::utilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->setProjection(vec4<F32>(0, to_F32(w), to_F32(h), 0), vec2<F32>(-1, 1))) {
-            Camera::utilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->updateFrustum();
-        }
     }
 
     return fitViewportInWindow(w, h);
@@ -1749,7 +1773,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     return { hizDepthTex, att.samplerHash() };
 }
 
-void GFXDevice::occlusionCull(const RenderStagePass& stagePass,
+void GFXDevice::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
                               const RenderPass::BufferData& bufferData,
                               const Texture_ptr& depthBuffer,
                               const size_t samplerHash,
@@ -1757,8 +1781,6 @@ void GFXDevice::occlusionCull(const RenderStagePass& stagePass,
                               GFX::CommandBuffer& bufferInOut) const
 {
     OPTICK_EVENT();
-
-    ACKNOWLEDGE_UNUSED(stagePass);
 
     const U32 cmdCount = *bufferData._lastCommandCount;
     const U32 threadCount = (cmdCount + GROUP_SIZE_AABB - 1) / GROUP_SIZE_AABB;
@@ -2443,6 +2465,7 @@ void GFXDevice::debugDraw(const SceneRenderState& sceneRenderState, const Camera
                 _axisGizmo->name("GFXDeviceAxisGizmo");
                 _axisGizmo->pipeline(*_axisGizmoPipeline);
                 _axisGizmo->skipPostFX(true);
+                _axisGizmo->fromLines(_axisLines.data(), _axisLines.size());
             }
 
             // Apply the inverse view matrix so that it cancels out in the shader
@@ -2450,7 +2473,6 @@ void GFXDevice::debugDraw(const SceneRenderState& sceneRenderState, const Camera
             // right corner
             const U16 windowWidth = renderTargetPool().screenTarget().getWidth();
             _axisGizmo->viewport(Rect<I32>(windowWidth - 120, 8, 128, 128));
-            _axisGizmo->fromLines(_axisLines.data(), _axisLines.size());
         
             // We need to transform the gizmo so that it always remains axis aligned
             // Create a world matrix using a look at function with the eye position

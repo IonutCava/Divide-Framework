@@ -150,18 +150,15 @@ ErrorCode WindowManager::init(PlatformContext& context,
     if (err == ErrorCode::NO_ERR) {
         _mainWindowGUID = window->getGUID();
 
-        window->addEventListener(WindowEvent::MINIMIZED, [ctx = _context](const DisplayWindow::WindowEventArgs& args) noexcept {
-            ACKNOWLEDGE_UNUSED(args);
+        window->addEventListener(WindowEvent::MINIMIZED, [ctx = _context]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
             ctx->app().mainLoopPaused(true);
             return true;
         });
-        window->addEventListener(WindowEvent::MAXIMIZED, [ctx = _context](const DisplayWindow::WindowEventArgs& args) noexcept {
-            ACKNOWLEDGE_UNUSED(args);
+        window->addEventListener(WindowEvent::MAXIMIZED, [ctx = _context]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
             ctx->app().mainLoopPaused(false);
             return true;
         });
-        window->addEventListener(WindowEvent::RESTORED, [ctx = _context](const DisplayWindow::WindowEventArgs& args) noexcept {
-            ACKNOWLEDGE_UNUSED(args);
+        window->addEventListener(WindowEvent::RESTORED, [ctx = _context]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
             ctx->app().mainLoopPaused(false);
             return true;
         });
@@ -507,9 +504,8 @@ void WindowManager::SetCursorStyle(const CursorStyle style) {
 }
 
 void WindowManager::ToggleRelativeMouseMode(const bool state) noexcept {
-    const I32 result = SDL_SetRelativeMouseMode(state ? SDL_TRUE : SDL_FALSE);
+    [[maybe_unused]] const I32 result = SDL_SetRelativeMouseMode(state ? SDL_TRUE : SDL_FALSE);
     assert(result != -1);
-    ACKNOWLEDGE_UNUSED(result);
 }
 
 bool WindowManager::IsRelativeMouseMode() noexcept {

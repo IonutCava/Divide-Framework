@@ -150,17 +150,13 @@ FileAndPath GetInstallLocation(char* argv0) {
     return splitPathToNameAndLocation(extractFilePathAndName(argv0).c_str());
 }
 
-const char* GetClipboardText(void* user_data) noexcept
+const char* GetClipboardText([[maybe_unused]] void* user_data) noexcept
 {
-    ACKNOWLEDGE_UNUSED(user_data);
-
     return SDL_GetClipboardText();
 }
 
-void SetClipboardText(void* user_data, const char* text) noexcept
+void SetClipboardText([[maybe_unused]] void* user_data, const char* text) noexcept
 {
-    ACKNOWLEDGE_UNUSED(user_data);
-
     SDL_SetClipboardText(text);
 }
 
@@ -178,7 +174,7 @@ bool CursorState() noexcept
 
 };  // namespace Divide
 
-void* operator new(const size_t size, const char* zFile, const size_t nLine) 
+void* operator new(const size_t size, [[maybe_unused]] const char* zFile, [[maybe_unused]] const size_t nLine)
 #if !defined(_DEBUG)
 noexcept
 #endif //!_DEBUG
@@ -186,16 +182,11 @@ noexcept
     void* ptr = malloc(size);
 #if defined(_DEBUG)
     Divide::MemoryManager::log_new(ptr, size, zFile, nLine);
-#else
-    ACKNOWLEDGE_UNUSED(zFile);
-    ACKNOWLEDGE_UNUSED(nLine);
 #endif
     return ptr;
 }
 
-void operator delete(void* ptr, const char* zFile, size_t nLine) {
-    ACKNOWLEDGE_UNUSED(zFile);
-    ACKNOWLEDGE_UNUSED(nLine);
+void operator delete(void* ptr, [[maybe_unused]] const char* zFile, [[maybe_unused]] size_t nLine) {
 #if defined(_DEBUG)
     Divide::MemoryManager::log_delete(ptr);
 #endif
@@ -203,20 +194,15 @@ void operator delete(void* ptr, const char* zFile, size_t nLine) {
     free(ptr);
 }
 
-void* operator new[](const size_t size, const char* zFile, const size_t nLine) {
+void* operator new[](const size_t size, [[maybe_unused]] const char* zFile, [[maybe_unused]] const size_t nLine) {
     void* ptr = malloc(size);
 #if defined(_DEBUG)
     Divide::MemoryManager::log_new(ptr, size, zFile, nLine);
-#else
-    ACKNOWLEDGE_UNUSED(zFile);
-    ACKNOWLEDGE_UNUSED(nLine);
 #endif
     return ptr;
 }
 
-void operator delete[](void* ptr, const char* zFile, size_t nLine) {
-    ACKNOWLEDGE_UNUSED(zFile);
-    ACKNOWLEDGE_UNUSED(nLine);
+void operator delete[](void* ptr, [[maybe_unused]] const char* zFile, [[maybe_unused]] size_t nLine) {
 #if defined(_DEBUG)
     Divide::MemoryManager::log_delete(ptr);
 #endif

@@ -106,8 +106,7 @@ namespace Divide {
     {
         int helpIndx = 0;
         return eastl::stable_partition(eastl::begin(cont), eastl::end(cont),
-            [&](decltype(*eastl::begin(cont)) const& val) -> bool {
-                ACKNOWLEDGE_UNUSED(val);
+            [&]([[maybe_unused]] decltype(*eastl::begin(cont)) const& val) -> bool {
                 return eastl::find(beg, end, helpIndx++) == end;
             });
     }

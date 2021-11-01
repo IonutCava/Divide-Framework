@@ -22,7 +22,6 @@ namespace Divide::AI::Navigation::NavigationMeshLoader {
                                        {3, 7, 5, 1}};
 
 char* ParseRow(char* buf, char* bufEnd, char* row, const I32 len) {
-    bool cont = false;
     bool start = true;
     bool done = false;
     I32 n = 0;
@@ -33,7 +32,6 @@ char* ParseRow(char* buf, char* bufEnd, char* row, const I32 len) {
         // multi row
         switch (c) {
             case '\\':
-                cont = true;
                 break;  // multi row
             case '\n': {
                 if (start) {
@@ -50,7 +48,6 @@ char* ParseRow(char* buf, char* bufEnd, char* row, const I32 len) {
                 }
             default: {
                 start = false;
-                cont = false;
                 row[n++] = c;
                 if (n >= len - 1) {
                     done = true;
@@ -59,7 +56,6 @@ char* ParseRow(char* buf, char* bufEnd, char* row, const I32 len) {
         }
     }
 
-    ACKNOWLEDGE_UNUSED(cont);
     row[n] = '\0';
     return buf;
 }

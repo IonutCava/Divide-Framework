@@ -63,8 +63,7 @@ GeometryFormat GetGeometryFormatForExtension(const char* extension) {
 }
 
 namespace Import {
-    bool ImportData::saveToFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName) {
-        ACKNOWLEDGE_UNUSED(context);
+    bool ImportData::saveToFile([[maybe_unused]] PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName) {
 
         ByteBuffer tempBuffer;
         assert(_vertexBuffer != nullptr);
@@ -230,8 +229,7 @@ namespace Import {
         if (!context.config().debug.useGeometryCache || !dataOut.loadFromFile(context, Paths::g_cacheLocation + Paths::g_geometryCacheLocation, dataOut.modelName())) {
             Console::printfn(Locale::Get(_ID("MESH_NOT_LOADED_FROM_FILE")), dataOut.modelName().c_str());
 
-            const DVDConverter converter(context, dataOut, success);
-            ACKNOWLEDGE_UNUSED(converter);
+            [[maybe_unused]] const DVDConverter converter(context, dataOut, success);
 
             if (success) {
                 if (dataOut.saveToFile(context, Paths::g_cacheLocation + Paths::g_geometryCacheLocation, dataOut.modelName())) {

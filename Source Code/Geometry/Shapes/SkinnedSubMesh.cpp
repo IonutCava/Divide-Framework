@@ -38,11 +38,9 @@ void SkinnedSubMesh::onAnimationChange(SceneGraphNode* sgn, const I32 newIndex) 
     Object3D::onAnimationChange(sgn, newIndex);
 }
 
-void SkinnedSubMesh::buildBoundingBoxesForAnim(const Task& parentTask,
+void SkinnedSubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
                                                const I32 animationIndex,
                                                AnimationComponent* const animComp) {
-    ACKNOWLEDGE_UNUSED(parentTask);
-
     if (animationIndex < 0) {
         return;
     }

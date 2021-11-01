@@ -170,9 +170,7 @@ inline void ByteBuffer::readNoSkip(ResourcePath& value) {
 }
 
 template <typename U>
-ByteBuffer& ByteBuffer::operator>>(Unused<U>& value) {
-    ACKNOWLEDGE_UNUSED(value);
-
+ByteBuffer& ByteBuffer::operator>>([[maybe_unused]] Unused<U>& value) {
     readSkip<U>();
     return *this;
 }

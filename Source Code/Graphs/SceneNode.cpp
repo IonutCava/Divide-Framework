@@ -39,39 +39,28 @@ string SceneNode::getTypeName() const {
     return Names::sceneNodeType[to_base(_type)];
 }
 
-void SceneNode::sceneUpdate(const U64 deltaTimeUS,
-                            SceneGraphNode* sgn,
-                            SceneState& sceneState) {
-    ACKNOWLEDGE_UNUSED(deltaTimeUS);
-    ACKNOWLEDGE_UNUSED(sgn);
-    ACKNOWLEDGE_UNUSED(sceneState);
+void SceneNode::sceneUpdate([[maybe_unused]] const U64 deltaTimeUS,
+                            [[maybe_unused]] SceneGraphNode* sgn,
+                            [[maybe_unused]] SceneState& sceneState)
+{
 }
 
-void SceneNode::prepareRender(SceneGraphNode* sgn,
-                              RenderingComponent& rComp,
-                              const RenderStagePass& renderStagePass,
-                              const Camera& camera,
-                              bool refreshData) {
-    ACKNOWLEDGE_UNUSED(sgn);
-    ACKNOWLEDGE_UNUSED(rComp);
-    ACKNOWLEDGE_UNUSED(renderStagePass);
-    ACKNOWLEDGE_UNUSED(camera);
-    ACKNOWLEDGE_UNUSED(refreshData);
-
+void SceneNode::prepareRender([[maybe_unused]] SceneGraphNode* sgn,
+                              [[maybe_unused]] RenderingComponent& rComp,
+                              [[maybe_unused]] const RenderStagePass& renderStagePass,
+                              [[maybe_unused]] const Camera& camera,
+                              [[maybe_unused]] bool refreshData)
+{
     assert(getState() == ResourceState::RES_LOADED);
 }
 
 
-void SceneNode::occlusionCull(const RenderStagePass& stagePass,
-                              const Texture_ptr& depthBuffer,
-                              const Camera& camera,
-                              GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
-                              GFX::CommandBuffer& bufferInOut) const {
-    ACKNOWLEDGE_UNUSED(stagePass);
-    ACKNOWLEDGE_UNUSED(depthBuffer);
-    ACKNOWLEDGE_UNUSED(camera);
-    ACKNOWLEDGE_UNUSED(HIZPushConstantsCMDInOut);
-    ACKNOWLEDGE_UNUSED(bufferInOut);
+void SceneNode::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
+                              [[maybe_unused]] const Texture_ptr& depthBuffer,
+                              [[maybe_unused]] const Camera& camera,
+                              [[maybe_unused]] GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
+                              [[maybe_unused]] GFX::CommandBuffer& bufferInOut) const
+{
 }
 
 void SceneNode::postLoad(SceneGraphNode* sgn) {
@@ -118,28 +107,20 @@ bool SceneNode::unload() {
     return true;
 }
 
-void SceneNode::editorFieldChanged(std::string_view field) {
-    ACKNOWLEDGE_UNUSED(field);
+void SceneNode::editorFieldChanged([[maybe_unused]] std::string_view field) {
 }
 
-void SceneNode::buildDrawCommands(SceneGraphNode* sgn,
-                                  const RenderStagePass& renderStagePass,
-                                  const Camera& crtCamera,
-                                  RenderPackage& pkgInOut) {
-    ACKNOWLEDGE_UNUSED(sgn);
-    ACKNOWLEDGE_UNUSED(renderStagePass);
-    ACKNOWLEDGE_UNUSED(crtCamera);
-    ACKNOWLEDGE_UNUSED(pkgInOut);
+void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn,
+                                  [[maybe_unused]] const RenderStagePass& renderStagePass,
+                                  [[maybe_unused]] const Camera& crtCamera,
+                                  [[maybe_unused]] RenderPackage& pkgInOut)
+{
 }
 
-void SceneNode::onNetworkSend(SceneGraphNode* sgn, WorldPacket& dataOut) const {
-    ACKNOWLEDGE_UNUSED(sgn);
-    ACKNOWLEDGE_UNUSED(dataOut);
+void SceneNode::onNetworkSend([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] WorldPacket& dataOut) const {
 }
 
-void SceneNode::onNetworkReceive(SceneGraphNode* sgn, WorldPacket& dataIn) const {
-    ACKNOWLEDGE_UNUSED(sgn);
-    ACKNOWLEDGE_UNUSED(dataIn);
+void SceneNode::onNetworkReceive([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] WorldPacket& dataIn) const {
 }
 
 bool SceneNode::saveCache(ByteBuffer& outputBuffer) const {

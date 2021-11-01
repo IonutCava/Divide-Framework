@@ -79,9 +79,7 @@ namespace Divide {
         _geometryIcons[to_base(GeometryFormat::COUNT)]    = getTextureForPath(ResourcePath("icons"), ResourcePath("file_icon.png"));
     }
 
-    void ContentExplorerWindow::update(const U64 deltaTimeUS) {
-        ACKNOWLEDGE_UNUSED(deltaTimeUS);
-
+    void ContentExplorerWindow::update([[maybe_unused]] const U64 deltaTimeUS) {
 
         while (!_textureLoadQueue.empty() || !_modelLoadQueue.empty()) {
             if (!_textureLoadQueue.empty()) {

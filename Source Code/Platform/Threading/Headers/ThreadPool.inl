@@ -71,7 +71,7 @@ namespace Divide {
 
         const size_t threadCount = _threads.size();
         for (size_t idx = 0; idx < threadCount; ++idx) {
-            addTask([](bool wait) noexcept { ACKNOWLEDGE_UNUSED(wait);  return true; });
+            addTask([]([[maybe_unused]] const bool wait) noexcept { return true; });
         }
 
         for (std::thread& thread : _threads) {

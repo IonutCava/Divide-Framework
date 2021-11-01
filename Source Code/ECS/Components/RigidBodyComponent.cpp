@@ -26,8 +26,7 @@ namespace Divide {
         }
     }
 
-    bool RigidBodyComponent::filterCollision(const RigidBodyComponent& collider) {
-        ACKNOWLEDGE_UNUSED(collider);
+    bool RigidBodyComponent::filterCollision([[maybe_unused]] const RigidBodyComponent& collider) {
         // filter by mask, type, etc
         return true;
     }

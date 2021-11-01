@@ -36,8 +36,7 @@ GUIInterface::~GUIInterface()
     }
 }
 
-void GUIInterface::onLanguageChange(std::string_view newLanguage) {
-    ACKNOWLEDGE_UNUSED(newLanguage);
+void GUIInterface::onLanguageChange([[maybe_unused]] std::string_view newLanguage) {
 }
 
 void GUIInterface::addElement(const U64 id, GUIElement* element) {
@@ -179,11 +178,8 @@ GUIText* GUIInterface::addText(const char* name,
 }
 
 GUIFlash* GUIInterface::addFlash(const char* name,
-                                 const RelativePosition2D& position,
-                                 const RelativeScale2D& size) {
-    ACKNOWLEDGE_UNUSED(position);
-    ACKNOWLEDGE_UNUSED(size);
-
+                                 [[maybe_unused]] const RelativePosition2D& position,
+                                 [[maybe_unused]] const RelativeScale2D& size) {
     const U64 guiID = _ID(name);
     assert(getGUIElement<GUIFlash>(guiID) == nullptr);
     

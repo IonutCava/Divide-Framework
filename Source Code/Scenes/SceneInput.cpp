@@ -257,9 +257,7 @@ bool SceneInput::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
     return false;
 }
 
-bool SceneInput::onUTF8(const Input::UTF8Event& arg) {
-    ACKNOWLEDGE_UNUSED(arg);
-
+bool SceneInput::onUTF8([[maybe_unused]] const Input::UTF8Event& arg) {
     return false;
 }
 

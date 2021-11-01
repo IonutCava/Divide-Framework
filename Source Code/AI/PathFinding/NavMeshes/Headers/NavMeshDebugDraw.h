@@ -75,7 +75,7 @@ class NavMeshDebugDraw final : public duDebugDraw {
     [[nodiscard]] bool paused() const noexcept { return _paused; }
     void cancelOverride() noexcept { _overrideColour = false; }
 
-    void texture(bool state) override { ACKNOWLEDGE_UNUSED(state); }
+    void texture([[maybe_unused]] bool state) override {}
 
     void depthMask(bool state);
 

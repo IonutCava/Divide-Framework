@@ -28,15 +28,13 @@ namespace TypeUtil {
     }
 }
 
-Light::Light(SceneGraphNode* sgn, const F32 range, const LightType type, LightPool& parentPool)
+Light::Light(SceneGraphNode* sgn, [[maybe_unused]] const F32 range, const LightType type, LightPool& parentPool)
     : IEventListener(sgn->sceneGraph()->GetECSEngine()),
       _castsShadows(false),
       _sgn(sgn),
       _parentPool(parentPool),
       _type(type)
 {
-    ACKNOWLEDGE_UNUSED(range);
-
     _shadowProperties._lightDetails.z = 0.005f;
     _shadowProperties._lightDetails.w = 1.0f;
 

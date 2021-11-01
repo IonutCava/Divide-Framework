@@ -12,8 +12,7 @@ PhysicsAsset::PhysicsAsset(RigidBodyComponent& parent)
 {
 }
 
-void PhysicsAsset::physicsCollisionGroup(const PhysicsGroup group) {
-    ACKNOWLEDGE_UNUSED(group);
+void PhysicsAsset::physicsCollisionGroup([[maybe_unused]] const PhysicsGroup group) {
 }
 
 }; //namespace Divide

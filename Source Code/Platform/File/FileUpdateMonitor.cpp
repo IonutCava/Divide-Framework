@@ -18,11 +18,8 @@ void UpdateListener::addIgnoredEndCharacter(char character) {
     _ignoredEndingCharacters.emplace_back(character);
 }
 
-void UpdateListener::handleFileAction(const FW::WatchID watchid, const FW::String& dir, const FW::String& filename, const FW::Action action)
+void UpdateListener::handleFileAction([[maybe_unused]] const FW::WatchID watchid, [[maybe_unused]] const FW::String& dir, const FW::String& filename, const FW::Action action)
 {
-    ACKNOWLEDGE_UNUSED(watchid);
-    ACKNOWLEDGE_UNUSED(dir);
-
     // We can ignore files that end in a specific character. Many text editors, for example, append a '~' at the end of temp files
     if (!_ignoredEndingCharacters.empty() &&
         eastl::any_of(cbegin(_ignoredEndingCharacters),

@@ -88,11 +88,7 @@ void  free_aligned(void*& ptr) {
     _aligned_free(ptr);
 }
 
-LRESULT DlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept {
-    ACKNOWLEDGE_UNUSED(hWnd);
-    ACKNOWLEDGE_UNUSED(uMsg);
-    ACKNOWLEDGE_UNUSED(wParam);
-    ACKNOWLEDGE_UNUSED(lParam);
+LRESULT DlgProc([[maybe_unused]] HWND hWnd, [[maybe_unused]] UINT uMsg, [[maybe_unused]] WPARAM wParam, [[maybe_unused]] LPARAM lParam) noexcept {
     return FALSE;
 }
 

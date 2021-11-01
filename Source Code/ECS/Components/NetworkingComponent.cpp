@@ -29,15 +29,11 @@ void NetworkingComponent::flagDirty() {
     _resendRequired = true;
 }
 
-WorldPacket NetworkingComponent::deltaCompress(const WorldPacket& crt, const WorldPacket& previous) const {
-    ACKNOWLEDGE_UNUSED(previous);
-
+WorldPacket NetworkingComponent::deltaCompress(const WorldPacket& crt, [[maybe_unused]] const WorldPacket& previous) const {
     return crt;
 }
 
-WorldPacket NetworkingComponent::deltaDecompress(const WorldPacket& crt, const WorldPacket& previous) const {
-    ACKNOWLEDGE_UNUSED(previous);
-
+WorldPacket NetworkingComponent::deltaDecompress(const WorldPacket& crt, [[maybe_unused]] const WorldPacket& previous) const {
     return crt;
 }
 

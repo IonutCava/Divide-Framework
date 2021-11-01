@@ -70,8 +70,7 @@ class GUIElement : public GUIDWrapper {
     GUIElement(string name, CEGUI::Window* parent);
     virtual ~GUIElement() = default;
     
-    virtual void setTooltip(const string& tooltipText) {
-        ACKNOWLEDGE_UNUSED(tooltipText);
+    virtual void setTooltip([[maybe_unused]] const string& tooltipText) {
     }
 
     PROPERTY_RW(string, name, "");

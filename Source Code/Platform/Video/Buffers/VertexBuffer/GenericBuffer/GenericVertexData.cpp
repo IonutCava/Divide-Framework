@@ -23,8 +23,7 @@ AttributeDescriptor& GenericVertexData::attribDescriptor(const U32 attribIndex) 
     return desc;
 }
 
-void GenericVertexData::setIndexBuffer(const IndexBuffer& indices, BufferUpdateFrequency updateFrequency) {
-    ACKNOWLEDGE_UNUSED(updateFrequency);
+void GenericVertexData::setIndexBuffer(const IndexBuffer& indices, [[maybe_unused]] BufferUpdateFrequency updateFrequency) {
     _idxBuffer = indices;
 }
 

@@ -7,9 +7,7 @@
 
 namespace Divide {
 
-ErrorCode OpenAL_API::initAudioAPI(PlatformContext& context) {
-    ACKNOWLEDGE_UNUSED(context);
-
+ErrorCode OpenAL_API::initAudioAPI([[maybe_unused]] PlatformContext& context) {
     // Initialization
     ALCdevice* device = alcOpenDevice(nullptr);  // select the "preferred device"
     if (device) {

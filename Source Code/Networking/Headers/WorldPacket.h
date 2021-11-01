@@ -34,8 +34,7 @@ class WorldPacket : public ByteBuffer {
     friend class boost::serialization::access;
 
     template <typename Archive>
-    void load(Archive& ar, const unsigned int version) {
-        ACKNOWLEDGE_UNUSED(version);
+    void load(Archive& ar, [[maybe_unused]] const unsigned int version) {
         size_t storageSize = 0;
 
         ar& _rpos;
@@ -50,8 +49,7 @@ class WorldPacket : public ByteBuffer {
     }
 
     template <typename Archive>
-    void save(Archive& ar, const unsigned int version) const {
-        ACKNOWLEDGE_UNUSED(version);
+    void save(Archive& ar, [[maybe_unused]] const unsigned int version) const {
         const size_t storageSize = _storage.size();
 
         ar & _rpos;

@@ -56,9 +56,7 @@ Script::~Script()
 void Script::idle() {
 }
 
-bool Script::OnStartup(PlatformContext& context) {
-    ACKNOWLEDGE_UNUSED(context);
-
+bool Script::OnStartup([[maybe_unused]] PlatformContext& context) {
     s_scripts.reserve(100);
     s_scriptsReady = true;
 
@@ -75,9 +73,7 @@ bool Script::OnStartup(PlatformContext& context) {
     return true;
 }
 
-bool Script::OnShutdown(PlatformContext& context) {
-    ACKNOWLEDGE_UNUSED(context);
-
+bool Script::OnShutdown([[maybe_unused]] PlatformContext& context) {
     s_scriptsReady = false;
 
     if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {

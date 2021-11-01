@@ -51,7 +51,7 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTrack
     stateTracker.setActiveFB(RenderTarget::RenderTargetUsage::RT_READ_WRITE, 0);
     stateTracker._activeClearColour.set(window.clearColour());
     const U8 blendCount = to_U8(stateTracker._blendEnabled.size());
-    for (U8 i = 0; i < blendCount; ++i) {
+    for (U8 i = 0u; i < blendCount; ++i) {
         stateTracker.setBlending(i, {});
     }
     stateTracker.setBlendColour({ 0u, 0u, 0u, 0u });

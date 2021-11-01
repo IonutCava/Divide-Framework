@@ -46,15 +46,13 @@ namespace Divide {
     }
 
     template<class T, class U>
-    bool ECSSystem<T, U>::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
-        ACKNOWLEDGE_UNUSED(sgn);
+    bool ECSSystem<T, U>::saveCache([[maybe_unused]] const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
         outputBuffer << BYTE_BUFFER_VERSION_ECS_MANAGER;
         return true;
     }
 
     template<class T, class U>
-    bool ECSSystem<T, U>::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) {
-        ACKNOWLEDGE_UNUSED(sgn);
+    bool ECSSystem<T, U>::loadCache([[maybe_unused]] SceneGraphNode* sgn, ByteBuffer& inputBuffer) {
         auto tempVer = decltype(BYTE_BUFFER_VERSION_ECS_MANAGER){0};
         inputBuffer >> tempVer;
         return tempVer == BYTE_BUFFER_VERSION_ECS_MANAGER;

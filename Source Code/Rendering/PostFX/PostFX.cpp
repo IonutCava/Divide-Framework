@@ -109,8 +109,6 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
         _drawPipeline = context.gfx().newPipeline(pipelineDescriptor);
     });
 
-    _setCameraCmd._cameraSnapshot = Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot();
-
     WAIT_FOR_CONDITION(loadTasks.load() == 0);
 }
 

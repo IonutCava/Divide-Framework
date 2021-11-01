@@ -3,32 +3,28 @@
 #include "Platform/Headers/PlatformDefines.h"
 
 
-void* operator new[](const size_t size, size_t alignment, size_t alignmentOffset,
-                     const char* pName, int flags, unsigned int debugFlags,
-                     const char* file, int line) {
-
-    ACKNOWLEDGE_UNUSED(alignmentOffset);
-    ACKNOWLEDGE_UNUSED(pName);
-    ACKNOWLEDGE_UNUSED(flags);
-    ACKNOWLEDGE_UNUSED(debugFlags);
-    ACKNOWLEDGE_UNUSED(file);
-    ACKNOWLEDGE_UNUSED(line);
-
+void* operator new[](const size_t size, 
+                     [[maybe_unused]] size_t alignment,
+                     [[maybe_unused]] size_t alignmentOffset,
+                     [[maybe_unused]] const char* pName,
+                     [[maybe_unused]] int flags, 
+                     [[maybe_unused]] unsigned int debugFlags,
+                     [[maybe_unused]] const char* file,
+                     [[maybe_unused]] int line)
+{
     // this allocator doesn't support alignment
     assert(alignment == alignof(void*));
-    ACKNOWLEDGE_UNUSED(alignment);
 
     return malloc(size);
 }
 
-void* operator new[](const size_t size, const char* pName, int flags,
-                     unsigned int debugFlags, const char* file, int line) {
-    ACKNOWLEDGE_UNUSED(pName);
-    ACKNOWLEDGE_UNUSED(flags);
-    ACKNOWLEDGE_UNUSED(debugFlags);
-    ACKNOWLEDGE_UNUSED(file);
-    ACKNOWLEDGE_UNUSED(line);
-
+void* operator new[](const size_t size,
+                     [[maybe_unused]] const char* pName,
+                     [[maybe_unused]] int flags,
+                     [[maybe_unused]] unsigned int debugFlags,
+                     [[maybe_unused]] const char* file,
+                     [[maybe_unused]] int line)
+{
     return malloc(size);
 }
 

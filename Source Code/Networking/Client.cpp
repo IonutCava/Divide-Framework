@@ -60,9 +60,7 @@ void Client::start_read() {
 }
 
 void Client::handle_read_body(const boost::system::error_code& ec,
-                              size_t bytes_transfered) {
-    ACKNOWLEDGE_UNUSED(bytes_transfered);
-
+                              [[maybe_unused]] size_t bytes_transfered) {
     if (_stopped) {
         return;
     }
@@ -80,9 +78,8 @@ void Client::handle_read_body(const boost::system::error_code& ec,
 }
 
 void Client::handle_read_packet(const boost::system::error_code& ec,
-                                size_t bytes_transfered) {
-    ACKNOWLEDGE_UNUSED(bytes_transfered);
-        
+                                [[maybe_unused]] size_t bytes_transfered) {
+       
     if (_stopped) {
         return;
     }
@@ -115,8 +112,7 @@ void Client::handle_read_packet(const boost::system::error_code& ec,
     }
 }
 
-void Client::handle_read_file(const boost::system::error_code& ec, const size_t bytes_transfered) {
-    ACKNOWLEDGE_UNUSED(ec);
+void Client::handle_read_file([[maybe_unused]] const boost::system::error_code& ec, const size_t bytes_transfered) {
 
     std::stringstream ss;
     ss << "[ASIO]: "

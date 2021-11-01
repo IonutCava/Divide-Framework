@@ -13,11 +13,9 @@ void DebugCallback(const GLenum source,
                    const GLenum type,
                    const GLuint id,
                    const GLenum severity,
-                   const GLsizei length,
+                   [[maybe_unused]] const GLsizei length,
                    const GLchar* message,
                    const void* userParam) {
-
-    ACKNOWLEDGE_UNUSED(length);
 
     if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) {
         // Translate message source

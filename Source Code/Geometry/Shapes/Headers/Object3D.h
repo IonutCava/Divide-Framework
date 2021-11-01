@@ -106,10 +106,7 @@ class Object3D : public SceneNode {
                        const Camera& camera,
                        bool refreshData) override;
                         
-    virtual void onAnimationChange(SceneGraphNode* sgn, I32 newIndex) {
-        ACKNOWLEDGE_UNUSED(sgn);
-        ACKNOWLEDGE_UNUSED(newIndex);
-    }
+    virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] I32 newIndex) {}
 
     /// Use playAnimations() to toggle animation playback for the current object
     /// (and all subobjects) on or off

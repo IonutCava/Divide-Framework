@@ -216,15 +216,11 @@ class SceneNodeSceneGraph {
         node->sceneUpdate(deltaTimeUS, sgn, sceneState);
     }
 
-    static void registerSGNParent(SceneNode* node, SceneGraphNode* sgn) noexcept {
-        ACKNOWLEDGE_UNUSED(sgn);
-
+    static void registerSGNParent(SceneNode* node, [[maybe_unused]] SceneGraphNode* sgn) noexcept {
         node->_sgnParentCount.fetch_add(1);
     }
 
-    static void unregisterSGNParent(SceneNode* node, SceneGraphNode* sgn) noexcept {
-        ACKNOWLEDGE_UNUSED(sgn);
-
+    static void unregisterSGNParent(SceneNode* node, [[maybe_unused]] SceneGraphNode* sgn) noexcept {
         node->_sgnParentCount.fetch_sub(1);
     }
 

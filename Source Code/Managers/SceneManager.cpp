@@ -743,9 +743,7 @@ void SceneManager::setSelected(const PlayerIndex idx, const vector<SceneGraphNod
     }
 }
 
-void SceneManager::onNodeDestroy(SceneGraphNode* node) {
-    ACKNOWLEDGE_UNUSED(node);
-
+void SceneManager::onNodeDestroy([[maybe_unused]] SceneGraphNode* node) {
     for (PlayerIndex p = 0; p < _activePlayerCount; ++p) {
         resetSelection(p);
     }
@@ -875,9 +873,7 @@ bool SceneManager::joystickRemap(const Input::JoystickEvent &arg) {
     return getActiveScene().input()->joystickRemap(arg);
 }
 
-bool SceneManager::onUTF8(const Input::UTF8Event& arg) {
-    ACKNOWLEDGE_UNUSED(arg);
-
+bool SceneManager::onUTF8([[maybe_unused]] const Input::UTF8Event& arg) {
     return false;
 }
 
@@ -997,9 +993,7 @@ bool SceneManager::saveActiveScene(bool toCache, const bool deferred, const DELE
     return true;
 }
 
-bool SceneManager::networkUpdate(U32 frameCount) {
-    ACKNOWLEDGE_UNUSED(frameCount);
-
+bool SceneManager::networkUpdate([[maybe_unused]] const U32 frameCount) {
     return true;
 }
 

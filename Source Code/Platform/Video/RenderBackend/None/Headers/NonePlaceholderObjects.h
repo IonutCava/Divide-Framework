@@ -50,23 +50,16 @@ namespace Divide {
           : RenderTarget(context, descriptor)
         {}
   
-        void clear(const RTClearDescriptor& descriptor) override {
-            ACKNOWLEDGE_UNUSED(descriptor);
+        void clear([[maybe_unused]] const RTClearDescriptor& descriptor) override {
         }
 
-        void setDefaultState(const RTDrawDescriptor& drawPolicy) override {
-            ACKNOWLEDGE_UNUSED(drawPolicy);
+        void setDefaultState([[maybe_unused]] const RTDrawDescriptor& drawPolicy) override {
         }
 
-        void readData(const vec4<U16>& rect, GFXImageFormat imageFormat, GFXDataFormat dataType, bufferPtr outData) const override {
-            ACKNOWLEDGE_UNUSED(rect);
-            ACKNOWLEDGE_UNUSED(imageFormat);
-            ACKNOWLEDGE_UNUSED(dataType);
-            ACKNOWLEDGE_UNUSED(outData);
+        void readData([[maybe_unused]] const vec4<U16>& rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] bufferPtr outData) const override {
         }
 
-        void blitFrom(const RTBlitParams& params) override {
-            ACKNOWLEDGE_UNUSED(params);
+        void blitFrom([[maybe_unused]] const RTBlitParams& params) override {
         }
     };
 
@@ -76,50 +69,28 @@ namespace Divide {
             : IMPrimitive(context)
         {}
 
-        void draw(const GenericDrawCommand& cmd) override {
-            ACKNOWLEDGE_UNUSED(cmd);
+        void draw([[maybe_unused]] const GenericDrawCommand& cmd) override {
         }
 
-        void beginBatch(bool reserveBuffers, U32 vertexCount, U32 attributeCount) override {
-            ACKNOWLEDGE_UNUSED(reserveBuffers);
-            ACKNOWLEDGE_UNUSED(vertexCount);
-            ACKNOWLEDGE_UNUSED(attributeCount);
+        void beginBatch([[maybe_unused]] bool reserveBuffers, [[maybe_unused]] U32 vertexCount, [[maybe_unused]] U32 attributeCount) override {
         }
 
-        void begin(PrimitiveType type) override {
-            ACKNOWLEDGE_UNUSED(type);
+        void begin([[maybe_unused]] PrimitiveType type) override {
         }
 
-        void vertex(F32 x, F32 y, F32 z) override {
-            ACKNOWLEDGE_UNUSED(x);
-            ACKNOWLEDGE_UNUSED(y);
-            ACKNOWLEDGE_UNUSED(z);
+        void vertex([[maybe_unused]] F32 x, [[maybe_unused]] F32 y, [[maybe_unused]] F32 z) override {
         }
 
-        void attribute1i(U32 attribLocation, I32 value) override {
-            ACKNOWLEDGE_UNUSED(attribLocation);
-            ACKNOWLEDGE_UNUSED(value);
+        void attribute1i([[maybe_unused]] U32 attribLocation, [[maybe_unused]] I32 value) override {
         }
 
-        void attribute1f(U32 attribLocation, F32 value) override {
-            ACKNOWLEDGE_UNUSED(attribLocation);
-            ACKNOWLEDGE_UNUSED(value);
+        void attribute1f([[maybe_unused]] U32 attribLocation, [[maybe_unused]] F32 value) override {
         }
 
-        void attribute4ub(U32 attribLocation, U8 x, U8 y, U8 z, U8 w) override {
-            ACKNOWLEDGE_UNUSED(attribLocation);
-            ACKNOWLEDGE_UNUSED(x);
-            ACKNOWLEDGE_UNUSED(y);
-            ACKNOWLEDGE_UNUSED(z);
-            ACKNOWLEDGE_UNUSED(w);
+        void attribute4ub([[maybe_unused]] U32 attribLocation, [[maybe_unused]] U8 x, [[maybe_unused]] U8 y, [[maybe_unused]] U8 z, [[maybe_unused]] U8 w) override {
         }
 
-        void attribute4f(U32 attribLocation, F32 x, F32 y, F32 z, F32 w) override {
-            ACKNOWLEDGE_UNUSED(attribLocation);
-            ACKNOWLEDGE_UNUSED(x);
-            ACKNOWLEDGE_UNUSED(y);
-            ACKNOWLEDGE_UNUSED(z);
-            ACKNOWLEDGE_UNUSED(w);
+        void attribute4f([[maybe_unused]] U32 attribLocation, [[maybe_unused]] F32 x, [[maybe_unused]] F32 y, [[maybe_unused]] F32 z, [[maybe_unused]] F32 w) override {
         }
 
         void end() override {}
@@ -134,8 +105,7 @@ namespace Divide {
           : VertexBuffer(context)
         {}
 
-        void draw(const GenericDrawCommand& command) override {
-            ACKNOWLEDGE_UNUSED(command);
+        void draw([[maybe_unused]] const GenericDrawCommand& command) override {
         }
 
         bool queueRefresh() override { return refresh(); }
@@ -151,22 +121,17 @@ namespace Divide {
             : PixelBuffer(context, type, name)
         {}
 
-        bool create(U16 width, U16 height, U16 depth = 0,
-            GFXImageFormat formatEnum = GFXImageFormat::RGBA,
-            GFXDataFormat dataTypeEnum = GFXDataFormat::FLOAT_32,
-            bool normalized = true) override         {
-            ACKNOWLEDGE_UNUSED(width);
-            ACKNOWLEDGE_UNUSED(height);
-            ACKNOWLEDGE_UNUSED(depth);
-            ACKNOWLEDGE_UNUSED(formatEnum);
-            ACKNOWLEDGE_UNUSED(dataTypeEnum);
-            ACKNOWLEDGE_UNUSED(normalized);
+        bool create([[maybe_unused]] U16 width,
+                    [[maybe_unused]] U16 height,
+                    [[maybe_unused]] U16 depth = 0,
+                    [[maybe_unused]] GFXImageFormat formatEnum = GFXImageFormat::RGBA,
+                    [[maybe_unused]] GFXDataFormat dataTypeEnum = GFXDataFormat::FLOAT_32,
+                    [[maybe_unused]] bool normalized = true) override
+        {
             return true;
         }
 
-        void updatePixels(const F32* pixels, U32 pixelCount) override {
-            ACKNOWLEDGE_UNUSED(pixels);
-            ACKNOWLEDGE_UNUSED(pixelCount);
+        void updatePixels([[maybe_unused]] const F32* pixels, [[maybe_unused]] U32 pixelCount) override {
         }
     };
 
@@ -177,36 +142,27 @@ namespace Divide {
             : GenericVertexData(context, ringBufferLength, name)
         {}
 
-        void create(U8 numBuffers = 1) override {
-            ACKNOWLEDGE_UNUSED(numBuffers);
+        void create([[maybe_unused]] U8 numBuffers = 1) override {
         }
 
-        void draw(const GenericDrawCommand& command) override {
-            ACKNOWLEDGE_UNUSED(command);
+        void draw([[maybe_unused]] const GenericDrawCommand& command) override {
         }
 
-        void setBuffer(const SetBufferParams& params) override {
-            ACKNOWLEDGE_UNUSED(params);
+        void setBuffer([[maybe_unused]] const SetBufferParams& params) override {
         }
 
-        void updateBuffer(U32 buffer,
-                          U32 elementCountOffset,
-                          U32 elementCountRange,
-                          bufferPtr data) override {
-            ACKNOWLEDGE_UNUSED(buffer);
-            ACKNOWLEDGE_UNUSED(elementCountOffset);
-            ACKNOWLEDGE_UNUSED(elementCountRange);
-            ACKNOWLEDGE_UNUSED(data);
+        void updateBuffer([[maybe_unused]] U32 buffer,
+                          [[maybe_unused]] U32 elementCountOffset,
+                          [[maybe_unused]] U32 elementCountRange,
+                          [[maybe_unused]] bufferPtr data) override {
         }
 
         void lockBuffers() override {}
 
-        bool waitBufferRange(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bool blockClient) override {
-            ACKNOWLEDGE_UNUSED(buffer);
-            ACKNOWLEDGE_UNUSED(elementCountOffset);
-            ACKNOWLEDGE_UNUSED(elementCountRange);
-            ACKNOWLEDGE_UNUSED(blockClient);
-
+        bool waitBufferRange([[maybe_unused]] U32 buffer,
+                             [[maybe_unused]] U32 elementCountOffset,
+                             [[maybe_unused]] U32 elementCountRange,
+                             [[maybe_unused]] bool blockClient) override {
             return false;
         }
     };
@@ -224,43 +180,26 @@ namespace Divide {
             : Texture(context, descriptorHash, name, assetNames, assetLocations, isFlipped, asyncLoad, texDescriptor)
         {}
 
-        [[nodiscard]] SamplerAddress getGPUAddress(size_t samplerHash) override {
-            ACKNOWLEDGE_UNUSED(samplerHash);
+        [[nodiscard]] SamplerAddress getGPUAddress([[maybe_unused]] size_t samplerHash) override {
             return 0u;
         }
 
-        void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rw_flag) override {
-            ACKNOWLEDGE_UNUSED(slot);
-            ACKNOWLEDGE_UNUSED(level);
-            ACKNOWLEDGE_UNUSED(layer);
-            ACKNOWLEDGE_UNUSED(layered);
-            ACKNOWLEDGE_UNUSED(rw_flag);
+        void bindLayer([[maybe_unused]] U8 slot, [[maybe_unused]] U8 level, [[maybe_unused]] U8 layer, [[maybe_unused]] bool layered, [[maybe_unused]] Image::Flag rw_flag) override {
         }
 
-        void loadData(const ImageTools::ImageData& imageLayers) override {
-            ACKNOWLEDGE_UNUSED(imageLayers);
+        void loadData([[maybe_unused]] const ImageTools::ImageData& imageLayers) override {
         }
 
-        void loadData(const std::pair<Byte*, size_t>& ptr, const vec2<U16>& dimensions) override {
-            ACKNOWLEDGE_UNUSED(ptr);
-            ACKNOWLEDGE_UNUSED(dimensions);
+        void loadData([[maybe_unused]] const std::pair<Byte*, size_t>& ptr, [[maybe_unused]] const vec2<U16>& dimensions) override {
         }
 
-        void clearData(const UColour4& clearColour, U8 level) const override {
-            ACKNOWLEDGE_UNUSED(clearColour);
-            ACKNOWLEDGE_UNUSED(level);
+        void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const override {
         }
 
-        void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const override {
-            ACKNOWLEDGE_UNUSED(clearColour);
-            ACKNOWLEDGE_UNUSED(level);
-            ACKNOWLEDGE_UNUSED(rectToClear);
-            ACKNOWLEDGE_UNUSED(depthRange);
+        void clearSubData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level, [[maybe_unused]] const vec4<I32>& rectToClear, [[maybe_unused]] const vec2<I32>& depthRange) const override {
         }
 
-        std::pair<std::shared_ptr<Byte[]>, size_t> readData(U16 mipLevel, GFXDataFormat desiredFormat) const override {
-            ACKNOWLEDGE_UNUSED(mipLevel);
-            ACKNOWLEDGE_UNUSED(desiredFormat);
+        std::pair<std::shared_ptr<Byte[]>, size_t> readData([[maybe_unused]] U16 mipLevel, [[maybe_unused]] GFXDataFormat desiredFormat) const override {
             return { nullptr, 0 };
         }
     };
@@ -285,27 +224,16 @@ namespace Divide {
             : ShaderBuffer(context, descriptor)
         {}
 
-        void clearBytes(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes) override {
-            ACKNOWLEDGE_UNUSED(offsetInBytes);
-            ACKNOWLEDGE_UNUSED(rangeInBytes);
+        void clearBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes) override {
         }
 
-        void writeBytes(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes, bufferPtr data) override {
-            ACKNOWLEDGE_UNUSED(offsetInBytes);
-            ACKNOWLEDGE_UNUSED(rangeInBytes);
-            ACKNOWLEDGE_UNUSED(data);
+        void writeBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes, [[maybe_unused]] bufferPtr data) override {
         }
 
-        void readBytes(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes, bufferPtr result) const override {
-            ACKNOWLEDGE_UNUSED(offsetInBytes);
-            ACKNOWLEDGE_UNUSED(rangeInBytes);
-            ACKNOWLEDGE_UNUSED(result);
+        void readBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes, [[maybe_unused]] bufferPtr result) const override {
         }
 
-        bool bindByteRange(U8 bindIndex, ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes) override {
-            ACKNOWLEDGE_UNUSED(bindIndex);
-            ACKNOWLEDGE_UNUSED(offsetInBytes);
-            ACKNOWLEDGE_UNUSED(rangeInBytes);
+        bool bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes) override {
             return true;
         }
     };

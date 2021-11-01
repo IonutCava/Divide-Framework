@@ -79,8 +79,7 @@ namespace Divide {
         return enabled() && !_selectedNodes.empty();
     }
 
-    void Gizmo::update(const U64 deltaTimeUS) {
-        ACKNOWLEDGE_UNUSED(deltaTimeUS);
+    void Gizmo::update([[maybe_unused]] const U64 deltaTimeUS) {
 
         if (_shouldRegisterUndo) {
             _parent.registerUndoEntry(g_undoEntry);
@@ -235,8 +234,7 @@ namespace Divide {
         return _transformSettings;
     }
 
-    void Gizmo::onSceneFocus(const bool state) noexcept {
-        ACKNOWLEDGE_UNUSED(state);
+    void Gizmo::onSceneFocus([[maybe_unused]] const bool state) noexcept {
 
         ImGuiIO & io = _imguiContext->IO;
         _wasUsed = false;

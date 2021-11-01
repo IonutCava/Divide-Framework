@@ -193,13 +193,13 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
 
     Time::ScopedTimer timer(_shadowPassTimer);
 
-    ShadowMap::clearShadowMapBuffers(bufferInOut);
-
     std::array<I32, to_base(LightType::COUNT)> indexCounter{};
     std::array<vec2<U16>, to_base(LightType::COUNT)> shadowRanges{};
     std::array<bool, to_base(LightType::COUNT)> shadowsGenerated{};
 
-    for (U16 i = 0; i < _sortedShadowLights._count; ++i) {
+    ShadowMap::resetShadowMaps(bufferInOut);
+
+    for (U16 i = 0u; i < _sortedShadowLights._count; ++i) {
         Light* light = _sortedShadowLights._entries[i];
 
         const LightType lType = light->getLightType();

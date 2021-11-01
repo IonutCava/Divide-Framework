@@ -61,15 +61,11 @@ namespace {
     }
 }
 
-bool RenderPassCuller::OnStartup(PlatformContext& context) {
-    ACKNOWLEDGE_UNUSED(context);
-  
+bool RenderPassCuller::OnStartup([[maybe_unused]] PlatformContext& context) {
     return true;
 }
 
-bool RenderPassCuller::OnShutdown(PlatformContext& context) {
-    ACKNOWLEDGE_UNUSED(context);
-
+bool RenderPassCuller::OnShutdown([[maybe_unused]] PlatformContext& context) {
     return true;
 }
 

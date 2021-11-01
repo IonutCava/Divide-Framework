@@ -111,14 +111,13 @@ namespace Util {
         const T cStep = static_cast<T>(stepIn * 100);
 
         const void* step = IS_ZERO(stepIn) ? nullptr : (void*)&stepIn;
-        const void* step_fast = step == nullptr ? nullptr : (void*)&cStep;
+        [[maybe_unused]] const void* step_fast = step == nullptr ? nullptr : (void*)&cStep;
 
         bool ret;
         if_constexpr(num_comp == 1) {
             const T min = static_cast<T>(field._range.min);
             T max = static_cast<T>(field._range.max);
             if_constexpr(IsSlider) {
-                ACKNOWLEDGE_UNUSED(step_fast);
                 assert(min <= max);
                 ret = ImGui::SliderScalar(label, data_type, (void*)&val, (void*)&min, (void*)&max, GetFormat(data_type, format, field._hexadecimal), power);
             } else {
@@ -132,7 +131,6 @@ namespace Util {
             T max = T{ field._range.max };
 
             if_constexpr(IsSlider) {
-                ACKNOWLEDGE_UNUSED(step_fast);
                 assert(min <= max);
                 ret = ImGui::SliderScalarN(label, data_type, (void*)&val, num_comp, (void*)&min, (void*)&max, GetFormat(data_type, format, field._hexadecimal), power);
             } else {

@@ -76,13 +76,12 @@ T Script::eval() {
 template<>
 inline void Script::eval() {
     assert(!_scriptSource.empty());
-    chaiscript::Boxed_Value ret = {};
+    [[maybe_unused]] chaiscript::Boxed_Value ret = {};
     try {
         ret = _script->eval(_scriptSource);
     } catch (const chaiscript::exception::eval_error &e) {
         caughtException(e.pretty_print().c_str(), true);
     }
-    ACKNOWLEDGE_UNUSED(ret);
 }
 
 } //namespace Divide

@@ -690,14 +690,10 @@ void WarScene::toggleCamera(const InputParams param) {
     static bool tpsCameraActive = false;
     static bool flyCameraActive = true;
     static Camera* tpsCamera = nullptr;
-    static Camera* fpsCamera = nullptr;
 
     if (!tpsCamera) {
         tpsCamera = Camera::findCamera(_ID("tpsCamera"));
-        fpsCamera = Camera::findCamera(_ID("fpsCamera"));
     }
-
-    ACKNOWLEDGE_UNUSED(fpsCamera);
 
     const PlayerIndex idx = getPlayerIndexForDevice(param._deviceIndex);
     if (_currentSelection[idx]._selectionCount > 0u) {

@@ -67,8 +67,7 @@ PoolHandle ObjectPool<T, N>::allocate(void* mem, Args... args) {
 }
 
 template<typename T, size_t N>
-void ObjectPool<T, N>::deallocate(void* mem, const PoolHandle handle) {
-    ACKNOWLEDGE_UNUSED(mem);
+void ObjectPool<T, N>::deallocate([[maybe_unused]] void* mem, const PoolHandle handle) {
 
     T* obj = find(handle);
     if (obj) {

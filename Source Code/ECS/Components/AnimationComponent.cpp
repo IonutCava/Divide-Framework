@@ -51,9 +51,7 @@ AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContex
     _editorComponent.registerField(MOV(animationFrameIndexInfoField));
 
 
-    _editorComponent.onChangedCbk([this](std::string_view field) {
-        ACKNOWLEDGE_UNUSED(field);
-
+    _editorComponent.onChangedCbk([this]([[maybe_unused]] std::string_view field) {
         RenderingComponent* const rComp = _parentSGN->get<RenderingComponent>();
         if (rComp != nullptr) {
             rComp->toggleRenderOption(RenderingComponent::RenderOptions::RENDER_SKELETON, showSkeleton());

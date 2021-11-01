@@ -328,8 +328,8 @@ bool deleteAllFiles(const char* filePath, const char* extension) {
                         NOP();
                     }
                 }
-            } catch (const std::exception &ex) {
-                ACKNOWLEDGE_UNUSED(ex);
+            } catch ([[maybe_unused]] const std::exception &ex) {
+                NOP();
             }
         }
     }

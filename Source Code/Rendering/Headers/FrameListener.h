@@ -90,27 +90,27 @@ class FrameListener : public GUIDWrapper {
     /// Implement what you need without filling classes with dummy functions
     /// frameStarted is calld at the beggining of a new frame before processing
     /// the logic aspect of a scene
-    [[nodiscard]] virtual bool frameStarted(const FrameEvent& evt) { ACKNOWLEDGE_UNUSED(evt); return true; }
+    [[nodiscard]] virtual bool frameStarted([[maybe_unused]] const FrameEvent& evt) { return true; }
     /// framePreRenderStarted is called when we need to start processing the
     /// visual aspect of a scene
-    [[nodiscard]] virtual bool framePreRenderStarted(const FrameEvent& evt) { ACKNOWLEDGE_UNUSED(evt); return true; }
+    [[nodiscard]] virtual bool framePreRenderStarted([[maybe_unused]] const FrameEvent& evt) { return true; }
     /// framePreRenderEnded is called after all the prerendering has finished
     /// and rendering should start
-    [[nodiscard]] virtual bool framePreRenderEnded(const FrameEvent& evt) { ACKNOWLEDGE_UNUSED(evt); return true; }
+    [[nodiscard]] virtual bool framePreRenderEnded([[maybe_unused]] const FrameEvent& evt) { return true; }
     /// frameSceneRenderStarted is called right before rendering the scene for the current player starts
-    [[nodiscard]] virtual bool frameSceneRenderStarted(const FrameEvent& evt) { ACKNOWLEDGE_UNUSED(evt); return true; }
+    [[nodiscard]] virtual bool frameSceneRenderStarted([[maybe_unused]] const FrameEvent& evt) { return true; }
     /// frameSceneRenderEnded is called immediately after scene rendering for the current player has ended but before any blitting operations
-    [[nodiscard]] virtual bool frameSceneRenderEnded(const FrameEvent& evt) { ACKNOWLEDGE_UNUSED(evt); return true; }
+    [[nodiscard]] virtual bool frameSceneRenderEnded([[maybe_unused]] const FrameEvent& evt) { return true; }
     /// frameRendering Queued is called after all the frame setup/rendering but
     /// before the call to SwapBuffers
-    [[nodiscard]] virtual bool frameRenderingQueued(const FrameEvent& evt) { ACKNOWLEDGE_UNUSED(evt); return true; }
+    [[nodiscard]] virtual bool frameRenderingQueued([[maybe_unused]] const FrameEvent& evt) { return true; }
     /// framePostRenderStarted is called after the main rendering calls are
     /// finished (e.g. use this for debug calls)
-    [[nodiscard]] virtual bool framePostRenderStarted(const FrameEvent& evt) { ACKNOWLEDGE_UNUSED(evt); return true; }
+    [[nodiscard]] virtual bool framePostRenderStarted([[maybe_unused]] const FrameEvent& evt) { return true; }
     /// framePostRenderEnded is called after all the postrendering has finished
-    [[nodiscard]] virtual bool framePostRenderEnded(const FrameEvent& evt) { ACKNOWLEDGE_UNUSED(evt); return true; }
+    [[nodiscard]] virtual bool framePostRenderEnded([[maybe_unused]] const FrameEvent& evt) { return true; }
     /// frameEnded is called after the buffers have been swapped
-    [[nodiscard]] virtual bool frameEnded(const FrameEvent& evt) { ACKNOWLEDGE_UNUSED(evt); return true; }
+    [[nodiscard]] virtual bool frameEnded([[maybe_unused]] const FrameEvent& evt) { return true; }
 
     PROPERTY_R_IW(bool, enabled, false);
    private:

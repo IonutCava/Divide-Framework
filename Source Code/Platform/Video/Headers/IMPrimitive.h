@@ -93,30 +93,30 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
     const mat4<F32>& worldMatrix() const noexcept { return _worldMatrix; }
 
     void worldMatrix(const mat4<F32>& worldMatrix) noexcept {
-        _worldMatrix.set(worldMatrix);
-        _cmdBufferDirty = true;
+        if (_worldMatrix != worldMatrix) {
+            _worldMatrix.set(worldMatrix);
+            _cmdBufferDirty = true;
+        }
     }
 
     void resetWorldMatrix() noexcept {
-        _worldMatrix.identity();
-        _cmdBufferDirty = true;
+        worldMatrix(MAT4_IDENTITY);
     }
 
-    void viewport(const Rect<I32>& viewport) {
-        _viewport.set(viewport);
-        _cmdBufferDirty = true;
+    void viewport(const Rect<I32>& newViewport) noexcept {
+        if (_viewport != newViewport) {
+            _viewport.set(newViewport);
+            _cmdBufferDirty = true;
+        }
     }
 
     void resetViewport() noexcept {
-        _viewport.set(-1);
-        _cmdBufferDirty = true;
+        viewport(Rect<I32>(-1));
     }
 
-    void name(const Str64& name) {
+    void name([[maybe_unused]] const Str64& name) noexcept {
 #       ifdef _DEBUG
         _name = name;
-#       else
-        ACKNOWLEDGE_UNUSED(name);
 #       endif
     }
 

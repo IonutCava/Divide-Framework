@@ -60,7 +60,7 @@
     <ProjectGuid>{87F22E92-2988-41FA-9E23-00033408A869}</ProjectGuid>
     <RootNamespace>DivideHardware</RootNamespace>
     <ProjectName>Divide-Executable</ProjectName>
-    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

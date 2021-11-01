@@ -57,9 +57,7 @@ TEST(ParallelForTest)
     ParallelForDescriptor descriptor = {};
     descriptor._iterCount = loopCount;
     descriptor._partitionSize = partitionSize;
-    descriptor._cbk = [&totalCounter, &loopCounter](const Task* parentTask, const U32 start, const U32 end) {
-        ACKNOWLEDGE_UNUSED(parentTask);
-
+    descriptor._cbk = [&totalCounter, &loopCounter]([[maybe_unused]] const Task* parentTask, const U32 start, const U32 end) {
         ++loopCounter;
         for (U32 i = start; i < end; ++i) {
             ++totalCounter;
@@ -81,9 +79,7 @@ TEST(TaskCallbackTest)
 
     bool testValue = false;
 
-    Task* job = CreateTask([](const Task& parentTask) {
-        ACKNOWLEDGE_UNUSED(parentTask);
-
+    Task* job = CreateTask([]([[maybe_unused]] const Task& parentTask) {
         Time::ProfileTimer timer;
         timer.start();
         printLine("TaskCallbackTest: Thread sleeping for 500ms");
@@ -128,8 +124,7 @@ namespace {
             return _testValue.load(std::memory_order_acquire);
         }
 
-        void threadedFunction(const Task& parentTask) {
-            ACKNOWLEDGE_UNUSED(parentTask);
+        void threadedFunction([[maybe_unused]] const Task& parentTask) {
             Time::ProfileTimer timer;
             timer.start();
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -233,10 +228,7 @@ TEST(TaskSpeedTest)
         descriptor._iterCount = loopCountB;
         descriptor._partitionSize = partitionSize;
         descriptor._useCurrentThread = false;
-        descriptor._cbk = [](const Task* parentTask, const U32 start, const U32 end) {
-            ACKNOWLEDGE_UNUSED(parentTask);
-            ACKNOWLEDGE_UNUSED(start);
-            ACKNOWLEDGE_UNUSED(end);
+        descriptor._cbk = []([[maybe_unused]] const Task* parentTask, [[maybe_unused]] const U32 start, [[maybe_unused]] const U32 end) {
             NOP();
         };
 
@@ -257,10 +249,7 @@ TEST(TaskSpeedTest)
         descriptor._iterCount = loopCountB;
         descriptor._partitionSize = partitionSize;
         descriptor._useCurrentThread = true;
-        descriptor._cbk = [](const Task* parentTask, const U32 start, const U32 end) {
-            ACKNOWLEDGE_UNUSED(parentTask);
-            ACKNOWLEDGE_UNUSED(start);
-            ACKNOWLEDGE_UNUSED(end);
+        descriptor._cbk = []([[maybe_unused]] const Task* parentTask, [[maybe_unused]] const U32 start, [[maybe_unused]] const U32 end) {
             NOP();
         };
 
@@ -279,10 +268,7 @@ TEST(TaskSpeedTest)
         descriptor._iterCount = loopCountB;
         descriptor._partitionSize = partitionSize;
         descriptor._useCurrentThread = false;
-        descriptor._cbk = [](const Task* parentTask, const U32 start, const U32 end) {
-            ACKNOWLEDGE_UNUSED(parentTask);
-            ACKNOWLEDGE_UNUSED(start);
-            ACKNOWLEDGE_UNUSED(end);
+        descriptor._cbk = []([[maybe_unused]] const Task* parentTask, [[maybe_unused]] const U32 start, [[maybe_unused]] const U32 end) {
             NOP();
         };
 
@@ -305,11 +291,7 @@ TEST(TaskSpeedTest)
         descriptor._iterCount = loopCountB;
         descriptor._partitionSize = partitionSize;
         descriptor._useCurrentThread = true;
-        descriptor._cbk = [](const Task* parentTask, const U32 start, const U32 end) {
-            ACKNOWLEDGE_UNUSED(parentTask);
-            ACKNOWLEDGE_UNUSED(start);
-            ACKNOWLEDGE_UNUSED(end);
-
+        descriptor._cbk = []([[maybe_unused]] const Task* parentTask, [[maybe_unused]] const U32 start, [[maybe_unused]] const U32 end) {
             NOP();
         };
 

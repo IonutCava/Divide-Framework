@@ -194,9 +194,7 @@ void loadDefaultKeyBindings(const string &file, Scene* scene) {
     }
 }
 
-void loadMusicPlaylist(const Str256& scenePath, const Str64& fileName, Scene* const scene, const Configuration& config) {
-    ACKNOWLEDGE_UNUSED(config);
-
+void loadMusicPlaylist(const Str256& scenePath, const Str64& fileName, Scene* const scene, [[maybe_unused]] const Configuration& config) {
     const string file = (scenePath + "/" + fileName).c_str();
 
     if (!fileExists(file.c_str())) {

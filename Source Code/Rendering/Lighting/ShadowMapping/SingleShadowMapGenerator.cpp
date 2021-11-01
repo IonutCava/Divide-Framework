@@ -146,10 +146,9 @@ SingleShadowMapGenerator::~SingleShadowMapGenerator()
     _context.renderTargetPool().deallocateRT(_drawBufferDepth);
 }
 
-void SingleShadowMapGenerator::render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) {
+void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
 
-    ACKNOWLEDGE_UNUSED(playerCamera);
     SpotLightComponent& spotLight = static_cast<SpotLightComponent&>(light);
 
     const vec3<F32> lightPos = light.positionCache();

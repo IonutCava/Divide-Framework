@@ -47,9 +47,8 @@ GLuint VAOBindings::instanceDivisor(const GLuint vao, const GLuint index) {
 void VAOBindings::instanceDivisor(const GLuint vao, const GLuint index, const GLuint divisor) {
     VAOData* data = getVAOData(vao);
 
-    const size_t count = data->second.size();
+    [[maybe_unused]] const size_t count = data->second.size();
     assert(count > 0 && count > index);
-    ACKNOWLEDGE_UNUSED(count);
 
     data->second[index] = divisor;
 }
@@ -71,9 +70,8 @@ const VAOBindings::BufferBindingParams& VAOBindings::bindingParams(const GLuint 
 void VAOBindings::bindingParams(const GLuint vao, const GLuint index, const BufferBindingParams& newParams) {
     VAOData* data = getVAOData(vao);
 
-    const size_t count = data->first.size();
+    [[maybe_unused]] const size_t count = data->first.size();
     assert(count > 0 && count > index);
-    ACKNOWLEDGE_UNUSED(count);
 
     data->first[index] = newParams;
 }

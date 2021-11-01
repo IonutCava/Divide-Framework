@@ -584,8 +584,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     buildShaders(terrainMaterial.get());
 
-    terrainMaterial->customShaderCBK([=](Material& material, RenderStagePass stagePass) {
-        ACKNOWLEDGE_UNUSED(stagePass);
+    terrainMaterial->customShaderCBK([=](Material& material, [[maybe_unused]] RenderStagePass stagePass) {
 
         buildShaders(&material);
         return true;
@@ -866,14 +865,11 @@ VegetationDetails& TerrainLoader::initializeVegetationDetails(const Terrain_ptr&
     return vegDetails;
 }
 
-bool TerrainLoader::Save(const char* fileName) {
-    ACKNOWLEDGE_UNUSED(fileName);
+bool TerrainLoader::Save([[maybe_unused]] const char* fileName) {
     return true;
 }
 
-bool TerrainLoader::Load(const char* fileName) {
-    ACKNOWLEDGE_UNUSED(fileName);
-
+bool TerrainLoader::Load([[maybe_unused]] const char* fileName) {
     return true;
 }
 

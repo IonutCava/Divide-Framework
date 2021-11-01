@@ -131,10 +131,7 @@ bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeigh
     return ret;
 }
 
-bool ImageData::loadDDS_IL(const bool srgb, const U16 refWidth, const U16 refHeight, const string& filename) {
-    ACKNOWLEDGE_UNUSED(refWidth);
-    ACKNOWLEDGE_UNUSED(refHeight);
-
+bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, [[maybe_unused]] const U16 refWidth, [[maybe_unused]] const U16 refHeight, const string& filename) {
     const auto checkError = []() {
         ILenum error = ilGetError();
         while (error != IL_NO_ERROR) {
@@ -143,7 +140,6 @@ bool ImageData::loadDDS_IL(const bool srgb, const U16 refWidth, const U16 refHei
         }
     };
 
-    ACKNOWLEDGE_UNUSED(srgb);
     std::lock_guard<Mutex> lock(ImageDataInterface::_loadingMutex);
 
     U32 ilTexture = 0;
@@ -298,9 +294,7 @@ bool ImageData::loadDDS_IL(const bool srgb, const U16 refWidth, const U16 refHei
     return true;
 }
 
-UColour4 ImageData::getColour(const I32 x, const I32 y, U32 layer, const U8 mipLevel) const {
-    ACKNOWLEDGE_UNUSED(layer);
-
+UColour4 ImageData::getColour(const I32 x, const I32 y, [[maybe_unused]] U32 layer, const U8 mipLevel) const {
     UColour4 returnColour;
     getColour(x, y, returnColour.r, returnColour.g, returnColour.b, returnColour.a, mipLevel);
     return returnColour;

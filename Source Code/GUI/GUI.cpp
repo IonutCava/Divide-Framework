@@ -454,9 +454,7 @@ bool GUI::joystickRemap(const Input::JoystickEvent &arg) {
     return false;
 }
 
-bool GUI::onUTF8(const Input::UTF8Event& arg) {
-    ACKNOWLEDGE_UNUSED(arg);
-
+bool GUI::onUTF8([[maybe_unused]] const Input::UTF8Event& arg) {
     return false;
 }
 

@@ -396,10 +396,7 @@ namespace Divide {
 
                                         switch (light->getLightType()) {
                                             case LightType::POINT: {
-                                                PointLightComponent* pointLight = static_cast<PointLightComponent*>(light);
-                                                ACKNOWLEDGE_UNUSED(pointLight);
-
-                                                for (U8 face = 0; face < 6; ++face) {
+                                                for (U8 face = 0u; face < 6u; ++face) {
                                                     Camera* shadowCamera = ShadowMap::shadowCameras(ShadowType::CUBEMAP)[face];
                                                     if (drawCamera(shadowCamera)) {
                                                         sceneChanged = true;
@@ -409,9 +406,6 @@ namespace Divide {
                                             } break;
 
                                             case LightType::SPOT: {
-                                                SpotLightComponent* spotLight = static_cast<SpotLightComponent*>(light);
-                                                ACKNOWLEDGE_UNUSED(spotLight);
-
                                                 Camera* shadowCamera = ShadowMap::shadowCameras(ShadowType::SINGLE).front();
                                                 if (drawCamera(shadowCamera)) {
                                                     sceneChanged = true;
@@ -420,7 +414,7 @@ namespace Divide {
 
                                             case LightType::DIRECTIONAL: {
                                                 DirectionalLightComponent* dirLight = static_cast<DirectionalLightComponent*>(light);
-                                                for (U8 split = 0; split < dirLight->csmSplitCount(); ++split) {
+                                                for (U8 split = 0u; split < dirLight->csmSplitCount(); ++split) {
                                                     Camera* shadowCamera = ShadowMap::shadowCameras(ShadowType::LAYERED)[split];
                                                     if (drawCamera(shadowCamera)) {
                                                         sceneChanged = true;
@@ -1357,8 +1351,7 @@ namespace Divide {
                             modeUndo._name = "Shading Mode";
                             modeUndo._oldVal = to_I32(crtMode);
                             modeUndo._newVal = to_I32(mode);
-                            modeUndo._dataSetter = [material, mode](const I32& data) {
-                                ACKNOWLEDGE_UNUSED(data);
+                            modeUndo._dataSetter = [material, mode]([[maybe_unused]] const I32& data) {
                                 material->shadingMode(mode);
                             };
                             _context.editor().registerUndoEntry(modeUndo);

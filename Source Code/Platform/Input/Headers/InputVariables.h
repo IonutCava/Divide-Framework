@@ -72,8 +72,7 @@ class Constant final : public Variable {
    public:
     Constant(const D64 dInitValue) : Variable(dInitValue) {}
 
-    void setValue(D64 dValue) override {
-        ACKNOWLEDGE_UNUSED(dValue);
+    void setValue([[maybe_unused]] const D64 dValue) override {
     }
 };
 

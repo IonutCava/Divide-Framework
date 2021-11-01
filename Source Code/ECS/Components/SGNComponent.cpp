@@ -9,13 +9,12 @@
 namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
-    SGNComponent::SGNComponent(Key key, const ComponentType type, SceneGraphNode* parentSGN, PlatformContext& context)
+    SGNComponent::SGNComponent([[maybe_unused]] Key key, const ComponentType type, SceneGraphNode* parentSGN, PlatformContext& context)
         : PlatformContextComponent(context),
           _editorComponent(*this, type, TypeUtil::ComponentTypeToString(type)),
           _parentSGN(parentSGN),
           _type(type)
     {
-        ACKNOWLEDGE_UNUSED(key);
         std::atomic_init(&_enabled, true);
         std::atomic_init(&_hasChanged, false);
     }
@@ -52,12 +51,10 @@ namespace Divide {
         return false;
     }
 
-    void SGNComponent::saveToXML(boost::property_tree::ptree& pt) const {
-        ACKNOWLEDGE_UNUSED(pt);
+    void SGNComponent::saveToXML([[maybe_unused]] boost::property_tree::ptree& pt) const {
     }
 
-    void SGNComponent::loadFromXML(const boost::property_tree::ptree& pt) {
-        ACKNOWLEDGE_UNUSED(pt);
+    void SGNComponent::loadFromXML([[maybe_unused]] const boost::property_tree::ptree& pt) {
     }
 
     U64 SGNComponent::uniqueID() const {
@@ -72,8 +69,7 @@ namespace Divide {
         _enabled = state;
     }
 
-    void SGNComponent::OnData(const ECS::CustomEvent& data) {
-        ACKNOWLEDGE_UNUSED(data);
+    void SGNComponent::OnData([[maybe_unused]] const ECS::CustomEvent& data) {
     }
 
 } //namespace Divide

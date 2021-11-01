@@ -281,20 +281,17 @@ bool Editor::init(const vec2<U16>& renderResolution) {
                 newWindow->hidden(false);
                 newWindow->bringToFront();
 
-                newWindow->addEventListener(WindowEvent::CLOSE_REQUESTED, [viewport](const DisplayWindow::WindowEventArgs& args) noexcept {
-                    ACKNOWLEDGE_UNUSED(args);
+                newWindow->addEventListener(WindowEvent::CLOSE_REQUESTED, [viewport]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
                     viewport->PlatformRequestClose = true;
                     return true; 
                 });
 
-                newWindow->addEventListener(WindowEvent::MOVED, [viewport](const DisplayWindow::WindowEventArgs& args) noexcept {
-                    ACKNOWLEDGE_UNUSED(args);
+                newWindow->addEventListener(WindowEvent::MOVED, [viewport]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
                     viewport->PlatformRequestMove = true;
                     return true;
                 });
 
-                newWindow->addEventListener(WindowEvent::RESIZED, [viewport](const DisplayWindow::WindowEventArgs& args) noexcept {
-                    ACKNOWLEDGE_UNUSED(args);
+                newWindow->addEventListener(WindowEvent::RESIZED, [viewport]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
                     viewport->PlatformRequestResize = true;
                     return true;
                 });
@@ -659,29 +656,7 @@ void Editor::update(const U64 deltaTimeUS) {
     }
 }
 
-bool Editor::frameStarted(const FrameEvent& evt) {
-    ACKNOWLEDGE_UNUSED(evt);
-    return true;
-}
-
-bool Editor::framePreRenderStarted(const FrameEvent& evt) {
-    ACKNOWLEDGE_UNUSED(evt);
-    return true;
-}
-
-bool Editor::framePreRenderEnded(const FrameEvent& evt) {
-    ACKNOWLEDGE_UNUSED(evt);
-    return true;
-}
-
-bool Editor::frameRenderingQueued(const FrameEvent& evt) {
-    ACKNOWLEDGE_UNUSED(evt);
-    return true;
-}
-
-bool Editor::render(const U64 deltaTime) {
-    ACKNOWLEDGE_UNUSED(deltaTime);
-
+bool Editor::render([[maybe_unused]] const U64 deltaTime) {
     const F32 statusBarHeight = _statusBar->height();
     
     static ImGuiDockNodeFlags opt_flags = ImGuiDockNodeFlags_None | ImGuiDockNodeFlags_PassthruCentralNode;
@@ -750,11 +725,6 @@ void Editor::drawScreenOverlay(const Camera* camera, const Rect<I32>& targetView
     Attorney::GizmoEditor::render(_gizmo.get(), camera, targetViewport, bufferInOut);
 }
 
-bool Editor::frameSceneRenderEnded(const FrameEvent& evt) {
-    ACKNOWLEDGE_UNUSED(evt);
-    return true;
-}
-
 bool Editor::framePostRenderStarted(const FrameEvent& evt) {
     for (DockedWindow* window : _dockedWindows) {
         window->backgroundUpdate();
@@ -805,13 +775,9 @@ bool Editor::framePostRenderStarted(const FrameEvent& evt) {
     return false;
 }
 
-bool Editor::framePostRenderEnded(const FrameEvent& evt) {
-    ACKNOWLEDGE_UNUSED(evt);
-    return true;
-}
 
-bool Editor::frameEnded(const FrameEvent& evt) {
-    ACKNOWLEDGE_UNUSED(evt);
+bool Editor::frameEnded([[maybe_unused]] const FrameEvent& evt) {
+
     if (running() && _stepQueue > 0) {
         --_stepQueue;
     }
@@ -1167,8 +1133,7 @@ bool Editor::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
     return wantsMouse();
 }
 
-bool Editor::joystickButtonPressed(const Input::JoystickEvent &arg) {
-    ACKNOWLEDGE_UNUSED(arg);
+bool Editor::joystickButtonPressed([[maybe_unused]] const Input::JoystickEvent &arg) {
 
     if (!isInit() || !running()) {
         return false;
@@ -1177,8 +1142,7 @@ bool Editor::joystickButtonPressed(const Input::JoystickEvent &arg) {
     return wantsJoystick();
 }
 
-bool Editor::joystickButtonReleased(const Input::JoystickEvent &arg) {
-    ACKNOWLEDGE_UNUSED(arg);
+bool Editor::joystickButtonReleased([[maybe_unused]] const Input::JoystickEvent &arg) {
 
     if (!isInit() || !running()) {
         return false;
@@ -1187,8 +1151,7 @@ bool Editor::joystickButtonReleased(const Input::JoystickEvent &arg) {
     return wantsJoystick();
 }
 
-bool Editor::joystickAxisMoved(const Input::JoystickEvent &arg) {
-    ACKNOWLEDGE_UNUSED(arg);
+bool Editor::joystickAxisMoved([[maybe_unused]] const Input::JoystickEvent &arg) {
 
     if (!isInit() || !running()) {
         return false;
@@ -1197,8 +1160,7 @@ bool Editor::joystickAxisMoved(const Input::JoystickEvent &arg) {
     return wantsJoystick();
 }
 
-bool Editor::joystickPovMoved(const Input::JoystickEvent &arg) {
-    ACKNOWLEDGE_UNUSED(arg);
+bool Editor::joystickPovMoved([[maybe_unused]] const Input::JoystickEvent &arg) {
 
     if (!isInit() || !running()) {
         return false;
@@ -1207,8 +1169,7 @@ bool Editor::joystickPovMoved(const Input::JoystickEvent &arg) {
     return wantsJoystick();
 }
 
-bool Editor::joystickBallMoved(const Input::JoystickEvent &arg) {
-    ACKNOWLEDGE_UNUSED(arg);
+bool Editor::joystickBallMoved([[maybe_unused]] const Input::JoystickEvent &arg) {
 
     if (!isInit() || !running()) {
         return false;
@@ -1217,8 +1178,7 @@ bool Editor::joystickBallMoved(const Input::JoystickEvent &arg) {
     return wantsJoystick();
 }
 
-bool Editor::joystickAddRemove(const Input::JoystickEvent &arg) {
-    ACKNOWLEDGE_UNUSED(arg);
+bool Editor::joystickAddRemove([[maybe_unused]] const Input::JoystickEvent &arg) {
 
     if (!isInit() || !running()) {
         return false;
@@ -1227,8 +1187,7 @@ bool Editor::joystickAddRemove(const Input::JoystickEvent &arg) {
     return wantsJoystick();
 }
 
-bool Editor::joystickRemap(const Input::JoystickEvent &arg) {
-    ACKNOWLEDGE_UNUSED(arg);
+bool Editor::joystickRemap([[maybe_unused]] const Input::JoystickEvent &arg) {
 
     if (!isInit() || !running()) {
         return false;
@@ -1397,9 +1356,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
     static std::array<bool, 4> state = { true, true, true, true };
     static GFXDevice& gfxDevice = _context.gfx();
 
-    const ImDrawCallback toggleColours { [](const ImDrawList* parent_list, const ImDrawCmd* cmd) -> void {
-        ACKNOWLEDGE_UNUSED(parent_list);
-
+    const ImDrawCallback toggleColours { []([[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* cmd) -> void {
         TextureCallbackData data = *static_cast<TextureCallbackData*>(cmd->UserCallbackData);
 
         GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();

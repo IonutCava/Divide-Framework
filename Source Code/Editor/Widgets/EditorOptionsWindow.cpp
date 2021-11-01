@@ -14,8 +14,7 @@ namespace Divide {
         //ImGuiFs::Dialog::ExtraWindowFlags |= ImGuiWindowFlags_Tooltip;
     }
 
-    void EditorOptionsWindow::update(const U64 deltaTimeUS) {
-        ACKNOWLEDGE_UNUSED(deltaTimeUS);
+    void EditorOptionsWindow::update([[maybe_unused]] const U64 deltaTimeUS) {
     }
 
     void EditorOptionsWindow::draw(bool& open) {

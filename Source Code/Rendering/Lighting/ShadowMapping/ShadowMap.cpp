@@ -138,14 +138,14 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                 }
 
                 TextureDescriptor colourMapDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
-                colourMapDescriptor.layerCount(Config::Lighting::MAX_SHADOW_CASTING_LIGHTS);
+                colourMapDescriptor.layerCount(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS);
                 colourMapDescriptor.autoMipMaps(false);
                 depthMapSampler.minFilter(TextureFilter::LINEAR);
                 depthMapSampler.anisotropyLevel(0);
                 const size_t samplerHash = depthMapSampler.getHash();
 
                 TextureDescriptor depthDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
-                depthDescriptor.layerCount(Config::Lighting::MAX_SHADOW_CASTING_LIGHTS);
+                depthDescriptor.layerCount(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS);
                 depthDescriptor.autoMipMaps(false);
 
                 RTAttachmentDescriptors att = {
@@ -191,9 +191,15 @@ void ShadowMap::destroyShadowMaps(GFXDevice& context) {
     s_shadowMapGenerators.fill(nullptr);
 }
 
-void ShadowMap::resetShadowMaps() {
+void ShadowMap::resetShadowMaps(GFX::CommandBuffer& bufferInOut) {
+    for (U8 i = 0u; i < to_base(ShadowType::COUNT); ++i) {
+        // We don't need to clear the draw buffers here as both the CSM and Single-layer targets use full-size blitting from intermidiate targets
+        // so every pixel gets overwritten anyway.
+        GFX::EnqueueCommand<GFX::ResetRenderTargetCommand>(bufferInOut)->_source = RenderTargetID(RenderTargetUsage::SHADOW, i);
+    }
+
     ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
-    for (U32 i = 0; i < to_base(ShadowType::COUNT); ++i) {
+    for (U32 i = 0u; i < to_base(ShadowType::COUNT); ++i) {
         s_depthMapUsage[i].resize(0);
         s_shadowPassIndex[i] = 0u;
     }
@@ -201,7 +207,7 @@ void ShadowMap::resetShadowMaps() {
 
 void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
     GFX::BindDescriptorSetsCommand descriptorSetCmd{};
-    for (U8 i = 0; i < to_base(ShadowType::COUNT); ++i) {
+    for (U8 i = 0u; i < to_base(ShadowType::COUNT); ++i) {
         RenderTargetHandle& sm = s_shadowMaps[i];
         if (sm._rt == nullptr) {
             continue;
@@ -228,23 +234,6 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
         }
     }
     EnqueueCommand(bufferInOut, descriptorSetCmd);
-}
-
-void ShadowMap::clearShadowMapBuffers(GFX::CommandBuffer& bufferInOut) {
-    GFX::ResetAndClearRenderTargetCommand resetRenderTargetCommand;
-    for (U8 i = 0; i < to_base(ShadowType::COUNT); ++i) {
-        // no need to clear layered FBO as we will just blit into it anyway
-        if (i == to_base(ShadowType::LAYERED) || s_shadowMaps[i]._rt == nullptr) {
-            continue;
-        }
-        resetRenderTargetCommand._source = RenderTargetID(RenderTargetUsage::SHADOW, i);
-        resetRenderTargetCommand._clearDescriptor = {};
-        resetRenderTargetCommand._drawDescriptor = {};
-
-        EnqueueCommand(bufferInOut, resetRenderTargetCommand);
-    }
-
-    resetShadowMaps();
 }
 
 U16 ShadowMap::lastUsedDepthMapOffset(const ShadowType shadowType) {
@@ -317,6 +306,7 @@ bool ShadowMap::generateShadowMaps(const Camera& playerCamera, Light& light, GFX
 
     const U32 layerRequirement = getLightLayerRequirements(light);
     const ShadowType sType = getShadowTypeForLightType(light.getLightType());
+
     if (layerRequirement == 0u || s_shadowMapGenerators[to_base(sType)] == nullptr) {
         return false;
     }
@@ -324,6 +314,7 @@ bool ShadowMap::generateShadowMaps(const Camera& playerCamera, Light& light, GFX
     const U16 offset = findFreeDepthMapOffset(sType, layerRequirement);
     light.setShadowOffset(offset);
     commitDepthMapOffset(sType, offset, layerRequirement);
+
     s_shadowMapGenerators[to_base(sType)]->render(playerCamera, light, s_shadowPassIndex[to_base(sType)]++, bufferInOut);
 
     return true;

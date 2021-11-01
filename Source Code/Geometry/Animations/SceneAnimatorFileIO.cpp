@@ -140,9 +140,7 @@ void AnimEvaluator::load(AnimEvaluator& evaluator, ByteBuffer& dataIn) {
     }
 }
 
-void SceneAnimator::save(PlatformContext& context, ByteBuffer& dataOut) const {
-    ACKNOWLEDGE_UNUSED(context);
-
+void SceneAnimator::save([[maybe_unused]] PlatformContext& context, ByteBuffer& dataOut) const {
     // first recursively save the skeleton
     if (_skeleton) {
         saveSkeleton(dataOut, _skeleton);

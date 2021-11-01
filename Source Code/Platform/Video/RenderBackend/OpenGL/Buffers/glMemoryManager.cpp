@@ -398,9 +398,8 @@ void createAndAllocBuffer(const size_t bufferSize,
 void freeBuffer(GLuint& bufferId, bufferPtr mappedPtr) {
     if (bufferId > 0) {
         if (mappedPtr != nullptr) {
-            const GLboolean result = glUnmapNamedBuffer(bufferId);
+            [[maybe_unused]] const GLboolean result = glUnmapNamedBuffer(bufferId);
             assert(result != GL_FALSE && "GLUtil::freeBuffer error: buffer unmaping failed");
-            ACKNOWLEDGE_UNUSED(result);
             mappedPtr = nullptr;
         }
         GL_API::DeleteBuffers(1, &bufferId);

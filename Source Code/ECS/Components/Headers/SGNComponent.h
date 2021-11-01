@@ -101,11 +101,9 @@ struct Factory {
         Registrar(InnerArgs&&... args)
             : Base(Key{ s_registered }, C, FWD(args)...)
         {
-            ACKNOWLEDGE_UNUSED(s_registered);
         }
 
-        void OnData(const ECS::CustomEvent& data) override {
-            ACKNOWLEDGE_UNUSED(data);
+        void OnData([[maybe_unused]] const ECS::CustomEvent& data) override {
         }
 
         static bool RegisterComponentType() {

@@ -89,8 +89,6 @@ do {                                                \
 #endif
 #endif
 
-#define ACKNOWLEDGE_UNUSED(p) ((void)(p))
-
 #define CONCATENATE_IMPL(s1, s2) s1##s2
 #define CONCATENATE(s1, s2) CONCATENATE_IMPL(s1, s2)
 #ifdef __COUNTER__
@@ -159,8 +157,6 @@ public:
 };
 
 namespace Divide {
-
-constexpr bool DEBUG_ALL_NOP_CALLS = false;
 
 using PlayerIndex = U8;
 
@@ -456,11 +452,7 @@ inline bool AlmostEqualRelativeAndAbs(D64 A, D64 B, const D64 maxDiff, const D64
     return diff <= largest * maxRelDiff;
 }
 
-constexpr void NOP() noexcept {
-    if_constexpr (DEBUG_ALL_NOP_CALLS) {
-        DebugBreak();
-    }
-}
+constexpr void NOP() noexcept {}
 
 //Andrei Alexandrescu's ScopeGuard macros from "Declarative Control Flow" (CppCon 2015)
 //ref: https://gist.github.com/mmha/6bee3983caf2eab04d80af8e0eaddfbe
@@ -703,7 +695,7 @@ extern void DIVIDE_ASSERT_MSG_BOX(const char* failMessage) noexcept;
 
 namespace Assert {
     /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
-    FORCE_INLINE bool DIVIDE_ASSERT(const bool expression, const char* file, const I32 line, const char* failMessage = "UNEXPECTED CALL") noexcept {
+    FORCE_INLINE bool DIVIDE_ASSERT([[maybe_unused]] const bool expression, [[maybe_unused]] const char* file, [[maybe_unused]] const I32 line, [[maybe_unused]] const char* failMessage = "UNEXPECTED CALL") noexcept {
         if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
             if (!expression) {
                 const auto msgOut = fmt::sprintf("[ %s ] [ %s ] AT [ %d ]", failMessage, file, line);
@@ -715,11 +707,6 @@ namespace Assert {
 
                 DebugBreak();
             }
-        } else {
-            ACKNOWLEDGE_UNUSED(expression);
-            ACKNOWLEDGE_UNUSED(file);
-            ACKNOWLEDGE_UNUSED(line);
-            ACKNOWLEDGE_UNUSED(failMessage);
         }
 
         return expression;

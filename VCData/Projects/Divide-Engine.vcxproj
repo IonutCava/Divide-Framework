@@ -30,7 +30,7 @@
     <ProjectName>Divide-Engine</ProjectName>
     <ProjectGuid>{8FCA6505-8035-4279-9942-F0BBCCF2FDE7}</ProjectGuid>
     <RootNamespace>Grafica</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">

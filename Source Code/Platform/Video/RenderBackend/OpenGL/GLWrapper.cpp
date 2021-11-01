@@ -52,12 +52,11 @@ eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> GL_API::s_b
 //1GB for buffers?
 GLUtil::GLMemory::DeviceAllocator GL_API::s_memoryAllocator;
 
-GL_API::GL_API(GFXDevice& context, const bool glES)
+GL_API::GL_API(GFXDevice& context, [[maybe_unused]] const bool glES)
     : RenderAPIWrapper(),
       _context(context),
       _swapBufferTimer(Time::ADD_TIMER("Swap Buffer Timer"))
 {
-    ACKNOWLEDGE_UNUSED(glES);
     std::atomic_init(&s_glFlushQueued, false);
 }
 
@@ -68,7 +67,7 @@ void GL_API::beginFrame(DisplayWindow& window, const bool global) {
     // Start a duration query in debug builds
     if (global && _runQueries) {
         if_constexpr(g_runAllQueriesInSameFrame) {
-            for (U8 i = 0; i < to_base(QueryType::COUNT); ++i) {
+            for (U8 i = 0u; i < to_base(QueryType::COUNT); ++i) {
                 _performanceQueries[i]->begin();
             }
         } else {
@@ -804,8 +803,7 @@ void GL_API::PopDebugMessage() {
     }
 }
 
-void GL_API::preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) {
-    ACKNOWLEDGE_UNUSED(commandBuffer);
+void GL_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     getStateTracker()._flushingCommandBuffer = true;
 }
 
@@ -1185,9 +1183,7 @@ void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAf
 }
 
 
-void GL_API::postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) {
-    ACKNOWLEDGE_UNUSED(commandBuffer);
-
+void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     OPTICK_EVENT();
     const U32 frameIndex = _context.frameCount();
     for (BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {

@@ -46,8 +46,7 @@ namespace Divide {
 
 class FMOD_API final : public AudioAPIWrapper {
 public:
-    ErrorCode initAudioAPI(PlatformContext& context) override {
-        ACKNOWLEDGE_UNUSED(context);
+    ErrorCode initAudioAPI([[maybe_unused]] PlatformContext& context) override {
         return ErrorCode::FMOD_AUDIO_INIT_ERROR;
     }
 

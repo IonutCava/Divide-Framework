@@ -587,7 +587,7 @@ void RenderPassExecutor::prePass(const VisibleNodeList<>& nodes, const RenderPas
 }
 
 void RenderPassExecutor::occlusionPass(const VisibleNodeList<>& nodes,
-                                       const U32 visibleNodeCount,
+                                       [[maybe_unused]] const U32 visibleNodeCount,
                                        const RenderStagePass& stagePass,
                                        const Camera& camera,
                                        const RenderTargetID& sourceDepthBuffer,
@@ -596,7 +596,6 @@ void RenderPassExecutor::occlusionPass(const VisibleNodeList<>& nodes,
     OPTICK_EVENT();
 
     //ToDo: Find a way to skip occlusion culling for low number of nodes in view but also keep light culling up and running -Ionut
-    ACKNOWLEDGE_UNUSED(visibleNodeCount);
     assert(stagePass._passType == RenderPassType::PRE_PASS);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "HiZ Construct & Cull" });
@@ -908,15 +907,20 @@ void RenderPassExecutor::postRender(const RenderStagePass& stagePass,
                                     RenderQueue& renderQueue,
                                     GFX::CommandBuffer& bufferInOut) const {
     OPTICK_EVENT();
+    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = Util::StringFormat("Post Render pass for stage [ %s ]", TypeUtil::RenderStageToString(stagePass._stage));
 
     SceneManager* sceneManager = _parent.parent().sceneManager();
     const SceneRenderState& activeSceneRenderState = Attorney::SceneManagerRenderPass::renderState(sceneManager);
     renderQueue.postRender(activeSceneRenderState, stagePass, bufferInOut);
 
     if (stagePass._stage == RenderStage::DISPLAY && stagePass._passType == RenderPassType::MAIN_PASS) {
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Debug Draw";
         /// These should be OIT rendered as well since things like debug nav meshes have translucency
         Attorney::SceneManagerRenderPass::debugDraw(sceneManager, stagePass, &camera, bufferInOut);
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
+
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const {

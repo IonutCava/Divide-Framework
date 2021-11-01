@@ -334,7 +334,7 @@
     <ProjectGuid>{CE681ABE-38E0-4445-92A0-0F17EE225473}</ProjectGuid>
     <RootNamespace>DivideHardware</RootNamespace>
     <ProjectName>Divide-Platform</ProjectName>
-    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">

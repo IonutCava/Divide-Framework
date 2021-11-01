@@ -273,12 +273,10 @@ class WarSceneAIProcessor : public AIProcessor {
 };
 
 template <typename... Args>
-void WarSceneAIProcessor::PRINT(const char* format, Args&&... args) {
+void WarSceneAIProcessor::PRINT([[maybe_unused]] const char* format, Args&&... args) {
 #if defined(PRINT_AI_TO_FILE)
     Console::d_printfn(_WarAIOutputStream, format, FWD(args)...);
-#else
-    ACKNOWLEDGE_UNUSED(format);
-#endif
+#endif //PRINT_AI_TO_FILE
 }
 
 namespace Attorney {
