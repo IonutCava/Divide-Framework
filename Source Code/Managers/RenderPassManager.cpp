@@ -178,7 +178,7 @@ void RenderPassManager::render(const RenderParams& params) {
            EnqueueCommand(buf, beginRenderPassCmd);
        }
 
-       EnqueueCommand(buf, GFX::BeginDebugScopeCommand{ "Flush Display" });
+       GFX::EnqueueCommand(buf, GFX::BeginDebugScopeCommand{ "Flush Display" });
 
        const auto& screenAtt=  resolvedScreenTarget.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
        const TextureData texData = screenAtt.texture()->data();
@@ -195,7 +195,7 @@ void RenderPassManager::render(const RenderParams& params) {
            context.gui().draw(gfx, targetViewport, buf);
            gfx.renderDebugUI(targetViewport, buf);
 
-           EnqueueCommand(buf, GFX::EndDebugScopeCommand{});
+           GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(buf);
            if (params._editorRunning) {
                EnqueueCommand(buf, GFX::EndRenderPassCommand{});
            }

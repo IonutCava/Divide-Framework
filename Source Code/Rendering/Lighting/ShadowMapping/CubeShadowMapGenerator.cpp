@@ -56,7 +56,7 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
         light.setShadowVPMatrix(  i, mat4<F32>::Multiply(shadowCameras[i]->viewProjectionMatrix(), MAT4_BIAS));
     }
 
-    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void CubeShadowMapGenerator::updateMSAASampleCount(const U8 sampleCount) {

@@ -33,11 +33,8 @@
 #ifndef _CSM_GENERATOR_H_
 #define _CSM_GENERATOR_H_
 
-#include <array>
-#include <array>
-
 #include "ShadowMap.h"
-#include "Platform/Video/Headers/Commands.h"
+#include "Platform/Video/Headers/CommandsImpl.h"
 
 namespace Divide {
 

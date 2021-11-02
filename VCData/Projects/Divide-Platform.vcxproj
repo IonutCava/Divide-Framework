@@ -123,6 +123,7 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\GLIM\glimBatch.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\GLIM\glimBatchData.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\GLIM\glimInterface.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\Headers\CommandsImpl.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\GeometryBufferBase.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\GL.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\GL3FBOTextureTarget.h" />

@@ -539,7 +539,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         GFX::EnqueueCommand(bufferInOut, s_drawCmd);
 
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-        GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
     _screenRTs._swappedHDR = _screenRTs._swappedLDR = false;
     _toneMapParams._width = screenRT()._rt->getWidth();
@@ -580,7 +580,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
             const U32 groupsX = to_U32(std::ceil(_toneMapParams._width / to_F32(GROUP_X_THREADS)));
             const U32 groupsY = to_U32(std::ceil(_toneMapParams._height / to_F32(GROUP_Y_THREADS)));
             GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{groupsX, groupsY, 1});
-            GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
 
         GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_U32(MemoryBarrierType::BUFFER_UPDATE) });
@@ -609,7 +609,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ pipelineLumCalcAverage });
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("u_params"), GFX::PushConstantType::VEC4, avgParams);
             GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1, 1, 1, });
-            GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
 
         GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_IMAGE) | to_base(MemoryBarrierType::SHADER_STORAGE) });
@@ -641,10 +641,10 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
             if (op->execute(camera, getInput(true), getOutput(true), bufferInOut)) {
                 _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
             }
-            GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
     }
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
     if (autoSSR) {
         ClearBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS));
@@ -695,7 +695,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         GFX::EnqueueCommand(bufferInOut, s_drawCmd);
 
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-        GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
         _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
     }
@@ -707,7 +707,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
             if (op->execute(camera, getInput(true), getOutput(true), bufferInOut)) {
                 _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
             }
-            GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
     }
 
@@ -755,7 +755,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
 
         GFX::EnqueueCommand(bufferInOut, s_drawCmd);
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-        GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
         _screenRTs._swappedLDR = !_screenRTs._swappedLDR;
     }
@@ -784,7 +784,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         GFX::EnqueueCommand(bufferInOut, s_drawCmd);
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 
-        GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
     
     // Execute all LDR based operators
@@ -794,7 +794,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
             if (op->execute(camera, getInput(false), getOutput(false), bufferInOut)) {
                 _screenRTs._swappedLDR = !_screenRTs._swappedLDR;
             }
-            GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
     }
 

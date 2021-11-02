@@ -189,7 +189,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 
     postRender(spotLight, bufferInOut);
 
-    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::CommandBuffer& bufferInOut) {

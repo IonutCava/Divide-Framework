@@ -1768,7 +1768,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
         GFX::EnqueueCommand(cmdBufferInOut, GFX::EndRenderPassCommand{});
     }
 
-    GFX::EnqueueCommand(cmdBufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(cmdBufferInOut);
 
     return { hizDepthTex, att.samplerHash() };
 }
@@ -1788,8 +1788,7 @@ void GFXDevice::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
 
     // Not worth the overhead for a handful of items and the Pre-Z pass should handle overdraw just fine
     if (threadCount < 3u) {
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Skipped. Node count too low." });
-        GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand(bufferInOut, GFX::AddDebugMessageCommand{ "Skipped. Node count too low." });
     } else {
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _HIZCullPipeline });
 
@@ -1819,7 +1818,7 @@ void GFXDevice::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
         GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ threadCount, 1, 1 });
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void GFXDevice::updateCullCount(const RenderPass::BufferData& bufferData, GFX::CommandBuffer& cmdBufferInOut) {
@@ -1884,7 +1883,7 @@ void GFXDevice::drawTextureInViewport(const TextureData data, const size_t sampl
     GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
     GFX::EnqueueCommand(bufferInOut, GFX::PopViewportCommand{});
     GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 #pragma endregion
 
@@ -1904,7 +1903,7 @@ void GFXDevice::renderDebugUI(const Rect<I32>& targetViewport, GFX::CommandBuffe
             padding,
             bufferInOut);
 
-        EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
 }
 

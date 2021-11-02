@@ -86,6 +86,8 @@ struct GenericDrawCommand {
 };
 #pragma pack(pop)
 
+static_assert(sizeof(GenericDrawCommand) == 32, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
+
 using DrawCommandContainer = eastl::fixed_vector<IndirectDrawCommand, Config::MAX_VISIBLE_NODES, false>;
 
 bool isEnabledOption(const GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;

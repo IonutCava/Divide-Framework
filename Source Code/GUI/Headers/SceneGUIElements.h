@@ -34,7 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GUIInterface.h"
 #include "Scenes/Headers/SceneComponent.h"
-#include "Platform/Video/Headers/Commands.h"
+#include "Platform/Video/Headers/CommandsImpl.h"
 
 
 namespace Divide {

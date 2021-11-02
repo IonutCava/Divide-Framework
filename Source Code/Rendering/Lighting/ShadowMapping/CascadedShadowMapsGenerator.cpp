@@ -389,7 +389,7 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
 
     postRender(dirLight, bufferInOut);
 
-    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& light, GFX::CommandBuffer& bufferInOut) {

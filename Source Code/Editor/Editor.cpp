@@ -882,7 +882,7 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     s_blendCmd._blendProperties._enabled = false;
     EnqueueCommand(bufferInOut, s_blendCmd);
 
-    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void Editor::selectionChangeCallback(const PlayerIndex idx, const vector<SceneGraphNode*>& nodes) const {

@@ -38,6 +38,7 @@ IMPLEMENT_COMMAND(BindDescriptorSetsCommand);
 IMPLEMENT_COMMAND(SetTexturesResidencyCommand);
 IMPLEMENT_COMMAND(BeginDebugScopeCommand);
 IMPLEMENT_COMMAND(EndDebugScopeCommand);
+IMPLEMENT_COMMAND(AddDebugMessageCommand);
 IMPLEMENT_COMMAND(DrawTextCommand);
 IMPLEMENT_COMMAND(DrawIMGUICommand);
 IMPLEMENT_COMMAND(DispatchComputeCommand);
@@ -182,8 +183,19 @@ string ToString(const BeginDebugScopeCommand& cmd, const U16 indent) {
     string ret = "\n";
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
-}
+    }
+
     ret.append( " [ " + string(cmd._scopeName.c_str()) + " ]");
+    return ret;
+}
+
+string ToString(const AddDebugMessageCommand& cmd, const U16 indent) {
+    string ret = "\n";
+    for (U16 j = 0; j < indent; ++j) {
+        ret.append("    ");
+    }
+
+    ret.append( " [ " + string(cmd._msg.c_str()) + " ]");
     return ret;
 }
 
@@ -231,7 +243,7 @@ string ToString(const SetClippingStateCommand& cmd, U16 indent) {
 
 string ToString(const CommandBase& cmd, const U16 indent) {
     string ret(indent, ' ');
-    ret.append(cmd.Name());
+    ret.append(Names::commandType[to_base(cmd.Type())]);
 
     switch (cmd.Type()) {
         case CommandType::BIND_PIPELINE: {
@@ -280,6 +292,10 @@ string ToString(const CommandBase& cmd, const U16 indent) {
         case CommandType::BEGIN_DEBUG_SCOPE:
         {
             ret.append(ToString(static_cast<const BeginDebugScopeCommand&>(cmd), indent));
+        }break; 
+        case CommandType::ADD_DEBUG_MESSAGE:
+        {
+            ret.append(ToString(static_cast<const AddDebugMessageCommand&>(cmd), indent));
         }break;
         case CommandType::DRAW_TEXT:
         {

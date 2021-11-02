@@ -956,6 +956,12 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::END_DEBUG_SCOPE: {
              PopDebugMessage();
         } break;
+        case GFX::CommandType::ADD_DEBUG_MESSAGE: {
+            const GFX::AddDebugMessageCommand* crtCmd = commandBuffer.get<GFX::AddDebugMessageCommand>(entry);
+
+            PushDebugMessage(crtCmd->_msg.c_str());
+            PopDebugMessage();
+        }break;
         case GFX::CommandType::COMPUTE_MIPMAPS: {
             OPTICK_EVENT("GL: Compute MipMaps");
             const GFX::ComputeMipMapsCommand* crtCmd = commandBuffer.get<GFX::ComputeMipMapsCommand>(entry);

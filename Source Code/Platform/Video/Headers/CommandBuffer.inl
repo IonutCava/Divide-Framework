@@ -41,7 +41,7 @@ void Command<T, EnumVal>::addToBuffer(CommandBuffer* buffer) const {
     buffer->add(static_cast<const T&>(*this));
 }
 
-FORCE_INLINE void DELETE_CMD(CommandBase*& cmd) noexcept {
+FORCE_INLINE void DELETE_CMD(CommandBase*& cmd) {
     cmd->getDeleter().del(cmd);
 }
 

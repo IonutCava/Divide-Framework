@@ -152,14 +152,14 @@ void Renderer::preRender(RenderStagePass stagePass,
         GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
         GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, zThreads });
         GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
-        GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Cull Lights" });
     GFX::EnqueueCommand(bufferInOut, _lightCullPipelineCmd);
     GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, zThreads });
     GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::BUFFER_UPDATE) });
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void Renderer::idle() const {

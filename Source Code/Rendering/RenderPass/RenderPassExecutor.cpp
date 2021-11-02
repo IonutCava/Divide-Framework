@@ -583,7 +583,7 @@ void RenderPassExecutor::prePass(const VisibleNodeList<>& nodes, const RenderPas
 
     GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void RenderPassExecutor::occlusionPass(const VisibleNodeList<>& nodes,
@@ -622,7 +622,7 @@ void RenderPassExecutor::occlusionPass(const VisibleNodeList<>& nodes,
         const VisibleNode& node = nodes.node(i);
         Attorney::SceneGraphNodeRenderPassManager::occlusionCullNode(node._node, stagePass, hizTexture, camera, HIZPushConstantsCMDInOut, bufferInOut);
     }
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
     // Occlusion culling barrier
     GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{
@@ -643,7 +643,7 @@ void RenderPassExecutor::occlusionPass(const VisibleNodeList<>& nodes,
         GFX::EnqueueCommand(bufferInOut, clearAtomicCounter);
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPassParams& params, RenderTarget& target, const bool prePassExecuted, const bool hasHiZ, GFX::CommandBuffer& bufferInOut) {
@@ -707,7 +707,7 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) {
@@ -843,7 +843,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void RenderPassExecutor::transparencyPass(const VisibleNodeList<>& nodes, const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) {
@@ -898,7 +898,7 @@ void RenderPassExecutor::transparencyPass(const VisibleNodeList<>& nodes, const 
             resolveMainScreenTarget(params, bufferInOut);
         }
 
-        GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
 }
 
@@ -958,7 +958,7 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
 
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 
-        GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
 }
 
@@ -1100,7 +1100,7 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
 
     resolveMainScreenTarget(params, bufferInOut);
 
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 U32 RenderPassExecutor::renderQueueSize(const RenderPackage::MinQuality qualityRequirement) const {

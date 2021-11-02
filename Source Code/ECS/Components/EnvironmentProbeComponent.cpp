@@ -163,7 +163,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut) {
         rtLayerIndex(SceneEnvironmentProbePool::AllocateSlice(false));
     }
 
-    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("EnvironmentProbePass Id: [ %d ]", rtLayerIndex()).c_str()));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("EnvironmentProbePass Id: [ %d ]", rtLayerIndex()).c_str()));
 
     vector<Camera*>& probeCameras = SceneEnvironmentProbePool::ProbeCameras();
 
@@ -193,7 +193,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut) {
     computeMipMapsCommand._defer = false;
     EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
-    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
     _currentUpdateCall = 0;
     return true;

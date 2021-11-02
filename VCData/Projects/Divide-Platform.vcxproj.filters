@@ -346,6 +346,9 @@
     <ClInclude Include="..\..\Source Code\Platform\Headers\PlatformMemoryDefines.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\Headers\CommandsImpl.h">
+      <Filter>Video\Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../../Source Code/Platform\Input\AutoKeyRepeat.cpp">

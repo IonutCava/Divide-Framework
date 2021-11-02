@@ -186,7 +186,7 @@ void PostFX::apply(const Camera* camera, GFX::CommandBuffer& bufferInOut) {
 
     GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 
-    GFX::EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void PostFX::idle(const Configuration& config) {

@@ -14,6 +14,7 @@ namespace {
         switch (static_cast<CommandType>(typeIndex)) {
             case CommandType::BEGIN_DEBUG_SCOPE:
             case CommandType::END_DEBUG_SCOPE:
+            case CommandType::ADD_DEBUG_MESSAGE:
                 return true;
             default: break;
         }

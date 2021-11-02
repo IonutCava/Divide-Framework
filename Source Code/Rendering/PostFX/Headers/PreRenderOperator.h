@@ -3,7 +3,7 @@
 #define _PRE_RENDER_OPERATOR_H_
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
-#include "Platform/Video/Headers/Commands.h"
+#include "Platform/Video/Headers/CommandsImpl.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 

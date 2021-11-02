@@ -180,7 +180,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
 
             _parent.doCustomPass(params, bufferInOut);
 
-            EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         } break;
 
         case RenderStage::SHADOW: {
@@ -207,7 +207,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
                    clipStateCmd._negativeOneToOneDepth = false;
                    GFX::EnqueueCommand(bufferInOut, clipStateCmd);
                }
-                EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+               GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
             }
         } break;
 
@@ -254,7 +254,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
                     }
                 }
             }
-            EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
         } break;
 
@@ -286,7 +286,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
                 }
             }
 
-            EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
         } break;
 

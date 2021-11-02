@@ -151,9 +151,9 @@ void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer
     }
 
     // Restore full state
-    EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _postCEGUIPipeline });
-    EnqueueCommand(bufferInOut, GFX::SetBlendCommand{});
-    EnqueueCommand(bufferInOut, GFX::EndDebugScopeCommand{});
+    GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline =  _postCEGUIPipeline;
+    GFX::EnqueueCommand<GFX::SetBlendCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void GUI::update(const U64 deltaTimeUS) {

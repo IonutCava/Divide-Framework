@@ -33,7 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _COMMAND_BUFFER_H_
 #define _COMMAND_BUFFER_H_
 
-#include "Commands.h"
+#include "CommandsImpl.h"
 #include "Core/TemplateLibraries/Headers/PolyContainer.h"
 
 namespace Divide {
@@ -41,7 +41,7 @@ namespace Divide {
 
     namespace GFX {
 
-void DELETE_CMD(CommandBase*& cmd) noexcept;
+void DELETE_CMD(CommandBase*& cmd);
 [[nodiscard]] size_t RESERVE_CMD(U8 typeIndex) noexcept;
 
 enum class ErrorType : U8
