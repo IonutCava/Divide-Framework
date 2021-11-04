@@ -24,9 +24,6 @@
 namespace Divide {
 
 namespace {
-    // Size factor for command and data buffers
-    constexpr U8 DataBufferRingSize = 4u;
-
     // We need a proper, time-based system, to check reflection budget
     namespace ReflectionUtil {
         U16 g_reflectionBudget = 0;
@@ -48,15 +45,19 @@ namespace {
 }
 
 RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, Str64 name, const U8 sortKey, const RenderStage passStageFlag, const vector<U8>& dependencies, const bool performanceCounters)
-    : _context(context),
+    : _performanceCounters(performanceCounters),
+      _context(context),
       _parent(parent),
       _config(context.context().config()),
+      _stageFlag(passStageFlag),
       _sortKey(sortKey),
       _dependencies(dependencies),
-      _name(MOV(name)),
-      _stageFlag(passStageFlag),
-      _performanceCounters(performanceCounters)
+      _name(MOV(name))
 {
+    for (U8 i = 0u; i < to_base(_stageFlag); ++i) {
+        const U8 passCountToSkip = RenderStagePass::totalPassCountForStage(static_cast<RenderStage>(i));
+        _transformIndexOffset += passCountToSkip * Config::MAX_VISIBLE_NODES;
+    }
 }
 
 void RenderPass::initBufferData() {
@@ -78,49 +79,27 @@ void RenderPass::initBufferData() {
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
-
-    bufferDescriptor._ringBufferLength = DataBufferRingSize;
+    bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
     bufferDescriptor._separateReadWrite = false;
     bufferDescriptor._bufferParams._elementCount = RenderStagePass::totalPassCountForStage(_stageFlag) * Config::MAX_VISIBLE_NODES;
-
     bufferDescriptor._usage = ShaderBuffer::Usage::COMMAND_BUFFER;
     bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
-    {// Indirect draw command buffer
-        bufferDescriptor._bufferParams._elementSize = sizeof(IndirectDrawCommand);
-        bufferDescriptor._name = Util::StringFormat("CMD_DATA_%s", TypeUtil::RenderStageToString(_stageFlag));
-        _cmdBuffer = _context.newSB(bufferDescriptor);
-    }
-
-    bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
-    bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::NONE);
-    {// Node Transform buffer
-        bufferDescriptor._bufferParams._elementSize = sizeof(NodeTransformData);
-        bufferDescriptor._name = Util::StringFormat("NODE_TRANSFORM_DATA_%s", TypeUtil::RenderStageToString(_stageFlag));
-        _transformData = _context.newSB(bufferDescriptor);
-    }
-    {// Node Material buffer
-        bufferDescriptor._bufferParams._elementCount = RenderStagePass::totalPassCountForStage(_stageFlag) * Config::MAX_CONCURRENT_MATERIALS;
-        bufferDescriptor._bufferParams._elementSize = sizeof(NodeMaterialData);
-        bufferDescriptor._name = Util::StringFormat("NODE_MATERIAL_DATA_%s", TypeUtil::RenderStageToString(_stageFlag));
-        _materialData = _context.newSB(bufferDescriptor);
-    }
+    bufferDescriptor._bufferParams._elementSize = sizeof(IndirectDrawCommand);
+    bufferDescriptor._name = Util::StringFormat("CMD_DATA_%s", TypeUtil::RenderStageToString(_stageFlag));
+    _cmdBuffer = _context.newSB(bufferDescriptor);
+    
 }
 
 RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass& stagePass) const {
     assert(_stageFlag == stagePass._stage);
 
-    const U32 cmdBufferIdx = RenderStagePass::indexForStage(stagePass);
-
-    BufferData ret;
+    BufferData ret{};
     ret._cullCounterBuffer = _cullCounter;
-    ret._transformBuffer = _transformData;
-    ret._materialBuffer = _materialData;
     ret._commandBuffer = _cmdBuffer;
     ret._lastCommandCount = &_lastCmdCount;
     ret._lastNodeCount = &_lastNodeCount;
-    ret._commandElementOffset   = cmdBufferIdx * Config::MAX_VISIBLE_NODES;
-    ret._transformElementOffset = cmdBufferIdx * Config::MAX_VISIBLE_NODES;
-    ret._materialElementOffset  = cmdBufferIdx * Config::MAX_CONCURRENT_MATERIALS;
+    ret._commandElementOffset   = RenderStagePass::indexForStage(stagePass) * Config::MAX_VISIBLE_NODES;
+    ret._transformElementOffset = _transformIndexOffset + ret._commandElementOffset;
     return ret;
 }
 
@@ -175,8 +154,8 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
             params._target = _context.renderTargetPool().screenTargetID();
             clearMainTarget._target = params._target;
 
-            EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Main Display Pass" });
-            EnqueueCommand(bufferInOut, clearMainTarget);
+            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Main Display Pass" });
+            GFX::EnqueueCommand(bufferInOut, clearMainTarget);
 
             _parent.doCustomPass(params, bufferInOut);
 
@@ -192,7 +171,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
 
                 LightPool& lightPool = Attorney::SceneManagerRenderPass::lightPool(mgr);
 
-                EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Shadow Render Stage" });
+                GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Shadow Render Stage" });
 
                 if_constexpr(useNegOneToOneDepth) {
                     //ToDo: remove this and change lookup code
@@ -215,7 +194,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
             SceneManager* mgr = _parent.parent().sceneManager();
             Camera* camera = Attorney::SceneManagerCameraAccessor::playerCamera(mgr);
 
-            EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Reflection Pass" });
+            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Reflection Pass" });
             {
                 OPTICK_EVENT("RenderPass - Probes");
                 SceneEnvironmentProbePool::Prepare(bufferInOut);
@@ -261,7 +240,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
         case RenderStage::REFRACTION: {
             static VisibleNodeList s_Nodes;
 
-            EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Refraction Pass" });
+            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Refraction Pass" });
 
             OPTICK_EVENT("RenderPass - Refraction");
             // Get list of refractive nodes from the scene manager
@@ -297,10 +276,6 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
 }
 
 void RenderPass::postRender() const {
-    OPTICK_EVENT();
-
-    _transformData->incQueue();
-    _materialData->incQueue();
     _cmdBuffer->incQueue();
 }
 

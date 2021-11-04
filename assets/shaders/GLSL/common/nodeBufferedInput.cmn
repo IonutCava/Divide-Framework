@@ -15,13 +15,13 @@ uniform uint DATA_INDICES;
 
 layout(binding = BUFFER_NODE_TRANSFORM_DATA, std430) coherent ACCESS_R buffer dvd_TransformBlock
 {
-    NodeTransformData dvd_Transforms[];
+    NodeTransformData dvd_Transforms[MAX_VISIBLE_NODES];
 };
 
 #if defined(FRAG_SHADER) || defined(NEED_MATERIAL_DATA)
 layout(binding = BUFFER_NODE_MATERIAL_DATA, std430) coherent ACCESS_R buffer dvd_MaterialBlock 
 {
-    NodeMaterialData dvd_Materials[];
+    NodeMaterialData dvd_Materials[MAX_CONCURRENT_MATERIALS];
 };
 
 #if defined(USE_BINDLESS_TEXTURES)

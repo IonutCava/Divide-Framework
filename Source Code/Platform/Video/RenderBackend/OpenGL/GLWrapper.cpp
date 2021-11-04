@@ -722,17 +722,17 @@ void GL_API::drawIMGUI(ImDrawData* data, I64 windowGUID) {
     }
 }
 
-bool GL_API::bindPipeline(const Pipeline& pipeline, bool& shaderWasReady) const {
+ShaderBindResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     OPTICK_EVENT();
     auto& stateTracker = getStateTracker();
 
     if (stateTracker._activePipeline && *stateTracker._activePipeline == pipeline) {
-        return true;
+        return ShaderBindResult::OK;
     }
 
     ShaderProgram* program = ShaderProgram::FindShaderProgram(pipeline.shaderProgramHandle());
     if (program == nullptr) {
-        return false;
+        return ShaderBindResult::Failed;
     }
 
     stateTracker._activePipeline = &pipeline;
@@ -745,17 +745,15 @@ bool GL_API::bindPipeline(const Pipeline& pipeline, bool& shaderWasReady) const 
     // We need a valid shader as no fixed function pipeline is available
 
     // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
-    const auto[state, wasBound] = Attorney::GLAPIShaderProgram::bind(glProgram);
-    shaderWasReady = state;
+    const ShaderBindResult ret = Attorney::GLAPIShaderProgram::bind(glProgram);
 
-    if (!shaderWasReady) {
+    if (ret == ShaderBindResult::StillLoading) {
         stateTracker.setActiveProgram(0u);
         stateTracker.setActiveShaderPipeline(0u);
         stateTracker._activePipeline = nullptr;
-        return false;
     }
 
-    return true;
+    return ret;
 }
 
 bool GL_API::draw(const GenericDrawCommand& cmd) const {
@@ -896,8 +894,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::BIND_PIPELINE: {
             const Pipeline* pipeline = commandBuffer.get<GFX::BindPipelineCommand>(entry)->_pipeline;
             assert(pipeline != nullptr);
-            bool shaderWasReady = false;
-            if (!bindPipeline(*pipeline, shaderWasReady) && shaderWasReady) {
+            if (bindPipeline(*pipeline) == ShaderBindResult::Failed) {
                 Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INVALID_BIND")), pipeline->shaderProgramHandle());
             }
         } break;

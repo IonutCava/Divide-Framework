@@ -94,9 +94,12 @@ void RenderPassManager::postInit() {
     shaderScreenResolveDesc.propertyDescriptor(shaderDescriptor);
     _screenResolveShader = CreateResource<ShaderProgram>(parent().resourceCache(), shaderScreenResolveDesc);
 
+
     for (auto& executor : _executors) {
         if (executor != nullptr) {
-            executor->postInit(_OITCompositionShader, _OITCompositionShaderMS, _screenResolveShader);
+            executor->postInit( _OITCompositionShader,
+                               _OITCompositionShaderMS,
+                               _screenResolveShader);
         }
     }
 
@@ -276,6 +279,8 @@ void RenderPassManager::render(const RenderParams& params) {
     for (RenderPass* pass : _renderPasses) {
         pass->postRender();
     }
+
+    RenderPassExecutor::PostRender();
 
     activeLightPool.postRenderAllPasses();
 

@@ -47,17 +47,17 @@ namespace {
     const char* worlTexName = "worlnoise.bmp";
     const char* perlWorlTexName = "perlworlnoise.tga";
 
-    void GenerateCurlNoise(const char* fileName, const I32 width, const I32 height, const U8 channelCount) {
-        Byte* data = MemoryManager_NEW Byte[width * height * channelCount];
+    void GenerateCurlNoise(const char* fileName, const I32 width, const I32 height) {
+        Byte* data = MemoryManager_NEW Byte[width * height * 3];
         constexpr F32 frequency[] = { 8.0f, 6.0f, 4.0f };
 
         for (U8 pass = 0u; pass < 3; ++pass) {
             CurlNoise::SetCurlSettings(false, frequency[pass], 3, 2.f, 0.5f);
-            for (I32 i = 0; i < width * height * channelCount; i += 3) {
+            for (I32 i = 0; i < width * height * 3; i += 3) {
                 const Vectormath::Aos::Vector3 pos
                 {
-                    to_F32( (i / channelCount) % height)  / height,
-                    to_F32(((i / channelCount) / height)) / height,
+                    to_F32( (i / 3) % width)  / width,
+                    to_F32(((i / 3) / height)) / height,
                     height / 10000.f 
                 };
 
@@ -68,21 +68,21 @@ namespace {
                 data[i + pass] = to_byte(cellFBM0 * 128.f + 127.f);
             }
         }
-        stbi_write_bmp(fileName, width, height, channelCount, data);
+        stbi_write_bmp(fileName, width, height, 3, data);
         MemoryManager::SAFE_DELETE(data);
     }
 
-    void GeneratePerlinNoise(const char* fileName, const I32 width, const I32 height, const U8 channelCount) {
+    void GeneratePerlinNoise(const char* fileName, const I32 width, const I32 height) {
         const auto smoothstep = [](const F32 edge0, const F32 edge1, const F32 x) {
             const F32 t = std::min(std::max((x - edge0) / (edge1 - edge0), 0.0f), 1.0f);
             return t * t * (3.f - 2.f * t);
         };
 
 
-        Byte* data = MemoryManager_NEW Byte[width * height * channelCount];
-        for (I32 i = 0; i < width * height * channelCount; i += 3) {
-            const glm::vec3 pos = glm::vec3(to_F32((i / channelCount) % width) / to_F32(width),
-                                            to_F32((i / channelCount) / height) / to_F32(height),
+        Byte* data = MemoryManager_NEW Byte[width * height * 3];
+        for (I32 i = 0; i < width * height * 3; i += 3) {
+            const glm::vec3 pos = glm::vec3(to_F32((i / 3) % width) / to_F32(width),
+                                            to_F32((i / 3) / height) / to_F32(height),
                                             0.051f);
             const glm::vec3 offset1 = glm::vec3(0.f, 0.f, 581.163f);
             const glm::vec3 offset2 = glm::vec3(0.f, 0.f, 1245.463f);
@@ -97,34 +97,35 @@ namespace {
             data[i + 1] = to_byte(smoothstep(0.5f, 0.7f, perlinNoise2) * 255.f);
             data[i + 2] = to_byte(perlinNoise3 * 255.f);
         }
-        stbi_write_bmp(fileName, width, height, channelCount, data);
+        stbi_write_bmp(fileName, width, height, 3, data);
         MemoryManager::SAFE_DELETE(data);
     }
 
-    void GenerateWorleyNoise(const char* fileName, const I32 width, const I32 height, const U8 channelCount, const I32 slices) {
-        Byte* data = MemoryManager_NEW Byte[slices * width * height * channelCount];
-        for (I32 i = 0; i < slices * width * height * channelCount; i += 3) {
-            const glm::vec3 pos = glm::vec3(to_F32((i / channelCount) % height) / to_F32(height), 
-                                            to_F32(((i / channelCount) / height) % height) / to_F32(height), 
-                                            to_F32((i / channelCount) / (width * slices)) / to_F32(height));
-            const F32 cell0 = 1.0f - Tileable3dNoise::WorleyNoise(pos, 2);
-            const F32 cell1 = 1.0f - Tileable3dNoise::WorleyNoise(pos, 4);
-            const F32 cell2 = 1.0f - Tileable3dNoise::WorleyNoise(pos, 8);
-            const F32 cell3 = 1.0f - Tileable3dNoise::WorleyNoise(pos, 16);
+    void GenerateWorleyNoise(const char* fileName, const I32 width, const I32 height, const I32 slices) {
+        Byte* worlNoiseArray = MemoryManager_NEW Byte[slices * width * height * 3];
+        for (I32 i = 0; i < slices * width * height * 3; i += 3) {
+            const glm::vec3 pos = glm::vec3(to_F32((i / 3) % width) / to_F32(width),
+                                            to_F32(((i / 3) / height) % height) / to_F32(height),
+                                            to_F32((i / 3) / (slices * slices)) / to_F32(slices));
+            const F32 cell0 = 1.f - Tileable3dNoise::WorleyNoise(pos, 2.f);
+            const F32 cell1 = 1.f - Tileable3dNoise::WorleyNoise(pos, 4.f);
+            const F32 cell2 = 1.f - Tileable3dNoise::WorleyNoise(pos, 8.f);
+            const F32 cell3 = 1.f - Tileable3dNoise::WorleyNoise(pos, 16.f);
 
             const F32 cellFBM0 = cell0 * 0.5f + cell1 * 0.35f + cell2 * 0.15f;
             const F32 cellFBM1 = cell1 * 0.5f + cell2 * 0.35f + cell3 * 0.15f;
             const F32 cellFBM2 = cell2 * 0.75f + cell3 * 0.25f; // cellCount=4 -> worleyNoise4 is just noise due to sampling frequency=texel freque. So only take into account 2 frequenciM
-            data[i + 0] = to_byte(cellFBM0 * 255);
-            data[i + 1] = to_byte(cellFBM1 * 255);
-            data[i + 2] = to_byte(cellFBM2 * 255);
+            worlNoiseArray[i + 0] = to_byte(cellFBM0 * 255);
+            worlNoiseArray[i + 1] = to_byte(cellFBM1 * 255);
+            worlNoiseArray[i + 2] = to_byte(cellFBM2 * 255);
         }
-        stbi_write_bmp(fileName, width * slices, height, channelCount, data);
-        MemoryManager::SAFE_DELETE(data);
+        stbi_write_bmp(fileName, width * slices, height, 3, worlNoiseArray);
+        MemoryManager::SAFE_DELETE(worlNoiseArray);
     }
 
-    void GeneratePerlinWorleyNoise(PlatformContext& context, const char* fileName, const I32 width, const I32 height, const U8 channelCount, const I32 slices) {
-        Byte* data = MemoryManager_NEW Byte[slices * width * height * channelCount];
+    void GeneratePerlinWorleyNoise(PlatformContext& context, const char* fileName, const I32 width, const I32 height, const I32 slices) {
+
+        Byte* perlWorlNoiseArray = MemoryManager_NEW Byte[slices * width * height * 4];
 #if 0
         ParallelForDescriptor descriptor = {};
         descriptor._iterCount = slices * width * height * channelCount;
@@ -132,44 +133,44 @@ namespace {
         descriptor._cbk = [&](const Task*, const U32 start, const U32 end) -> void {
            for (U32 i = start; i < end; i += 4) {
 #else
-            for (U32 i = 0; i < to_U32(slices * width * height * channelCount); i += 4) {
+            for (U32 i = 0; i < to_U32(slices * width * height * 4); i += 4) {
 #endif
-                const glm::vec3 pos = glm::vec3(to_F32((i / channelCount) % height) / to_F32(height),
-                                                to_F32(((i / channelCount) / height) % height) / to_F32(height),
-                                                to_F32((i / channelCount) / (slices * width)) / to_F32(height));
+                const glm::vec3 pos = glm::vec3(to_F32((i / 4) % width) / to_F32(width),
+                                                to_F32(((i / 4) / height) % height) / to_F32(height),
+                                                to_F32((i / 4) / (slices * slices)) / to_F32(slices));
                 // Perlin FBM noise
                 const F32 perlinNoise = Tileable3dNoise::PerlinNoise(pos, 8, 3);
 
-                const F32 worleyNoise00 = (1.0f - Tileable3dNoise::WorleyNoise(pos, 8));
-                const F32 worleyNoise01 = (1.0f - Tileable3dNoise::WorleyNoise(pos, 32));
-                const F32 worleyNoise02 = (1.0f - Tileable3dNoise::WorleyNoise(pos, 56));
-                //const F32 worleyNoise3 = (1.0f - Tileable3dNoise::WorleyNoise(coord, 80));
-                //const F32 worleyNoise4 = (1.0f - Tileable3dNoise::WorleyNoise(coord, 104));
-                //const F32 worleyNoise5 = (1.0f - Tileable3dNoise::WorleyNoise(coord, 128)); // half the frequency of texel, we should not go further (with cellCount = 32 and texture size = 64)
+                const F32 worleyNoise00 = (1.f - Tileable3dNoise::WorleyNoise(pos, 8));
+                const F32 worleyNoise01 = (1.f - Tileable3dNoise::WorleyNoise(pos, 32));
+                const F32 worleyNoise02 = (1.f - Tileable3dNoise::WorleyNoise(pos, 56));
+                //const F32 worleyNoise3 = (1.f - Tileable3dNoise::WorleyNoise(coord, 80));
+                //const F32 worleyNoise4 = (1.f - Tileable3dNoise::WorleyNoise(coord, 104));
+                //const F32 worleyNoise5 = (1.f - Tileable3dNoise::WorleyNoise(coord, 128)); // half the frequency of texel, we should not go further (with cellCount = 32 and texture size = 64)
                                                                                               // PerlinWorley noise as described p.101 of GPU Pro 7
                 const F32 worleyFBM = worleyNoise00 * 0.625f + worleyNoise01 * 0.25f + worleyNoise02 * 0.125f;
                 const F32 PerlWorlNoise = MAP(perlinNoise, 0.f, 1.f, worleyFBM, 1.f);
 
-                //F32 worleyNoise0 = (1.0f - Tileable3dNoise::WorleyNoise(coord, 4));
-                //F32 worleyNoise1 = (1.0f - Tileable3dNoise::WorleyNoise(coord, 8));
-                const F32 worleyNoise12 = (1.0f - Tileable3dNoise::WorleyNoise(pos, 16));
-                //F32 worleyNoise3 = (1.0f - Tileable3dNoise::WorleyNoise(coord, 32));
-                const F32 worleyNoise14 = (1.0f - Tileable3dNoise::WorleyNoise(pos, 64));
+                //F32 worleyNoise0 = (1.f - Tileable3dNoise::WorleyNoise(coord, 4));
+                //F32 worleyNoise1 = (1.f - Tileable3dNoise::WorleyNoise(coord, 8));
+                const F32 worleyNoise12 = (1.f - Tileable3dNoise::WorleyNoise(pos, 16));
+                //F32 worleyNoise3 = (1.f - Tileable3dNoise::WorleyNoise(coord, 32));
+                const F32 worleyNoise14 = (1.f - Tileable3dNoise::WorleyNoise(pos, 64));
                 // Three frequency of Worley FBM noise
                 const F32 worleyFBM0 = worleyNoise00 * 0.625f + worleyNoise12 * 0.25f + worleyNoise01 * 0.125f;
                 const F32 worleyFBM1 = worleyNoise12 * 0.625f + worleyNoise01 * 0.25f + worleyNoise14 * 0.125f;
-                const F32 worleyFBM2 = worleyNoise01 * 0.75f + worleyNoise14 * 0.25f; // cellCount=4 -> worleyNoise5 is just noise due to sampling frequency=texel frequency. So only take into account 2 frequencies for FBM
-                data[i + 0] = to_byte(PerlWorlNoise * 255);
-                data[i + 1] = to_byte(worleyFBM0 * 255);
-                data[i + 2] = to_byte(worleyFBM1 * 255);
-                data[i + 3] = to_byte(worleyFBM2 * 255);
+                const F32 worleyFBM2 = worleyNoise01 * 0.750f + worleyNoise14 * 0.25f; // cellCount=4 -> worleyNoise5 is just noise due to sampling frequency=texel frequency. So only take into account 2 frequencies for FBM
+                perlWorlNoiseArray[i + 0] = to_byte(PerlWorlNoise * 255);
+                perlWorlNoiseArray[i + 1] = to_byte(worleyFBM0 * 255);
+                perlWorlNoiseArray[i + 2] = to_byte(worleyFBM1 * 255);
+                perlWorlNoiseArray[i + 3] = to_byte(worleyFBM2 * 255);
             }
 #if 0
         };
         parallel_for(context, descriptor);
 #endif
-        stbi_write_tga(fileName, slices * width, height, channelCount, data);
-        MemoryManager::DELETE_ARRAY(data);
+        stbi_write_tga(fileName, width*slices, height, 4, perlWorlNoiseArray);
+        MemoryManager::DELETE_ARRAY(perlWorlNoiseArray);
     }
 }
 
@@ -191,7 +192,7 @@ void Sky::OnStartup(PlatformContext& context) {
 
     if (!fileExists(curlNoise)) {
         Console::printfn("Generating Curl Noise 128x128 RGB");
-        tasks[0] = CreateTask([&curlNoise](const Task&) { GenerateCurlNoise(curlNoise.c_str(), 128, 128, 3); });
+        tasks[0] = CreateTask([&curlNoise](const Task&) { GenerateCurlNoise(curlNoise.c_str(), 128, 128); });
         Start(*tasks[0], context.taskPool(TaskPoolType::HIGH_PRIORITY));
         Console::printfn("Done!");
     }
@@ -199,7 +200,7 @@ void Sky::OnStartup(PlatformContext& context) {
     if (!fileExists(weather)) {
         Console::printfn("Generating Perlin Noise for LUT's");
         Console::printfn("Generating weather Noise 512x512 RGB");
-        tasks[1] = CreateTask([&weather](const Task&) { GeneratePerlinNoise(weather.c_str(), 512, 512, 3); });
+        tasks[1] = CreateTask([&weather](const Task&) { GeneratePerlinNoise(weather.c_str(), 512, 512); });
         Start(*tasks[1], context.taskPool(TaskPoolType::HIGH_PRIORITY));
         Console::printfn("Done!");
     }
@@ -208,14 +209,14 @@ void Sky::OnStartup(PlatformContext& context) {
         //worley and perlin-worley are from github/sebh/TileableVolumeNoise
         //which is in turn based on noise described in 'real time rendering of volumetric cloudscapes for horizon zero dawn'
         Console::printfn("Generating Worley Noise 32x32x32 RGB");
-        tasks[2] = CreateTask([&worlNoise](const Task&) { GenerateWorleyNoise(worlNoise.c_str(), 32, 32, 3, 32); });
+        tasks[2] = CreateTask([&worlNoise](const Task&) { GenerateWorleyNoise(worlNoise.c_str(), 32, 32, 32); });
         Start(*tasks[2], context.taskPool(TaskPoolType::HIGH_PRIORITY));
         Console::printfn("Done!");
     }
 
     if (!fileExists(perWordNoise)) {
         Console::printfn("Generating Perlin-Worley Noise 128x128x128 RGBA");
-        GeneratePerlinWorleyNoise(context, perWordNoise.c_str(), 128, 128, 4, 128);
+        GeneratePerlinWorleyNoise(context, perWordNoise.c_str(), 128, 128, 128);
         Console::printfn("Done!");
     }
 

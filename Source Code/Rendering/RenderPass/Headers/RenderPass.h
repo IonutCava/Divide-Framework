@@ -56,16 +56,16 @@ enum class RenderStage : U8;
 class RenderPass final : NonCopyable {
    public:
        struct BufferData {
-           ShaderBuffer* _transformBuffer = nullptr;
-           ShaderBuffer* _materialBuffer = nullptr;
            ShaderBuffer* _commandBuffer = nullptr;
            ShaderBuffer* _cullCounterBuffer = nullptr;
            U32* _lastCommandCount = nullptr;
            U32* _lastNodeCount = nullptr;
            U32 _transformElementOffset = 0u;
-           U32 _materialElementOffset = 0u;
            U32 _commandElementOffset = 0u;
        };
+  public:
+    // Size factor for command, transform and material buffers
+    static constexpr U8 DataBufferRingSize = 4u;
 
   public:
     // passStageFlags: the first stage specified will determine the data format used by the additional stages in the list
@@ -86,24 +86,23 @@ class RenderPass final : NonCopyable {
     void initBufferData();
 
    private:
+    const bool _performanceCounters;
+
     GFXDevice& _context;
     RenderPassManager& _parent;
     Configuration& _config;
 
+    RenderStage _stageFlag = RenderStage::COUNT;
+
+    U8 _sortKey = 0u;
+    U32 _transformIndexOffset = 0u;
     mutable U32 _lastCmdCount = 0u;
     mutable U32 _lastNodeCount = 0u;
 
-    U8 _sortKey = 0;
-    vector<U8> _dependencies{};
-    Str64 _name = "";
-    RenderStage _stageFlag = RenderStage::COUNT;
-
-    ShaderBuffer* _transformData = nullptr;
-    ShaderBuffer* _materialData = nullptr;
     ShaderBuffer* _cullCounter = nullptr;
     ShaderBuffer* _cmdBuffer = nullptr;
-
-    const bool _performanceCounters;
+    Str64 _name = "";
+    vector<U8> _dependencies{};
 };
 
 }  // namespace Divide

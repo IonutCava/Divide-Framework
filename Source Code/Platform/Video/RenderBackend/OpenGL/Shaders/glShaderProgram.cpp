@@ -435,19 +435,19 @@ bool glShaderProgram::unload() {
      return ShaderProgram::unload();
 }
 
-bool glShaderProgram::rebindStages() {
+ShaderBindResult glShaderProgram::rebindStages() {
     assert(isValid());
 
     for (glShader* shader : _shaderStage) {
         if (!shader->uploadToGPU()) {
-            return false;
+            return ShaderBindResult::Failed;
         }
 
         // If a shader exists for said stage, attach it
         glUseProgramStages(_handle, shader->stageMask(), shader->getProgramHandle());
     }
 
-    return true;
+    return ShaderBindResult::OK;
 }
 
 void glShaderProgram::queueValidation() {
@@ -475,7 +475,7 @@ void glShaderProgram::queueValidation() {
     }
 }
 
-bool glShaderProgram::validatePreBind() {
+ShaderBindResult glShaderProgram::validatePreBind() {
     if (!isValid()) {
         OPTICK_EVENT();
 
@@ -483,14 +483,16 @@ bool glShaderProgram::validatePreBind() {
         glCreateProgramPipelines(1, &_handle);
         glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
 
-        if (!rebindStages()) {
-            return false;
+        const ShaderBindResult ret = rebindStages();
+        if (ret == ShaderBindResult::OK) {
+            _validationQueued = true;
         }
 
-        _validationQueued = true;
+        return ret;
+        
     }
 
-    return true;
+    return ShaderBindResult::OK;
 }
 
 /// This should be called in the loading thread, but some issues are still present, and it's not recommended (yet)
@@ -699,7 +701,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
             for (glShader* tempShader : _shaderStage) {
                 if (tempShader->nameHash() == targetNameHash) {
                     glShader::loadShader(tempShader, false, loadData);
-                    _validationQueued = rebindStages();
+                    _validationQueued = rebindStages() == ShaderBindResult::OK;
                     break;
                 }
             }
@@ -763,13 +765,18 @@ bool glShaderProgram::isValid() const {
 }
 
 /// Bind this shader program
-std::pair<bool/*success*/, bool/*was bound*/>  glShaderProgram::bind() {
-    // If the shader isn't ready or failed to link, stop here
-    if (validatePreBind()) {
-        OPTICK_EVENT()
+ShaderBindResult glShaderProgram::bind() {
+    OPTICK_EVENT()
 
-        // Set this program as the currently active one
-        const bool newBind = GL_API::getStateTracker().setActiveShaderPipeline(_handle);
+    // If the shader isn't ready or failed to link, stop here
+    const ShaderBindResult ret = validatePreBind();
+    if (ret != ShaderBindResult::OK) {
+        return ret;
+    }
+
+    // Set this program as the currently active one
+    if (GL_API::getStateTracker().setActiveShaderPipeline(_handle)) {
+        // All of this needs to be run on an actual bind operation. If we are already bound, we assume we did all this
         queueValidation();
         for (glShader* shader : _shaderStage) {
             if (shader->valid()) {
@@ -779,10 +786,9 @@ std::pair<bool/*success*/, bool/*was bound*/>  glShaderProgram::bind() {
                 shouldRecompile(true);
             }
         }
-        return { true, !newBind };
     }
 
-    return { false, false };
+    return ShaderBindResult::OK;
 }
 
 void glShaderProgram::uploadPushConstants(const PushConstants& constants) {
@@ -820,11 +826,11 @@ eastl::string glShaderProgram::GatherUniformDeclarations(const eastl::string & s
     return ret;
 }
 
-eastl::string  glShaderProgram::PreprocessIncludes(const ResourcePath& name,
-                                                   const eastl::string & source,
-                                                   GLint level,
-                                                   vector<ResourcePath>& foundAtoms,
-                                                   bool lock) {
+eastl::string glShaderProgram::PreprocessIncludes(const ResourcePath& name,
+                                                  const eastl::string& source,
+                                                  const GLint level,
+                                                  vector<ResourcePath>& foundAtoms,
+                                                  const bool lock) {
     if (level > 32) {
         Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INCLUD_LIMIT")));
     }
@@ -868,7 +874,7 @@ eastl::string  glShaderProgram::PreprocessIncludes(const ResourcePath& name,
             if (wasParsed) {
                 output.append(includeString);
             } else {
-                output.append(PreprocessIncludes(name, includeString, ++level, foundAtoms, lock));
+                output.append(PreprocessIncludes(name, includeString, level + 1, foundAtoms, lock));
             }
         }
 

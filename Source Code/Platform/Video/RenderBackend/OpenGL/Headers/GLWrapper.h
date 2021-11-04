@@ -141,7 +141,7 @@ protected:
     bool makeImagesResident(const Images& images) const;
 
     bool setViewport(const Rect<I32>& viewport) override;
-    bool bindPipeline(const Pipeline & pipeline, bool& shaderWasReady) const;
+    ShaderBindResult bindPipeline(const Pipeline& pipeline) const;
 public:
     static GLStateTracker& getStateTracker() noexcept;
     static GLUtil::GLMemory::DeviceAllocator& getMemoryAllocator() noexcept;

@@ -25,17 +25,19 @@ namespace {
     constexpr U16 g_maxMaterialFrameLifetime = 6u;
     // Use to partition parallel jobs
     constexpr U32 g_nodesPerPrepareDrawPartition = 16u;
-
-    void InitMaterialData(const RenderStage stage, RenderPassExecutor::PerRingEntryMaterialData& data) {
-        data._nodeMaterialLookupInfo.resize(RenderStagePass::totalPassCountForStage(stage) * Config::MAX_CONCURRENT_MATERIALS, { Material::INVALID_MAT_HASH, U16_MAX });
-        data._nodeMaterialData.reserve(RenderStagePass::totalPassCountForStage(stage));
-        data._nodeMaterialData.emplace_back();
-    }
 }
 
+bool RenderPassExecutor::s_globalDataInit = false;
 Pipeline* RenderPassExecutor::s_OITCompositionPipeline = nullptr;
 Pipeline* RenderPassExecutor::s_OITCompositionMSPipeline = nullptr;
 Pipeline* RenderPassExecutor::s_ResolveScreenTargetsPipeline = nullptr;
+Mutex RenderPassExecutor::s_globalMaterialBufferLock;
+ShaderBuffer* RenderPassExecutor::s_globalMaterialBuffer = nullptr;
+Mutex RenderPassExecutor::s_globalTransformBufferLock;
+ShaderBuffer* RenderPassExecutor::s_globalTransformBuffer = nullptr;
+U32 RenderPassExecutor::s_materialDataBufferIndex = 0u;
+std::array<RenderPassExecutor::PerRingEntryMaterialData, RenderPass::DataBufferRingSize> RenderPassExecutor::s_materialData;
+U32 RenderPassExecutor::s_transformDataBufferIndex = 0u;
 
 RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, const RenderStage stage)
     : _parent(parent)
@@ -43,38 +45,66 @@ RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& con
     , _stage(stage)
     , _renderQueue(parent.parent(), stage)
 {
-    _materialData.resize(_materialData.max_size());
-    for (PerRingEntryMaterialData& data : _materialData) {
-        InitMaterialData(stage, data);
-    }
 }
 
 void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
                                   const ShaderProgram_ptr& OITCompositionShaderMS,
                                   const ShaderProgram_ptr& ResolveScreenTargetsShaderMS) const {
-    PipelineDescriptor pipelineDescriptor;
-    pipelineDescriptor._stateHash = _context.get2DStateBlock();
 
-    if (s_OITCompositionPipeline == nullptr) {
+    if (!s_globalDataInit) {
+        s_globalDataInit = true;
+
+        PipelineDescriptor pipelineDescriptor;
+        pipelineDescriptor._stateHash = _context.get2DStateBlock();
+
         pipelineDescriptor._shaderProgramHandle = OITCompositionShader->getGUID();
         s_OITCompositionPipeline = _context.newPipeline(pipelineDescriptor);
-    }
-    if (s_OITCompositionMSPipeline == nullptr) {
+
         pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS->getGUID();
         s_OITCompositionMSPipeline = _context.newPipeline(pipelineDescriptor);
-    }  
-    if (s_ResolveScreenTargetsPipeline == nullptr) {
+
         pipelineDescriptor._shaderProgramHandle = ResolveScreenTargetsShaderMS->getGUID();
         s_ResolveScreenTargetsPipeline = _context.newPipeline(pipelineDescriptor);
+
+        U32 totalPassCount = 0u;
+        for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i) {
+            totalPassCount += RenderStagePass::totalPassCountForStage(static_cast<RenderStage>(i));
+        }
+        ShaderBufferDescriptor bufferDescriptor = {};
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+        bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
+        bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
+        bufferDescriptor._separateReadWrite = false;
+        bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
+        bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::NONE);
+
+        {// Node Transform buffer
+            bufferDescriptor._bufferParams._elementCount = totalPassCount * Config::MAX_VISIBLE_NODES;
+            bufferDescriptor._bufferParams._elementSize = sizeof(NodeTransformData);
+            bufferDescriptor._name = "NODE_TRANSFORM_DATA";
+            s_globalTransformBuffer = _context.newSB(bufferDescriptor);
+        }
+        {// Node Material buffer
+            bufferDescriptor._bufferParams._elementCount = Config::MAX_CONCURRENT_MATERIALS;
+            bufferDescriptor._bufferParams._elementSize = sizeof(NodeMaterialData);
+            bufferDescriptor._name = "NODE_MATERIAL_DATA";
+            s_globalMaterialBuffer = _context.newSB(bufferDescriptor);
+
+            ScopedLock<Mutex> w_lock(s_globalMaterialBufferLock);
+            s_materialDataBufferIndex = s_globalMaterialBuffer->queueWriteIndex();
+            for (PerRingEntryMaterialData& data : s_materialData) {
+                data._nodeMaterialLookupInfo.fill({ Material::INVALID_MAT_HASH, U16_MAX });
+            }
+        }
     }
 }
 
 void RenderPassExecutor::setMaterialInfoAt(const size_t idx, PerRingEntryMaterialData::MaterialDataContainer& dataInOut, const NodeMaterialData& tempData, const NodeMaterialTextures& tempTextures) {
     OPTICK_EVENT();
 
-    if (idx >= dataInOut.size()) {
-        dataInOut.resize(to_size(std::ceil(idx * 1.5f)));
-    }
+    assert(idx < dataInOut.size());
+
     NodeMaterialData& target = dataInOut[idx];
     target = tempData;
 
@@ -86,7 +116,7 @@ void RenderPassExecutor::setMaterialInfoAt(const size_t idx, PerRingEntryMateria
     // any sampler type(uvec2)     // Converts a pair of 32-bit unsigned integers to a sampler type
     // uvec2(any image type)       // Converts an image type to a pair of 32-bit unsigned integers
     // any image type(uvec2)       // Converts a pair of 32-bit unsigned integers to an image type
-    for (U8 i = 0; i < MATERIAL_TEXTURE_COUNT; ++i) {
+    for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
         const SamplerAddress combined = tempTextures[i];
         target._textures[i / 2][(i % 2) * 2 + 0] = to_U32(combined & 0xFFFFFFFF); //low
         target._textures[i / 2][(i % 2) * 2 + 1] = to_U32(combined >> 32); //high
@@ -98,15 +128,16 @@ void RenderPassExecutor::setMaterialInfoAt(const size_t idx, PerRingEntryMateria
     }
 }
 
-void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp,
-                                                    RenderStage stage,
-                                                    D64 interpolationFactor,
-                                                    U16 nodeIndex) {
+void RenderPassExecutor::processVisibleNodeTransform(PerRingEntryTransformData& transformData,
+                                                     RenderingComponent* rComp,
+                                                     const RenderStage stage,
+                                                     const D64 interpolationFactor,
+                                                     const U16 nodeIndex) {
     OPTICK_EVENT();
 
     // Rewrite all transforms
     // ToDo: Cache transforms for static nodes -Ionut
-    NodeTransformData& transformOut = _nodeTransformData[nodeIndex];
+    NodeTransformData& transformOut = transformData[nodeIndex];
     //transformOut = {}; //We will rewrite everything anyway
 
     const SceneGraphNode* node = rComp->getSGN();
@@ -154,7 +185,7 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp,
     }
 }
 
-U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp, U32 materialElementOffset) {
+U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp) {
     OPTICK_EVENT();
 
     NodeMaterialData tempData{};
@@ -166,11 +197,13 @@ U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp, U3
     size_t materialHash = HashMaterialData(tempData);
     Util::Hash_combine(materialHash, HashTexturesData(tempTextures));
 
-    const auto findMaterialMatch = [](const size_t targetHash, const U32 offset, PerRingEntryMaterialData::LookupInfoContainer& data) -> U16 {
-        for (U16 idx = 0u; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
-            auto& [hash, framesSinceLastUsed] = data[idx + offset];
+    const auto findMaterialMatch = [](const size_t targetHash, PerRingEntryMaterialData::LookupInfoContainer& data) -> U16 {
+        assert(data.size() < U16_MAX);
+
+        const U16 count = to_U16(data.size());
+        for (U16 idx = 0u; idx < count; ++idx) {
+            auto& [hash, _] = data[idx];
             if (hash == targetHash) {
-                framesSinceLastUsed = 0u;
                 return idx;
             }
         }
@@ -178,32 +211,26 @@ U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp, U3
         return U16_MAX;
     };
 
-    PerRingEntryMaterialData& materialData = _materialData[_materialBufferIndex];
+    ScopedLock<Mutex> w_lock(s_globalMaterialBufferLock);
+    PerRingEntryMaterialData& materialData = s_materialData[s_materialDataBufferIndex];
+    PerRingEntryMaterialData::LookupInfoContainer& infoContainer = materialData._nodeMaterialLookupInfo;
     {// Try and match an existing material
-        SharedLock<SharedMutex> r_lock(_matDataLock);
         OPTICK_EVENT("processVisibleNode - try match material");
-        const U16 idx = findMaterialMatch(materialHash, materialElementOffset, materialData._nodeMaterialLookupInfo);
+        const U16 idx = findMaterialMatch(materialHash, infoContainer);
         if (idx != U16_MAX) {
+            infoContainer[idx].second = 0u;
             return idx;
         }
     }
 
     // If we fail, try and find an empty slot and update it
     OPTICK_EVENT("processVisibleNode - process unmatched material");
-    ScopedLock<SharedMutex> w_lock(_matDataLock);
-
-    auto& materialInfo = materialData._nodeMaterialLookupInfo;
-    { //Because we released the shared lock and aquired a new lock, search again as that operation isn't atomic
-        const U16 idx = findMaterialMatch(materialHash, materialElementOffset, materialInfo);
-        if (idx != U16_MAX) {
-            return idx;
-        }
-    }
-
     // No match found (cache miss) so add a new entry.
     std::pair<U16, U16> bestCandidate = { U16_MAX, 0u };
-    for (U16 idx = 0u; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
-        auto& [hash, framesSinceLastUsed] = materialInfo[idx + materialElementOffset];
+
+    const U16 count = to_U16(infoContainer.size());
+    for (U16 idx = 0u; idx < count; ++idx) {
+        auto& [hash, framesSinceLastUsed] = infoContainer[idx];
         // Two cases here. We either have empty slots (e.g. startup, cache clear, etc) ...
         if (hash == Material::INVALID_MAT_HASH) {
             // ... in which case our current idx is what we are looking for ...
@@ -215,21 +242,20 @@ U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp, U3
         if (framesSinceLastUsed >= std::max(g_maxMaterialFrameLifetime, bestCandidate.second)) {
             bestCandidate.first = idx;
             bestCandidate.second = framesSinceLastUsed;
+            // Keep going and see if we can find an even older entry
         }
     }
     DIVIDE_ASSERT(bestCandidate.first != U16_MAX, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
 
-    auto& updateRange = materialData._matUpdateRange;
-    if (updateRange._firstIDX > bestCandidate.first) {
-        updateRange._firstIDX = bestCandidate.first;
+    if (_matUpdateRange._firstIDX > bestCandidate.first) {
+        _matUpdateRange._firstIDX = bestCandidate.first;
     }
-    if (updateRange._lastIDX < bestCandidate.first) {
-        updateRange._lastIDX = bestCandidate.first;
+    if (_matUpdateRange._lastIDX < bestCandidate.first + 1u) {
+        _matUpdateRange._lastIDX = bestCandidate.first + 1u;
     }
 
-    const U32 offsetIdx = bestCandidate.first + materialElementOffset;
-    materialInfo[offsetIdx] = { materialHash, 0u };
-    setMaterialInfoAt(offsetIdx, materialData._nodeMaterialData, tempData, tempTextures);
+    infoContainer[bestCandidate.first] = { materialHash, 0u };
+    setMaterialInfoAt(bestCandidate.first, materialData._nodeMaterialData, tempData, tempTextures);
 
     return bestCandidate.first;
 }
@@ -246,21 +272,7 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
     const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
 
     _drawCommands.clear();
-    _materialBufferIndex = bufferData._materialBuffer->queueWriteIndex();
-    while (_materialBufferIndex >= _materialData.size()) {
-        InitMaterialData(_stage, _materialData.emplace_back());
-    }
-
-    {
-        PerRingEntryMaterialData& materialData = _materialData[_materialBufferIndex];
-        materialData._matUpdateRange.reset();
-        // Increment material lifetime by 1 (a frame has passed)
-        for (U16 idx = 0u; idx < Config::MAX_CONCURRENT_MATERIALS; ++idx) {
-            auto& [_, lifetime] = materialData._nodeMaterialLookupInfo[idx + bufferData._materialElementOffset];
-            ++lifetime;
-        }
-    }
-
+ 
     _uniqueTextureAddresses.clear();
 
     for (RenderBin::SortedQueue& sQueue : _sortedQueues) {
@@ -285,14 +297,14 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
 
     {
         OPTICK_EVENT("buildDrawCommands - process nodes: Transforms")
-
         U32& nodeCount = *bufferData._lastNodeCount;
         nodeCount = 0u;
         const auto parseRange = [this, renderStage = stagePass._stage, interpFactor](const U32 nodeCount, RenderBin::SortedQueue& queue, const U32 start, const U32 end) {
+            auto& nodeTransforms = _nodeTransformData[s_transformDataBufferIndex];
             for (U32 i = start; i < end; ++i) {
                 auto& [rComp, dataIdx] = queue[i];
                 dataIdx._transformIDX = to_U16(i + nodeCount);
-                processVisibleNodeTransform(rComp, renderStage, interpFactor, dataIdx._transformIDX);
+                processVisibleNodeTransform(nodeTransforms, rComp, renderStage, interpFactor, dataIdx._transformIDX);
             }
         };
 
@@ -315,12 +327,11 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
     }
     {
         OPTICK_EVENT("buildDrawCommands - process nodes: Materials")
-        const U32 materialOffset = bufferData._materialElementOffset;
 
-        const auto parseRange = [this](const U32 offset, RenderBin::SortedQueue& queue, const U32 start, const U32 end) {
+        const auto parseRange = [this](RenderBin::SortedQueue& queue, const U32 start, const U32 end) {
             for (U32 i = start; i < end; ++i) {
                 auto& [rComp, dataIdx] = queue[i];
-                dataIdx._materialIDX = processVisibleNodeMaterial(rComp, offset);
+                dataIdx._materialIDX = processVisibleNodeMaterial(rComp);
             }
         };
 
@@ -328,14 +339,14 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
             const U32 queueSize = to_U32(queue.size());
             if (queueSize > g_nodesPerPrepareDrawPartition) {
                 const U32 midPoint = queueSize / 2;
-                Start(*CreateTask(updateTask, [&queue, &parseRange, materialOffset, midPoint](const Task&) {
-                    parseRange(materialOffset, queue, 0u, midPoint);
+                Start(*CreateTask(updateTask, [&queue, &parseRange, midPoint](const Task&) {
+                    parseRange(queue, 0u, midPoint);
                 }), pool);
-                Start(*CreateTask(updateTask, [&queue, &parseRange, materialOffset, midPoint, queueSize](const Task&) {
-                    parseRange(materialOffset, queue, midPoint, queueSize);
+                Start(*CreateTask(updateTask, [&queue, &parseRange, midPoint, queueSize](const Task&) {
+                    parseRange(queue, midPoint, queueSize);
                 }), pool);
             } else {
-                parseRange(materialOffset, queue, 0u, queueSize);
+                parseRange(queue, 0u, queueSize);
             }
         }
     }
@@ -379,32 +390,33 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
 
         cmdBuffer->writeData(bufferData._commandElementOffset, *bufferData._lastCommandCount, _drawCommands.data());
 
-        bufferData._transformBuffer->writeData(bufferData._transformElementOffset, *bufferData._lastNodeCount, _nodeTransformData.data());
-
-        // Copy the same data to the entire ring buffer
-        PerRingEntryMaterialData& materialData = _materialData[_materialBufferIndex];
-        MaterialUpdateRange& crtRange = materialData._matUpdateRange;
-
-        if (crtRange.range() > 0u) {
-            const U32 offsetIDX = bufferData._materialElementOffset + crtRange._firstIDX;
-            bufferData._materialBuffer->writeData(offsetIDX, crtRange.range(), &materialData._nodeMaterialData[offsetIDX]);
+        {
+            ScopedLock<Mutex> w_lock(s_globalTransformBufferLock);
+            PerRingEntryTransformData& transformData = _nodeTransformData[s_materialDataBufferIndex];
+            s_globalTransformBuffer->writeData(bufferData._transformElementOffset, *bufferData._lastNodeCount, transformData.data());
         }
-        crtRange.reset();
+
+        if (_matUpdateRange.range() > 0u) {
+            ScopedLock<Mutex> w_lock(s_globalMaterialBufferLock);
+            PerRingEntryMaterialData& materialData = s_materialData[s_materialDataBufferIndex];
+            s_globalMaterialBuffer->writeData(_matUpdateRange._firstIDX, _matUpdateRange.range(), &materialData._nodeMaterialData[_matUpdateRange._firstIDX]);
+        }
+        _matUpdateRange.reset();
     }
 
-    ShaderBufferBinding cmdBufferBinding = {};
+    ShaderBufferBinding cmdBufferBinding{};
     cmdBufferBinding._elementRange = { 0u, cmdBuffer->getPrimitiveCount() };
     cmdBufferBinding._buffer = cmdBuffer;
     cmdBufferBinding._binding = ShaderBufferLocation::CMD_BUFFER;
 
-    ShaderBufferBinding transformBufferBinding = {};
-    transformBufferBinding._elementRange = { bufferData._transformElementOffset, *bufferData._lastNodeCount };
-    transformBufferBinding._buffer = bufferData._transformBuffer;
+    ShaderBufferBinding transformBufferBinding{};
+    transformBufferBinding._elementRange = { bufferData._transformElementOffset, Config::MAX_VISIBLE_NODES };
+    transformBufferBinding._buffer = s_globalTransformBuffer;
     transformBufferBinding._binding = ShaderBufferLocation::NODE_TRANSFORM_DATA;
 
-    ShaderBufferBinding materialBufferBinding = {};
-    materialBufferBinding._elementRange = { bufferData._materialElementOffset, Config::MAX_CONCURRENT_MATERIALS };
-    materialBufferBinding._buffer = bufferData._materialBuffer;
+    ShaderBufferBinding materialBufferBinding{};
+    materialBufferBinding._elementRange = { 0u, Config::MAX_CONCURRENT_MATERIALS };
+    materialBufferBinding._buffer = s_globalMaterialBuffer;
     materialBufferBinding._binding = ShaderBufferLocation::NODE_MATERIAL_DATA;
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
@@ -1101,6 +1113,14 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
     resolveMainScreenTarget(params, bufferInOut);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+
+    _matUpdateRange.reset();
+    ScopedLock<Mutex> w_lock(s_globalMaterialBufferLock);
+    PerRingEntryMaterialData& materialData = s_materialData[s_materialDataBufferIndex];
+    // Increment material lifetime by 1 (a frame has passed)
+    for (auto& [_, lifetime] : materialData._nodeMaterialLookupInfo) {
+        ++lifetime;
+    }
 }
 
 U32 RenderPassExecutor::renderQueueSize(const RenderPackage::MinQuality qualityRequirement) const {
@@ -1137,4 +1157,19 @@ void RenderPassExecutor::renderQueueToSubPasses(GFX::CommandBuffer& commandsInOu
 
     commandsInOut.add(buffers.data(), buffers.size());
 }
+
+
+void RenderPassExecutor::PostRender() {
+    { //Material data
+        ScopedLock<Mutex> w_lock(s_globalMaterialBufferLock);
+        s_globalMaterialBuffer->incQueue();
+        s_materialDataBufferIndex = s_globalMaterialBuffer->queueWriteIndex();
+    }
+    { //Transform Data
+        ScopedLock<Mutex> w_lock(s_globalTransformBufferLock);
+        s_globalTransformBuffer->incQueue();
+        s_transformDataBufferIndex = s_globalTransformBuffer->queueWriteIndex();
+    }
+}
+
 } //namespace Divide

@@ -173,7 +173,9 @@ void MenuBar::draw() {
                     ImGui::CloseCurrentPopup();
                     _newScenePopup = false;
                     string sceneName(buf);
-                    if (!Util::CompareIgnoreCase(sceneName, Config::DEFAULT_SCENE_NAME)) {
+                    if (sceneName.empty()) {
+                        _errorMsg.append("Scenes must be named!. \n");
+                    } else if (!Util::CompareIgnoreCase(sceneName, Config::DEFAULT_SCENE_NAME)) {
                         FileError ret = copyDirectory(g_scenePath + "/" + Config::DEFAULT_SCENE_NAME, g_scenePath + "/" + sceneName, true, true);
                         if (ret != FileError::NONE) {
                             DIVIDE_UNEXPECTED_CALL();

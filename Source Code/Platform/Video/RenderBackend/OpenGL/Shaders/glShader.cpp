@@ -8,6 +8,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 #include "Core/Headers/StringHelper.h"
+#include "Core/Time/Headers/ProfileTimer.h"
 #include "Headers/glBufferedPushConstantUploader.h"
 #include "Headers/glUniformPushConstantUploader.h"
 #include "Utility/Headers/Localization.h"
@@ -85,8 +86,26 @@ glShader::~glShader() {
 
 bool glShader::uploadToGPU() {
     if (!_valid) {
+        const auto getTimerAndReset = [](Time::ProfileTimer& timer) {
+            timer.stop();
+            const U64 ret = timer.get();
+            timer.reset();
+            return ret;
+        };
+
+        Time::ProfileTimer shaderCompileTimer;
+        Time::ProfileTimer shaderCompileTimerGPU;
+        Time::ProfileTimer shaderCompileDriveSide;
+        Time::ProfileTimer shaderLinkTimer;
+
+        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+            shaderCompileTimer.start();
+        }
         Console::d_printfn(Locale::Get(_ID("GLSL_LOAD_PROGRAM")), _name.c_str(), getGUID());
 
+        U64 totalCompileTime = 0u, GPUcompileTime = 0u, driverCompileTime = 0u, driverLinkTime = 0u;
+
+        bool isSeparable = false;
         const GLuint blockIndex = to_U32(ShaderBufferLocation::UNIFORM_BLOCK) + _loadData._uniformIndex;
         if (!loadFromBinary()) {
 
@@ -97,7 +116,9 @@ bool glShader::uploadToGPU() {
                 }
             }
 
+            vector<const char*> sourceCodeCstr;
             if (stageCount == 1) {
+                isSeparable = true;
                 U8 index = 0u;
                 for (const LoadData& it : _loadData._data) {
                     if (it._type != ShaderType::COUNT) {
@@ -109,13 +130,21 @@ bool glShader::uploadToGPU() {
                 const U8 shaderIdx = to_base(GetShaderType(_stageMask));
                 const LoadData& data = _loadData._data[index];
 
+                eastl::transform(cbegin(data.sourceCode), cend(data.sourceCode), back_inserter(sourceCodeCstr), std::mem_fn(&eastl::string::c_str));
+                if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                    shaderCompileTimerGPU.start();
+                }
                 if (_programHandle != GLUtil::k_invalidObjectID) {
                     GL_API::DeleteShaderPrograms(1, &_programHandle);
                 }
-
-                vector<const char*> sourceCodeCstr;
-                eastl::transform(cbegin(data.sourceCode), cend(data.sourceCode), back_inserter(sourceCodeCstr), std::mem_fn(&eastl::string::c_str));
+                if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                    shaderCompileDriveSide.start();
+                }
                 _programHandle = glCreateShaderProgramv(GLUtil::glShaderStageTable[shaderIdx], static_cast<GLsizei>(sourceCodeCstr.size()), sourceCodeCstr.data());
+                if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                    GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+                    driverCompileTime += getTimerAndReset(shaderCompileDriveSide);
+                }
                 if (_programHandle == 0 || _programHandle == GLUtil::k_invalidObjectID) {
                     Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
                     _valid = false;
@@ -124,30 +153,45 @@ bool glShader::uploadToGPU() {
 
             } else {
                 if (_programHandle == GLUtil::k_invalidObjectID) {
+                    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                        shaderCompileTimerGPU.start();
+                    }
                     _programHandle = glCreateProgram();
+                    glProgramParameteri(_programHandle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+                    glProgramParameteri(_programHandle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+                    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                        GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+                    }
                 }
                 if (_programHandle == 0 || _programHandle == GLUtil::k_invalidObjectID) {
                     Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
                     _valid = false;
                     return false;
                 }
-                glProgramParameteri(_programHandle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
-                glProgramParameteri(_programHandle, GL_PROGRAM_SEPARABLE, GL_TRUE);
 
                 bool shouldLink = false;
                 std::array<GLuint, to_base(ShaderType::COUNT)> shaders = {};
 
-                for (U8 i = 0; i < to_base(ShaderType::COUNT); ++i) {
+                for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i) {
                     const LoadData& data = _loadData._data[i];
 
-                    vector<const char*> sourceCodeCstr;
+                    sourceCodeCstr.resize(0);
                     eastl::transform(cbegin(data.sourceCode), cend(data.sourceCode), back_inserter(sourceCodeCstr), std::mem_fn(&eastl::string::c_str));
-                    if (!data.sourceCode.empty()) {
+
+                    if (!sourceCodeCstr.empty()) {
+                        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                            shaderCompileTimerGPU.start();
+                        }
                         const GLuint shader = glCreateShader(GLUtil::glShaderStageTable[i]);
                         if (shader != 0u) {
+                            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                                shaderCompileDriveSide.start();
+                            }
                             glShaderSource(shader, static_cast<GLsizei>(sourceCodeCstr.size()), sourceCodeCstr.data(), nullptr);
                             glCompileShader(shader);
-
+                            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                                 driverCompileTime += getTimerAndReset(shaderCompileDriveSide);
+                            }
                             GLboolean compiled = 0;
                             glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
                             if (compiled == GL_FALSE) {
@@ -174,21 +218,35 @@ bool glShader::uploadToGPU() {
                                 shouldLink = true;
                             }
                         }
+                        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                            GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+                        }
                     }
                 }
 
                 if (shouldLink) {
+                    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                        shaderCompileTimerGPU.start();
+                        shaderLinkTimer.start();
+                    }
                     glLinkProgram(_programHandle);
-
+                    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                         driverLinkTime += getTimerAndReset(shaderLinkTimer);
+                    }
                     for (const GLuint shader : shaders) {
                         if (shader != 0u) {
                             glDetachShader(_programHandle, shader);
                             glDeleteShader(shader);
                         }
                     }
+                    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                        GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+                    }
                 }
             }
-
+            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                shaderCompileTimerGPU.start();
+            }
             // And check the result
             GLboolean linkStatus = GL_FALSE;
             glGetProgramiv(_programHandle, GL_LINK_STATUS, &linkStatus);
@@ -217,9 +275,16 @@ bool glShader::uploadToGPU() {
                 }
                 _valid = true;
             }
+            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+            }
         }
 
         if (_valid) {
+            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                shaderCompileTimerGPU.start();
+            }
+
             if_constexpr(glShaderProgram::g_useUniformConstantBuffer) {
                 glBufferedPushConstantUploaderDescriptor bufferDescriptor = {};
                 bufferDescriptor._programHandle = _programHandle;
@@ -232,6 +297,30 @@ bool glShader::uploadToGPU() {
             }
 
             _constantUploader->cacheUniforms();
+
+            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+            }
+        }
+
+        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+            totalCompileTime += getTimerAndReset(shaderCompileTimer);
+
+            if (isSeparable) {
+                Console::printfn(Locale::Get(_ID("SHADER_COMPILE_TIME_SEPARABLE")),
+                                 name().c_str(),
+                                 Time::MicrosecondsToMilliseconds<F32>(totalCompileTime),
+                                 Time::MicrosecondsToMilliseconds<F32>(GPUcompileTime),
+                                 Time::MicrosecondsToMilliseconds<F32>(driverCompileTime));
+            } else {
+                Console::printfn(Locale::Get(_ID("SHADER_COMPILE_TIME_NON_SEPARABLE")),
+                                 name().c_str(),
+                                 driverCompileTime > driverLinkTime ? "Compilation" : "Linking",
+                                 Time::MicrosecondsToMilliseconds<F32>(totalCompileTime),
+                                 Time::MicrosecondsToMilliseconds<F32>(GPUcompileTime),
+                                 Time::MicrosecondsToMilliseconds<F32>(driverCompileTime),
+                                 Time::MicrosecondsToMilliseconds<F32>(driverLinkTime));
+            }
         }
     }
 

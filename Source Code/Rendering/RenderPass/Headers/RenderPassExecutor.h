@@ -58,12 +58,14 @@ namespace GFX {
 class RenderPassExecutor
 {
 public:
-    struct MaterialUpdateRange
+    struct BufferUpdateRange
     {
         U16 _firstIDX = U16_MAX;
         U16 _lastIDX = 0u;
 
-        [[nodiscard]] U16 range() const noexcept { return _lastIDX >= _firstIDX ? _lastIDX - _firstIDX + 1u : 0u; }
+        [[nodiscard]] U16 range() const noexcept { 
+            return _lastIDX >= _firstIDX ? _lastIDX - _firstIDX + 1u : 0u;
+        }
 
         void reset() noexcept {
             _firstIDX = U16_MAX;
@@ -73,12 +75,13 @@ public:
 
     struct PerRingEntryMaterialData
     {
-        using LookupInfoContainer = vector<std::pair<size_t, U16>>;
-        using MaterialDataContainer = vector<NodeMaterialData>;
-        MaterialUpdateRange _matUpdateRange{};
+        using LookupInfoContainer = std::array<std::pair<size_t, U16>, Config::MAX_CONCURRENT_MATERIALS>;
+        using MaterialDataContainer = std::array<NodeMaterialData, Config::MAX_CONCURRENT_MATERIALS>;
         MaterialDataContainer _nodeMaterialData{};
         LookupInfoContainer _nodeMaterialLookupInfo{};
     };
+
+    using PerRingEntryTransformData = std::array<NodeTransformData, Config::MAX_VISIBLE_NODES>;
 
 public:
     explicit RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, RenderStage stage);
@@ -88,6 +91,7 @@ public:
                   const ShaderProgram_ptr& OITCompositionShaderMS,
                   const ShaderProgram_ptr& ResolveScreenTargetsShaderMS) const;
 
+    static void PostRender();
 private:
     // Returns false if we skipped the pre-pass step
     void prePass(const VisibleNodeList<>& nodes,
@@ -133,13 +137,13 @@ private:
                             const SceneRenderState& sceneRenderState,
                             const Camera& cam);
 
-    void processVisibleNodeTransform(RenderingComponent* rComp,
+    void processVisibleNodeTransform(PerRingEntryTransformData& transformData,
+                                     RenderingComponent* rComp,
                                      RenderStage stage,
                                      D64 interpolationFactor,
                                      U16 nodeIndex);
 
-    U16 processVisibleNodeMaterial(RenderingComponent* rComp,
-                                   U32 materialElementOffset);
+    U16 processVisibleNodeMaterial(RenderingComponent* rComp);
 
     U16 buildDrawCommands(const RenderPassParams& params, bool doPrePass, bool doOITPass, GFX::CommandBuffer& bufferInOut);
     U16 prepareNodeData(VisibleNodeList<>& nodes, const RenderPassParams& params, bool hasInvalidNodes, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut);
@@ -162,18 +166,25 @@ private:
     DrawCommandContainer _drawCommands{};
     RenderQueuePackages _renderQueuePackages{};
 
-    U32 _materialBufferIndex = 0u;
-
-    std::array<NodeTransformData, Config::MAX_VISIBLE_NODES> _nodeTransformData{};
-
-    SharedMutex _matDataLock;
-    eastl::fixed_vector<PerRingEntryMaterialData, 3, true, eastl::dvd_allocator> _materialData{};
+    BufferUpdateRange _matUpdateRange{};
+    std::array<PerRingEntryTransformData, RenderPass::DataBufferRingSize> _nodeTransformData;
 
     eastl::set<SamplerAddress> _uniqueTextureAddresses{};
 
     static Pipeline* s_OITCompositionPipeline;
     static Pipeline* s_OITCompositionMSPipeline;
     static Pipeline* s_ResolveScreenTargetsPipeline;
+
+    static bool s_globalDataInit;
+    static Mutex s_globalMaterialBufferLock;
+    static ShaderBuffer* s_globalMaterialBuffer;
+    static Mutex s_globalTransformBufferLock;
+    static ShaderBuffer* s_globalTransformBuffer;
+
+    static U32 s_materialDataBufferIndex;
+    static std::array<PerRingEntryMaterialData, RenderPass::DataBufferRingSize> s_materialData;
+    static U32 s_transformDataBufferIndex;
+    
 };
 } //namespace Divide
 
