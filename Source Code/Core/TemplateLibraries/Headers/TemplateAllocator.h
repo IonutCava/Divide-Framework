@@ -58,78 +58,68 @@ namespace eastl {
     struct dvd_allocator
     {
         dvd_allocator() = default;
-        dvd_allocator(const char* pName) noexcept { (void)pName; }
-        dvd_allocator(const dvd_allocator& x, const char* pName) noexcept { (void)x;  (void)pName; }
+        dvd_allocator([[maybe_unused]] const char* pName) noexcept { }
+        dvd_allocator([[maybe_unused]] const dvd_allocator& x, [[maybe_unused]] const char* pName) noexcept { }
 
-        [[nodiscard]] void* allocate(const size_t n, int flags = 0) {
-            (void)flags;
+        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] int flags = 0) {
             return xmalloc(n);
         }
 
-        [[nodiscard]] void* allocate(const size_t n, size_t alignment, size_t offset, int flags = 0) {
-            (void)flags; (void)offset; (void)alignment;
+        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] size_t alignment, [[maybe_unused]] size_t offset, [[maybe_unused]] int flags = 0) {
             return xmalloc(n);
         }
 
-        void deallocate(void* p, size_t n) {
-            (void)n;
+        void deallocate([[maybe_unused]] void* p, size_t n) {
             //delete[](char*)p;
             xfree(p);
         }
 
         [[nodiscard]]
         const char* get_name()                  const noexcept { return "dvd custom eastl allocator"; }
-        void  set_name(const char* pName)       noexcept { (void)pName; }
+        void  set_name([[maybe_unused]] const char* pName)       noexcept { }
     };
 
 
     // All allocators are considered equal, as they merely use global new/delete.
-    [[nodiscard]] inline bool operator==(const dvd_allocator& a, const dvd_allocator& b) noexcept {
-        (void)a; (void)b;
+    [[nodiscard]] inline bool operator==([[maybe_unused]] const dvd_allocator& a, [[maybe_unused]] const dvd_allocator& b) noexcept {
         return true;
     }
 
-    [[nodiscard]] inline bool operator!=(const dvd_allocator& a, const dvd_allocator& b) noexcept {
-        (void)a; (void)b;
+    [[nodiscard]] inline bool operator!=([[maybe_unused]] const dvd_allocator& a, [[maybe_unused]] const dvd_allocator& b) noexcept {
         return false;
     }
 
     struct aligned_allocator
     {
         aligned_allocator() = default;
-        aligned_allocator(const char* pName) noexcept { (void)pName; }
-        aligned_allocator(const allocator & x, const char* pName) noexcept { (void)x;  (void)pName; }
+        aligned_allocator([[maybe_unused]] const char* pName) noexcept { }
+        aligned_allocator([[maybe_unused]] const allocator & x, [[maybe_unused]] const char* pName) noexcept { }
         aligned_allocator& operator=(const aligned_allocator & EASTL_NAME(x)) = default;
 
-        [[nodiscard]] void* allocate(const size_t n, int flags = 0) {
-            (void)flags;
+        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] int flags = 0) {
             constexpr size_t defaultAlignment = alignof(void*);
             return malloc_aligned(n, defaultAlignment);
         }
 
-        [[nodiscard]] void* allocate(const size_t n, const size_t alignment, const size_t offset, int flags = 0) {
-            (void)flags;
+        [[nodiscard]] void* allocate(const size_t n, const size_t alignment, const size_t offset, [[maybe_unused]] int flags = 0) {
             return malloc_aligned(n, alignment, offset);
         }
 
-        void deallocate(void* p, size_t n) {
-            (void)n;
+        void deallocate(void* p, [[maybe_unused]] size_t n) {
             free_aligned(p);
         }
 
-        [[nodiscard]]
-        const char* get_name()                  const noexcept { return "dvd eastl allocator"; }
-        void  set_name(const char* pName)       noexcept { (void)pName; }
+        
+        [[nodiscard]] const char* get_name()               const noexcept { return "dvd eastl allocator"; }
+        void  set_name([[maybe_unused]] const char* pName)       noexcept { }
     };
 
     // All allocators are considered equal, as they merely use global new/delete.
-    [[nodiscard]] inline bool operator==(const aligned_allocator& a, const aligned_allocator& b) noexcept {
-        (void)a; (void)b;
+    [[nodiscard]] inline bool operator==([[maybe_unused]] const aligned_allocator& a, [[maybe_unused]] const aligned_allocator& b) noexcept {
         return true;
     }
 
-    [[nodiscard]] inline bool operator!=(const aligned_allocator& a, const aligned_allocator& b) noexcept {
-        (void)a; (void)b;
+    [[nodiscard]] inline bool operator!=([[maybe_unused]] const aligned_allocator& a, [[maybe_unused]] const aligned_allocator& b) noexcept {
         return false;
     }
 

@@ -60,28 +60,65 @@ class RenderPassExecutor
 public:
     struct BufferUpdateRange
     {
-        U16 _firstIDX = U16_MAX;
-        U16 _lastIDX = 0u;
+        U32 _firstIDX = U32_MAX;
+        U32 _lastIDX = 0u;
 
-        [[nodiscard]] U16 range() const noexcept { 
+        [[nodiscard]] U32 range() const noexcept {
             return _lastIDX >= _firstIDX ? _lastIDX - _firstIDX + 1u : 0u;
         }
 
         void reset() noexcept {
-            _firstIDX = U16_MAX;
+            _firstIDX = U32_MAX;
             _lastIDX = 0u;
         }
     };
 
-    struct PerRingEntryMaterialData
+    struct NodeIndirectionData
     {
-        using LookupInfoContainer = std::array<std::pair<size_t, U16>, Config::MAX_CONCURRENT_MATERIALS>;
-        using MaterialDataContainer = std::array<NodeMaterialData, Config::MAX_CONCURRENT_MATERIALS>;
-        MaterialDataContainer _nodeMaterialData{};
-        LookupInfoContainer _nodeMaterialLookupInfo{};
+        U32 _transformIDX = U32_MAX;
+        U32 _materialIDX = U32_MAX;
     };
 
-    using PerRingEntryTransformData = std::array<NodeTransformData, Config::MAX_VISIBLE_NODES>;
+    // 2Mb worth of data
+    static constexpr U32 MAX_INDIRECTION_ENTRIES = (2 * 1024 * 1024) / sizeof(NodeIndirectionData);
+
+    struct BufferMaterialData
+    {
+        static_assert(Config::MAX_CONCURRENT_MATERIALS <= U16_MAX);
+
+        using FlagContainer = std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES>;
+        using LookupInfoContainer = std::array<std::pair<size_t, U16>, Config::MAX_CONCURRENT_MATERIALS>;
+        using MaterialDataContainer = std::array<NodeMaterialData, Config::MAX_CONCURRENT_MATERIALS>;
+        MaterialDataContainer _gpuData{};
+        LookupInfoContainer _nodeMaterialLookupInfo{};
+        FlagContainer _processedThisFrame{};
+    };
+
+    struct BufferTransformData
+    {
+        using FlagContainer = std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES>;
+        using TransformDataContainer = std::array<NodeTransformData, MAX_INDIRECTION_ENTRIES>;
+        TransformDataContainer _gpuData{};
+        std::array<bool, MAX_INDIRECTION_ENTRIES> _freeList{};
+        FlagContainer _processedThisFrame{};
+    };
+
+    struct BufferIndirectionData {
+        std::array<NodeIndirectionData, MAX_INDIRECTION_ENTRIES> _gpuData;
+        std::array<bool, MAX_INDIRECTION_ENTRIES> _freeList{};
+    };
+
+    template<typename DataContainer>
+    struct ExecutorBuffer {
+        U32 _bufferIndex = 0u;
+        U32 _highWaterMark = 0u;
+        ShaderBuffer* _gpuBuffer = nullptr;
+        Mutex _lock;
+        DataContainer _data;
+        BufferUpdateRange _bufferUpdateRange;
+        BufferUpdateRange _bufferUpdateRangePrev;
+        vector<BufferUpdateRange> _bufferUpdateRangeHistory;
+    };
 
 public:
     explicit RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, RenderStage stage);
@@ -91,7 +128,11 @@ public:
                   const ShaderProgram_ptr& OITCompositionShaderMS,
                   const ShaderProgram_ptr& ResolveScreenTargetsShaderMS) const;
 
+    static void OnStartup();
+    static void OnShutdown();
+    static void PreRender();
     static void PostRender();
+
 private:
     // Returns false if we skipped the pre-pass step
     void prePass(const VisibleNodeList<>& nodes,
@@ -137,25 +178,30 @@ private:
                             const SceneRenderState& sceneRenderState,
                             const Camera& cam);
 
-    void processVisibleNodeTransform(PerRingEntryTransformData& transformData,
-                                     RenderingComponent* rComp,
-                                     RenderStage stage,
-                                     D64 interpolationFactor,
-                                     U16 nodeIndex);
+    void processVisibleNodeTransform(RenderingComponent* rComp,
+                                     D64 interpolationFactor);
 
-    U16 processVisibleNodeMaterial(RenderingComponent* rComp);
+    [[nodiscard]] U16 processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit);
 
     U16 buildDrawCommands(const RenderPassParams& params, bool doPrePass, bool doOITPass, GFX::CommandBuffer& bufferInOut);
     U16 prepareNodeData(VisibleNodeList<>& nodes, const RenderPassParams& params, bool hasInvalidNodes, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut);
-
     void renderQueueToSubPasses(GFX::CommandBuffer& commandsInOut,
                                 RenderPackage::MinQuality qualityRequirement = RenderPackage::MinQuality::COUNT) const;
 
     [[nodiscard]] U32 renderQueueSize(RenderPackage::MinQuality qualityRequirement = RenderPackage::MinQuality::COUNT) const;
 
-    void setMaterialInfoAt(size_t idx, PerRingEntryMaterialData::MaterialDataContainer& dataInOut, const NodeMaterialData& tempData, const NodeMaterialTextures& tempTextures);
+    void setMaterialInfoAt(size_t idx, NodeMaterialData& dataInOut, const NodeMaterialData& tempData, const NodeMaterialTextures& tempTextures);
 
     void resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const;
+
+    [[nodiscard]] bool validateNodesForStagePass(VisibleNodeList<>& nodes, const RenderStagePass& stagePass);
+    void parseMaterialRange(RenderBin::SortedQueue& queue, U32 start, U32 end);
+    static void RegisterIndirectionEntry(RenderingComponent* rComp);
+
+private:
+    friend class RenderingComponent;
+    static void OnRenderingComponentCreation(RenderingComponent* rComp);
+    static void OnRenderingComponentDestruction(RenderingComponent* rComp);
 
 private:
     RenderPassManager& _parent;
@@ -166,25 +212,19 @@ private:
     DrawCommandContainer _drawCommands{};
     RenderQueuePackages _renderQueuePackages{};
 
-    BufferUpdateRange _matUpdateRange{};
-    std::array<PerRingEntryTransformData, RenderPass::DataBufferRingSize> _nodeTransformData;
+    ShaderBuffer* _cmdBuffer = nullptr;
 
     eastl::set<SamplerAddress> _uniqueTextureAddresses{};
+
+    static bool s_globalDataInit;
 
     static Pipeline* s_OITCompositionPipeline;
     static Pipeline* s_OITCompositionMSPipeline;
     static Pipeline* s_ResolveScreenTargetsPipeline;
 
-    static bool s_globalDataInit;
-    static Mutex s_globalMaterialBufferLock;
-    static ShaderBuffer* s_globalMaterialBuffer;
-    static Mutex s_globalTransformBufferLock;
-    static ShaderBuffer* s_globalTransformBuffer;
-
-    static U32 s_materialDataBufferIndex;
-    static std::array<PerRingEntryMaterialData, RenderPass::DataBufferRingSize> s_materialData;
-    static U32 s_transformDataBufferIndex;
-    
+    static ExecutorBuffer<BufferMaterialData> s_materialBuffer;
+    static ExecutorBuffer<BufferTransformData> s_transformBuffer;
+    static ExecutorBuffer<BufferIndirectionData> s_indirectionBuffer;
 };
 } //namespace Divide
 

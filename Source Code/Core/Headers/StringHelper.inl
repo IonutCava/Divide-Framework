@@ -46,9 +46,9 @@ typename std::enable_if<std::is_same<T_vec, vector<T_str>>::value ||
 Split(const char* input, const char delimiter, T_vec& elems) {
     if (input != nullptr) {
         {
-            size_t i;
+            size_t i = 0u;
             const char* o = input;
-            for (i = 0; input[i]; input[i] == delimiter ? i++ : *input++) {
+            for (i = 0u; input[i]; input[i] == delimiter ? i++ : *input++) {
                 NOP();
             }
             elems.resize(i + 1);
@@ -57,7 +57,7 @@ Split(const char* input, const char delimiter, T_vec& elems) {
 
         string item;
         istringstream ss(input);
-        size_t idx = 0;
+        size_t idx = 0u;
         while (std::getline(ss, item, delimiter)) {
             elems[idx++] = MOV(item);
         }
@@ -310,7 +310,7 @@ T_str& Ltrim(T_str& s) {
     s.erase(eastl::begin(s),
             eastl::find_if(eastl::begin(s),
                          eastl::end(s),
-                         [](const char c) { return !std::isspace(c); }));
+                         [](const char c) noexcept { return !std::isspace(c); }));
     return s;
 }
 
@@ -324,7 +324,7 @@ template<typename T_str>
 T_str& Rtrim(T_str& s) {
     s.erase(eastl::find_if(eastl::rbegin(s),
                          eastl::rend(s),
-                         [](const char c) { return !std::isspace(c); }).base(),
+                         [](const char c) noexcept { return !std::isspace(c); }).base(),
             eastl::end(s));
     return s;
 }

@@ -55,7 +55,7 @@ RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, Str64 name
       _name(MOV(name))
 {
     for (U8 i = 0u; i < to_base(_stageFlag); ++i) {
-        const U8 passCountToSkip = RenderStagePass::totalPassCountForStage(static_cast<RenderStage>(i));
+        const U8 passCountToSkip = RenderStagePass::TotalPassCountForStage(static_cast<RenderStage>(i));
         _transformIndexOffset += passCountToSkip * Config::MAX_VISIBLE_NODES;
     }
 }
@@ -81,7 +81,7 @@ void RenderPass::initBufferData() {
     bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
     bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
     bufferDescriptor._separateReadWrite = false;
-    bufferDescriptor._bufferParams._elementCount = RenderStagePass::totalPassCountForStage(_stageFlag) * Config::MAX_VISIBLE_NODES;
+    bufferDescriptor._bufferParams._elementCount = RenderStagePass::TotalPassCountForStage(_stageFlag) * Config::MAX_VISIBLE_NODES;
     bufferDescriptor._usage = ShaderBuffer::Usage::COMMAND_BUFFER;
     bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
     bufferDescriptor._bufferParams._elementSize = sizeof(IndirectDrawCommand);
@@ -98,8 +98,6 @@ RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass& stagePas
     ret._commandBuffer = _cmdBuffer;
     ret._lastCommandCount = &_lastCmdCount;
     ret._lastNodeCount = &_lastNodeCount;
-    ret._commandElementOffset   = RenderStagePass::indexForStage(stagePass) * Config::MAX_VISIBLE_NODES;
-    ret._transformElementOffset = _transformIndexOffset + ret._commandElementOffset;
     return ret;
 }
 

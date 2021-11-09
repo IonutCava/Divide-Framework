@@ -21,23 +21,170 @@
 
 namespace Divide {
 namespace {
+    constexpr U16 g_invalidMaterialIndex = Config::MAX_CONCURRENT_MATERIALS;
     // Remove materials that haven't been indexed in this amount of frames to make space for new ones
     constexpr U16 g_maxMaterialFrameLifetime = 6u;
     // Use to partition parallel jobs
     constexpr U32 g_nodesPerPrepareDrawPartition = 16u;
+
+    template<typename DataContainer>
+    using ExecutorBuffer = RenderPassExecutor::ExecutorBuffer<DataContainer>;
+    using BufferUpdateRange = RenderPassExecutor::BufferUpdateRange;
+
+    FORCE_INLINE bool operator==(const BufferUpdateRange& lhs, const BufferUpdateRange& rhs) noexcept {
+        return lhs._firstIDX == rhs._firstIDX && lhs._lastIDX == rhs._lastIDX;
+    }
+
+    FORCE_INLINE bool operator!=(const BufferUpdateRange& lhs, const BufferUpdateRange& rhs) noexcept {
+        return lhs._firstIDX != rhs._firstIDX || lhs._lastIDX != rhs._lastIDX;
+    }
+
+    FORCE_INLINE bool Contains(const BufferUpdateRange& lhs, const BufferUpdateRange& rhs) noexcept {
+        return lhs._firstIDX <= rhs._firstIDX && lhs._lastIDX >= rhs._lastIDX;
+    }
+
+    FORCE_INLINE BufferUpdateRange GetPrevRangeDiff(const BufferUpdateRange& crtRange, const BufferUpdateRange& prevRange) {
+        if (crtRange.range() == 0u) {
+            return prevRange;
+        }
+
+        BufferUpdateRange ret;
+        // We only care about the case where the previous range is not fully contained by the current one
+        if (prevRange.range() > 0u && prevRange != crtRange && !Contains(crtRange, prevRange)) {
+            if (prevRange._firstIDX < crtRange._firstIDX && prevRange._lastIDX > crtRange._lastIDX) {
+                ret = prevRange;
+            } else if (prevRange._firstIDX < crtRange._firstIDX) {
+                ret._firstIDX = prevRange._firstIDX;
+                ret._lastIDX = crtRange._firstIDX;
+            } else if (prevRange._lastIDX > crtRange._lastIDX) {
+                ret._firstIDX = crtRange._lastIDX;
+                ret._lastIDX = prevRange._lastIDX;
+            } else {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+        }
+
+        return ret;
+    }
+
+    template<typename DataContainer>
+    FORCE_INLINE U32 GetPreviousIndex(ExecutorBuffer<DataContainer>& executorBuffer, U32 idx) {
+        if (idx == 0) {
+            idx = executorBuffer._gpuBuffer->queueLength();
+        }
+
+        return (idx - 1) % executorBuffer._gpuBuffer->queueLength();
+    };
+
+    template<typename DataContainer>
+    FORCE_INLINE U32 GetNextIndex(ExecutorBuffer<DataContainer>& executorBuffer, const U32 idx) {
+        return (idx + 1) % executorBuffer._gpuBuffer->queueLength();
+    };
+
+    FORCE_INLINE bool MergeBufferUpdateRanges(BufferUpdateRange& target, const BufferUpdateRange& source) noexcept {
+        bool ret = false;
+        if (target._firstIDX > source._firstIDX) {
+            target._firstIDX = source._firstIDX;
+            ret = true;
+        }
+        if (target._lastIDX < source._lastIDX) {
+            target._lastIDX = source._lastIDX;
+            ret = true;
+        }
+
+        return ret;
+    };
+
+    template<typename DataContainer>
+    FORCE_INLINE void UpdateBufferRangeLocked(ExecutorBuffer<DataContainer>&executorBuffer, const U32 idx) noexcept {
+        if (executorBuffer._bufferUpdateRange._firstIDX > idx) {
+            executorBuffer._bufferUpdateRange._firstIDX = idx;
+        }
+        if (executorBuffer._bufferUpdateRange._lastIDX < idx) {
+            executorBuffer._bufferUpdateRange._lastIDX = idx;
+        }
+
+        executorBuffer._highWaterMark = std::max(executorBuffer._highWaterMark, idx);
+    }
+
+    template<typename DataContainer>
+    void UpdateBufferRange(ExecutorBuffer<DataContainer>& executorBuffer, const U32 idx) {
+        ScopedLock<Mutex> w_lock(executorBuffer._lock);
+        UpdateBufferRangeLocked(executorBuffer, idx);
+    }
+
+    template<typename DataContainer>
+    void WriteToGPUBufferInternal(ExecutorBuffer<DataContainer>& executorBuffer, BufferUpdateRange target) {
+        if (target.range() == 0u) {
+            return;
+        }
+
+        const size_t bufferAlignmentRequirement = ShaderBuffer::AlignmentRequirement(executorBuffer._gpuBuffer->getUsage());
+        const size_t bufferPrimitiveSize = executorBuffer._gpuBuffer->getPrimitiveSize();
+        if (bufferPrimitiveSize < bufferAlignmentRequirement) {
+            // We need this due to alignment concerns: e.g. 16byte alignment with 8byte NodeIndirectionData
+            if (target._firstIDX % 2u != 0) {
+                target._firstIDX -= 1u;
+            }
+            if (target._lastIDX % 2u == 0) {
+                target._lastIDX += 1u;
+            }
+        }
+        executorBuffer._gpuBuffer->writeData(target._firstIDX, target.range(), &executorBuffer._data._gpuData[target._firstIDX]);
+    }
+
+    template<typename DataContainer>
+    void WriteToGPUBuffer(ExecutorBuffer<DataContainer>& executorBuffer) {
+        ScopedLock<Mutex> w_lock(executorBuffer._lock);
+
+        if (!MergeBufferUpdateRanges(executorBuffer._bufferUpdateRangeHistory.back(), executorBuffer._bufferUpdateRange)) {
+            NOP();
+        }
+
+        WriteToGPUBufferInternal(executorBuffer, executorBuffer._bufferUpdateRange);
+        executorBuffer._bufferUpdateRange.reset();
+
+        // We don't need to write everything again as big chunks have been written as part of the normal frame update process
+        // Try and find only the items unoutched this frame
+        const BufferUpdateRange prevFrameDiff = GetPrevRangeDiff(executorBuffer._bufferUpdateRangeHistory.back(), executorBuffer._bufferUpdateRangePrev);
+        // Write any nodes we missed this frame but wrote the previous one
+        WriteToGPUBufferInternal(executorBuffer, prevFrameDiff);
+        executorBuffer._bufferUpdateRangePrev.reset();
+    }
+
+    template<typename DataContainer>
+    void ExecutorBufferPostRender(ExecutorBuffer<DataContainer>& executorBuffer) {
+        ScopedLock<Mutex> w_lock(executorBuffer._lock);
+
+        //Console::errorfn("Writing to buffer [%s - %d] frame end", executorBuffer._gpuBuffer->name().c_str(), executorBuffer._bufferIndex);
+        const BufferUpdateRange rangeWrittenThisFrame = executorBuffer._bufferUpdateRangeHistory.back();
+        // At the end of the frame, bump our history queue by one position and prepare the tail for a new write
+        std::rotate(begin(executorBuffer._bufferUpdateRangeHistory),
+                    begin(executorBuffer._bufferUpdateRangeHistory) + 1,
+                    end(executorBuffer._bufferUpdateRangeHistory));
+
+        executorBuffer._bufferUpdateRangeHistory.back().reset();
+
+        // We can gather all of our history (once we evicted the oldest entry) into our "previous frame written range" entry
+        executorBuffer._bufferUpdateRangePrev.reset();
+        for (I32 i = 0; i < executorBuffer._gpuBuffer->queueLength() - 1; ++i) {
+            MergeBufferUpdateRanges(executorBuffer._bufferUpdateRangePrev, executorBuffer._bufferUpdateRangeHistory[i]);
+        }
+
+        // We need to increment our buffer queue to get the new write range into focus
+        executorBuffer._bufferIndex = to_U32(executorBuffer._gpuBuffer->incQueue());
+    }
 }
 
 bool RenderPassExecutor::s_globalDataInit = false;
+
 Pipeline* RenderPassExecutor::s_OITCompositionPipeline = nullptr;
 Pipeline* RenderPassExecutor::s_OITCompositionMSPipeline = nullptr;
 Pipeline* RenderPassExecutor::s_ResolveScreenTargetsPipeline = nullptr;
-Mutex RenderPassExecutor::s_globalMaterialBufferLock;
-ShaderBuffer* RenderPassExecutor::s_globalMaterialBuffer = nullptr;
-Mutex RenderPassExecutor::s_globalTransformBufferLock;
-ShaderBuffer* RenderPassExecutor::s_globalTransformBuffer = nullptr;
-U32 RenderPassExecutor::s_materialDataBufferIndex = 0u;
-std::array<RenderPassExecutor::PerRingEntryMaterialData, RenderPass::DataBufferRingSize> RenderPassExecutor::s_materialData;
-U32 RenderPassExecutor::s_transformDataBufferIndex = 0u;
+
+RenderPassExecutor::ExecutorBuffer<RenderPassExecutor::BufferMaterialData> RenderPassExecutor::s_materialBuffer;
+RenderPassExecutor::ExecutorBuffer<RenderPassExecutor::BufferTransformData> RenderPassExecutor::s_transformBuffer;
+RenderPassExecutor::ExecutorBuffer<RenderPassExecutor::BufferIndirectionData> RenderPassExecutor::s_indirectionBuffer;
 
 RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, const RenderStage stage)
     : _parent(parent)
@@ -45,6 +192,23 @@ RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& con
     , _stage(stage)
     , _renderQueue(parent.parent(), stage)
 {
+}
+
+void RenderPassExecutor::OnStartup() {
+    for (std::atomic_bool& val : s_transformBuffer._data._processedThisFrame) {
+        val.store(false);
+    }
+    for (std::atomic_bool& val : s_materialBuffer._data._processedThisFrame) {
+        val.store(false);
+    }
+
+    s_transformBuffer._data._freeList.fill(true);
+    s_indirectionBuffer._data._freeList.fill(true);
+    s_materialBuffer._data._nodeMaterialLookupInfo.fill({ Material::INVALID_MAT_HASH, g_invalidMaterialIndex });
+}
+
+void RenderPassExecutor::OnShutdown() {
+
 }
 
 void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
@@ -66,47 +230,45 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
         pipelineDescriptor._shaderProgramHandle = ResolveScreenTargetsShaderMS->getGUID();
         s_ResolveScreenTargetsPipeline = _context.newPipeline(pipelineDescriptor);
 
-        U32 totalPassCount = 0u;
-        for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i) {
-            totalPassCount += RenderStagePass::totalPassCountForStage(static_cast<RenderStage>(i));
-        }
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+        //bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = false;
         bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
         bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
         bufferDescriptor._separateReadWrite = false;
         bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
         bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::NONE);
-
-        {// Node Transform buffer
-            bufferDescriptor._bufferParams._elementCount = totalPassCount * Config::MAX_VISIBLE_NODES;
-            bufferDescriptor._bufferParams._elementSize = sizeof(NodeTransformData);
-            bufferDescriptor._name = "NODE_TRANSFORM_DATA";
-            s_globalTransformBuffer = _context.newSB(bufferDescriptor);
-        }
+        //bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
         {// Node Material buffer
             bufferDescriptor._bufferParams._elementCount = Config::MAX_CONCURRENT_MATERIALS;
             bufferDescriptor._bufferParams._elementSize = sizeof(NodeMaterialData);
             bufferDescriptor._name = "NODE_MATERIAL_DATA";
-            s_globalMaterialBuffer = _context.newSB(bufferDescriptor);
-
-            ScopedLock<Mutex> w_lock(s_globalMaterialBufferLock);
-            s_materialDataBufferIndex = s_globalMaterialBuffer->queueWriteIndex();
-            for (PerRingEntryMaterialData& data : s_materialData) {
-                data._nodeMaterialLookupInfo.fill({ Material::INVALID_MAT_HASH, U16_MAX });
-            }
+            s_materialBuffer._gpuBuffer = _context.newSB(bufferDescriptor);
+            s_materialBuffer._bufferUpdateRangeHistory.resize(bufferDescriptor._ringBufferLength);
+        }
+        {// Node Transform buffer
+            bufferDescriptor._bufferParams._elementCount = MAX_INDIRECTION_ENTRIES;
+            bufferDescriptor._bufferParams._elementSize = sizeof(NodeTransformData);
+            bufferDescriptor._name = "NODE_TRANSFORM_DATA";
+            s_transformBuffer._gpuBuffer = _context.newSB(bufferDescriptor);
+            s_transformBuffer._bufferUpdateRangeHistory.resize(bufferDescriptor._ringBufferLength);
+        }
+        {// Indirection Buffer
+            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+            bufferDescriptor._bufferParams._elementSize = sizeof(NodeIndirectionData);
+            bufferDescriptor._name = "NODE_INDIRECTION_DATA";
+            //bufferDescriptor._ringBufferLength = 1u;
+            s_indirectionBuffer._gpuBuffer = _context.newSB(bufferDescriptor);
+            s_indirectionBuffer._bufferUpdateRangeHistory.resize(bufferDescriptor._ringBufferLength);
         }
     }
 }
 
-void RenderPassExecutor::setMaterialInfoAt(const size_t idx, PerRingEntryMaterialData::MaterialDataContainer& dataInOut, const NodeMaterialData& tempData, const NodeMaterialTextures& tempTextures) {
+void RenderPassExecutor::setMaterialInfoAt(const size_t idx, NodeMaterialData& dataInOut, const NodeMaterialData& tempData, const NodeMaterialTextures& tempTextures) {
     OPTICK_EVENT();
 
-    assert(idx < dataInOut.size());
-
-    NodeMaterialData& target = dataInOut[idx];
-    target = tempData;
+    dataInOut = tempData;
 
     // GL_ARB_bindless_texture:
     // In the following four constructors, the low 32 bits of the sampler
@@ -118,8 +280,8 @@ void RenderPassExecutor::setMaterialInfoAt(const size_t idx, PerRingEntryMateria
     // any image type(uvec2)       // Converts a pair of 32-bit unsigned integers to an image type
     for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
         const SamplerAddress combined = tempTextures[i];
-        target._textures[i / 2][(i % 2) * 2 + 0] = to_U32(combined & 0xFFFFFFFF); //low
-        target._textures[i / 2][(i % 2) * 2 + 1] = to_U32(combined >> 32); //high
+        dataInOut._textures[i / 2][(i % 2) * 2 + 0] = to_U32(combined & 0xFFFFFFFF); //low
+        dataInOut._textures[i / 2][(i % 2) * 2 + 1] = to_U32(combined >> 32); //high
     }
 
     // second loop for cache reasons. 0u is fine as an address since we filter it at graphics API level.
@@ -128,17 +290,17 @@ void RenderPassExecutor::setMaterialInfoAt(const size_t idx, PerRingEntryMateria
     }
 }
 
-void RenderPassExecutor::processVisibleNodeTransform(PerRingEntryTransformData& transformData,
-                                                     RenderingComponent* rComp,
-                                                     const RenderStage stage,
-                                                     const D64 interpolationFactor,
-                                                     const U16 nodeIndex) {
+void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, const D64 interpolationFactor) {
     OPTICK_EVENT();
 
-    // Rewrite all transforms
-    // ToDo: Cache transforms for static nodes -Ionut
-    NodeTransformData& transformOut = transformData[nodeIndex];
-    //transformOut = {}; //We will rewrite everything anyway
+    // This should be thread safe. We OWN these entries
+    const U32 indirectionIDX = rComp->indirectionBufferEntry();
+    bool expected = false;
+    if (!s_transformBuffer._data._processedThisFrame[indirectionIDX].compare_exchange_strong(expected, true)) {
+        return;
+    }
+
+    NodeTransformData transformOut;
 
     const SceneGraphNode* node = rComp->getSGN();
     { // Transform
@@ -159,7 +321,7 @@ void RenderPassExecutor::processVisibleNodeTransform(PerRingEntryTransformData& 
     U8 boneCount = 0u;
     U8 frameTicked = 0u;
     { //Animation
-        AnimationComponent* animComp = node->get<AnimationComponent>();
+        const AnimationComponent* animComp = node->get<AnimationComponent>();
         if (animComp && animComp->playAnimations()) {
             boneCount = animComp->boneCount();
             if (animComp->frameTicked()) {
@@ -169,7 +331,6 @@ void RenderPassExecutor::processVisibleNodeTransform(PerRingEntryTransformData& 
     }
     { //Misc
         const F32 nodeFlagValue = rComp->dataFlag();
-        const U8 lod = rComp->getLodLevel(stage);
         const U8 occlusionCull = rComp->occlusionCull() ? 1u : 0u;
 
         // Since the normal matrix is 3x3, we can use the extra row and column to store additional data
@@ -179,14 +340,21 @@ void RenderPassExecutor::processVisibleNodeTransform(PerRingEntryTransformData& 
         const vec3<F32> bBoxHalfExtents = bounds->getBoundingBox().getHalfExtent();
 
         transformOut._normalMatrixW.setRow(3, bSphereCenter.x, bSphereCenter.y, bSphereCenter.z, nodeFlagValue);
-        transformOut._normalMatrixW.element(0, 3) = to_F32(Util::PACK_UNORM4x8(boneCount, lod, frameTicked, occlusionCull));
+        transformOut._normalMatrixW.element(0, 3) = to_F32(Util::PACK_UNORM4x8(boneCount, 0u, frameTicked, occlusionCull));
         transformOut._normalMatrixW.element(1, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.xy));
         transformOut._normalMatrixW.element(2, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.z, bSphere.getRadius()));
     }
+
+    const U32 transformIDX = s_indirectionBuffer._data._gpuData[indirectionIDX]._transformIDX;
+    ScopedLock<Mutex> w_lock(s_transformBuffer._lock);
+    UpdateBufferRangeLocked(s_transformBuffer, transformIDX);
+    s_transformBuffer._data._gpuData[transformIDX] = transformOut;
 }
 
-U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp) {
+U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit) {
     OPTICK_EVENT();
+
+    cacheHit = false;
 
     NodeMaterialData tempData{};
     NodeMaterialTextures tempTextures{};
@@ -197,28 +365,26 @@ U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp) {
     size_t materialHash = HashMaterialData(tempData);
     Util::Hash_combine(materialHash, HashTexturesData(tempTextures));
 
-    const auto findMaterialMatch = [](const size_t targetHash, PerRingEntryMaterialData::LookupInfoContainer& data) -> U16 {
-        assert(data.size() < U16_MAX);
-
+    const auto findMaterialMatch = [](const size_t targetHash, BufferMaterialData::LookupInfoContainer& data) -> U16 {
         const U16 count = to_U16(data.size());
         for (U16 idx = 0u; idx < count; ++idx) {
-            auto& [hash, _] = data[idx];
+            const auto [hash, _] = data[idx];
             if (hash == targetHash) {
                 return idx;
             }
         }
 
-        return U16_MAX;
+        return g_invalidMaterialIndex;
     };
 
-    ScopedLock<Mutex> w_lock(s_globalMaterialBufferLock);
-    PerRingEntryMaterialData& materialData = s_materialData[s_materialDataBufferIndex];
-    PerRingEntryMaterialData::LookupInfoContainer& infoContainer = materialData._nodeMaterialLookupInfo;
+    ScopedLock<Mutex> w_lock(s_materialBuffer._lock);
+    BufferMaterialData::LookupInfoContainer& infoContainer = s_materialBuffer._data._nodeMaterialLookupInfo;
     {// Try and match an existing material
         OPTICK_EVENT("processVisibleNode - try match material");
         const U16 idx = findMaterialMatch(materialHash, infoContainer);
-        if (idx != U16_MAX) {
+        if (idx != g_invalidMaterialIndex) {
             infoContainer[idx].second = 0u;
+            cacheHit = true;
             return idx;
         }
     }
@@ -226,11 +392,11 @@ U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp) {
     // If we fail, try and find an empty slot and update it
     OPTICK_EVENT("processVisibleNode - process unmatched material");
     // No match found (cache miss) so add a new entry.
-    std::pair<U16, U16> bestCandidate = { U16_MAX, 0u };
+    std::pair<U16, U16> bestCandidate = { g_invalidMaterialIndex, 0u };
 
     const U16 count = to_U16(infoContainer.size());
     for (U16 idx = 0u; idx < count; ++idx) {
-        auto& [hash, framesSinceLastUsed] = infoContainer[idx];
+        const auto [hash, framesSinceLastUsed] = infoContainer[idx];
         // Two cases here. We either have empty slots (e.g. startup, cache clear, etc) ...
         if (hash == Material::INVALID_MAT_HASH) {
             // ... in which case our current idx is what we are looking for ...
@@ -245,19 +411,39 @@ U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp) {
             // Keep going and see if we can find an even older entry
         }
     }
-    DIVIDE_ASSERT(bestCandidate.first != U16_MAX, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
 
-    if (_matUpdateRange._firstIDX > bestCandidate.first) {
-        _matUpdateRange._firstIDX = bestCandidate.first;
-    }
-    if (_matUpdateRange._lastIDX < bestCandidate.first + 1u) {
-        _matUpdateRange._lastIDX = bestCandidate.first + 1u;
-    }
+    DIVIDE_ASSERT(bestCandidate.first != g_invalidMaterialIndex, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
 
     infoContainer[bestCandidate.first] = { materialHash, 0u };
-    setMaterialInfoAt(bestCandidate.first, materialData._nodeMaterialData, tempData, tempTextures);
+    assert(bestCandidate.first < s_materialBuffer._data._gpuData.size());
+
+    NodeMaterialData& target = s_materialBuffer._data._gpuData[bestCandidate.first];
+    setMaterialInfoAt(bestCandidate.first, target, tempData, tempTextures);
+    UpdateBufferRangeLocked(s_materialBuffer, bestCandidate.first);
 
     return bestCandidate.first;
+}
+
+void RenderPassExecutor::parseMaterialRange(RenderBin::SortedQueue& queue, const U32 start, const U32 end) {
+    for (U32 i = start; i < end; ++i) {
+
+        const U32 indirectionIDX = queue[i]->indirectionBufferEntry();
+
+        bool expected = false;
+        if (!s_materialBuffer._data._processedThisFrame[indirectionIDX].compare_exchange_strong(expected, true)) {
+            continue;
+        }
+
+        [[maybe_unused]] bool cacheHit = false;
+        const U16 idx = processVisibleNodeMaterial(queue[i], cacheHit);
+        DIVIDE_ASSERT(idx != g_invalidMaterialIndex && idx != U32_MAX);
+
+        // We are already protected by the atomic boolean for this entry
+        if (s_indirectionBuffer._data._gpuData[indirectionIDX]._materialIDX != idx) {
+            s_indirectionBuffer._data._gpuData[indirectionIDX]._materialIDX = idx;
+            UpdateBufferRange(s_indirectionBuffer, indirectionIDX);
+        }
+    }
 }
 
 U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut) {
@@ -267,24 +453,20 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
 
     RenderStagePass stagePass = params._stagePass;
     RenderPass::BufferData bufferData = _parent.getPassForStage(_stage).getBufferData(stagePass);
-    ShaderBuffer* cmdBuffer = bufferData._commandBuffer;
-
-    const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
+    _cmdBuffer = bufferData._commandBuffer;
 
     _drawCommands.clear();
- 
     _uniqueTextureAddresses.clear();
 
     for (RenderBin::SortedQueue& sQueue : _sortedQueues) {
         sQueue.resize(0);
-        sQueue.reserve(Config::MAX_VISIBLE_NODES);
     }
 
     const U16 queueTotalSize = _renderQueue.getSortedQueues({}, _sortedQueues);
 
     { //Erase nodes with no draw commands
-        const auto erasePredicate = [&stagePass](std::pair<RenderingComponent*, NodeDataIdx>& item) {
-            return !Attorney::RenderingCompRenderPass::hasDrawCommands(*item.first, stagePass);
+        const auto erasePredicate = [&stagePass](RenderingComponent* item) {
+            return !Attorney::RenderingCompRenderPass::hasDrawCommands(*item, stagePass);
         };
 
         for (RenderBin::SortedQueue& queue : _sortedQueues) {
@@ -294,32 +476,30 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
 
     TaskPool& pool = _context.context().taskPool(TaskPoolType::HIGH_PRIORITY);
     Task* updateTask = CreateTask(TASK_NOP);
-
     {
         OPTICK_EVENT("buildDrawCommands - process nodes: Transforms")
         U32& nodeCount = *bufferData._lastNodeCount;
         nodeCount = 0u;
-        const auto parseRange = [this, renderStage = stagePass._stage, interpFactor](const U32 nodeCount, RenderBin::SortedQueue& queue, const U32 start, const U32 end) {
-            auto& nodeTransforms = _nodeTransformData[s_transformDataBufferIndex];
-            for (U32 i = start; i < end; ++i) {
-                auto& [rComp, dataIdx] = queue[i];
-                dataIdx._transformIDX = to_U16(i + nodeCount);
-                processVisibleNodeTransform(nodeTransforms, rComp, renderStage, interpFactor, dataIdx._transformIDX);
-            }
-        };
-
         for (RenderBin::SortedQueue& queue : _sortedQueues) {
             const U32 queueSize = to_U32(queue.size());
             if (queueSize > g_nodesPerPrepareDrawPartition) {
-                const U32 midPoint = queueSize / 2;
-                Start(*CreateTask(updateTask, [&queue, &parseRange, nodeCount, midPoint](const Task&) {
-                    parseRange(nodeCount, queue, 0u, midPoint);
+                Start(*CreateTask(updateTask, [this, &queue, queueSize](const Task&) {
+                    const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
+                    for (U32 i = 0u; i < queueSize / 2; ++i) {
+                        processVisibleNodeTransform(queue[i], interpFactor);
+                    }
                 }), pool); 
-                Start(*CreateTask(updateTask, [&queue, &parseRange, nodeCount, midPoint, queueSize](const Task&) {
-                    parseRange(nodeCount, queue, midPoint, queueSize);
+                Start(*CreateTask(updateTask, [this, &queue, queueSize](const Task&) {
+                    const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
+                    for (U32 i = queueSize / 2; i < queueSize; ++i) {
+                        processVisibleNodeTransform(queue[i], interpFactor);
+                    }
                 }), pool);
             } else {
-                parseRange(nodeCount, queue, 0u, queueSize);
+                const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
+                for (U32 i = 0u; i < queueSize; ++i) {
+                    processVisibleNodeTransform(queue[i], interpFactor);
+                }
             }
             nodeCount += queueSize;
         }
@@ -327,26 +507,18 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
     }
     {
         OPTICK_EVENT("buildDrawCommands - process nodes: Materials")
-
-        const auto parseRange = [this](RenderBin::SortedQueue& queue, const U32 start, const U32 end) {
-            for (U32 i = start; i < end; ++i) {
-                auto& [rComp, dataIdx] = queue[i];
-                dataIdx._materialIDX = processVisibleNodeMaterial(rComp);
-            }
-        };
-
         for (RenderBin::SortedQueue& queue : _sortedQueues) {
             const U32 queueSize = to_U32(queue.size());
             if (queueSize > g_nodesPerPrepareDrawPartition) {
                 const U32 midPoint = queueSize / 2;
-                Start(*CreateTask(updateTask, [&queue, &parseRange, midPoint](const Task&) {
-                    parseRange(queue, 0u, midPoint);
+                Start(*CreateTask(updateTask, [this, &queue, midPoint](const Task&) {
+                    parseMaterialRange(queue, 0u, midPoint);
                 }), pool);
-                Start(*CreateTask(updateTask, [&queue, &parseRange, midPoint, queueSize](const Task&) {
-                    parseRange(queue, midPoint, queueSize);
+                Start(*CreateTask(updateTask, [this, &queue, midPoint, queueSize](const Task&) {
+                    parseMaterialRange(queue, midPoint, queueSize);
                 }), pool);
             } else {
-                parseRange(queue, 0u, queueSize);
+                parseMaterialRange(queue, 0u, queueSize);
             }
         }
     }
@@ -355,80 +527,45 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
         StartAndWait(*updateTask, pool);
     }
 
-    const U32 cmdOffset = (cmdBuffer->queueWriteIndex() * cmdBuffer->getPrimitiveCount()) + bufferData._commandElementOffset;
-    const RenderPassType prevType = stagePass._passType;
+    const U32 commandElementOffset = RenderStagePass::IndexForStage(stagePass) * Config::MAX_VISIBLE_NODES;
+    const U32 cmdOffset = (_cmdBuffer->queueWriteIndex() * _cmdBuffer->getPrimitiveCount()) + commandElementOffset;
     const auto retrieveCommands = [&]() {
         for (RenderBin::SortedQueue& queue : _sortedQueues) {
-            for (auto& [rComp, dataIdx] : queue) {
-                Attorney::RenderingCompRenderPass::retrieveDrawCommands(*rComp, stagePass, cmdOffset, dataIdx, _drawCommands);
+            for (RenderingComponent* rComp : queue) {
+                Attorney::RenderingCompRenderPass::retrieveDrawCommands(*rComp, stagePass, cmdOffset, _drawCommands);
             }
         }
     };
 
-    if (doPrePass) {
-        OPTICK_EVENT("buildDrawCommands - retrieve draw commands: PRE_PASS")
-        stagePass._passType = RenderPassType::PRE_PASS;
-        retrieveCommands();
+    {
+        const RenderPassType prevType = stagePass._passType;
+        if (doPrePass) {
+            OPTICK_EVENT("buildDrawCommands - retrieve draw commands: PRE_PASS")
+            stagePass._passType = RenderPassType::PRE_PASS;
+            retrieveCommands();
+        }
+        if (doMainPass) {
+            OPTICK_EVENT("buildDrawCommands - retrieve draw commands: MAIN_PASS")
+            stagePass._passType = RenderPassType::MAIN_PASS;
+            retrieveCommands();
+        }
+        if (doOITPass) {
+            OPTICK_EVENT("buildDrawCommands - retrieve draw commands: OIT_PASS")
+            stagePass._passType = RenderPassType::OIT_PASS;
+            retrieveCommands();
+        }
+        stagePass._passType = prevType;
     }
-    if (doMainPass) {
-        OPTICK_EVENT("buildDrawCommands - retrieve draw commands: MAIN_PASS")
-        stagePass._passType = RenderPassType::MAIN_PASS;
-        retrieveCommands();
-    }
-    if (doOITPass) {
-        OPTICK_EVENT("buildDrawCommands - retrieve draw commands: OIT_PASS")
-        stagePass._passType = RenderPassType::OIT_PASS;
-        retrieveCommands();
-    }
-    
-    stagePass._passType = prevType;
 
     *bufferData._lastCommandCount = to_U32(_drawCommands.size());
 
     {
         OPTICK_EVENT("buildDrawCommands - update buffers");
 
-        cmdBuffer->writeData(bufferData._commandElementOffset, *bufferData._lastCommandCount, _drawCommands.data());
-
-        {
-            ScopedLock<Mutex> w_lock(s_globalTransformBufferLock);
-            PerRingEntryTransformData& transformData = _nodeTransformData[s_materialDataBufferIndex];
-            s_globalTransformBuffer->writeData(bufferData._transformElementOffset, *bufferData._lastNodeCount, transformData.data());
-        }
-
-        if (_matUpdateRange.range() > 0u) {
-            ScopedLock<Mutex> w_lock(s_globalMaterialBufferLock);
-            PerRingEntryMaterialData& materialData = s_materialData[s_materialDataBufferIndex];
-            s_globalMaterialBuffer->writeData(_matUpdateRange._firstIDX, _matUpdateRange.range(), &materialData._nodeMaterialData[_matUpdateRange._firstIDX]);
-        }
-        _matUpdateRange.reset();
-    }
-
-    ShaderBufferBinding cmdBufferBinding{};
-    cmdBufferBinding._elementRange = { 0u, cmdBuffer->getPrimitiveCount() };
-    cmdBufferBinding._buffer = cmdBuffer;
-    cmdBufferBinding._binding = ShaderBufferLocation::CMD_BUFFER;
-
-    ShaderBufferBinding transformBufferBinding{};
-    transformBufferBinding._elementRange = { bufferData._transformElementOffset, Config::MAX_VISIBLE_NODES };
-    transformBufferBinding._buffer = s_globalTransformBuffer;
-    transformBufferBinding._binding = ShaderBufferLocation::NODE_TRANSFORM_DATA;
-
-    ShaderBufferBinding materialBufferBinding{};
-    materialBufferBinding._elementRange = { 0u, Config::MAX_CONCURRENT_MATERIALS };
-    materialBufferBinding._buffer = s_globalMaterialBuffer;
-    materialBufferBinding._binding = ShaderBufferLocation::NODE_MATERIAL_DATA;
-
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._buffers.add(cmdBufferBinding);
-    set._buffers.add(transformBufferBinding);
-    set._buffers.add(materialBufferBinding);
-
-    if (_uniqueTextureAddresses.size() > 0u) {
-        GFX::SetTexturesResidencyCommand residencyCmd = {};
-        residencyCmd._addresses = _uniqueTextureAddresses;
-        residencyCmd._state = true;
-        GFX::EnqueueCommand(bufferInOut, residencyCmd);
+        _cmdBuffer->writeData(commandElementOffset, *bufferData._lastCommandCount, _drawCommands.data());
+        WriteToGPUBuffer(s_materialBuffer);
+        WriteToGPUBuffer(s_transformBuffer);
+        WriteToGPUBuffer(s_indirectionBuffer);
     }
 
     return queueTotalSize;
@@ -453,34 +590,32 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes, const RenderPa
     const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
     const Camera& cam = *params._camera;
 
-    _renderQueue.refresh();
+    {
+        _renderQueue.refresh();
+        ParallelForDescriptor descriptor = {};
+        descriptor._iterCount = to_U32(nodes.size());
+        descriptor._cbk = [&](const Task* /*parentTask*/, const U32 start, const U32 end) {
+            for (U32 i = start; i < end; ++i) {
+                const VisibleNode& node = nodes.node(i);
+                assert(node._materialReady);
+                RenderingComponent * rComp = node._node->get<RenderingComponent>();
+                Attorney::RenderingCompRenderPass::prepareDrawPackage(*rComp, cam, sceneRenderState, stagePass, true);
+                _renderQueue.addNodeToQueue(node._node, stagePass, node._distanceToCameraSq);
+            }
+        };
 
-    ParallelForDescriptor descriptor = {};
-    descriptor._iterCount = to_U32(nodes.size());
-    descriptor._cbk = [&](const Task* /*parentTask*/, const U32 start, const U32 end) {
-        for (U32 i = start; i < end; ++i) {
-            VisibleNode& node = nodes.node(i);
-            assert(node._materialReady);
-            RenderingComponent * rComp = node._node->get<RenderingComponent>();
-            Attorney::RenderingCompRenderPass::prepareDrawPackage(*rComp, cam, sceneRenderState, stagePass, true);
-            _renderQueue.addNodeToQueue(node._node, stagePass, node._distanceToCameraSq);
+        if (descriptor._iterCount < g_nodesPerPrepareDrawPartition) {
+            descriptor._cbk(nullptr, 0, descriptor._iterCount);
+        } else {
+            descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
+            descriptor._priority = TaskPriority::DONT_CARE;
+            descriptor._useCurrentThread = true;
+            parallel_for(_parent.parent().platformContext(), descriptor);
         }
-    };
-
-    if (descriptor._iterCount < g_nodesPerPrepareDrawPartition) {
-        descriptor._cbk(nullptr, 0, descriptor._iterCount);
-    } else {
-        descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
-        descriptor._priority = TaskPriority::DONT_CARE;
-        descriptor._useCurrentThread = true;
-        parallel_for(_parent.parent().platformContext(), descriptor);
+        _renderQueue.sort(stagePass);
     }
 
-    _renderQueue.sort(stagePass);
-
     _renderQueuePackages.resize(0);
-    _renderQueuePackages.reserve(Config::MAX_VISIBLE_NODES);
-
     // Draw everything in the depth pass but only draw stuff from the translucent bin in the OIT Pass and everything else in the colour pass
     _renderQueue.populateRenderQueues(stagePass, std::make_pair(RenderBinType::COUNT, true), _renderQueuePackages);
 
@@ -974,6 +1109,19 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
     }
 }
 
+bool RenderPassExecutor::validateNodesForStagePass(VisibleNodeList<>& nodes, const RenderStagePass& stagePass) {
+    bool ret = false;
+    const I32 nodeCount = to_I32(nodes.size());
+    for (I32 i = nodeCount - 1; i >= 0; i--) {
+        VisibleNode& node = nodes.node(i);
+        if (node._materialReady && !Attorney::SceneGraphNodeRenderPassManager::canDraw(node._node, stagePass)) {
+            node._materialReady = false;
+            ret = true;
+        }
+    }
+    return ret;
+}
+
 void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
 
@@ -1033,37 +1181,60 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
                            target.getAttachment(RTAttachmentType::Depth, 0).used();
     const bool doOITPass = params._targetOIT._usage != RenderTargetUsage::COUNT;
     const bool doOcclusionPass = doPrePass && params._targetHIZ._usage != RenderTargetUsage::COUNT;
+
     bool hasInvalidNodes = false;
     {
         OPTICK_EVENT("doCustomPass: Validate draw")
-        const auto ValidateNodesForStagePass = [&visibleNodes, &hasInvalidNodes](const RenderStagePass& stagePass) {
-            const I32 nodeCount = to_I32(visibleNodes.size());
-            for (I32 i = nodeCount - 1; i >= 0; i--) {
-                VisibleNode& node = visibleNodes.node(i);
-                if (node._materialReady && !Attorney::SceneGraphNodeRenderPassManager::canDraw(node._node, stagePass)) {
-                    node._materialReady = false;
-                    hasInvalidNodes = true;
-                }
-            }
-        };
-
         if (doPrePass) {
             params._stagePass._passType = RenderPassType::PRE_PASS;
-            ValidateNodesForStagePass(params._stagePass);
+            hasInvalidNodes = validateNodesForStagePass(visibleNodes, params._stagePass) || hasInvalidNodes;
         }
         if (doMainPass) {
             params._stagePass._passType = RenderPassType::MAIN_PASS;
-            ValidateNodesForStagePass(params._stagePass);
+            hasInvalidNodes = validateNodesForStagePass(visibleNodes, params._stagePass) || hasInvalidNodes;
         }
         if (doOITPass) {
             params._stagePass._passType = RenderPassType::OIT_PASS;
-            ValidateNodesForStagePass(params._stagePass);
+            hasInvalidNodes = validateNodesForStagePass(visibleNodes, params._stagePass) || hasInvalidNodes;
         }
     }
 
     // We prepare all nodes for the MAIN_PASS rendering. PRE_PASS and OIT_PASS are support passes only. Their order and sorting are less important.
     params._stagePass._passType = RenderPassType::MAIN_PASS;
     const U32 visibleNodeCount = prepareNodeData(visibleNodes, params, hasInvalidNodes, doPrePass, doOITPass, bufferInOut);
+
+    ShaderBufferBinding cmdBufferBinding{};
+    cmdBufferBinding._elementRange = { 0u, _cmdBuffer->getPrimitiveCount() };
+    cmdBufferBinding._buffer = _cmdBuffer;
+    cmdBufferBinding._binding = ShaderBufferLocation::CMD_BUFFER;
+
+    ShaderBufferBinding materialBufferBinding{};
+    materialBufferBinding._elementRange = { 0u, s_materialBuffer._highWaterMark};
+    materialBufferBinding._buffer = s_materialBuffer._gpuBuffer;
+    materialBufferBinding._binding = ShaderBufferLocation::NODE_MATERIAL_DATA;
+
+    ShaderBufferBinding transformBufferBinding{};
+    transformBufferBinding._elementRange = { 0u, s_transformBuffer._highWaterMark};
+    transformBufferBinding._buffer = s_transformBuffer._gpuBuffer;
+    transformBufferBinding._binding = ShaderBufferLocation::NODE_TRANSFORM_DATA;
+
+    ShaderBufferBinding indirectionBufferBinding{};
+    indirectionBufferBinding._elementRange = { 0u, s_indirectionBuffer._highWaterMark};
+    indirectionBufferBinding._buffer = s_indirectionBuffer._gpuBuffer;
+    indirectionBufferBinding._binding = ShaderBufferLocation::NODE_INDIRECTION_DATA;
+
+    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+    set._buffers.add(cmdBufferBinding);
+    set._buffers.add(materialBufferBinding);
+    set._buffers.add(transformBufferBinding);
+    set._buffers.add(indirectionBufferBinding);
+
+    if (_uniqueTextureAddresses.size() > 0u) {
+        GFX::SetTexturesResidencyCommand residencyCmd = {};
+        residencyCmd._addresses = _uniqueTextureAddresses;
+        residencyCmd._state = true;
+        GFX::EnqueueCommand(bufferInOut, residencyCmd);
+    }
 
 #   pragma region PRE_PASS
     // We need the pass to be PRE_PASS even if we skip the prePass draw stage as it is the default state subsequent operations expect
@@ -1113,14 +1284,6 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
     resolveMainScreenTarget(params, bufferInOut);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-
-    _matUpdateRange.reset();
-    ScopedLock<Mutex> w_lock(s_globalMaterialBufferLock);
-    PerRingEntryMaterialData& materialData = s_materialData[s_materialDataBufferIndex];
-    // Increment material lifetime by 1 (a frame has passed)
-    for (auto& [_, lifetime] : materialData._nodeMaterialLookupInfo) {
-        ++lifetime;
-    }
 }
 
 U32 RenderPassExecutor::renderQueueSize(const RenderPackage::MinQuality qualityRequirement) const {
@@ -1128,7 +1291,7 @@ U32 RenderPassExecutor::renderQueueSize(const RenderPackage::MinQuality qualityR
         return to_U32(_renderQueuePackages.size());
     }
 
-    U32 size = 0;
+    U32 size = 0u;
     for (const RenderPackage* item : _renderQueuePackages) {
         if (item->qualityRequirement() == qualityRequirement) {
             ++size;
@@ -1141,35 +1304,90 @@ U32 RenderPassExecutor::renderQueueSize(const RenderPackage::MinQuality qualityR
 void RenderPassExecutor::renderQueueToSubPasses(GFX::CommandBuffer& commandsInOut, const RenderPackage::MinQuality qualityRequirement) const {
     OPTICK_EVENT();
 
-    eastl::fixed_vector<GFX::CommandBuffer*, Config::MAX_VISIBLE_NODES, true, eastl::dvd_allocator> buffers = {};
-
     if (qualityRequirement == RenderPackage::MinQuality::COUNT) {
         for (RenderPackage* item : _renderQueuePackages) {
-            buffers.push_back(Attorney::RenderPackageRenderPassExecutor::getCommandBuffer(item));
+            commandsInOut.add(*Attorney::RenderPackageRenderPassExecutor::getCommandBuffer(item));
         }
     } else {
         for (RenderPackage* item : _renderQueuePackages) {
             if (item->qualityRequirement() == qualityRequirement) {
-                buffers.push_back(Attorney::RenderPackageRenderPassExecutor::getCommandBuffer(item));
+                commandsInOut.add(*Attorney::RenderPackageRenderPassExecutor::getCommandBuffer(item));
             }
         }
     }
-
-    commandsInOut.add(buffers.data(), buffers.size());
 }
 
+void RenderPassExecutor::PreRender() {
+}
 
 void RenderPassExecutor::PostRender() {
-    { //Material data
-        ScopedLock<Mutex> w_lock(s_globalMaterialBufferLock);
-        s_globalMaterialBuffer->incQueue();
-        s_materialDataBufferIndex = s_globalMaterialBuffer->queueWriteIndex();
+    ExecutorBufferPostRender(s_materialBuffer);
+    ExecutorBufferPostRender(s_transformBuffer);
+    ExecutorBufferPostRender(s_indirectionBuffer);
+
+    for (U32 i = 0u; i < s_materialBuffer._highWaterMark; ++i) {
+        s_materialBuffer._data._processedThisFrame[i].store(false);
     }
-    { //Transform Data
-        ScopedLock<Mutex> w_lock(s_globalTransformBufferLock);
-        s_globalTransformBuffer->incQueue();
-        s_transformDataBufferIndex = s_globalTransformBuffer->queueWriteIndex();
+    for (U32 i = 0u; i < s_transformBuffer._highWaterMark; ++i) {
+        s_transformBuffer._data._processedThisFrame[i].store(false);
     }
+    {
+        ScopedLock<Mutex> w_lock(s_materialBuffer._lock);
+        // Increment material lifetime by 1 (a frame has passed)
+        for (auto& [_, lifetime] : s_materialBuffer._data._nodeMaterialLookupInfo) {
+            ++lifetime;
+        }
+    }
+}
+
+void RenderPassExecutor::OnRenderingComponentCreation(RenderingComponent* rComp) {
+    ScopedLock<Mutex> w_lock1(s_indirectionBuffer._lock);
+    ScopedLock<Mutex> w_lock2(s_transformBuffer._lock);
+
+    assert(rComp->indirectionBufferEntry() == U32_MAX);
+    U32 entry = U32_MAX;
+    for (U32 i = 0u; i < MAX_INDIRECTION_ENTRIES; ++i) {
+        if (s_indirectionBuffer._data._freeList[i]) {
+            s_indirectionBuffer._data._freeList[i] = false;
+            entry = i;
+            break;
+        }
+    }
+    DIVIDE_ASSERT(entry != U32_MAX, "Insufficient space left in indirection buffer. Consider increasing available storage!");
+    Attorney::RenderingCompRenderPassExecutor::setIndirectionBufferEntry(rComp, entry);
+
+    // Assing a transform IDX here as well, as these are unique per render node anyway
+    U32 transformEntry = U32_MAX;
+    for (U32 idx = 0u; idx < MAX_INDIRECTION_ENTRIES; ++idx) {
+        if (s_transformBuffer._data._freeList[idx]) {
+            s_transformBuffer._data._freeList[idx] = false;
+            transformEntry = idx;
+            break;
+        }
+    }
+    DIVIDE_ASSERT(transformEntry != U32_MAX, "Insufficient space left in transform buffer. Consider increasing available storage!");
+    s_indirectionBuffer._data._gpuData[entry]._transformIDX = transformEntry;
+    UpdateBufferRangeLocked(s_indirectionBuffer, entry);
+}
+
+void RenderPassExecutor::OnRenderingComponentDestruction(RenderingComponent* rComp) {
+    ScopedLock<Mutex> w_lock1(s_indirectionBuffer._lock);
+    ScopedLock<Mutex> w_lock2(s_transformBuffer._lock);
+
+    const U32 entry = rComp->indirectionBufferEntry();
+    if (entry == U32_MAX) {
+        DIVIDE_UNEXPECTED_CALL();
+        return;
+    }
+
+    Attorney::RenderingCompRenderPassExecutor::setIndirectionBufferEntry(rComp, U32_MAX);
+
+    assert(!s_indirectionBuffer._data._freeList[entry]);
+    const U32 transformIDX = s_indirectionBuffer._data._gpuData[entry]._transformIDX;
+    s_indirectionBuffer._data._freeList[entry] = true;
+
+    assert(!s_transformBuffer._data._freeList[transformIDX]);
+    s_transformBuffer._data._freeList[transformIDX] = true;
 }
 
 } //namespace Divide

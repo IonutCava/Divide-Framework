@@ -22,7 +22,7 @@ Client::Client(ASIO* asioPointer, boost::asio::io_service& service, const bool d
 {
 }
 
-bool Client::sendPacket(WorldPacket& p)
+bool Client::sendPacket(const WorldPacket& p)
 {
     _packetQueue.push_back(p);
     _heartbeatTimer.expires_at(boost::posix_time::neg_infin);
@@ -90,7 +90,7 @@ void Client::handle_read_packet(const boost::system::error_code& ec,
         try {
             boost::archive::text_iarchive ar(is);
             ar & packet;
-        } catch (std::exception& e) {
+        } catch (const std::exception& e) {
             if (_debugOutput) {
                 ASIO::LOG_PRINT(e.what(), true);
                 ASIO::LOG_PRINT("[ASIO]: Received invalid packet!", true);
@@ -181,7 +181,7 @@ void Client::start_write() {
         _packetQueue.push_back(heart);
     }
 
-    WorldPacket& p = _packetQueue.front();
+    const WorldPacket& p = _packetQueue.front();
     boost::asio::streambuf buf;
     std::ostream os(&buf);
     boost::archive::text_oarchive ar(os);

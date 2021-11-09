@@ -761,7 +761,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     _sceneManager->init(_platformContext, resourceCache());
     _platformContext.gfx().idle(true);
 
-    const char* firstLoadedScene = Config::Build::ENABLE_EDITOR 
+    const char* firstLoadedScene = Config::Build::IS_EDITOR_BUILD
                                         ? Config::DEFAULT_SCENE_NAME
                                         : entryData.startupScene.c_str();
 

@@ -139,7 +139,7 @@ namespace Divide {
         return false;
     }
 
-    ErrorCode PlatformInitImpl(int argc, char** argv) noexcept {
+    ErrorCode PlatformInitImpl([[maybe_unused]] int argc, [[maybe_unused]] char** argv) noexcept {
         return ErrorCode::NO_ERR;
     }
 

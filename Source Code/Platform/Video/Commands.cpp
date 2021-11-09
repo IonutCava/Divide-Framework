@@ -74,7 +74,7 @@ string ToString(const SendPushConstantsCommand& cmd, const U16 indent) {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("Constant binding: %d\n", it._bindingHash));
+        ret.append(Util::StringFormat("Constant binding: %d Type: %d Data size: %zu\n", it.bindingHash(), to_base(it.type()), it.dataSize()));
     }
 
     return ret;
@@ -88,7 +88,7 @@ string ToString(const DrawCommand& cmd, const U16 indent)  {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("%d: Draw count: %d Type: %s Base instance (1): %d  Base instance (2) : %d Instance count: %d Index count: %d\n", i++, drawCmd._drawCount, Divide::Names::primitiveType[to_base(drawCmd._primitiveType)], drawCmd._cmd.baseInstance >> 16, drawCmd._cmd.baseInstance & 0xFFFF, drawCmd._cmd.primCount, drawCmd._cmd.indexCount));
+        ret.append(Util::StringFormat("%d: Draw count: %d Type: %s Base instance: %d Instance count: %d Index count: %d\n", i++, drawCmd._drawCount, Divide::Names::primitiveType[to_base(drawCmd._primitiveType)], drawCmd._cmd.baseInstance, drawCmd._cmd.primCount, drawCmd._cmd.indexCount));
     }
 
     return ret;

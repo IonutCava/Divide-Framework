@@ -187,8 +187,6 @@ template<size_t N>
 using PlaneList = std::array<Plane<F32>, N>;
 using PlaneDynamicList = vector<Plane<F32>>;
 
-static const Plane<F32> DEFAULT_PLANE = {WORLD_Y_AXIS, 0.0f };
-
 template<typename T>
 FORCE_INLINE vec3<T> GetIntersection(const Plane<T>& a, const Plane<T>& b, const Plane<T>& c) noexcept {
     const T denom = Dot(Cross(a._normal, b._normal), c._normal);

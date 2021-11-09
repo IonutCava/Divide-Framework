@@ -6,9 +6,9 @@ namespace Divide {
 
 TEST(U24Conversions)
 {
-    const U32 inputA = 134646u;
-    const U32 inputB = 0u;
-    const U32 inputC = 1u;
+    constexpr U32 inputA = 134646u;
+    constexpr U32 inputB = 0u;
+    constexpr U32 inputC = 1u;
 
     const U24 testA(inputA);
     const U24 testB(inputB);
@@ -37,10 +37,10 @@ TEST(U24Conversions)
 
 TEST(I24Conversions)
 {
-    const I32 inputA = 134346;
-    const I32 inputB = 0;
-    const I32 inputC = -1;
-    const I32 inputD = -123213;
+    constexpr I32 inputA = 134346;
+    constexpr I32 inputB = 0;
+    constexpr I32 inputC = -1;
+    constexpr I32 inputD = -123213;
 
     const I24 testA(inputA);
     const I24 testB(inputB);

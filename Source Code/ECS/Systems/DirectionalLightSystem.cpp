@@ -24,7 +24,7 @@ namespace Divide {
         Parent::PreUpdate(dt);
         for (DirectionalLightComponent* comp : _componentCache) {
             if (comp->drawImpostor() || comp->showDirectionCone()) {
-                const F32 coneDist = 11.f;
+                constexpr F32 coneDist = 11.f;
                 // Try and place the cone in such a way that it's always in view, because directional lights have no "source"
                 const vec3<F32> min = -coneDist * comp->directionCache() +
                                       playerCam->getEye() +

@@ -110,7 +110,7 @@ class ByteBuffer {
     void readSkip();
 
     /// Moves the read head 'skip' units forward
-    void readSkip(size_t skip);
+    void readSkip(size_t skip) noexcept;
 
     /// Reads sizeof(T) data from the buffer and saves it into 'value' but does NOT move the read head forward!
     template <typename T>

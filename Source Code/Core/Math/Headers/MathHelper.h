@@ -181,7 +181,7 @@ constexpr void ToggleBit(std::atomic<Mask>& bitMask, Mask bit) noexcept;
 
 template <typename T> 
 constexpr I32 SIGN(const T val) {
-    return (val < T(0)) ? -1 : (val > T(0)) ? 1 : 0;
+    return (val < 0) ? -1 : (val > 0) ? 1 : 0;
 }
 
 /// Clamps value n between min and max
@@ -262,7 +262,7 @@ template<typename T>
 [[nodiscard]] constexpr U32 minSquareMatrixSize(U32 elementCount) noexcept;
 
 template <typename T, typename U>
-[[nodiscard]] T Lerp(T v1, T v2, U t);
+[[nodiscard]] T Lerp(T v1, T v2, U t) noexcept;
 
 template <typename T, typename U>
 [[nodiscard]] T FastLerp(T v1, T v2, U t);

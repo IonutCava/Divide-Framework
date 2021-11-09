@@ -10,7 +10,7 @@ TEST_MEMBER_FUNCTION(ScriptTestClass, eval, Simple)
 {
     if (PreparePlatform()) {
         Script input("5.3 + 2.1");
-        const double result = 7.4;
+        constexpr D64 result = 7.4;
 
         CHECK_EQUAL(input.eval<double>(), result);
     }
@@ -24,7 +24,7 @@ TEST_MEMBER_FUNCTION(ScriptTestClass, eval, ExternalFunction)
             "something(my_fun)");
 
         I32 variable = 0;
-        auto testFunc = [&variable](const DELEGATE_STD<I32, I32>& t_func) {
+        const auto testFunc = [&variable](const DELEGATE_STD<I32, I32>& t_func) {
             variable = t_func(variable);
         };
 

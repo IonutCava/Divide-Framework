@@ -71,7 +71,7 @@ bool SSRPreRenderOperator::ready() const {
     return false;
 }
 
-void SSRPreRenderOperator::parametersChanged() noexcept {
+void SSRPreRenderOperator::parametersChanged() {
 
     const auto& parameters = _context.context().config().rendering.postFX.ssr;
     _constantsCmd._constants.set(_ID("maxSteps"), GFX::PushConstantType::FLOAT, to_F32(parameters.maxSteps));

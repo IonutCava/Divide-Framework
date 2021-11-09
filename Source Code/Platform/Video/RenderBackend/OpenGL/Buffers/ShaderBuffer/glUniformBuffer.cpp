@@ -18,7 +18,7 @@ glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescripto
 {
     _maxSize = _usage == Usage::CONSTANT_BUFFER ? GL_API::s_UBMaxSize : GL_API::s_SSBMaxSize;
 
-    _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset(_params._elementCount * _params._elementSize, alignmentRequirement(_usage)));
+    _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset(_params._elementCount * _params._elementSize, AlignmentRequirement(_usage)));
 
     BufferImplParams implParams;
     implParams._bufferParams = _params;
@@ -49,17 +49,17 @@ glUniformBuffer::~glUniformBuffer()
     MemoryManager::DELETE(_bufferImpl);
 }
 
-ptrdiff_t glUniformBuffer::getCorrectedRange(ptrdiff_t rangeInBytes) const noexcept {
-    const size_t req = alignmentRequirement(_usage);
-    if (rangeInBytes % req != 0) {
-        rangeInBytes = (rangeInBytes + req - 1) / req * req;
+ptrdiff_t glUniformBuffer::getAlignmentCorrected(ptrdiff_t byteOffset) const noexcept {
+    const size_t req = AlignmentRequirement(_usage);
+    if (byteOffset % req != 0) {
+        byteOffset = (byteOffset + req - 1) / req * req;
     }
 
-    return rangeInBytes;
+    return byteOffset;
 }
 
 ptrdiff_t glUniformBuffer::getCorrectedOffset(ptrdiff_t offsetInBytes) const noexcept {
-    offsetInBytes = getCorrectedRange(offsetInBytes);
+    offsetInBytes = getAlignmentCorrected(offsetInBytes);
     if (queueLength() > 1) {
         offsetInBytes += queueReadIndex() * _alignedBufferSize;
     }
@@ -88,6 +88,7 @@ void glUniformBuffer::writeBytes(const ptrdiff_t offsetInBytes, const ptrdiff_t 
     OPTICK_EVENT();
 
     if (rangeInBytes > 0) {
+        assert(offsetInBytes == getAlignmentCorrected(offsetInBytes));
         bufferImpl()->writeOrClearBytes(getCorrectedOffset(offsetInBytes), rangeInBytes, data, false);
     }
 }
@@ -97,8 +98,8 @@ bool glUniformBuffer::bindByteRange(const U8 bindIndex, const ptrdiff_t offsetIn
         OPTICK_EVENT();
 
         assert(to_size(rangeInBytes) <= _maxSize && "glUniformBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
-
-        return bufferImpl()->bindByteRange(bindIndex, getCorrectedOffset(offsetInBytes), getCorrectedRange(rangeInBytes));
+        assert(offsetInBytes == getAlignmentCorrected(offsetInBytes));
+        return bufferImpl()->bindByteRange(bindIndex, getCorrectedOffset(offsetInBytes), getAlignmentCorrected(rangeInBytes));
     }
 
     return false;

@@ -41,7 +41,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
     struct Strand
     {
-        explicit Strand(boost::asio::io_service& io_service) noexcept :
+        explicit Strand(boost::asio::io_service& io_service) :
             _strand(io_service) {
         }
 

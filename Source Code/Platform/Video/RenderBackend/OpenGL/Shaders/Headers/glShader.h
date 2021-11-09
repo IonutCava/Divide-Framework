@@ -41,6 +41,7 @@
 
 namespace Divide {
 
+enum class ShaderResult : U8;
 struct glPushConstantUploader;
 
 /// glShader represents one of a program's rendering stages (vertex, geometry, fragment, etc)
@@ -105,7 +106,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
     friend class glShaderProgram;
     [[nodiscard]] bool loadFromBinary();
-    [[nodiscard]] bool uploadToGPU();
+    [[nodiscard]] ShaderResult uploadToGPU();
 
     void prepare() const;
     /// Add a define to the shader. The defined must not have been added previously

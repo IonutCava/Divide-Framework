@@ -37,7 +37,7 @@ void RenderPackage::addDrawCommand(const GFX::DrawCommand& cmd) {
             if (_isInstanced) {
                 if (!_commands->exists<GFX::SendPushConstantsCommand>(0)) {
                     GFX::SendPushConstantsCommand constantsCmd = {};
-                    constantsCmd._constants.set(_ID("DATA_INDICES"), GFX::PushConstantType::UINT, 0u);
+                    constantsCmd._constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, 0u);
                     add(constantsCmd);
                 }
                 break;
@@ -111,16 +111,18 @@ bool RenderPackage::setCommandDataIfDifferent(const U32 startOffset, const U32 d
     return false;
 }
 
-U32 RenderPackage::updateAndRetrieveDrawCommands(const NodeDataIdx dataIndex, U32 startOffset, const U8 lodLevel, DrawCommandContainer& cmdsInOut) {
+U32 RenderPackage::updateAndRetrieveDrawCommands(const U32 indirectBufferEntry, U32 startOffset, const U8 lodLevel, DrawCommandContainer& cmdsInOut) {
     OPTICK_EVENT();
 
-    const U32 dataIdx = ((dataIndex._transformIDX << 16) | dataIndex._materialIDX);
+    assert(indirectBufferEntry != U32_MAX);
+
     const auto& [offset, count] = _lodIndexOffsets[std::min(lodLevel, to_U8(_lodIndexOffsets.size() - 1))];
 
-    if (setCommandDataIfDifferent(startOffset, dataIdx, offset, count)) {
-        if (_isInstanced) {
+    const bool newDataIdx = _prevCommandData._dataIdx != indirectBufferEntry;
+    if (setCommandDataIfDifferent(startOffset, indirectBufferEntry, offset, count)) {
+        if (_isInstanced && newDataIdx) {
             for (GFX::CommandBase* cmd : commands()->get<GFX::SendPushConstantsCommand>()) {
-                static_cast<GFX::SendPushConstantsCommand&>(*cmd)._constants.set(_ID("DATA_INDICES"), GFX::PushConstantType::UINT, dataIdx);
+                static_cast<GFX::SendPushConstantsCommand&>(*cmd)._constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, indirectBufferEntry);
             }
         }
 
@@ -130,7 +132,7 @@ U32 RenderPackage::updateAndRetrieveDrawCommands(const NodeDataIdx dataIndex, U3
         for (GFX::CommandBase* const cmd : drawCommandEntries) {
             for (GenericDrawCommand& drawCmd : static_cast<GFX::DrawCommand&>(*cmd)._drawCommands) {
                 drawCmd._commandOffset = startOffset++;
-                drawCmd._cmd.baseInstance = _isInstanced ? 0u : dataIdx;
+                drawCmd._cmd.baseInstance = _isInstanced ? 0u : (indirectBufferEntry + 1u); //Make sure to substract 1 in the shader!
                 drawCmd._cmd.firstIndex = autoIndex ? to_U32(offset) : drawCmd._cmd.firstIndex;
                 drawCmd._cmd.indexCount = autoIndex ? to_U32(count) : drawCmd._cmd.indexCount;
             }

@@ -358,7 +358,7 @@ namespace Divide {
     }
 
     template <typename T, typename U>
-    T Lerp(const T v1, const T v2, const U t) {
+    T Lerp(const T v1, const T v2, const U t) noexcept {
 #if defined(FAST_LERP)
         return v1 + t * (v2 - v1);
 #else

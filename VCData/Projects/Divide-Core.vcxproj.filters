@@ -49,6 +49,7 @@
     <None Include="..\..\Source Code\Core\Headers\TaskPool.inl">
       <Filter>Headers</Filter>
     </None>
+    <None Include="Divide-Core.ruleset" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Utility">

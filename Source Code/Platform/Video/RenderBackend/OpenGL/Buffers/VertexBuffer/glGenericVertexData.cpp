@@ -81,14 +81,14 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
 }
 
 void glGenericVertexData::lockBuffers() {
-    for (const auto& lock : _bufferLockQueue) {
+    for (const BufferLockEntry& lock : _bufferLockQueue) {
         if (!lock._buffer->lockByteRange(lock._offset, lock._length, _context.frameCount())) {
             DIVIDE_UNEXPECTED_CALL();
         }
     }
 }
 
-bool glGenericVertexData::waitBufferRange(const U32 buffer, const U32 elementCountOffset, const U32 elementCountRange, bool blockClient) {
+bool glGenericVertexData::waitBufferRange(const U32 buffer, const U32 elementCountOffset, const U32 elementCountRange, [[maybe_unused]] const bool blockClient) {
     if (_bufferObjects.empty()) {
         return false;
     }
@@ -199,7 +199,18 @@ void glGenericVertexData::bindBufferInternal(const U32 bufferIdx, const  U32 loc
 
     GL_API::getStateTracker().bindActiveBuffer(_vertexArray, location, buffer->bufferHandle(), _instanceDivisor[bufferIdx], entry._offset, elementSize);
     if (!buffer->bufferImpl()->params()._bufferParams._sync) {
-        _bufferLockQueue.push_back(entry);
+        bool foundExistingEntry = false;
+        for (BufferLockEntry& lock : _bufferLockQueue) {
+            if (lock._buffer->getGUID() == entry._buffer->getGUID()) {
+                lock._offset = std::min(lock._offset, entry._offset);
+                lock._length = std::max(lock._length, entry._length);
+                foundExistingEntry = true;
+                break;
+            }
+        }
+        if (!foundExistingEntry) {
+            _bufferLockQueue.push_back(entry);
+        }
     } else {
         GL_API::RegisterBufferBind(MOV(entry), true);
     }
@@ -228,7 +239,7 @@ void glGenericVertexData::setAttributes(const GenericDrawCommand& command) {
 }
 
 /// Update internal attribute data
-void glGenericVertexData::setAttributeInternal(const GenericDrawCommand& command, AttributeDescriptor& descriptor) const {
+void glGenericVertexData::setAttributeInternal([[maybe_unused]] const GenericDrawCommand& command, AttributeDescriptor& descriptor) const {
     // Early out if the attribute didn't change
     if (!descriptor.dirty()) {
         return;

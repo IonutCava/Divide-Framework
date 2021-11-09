@@ -71,7 +71,7 @@ namespace {
 };
 
 /// Try and create a valid OpenGL context taking in account the specified resolution and command line arguments
-ErrorCode GL_API::initRenderingAPI(GLint argc, char** argv, Configuration& config) {
+ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]] char** argv, Configuration& config) {
     // Fill our (abstract API <-> openGL) enum translation tables with proper values
     GLUtil::fillEnumTables();
 
@@ -443,7 +443,7 @@ void GL_API::DequeueComputeMipMap(const GLuint textureHandle) {
     }
 }
 
-void GL_API::onThreadCreated(const std::thread::id& threadID) {
+void GL_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) {
     // Double check so that we don't run into a race condition!
     ScopedLock<Mutex> lock(GLUtil::s_glSecondaryContextMutex);
     assert(SDL_GL_GetCurrentContext() == NULL);

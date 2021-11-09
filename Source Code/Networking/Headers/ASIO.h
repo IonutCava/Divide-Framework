@@ -59,16 +59,17 @@ class ASIO {
     /// Check connection state;
     virtual bool isConnected() const noexcept;
     /// Toggle the printing of debug information
-    virtual void toggleDebugOutput(bool debugOutput);
+    virtual void toggleDebugOutput(bool debugOutput) noexcept;
 
 
     using LOG_CBK = DELEGATE<void, std::string_view /*msg*/, bool /*is_error*/>;
     static void SET_LOG_FUNCTION(const LOG_CBK& cbk);
     static void LOG_PRINT(const char* msg, bool error = false);
 
-   protected:
-    ASIO();
     virtual ~ASIO();
+
+   protected:
+    ASIO() noexcept;
 
     friend class Client;
     void close();

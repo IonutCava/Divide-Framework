@@ -84,7 +84,7 @@ glShader::~glShader() {
     }
 }
 
-bool glShader::uploadToGPU() {
+ShaderResult glShader::uploadToGPU() {
     if (!_valid) {
         const auto getTimerAndReset = [](Time::ProfileTimer& timer) {
             timer.stop();
@@ -148,7 +148,7 @@ bool glShader::uploadToGPU() {
                 if (_programHandle == 0 || _programHandle == GLUtil::k_invalidObjectID) {
                     Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
                     _valid = false;
-                    return false;
+                    return ShaderResult::Failed;
                 }
 
             } else {
@@ -166,7 +166,7 @@ bool glShader::uploadToGPU() {
                 if (_programHandle == 0 || _programHandle == GLUtil::k_invalidObjectID) {
                     Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
                     _valid = false;
-                    return false;
+                    return ShaderResult::Failed;
                 }
 
                 bool shouldLink = false;
@@ -324,7 +324,7 @@ bool glShader::uploadToGPU() {
         }
     }
 
-    return _valid;
+    return _valid ? ShaderResult::OK : ShaderResult::Failed;
 }
 
 bool glShader::load(const ShaderLoadData& data) {

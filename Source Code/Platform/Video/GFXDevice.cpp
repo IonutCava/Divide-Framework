@@ -129,10 +129,10 @@ GFXDevice::GFXDevice(Kernel & parent)
     flags[to_base(AttribLocation::TANGENT)] = false;
 
     for (U8 stage = 0; stage < to_base(RenderStage::COUNT); ++stage) {
-        VertexBuffer::setAttribMask(RenderStagePass::baseIndex(static_cast<RenderStage>(stage), RenderPassType::PRE_PASS), flags);
+        VertexBuffer::setAttribMask(RenderStagePass::BaseIndex(static_cast<RenderStage>(stage), RenderPassType::PRE_PASS), flags);
     }
     for (U8 pass = 0; pass < to_base(RenderPassType::COUNT); ++pass) {
-        VertexBuffer::setAttribMask(RenderStagePass::baseIndex(RenderStage::SHADOW, static_cast<RenderPassType>(pass)), flags);
+        VertexBuffer::setAttribMask(RenderStagePass::BaseIndex(RenderStage::SHADOW, static_cast<RenderPassType>(pass)), flags);
     }
 }
 
@@ -214,6 +214,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     const Configuration& config = _parent.platformContext().config();
 
     // Initialize the shader manager
+    RenderPassExecutor::OnStartup();
     ShaderProgram::OnStartup(cache);
     GFX::InitPools();
 
@@ -883,6 +884,7 @@ void GFXDevice::closeRenderingAPI() {
 
     // Close the shader manager
     MemoryManager::DELETE(_shaderComputeQueue);
+    RenderPassExecutor::OnShutdown();
     ShaderProgram::OnShutdown();
     _gpuObjectArena.clear();
     assert(ShaderProgram::ShaderProgramCount() == 0);
@@ -1795,7 +1797,7 @@ void GFXDevice::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
         ShaderBufferBinding shaderBuffer = {};
         shaderBuffer._binding = ShaderBufferLocation::GPU_COMMANDS;
         shaderBuffer._buffer = bufferData._commandBuffer;
-        shaderBuffer._elementRange = { bufferData._commandElementOffset, cmdCount };
+        shaderBuffer._elementRange = { RenderStagePass::IndexForStage(stagePass) * Config::MAX_VISIBLE_NODES, cmdCount };
 
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._textureData.add(TextureEntry{ depthBuffer->data(), samplerHash, TextureUsage::UNIT0 });

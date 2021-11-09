@@ -8,7 +8,7 @@
 
 namespace Divide {
 
-glObject::glObject(const glObjectType type, GFXDevice& context)
+glObject::glObject(const glObjectType type, [[maybe_unused]] GFXDevice& context)
     : _type(type)
 {
 }

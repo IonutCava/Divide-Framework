@@ -59,7 +59,7 @@ inline void STOP_TIMER(ProfileTimer& timer) {
     timer.stop();
 }
 
-inline string PRINT_TIMER(ProfileTimer& timer) {
+inline string PRINT_TIMER(const ProfileTimer& timer) {
     return timer.print();
 }
 

@@ -46,7 +46,7 @@ namespace Divide {
 namespace Util {
 
 struct NOINITVTABLE GraphPlot {
-    explicit GraphPlot(string name) : _plotName(MOV(name))
+    explicit GraphPlot(string name) noexcept : _plotName(MOV(name))
     {
     }
     virtual ~GraphPlot() = default;
@@ -56,7 +56,7 @@ struct NOINITVTABLE GraphPlot {
 };
 
 struct GraphPlot2D final : GraphPlot {
-    GraphPlot2D() : GraphPlot2D("UNNAMED_PLOT_2D")
+    GraphPlot2D() noexcept : GraphPlot2D("UNNAMED_PLOT_2D")
     {
     }
 
@@ -72,7 +72,7 @@ struct GraphPlot2D final : GraphPlot {
 };
 
 struct GraphPlot3D final : GraphPlot {
-    GraphPlot3D() : GraphPlot3D("UNNAMED_PLOT_3D")
+    GraphPlot3D() noexcept : GraphPlot3D("UNNAMED_PLOT_3D")
     {
     }
 

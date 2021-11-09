@@ -196,7 +196,7 @@ inline void ByteBuffer::readSkip<string>() {
     readSkip<char *>();
 }
 
-inline void ByteBuffer::readSkip(const size_t skip) {
+inline void ByteBuffer::readSkip(const size_t skip) noexcept {
     if (_rpos + skip > storageSize()) {
         DIVIDE_UNEXPECTED_CALL();
     }

@@ -49,12 +49,6 @@ namespace GenericDrawCommandResults {
     extern hashMap<I64, QueryResult> g_queryResults;
 };
 
-struct NodeDataIdx
-{
-    U16 _transformIDX = 0u;
-    U16 _materialIDX = 0u;
-};
-
 struct IndirectDrawCommand {
     U32 indexCount = 0;    // 4  bytes
     U32 primCount = 1;     // 8  bytes

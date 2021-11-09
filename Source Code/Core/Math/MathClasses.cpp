@@ -28,23 +28,23 @@ vec3<I32> iWORLD_Y_NEG_AXIS = { 0, -1, 0 };
 vec3<I32> iWORLD_Z_NEG_AXIS = { 0, 0, -1 };
 
 
-mat2<F32> MAT2_BIAS = { 0.5, 0.0,
-                       0.0, 0.5 };
+mat2<F32> MAT2_BIAS{ 0.5, 0.0,
+                     0.0, 0.5 };
 
-mat3<F32> MAT3_BIAS = { 0.5, 0.0, 0.0,
-                        0.0, 0.5, 0.0,
-                        0.0, 0.0, 0.5 };
+mat3<F32> MAT3_BIAS{ 0.5, 0.0, 0.0,
+                     0.0, 0.5, 0.0,
+                     0.0, 0.0, 0.5 };
 
-mat4<F32> MAT4_BIAS = { 0.5, 0.0, 0.0, 0.0,
-                        0.0, 0.5, 0.0, 0.0,
-                        0.0, 0.0, 0.5, 0.0,
-                        0.5, 0.5, 0.5, 1.0 };
+mat4<F32> MAT4_BIAS{ 0.5, 0.0, 0.0, 0.0,
+                     0.0, 0.5, 0.0, 0.0,
+                     0.0, 0.0, 0.5, 0.0,
+                     0.5, 0.5, 0.5, 1.0 };
 
-mat2<F32> MAT2_ZERO = { 0.0f };
-mat3<F32> MAT3_ZERO = { 0.0f };
-mat4<F32> MAT4_ZERO = { 0.0f };
+mat2<F32> MAT2_ZERO{ 0.0f };
+mat3<F32> MAT3_ZERO{ 0.0f };
+mat4<F32> MAT4_ZERO{ 0.0f };
 
-mat2<F32> MAT2_IDENTITY = {};
-mat3<F32> MAT3_IDENTITY = {};
-mat4<F32> MAT4_IDENTITY = {};
+mat2<F32> MAT2_IDENTITY{};
+mat3<F32> MAT3_IDENTITY{};
+mat4<F32> MAT4_IDENTITY{};
 }  // namespace Divide

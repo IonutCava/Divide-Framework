@@ -96,7 +96,7 @@ public:
     PROPERTY_RW(size_t, sortKeyHashCache, 0u);
 
 protected:
-    [[nodiscard]] U32 updateAndRetrieveDrawCommands(NodeDataIdx dataIndex, U32 startOffset, U8 lodLevel, DrawCommandContainer& cmdsInOut);
+    [[nodiscard]] U32 updateAndRetrieveDrawCommands(U32 indirectBufferEntry, U32 startOffset, U8 lodLevel, DrawCommandContainer& cmdsInOut);
     [[nodiscard]] GFX::CommandBuffer* commands();
     void addDrawCommand(const GFX::DrawCommand& cmd);
     void addBindPipelineCommand(const GFX::BindPipelineCommand& cmd);
@@ -138,8 +138,8 @@ namespace Attorney {
     };
 
     class RenderPackageRenderingComponent {
-        static U32 updateAndRetrieveDrawCommands(RenderPackage& pkg, const NodeDataIdx dataIndex, const U32 startOffset, const U8 lodLevel, DrawCommandContainer& cmdsInOut) {
-            return pkg.updateAndRetrieveDrawCommands(dataIndex, startOffset, lodLevel, cmdsInOut);
+        static U32 updateAndRetrieveDrawCommands(RenderPackage& pkg, const U32 indirectBufferEntry, const U32 startOffset, const U8 lodLevel, DrawCommandContainer& cmdsInOut) {
+            return pkg.updateAndRetrieveDrawCommands(indirectBufferEntry, startOffset, lodLevel, cmdsInOut);
         }
 
         friend class RenderingComponent;

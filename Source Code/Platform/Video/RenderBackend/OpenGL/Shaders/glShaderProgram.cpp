@@ -70,9 +70,9 @@ namespace Preprocessor{
         const char* _fileName = nullptr;
 
         std::array<char, 16 << 10> _scratch{};
-        eastl::string _depends;
-        eastl::string _default;
-        eastl::string _output;
+        eastl::string _depends = "";
+        eastl::string _default = "";
+        eastl::string _output = "";
 
         U32 _scratchPos = 0u;
         U32 _fGetsPos = 0u;
@@ -435,19 +435,20 @@ bool glShaderProgram::unload() {
      return ShaderProgram::unload();
 }
 
-ShaderBindResult glShaderProgram::rebindStages() {
+ShaderResult glShaderProgram::rebindStages() {
     assert(isValid());
 
     for (glShader* shader : _shaderStage) {
-        if (!shader->uploadToGPU()) {
-            return ShaderBindResult::Failed;
+        const ShaderResult ret = shader->uploadToGPU();
+        if (ret != ShaderResult::OK) {
+            return ret;
         }
 
         // If a shader exists for said stage, attach it
         glUseProgramStages(_handle, shader->stageMask(), shader->getProgramHandle());
     }
 
-    return ShaderBindResult::OK;
+    return ShaderResult::OK;
 }
 
 void glShaderProgram::queueValidation() {
@@ -475,7 +476,7 @@ void glShaderProgram::queueValidation() {
     }
 }
 
-ShaderBindResult glShaderProgram::validatePreBind() {
+ShaderResult glShaderProgram::validatePreBind() {
     if (!isValid()) {
         OPTICK_EVENT();
 
@@ -483,8 +484,8 @@ ShaderBindResult glShaderProgram::validatePreBind() {
         glCreateProgramPipelines(1, &_handle);
         glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
 
-        const ShaderBindResult ret = rebindStages();
-        if (ret == ShaderBindResult::OK) {
+        const ShaderResult ret = rebindStages();
+        if (ret == ShaderResult::OK) {
             _validationQueued = true;
         }
 
@@ -492,7 +493,7 @@ ShaderBindResult glShaderProgram::validatePreBind() {
         
     }
 
-    return ShaderBindResult::OK;
+    return ShaderResult::OK;
 }
 
 /// This should be called in the loading thread, but some issues are still present, and it's not recommended (yet)
@@ -701,7 +702,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
             for (glShader* tempShader : _shaderStage) {
                 if (tempShader->nameHash() == targetNameHash) {
                     glShader::loadShader(tempShader, false, loadData);
-                    _validationQueued = rebindStages() == ShaderBindResult::OK;
+                    _validationQueued = rebindStages() == ShaderResult::OK;
                     break;
                 }
             }
@@ -765,12 +766,12 @@ bool glShaderProgram::isValid() const {
 }
 
 /// Bind this shader program
-ShaderBindResult glShaderProgram::bind() {
+ShaderResult glShaderProgram::bind() {
     OPTICK_EVENT()
 
     // If the shader isn't ready or failed to link, stop here
-    const ShaderBindResult ret = validatePreBind();
-    if (ret != ShaderBindResult::OK) {
+    const ShaderResult ret = validatePreBind();
+    if (ret != ShaderResult::OK) {
         return ret;
     }
 
@@ -788,7 +789,7 @@ ShaderBindResult glShaderProgram::bind() {
         }
     }
 
-    return ShaderBindResult::OK;
+    return ShaderResult::OK;
 }
 
 void glShaderProgram::uploadPushConstants(const PushConstants& constants) {

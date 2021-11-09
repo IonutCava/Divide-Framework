@@ -35,7 +35,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
 
     EditorComponentField directionField = {};
     directionField._name = "Direction";
-    directionField._dataGetter = [this](void* dataOut) { static_cast<vec3<F32>*>(dataOut)->set(directionCache()); };
+    directionField._dataGetter = [this](void* dataOut) noexcept { static_cast<vec3<F32>*>(dataOut)->set(directionCache()); };
     directionField._dataSetter = [this](const void* data) { setDirection(*static_cast<const vec3<F32>*>(data)); };
     directionField._type = EditorComponentFieldType::PUSH_TYPE;
     directionField._readOnly = true;
@@ -54,7 +54,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
 
     registerFields(getEditorComponent());
 
-    getEditorComponent().onChangedCbk([this](std::string_view) {
+    getEditorComponent().onChangedCbk([this](std::string_view) noexcept  {
         if (coneCutoffAngle() > outerConeCutoffAngle()) {
             coneCutoffAngle(outerConeCutoffAngle());
         }

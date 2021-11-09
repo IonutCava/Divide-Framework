@@ -57,13 +57,15 @@ public:
 
     [[nodiscard]] I32 queueReadIndex() const noexcept { return _queueIndex; }
 
-    void incQueue() noexcept {
+    I32 incQueue() noexcept {
         if (queueLength() > 1) {
             _queueIndex = (_queueIndex + 1) % _queueLength;
         }
+
+        return queueWriteIndex();
     }
 
-    void decQueue() noexcept {
+    I32 decQueue() noexcept {
         if (queueLength() > 1) {
             if (_queueIndex == 0) {
                 _queueIndex = _queueLength;
@@ -71,6 +73,8 @@ public:
 
             _queueIndex = (_queueIndex - 1) % _queueLength;
         }
+
+        return queueWriteIndex();
     }
 
 private:

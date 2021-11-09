@@ -120,7 +120,7 @@ class Console : NonCopyable {
     static bool threadIDEnabled() noexcept { return _threadID; }
     static void togglethreadID(const bool state) noexcept { _threadID = state; }
 
-    static void toggleTextDecoration(const bool state) { toggleTimeStamps(state); togglethreadID(state); }
+    static void toggleTextDecoration(const bool state) noexcept { toggleTimeStamps(state); togglethreadID(state); }
 
     [[nodiscard]]
     static bool enabled() noexcept { return _enabled; }

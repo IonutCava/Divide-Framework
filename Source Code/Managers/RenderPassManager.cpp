@@ -135,6 +135,8 @@ void RenderPassManager::render(const RenderParams& params) {
 
     const U8 renderPassCount = to_U8(_renderPasses.size());
 
+    RenderPassExecutor::PreRender();
+
     Task* postFXTask;
     {
         OPTICK_EVENT("RenderPassManager::BuildCommandBuffers");

@@ -63,14 +63,14 @@ struct RenderStagePass {
 
     /// This ignores the variant and pass index flags!
     [[nodiscard]] U8 baseIndex() const noexcept {
-        return baseIndex(_stage, _passType);
+        return BaseIndex(_stage, _passType);
     }
 
-    static constexpr U8 baseIndex(const RenderStage stage, const RenderPassType passType) noexcept {
+    static constexpr U8 BaseIndex(const RenderStage stage, const RenderPassType passType) noexcept {
         return static_cast<U8>(to_base(stage) + to_base(passType) * to_base(RenderStage::COUNT));
     }
 
-    [[nodiscard]] static RenderStagePass fromBaseIndex(const U8 baseIndex) noexcept {
+    [[nodiscard]] static RenderStagePass FromBaseIndex(const U8 baseIndex) noexcept {
         return RenderStagePass
         {
             static_cast<RenderStage>(baseIndex % to_base(RenderStage::COUNT)),
@@ -78,7 +78,7 @@ struct RenderStagePass {
         };
     }
 
-    [[nodiscard]] static U16 indexForStage(const RenderStagePass& renderStagePass) noexcept {
+    [[nodiscard]] static U16 IndexForStage(const RenderStagePass& renderStagePass) noexcept {
         switch (renderStagePass._stage) {
             case RenderStage::DISPLAY:
             {
@@ -128,7 +128,7 @@ struct RenderStagePass {
         return 0u;
     }
 
-    [[nodiscard]] static U8 totalPassCountForStage(const RenderStage renderStage) noexcept {
+    [[nodiscard]] static U8 TotalPassCountForStage(const RenderStage renderStage) noexcept {
         switch (renderStage) {
             case RenderStage::DISPLAY:
                 return 1u;
@@ -146,7 +146,15 @@ struct RenderStagePass {
         return to_U8(1u);
     }
 
-    [[nodiscard]] static U8 passCountForStagePass(const RenderStagePass& renderStagePass) noexcept {
+    [[nodiscard]] static U16 TotalPassCountForAllStages() noexcept {
+        U16 ret = 0u;
+        for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i) {
+            ret += TotalPassCountForStage(static_cast<RenderStage>(i));
+        }
+        return ret;
+    }
+
+    [[nodiscard]] static U8 PassCountForStagePass(const RenderStagePass& renderStagePass) noexcept {
         switch (renderStagePass._stage) {
             case RenderStage::DISPLAY:
                 return 1u;
@@ -169,7 +177,7 @@ struct RenderStagePass {
         return to_U8(1u);
     }
 
-    bool operator==(const RenderStagePass& other) const noexcept {
+    inline bool operator==(const RenderStagePass& other) const noexcept {
         return _variant == other._variant &&
                _pass == other._pass &&
                _index == other._index &&
@@ -177,7 +185,7 @@ struct RenderStagePass {
                _passType == other._passType;
     }
 
-    bool operator!=(const RenderStagePass& other) const noexcept {
+    inline bool operator!=(const RenderStagePass& other) const noexcept {
         return _variant != other._variant ||
                _pass != other._pass ||
                _index != other._index ||

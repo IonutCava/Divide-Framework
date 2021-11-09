@@ -66,6 +66,7 @@ namespace Attorney {
     class RenderingCompRenderPass;
     class RenderingCompGFXDevice;
     class RenderingCompRenderBin;
+    class RenderingCompRenderPassExecutor;
     class RenderingComponentSGN;
 }
 
@@ -107,6 +108,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     friend class Attorney::RenderingCompRenderPass;
     friend class Attorney::RenderingCompGFXDevice;
     friend class Attorney::RenderingCompRenderBin;
+    friend class Attorney::RenderingCompRenderPassExecutor;
     friend class Attorney::RenderingComponentSGN;
 
    public:
@@ -127,8 +129,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
 
     void toggleRenderOption(RenderOptions option, bool state, bool recursive = true);
-    [[nodiscard]] bool renderOptionEnabled(RenderOptions option) const;
-    [[nodiscard]] bool renderOptionsEnabled(U32 mask) const;
+    [[nodiscard]] bool renderOptionEnabled(RenderOptions option) const noexcept;
+    [[nodiscard]] bool renderOptionsEnabled(U32 mask) const noexcept;
 
     void setMinRenderRange(F32 minRange) noexcept;
     void setMaxRenderRange(F32 maxRange) noexcept;
@@ -164,7 +166,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void drawSkeleton(GFX::CommandBuffer& bufferInOut);
     void drawBounds(bool AABB, bool OBB, bool Sphere, GFX::CommandBuffer& bufferInOut);
 
-    [[nodiscard]] U8 getLodLevel(RenderStage stage) const;
     [[nodiscard]] U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
     void addShaderBuffer(const ShaderBufferBinding& binding) { _externalBufferBindings.push_back(binding); }
@@ -175,7 +176,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
   protected:
     void toggleBoundsDraw(bool showAABB, bool showBS, bool recursive);
 
-    void retrieveDrawCommands(const RenderStagePass& stagePass, U32 cmdOffset, NodeDataIdx dataIdx, DrawCommandContainer& cmdsInOut);
+    void retrieveDrawCommands(const RenderStagePass& stagePass, U32 cmdOffset, DrawCommandContainer& cmdsInOut);
     [[nodiscard]] bool hasDrawCommands(const RenderStagePass& stagePass);
                   void onRenderOptionChanged(RenderOptions option, bool state);
 
@@ -209,6 +210,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     PROPERTY_R(bool, castsShadows, false);
     PROPERTY_RW(bool, occlusionCull, true);
     PROPERTY_RW(F32, dataFlag, 1.0f);
+    PROPERTY_R_IW(U32, indirectionBufferEntry, U32_MAX);
 
    protected:
 
@@ -324,8 +326,8 @@ class RenderingCompRenderPass {
             return renderable.hasDrawCommands(stagePass);
         }
 
-        static void retrieveDrawCommands(RenderingComponent& renderable, const RenderStagePass& stagePass, const U32 cmdOffset, const NodeDataIdx dataIdx, DrawCommandContainer& cmdsInOut) {
-            renderable.retrieveDrawCommands(stagePass, cmdOffset, dataIdx, cmdsInOut);
+        static void retrieveDrawCommands(RenderingComponent& renderable, const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
+            renderable.retrieveDrawCommands(stagePass, cmdOffset, cmdsInOut);
         }
 
           friend class Divide::RenderPass;
@@ -342,6 +344,15 @@ class RenderingCompRenderBin {
 
     friend class Divide::RenderBin;
     friend struct Divide::RenderBinItem;
+};
+
+class RenderingCompRenderPassExecutor {
+
+    static void setIndirectionBufferEntry(RenderingComponent* renderable, const U32 indirectionBufferEntry) {
+        renderable->indirectionBufferEntry(indirectionBufferEntry);
+    }
+
+    friend class Divide::RenderPassExecutor;
 };
 
 class RenderingComponentSGN {

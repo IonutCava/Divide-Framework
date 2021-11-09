@@ -21,7 +21,7 @@ bool compareVectors(const vector<T>& a, const vector<T>& b) {
 }
 
 template<typename T, size_t N>
-bool compareArrays(const std::array<T, N>& a, const std::array<T, N>& b) {
+bool compareArrays(const std::array<T, N>& a, const std::array<T, N>& b) noexcept {
     for (size_t i = 0; i < N; ++i) {
         if (a[i] != b[i]) {
             return false;
@@ -33,7 +33,7 @@ bool compareArrays(const std::array<T, N>& a, const std::array<T, N>& b) {
 
 TEST(ByteBufferRWBool)
 {
-    const bool input = false;
+    constexpr bool input = false;
 
     ByteBuffer test;
     test << input;
@@ -45,14 +45,14 @@ TEST(ByteBufferRWBool)
 
 TEST(ByteBufferRWPOD)
 {
-    const U8  inputU8 = 2;
-    const U16 inputU16 = 4;
-    const U32 inputU32 = 6;
-    const I8  inputI8 = -2;
-    const I16 inputI16 = 40;
-    const I32 inputI32 = -6;
-    const F32 inputF32 = 3.45632f;
-    const D64 inputD64 = 1.14159;
+    constexpr U8  inputU8 = 2;
+    constexpr U16 inputU16 = 4;
+    constexpr U32 inputU32 = 6;
+    constexpr I8  inputI8 = -2;
+    constexpr I16 inputI16 = 40;
+    constexpr I32 inputI32 = -6;
+    constexpr F32 inputF32 = 3.45632f;
+    constexpr D64 inputD64 = 1.14159;
 
     ByteBuffer test;
     test << inputU8;
@@ -234,20 +234,20 @@ TEST(ByteBufferRWArrayString)
 
 TEST(ByteBufferRWMixedData)
 {
-    const bool inputBool = false;
+    constexpr bool inputBool = false;
     const vector<I32> inputVectorInt = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
     const vector<string> inputVectorStr = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
-    const std::array<I32, 11> inputArrayInt = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
+    constexpr std::array<I32, 11> inputArrayInt = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
     const std::array<string, 11> inputArrayStr = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
-    const U8  inputU8 = 2;
-    const U16 inputU16 = 4;
-    const U32 inputU32 = 6;
-    const I8  inputI8 = -2;
-    const I16 inputI16 = 40;
-    const I32 inputI32 = -6;
-    const F32 inputF32 = 3.45632f;
-    const string inputStr = "StringTest Whatever";
-    const D64 inputD64 = 1.14159;
+    constexpr U8  inputU8 = 2;
+    constexpr U16 inputU16 = 4;
+    constexpr U32 inputU32 = 6;
+    constexpr I8  inputI8 = -2;
+    constexpr I16 inputI16 = 40;
+    constexpr I32 inputI32 = -6;
+    constexpr F32 inputF32 = 3.45632f;
+    const  string inputStr = "StringTest Whatever";
+    constexpr D64 inputD64 = 1.14159;
 
     bool outputBool = true;
     vector<I32> outputVectorInt;

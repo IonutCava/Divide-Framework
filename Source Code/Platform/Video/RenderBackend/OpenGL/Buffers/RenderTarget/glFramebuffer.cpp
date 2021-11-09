@@ -210,7 +210,7 @@ namespace BlitHelpers {
 void glFramebuffer::blitFrom(const RTBlitParams& params) {
     OPTICK_EVENT();
 
-    if (!params._inputFB || !params.hasBlitColours() && !IsValid(params._blitDepth)) {
+    if (!params._inputFB || (!params.hasBlitColours() && !IsValid(params._blitDepth))) {
         return;
     }
 

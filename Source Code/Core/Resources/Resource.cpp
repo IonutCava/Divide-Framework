@@ -67,7 +67,7 @@ void CachedResource::addStateCallback(const ResourceState targetState, const DEL
         ScopedLock<Mutex> w_lock(_callbackLock);
         _loadingCallbacks[to_U32(targetState)].push_back(cbk);
     }
-    if (getState() == ResourceState::RES_LOADED) {
+    if (Resource::getState() == ResourceState::RES_LOADED) {
         flushStateCallbacks();
     }
 }
@@ -78,7 +78,7 @@ void CachedResource::setState(const ResourceState currentState) noexcept {
 }
 
 void CachedResource::flushStateCallbacks() {
-    const ResourceState currentState = getState();
+    const ResourceState currentState = Resource::getState();
     for (U8 i = 0; i < to_base(currentState) + 1; ++i) {
         const auto tempState = static_cast<ResourceState>(i);
         CachedResource* ptr = nullptr;

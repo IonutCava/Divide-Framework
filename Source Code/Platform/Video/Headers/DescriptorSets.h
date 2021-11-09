@@ -107,8 +107,8 @@ namespace Divide {
 
         [[nodiscard]] const Item* find(SearchType search) const;
 
-        FORCE_INLINE [[nodiscard]] bool   empty() const noexcept { return _entries.empty(); }
-        FORCE_INLINE [[nodiscard]] size_t count() const noexcept { return _entries.size(); }
+        [[nodiscard]] FORCE_INLINE bool   empty() const noexcept { return _entries.empty(); }
+        [[nodiscard]] FORCE_INLINE size_t count() const noexcept { return _entries.size(); }
     };
 
     template<typename Item, size_t Count, typename SearchType, bool CanExpand = false>

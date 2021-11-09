@@ -28,11 +28,11 @@ void RenderingComponent::toggleRenderOption(RenderOptions option, bool state, bo
     }
 }
 
-bool RenderingComponent::renderOptionEnabled(const RenderOptions option) const {
+bool RenderingComponent::renderOptionEnabled(const RenderOptions option) const noexcept {
     return renderOptionsEnabled(to_U32(option));
 }
 
-bool RenderingComponent::renderOptionsEnabled(const U32 mask) const{
+bool RenderingComponent::renderOptionsEnabled(const U32 mask) const noexcept {
     return BitCompare(_renderMask, mask);
 }
 

@@ -76,19 +76,7 @@ void CommandBuffer::add(CommandBuffer** buffers, const size_t count) {
 
     static_assert(sizeof(PolyContainerEntry) == 4, "PolyContainerEntry has the wrong size!");
     for (size_t i = 0; i < count; ++i) {
-        CommandBuffer* other = buffers[i];
-
-        {
-            OPTICK_EVENT("add - reserve additional storage");
-            _commands.reserveAdditional(other->_commands);
-        }
-        {
-            OPTICK_EVENT("add - inserting commands");
-            for (const CommandEntry& cmd : other->_commandOrder) {
-                other->get<CommandBase>(cmd)->addToBuffer(this);
-            }
-        }
-        _batched = false;
+        add(*buffers[i]);
     }
 }
 

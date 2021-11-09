@@ -179,7 +179,7 @@ namespace Input {
         return (state & SDL_BUTTON(sdlButton)) != 0 ? InputState::PRESSED : InputState::RELEASED;
     }
 
-    InputState GetJoystickElementState(Joystick deviceIndex, JoystickElement element) noexcept {
+    InputState GetJoystickElementState([[maybe_unused]] Joystick deviceIndex, [[maybe_unused]] JoystickElement element) noexcept {
         assert(false && "implement me!");
 
         return InputState::RELEASED;

@@ -49,7 +49,7 @@ void ShaderBuffer::readData(const U32 offsetElementCount, const U32 rangeElement
               result);
 }
 
-size_t ShaderBuffer::alignmentRequirement(const Usage usage) {
+size_t ShaderBuffer::AlignmentRequirement(const Usage usage) {
     return usage == Usage::CONSTANT_BUFFER ? s_boundAlignmentRequirement : 
                     (usage == Usage::UNBOUND_BUFFER  || usage == Usage::COMMAND_BUFFER)
                         ? s_unboundAlignmentRequirement 

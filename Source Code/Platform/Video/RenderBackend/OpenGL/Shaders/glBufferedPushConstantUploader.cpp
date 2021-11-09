@@ -169,10 +169,10 @@ namespace Divide {
     }
 
 
-    void glBufferedPushConstantUploader::uploadPushConstant(const GFX::PushConstant& constant, bool force) noexcept {
+    void glBufferedPushConstantUploader::uploadPushConstant(const GFX::PushConstant& constant, [[maybe_unused]] const bool force) noexcept {
         if (_uniformBlockBufferHandle == GLUtil::k_invalidObjectID ||
-            constant._type == GFX::PushConstantType::COUNT ||
-            constant._bindingHash == 0u)         
+            constant.type() == GFX::PushConstantType::COUNT ||
+            constant.bindingHash() == 0u)         
         {
             return;
         }
@@ -180,12 +180,12 @@ namespace Divide {
         assert(_uniformBlockBuffer != nullptr);
 
         for (BlockMember& member : _blockMembers) {
-            if (member._nameHash == constant._bindingHash) {
-                DIVIDE_ASSERT(constant._buffer.size() <= member._size);
+            if (member._nameHash == constant.bindingHash()) {
+                DIVIDE_ASSERT(constant.dataSize() <= member._size);
 
-                      Byte*  dst      = _uniformBlockBuffer + member._offset;
-                const Byte*  src      = constant._buffer.data();
-                const size_t numBytes = constant._buffer.size();
+                      Byte*  dst      = &_uniformBlockBuffer[member._offset];
+                const Byte*  src      = constant.data();
+                const size_t numBytes = constant.dataSize();
 
                 if (std::memcmp(dst, src, numBytes) != 0) {
                     std::memcpy(dst, src, numBytes);

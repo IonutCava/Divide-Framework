@@ -21,12 +21,12 @@ TEST(TimeDownCast)
     constexpr D64 secondsToMicroResult = 4e6;
     constexpr D64 secondsToNanoResult = 4e9;
 
-    const U32 microToNano = Time::MicrosecondsToNanoseconds<U32>(inputMicroseconds);
-    const U32 milliToMicro = Time::MillisecondsToMicroseconds<U32>(inputMilliseconds);
-    const D64 milliToNano = Time::MillisecondsToNanoseconds<D64>(inputMilliseconds);
-    const U32 secondsToMilli = Time::SecondsToMilliseconds<U32>(inputSeconds);
-    const D64 secondsToMicro = Time::SecondsToMicroseconds<D64>(inputSeconds);
-    const D64 secondsToNano = Time::SecondsToNanoseconds<D64>(inputSeconds);
+    constexpr U32 microToNano = Time::MicrosecondsToNanoseconds<U32>(inputMicroseconds);
+    constexpr U32 milliToMicro = Time::MillisecondsToMicroseconds<U32>(inputMilliseconds);
+    constexpr D64 milliToNano = Time::MillisecondsToNanoseconds<D64>(inputMilliseconds);
+    constexpr U32 secondsToMilli = Time::SecondsToMilliseconds<U32>(inputSeconds);
+    constexpr D64 secondsToMicro = Time::SecondsToMicroseconds<D64>(inputSeconds);
+    constexpr D64 secondsToNano = Time::SecondsToNanoseconds<D64>(inputSeconds);
 
     CHECK_EQUAL(microToNanoResult, microToNano);
     CHECK_EQUAL(milliToMicroResult, milliToMicro);
@@ -112,14 +112,14 @@ TEST(TimeUpCast)
     constexpr U32 inputMicroToMilli = 5'000u;
     constexpr U32 inputMilliToSeconds = 4'000u;
 
-    const U32 nanoToSeconds = Time::NanosecondsToSeconds<U32>(inputNanoToSeconds);
-    const U32 nanoToMilli = Time::NanosecondsToMilliseconds<U32>(inputNanoToMilli);
-    const U32 nanoToMicro = Time::NanosecondsToMicroseconds<U32>(inputNanoToMicro);
+    constexpr U32 nanoToSeconds = Time::NanosecondsToSeconds<U32>(inputNanoToSeconds);
+    constexpr U32 nanoToMilli = Time::NanosecondsToMilliseconds<U32>(inputNanoToMilli);
+    constexpr U32 nanoToMicro = Time::NanosecondsToMicroseconds<U32>(inputNanoToMicro);
 
-    const U32 microToSeconds = Time::MicrosecondsToSeconds<U32>(inputMicroToSeconds);
-    const U32 microToMilli = Time::MicrosecondsToMilliseconds<U32>(inputMicroToMilli);
+    constexpr U32 microToSeconds = Time::MicrosecondsToSeconds<U32>(inputMicroToSeconds);
+    constexpr U32 microToMilli = Time::MicrosecondsToMilliseconds<U32>(inputMicroToMilli);
 
-    const U32 milliToSeconds = Time::MillisecondsToSeconds<U32>(inputMilliToSeconds);
+    constexpr U32 milliToSeconds = Time::MillisecondsToSeconds<U32>(inputMilliToSeconds);
 
     CHECK_EQUAL(secondsResult, nanoToSeconds);
     CHECK_EQUAL(millisecondsResult, nanoToMilli);

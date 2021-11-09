@@ -44,7 +44,7 @@ layout(location = 14) out vec3 vBetaM;
 #define UP_DIR vec3(0.0, 1.0, 0.0)
 
 // wavelength of used primaries, according to preetham
-const vec3 lambda = vec3(680E-9, 550E-9, 450E-9);
+//const vec3 lambda = vec3(680E-9, 550E-9, 450E-9);
 // this pre-calcuation replaces older TotalRayleigh(vec3 lambda) function:
 // (8.0 * pow(pi, 3.0) * pow(pow(n, 2.0) - 1.0, 2.0) * (6.0 + 3.0 * pn)) / (3.0 * N * pow(lambda, vec3(4.0)) * (6.0 - 7.0 * pn))
 const vec3 totalRayleigh = vec3(5.804542996261093E-6, 1.3562911419845635E-5, 3.0265902468824876E-5);
@@ -191,10 +191,7 @@ float sunIntensity(float zenithAngleCos) {
     return EE * max(0.f, 1.f - pow(e, -((cutoffAngle - acos(zenithAngleCos)) / steepness)));
 }
 
-vec3 totalMie(in float T) {
-    const float c = (0.2f * T) * 10E-18;
-    return 0.434f * c * MieConst;
-}
+#define TotalMie(T) (0.434f * ((0.2f * T) * 10E-18) * MieConst)
 
 void main() {
     const float rayleigh = 1.f;
@@ -218,7 +215,7 @@ void main() {
     vBetaR = totalRayleigh * rayleighCoefficient;
 
     // mie coefficients
-    vBetaM = totalMie(turbidity) * mieCoefficient;
+    vBetaM = TotalMie(turbidity) * mieCoefficient;
 
     ray_t ray = ray_t(vec3(0.f, dvd_planetRadius + 1.f, 0.f), normalize(vSunDirection.xyz + vec3(0.01f, 0.01f, 0.f)));
     vSunColour.rgb = getIncidentLight(ray, vSunDirection.xyz);

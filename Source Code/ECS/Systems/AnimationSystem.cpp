@@ -83,7 +83,7 @@ namespace Divide {
 
     bool AnimationSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
         if (Parent::saveCache(sgn, outputBuffer)) {
-            AnimationComponent* aComp = sgn->GetComponent<AnimationComponent>();
+            const AnimationComponent* aComp = sgn->GetComponent<AnimationComponent>();
             if (aComp != nullptr && !aComp->saveCache(outputBuffer)) {
                 return false;
             }

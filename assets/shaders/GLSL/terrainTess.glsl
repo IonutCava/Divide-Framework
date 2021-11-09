@@ -14,6 +14,8 @@ layout(location = 12) out flat uint vtx_ringID;
 
 void main(void)
 {
+    ComputeIndirectionData();
+
     // Calculate texture coordinates (u,v) relative to entire terrain
     const float iv = floor(gl_VertexID * INV_CONTROL_VTX_PER_TILE_EDGE);
     const float iu = gl_VertexID - iv * CONTROL_VTX_PER_TILE_EDGE;
@@ -80,18 +82,14 @@ float SphereToScreenSpaceTessellation(in vec3 w0, in vec3 w1, in float diameter,
 
 // The adjacency calculations ensure that neighbours have tessellations that agree.
 // However, only power of two sizes *seem* to get correctly tessellated with no cracks.
-float SmallerNeighbourAdjacencyClamp(in float tess) {
-    // Clamp to the nearest larger power of two.  Any power of two works; larger means that we don't lose detail.
-    // Output is [4, MAX_TESS_LEVEL]. Our smaller neighbour's min tessellation is pow(2,1) = 2.  As we are twice its size, we can't go below 4.
-    return max(4, pow(2, ceil(log2(tess))));
-}
+// Clamp to the nearest larger power of two.  Any power of two works; larger means that we don't lose detail.
+// Output is [4, MAX_TESS_LEVEL]. Our smaller neighbour's min tessellation is pow(2,1) = 2.  As we are twice its size, we can't go below 4.
+#define SmallerNeighbourAdjacencyClamp(TESS) max(4, pow(2, ceil(log2(TESS))))
 
-float LargerNeighbourAdjacencyClamp(in float tess) {
-    // Clamp to the nearest larger power of two.  Any power of two works; larger means that we don't lose detail.
-    // Our larger neighbour's max tessellation is MAX_TESS_LEVEL; as we are half its size, our tessellation must max out
-    // at MAX_TESS_LEVEL / 2, otherwise we could be over-tessellated relative to the neighbour.  Output is [2,MAX_TESS_LEVEL].
-    return clamp(pow(2, ceil(log2(tess))), 2.f, MAX_TESS_LEVEL * 0.5f);
-}
+// Clamp to the nearest larger power of two.  Any power of two works; larger means that we don't lose detail.
+// Our larger neighbour's max tessellation is MAX_TESS_LEVEL; as we are half its size, our tessellation must max out
+// at MAX_TESS_LEVEL / 2, otherwise we could be over-tessellated relative to the neighbour.  Output is [2,MAX_TESS_LEVEL].
+#define LargerNeighbourAdjacencyClamp(TESS) clamp(pow(2, ceil(log2(TESS))), 2.f, MAX_TESS_LEVEL * 0.5f)
 
 float SmallerNeighbourAdjacencyFix(in int idx0, in int idx1, in float diameter, in mat4 worldViewMat) {
     vec3 p0 = gl_in[idx0].gl_Position.xyz;
@@ -145,6 +143,8 @@ bool SphereInFrustum(in vec3 pos, in float r, in mat4 worldMat) {
 
 void main(void)
 {
+    PassData(0);
+
     const vec3 centre = 0.25f * (gl_in[0].gl_Position.xyz +
                                  gl_in[1].gl_Position.xyz +
                                  gl_in[2].gl_Position.xyz +
@@ -286,19 +286,10 @@ layout(location = 13) out float tes_PatternValue;
 layout(location = 10) out flat uint dvd_LoD;
 #endif //!TOGGLE_DEBUG
 
-vec3 Bilerp(vec3 v0, vec3 v1, vec3 v2, vec3 v3, vec2 i)
-{
-    const vec3 bottom = lerp(v0, v3, i.x);
-    const vec3 top = lerp(v1, v2, i.x);
-    return lerp(bottom, top, i.y);
-}
+#define Bilerp(v0, v1, v2, v3, i) lerp(lerp(v0, v3, i.x), lerp(v1, v2, i.x), i.y)
 
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
-vec3 BilerpColour(vec3 c0, vec3 c1, vec3 c2, vec3 c3, vec2 UV) {
-    const vec3 left = lerp(c0, c1, UV.y);
-    const vec3 right = lerp(c2, c3, UV.y);
-    return lerp(left, right, UV.x);
-}
+#define BilerpColour(c0, c1, c2, c3, UV) lerp(lerp(c0, c1, UV.y), lerp(c2, c3, UV.y), UV.x)
 
 vec3 LerpDebugColours(in vec3 cIn[5], vec2 uv) {
     if (uv.x < 0.5f && uv.y < 0.5f) {
@@ -374,13 +365,11 @@ layout(line_strip, max_vertices = 18) out;
 layout(triangle_strip, max_vertices = 4) out;
 #endif //TOGGLE_NORMALS
 
-vec4 getWVPPositon(in int i) {
-    return dvd_ViewProjectionMatrix * gl_in[i].gl_Position;
-}
+#define GetWVPPositon(i) (dvd_ViewProjectionMatrix * gl_in[i].gl_Position)
 
 void PerVertex(in int i, in vec3 edge_dist) {
     PassData(i);
-    gl_Position = getWVPPositon(i);
+    gl_Position = GetWVPPositon(i);
 
     dvd_LoD = tes_ringID[i];
     
@@ -396,9 +385,9 @@ void main(void)
     // Calculate edge distances for wireframe
     vec3 edge_dist = vec3(0.0);
     {
-        vec4 pos0 = getWVPPositon(0);
-        vec4 pos1 = getWVPPositon(1);
-        vec4 pos2 = getWVPPositon(2);
+        vec4 pos0 = GetWVPPositon(0);
+        vec4 pos1 = GetWVPPositon(1);
+        vec4 pos2 = GetWVPPositon(2);
 
         vec2 p0 = vec2(dvd_ViewPort.zw * (pos0.xy / pos0.w));
         vec2 p1 = vec2(dvd_ViewPort.zw * (pos1.xy / pos1.w));

@@ -285,11 +285,12 @@ public:  // Accessors and Mutators
     inline void onThreadCreated(const std::thread::id& threadID) const;
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
-    static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }
     static void setGPUVendor(const GPUVendor gpuVendor) noexcept { s_GPUVendor = gpuVendor; }
-    static GPUVendor getGPUVendor() noexcept { return s_GPUVendor; }
     static void setGPURenderer(const GPURenderer gpuRenderer) noexcept { s_GPURenderer = gpuRenderer; }
-    static GPURenderer getGPURenderer() noexcept { return s_GPURenderer; }
+
+    [[nodiscard]] static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }
+    [[nodiscard]] static GPUVendor getGPUVendor() noexcept { return s_GPUVendor; }
+    [[nodiscard]] static GPURenderer getGPURenderer() noexcept { return s_GPURenderer; }
 
 public:
     Mutex&       objectArenaMutex() noexcept;

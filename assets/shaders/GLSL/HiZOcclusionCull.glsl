@@ -19,11 +19,15 @@ struct IndirectDrawCommand {
     uint baseInstance;
 };
 
-layout(binding = BUFFER_NODE_TRANSFORM_DATA, std430) coherent COMP_ONLY_R buffer dvd_TransformBlock
+layout(binding = BUFFER_NODE_INDIRECTION_DATA, std430) coherent COMP_ONLY_R buffer dvd_IndirectionBlock
 {
-    NodeTransformData dvd_Transforms[MAX_VISIBLE_NODES];
+    NodeIndirectionData dvd_IndirectionData[];
 };
 
+layout(binding = BUFFER_NODE_TRANSFORM_DATA, std430) coherent COMP_ONLY_R buffer dvd_TransformBlock
+{
+    NodeTransformData dvd_Transforms[];
+};
 
 layout(binding = BUFFER_GPU_COMMANDS, std430) coherent COMP_ONLY_RW buffer dvd_GPUCmds
 {
@@ -47,22 +51,24 @@ void main()
         return;
     }
 
-    const uint transformIndex = dvd_drawCommands[ident].baseInstance >> 16;
+    const uint BASE_INSTANCE = dvd_drawCommands[ident].baseInstance;
     // We dont currently handle instanced nodes with this. We might need to in the future
     // Usually this is just terrain, vegetation and the skybox. So not that bad all in all since those have
     // their own culling routines
-    if (transformIndex == 0u) {
+    if (BASE_INSTANCE == 0u) {
         return;
     }
 
+    uint TRANSFORM_IDX = dvd_IndirectionData[BASE_INSTANCE - 1u]._transformIdx;
+    const NodeTransformData transformData = dvd_Transforms[TRANSFORM_IDX];
     // Skip occlusion cull if the flag is set
-    if (!dvd_cullNode(dvd_Transforms[transformIndex])) {
+    if (!dvd_cullNode(transformData)) {
         return;
     }
 
-    const vec3 boundsCenter = dvd_Transforms[transformIndex]._normalMatrixW[3].xyz;
-    const vec2 bboxHalfExtentsXY = unpackHalf2x16(uint(dvd_Transforms[transformIndex]._normalMatrixW[1][3]));
-    const vec2 bboxHalfExtentsZRadius = unpackHalf2x16(uint(dvd_Transforms[transformIndex]._normalMatrixW[2][3]));
+    const vec3 boundsCenter = transformData._normalMatrixW[3].xyz;
+    const vec2 bboxHalfExtentsXY = unpackHalf2x16(uint(transformData._normalMatrixW[1][3]));
+    const vec2 bboxHalfExtentsZRadius = unpackHalf2x16(uint(transformData._normalMatrixW[2][3]));
 
     const vec3 bBoxHExtents = vec3(bboxHalfExtentsXY, bboxHalfExtentsZRadius.x);
 

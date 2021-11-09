@@ -64,7 +64,7 @@ struct ValidationEntry
     UseProgramStageMask _stageMask = UseProgramStageMask::GL_NONE_BIT;
 };
 
-enum class ShaderBindResult : U8 {
+enum class ShaderResult : U8 {
     Failed = 0,
     OK,
     StillLoading,
@@ -145,8 +145,8 @@ class glShaderProgram final : public ShaderProgram, public glObject {
                                   Str256& fileNameOut,
                                   eastl::string& sourceCodeOut) const;
 
-    ShaderBindResult rebindStages();
-    ShaderBindResult validatePreBind();
+   ShaderResult rebindStages();
+    ShaderResult validatePreBind();
     void queueValidation();
     
     bool recompile(bool force, bool& skipped) override;
@@ -161,7 +161,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     bool reloadShaders(bool reloadExisting);
 
     /// Bind this shader program (returns false if the program failed validation)
-    ShaderBindResult bind();
+    ShaderResult bind();
 
     PROPERTY_R_IW(bool, shouldRecompile, false);
 
@@ -191,7 +191,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
 
 namespace Attorney {
     class GLAPIShaderProgram {
-        static ShaderBindResult bind(glShaderProgram& program) {
+        static ShaderResult bind(glShaderProgram& program) {
             return program.bind();
         }
 

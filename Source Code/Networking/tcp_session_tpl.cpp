@@ -112,7 +112,7 @@ void tcp_session_tpl::handle_read_packet(const boost::system::error_code& ec, [[
         try {
             boost::archive::text_iarchive ar(is);
             ar & packet;
-        } catch (std::exception& e) {
+        } catch (const std::exception& e) {
             ASIO::LOG_PRINT(e.what(), true);
         }
 
@@ -132,7 +132,7 @@ void tcp_session_tpl::start_write() {
     // Set a deadline for the write operation.
     _outputDeadline.expires_from_now(boost::posix_time::seconds(30));
 
-    WorldPacket& p = _outputQueue.front();
+    const WorldPacket& p = _outputQueue.front();
     boost::archive::text_oarchive ar(os);
     ar & p;  // Archive the packet
 
@@ -164,7 +164,7 @@ void tcp_session_tpl::handle_write_file([[maybe_unused]] const boost::system::er
         ASIO::LOG_PRINT(("failed to open " + filePath).c_str(), true);
         return;
     }
-    const size_t file_size = sizeof source_file;  //.tellg();
+    const size_t file_size = source_file.tellg();
     source_file.seekg(0);
     // first send file name and file size to server
     std::ostream request_stream(&request_);

@@ -65,7 +65,7 @@ class Client {
        boost::asio::ip::tcp::socket& getSocket() noexcept { return _socket; }
 
     // Packet I/O
-    bool sendPacket(WorldPacket& p);
+    bool sendPacket(const WorldPacket& p);
     void receivePacket(WorldPacket& p) const;
 
     void toggleDebugOutput(const bool debugOutput) noexcept { _debugOutput = debugOutput; }

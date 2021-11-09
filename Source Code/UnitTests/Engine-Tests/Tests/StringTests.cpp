@@ -161,7 +161,7 @@ TEST(TestCharTrail)
     CHECK_TRUE(Util::GetTrailingCharacters(input, 3) == extension);
     CHECK_TRUE(Util::GetTrailingCharacters(input, 20) == input);
 
-    const size_t length = 4;
+    constexpr size_t length = 4;
     CHECK_TRUE(Util::GetTrailingCharacters(input, length).size() == length);
 }
 

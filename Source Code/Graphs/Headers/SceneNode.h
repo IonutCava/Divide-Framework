@@ -135,17 +135,17 @@ class SceneNode : public CachedResource {
     virtual void setMaterialTpl(const Material_ptr& material);
     const Material_ptr& getMaterialTpl() const;
 
-    inline [[nodiscard]] SceneNodeRenderState& renderState() noexcept { return _renderState; }
-    inline [[nodiscard]] const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
+    [[nodiscard]] inline SceneNodeRenderState& renderState() noexcept { return _renderState; }
+    [[nodiscard]] inline const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
 
     string getTypeName() const;
 
-    inline [[nodiscard]] ResourceCache* parentResourceCache() noexcept { return _parentCache; }
-    inline [[nodiscard]] const ResourceCache* parentResourceCache() const noexcept { return _parentCache; }
+    [[nodiscard]] inline ResourceCache* parentResourceCache() noexcept { return _parentCache; }
+    [[nodiscard]] inline const ResourceCache* parentResourceCache() const noexcept { return _parentCache; }
 
-    inline [[nodiscard]] const BoundingBox& getBounds() const noexcept { return _boundingBox; }
+    [[nodiscard]] inline const BoundingBox& getBounds() const noexcept { return _boundingBox; }
 
-    inline [[nodiscard]] U32 requiredComponentMask() const noexcept { return _requiredComponentMask; }
+    [[nodiscard]] inline U32 requiredComponentMask() const noexcept { return _requiredComponentMask; }
 
     virtual bool saveCache(ByteBuffer& outputBuffer) const;
     virtual bool loadCache(ByteBuffer& inputBuffer);
@@ -162,8 +162,8 @@ class SceneNode : public CachedResource {
 
     void setBounds(const BoundingBox& aabb);
 
-    inline [[nodiscard]] EditorComponent& getEditorComponent() noexcept { return _editorComponent; }
-    inline [[nodiscard]] const EditorComponent& getEditorComponent() const noexcept { return _editorComponent; }
+    [[nodiscard]] inline EditorComponent& getEditorComponent() noexcept { return _editorComponent; }
+    [[nodiscard]] inline const EditorComponent& getEditorComponent() const noexcept { return _editorComponent; }
 
     virtual size_t maxReferenceCount() const noexcept { return 1; }
 

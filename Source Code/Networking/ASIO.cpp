@@ -16,10 +16,11 @@ namespace Divide {
 
 ASIO::LOG_CBK ASIO::_logCBK;
 
-ASIO::ASIO() : _localClient(nullptr),
-               _thread(nullptr),
-               _connected(false),
-               _debugOutput(true)
+ASIO::ASIO() noexcept 
+    : _localClient(nullptr),
+      _thread(nullptr),
+      _connected(false),
+      _debugOutput(true)
 {
 }
 
@@ -53,7 +54,7 @@ bool ASIO::init(const string& address, const U16 port) {
 
         io_service_.poll();
         _connected = true;
-    } catch (std::exception& e) {
+    } catch (const std::exception& e) {
         if (_debugOutput) {
             LOG_PRINT((string("[ASIO] Exception: ") + e.what()).c_str(), true);
         }
@@ -95,7 +96,7 @@ bool ASIO::sendPacket(WorldPacket& p) const {
     return false;
 }
 
-void ASIO::toggleDebugOutput(const bool debugOutput) {
+void ASIO::toggleDebugOutput(const bool debugOutput) noexcept {
     _debugOutput = debugOutput;
     _localClient->toggleDebugOutput(_debugOutput);
 }

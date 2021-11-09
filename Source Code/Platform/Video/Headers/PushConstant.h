@@ -84,7 +84,7 @@ namespace GFX {
 
     struct PushConstant {
         template<typename T>
-        PushConstant(U64 bindingHash, PushConstantType type, const T& data)
+        PushConstant(const U64 bindingHash, const PushConstantType type, const T& data)
             : PushConstant(bindingHash, type, &data, 1)
         {
         }
@@ -99,27 +99,54 @@ namespace GFX {
 
         template<typename T>
         void set(const T* data, const size_t count) {
-            if (count > 0) {
-                _buffer.resize(count * sizeof(T));
-                std::memcpy(_buffer.data(), data, count * sizeof(T));
+            if (count > 0u) {
+                const size_t bufferSize = count * sizeof(T);
+                if (_buffer.size() < bufferSize) {
+                    _buffer.resize(bufferSize);
+                }
+                std::memcpy(_buffer.data(), data, bufferSize);
+                dataSize(bufferSize);
             } else {
-                _buffer.clear();
+                _buffer.resize(0);
+                dataSize(0u);
             }
         }
 
         void clear();
 
+        [[nodiscard]] const Byte* data() const noexcept { return _buffer.data(); }
+
+        PROPERTY_R_IW(size_t, dataSize, 0u);
+        PROPERTY_R_IW(U64, bindingHash, 0u);
+        PROPERTY_R_IW(PushConstantType, type, PushConstantType::COUNT);
+
+    public:
+        inline bool operator==(const PushConstant& rhs) const {
+            return type() == rhs.type() &&
+                   bindingHash() == rhs.bindingHash() &&
+                   dataSize() == rhs.dataSize() &&
+                   _buffer == rhs._buffer;
+        }
+
+        inline bool operator!=(const PushConstant& rhs) const {
+            return type() != rhs.type() ||
+                   bindingHash() != rhs.bindingHash() ||
+                   dataSize() != rhs.dataSize() ||
+                   _buffer != rhs._buffer;
+        }
+    private:
         // Most often than not, data will be the size of a mat4 or lower, otherwise we'd just use shader storage buffers
         eastl::fixed_vector<Byte, sizeof(F32) * 16, true, eastl::dvd_allocator> _buffer;
-        U64               _bindingHash;
-        PushConstantType  _type = PushConstantType::COUNT;
     };
 
     template <>
     inline void PushConstant::set<bool>(const bool* data, const size_t count) {
         assert(data != nullptr);
 
-        if (count == 1) {
+        if (count == 0) {
+            _buffer.resize(0);
+            dataSize(0u);
+        } else if (count == 1) {
             //fast path
             const I32 value = *data ? 1 : 0;
             set(&value, 1);
@@ -129,18 +156,6 @@ namespace GFX {
             std::transform(data, data + count, std::back_inserter(temp), [](const bool e) noexcept { return e ? 1 : 0; });
             set(temp.data(), count);
         }
-    }
-
-    inline bool operator==(const PushConstant& lhs, const PushConstant& rhs) {
-        return lhs._type == rhs._type &&
-               lhs._bindingHash == rhs._bindingHash &&
-               lhs._buffer == rhs._buffer;
-    }
-
-    inline bool operator!=(const PushConstant& lhs, const PushConstant& rhs) {
-        return lhs._type != rhs._type ||
-               lhs._bindingHash != rhs._bindingHash ||
-               lhs._buffer != rhs._buffer;
     }
 
 }; //namespace GFX

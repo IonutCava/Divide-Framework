@@ -144,21 +144,21 @@
     <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
-    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>G:\Divide-Framework\VCData\Projects\Divide-Core.ruleset</CodeAnalysisRuleSet>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
-    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
     <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
-    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>G:\Divide-Framework\VCData\Projects\Divide-Core.ruleset</CodeAnalysisRuleSet>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
-    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)/../Build/</OutDir>
@@ -177,26 +177,26 @@
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
-    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>G:\Divide-Framework\VCData\Projects\Divide-Core.ruleset</CodeAnalysisRuleSet>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
     <LinkIncremental>false</LinkIncremental>
-    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
     <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
     <EnableCppCoreCheck>true</EnableCppCoreCheck>
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
-    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>G:\Divide-Framework\VCData\Projects\Divide-Core.ruleset</CodeAnalysisRuleSet>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
     <LinkIncremental>false</LinkIncremental>
-    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)_p</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
-    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>G:\Divide-Framework\VCData\Projects\Divide-Core.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <IncludePath>$(IncludePath)</IncludePath>
@@ -206,13 +206,13 @@
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
     <LinkIncremental>false</LinkIncremental>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
-    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
     <IntDir>$(SolutionDir)Outputs\Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)_p</TargetName>
     <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
-    <CodeAnalysisRuleSet>D:\Divide-Framework\VCData\DivideCheckRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>G:\Divide-Framework\VCData\Projects\Divide-Core.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <IncludePath>$(IncludePath)</IncludePath>
@@ -222,13 +222,13 @@
     <EnableExperimentalCppCoreCheck>false</EnableExperimentalCppCoreCheck>
     <LinkIncremental>false</LinkIncremental>
     <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
-    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/EABase/include/Common/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -294,7 +294,7 @@ $(TargetPath) nopause</Command>
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/EABase/include/Common/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -362,7 +362,7 @@ $(TargetPath) nopause</Command>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/EABase/include/Common/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_RELEASE;NDEBUG</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -421,7 +421,7 @@ $(TargetPath) nopause</Command>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/EABase/include/Common/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_RELEASE;NDEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -480,7 +480,7 @@ $(TargetPath) nopause</Command>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/EABase/include/Common/</AdditionalIncludeDirectories>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <PreprocessorDefinitions>_PROFILE;NDEBUG</PreprocessorDefinitions>
@@ -541,7 +541,7 @@ $(TargetPath) nopause</Command>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../3rdParty/fmt/include/;$(SolutionDir)/../Source Code/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/unit_test_framework/;$(SolutionDir)/../Source Code/UnitTests/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/ReCast/;$(SolutionDir)/../3rdParty/ReCast/DebugUtils/include/;$(SolutionDir)/../3rdParty/ReCast/Detour/include/;$(SolutionDir)/../3rdParty/ReCast/DetourCrowd/include/;$(SolutionDir)/../3rdParty/ReCast/DetourTileCache/include/;$(SolutionDir)/../3rdParty/ReCast/ReCast/include/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/sdl\include/;$(SolutionDir)/../3rdParty/DevIL\include/;$(SolutionDir)/../3rdParty/cegui\include/;$(SolutionDir)/../3rdParty/assimp\include/;$(SolutionDir)/../3rdParty/freetype\include/;$(SolutionDir)/../3rdParty/glbinding\include/;$(SolutionDir)/../3rdParty/glm\;$(SolutionDir)/../3rdParty/imgui\;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/ECS/;$(SolutionDir)/../3rdParty/EABase/include/Common/</AdditionalIncludeDirectories>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <PreprocessorDefinitions>_PROFILE;NDEBUG;_START_IN_EDITOR</PreprocessorDefinitions>

@@ -26,6 +26,7 @@
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
+#include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
 
 namespace Divide {
 
@@ -130,7 +131,7 @@ RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContex
     }
 
     for (U8 s = 0; s < to_U8(RenderStage::COUNT); ++s) {
-        const U8 count = RenderStagePass::totalPassCountForStage(static_cast<RenderStage>(s));
+        const U8 count = RenderStagePass::TotalPassCountForStage(static_cast<RenderStage>(s));
         if (s == to_U8(RenderStage::SHADOW)) {
             _renderPackages[s][to_base(RenderPassType::MAIN_PASS)].resize(count);
             _rebuildDrawCommandsFlags[s][to_base(RenderPassType::MAIN_PASS)].fill(true);
@@ -143,10 +144,14 @@ RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContex
             }
         }
     }
+
+    RenderPassExecutor::OnRenderingComponentCreation(this);
 }
 
 RenderingComponent::~RenderingComponent()
 {
+    RenderPassExecutor::OnRenderingComponentDestruction(this);
+
     if (_boundingBoxPrimitive) {
         _context.destroyIMP(_boundingBoxPrimitive);
     }
@@ -328,19 +333,19 @@ void RenderingComponent::setReflectionAndRefractionType(const ReflectorType refl
     }
 }
 
-void RenderingComponent::retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, const NodeDataIdx dataIdx, DrawCommandContainer& cmdsInOut) {
+void RenderingComponent::retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
     OPTICK_EVENT();
 
     const U8 stageIdx = to_U8(stagePass._stage);
     const U8 lodLevel = _lodLevels[stageIdx];
-    const U16 pkgIndex = RenderStagePass::indexForStage(stagePass);
-    const U16 pkgCount = RenderStagePass::passCountForStagePass(stagePass);
+    const U16 pkgIndex = RenderStagePass::IndexForStage(stagePass);
+    const U16 pkgCount = RenderStagePass::PassCountForStagePass(stagePass);
 
     PackagesPerIndex& packages = _renderPackages[stageIdx][to_U8(stagePass._passType)];
     U32 startCmdOffset = cmdOffset + to_U32(cmdsInOut.size());
     for (U16 i = 0u; i < pkgCount; ++i) {
         RenderPackage& pkg = packages[i + pkgIndex];
-        startCmdOffset += Attorney::RenderPackageRenderingComponent::updateAndRetrieveDrawCommands(pkg, dataIdx, startCmdOffset, lodLevel, cmdsInOut);
+        startCmdOffset += Attorney::RenderPackageRenderingComponent::updateAndRetrieveDrawCommands(pkg, indirectionBufferEntry(), startCmdOffset, lodLevel, cmdsInOut);
     }
 }
 
@@ -369,10 +374,6 @@ void RenderingComponent::getMaterialData(NodeMaterialData& dataOut, NodeMaterial
             }
         }
     }
-}
-
-U8 RenderingComponent::getLodLevel(const RenderStage stage) const {
-    return _lodLevels[to_base(stage)];
 }
 
 /// Called after the current node was rendered
@@ -416,8 +417,6 @@ void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, co
 }
 
 U8 RenderingComponent::getLoDLevel(const F32 distSQtoCenter, const RenderStage renderStage, const vec4<U16>& lodThresholds) {
-    OPTICK_EVENT();
-
     const auto&[state, level] = _lodLockLevels[to_base(renderStage)];
 
     if (state) {
@@ -501,7 +500,7 @@ void RenderingComponent::prepareDrawPackage(const Camera& camera, const SceneRen
 RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass& renderStagePass) {
     const U8 s = to_U8(renderStagePass._stage);
     const U8 p = to_U8(renderStagePass._stage == RenderStage::SHADOW ? RenderPassType::MAIN_PASS : renderStagePass._passType);
-    const U16 i = RenderStagePass::indexForStage(renderStagePass);
+    const U16 i = RenderStagePass::IndexForStage(renderStagePass);
 
     return _renderPackages[s][p][i];
 }
@@ -509,7 +508,7 @@ RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass& renderS
 const RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass& renderStagePass) const {
     const U8 s = to_U8(renderStagePass._stage);
     const U8 p = to_U8(renderStagePass._stage == RenderStage::SHADOW ? RenderPassType::MAIN_PASS : renderStagePass._passType);
-    const U16 i = RenderStagePass::indexForStage(renderStagePass);
+    const U16 i = RenderStagePass::IndexForStage(renderStagePass);
 
     return _renderPackages[s][p][i];
 }
@@ -517,7 +516,7 @@ const RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass& r
 void RenderingComponent::setRebuildFlag(const RenderStagePass& renderStagePass, const bool state) {
     const U8 s = to_U8(renderStagePass._stage);
     const U8 p = to_U8(renderStagePass._stage == RenderStage::SHADOW ? RenderPassType::MAIN_PASS : renderStagePass._passType);
-    const U16 i = RenderStagePass::indexForStage(renderStagePass);
+    const U16 i = RenderStagePass::IndexForStage(renderStagePass);
 
     _rebuildDrawCommandsFlags[s][p][i] = state;
 }
@@ -525,7 +524,7 @@ void RenderingComponent::setRebuildFlag(const RenderStagePass& renderStagePass, 
 bool RenderingComponent::getRebuildFlag(const RenderStagePass& renderStagePass) const {
     const U8 s = to_U8(renderStagePass._stage);
     const U8 p = to_U8(renderStagePass._stage == RenderStage::SHADOW ? RenderPassType::MAIN_PASS : renderStagePass._passType);
-    const U16 i = RenderStagePass::indexForStage(renderStagePass);
+    const U16 i = RenderStagePass::IndexForStage(renderStagePass);
 
     return _rebuildDrawCommandsFlags[s][p][i];
 }

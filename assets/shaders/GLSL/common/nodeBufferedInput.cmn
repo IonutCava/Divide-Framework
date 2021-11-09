@@ -1,27 +1,36 @@
 #ifndef _NODE_BUFFERED_INPUT_CMN_
 #define _NODE_BUFFERED_INPUT_CMN_
 
-#if defined(OVERRIDE_DATA_IDX)
-uniform uint DATA_INDICES;
-#else //OVERRIDE_DATA_IDX
-#define DATA_INDICES VAR._baseInstance
-#endif //OVERRIDE_DATA_IDX
-
-#define TRANSFORM_IDX (DATA_INDICES >> 16)
-#define MATERIAL_IDX (DATA_INDICES & 0xFFFF)
-
 //Ref: https://github.com/urho3d/Urho3D/blob/master/bin/CoreData/Shaders/GLSL/PBRLitSolid.glsl
 #include "nodeDataDefinition.cmn"
 
+#if defined(VERT_SHADER)
+#if defined(OVERRIDE_DATA_IDX)
+uniform uint INDIRECT_DATA_IDX;
+#else //OVERRIDE_DATA_IDX
+#define INDIRECT_DATA_IDX (DVD_GL_BASE_INSTANCE - 1u)
+#endif //OVERRIDE_DATA_IDX
+
+layout(binding = BUFFER_NODE_INDIRECTION_DATA, std430) coherent ACCESS_R buffer dvd_IndirectionBlock
+{
+    NodeIndirectionData dvd_IndirectionData[];
+};
+
+#define ComputeIndirectionData() \
+    VAR._indirectionIDs.x = dvd_IndirectionData[INDIRECT_DATA_IDX]._transformIdx; \
+    VAR._indirectionIDs.y = dvd_IndirectionData[INDIRECT_DATA_IDX]._materialIdx;
+
+#endif //VERT_SHADER
+
 layout(binding = BUFFER_NODE_TRANSFORM_DATA, std430) coherent ACCESS_R buffer dvd_TransformBlock
 {
-    NodeTransformData dvd_Transforms[MAX_VISIBLE_NODES];
+    NodeTransformData dvd_Transforms[];
 };
 
 #if defined(FRAG_SHADER) || defined(NEED_MATERIAL_DATA)
 layout(binding = BUFFER_NODE_MATERIAL_DATA, std430) coherent ACCESS_R buffer dvd_MaterialBlock 
 {
-    NodeMaterialData dvd_Materials[MAX_CONCURRENT_MATERIALS];
+    NodeMaterialData dvd_Materials[];
 };
 
 #if defined(USE_BINDLESS_TEXTURES)

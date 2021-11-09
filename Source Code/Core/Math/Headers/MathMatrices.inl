@@ -561,7 +561,7 @@ T mat2<T>::operator[](I32 i) const {
 }
 
 template<typename T>
-T& mat2<T>::element(I8 row, I8 column) {
+T& mat2<T>::element(I8 row, I8 column) noexcept {
     return m[row][column];
 }
 
@@ -1185,8 +1185,8 @@ void mat3<T>::zero() noexcept {
 
 template<typename T>
 void mat3<T>::identity() noexcept {
-    const T zero = static_cast<T>(0);
-    const T one = static_cast<T>(1);
+    constexpr T zero = static_cast<T>(0);
+    constexpr T one = static_cast<T>(1);
     mat[0] = one;  mat[1] = zero; mat[2] = zero;
     mat[3] = zero; mat[4] = one;  mat[5] = zero;
     mat[6] = zero; mat[7] = zero; mat[8] = one;
@@ -2314,8 +2314,8 @@ FORCE_INLINE const mat4<T>& mat4<T>::reflect(U x, U y, U z, U w) {
 template<typename T>
 template<typename U>
 const mat4<T>& mat4<T>::reflect(const Plane<U> &plane) {
-    const U zero = static_cast<U>(0);
-    const U one = static_cast<U>(1);
+    constexpr U zero = static_cast<U>(0);
+    constexpr U one = static_cast<U>(1);
 
     const vec4<U> &eq = plane._equation;
 
@@ -2422,7 +2422,7 @@ void mat4<T>::extractMat3(mat3<U> &matrix3) const noexcept {
 }
 
 template<typename T>
-void mat4<T>::Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB, mat4<T>& ret) noexcept {
+void mat4<T>::Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB, mat4<T>& ret) {
     for (U8 i = 0; i < 4; ++i) {
         const vec4<T>& rowA = matrixA.getRow(i);
         ret.setRow(i, matrixB.getRow(0) * rowA[0] + matrixB.getRow(1) * rowA[1] + matrixB.getRow(2) * rowA[2] + matrixB.getRow(3) * rowA[3]);
@@ -2437,7 +2437,7 @@ mat4<T> mat4<T>::Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB) noexce
 }
 
 template<>
-FORCE_INLINE void mat4<F32>::Multiply(const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret) noexcept {
+FORCE_INLINE void mat4<F32>::Multiply(const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret) {
 #if !defined(USE_AVX)
     ret._reg[0]._reg = AVX::lincomb_SSE(matrixA._reg[0]._reg, matrixB);
     ret._reg[1]._reg = AVX::lincomb_SSE(matrixA._reg[1]._reg, matrixB);

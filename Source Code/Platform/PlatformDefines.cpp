@@ -101,7 +101,7 @@ bool PlatformClose() {
     return false;
 }
 
-void InitSysInfo(SysInfo& info, const I32 argc, char** argv) {
+void InitSysInfo(SysInfo& info, [[maybe_unused]] const I32 argc, [[maybe_unused]] char** argv) {
     if (!GetAvailableMemory(info)) {
         DebugBreak();
         // Assume 256Megs as a minimum

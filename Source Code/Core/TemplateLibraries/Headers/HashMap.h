@@ -46,9 +46,9 @@ namespace Divide {
     namespace hashAlg = eastl;
 
 
-    template <typename K, typename V, typename HashFun = HashType<K>, typename Predicate = eastl::equal_to<K>>
+    template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = eastl::equal_to<K>>
     using hashMap = hashAlg::unordered_map<K, V, HashFun, Predicate>;
-    template <typename K, typename V, typename HashFun = HashType<K>, typename Predicate = eastl::equal_to<K>>
+    template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = eastl::equal_to<K>>
     using hashPairReturn = hashAlg::pair<typename hashMap<K, V, HashFun, Predicate>::iterator, bool>;
 
     template <typename K, typename V>
@@ -104,10 +104,10 @@ namespace eastl {
 
 template <> struct hash<std::string>
 {
-    size_t operator()(const std::string& x) const
+    size_t operator()(const std::string& x) const noexcept
     {
         const char* p = x.c_str();
-        uint32_t c, result = 2166136261U;   // Intentionally uint32_t instead of size_t, so the behavior is the same regardless of size.
+        uint32_t c = 0u, result = 2166136261U;   // Intentionally uint32_t instead of size_t, so the behavior is the same regardless of size.
         while ((c = static_cast<uint8_t>(*p++)) != 0)     // cast to unsigned 8 bit.
             result = result * 16777619 ^ c;
         return static_cast<size_t>(result);
@@ -115,27 +115,27 @@ template <> struct hash<std::string>
 };
 
 
-template <typename K, typename V, typename ... Args, typename HashFun = HashType<K>, typename Predicate = equal_to<K>>
+template <typename K, typename V, typename ... Args, typename HashFun = Divide::HashType<K>, typename Predicate = equal_to<K>>
 Divide::hashPairReturn<K, V, HashFun> emplace(Divide::hashMap<K, V, HashFun, Predicate>& map, K key, Args&&... args) {
     return map.try_emplace(key, eastl::forward<Args>(args)...);
 }
 
-template <typename K, typename V, typename ... Args, typename HashFun = HashType<K>, typename Predicate = equal_to<K>>
+template <typename K, typename V, typename ... Args, typename HashFun = Divide::HashType<K>, typename Predicate = equal_to<K>>
 Divide::hashPairReturn<K, V, HashFun> emplace(Divide::hashMap<K, V, HashFun, Predicate>& map, Args&&... args) {
     return map.emplace(eastl::forward<Args>(args)...);
 }
 
-template <typename K, typename V, typename HashFun = HashType<K>, typename Predicate = equal_to<K>>
+template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = equal_to<K>>
 Divide::hashPairReturn<K, V, HashFun> insert(Divide::hashMap<K, V, HashFun, Predicate>& map, const pair<K, V>& valuePair) {
     return map.insert(valuePair);
 }
 
-template <typename K, typename V, typename HashFun = HashType<K>, typename Predicate = equal_to<K>>
+template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = equal_to<K>>
 Divide::hashPairReturn<K, V, HashFun> insert(Divide::hashMap<K, V, HashFun, Predicate>& map, K key, const V& value) {
     return map.emplace(key, value);
 }
 
-template <typename K, typename V, typename HashFun = HashType<K>, typename Predicate = equal_to<K>>
+template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = equal_to<K>>
 Divide::hashPairReturn<K, V, HashFun> insert(Divide::hashMap<K, V, HashFun, Predicate>& map, K key, V&& value) {
     return map.emplace(key, eastl::move(value));
 }

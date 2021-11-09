@@ -317,7 +317,7 @@ bool deleteAllFiles(const char* filePath, const char* extension) {
         for (const auto& p : std::filesystem::directory_iterator(pathIn)) {
             try {
                 if (is_regular_file(p.status())) {
-                    if (!extension || extension != nullptr && p.path().extension() == extension) {
+                    if (!extension || p.path().extension() == extension) {
                         if (std::filesystem::remove(p.path())) {
                             ret = true;
                         }

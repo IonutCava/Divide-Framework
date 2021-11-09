@@ -141,7 +141,7 @@ class function_view<TReturn(TArgs...)> final
 
 public:
     template <typename T, typename = std::enable_if_t <
-        std::is_callable<T&(TArgs...)>{} &&
+        std::is_invocable<T&(TArgs...)>{} &&
         !std::is_same<std::decay_t<T>, function_view>{} >>
         function_view(T&& x) noexcept : _ptr{ (void*)std::addressof(x) } {
         _erased_fn = [](void* ptr, TArgs... xs) -> TReturn {
@@ -475,7 +475,7 @@ namespace detail {
     {
         int exceptionCount_;
     public:
-        UncaughtExceptionCounter() : exceptionCount_(std::uncaught_exceptions()) {}
+        UncaughtExceptionCounter() noexcept : exceptionCount_(std::uncaught_exceptions()) {}
         bool newUncaughtException() noexcept { return std::uncaught_exceptions() > exceptionCount_; }
     };
 
@@ -695,7 +695,7 @@ extern void DIVIDE_ASSERT_MSG_BOX(const char* failMessage) noexcept;
 
 namespace Assert {
     /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
-    FORCE_INLINE bool DIVIDE_ASSERT([[maybe_unused]] const bool expression, [[maybe_unused]] const char* file, [[maybe_unused]] const I32 line, [[maybe_unused]] const char* failMessage = "UNEXPECTED CALL") noexcept {
+    FORCE_INLINE bool DIVIDE_ASSERT([[maybe_unused]] const bool expression, [[maybe_unused]] const char* file, [[maybe_unused]] const I32 line, [[maybe_unused]] const char* failMessage = "UNEXPECTED CALL") {
         if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
             if (!expression) {
                 const auto msgOut = fmt::sprintf("[ %s ] [ %s ] AT [ %d ]", failMessage, file, line);

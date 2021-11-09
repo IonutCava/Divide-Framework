@@ -230,7 +230,7 @@ bool GL_API::InitGLSW(Configuration& config) {
         { "vec3"       , "_normalWV"},
         { "vec3"       , "_viewDirectionWV"},
         { "vec2"       , "_texCoord"},
-        { "flat uint"  , "_baseInstance" }
+        { "flat uvec2" , "_indirectionIDs"}
     };
 
     constexpr std::pair<const char*, const char*> shaderVaryingsBump[] =
@@ -407,6 +407,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_CLUSTER_AABBS "      + Util::to_string(to_base(ShaderBufferLocation::LIGHT_CLUSTER_AABBS)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_TRANSFORM_DATA "      + Util::to_string(to_base(ShaderBufferLocation::NODE_TRANSFORM_DATA)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_MATERIAL_DATA "       + Util::to_string(to_base(ShaderBufferLocation::NODE_MATERIAL_DATA)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_INDIRECTION_DATA "    + Util::to_string(to_base(ShaderBufferLocation::NODE_INDIRECTION_DATA)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_SCENE_DATA "               + Util::to_string(to_base(ShaderBufferLocation::SCENE_DATA)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_PROBE_DATA "               + Util::to_string(to_base(ShaderBufferLocation::PROBE_DATA)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_COMMANDS "                 + Util::to_string(to_base(ShaderBufferLocation::CMD_BUFFER)));
@@ -534,7 +535,7 @@ bool GL_API::InitGLSW(Configuration& config) {
 
     AppendToShaderHeader(ShaderType::VERTEX, "#define VAR _out");
     AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#define VAR _in[gl_InvocationID]");
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#define VAR _in");
+    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#define VAR _in[0]");
     AppendToShaderHeader(ShaderType::GEOMETRY, "#define VAR _in");
     AppendToShaderHeader(ShaderType::FRAGMENT, "#define VAR _in");
 
@@ -722,17 +723,17 @@ void GL_API::drawIMGUI(ImDrawData* data, I64 windowGUID) {
     }
 }
 
-ShaderBindResult GL_API::bindPipeline(const Pipeline& pipeline) const {
+ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     OPTICK_EVENT();
     auto& stateTracker = getStateTracker();
 
     if (stateTracker._activePipeline && *stateTracker._activePipeline == pipeline) {
-        return ShaderBindResult::OK;
+        return ShaderResult::OK;
     }
 
     ShaderProgram* program = ShaderProgram::FindShaderProgram(pipeline.shaderProgramHandle());
     if (program == nullptr) {
-        return ShaderBindResult::Failed;
+        return ShaderResult::Failed;
     }
 
     stateTracker._activePipeline = &pipeline;
@@ -745,9 +746,9 @@ ShaderBindResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     // We need a valid shader as no fixed function pipeline is available
 
     // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
-    const ShaderBindResult ret = Attorney::GLAPIShaderProgram::bind(glProgram);
+    const ShaderResult ret = Attorney::GLAPIShaderProgram::bind(glProgram);
 
-    if (ret == ShaderBindResult::StillLoading) {
+    if (ret == ShaderResult::StillLoading) {
         stateTracker.setActiveProgram(0u);
         stateTracker.setActiveShaderPipeline(0u);
         stateTracker._activePipeline = nullptr;
@@ -894,7 +895,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::BIND_PIPELINE: {
             const Pipeline* pipeline = commandBuffer.get<GFX::BindPipelineCommand>(entry)->_pipeline;
             assert(pipeline != nullptr);
-            if (bindPipeline(*pipeline) == ShaderBindResult::Failed) {
+            if (bindPipeline(*pipeline) == ShaderResult::Failed) {
                 Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INVALID_BIND")), pipeline->shaderProgramHandle());
             }
         } break;
@@ -1092,61 +1093,61 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                 if (barrierMask == to_base(MemoryBarrierType::ALL_MEM_BARRIERS)) {
                     glMemoryBarrier(MemoryBarrierMask::GL_ALL_BARRIER_BITS);
                 } else {
-                    for (U8 i = 0; i < to_U8(MemoryBarrierType::COUNT) + 1; ++i) {
-                        if (BitCompare(barrierMask, 1u << i)) {
-                            switch (static_cast<MemoryBarrierType>(1 << i)) {
-                                case MemoryBarrierType::BUFFER_UPDATE:
-                                    glMask |= MemoryBarrierMask::GL_BUFFER_UPDATE_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::SHADER_STORAGE:
-                                    glMask |= MemoryBarrierMask::GL_SHADER_STORAGE_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::COMMAND_BUFFER:
-                                    glMask |= MemoryBarrierMask::GL_COMMAND_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::ATOMIC_COUNTER:
-                                    glMask |= MemoryBarrierMask::GL_ATOMIC_COUNTER_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::QUERY:
-                                    glMask |= MemoryBarrierMask::GL_QUERY_BUFFER_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::RENDER_TARGET:
-                                    glMask |= MemoryBarrierMask::GL_FRAMEBUFFER_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::TEXTURE_UPDATE:
-                                    glMask |= MemoryBarrierMask::GL_TEXTURE_UPDATE_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::TEXTURE_FETCH:
-                                    glMask |= MemoryBarrierMask::GL_TEXTURE_FETCH_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::SHADER_IMAGE:
-                                    glMask |= MemoryBarrierMask::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::TRANSFORM_FEEDBACK:
-                                    glMask |= MemoryBarrierMask::GL_TRANSFORM_FEEDBACK_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::VERTEX_ATTRIB_ARRAY:
-                                    glMask |= MemoryBarrierMask::GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::INDEX_ARRAY:
-                                    glMask |= MemoryBarrierMask::GL_ELEMENT_ARRAY_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::UNIFORM_DATA:
-                                    glMask |= MemoryBarrierMask::GL_UNIFORM_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::PIXEL_BUFFER:
-                                    glMask |= MemoryBarrierMask::GL_PIXEL_BUFFER_BARRIER_BIT;
-                                    break;
-                                case MemoryBarrierType::PERSISTENT_BUFFER:
-                                    glMask |= MemoryBarrierMask::GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT;
-                                    break;
-                                default:
-                                    NOP();
-                                    break;
-                            }
-                        }
-                    }
-                   glMemoryBarrier(glMask);
+for (U8 i = 0; i < to_U8(MemoryBarrierType::COUNT) + 1; ++i) {
+    if (BitCompare(barrierMask, 1u << i)) {
+        switch (static_cast<MemoryBarrierType>(1 << i)) {
+        case MemoryBarrierType::BUFFER_UPDATE:
+            glMask |= MemoryBarrierMask::GL_BUFFER_UPDATE_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::SHADER_STORAGE:
+            glMask |= MemoryBarrierMask::GL_SHADER_STORAGE_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::COMMAND_BUFFER:
+            glMask |= MemoryBarrierMask::GL_COMMAND_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::ATOMIC_COUNTER:
+            glMask |= MemoryBarrierMask::GL_ATOMIC_COUNTER_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::QUERY:
+            glMask |= MemoryBarrierMask::GL_QUERY_BUFFER_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::RENDER_TARGET:
+            glMask |= MemoryBarrierMask::GL_FRAMEBUFFER_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::TEXTURE_UPDATE:
+            glMask |= MemoryBarrierMask::GL_TEXTURE_UPDATE_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::TEXTURE_FETCH:
+            glMask |= MemoryBarrierMask::GL_TEXTURE_FETCH_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::SHADER_IMAGE:
+            glMask |= MemoryBarrierMask::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::TRANSFORM_FEEDBACK:
+            glMask |= MemoryBarrierMask::GL_TRANSFORM_FEEDBACK_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::VERTEX_ATTRIB_ARRAY:
+            glMask |= MemoryBarrierMask::GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::INDEX_ARRAY:
+            glMask |= MemoryBarrierMask::GL_ELEMENT_ARRAY_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::UNIFORM_DATA:
+            glMask |= MemoryBarrierMask::GL_UNIFORM_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::PIXEL_BUFFER:
+            glMask |= MemoryBarrierMask::GL_PIXEL_BUFFER_BARRIER_BIT;
+            break;
+        case MemoryBarrierType::PERSISTENT_BUFFER:
+            glMask |= MemoryBarrierMask::GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT;
+            break;
+        default:
+            NOP();
+            break;
+        }
+    }
+}
+glMemoryBarrier(glMask);
                }
             }
         } break;
@@ -1154,21 +1155,21 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
     }
 
     switch (cmdType) {
-        case GFX::CommandType::EXTERNAL:
-        case GFX::CommandType::DRAW_TEXT:
-        case GFX::CommandType::DRAW_IMGUI:
-        case GFX::CommandType::DRAW_COMMANDS:
-        case GFX::CommandType::DISPATCH_COMPUTE:
-        {
-            OPTICK_EVENT();
-            const U32 frameIndex = _context.frameCount();
-            for (const BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
-                if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+    case GFX::CommandType::EXTERNAL:
+    case GFX::CommandType::DRAW_TEXT:
+    case GFX::CommandType::DRAW_IMGUI:
+    case GFX::CommandType::DRAW_COMMANDS:
+    case GFX::CommandType::DISPATCH_COMPUTE:
+    {
+        OPTICK_EVENT();
+        const U32 frameIndex = _context.frameCount();
+        for (const BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
+            if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
+                DIVIDE_UNEXPECTED_CALL();
             }
-            s_bufferLockQueueMidFlush.resize(0);
-        } break;
+        }
+        s_bufferLockQueueMidFlush.resize(0);
+    } break;
     }
 }
 
@@ -1178,9 +1179,24 @@ void GL_API::RegisterSyncDelete(GLsync fenceSync) {
 
 void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAfterFirstDraw) {
     assert(Runtime::isMainThread());
+
     if (fenceAfterFirstDraw) {
+        for (BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
+            if (lockEntry._buffer->getGUID() == data._buffer->getGUID()) {
+                lockEntry._offset = std::min(lockEntry._offset, data._offset);
+                lockEntry._length = std::max(lockEntry._length, data._length);
+                return;
+            }
+        }
         s_bufferLockQueueMidFlush.push_back(data);
     } else {
+        for (BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
+            if (lockEntry._buffer->getGUID() == data._buffer->getGUID()) {
+                lockEntry._offset = std::min(lockEntry._offset, data._offset);
+                lockEntry._length = std::max(lockEntry._length, data._length);
+                return;
+            }
+        }
         s_bufferLockQueueEndOfBuffer.push_back(data);
     }
 }
@@ -1189,7 +1205,7 @@ void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAf
 void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     OPTICK_EVENT();
     const U32 frameIndex = _context.frameCount();
-    for (BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
+    for (const BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
         if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
             DIVIDE_UNEXPECTED_CALL();
         }

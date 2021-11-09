@@ -495,7 +495,7 @@ namespace Divide {
         } else {
             getMatrix(interpolationFactor, matrixOut);
 
-            SceneGraphNode* grandParentPtr = _parentSGN->parent();
+            const SceneGraphNode* grandParentPtr = _parentSGN->parent();
             if (grandParentPtr != nullptr) {
                 mat4<F32> parentMat;
                 grandParentPtr->get<TransformComponent>()->getWorldMatrix(interpolationFactor, parentMat);

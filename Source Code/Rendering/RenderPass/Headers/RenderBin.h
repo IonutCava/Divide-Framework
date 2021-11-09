@@ -106,7 +106,7 @@ using RenderQueuePackages = vector_fast<RenderPackage*>;
 class RenderBin {
    public:
     using RenderBinStack = eastl::array<RenderBinItem, Config::MAX_VISIBLE_NODES>;
-    using SortedQueue = vector<std::pair<RenderingComponent*, NodeDataIdx>>;
+    using SortedQueue = vector<RenderingComponent*>;
     using SortedQueues = std::array<SortedQueue, to_base(RenderBinType::COUNT)>;
 
     friend class RenderQueue;

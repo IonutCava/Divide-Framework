@@ -109,10 +109,12 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
                    U32 offsetElementCount,
                    U32 rangeElementCount);
 
-    U32 getPrimitiveCount() const noexcept { return _params._elementCount; }
-    size_t getPrimitiveSize() const noexcept { return _params._elementSize; }
+    [[nodiscard]] U32 getPrimitiveCount() const noexcept { return _params._elementCount; }
+    [[nodiscard]] size_t getPrimitiveSize() const noexcept { return _params._elementSize; }
+    [[nodiscard]] Usage getUsage() const noexcept { return _usage;  }
 
-    static size_t alignmentRequirement(Usage usage);
+    [[nodiscard]] static size_t AlignmentRequirement(Usage usage);
+    PROPERTY_R(string, name);
 
    protected:
     BufferParams _params;
@@ -123,8 +125,6 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
 
     const U32 _flags;
     const Usage _usage;
-
-    string _name;
 };
 
 /// If initialData is NULL, the buffer contents are undefined (good for CPU -> GPU transfers),

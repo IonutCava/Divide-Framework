@@ -247,7 +247,7 @@ class vec2 {
     /// set the 2 components of the vector back to 0
     void reset() { this->set(static_cast<T>(0)); }
     /// return the vector's length
-    [[nodiscard]] T length()        const          { return Divide::Sqrt(lengthSquared()); }
+    [[nodiscard]] T length()        const noexcept { return Divide::Sqrt(lengthSquared()); }
     [[nodiscard]] T lengthSquared() const noexcept;
     /// return the angle defined by the 2 components
     [[nodiscard]] T angle() const { return static_cast<T>(std::atan2(this->y, this->x)); }
@@ -667,8 +667,8 @@ class vec4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     vec4 &operator-=(const vec4<U> &v) noexcept { this->set(*this - v); return *this; }
 
-    [[nodiscard]] operator T *() { return this->_v; }
-    [[nodiscard]] operator const T *() const { return this->_v; }
+    [[nodiscard]] operator       T *()       noexcept { return this->_v; }
+    [[nodiscard]] operator const T *() const noexcept { return this->_v; }
 
     template<typename U,
         typename = typename std::enable_if<std::is_integral<U>::value>::type,
@@ -764,9 +764,8 @@ class vec4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
         struct { T x, y, z, w; };
         struct { T s, t, p, q; };
         struct { T r, g, b, a; };
-        struct { T pitch, yaw, roll, _pad; };
-        struct { T turn, move, zoom, _pad; };
-        struct { T width, height, depth, _pad; };
+        struct { T pitch, yaw, roll, _pad0; };
+        struct { T turn, move, zoom, _pad1; };
         struct { T left, right, bottom, top; };
         struct { T fov, ratio, zNear, zFar; };
         struct { T width, height, depth, key; };
@@ -777,8 +776,8 @@ class vec4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
         struct { vec3<T> rgb; T _a; };
         struct { T _x; vec3<T> yzw; };
         struct { T _r; vec3<T> gba; };
-        struct { T _x; vec2<T> yz;  T _w; };
-        struct { T _r; vec2<T> gb;  T _a; };
+        struct { T _x1; vec2<T> yz;  T _w1; };
+        struct { T _r1; vec2<T> gb;  T _a1; };
 
         T _v[4];
         SimdVector<T> _reg;

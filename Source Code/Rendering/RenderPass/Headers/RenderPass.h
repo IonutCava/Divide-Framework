@@ -60,8 +60,6 @@ class RenderPass final : NonCopyable {
            ShaderBuffer* _cullCounterBuffer = nullptr;
            U32* _lastCommandCount = nullptr;
            U32* _lastNodeCount = nullptr;
-           U32 _transformElementOffset = 0u;
-           U32 _commandElementOffset = 0u;
        };
   public:
     // Size factor for command, transform and material buffers

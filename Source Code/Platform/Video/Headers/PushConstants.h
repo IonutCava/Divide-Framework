@@ -48,8 +48,8 @@ struct PushConstants {
     template<typename T>
     void set(U64 bindingHash, GFX::PushConstantType type, const T* values, size_t count) {
         for (GFX::PushConstant& constant : _data) {
-            if (constant._bindingHash == bindingHash) {
-                assert(constant._type == type);
+            if (constant.bindingHash() == bindingHash) {
+                assert(constant.type() == type);
                 constant.set(values, count);
                 return;
             }

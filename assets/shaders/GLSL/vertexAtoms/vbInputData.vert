@@ -9,7 +9,8 @@
 #endif // USE_GPU_SKINNING
 
 NodeTransformData fetchInputData() {
-    VAR._baseInstance = DVD_GL_BASE_INSTANCE;
+    ComputeIndirectionData();
+
     VAR._texCoord = inTexCoordData;
 
     dvd_Vertex = vec4(inVertexData, 1.f);

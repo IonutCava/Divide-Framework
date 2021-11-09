@@ -87,7 +87,7 @@ struct VisibleNodeList
 {
     using Container = std::array<VisibleNode, N>;
 
-    void append(const VisibleNodeList& other) {
+    void append(const VisibleNodeList& other) noexcept {
         assert(_index + other._index < _nodes.size());
 
         std::memcpy(_nodes.data() + _index, other._nodes.data(), other._index * sizeof(VisibleNode));

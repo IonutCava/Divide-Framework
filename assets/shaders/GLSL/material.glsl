@@ -12,11 +12,10 @@ layout(early_fragment_tests) in;
 void main (void) {
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 
-    vec4 albedo = getAlbedo(data, VAR._texCoord);
+    const vec4 albedo = getAlbedo(data, VAR._texCoord);
   
 #if !defined(OIT_PASS) && defined(USE_ALPHA_DISCARD)
-    float alpha = albedo.a;
-    if (alpha < INV_Z_TEST_SIGMA) {
+    if (albedo.a < INV_Z_TEST_SIGMA) {
         discard;
     }
 #endif

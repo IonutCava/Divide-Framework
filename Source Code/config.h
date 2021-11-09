@@ -112,8 +112,8 @@ constexpr unsigned int MAX_BONE_COUNT_PER_NODE = 1 << 7;
 /// Estimated maximum number of visible objects per render pass (this includes debug primitives)
 constexpr unsigned int MAX_VISIBLE_NODES = 1 << 13;
 
-/// Estimated maximum number of materials used in a single frame
-constexpr unsigned int MAX_CONCURRENT_MATERIALS = 1 << 12;
+/// Estimated maximum number of materials used in a single frame by all passes combined
+constexpr unsigned int MAX_CONCURRENT_MATERIALS = 1 << 14;
 
 /// Maximum number of concurrent clipping planes active at any time (can be changed per-call)
 /// High numbers for CLIP/CULL negatively impact number of threads run on the GPU. Max of 6 for each (ref: nvidia's "GPU-DRIVEN RENDERING" 2016)

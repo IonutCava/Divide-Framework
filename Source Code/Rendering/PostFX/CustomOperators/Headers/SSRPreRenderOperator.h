@@ -45,7 +45,7 @@ class SSRPreRenderOperator final : public PreRenderOperator {
     [[nodiscard]] bool execute(const Camera* camera, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
 
-    void parametersChanged() noexcept;
+    void parametersChanged();
 
     [[nodiscard]] bool ready() const override;
 

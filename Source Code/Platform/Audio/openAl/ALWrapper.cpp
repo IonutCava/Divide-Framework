@@ -34,9 +34,9 @@ void OpenAL_API::endFrame() {}
 
 void OpenAL_API::closeAudioAPI() {}
 
-void OpenAL_API::playSound(const AudioDescriptor_ptr& sound) {}
+void OpenAL_API::playSound([[maybe_unused]] const AudioDescriptor_ptr& sound) {}
 
-void OpenAL_API::playMusic(const AudioDescriptor_ptr& music) {}
+void OpenAL_API::playMusic([[maybe_unused]] const AudioDescriptor_ptr& music) {}
 
 void OpenAL_API::pauseMusic() {}
 
@@ -44,9 +44,9 @@ void OpenAL_API::stopMusic() {}
 
 void OpenAL_API::stopAllSounds() {}
 
-void OpenAL_API::setMusicVolume(I8 value) {}
+void OpenAL_API::setMusicVolume([[maybe_unused]] I8 value) {}
 
-void OpenAL_API::setSoundVolume(I8 value) {}
+void OpenAL_API::setSoundVolume([[maybe_unused]] I8 value) {}
 
 void OpenAL_API::musicFinished() {}
 };

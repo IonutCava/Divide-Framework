@@ -41,12 +41,20 @@ bool ShaderComputeQueue::stepQueue() {
 }
 
 bool ShaderComputeQueue::stepQueueLocked() {
+    constexpr U8 MAX_STEP_PER_FRAME = 50u;
+
     if (_shaderComputeQueue.empty()) {
         return false;
     }
 
-    process(_shaderComputeQueue.front());
-    _shaderComputeQueue.pop_front();
+    U8 count = 0u;
+    while (!_shaderComputeQueue.empty()) {
+        process(_shaderComputeQueue.front());
+        _shaderComputeQueue.pop_front();
+        if (++count == MAX_STEP_PER_FRAME) {
+            break;
+        }
+    }
     return true;
 }
 

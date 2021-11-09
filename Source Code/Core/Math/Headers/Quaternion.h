@@ -85,7 +85,7 @@ class Quaternion {
 
     //! Multiplying q1 with q2 applies the rotation q2 to q1
     //! the constructor takes its arguments as (x, y, z, w)
-    Quaternion operator*(const Quaternion& rq) const;
+    Quaternion operator*(const Quaternion& rq) const noexcept;
 
     //! Multiply so that rotations are applied in a left to right order.
     Quaternion& operator*=(const Quaternion& rq);

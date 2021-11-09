@@ -88,7 +88,7 @@ WindowHandle DisplayWindow::handle() const noexcept {
     return handle;
 }
 
-void DisplayWindow::update(const U64 deltaTimeUS) noexcept {
+void DisplayWindow::update([[maybe_unused]] const U64 deltaTimeUS) noexcept {
     if (_queuedType != WindowType::COUNT) {
         //handleChangeWindowType(_queuedType);
         _queuedType = WindowType::COUNT;

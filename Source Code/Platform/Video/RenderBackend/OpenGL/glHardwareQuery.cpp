@@ -11,7 +11,7 @@ glHardwareQuery::glHardwareQuery(GFXDevice& context)
 {
 }
 
-void glHardwareQuery::create(GLenum queryType) {
+void glHardwareQuery::create([[maybe_unused]] const GLenum queryType) {
     destroy();
     glGenQueries(1, &_queryID);
 }

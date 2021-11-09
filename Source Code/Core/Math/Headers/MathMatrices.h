@@ -200,7 +200,7 @@ public:
     [[nodiscard]] T& operator[](I32 i);
     [[nodiscard]] T  operator[](I32 i) const;
 
-    [[nodiscard]] T &element(I8 row, I8 column);
+    [[nodiscard]] T &element(I8 row, I8 column) noexcept;
     [[nodiscard]] const T &element(I8 row, I8 column) const;
 
     template<typename U>
@@ -666,7 +666,7 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
 
     static mat4<T> Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB) noexcept;
 
-    static void Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB, mat4<T>& ret) noexcept;
+    static void Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB, mat4<T>& ret);
 
     // Copyright 2011 The Closure Library Authors. All Rights Reserved.
     static void Inverse(const T* in, T* out) noexcept;

@@ -170,7 +170,7 @@ Quaternion<T> Quaternion<T>::getConjugate() const {
 }
 
 template <typename T>
-Quaternion<T> Quaternion<T>::operator*(const Quaternion<T>& rq) const {
+Quaternion<T> Quaternion<T>::operator*(const Quaternion<T>& rq) const noexcept {
     return Quaternion<T>(W() * rq.X() + X() * rq.W() + Y() * rq.Z() - Z() * rq.Y(),
                          W() * rq.Y() + Y() * rq.W() + Z() * rq.X() - X() * rq.Z(),
                          W() * rq.Z() + Z() * rq.W() + X() * rq.Y() - Y() * rq.X(),
@@ -178,7 +178,7 @@ Quaternion<T> Quaternion<T>::operator*(const Quaternion<T>& rq) const {
 }
 
 template <>
-inline Quaternion<F32> Quaternion<F32>::operator*(const Quaternion<F32>& rq) const {
+inline Quaternion<F32> Quaternion<F32>::operator*(const Quaternion<F32>& rq) const noexcept {
     return Quaternion<F32>(AVX::multiplynew(_elements._reg._reg, rq._elements._reg._reg));
 }
 

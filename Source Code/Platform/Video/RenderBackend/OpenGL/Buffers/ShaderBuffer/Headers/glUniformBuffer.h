@@ -63,7 +63,7 @@ class glUniformBuffer final : public ShaderBuffer {
 
     protected:
         ptrdiff_t getCorrectedOffset(ptrdiff_t offsetInBytes) const noexcept;
-        ptrdiff_t getCorrectedRange(ptrdiff_t rangeInBytes) const noexcept;
+        ptrdiff_t getAlignmentCorrected(ptrdiff_t byteOffset) const noexcept;
 };
 
 };  // namespace Divide

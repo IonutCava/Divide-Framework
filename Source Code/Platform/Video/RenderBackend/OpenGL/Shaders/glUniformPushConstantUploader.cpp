@@ -64,17 +64,17 @@ namespace Divide {
 
     void glUniformPushConstantUploader::uploadPushConstant(const GFX::PushConstant& constant, const bool force) noexcept {
         const I32 binding = cachedValueUpdate(constant, force);
-        uniform(binding, constant._type, constant._buffer.data(), static_cast<GLsizei>(constant._buffer.size()));
+        uniform(binding, constant.type(), constant.data(), static_cast<GLsizei>(constant.dataSize()));
     }
 
     I32 glUniformPushConstantUploader::cachedValueUpdate(const GFX::PushConstant& constant, const bool force) {
         assert(_programHandle != 0u);
-        assert(constant._type != GFX::PushConstantType::COUNT && constant._bindingHash > 0u);
+        assert(constant.type() != GFX::PushConstantType::COUNT && constant.bindingHash() > 0u);
         // Check the cache for the location
-        const auto& locationIter = _shaderVarLocation.find(constant._bindingHash);
+        const auto& locationIter = _shaderVarLocation.find(constant.bindingHash());
         if (locationIter != std::cend(_shaderVarLocation)) {
             UniformsByNameHash::ShaderVarMap& map = _uniformsByNameHash._shaderVars;
-            const auto& constantIter = map.find(constant._bindingHash);
+            const auto& constantIter = map.find(constant.bindingHash());
             if (constantIter != std::cend(map)) {
                 if (force || constantIter->second != constant) {
                     constantIter->second = constant;
@@ -82,7 +82,7 @@ namespace Divide {
                     return -1;
                 }
             } else {
-                emplace(map, constant._bindingHash, constant);
+                emplace(map, constant.bindingHash(), constant);
             }
 
             return locationIter->second;

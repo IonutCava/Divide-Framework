@@ -48,8 +48,8 @@ TEST(ParallelForTest)
     const bool init = test.init(HardwareThreadCount(), TaskPool::TaskPoolType::TYPE_BLOCKING);
     CHECK_TRUE(init);
 
-    const U32 partitionSize = 4;
-    const U32 loopCount = partitionSize * 4 + 2;
+    constexpr U32 partitionSize = 4;
+    constexpr U32 loopCount = partitionSize * 4 + 2;
 
     std::atomic_uint loopCounter = 0;
     std::atomic_uint totalCounter = 0;
@@ -57,7 +57,7 @@ TEST(ParallelForTest)
     ParallelForDescriptor descriptor = {};
     descriptor._iterCount = loopCount;
     descriptor._partitionSize = partitionSize;
-    descriptor._cbk = [&totalCounter, &loopCounter]([[maybe_unused]] const Task* parentTask, const U32 start, const U32 end) {
+    descriptor._cbk = [&totalCounter, &loopCounter]([[maybe_unused]] const Task* parentTask, const U32 start, const U32 end) noexcept {
         ++loopCounter;
         for (U32 i = start; i < end; ++i) {
             ++totalCounter;
@@ -152,7 +152,7 @@ TEST(TaskClassMemberCallbackTest)
 
     CHECK_FALSE(testObj.getTestValue());
 
-    Start(*job, test, TaskPriority::DONT_CARE, [&testObj]() {
+    Start(*job, test, TaskPriority::DONT_CARE, [&testObj]() noexcept {
         testObj.setTestValue(false);
     });
 
