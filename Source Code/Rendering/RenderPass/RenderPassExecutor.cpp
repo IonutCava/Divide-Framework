@@ -104,7 +104,7 @@ namespace {
             executorBuffer._bufferUpdateRange._lastIDX = idx;
         }
 
-        executorBuffer._highWaterMark = std::max(executorBuffer._highWaterMark, idx);
+        executorBuffer._highWaterMark = std::max(executorBuffer._highWaterMark, idx + 1u);
     }
 
     template<typename DataContainer>
