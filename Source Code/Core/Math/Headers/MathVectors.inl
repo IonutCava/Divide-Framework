@@ -86,12 +86,12 @@ FORCE_INLINE vec2<T> Inverse(const vec2<T> &v) noexcept {
 }
 
 template <typename T>
-FORCE_INLINE vec2<T> Normalize(vec2<T> &vector) {
+FORCE_INLINE vec2<T> Normalize(vec2<T> &vector) noexcept {
     return vector.normalize();
 }
 
 template <typename T>
-FORCE_INLINE vec2<T> Normalized(const vec2<T> &vector) {
+FORCE_INLINE vec2<T> Normalized(const vec2<T> &vector) noexcept {
     return vec2<T>(vector).normalize();
 }
 
@@ -108,7 +108,7 @@ FORCE_INLINE T Dot(const vec2<T> &a, const vec2<T> &b) noexcept {
 }
 
 template <typename T>
-FORCE_INLINE void OrthoNormalize(vec2<T> &n, vec2<T> &u) {
+FORCE_INLINE void OrthoNormalize(vec2<T> &n, vec2<T> &u) noexcept {
     n.normalize();
     u.set(Cross(Normalized(Cross(n, u)), n));
 }
@@ -123,12 +123,12 @@ FORCE_INLINE vec2<T> Clamped(const vec2<T>& v, const vec2<T> &min, const vec2<T>
 }
 
 template <typename T>
-FORCE_INLINE vec3<T> Normalize(vec3<T> &vector) {
+FORCE_INLINE vec3<T> Normalize(vec3<T> &vector) noexcept {
     return vector.normalize();
 }
 
 template <typename T>
-FORCE_INLINE vec3<T> Normalized(const vec3<T> &vector) {
+FORCE_INLINE vec3<T> Normalized(const vec3<T> &vector) noexcept {
     return vec3<T>(vector).normalize();
 }
 
@@ -180,13 +180,13 @@ FORCE_INLINE vec3<T> ProjectToNorm(const vec3<T>& in, const vec3<T> &direction) 
 }
 
 template <typename T>
-FORCE_INLINE void OrthoNormalize(vec3<T> &n, vec3<T> &u) {
+FORCE_INLINE void OrthoNormalize(vec3<T> &n, vec3<T> &u) noexcept {
     n.normalize();
     u.set(Cross(Normalized(Cross(n, u)), n));
 }
 
 template <typename T>
-FORCE_INLINE void OrthoNormalize(vec3<T> &v1, vec3<T> &v2, vec3<T> &v3) {
+FORCE_INLINE void OrthoNormalize(vec3<T> &v1, vec3<T> &v2, vec3<T> &v3) noexcept {
     v1.normalize();
     v2 -= v2.projectToNorm(v1);
     v2.normalize();
@@ -224,12 +224,12 @@ FORCE_INLINE vec4<T> Max(const vec4<T> &v1, const vec4<T> &v2) noexcept {
 }
 
 template <typename T>
-FORCE_INLINE vec4<T> Normalize(vec4<T> &vector) {
+FORCE_INLINE vec4<T> Normalize(vec4<T> &vector) noexcept {
     return vector.normalize();
 }
 
 template <typename T>
-FORCE_INLINE vec4<T> Normalized(const vec4<T> &vector) {
+FORCE_INLINE vec4<T> Normalized(const vec4<T> &vector) noexcept {
     return vec4<T>(vector).normalize();
 }
 
@@ -314,7 +314,7 @@ FORCE_INLINE T vec2<T>::distanceSquared(const vec2 &v) const noexcept {
 
 /// convert the vector to unit length
 template <typename T>
-FORCE_INLINE vec2<T>& vec2<T>::normalize() {
+FORCE_INLINE vec2<T>& vec2<T>::normalize() noexcept {
     const T l = this->length();
 
     if (l >= std::numeric_limits<F32>::epsilon()) {
@@ -463,12 +463,12 @@ FORCE_INLINE T vec3<T>::lengthSquared() const noexcept {
 
 /// transform the vector to unit length
 template <typename T>
-FORCE_INLINE vec3<T>& vec3<T>::normalize() {
+FORCE_INLINE vec3<T>& vec3<T>::normalize() noexcept {
     const T l = this->length();
 
     if (l >= std::numeric_limits<F32>::epsilon()) {
         // multiply by the inverse length
-        *this *= 1.0f / l;
+        *this *= 1.f / l;
     }
 
     return *this;
@@ -529,12 +529,12 @@ FORCE_INLINE T vec3<T>::angle(vec3 &v) const {
 
 /// get the direction vector to the specified point
 template <typename T>
-FORCE_INLINE vec3<T> vec3<T>::direction(const vec3 &u) const {
+FORCE_INLINE vec3<T> vec3<T>::direction(const vec3 &u) const noexcept {
     return Normalized(vec3(u.x - this->x, u.y - this->y, u.z - this->z));
 }
 
 template <typename T>
-FORCE_INLINE vec3<T> vec3<T>::projectToNorm(const vec3 &direction) {
+FORCE_INLINE vec3<T> vec3<T>::projectToNorm(const vec3 &direction) noexcept {
     return direction * dot(direction);
 }
 
@@ -813,7 +813,7 @@ FORCE_INLINE bool vec4<T>::compare(const vec4<U> &v, const U epsi) const noexcep
 
 /// round all four values
 template <typename T>
-FORCE_INLINE void vec4<T>::round() {
+FORCE_INLINE void vec4<T>::round() noexcept {
     set(static_cast<T>(std::roundf(this->x)), static_cast<T>(std::roundf(this->y)),
         static_cast<T>(std::roundf(this->z)), static_cast<T>(std::roundf(this->w)));
 }
@@ -874,7 +874,7 @@ FORCE_INLINE vec4<T> vec4<T>::projectToNorm(const vec4 &direction) {
 
 /// transform the vector to unit length
 template <typename T>
-FORCE_INLINE vec4<T>& vec4<T>::normalize() {
+FORCE_INLINE vec4<T>& vec4<T>::normalize() noexcept {
     const T l = this->length();
 
     if (l >= std::numeric_limits<F32>::epsilon()) {
@@ -886,7 +886,7 @@ FORCE_INLINE vec4<T>& vec4<T>::normalize() {
 }
 
 template <>
-FORCE_INLINE vec4<F32>& vec4<F32>::normalize() {
+FORCE_INLINE vec4<F32>& vec4<F32>::normalize() noexcept {
     _reg._reg = _mm_mul_ps(_reg._reg, _mm_rsqrt_ps(AVX::SimpleDot(_reg._reg, _reg._reg)));
     return *this;
 }

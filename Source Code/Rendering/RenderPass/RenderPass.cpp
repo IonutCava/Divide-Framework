@@ -90,7 +90,7 @@ void RenderPass::initBufferData() {
     
 }
 
-RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass& stagePass) const {
+RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass& stagePass) const noexcept {
     assert(_stageFlag == stagePass._stage);
 
     BufferData ret{};
@@ -273,7 +273,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
     };
 }
 
-void RenderPass::postRender() const {
+void RenderPass::postRender() const noexcept {
     _cmdBuffer->incQueue();
 }
 

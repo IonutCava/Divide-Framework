@@ -41,7 +41,7 @@ public:
     explicit RingBufferSeparateWrite(I32 queueLength, bool separateReadWrite, bool writeAhead = true) noexcept;
     virtual ~RingBufferSeparateWrite() = default;
 
-    virtual void resize(I32 queueLength) noexcept;
+    virtual void resize(I32 queueLength);
 
     [[nodiscard]] I32 queueLength() const noexcept { return _queueLength; }
 

@@ -43,7 +43,7 @@ namespace {
         return lhs._firstIDX <= rhs._firstIDX && lhs._lastIDX >= rhs._lastIDX;
     }
 
-    FORCE_INLINE BufferUpdateRange GetPrevRangeDiff(const BufferUpdateRange& crtRange, const BufferUpdateRange& prevRange) {
+    FORCE_INLINE BufferUpdateRange GetPrevRangeDiff(const BufferUpdateRange& crtRange, const BufferUpdateRange& prevRange) noexcept {
         if (crtRange.range() == 0u) {
             return prevRange;
         }

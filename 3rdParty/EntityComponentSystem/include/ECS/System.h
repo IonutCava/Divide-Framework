@@ -81,7 +81,7 @@ namespace ECS
 		template<class... Dependencies>
 		void AddDependencies(Dependencies&&... dependencies)
 		{
-			this->m_SystemManagerInstance->AddSystemDependency(this, FWD(dependencies)...);
+			this->m_SystemManagerInstance->AddSystemDependency(this, std::forward<Dependencies>(dependencies)...);
 		}
 
 		virtual void PreUpdate(f32 dt)

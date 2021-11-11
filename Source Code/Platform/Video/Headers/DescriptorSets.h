@@ -52,8 +52,8 @@ namespace Divide {
         ShaderBuffer* _buffer = nullptr;
         ShaderBufferLocation _binding = ShaderBufferLocation::COUNT;
 
-        bool set(const ShaderBufferBinding& other);
-        bool set(ShaderBufferLocation binding, ShaderBuffer* buffer, const vec2<U32>& elementRange);
+        bool set(const ShaderBufferBinding& other) noexcept;
+        bool set(ShaderBufferLocation binding, ShaderBuffer* buffer, const vec2<U32>& elementRange) noexcept;
     };
 
     class Texture;
@@ -65,7 +65,7 @@ namespace Divide {
         vec2<U16> _mipLevels = {};
         vec2<U16> _layerRange = {};
 
-        size_t getHash() const noexcept override;
+        size_t getHash() const override;
     };
 
     struct TextureViewEntry final : Hashable
@@ -78,7 +78,7 @@ namespace Divide {
 
         void reset() noexcept { _view = {}; _binding = 0u; _descriptor = {}; }
 
-        size_t getHash() const noexcept override;
+        size_t getHash() const override;
     };
 
     struct Image
@@ -144,12 +144,12 @@ namespace Divide {
     [[nodiscard]] bool BufferCompare(const ShaderBuffer* a, const ShaderBuffer* b) noexcept;
 
     template<typename Item, size_t Count, typename SearchType>
-    bool operator==(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs) noexcept;
+    bool operator==(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs);
     template<typename Item, size_t Count, typename SearchType>
-    bool operator!=(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs) noexcept;
+    bool operator!=(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs);
 
-    bool operator==(const DescriptorSet &lhs, const DescriptorSet &rhs) noexcept;
-    bool operator!=(const DescriptorSet &lhs, const DescriptorSet &rhs) noexcept;
+    bool operator==(const DescriptorSet &lhs, const DescriptorSet &rhs);
+    bool operator!=(const DescriptorSet &lhs, const DescriptorSet &rhs);
 
     bool operator==(const TextureView& lhs, const TextureView &rhs) noexcept;
     bool operator!=(const TextureView& lhs, const TextureView &rhs) noexcept;
@@ -163,8 +163,8 @@ namespace Divide {
     bool operator==(const Image& lhs, const Image &rhs) noexcept;
     bool operator!=(const Image& lhs, const Image &rhs) noexcept;
 
-    bool operator==(const TextureDataContainer & lhs, const TextureDataContainer & rhs) noexcept;
-    bool operator!=(const TextureDataContainer & lhs, const TextureDataContainer & rhs) noexcept;
+    bool operator==(const TextureDataContainer & lhs, const TextureDataContainer & rhs);
+    bool operator!=(const TextureDataContainer & lhs, const TextureDataContainer & rhs);
 }; //namespace Divide
 
 #endif //_DESCRIPTOR_SETS_H_

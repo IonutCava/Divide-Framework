@@ -57,7 +57,7 @@ public:
     explicit OBB(const BoundingSphere &bSphere)  noexcept;
 
     void fromBoundingBox(const BoundingBox& aabb)  noexcept;
-    void fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix)  noexcept;
+    void fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix) noexcept;
     void fromBoundingSphere(const BoundingSphere &sphere)  noexcept;
 
     [[nodiscard]] BoundingBox toBoundingBox() const noexcept;

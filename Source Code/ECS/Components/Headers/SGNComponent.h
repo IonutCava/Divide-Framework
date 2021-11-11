@@ -103,8 +103,7 @@ struct Factory {
         {
         }
 
-        void OnData([[maybe_unused]] const ECS::CustomEvent& data) override {
-        }
+        void OnData([[maybe_unused]] const ECS::CustomEvent& data) override {}
 
         static bool RegisterComponentType() {
             Factory::constructData().emplace(C, [](SceneGraphNode* node, Args... args) -> void {
@@ -127,7 +126,7 @@ struct Factory {
 
 private:
     struct Key {
-        Key(const bool registered) : _registered(registered) {}
+        Key(const bool registered) noexcept : _registered(registered) {}
 
       private:
         bool _registered = false;

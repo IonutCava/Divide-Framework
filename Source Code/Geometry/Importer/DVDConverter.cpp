@@ -54,8 +54,8 @@ namespace {
         };
 
         /// Recursively creates an internal node structure matching the current scene and animation.
-        Bone* CreateBoneTree(aiNode* pNode, Bone* parent) {
-            Bone* internalNode = MemoryManager_NEW Bone(pNode->mName.data);
+        eastl::shared_ptr<Bone> CreateBoneTree(aiNode* pNode, eastl::shared_ptr<Bone> parent) {
+            eastl::shared_ptr<Bone> internalNode = eastl::make_shared<Bone>(pNode->mName.data);
             // set the parent; in case this is the root node, it will be null
             internalNode->_parent = parent;
 
@@ -65,9 +65,8 @@ namespace {
 
             // continue for all child nodes and assign the created internal nodes as our
             // children recursively call this function on all children
-            for (U32 i = 0; i < pNode->mNumChildren; ++i) {
-                internalNode->_children.push_back(
-                    CreateBoneTree(pNode->mChildren[i], internalNode));
+            for (U32 i = 0u; i < pNode->mNumChildren; ++i) {
+                internalNode->_children.push_back(CreateBoneTree(pNode->mChildren[i], internalNode));
             }
 
             return internalNode;
@@ -175,15 +174,15 @@ bool DVDConverter::load(PlatformContext& context, Import::ImportData& target) co
 
     target.hasAnimations(aiScenePointer->HasAnimations());
     if (target.hasAnimations()) {
-        target.skeleton(CreateBoneTree(aiScenePointer->mRootNode, nullptr));
-        target._bones.reserve(to_I32(target.skeleton()->hierarchyDepth()));
+        target._skeleton = CreateBoneTree(aiScenePointer->mRootNode, nullptr);
+        target._bones.reserve(to_I32(target._skeleton->hierarchyDepth()));
 
         for (U16 meshPointer = 0; meshPointer < aiScenePointer->mNumMeshes; ++meshPointer) {
             const aiMesh* mesh = aiScenePointer->mMeshes[meshPointer];
             for (U32 n = 0; n < mesh->mNumBones; ++n) {
                 const aiBone* bone = mesh->mBones[n];
 
-                Bone* found = target.skeleton()->find(bone->mName.data);
+                eastl::shared_ptr<Bone> found = target._skeleton->find(bone->mName.data);
                 if (found != nullptr) {
                     AnimUtils::TransformMatrix(bone->mOffsetMatrix, found->_offsetMatrix);
                     target._bones.push_back(found);
@@ -204,7 +203,7 @@ bool DVDConverter::load(PlatformContext& context, Import::ImportData& target) co
 
     Str64 prevName = "";
     for (U16 n = 0; n < numMeshes; ++n) {
-        aiMesh* currentMesh = aiScenePointer->mMeshes[n];
+        const aiMesh* currentMesh = aiScenePointer->mMeshes[n];
         // Skip points and lines ... for now -Ionut
         if (currentMesh->mNumVertices == 0) {
             continue;
@@ -672,7 +671,7 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
         {
         }*/
         const ResourcePath path(Paths::g_assetsLocation + Paths::g_texturesLocation + name.C_Str());
-        auto [img_name, img_path] = splitPathToNameAndLocation(path);
+        const auto [img_name, img_path] = splitPathToNameAndLocation(path);
 
         // if we have a name and an extension
         if (!img_name.str().substr(img_name.str().find_first_of('.'), Str64::npos).empty()) {

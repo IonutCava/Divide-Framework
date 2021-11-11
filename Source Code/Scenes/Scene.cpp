@@ -164,7 +164,7 @@ bool Scene::loadNodeFromXML(SceneGraphNode* node) const {
 bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride) const {
     using boost::property_tree::ptree;
     const char* assetsFile = "assets.xml";
-    Str256 saveSceneName = Str256(strlen(sceneNameOverride) > 0 ? sceneNameOverride : resourceName().c_str());
+    const Str256 saveSceneName = Str256(strlen(sceneNameOverride) > 0 ? sceneNameOverride : resourceName().c_str());
 
     Console::printfn(Locale::Get(_ID("XML_SAVE_SCENE_START")), saveSceneName.c_str());
 
@@ -193,7 +193,7 @@ bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const D
             msgCallback("Saving scene settings ...");
         }
 
-        ParamHandler& par = _context.paramHandler();
+        const ParamHandler& par = _context.paramHandler();
 
         ptree pt;
         pt.put("assets", assetsFile);
@@ -272,7 +272,7 @@ bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const D
 }
 
 bool Scene::loadXML(const Str256& name) {
-    Configuration& config = _context.config();
+    const Configuration& config = _context.config();
     ParamHandler& par = _context.paramHandler();
 
     const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
@@ -733,7 +733,7 @@ void Scene::addWater(SceneGraphNode* parentNode, const boost::property_tree::ptr
 SceneGraphNode* Scene::addInfPlane(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName) {
     ResourceDescriptor planeDescriptor("InfPlane_" + nodeName);
 
-    Camera* baseCamera = Camera::utilityCamera(Camera::UtilityCamera::DEFAULT);
+    const Camera* baseCamera = Camera::utilityCamera(Camera::UtilityCamera::DEFAULT);
 
     planeDescriptor.ID(to_U32(baseCamera->getZPlanes().max));
 
@@ -816,7 +816,7 @@ U16 Scene::registerInputActions() {
     const auto turnDown       = [this](const InputParams param) { state()->playerState(getPlayerIndexForDevice(param._deviceIndex)).angleUD(MoveDirection::POSITIVE); };
     const auto stopTurnUpDown = [this](const InputParams param) { state()->playerState(getPlayerIndexForDevice(param._deviceIndex)).angleUD(MoveDirection::NONE); };
 
-    const auto togglePauseState = [this](const InputParams /*param*/){ 
+    const auto togglePauseState = [this](const InputParams /*param*/) noexcept {
         _context.kernel().timingData().freezeTime(!_context.kernel().timingData().freezeLoopTime());
     };
 
@@ -973,14 +973,14 @@ U16 Scene::registerInputActions() {
     return actionID;
 }
 
-bool Scene::lockCameraToPlayerMouse(const PlayerIndex index, const bool lockState) const
+bool Scene::lockCameraToPlayerMouse(const PlayerIndex index, const bool lockState) const noexcept
 {
     static bool hadWindowGrab = false;
     static vec2<I32> lastMousePosition;
 
     state()->playerState(index).cameraLockedToMouse(lockState);
 
-    DisplayWindow* window = _context.app().windowManager().getFocusedWindow();
+    const DisplayWindow* window = _context.app().windowManager().getFocusedWindow();
     if (lockState) {
         if (window != nullptr) {
             hadWindowGrab = window->grabState();
@@ -1033,7 +1033,7 @@ void Scene::loadDefaultCamera() {
 
 bool Scene::load(const Str256& name) {
 
-    bool errorState = false;
+    const bool errorState = false;
 
     setState(ResourceState::RES_LOADING);
     std::atomic_init(&_loadingTasks, 0u);
@@ -1145,7 +1145,7 @@ void Scene::rebuildShaders(const bool selectionOnly) const {
     if (selectionOnly) {
         for (auto& [playerIdx, selections] : _currentSelection) {
             for (U8 i = 0u; i < selections._selectionCount; ++i) {
-                SceneGraphNode* node = sceneGraph()->findNode(selections._selections[i]);
+                const SceneGraphNode* node = sceneGraph()->findNode(selections._selections[i]);
                 if (node != nullptr) {
                     node->get<RenderingComponent>()->rebuildMaterial();
                 }
@@ -1254,7 +1254,7 @@ void Scene::onPlayerRemove(const Player_ptr& player) {
     state()->onPlayerRemove(idx);
     _cameraUpdateListeners[idx] = 0u;
     if (_flashLight.size() > idx) {
-        SceneGraphNode* flashLight = _flashLight[idx];
+        const SceneGraphNode* flashLight = _flashLight[idx];
         if (flashLight) {
             _sceneGraph->getRoot()->removeChildNode(flashLight);
             _flashLight[idx] = nullptr;
@@ -1386,14 +1386,14 @@ void Scene::clearTasks() {
     Console::printfn(Locale::Get(_ID("STOP_SCENE_TASKS")));
     // Performance shouldn't be an issue here
     ScopedLock<SharedMutex> w_lock(_tasksMutex);
-    for (Task* task : _tasks) {
+    for (const Task* task : _tasks) {
         Wait(*task, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
     }
 
     _tasks.clear();
 }
 
-void Scene::removeTask(Task& task) {
+void Scene::removeTask(const Task& task) {
     ScopedLock<SharedMutex> w_lock(_tasksMutex);
     for (vector<Task*>::iterator it = begin(_tasks); it != end(_tasks); ++it) {
         if ((*it)->_id == task._id) {
@@ -1421,7 +1421,7 @@ void Scene::processTasks(const U64 deltaTimeUS) {
     if (_dayNightData._skyInstance != nullptr) {
         static struct tm timeOfDay = {};
         if (_dayNightData._resetTime) {
-            time_t t = time(nullptr);
+            const time_t t = time(nullptr);
             timeOfDay = *localtime(&t);
             timeOfDay.tm_hour = _dayNightData._time._hour;
             timeOfDay.tm_min = _dayNightData._time._minutes;
@@ -1450,14 +1450,14 @@ void Scene::processTasks(const U64 deltaTimeUS) {
                 }
                 _dayNightData._timeAccumulatorHour = 0.f;
             }
-            FColour3 moonColour = Normalized(_dayNightData._skyInstance->moonColour().rgb);
+            const FColour3 moonColour = Normalized(_dayNightData._skyInstance->moonColour().rgb);
             const SunDetails details = _dayNightData._skyInstance->setDateTimeAndLocation(localtime(&now), _dayNightData._location);
             Light* light = _dayNightData._sunLight;
 
             const FColour3 sunsetOrange = FColour3(99.2f, 36.9f, 32.5f) / 100.f;
 
             // Sunset / sunrise
-            vec3<Angle::DEGREES<F32>> eulerDirection = details._eulerDirection;
+            const vec3<Angle::DEGREES<F32>> eulerDirection = details._eulerDirection;
             light->getSGN()->get<TransformComponent>()->setRotationEuler(eulerDirection);
             // Morning
             if (IS_IN_RANGE_INCLUSIVE(details._intensity, 0.0f, 25.0f)) {
@@ -1501,7 +1501,7 @@ void Scene::debugDraw(const Camera* activeCamera, const RenderStagePass stagePas
                 PipelineDescriptor pipeDesc;
                 pipeDesc._stateHash = RenderStateBlock::defaultHash();
                 pipeDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->getGUID();
-                Pipeline* pipeline = _context.gfx().newPipeline(pipeDesc);
+                const Pipeline* pipeline = _context.gfx().newPipeline(pipeDesc);
 
                 const size_t diff = regionCount - primitiveCount;
                 for (size_t i = 0; i < diff; ++i) {
@@ -1530,7 +1530,7 @@ bool Scene::checkCameraUnderwater(const PlayerIndex idx) const {
     return checkCameraUnderwater(*crtCamera);
 }
 
-bool Scene::checkCameraUnderwater(const Camera& camera) const {
+bool Scene::checkCameraUnderwater(const Camera& camera) const noexcept {
     const vec3<F32>& eyePos = camera.getEye();
     {
         const auto& waterBodies = state()->waterBodies();
@@ -1683,7 +1683,7 @@ void Scene::resetSelection(const PlayerIndex idx) {
         }
     }
 
-    playerSelections.reset();
+    playerSelections = {};
 }
 
 void Scene::setSelected(const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive) {
@@ -1824,7 +1824,7 @@ void Scene::updateSelectionData(PlayerIndex idx, DragSelectData& data, bool rema
     if (_context.gfx().frameCount() % 2 == 0) {
         clearHoverTarget(idx);
         _parent.resetSelection(idx);
-        Camera* crtCamera = getPlayerForIndex(idx)->camera();
+        const Camera* crtCamera = getPlayerForIndex(idx)->camera();
         vector<SceneGraphNode*> nodes = Attorney::SceneManagerScene::getNodesInScreenRect(_parent, selectionRect, *crtCamera, data._targetViewport);
         _parent.setSelected(idx, nodes, false);
     }

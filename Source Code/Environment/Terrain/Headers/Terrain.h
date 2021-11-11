@@ -82,7 +82,7 @@ struct TessellationParams
     static constexpr U8 PATCHES_PER_TILE_EDGE = VTX_PER_TILE_EDGE - 1;
     static constexpr U16 QUAD_LIST_INDEX_COUNT = (VTX_PER_TILE_EDGE - 1) * (VTX_PER_TILE_EDGE - 1) * 4;
 
-    void fromDescriptor(const std::shared_ptr<TerrainDescriptor>& descriptor);
+    void fromDescriptor(const std::shared_ptr<TerrainDescriptor>& descriptor) noexcept;
 };
 
 class Terrain final : public Object3D {
@@ -120,7 +120,7 @@ class Terrain final : public Object3D {
 
     void toggleBoundingBoxes();
 
-    [[nodiscard]] const vector<VertexBuffer::Vertex>& getVerts() const;
+    [[nodiscard]] const vector<VertexBuffer::Vertex>& getVerts() const noexcept;
     [[nodiscard]] Vert      getVert(F32 x_clampf, F32 z_clampf, bool smooth) const;
     [[nodiscard]] Vert      getVertFromGlobal(F32 x, F32 z, bool smooth) const;
     [[nodiscard]] vec2<U16> getDimensions() const noexcept;

@@ -84,7 +84,7 @@ class ParticleData {
                              const vector<U32>& particleGeometryIndices,
                              PrimitiveType particleGeometryType);
 
-    void setBillboarded(bool state);
+    void setBillboarded(bool state) noexcept;
 
     [[nodiscard]] PrimitiveType particleGeometryType() const noexcept {
         return _particleGeometryType;

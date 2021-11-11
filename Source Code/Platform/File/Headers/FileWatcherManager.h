@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
     struct FileWatcher final : GUIDWrapper {
-        FW::FileWatcher& operator()() {
+        FW::FileWatcher& operator()() noexcept {
             return _impl;
         }
 

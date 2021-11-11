@@ -67,7 +67,7 @@ LightPool::LightPool(Scene& parentScene, PlatformContext& context)
 
 LightPool::~LightPool()
 {
-    SharedLock<SharedMutex> r_lock(_lightLock);
+    const SharedLock<SharedMutex> r_lock(_lightLock);
     for (const LightList& lightList : _lights) {
         if (!lightList.empty()) {
             Console::errorfn(Locale::Get(_ID("ERROR_LIGHT_POOL_LIGHT_LEAKED")));
@@ -143,7 +143,7 @@ void LightPool::init() {
     _init = true;
 }
 
-bool LightPool::clear() {
+bool LightPool::clear() noexcept {
     if (!_init) {
         return true;
     }
@@ -170,7 +170,7 @@ bool LightPool::addLight(Light& light) {
 }
 
 // try to remove any leftover lights
-bool LightPool::removeLight(Light& light) {
+bool LightPool::removeLight(const Light& light) {
     ScopedLock<SharedMutex> lock(_lightLock);
     const LightList::const_iterator it = findLightLocked(light.getGUID(), light.getLightType());
 
@@ -184,7 +184,7 @@ bool LightPool::removeLight(Light& light) {
     return true;
 }
 
-void LightPool::idle() {
+void LightPool::idle() noexcept {
 }
 
 //ToDo: Generate shadow maps in parallel - Ionut
@@ -408,7 +408,7 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
     EnqueueCommand(bufferInOut, descriptorSetCmd);
 }
 
-[[nodiscard]] bool LightPool::IsLightInViewFrustum(const Frustum& frustum, Light* light) {
+[[nodiscard]] bool LightPool::IsLightInViewFrustum(const Frustum& frustum, Light* light) noexcept {
     switch (light->getLightType()) {
         case LightType::DIRECTIONAL:
             return true;
@@ -479,7 +479,7 @@ void LightPool::preRenderAllPasses(const Camera* playerCamera) {
     }
 }
 
-void LightPool::postRenderAllPasses() {
+void LightPool::postRenderAllPasses() noexcept {
     // Move backwards so that we don't step on our own toes with the lockmanager
     if (_shadowBufferDirty) {
         _shadowBuffer->decQueue();

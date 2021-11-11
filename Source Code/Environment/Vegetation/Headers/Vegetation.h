@@ -126,7 +126,7 @@ class Vegetation final : public SceneNode {
     void uploadVegetationData(SceneGraphNode* sgn);
     void computeVegetationTransforms(bool treeData);
 
-    [[nodiscard]] const char* getResourceTypeName() const noexcept { return "Vegetation"; }
+    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Vegetation"; }
 
    private:
     GFXDevice& _context;

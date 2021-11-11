@@ -357,7 +357,7 @@ PreRenderBatch::~PreRenderBatch()
     _context.renderTargetPool().deallocateRT(_sceneEdges);
 }
 
-bool PreRenderBatch::operatorsReady() const {
+bool PreRenderBatch::operatorsReady() const noexcept {
     for (const OperatorBatch& batch : _operators) {
         for (const auto& op : batch) {
             if (!op->ready()) {
@@ -369,7 +369,7 @@ bool PreRenderBatch::operatorsReady() const {
     return true;
 }
 
-RenderTargetHandle PreRenderBatch::getTarget(const bool hdr, const bool swapped) const {
+RenderTargetHandle PreRenderBatch::getTarget(const bool hdr, const bool swapped) const noexcept {
     if (hdr) {
         return swapped ? _screenRTs._hdr._screenCopy : _screenRTs._hdr._screenRef;
     }
@@ -395,8 +395,7 @@ F32 PreRenderBatch::adaptiveExposureValue() const {
     if (adaptiveExposureControl()) {
         const auto[data, size] = _currentLuminance->readData(0, GFXDataFormat::FLOAT_32);
         if (size > 0) {
-            F32* value = reinterpret_cast<F32*>(data.get());
-            return *value;
+            return *reinterpret_cast<F32*>(data.get());
         }
     }
 

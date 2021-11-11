@@ -75,10 +75,10 @@ class glPixelBuffer final : public PixelBuffer {
 
 namespace Attorney {
     class GLAPIPixelBuffer {
-        static bufferPtr begin(glPixelBuffer& buffer) {
+        static bufferPtr begin(const glPixelBuffer& buffer) {
             return buffer.begin();
         }
-        static void end(glPixelBuffer& buffer) {
+        static void end(const glPixelBuffer& buffer) {
             buffer.end();
         }
         friend class GL_API;

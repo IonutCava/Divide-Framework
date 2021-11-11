@@ -124,7 +124,7 @@ namespace ECS
 				((T*)pSystemMem)->m_SystemManagerInstance = this;
 
 				// create new system
-				system = new (pSystemMem)T(engine, FWD(systemArgs)...);
+				system = new (pSystemMem)T(engine, std::forward<ARGS>(systemArgs)...);
 				this->m_Systems[STID] = system;
 
 				LogInfo("System \'%s\' (%d bytes) created.", typeid(T).name(), sizeof(T));

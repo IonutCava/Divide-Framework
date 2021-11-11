@@ -11,9 +11,9 @@ namespace Divide {
 
 /// ------------------------------------------------------------------------------------------------
 /// Calculates the global transformation matrix for the given internal node
-void CalculateBoneToWorldTransform(Bone* pInternalNode) {
+void CalculateBoneToWorldTransform(const eastl::shared_ptr<Bone>& pInternalNode) noexcept {
     pInternalNode->_globalTransform = pInternalNode->_localTransform;
-    Bone* parent = pInternalNode->_parent;
+    auto& parent = pInternalNode->_parent;
     // This will climb the nodes up along through the parents concatenating all
     // the matrices to get the Object to World transform,
     // or in this case, the Bone To World transform
@@ -22,18 +22,6 @@ void CalculateBoneToWorldTransform(Bone* pInternalNode) {
         // get the parent of the bone we are working on
         parent = parent->_parent;
     }
-}
-
-SceneAnimator::SceneAnimator()
-    : _maximumAnimationFrames(0),
-      _skeleton(nullptr),
-      _skeletonDepthCache(-1)
-{
-}
-
-SceneAnimator::~SceneAnimator()
-{
-    release();
 }
 
 void SceneAnimator::release(const bool releaseAnimations)
@@ -47,14 +35,12 @@ void SceneAnimator::release(const bool releaseAnimations)
         _animations.clear();
         _animationNameToID.clear();
     }
-    // This node will delete all children recursively
-    MemoryManager::SAFE_DELETE(_skeleton);
 }
 
 bool SceneAnimator::init(PlatformContext& context) {
     Console::d_printfn(Locale::Get(_ID("LOAD_ANIMATIONS_BEGIN")));
 
-    const D64 timeStep = 1.0 / ANIMATION_TICKS_PER_SECOND;
+    constexpr D64 timeStep = 1. / ANIMATION_TICKS_PER_SECOND;
     BoneTransform::Container transforms = {};
     
 
@@ -72,7 +58,7 @@ bool SceneAnimator::init(PlatformContext& context) {
             calculate(to_I32(i), dt);
             transforms.resize(_skeletonDepthCache, MAT4_IDENTITY);
             for (I32 a = 0; a < _skeletonDepthCache; ++a) {
-                Bone* bone = _bones[a];
+                const eastl::shared_ptr<Bone>& bone = _bones[a];
                 transforms[a] = bone->_offsetMatrix * bone->_globalTransform;
                 bone->_boneID = a;
             }
@@ -94,7 +80,7 @@ bool SceneAnimator::init(PlatformContext& context) {
 }
 
 /// This will build the skeleton based on the scene passed to it and CLEAR EVERYTHING
-bool SceneAnimator::init(PlatformContext& context, Bone* const skeleton, const vector<Bone*>& bones) {
+bool SceneAnimator::init(PlatformContext& context, const eastl::shared_ptr<Bone>& skeleton, const vector<eastl::shared_ptr<Bone>>& bones) {
     release(false);
 
     DIVIDE_ASSERT(_bones.size() < U8_MAX, "SceneAnimator::init error: Too many bones for current node!");
@@ -120,10 +106,10 @@ void SceneAnimator::calculate(const I32 animationIndex, const D64 pTime) {
 
 /// ------------------------------------------------------------------------------------------------
 /// Recursively updates the internal node transformations from the given matrix array
-void SceneAnimator::UpdateTransforms(Bone* pNode) {
+void SceneAnimator::UpdateTransforms(const eastl::shared_ptr<Bone>& pNode) {
     CalculateBoneToWorldTransform(pNode);  // update global transform as well
     /// continue for all children
-    for (Bone* bone : pNode->_children) {
+    for (const auto& bone : pNode->_children) {
         UpdateTransforms(bone);
     }
 }
@@ -131,11 +117,11 @@ void SceneAnimator::UpdateTransforms(Bone* pNode) {
 Bone* SceneAnimator::boneByName(const string& name) const {
     assert(_skeleton != nullptr);
 
-    return _skeleton->find(name);
+    return _skeleton->find(name).get();
 }
 
 I32 SceneAnimator::boneIndex(const string& bName) const {
-    Bone* bone = boneByName(bName);
+    const Bone* bone = boneByName(bName);
 
     if (bone != nullptr) {
         return bone->_boneID;
@@ -168,7 +154,7 @@ const vector<Line>& SceneAnimator::skeletonLines(const I32 animationIndex, const
 }
 
 /// Create animation skeleton
-I32 SceneAnimator::CreateSkeleton(Bone* piNode,
+I32 SceneAnimator::CreateSkeleton(const eastl::shared_ptr<Bone>& piNode,
                                   const mat4<F32>& parent,
                                   vector<Line>& lines) {
     static Line s_line = { VECTOR3_ZERO, VECTOR3_UNIT, DefaultColours::RED_U8, DefaultColours::RED_U8, 2.0f, 2.0f };
@@ -181,7 +167,7 @@ I32 SceneAnimator::CreateSkeleton(Bone* piNode,
     }
 
     // render all child nodes
-    for (Bone* bone : piNode->_children) {
+    for (const auto& bone : piNode->_children) {
         CreateSkeleton(bone, me, lines);
     }
 

@@ -54,7 +54,7 @@ namespace Divide {
         COUNT
     };
 
-    GeometryFormat GetGeometryFormatForExtension(const char* extension);
+    GeometryFormat GetGeometryFormatForExtension(const char* extension) noexcept;
 
     const char* const g_geometryExtensions[] = {
         "3ds", "ase", "fbx", "md2", "md5mesh", "obj", "x", "dae", "gltf", "glb", "DVDAnim", "DVDGeom"
@@ -130,32 +130,29 @@ namespace Divide {
         };
 
         struct ImportData {
-            ImportData(ResourcePath modelPath, ResourcePath modelName)
+            ImportData(ResourcePath modelPath, ResourcePath modelName) noexcept
                 : _modelName(MOV(modelName)),
                   _modelPath(MOV(modelPath))
             {
-                _vertexBuffer = nullptr;
-                _hasAnimations = false;
-                _skeleton = nullptr;
-                _loadedFromFile = false;
             }
 
             bool saveToFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName);
             bool loadFromFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName);
+
+            eastl::shared_ptr<Bone> _skeleton = nullptr;
 
             // Was it loaded from file, or just created?
             PROPERTY_RW(bool, loadedFromFile, false);
             // Geometry
             POINTER_RW(VertexBuffer, vertexBuffer, nullptr);
             // Animations
-            POINTER_RW(Bone, skeleton, nullptr);
             PROPERTY_RW(bool, hasAnimations, false);
 
             // Name and path
             PROPERTY_RW(ResourcePath, modelName);
             PROPERTY_RW(ResourcePath, modelPath);
             PROPERTY_RW(bool, fromFile, false);
-            vector<Bone*> _bones;
+            vector<eastl::shared_ptr<Bone>> _bones;
             vector<SubMeshData> _subMeshData;
             vector<std::shared_ptr<AnimEvaluator>> _animations;
         };

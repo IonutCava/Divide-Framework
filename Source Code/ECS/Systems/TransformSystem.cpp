@@ -97,7 +97,7 @@ namespace Divide {
 
     bool TransformSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
         if (Parent::saveCache(sgn, outputBuffer)) {
-            TransformComponent* tComp = sgn->GetComponent<TransformComponent>();
+            const TransformComponent* tComp = sgn->GetComponent<TransformComponent>();
             if (tComp != nullptr && !tComp->saveCache(outputBuffer)) {
                 return false;
             }

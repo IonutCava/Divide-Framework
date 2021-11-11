@@ -39,7 +39,7 @@ namespace Divide {
 
 class XMLEntryData final : public XML::IXMLSerializable {
 public:
-    XMLEntryData();
+    XMLEntryData() noexcept;
     ~XMLEntryData() = default;
 
 protected:

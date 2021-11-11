@@ -121,23 +121,23 @@ namespace Divide {
         }
 
         [[nodiscard]] size_t find(const char other, const size_t pos = 0) const {
-            size_t ret = as_ref(pos).find(other);
+            const size_t ret = as_ref(pos).find(other);
             return ret == Str::npos ? ret : ret + pos;
         }
 
         [[nodiscard]] size_t find(const char* other, const size_t pos = 0) const {
-            size_t ret = as_ref(pos).find(boost::string_ref(other));
+            const size_t ret = as_ref(pos).find(boost::string_ref(other));
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         [[nodiscard]] size_t find(const Str& other, const size_t pos = 0) const {
-            size_t ret = as_ref(pos).find(other.as_ref());
+            const size_t ret = as_ref(pos).find(other.as_ref());
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         template<size_t N>
         [[nodiscard]] size_t find(const Str<N>& other, const size_t pos = 0) const {
-            size_t ret = as_ref(pos).find(other.as_ref());
+            const size_t ret = as_ref(pos).find(other.as_ref());
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
@@ -147,23 +147,23 @@ namespace Divide {
         }
 
         [[nodiscard]] size_t rfind(const char* other, const size_t pos = 0) const {
-            size_t ret = as_ref(pos).rfind(boost::string_ref(other));
+            const size_t ret = as_ref(pos).rfind(boost::string_ref(other));
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         [[nodiscard]] size_t rfind(const Str& other, const size_t pos = 0) const {
-            size_t ret = as_ref(pos).rfind(other.as_ref());
+            const size_t ret = as_ref(pos).rfind(other.as_ref());
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         template<size_t N>
         [[nodiscard]] size_t rfind(const Str<N>& other, const size_t pos = 0) const {
-            size_t ret = as_ref(pos).rfind(other.as_ref());
+            const size_t ret = as_ref(pos).rfind(other.as_ref());
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 
         [[nodiscard]] size_t find_first_of(const char s, const size_t pos = 0) const {
-            size_t ret = as_ref(pos).find_first_of(s);
+            const size_t ret = as_ref(pos).find_first_of(s);
             return ret != Str::npos ? ret + pos : Str::npos;
         }
 

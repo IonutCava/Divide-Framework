@@ -182,7 +182,7 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
         }
     } else {
         if (zeroMem) {
-            const GLfloat zero = 0.f;
+            constexpr GLfloat zero = 0.f;
             glClearNamedBufferData(_memoryBlock._bufferHandle, GL_R32F, GL_RED, GL_FLOAT, &zero);
         } else {
             if (offsetInBytes == 0u && rangeInBytes == _memoryBlock._size) {

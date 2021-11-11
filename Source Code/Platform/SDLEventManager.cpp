@@ -20,7 +20,7 @@ namespace Divide {
         s_eventListeners.push_back(&listener);
     }
 
-    void SDLEventManager::unregisterListener(SDLEventListener& listener) {
+    void SDLEventManager::unregisterListener(const SDLEventListener& listener) {
         ScopedLock<SharedMutex> lock(s_eventListenerLock);
 
         const bool success = dvd_erase_if(s_eventListeners,

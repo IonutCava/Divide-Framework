@@ -134,7 +134,7 @@ void IMPrimitive::fromCone(const vec3<F32>& root,
     const vec3<F32> c = root + -invDirection * length;
     const vec3<F32> e0 = Perpendicular(invDirection);
     const vec3<F32> e1 = Cross(e0, invDirection);
-    const F32 angInc = 360.0f / slices * M_PIDIV180_f;
+    constexpr F32 angInc = 360.0f / slices * M_PIDIV180_f;
 
     // calculate points around directrix
     std::array<vec3<F32>, slices> pts = {};

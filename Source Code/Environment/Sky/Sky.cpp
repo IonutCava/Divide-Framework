@@ -79,7 +79,7 @@ namespace {
         };
 
 
-        Byte* data = MemoryManager_NEW Byte[width * height * 3];
+        Byte* data = MemoryManager_NEW Byte[to_size(width) * height * 3];
         for (I32 i = 0; i < width * height * 3; i += 3) {
             const glm::vec3 pos = glm::vec3(to_F32((i / 3) % width) / to_F32(width),
                                             to_F32((i / 3) / height) / to_F32(height),
@@ -240,7 +240,7 @@ Sky::Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, 
     nightSkyColour({ 0.05f, 0.06f, 0.1f, 1.f });
     moonColour({1.0f, 1.f, 0.8f});
 
-    time_t t = time(nullptr);
+    const time_t t = time(nullptr);
     _sun.SetLocation(-2.589910f, 51.45414f); // Bristol :D
     _sun.SetDate(*localtime(&t));
 
@@ -642,27 +642,27 @@ void Sky::postLoad(SceneGraphNode* sgn) {
     SceneNode::postLoad(sgn);
 }
 
-const SunDetails& Sky::setDateTime(struct tm *dateTime) {
+const SunDetails& Sky::setDateTime(struct tm *dateTime) noexcept {
     _sun.SetDate(*dateTime);
     return getCurrentDetails();
 }
 
-const SunDetails& Sky::setGeographicLocation(const SimpleLocation location) {
+const SunDetails& Sky::setGeographicLocation(const SimpleLocation location) noexcept {
     _sun.SetLocation(location._longitude, location._latitude);
     return getCurrentDetails();
 }
 
-const SunDetails& Sky::setDateTimeAndLocation(struct tm *dateTime, SimpleLocation location) {
+const SunDetails& Sky::setDateTimeAndLocation(struct tm *dateTime, SimpleLocation location) noexcept {
     _sun.SetLocation(location._longitude, location._latitude);
     _sun.SetDate(*dateTime);
     return getCurrentDetails();
 }
 
-const SunDetails& Sky::getCurrentDetails() const noexcept {
+const SunDetails& Sky::getCurrentDetails() const {
     return _sun.GetDetails();
 }
 
-bool Sky::isDay() const noexcept {
+bool Sky::isDay() const {
     return getCurrentDetails()._intensity > 0.f;
 }
 
@@ -728,7 +728,7 @@ void Sky::prepareRender(SceneGraphNode* sgn,
                 const Camera& camera,
                 const bool refreshData)  {
 
-    RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
+    const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
     if (!pkg.empty()) {
         setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY ? 16 : 8,
                          pkg.get<GFX::SendPushConstantsCommand>(0)->_constants);

@@ -70,7 +70,7 @@ class RenderPass final : NonCopyable {
     explicit RenderPass(RenderPassManager& parent, GFXDevice& context, Str64 name, U8 sortKey, RenderStage passStageFlag, const vector<U8>& dependencies, bool performanceCounters = false);
 
     void render(const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut) const;
-    void postRender() const;
+    void postRender() const noexcept;
 
     [[nodiscard]] inline U8 sortKey() const noexcept { return _sortKey; }
     [[nodiscard]] inline const vector<U8>& dependencies() const noexcept { return _dependencies; }
@@ -79,7 +79,7 @@ class RenderPass final : NonCopyable {
 
     [[nodiscard]] inline RenderStage stageFlag() const noexcept { return _stageFlag; }
 
-    BufferData getBufferData(const RenderStagePass& stagePass) const;
+    BufferData getBufferData(const RenderStagePass& stagePass) const noexcept;
 
     void initBufferData();
 

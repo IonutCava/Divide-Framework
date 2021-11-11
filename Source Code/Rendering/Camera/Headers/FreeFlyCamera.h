@@ -48,13 +48,13 @@ class FreeFlyCamera : public Camera {
   public:
     void fromCamera(const Camera& camera, bool flag = false) override;
 
-    void setGlobalRotation(F32 yaw, F32 pitch, F32 roll = 0.0f) override;
+    void setGlobalRotation(F32 yaw, F32 pitch, F32 roll = 0.0f) noexcept override;
     /// Sets the camera's orientation to match the specified yaw, pitch and roll
     /// values;
     /// Creates a quaternion based on the specified Euler angles and calls
     /// "rotate" to change
     /// the orientation
-    virtual void rotate(Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> roll);
+    virtual void rotate(Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> roll) noexcept;
     /// Creates a quaternion based on the specified axis-angle and calls
     /// "rotate"
     /// to change
@@ -75,21 +75,21 @@ class FreeFlyCamera : public Camera {
     void rotatePitch(Angle::DEGREES<F32> angle);
 
     /// Moves the camera by the specified offsets in each direction
-    virtual void move(F32 dx, F32 dy, F32 dz);
+    virtual void move(F32 dx, F32 dy, F32 dz) noexcept;
     /// Rotates the camera (changes its orientation) by the specified quaternion
     /// (_orientation *= q)
     void rotate(const Quaternion<F32>& q);
 
     /// Moves the camera forward or backwards
-    void moveForward(const F32 factor) {
+    void moveForward(const F32 factor) noexcept {
         move(0.0f, 0.0f, factor);
     }
     /// Moves the camera left or right
-    void moveStrafe(const F32 factor) {
+    void moveStrafe(const F32 factor) noexcept {
         move(factor, 0.0f, 0.0f);
     }
     /// Moves the camera up or down
-    void moveUp(const F32 factor) {
+    void moveUp(const F32 factor) noexcept {
         move(0.0f, factor, 0.0f);
     }
     /// Mouse sensitivity: amount of pixels per radian (this should be moved out

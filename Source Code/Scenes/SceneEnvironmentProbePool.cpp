@@ -21,7 +21,7 @@ bool SceneEnvironmentProbePool::s_probesDirty = true;
 std::array<std::pair<bool, bool>, Config::MAX_REFLECTIVE_PROBES_PER_PASS> SceneEnvironmentProbePool::s_availableSlices;
 RenderTargetHandle SceneEnvironmentProbePool::s_reflection;
 
-SceneEnvironmentProbePool::SceneEnvironmentProbePool(Scene& parentScene)
+SceneEnvironmentProbePool::SceneEnvironmentProbePool(Scene& parentScene) noexcept
     : SceneComponent(parentScene)
 {
 
@@ -48,7 +48,7 @@ I16 SceneEnvironmentProbePool::AllocateSlice(bool lock) {
     return -1;
 }
 
-void SceneEnvironmentProbePool::UnlockSlice(const I16 slice) {
+void SceneEnvironmentProbePool::UnlockSlice(const I16 slice) noexcept {
     s_availableSlices[slice] = { true, false };
 }
 
@@ -102,14 +102,14 @@ void SceneEnvironmentProbePool::OnShutdown(GFXDevice& context) {
     s_probeCameras.clear();
 }
 
-RenderTargetHandle SceneEnvironmentProbePool::ReflectionTarget() {
+RenderTargetHandle SceneEnvironmentProbePool::ReflectionTarget() noexcept {
     return s_reflection;
 }
 
 const EnvironmentProbeList& SceneEnvironmentProbePool::sortAndGetLocked(const vec3<F32>& position) {
     eastl::sort(begin(_envProbes),
                 end(_envProbes),
-                [&position](const auto& a, const auto& b) -> bool {
+                [&position](const auto& a, const auto& b) noexcept -> bool {
                     return a->distanceSqTo(position) < b->distanceSqTo(position);
                 });
 
@@ -135,15 +135,15 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
     }
 }
 
-void SceneEnvironmentProbePool::lockProbeList() const {
+void SceneEnvironmentProbePool::lockProbeList() const noexcept {
     _probeLock.lock();
 }
 
-void SceneEnvironmentProbePool::unlockProbeList() const {
+void SceneEnvironmentProbePool::unlockProbeList() const noexcept {
     _probeLock.unlock();
 }
 
-const EnvironmentProbeList& SceneEnvironmentProbePool::getLocked() const {
+const EnvironmentProbeList& SceneEnvironmentProbePool::getLocked() const noexcept {
     return _envProbes;
 }
 
@@ -155,11 +155,11 @@ void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe) 
     probe->poolIndex(to_U16(_envProbes.size() - 1u));
 }
 
-void SceneEnvironmentProbePool::unregisterProbe(EnvironmentProbeComponent* probe) {
+void SceneEnvironmentProbePool::unregisterProbe(const EnvironmentProbeComponent* probe) {
     if (probe != nullptr) {
         ScopedLock<SharedMutex> w_lock(_probeLock);
         auto it = _envProbes.erase(eastl::remove_if(begin(_envProbes), end(_envProbes),
-                                                    [probeGUID = probe->getGUID()](const auto& p) { return p->getGUID() == probeGUID; }),
+                                                    [probeGUID = probe->getGUID()](const auto& p) noexcept { return p->getGUID() == probeGUID; }),
                                    end(_envProbes));
         while (it != cend(_envProbes)) {
             (*it)->poolIndex((*it)->poolIndex() - 1);
@@ -222,7 +222,7 @@ void SceneEnvironmentProbePool::debugProbe(EnvironmentProbeComponent* probe) {
     }
 }
 
-void SceneEnvironmentProbePool::OnNodeUpdated(SceneEnvironmentProbePool& probePool, const SceneGraphNode& node) {
+void SceneEnvironmentProbePool::OnNodeUpdated(const SceneEnvironmentProbePool& probePool, const SceneGraphNode& node) noexcept {
     const BoundingSphere& bSphere = node.get<BoundsComponent>()->getBoundingSphere();
     probePool.lockProbeList();
     const EnvironmentProbeList& probes = probePool.getLocked();
@@ -234,7 +234,7 @@ void SceneEnvironmentProbePool::OnNodeUpdated(SceneEnvironmentProbePool& probePo
     probePool.unlockProbeList();
 }
 
-void SceneEnvironmentProbePool::OnTimeOfDayChange(SceneEnvironmentProbePool& probePool) {
+void SceneEnvironmentProbePool::OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept {
     probePool.lockProbeList();
     const EnvironmentProbeList& probes = probePool.getLocked();
     for (const auto& probe : probes) {

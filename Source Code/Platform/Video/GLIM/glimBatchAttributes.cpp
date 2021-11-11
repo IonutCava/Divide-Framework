@@ -11,7 +11,7 @@
 namespace NS_GLIM
 {
 
-    void GLIM_BATCH::Attribute1f (GLIM_ATTRIBUTE Data, float a1)
+    void GLIM_BATCH::Attribute1f (GLIM_ATTRIBUTE Data, float a1) noexcept
     {
         Data.m_CurrentValue[0].Float = a1;
 
@@ -27,7 +27,7 @@ namespace NS_GLIM
 
     }
 
-    void GLIM_BATCH::Attribute2f (GLIM_ATTRIBUTE Data, float a1, float a2)
+    void GLIM_BATCH::Attribute2f (GLIM_ATTRIBUTE Data, float a1, float a2) noexcept
     {
         Data.m_CurrentValue[0].Float = a1;
         Data.m_CurrentValue[1].Float = a2;
@@ -43,7 +43,7 @@ namespace NS_GLIM
         Data.m_DataType = Type;
     }
 
-    void GLIM_BATCH::Attribute3f (GLIM_ATTRIBUTE Data, float a1, float a2, float a3)
+    void GLIM_BATCH::Attribute3f (GLIM_ATTRIBUTE Data, float a1, float a2, float a3) noexcept
     {
         Data.m_CurrentValue[0].Float = a1;
         Data.m_CurrentValue[1].Float = a2;
@@ -60,7 +60,7 @@ namespace NS_GLIM
         Data.m_DataType = Type;
     }
 
-    void GLIM_BATCH::Attribute4f (GLIM_ATTRIBUTE Data, float a1, float a2, float a3, float a4)
+    void GLIM_BATCH::Attribute4f (GLIM_ATTRIBUTE Data, float a1, float a2, float a3, float a4) noexcept
     {
         Data.m_CurrentValue[0].Float = a1;
         Data.m_CurrentValue[1].Float = a2;
@@ -79,7 +79,7 @@ namespace NS_GLIM
     }
 
 
-    void GLIM_BATCH::Attribute1i (GLIM_ATTRIBUTE Data, int a1)
+    void GLIM_BATCH::Attribute1i (GLIM_ATTRIBUTE Data, int a1) noexcept
     {
         Data.m_CurrentValue[0].Int = a1;
 
@@ -94,7 +94,7 @@ namespace NS_GLIM
         Data.m_DataType = Type;
     }
 
-    void GLIM_BATCH::Attribute2i (GLIM_ATTRIBUTE Data, int a1, int a2)
+    void GLIM_BATCH::Attribute2i (GLIM_ATTRIBUTE Data, int a1, int a2) noexcept
     {
         Data.m_CurrentValue[0].Int = a1;
         Data.m_CurrentValue[1].Int = a2;
@@ -110,7 +110,7 @@ namespace NS_GLIM
         Data.m_DataType = Type;
     }
 
-    void GLIM_BATCH::Attribute3i (GLIM_ATTRIBUTE Data, int a1, int a2, int a3)
+    void GLIM_BATCH::Attribute3i (GLIM_ATTRIBUTE Data, int a1, int a2, int a3) noexcept
     {
         Data.m_CurrentValue[0].Int = a1;
         Data.m_CurrentValue[1].Int = a2;
@@ -127,7 +127,7 @@ namespace NS_GLIM
         Data.m_DataType = Type;
     }
 
-    void GLIM_BATCH::Attribute4i (GLIM_ATTRIBUTE Data, int a1, int a2, int a3, int a4)
+    void GLIM_BATCH::Attribute4i (GLIM_ATTRIBUTE Data, int a1, int a2, int a3, int a4) noexcept
     {
         Data.m_CurrentValue[0].Int = a1;
         Data.m_CurrentValue[1].Int = a2;
@@ -146,7 +146,7 @@ namespace NS_GLIM
     }
 
 
-    void GLIM_BATCH::Attribute4ub (GLIM_ATTRIBUTE Data, unsigned char a1, unsigned char a2, unsigned char a3, unsigned char a4)
+    void GLIM_BATCH::Attribute4ub (GLIM_ATTRIBUTE Data, unsigned char a1, unsigned char a2, unsigned char a3, unsigned char a4) noexcept
     {
         Data.m_CurrentValue[0].Bytes[0] = a1;
         Data.m_CurrentValue[0].Bytes[1] = a2;

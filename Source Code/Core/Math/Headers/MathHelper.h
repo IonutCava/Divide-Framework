@@ -105,17 +105,17 @@ using DefaultDistribution = typename std::conditional<std::is_integral<T>::value
 template <typename T, 
           typename Engine = std::mt19937_64,
           typename Distribution = DefaultDistribution<T>>
-[[nodiscard]] T Random(T min, T max) noexcept;
+[[nodiscard]] T Random(T min, T max);
 
 template <typename T,
           typename Engine = std::mt19937_64,
           typename Distribution = DefaultDistribution<T>>
-[[nodiscard]] T Random(T max) noexcept;
+[[nodiscard]] T Random(T max);
 
 template <typename T,
           typename Engine = std::mt19937_64,
           typename Distribution = DefaultDistribution<T>>
-[[nodiscard]] T Random() noexcept;
+[[nodiscard]] T Random();
 
 template<typename Engine = std::mt19937_64>
 void SeedRandom();
@@ -265,7 +265,7 @@ template <typename T, typename U>
 [[nodiscard]] T Lerp(T v1, T v2, U t) noexcept;
 
 template <typename T, typename U>
-[[nodiscard]] T FastLerp(T v1, T v2, U t);
+[[nodiscard]] T FastLerp(T v1, T v2, U t) noexcept;
 
 template <typename T>
 [[nodiscard]] T Sqrt(T input) noexcept;
@@ -513,7 +513,7 @@ struct Circle {
 
 /// a la Boost
 template <typename T>
-void Hash_combine(size_t& seed, const T& v) noexcept;
+void Hash_combine(size_t& seed, const T& v);
 
 // U = to data type, T = from data type
 template <typename U, typename T>
@@ -568,7 +568,7 @@ void ToFloatColour(const vec3<U32>& uintColour, FColour3& colourOut) noexcept;
 
 [[nodiscard]] U32 PACK_HALF2x16(const vec2<F32>& value);
 void UNPACK_HALF2x16(U32 src, vec2<F32>& value);
-[[nodiscard]] vec2<F32> UNPACK_HALF2x16(U32 src) noexcept;
+[[nodiscard]] vec2<F32> UNPACK_HALF2x16(U32 src);
 
 [[nodiscard]] U32 PACK_HALF2x16(F32 x, F32 y);
 void UNPACK_HALF2x16(U32 src, F32& x, F32& y);
@@ -581,20 +581,20 @@ void UNPACK_UNORM4x8(U32 src, vec4<F32_NORM>& value);
 [[nodiscard]] U32 PACK_UNORM4x8(U8 x, U8 y, U8 z, U8 w);
 void UNPACK_UNORM4x8(U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z, F32_NORM& w);
 void UNPACK_UNORM4x8(U32 src, U8& x, U8& y, U8& z, U8& w);
-[[nodiscard]] vec4<U8> UNPACK_UNORM4x8_U8(U32 src) noexcept;
-[[nodiscard]] vec4<F32_NORM> UNPACK_UNORM4x8_F32(U32 src) noexcept;
+[[nodiscard]] vec4<U8> UNPACK_UNORM4x8_U8(U32 src);
+[[nodiscard]] vec4<F32_NORM> UNPACK_UNORM4x8_F32(U32 src);
 
 // UnPack 3 values from 1 float
 void UNPACK_VEC3(F32 src, F32_SNORM& x, F32_SNORM& y, F32_SNORM& z) noexcept;
 void UNPACK_VEC3(F32 src, vec3<F32_SNORM>& res) noexcept;
 [[nodiscard]] vec3<F32_SNORM> UNPACK_VEC3(F32 src) noexcept;
 
-[[nodiscard]] U32 PACK_11_11_10(const vec3<F32_NORM>& value) noexcept;
-void UNPACK_11_11_10(U32 src, vec3<F32_NORM>& res) noexcept;
-[[nodiscard]] vec3<F32_NORM> UNPACK_11_11_10(U32 src) noexcept;
+[[nodiscard]] U32 PACK_11_11_10(const vec3<F32_NORM>& value);
+void UNPACK_11_11_10(U32 src, vec3<F32_NORM>& res);
+[[nodiscard]] vec3<F32_NORM> UNPACK_11_11_10(U32 src);
 
-[[nodiscard]] U32 PACK_11_11_10(F32_NORM x, F32_NORM y, F32_NORM z) noexcept;
-void UNPACK_11_11_10(U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z) noexcept;
+[[nodiscard]] U32 PACK_11_11_10(F32_NORM x, F32_NORM y, F32_NORM z);
+void UNPACK_11_11_10(U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z);
 
 }  // namespace Util
 }  // namespace Divide

@@ -25,7 +25,7 @@ namespace ImGuizmo {
         ImVec2 mScreenSquareMax = { 0.0f, 0.0f };
     } gBounds = {};
     
-    const GizmoBounds& GetBounds() {
+    const GizmoBounds& GetBounds() noexcept {
         gBounds.mRadiusSquareCenter = gContext.mRadiusSquareCenter;
         gBounds.mScreenSquareCenter = gContext.mScreenSquareCenter;
         gBounds.mScreenSquareMin = gContext.mScreenSquareMin;
@@ -97,7 +97,7 @@ namespace Divide {
             return;
         }
 
-        TransformComponent* const transform = sgn->get<TransformComponent>();
+        const TransformComponent* const transform = sgn->get<TransformComponent>();
         if (transform == nullptr) {
             return;
         }
@@ -110,8 +110,8 @@ namespace Divide {
 
         {
             U8 selectionCounter = 0;
-            for (auto& node : _selectedNodes) {
-                TransformComponent* tComp = node->get<TransformComponent>();
+            for (const auto& node : _selectedNodes) {
+                const TransformComponent* tComp = node->get<TransformComponent>();
                 if (tComp != nullptr) {
                     nodesBB.add(tComp->getPosition());
                     if (!hasScale) {
@@ -134,7 +134,7 @@ namespace Divide {
         ImGui::NewFrame();
         ImGuizmo::BeginFrame();
 
-        DisplayWindow* mainWindow = static_cast<DisplayWindow*>(ImGui::GetMainViewport()->PlatformHandle);
+        const DisplayWindow* mainWindow = static_cast<DisplayWindow*>(ImGui::GetMainViewport()->PlatformHandle);
         const vec2<U16> size = mainWindow->getDrawableSize();
         ImGuizmo::SetRect(0.f, 0.f, to_F32(size.width), to_F32(size.height));
 
@@ -149,8 +149,8 @@ namespace Divide {
         if (ImGuizmo::IsUsing()) {
             if (!_wasUsed) {
                 U8 selectionCounter = 0;
-                for (auto& node : _selectedNodes) {
-                    TransformComponent* tComp = node->get<TransformComponent>();
+                for (const auto& node : _selectedNodes) {
+                    const TransformComponent* tComp = node->get<TransformComponent>();
                     if (tComp != nullptr) {
                         g_transformCache[selectionCounter] = tComp->getValues();
                         g_selectedNodesCache[selectionCounter] = node;
@@ -170,8 +170,8 @@ namespace Divide {
             _workValues._orientation.fromMatrix(mat3<F32>(matrix));
 
             _workValues._translation = _workValues._translation - startPos;
-            for (auto& node : _selectedNodes) {
-                TransformComponent* tComp = node->get<TransformComponent>();
+            for (const auto& node : _selectedNodes) {
+                const TransformComponent* tComp = node->get<TransformComponent>();
                 if (tComp != nullptr) {
                    
                     break;
@@ -202,7 +202,7 @@ namespace Divide {
 
             g_undoEntry._dataSetter = [](const std::pair<TransformCache, NodeCache>& data) {
                 for (U8 i = 0; i < g_maxSelectedNodes; ++i) {
-                    SceneGraphNode* node = data.second[i];
+                    const SceneGraphNode* node = data.second[i];
                     if (node != nullptr) {
                         TransformComponent* tComp = node->get<TransformComponent>();
                         if (tComp != nullptr) {
@@ -290,7 +290,7 @@ namespace Divide {
         return ret;
     }
 
-    void Gizmo::onMouseButton(const bool pressed) {
+    void Gizmo::onMouseButton(const bool pressed) noexcept {
         if (pressed) {
             _wasUsed = false;
         } else if (_wasUsed) {
@@ -311,7 +311,7 @@ namespace Divide {
         return false;
     }
 
-    bool Gizmo::hovered() const {
+    bool Gizmo::hovered() const noexcept {
         if (active()) {
             const ImGuizmo::GizmoBounds& bounds = ImGuizmo::GetBounds();
             const ImGuiIO& io = _imguiContext->IO;

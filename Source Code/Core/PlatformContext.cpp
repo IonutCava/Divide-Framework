@@ -127,19 +127,19 @@ void PlatformContext::endFrame(const U32 componentMask) {
     }
 }
 
-DisplayWindow& PlatformContext::mainWindow() {
+DisplayWindow& PlatformContext::mainWindow() noexcept {
     return *app().windowManager().mainWindow();
 }
 
-const DisplayWindow& PlatformContext::mainWindow() const {
+const DisplayWindow& PlatformContext::mainWindow() const noexcept {
     return *app().windowManager().mainWindow();
 }
 
-Kernel& PlatformContext::kernel() {
+Kernel& PlatformContext::kernel() noexcept {
     return _kernel;
 }
 
-const Kernel& PlatformContext::kernel() const {
+const Kernel& PlatformContext::kernel() const noexcept {
     return _kernel;
 }
 

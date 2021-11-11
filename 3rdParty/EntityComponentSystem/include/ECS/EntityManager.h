@@ -217,7 +217,7 @@ namespace ECS
 			((T*)pObjectMemory)->m_ComponentManagerInstance = this->m_ComponentManagerInstance;
 
 			// create entity inplace
-			IEntity* entity = new (pObjectMemory)T(FWD(args)...);
+			IEntity* entity = new (pObjectMemory)T(std::forward<ARGS>(args)...);
             (void)entity;
 
 			return entityId;

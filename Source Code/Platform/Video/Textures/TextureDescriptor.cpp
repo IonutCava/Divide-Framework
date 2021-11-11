@@ -46,7 +46,7 @@ namespace Divide {
         }
     }
 
-    size_t SamplerDescriptor::getHash() const noexcept {
+    size_t SamplerDescriptor::getHash() const {
         size_t tempHash = 59;
         Util::Hash_combine(tempHash, to_U32(_cmpFunc));
         Util::Hash_combine(tempHash, _useRefCompare);
@@ -98,7 +98,7 @@ namespace Divide {
         return s_samplerDescriptorMap.find(s_defaultHashValue)->second;
     }
 
-    size_t TextureDescriptor::getHash() const noexcept {
+    size_t TextureDescriptor::getHash() const {
         _hash = PropertyDescriptor::getHash();
 
         Util::Hash_combine(_hash, _layerCount);

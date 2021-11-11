@@ -44,8 +44,8 @@ class Sphere3D final : public Object3D {
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
 
-    void setRadius(F32 radius);
-    void setResolution(U32 resolution);
+    void setRadius(F32 radius) noexcept;
+    void setResolution(U32 resolution) noexcept;
 
     PROPERTY_R(F32, radius, 1.f);
     PROPERTY_R(U32, resolution, 16u);

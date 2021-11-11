@@ -63,7 +63,7 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     parametersChanged();
 }
 
-bool SSRPreRenderOperator::ready() const {
+bool SSRPreRenderOperator::ready() const noexcept {
     if (_ssrShader->getState() == ResourceState::RES_LOADED) {
         return PreRenderOperator::ready();
     }

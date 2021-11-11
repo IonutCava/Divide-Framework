@@ -14,7 +14,7 @@ namespace {
     thread_local U64  g_allocatedTasks = 0u;
 }
 
-TaskPool::TaskPool()
+TaskPool::TaskPool() noexcept
     : GUIDWrapper(),
       _taskCallbacks(Config::MAX_POOLED_TASKS)
 {
@@ -170,7 +170,7 @@ void TaskPool::waitForAllTasks(const bool flushCallbacks) {
     if (type() != TaskPoolType::COUNT) {
         {
             UniqueLock<Mutex> lock(_taskFinishedMutex);
-            _taskFinishedCV.wait(lock, [this]() { return _runningTaskCount.load() == 0u; });
+            _taskFinishedCV.wait(lock, [this]() noexcept { return _runningTaskCount.load() == 0u; });
         }
 
         if (flushCallbacks) {
@@ -209,7 +209,7 @@ void TaskPool::taskCompleted(Task& task, const bool hasOnCompletionFunction) {
     _taskFinishedCV.notify_one();
 }
 
-Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) {
+Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) noexcept {
     if (parentTask != nullptr) {
         parentTask->_unfinishedJobs.fetch_add(1u);
     }

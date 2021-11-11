@@ -61,7 +61,7 @@ class glVertexArray final : public VertexBuffer,
     bool create(bool staticDraw = true) override;
 
     /// Never call Refresh() just queue it and the data will update before drawing
-    bool queueRefresh() override {
+    bool queueRefresh() noexcept override {
         _refreshQueued = true;
         return true;
     }

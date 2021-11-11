@@ -25,7 +25,6 @@ ParticleData::ParticleData(GFXDevice& context, const U32 particleCount, const U3
 
 ParticleData::~ParticleData()
 {
-    generateParticles(0, _optionsMask);
 }
 
 void ParticleData::generateParticles(const U32 particleCount, const U32 optionsMask) {
@@ -74,7 +73,7 @@ void ParticleData::wake(U32 /*index*/) {
 }
 
 void ParticleData::sort() {
-    U32 count = aliveCount();
+    const U32 count = aliveCount();
 
     if (count == 0) {
         return;
@@ -141,7 +140,7 @@ void ParticleData::setParticleGeometry(const vector<vec3<F32>>& particleGeometry
     _particleGeometryType = particleGeometryType;
 }
 
-void ParticleData::setBillboarded(const bool state) {
+void ParticleData::setBillboarded(const bool state) noexcept {
     _isBillboarded = state;
 }
 }

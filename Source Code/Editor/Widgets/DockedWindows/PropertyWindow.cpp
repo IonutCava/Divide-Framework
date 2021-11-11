@@ -124,7 +124,7 @@ namespace Divide {
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = eye._v;
-                camField._dataSetter = [cam](const void* val) {
+                camField._dataSetter = [cam](const void* val) noexcept {
                     cam->setEye(*static_cast<const vec3<F32>*>(val));
                 };
                 sceneChanged = processField(camField) || sceneChanged;
@@ -137,7 +137,7 @@ namespace Divide {
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = euler._v;
-                camField._dataSetter = [cam](const void* e) {
+                camField._dataSetter = [cam](const void* e) noexcept {
                     cam->setEuler(*static_cast<const vec3<F32>*>(e));
                 };
                 sceneChanged = processField(camField) || sceneChanged;
@@ -160,7 +160,7 @@ namespace Divide {
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = &aspect;
-                camField._dataSetter = [cam](const void* a) {
+                camField._dataSetter = [cam](const void* a) noexcept {
                     cam->setAspectRatio(*static_cast<const F32*>(a));
                 };
                 sceneChanged = processField(camField) || sceneChanged;
@@ -173,7 +173,7 @@ namespace Divide {
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = &horizontalFoV;
-                camField._dataSetter = [cam](const void* fov) {
+                camField._dataSetter = [cam](const void* fov) noexcept {
                     cam->setHorizontalFoV(*static_cast<const F32*>(fov));
                 };
                 sceneChanged = processField(camField) || sceneChanged;
@@ -314,7 +314,7 @@ namespace Divide {
                         const U64 fieldHash = _ID(fieldName);
 
                         bool fieldWasOpen = false;
-                        for (U64 p : s_openProperties) {
+                        for (const U64 p : s_openProperties) {
                             if (p == fieldHash) {
                                 fieldWasOpen = true;
                                 break;
@@ -368,7 +368,7 @@ namespace Divide {
                             const U32 componentMask = sgnNode->componentMask();
                             // Environment probes
                             if (BitCompare(componentMask, ComponentType::ENVIRONMENT_PROBE)) {
-                                EnvironmentProbeComponent* probe = sgnNode->get<EnvironmentProbeComponent>();
+                                const EnvironmentProbeComponent* probe = sgnNode->get<EnvironmentProbeComponent>();
                                 if (probe != nullptr) {
                                     const auto& cameras = probe->probeCameras();
 
@@ -440,7 +440,7 @@ namespace Divide {
                                         tempField._data = &bleedBias;
                                         tempField._format = "%.6f";
                                         tempField._range = { 0.0f, 1.0f };
-                                        tempField._dataSetter = [&activeSceneState](const void* bias) {
+                                        tempField._dataSetter = [&activeSceneState](const void* bias) noexcept {
                                             activeSceneState->lightBleedBias(*static_cast<const F32*>(bias));
                                         };
                                         sceneChanged = processField(tempField) || sceneChanged;
@@ -455,7 +455,7 @@ namespace Divide {
                                         tempField._data = &shadowVariance;
                                         tempField._range = { 0.00001f, 0.99999f };
                                         tempField._format = "%.6f";
-                                        tempField._dataSetter = [&activeSceneState](const void* variance) {
+                                        tempField._dataSetter = [&activeSceneState](const void* variance) noexcept {
                                             activeSceneState->minShadowVariance(*static_cast<const F32*>(variance));
                                         };
                                         sceneChanged = processField(tempField) || sceneChanged;
@@ -513,7 +513,7 @@ namespace Divide {
             if (ImGui::BeginPopup("COMP_SELECTION_GROUP")) {
                 for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i) {
                     const U32 componentBit = 1 << i;
-                    ComponentType type = static_cast<ComponentType>(componentBit);
+                    const ComponentType type = static_cast<ComponentType>(componentBit);
                     if (type == ComponentType::COUNT || !validComponentToAdd(type)) {
                         continue;
                     }
@@ -933,7 +933,7 @@ namespace Divide {
             bool changed = false;
             {
                 P32 colourWrite = block.colourWrite();
-                const char* names[] = { "R", "G", "B", "A" };
+                constexpr char* const names[] = { "R", "G", "B", "A" };
 
                 for (U8 i = 0; i < 4; ++i) {
                     if (i > 0) {
@@ -970,7 +970,7 @@ namespace Divide {
                 tempField._readOnly = readOnly;
                 tempField._data = &zBias;
                 tempField._range = { 0.0f, 1000.0f };
-                RenderStagePass tempPass = currentStagePass;
+                const RenderStagePass tempPass = currentStagePass;
                 tempField._dataSetter = [material, stateHash, tempPass, zUnits](const void* data) {
                     RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
                     stateBlock.setZBias(*static_cast<const F32*>(data), zUnits);
@@ -986,7 +986,7 @@ namespace Divide {
                 tempField._readOnly = readOnly;
                 tempField._data = &zUnits;
                 tempField._range = { 0.0f, 65536.0f };
-                RenderStagePass tempPass = currentStagePass;
+                const RenderStagePass tempPass = currentStagePass;
                 tempField._dataSetter = [material, stateHash, tempPass, zBias](const void* data) {
                     RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
                     stateBlock.setZBias(zBias, *static_cast<const F32*>(data));
@@ -1012,7 +1012,7 @@ namespace Divide {
                             cullUndo._name = "Cull Mode";
                             cullUndo._oldVal = to_I32(cMode);
                             cullUndo._newVal = to_I32(mode);
-                            RenderStagePass tempPass = currentStagePass;
+                            const RenderStagePass tempPass = currentStagePass;
                             cullUndo._dataSetter = [material, stateHash, tempPass](const I32& data) {
                                 RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
                                 stateBlock.setCullMode(static_cast<CullMode>(data));
@@ -1045,7 +1045,7 @@ namespace Divide {
                             fillUndo._name = "Fill Mode";
                             fillUndo._oldVal = to_I32(fMode);
                             fillUndo._newVal = to_I32(mode);
-                            RenderStagePass tempPass = currentStagePass;
+                            const RenderStagePass tempPass = currentStagePass;
                             fillUndo._dataSetter = [material, stateHash, tempPass](const I32& data) {
                                 RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
                                 stateBlock.setFillMode(static_cast<FillMode>(data));
@@ -1123,7 +1123,7 @@ namespace Divide {
                             stencilUndo._name = "Depth function";
                             stencilUndo._oldVal = to_I32(zFunc);
                             stencilUndo._newVal = to_I32(func);
-                            RenderStagePass tempPass = currentStagePass;
+                            const RenderStagePass tempPass = currentStagePass;
                             stencilUndo._dataSetter = [material, stateHash, tempPass](const I32& data) {
                                 RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
                                 stateBlock.setZFunc(static_cast<ComparisonFunction>(data));
@@ -1155,7 +1155,7 @@ namespace Divide {
                             stencilUndo._name = "Stencil fail op";
                             stencilUndo._oldVal = to_I32(sFailOp);
                             stencilUndo._newVal = to_I32(op);
-                            RenderStagePass tempPass = currentStagePass;
+                            const RenderStagePass tempPass = currentStagePass;
                             stencilUndo._dataSetter = [material, stateHash, tempPass, stencilEnabled, stencilRef, sZFailOp, sPassOp, sFunc](const I32& data) {
                                 RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
                                 stateBlock.setStencil(stencilEnabled, stencilRef, static_cast<StencilOperation>(data), sPassOp, sZFailOp, sFunc);
@@ -1186,7 +1186,7 @@ namespace Divide {
                             stencilUndo._name = "Stencil depth fail op";
                             stencilUndo._oldVal = to_I32(sZFailOp);
                             stencilUndo._newVal = to_I32(op);
-                            RenderStagePass tempPass = currentStagePass;
+                            const RenderStagePass tempPass = currentStagePass;
                             stencilUndo._dataSetter = [material, stateHash, tempPass, stencilEnabled, stencilRef, sFailOp, sPassOp, sFunc](const I32& data) {
                                 RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
                                 stateBlock.setStencil(stencilEnabled, stencilRef, sFailOp, sPassOp, static_cast<StencilOperation>(data), sFunc);
@@ -1218,7 +1218,7 @@ namespace Divide {
                             stencilUndo._name = "Stencil pass op";
                             stencilUndo._oldVal = to_I32(sPassOp);
                             stencilUndo._newVal = to_I32(op);
-                            RenderStagePass tempPass = currentStagePass;
+                            const RenderStagePass tempPass = currentStagePass;
                             stencilUndo._dataSetter = [material, stateHash, tempPass, stencilEnabled, stencilRef, sFailOp, sZFailOp, sFunc](const I32& data) {
                                 RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
                                 stateBlock.setStencil(stencilEnabled, stencilRef, sFailOp, static_cast<StencilOperation>(data), sZFailOp, sFunc);
@@ -1250,7 +1250,7 @@ namespace Divide {
                             stencilUndo._name = "Stencil function";
                             stencilUndo._oldVal = to_I32(sFunc);
                             stencilUndo._newVal = to_I32(mode);
-                            RenderStagePass tempPass = currentStagePass;
+                            const RenderStagePass tempPass = currentStagePass;
                             stencilUndo._dataSetter = [material, stateHash, tempPass, stencilEnabled, stencilRef, sFailOp, sZFailOp, sPassOp](const I32& data) {
                                 RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
                                 stateBlock.setStencil(stencilEnabled, stencilRef, sFailOp, sPassOp, sZFailOp,  static_cast<ComparisonFunction>(data));
@@ -1664,7 +1664,7 @@ namespace Divide {
             }
             { // Texture operations
                 const Material::TexOpArray& operations = material->textureOperations();
-                const char* names[] = {
+                constexpr char* const names[] = {
                     "Tex operation [Albedo - Tex0]",
                     "Tex operation [(Albedo*Tex0) - Tex1]",
                     "Tex operation [SpecColour - SpecMap]"
@@ -2002,7 +2002,7 @@ namespace Divide {
           return ret;
       }
 
-      const char* PropertyWindow::name() const noexcept {
+      const char* PropertyWindow::name() const {
           const Selections& nodes = selections();
           if (nodes._selectionCount == 0) {
               return DockedWindow::name();

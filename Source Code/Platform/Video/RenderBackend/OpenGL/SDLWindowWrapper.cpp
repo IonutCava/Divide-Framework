@@ -16,9 +16,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/ShaderBuffer/Headers/glUniformBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/VertexBuffer/Headers/glVertexArray.h"
 #include "Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/GL3Renderer.h"
-#include <CEGUI/CEGUI.h>
 #include <glbinding-aux/ContextInfo.h>
-
 
 #include "Platform/Video/GLIM/glim.h"
 
@@ -33,20 +31,20 @@
 
 namespace Divide {
 namespace {
-    const U32 g_maxVAOS = 512u;
+    constexpr U32 g_maxVAOS = 512u;
 
     struct ContextPool {
         bool init(const size_t size, const DisplayWindow& window) {
             SDL_Window* raw = window.getRawWindow();
             _contexts.resize(size, std::make_pair(nullptr, false));
-            for (auto&[context, used] : _contexts) {
+            for (auto&[context, _] : _contexts) {
                 context = SDL_GL_CreateContext(raw);
             }
             return true;
         }
 
         bool destroy() noexcept {
-            for (auto& [context, used] : _contexts) {
+            for (auto& [context, _] : _contexts) {
                 SDL_GL_DeleteContext(context);
             }
             _contexts.clear();
@@ -91,7 +89,7 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     glbinding::Binding::useCurrentContext();
 
     // Query GPU vendor to enable/disable vendor specific features
-    GPUVendor vendor;
+    GPUVendor vendor = GPUVendor::COUNT;
     const char* gpuVendorStr = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
     if (gpuVendorStr != nullptr) {
         if (strstr(gpuVendorStr, "Intel") != nullptr) {
@@ -109,7 +107,7 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
         gpuVendorStr = "Unknown GPU Vendor";
         vendor = GPUVendor::OTHER;
     }
-    GPURenderer renderer;
+    GPURenderer renderer = GPURenderer::COUNT;
     const char* gpuRendererStr = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
     if (gpuRendererStr != nullptr) {
         if (strstr(gpuRendererStr, "Tegra") || strstr(gpuRendererStr, "GeForce") || strstr(gpuRendererStr, "NV")) {
@@ -193,7 +191,7 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     // If we got here, let's figure out what capabilities we have available
     // Maximum addressable texture image units in the fragment shader
     s_maxTextureUnits = static_cast<GLuint>(std::max(GLUtil::getGLValue(GL_MAX_TEXTURE_IMAGE_UNITS), 16));
-    s_residentTextures.resize(s_maxTextureUnits * (1 << 4));
+    s_residentTextures.resize(to_size(s_maxTextureUnits) * (1 << 4));
 
 
     GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIB_BINDINGS, s_maxAttribBindings);
@@ -418,13 +416,13 @@ void GL_API::closeRenderingAPI() {
     g_ContextPool.destroy();
 }
 
-vec2<U16> GL_API::getDrawableSize(const DisplayWindow& window) const {
+vec2<U16> GL_API::getDrawableSize(const DisplayWindow& window) const noexcept {
     int w = 1, h = 1;
     SDL_GL_GetDrawableSize(window.getRawWindow(), &w, &h);
     return vec2<U16>(w, h);
 }
 
-void GL_API::QueueFlush() {
+void GL_API::QueueFlush() noexcept {
     s_glFlushQueued.store(true);
 }
 

@@ -130,7 +130,7 @@ bool PhysXSceneInterface::init() {
     return true;
 }
 
-bool PhysXSceneInterface::isInit() const {
+bool PhysXSceneInterface::isInit() const noexcept {
     return _gScene != nullptr;
 }
 
@@ -184,7 +184,7 @@ void PhysXSceneInterface::update(const U64 deltaTimeUS) {
 }
 
 void PhysXSceneInterface::UpdateActor(physx::PxActor* actor) {
-    physx::PxRigidActor* rigidActor = static_cast<physx::PxRigidActor*>(actor);
+    const physx::PxRigidActor* rigidActor = static_cast<physx::PxRigidActor*>(actor);
     TransformComponent* tComp = static_cast<SceneGraphNode*>(rigidActor->userData)->get<TransformComponent>();
 
     const physx::PxTransform pT = rigidActor->getGlobalPose();
@@ -235,7 +235,7 @@ bool PhysXSceneInterface::intersect(const Ray& intersectionRay, const vec2<F32>&
             PX_ASSERT(hit.block.actor);
             PX_ASSERT(hit.block.distance <= probeLength + extra);
 
-            SceneGraphNode* node = static_cast<SceneGraphNode*>(hit.block.actor->userData);
+            const SceneGraphNode* node = static_cast<SceneGraphNode*>(hit.block.actor->userData);
             intersectionsOut.push_back({
                 node->getGUID(),
                 hit.block.distance,

@@ -47,7 +47,7 @@ class AudioDescriptor final : public CachedResource {
 
     virtual ~AudioDescriptor() = default;
 
-    bool unload() override {
+    bool unload() noexcept override {
         return true;
     }
 

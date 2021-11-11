@@ -2,8 +2,10 @@
 <RuleSet Name="Rules for Divide-Core" Description="Code analysis rules for Divide-Core.vcxproj." ToolsVersion="16.0">
   <IncludeAll Action="Warning" />
   <Rules AnalyzerId="Microsoft.Analyzers.NativeCodeAnalysis" RuleNamespace="Microsoft.Rules.Native">
+    <Rule Id="C26409" Action="None" />
     <Rule Id="C26429" Action="None" />
     <Rule Id="C26431" Action="None" />
+    <Rule Id="C26432" Action="None" />
     <Rule Id="C26445" Action="None" />
     <Rule Id="C26446" Action="None" />
     <Rule Id="C26448" Action="None" />
@@ -13,6 +15,8 @@
     <Rule Id="C26471" Action="None" />
     <Rule Id="C26472" Action="None" />
     <Rule Id="C26481" Action="None" />
+    <Rule Id="C26482" Action="None" />
+    <Rule Id="C26485" Action="None" />
     <Rule Id="C26490" Action="None" />
     <Rule Id="C26493" Action="None" />
     <Rule Id="C26821" Action="None" />

@@ -113,7 +113,7 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     [[nodiscard]] size_t getPrimitiveSize() const noexcept { return _params._elementSize; }
     [[nodiscard]] Usage getUsage() const noexcept { return _usage;  }
 
-    [[nodiscard]] static size_t AlignmentRequirement(Usage usage);
+    [[nodiscard]] static size_t AlignmentRequirement(Usage usage) noexcept;
     PROPERTY_R(string, name);
 
    protected:

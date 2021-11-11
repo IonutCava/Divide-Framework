@@ -826,7 +826,7 @@ bool Material::unload() {
     
     if (_baseMaterial != nullptr) {
         erase_if(_baseMaterial->_instances,
-                 [guid = getGUID()](Material* instance) {
+                 [guid = getGUID()](Material* instance) noexcept {
                      return instance->getGUID() == guid;
                  });
     }
@@ -1254,7 +1254,7 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
         texturesOut[i] = _textureAddresses[to_base(g_materialTextures[i])];
     }
 
-    SceneGraphNode* parentSGN = parentComp.getSGN();
+    const SceneGraphNode* parentSGN = parentComp.getSGN();
 
     F32 selectionFlag = 0.0f;
     if (parentSGN->hasFlag(SceneGraphNode::Flags::HOVERED)) {
@@ -1294,7 +1294,7 @@ void Material::rebuild() {
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
             ShaderPerVariant& shaders = _shaderInfo[s][p];
-            for (ShaderProgramInfo& info : shaders) {
+            for (const ShaderProgramInfo& info : shaders) {
                 if (info._shaderRef != nullptr && info._shaderRef->getState() == ResourceState::RES_LOADED) {
                     info._shaderRef->recompile(true, skipped);
                 }
@@ -1511,7 +1511,7 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
                 const U32 index = pt.get<U32>(textureNode + ".Sampler.id", 0);
                 const auto& it = previousHashValues.find(index);
 
-                size_t hash;
+                size_t hash = 0u;
                 if (it != cend(previousHashValues)) {
                     hash = it->second;
                 } else {
@@ -1523,7 +1523,7 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
                     setSampler(usage, hash);
                 }
 
-                TextureOperation op = TextureOperation::NONE;
+                const TextureOperation op = TextureOperation::NONE;
                 _textureOperations[to_base(usage)] = TypeUtil::StringToTextureOperation(pt.get<string>(textureNode + ".usage", TypeUtil::TextureOperationToString(_textureOperations[to_base(usage)])));
 
                 {

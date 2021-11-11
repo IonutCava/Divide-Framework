@@ -369,7 +369,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                 shadowPreviewShader.propertyDescriptor(shaderDescriptor);
                 shadowPreviewShader.threaded(false);
                 ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
-                U8 splitCount = static_cast<DirectionalLightComponent&>(*light).csmSplitCount();
+                const U8 splitCount = static_cast<DirectionalLightComponent&>(*light).csmSplitCount();
 
                 constexpr I16 Base = 2;
                 for (U8 i = 0; i < splitCount; ++i) {
@@ -416,7 +416,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                 shadowPreviewShader.threaded(false);
                 ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
 
-                vec2<F32> zPlanes = shadowCameras(ShadowType::CUBEMAP)[0]->getZPlanes();
+                const vec2<F32> zPlanes = shadowCameras(ShadowType::CUBEMAP)[0]->getZPlanes();
 
                 constexpr I16 Base = 5;
                 for (U32 i = 0; i < 6; ++i) {

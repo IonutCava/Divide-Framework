@@ -16,7 +16,7 @@ GUISplash::GUISplash(ResourceCache* cache,
                      vec2<U16> dimensions) 
     : _dimensions(MOV(dimensions))
 {
-    TextureDescriptor splashDescriptor(TextureType::TEXTURE_2D);
+    const TextureDescriptor splashDescriptor(TextureType::TEXTURE_2D);
 
     ResourceDescriptor splashImage("SplashScreen Texture");
     splashImage.threaded(false);

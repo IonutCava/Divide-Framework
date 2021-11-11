@@ -115,7 +115,7 @@ WaterPlane::WaterPlane(ResourceCache* parentCache, size_t descriptorHash, const 
     getEditorComponent().registerField(MOV(specularShininessField));
 
     
-    getEditorComponent().onChangedCbk([this](const std::string_view field) {onEditorChange(field); });
+    getEditorComponent().onChangedCbk([this](const std::string_view field) noexcept {onEditorChange(field); });
 }
 
 WaterPlane::~WaterPlane()
@@ -123,7 +123,7 @@ WaterPlane::~WaterPlane()
     Camera::destroyCamera(_reflectionCam);
 }
 
-void WaterPlane::onEditorChange(std::string_view) {
+void WaterPlane::onEditorChange(std::string_view) noexcept {
     _editorDataDirtyState = EditorDataState::QUEUED;
 }
 
@@ -327,7 +327,7 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
                                const Camera& camera,
                                const bool refreshData) {
     if (_editorDataDirtyState == EditorDataState::CHANGED || _editorDataDirtyState == EditorDataState::PROCESSED) {
-        RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
+        const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
         PushConstants& constants = pkg.get<GFX::SendPushConstantsCommand>(0)->_constants;
         constants.set(_ID("_noiseFactor"), GFX::PushConstantType::VEC2, noiseFactor());
         constants.set(_ID("_noiseTile"), GFX::PushConstantType::VEC2, noiseTile());
@@ -338,7 +338,7 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
     SceneNode::prepareRender(sgn, rComp, renderStagePass, camera, refreshData);
 }
 
-bool WaterPlane::PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point) {
+bool WaterPlane::PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point) noexcept {
     return sgn->get<BoundsComponent>()->getBoundingBox().containsPoint(point);
 }
 
@@ -484,7 +484,7 @@ void WaterPlane::updatePlaneEquation(const SceneGraphNode* sgn, Plane<F32>& plan
     plane.set(Normalized(vec3<F32>(orientation * (reflection ? WORLD_Y_AXIS : WORLD_Y_NEG_AXIS))),  offset + waterLevel);
 }
 
-const vec3<U16>& WaterPlane::getDimensions() const {
+const vec3<U16>& WaterPlane::getDimensions() const noexcept {
     return _dimensions;
 }
 

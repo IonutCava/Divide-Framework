@@ -35,6 +35,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <cassert>
 
+#if !defined(if_constexpr)
+#define if_constexpr if constexpr
+#endif
+
 namespace Divide {
 
 // "Exact" number of bits
@@ -87,12 +91,7 @@ using bufferPtr = void*;
 #define I32x_MAX std::numeric_limits<I32x>::max()
 #define I64x_MAX std::numeric_limits<I64x>::max()
 
-#if !defined(CPP_17_SUPPORT)
-#warning "Native byte type not detected. Consider updating language version for current project"
-enum class Byte : U8 {};
-#else
 using Byte = std::byte;
-#endif
 
 union P32 {
     U32 i = 0u;
@@ -308,7 +307,7 @@ struct U24
 template <typename From, typename To>
 struct static_caster
 {
-    To operator()(From p) { return static_cast<To>(p); }
+    To operator()(From p) noexcept { return static_cast<To>(p); }
 };
 
 /*
@@ -333,26 +332,46 @@ constexpr auto to_base(const Type value) -> std::underlying_type_t<Type> {
 
 template <typename T>
 constexpr size_t to_size(const T value) {
+    if_constexpr(std::is_floating_point<T>::value) {
+        assert(value >= 0);
+    }
+
     return static_cast<size_t>(value);
 }
 
 template <typename T>
 constexpr U64 to_U64(const T value) {
+    if_constexpr(std::is_floating_point<T>::value) {
+        assert(value >= 0);
+    }
+
     return static_cast<U64>(value);
 }
 
 template <typename T>
 constexpr U32 to_U32(const T value) {
+    if_constexpr(std::is_floating_point<T>::value) {
+        assert(value >= 0);
+    }
+
     return static_cast<U32>(value);
 }
 
 template <typename T>
 constexpr U16 to_U16(const T value) {
+    if_constexpr(std::is_floating_point<T>::value) {
+        assert(value >= 0);
+    }
+
     return static_cast<U16>(value);
 }
 
-template <typename T>
+template<typename T>
 constexpr U8 to_U8(const T value) {
+    if_constexpr(std::is_floating_point<T>::value) {
+        assert(value >= 0);
+    }
+
     return static_cast<U8>(value);
 }
 
@@ -392,6 +411,10 @@ constexpr D128 to_D128(const T value) {
 
 template<typename T>
 constexpr Byte to_byte(const T value) {
+    if_constexpr(std::is_floating_point<T>::value) {
+        assert(value >= 0);
+    }
+
     return static_cast<Byte>(value);
 }
 

@@ -4,7 +4,7 @@
 
 namespace Divide {
 namespace GFX {
-    void PushConstant::clear() {
+    void PushConstant::clear() noexcept {
         //_buffer.resize(0);
         dataSize(0u);
         type(PushConstantType::COUNT);

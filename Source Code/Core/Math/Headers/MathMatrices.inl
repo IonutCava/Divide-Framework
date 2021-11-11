@@ -375,7 +375,7 @@ mat2<T> mat2<T>::operator*(const mat2<U> &B) const noexcept {
 
 template<typename T>
 template<typename U>
-mat2<T> mat2<T>::operator/(const mat2<U> &B) const {
+mat2<T> mat2<T>::operator/(const mat2<U> &B) const noexcept {
     return this * B.getInverse();
 }
 
@@ -401,7 +401,7 @@ mat2<T>& mat2<T>::operator*=(const mat2<U> &B) noexcept {
 
 template<typename T>
 template<typename U>
-mat2<T>& mat2<T>::operator/=(const mat2<U> &B) {
+mat2<T>& mat2<T>::operator/=(const mat2<U> &B) noexcept {
     return *this = *this * B;
 }
 
@@ -425,7 +425,7 @@ mat2<T> mat2<T>::operator*(U f) const noexcept {
 
 template<typename T>
 template<typename U>
-mat2<T> mat2<T>::operator/(U f) const {
+mat2<T> mat2<T>::operator/(U f) const noexcept {
     return mat2(*this) /= f;
 }
 
@@ -452,7 +452,7 @@ mat2<T>& mat2<T>::operator*=(U f) noexcept {
 
 template<typename T>
 template<typename U>
-mat2<T>& mat2<T>::operator/=(U f) {
+mat2<T>& mat2<T>::operator/=(U f) noexcept {
     for (auto& val : _vec) {
         val /= f;
     }
@@ -566,7 +566,7 @@ T& mat2<T>::element(I8 row, I8 column) noexcept {
 }
 
 template<typename T>
-const T& mat2<T>::element(I8 row, I8 column) const {
+const T& mat2<T>::element(I8 row, I8 column) const noexcept {
     return m[row][column];
 }
 
@@ -880,7 +880,7 @@ mat3<T> mat3<T>::operator*(const mat3<U> &B) const noexcept {
 
 template<typename T>
 template<typename U>
-mat3<T> mat3<T>::operator/(const mat3<U> &B) const {
+mat3<T> mat3<T>::operator/(const mat3<U> &B) const noexcept {
     return *this * B.getInverse();
 }
 
@@ -908,7 +908,7 @@ mat3<T>& mat3<T>::operator*=(const mat3<U> &B) noexcept {
 
 template<typename T>
 template<typename U>
-mat3<T>& mat3<T>::operator/=(const mat3<U> &B) {
+mat3<T>& mat3<T>::operator/=(const mat3<U> &B) noexcept {
     return *this = *this / B;
 }
 
@@ -932,7 +932,7 @@ mat3<T> mat3<T>::operator*(U f) const noexcept {
 
 template<typename T>
 template<typename U>
-mat3<T> mat3<T>::operator/(U f) const {
+mat3<T> mat3<T>::operator/(U f) const noexcept {
     return mat3(*this) /= f;
 }
 
@@ -959,7 +959,7 @@ mat3<T>& mat3<T>::operator*=(U f) noexcept {
 
 template<typename T>
 template<typename U>
-mat3<T>& mat3<T>::operator/=(U f) {
+mat3<T>& mat3<T>::operator/=(U f) noexcept {
     for (auto& val : _vec) {
         val /= f;
     }
@@ -1079,7 +1079,7 @@ T& mat3<T>::element(I8 row, I8 column) noexcept {
 }
 
 template<typename T>
-const T& mat3<T>::element(I8 row, I8 column) const {
+const T& mat3<T>::element(I8 row, I8 column) const noexcept {
     return m[row][column];
 }
 
@@ -1592,7 +1592,7 @@ mat4<T> mat4<T>::operator*(const mat4<U>& matrix) const noexcept {
 
 template<typename T>
 template<typename U>
-mat4<T> mat4<T>::operator/(const mat4<U>& matrix) const {
+mat4<T> mat4<T>::operator/(const mat4<U>& matrix) const noexcept {
     mat4<T> retValue;
     Multiply(*this, matrix.getInverse(), retValue);
     return retValue;
@@ -1619,7 +1619,7 @@ FORCE_INLINE mat4<T>& mat4<T>::operator*=(const mat4<U> &matrix) noexcept {
 
 template<typename T>
 template<typename U>
-FORCE_INLINE mat4<T>& mat4<T>::operator/=(const mat4<U> &matrix) {
+FORCE_INLINE mat4<T>& mat4<T>::operator/=(const mat4<U> &matrix) noexcept {
     Multiply(*this, matrix.getInverse(), *this);
     return *this;
 }
@@ -1651,7 +1651,7 @@ FORCE_INLINE mat4<T> mat4<T>::operator*(const U f) const noexcept {
 
 template<typename T>
 template<typename U>
-FORCE_INLINE mat4<T> mat4<T>::operator/(const U f) const {
+FORCE_INLINE mat4<T> mat4<T>::operator/(const U f) const noexcept {
     return mat4(*this) /= f;
 }
 
@@ -1679,7 +1679,7 @@ FORCE_INLINE mat4<T>& mat4<T>::operator*=(const U f) noexcept {
 
 template<typename T>
 template<typename U>
-FORCE_INLINE mat4<T>& mat4<T>::operator/=(const U f) {
+FORCE_INLINE mat4<T>& mat4<T>::operator/=(const U f) noexcept {
     for (U8 i = 0u; i < 4u; ++i) {
         _vec[i] /= f;
     }
@@ -2000,7 +2000,7 @@ FORCE_INLINE T mat4<T>::elementSum() const noexcept {
 }
 
 template<typename T>
-FORCE_INLINE void mat4<T>::orthoNormalize() {
+FORCE_INLINE void mat4<T>::orthoNormalize() noexcept {
     _comp.right.normalize();
     _comp.up.normalize();
     _comp.dir.normalize();
@@ -2130,7 +2130,7 @@ FORCE_INLINE void mat4<T>::getTransposeRotation(mat4 &ret) const noexcept {
 
 template<typename T>
 template<typename U>
-void mat4<T>::fromRotation(U x, U y, U z, Angle::RADIANS<U> angle) {
+void mat4<T>::fromRotation(U x, U y, U z, Angle::RADIANS<U> angle) noexcept {
     vec3<U> v(x, y, z);
     v.normalize();
 
@@ -2307,13 +2307,13 @@ mat4<T> mat4<T>::getRotation() const {
 
 template<typename T>
 template<typename U>
-FORCE_INLINE const mat4<T>& mat4<T>::reflect(U x, U y, U z, U w) {
+FORCE_INLINE const mat4<T>& mat4<T>::reflect(U x, U y, U z, U w) noexcept {
     return reflect(Plane<U>(x, y, z, w));
 }
 
 template<typename T>
 template<typename U>
-const mat4<T>& mat4<T>::reflect(const Plane<U> &plane) {
+const mat4<T>& mat4<T>::reflect(const Plane<U> &plane) noexcept {
     constexpr U zero = static_cast<U>(0);
     constexpr U one = static_cast<U>(1);
 
@@ -2334,7 +2334,7 @@ const mat4<T>& mat4<T>::reflect(const Plane<U> &plane) {
 
 template<typename T>
 template<typename U>
-void mat4<T>::lookAt(const vec3<U> &eye, const vec3<U> &target, const vec3<U> &up) {
+void mat4<T>::lookAt(const vec3<U> &eye, const vec3<U> &target, const vec3<U> &up) noexcept {
     const vec3<U> zAxis(Normalized(eye - target));
     const vec3<U> xAxis(Normalized(Cross(up, zAxis)));
     const vec3<U> yAxis(Normalized(Cross(zAxis, xAxis)));
@@ -2362,7 +2362,7 @@ void mat4<T>::lookAt(const vec3<U> &eye, const vec3<U> &target, const vec3<U> &u
 
 template<typename T>
 template<typename U>
-void mat4<T>::ortho(U left, U right, U bottom, U top, U zNear, U zFar) {
+void mat4<T>::ortho(U left, U right, U bottom, U top, U zNear, U zFar)  noexcept {
     zero();
 
     m[0][0] =  static_cast<T>(2.0f / (right - left));
@@ -2378,7 +2378,7 @@ void mat4<T>::ortho(U left, U right, U bottom, U top, U zNear, U zFar) {
 
 template<typename T>
 template<typename U>
-void mat4<T>::perspective(const Angle::DEGREES<U> fovyRad, const U aspect, const U zNear, const U zFar) {
+void mat4<T>::perspective(const Angle::DEGREES<U> fovyRad, const U aspect, const U zNear, const U zFar) noexcept {
     assert(!IS_ZERO(aspect));
     assert(zFar > zNear);
 
@@ -2395,7 +2395,7 @@ void mat4<T>::perspective(const Angle::DEGREES<U> fovyRad, const U aspect, const
 
 template<typename T>
 template<typename U>
-void mat4<T>::frustum(const U left, const U right, const U bottom, const U top, const U nearVal, const U farVal) {
+void mat4<T>::frustum(const U left, const U right, const U bottom, const U top, const U nearVal, const U farVal) noexcept {
     zero();
 
     m[0][0] = static_cast<T>(2.0f * nearVal / (right - left));
@@ -2422,8 +2422,8 @@ void mat4<T>::extractMat3(mat3<U> &matrix3) const noexcept {
 }
 
 template<typename T>
-void mat4<T>::Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB, mat4<T>& ret) {
-    for (U8 i = 0; i < 4; ++i) {
+void mat4<T>::Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB, mat4<T>& ret) noexcept {
+    for (U8 i = 0u; i < 4u; ++i) {
         const vec4<T>& rowA = matrixA.getRow(i);
         ret.setRow(i, matrixB.getRow(0) * rowA[0] + matrixB.getRow(1) * rowA[1] + matrixB.getRow(2) * rowA[2] + matrixB.getRow(3) * rowA[3]);
     }
@@ -2437,7 +2437,7 @@ mat4<T> mat4<T>::Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB) noexce
 }
 
 template<>
-FORCE_INLINE void mat4<F32>::Multiply(const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret) {
+FORCE_INLINE void mat4<F32>::Multiply(const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret) noexcept {
 #if !defined(USE_AVX)
     ret._reg[0]._reg = AVX::lincomb_SSE(matrixA._reg[0]._reg, matrixB);
     ret._reg[1]._reg = AVX::lincomb_SSE(matrixA._reg[1]._reg, matrixB);

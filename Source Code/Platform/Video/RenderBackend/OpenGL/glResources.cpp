@@ -8,17 +8,17 @@
 
 namespace Divide {
 
-glObject::glObject(const glObjectType type, [[maybe_unused]] GFXDevice& context)
+glObject::glObject(const glObjectType type, [[maybe_unused]] GFXDevice& context) noexcept
     : _type(type)
 {
 }
 
-void VAOBindings::init(const U32 maxBindings) {
+void VAOBindings::init(const U32 maxBindings) noexcept {
     _maxBindings = maxBindings;
 }
 
 VAOBindings::VAOData* VAOBindings::getVAOData(const GLuint vao) {
-    VAOData* data;
+    VAOData* data = nullptr;
     if (vao == _cachedVao) {
         data = _cachedData;
     } else {
@@ -456,16 +456,16 @@ void SubmitDirectCommand(const IndirectDrawCommand& cmd,
                          const GLenum mode,
                          const GLenum internalFormat,
                          const bool drawIndexed,
-                         size_t* countData,
+                         const size_t* const countData,
                          const bufferPtr indexData) 
 {
     if (drawCount > 1 && cmd.primCount == 1) {
         // We could just submit a multi-draw with a draw count of 1, but this might avoid some CPU overhead.
         // Either I or the driver has to do the count check/loop, but I can profile my own code.
         if (drawIndexed) {
-            glMultiDrawElements(mode, reinterpret_cast<GLsizei*>(countData), internalFormat, static_cast<void* const*>(indexData), drawCount);
+            glMultiDrawElements(mode, reinterpret_cast<const GLsizei*>(countData), internalFormat, static_cast<void* const*>(indexData), drawCount);
         } else {
-            glMultiDrawArrays(mode, static_cast<GLint*>(indexData), reinterpret_cast<GLsizei*>(countData), drawCount);
+            glMultiDrawArrays(mode, static_cast<GLint*>(indexData), reinterpret_cast<const GLsizei*>(countData), drawCount);
         }
     } else {
         if (drawIndexed) {
@@ -496,7 +496,7 @@ void SubmitRenderCommand(const GLenum primitiveType,
                          const bool drawIndexed,
                          const bool useIndirectBuffer,
                          const GLenum internalFormat,
-                         size_t* countData,
+                         const size_t* const countData,
                          const bufferPtr indexData)
 {
     
@@ -512,7 +512,7 @@ void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
                          const bool drawIndexed,
                          const bool useIndirectBuffer,
                          const GLenum internalFormat,
-                         size_t* countData,
+                         const size_t* const countData,
                          const bufferPtr indexData)
 {
     DIVIDE_ASSERT(drawCommand._primitiveType != PrimitiveType::COUNT,

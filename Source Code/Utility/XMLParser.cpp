@@ -134,7 +134,7 @@ void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& 
     }
 }
 
-void loadDefaultKeyBindings(const string &file, Scene* scene) {
+void loadDefaultKeyBindings(const string &file, const Scene* scene) {
     ptree pt;
     Console::printfn(Locale::Get(_ID("XML_LOAD_DEFAULT_KEY_BINDINGS")), file.c_str());
     read_xml(file, pt);
@@ -194,7 +194,7 @@ void loadDefaultKeyBindings(const string &file, Scene* scene) {
     }
 }
 
-void loadMusicPlaylist(const Str256& scenePath, const Str64& fileName, Scene* const scene, [[maybe_unused]] const Configuration& config) {
+void loadMusicPlaylist(const Str256& scenePath, const Str64& fileName, const Scene* const scene, [[maybe_unused]] const Configuration& config) {
     const string file = (scenePath + "/" + fileName).c_str();
 
     if (!fileExists(file.c_str())) {

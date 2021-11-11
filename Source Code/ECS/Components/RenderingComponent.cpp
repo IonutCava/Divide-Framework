@@ -248,8 +248,8 @@ void RenderingComponent::rebuildDrawCommands(const RenderStagePass& stagePass, c
 
         pkg.add(GFX::BindPipelineCommand{ _context.newPipeline(pipelineDescriptor) });
 
-        GFX::BindDescriptorSetsCommand bindDescriptorSetsCommand = {};
-        for (const ShaderBufferBinding binding : getShaderBuffers()) {
+        GFX::BindDescriptorSetsCommand bindDescriptorSetsCommand{};
+        for (const ShaderBufferBinding& binding : getShaderBuffers()) {
             bindDescriptorSetsCommand._set._buffers.add(binding);
         }
         pkg.add(bindDescriptorSetsCommand);
@@ -445,7 +445,7 @@ void RenderingComponent::prepareDrawPackage(const Camera& camera, const SceneRen
     Attorney::SceneGraphNodeComponent::prepareRender(_parentSGN, *this, camera, renderStagePass, refreshData);
 
     if (refreshData) {
-        BoundsComponent* bComp = static_cast<BoundsComponent*>(_parentSGN->get<BoundsComponent>());
+        const BoundsComponent* bComp = static_cast<BoundsComponent*>(_parentSGN->get<BoundsComponent>());
         const vec3<F32> cameraEye = camera.getEye();
         const SceneNodeRenderState& renderState = _parentSGN->getNode<>().renderState();
         if (renderState.lod0OnCollision() && bComp->getBoundingBox().containsPoint(cameraEye)) {
@@ -594,7 +594,7 @@ void RenderingComponent::updateNearestProbes(const vec3<F32>& position) {
     _envProbes.resize(0);
     _reflectionProbeIndex = 0u;
 
-    SceneEnvironmentProbePool* probePool = _context.context().kernel().sceneManager()->getEnvProbes();
+    const SceneEnvironmentProbePool* probePool = _context.context().kernel().sceneManager()->getEnvProbes();
     if (probePool != nullptr) {
         probePool->lockProbeList();
         const auto& probes = probePool->getLocked();
@@ -612,7 +612,7 @@ void RenderingComponent::updateNearestProbes(const vec3<F32>& position) {
         if (idx > 0u) {
             eastl::sort(begin(_envProbes),
                         end(_envProbes),
-                        [&position](const auto& a, const auto& b) -> bool {
+                        [&position](const auto& a, const auto& b) noexcept -> bool {
                             return a->distanceSqTo(position) < b->distanceSqTo(position);
                         });
 
@@ -720,7 +720,7 @@ void RenderingComponent::drawSkeleton(GFX::CommandBuffer& bufferInOut) {
             _skeletonPrimitive->pipeline(*_primitivePipeline[1]);
         }
         // Get the animation component of any submesh. They should be synced anyway.
-        AnimationComponent* animComp = _parentSGN->get<AnimationComponent>();
+        const AnimationComponent* animComp = _parentSGN->get<AnimationComponent>();
         if (animComp != nullptr) {
             // Get the skeleton lines from the submesh's animation component
             const vector<Line>& skeletonLines = animComp->skeletonLines();
@@ -793,7 +793,7 @@ void RenderingComponent::OnData(const ECS::CustomEvent& data) {
     switch (data._type) {
         case  ECS::CustomEvent::Type::TransformUpdated:
         {
-            TransformComponent* tComp = static_cast<TransformComponent*>(data._sourceCmp);
+            const TransformComponent* tComp = static_cast<TransformComponent*>(data._sourceCmp);
             assert(tComp != nullptr);
             updateNearestProbes(tComp->getPosition());
 
@@ -804,7 +804,7 @@ void RenderingComponent::OnData(const ECS::CustomEvent& data) {
         } break;
         case ECS::CustomEvent::Type::DrawBoundsChanged:
         {
-            BoundsComponent* bComp = static_cast<BoundsComponent*>(data._sourceCmp);
+            const BoundsComponent* bComp = static_cast<BoundsComponent*>(data._sourceCmp);
             toggleBoundsDraw(bComp->showAABB(), bComp->showBS(), true);
         } break;
         case ECS::CustomEvent::Type::BoundsUpdated:

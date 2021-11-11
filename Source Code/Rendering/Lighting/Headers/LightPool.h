@@ -112,7 +112,7 @@ class LightPool : public SceneComponent,
     /// Add a new light to the manager
     [[nodiscard]] bool addLight(Light& light);
     /// remove a light from the manager
-    [[nodiscard]] bool removeLight(Light& light);
+    [[nodiscard]] bool removeLight(const Light& light);
     /// disable or enable a specific light type
     void toggleLightType(const LightType type)                   noexcept { toggleLightType(type, !lightTypeEnabled(type)); }
     void toggleLightType(const LightType type, const bool state) noexcept { _lightTypeState[to_U32(type)] = state; }
@@ -121,7 +121,7 @@ class LightPool : public SceneComponent,
     /// Retrieve the number of active lights in the scene;
     [[nodiscard]] U32 getActiveLightCount(const RenderStage stage, const LightType type) const noexcept { return _activeLightCount[to_base(stage)][to_U32(type)]; }
 
-    bool clear();
+    bool clear() noexcept;
     [[nodiscard]] LightList& getLights(const LightType type) {
         SharedLock<SharedMutex> r_lock(_lightLock); 
         return _lights[to_U32(type)];
@@ -136,12 +136,12 @@ class LightPool : public SceneComponent,
     void drawLightImpostors(RenderStage stage, GFX::CommandBuffer& bufferInOut) const;
 
     void preRenderAllPasses(const Camera* playerCamera);
-    void postRenderAllPasses();
+    void postRenderAllPasses() noexcept;
 
     /// nullptr = disabled
     void debugLight(Light* light);
 
-    static void idle();
+    static void idle() noexcept;
 
     /// Get the appropriate shadow bind slot for every light's shadow
     [[nodiscard]] static U8 getShadowBindSlotOffset(const ShadowType type) noexcept {
@@ -186,7 +186,7 @@ class LightPool : public SceneComponent,
                               });
     }
 
-    [[nodiscard]] static bool IsLightInViewFrustum(const Frustum& frustum, Light* light);
+    [[nodiscard]] static bool IsLightInViewFrustum(const Frustum& frustum, Light* light) noexcept;
 
   private:
       void init();

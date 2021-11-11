@@ -56,13 +56,13 @@ class glGenericVertexData final : public GenericVertexData,
         {
         }
 
-        void set(const BufferBindConfig& other) {
+        void set(const BufferBindConfig& other) noexcept {
             _buffer = other._buffer;
             _offset = other._offset;
             _stride = other._stride;
         }
 
-        bool operator==(const BufferBindConfig& other) const {
+        bool operator==(const BufferBindConfig& other) const noexcept {
             return _buffer == other._buffer &&
                    _offset == other._offset &&
                    _stride == other._stride;

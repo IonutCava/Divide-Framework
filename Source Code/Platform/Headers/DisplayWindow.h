@@ -118,13 +118,14 @@ public:
 
     using EventListener = DELEGATE<bool, const WindowEventArgs&>;
 
+    virtual ~DisplayWindow();
+
 protected:
     SET_SAFE_DELETE_FRIEND
     SET_DELETE_CONTAINER_FRIEND
 
     friend class WindowManager;
     DisplayWindow(WindowManager& parent, PlatformContext& context);
-    ~DisplayWindow();
 
 public:
     ErrorCode init(U32 windowFlags,
@@ -193,7 +194,7 @@ public:
 
     [[nodiscard]] inline const char* title() const noexcept;
     template<typename... Args>
-    void title(const char* format, Args&& ...args);
+    void title(const char* format, Args&& ...args) noexcept;
 
     [[nodiscard]] WindowHandle handle() const noexcept;
 
@@ -209,7 +210,7 @@ public:
     [[nodiscard]] inline Rect<I32> windowViewport() const noexcept;
 
     [[nodiscard]] inline const Rect<I32>& renderingViewport() const noexcept;
-    void renderingViewport(const Rect<I32>& viewport);
+    void renderingViewport(const Rect<I32>& viewport) noexcept;
 
     [[nodiscard]] inline void* userData() const noexcept;
 

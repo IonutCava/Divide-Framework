@@ -32,7 +32,7 @@ glGenericBuffer::~glGenericBuffer()
     MemoryManager::DELETE(_bufferImpl);
 }
 
-GLuint glGenericBuffer::bufferHandle() const {
+GLuint glGenericBuffer::bufferHandle() const noexcept {
     return bufferImpl()->memoryBlock()._bufferHandle;
 }
 

@@ -219,7 +219,7 @@ void WindowManager::close() {
 
 DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, ErrorCode& err, U32& windowIndex ) {
     windowIndex = U32_MAX;
-    auto* window = MemoryManager_NEW DisplayWindow(*this, *_context);
+    DisplayWindow* window = MemoryManager_NEW DisplayWindow(*this, *_context);
     assert(window != nullptr);
 
     if (err != ErrorCode::NO_ERR) {
@@ -471,7 +471,7 @@ void WindowManager::CaptureMouse(const bool state) noexcept {
     SDL_CaptureMouse(state ? SDL_TRUE : SDL_FALSE);
 }
 
-bool WindowManager::setCursorPosition(I32 x, I32 y) {
+bool WindowManager::setCursorPosition(I32 x, I32 y) noexcept {
     DisplayWindow* focusedWindow = getFocusedWindow();
     if (focusedWindow == nullptr) {
         focusedWindow = mainWindow();

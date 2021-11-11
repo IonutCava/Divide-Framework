@@ -64,7 +64,7 @@ FORCE_INLINE bool operator!=(const TextureData& lhs, const TextureData& rhs) noe
            lhs._textureType != rhs._textureType;
 }
 
-inline size_t GetHash(const TextureData& data) noexcept {
+inline size_t GetHash(const TextureData& data) {
     size_t ret = 11;
     Util::Hash_combine(ret, data._textureHandle);
     Util::Hash_combine(ret, to_base(data._textureType));
@@ -81,8 +81,8 @@ enum class TextureUpdateState : U8 {
 struct TextureEntry
 {
     TextureEntry() = default;
-    explicit TextureEntry(const TextureData& data, const size_t samplerHash, const TextureUsage binding) : TextureEntry(data, samplerHash, to_U8(binding)) {}
-    explicit TextureEntry(const TextureData& data, const size_t samplerHash, const U8 binding)
+    explicit TextureEntry(const TextureData& data, const size_t samplerHash, const TextureUsage binding) noexcept : TextureEntry(data, samplerHash, to_U8(binding)) {}
+    explicit TextureEntry(const TextureData& data, const size_t samplerHash, const U8 binding) noexcept
       : _data(data),
         _sampler(samplerHash),
         _binding(binding)

@@ -7,12 +7,12 @@
 
 namespace Divide {
 
-ParticleSource::ParticleSource(GFXDevice& context)
+ParticleSource::ParticleSource(GFXDevice& context) noexcept
     : ParticleSource(context, 0)
 {
 }
 
-ParticleSource::ParticleSource(GFXDevice& context, const F32 emitRate)
+ParticleSource::ParticleSource(GFXDevice& context, const F32 emitRate) noexcept
     : _emitRate(emitRate),
       _context(context)
 {
@@ -29,7 +29,7 @@ void ParticleSource::emit(const U64 deltaTimeUS, const std::shared_ptr<ParticleD
     TaskPool& pool = _context.context().taskPool(TaskPoolType::HIGH_PRIORITY);
 
     Task* generateTask = CreateTask(TASK_NOP);
-    for (std::shared_ptr<ParticleGenerator>& gen : _particleGenerators) {
+    for (const std::shared_ptr<ParticleGenerator>& gen : _particleGenerators) {
         gen->generate(*generateTask, pool, deltaTimeUS, data, startID, endID);
     }
 

@@ -144,7 +144,7 @@ namespace ECS
 			((T*)pObjectMemory)->m_ComponentID = componentId;
 
 			// create component inplace
-			IComponent* component		= new (pObjectMemory)T(FWD(args)...);
+			IComponent* component		= new (pObjectMemory)T(std::forward<ARGS>(args)...);
 
 			component->m_Owner			= entityId;
 			component->m_HashValue		= ENTITY_COMPONENT_ID_HASHER(entityId) ^ (ENTITY_COMPONENT_ID_HASHER(componentId) << 1);

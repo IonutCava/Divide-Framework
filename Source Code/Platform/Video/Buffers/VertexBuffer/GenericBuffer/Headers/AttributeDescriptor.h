@@ -38,7 +38,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
     struct AttributeDescriptor {
-        AttributeDescriptor();
+        AttributeDescriptor() noexcept;
 
         void set(U32 bufferIndex,
                  U32 componentsPerElement,

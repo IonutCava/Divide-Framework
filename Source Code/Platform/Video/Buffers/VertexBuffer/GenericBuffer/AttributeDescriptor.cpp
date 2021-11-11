@@ -4,7 +4,7 @@
 
 namespace Divide {
 
-AttributeDescriptor::AttributeDescriptor()
+AttributeDescriptor::AttributeDescriptor() noexcept
   : _index(0),
     _parentBuffer(0),
     _componentsPerElement(0),

@@ -18,7 +18,7 @@ GUIText::GUIText(const string& name,
     this->text(text.c_str(), multiLine);
 }
 
-const RelativePosition2D& GUIText::getPosition() const {
+const RelativePosition2D& GUIText::getPosition() const noexcept {
     return _position;
 }
 };

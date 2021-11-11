@@ -61,7 +61,7 @@ class SkinnedSubMesh final : public SubMesh {
     void computeBBForAnimation(SceneGraphNode* sgn, I32 animIndex);
     void buildBoundingBoxesForAnim(const Task& parentTask,
                                    I32 animationIndex,
-                                   AnimationComponent* animComp);
+                                   const AnimationComponent* const animComp);
 
     void updateBB(I32 animIndex);
 

@@ -66,11 +66,11 @@ SceneManager::~SceneManager()
     destroy();
 }
 
-Scene& SceneManager::getActiveScene() {
+Scene& SceneManager::getActiveScene() noexcept {
     return _scenePool->activeScene();
 }
 
-const Scene& SceneManager::getActiveScene() const {
+const Scene& SceneManager::getActiveScene() const noexcept {
     return _scenePool->activeScene();
 }
 
@@ -590,7 +590,7 @@ void SceneManager::debugDraw(const RenderStagePass& stagePass, const Camera* cam
     _platformContext->gfx().debugDraw(activeScene.state()->renderState(), camera, bufferInOut);
 }
 
-Camera* SceneManager::playerCamera(const PlayerIndex idx) const {
+Camera* SceneManager::playerCamera(const PlayerIndex idx) const noexcept {
     if (getActivePlayerCount() <= idx) {
         return nullptr;
     }
@@ -603,7 +603,7 @@ Camera* SceneManager::playerCamera(const PlayerIndex idx) const {
     return overrideCamera;
 }
 
-Camera* SceneManager::playerCamera() const {
+Camera* SceneManager::playerCamera() const noexcept {
     return playerCamera(_currentPlayerPass);
 }
 
@@ -695,8 +695,8 @@ void SceneManager::getSortedRefractiveNodes(const Camera* camera, const RenderSt
     }
 }
 
-void SceneManager::initDefaultCullValues(const RenderStage stage, NodeCullParams& cullParamsInOut) {
-    Scene& activeScene = getActiveScene();
+void SceneManager::initDefaultCullValues(const RenderStage stage, NodeCullParams& cullParamsInOut) noexcept {
+    const Scene& activeScene = getActiveScene();
 
     cullParamsInOut._stage = stage;
     cullParamsInOut._lodThresholds = activeScene.state()->renderState().lodThresholds(stage);
@@ -712,7 +712,7 @@ VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params, co
 
     Time::ScopedTimer timer(*_sceneGraphCullTimers[to_U32(params._stage)]);
 
-    Scene& activeScene = getActiveScene();
+    const Scene& activeScene = getActiveScene();
     return _renderPassCuller->frustumCull(params, cullFlags, *activeScene.sceneGraph(), *activeScene.state(), _parent.platformContext());
 }
 
@@ -757,7 +757,7 @@ SceneNode_ptr SceneManager::createNode(const SceneNodeType type, const ResourceD
     return Attorney::SceneManager::createNode(getActiveScene(), type, descriptor);
 }
 
-SceneEnvironmentProbePool* SceneManager::getEnvProbes() const {
+SceneEnvironmentProbePool* SceneManager::getEnvProbes() const noexcept {
     return Attorney::SceneManager::getEnvProbes(getActiveScene());
 }
 

@@ -39,7 +39,7 @@ namespace Divide {
 
 class ParticleBasicTimeUpdater final : public ParticleUpdater {
    public:
-    ParticleBasicTimeUpdater(PlatformContext& context) : ParticleUpdater(context)
+    ParticleBasicTimeUpdater(PlatformContext& context) noexcept : ParticleUpdater(context)
     {
     }
 

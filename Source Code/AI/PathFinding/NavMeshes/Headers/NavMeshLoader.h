@@ -93,19 +93,19 @@ class NavModelData {
         _navMeshName = "";
     }
 
-    [[nodiscard]] bool isValid() const { return _valid; }
-    void isValid(const bool state) { _valid = state; }
+    [[nodiscard]] bool isValid() const noexcept { return _valid; }
+    void isValid(const bool state) noexcept { _valid = state; }
 
-    void name(const Str128& name) { _navMeshName = name; }
-    [[nodiscard]] const Str128& name() const { return _navMeshName; }
+    void name(const Str128& name) noexcept { _navMeshName = name; }
+    [[nodiscard]] const Str128& name() const noexcept { return _navMeshName; }
 
-    [[nodiscard]] const F32* getVerts() const { return _vertices; }
-    [[nodiscard]] const F32* getNormals() const { return _normals; }
-    [[nodiscard]] const I32* getTris() const { return _triangles; }
-    [[nodiscard]] U32 getVertCount() const { return _vertexCount; }
-    [[nodiscard]] U32 getTriCount() const { return _triangleCount; }
+    [[nodiscard]] const F32* getVerts() const noexcept { return _vertices; }
+    [[nodiscard]] const F32* getNormals() const noexcept { return _normals; }
+    [[nodiscard]] const I32* getTris() const noexcept { return _triangles; }
+    [[nodiscard]] U32 getVertCount() const noexcept { return _vertexCount; }
+    [[nodiscard]] U32 getTriCount() const noexcept { return _triangleCount; }
 
-    [[nodiscard]] vector<SamplePolyAreas>& getAreaTypes() { return _triangleAreaType; }
+    [[nodiscard]] vector<SamplePolyAreas>& getAreaTypes() noexcept { return _triangleAreaType; }
 
     F32* _vertices = nullptr;
     F32* _normals = nullptr;
@@ -142,9 +142,9 @@ void AddTriangle(NavModelData* modelData, const vec3<U32>& triangleIndices,
                  U32 triangleIndexOffset = 0,
                  const SamplePolyAreas& areaType = SamplePolyAreas::SAMPLE_POLYAREA_GROUND);
 
-[[nodiscard]] char* ParseRow(char* buf, char* bufEnd, char* row, I32 len);
+[[nodiscard]] char* ParseRow(char* buf, const char* const bufEnd, char* row, I32 len) noexcept;
 
-[[nodiscard]] I32 ParseFace(char* row, I32* data, I32 n, I32 vcnt);
+[[nodiscard]] I32 ParseFace(char* row, I32* data, I32 n, I32 vcnt) noexcept;
 }
 }  // namespace Navigation
 }  // namespace AI

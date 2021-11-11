@@ -36,7 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 class PlatformContext;
 
-void InitConditionalWait(PlatformContext&);
+void InitConditionalWait(PlatformContext&) noexcept;
 void PlatformContextIdleCall();
 
 #define WAIT_FOR_CONDITION_2_ARGS(condition, yld)  \

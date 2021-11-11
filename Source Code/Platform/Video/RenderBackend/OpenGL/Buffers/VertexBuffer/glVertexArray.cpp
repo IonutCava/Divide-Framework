@@ -269,9 +269,8 @@ bool glVertexArray::refresh() {
     // Check if we need to update the IBO (will be true for the first Refresh() call)
     if (indicesChanged) {
         if (usesLargeIndices()) {
-            const bufferPtr data = static_cast<bufferPtr>(_indices.data());
             // Update our IB
-            glNamedBufferData(_IBid, nSizeIndices, data, GL_STATIC_DRAW);
+            glNamedBufferData(_IBid, nSizeIndices, _indices.data(), GL_STATIC_DRAW);
         } else {
             vector<U16> smallIndices;
             smallIndices.reserve(getIndexCount());
@@ -280,7 +279,7 @@ bool glVertexArray::refresh() {
                       back_inserter(smallIndices),
                       static_caster<U32, U16>());
             // Update our IB
-            glNamedBufferData(_IBid, nSizeIndices, (bufferPtr)smallIndices.data(), GL_STATIC_DRAW);
+            glNamedBufferData(_IBid, nSizeIndices, smallIndices.data(), GL_STATIC_DRAW);
         }
     }
 

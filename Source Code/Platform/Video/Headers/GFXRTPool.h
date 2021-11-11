@@ -46,7 +46,7 @@ protected:
 protected:
     friend class GFXDevice;
     explicit GFXRTPool(GFXDevice& parent);
-    ~GFXRTPool();
+    ~GFXRTPool() = default;
 
     void resizeTargets(RenderTargetUsage target, U16 width, U16 height);
     void updateSampleCount(RenderTargetUsage target, U8 sampleCount);
@@ -65,24 +65,24 @@ public:
     RenderTargetHandle allocateRT(RenderTargetUsage targetUsage, const RenderTargetDescriptor& descriptor);
     RenderTargetHandle allocateRT(RenderTargetUsage targetUsage, const RenderTargetDescriptor& descriptor, U8 index);
 
-    RenderTarget& renderTarget(const RenderTargetHandle& handle) noexcept {
+    RenderTarget& renderTarget(const RenderTargetHandle& handle) {
         return renderTarget(handle._targetID);
     }
 
-    [[nodiscard]] const RenderTarget& renderTarget(const RenderTargetHandle& handle) const noexcept {
+    [[nodiscard]] const RenderTarget& renderTarget(const RenderTargetHandle& handle) const {
         return renderTarget(handle._targetID);
     }
 
-    RenderTarget& renderTarget(const RenderTargetID target) noexcept {
+    RenderTarget& renderTarget(const RenderTargetID target) {
         return *_renderTargets[to_U32(target._usage)][target._index];
     }
 
-    [[nodiscard]] const RenderTarget& renderTarget(const RenderTargetID target) const noexcept {
+    [[nodiscard]] const RenderTarget& renderTarget(const RenderTargetID target) const {
         return *_renderTargets[to_U32(target._usage)][target._index];
     }
 
     // Bit of a hack, but cleans up a lot of code
-    [[nodiscard]] const RenderTarget& screenTarget() const noexcept;
+    [[nodiscard]] const RenderTarget& screenTarget() const;
     [[nodiscard]] RenderTargetID screenTargetID() const noexcept;
 
     vector<std::shared_ptr<RenderTarget>>& renderTargets(const RenderTargetUsage target) noexcept {

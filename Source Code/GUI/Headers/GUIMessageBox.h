@@ -44,7 +44,7 @@ class EventArgs;
 
 namespace Divide {
 
-class GUIMessageBox : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
+class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
     friend class GUIInterface;
     friend class SceneGUIElements;
 
@@ -54,8 +54,9 @@ class GUIMessageBox : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
         MESSAGE_WARNING = 1,
         MESSAGE_ERROR = 2
     };
+    virtual ~GUIMessageBox();
 
-    bool onConfirm(const CEGUI::EventArgs& /*e*/);
+    bool onConfirm(const CEGUI::EventArgs& /*e*/) noexcept;
     void setTitle(const string& titleText);
     void setMessage(const string& message);
     void setOffset(const vec2<I32>& offsetFromCentre);
@@ -72,7 +73,6 @@ class GUIMessageBox : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
                   const string& message,
                   const vec2<I32>& offsetFromCentre = vec2<I32>(0),
                   CEGUI::Window* parent = nullptr);
-    ~GUIMessageBox();
 
     void visible(const bool& visible) noexcept override;
     void active(const bool& active) noexcept override;

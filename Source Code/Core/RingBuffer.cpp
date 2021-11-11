@@ -11,7 +11,7 @@ RingBufferSeparateWrite::RingBufferSeparateWrite(const I32 queueLength, const bo
 {
 }
 
-void RingBufferSeparateWrite::resize(const I32 queueLength) noexcept {
+void RingBufferSeparateWrite::resize(const I32 queueLength) {
     if (_queueLength != std::max(queueLength, 1)) {
         _queueLength = std::max(queueLength, 1);
         _queueIndex = std::min(_queueIndex.load(), _queueLength - 1);

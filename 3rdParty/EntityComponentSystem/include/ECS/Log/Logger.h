@@ -43,15 +43,15 @@ namespace ECS { namespace Log {
 		template<typename... Args>
 		inline void LogDebug(const char* fmt, Args... args)
 		{
-            Divide::Console::d_printfn(fmt, FWD(args)...);
+            Divide::Console::d_printfn(fmt, std::forward<Args>(args)...);
 		}
 
 		// info
 		template<typename... Args>
-		inline void LogInfo(const char* fmt, Args... args)
+		inline void LogInfo([[maybe_unused]] const char* fmt, [[maybe_unused]] Args... args)
 		{
         #if !defined(ECS_DISABLE_INFO_LOG)
-            Divide::Console::printfn(fmt, FWD(args)...);
+            Divide::Console::printfn(fmt, std::forward<Args>(args)...);
         #endif
         }
 
@@ -59,21 +59,21 @@ namespace ECS { namespace Log {
 		template<typename... Args>
 		inline void LogWarning(const char* fmt, Args... args)
 		{
-            Divide::Console::warnfn(fmt, FWD(args)...);
+            Divide::Console::warnfn(fmt, std::forward<Args>(args)...);
 		}
 
 		// error
 		template<typename... Args>
 		inline void LogError(const char* fmt, Args... args)
 		{
-            Divide::Console::errorfn(fmt, FWD(args)...);
+            Divide::Console::errorfn(fmt, std::forward<Args>(args)...);
 		}
 
 		// fatal
 		template<typename... Args>
 		inline void LogFatal(const char* fmt, Args... args)
 		{
-            Divide::Console::errorfn(fmt, FWD(args)...);
+            Divide::Console::errorfn(fmt, std::forward<Args>(args)...);
             assert(false && "Fatal Error");
 		}
 

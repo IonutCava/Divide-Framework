@@ -105,7 +105,7 @@ bool glUniformBuffer::bindByteRange(const U8 bindIndex, const ptrdiff_t offsetIn
     return false;
 }
 
-void glUniformBuffer::OnGLInit() {
+void glUniformBuffer::OnGLInit() noexcept {
     s_boundAlignmentRequirement = GL_API::s_UBOffsetAlignment;
     s_unboundAlignmentRequirement = GL_API::s_SSBOffsetAlignment;
 }

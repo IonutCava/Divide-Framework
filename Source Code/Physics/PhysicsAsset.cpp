@@ -6,7 +6,7 @@
 #include "ECS/Components/Headers/RigidBodyComponent.h"
 
 namespace Divide {
-PhysicsAsset::PhysicsAsset(RigidBodyComponent& parent)
+PhysicsAsset::PhysicsAsset(RigidBodyComponent& parent) noexcept
     : _parentComponent(parent),
       _context(parent.getSGN()->context().pfx())
 {

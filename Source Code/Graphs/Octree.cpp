@@ -62,13 +62,13 @@ void Octree::update(const U64 deltaTimeUS) {
 
     // prune any dead objects from the tree
     erase_if(_objects,
-             [](SceneGraphNode* crtNode) -> bool {
-                 SceneGraphNode* node = crtNode;
+             [](SceneGraphNode* crtNode) noexcept -> bool {
+                 const SceneGraphNode* node = crtNode;
                  return !node || !node->hasFlag(SceneGraphNode::Flags::ACTIVE);
              });
 
     //recursively update any child nodes.
-    for (U8 i = 0; i < 8; ++i) {
+    for (U8 i = 0u; i < 8u; ++i) {
         if (_activeNodes[i]) {
             _childNodes[i].update(deltaTimeUS);
         }
@@ -96,8 +96,8 @@ void Octree::update(const U64 deltaTimeUS) {
 
         //now, remove the object from the current node and insert it into the current containing node.
         erase_if(_objects,
-                 [guid = movedObj->getGUID()](SceneGraphNode* updatedNode) -> bool {
-                     SceneGraphNode* node = updatedNode;
+                 [guid = movedObj->getGUID()](SceneGraphNode* updatedNode) noexcept -> bool {
+                     const SceneGraphNode* node = updatedNode;
                      return node && node->getGUID() == guid;
                  });
 
@@ -248,10 +248,10 @@ void Octree::buildTree() {
         return;
     }
 
-    vec3<F32> half(dimensions * 0.5f);
-    vec3<F32> regionMin(_region.getMin());
-    vec3<F32> regionMax(_region.getMax());
-    vec3<F32> center(regionMin + half);
+    const vec3<F32> half(dimensions * 0.5f);
+    const vec3<F32> regionMin(_region.getMin());
+    const vec3<F32> regionMax(_region.getMax());
+    const vec3<F32> center(regionMin + half);
 
     BoundingBox octant[8];
     octant[0].set(regionMin, center);
@@ -289,9 +289,9 @@ void Octree::buildTree() {
 
     //delist every moved object from this node.
     erase_if(_objects,
-             [&delist](SceneGraphNode* movedNode) -> bool {
+             [&delist](SceneGraphNode* movedNode) noexcept -> bool {
                  if (movedNode) {
-                     for (I64 guid : delist) {
+                     for (const I64 guid : delist) {
                          if (guid == movedNode->getGUID()) {
                              return true;
                          }
@@ -330,13 +330,13 @@ bool Octree::createNode(Octree& newNode, const BoundingBox& region, SceneGraphNo
     return false;
 }
 
-void Octree::findEnclosingBox()
+void Octree::findEnclosingBox() noexcept
 {
     vec3<F32> globalMin(_region.getMin());
     vec3<F32> globalMax(_region.getMax());
 
     //go through all the objects in the list and find the extremes for their bounding areas.
-    for (SceneGraphNode* obj : _objects) {
+    for (const SceneGraphNode* obj : _objects) {
         if (obj) {
             const BoundingBox& bb = obj->get<BoundsComponent>()->getBoundingBox();
             const vec3<F32>& localMin = bb.getMin();
@@ -373,7 +373,7 @@ void Octree::findEnclosingBox()
 }
 
 /// This finds the smallest enclosing cube which is a power of 2, for all objects in the list.
-void Octree::findEnclosingCube() {
+void Octree::findEnclosingCube() noexcept {
     findEnclosingBox();
 
     //we can't guarantee that all bounding regions will be relative to the origin, so to keep the math
@@ -429,7 +429,7 @@ void Octree::getAllRegions(vector<BoundingBox>& regionsOut) const {
     regionsOut.emplace_back(getRegion().getMin(), getRegion().getMax());
 }
 
-U8 Octree::activeNodes() const {
+U8 Octree::activeNodes() const noexcept {
     U8 ret = 0u;
     for (const bool state : _activeNodes) {
         ret += (state ? 1u : 0u);
@@ -545,7 +545,7 @@ void Octree::updateIntersectionCache(vector<SceneGraphNode*>& parentObjects)
             IntersectionRecord ir;
             if (getIntersection(pObjPtr, objPtr, ir)) {
                 bool found = false;
-                for (IntersectionRecord& irTemp : _intersectionsCache) {
+                for (const IntersectionRecord& irTemp : _intersectionsCache) {
                     if (irTemp == ir) {
                         found = true;
                         break;
@@ -558,7 +558,7 @@ void Octree::updateIntersectionCache(vector<SceneGraphNode*>& parentObjects)
         }
     }
 
-    const auto isStatic = [](const SceneGraphNode * node) {
+    const auto isStatic = [](const SceneGraphNode * node) noexcept {
         return node->usageContext() == NodeUsageContext::NODE_STATIC;
     };
 
@@ -653,8 +653,8 @@ vector<IntersectionRecord> Octree::allIntersections(const Frustum& region, const
 }
 
 void Octree::handleIntersection(const IntersectionRecord& intersection) const {
-    SceneGraphNode* obj1 = intersection._intersectedObject1;
-    SceneGraphNode* obj2 = intersection._intersectedObject2;
+    const SceneGraphNode* obj1 = intersection._intersectedObject1;
+    const SceneGraphNode* obj2 = intersection._intersectedObject2;
     if (obj1 != nullptr && obj2 != nullptr) {
         // Check for child / parent relation
         if(obj1->isRelated(obj2)) {
@@ -670,7 +670,7 @@ void Octree::handleIntersection(const IntersectionRecord& intersection) const {
     }
 }
 
-bool Octree::getIntersection(SceneGraphNode* node, const Frustum& frustum, IntersectionRecord& irOut) const {
+bool Octree::getIntersection(SceneGraphNode* node, const Frustum& frustum, IntersectionRecord& irOut) const noexcept {
     const BoundingBox& bb = node->get<BoundsComponent>()->getBoundingBox();
 
     STUBBED("ToDo: make this work in a multi-threaded environment -Ionut");
@@ -686,10 +686,10 @@ bool Octree::getIntersection(SceneGraphNode* node, const Frustum& frustum, Inter
     return false;
 }
 
-bool Octree::getIntersection(SceneGraphNode* node1, SceneGraphNode* node2, IntersectionRecord& irOut) const {
+bool Octree::getIntersection(SceneGraphNode* node1, SceneGraphNode* node2, IntersectionRecord& irOut) const noexcept {
     if (node1->getGUID() != node2->getGUID()) {
-        BoundsComponent* bComp1 = node1->get<BoundsComponent>();
-        BoundsComponent* bComp2 = node2->get<BoundsComponent>();
+        const BoundsComponent* bComp1 = node1->get<BoundsComponent>();
+        const BoundsComponent* bComp2 = node2->get<BoundsComponent>();
         if (bComp1->getBoundingSphere().collision(bComp2->getBoundingSphere())) {
             if (bComp1->getBoundingBox().collision(bComp2->getBoundingBox())) {
                 irOut.reset();

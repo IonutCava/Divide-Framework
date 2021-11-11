@@ -58,7 +58,7 @@ namespace Divide {
 
     bool RenderingSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
         if (Parent::saveCache(sgn, outputBuffer)) {
-            RenderingComponent* rComp = sgn->GetComponent<RenderingComponent>();
+            const RenderingComponent* rComp = sgn->GetComponent<RenderingComponent>();
             if (rComp != nullptr && !rComp->saveCache(outputBuffer)) {
                 return false;
             }

@@ -174,11 +174,11 @@ RayResult BoundingBox::intersect(const Ray& r, F32 t0, F32 t1) const noexcept {
     return ret;
 }
 
-void BoundingBox::transform(const mat4<F32>& mat) {
+void BoundingBox::transform(const mat4<F32>& mat) noexcept {
     transform(getMin(), getMax(), mat);
 }
 
-void BoundingBox::transform(const BoundingBox& initialBoundingBox, const mat4<F32>& mat) {
+void BoundingBox::transform(const BoundingBox& initialBoundingBox, const mat4<F32>& mat) noexcept {
     transform(initialBoundingBox.getMin(), initialBoundingBox.getMax(), mat);
 }
 

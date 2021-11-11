@@ -61,15 +61,15 @@ namespace eastl {
         dvd_allocator([[maybe_unused]] const char* pName) noexcept { }
         dvd_allocator([[maybe_unused]] const dvd_allocator& x, [[maybe_unused]] const char* pName) noexcept { }
 
-        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] int flags = 0) {
+        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] int flags = 0) noexcept {
             return xmalloc(n);
         }
 
-        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] size_t alignment, [[maybe_unused]] size_t offset, [[maybe_unused]] int flags = 0) {
+        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] size_t alignment, [[maybe_unused]] size_t offset, [[maybe_unused]] int flags = 0) noexcept {
             return xmalloc(n);
         }
 
-        void deallocate([[maybe_unused]] void* p, size_t n) {
+        void deallocate([[maybe_unused]] void* p, size_t n) noexcept {
             //delete[](char*)p;
             xfree(p);
         }
@@ -96,16 +96,16 @@ namespace eastl {
         aligned_allocator([[maybe_unused]] const allocator & x, [[maybe_unused]] const char* pName) noexcept { }
         aligned_allocator& operator=(const aligned_allocator & EASTL_NAME(x)) = default;
 
-        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] int flags = 0) {
+        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] int flags = 0) noexcept {
             constexpr size_t defaultAlignment = alignof(void*);
             return malloc_aligned(n, defaultAlignment);
         }
 
-        [[nodiscard]] void* allocate(const size_t n, const size_t alignment, const size_t offset, [[maybe_unused]] int flags = 0) {
+        [[nodiscard]] void* allocate(const size_t n, const size_t alignment, const size_t offset, [[maybe_unused]] int flags = 0) noexcept {
             return malloc_aligned(n, alignment, offset);
         }
 
-        void deallocate(void* p, [[maybe_unused]] size_t n) {
+        void deallocate(void* p, [[maybe_unused]] size_t n) noexcept {
             free_aligned(p);
         }
 
@@ -123,8 +123,8 @@ namespace eastl {
         return false;
     }
 
-    EASTL_API aligned_allocator* GetDefaultDvdAllocator();
-    EASTL_API aligned_allocator* SetDefaultAllocator(aligned_allocator* pAllocator);
+    EASTL_API aligned_allocator* GetDefaultDvdAllocator() noexcept;
+    EASTL_API aligned_allocator* SetDefaultAllocator(aligned_allocator* pAllocator) noexcept;
 } //namespace eastl
 
 #endif //_TEMPLATE_ALLOCATOR_H_

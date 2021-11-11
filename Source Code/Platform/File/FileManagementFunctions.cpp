@@ -261,7 +261,7 @@ FileError copyDirectory(const char* sourcePath, const char* targetPath, bool rec
                               (overwrite ? std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none) | 
                                (recursively ? std::filesystem::copy_options::recursive : std::filesystem::copy_options::none));
     }
-    catch (std::exception& e)
+    catch (const std::exception& e)
     {
         std::cout << e.what();
         return FileError::FILE_COPY_ERROR;

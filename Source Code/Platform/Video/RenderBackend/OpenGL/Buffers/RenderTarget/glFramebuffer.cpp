@@ -83,7 +83,7 @@ void glFramebuffer::initAttachment(const RTAttachmentType type, const U8 index) 
         return;
     }   
 
-    Texture* tex;
+    Texture* tex = nullptr;
     if (!attachment->isExternal()) {
         tex = attachment->texture().get();
         // Do we need to resize the attachment?
@@ -224,12 +224,12 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
     const bool depthMisMatch = input->hasDepth() != output->hasDepth();
     if (depthMisMatch) {
         if (input->hasDepth()) {
-            RTAttachment* att = input->getAttachmentPtr(RTAttachmentType::Depth, 0u).get();
+            const RTAttachment* att = input->getAttachmentPtr(RTAttachmentType::Depth, 0u).get();
             input->toggleAttachment(*att, AttachmentState::STATE_DISABLED, false);
         }
 
         if (output->hasDepth()) {
-            RTAttachment* att = output->getAttachmentPtr(RTAttachmentType::Depth, 0u).get();
+            const RTAttachment* att = output->getAttachmentPtr(RTAttachmentType::Depth, 0u).get();
             output->toggleAttachment(*att, AttachmentState::STATE_DISABLED, false);
         }
     }
@@ -243,7 +243,7 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
         GLuint prevReadAtt = 0;
         GLuint prevWriteAtt = 0;
 
-        std::array<GLenum, MAX_RT_COLOUR_ATTACHMENTS> currentOutputBuffers = output->_activeColourBuffers;
+        const std::array<GLenum, MAX_RT_COLOUR_ATTACHMENTS> currentOutputBuffers = output->_activeColourBuffers;
         for (const ColourBlitEntry& entry : params._blitColours) {
             if (entry.input()._layer == INVALID_COLOUR_LAYER && entry.input()._index == INVALID_COLOUR_LAYER) {
                 continue;
@@ -331,7 +331,7 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
 
     if (!depthMisMatch && !blittedDepth && IsValid(params._blitDepth)) {
                                BlitHelpers::prepareAttachments(input, params._blitDepth, true);
-        RTAttachment* outAtt = BlitHelpers::prepareAttachments(output,  params._blitDepth, false);
+        const RTAttachment* outAtt = BlitHelpers::prepareAttachments(output,  params._blitDepth, false);
         checkStatus();
 
         glBlitNamedFramebuffer(input->_framebufferHandle,

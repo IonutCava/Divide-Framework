@@ -42,24 +42,23 @@ class WaypointGraph {
     using PathMap = hashMap<I32, WaypointPath>;
 
    public:
-    WaypointGraph();
-    ~WaypointGraph();
+    WaypointGraph() noexcept = default;
+    ~WaypointGraph() = default;
 
     void addWaypoint(Waypoint* wp);
     void removeWaypoint(Waypoint* wp);
 
     void updateGraph();
-    [[nodiscard]] bool isLooping() const { return _loop; }
-    [[nodiscard]] U32 getID() const { return _id; }
-    [[nodiscard]] U32 getSize() const { return to_U32(_waypoints.size()); }
+    [[nodiscard]] bool isLooping() const noexcept { return _loop; }
+    [[nodiscard]] U32 getID() const noexcept { return _id; }
+    [[nodiscard]] U32 getSize() const noexcept { return to_U32(_waypoints.size()); }
 
    private:
     WaypointMap _waypoints;
     // PathMap     _paths;
 
-    U32 _id;
-    bool _loop;
-
+    U32 _id = 0xFFFFFFFF;
+    bool _loop = true;
     vector<vec3<F32> > _positions;
     vector<Quaternion<F32> > _rotations;
     vector<U32> _times;

@@ -29,7 +29,7 @@ void glIMPrimitive::clearBatch() {
     _imInterface->Clear(true, 64 * 3, 1);
 }
 
-bool glIMPrimitive::hasBatch() const {
+bool glIMPrimitive::hasBatch() const noexcept {
     return !_imInterface->isCleared();
 }
 
@@ -61,7 +61,7 @@ void glIMPrimitive::end() {
     _imInterface->End();
 }
 
-void glIMPrimitive::endBatch() {
+void glIMPrimitive::endBatch() noexcept {
     _imInterface->EndBatch();
 }
 

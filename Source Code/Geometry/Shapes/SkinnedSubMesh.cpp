@@ -40,7 +40,7 @@ void SkinnedSubMesh::onAnimationChange(SceneGraphNode* sgn, const I32 newIndex) 
 
 void SkinnedSubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
                                                const I32 animationIndex,
-                                               AnimationComponent* const animComp) {
+                                               const AnimationComponent* const animComp) {
     if (animationIndex < 0) {
         return;
     }
@@ -55,7 +55,7 @@ void SkinnedSubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& pare
     BoundingBox& currentBB = _boundingBoxes.at(animationIndex);
     currentBB.reset();
     for (const BoneTransform& transforms : currentAnimation) {
-        const auto& matrices = transforms.matrices();
+        const BoneTransform::Container& matrices = transforms.matrices();
         // loop through all vertex weights of all bones
         for (U32 j = 0; j < partitionCount; ++j) {
             const U32 idx = parentVB->getIndex(j + partitionOffset);
@@ -77,7 +77,7 @@ void SkinnedSubMesh::updateBB(const I32 animIndex) {
     _parentMesh->queueRecomputeBB();
 }
 
-void SkinnedSubMesh::computeBBForAnimation(SceneGraphNode* sgn, I32 animIndex) {
+void SkinnedSubMesh::computeBBForAnimation(SceneGraphNode* const sgn, I32 animIndex) {
     // Attempt to get the map of BBs for the current animation
     ScopedLock<Mutex> w_lock(_bbStateLock);
     const BoundingBoxState state = _boundingBoxesState[animIndex];

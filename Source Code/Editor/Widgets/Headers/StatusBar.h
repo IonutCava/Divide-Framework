@@ -39,12 +39,12 @@ namespace Divide {
     class StatusBar final : public PlatformContextComponent {
     public:
 
-        explicit StatusBar(PlatformContext& context);
+        explicit StatusBar(PlatformContext& context) noexcept;
 
         void draw() const;
-        void update(U64 deltaTimeUS);
+        void update(U64 deltaTimeUS) noexcept;
 
-        [[nodiscard]] F32 height() const;
+        [[nodiscard]] F32 height() const noexcept;
 
         void showMessage(const string& message, F32 durationMS);
 

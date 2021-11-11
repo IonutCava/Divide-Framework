@@ -22,7 +22,6 @@ namespace Divide {
 
     TerrainDescriptor::~TerrainDescriptor()
     {
-        _variables.clear();
     }
 
     bool TerrainDescriptor::loadFromXML(const boost::property_tree::ptree& pt, const string& name) {

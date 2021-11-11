@@ -63,7 +63,7 @@ namespace goap {
         int calculateHeuristic(const WorldState& now, const WorldState& goal) const;
 
     public:
-        Planner();
+        Planner() noexcept = default;
 
         /**
          Useful when you're debugging a GOAP plan: simply dumps the open list to stdout.

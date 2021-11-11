@@ -77,7 +77,7 @@ namespace GLMemory{
     class ChunkAllocator final : NonCopyable, NonMovable
     {
     public:
-        explicit ChunkAllocator(size_t size);
+        explicit ChunkAllocator(size_t size) noexcept;
 
         // if size > mSize, allocate to the next power of 2
         [[nodiscard]] std::unique_ptr<Chunk> allocate(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, Byte* initialData) const;
@@ -102,13 +102,10 @@ namespace GLMemory{
     class DeviceAllocator final : public AbstractAllocator
     {
     public:
-        DeviceAllocator() = default;
-        ~DeviceAllocator() = default;
-
         void init(size_t size);
-        [[nodiscard]] Block allocate(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, const char* blockName, Byte* initialData);
-        void deallocate(Block &block);
-        void deallocate();
+        [[nodiscard]] Block allocate(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, const char* blockName, Byte* initialData) override;
+        void deallocate(Block &block) override;
+        void deallocate() noexcept;
 
     private:
         std::unique_ptr<ChunkAllocator> _chunkAllocator = nullptr;
@@ -120,14 +117,10 @@ class VBO final {
 public:
     // Allocate VBOs in 16K chunks. This will HIGHLY depend on actual data usage and requires testing.
     static constexpr U32 MAX_VBO_CHUNK_SIZE_BYTES = 16 * 1024;
-    // nVidia recommended (years ago) to use up to 4 megs per VBO. Use 64 MEG VBOs :D
-    static constexpr U32  MAX_VBO_SIZE_BYTES = 32 * 1024 * 1024;
+    // nVidia recommended (years ago) to use up to 4 megs per VBO. Use 16 MEG VBOs :D
+    static constexpr U32  MAX_VBO_SIZE_BYTES = 16 * 1024 * 1024;
     // The total number of available chunks per VBO is easy to figure out
     static constexpr U32 MAX_VBO_CHUNK_COUNT = MAX_VBO_SIZE_BYTES / MAX_VBO_CHUNK_SIZE_BYTES;
-
-    //keep track of what chunks we are using
-    //for each chunk, keep track how many next chunks are also part of the same allocation
-    std::array<std::pair<bool, U32>, MAX_VBO_CHUNK_COUNT> _chunkUsageState;
 
     static U32 getChunkCountForSize(size_t sizeInBytes) noexcept;
 
@@ -144,6 +137,10 @@ public:
     void releaseChunks(size_t offset);
 
     size_t getMemUsage() noexcept;
+
+    //keep track of what chunks we are using
+    //for each chunk, keep track how many next chunks are also part of the same allocation
+    std::array<std::pair<bool, U32>, MAX_VBO_CHUNK_COUNT> _chunkUsageState = create_array<MAX_VBO_CHUNK_COUNT, std::pair<bool, U32>>(std::make_pair(false, 0));
 
 private:
     GLuint _handle;
@@ -164,7 +161,7 @@ struct AllocationHandle {
 
 bool commitVBO(U32 chunkCount, GLenum usage, GLuint& handleOut, size_t& offsetOut);
 bool releaseVBO(GLuint& handle, size_t& offset);
-size_t getVBOMemUsage(GLuint handle);
+size_t getVBOMemUsage(GLuint handle) noexcept;
 U32 getVBOCount() noexcept;
 
 void clearVBOs() noexcept;

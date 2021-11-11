@@ -139,7 +139,7 @@ class Editor final : public PlatformContextComponent,
 
     [[nodiscard]] bool init(const vec2<U16>& renderResolution);
     void close();
-    void idle();
+    void idle() noexcept;
     void update(U64 deltaTimeUS);
     /// Render any editor specific element that needs to be part of the scene (e.g. Control Gizmo)
     void drawScreenOverlay(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) const;
@@ -154,10 +154,10 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] bool Redo() const;
     [[nodiscard]] inline size_t RedoStackSize() const noexcept;
 
-    [[nodiscard]] Rect<I32> scenePreviewRect(bool globalCoords) const;
+    [[nodiscard]] Rect<I32> scenePreviewRect(bool globalCoords) const noexcept;
     [[nodiscard]] bool wantsMouse() const;
-    [[nodiscard]] bool wantsKeyboard() const;
-    [[nodiscard]] bool wantsJoystick() const;
+    [[nodiscard]] bool wantsKeyboard() const noexcept;
+    [[nodiscard]] bool wantsJoystick() const noexcept;
     [[nodiscard]] bool usingGizmo() const;
 
     template<typename T>
@@ -172,7 +172,7 @@ class Editor final : public PlatformContextComponent,
 
   protected: //frame listener
     [[nodiscard]] bool framePostRenderStarted(const FrameEvent& evt) override;
-    [[nodiscard]] bool frameEnded(const FrameEvent& evt) override;
+    [[nodiscard]] bool frameEnded(const FrameEvent& evt) noexcept override;
 
   public: // input
     /// Key pressed: return true if input was consumed
@@ -186,13 +186,13 @@ class Editor final : public PlatformContextComponent,
     /// Mouse button released: return true if input was consumed
     [[nodiscard]] bool mouseButtonReleased(const Input::MouseButtonEvent& arg) override;
 
-    [[nodiscard]] bool joystickButtonPressed(const Input::JoystickEvent &arg) override;
-    [[nodiscard]] bool joystickButtonReleased(const Input::JoystickEvent &arg) override;
-    [[nodiscard]] bool joystickAxisMoved(const Input::JoystickEvent &arg) override;
-    [[nodiscard]] bool joystickPovMoved(const Input::JoystickEvent &arg) override;
-    [[nodiscard]] bool joystickBallMoved(const Input::JoystickEvent &arg) override;
-    [[nodiscard]] bool joystickAddRemove(const Input::JoystickEvent &arg) override;
-    [[nodiscard]] bool joystickRemap(const Input::JoystickEvent &arg) override;
+    [[nodiscard]] bool joystickButtonPressed(const Input::JoystickEvent &arg) noexcept override;
+    [[nodiscard]] bool joystickButtonReleased(const Input::JoystickEvent &arg) noexcept override;
+    [[nodiscard]] bool joystickAxisMoved(const Input::JoystickEvent &arg) noexcept override;
+    [[nodiscard]] bool joystickPovMoved(const Input::JoystickEvent &arg) noexcept override;
+    [[nodiscard]] bool joystickBallMoved(const Input::JoystickEvent &arg) noexcept override;
+    [[nodiscard]] bool joystickAddRemove(const Input::JoystickEvent &arg) noexcept override;
+    [[nodiscard]] bool joystickRemap(const Input::JoystickEvent &arg) noexcept override;
     [[nodiscard]] bool onUTF8(const Input::UTF8Event& arg) override;
         
     [[nodiscard]] bool saveToXML() const;
@@ -209,7 +209,7 @@ class Editor final : public PlatformContextComponent,
     void onPreviewFocus(bool state) const;
     /// Destroys the old font, if any, before loading the new one
     void createFontTexture(F32 DPIScaleFactor);
-    [[nodiscard]] static ImGuiViewport* FindViewportByPlatformHandle(ImGuiContext* context, DisplayWindow* window);
+    [[nodiscard]] static ImGuiViewport* FindViewportByPlatformHandle(ImGuiContext* context, const DisplayWindow* window);
 
     [[nodiscard]] U32 saveItemCount() const noexcept;
 
@@ -303,7 +303,7 @@ namespace Attorney {
             return editor._gizmo->enabled();
         }
 
-        static void editorEnableGizmo(const Editor& editor, const bool state) {
+        static void editorEnableGizmo(const Editor& editor, const bool state) noexcept {
             editor._gizmo->enable(state);
         }
 
@@ -440,7 +440,7 @@ namespace Attorney {
     };
 
     class EditorGeneralWidget {
-        static void setTransformSettings(Editor& editor, const TransformSettings& settings) noexcept {
+        static void setTransformSettings(const Editor& editor, const TransformSettings& settings) noexcept {
             editor.setTransformSettings(settings);
         }
 
@@ -448,11 +448,11 @@ namespace Attorney {
             return editor.getTransformSettings();
         }
 
-        [[nodiscard]] static LightPool& getActiveLightPool(Editor& editor) {
+        [[nodiscard]] static LightPool& getActiveLightPool(const Editor& editor) {
             return editor.getActiveLightPool();
         }
 
-        [[nodiscard]] static ECSManager& getECSManager(Editor& editor) {
+        [[nodiscard]] static ECSManager& getECSManager(const Editor& editor) {
             return editor.getECSManager();
         }
 
@@ -496,11 +496,11 @@ namespace Attorney {
             editor._memoryEditorData = data;
         }
 
-        [[nodiscard]] static bool modalTextureView(Editor& editor, const char* modalName, const Texture* tex, const vec2<F32>& dimensions, const bool preserveAspect, const bool useModal) {
+        [[nodiscard]] static bool modalTextureView(const Editor& editor, const char* modalName, const Texture* tex, const vec2<F32>& dimensions, const bool preserveAspect, const bool useModal) {
             return editor.modalTextureView(modalName, tex, dimensions, preserveAspect, useModal);
         }
 
-        [[nodiscard]] static bool modalModelSpawn(Editor& editor, const char* modalName, const Mesh_ptr& mesh) {
+        [[nodiscard]] static bool modalModelSpawn(const Editor& editor, const char* modalName, const Mesh_ptr& mesh) {
             return editor.modalModelSpawn(modalName, mesh);
         }
 
@@ -542,8 +542,8 @@ namespace Attorney {
     };
 }
 
-void PushReadOnly() noexcept;
-void PopReadOnly() noexcept;
+void PushReadOnly();
+void PopReadOnly();
 
 struct ScopedReadOnly final : NonCopyable
 {

@@ -44,64 +44,64 @@ class Transform final : public ITransform, public GUIDWrapper, NonCopyable {
     Transform() noexcept = default;
     explicit Transform(const Quaternion<F32>& orientation,
                        const vec3<F32>& translation,
-                       const vec3<F32>& scale);
+                       const vec3<F32>& scale) noexcept;
 
-    void setPosition(const vec3<F32>& position) override;
-    void setPosition(F32 x, F32 y, F32 z) override;
-    void setPositionX(F32 positionX) override;
-    void setPositionY(F32 positionY) override;
-    void setPositionZ(F32 positionZ) override;
-    void translate(const vec3<F32>& axisFactors) override;
+    void setPosition(const vec3<F32>& position) noexcept override;
+    void setPosition(F32 x, F32 y, F32 z) noexcept override;
+    void setPositionX(F32 positionX) noexcept override;
+    void setPositionY(F32 positionY) noexcept override;
+    void setPositionZ(F32 positionZ) noexcept override;
+    void translate(const vec3<F32>& axisFactors) noexcept override;
 
-    void setScale(const vec3<F32>& amount) override;
-    void setScaleX(F32 amount) override;
-    void setScaleY(F32 amount) override;
-    void setScaleZ(F32 amount) override;
-    void scale(const vec3<F32>& axisFactors) override;
-    void scaleX(F32 amount) override;
-    void scaleY(F32 amount) override;
-    void scaleZ(F32 amount) override;
+    void setScale(const vec3<F32>& amount) noexcept override;
+    void setScaleX(F32 amount) noexcept override;
+    void setScaleY(F32 amount) noexcept override;
+    void setScaleZ(F32 amount) noexcept override;
+    void scale(const vec3<F32>& axisFactors) noexcept override;
+    void scaleX(F32 amount) noexcept override;
+    void scaleY(F32 amount) noexcept override;
+    void scaleZ(F32 amount) noexcept override;
 
-    void setRotation(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) override;
-    void setRotation(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) override;
-    void setRotation(const Quaternion<F32>& quat) override;
-    void setRotationX(Angle::DEGREES<F32> angle) override;
-    void setRotationY(Angle::DEGREES<F32> angle) override;
-    void setRotationZ(Angle::DEGREES<F32> angle) override;
-    void rotate(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) override;
-    void rotate(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) override;
-    void rotate(const Quaternion<F32>& quat) override;
+    void setRotation(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) noexcept override;
+    void setRotation(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) noexcept override;
+    void setRotation(const Quaternion<F32>& quat) noexcept override;
+    void setRotationX(Angle::DEGREES<F32> angle) noexcept override;
+    void setRotationY(Angle::DEGREES<F32> angle) noexcept override;
+    void setRotationZ(Angle::DEGREES<F32> angle) noexcept override;
+    void rotate(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) noexcept override;
+    void rotate(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) noexcept override;
+    void rotate(const Quaternion<F32>& quat) noexcept override;
     void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) override;
-    void rotateX(Angle::DEGREES<F32> angle) override;
-    void rotateY(Angle::DEGREES<F32> angle) override;
-    void rotateZ(Angle::DEGREES<F32> angle) override;
+    void rotateX(Angle::DEGREES<F32> angle) noexcept override;
+    void rotateY(Angle::DEGREES<F32> angle) noexcept override;
+    void rotateZ(Angle::DEGREES<F32> angle) noexcept override;
 
-    void getScale(vec3<F32>& scaleOut) const override;
-    void getPosition(vec3<F32>& posOut) const override;
-    void getOrientation(Quaternion<F32>& quatOut) const override;
+    void getScale(vec3<F32>& scaleOut) const noexcept override;
+    void getPosition(vec3<F32>& posOut) const noexcept override;
+    void getOrientation(Quaternion<F32>& quatOut) const noexcept override;
 
-    [[nodiscard]] bool isUniformScale() const;
+    [[nodiscard]] bool isUniformScale() const noexcept;
 
-    void getMatrix(mat4<F32>& matrix) override;
+    void getMatrix(mat4<F32>& matrix) noexcept override;
 
     /// Sets the transform to match a certain transformation matrix.
     /// Scale, orientation and translation are extracted from the specified matrix
-    void setTransforms(const mat4<F32>& transform);
+    void setTransforms(const mat4<F32>& transform) noexcept;
 
     /// Set all of the internal values to match those of the specified transform
-    void clone(const Transform* transform);
+    void clone(const Transform* transform) noexcept;
 
     /// Extract the 3 transform values (position, scale, rotation) from the current instance
-    [[nodiscard]] TransformValues getValues() const override;
+    [[nodiscard]] TransformValues getValues() const noexcept override;
     /// Set position, scale and rotation based on the specified transform values
-    void setValues(const TransformValues& values);
+    void setValues(const TransformValues& values) noexcept;
 
     /// Compares 2 transforms
     bool operator==(const Transform& other) const;
     bool operator!=(const Transform& other) const;
 
     /// Reset transform to identity
-    void identity();
+    void identity() noexcept;
 
    private:
     /// The actual scale, rotation and translation values

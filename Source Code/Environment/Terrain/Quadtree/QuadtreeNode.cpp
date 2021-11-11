@@ -13,7 +13,7 @@
 
 namespace Divide {
 
-QuadtreeNode::QuadtreeNode(GFXDevice& context, Quadtree* parent)
+QuadtreeNode::QuadtreeNode(GFXDevice& context, Quadtree* parent) noexcept
     : _parent(parent),
       _context(context)
 {

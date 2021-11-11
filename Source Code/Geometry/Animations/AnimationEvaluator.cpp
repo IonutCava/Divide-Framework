@@ -30,7 +30,7 @@ AnimEvaluator::AnimEvaluator(const aiAnimation* pAnim, U32 idx) noexcept
 
     _channels.resize(pAnim->mNumChannels);
     for (U32 a = 0; a < pAnim->mNumChannels; a++) {
-        aiNodeAnim* srcChannel = pAnim->mChannels[a];
+        const aiNodeAnim* srcChannel = pAnim->mChannels[a];
         AnimationChannel& dstChannel = _channels[a];
 
         dstChannel._name = srcChannel->mNodeName.data;
@@ -124,7 +124,7 @@ AnimEvaluator::FrameIndex AnimEvaluator::frameIndexAt(const D64 elapsedTimeS) co
 
 // ------------------------------------------------------------------------------------------------
 // Evaluates the animation tracks for a given time stamp.
-void AnimEvaluator::evaluate(const D64 dt, Bone* skeleton) {
+void AnimEvaluator::evaluate(const D64 dt, const eastl::shared_ptr<Bone>& skeleton) {
     const D64 pTime = dt * ticksPerSecond();
 
     D64 time = 0.0f;
@@ -142,7 +142,7 @@ void AnimEvaluator::evaluate(const D64 dt, Bone* skeleton) {
     for (U32 a = 0; a < _channels.size(); a++) {
         
         const AnimationChannel* channel = &_channels[a];
-        Bone* bonenode = skeleton->find(channel->_nameKey);
+        const eastl::shared_ptr<Bone> bonenode = skeleton->find(channel->_nameKey);
 
         if (bonenode == nullptr) {
             Console::d_errorfn(Locale::Get(_ID("ERROR_BONE_FIND")), channel->_name.c_str());

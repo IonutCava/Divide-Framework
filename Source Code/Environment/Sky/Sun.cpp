@@ -22,7 +22,7 @@ namespace {
     constexpr D64 Ecliptic_A = Angle::DegreesToRadians(1.915);
     constexpr D64 Ecliptic_B = Angle::DegreesToRadians(.02);
 
-    D64 FNrange(const D64 x) noexcept {
+    constexpr D64 FNrange(const D64 x) noexcept {
         const D64 b = x / TwoPi;
         const D64 a = TwoPi * (b - to_I32(b));
         return a < 0 ? TwoPi + a : a;
@@ -41,7 +41,7 @@ namespace {
         return std::asin(fo) + M_PI_2;
     }
 
-    D64 FNsun(const D64 d, D64& RA, D64& delta, D64& L) {
+    D64 FNsun(const D64 d, D64& RA, D64& delta, D64& L) noexcept {
         //   mean longitude of the Sun
         const D64 W_DEG = Longitude_A + Longitude_B * d;
         const D64 W_RAD = Angle::DegreesToRadians(W_DEG);
@@ -175,7 +175,7 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const F32 l
     return ret;
 }
 
-D64 SunPosition::CorrectAngle(const D64 angleInRadians) {
+D64 SunPosition::CorrectAngle(const D64 angleInRadians) noexcept {
     if (angleInRadians < 0) {
         return TwoPi - std::fmod(std::abs(angleInRadians), TwoPi);
     }
@@ -186,7 +186,7 @@ D64 SunPosition::CorrectAngle(const D64 angleInRadians) {
     return angleInRadians;
 }
 
-void Sun::SetLocation(const F32 longitude, const F32 latitude) {
+void Sun::SetLocation(const F32 longitude, const F32 latitude) noexcept {
     if (!COMPARE(_longitude, longitude)) {
         _longitude = longitude;
         _dirty = true;
@@ -197,7 +197,7 @@ void Sun::SetLocation(const F32 longitude, const F32 latitude) {
     }
 }
 
-void Sun::SetDate(struct tm &dateTime) {
+void Sun::SetDate(struct tm &dateTime) noexcept {
     const time_t t1 = mktime(&_dateTime);
     const time_t t2 = mktime(&dateTime);
     const D64 diffSecs = std::abs(difftime(t1, t2));

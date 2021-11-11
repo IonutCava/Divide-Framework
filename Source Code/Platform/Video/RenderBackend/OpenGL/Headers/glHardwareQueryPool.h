@@ -46,7 +46,7 @@ public:
     void destroy();
 
     glHardwareQueryRing& allocate(GLenum queryType);
-    void deallocate(glHardwareQueryRing& query);
+    void deallocate(const glHardwareQueryRing& query);
 
 private:
     hashMap<GLenum, vector<glHardwareQueryRing*>> _queryPool;

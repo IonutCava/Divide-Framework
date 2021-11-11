@@ -7,16 +7,16 @@
 
 namespace Divide {
 namespace Util {
-    vec3<F32> toVec3(const physx::PxVec3& vec) {
+    vec3<F32> toVec3(const physx::PxVec3& vec) noexcept {
         return { vec.x, vec.y, vec.z };
     }
 
-    physx::PxVec3 toVec3(const vec3<F32>& vec) {
+    physx::PxVec3 toVec3(const vec3<F32>& vec) noexcept {
         return { vec.x, vec.y, vec.z };
     }
 } //namespace Util
 
-    PhysXActor::PhysXActor(RigidBodyComponent& parent)
+    PhysXActor::PhysXActor(RigidBodyComponent& parent) noexcept
         : PhysicsAsset(parent)
     {
     }

@@ -25,7 +25,7 @@ NetworkingComponent::~NetworkingComponent()
     s_NetComponents.erase(_parentSGN->getGUID());
 }
 
-void NetworkingComponent::flagDirty() {
+void NetworkingComponent::flagDirty() noexcept {
     _resendRequired = true;
 }
 

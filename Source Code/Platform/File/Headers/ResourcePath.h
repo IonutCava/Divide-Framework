@@ -57,7 +57,9 @@ struct ResourcePath
     ResourcePath& pop_back() noexcept;
     ResourcePath& append(const std::string_view& str);
 
-    PROPERTY_R_IW(string, str);
+    [[nodiscard]] const string& str() const noexcept { return _str; }
+private:
+    string _str;
 };
 
 ResourcePath  operator+  (const ResourcePath& lhs, const ResourcePath& rhs);

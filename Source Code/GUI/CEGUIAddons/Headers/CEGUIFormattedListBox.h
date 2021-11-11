@@ -34,7 +34,6 @@
 #define CEGUI_FORMATTED_LIST_BOX_H_
 
 // Code adapted from http://www.cegui.org.uk/phpBB2/viewtopic.php?f=10&t=4322
-#include <CEGUI/CEGUI.h>
 
 namespace CEGUI {
 ///! A ListboxItem based class that can do horizontal text formatting.
@@ -51,7 +50,7 @@ class FormattedListboxTextItem final : public ListboxTextItem {
     ~FormattedListboxTextItem();
 
     ///! Return the current formatting set.
-    HorizontalTextFormatting getFormatting() const;
+    HorizontalTextFormatting getFormatting() const noexcept;
     /**!
         Set the formatting.  You should call Listbox::handleUpdatedItemData
         after setting the formatting in order to update the listbox.  We do not

@@ -145,7 +145,7 @@ vector<vec3<F32> > DivideRecast::getPath(const I32 pathSlot) {
     return result;
 }
 
-I32 DivideRecast::getTarget(const I32 pathSlot) {
+I32 DivideRecast::getTarget (const I32 pathSlot) noexcept {
     if (pathSlot < 0 || pathSlot >= MAX_PATHSLOT) {
         return 0;
     }

@@ -46,7 +46,7 @@ class SceneGUIElements : public GUIInterface,
 public:
     SceneGUIElements(Scene& parentScene, GUI& context);
 
-    void draw(GFXDevice& context, GFX::CommandBuffer& bufferInOut);
+    void draw(const GFXDevice& context, GFX::CommandBuffer& bufferInOut);
 
     void onEnable();
     void onDisable();

@@ -66,7 +66,7 @@ class Plane {
         NEGATIVE_SIDE
     };
 
-    Plane() : Plane(WORLD_Y_AXIS, static_cast<T>(0))
+    Plane() noexcept : Plane(WORLD_Y_AXIS, static_cast<T>(0))
     {
     }
 
@@ -83,7 +83,7 @@ class Plane {
     }
 
     /// distance is stored as the negative of the specified value
-    Plane(T a, T b, T c, T distance) : Plane(vec3<T>(a, b, c), distance)
+    Plane(T a, T b, T c, T distance) noexcept : Plane(vec3<T>(a, b, c), distance)
     {
     }
 
@@ -101,20 +101,20 @@ class Plane {
         redefine(point0, point1, point2);
     }
 
-    Plane& operator=(const Plane& other) {
+    Plane& operator=(const Plane& other) noexcept {
         _normal.set(other._normal);
         _distance = other._distance;
 
         return *this;
     }
 
-    [[nodiscard]] Side classifyPoint(const vec3<F32>& point) const {
+    [[nodiscard]] Side classifyPoint(const vec3<F32>& point) const noexcept {
         const F32 result = signedDistanceToPoint(point);
         return result > 0 ? Side::POSITIVE_SIDE
                    : result < 0 ? Side::NEGATIVE_SIDE : Side::NO_SIDE;
     }
 
-    [[nodiscard]] T signedDistanceToPoint(const vec3<T>& point) const {
+    [[nodiscard]] T signedDistanceToPoint(const vec3<T>& point) const noexcept {
         return _normal.dot(point) + _distance;
     }
 
@@ -122,16 +122,16 @@ class Plane {
         return (point - signedDistanceToPoint(point)) * _normal;
     }
 
-    void set(const vec4<T>& equation) {
+    void set(const vec4<T>& equation) noexcept {
         set(equation.xyz, equation.w);
     }
 
-    void set(const vec3<T>& normal, T distance) {
+    void set(const vec3<T>& normal, T distance) noexcept {
         _normal = normal;
         _distance = distance;
     }
 
-    void set(T a, T b, T c, T distance) {
+    void set(T a, T b, T c, T distance) noexcept {
         set(vec3<T>(a, b, c), distance);
     }
 
@@ -162,7 +162,7 @@ class Plane {
         return COMPARE_TOLERANCE(rhs._distance, _distance, epsilon) && rhs._normal.compare(_normal, epsilon);
     }
 
-    T normalize() {
+    T normalize() noexcept {
         T length = _normal.length();
         if (length > static_cast<T>(0)) {
             const F32 invLength = 1.0f / length;

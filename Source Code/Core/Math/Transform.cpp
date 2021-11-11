@@ -4,14 +4,14 @@
 
 namespace Divide {
 
-Transform::Transform(const Quaternion<F32>& orientation, const vec3<F32>& translation, const vec3<F32>& scale)
+Transform::Transform(const Quaternion<F32>& orientation, const vec3<F32>& translation, const vec3<F32>& scale) noexcept
 {
     _transformValues._scale.set(scale);
     _transformValues._translation.set(translation);
     _transformValues._orientation.set(orientation);
 }
 
-void Transform::getMatrix(mat4<F32>& matrix) {
+void Transform::getMatrix(mat4<F32>& matrix) noexcept {
     if (_dirty) {
         _dirty = false;
 
@@ -32,7 +32,7 @@ void Transform::getMatrix(mat4<F32>& matrix) {
     matrix = _worldMatrix;
 }
 
-void Transform::setTransforms(const mat4<F32>& transform) {
+void Transform::setTransforms(const mat4<F32>& transform) noexcept {
     _dirty = true;
     _rebuild = true;
 
@@ -75,7 +75,7 @@ void Transform::setTransforms(const mat4<F32>& transform) {
     };
 }
 
-void Transform::identity() {
+void Transform::identity() noexcept {
     _transformValues._scale.set(1.0f);
     _transformValues._translation.reset();
     _transformValues._orientation.identity();

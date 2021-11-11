@@ -142,11 +142,11 @@ class PlatformContext {
     [[nodiscard]] ParamHandler& paramHandler() noexcept { return *_paramHandler; }
     [[nodiscard]] const ParamHandler& paramHandler() const noexcept { return *_paramHandler; }
 
-    [[nodiscard]] Kernel& kernel();
-    [[nodiscard]] const Kernel& kernel() const;
+    [[nodiscard]] Kernel& kernel() noexcept;
+    [[nodiscard]] const Kernel& kernel() const noexcept;
 
-    [[nodiscard]] DisplayWindow& mainWindow();
-    [[nodiscard]] const DisplayWindow& mainWindow() const;
+    [[nodiscard]] DisplayWindow& mainWindow() noexcept;
+    [[nodiscard]] const DisplayWindow& mainWindow() const noexcept;
 
   protected:
     void onThreadCreated(const std::thread::id& threadID) const;
@@ -186,7 +186,7 @@ class PlatformContext {
 
 namespace Attorney {
     class PlatformContextKernel {
-        static void onThreadCreated(PlatformContext& context, const std::thread::id& threadID) {
+        static void onThreadCreated(const PlatformContext& context, const std::thread::id& threadID) {
             context.onThreadCreated(threadID);
         }
 

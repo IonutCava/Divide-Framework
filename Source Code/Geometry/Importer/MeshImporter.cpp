@@ -24,7 +24,7 @@ namespace {
     const char* g_parsedAssetAnimationExt = "DVDAnim";
 };
 
-GeometryFormat GetGeometryFormatForExtension(const char* extension) {
+GeometryFormat GetGeometryFormatForExtension(const char* extension) noexcept {
     if (Util::CompareIgnoreCase(extension, "3ds")) {
         return GeometryFormat::_3DS;
     }
@@ -270,7 +270,7 @@ namespace Import {
             } else {
                 if (!dataIn.loadedFromFile()) {
                     Attorney::SceneAnimatorMeshImporter::registerAnimations(*animator, dataIn._animations);
-                    animator->init(context, dataIn.skeleton(), dataIn._bones);
+                    animator->init(context, dataIn._skeleton, dataIn._bones);
                     animator->save(context, tempBuffer);
                     if (!tempBuffer.dumpToFile((Paths::g_cacheLocation + Paths::g_geometryCacheLocation).c_str(),
                                                (dataIn.modelName() + "." + g_parsedAssetAnimationExt).c_str()))

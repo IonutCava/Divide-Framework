@@ -15,7 +15,7 @@ namespace {
     constexpr F32 g_maxSimSpeed = 1000.f;
 };
 
-PXDevice::PXDevice(Kernel& parent)
+PXDevice::PXDevice(Kernel& parent) noexcept
     : KernelComponent(parent), 
       PhysicsAPIWrapper()
 {

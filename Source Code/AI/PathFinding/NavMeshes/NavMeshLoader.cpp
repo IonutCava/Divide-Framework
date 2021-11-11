@@ -21,7 +21,7 @@ namespace Divide::AI::Navigation::NavigationMeshLoader {
                                        {7, 6, 4, 5},
                                        {3, 7, 5, 1}};
 
-char* ParseRow(char* buf, char* bufEnd, char* row, const I32 len) {
+char* ParseRow(char* buf, const char* const bufEnd, char* row, const I32 len) noexcept {
     bool start = true;
     bool done = false;
     I32 n = 0;
@@ -46,6 +46,7 @@ char* ParseRow(char* buf, char* bufEnd, char* row, const I32 len) {
                 if (start) {
                     break;
                 }
+                [[fallthrough]];
             default: {
                 start = false;
                 row[n++] = c;
@@ -60,14 +61,15 @@ char* ParseRow(char* buf, char* bufEnd, char* row, const I32 len) {
     return buf;
 }
 
-I32 ParseFace(char* row, I32* data, const I32 n, const I32 vcnt) {
+I32 ParseFace(char* row, I32* data, const I32 n, const I32 vcnt) noexcept {
     I32 j = 0;
     while (*row != '\0') {
         // Skip initial white space
         while (*row != '\0' && (*row == ' ' || *row == '\t')) {
             row++;
         }
-        char* s = row;
+
+        const char* s = row;
         // Find vertex delimiter and terminated the string there for conversion.
         while (*row != '\0' && *row != ' ' && *row != '\t') {
             if (*row == '/') {
@@ -183,14 +185,14 @@ bool SaveMeshFile(const NavModelData& inData, const char* filepath, const char* 
     ByteBuffer tempBuffer;
     tempBuffer << BYTE_BUFFER_VERSION;
 
-    F32* vStart = inData._vertices;
-    I32* tStart = inData._triangles;
+    const F32* vStart = inData._vertices;
+    const I32* tStart = inData._triangles;
     for (U32 i = 0; i < inData.getVertCount(); i++) {
-        F32* vp = vStart + i * 3;
+        const F32* vp = vStart + i * 3;
         tempBuffer << "v " << *vp << " " << *(vp + 1) << " " << *(vp + 2) << "\n";
     }
     for (U32 i = 0; i < inData.getTriCount(); i++) {
-        I32* tp = tStart + i * 3;
+        const I32* tp = tStart + i * 3;
         tempBuffer << "f " << *tp + 1 << " " << *(tp + 1) + 1 << " " << *(tp + 2) + 1 << "\n";
     }
 
@@ -321,12 +323,12 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
 
     assert(sgn != nullptr);
 
-    NavigationComponent* navComp = sgn->get<NavigationComponent>();
+    const NavigationComponent* navComp = sgn->get<NavigationComponent>();
     if (navComp && 
         navComp->navigationContext() != NavigationComponent::NavigationContext::NODE_IGNORE &&  // Ignore if specified
         box.getHeight() > 0.05f)  // Skip small objects
     {
-        SceneNodeType nodeType = sgn->getNode().type();
+        const SceneNodeType nodeType = sgn->getNode().type();
         const char* resourceName = sgn->getNode().resourceName().c_str();
 
         if (!BitCompare(allowedNodeType, to_U32(nodeType))) {
@@ -373,7 +375,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
 
         Console::d_printfn(Locale::Get(_ID("NAV_MESH_CURRENT_NODE")), resourceName, to_U32(level));
 
-        U32 currentTriangleIndexOffset = outData.getVertCount();
+        const U32 currentTriangleIndexOffset = outData.getVertCount();
         VertexBuffer* geometry = nullptr;
         if (level == MeshDetailLevel::MAXIMUM) {
             Object3D* obj = nullptr;

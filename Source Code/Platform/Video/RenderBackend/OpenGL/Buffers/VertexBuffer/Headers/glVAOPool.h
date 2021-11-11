@@ -43,8 +43,8 @@ namespace GLUtil {
 struct glVAOPool {
     ~glVAOPool();
 
-    GLuint allocate();
-    void   allocate(U32 count, GLuint* vaosOUT);
+    GLuint allocate() noexcept;
+    void   allocate(U32 count, GLuint* vaosOUT) noexcept;
     // This must be called on the main thread!
     void   deallocate(GLuint& vao);
 

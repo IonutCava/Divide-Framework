@@ -42,7 +42,7 @@ class ParticleEulerUpdater final : public ParticleUpdater {
     vec3<F32> _globalAcceleration = VECTOR3_ZERO;
 
    public:
-    ParticleEulerUpdater(PlatformContext& context) : ParticleUpdater(context)
+    ParticleEulerUpdater(PlatformContext& context) noexcept : ParticleUpdater(context)
     {
     }
 

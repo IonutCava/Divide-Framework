@@ -33,7 +33,11 @@
 #ifndef _GUI_ELEMENT_H_
 #define _GUI_ELEMENT_H_
 
+#if !defined(_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING)
+#define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING
+#endif //_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING
 #include <CEGUI/Event.h>
+#undef _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING
 
 namespace CEGUI {
     class Window;
@@ -67,11 +71,10 @@ struct TypeHelper {
 class GUIElement : public GUIDWrapper {
     friend class GUI;
   public:
-    GUIElement(string name, CEGUI::Window* parent);
+    GUIElement(string name, CEGUI::Window* parent) noexcept;
     virtual ~GUIElement() = default;
     
-    virtual void setTooltip([[maybe_unused]] const string& tooltipText) {
-    }
+    virtual void setTooltip([[maybe_unused]] const string& tooltipText) {}
 
     PROPERTY_RW(string, name, "");
 

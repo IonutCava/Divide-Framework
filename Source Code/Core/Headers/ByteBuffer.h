@@ -76,7 +76,7 @@ class ByteBuffer {
     static const U8 BUFFER_FORMAT_VERSION { 10u };
     static const size_t DEFAULT_SIZE { 0x1000 };
 
-    explicit ByteBuffer(size_t res = DEFAULT_SIZE);
+    ByteBuffer() noexcept = default;
 
     /// Resets the entire storage and the read and write positions
     void clear() noexcept;

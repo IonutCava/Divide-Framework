@@ -97,7 +97,7 @@ private:
     using VAOData = std::pair<VAOBufferData, VAODivisors>;
 
 public:
-    void init(U32 maxBindings);
+    void init(U32 maxBindings) noexcept;
 
     const BufferBindingParams& bindingParams(GLuint vao, GLuint index);
 
@@ -148,7 +148,7 @@ enum class glObjectType : U8 {
 
 class glObject  {
 public:
-    explicit glObject(glObjectType type, GFXDevice& context);
+    explicit glObject(glObjectType type, GFXDevice& context) noexcept;
 
     [[nodiscard]] glObjectType type() const noexcept { return _type;  }
 
@@ -211,13 +211,14 @@ extern GLuint s_lastQueryResult;
 extern const DisplayWindow* s_glMainRenderWindow;
 extern thread_local SDL_GLContext s_glSecondaryContext;
 
+
 extern Mutex s_glSecondaryContextMutex;
 
 void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
                          bool drawIndexed,
                          bool useIndirectBuffer,
                          GLenum internalFormat,
-                         size_t* countData = nullptr,
+                         const size_t* const countData = nullptr,
                          bufferPtr indexData = nullptr);
 
 /// Populate enumeration tables with appropriate API values

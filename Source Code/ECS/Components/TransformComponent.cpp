@@ -87,7 +87,7 @@ namespace Divide {
         resetInterpolation();
     }
 
-    void TransformComponent::setOffset(const bool state, const mat4<F32>& offset) {
+    void TransformComponent::setOffset(const bool state, const mat4<F32>& offset) noexcept {
         _transformOffset.first = state;
         _transformOffset.second.set(offset);
         setTransformDirty(TransformType::ALL);

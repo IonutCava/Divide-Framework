@@ -61,7 +61,7 @@ void Quadtree::drawBBox(RenderPackage& packageOut) const {
     }
 }
 
-QuadtreeNode* Quadtree::findLeaf(const vec2<F32>& pos) const
+QuadtreeNode* Quadtree::findLeaf(const vec2<F32>& pos) const noexcept
 {
     assert(_root);
 
@@ -85,7 +85,7 @@ QuadtreeNode* Quadtree::findLeaf(const vec2<F32>& pos) const
     return node;
 }
 
-void Quadtree::build(BoundingBox& terrainBBox,
+void Quadtree::build(const BoundingBox& terrainBBox,
                      const vec2<U16>& HMSize,
                      Terrain* const terrain) {
 

@@ -7,7 +7,7 @@
 
 namespace Divide {
 
-ErrorCode OpenAL_API::initAudioAPI([[maybe_unused]] PlatformContext& context) {
+ErrorCode OpenAL_API::initAudioAPI([[maybe_unused]] PlatformContext& context) noexcept {
     // Initialization
     ALCdevice* device = alcOpenDevice(nullptr);  // select the "preferred device"
     if (device) {
@@ -28,25 +28,25 @@ ErrorCode OpenAL_API::initAudioAPI([[maybe_unused]] PlatformContext& context) {
     return ErrorCode::OAL_INIT_ERROR;
 }
 
-void OpenAL_API::beginFrame() {}
+void OpenAL_API::beginFrame() noexcept {}
 
-void OpenAL_API::endFrame() {}
+void OpenAL_API::endFrame() noexcept {}
 
-void OpenAL_API::closeAudioAPI() {}
+void OpenAL_API::closeAudioAPI() noexcept {}
 
-void OpenAL_API::playSound([[maybe_unused]] const AudioDescriptor_ptr& sound) {}
+void OpenAL_API::playSound([[maybe_unused]] const AudioDescriptor_ptr& sound) noexcept {}
 
-void OpenAL_API::playMusic([[maybe_unused]] const AudioDescriptor_ptr& music) {}
+void OpenAL_API::playMusic([[maybe_unused]] const AudioDescriptor_ptr& music) noexcept {}
 
-void OpenAL_API::pauseMusic() {}
+void OpenAL_API::pauseMusic() noexcept {}
 
-void OpenAL_API::stopMusic() {}
+void OpenAL_API::stopMusic() noexcept {}
 
-void OpenAL_API::stopAllSounds() {}
+void OpenAL_API::stopAllSounds() noexcept {}
 
-void OpenAL_API::setMusicVolume([[maybe_unused]] I8 value) {}
+void OpenAL_API::setMusicVolume([[maybe_unused]] I8 value) noexcept {}
 
-void OpenAL_API::setSoundVolume([[maybe_unused]] I8 value) {}
+void OpenAL_API::setSoundVolume([[maybe_unused]] I8 value) noexcept {}
 
-void OpenAL_API::musicFinished() {}
+void OpenAL_API::musicFinished() noexcept {}
 };

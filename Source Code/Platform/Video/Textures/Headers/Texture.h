@@ -83,7 +83,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     virtual void loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& dimensions) = 0;
 
     /// Change the number of MSAA samples for this current texture
-    void setSampleCount(U8 newSampleCount) noexcept;
+    void setSampleCount(U8 newSampleCount);
 
     virtual void clearData(const UColour4& clearColour, U8 level) const = 0;
     virtual void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const = 0;

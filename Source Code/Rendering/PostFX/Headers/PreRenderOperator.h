@@ -64,7 +64,7 @@ class NOINITVTABLE PreRenderOperator {
 
     virtual void onToggle(bool state);
 
-    [[nodiscard]] virtual bool ready() const { return true; }
+    [[nodiscard]] virtual bool ready() const noexcept { return true; }
 
    protected:
     GFXDevice& _context;

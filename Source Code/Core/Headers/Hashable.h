@@ -39,10 +39,7 @@ class Hashable {
   public:
     virtual ~Hashable() = default;
 
-    virtual size_t getHash() const noexcept {
-        return _hash;
-    }
-
+    virtual size_t getHash() const { return _hash; }
     Hashable& operator=(Hashable const& old) noexcept;
 
   protected:

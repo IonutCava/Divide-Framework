@@ -78,7 +78,7 @@ void Box3D::fromPoints(const std::initializer_list<vec3<F32>>& points,
     setBounds(BoundingBox(-_halfExtent * 0.5f, _halfExtent * 0.5f));
 }
 
-const vec3<F32>& Box3D::getHalfExtent() const {
+const vec3<F32>& Box3D::getHalfExtent() const noexcept {
     return _halfExtent;
 }
 

@@ -79,7 +79,7 @@ class Resource : public GUIDWrapper
     PROPERTY_R(ResourceType, resourceType, ResourceType::COUNT);
 
    protected:
-    virtual void setState(ResourceState currentState) noexcept;
+    virtual void setState(ResourceState currentState);
     [[nodiscard]] virtual const char* getResourceTypeName() const noexcept { return "Resource"; }
 
    protected:
@@ -116,7 +116,7 @@ public:
     void addStateCallback(ResourceState targetState, const DELEGATE<void, CachedResource*>& cbk);
 
 protected:
-    void setState(ResourceState currentState) noexcept final;
+    void setState(ResourceState currentState) final;
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Cached Resource"; }
     void flushStateCallbacks();
 

@@ -20,8 +20,6 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
-#include <CEGUI/CEGUI.h>
-
 namespace Divide {
 namespace {
     GUIMessageBox* g_assertMsgBox = nullptr;
@@ -454,7 +452,7 @@ bool GUI::joystickRemap(const Input::JoystickEvent &arg) {
     return false;
 }
 
-bool GUI::onUTF8([[maybe_unused]] const Input::UTF8Event& arg) {
+bool GUI::onUTF8([[maybe_unused]] const Input::UTF8Event& arg) noexcept {
     return false;
 }
 

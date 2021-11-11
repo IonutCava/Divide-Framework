@@ -137,7 +137,7 @@ void RenderPassManager::render(const RenderParams& params) {
 
     RenderPassExecutor::PreRender();
 
-    Task* postFXTask;
+    Task* postFXTask = nullptr;
     {
         OPTICK_EVENT("RenderPassManager::BuildCommandBuffers");
         Time::ScopedTimer timeCommands(*_buildCommandBufferTimer);
@@ -278,7 +278,7 @@ void RenderPassManager::render(const RenderParams& params) {
     Wait(*postFXTask, pool);
     _context.flushCommandBuffer(*_postFXCommandBuffer, false);
 
-    for (RenderPass* pass : _renderPasses) {
+    for (const RenderPass* pass : _renderPasses) {
         pass->postRender();
     }
 
@@ -309,7 +309,7 @@ RenderPass& RenderPassManager::addRenderPass(const Str64& renderPassName,
     //Secondary command buffers. Used in a threaded fashion
     _renderPassCommandBuffer.push_back(GFX::AllocateCommandBuffer());
 
-    eastl::sort(begin(_renderPasses), end(_renderPasses), [](RenderPass* a, RenderPass* b) -> bool { return a->sortKey() < b->sortKey(); });
+    eastl::sort(begin(_renderPasses), end(_renderPasses), [](RenderPass* a, RenderPass* b) noexcept -> bool { return a->sortKey() < b->sortKey(); });
 
     _renderTasks.resize(_renderPasses.size());
 
@@ -337,7 +337,7 @@ U32 RenderPassManager::getLastTotalBinSize(const RenderStage renderStage) const 
 }
 
 const RenderPass& RenderPassManager::getPassForStage(const RenderStage renderStage) const {
-    for (RenderPass* pass : _renderPasses) {
+    for (const RenderPass* pass : _renderPasses) {
         if (pass->stageFlag() == renderStage) {
             return *pass;
         }

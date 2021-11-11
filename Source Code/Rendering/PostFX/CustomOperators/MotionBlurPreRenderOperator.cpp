@@ -50,7 +50,7 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
     parametersChanged();
 }
 
-bool MotionBlurPreRenderOperator::ready() const {
+bool MotionBlurPreRenderOperator::ready() const noexcept {
     if (_blurApplyPipelineCmd._pipeline != nullptr) {
         return PreRenderOperator::ready();
     }
@@ -58,7 +58,7 @@ bool MotionBlurPreRenderOperator::ready() const {
     return false;
 }
 
-void MotionBlurPreRenderOperator::parametersChanged() {
+void MotionBlurPreRenderOperator::parametersChanged() noexcept {
     NOP();
 }
 

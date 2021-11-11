@@ -101,7 +101,7 @@ public:
 
 public:
     // holeWidth & outerWidth are nos. of tiles; tileSize is a world-space length
-    explicit TileRing(I32 holeWidth, I32 outerWidth, F32 tileSize);
+    explicit TileRing(I32 holeWidth, I32 outerWidth, F32 tileSize) noexcept;
 
     PROPERTY_R(I32, tileCount, 0);
     PROPERTY_R(F32, tileSize, 1.f);
@@ -110,8 +110,8 @@ public:
     [[nodiscard]] vector<InstanceData> createInstanceDataVB(I32 ringID);
 
 private:
-    [[nodiscard]] bool InRing(I32 x, I32 y) const;
-    void AssignNeighbourSizes(I32 x, I32 y, Adjacency*) const;
+    [[nodiscard]] bool InRing(I32 x, I32 y) const noexcept;
+    void AssignNeighbourSizes(I32 x, I32 y, Adjacency*) const noexcept;
 
 private:
     const I32 _holeWidth = 0;

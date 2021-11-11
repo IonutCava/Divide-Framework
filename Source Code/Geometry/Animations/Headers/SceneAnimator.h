@@ -51,7 +51,7 @@ namespace Attorney {
 };
 
 /// Calculates the global transformation matrix for the given internal node
-void CalculateBoneToWorldTransform(Bone* pInternalNode);
+void CalculateBoneToWorldTransform(const eastl::shared_ptr<Bone>& pInternalNode) noexcept;
 class ByteBuffer;
 class MeshImporter;
 class PlatformContext;
@@ -66,11 +66,8 @@ class SceneAnimator {
     // index = animationID;
     using LineCollection = vector<LineMap>;
 
-    SceneAnimator();
-    ~SceneAnimator();
-
     /// This must be called to fill the SceneAnimator with valid data
-    bool init(PlatformContext& context, Bone* skeleton, const vector<Bone*>& bones);
+    bool init(PlatformContext& context, const eastl::shared_ptr<Bone>& skeleton, const vector<eastl::shared_ptr<Bone>>& bones);
     /// Frees all memory and initializes everything to a default state
     void release(bool releaseAnimations = true);
     void save(PlatformContext& context, ByteBuffer& dataOut) const;
@@ -164,7 +161,7 @@ class SceneAnimator {
     /// Same as above, except takes the index
     const mat4<F32>& boneTransform(const I32 animationIndex, const D64 dt, const I32 bIndex) {
         if (bIndex != -1) {
-            return _animations[animationIndex]->transforms(dt).matrices().at(bIndex);
+            return _animations[animationIndex]->transforms(dt).matrices()[bIndex];
         }
 
         _boneTransformCache.identity();
@@ -199,22 +196,22 @@ class SceneAnimator {
    private:
     bool init(PlatformContext& context);
     /// I/O operations
-    void saveSkeleton(ByteBuffer& dataOut, Bone* parent) const;
-    Bone* loadSkeleton(ByteBuffer& dataIn, Bone* parent);
+    void saveSkeleton(ByteBuffer& dataOut, const eastl::shared_ptr<Bone>& parent) const;
+    eastl::shared_ptr<Bone> loadSkeleton(ByteBuffer& dataIn, const eastl::shared_ptr<Bone>& parent);
 
-    static void UpdateTransforms(Bone* pNode);
+    static void UpdateTransforms(const eastl::shared_ptr<Bone>& pNode);
     void calculate(I32 animationIndex, D64 pTime);
-    static I32 CreateSkeleton(Bone* piNode,
+    static I32 CreateSkeleton(const eastl::shared_ptr<Bone>& piNode,
                               const mat4<F32>& parent,
                               vector<Line>& lines);
 
    private:
     /// Frame count of the longest registered animation
-    U32 _maximumAnimationFrames;
+    U32 _maximumAnimationFrames = 0u;
     /// Root node of the internal scene structure
-    Bone* _skeleton;
-    I16   _skeletonDepthCache;
-    vector<Bone*> _bones;
+    eastl::shared_ptr<Bone> _skeleton = nullptr;
+    I16   _skeletonDepthCache = -1;
+    vector<eastl::shared_ptr<Bone>> _bones;
     /// A vector that holds each animation
     vector<AnimEvaluator_ptr> _animations;
     /// find animations quickly

@@ -82,7 +82,7 @@ public:
 
     }
 
-    size_t getHash() const noexcept override;
+    size_t getHash() const override;
 
     vector<ShaderModuleDescriptor> _modules;
 };
@@ -178,10 +178,10 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     [[nodiscard]] static ShaderProgram* FindShaderProgram(size_t shaderHash);
 
     /// Return a default shader used for general purpose rendering
-    [[nodiscard]] static const ShaderProgram_ptr& DefaultShader();
+    [[nodiscard]] static const ShaderProgram_ptr& DefaultShader() noexcept;
 
-    [[nodiscard]] static const ShaderProgram_ptr& NullShader();
-    [[nodiscard]] static const I64                NullShaderGUID();
+    [[nodiscard]] static const ShaderProgram_ptr& NullShader() noexcept;
+    [[nodiscard]] static const I64                NullShaderGUID() noexcept;
 
     static void RebuildAllShaders();
 
@@ -241,7 +241,7 @@ namespace Attorney {
             ShaderProgram::UseShaderTextCache(state);
         }
 
-        static void UseShaderBinaryCache(const bool state) {
+        static void UseShaderBinaryCache(const bool state) noexcept {
             ShaderProgram::UseShaderBinaryCache(state);
         }
 

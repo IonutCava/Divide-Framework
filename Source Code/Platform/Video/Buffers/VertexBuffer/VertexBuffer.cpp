@@ -43,7 +43,7 @@ void VertexBuffer::computeNormals() {
     const size_t indexCount = getIndexCount();
 
     vector<vec3<F32>> normalBuffer(vertCount, 0.0f);
-    for (U32 i = 0; i < indexCount; i += 3) {
+    for (size_t i = 0u; i < indexCount; i += 3) {
 
         const U32 idx0 = getIndex(i + 0);
         if (idx0 == PRIMITIVE_RESTART_INDEX_L || idx0 == PRIMITIVE_RESTART_INDEX_S) {
@@ -92,8 +92,8 @@ void VertexBuffer::computeTangents() {
             continue;
         }
 
-        const U32 idx1 = getIndex(i + 1);
-        const U32 idx2 = getIndex(i + 2);
+        const U32 idx1 = getIndex(to_size(i) + 1);
+        const U32 idx2 = getIndex(to_size(i) + 2);
 
         const vec3<F32>& v0 = getPosition(idx0);
         const vec3<F32>& v1 = getPosition(idx1);
@@ -123,7 +123,7 @@ void VertexBuffer::computeTangents() {
     }
 }
 
-void VertexBuffer::fromBuffer(VertexBuffer& other) {
+void VertexBuffer::fromBuffer(const VertexBuffer& other) {
     reset();
     _staticBuffer = other._staticBuffer;
     _format = other._format;

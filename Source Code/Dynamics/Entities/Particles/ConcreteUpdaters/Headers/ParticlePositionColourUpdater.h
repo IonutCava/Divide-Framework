@@ -43,7 +43,7 @@ class ParticlePositionColourUpdater final : public ParticleUpdater {
     vec4<F32> _maxPos = VECTOR4_UNIT;
 
    public:
-    ParticlePositionColourUpdater(PlatformContext& context) : ParticleUpdater(context)
+    ParticlePositionColourUpdater(PlatformContext& context) noexcept : ParticleUpdater(context)
     {
     }
 

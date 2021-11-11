@@ -34,7 +34,7 @@ void RenderBin::sort(const RenderingOrder renderOrder) {
             // 4: finally, sort by distance to camera (front to back)
             eastl::sort(binStartIt,
                         binEndIt,
-                        [](const RenderBinItem& a, const RenderBinItem& b) -> bool {
+                        [](const RenderBinItem& a, const RenderBinItem& b) noexcept -> bool {
                             // Sort by shader in all states The sort key is the shader id (for now)
                             if (a._shaderKey != b._shaderKey) { return a._shaderKey < b._shaderKey; }
                             // If the shader values are the same, we use the state hash for sorting
@@ -50,21 +50,21 @@ void RenderBin::sort(const RenderingOrder renderOrder) {
         case RenderingOrder::BACK_TO_FRONT: {
             eastl::sort(binStartIt,
                         binEndIt,
-                        [](const RenderBinItem& a, const RenderBinItem& b) -> bool {
+                        [](const RenderBinItem& a, const RenderBinItem& b) noexcept -> bool {
                             return a._distanceToCameraSq > b._distanceToCameraSq;
                         });
         } break;
         case RenderingOrder::FRONT_TO_BACK: {
             eastl::sort(binStartIt,
                         binEndIt,
-                        [](const RenderBinItem& a, const RenderBinItem& b) -> bool {
+                        [](const RenderBinItem& a, const RenderBinItem& b) noexcept -> bool {
                             return a._distanceToCameraSq < b._distanceToCameraSq;
                         });
         } break;
         case RenderingOrder::WATER_FIRST: {
             eastl::sort(begin(_renderBinStack),
                         binEndIt,
-                        [](const RenderBinItem& a, const RenderBinItem&) -> bool {
+                        [](const RenderBinItem& a, const RenderBinItem&) noexcept -> bool {
                             return a._renderable->getSGN()->getNode().type() == SceneNodeType::TYPE_WATER;
                         });
         } break;

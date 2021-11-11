@@ -2,13 +2,11 @@
 
 #include "Headers/CEGUIInput.h"
 
-#include <CEGUI/CEGUI.h>
-
 #include "GUI/Headers/GUI.h"
 
 namespace Divide {
 
-CEGUIInput::CEGUIInput(GUI& parent)
+CEGUIInput::CEGUIInput(GUI& parent) noexcept
     : _parent(parent)
 {
 }

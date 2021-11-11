@@ -138,7 +138,7 @@ Editor::~Editor()
     g_windowManager = nullptr;
 }
 
-void Editor::idle() {
+void Editor::idle() noexcept {
     NOP();
 }
 
@@ -335,7 +335,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     };
 
     platform_io.Platform_GetWindowPos = [](ImGuiViewport* viewport) -> ImVec2 {
-        if (ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData)
+        if (const ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData)
         {
             const vec2<I32>& pos = data->_window->getPosition();
             return ImVec2((F32)pos.x, (F32)pos.y);
@@ -345,7 +345,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     };
 
     platform_io.Platform_GetWindowSize = [](ImGuiViewport* viewport) -> ImVec2 {
-        if (ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData) {
+        if (const ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData) {
             const vec2<U16>& dim = data->_window->getDimensions();
             return ImVec2((F32)dim.width, (F32)dim.height);
         }
@@ -354,7 +354,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     };
 
     platform_io.Platform_GetWindowFocus = [](ImGuiViewport* viewport) -> bool {
-        if (ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData) {
+        if (const ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData) {
             return data->_window->hasFocus();
         }
         DIVIDE_UNEXPECTED_CALL_MSG("Editor::Platform_GetWindowFocus failed!");
@@ -374,13 +374,13 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     };
 
     platform_io.Platform_SetWindowFocus = [](ImGuiViewport* viewport) {
-        if (ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData) {
+        if (const ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData) {
             data->_window->bringToFront();
         }
     };
 
     platform_io.Platform_SetWindowTitle = [](ImGuiViewport* viewport, const char* title) {
-        if (ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData) {
+        if (const ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData) {
             data->_window->title(title);
         }
     };
@@ -398,7 +398,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
             ImGui::SetCurrentContext(editor->_imguiContexts[to_base(ImGuiContextType::Editor)]);
             GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
             GFX::CommandBuffer& buffer = sBuffer();
-            ImDrawData* pDrawData = viewport->DrawData;
+            const ImDrawData* pDrawData = viewport->DrawData;
             const I32 fb_width = to_I32(pDrawData->DisplaySize.x * ImGui::GetIO().DisplayFramebufferScale.x);
             const I32 fb_height = to_I32(pDrawData->DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y);
             editor->renderDrawList(viewport->DrawData, Rect<I32>(0, 0, fb_width, fb_height), ((DisplayWindow*)viewport->PlatformHandle)->getGUID(), buffer);
@@ -536,7 +536,8 @@ void Editor::toggle(const bool state) {
     if (running() == state) {
         return;
     }
-    Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+
+    const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
 
     running(state);
 
@@ -638,7 +639,7 @@ void Editor::update(const U64 deltaTimeUS) {
             _gizmo->enable(_isScenePaused);
             SceneManager* sMgr = _context.kernel().sceneManager();
             sMgr->resetSelection(0);
-            Scene& activeScene = sMgr->getActiveScene();
+            const Scene& activeScene = sMgr->getActiveScene();
             
             if (_isScenePaused) {
                 activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
@@ -742,7 +743,7 @@ bool Editor::framePostRenderStarted(const FrameEvent& evt) {
         io.MouseHoveredViewport = 0;
         ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
         for (I32 n = 0; n < platform_io.Viewports.Size; n++) {
-            ImGuiViewport* viewport = platform_io.Viewports[n];
+            const ImGuiViewport* viewport = platform_io.Viewports[n];
             const DisplayWindow* window = static_cast<DisplayWindow*>(viewport->PlatformHandle);
             if (window != nullptr && window->isHovered() && !(viewport->Flags & ImGuiViewportFlags_NoInputs)) {
                 ImGui::GetIO().MouseHoveredViewport = viewport->ID;
@@ -776,7 +777,7 @@ bool Editor::framePostRenderStarted(const FrameEvent& evt) {
 }
 
 
-bool Editor::frameEnded([[maybe_unused]] const FrameEvent& evt) {
+bool Editor::frameEnded([[maybe_unused]] const FrameEvent& evt) noexcept {
 
     if (running() && _stepQueue > 0) {
         --_stepQueue;
@@ -785,7 +786,7 @@ bool Editor::frameEnded([[maybe_unused]] const FrameEvent& evt) {
     return true;
 }
 
-Rect<I32> Editor::scenePreviewRect(bool globalCoords) const {
+Rect<I32> Editor::scenePreviewRect(const bool globalCoords) const noexcept {
     const SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(_dockedWindows[to_base(WindowType::SceneView)]);
     if (globalCoords) {
         return sceneView->sceneRect();
@@ -988,10 +989,10 @@ bool Editor::onKeyUp(const Input::KeyEvent& key) {
     return wantsKeyboard();
 }
 
-ImGuiViewport* Editor::FindViewportByPlatformHandle(ImGuiContext* context, DisplayWindow* window) {
+ImGuiViewport* Editor::FindViewportByPlatformHandle(ImGuiContext* context, const DisplayWindow* window) {
     if (window != nullptr) {
         for (I32 i = 0; i != context->Viewports.Size; i++) {
-            DisplayWindow* it = static_cast<DisplayWindow*>(context->Viewports[i]->PlatformHandle);
+            const DisplayWindow* it = static_cast<DisplayWindow*>(context->Viewports[i]->PlatformHandle);
 
             if (it != nullptr && it->getGUID() == window->getGUID()) {
                 return context->Viewports[i];
@@ -1041,7 +1042,7 @@ bool Editor::mouseMoved(const Input::MouseMoveEvent& arg) {
                 io.MousePos = ImVec2(to_F32(mPosGlobal.x), to_F32(mPosGlobal.y));
             }
 
-            for (bool down : io.MouseDown) {
+            for (const bool down : io.MouseDown) {
                 if (down) {
                     anyDown = true;
                     break;
@@ -1049,7 +1050,7 @@ bool Editor::mouseMoved(const Input::MouseMoveEvent& arg) {
             }
         }
         WindowManager::SetCaptureMouse(anyDown);
-        SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(_dockedWindows[to_base(WindowType::SceneView)]);
+        const SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(_dockedWindows[to_base(WindowType::SceneView)]);
         const ImVec2 editorMousePos = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO.MousePos;
         scenePreviewHovered(sceneView->isHovered() && sceneView->sceneRect().contains(editorMousePos.x, editorMousePos.y));
 
@@ -1133,7 +1134,7 @@ bool Editor::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
     return wantsMouse();
 }
 
-bool Editor::joystickButtonPressed([[maybe_unused]] const Input::JoystickEvent &arg) {
+bool Editor::joystickButtonPressed([[maybe_unused]] const Input::JoystickEvent &arg) noexcept {
 
     if (!isInit() || !running()) {
         return false;
@@ -1142,7 +1143,7 @@ bool Editor::joystickButtonPressed([[maybe_unused]] const Input::JoystickEvent &
     return wantsJoystick();
 }
 
-bool Editor::joystickButtonReleased([[maybe_unused]] const Input::JoystickEvent &arg) {
+bool Editor::joystickButtonReleased([[maybe_unused]] const Input::JoystickEvent &arg) noexcept {
 
     if (!isInit() || !running()) {
         return false;
@@ -1151,7 +1152,7 @@ bool Editor::joystickButtonReleased([[maybe_unused]] const Input::JoystickEvent 
     return wantsJoystick();
 }
 
-bool Editor::joystickAxisMoved([[maybe_unused]] const Input::JoystickEvent &arg) {
+bool Editor::joystickAxisMoved([[maybe_unused]] const Input::JoystickEvent &arg) noexcept {
 
     if (!isInit() || !running()) {
         return false;
@@ -1160,7 +1161,7 @@ bool Editor::joystickAxisMoved([[maybe_unused]] const Input::JoystickEvent &arg)
     return wantsJoystick();
 }
 
-bool Editor::joystickPovMoved([[maybe_unused]] const Input::JoystickEvent &arg) {
+bool Editor::joystickPovMoved([[maybe_unused]] const Input::JoystickEvent &arg) noexcept {
 
     if (!isInit() || !running()) {
         return false;
@@ -1169,7 +1170,7 @@ bool Editor::joystickPovMoved([[maybe_unused]] const Input::JoystickEvent &arg) 
     return wantsJoystick();
 }
 
-bool Editor::joystickBallMoved([[maybe_unused]] const Input::JoystickEvent &arg) {
+bool Editor::joystickBallMoved([[maybe_unused]] const Input::JoystickEvent &arg) noexcept {
 
     if (!isInit() || !running()) {
         return false;
@@ -1178,7 +1179,7 @@ bool Editor::joystickBallMoved([[maybe_unused]] const Input::JoystickEvent &arg)
     return wantsJoystick();
 }
 
-bool Editor::joystickAddRemove([[maybe_unused]] const Input::JoystickEvent &arg) {
+bool Editor::joystickAddRemove([[maybe_unused]] const Input::JoystickEvent &arg) noexcept {
 
     if (!isInit() || !running()) {
         return false;
@@ -1187,7 +1188,7 @@ bool Editor::joystickAddRemove([[maybe_unused]] const Input::JoystickEvent &arg)
     return wantsJoystick();
 }
 
-bool Editor::joystickRemap([[maybe_unused]] const Input::JoystickEvent &arg) {
+bool Editor::joystickRemap([[maybe_unused]] const Input::JoystickEvent &arg) noexcept {
 
     if (!isInit() || !running()) {
         return false;
@@ -1209,7 +1210,7 @@ bool Editor::wantsMouse() const {
         return _gizmo->needsMouse();
     }
 
-    for (ImGuiContext* ctx : _imguiContexts) {
+    for (const ImGuiContext* ctx : _imguiContexts) {
         if (ctx->IO.WantCaptureMouse) {
             return true;
         }
@@ -1218,14 +1219,14 @@ bool Editor::wantsMouse() const {
     return false;
 }
 
-bool Editor::wantsKeyboard() const {
+bool Editor::wantsKeyboard() const noexcept {
     if (!isInit() || !running() || scenePreviewFocused()) {
         return false;
     }
     if (scenePreviewFocused() && !simulationPauseRequested()) {
         return false;
     }
-    for (ImGuiContext* ctx : _imguiContexts) {
+    for (const ImGuiContext* ctx : _imguiContexts) {
         if (ctx->IO.WantCaptureKeyboard) {
             return true;
         }
@@ -1234,7 +1235,7 @@ bool Editor::wantsKeyboard() const {
     return false;
 }
 
-bool Editor::wantsJoystick() const {
+bool Editor::wantsJoystick() const noexcept {
     if (!isInit() || !running()) {
         return false;
     }
@@ -1357,7 +1358,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
     static GFXDevice& gfxDevice = _context.gfx();
 
     const ImDrawCallback toggleColours { []([[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* cmd) -> void {
-        TextureCallbackData data = *static_cast<TextureCallbackData*>(cmd->UserCallbackData);
+        const TextureCallbackData data = *static_cast<TextureCallbackData*>(cmd->UserCallbackData);
 
         GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
         GFX::CommandBuffer& buffer = sBuffer();
@@ -1375,7 +1376,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
     } };
 
     bool closed = false;
-    bool opened;
+    bool opened = false;
     if (useModal) {
         ImGui::OpenPopup(modalName);
         opened = ImGui::BeginPopupModal(modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize);
@@ -1536,7 +1537,7 @@ bool Editor::spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const s
     nodeDescriptor._componentMask = normalMask;
     nodeDescriptor._node = mesh;
 
-    Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+    const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
     const SceneGraphNode* node = activeScene.sceneGraph()->getRoot()->addChildNode(nodeDescriptor);
     if (node != nullptr) {
         const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
@@ -1553,12 +1554,12 @@ bool Editor::spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const s
 }
 
 ECSManager& Editor::getECSManager() const {
-    Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+    const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
     return activeScene.sceneGraph()->GetECSManager();
 }
 
 LightPool& Editor::getActiveLightPool() const {
-    Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+    const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
     return *activeScene.lightPool();
 }
 
@@ -1597,7 +1598,7 @@ void Editor::loadNode(SceneGraphNode* sgn) const {
 }
 
 void Editor::queueRemoveNode(const I64 nodeGUID) {
-    Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+    const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
     activeScene.sceneGraph()->removeNode(nodeGUID);
     unsavedSceneChanges(true);
 }
@@ -1718,12 +1719,12 @@ bool Editor::loadFromXML() {
     return false;
 }
 
-void PushReadOnly() noexcept {
+void PushReadOnly() {
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
 }
 
-void PopReadOnly() noexcept {
+void PopReadOnly() {
     ImGui::PopItemFlag();
     ImGui::PopStyleVar();
 }

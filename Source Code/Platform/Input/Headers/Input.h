@@ -279,11 +279,11 @@ namespace Input {
     SDL_Keycode SDLKeyCodeFromKey(KeyCode code) noexcept;
     KeyCode KeyCodeFromSDLKey(SDL_Keycode code) noexcept;
 
-    KeyCode KeyCodeByName(const char* keyName);
+    KeyCode KeyCodeByName(const char* keyName) noexcept;
     MouseButton mouseButtonByName(const string& buttonName);
     JoystickElement joystickElementByName(const string& elementName);
 
-    InputState GetKeyState(U8 deviceIndex, KeyCode key);
+    InputState GetKeyState(U8 deviceIndex, KeyCode key) noexcept;
     InputState GetMouseButtonState(U8 deviceIndex, MouseButton button) noexcept;
     InputState GetJoystickElementState(Joystick deviceIndex, JoystickElement element) noexcept;
 

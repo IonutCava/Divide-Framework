@@ -76,7 +76,7 @@ class ParticleEmitter final : public SceneNode {
         _sources.push_back(source);
     }
 
-    [[nodiscard]] U32 getAliveParticleCount() const;
+    [[nodiscard]] U32 getAliveParticleCount() const noexcept;
 
    protected:
 

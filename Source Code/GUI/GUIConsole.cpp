@@ -11,8 +11,6 @@
 
 #include "Platform/Headers/PlatformRuntime.h"
 
-#include <CEGUI/CEGUI.h>
-
 namespace Divide {
 
 namespace {

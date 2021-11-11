@@ -245,11 +245,11 @@ class SceneNodeSceneGraph {
 };
 
 class SceneNodeNetworkComponent {
-    static void onNetworkSend(SceneGraphNode* sgn, SceneNode& node, WorldPacket& dataOut) {
+    static void onNetworkSend(SceneGraphNode* sgn, const SceneNode& node, WorldPacket& dataOut) {
         node.onNetworkSend(sgn, dataOut);
     }
 
-    static void onNetworkReceive(SceneGraphNode* sgn, SceneNode& node, WorldPacket& dataIn) {
+    static void onNetworkReceive(SceneGraphNode* sgn, const SceneNode& node, WorldPacket& dataIn) {
         node.onNetworkReceive(sgn, dataIn);
     }
 

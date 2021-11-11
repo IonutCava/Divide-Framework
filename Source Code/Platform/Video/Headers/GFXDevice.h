@@ -141,7 +141,7 @@ FWD_DECLARE_MANAGED_STRUCT(DebugView);
 template<typename Data, size_t N>
 struct DebugPrimitiveHandler
 {
-    DebugPrimitiveHandler()             
+    DebugPrimitiveHandler()   noexcept
     {
         std::atomic_init(&_Id, 0u);
         _debugPrimitives.fill(nullptr);
@@ -153,7 +153,7 @@ struct DebugPrimitiveHandler
 
     void reset();
 
-    void add(Data&& data) {
+    void add(Data&& data) noexcept {
         if (_Id.load() == N) {
             return;
         }
@@ -204,11 +204,11 @@ public:  // GPU interface
     void endFrame(DisplayWindow& window, bool global);
 
     void debugDraw(const SceneRenderState& sceneRenderState, const Camera* activeCamera, GFX::CommandBuffer& bufferInOut);
-    void debugDrawLines(const Line* lines, size_t count);
-    void debugDrawBox(const vec3<F32>& min, const vec3<F32>& max, const FColour3& colour);
-    void debugDrawSphere(const vec3<F32>& center, F32 radius, const FColour3& colour);
-    void debugDrawCone(const vec3<F32>& root, const vec3<F32>& direction, F32 length, F32 radius, const FColour3& colour);
-    void debugDrawFrustum(const Frustum& frustum, const FColour3& colour);
+    void debugDrawLines(const Line* lines, size_t count) noexcept;
+    void debugDrawBox(const vec3<F32>& min, const vec3<F32>& max, const FColour3& colour) noexcept;
+    void debugDrawSphere(const vec3<F32>& center, F32 radius, const FColour3& colour) noexcept;
+    void debugDrawCone(const vec3<F32>& root, const vec3<F32>& direction, F32 length, F32 radius, const FColour3& colour) noexcept;
+    void debugDrawFrustum(const Frustum& frustum, const FColour3& colour) noexcept;
     void flushCommandBuffer(GFX::CommandBuffer& commandBuffer, bool batch = true);
     
     /// Generate a cubemap from the given position
@@ -237,7 +237,7 @@ public:  // GPU interface
     inline const Rect<I32>& getViewport() const noexcept;
 
     void setPreviousViewProjection(const mat4<F32>& view, const mat4<F32>& projection) noexcept;
-    mat4<F32> getPreviousViewProjection() const;
+    mat4<F32> getPreviousViewProjection() const noexcept;
 
     inline F32 renderingAspectRatio() const noexcept;
     inline const vec2<U16>& renderingResolution() const noexcept;
@@ -253,8 +253,8 @@ public:  // GPU interface
     /// Save a screenshot in TGA format
     void screenshot(const string& filename) const;
 
-    ShaderComputeQueue& shaderComputeQueue();
-    const ShaderComputeQueue& shaderComputeQueue() const;
+    ShaderComputeQueue& shaderComputeQueue() noexcept;
+    const ShaderComputeQueue& shaderComputeQueue() const noexcept;
 
 public:  // Accessors and Mutators
     inline Renderer& getRenderer() const;
@@ -339,7 +339,7 @@ public:
 
     void blurTarget(RenderTargetHandle& blurSource, 
                     RenderTargetHandle& blurBuffer,
-                    RenderTargetHandle& blurTarget, ///< can be the same as source
+                    const RenderTargetHandle& blurTarget, ///< can be the same as source
                     RTAttachmentType att,
                     U8 index,
                     I32 kernelSize,
@@ -399,8 +399,8 @@ protected:
 
     void updateCullCount(const RenderPass::BufferData& bufferData, GFX::CommandBuffer& cmdBufferInOut);
 
-    RenderAPIWrapper& getAPIImpl() noexcept { return *_api; }
-    const RenderAPIWrapper& getAPIImpl() const noexcept { return *_api; }
+    RenderAPIWrapper& getAPIImpl() { return *_api; }
+    const RenderAPIWrapper& getAPIImpl() const { return *_api; }
 
 private:
     /// Upload draw related data to the GPU (view & projection matrices, viewport settings, etc)

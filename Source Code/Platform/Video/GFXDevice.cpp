@@ -697,7 +697,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             blur.propertyDescriptor(shaderDescriptorSingle);
             _blurBoxShaderSingle = CreateResource<ShaderProgram>(cache, blur, loadTasks);
             _blurBoxShaderSingle->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
-                ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
+                const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
@@ -715,7 +715,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             blur.propertyDescriptor(shaderDescriptorLayered);
             _blurBoxShaderLayered = CreateResource<ShaderProgram>(cache, blur, loadTasks);
             _blurBoxShaderLayered->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
-                ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
+                const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
@@ -746,7 +746,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             blur.propertyDescriptor(shaderDescriptorSingle);
             _blurGaussianShaderSingle = CreateResource<ShaderProgram>(cache, blur, loadTasks);
             _blurGaussianShaderSingle->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
-                ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
+                const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
@@ -767,7 +767,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             blur.propertyDescriptor(shaderDescriptorLayered);
             _blurGaussianShaderLayered = CreateResource<ShaderProgram>(cache, blur, loadTasks);
             _blurGaussianShaderLayered->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
-                ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
+                const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
@@ -824,7 +824,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     _renderer = eastl::make_unique<Renderer>(context(), cache);
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0);
-    DisplayWindow* mainWindow = context().app().windowManager().mainWindow();
+    const DisplayWindow* mainWindow = context().app().windowManager().mainWindow();
 
     SizeChangeParams params = {};
     params.width = _rtPool->screenTarget().getWidth();
@@ -1138,7 +1138,7 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
 
 void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
                            RenderTargetHandle& blurBuffer,
-                           RenderTargetHandle& blurTarget,
+                           const RenderTargetHandle& blurTarget,
                            const RTAttachmentType att,
                            const U8 index,
                            const I32 kernelSize,
@@ -1168,7 +1168,7 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
 
         s_pushConstantsCommand._constants.set(_ID("verticalBlur"), GFX::PushConstantType::INT, false);
         if (gaussian) {
-            vec2<F32> blurSize(1.0f / blurBuffer._rt->getResolution().width, 1.0f / blurBuffer._rt->getResolution().height);
+            const vec2<F32> blurSize(1.0f / blurBuffer._rt->getResolution().width, 1.0f / blurBuffer._rt->getResolution().height);
             s_pushConstantsCommand._constants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSize);
             s_pushConstantsCommand._constants.set(_ID("layerCount"), GFX::PushConstantType::INT, to_I32(layerCount));
             s_pushConstantsCommand._constants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, 0);
@@ -1199,7 +1199,7 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
 
         s_pushConstantsCommand._constants.set(_ID("verticalBlur"), GFX::PushConstantType::INT, true);
         if (gaussian) {
-            vec2<F32> blurSize(1.0f / blurTarget._rt->getResolution().width, 1.0f / blurTarget._rt->getResolution().height);
+            const vec2<F32> blurSize(1.0f / blurTarget._rt->getResolution().width, 1.0f / blurTarget._rt->getResolution().height);
             s_pushConstantsCommand._constants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSize);
         } else {
             s_pushConstantsCommand._constants.set(_ID("size"), GFX::PushConstantType::VEC2, vec2<F32>(blurTarget._rt->getResolution()));
@@ -1231,11 +1231,11 @@ void GFXDevice::decreaseResolution() {
 }
 
 void GFXDevice::stepResolution(const bool increment) {
-    auto compare = [](const vec2<U16>& a, const vec2<U16>& b) noexcept -> bool {
+    const auto compare = [](const vec2<U16>& a, const vec2<U16>& b) noexcept -> bool {
         return a.x > b.x || a.y > b.y;
     };
 
-    WindowManager& winManager = _parent.platformContext().app().windowManager();
+    const WindowManager& winManager = _parent.platformContext().app().windowManager();
 
     const vector<GPUState::GPUVideoMode>& displayModes = _state.getDisplayModes(winManager.mainWindow()->currentDisplayIndex());
 
@@ -1269,7 +1269,7 @@ void GFXDevice::stepResolution(const bool increment) {
 
 void GFXDevice::toggleFullScreen() const
 {
-    WindowManager& winManager = _parent.platformContext().app().windowManager();
+    const WindowManager& winManager = _parent.platformContext().app().windowManager();
 
     switch (winManager.mainWindow()->type()) {
         case WindowType::WINDOW:
@@ -1401,8 +1401,8 @@ void GFXDevice::setClipPlanes(const FrustumClipPlanes& clipPlanes) {
         auto& planes = _clippingPlanes.planes();
         auto& states = _clippingPlanes.planeState();
 
-        U8 count = 0;
-        for (U8 i = 0; i < to_U8(ClipPlaneIndex::COUNT); ++i) {
+        U8 count = 0u;
+        for (U8 i = 0u; i < to_U8(ClipPlaneIndex::COUNT); ++i) {
             if (states[i]) {
                 _gpuBlock._data._clipPlanes[count++] = planes[i];
                 if (count == Config::MAX_CLIP_DISTANCES) {
@@ -1508,7 +1508,7 @@ void GFXDevice::setPreviousViewProjection(const mat4<F32>& view, const mat4<F32>
     _gpuBlock._needsUpload = true;
 }
 
-mat4<F32> GFXDevice::getPreviousViewProjection() const {
+mat4<F32> GFXDevice::getPreviousViewProjection() const noexcept {
     return _gpuBlock._data._PreviousViewProjectionMatrix;
 }
 
@@ -1544,7 +1544,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
         const GFX::CommandType cmdType = static_cast<GFX::CommandType>(cmd._typeIndex);
         switch (cmdType) {
             case GFX::CommandType::BLIT_RT: {
-                GFX::BlitRenderTargetCommand* crtCmd = commandBuffer.get<GFX::BlitRenderTargetCommand>(cmd);
+                const GFX::BlitRenderTargetCommand* crtCmd = commandBuffer.get<GFX::BlitRenderTargetCommand>(cmd);
                 RenderTarget& source = renderTargetPool().renderTarget(crtCmd->_source);
                 RenderTarget& destination = renderTargetPool().renderTarget(crtCmd->_destination);
 
@@ -1597,7 +1597,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 setViewport(commandBuffer.get<GFX::SetViewportCommand>(cmd)->_viewport);
                 break;
             case GFX::CommandType::PUSH_VIEWPORT: {
-                GFX::PushViewportCommand* crtCmd = commandBuffer.get<GFX::PushViewportCommand>(cmd);
+                const GFX::PushViewportCommand* crtCmd = commandBuffer.get<GFX::PushViewportCommand>(cmd);
                 _viewportStack.push(_viewport);
                 setViewport(crtCmd->_viewport);
             } break;
@@ -1606,12 +1606,12 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 _viewportStack.pop();
             } break;
             case GFX::CommandType::SET_CAMERA: {
-                GFX::SetCameraCommand* crtCmd = commandBuffer.get<GFX::SetCameraCommand>(cmd);
+                const GFX::SetCameraCommand* crtCmd = commandBuffer.get<GFX::SetCameraCommand>(cmd);
                 // Tell the Rendering API to draw from our desired PoV
                 renderFromCamera(crtCmd->_cameraSnapshot);
             } break;
             case GFX::CommandType::PUSH_CAMERA: {
-                GFX::PushCameraCommand* crtCmd = commandBuffer.get<GFX::PushCameraCommand>(cmd);
+                const GFX::PushCameraCommand* crtCmd = commandBuffer.get<GFX::PushCameraCommand>(cmd);
                 DIVIDE_ASSERT(_cameraSnapshots.size() < _cameraSnapshots._Get_container().max_size(), "GFXDevice::flushCommandBuffer error: PUSH_CAMERA stack too deep!");
 
                 _cameraSnapshots.push(_activeCameraSnapshot);
@@ -1633,8 +1633,8 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
             case GFX::CommandType::DRAW_IMGUI:
             case GFX::CommandType::DRAW_COMMANDS:
             case GFX::CommandType::DISPATCH_COMPUTE:
-                uploadGPUBlock(); /*no break. fall-through*/
-
+                uploadGPUBlock(); 
+                [[fallthrough]];
             default: break;
         }
 
@@ -2243,7 +2243,7 @@ void GFXDevice::getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& na
     }
 }
 
-void GFXDevice::debugDrawLines(const Line* lines, const size_t count) {
+void GFXDevice::debugDrawLines(const Line* lines, const size_t count) noexcept {
     _debugLines.add({ lines, count});
 }
 
@@ -2267,7 +2267,7 @@ void GFXDevice::debugDrawLines(GFX::CommandBuffer& bufferInOut) {
     _debugLines._Id.store(0u);
 }
 
-void GFXDevice::debugDrawBox(const vec3<F32>& min, const vec3<F32>& max, const FColour3& colour) {
+void GFXDevice::debugDrawBox(const vec3<F32>& min, const vec3<F32>& max, const FColour3& colour) noexcept {
     _debugBoxes.add({ min, max, colour });
 }
 
@@ -2291,7 +2291,7 @@ void GFXDevice::debugDrawBoxes(GFX::CommandBuffer& bufferInOut) {
     _debugBoxes._Id.store(0u);
 }
 
-void GFXDevice::debugDrawSphere(const vec3<F32>& center, F32 radius, const FColour3& colour) {
+void GFXDevice::debugDrawSphere(const vec3<F32>& center, F32 radius, const FColour3& colour) noexcept {
     _debugSpheres.add({ center, radius, colour });
 }
 
@@ -2315,7 +2315,7 @@ void GFXDevice::debugDrawSpheres(GFX::CommandBuffer& bufferInOut) {
     _debugSpheres._Id.store(0u);
 }
 
-void GFXDevice::debugDrawCone(const vec3<F32>& root, const vec3<F32>& direction, F32 length, F32 radius, const FColour3& colour) {
+void GFXDevice::debugDrawCone(const vec3<F32>& root, const vec3<F32>& direction, F32 length, F32 radius, const FColour3& colour) noexcept {
     _debugCones.add({root, direction, length, radius, colour});
 }
 
@@ -2339,7 +2339,7 @@ void GFXDevice::debugDrawCones(GFX::CommandBuffer& bufferInOut) {
     _debugCones._Id.store(0u);
 }
 
-void GFXDevice::debugDrawFrustum(const Frustum& frustum, const FColour3& colour) {
+void GFXDevice::debugDrawFrustum(const Frustum& frustum, const FColour3& colour) noexcept {
     _debugFrustums.add({ frustum, colour });
 }
 
@@ -2362,8 +2362,8 @@ void GFXDevice::debugDrawFrustums(GFX::CommandBuffer& bufferInOut) {
         const FColour3& endColour = _debugFrustums._debugData[f].second;
         const FColour3 startColour = endColour * 0.25f;
 
-        UColour4 startColourU = Util::ToUIntColour(startColour);
-        UColour4 endColourU = Util::ToUIntColour(endColour);
+        const UColour4 startColourU = Util::ToUIntColour(startColour);
+        const UColour4 endColourU = Util::ToUIntColour(endColour);
 
         U8 lineCount = 0;
         // Draw Near Plane
@@ -2765,12 +2765,12 @@ ShaderBuffer* GFXDevice::newSB(const ShaderBufferDescriptor& descriptor) {
 }
 #pragma endregion
 
-ShaderComputeQueue& GFXDevice::shaderComputeQueue() {
+ShaderComputeQueue& GFXDevice::shaderComputeQueue() noexcept {
     assert(_shaderComputeQueue != nullptr);
     return *_shaderComputeQueue;
 }
 
-const ShaderComputeQueue& GFXDevice::shaderComputeQueue() const {
+const ShaderComputeQueue& GFXDevice::shaderComputeQueue() const noexcept {
     assert(_shaderComputeQueue != nullptr);
     return *_shaderComputeQueue;
 }

@@ -51,7 +51,7 @@ namespace Util {
 
         //=========================================
         /// implicit cast, so that you can do something like foo = CRC(dat,siz);
-        operator U32() const { return Get(); }
+        operator U32() const  noexcept { return Get(); }
 
         //=========================================
         /// getting the crc

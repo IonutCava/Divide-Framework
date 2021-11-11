@@ -75,7 +75,7 @@ GUIElement* GUIInterface::getGUIElementImpl(const U64 elementName, const GUIType
 
 GUIElement* GUIInterface::getGUIElementImpl(const I64 elementID, const GUIType type) const {
     GUIElement* ret = nullptr;
-    GUIElement* element;
+    GUIElement* element = nullptr;
     if (type == GUIType::COUNT) {
         for (U8 i = 0; i < to_base(GUIType::COUNT); ++i) {
             for (const GUIMap::value_type& guiStackIterator : _guiElements[i]) {

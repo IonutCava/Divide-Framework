@@ -44,7 +44,7 @@ class BoundingSphere;
 class Frustum {
    public:
 
-    void set(const Frustum& other);
+    void set(const Frustum& other) noexcept;
 
     [[nodiscard]] FrustumCollision ContainsPoint(const vec3<F32>& point, I8& lastPlaneCache) const noexcept;
     [[nodiscard]] FrustumCollision ContainsBoundingBox(const BoundingBox& bbox, I8& lastPlaneCache) const noexcept;

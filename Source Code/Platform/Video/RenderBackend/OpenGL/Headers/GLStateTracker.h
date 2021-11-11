@@ -45,16 +45,16 @@ namespace Divide {
     class glBufferLockManager;
 
     struct GLStateTracker {
-        void init() noexcept;
+        void init();
 
         /// Enable or disable primitive restart and ensure that the correct index size is used
         void togglePrimitiveRestart(bool state);
         /// Enable or disable primitive rasterization
         void toggleRasterization(bool state);
         /// Switch the currently active vertex array object
-        bool setActiveVAO(GLuint ID) noexcept;
+        bool setActiveVAO(GLuint ID);
         /// Switch the currently active vertex array object
-        bool setActiveVAO(GLuint ID, GLuint& previousID) noexcept;
+        bool setActiveVAO(GLuint ID, GLuint& previousID);
         /// Single place to change buffer objects for every target available
         bool setActiveBuffer(GLenum target, GLuint bufferHandle);
         /// Single place to change buffer objects for every target available
@@ -101,14 +101,14 @@ namespace Divide {
         bool bindTexture(GLushort unit, TextureType type, GLuint handle, GLuint samplerHandle = 0u);
         bool bindTextureImage(GLushort unit, GLuint handle, GLint level, bool layered, GLint layer, GLenum access, GLenum format);
         /// Bind multiple textures specified by an array of handles and an offset unit
-        bool bindTextures(GLushort unitOffset, GLuint textureCount, TextureType texturesType, GLuint* textureHandles, GLuint* samplerHandles);
-        bool bindTexturesNoMipMap(GLushort unitOffset, GLuint textureCount, TextureType texturesType, GLuint* textureHandles, GLuint* samplerHandles);
+        bool bindTextures(GLushort unitOffset, GLuint textureCount, TextureType texturesType, const GLuint* textureHandles, const GLuint* samplerHandles);
+        bool bindTexturesNoMipMap(GLushort unitOffset, GLuint textureCount, TextureType texturesType, const GLuint* textureHandles, const GLuint* samplerHandles);
 
         void setStateBlock(size_t stateBlockHash);
 
         /// Bind multiple samplers described by the array of hash values to the
         /// consecutive texture units starting from the specified offset
-        bool bindSamplers(GLushort unitOffset, GLuint samplerCount, GLuint* samplerHandles);
+        bool bindSamplers(GLushort unitOffset, GLuint samplerCount, const GLuint* samplerHandles);
 
         /// Modify buffer bindings for a specific vao
         bool bindActiveBuffer(GLuint vaoID, GLuint location, GLuint bufferID, GLuint instanceDivisor, size_t offset, size_t stride);
@@ -125,12 +125,12 @@ namespace Divide {
 
         [[nodiscard]] GLuint getBoundTextureHandle(U8 slot, TextureType type) const;
         [[nodiscard]] GLuint getBoundSamplerHandle(U8 slot) const;
-        [[nodiscard]] GLuint getBoundProgramHandle() const;
+        [[nodiscard]] GLuint getBoundProgramHandle() const noexcept;
         [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex) const;
         [[nodiscard]] GLuint getBoundBuffer(GLenum target, GLuint bindIndex, size_t& offsetOut, size_t& rangeOut) const;
         [[nodiscard]] TextureType getBoundTextureType(U8 slot) const;
 
-        void getActiveViewport(GLint* vp) const;
+        void getActiveViewport(GLint* vp) const noexcept;
 
         static void ProcessMipMapQueue(GLuint textureCount, const GLuint* textureHandles);
 

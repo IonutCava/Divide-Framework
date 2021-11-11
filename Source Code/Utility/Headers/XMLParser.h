@@ -101,17 +101,15 @@ bool saveToXML(const IXMLSerializable& object, const char* file);
 void writeXML(const string& path, const boost::property_tree::ptree& tree);
 void readXML(const string& path, boost::property_tree::ptree& tree);
 /// Child Functions
-void loadDefaultKeyBindings(const string &file, Scene* scene);
-
+void loadDefaultKeyBindings(const string &file, const Scene* scene);
+void loadMusicPlaylist(const Str256& scenePath, const Str64& fileName, const Scene* const scene, [[maybe_unused]] const Configuration& config);
 
 struct SceneNode {
     Str64 name;
-    U64 typeHash;
+    U64 typeHash = 0u;
 
     vector<SceneNode> children;
 };
-
-void loadMusicPlaylist(const Str256& scenePath, const Str64& fileName, Scene* scene, const Configuration& config);
 
 }  // namespace XML
 }  // namespace Divide

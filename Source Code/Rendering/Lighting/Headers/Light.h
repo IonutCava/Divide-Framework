@@ -80,9 +80,9 @@ class Light : public GUIDWrapper, public ECS::Event::IEventListener
         return Util::ToFloatColour(_colour.rgb);
     }
 
-    void setDiffuseColour(const UColour3& newDiffuseColour);
+    void setDiffuseColour(const UColour3& newDiffuseColour) noexcept;
 
-    void setDiffuseColour(const FColour3& newDiffuseColour) {
+    void setDiffuseColour(const FColour3& newDiffuseColour) noexcept {
         setDiffuseColour(Util::ToByteColour(newDiffuseColour));
     }
 
@@ -122,7 +122,7 @@ class Light : public GUIDWrapper, public ECS::Event::IEventListener
         return to_U16(_shadowProperties._lightDetails.y);
     }
 
-    void setShadowVPMatrix(const U8 index, const mat4<F32>& newValue) {
+    void setShadowVPMatrix(const U8 index, const mat4<F32>& newValue) noexcept {
         assert(index < 6);
         
         if (_shadowProperties._lightVP[index] != newValue) {
@@ -140,7 +140,7 @@ class Light : public GUIDWrapper, public ECS::Event::IEventListener
         }
     }
 
-    void setShadowLightPos(const U8 index, const vec3<F32>& newValue) {
+    void setShadowLightPos(const U8 index, const vec3<F32>& newValue) noexcept {
         if (_shadowProperties._lightPosition[index].xyz != newValue) {
             _shadowProperties._lightPosition[index].xyz = newValue;
             _shadowProperties._dirty = true;

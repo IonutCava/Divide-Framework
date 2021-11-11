@@ -148,7 +148,7 @@ void SceneAnimator::save([[maybe_unused]] PlatformContext& context, ByteBuffer& 
 
     dataOut << BYTE_BUFFER_VERSION_ANIMATOR;
     dataOut << to_U32(_bones.size());
-    for (Bone* bone : _bones) {
+    for (const eastl::shared_ptr<Bone>& bone : _bones) {
         dataOut << bone->name();
     }
 
@@ -198,7 +198,7 @@ void SceneAnimator::load(PlatformContext& context, ByteBuffer& dataIn) {
     }
 }
 
-void SceneAnimator::saveSkeleton(ByteBuffer& dataOut, Bone* parent) const {
+void SceneAnimator::saveSkeleton(ByteBuffer& dataOut, const eastl::shared_ptr<Bone>& parent) const {
     dataOut << BYTE_BUFFER_VERSION_SKELETON;
 
     // the name of the bone
@@ -212,12 +212,12 @@ void SceneAnimator::saveSkeleton(ByteBuffer& dataOut, Bone* parent) const {
     const uint32_t nsize = static_cast<uint32_t>(parent->_children.size());
     dataOut << nsize;
     // continue for all children
-    for (vector<Bone*>::iterator it = std::begin(parent->_children); it != std::end(parent->_children); ++it) {
+    for (vector<eastl::shared_ptr<Bone>>::iterator it = std::begin(parent->_children); it != std::end(parent->_children); ++it) {
         saveSkeleton(dataOut, *it);
     }
 }
 
-Bone* SceneAnimator::loadSkeleton(ByteBuffer& dataIn, Bone* parent) {
+eastl::shared_ptr<Bone> SceneAnimator::loadSkeleton(ByteBuffer& dataIn, const eastl::shared_ptr<Bone>& parent) {
 
     auto tempVer = decltype(BYTE_BUFFER_VERSION_SKELETON){0};
     dataIn >> tempVer;
@@ -225,7 +225,7 @@ Bone* SceneAnimator::loadSkeleton(ByteBuffer& dataIn, Bone* parent) {
 
         string tempString;
         // create a node
-        Bone* internalNode = MemoryManager_NEW Bone();
+        eastl::shared_ptr<Bone> internalNode = eastl::make_shared<Bone>();
         // set the parent, in the case this is the root node, it will be null
         internalNode->_parent = parent;
         // the name of the bone

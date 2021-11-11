@@ -91,8 +91,8 @@ void Light::registerFields(EditorComponent& comp) {
 
     EditorComponentField colourField = {};
     colourField._name = "Colour";
-    colourField._dataGetter = [this](void* dataOut) { static_cast<FColour3*>(dataOut)->set(getDiffuseColour()); };
-    colourField._dataSetter = [this](const void* data) { setDiffuseColour(*static_cast<const FColour3*>(data)); };
+    colourField._dataGetter = [this](void* dataOut) noexcept { static_cast<FColour3*>(dataOut)->set(getDiffuseColour()); };
+    colourField._dataSetter = [this](const void* data) noexcept { setDiffuseColour(*static_cast<const FColour3*>(data)); };
     colourField._type = EditorComponentFieldType::PUSH_TYPE;
     colourField._readOnly = false;
     colourField._basicType = GFX::PushConstantType::FCOLOUR3;
@@ -138,7 +138,7 @@ void Light::registerFields(EditorComponent& comp) {
 void Light::updateCache(const ECS::CustomEvent& event) {
     OPTICK_EVENT();
 
-    TransformComponent* tComp = static_cast<TransformComponent*>(event._sourceCmp);
+    const TransformComponent* tComp = static_cast<TransformComponent*>(event._sourceCmp);
     assert(tComp != nullptr);
 
     if (_type != LightType::DIRECTIONAL && BitCompare(event._flag, to_U32(TransformType::TRANSLATION))) {
@@ -150,7 +150,7 @@ void Light::updateCache(const ECS::CustomEvent& event) {
     }
 }
 
-void Light::setDiffuseColour(const UColour3& newDiffuseColour) {
+void Light::setDiffuseColour(const UColour3& newDiffuseColour) noexcept {
     _colour.rgb = newDiffuseColour;
 }
 

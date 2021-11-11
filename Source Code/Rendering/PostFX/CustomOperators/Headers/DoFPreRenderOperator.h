@@ -47,7 +47,7 @@ class DoFPreRenderOperator final : public PreRenderOperator {
 
     void parametersChanged() noexcept;
 
-    [[nodiscard]] bool ready() const override;
+    [[nodiscard]] bool ready() const noexcept override;
 
    private:
      ShaderProgram_ptr _dofShader = nullptr;

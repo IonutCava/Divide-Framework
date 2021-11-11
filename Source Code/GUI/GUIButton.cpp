@@ -2,8 +2,6 @@
 
 #include "Headers/GUIButton.h"
 
-#include <CEGUI/CEGUI.h>
-
 namespace Divide {
 
 

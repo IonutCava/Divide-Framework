@@ -79,7 +79,7 @@ namespace {
 
     bool BeginStatusBar() {
         ImGuiContext& g = *GImGui;
-        ImGuiViewport* viewport = g.Viewports[0];
+        const ImGuiViewport* viewport = g.Viewports[0];
         g.NextWindowData.MenuBarOffsetMinVal = ImVec2(g.Style.DisplaySafeAreaPadding.x, ImMax(g.Style.DisplaySafeAreaPadding.y - g.Style.FramePadding.y, 0.0f));
         const F32 height = g.NextWindowData.MenuBarOffsetMinVal.y + g.FontBaseSize + g.Style.FramePadding.y;
         ImGui::SetNextWindowPos(viewport->Pos + ImVec2(0.0f, g.IO.DisplaySize.y - height));
@@ -87,7 +87,7 @@ namespace {
         ImGui::SetNextWindowViewport(viewport->ID); // Enforce viewport so we don't create our onw viewport when ImGuiConfigFlags_ViewportsNoMerge is set.
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(0, 0));
-        const ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
+        constexpr ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
         const bool is_open = ImGui::Begin("##StatusBar", nullptr, window_flags) && BeginBar();
         ImGui::PopStyleVar(2);
         g.NextWindowData.MenuBarOffsetMinVal = ImVec2(0.0f, 0.0f);
@@ -114,7 +114,7 @@ namespace {
 }
 
 
-StatusBar::StatusBar(PlatformContext& context)
+StatusBar::StatusBar(PlatformContext& context) noexcept
     : PlatformContextComponent(context),
       _lastMessageDurationMS(0.0f)
 {
@@ -131,7 +131,7 @@ void StatusBar::draw() const {
     }
 }
 
-void StatusBar::update(const U64 deltaTimeUS) {
+void StatusBar::update(const U64 deltaTimeUS) noexcept {
     if (_lastMessageDurationMS > 0.0f) {
         _lastMessageDurationMS -= Time::MicrosecondsToMilliseconds(deltaTimeUS);
         if (_lastMessageDurationMS < 0.0f) {
@@ -145,8 +145,8 @@ void StatusBar::showMessage(const string& message, const F32 durationMS) {
     _lastMessageDurationMS = durationMS;
 }
 
-F32 StatusBar::height() const {
-    ImGuiContext& g = *GImGui;
+F32 StatusBar::height() const noexcept {
+    const ImGuiContext& g = *GImGui;
     return std::max(1.0f, g.NextWindowData.MenuBarOffsetMinVal.y) + g.FontBaseSize + g.Style.FramePadding.y;
 }
 

@@ -22,11 +22,11 @@ void rcContextDivide::doLog(const rcLogCategory category, const char* msg,
     }
 }
 
-void rcContextDivide::doResetTimers() {
+void rcContextDivide::doResetTimers() noexcept {
     for (I32 i = 0; i < RC_MAX_TIMERS; ++i) _accTime[i] = -1;
 }
 
-void rcContextDivide::doStartTimer(const rcTimerLabel label) {
+void rcContextDivide::doStartTimer(const rcTimerLabel label) noexcept {
     _startTime[label] = Time::App::ElapsedMilliseconds();
 }
 
@@ -39,7 +39,7 @@ void rcContextDivide::doStopTimer(const rcTimerLabel label) {
     }
 }
 
-I32 rcContextDivide::doGetAccumulatedTime(const rcTimerLabel label) const {
+I32 rcContextDivide::doGetAccumulatedTime(const rcTimerLabel label) const noexcept {
     return _accTime[label];
 }
 

@@ -28,7 +28,7 @@ namespace NS_GLIM
         m_Data.Reset (reserveBuffers, vertexCount, attributeCount);
     }
 
-    void GLIM_BATCH::getBatchAABB (float& out_fMinX, float& out_fMaxX, float& out_fMinY, float& out_fMaxY, float& out_fMinZ, float& out_fMaxZ)
+    void GLIM_BATCH::getBatchAABB (float& out_fMinX, float& out_fMaxX, float& out_fMinY, float& out_fMaxY, float& out_fMinZ, float& out_fMaxZ) noexcept
     {
         out_fMinX = m_Data.m_fMinX;
         out_fMaxX = m_Data.m_fMaxX;
@@ -38,7 +38,7 @@ namespace NS_GLIM
         out_fMaxZ = m_Data.m_fMaxZ;
     }
 
-    void GLIM_BATCH::EndRender (void)
+    void GLIM_BATCH::EndRender (void) noexcept
     {
         // disable everything again
         m_Data.Unbind ();
@@ -170,7 +170,7 @@ namespace NS_GLIM
         m_Data.m_State = GLIM_BATCH_STATE::STATE_BEGINNING_BATCH;
     }
 
-    void GLIM_BATCH::EndBatch (void)
+    void GLIM_BATCH::EndBatch (void) noexcept
     {
         // if the state is STATE_BEGINNING_BATCH, than no Begin/End call has been made => created an empty batch, which is ok
         GLIM_CHECK (m_Data.m_State == GLIM_BATCH_STATE::STATE_END_PRIMITIVE || m_Data.m_State == GLIM_BATCH_STATE::STATE_BEGINNING_BATCH, "GLIM_BATCH::EndBatch: This function must be called after a call to \"End\".");
@@ -183,7 +183,7 @@ namespace NS_GLIM
 #endif
     }
 
-    void GLIM_BATCH::Begin (GLIM_ENUM eType)
+    void GLIM_BATCH::Begin (GLIM_ENUM eType) noexcept
     {
         // if the state is STATE_BEGINNING_BATCH, than no Begin/End call has been made yet
         // if it is STATE_END_PRIMITIVE then a previous Begin/End call has been made

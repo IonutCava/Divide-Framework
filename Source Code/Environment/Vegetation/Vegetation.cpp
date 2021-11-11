@@ -150,7 +150,7 @@ Vegetation::Vegetation(GFXDevice& context,
 
     EditorComponentField terrainIDField = {};
     terrainIDField._name = "Terrain Chunk ID";
-    terrainIDField._dataGetter = [this](void *dataOut) {*static_cast<U32*>(dataOut) = _terrainChunk.ID(); };
+    terrainIDField._dataGetter = [this](void *dataOut) noexcept {*static_cast<U32*>(dataOut) = _terrainChunk.ID(); };
     terrainIDField._type = EditorComponentFieldType::PUSH_TYPE;
     terrainIDField._readOnly = true;
     terrainIDField._basicType = GFX::PushConstantType::UINT;
@@ -278,7 +278,7 @@ void Vegetation::precomputeStaticData(GFXDevice& gfxDevice, const U32 chunkSize,
                 if (i > 0) {
                     s_buffer->addRestartIndex();
                 }
-                for (U16 idx : indices) {
+                for (const U16 idx : indices) {
                     s_buffer->addIndex(idx + i * 4);
                 }
             }
@@ -305,8 +305,8 @@ void Vegetation::precomputeStaticData(GFXDevice& gfxDevice, const U32 chunkSize,
     circleA.center[1] = -posOffset;
     circleB.center[1] = posOffset;
 
-    F32 dR[2] = { g_distanceRingsBaseGrass * g_PointRadiusBaseGrass,
-                  g_distanceRingsBaseTrees * g_PointRadiusBaseTrees };
+    const F32 dR[2] = { g_distanceRingsBaseGrass * g_PointRadiusBaseGrass,
+                        g_distanceRingsBaseTrees * g_PointRadiusBaseTrees };
 
     for (U8 i = 0; i < 2; ++i) {
         for (I16 RadiusStepA = 0; RadiusStepA < g_maxRadiusSteps; ++RadiusStepA) {
@@ -595,7 +595,7 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
             for (const ResourcePath& meshName : _treeMeshNames) {
                 if (!eastl::any_of(eastl::cbegin(s_treeMeshes),
                                    eastl::cend(s_treeMeshes),
-                                   [&meshName](const Mesh_ptr& ptr) {
+                                   [&meshName](const Mesh_ptr& ptr) noexcept {
                                        return Util::CompareIgnoreCase(ptr->assetName(), meshName);
                                    }))
                 {
@@ -656,7 +656,7 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
             return true;
         });
 
-        BoundingBox aabb = _treeParentNode->get<BoundsComponent>()->updateAndGetBoundingBox();
+        const BoundingBox aabb = _treeParentNode->get<BoundsComponent>()->updateAndGetBoundingBox();
         BoundingSphere bs;
         bs.fromBoundingBox(aabb);
 
@@ -817,7 +817,7 @@ void Vegetation::buildDrawCommands(SceneGraphNode* sgn,
 }
 
 namespace {
-    FORCE_INLINE U8 BestIndex(const UColour4& in) {
+    FORCE_INLINE U8 BestIndex(const UColour4& in) noexcept {
         U8 maxValue = 0;
         U8 bestIndex = 0;
         for (U8 i = 0; i < 4; ++i) {
@@ -830,7 +830,7 @@ namespace {
         return bestIndex;
     }
 
-    FORCE_INLINE bool ScaleAndCheckBounds(const vec2<F32>& chunkPos, const vec2<F32>& chunkSize, vec2<F32>& point) {
+    FORCE_INLINE bool ScaleAndCheckBounds(const vec2<F32>& chunkPos, const vec2<F32>& chunkSize, vec2<F32>& point) noexcept {
         if (point.x > -chunkSize.x && point.x < chunkSize.x && 
             point.y > -chunkSize.y && point.y < chunkSize.y) 
         {
@@ -888,7 +888,7 @@ void Vegetation::computeVegetationTransforms(bool treeData) {
         const vec2<F32>& chunkSize = _terrainChunk.getOffsetAndSize().zw;
         const vec2<F32>& chunkPos = _terrainChunk.getOffsetAndSize().xy;
         //const F32 waterLevel = 0.0f;// ToDo: make this dynamic! (cull underwater points later on?)
-        auto& map = treeData ? _treeMap : _grassMap;
+        const auto& map = treeData ? _treeMap : _grassMap;
         const U16 mapWidth = map->dimensions(0u, 0u).width;
         const U16 mapHeight = map->dimensions(0u, 0u).height;
         const auto& positions = treeData ? s_treePositions : s_grassPositions;

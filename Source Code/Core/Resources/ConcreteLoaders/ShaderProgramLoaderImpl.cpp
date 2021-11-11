@@ -8,7 +8,7 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace {
-    const bool USE_THREADED_SHADER_LOAD = true;
+    constexpr bool USE_THREADED_SHADER_LOAD = true;
 }
 
 namespace Divide {

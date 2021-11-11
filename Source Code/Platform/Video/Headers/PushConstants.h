@@ -37,8 +37,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 struct PushConstants {
-    PROPERTY_R_IW(vector_fast<GFX::PushConstant>, data);
-
     PushConstants() = default;
     explicit PushConstants(const GFX::PushConstant& constant) : _data{ constant } {}
     explicit PushConstants(GFX::PushConstant&& constant) : _data{ MOV(constant) } {}
@@ -78,6 +76,11 @@ struct PushConstants {
     void countHint(const size_t count) { _data.reserve(count); }
 
     friend bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
+
+    [[nodiscard]] const vector_fast<GFX::PushConstant>& data() const noexcept { return _data; }
+
+private:
+    vector_fast<GFX::PushConstant> _data;
 };
 
 bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);

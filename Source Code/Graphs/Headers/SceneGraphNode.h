@@ -195,9 +195,9 @@ public:
     void changeUsageContext(const NodeUsageContext& newContext);
 
     /// General purpose flag management. Certain flags propagate to children (e.g. selection)!
-    void setFlag(Flags flag, bool recursive = true) noexcept;
+    void setFlag(Flags flag, bool recursive = true);
     /// Clearing a flag might propagate to child nodes (e.g. selection).
-    void clearFlag(Flags flag, bool recursive = true) noexcept;
+    void clearFlag(Flags flag, bool recursive = true);
     /// Returns true only if the current node has the specified flag. Does not check children!
     [[nodiscard]] bool hasFlag(const Flags flag) const noexcept;
 
@@ -382,7 +382,7 @@ namespace Attorney {
             node->processEvents();
         }
 
-        static void onNetworkSend(SceneGraphNode* node, const U32 frameCount) {
+        static void onNetworkSend(const SceneGraphNode* node, const U32 frameCount) {
             node->onNetworkSend(frameCount);
         }
 
@@ -429,7 +429,7 @@ namespace Attorney {
             return node->cullNode(params, cullFlags, collisionTypeOut, distanceToClosestPointSQ);
         }
         
-        static void visiblePostCulling(SceneGraphNode* node, const bool state) {
+        static void visiblePostCulling(SceneGraphNode* node, const bool state) noexcept {
             node->visiblePostCulling(state);
         }
 
@@ -460,7 +460,7 @@ namespace Attorney {
     };
     
     class SceneGraphNodeScene {
-        static void reserveChildCount(SceneGraphNode* node, const size_t count) noexcept {
+        static void reserveChildCount(SceneGraphNode* node, const size_t count) {
             node->lockChildrenForWrite();
             node->_children.reserve(count);
             node->unlockChildrenForWrite();

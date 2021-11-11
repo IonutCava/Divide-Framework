@@ -55,10 +55,10 @@ class rcContextDivide final : public rcContext {
     ///  @param[in]        msg            The formatted message.
     ///  @param[in]        len            The length of the formatted message.
     void doLog(rcLogCategory /*category*/, const char* /*msg*/, I32 /*len*/) override;
-    void doResetTimers() override;
-    void doStartTimer(rcTimerLabel /*label*/) override;
+    void doResetTimers() noexcept override;
+    void doStartTimer(rcTimerLabel /*label*/) noexcept override;
     void doStopTimer(rcTimerLabel /*label*/) override;
-    [[nodiscard]] I32 doGetAccumulatedTime(rcTimerLabel /*label*/) const override;
+    [[nodiscard]] I32 doGetAccumulatedTime(rcTimerLabel /*label*/) const noexcept override;
 
    private:
     std::array<D64, RC_MAX_TIMERS> _startTime;

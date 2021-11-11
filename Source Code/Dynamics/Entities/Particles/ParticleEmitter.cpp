@@ -113,7 +113,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     particleRenderState.setZFunc(ComparisonFunction::LEQUAL);
     _particleStateBlockHashDepth = particleRenderState.getHash();
 
-    bool useTexture = _particleTexture != nullptr;
+    const bool useTexture = _particleTexture != nullptr;
 
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
@@ -309,7 +309,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                 _buffersDirty[to_U32(renderStagePass._stage)] = false;
             }
 
-            RenderPackage& pkg = sgn->get<RenderingComponent>()->getDrawPackage(renderStagePass);
+            const RenderPackage& pkg = sgn->get<RenderingComponent>()->getDrawPackage(renderStagePass);
 
             GenericDrawCommand& cmd = pkg.get<GFX::DrawCommand>(0)->_drawCommands[0];
             cmd._cmd.primCount = to_U32(_particles->_renderingPositions.size());
@@ -362,13 +362,13 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
         U32 aliveCount = getAliveParticleCount();
         renderState().drawState(aliveCount > 0);
 
-        TransformComponent* transform = sgn->get<TransformComponent>();
+        const TransformComponent* transform = sgn->get<TransformComponent>();
 
         const vec3<F32>& pos = transform->getPosition();
         const Quaternion<F32>& rot = transform->getOrientation();
 
         F32 averageEmitRate = 0;
-        for (std::shared_ptr<ParticleSource>& source : _sources) {
+        for (const std::shared_ptr<ParticleSource>& source : _sources) {
             source->updateTransform(pos, rot);
             source->emit(g_updateInterval, _particles);
             averageEmitRate += source->emitRate();
@@ -391,7 +391,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
         parallel_for(_context.context(), descriptor);
 
         ParticleData& data = *_particles;
-        for (std::shared_ptr<ParticleUpdater>& up : _updaters) {
+        for (const std::shared_ptr<ParticleUpdater>& up : _updaters) {
             up->update(g_updateInterval, data);
         }
 
@@ -411,7 +411,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);
 }
 
-U32 ParticleEmitter::getAliveParticleCount() const {
+U32 ParticleEmitter::getAliveParticleCount() const noexcept {
     if (!_particles) {
         return 0u;
     }

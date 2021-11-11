@@ -60,7 +60,7 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     parametersChanged();
 }
 
-bool DoFPreRenderOperator::ready() const {
+bool DoFPreRenderOperator::ready() const noexcept {
     if (_dofShader->getState() == ResourceState::RES_LOADED) {
         return PreRenderOperator::ready();
     }

@@ -10,7 +10,7 @@ namespace {
     PlatformContext* g_ctx = nullptr;
 }
 
-void InitConditionalWait(PlatformContext& context) {
+void InitConditionalWait(PlatformContext& context) noexcept {
     g_ctx = &context;
 }
 

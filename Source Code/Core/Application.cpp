@@ -16,14 +16,11 @@ bool MemoryManager::MemoryTracker::Ready = false;
 bool MemoryManager::MemoryTracker::LogAllAllocations = false;
 MemoryManager::MemoryTracker MemoryManager::AllocTracer;
 
-Application::Application()
-    : _isInitialized(false),
-      _kernel(nullptr)
+Application::Application() noexcept
 {
-    _requestShutdown = false;
-    _mainLoopPaused = false;
-    _mainLoopActive = false;
-    _errorCode = ErrorCode::NO_ERR;
+    std::atomic_init(&_requestShutdown, false);
+    std::atomic_init(&_mainLoopPaused, false);
+    std::atomic_init(&_mainLoopActive, false);
 
     if_constexpr (Config::Build::IS_DEBUG_BUILD) {
         MemoryManager::MemoryTracker::Ready = true; ///< faster way of disabling memory tracking
@@ -53,7 +50,7 @@ ErrorCode Application::start(const string& entryPoint, const I32 argc, char** ar
     _kernel = MemoryManager_NEW Kernel(argc, argv, *this);
 
     // and load it via an XML file config
-    ErrorCode err = Attorney::KernelApplication::initialize(_kernel, entryPoint);
+    const ErrorCode err = Attorney::KernelApplication::initialize(_kernel, entryPoint);
 
     // failed to start, so cleanup
     if (err != ErrorCode::NO_ERR) {
@@ -74,7 +71,7 @@ void Application::stop() {
         if (_kernel != nullptr) {
             Attorney::KernelApplication::shutdown(_kernel);
         }
-        for (DELEGATE<void>& cbk : _shutdownCallback) {
+        for (const DELEGATE<void>& cbk : _shutdownCallback) {
             cbk();
         }
 
@@ -127,7 +124,7 @@ bool Application::onLoop() {
 }
 
 
-bool Application::onSDLEvent(const SDL_Event event) {
+bool Application::onSDLEvent(const SDL_Event event) noexcept {
     if (event.type == SDL_QUIT) {
         RequestShutdown();
         return true;

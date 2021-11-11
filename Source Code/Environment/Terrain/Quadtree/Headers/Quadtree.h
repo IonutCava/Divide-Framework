@@ -53,7 +53,7 @@ class Quadtree {
     Quadtree(GFXDevice& context);
     ~Quadtree();
 
-    void build(BoundingBox& terrainBBox,
+    void build(const BoundingBox& terrainBBox,
                const vec2<U16>& HMSize,
                Terrain* terrain);
 
@@ -64,7 +64,7 @@ class Quadtree {
     void drawBBox(RenderPackage& packageOut) const;
     void toggleBoundingBoxes();
 
-    [[nodiscard]] QuadtreeNode* findLeaf(const vec2<F32>& pos) const;
+    [[nodiscard]] QuadtreeNode* findLeaf(const vec2<F32>& pos) const noexcept;
 
     const eastl::unique_ptr<QuadtreeNode>& getRoot() const noexcept { return _root; }
 

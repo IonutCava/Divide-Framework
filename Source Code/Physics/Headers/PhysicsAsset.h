@@ -42,12 +42,12 @@ class RigidBodyComponent;
 
 class PhysicsAsset : public ITransform {
 public:
-    explicit PhysicsAsset(RigidBodyComponent& parent);
+    explicit PhysicsAsset(RigidBodyComponent& parent) noexcept;
     virtual ~PhysicsAsset() = default;
 
     virtual void physicsCollisionGroup(PhysicsGroup group);
 
-    [[nodiscard]] RigidBodyComponent& getParent() const { return _parentComponent; }
+    [[nodiscard]] RigidBodyComponent& getParent() const noexcept { return _parentComponent; }
 
 protected:
     RigidBodyComponent & _parentComponent;

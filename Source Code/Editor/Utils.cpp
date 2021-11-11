@@ -8,11 +8,11 @@
 
 namespace ImGui {
     bool InputDoubleN(const char* label, double* v, const int components, const char* display_format, const ImGuiInputTextFlags extra_flags)     {
-        ImGuiWindow* window = GetCurrentWindow();
+        const ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems)
             return false;
 
-        ImGuiContext& g = *GImGui;
+        const ImGuiContext& g = *GImGui;
         bool value_changed = false;
         BeginGroup();
         PushID(label);

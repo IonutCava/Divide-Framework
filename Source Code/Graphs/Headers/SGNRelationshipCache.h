@@ -47,10 +47,10 @@ public:
         COUNT
     };
 public:
-    SGNRelationshipCache(SceneGraphNode* parent);
+    SGNRelationshipCache(SceneGraphNode* parent) noexcept;
 
-    bool isValid() const;
-    void invalidate();
+    bool isValid() const noexcept;
+    void invalidate() noexcept;
     bool rebuild();
 
     // this will issue a rebuild if the cache is invalid

@@ -5,7 +5,7 @@
 
 namespace Divide {
 
-IntersectionRecord::IntersectionRecord()
+IntersectionRecord::IntersectionRecord() noexcept
   : _intersectedObject1(nullptr),
     _intersectedObject2(nullptr),
     _distance(std::numeric_limits<D64>::max()),
@@ -16,7 +16,7 @@ IntersectionRecord::IntersectionRecord()
 IntersectionRecord::IntersectionRecord(vec3<F32> hitPos,
                                        vec3<F32> hitNormal,
                                        Ray ray,
-                                       const D64 distance)
+                                       const D64 distance) noexcept
     : _position(MOV(hitPos)),
       _normal(MOV(hitNormal)),
       _ray(MOV(ray)),
@@ -28,7 +28,7 @@ IntersectionRecord::IntersectionRecord(vec3<F32> hitPos,
 }
 
 /// Creates a new intersection record indicating whether there was a hit or not and the object which was hit.
-IntersectionRecord::IntersectionRecord(SceneGraphNode* hitObject) :
+IntersectionRecord::IntersectionRecord(SceneGraphNode* hitObject)  noexcept :
     _intersectedObject1(hitObject),
     _intersectedObject2(nullptr),
     _distance(std::numeric_limits<D64>::max()),
@@ -36,7 +36,7 @@ IntersectionRecord::IntersectionRecord(SceneGraphNode* hitObject) :
 {
 }
 
-void IntersectionRecord::reset() 
+void IntersectionRecord::reset() noexcept
 {
     _ray.identity();
     _hasHit = false;
@@ -45,12 +45,12 @@ void IntersectionRecord::reset()
     _intersectedObject2 = nullptr;
 }
 
-bool IntersectionRecord::operator==(const IntersectionRecord& otherRecord) const
+bool IntersectionRecord::operator==(const IntersectionRecord& otherRecord) const noexcept
 {
-    SceneGraphNode* node11 = _intersectedObject1;
-    SceneGraphNode* node12 = _intersectedObject2;
-    SceneGraphNode* node21 = otherRecord._intersectedObject1;
-    SceneGraphNode* node22 = otherRecord._intersectedObject2;
+    const SceneGraphNode* node11 = _intersectedObject1;
+    const SceneGraphNode* node12 = _intersectedObject2;
+    const SceneGraphNode* node21 = otherRecord._intersectedObject1;
+    const SceneGraphNode* node22 = otherRecord._intersectedObject2;
 
     if (node11 && node12 && node21 && node22) {
         if (node21->getGUID() == node11->getGUID() && node22->getGUID() == node12->getGUID()) {

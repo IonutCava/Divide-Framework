@@ -19,7 +19,7 @@ void NPC::update(const U64 deltaTimeUS) {
     Character::update(deltaTimeUS);
 }
 
-AI::AIEntity* NPC::getAIEntity() const {
+AI::AIEntity* NPC::getAIEntity() const noexcept {
     return _aiUnit;
 }
 

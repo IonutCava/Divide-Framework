@@ -49,7 +49,7 @@ using GOAPWorldState = goap::WorldState;
 using GOAPActionSet = vector<const GOAPAction*>;
 using GOAPPlan = vector<const GOAPAction*>;
 
-inline const char* GOAPValueName(const GOAPValue val) {
+inline const char* GOAPValueName(const GOAPValue val) noexcept {
     return val ? "true" : "false";
 }
 
@@ -58,11 +58,11 @@ class GOAPGoal : public goap::WorldState {
     GOAPGoal(const Divide::string& name, U32 ID);
     virtual ~GOAPGoal() = default;
 
-    [[nodiscard]] F32 relevancy() const { return _relevancy; }
-    void relevancy(const F32 relevancy) { _relevancy = relevancy; }
+    [[nodiscard]] F32 relevancy() const noexcept { return _relevancy; }
+    void relevancy(const F32 relevancy) noexcept { _relevancy = relevancy; }
 
-    [[nodiscard]] const Divide::string& name() const { return name_; }
-    [[nodiscard]] U32 getID() const { return _ID; }
+    [[nodiscard]] const Divide::string& name() const noexcept { return name_; }
+    [[nodiscard]] U32 getID() const noexcept { return _ID; }
     [[nodiscard]] virtual bool plan(const GOAPWorldState& worldState, const GOAPActionSet& actionSet);
 
     [[nodiscard]] const GOAPPlan& getCurrentPlan() const;

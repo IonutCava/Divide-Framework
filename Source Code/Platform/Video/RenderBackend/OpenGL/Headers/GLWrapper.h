@@ -110,11 +110,11 @@ protected:
     /// with his OpenGL frontend adapted for core context profiles
     void drawText(const TextElementBatch& batch);
 
-    void drawIMGUI(ImDrawData* data, I64 windowGUID);
+    void drawIMGUI(const ImDrawData* data, I64 windowGUID);
 
     bool draw(const GenericDrawCommand& cmd) const;
 
-    void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
+    void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
 
     void flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const GFX::CommandBuffer& commandBuffer) override;
 
@@ -123,7 +123,7 @@ protected:
     [[nodiscard]] PerformanceMetrics getPerformanceMetrics() const noexcept override;
 
     /// Return the size in pixels that we can render to. This differs from the window size on Retina displays
-    vec2<U16> getDrawableSize(const DisplayWindow& window) const override;
+    vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
 
     U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const override;
 
@@ -149,7 +149,7 @@ public:
     static bool MakeTexturesResidentInternal(SamplerAddress address);
     static bool MakeTexturesNonResidentInternal(SamplerAddress address);
 
-    static void QueueFlush();
+    static void QueueFlush() noexcept;
     /// Queue a mipmap recalculation
     static void QueueComputeMipMap(GLuint textureHandle);
     static void DequeueComputeMipMap(GLuint textureHandle);
@@ -178,7 +178,7 @@ public:
 
 private:
     static bool InitGLSW(Configuration& config);
-    static bool DeInitGLSW();
+    static bool DeInitGLSW() noexcept;
 
     /// Use GLSW to append tokens to shaders. Use ShaderType::COUNT to append to all stages
     static void AppendToShaderHeader(ShaderType type, const string& entry);

@@ -54,11 +54,11 @@ class glIMPrimitive final : public IMPrimitive {
     void beginBatch(bool reserveBuffers, U32 vertexCount, U32 attributeCount) override;
     /// Ends defining the batch. After this call "RenderBatch" can be called to
     /// actually render it.
-    void endBatch() override;
+    void endBatch() noexcept override;
     /// Resets the batch so that the primitive has nothing left to draw
     void clearBatch() override;
     /// Return true if this primitive contains drawable geometry data
-    bool hasBatch() const override;
+    bool hasBatch() const noexcept override;
     /// Begins gathering information about the given type of primitives.
     void begin(PrimitiveType type) override;
     /// Ends gathering information about the primitives.

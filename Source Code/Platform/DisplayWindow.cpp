@@ -415,7 +415,7 @@ bool DisplayWindow::setDimensions(U16 width, U16 height) {
     switch(_type) {
         case WindowType::FULLSCREEN: {
             // Find a decent resolution close to our dragged dimensions
-            SDL_DisplayMode mode, closestMode = {};
+            SDL_DisplayMode mode = {}, closestMode = {};
             SDL_GetCurrentDisplayMode(currentDisplayIndex(), &mode);
             mode.w = width;
             mode.h = height;
@@ -426,8 +426,9 @@ bool DisplayWindow::setDimensions(U16 width, U16 height) {
         } break;
         case WindowType::FULLSCREEN_WINDOWED: //fall-through
             changeType(WindowType::WINDOW);
-        default:
-        case WindowType::WINDOW: {
+        case WindowType::WINDOW: 
+            [[fallthrough]];
+        default: {
             maximized(false);
             SDL_SetWindowSize(_sdlWindow, newW, newH);
             SDL_GetWindowSize(_sdlWindow, &newW, &newH);
@@ -455,7 +456,7 @@ vec2<U16> DisplayWindow::getDimensions() const noexcept {
     return vec2<U16>(width, height);
 }
 
-void DisplayWindow::renderingViewport(const Rect<I32>& viewport) {
+void DisplayWindow::renderingViewport(const Rect<I32>& viewport) noexcept {
     _renderingViewport.set(viewport);
 }
 

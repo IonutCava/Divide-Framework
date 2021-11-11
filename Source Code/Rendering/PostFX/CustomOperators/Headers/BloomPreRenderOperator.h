@@ -54,7 +54,7 @@ class BloomPreRenderOperator final : public PreRenderOperator {
     [[nodiscard]] F32 luminanceThreshold() const noexcept { return _bloomThreshold; }
     void luminanceThreshold(F32 val);
 
-    [[nodiscard]] bool ready() const override;
+    [[nodiscard]] bool ready() const noexcept override;
 
    private:
     RenderTargetHandle _bloomOutput;

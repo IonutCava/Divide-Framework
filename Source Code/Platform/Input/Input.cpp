@@ -141,11 +141,11 @@ namespace Input {
         return KeyCode::KC_UNASSIGNED;
     }
 
-    KeyCode KeyCodeByName(const char* keyName) {
+    KeyCode KeyCodeByName(const char* keyName) noexcept {
         return KeyCodeFromSDLKey(SDL_GetKeyFromName(keyName));
     }
 
-    InputState GetKeyState([[maybe_unused]] const U8 deviceIndex, const KeyCode key) {
+    InputState GetKeyState([[maybe_unused]] const U8 deviceIndex, const KeyCode key) noexcept {
         const Uint8 *state = SDL_GetKeyboardState(nullptr);
 
         return state[SDL_GetScancodeFromKey(SDLKeyCodeFromKey(key))] ? InputState::PRESSED : InputState::RELEASED;
@@ -155,7 +155,7 @@ namespace Input {
         I32 x = -1, y = -1;
         const U32 state = SDL_GetMouseState(&x, &y);
 
-        U32 sdlButton;
+        U32 sdlButton = 0u;
         switch (button) {
         case MouseButton::MB_Left:
             sdlButton = SDL_BUTTON_LEFT;

@@ -42,7 +42,7 @@ bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeigh
     stbi_set_flip_vertically_on_load_thread(_flip ? TRUE : FALSE);
 
     I32 width = 0, height = 0, comp = 0;
-    bufferPtr data;
+    bufferPtr data = nullptr;
     _isHDR = stbi_is_hdr(_name.c_str()) == TRUE;
     if (_isHDR) {
         set16Bit(false);
@@ -87,9 +87,9 @@ bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeigh
         _bpp *= 2;
     }
 
-    vector<U32> resizedData(refWidth * refHeight, 0u);
+    vector<U32> resizedData(to_size(refWidth) * refHeight, 0u);
     if (refWidth != 0 && refHeight != 0 && (refWidth != width || refHeight != height)) {
-        I32 ret;
+        I32 ret = -1;
         if (is16Bit()) {
             ret = stbir_resize_uint16_generic(static_cast<U16*>(data), width, height, 0,
                                               reinterpret_cast<U16*>(resizedData.data()), refWidth, refHeight, 0,
@@ -132,7 +132,7 @@ bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeigh
 }
 
 bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, [[maybe_unused]] const U16 refWidth, [[maybe_unused]] const U16 refHeight, const string& filename) {
-    const auto checkError = []() {
+    const auto checkError = []() noexcept {
         ILenum error = ilGetError();
         while (error != IL_NO_ERROR) {
             DebugBreak();
@@ -260,7 +260,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, [[maybe_unused]] co
     const I32 numImagePasses = _compressedTextureType == TextureType::TEXTURE_CUBE_MAP ? 6 : 1;
     _dataType = GFXDataFormat::UNSIGNED_BYTE;
 
-    _layers.reserve(_layers.size() + numLayers * numImagePasses);
+    _layers.reserve(_layers.size() + to_size(numLayers) * numImagePasses);
     for (I32 l = 0; l < numLayers; ++l) {
         for (I32 p = 0; p < numImagePasses; ++p) {
             ImageLayer& layer = _layers.emplace_back();
@@ -354,8 +354,8 @@ bool ImageDataInterface::CreateImageData(const ResourcePath& filename, const U16
 }
 
 I8 SaveToTGA(const string& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept {
-    const U8 cGarbage = 0;
-    const I16 iGarbage = 0;
+    constexpr U8 cGarbage = 0;
+    constexpr I16 iGarbage = 0;
     const U16 width = dimensions.width;
     const U16 height = dimensions.height;
 

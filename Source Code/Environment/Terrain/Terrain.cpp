@@ -54,7 +54,7 @@ namespace {
     }
 }
 
-void TessellationParams::fromDescriptor(const std::shared_ptr<TerrainDescriptor>& descriptor) {
+void TessellationParams::fromDescriptor(const std::shared_ptr<TerrainDescriptor>& descriptor) noexcept {
     WorldScale(descriptor->dimensions() * 0.5f / to_F32(PATCHES_PER_TILE_EDGE));
 }
 
@@ -73,10 +73,10 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
 
         EditorComponentField tessTriangleWidthField = {};
         tessTriangleWidthField._name = "Tessellated Triangle Width";
-        tessTriangleWidthField._dataGetter = [&](void* dataOut) {
+        tessTriangleWidthField._dataGetter = [&](void* dataOut) noexcept {
             *static_cast<U32*>(dataOut) = tessParams().tessellatedTriangleWidth();
         };
-        tessTriangleWidthField._dataSetter = [&](const void* data) {
+        tessTriangleWidthField._dataSetter = [&](const void* data) noexcept {
             _tessParams.tessellatedTriangleWidth(*static_cast<const U32*>(data));
         };
         tessTriangleWidthField._type = EditorComponentFieldType::SLIDER_TYPE;
@@ -102,11 +102,11 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
         grassVisibilityDistanceField._name = "Grass visibility distance";
         grassVisibilityDistanceField._range = { 0.01f, 10000.0f };
         grassVisibilityDistanceField._serialise = false;
-        grassVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) {
+        grassVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) noexcept {
             const SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
             *static_cast<F32*>(dataOut) = rState.grassVisibility();
         };
-        grassVisibilityDistanceField._dataSetter = [sMgr](const void* data) {
+        grassVisibilityDistanceField._dataSetter = [sMgr](const void* data) noexcept {
             SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
             rState.grassVisibility(*static_cast<const F32*>(data)); 
         };
@@ -119,11 +119,11 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
         treeVisibilityDistanceField._name = "Tree visibility distance";
         treeVisibilityDistanceField._range = { 0.01f, 10000.0f };
         treeVisibilityDistanceField._serialise = false;
-        treeVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) {
+        treeVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) noexcept {
             const SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
             *static_cast<F32*>(dataOut) = rState.treeVisibility();
         };
-        treeVisibilityDistanceField._dataSetter = [sMgr](const void* data) {
+        treeVisibilityDistanceField._dataSetter = [sMgr](const void* data) noexcept {
             SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
             rState.treeVisibility(*static_cast<const F32*>(data));
         };
@@ -149,7 +149,7 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
         to_base(ComponentType::BOUNDS) |
         to_base(ComponentType::RENDERING);
 
-    for (TerrainChunk* chunk : _terrainChunks) {
+    for (const TerrainChunk* chunk : _terrainChunks) {
         vegetationNodeDescriptor._node = Attorney::TerrainChunkTerrain::getVegetation(*chunk);
         vegetationNodeDescriptor._name = Util::StringFormat("Vegetation_chunk_%d", chunk->ID());
         vegParent->addChildNode(vegetationNodeDescriptor);
@@ -279,9 +279,9 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
                             const RenderStagePass& renderStagePass,
                             const Camera& camera,
                             const bool refreshData) {
-    RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
+    const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
     if (!pkg.empty()) {
-        F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
+        const F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
         if (renderStagePass._stage == RenderStage::REFLECTION ||
             renderStagePass._stage == RenderStage::REFRACTION)                 
         {
@@ -313,9 +313,9 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
         cullingEye.x += snappedXZ[0];
         cullingEye.z += snappedXZ[1];
 
-        mat4<F32> terrainWorldMat(vec3<F32>(snappedXZ[0], 0.f, snappedXZ[1]),
-                                  vec3<F32>(tessParams().WorldScale()[0], 1.f, tessParams().WorldScale()[1]),
-                                  mat3<F32>());
+        const mat4<F32> terrainWorldMat(vec3<F32>(snappedXZ[0], 0.f, snappedXZ[1]),
+                                        vec3<F32>(tessParams().WorldScale()[0], 1.f, tessParams().WorldScale()[1]),
+                                        mat3<F32>());
         PushConstants& constants = pkg.get<GFX::SendPushConstantsCommand>(0)->_constants;
         constants.set(_ID("dvd_terrainWorld"), GFX::PushConstantType::MAT4, terrainWorldMat);
         constants.set(_ID("dvd_uvEyeOffset"), GFX::PushConstantType::VEC2, uvEye);
@@ -362,7 +362,7 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn,
     Object3D::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
 }
 
-const vector<VertexBuffer::Vertex>& Terrain::getVerts() const {
+const vector<VertexBuffer::Vertex>& Terrain::getVerts() const noexcept {
     return _physicsVerts;
 }
 
@@ -493,7 +493,7 @@ vec2<F32> Terrain::getAltitudeRange() const noexcept {
 
 void Terrain::getVegetationStats(U32& maxGrassInstances, U32& maxTreeInstances) const {
     U32 grassInstanceCount = 0u, treeInstanceCount = 0u;
-    for (TerrainChunk* chunk : _terrainChunks) {
+    for (const TerrainChunk* chunk : _terrainChunks) {
         Attorney::TerrainChunkTerrain::getVegetation(*chunk)->getStats(grassInstanceCount, treeInstanceCount);
         maxGrassInstances = std::max(maxGrassInstances, grassInstanceCount);
         maxTreeInstances = std::max(maxTreeInstances, treeInstanceCount);

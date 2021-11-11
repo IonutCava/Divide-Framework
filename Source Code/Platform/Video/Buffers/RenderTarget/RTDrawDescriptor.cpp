@@ -51,12 +51,12 @@ void RTDrawMask::setEnabled(const RTAttachmentType type, const U8 index, const b
     }
 }
 
-void RTDrawMask::enableAll() noexcept {
+void RTDrawMask::enableAll() {
     _disabledDepth = _disabledStencil = false;
     _disabledColours.fill(false);
 }
 
-void RTDrawMask::disableAll() noexcept {
+void RTDrawMask::disableAll() {
     _disabledDepth = _disabledStencil = true;
     _disabledColours.fill(true);
 }

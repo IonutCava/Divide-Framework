@@ -80,14 +80,14 @@ namespace Preprocessor{
     };
 
      namespace Callback {
-         FORCE_INLINE void AddDependency(char* file, void* userData) {
+         FORCE_INLINE void AddDependency(const char* file, void* userData) {
             eastl::string& depends = static_cast<WorkData*>(userData)->_depends;
 
             depends += " \\\n ";
             depends += file;
         }
 
-        char* Input(char* buffer, const int size, void* userData) {
+        char* Input(char* buffer, const int size, void* userData) noexcept {
             WorkData* work = static_cast<WorkData*>(userData);
             int i = 0;
             for (char ch = work->_input[work->_fGetsPos];
@@ -115,7 +115,7 @@ namespace Preprocessor{
             return result;
         }
 
-        void Error(void* userData, char* format, const va_list args) {
+        void Error(void* userData, const char* format, const va_list args) {
             static bool firstErrorPrint = true;
             WorkData* work = static_cast<WorkData*>(userData);
             char formatted[1024];
@@ -134,9 +134,32 @@ namespace Preprocessor{
             }
         }
     }
+    
+     eastl::string PreProcessBoost(const eastl::string& source, const char* fileName) {
+         eastl::string ret = {};
+
+         // Fallback to slow Boost.Wave parsing
+         using ContextType = boost::wave::context<eastl::string::const_iterator,
+                             boost::wave::cpplexer::lex_iterator<boost::wave::cpplexer::lex_token<>>,
+                             boost::wave::iteration_context_policies::load_file_to_string,
+                             custom_directives_hooks>;
+
+         ContextType ctx(cbegin(source), cend(source), fileName);
+
+         ctx.set_language(enable_long_long(ctx.get_language()));
+         ctx.set_language(enable_preserve_comments(ctx.get_language()));
+         ctx.set_language(enable_prefer_pp_numbers(ctx.get_language()));
+         ctx.set_language(enable_emit_line_directives(ctx.get_language(), false));
+
+         for (const auto& it : ctx) {
+             ret.append(it.get_value().c_str());
+         }
+
+         return ret;
+     }
 
     eastl::string PreProcess(const eastl::string& source, const char* fileName) {
-        constexpr U8 g_maxTagCount = U8_MAX;
+        constexpr U8 g_maxTagCount = 64;
 
         if (source.empty()) {
             return source;
@@ -146,7 +169,7 @@ namespace Preprocessor{
         {
             const char* in  = source.data();
                   char* out = temp.data();
-                  char* end = out + source.size();
+            const char* end = out + source.size();
 
             for (char ch = *in++; out < end && ch != '\0'; ch = *in++) {
                 if (ch != '\r') {
@@ -162,7 +185,7 @@ namespace Preprocessor{
             fileName      // file name
         };
 
-        fppTag tags[g_maxTagCount];
+        fppTag tags[g_maxTagCount]{};
         fppTag* tagHead = tags;
   
         const auto setTag = [&tagHead](const int tag, void* value) {
@@ -189,23 +212,7 @@ namespace Preprocessor{
         setTag(FPPTAG_END,                nullptr);
 
         if (fppPreProcess(tags) != 0) {
-            // Fallback to slow Boost.Wave parsing
-            using ContextType = boost::wave::context<eastl::string::const_iterator,
-                                                     boost::wave::cpplexer::lex_iterator<boost::wave::cpplexer::lex_token<>>,
-                                                     boost::wave::iteration_context_policies::load_file_to_string,
-                                                     custom_directives_hooks>;
-
-            ContextType ctx(cbegin(source), cend(source), fileName);
-
-            ctx.set_language(enable_long_long(ctx.get_language()));
-            ctx.set_language(enable_preserve_comments(ctx.get_language()));
-            ctx.set_language(enable_prefer_pp_numbers(ctx.get_language()));
-            ctx.set_language(enable_emit_line_directives(ctx.get_language(), false));
-
-            workData._output.resize(0);
-            for (const auto& it : ctx) {
-                workData._output.append(it.get_value().c_str());
-            }
+            return PreProcessBoost(source, fileName);
         }
 
         return workData._output;
@@ -760,7 +767,7 @@ bool glShaderProgram::recompile(const bool force, bool& skipped) {
 }
 
 /// Check every possible combination of flags to make sure this program can be used for rendering
-bool glShaderProgram::isValid() const {
+bool glShaderProgram::isValid() const noexcept {
     // null shader is a valid shader
     return _handle != GLUtil::k_invalidObjectID;
 }
@@ -779,7 +786,7 @@ ShaderResult glShaderProgram::bind() {
     if (GL_API::getStateTracker().setActiveShaderPipeline(_handle)) {
         // All of this needs to be run on an actual bind operation. If we are already bound, we assume we did all this
         queueValidation();
-        for (glShader* shader : _shaderStage) {
+        for (const glShader* shader : _shaderStage) {
             if (shader->valid()) {
                 shader->prepare();
             }
@@ -796,7 +803,7 @@ void glShaderProgram::uploadPushConstants(const PushConstants& constants) {
     OPTICK_EVENT()
 
     assert(isValid());
-    for (glShader* shader : _shaderStage) {
+    for (const glShader* shader : _shaderStage) {
         if (shader->valid()) {
             shader->uploadPushConstants(constants);
         }

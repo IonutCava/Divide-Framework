@@ -40,23 +40,23 @@ namespace Divide {
 
 class VK_API final : public RenderAPIWrapper {
   public:
-    VK_API(GFXDevice& context);
+    VK_API(GFXDevice& context) noexcept;
 
   protected:
-      void idle(bool fast) override;
-      void beginFrame(DisplayWindow& window, bool global = false) override;
-      void endFrame(DisplayWindow& window, bool global = false) override;
+      void idle(bool fast) noexcept override;
+      void beginFrame(DisplayWindow& window, bool global = false) noexcept override;
+      void endFrame(DisplayWindow& window, bool global = false) noexcept override;
 
-      ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) override;
-      void closeRenderingAPI() override;
+      ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;
+      void closeRenderingAPI() noexcept override;
       [[nodiscard]] PerformanceMetrics getPerformanceMetrics() const noexcept override;
-      void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
-      void flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const GFX::CommandBuffer& commandBuffer) override;
-      void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
-      [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const override;
-      [[nodiscard]] U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const override;
-      bool setViewport(const Rect<I32>& newViewport) override;
-      void onThreadCreated(const std::thread::id& threadID) override;
+      void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
+      void flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const GFX::CommandBuffer& commandBuffer) noexcept override;
+      void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
+      [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
+      [[nodiscard]] U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const noexcept override;
+      bool setViewport(const Rect<I32>& newViewport) noexcept override;
+      void onThreadCreated(const std::thread::id& threadID) noexcept override;
 };
 
 };  // namespace Divide

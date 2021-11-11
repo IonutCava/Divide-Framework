@@ -69,36 +69,36 @@ using RTAttachmentDescriptors = vector<RTAttachmentDescriptor>;
 class RTAttachmentPool;
 class RTAttachment final {
     public:
-        explicit RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor);
-        explicit RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor, RTAttachment_ptr externalAtt);
+        explicit RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor) noexcept;
+        explicit RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor, RTAttachment_ptr externalAtt) noexcept;
 
-        [[nodiscard]] bool used() const;
+        [[nodiscard]] bool used() const noexcept;
         
-        [[nodiscard]] bool isExternal() const;
+        [[nodiscard]] bool isExternal() const noexcept;
 
-        [[nodiscard]] bool changed() const;
-        void clearChanged();
+        [[nodiscard]] bool changed() const noexcept;
+        void clearChanged() noexcept;
 
-        void clearColour(const FColour4& clearColour);
-        [[nodiscard]] const FColour4& clearColour() const;
+        void clearColour(const FColour4& clearColour) noexcept;
+        [[nodiscard]] const FColour4& clearColour() const noexcept;
 
-        bool mipWriteLevel(U16 level);
-        [[nodiscard]] U16  mipWriteLevel() const;
+        bool mipWriteLevel(U16 level) noexcept;
+        [[nodiscard]] U16  mipWriteLevel() const noexcept;
 
         bool writeLayer(U16 layer);
-        [[nodiscard]] U16  writeLayer() const;
+        [[nodiscard]] U16  writeLayer() const noexcept;
 
         [[nodiscard]] const Texture_ptr& texture(bool autoResolve = true) const;
-        void setTexture(const Texture_ptr& tex);
+        void setTexture(const Texture_ptr& tex) noexcept;
 
         [[nodiscard]] U16 numLayers() const;
 
-        [[nodiscard]] const RTAttachmentDescriptor& descriptor() const;
+        [[nodiscard]] const RTAttachmentDescriptor& descriptor() const noexcept;
 
-        RTAttachmentPool& parent();
-        [[nodiscard]] const RTAttachmentPool& parent() const;
+        RTAttachmentPool& parent() noexcept;
+        [[nodiscard]] const RTAttachmentPool& parent() const noexcept;
 
-        [[nodiscard]] const RTAttachment_ptr& getExternal() const;
+        [[nodiscard]] const RTAttachment_ptr& getExternal() const noexcept;
 
         PROPERTY_RW(size_t, samplerHash, 0);
         PROPERTY_RW(U32, binding, 0u);

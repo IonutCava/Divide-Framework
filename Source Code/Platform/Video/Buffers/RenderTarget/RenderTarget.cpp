@@ -39,10 +39,8 @@ bool RenderTarget::create() {
     return true;
 }
 
-void RenderTarget::destroy() {
-    if (_attachmentPool != nullptr) {
-        _attachmentPool.reset();
-    }
+void RenderTarget::destroy()noexcept {
+    _attachmentPool.reset();
 }
 
 bool RenderTarget::hasAttachment(const RTAttachmentType type, const U8 index) const {
@@ -61,7 +59,7 @@ RTAttachment& RenderTarget::getAttachment(const RTAttachmentType type, const U8 
     return *_attachmentPool->get(type, index);
 }
 
-U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const {
+U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept {
     return _attachmentPool->attachmentCount(type);
 }
 
@@ -69,22 +67,22 @@ void RenderTarget::readData(const GFXImageFormat imageFormat, const GFXDataForma
     readData(vec4<U16>(0u, 0u, _descriptor._resolution.width, _descriptor._resolution.height), imageFormat, dataType, outData);
 }
 
-U16 RenderTarget::getWidth() const {
+U16 RenderTarget::getWidth() const noexcept {
     return getResolution().width;
 }
 
-U16 RenderTarget::getHeight() const {
+U16 RenderTarget::getHeight() const noexcept {
     return getResolution().height;
 }
 
-vec2<U16> RenderTarget::getResolution() const {
+vec2<U16> RenderTarget::getResolution() const noexcept {
     return _descriptor._resolution;
 }
-const Str64& RenderTarget::name() const {
+const Str64& RenderTarget::name() const noexcept {
     return _descriptor._name;
 }
 
-F32& RenderTarget::depthClearValue() {
+F32& RenderTarget::depthClearValue() noexcept {
     return _descriptor._depthValue;
 }
 

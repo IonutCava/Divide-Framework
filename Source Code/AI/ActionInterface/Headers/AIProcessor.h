@@ -50,8 +50,8 @@ class NOINITVTABLE AIProcessor : NonCopyable {
     virtual void addEntityRef(AIEntity* entity);
 
     void worldState(const GOAPWorldState& state) { _worldState = state; }
-    GOAPWorldState& worldState() { return _worldState; }
-    const GOAPWorldState& worldState() const { return _worldState; }
+    GOAPWorldState& worldState() noexcept { return _worldState; }
+    const GOAPWorldState& worldState() const noexcept { return _worldState; }
 
     /// Register a specific action. This only holds a reference to the action itself and does not create a local copy!
     virtual void registerAction(const GOAPAction& action);
@@ -64,7 +64,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
         const GOAPGoalList::iterator it = 
             eastl::find_if(begin(_goals),
                            end(_goals),
-                            [&goalName](const GOAPGoal& goal) -> bool
+                            [&goalName](const GOAPGoal& goal) noexcept -> bool
                             {
                                 return goal.name() == goalName;
                             });
@@ -76,11 +76,11 @@ class NOINITVTABLE AIProcessor : NonCopyable {
         return nullptr;
     }
 
-    const GOAPGoalList& goalList() const { return _goals; }
+    const GOAPGoalList& goalList() const noexcept { return _goals; }
 
    protected:
     friend class AIEntity;
-    GOAPGoalList& goalList() { return _goals; }
+    GOAPGoalList& goalList() noexcept { return _goals; }
 
     void resetActiveGoals() {
         _activeGoals.clear();
@@ -106,7 +106,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
         }
 
         eastl::sort(begin(_activeGoals), end(_activeGoals),
-                    [](GOAPGoal const* a, GOAPGoal const* b) {
+                    [](GOAPGoal const* a, GOAPGoal const* b) noexcept {
                         return a->relevancy() < b->relevancy();
                     });
 
@@ -127,7 +127,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
 
         auto* const it = eastl::find_if(
             begin(_activeGoals), end(_activeGoals),
-            [goal](GOAPGoal const* actGoal) {
+            [goal](GOAPGoal const* actGoal) noexcept {
                 return actGoal->name() == goal->name();
             });
 
@@ -202,9 +202,9 @@ class NOINITVTABLE AIProcessor : NonCopyable {
         return plan[_currentStep];
     }
 
-    GOAPGoal* getActiveGoal() const { return _activeGoal; }
+    GOAPGoal* getActiveGoal() const noexcept { return _activeGoal; }
 
-    const string& getPlanLog() const { return _planLog; }
+    const string& getPlanLog() const noexcept { return _planLog; }
 
     virtual const string& printActionStats(const GOAPAction& planStep) const;
     virtual bool performActionStep(GOAPAction::operationsIterator step) = 0;

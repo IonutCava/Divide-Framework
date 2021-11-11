@@ -46,17 +46,11 @@ namespace Divide {
 
     template<size_t N>
     struct ClipPlaneList {
-        ClipPlaneList() 
-        {
-            _planeState.fill(false);
-        }
-
-
         void resetAll() {
             _planeState.fill(false);
         }
 
-        void set(U32 index, const Plane<F32>& plane) {
+        void set(U32 index, const Plane<F32>& plane) noexcept {
             assert(index < N);
 
             _planes[index] = plane;
@@ -73,7 +67,7 @@ namespace Divide {
                    _planes == rhs._planes;
         }
 
-        bool operator!=(const ClipPlaneList& rhs) const noexcept {
+        bool operator!=(const ClipPlaneList& rhs) const {
             return _planeState != rhs._planeState ||
                    _planes != rhs._planes;
         }
@@ -83,7 +77,7 @@ namespace Divide {
 
     private:
         PlaneList<N> _planes{};
-        std::array<bool, N> _planeState{};
+        std::array<bool, N> _planeState = create_array<N, bool>(false);
     };
     
     using FrustumClipPlanes = ClipPlaneList<to_base(ClipPlaneIndex::COUNT)>;

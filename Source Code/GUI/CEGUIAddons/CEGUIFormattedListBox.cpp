@@ -23,7 +23,7 @@ FormattedListboxTextItem::~FormattedListboxTextItem() {
 }
 
 //----------------------------------------------------------------------------//
-HorizontalTextFormatting FormattedListboxTextItem::getFormatting() const {
+HorizontalTextFormatting FormattedListboxTextItem::getFormatting() const noexcept {
     return d_formatting;
 }
 

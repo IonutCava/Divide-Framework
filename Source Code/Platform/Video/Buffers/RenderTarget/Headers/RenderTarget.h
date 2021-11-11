@@ -77,7 +77,7 @@ struct BlitIndex {
 };
 
 struct ColourBlitEntry {
-    void set(const U16 indexIn, const U16 indexOut, const U16 layerIn = 0u, const U16 layerOut = 0u) {
+    void set(const U16 indexIn, const U16 indexOut, const U16 layerIn = 0u, const U16 layerOut = 0u) noexcept {
         input(indexIn, layerIn);
         output(indexOut, layerOut);
     }
@@ -155,10 +155,10 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
         DepthBlitEntry _blitDepth;
         std::array<ColourBlitEntry, RT_MAX_COLOUR_ATTACHMENTS> _blitColours;
 
-        [[nodiscard]] bool hasBlitColours() const noexcept {
+        [[nodiscard]] bool hasBlitColours() const {
             return std::any_of(std::cbegin(_blitColours),
                                std::cend(_blitColours),
-                               [](const auto& entry) {
+                               [](const auto& entry) noexcept {
                                     return entry.valid();
                                });
         }
@@ -172,13 +172,13 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
 
     /// Init all attachments. Returns false if already called
     [[nodiscard]] virtual bool create();
-                  void destroy();
+                  void destroy() noexcept;
 
     [[nodiscard]] virtual bool hasAttachment(RTAttachmentType type, U8 index) const;
     [[nodiscard]] virtual const RTAttachment_ptr& getAttachmentPtr(RTAttachmentType type, U8 index) const;
     [[nodiscard]] virtual const RTAttachment& getAttachment(RTAttachmentType type, U8 index) const;
     [[nodiscard]] virtual RTAttachment& getAttachment(RTAttachmentType type, U8 index);
-    [[nodiscard]] virtual U8 getAttachmentCount(RTAttachmentType type) const;
+    [[nodiscard]] virtual U8 getAttachmentCount(RTAttachmentType type) const noexcept;
 
     virtual void clear(const RTClearDescriptor& descriptor) = 0;
     virtual void setDefaultState(const RTDrawDescriptor& drawPolicy) = 0;
@@ -192,13 +192,13 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
 
     void readData(GFXImageFormat imageFormat, GFXDataFormat dataType, bufferPtr outData) const;
 
-    [[nodiscard]] U16 getWidth()  const;
-    [[nodiscard]] U16 getHeight() const;
-    [[nodiscard]] vec2<U16> getResolution() const;
+    [[nodiscard]] U16 getWidth()  const noexcept;
+    [[nodiscard]] U16 getHeight() const noexcept;
+    [[nodiscard]] vec2<U16> getResolution() const noexcept;
 
-    F32& depthClearValue();
+    F32& depthClearValue() noexcept;
 
-    [[nodiscard]] const Str64& name() const;
+    [[nodiscard]] const Str64& name() const noexcept;
 
    protected:
     U8 _colourAttachmentCount = 0;

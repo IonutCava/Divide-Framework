@@ -95,11 +95,11 @@ namespace Divide {
         return false;
     }
     template<typename Item, size_t Count, typename SearchType>
-    bool operator==(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs) noexcept {
+    bool operator==(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs) {
         return lhs._entries == rhs._entries;
     }
     template<typename Item, size_t Count, typename SearchType>
-    bool operator!=(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs) noexcept {
+    bool operator!=(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs) {
         return lhs._entries != rhs._entries;
     }
 

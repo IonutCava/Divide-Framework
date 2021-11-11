@@ -105,14 +105,14 @@ public:
         PROPERTY_RW(std::set<U16>, pressIDs);
         PROPERTY_RW(std::set<U16>, releaseIDs);
 
-        void clear() {
+        void clear() noexcept {
             modifiers().clear();
             pressIDs().clear();
             releaseIDs().clear();
         }
     };
 public:
-    void clear();
+    void clear() noexcept;
     bool add(const Entry& entry);
     
     PROPERTY_R(vector<Entry>, entries);

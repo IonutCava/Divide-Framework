@@ -48,7 +48,7 @@ public:
 
     void onNetworkSend(U32 frameCountIn);
 
-    void flagDirty();
+    void flagDirty() noexcept;
 
     static NetworkingComponent* getReceiver(I64 guid);
 

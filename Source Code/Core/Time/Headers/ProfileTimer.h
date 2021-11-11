@@ -41,8 +41,8 @@ class ProfileTimer {
    public:
     ProfileTimer() = default;
 
-    void start();
-    void stop();
+    void start() noexcept;
+    void stop() noexcept;
     void reset() noexcept;
     [[nodiscard]] string print(U32 level = 0) const;
 
@@ -69,7 +69,7 @@ class ProfileTimer {
     void addChildTimer(ProfileTimer& child);
     void removeChildTimer(ProfileTimer& child);
 
-    bool hasChildTimer(ProfileTimer& child) const;
+    bool hasChildTimer(const ProfileTimer& child) const;
 
    protected:
      vector<U32> _children;
@@ -78,7 +78,7 @@ class ProfileTimer {
 
 class ScopedTimer final : NonCopyable {
 public:
-    explicit ScopedTimer(ProfileTimer& timer);
+    explicit ScopedTimer(ProfileTimer& timer) noexcept;
     ~ScopedTimer();
 
 private:
@@ -88,8 +88,8 @@ private:
 ProfileTimer& ADD_TIMER(const char* timerName);
 void REMOVE_TIMER(ProfileTimer*& timer);
 
-void START_TIMER(ProfileTimer& timer);
-void STOP_TIMER(ProfileTimer& timer);
+void START_TIMER(ProfileTimer& timer) noexcept;
+void STOP_TIMER(ProfileTimer& timer) noexcept;
 string PRINT_TIMER(ProfileTimer& timer);
 
 }  // namespace Time

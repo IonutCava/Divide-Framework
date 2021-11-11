@@ -36,7 +36,30 @@ void log_delete(void* p) {
 }
 };  // namespace MemoryManager
 
-SysInfo::SysInfo() : _availableRamInBytes(0),
+namespace Assert {
+    bool DIVIDE_ASSERT_FUNC(const bool expression, [[maybe_unused]] const char* file, [[maybe_unused]] const I32 line, [[maybe_unused]] const char* failMessage) noexcept {
+        if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+            if (!expression) {
+                const char* msgOut = FormatText("[ %s ] [ %s ] AT [ %d ]", failMessage, file, line);
+                if (strlen(msgOut) == 0) {
+                    return DIVIDE_ASSERT_FUNC(expression, file, line, "Message truncated");
+                }
+
+                DIVIDE_ASSERT_MSG_BOX(msgOut);
+
+                if_constexpr(!Config::Assert::CONTINUE_ON_ASSERT) {
+                    assert(expression && msgOut);
+                }
+
+                DebugBreak();
+            }
+        }
+
+        return expression;
+    }
+}; // namespace Assert
+
+SysInfo::SysInfo() noexcept : _availableRamInBytes(0),
                      _systemResolutionWidth(0),
                      _systemResolutionHeight(0)
 {
@@ -194,7 +217,7 @@ void operator delete(void* ptr, [[maybe_unused]] const char* zFile, [[maybe_unus
     free(ptr);
 }
 
-void* operator new[](const size_t size, [[maybe_unused]] const char* zFile, [[maybe_unused]] const size_t nLine) {
+void* operator new[](const size_t size, [[maybe_unused]] const char* zFile, [[maybe_unused]] const size_t nLine) noexcept {
     void* ptr = malloc(size);
 #if defined(_DEBUG)
     Divide::MemoryManager::log_new(ptr, size, zFile, nLine);

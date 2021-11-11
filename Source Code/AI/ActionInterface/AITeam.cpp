@@ -9,7 +9,7 @@
 namespace Divide::AI {
 
 namespace {
-    const U16 g_entityThreadedThreashold = 16u;
+    constexpr U16 g_entityThreadedThreashold = 16u;
 }
 
 AITeam::AITeam(const U32 id, AIManager& parentManager)
@@ -45,7 +45,7 @@ void AITeam::addCrowd(const AIEntity::PresetAgentRadius radius, Navigation::Navi
 }
 
 void AITeam::removeCrowd(const AIEntity::PresetAgentRadius radius) {
-    AITeamCrowd::iterator it = _aiTeamCrowd.find(radius);
+    const AITeamCrowd::iterator it = _aiTeamCrowd.find(radius);
     DIVIDE_ASSERT(
         it != std::end(_aiTeamCrowd),
         "AITeam error: DtCrowd does not exist for specified navmesh!");

@@ -8,7 +8,7 @@
 namespace Divide {
 
 
-size_t PropertyDescriptor::getHash() const noexcept {
+size_t PropertyDescriptor::getHash() const {
     Util::Hash_combine(_hash, to_base(_type));
     return _hash;
 }
@@ -18,7 +18,7 @@ ResourceDescriptor::ResourceDescriptor(const Str256& resourceName)
 {
 }
 
-size_t ResourceDescriptor::getHash() const noexcept {
+size_t ResourceDescriptor::getHash() const {
     _hash = 9999991;
     const std::string fullPath = _assetName.empty()
                                     ? resourceName().c_str()

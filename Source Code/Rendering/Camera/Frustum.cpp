@@ -196,10 +196,9 @@ FrustumCollision Frustum::ContainsBoundingBox(const BoundingBox& bbox, I8& lastP
     return res;
 }
 
-void Frustum::set(const Frustum& other) {
+void Frustum::set(const Frustum& other) noexcept {
     _frustumPlanes = other._frustumPlanes;
 }
-
 
 // Get the frustum corners in WorldSpace.
 void Frustum::getCornersWorldSpace(std::array<vec3<F32>, to_base(FrustumPoints::COUNT)>& cornersWS) const noexcept {

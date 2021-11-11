@@ -111,15 +111,15 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         _data.resize(size, defaultValue);
     }
 
-    [[nodiscard]] const vec3<F32>& getPosition(const U32 index) const noexcept {
+    [[nodiscard]] const vec3<F32>& getPosition(const U32 index) const {
         return _data[index]._position;
     }
 
-    [[nodiscard]] const vec2<F32>& getTexCoord(const U32 index) const noexcept {
+    [[nodiscard]] const vec2<F32>& getTexCoord(const U32 index) const {
         return _data[index]._texcoord;
     }
 
-    [[nodiscard]] F32 getNormal(const U32 index) const noexcept {
+    [[nodiscard]] F32 getNormal(const U32 index) const {
         return _data[index]._normal;
     }
 
@@ -129,7 +129,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         return normal;
     }
 
-    [[nodiscard]] F32 getTangent(const U32 index) const noexcept {
+    [[nodiscard]] F32 getTangent(const U32 index) const {
         return _data[index]._tangent;
     }
 
@@ -139,15 +139,15 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         return tangent;
     }
 
-    [[nodiscard]] P32 getBoneIndices(const U32 index) const noexcept {
+    [[nodiscard]] P32 getBoneIndices(const U32 index) const {
         return _data[index]._indices;
     }
 
-    [[nodiscard]] P32 getBoneWeightsPacked(const U32 index) const noexcept {
+    [[nodiscard]] P32 getBoneWeightsPacked(const U32 index) const {
         return _data[index]._weights;
     }
 
-    [[nodiscard]] vec4<F32> getBoneWeights(const U32 index) const noexcept {
+    [[nodiscard]] vec4<F32> getBoneWeights(const U32 index) const {
         const P32& weight = _data[index]._weights;
         return vec4<F32>(UNORM_CHAR_TO_FLOAT(weight.b[0]),
                          UNORM_CHAR_TO_FLOAT(weight.b[1]),
@@ -340,7 +340,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         return _partitions[partitionID].second;
     }
 
-    [[nodiscard]] size_t getPartitionOffset(const U16 partitionID) const noexcept {
+    [[nodiscard]] size_t getPartitionOffset(const U16 partitionID) const {
         if (_partitions.empty()) {
             return 0;
         }
@@ -348,7 +348,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         return _partitions[partitionID].first;
     }
 
-    [[nodiscard]] size_t lastPartitionOffset() const noexcept {
+    [[nodiscard]] size_t lastPartitionOffset() const {
         if (_partitions.empty()) {
             return 0;
         }
@@ -364,7 +364,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         _attribDirty.fill(false);
     }
 
-    void fromBuffer(VertexBuffer& other);
+    void fromBuffer(const VertexBuffer& other);
     bool deserialize(ByteBuffer& dataIn);
     bool serialize(ByteBuffer& dataOut) const;
 

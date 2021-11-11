@@ -59,7 +59,7 @@ struct Ray {
     vec3<F32> _origin;
     vec3<F32> _direction;
 
-    void identity() {
+    void identity() noexcept {
         _origin = VECTOR3_ZERO;
         _direction = WORLD_Y_AXIS;
     }

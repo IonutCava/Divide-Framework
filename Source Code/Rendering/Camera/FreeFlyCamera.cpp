@@ -33,7 +33,7 @@ void FreeFlyCamera::update(const F32 deltaTimeMS) noexcept {
     _speed *= Time::MillisecondsToSeconds(deltaTimeMS);
 }
 
-void FreeFlyCamera::setGlobalRotation(const F32 yaw, const F32 pitch, const F32 roll) {
+void FreeFlyCamera::setGlobalRotation(const F32 yaw, const F32 pitch, const F32 roll) noexcept {
     if (_rotationLocked) {
         return;
     }
@@ -57,7 +57,7 @@ void FreeFlyCamera::rotate(const Quaternion<F32>& q) {
     _viewMatrixDirty = true;
 }
 
-void FreeFlyCamera::rotate(Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> roll) {
+void FreeFlyCamera::rotate(Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> roll) noexcept {
     if (_rotationLocked) {
         return;
     }
@@ -115,7 +115,7 @@ void FreeFlyCamera::rotatePitch(const Angle::DEGREES<F32> angle) {
     rotate(Quaternion<F32>(_data._orientation * WORLD_X_AXIS, -angle * _speed.turn));
 }
 
-void FreeFlyCamera::move(F32 dx, F32 dy, F32 dz) {
+void FreeFlyCamera::move(F32 dx, F32 dy, F32 dz) noexcept {
     if (_movementLocked) {
         return;
     }

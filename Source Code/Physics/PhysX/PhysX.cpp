@@ -107,7 +107,7 @@ ErrorCode PhysX::initPhysicsAPI(const U8 targetFrameRate, const F32 simSpeed) {
                             Config::Build::IS_DEBUG_BUILD);
     }
 
-    physx::PxTolerancesScale toleranceScale{};
+    const physx::PxTolerancesScale toleranceScale{};
     _gPhysicsSDK = PxCreatePhysics(PX_PHYSICS_VERSION,  *_foundation, toleranceScale, g_recordMemoryAllocations, _pvd);
 
     if (_gPhysicsSDK == nullptr) {
@@ -318,7 +318,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
 {
     PhysXActor* newActor = new PhysXActor(parentComp);
 
-    TransformComponent* tComp = node->get<TransformComponent>();
+    const TransformComponent* tComp = node->get<TransformComponent>();
     assert(tComp != nullptr);
 
     const vec3<F32>& position = tComp->getPosition();
@@ -391,7 +391,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
                         meshDesc.points.count = static_cast<physx::PxU32>(verts.size());
                         meshDesc.points.data = verts[0]._position._v;
                     } else {
-                        VertexBuffer* vb = obj.getGeometryVB();
+                        const VertexBuffer* vb = obj.getGeometryVB();
                         DIVIDE_ASSERT(vb != nullptr);
                         meshDesc.points.count = static_cast<physx::PxU32>(vb->getVertexCount());
                         meshDesc.points.data = vb->getVertices()[0]._position._v;
@@ -430,7 +430,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
         }
         if (nodeGeometry != nullptr) {
             const vec3<F32>& scale = tComp->getScale();
-            physx::PxTriangleMeshGeometry geometry = {
+            const physx::PxTriangleMeshGeometry geometry = {
                 nodeGeometry,
                 physx::PxMeshScale(physx::PxVec3(scale.x, scale.y, scale.z),
                                    physx::PxQuat(physx::PxIdentity))
@@ -445,7 +445,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
                sNode.type() == SceneNodeType::TYPE_TRIGGER ||
                sNode.type() == SceneNodeType::TYPE_PARTICLE_EMITTER) {
         // Use AABB
-        BoundsComponent* bComp = node->get<BoundsComponent>();
+        const BoundsComponent* bComp = node->get<BoundsComponent>();
         assert(bComp != nullptr);
         const vec3<F32> hExtent = bComp->getBoundingBox().getHalfExtent();
 
@@ -453,7 +453,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
 
         
 
-        physx::PxBoxGeometry geometry = { hExtent.x, hExtent.y, hExtent.z};
+        const physx::PxBoxGeometry geometry = { hExtent.x, hExtent.y, hExtent.z};
         physx::PxShape* shape = physx::PxRigidActorExt::createExclusiveShape(*newActor->_actor, geometry, *_defaultMaterial);
         if (sNode.type() == SceneNodeType::TYPE_WATER) {
             // Water geom has the range  [0, depth] and half extents work from [-half depth, half depth]

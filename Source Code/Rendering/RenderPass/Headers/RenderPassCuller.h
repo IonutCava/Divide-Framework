@@ -94,7 +94,7 @@ struct VisibleNodeList
         _index += other._index;
     }
 
-    void append(const VisibleNode& node) {
+    void append(const VisibleNode& node) noexcept {
         _nodes[_index.fetch_add(1)] = node;
     }
                   void      reset()       noexcept { _index.store(0); }

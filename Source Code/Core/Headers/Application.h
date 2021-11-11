@@ -66,7 +66,7 @@ struct SizeChangeParams {
 class Application : public SDLEventListener {
     friend class Attorney::ApplicationTask;
   public:
-     Application();
+     Application() noexcept;
      ~Application();
 
     /// Startup and shutdown
@@ -111,19 +111,19 @@ class Application : public SDLEventListener {
     Time::ApplicationTimer& timer() noexcept { return _timer; }
 
   private:
-    bool onSDLEvent(SDL_Event event) override;
+    bool onSDLEvent(SDL_Event event) noexcept override;
 
   private:
     WindowManager _windowManager;
      
-    ErrorCode _errorCode;
+    ErrorCode _errorCode = ErrorCode::NO_ERR;
     /// this is true when we are inside the main app loop
     std::atomic_bool _mainLoopActive;
     std::atomic_bool _mainLoopPaused;
     std::atomic_bool _requestShutdown;
     std::atomic_bool _stepLoop;
-    bool             _isInitialized;
-    Kernel* _kernel;
+    bool             _isInitialized = false;
+    Kernel* _kernel = nullptr;
     /// buffer to register all of the memory allocations recorded via
     /// "MemoryManager_NEW"
     Str256 _memLogBuffer;

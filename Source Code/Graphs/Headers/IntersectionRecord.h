@@ -44,16 +44,16 @@ FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
 class IntersectionRecord
 {
   public:
-    IntersectionRecord();
+    IntersectionRecord() noexcept;
     IntersectionRecord(vec3<F32> hitPos,
                        vec3<F32> hitNormal,
                        Ray ray,
-                       D64 distance);
+                       D64 distance) noexcept;
     /// Creates a new intersection record indicating whether there was a hit or not and the object which was hit.
-    IntersectionRecord(SceneGraphNode* hitObject);
+    IntersectionRecord(SceneGraphNode* hitObject) noexcept;
 
     /// Reset all information contained by this record
-    void reset();
+    void reset() noexcept;
 
     /// This is the exact point in 3D space which has an intersection.
     vec3<F32> _position;
@@ -77,7 +77,7 @@ class IntersectionRecord
     bool _hasHit;
 
     /// check the object identities between the two intersection records. If they match in either order, we have a duplicate.
-    bool operator==(const IntersectionRecord& otherRecord) const;
+    bool operator==(const IntersectionRecord& otherRecord) const noexcept;
 
     [[nodiscard]] bool isEmpty() const noexcept {
         return _intersectedObject1 == nullptr && _intersectedObject2 == nullptr;

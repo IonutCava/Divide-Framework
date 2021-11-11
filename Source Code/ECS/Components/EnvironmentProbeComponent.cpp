@@ -36,7 +36,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     : BaseComponentType<EnvironmentProbeComponent, ComponentType::ENVIRONMENT_PROBE>(sgn, context),
       GUIDWrapper()
 {
-    Scene& parentScene = sgn->sceneGraph()->parentScene();
+    const Scene& parentScene = sgn->sceneGraph()->parentScene();
 
     EditorComponentField layerField = {};
     layerField._name = "RT Layer index";
@@ -78,10 +78,10 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     updateTypeField._dataGetter = [this](void* dataOut) {
         *static_cast<U8*>(dataOut) = to_U8(updateType());
     };
-    updateTypeField._dataSetter = [this](const void* data) {
+    updateTypeField._dataSetter = [this](const void* data) noexcept {
         updateType(*static_cast<const UpdateType*>(data));
     };
-    updateTypeField._displayNameGetter = [](const U8 index) {
+    updateTypeField._displayNameGetter = [](const U8 index) noexcept {
         return TypeUtil::EnvProveUpdateTypeToString(static_cast<UpdateType>(index));
     };
 
@@ -130,7 +130,9 @@ SceneGraphNode* EnvironmentProbeComponent::findNodeToIgnore() const noexcept {
         while (parent != nullptr) {
             const SceneNodeType type = parent->getNode().type();
 
-            if (type != SceneNodeType::TYPE_TRANSFORM || type != SceneNodeType::TYPE_TRIGGER) {
+            if (type != SceneNodeType::TYPE_TRANSFORM &&
+                type != SceneNodeType::TYPE_TRIGGER)
+            {
                 return parent;
             }
 
@@ -142,7 +144,7 @@ SceneGraphNode* EnvironmentProbeComponent::findNodeToIgnore() const noexcept {
     return nullptr;
 }
 
-bool EnvironmentProbeComponent::checkCollisionAndQueueUpdate(const BoundingSphere& sphere) {
+bool EnvironmentProbeComponent::checkCollisionAndQueueUpdate(const BoundingSphere& sphere) noexcept {
     if (!dirty() && updateType() == UpdateType::ON_DIRTY && _aabb.collision(sphere)) {
         dirty(true);
     }
@@ -217,17 +219,17 @@ void EnvironmentProbeComponent::poolIndex(const U16 index) noexcept {
     updateProbeData();
 }
 
-void EnvironmentProbeComponent::setBounds(const vec3<F32>& min, const vec3<F32>& max) {
+void EnvironmentProbeComponent::setBounds(const vec3<F32>& min, const vec3<F32>& max) noexcept {
     _aabb.set(min, max);
     updateProbeData();
 }
 
-void EnvironmentProbeComponent::setBounds(const vec3<F32>& center, const F32 radius) {
+void EnvironmentProbeComponent::setBounds(const vec3<F32>& center, const F32 radius) noexcept {
     _aabb.createFromSphere(center, radius);
     updateProbeData();
 }
 
-void EnvironmentProbeComponent::updateType(const UpdateType type) noexcept {
+void EnvironmentProbeComponent::updateType(const UpdateType type) {
     if (updateType() == type){
         return;
     }
@@ -252,7 +254,7 @@ void EnvironmentProbeComponent::updateType(const UpdateType type) noexcept {
     }
 }
 
-F32 EnvironmentProbeComponent::distanceSqTo(const vec3<F32>& pos) const {
+F32 EnvironmentProbeComponent::distanceSqTo(const vec3<F32>& pos) const noexcept {
     return _aabb.getCenter().distanceSquared(pos);
 }
 

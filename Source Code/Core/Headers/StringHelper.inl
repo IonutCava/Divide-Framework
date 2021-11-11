@@ -75,9 +75,9 @@ vector<T_str>& Split(const char* input, char delimiter, vector<T_str>& elems) {
     const T_str original(input);
     if (!original.empty()) {
         {
-            size_t i;
+            size_t i = 0u;
             const char* o = input;
-            for (i = 0; input[i]; input[i] == delimiter ? i++ : *input++) {
+            for (i = 0u; input[i]; (input[i] == delimiter) ? i++ : *input++) {
                 NOP();
             }
             elems.resize(i + 1);
@@ -130,7 +130,7 @@ bool ReplaceStringInPlace(T_str& subject, const std::array<std::string_view, N>&
     bool changed = true;
     while (changed) {
         changed = false;
-        for (std::string_view s : search) {
+        for (const std::string_view s : search) {
             changed = ReplaceStringInPlace(subject, s, replace, recursive);
             ret = changed || ret;
             
@@ -146,7 +146,7 @@ T_str ReplaceString(std::string_view subject, const std::array<std::string_view,
     bool changed = true;
     while (changed) {
         changed = false;
-        for (std::string_view s : search) {
+        for (const std::string_view s : search) {
             changed = ReplaceStringInPlace(ret, s, replace, recursive) || changed;
         }
     }
@@ -245,7 +245,7 @@ inline bool CompareIgnoreCase(const char* a, const std::string_view b) noexcept 
 }
 
 template<typename T_strA>
-bool CompareIgnoreCase(const T_strA& a, const char* b) {
+bool CompareIgnoreCase(const T_strA& a, const char* b) noexcept {
     if (b != nullptr && !a.empty()) {
         return CompareIgnoreCase(a.c_str(), b);
     }
@@ -256,7 +256,7 @@ bool CompareIgnoreCase(const T_strA& a, const char* b) {
 }
 
 template<typename T_strA>
-bool CompareIgnoreCase(const T_strA& a, const std::string_view b)  {
+bool CompareIgnoreCase(const T_strA& a, const std::string_view b) noexcept {
     return CompareIgnoreCase(a.c_str(), b);
 }
 

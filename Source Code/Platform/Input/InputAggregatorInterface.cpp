@@ -59,13 +59,13 @@ InputEvent::InputEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexce
 {
 }
 
-MouseButtonEvent::MouseButtonEvent(DisplayWindow* sourceWindow, const U8 deviceIndex)
+MouseButtonEvent::MouseButtonEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
     : InputEvent(sourceWindow, deviceIndex)
 {
 
 }
 
-MouseMoveEvent::MouseMoveEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const MouseState stateIn, const bool wheelEvent)
+MouseMoveEvent::MouseMoveEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const MouseState stateIn, const bool wheelEvent) noexcept
     : InputEvent(sourceWindow, deviceIndex),
       _stateIn(stateIn),
       _wheelEvent(wheelEvent)
@@ -113,17 +113,17 @@ bool MouseMoveEvent::remapped() const noexcept {
     return _remapped;
 }
 
-JoystickEvent::JoystickEvent(DisplayWindow* sourceWindow, const U8 deviceIndex)
+JoystickEvent::JoystickEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
     : InputEvent(sourceWindow, deviceIndex)
 {
 }
 
-KeyEvent::KeyEvent(DisplayWindow* sourceWindow, const U8 deviceIndex)
+KeyEvent::KeyEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
     : InputEvent(sourceWindow, deviceIndex)
 {
 }
 
-UTF8Event::UTF8Event(DisplayWindow* sourceWindow, const U8 deviceIndex, const char* text)
+UTF8Event::UTF8Event(DisplayWindow* sourceWindow, const U8 deviceIndex, const char* text) noexcept
     : InputEvent(sourceWindow, deviceIndex),
       _text(text)
 {

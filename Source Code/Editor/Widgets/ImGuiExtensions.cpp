@@ -17,7 +17,7 @@ namespace ImGui {
             ret = true;
             *v = !*v;
         }
-        ImU32 col_bg;
+        ImU32 col_bg = IM_COL32(0, 0, 0, 0);
         if (IsItemHovered())
             col_bg = *v ? IM_COL32(145 + 20, 211, 68 + 20, 255) : IM_COL32(218 - 20, 218 - 20, 218 - 20, 255);
         else

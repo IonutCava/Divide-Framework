@@ -78,7 +78,7 @@ namespace Divide {
 
     template<class T>
     struct NoHash {
-        size_t operator()(const T& elem) const {
+        size_t operator()(const T& elem) const noexcept {
             return static_cast<size_t>(elem);
         }
     };

@@ -104,14 +104,14 @@ class SceneRenderState : public SceneComponent {
         COUNT = 11
     };
 
-    explicit SceneRenderState(Scene& parentScene);
+    explicit SceneRenderState(Scene& parentScene) noexcept;
 
     void renderMask(U16 mask);
-    [[nodiscard]] bool isEnabledOption(RenderOptions option) const;
-    void enableOption(RenderOptions option);
-    void disableOption(RenderOptions option);
-    void toggleOption(RenderOptions option);
-    void toggleOption(RenderOptions option, bool state);
+    [[nodiscard]] bool isEnabledOption(RenderOptions option) const noexcept;
+    void enableOption(RenderOptions option) noexcept;
+    void disableOption(RenderOptions option) noexcept;
+    void toggleOption(RenderOptions option) noexcept;
+    void toggleOption(RenderOptions option, bool state) noexcept;
     
     PROPERTY_RW(F32, generalVisibility, 1000.0f);
     PROPERTY_RW(F32, grassVisibility, 1000.0f);
@@ -178,28 +178,28 @@ class SceneState : public SceneComponent {
      {
      }
 
-    void onPlayerAdd(const U8 index) {
+    void onPlayerAdd(const U8 index) noexcept {
         // Just reset everything
         onPlayerRemove(index);
     }
 
-    inline void onPlayerRemove(const U8 index) {
+    inline void onPlayerRemove(const U8 index) noexcept {
         _playerState[index].resetAll();
     }
 
-    [[nodiscard]] inline SceneStatePerPlayer& playerState() {
+    [[nodiscard]] inline SceneStatePerPlayer& playerState() noexcept {
         return _playerState[playerPass()];
     }
 
-    [[nodiscard]] inline const SceneStatePerPlayer& playerState() const {
+    [[nodiscard]] inline const SceneStatePerPlayer& playerState() const noexcept {
         return _playerState[playerPass()];
     }
 
-    [[nodiscard]] inline SceneStatePerPlayer& playerState(const U8 index) {
+    [[nodiscard]] inline SceneStatePerPlayer& playerState(const U8 index) noexcept {
         return _playerState[index];
     }
 
-    [[nodiscard]] inline const SceneStatePerPlayer& playerState(const U8 index) const {
+    [[nodiscard]] inline const SceneStatePerPlayer& playerState(const U8 index) const noexcept {
         return _playerState[index];
     }
 

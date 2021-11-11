@@ -78,7 +78,7 @@ DivideDtCrowd::~DivideDtCrowd() {
 }
 
 void DivideDtCrowd::update(const U64 deltaTimeUS) {
-    dtNavMesh* nav = Attorney::NavigationMeshCrowd::getNavigationMesh(*_recast);
+    const dtNavMesh* nav = Attorney::NavigationMeshCrowd::getNavigationMesh(*_recast);
 
     if (!nav || !_crowd) return;
     // TimeVal startTime = getPerfTime();
@@ -242,7 +242,7 @@ bool DivideDtCrowd::requestVelocity(const I32 agentID, const vec3<F32>& velocity
 }
 
 bool DivideDtCrowd::stopAgent(const I32 agentID) const {
-    F32 zeroVel[] = {0, 0, 0};
+    constexpr F32 zeroVel[] = {0, 0, 0};
     return _crowd->resetMoveTarget(agentID) &&
            _crowd->requestMoveVelocity(agentID, zeroVel);
 }

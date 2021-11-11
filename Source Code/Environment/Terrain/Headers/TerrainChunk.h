@@ -59,7 +59,7 @@ class TerrainChunk {
     friend class Attorney::TerrainChunkTerrain;
 
    public:
-    TerrainChunk(GFXDevice& context, Terrain* parentTerrain, QuadtreeNode& parentNode);
+    TerrainChunk(GFXDevice& context, Terrain* parentTerrain, QuadtreeNode& parentNode) noexcept;
 
     void load(U8 depth, const vec2<U32>& pos, U32 targetChunkDimension, const vec2<U32>& HMSize, BoundingBox& bbInOut);
 
@@ -72,10 +72,10 @@ class TerrainChunk {
     [[nodiscard]] const Terrain& parent() const noexcept { return *_parentTerrain; }
     [[nodiscard]] const QuadtreeNode& quadtreeNode() const noexcept { return _quadtreeNode; }
 
-    [[nodiscard]] const BoundingBox& bounds() const;
+    [[nodiscard]] const BoundingBox& bounds() const noexcept;
     void drawBBox(RenderPackage& packageOut) const;
 
-    [[nodiscard]] U8 LoD() const;
+    [[nodiscard]] U8 LoD() const noexcept;
 
    protected:
        [[nodiscard]] const Vegetation_ptr& getVegetation() const noexcept { return _vegetation; }
@@ -97,7 +97,7 @@ class TerrainChunk {
 
 namespace Attorney {
 class TerrainChunkTerrain {
-    static const Vegetation_ptr& getVegetation(const Divide::TerrainChunk& chunk) {
+    static const Vegetation_ptr& getVegetation(const Divide::TerrainChunk& chunk) noexcept {
         return chunk.getVegetation();
     }
     friend class Divide::Terrain;

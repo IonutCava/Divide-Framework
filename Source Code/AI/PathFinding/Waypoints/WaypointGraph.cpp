@@ -6,13 +6,6 @@
 
 namespace Divide::Navigation {
 
-WaypointGraph::WaypointGraph() {
-    _id = 0xFFFFFFFF;
-    _loop = true;
-}
-
-WaypointGraph::~WaypointGraph() { _waypoints.clear(); }
-
 void WaypointGraph::addWaypoint(Waypoint* wp) {
     if (_waypoints.find(wp->ID()) != std::end(_waypoints)) {
         return;

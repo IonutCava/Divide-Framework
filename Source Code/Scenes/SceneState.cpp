@@ -5,7 +5,7 @@
 
 namespace Divide {
 
-SceneRenderState::SceneRenderState(Scene& parentScene)
+SceneRenderState::SceneRenderState(Scene& parentScene) noexcept
     : SceneComponent(parentScene),
       _generalVisibility(1.0f),
       _grassVisibility(1.0f),
@@ -20,7 +20,7 @@ void SceneRenderState::renderMask(U16 mask) {
     constexpr bool validateRenderMask = false;
 
     if_constexpr (validateRenderMask) {
-        auto validateMask = [mask]() -> U16 {
+        const auto validateMask = [mask]() -> U16 {
             U16 validMask = 0;
             for (U16 stateIt = 1; stateIt <= to_base(RenderOptions::COUNT); ++stateIt) {
               const U16 bitState = toBit(stateIt);
@@ -32,7 +32,7 @@ void SceneRenderState::renderMask(U16 mask) {
             return validMask;
         };
 
-        U16 parsedMask = validateMask();
+        const U16 parsedMask = validateMask();
         DIVIDE_ASSERT(parsedMask != 0 && parsedMask == mask,
                       "SceneRenderState::renderMask error: Invalid state specified!");
         _stateMask = parsedMask;
@@ -41,23 +41,23 @@ void SceneRenderState::renderMask(U16 mask) {
     }
 }
 
-bool SceneRenderState::isEnabledOption(const RenderOptions option) const {
+bool SceneRenderState::isEnabledOption(const RenderOptions option) const noexcept {
     return BitCompare(_stateMask, option);
 }
 
-void SceneRenderState::enableOption(const RenderOptions option) {
+void SceneRenderState::enableOption(const RenderOptions option) noexcept {
     SetBit(_stateMask, option);
 }
 
-void SceneRenderState::disableOption(const RenderOptions option) {
+void SceneRenderState::disableOption(const RenderOptions option) noexcept {
     ClearBit(_stateMask, option);
 }
 
-void SceneRenderState::toggleOption(const RenderOptions option) {
+void SceneRenderState::toggleOption(const RenderOptions option) noexcept {
     toggleOption(option, !isEnabledOption(option));
 }
 
-void SceneRenderState::toggleOption(const RenderOptions option, const bool state) {
+void SceneRenderState::toggleOption(const RenderOptions option, const bool state) noexcept {
     if (state) {
         enableOption(option);
     } else {

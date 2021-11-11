@@ -69,9 +69,9 @@ struct PipelineDescriptor final : Hashable {
     {
     }
 
-    size_t getHash() const noexcept override;
-    bool operator==(const PipelineDescriptor& other) const;
-    bool operator!=(const PipelineDescriptor& other) const;
+    size_t getHash() const override;
+    bool operator==(const PipelineDescriptor& other) const noexcept;
+    bool operator!=(const PipelineDescriptor& other) const noexcept;
 }; //struct PipelineDescriptor
 
 class Pipeline {

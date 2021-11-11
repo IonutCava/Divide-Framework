@@ -110,7 +110,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     /// Make sure this program is ready for deletion
     bool unload() override;
     /// Check every possible combination of flags to make sure this program can be used for rendering
-    bool isValid() const override;
+    bool isValid() const noexcept override;
 
     void uploadPushConstants(const PushConstants& constants);
 

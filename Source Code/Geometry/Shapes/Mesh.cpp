@@ -61,8 +61,8 @@ void Mesh::setMaterialTpl(const Material_ptr& material) {
             const Material_ptr& submeshMaterial = submesh->getMaterialTpl();
             if (submeshMaterial != nullptr) {
                 submeshMaterial->baseShaderData(material->baseShaderData());
-                for (U8 i = 0; i < to_base(ShaderType::COUNT); ++i) {
-                    for (auto [define, appendPrefix] : material->shaderDefines(static_cast<ShaderType>(i))) {
+                for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i) {
+                    for (const auto [define, appendPrefix] : material->shaderDefines(static_cast<ShaderType>(i))) {
                         submeshMaterial->addShaderDefine(static_cast<ShaderType>(i), define, appendPrefix);
                     }
                 }
@@ -98,9 +98,9 @@ void Mesh::postLoad(SceneGraphNode* sgn) {
         subMeshDescriptor._node = submesh;
         subMeshDescriptor._componentMask = subMeshSkinned ? skinnedMask : normalMask;
         subMeshDescriptor._name = Util::StringFormat("%s_%d", sgn->name().c_str(), submesh->getID());
-        SceneGraphNode* subSGN = sgn->addChildNode(subMeshDescriptor);
+        const SceneGraphNode* subSGN = sgn->addChildNode(subMeshDescriptor);
 
-        RenderingComponent* rComp = sgn->get<RenderingComponent>();
+        const RenderingComponent* rComp = sgn->get<RenderingComponent>();
         if (rComp != nullptr) {
             RenderingComponent* subRComp = subSGN->get<RenderingComponent>();
             for (const auto& it : rComp->getShaderBuffers()) {

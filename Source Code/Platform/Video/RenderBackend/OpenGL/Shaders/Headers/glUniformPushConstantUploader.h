@@ -40,13 +40,13 @@ namespace Divide {
     {
         explicit glUniformPushConstantUploader(GLuint programHandle);
 
-        void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept override;
+        void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) override;
         void cacheUniforms() override;
-        void commit() override;
-        void prepare() override;
+        void commit() noexcept override;
+        void prepare() noexcept override;
 
     private:
-        void uniform(I32 binding, GFX::PushConstantType type, const Byte* values, GLsizei byteCount) const noexcept;
+        void uniform(I32 binding, GFX::PushConstantType type, const Byte* values, GLsizei byteCount) const;
         [[nodiscard]] I32  cachedValueUpdate(const GFX::PushConstant& constant, bool force = false);
 
     private:

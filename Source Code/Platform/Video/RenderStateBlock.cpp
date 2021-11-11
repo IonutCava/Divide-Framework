@@ -73,7 +73,7 @@ RenderStateBlock::RenderStateBlock() noexcept
     }
 }
 
-void RenderStateBlock::from(const RenderStateBlock& other) noexcept {
+void RenderStateBlock::from(const RenderStateBlock& other) {
     _colourWrite = other._colourWrite;
     _zBias = other._zBias;
     _zUnits = other._zUnits;
@@ -255,7 +255,7 @@ bool RenderStateBlock::cullEnabled() const noexcept {
     return _cullMode != CullMode::NONE;
 }
 
-size_t RenderStateBlock::getHash() const noexcept {
+size_t RenderStateBlock::getHash() const {
     const size_t previousCache = Hashable::getHash();
 
     if (!_dirty) {

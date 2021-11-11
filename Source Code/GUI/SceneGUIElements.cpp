@@ -17,7 +17,7 @@ SceneGUIElements::SceneGUIElements(Scene& parentScene, GUI& context)
 }
 
 
-void SceneGUIElements::draw(GFXDevice& context, GFX::CommandBuffer& bufferInOut) {
+void SceneGUIElements::draw(const GFXDevice& context, GFX::CommandBuffer& bufferInOut) {
     const GUIMap& map = _guiElements[to_base(GUIType::GUI_TEXT)];
     _drawTextCommand._batch.data().resize(map.size());
 

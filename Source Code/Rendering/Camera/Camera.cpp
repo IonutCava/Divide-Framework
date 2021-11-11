@@ -75,7 +75,7 @@ void Camera::fromSnapshot(const CameraSnapshot& snapshot) {
 void Camera::update([[maybe_unused]] const F32 deltaTimeMS) noexcept {
 }
 
-vec3<F32> ExtractCameraPos2(const mat4<F32>& a_modelView)
+vec3<F32> ExtractCameraPos2(const mat4<F32>& a_modelView) noexcept
 {
     // Get the 3 basis vector planes at the camera origin and transform them into model space.
     //  
@@ -150,7 +150,7 @@ bool Camera::updateLookAt() {
     return cameraUpdated;
 }
 
-void Camera::setGlobalRotation(const F32 yaw, const F32 pitch, const F32 roll) {
+void Camera::setGlobalRotation(const F32 yaw, const F32 pitch, const F32 roll) noexcept {
     const Quaternion<F32> pitchRot(WORLD_X_AXIS, -pitch);
     const Quaternion<F32> yawRot(WORLD_Y_AXIS, -yaw);
 
@@ -176,7 +176,7 @@ U32 Camera::addUpdateListener(const CameraListener& f) {
     return _updateCameraId;
 }
 
-void Camera::setReflection(const Plane<F32>& reflectionPlane) {
+void Camera::setReflection(const Plane<F32>& reflectionPlane) noexcept {
     _reflectionPlane = reflectionPlane;
     _reflectionActive = true;
     _viewMatrixDirty = true;
@@ -187,7 +187,7 @@ void Camera::clearReflection() noexcept {
     _viewMatrixDirty = true;
 }
 
-bool Camera::updateProjection() {
+bool Camera::updateProjection() noexcept {
     if (_projectionDirty) {
         if (_data._isOrthoCamera) {
             _data._projectionMatrix.ortho(_orthoRect.left,
@@ -266,7 +266,7 @@ void Camera::setHorizontalFoV(const Angle::DEGREES<F32> horizontalFoV) noexcept 
     _projectionDirty = true;
 }
 
-bool Camera::updateViewMatrix() {
+bool Camera::updateViewMatrix() noexcept {
     if (!_viewMatrixDirty) {
         return false;
     }
@@ -316,7 +316,7 @@ bool Camera::updateFrustum() {
     return true;
 }
 
-vec3<F32> Camera::unProject(const F32 winCoordsX, const F32 winCoordsY, const Rect<I32>& viewport) const {
+vec3<F32> Camera::unProject(const F32 winCoordsX, const F32 winCoordsY, const Rect<I32>& viewport) const noexcept {
     const F32 offsetWinCoordsX = winCoordsX - viewport.x;
     const F32 offsetWinCoordsY = winCoordsY - viewport.y;
     const I32 winWidth = viewport.z;

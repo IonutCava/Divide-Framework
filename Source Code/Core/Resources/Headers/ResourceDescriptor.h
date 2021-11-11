@@ -53,7 +53,7 @@ class PropertyDescriptor : public Hashable {
     {
     }
 
-    [[nodiscard]] size_t getHash() const noexcept override;
+    [[nodiscard]] size_t getHash() const override;
 
 protected:
     /// useful for switch statements
@@ -73,13 +73,13 @@ class ResourceDescriptor final : public Hashable {
 
     template <typename T>
     [[nodiscard]] typename std::enable_if<std::is_base_of<PropertyDescriptor, T>::value, const std::shared_ptr<T>>::type
-    propertyDescriptor() const { return std::dynamic_pointer_cast<T>(_propertyDescriptor); }
+    propertyDescriptor() const noexcept { return std::dynamic_pointer_cast<T>(_propertyDescriptor); }
 
     template <typename T>
     [[nodiscard]] typename std::enable_if<std::is_base_of<PropertyDescriptor, T>::value, void>::type
     propertyDescriptor(const T& descriptor) { _propertyDescriptor.reset(new T(descriptor)); }
 
-    [[nodiscard]] size_t getHash() const noexcept override;
+    [[nodiscard]] size_t getHash() const override;
 
     PROPERTY_RW(ResourcePath, assetLocation); ///< Can't be fixed size due to the need to handle array textures, cube maps, etc
     PROPERTY_RW(ResourcePath, assetName); ///< Resource instance name (for lookup)

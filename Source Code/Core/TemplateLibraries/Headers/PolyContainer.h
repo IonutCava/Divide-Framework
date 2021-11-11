@@ -82,7 +82,7 @@ template<typename T, U8 N, PolyContainerDeleter<T> DEL = DEFAULT_DEL<T>, PolyCon
 struct PolyContainer {
     using EntryList = vector_fast<T*>;
 
-    PolyContainer()
+    PolyContainer() noexcept
     {
         for (U8 i = 0; i < N; ++i) {
             const auto reserveSize = RES(i);
@@ -116,7 +116,7 @@ struct PolyContainer {
         return  _collection[index];
     }
 
-    [[nodiscard]] T* get(const PolyContainerEntry& entry) const noexcept {
+    [[nodiscard]] T* get(const PolyContainerEntry& entry) const {
         const EntryList& collection = _collection[entry._typeIndex];
         const U32 elementIndex = to_U32(entry._elementIndex);
         if (elementIndex < collection.size()) {

@@ -14,13 +14,13 @@ namespace Divide {
         return a == nullptr && b == nullptr;
     }
 
-    bool ShaderBufferBinding::set(const ShaderBufferBinding& other) {
+    bool ShaderBufferBinding::set(const ShaderBufferBinding& other) noexcept {
         return set(other._binding, other._buffer, other._elementRange);
     }
 
     bool ShaderBufferBinding::set(const ShaderBufferLocation binding,
                                   ShaderBuffer* buffer,
-                                  const vec2<U32>& elementRange) {
+                                  const vec2<U32>& elementRange) noexcept {
         bool ret = false;
         if (_binding != binding) {
             _binding = binding;
@@ -46,7 +46,7 @@ namespace Divide {
     }
 
     namespace {
-        FORCE_INLINE const TextureEntry* FindTextureDataEntry(const TextureDataContainer& source, const U8 binding) {
+        FORCE_INLINE const TextureEntry* FindTextureDataEntry(const TextureDataContainer& source, const U8 binding) noexcept {
             for (const TextureEntry& it : source._entries) {
                 if (it._binding == binding) {
                     return &it;
@@ -56,7 +56,7 @@ namespace Divide {
             return nullptr;
         };
 
-        FORCE_INLINE const TextureViewEntry* FindTextureViewEntry(const TextureViews& source, const U8 binding) {
+        FORCE_INLINE const TextureViewEntry* FindTextureViewEntry(const TextureViews& source, const U8 binding) noexcept {
             for (const TextureViewEntry& it : source._entries) {
                 if (it._binding == binding) {
                     return &it;
@@ -66,7 +66,7 @@ namespace Divide {
             return nullptr;
         };
 
-        FORCE_INLINE const Image* FindImage(const Images& source, const U8 binding) {
+        FORCE_INLINE const Image* FindImage(const Images& source, const U8 binding) noexcept {
             for (const auto& it : source._entries) {
                 if (it._binding == binding) {
                     return &it;
@@ -125,7 +125,7 @@ namespace Divide {
         return IsEmpty(rhs);
     }
 
-    size_t TextureView::getHash() const noexcept {
+    size_t TextureView::getHash() const {
         _hash = GetHash(_textureData);
 
         Util::Hash_combine(_hash, _targetType);
@@ -137,7 +137,7 @@ namespace Divide {
         return _hash;
     }
 
-    size_t TextureViewEntry::getHash() const noexcept {
+    size_t TextureViewEntry::getHash() const {
         _hash = _view.getHash();
         Util::Hash_combine(_hash, _binding);
         return _hash;
@@ -184,7 +184,7 @@ namespace Divide {
         return TextureUpdateState::NOTHING;
     }
 
-    bool operator==(const TextureDataContainer & lhs, const TextureDataContainer & rhs) noexcept {
+    bool operator==(const TextureDataContainer & lhs, const TextureDataContainer & rhs) {
         const size_t lhsCount = lhs.count();
         const size_t rhsCount = rhs.count();
 
@@ -212,7 +212,7 @@ namespace Divide {
         return foundEntry;
     }
 
-    bool operator!=(const TextureDataContainer & lhs, const TextureDataContainer & rhs) noexcept {
+    bool operator!=(const TextureDataContainer & lhs, const TextureDataContainer & rhs) {
         const size_t lhsCount = lhs.count();
         const size_t rhsCount = rhs.count();
 
@@ -240,14 +240,14 @@ namespace Divide {
         return !foundEntry;
     }
 
-    bool operator==(const DescriptorSet &lhs, const DescriptorSet &rhs) noexcept {
+    bool operator==(const DescriptorSet &lhs, const DescriptorSet &rhs) {
         return lhs._buffers == rhs._buffers &&
                lhs._textureViews == rhs._textureViews &&
                lhs._images == rhs._images &&
                lhs._textureData == rhs._textureData;
     }
 
-    bool operator!=(const DescriptorSet &lhs, const DescriptorSet &rhs) noexcept {
+    bool operator!=(const DescriptorSet &lhs, const DescriptorSet &rhs) {
         return lhs._buffers != rhs._buffers ||
                lhs._textureViews != rhs._textureViews ||
                lhs._images != rhs._images ||

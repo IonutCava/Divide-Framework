@@ -677,7 +677,7 @@ void MenuBar::drawDebugMenu() {
 
         SceneEnvironmentProbePool* envProbPool = Attorney::EditorGeneralWidget::getActiveEnvProbePool(_context.editor());
         LightPool& pool = Attorney::EditorGeneralWidget::getActiveLightPool(_context.editor());
-        ECSManager& ecsManager = Attorney::EditorGeneralWidget::getECSManager(_context.editor());
+        const ECSManager& ecsManager = Attorney::EditorGeneralWidget::getECSManager(_context.editor());
 
         if (ImGui::BeginMenu("Toggle Light Types")) {
             for (U8 i = 0; i < to_U8(LightType::COUNT); ++i) {
@@ -864,7 +864,7 @@ void MenuBar::drawDebugMenu() {
             }
 
             for (U8 i = 0; i < to_U8(PreRenderBatch::EdgeDetectionMethod::COUNT) + 1; ++i) {
-                PreRenderBatch::EdgeDetectionMethod method = static_cast<PreRenderBatch::EdgeDetectionMethod>(i);
+                const PreRenderBatch::EdgeDetectionMethod method = static_cast<PreRenderBatch::EdgeDetectionMethod>(i);
 
                 bool selected = batch.edgeDetectionMethod() == method;
                 if (ImGui::MenuItem(EdgeMethodName(method), "", &selected)) {

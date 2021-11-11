@@ -43,7 +43,7 @@ namespace AI {
 
 class NavigationMeshConfig {
    public:
-    NavigationMeshConfig() noexcept
+    NavigationMeshConfig()
     {
         eval();
     }
@@ -61,7 +61,9 @@ class NavigationMeshConfig {
         eval();
     }
 
-    void setTileSize(const I32 tileSize) { this->_tileSize = tileSize; }
+    void setTileSize(const I32 tileSize) noexcept { 
+        this->_tileSize = tileSize;
+    }
 
     /*****************
       * Agent
@@ -81,7 +83,7 @@ class NavigationMeshConfig {
         eval();
     }
 
-    void setAgentMaxSlope(const F32 agentMaxSlope) {
+    void setAgentMaxSlope(const F32 agentMaxSlope) noexcept {
         this->_agentMaxSlope = agentMaxSlope;
     }
 
@@ -106,11 +108,11 @@ class NavigationMeshConfig {
         eval();
     }
 
-    void setEdgeMaxError(const F32 edgeMaxError) {
+    void setEdgeMaxError(const F32 edgeMaxError) noexcept {
         this->_edgeMaxError = edgeMaxError;
     }
 
-    void setVertsPerPoly(const I32 vertsPerPoly) {
+    void setVertsPerPoly(const I32 vertsPerPoly) noexcept {
         this->_vertsPerPoly = vertsPerPoly;
     }
 
@@ -127,7 +129,7 @@ class NavigationMeshConfig {
         eval();
     }
 
-    void setKeepInterResults(const bool keepInterResults) {
+    void setKeepInterResults(const bool keepInterResults) noexcept {
         this->_keepInterResults = keepInterResults;
     }
 
@@ -135,62 +137,62 @@ class NavigationMeshConfig {
       * Override derived parameters (params set in the eval function)
      *********************************************************************/
 
-    void base_setWalkableHeight(const I32 walkableHeight) {
+    void base_setWalkableHeight(const I32 walkableHeight) noexcept {
         this->_walkableHeight = walkableHeight;
     }
 
-    void base_setWalkableClimb(const I32 walkableClimb) {
+    void base_setWalkableClimb(const I32 walkableClimb) noexcept {
         this->_walkableClimb = walkableClimb;
     }
 
-    void base_setWalkableRadius(const I32 walkableRadius) {
+    void base_setWalkableRadius(const I32 walkableRadius) noexcept {
         this->_walkableRadius = walkableRadius;
     }
 
-    void base_setMaxEdgeLen(const I32 maxEdgeLen) {
+    void base_setMaxEdgeLen(const I32 maxEdgeLen) noexcept {
         this->_maxEdgeLen = maxEdgeLen;
     }
 
-    void base_setMinRegionArea(const I32 minRegionArea) {
+    void base_setMinRegionArea(const I32 minRegionArea) noexcept {
         this->_minRegionArea = minRegionArea;
     }
 
-    void base_setMergeRegionArea(const I32 mergeRegionArea) {
+    void base_setMergeRegionArea(const I32 mergeRegionArea) noexcept {
         this->_mergeRegionArea = mergeRegionArea;
     }
 
-    void base_setDetailSampleDist(const F32 detailSampleDist) {
+    void base_setDetailSampleDist(const F32 detailSampleDist) noexcept {
         this->_base_detailSampleDist = detailSampleDist;
     }
 
-    void base_setDetailSampleMaxError(const F32 detailSampleMaxError) {
+    void base_setDetailSampleMaxError(const F32 detailSampleMaxError) noexcept {
         this->_base_detailSampleMaxError = detailSampleMaxError;
     }
 
-    [[nodiscard]] F32 getCellSize()             const { return _cellSize; }
-    [[nodiscard]] F32 getCellHeight()           const { return _cellHeight; }
-    [[nodiscard]] I32 getTileSize()             const { return _tileSize; }
-    [[nodiscard]] F32 getAgentMaxSlope()        const { return _agentMaxSlope; }
-    [[nodiscard]] F32 getAgentHeight()          const { return _agentHeight; }
-    [[nodiscard]] F32 getAgentMaxClimb()        const { return _agentMaxClimb; }
-    [[nodiscard]] F32 getAgentRadius()          const { return _agentRadius; }
-    [[nodiscard]] I32 getEdgeMaxLen()           const { return _edgeMaxLen; }
-    [[nodiscard]] F32 getEdgeMaxError()         const { return _edgeMaxError; }
-    [[nodiscard]] I32 getRegionMinSize()        const { return _regionMinSize; }
-    [[nodiscard]] I32 getRegionMergeSize()      const { return _regionMergeSize; }
-    [[nodiscard]] I32 getVertsPerPoly()         const { return _vertsPerPoly; }
-    [[nodiscard]] F32 getDetailSampleDist()     const { return _detailSampleDist; }
-    [[nodiscard]] F32 getDetailSampleMaxError() const { return _detailSampleMaxError; }
-    [[nodiscard]] bool getKeepInterResults()    const { return _keepInterResults; }
+    [[nodiscard]] F32 getCellSize()             const noexcept { return _cellSize; }
+    [[nodiscard]] F32 getCellHeight()           const noexcept { return _cellHeight; }
+    [[nodiscard]] I32 getTileSize()             const noexcept { return _tileSize; }
+    [[nodiscard]] F32 getAgentMaxSlope()        const noexcept { return _agentMaxSlope; }
+    [[nodiscard]] F32 getAgentHeight()          const noexcept { return _agentHeight; }
+    [[nodiscard]] F32 getAgentMaxClimb()        const noexcept { return _agentMaxClimb; }
+    [[nodiscard]] F32 getAgentRadius()          const noexcept { return _agentRadius; }
+    [[nodiscard]] I32 getEdgeMaxLen()           const noexcept { return _edgeMaxLen; }
+    [[nodiscard]] F32 getEdgeMaxError()         const noexcept { return _edgeMaxError; }
+    [[nodiscard]] I32 getRegionMinSize()        const noexcept { return _regionMinSize; }
+    [[nodiscard]] I32 getRegionMergeSize()      const noexcept { return _regionMergeSize; }
+    [[nodiscard]] I32 getVertsPerPoly()         const noexcept { return _vertsPerPoly; }
+    [[nodiscard]] F32 getDetailSampleDist()     const noexcept { return _detailSampleDist; }
+    [[nodiscard]] F32 getDetailSampleMaxError() const noexcept { return _detailSampleMaxError; }
+    [[nodiscard]] bool getKeepInterResults()    const noexcept { return _keepInterResults; }
 
-    [[nodiscard]] I32 base_getWalkableHeight()       const { return _walkableHeight; }
-    [[nodiscard]] I32 base_getWalkableClimb()        const { return _walkableClimb; }
-    [[nodiscard]] I32 base_getWalkableRadius()       const { return _walkableRadius; }
-    [[nodiscard]] I32 base_getMaxEdgeLen()           const { return _maxEdgeLen; }
-    [[nodiscard]] I32 base_getMinRegionArea()        const { return _minRegionArea; }
-    [[nodiscard]] I32 base_getMergeRegionArea()      const { return _mergeRegionArea; }
-    [[nodiscard]] I32 base_getDetailSampleDist()     const { return to_I32(_base_detailSampleDist); }
-    [[nodiscard]] I32 base_getDetailSampleMaxError() const { return to_I32(_base_detailSampleMaxError); }
+    [[nodiscard]] I32 base_getWalkableHeight()       const noexcept { return _walkableHeight; }
+    [[nodiscard]] I32 base_getWalkableClimb()        const noexcept { return _walkableClimb; }
+    [[nodiscard]] I32 base_getWalkableRadius()       const noexcept { return _walkableRadius; }
+    [[nodiscard]] I32 base_getMaxEdgeLen()           const noexcept { return _maxEdgeLen; }
+    [[nodiscard]] I32 base_getMinRegionArea()        const noexcept { return _minRegionArea; }
+    [[nodiscard]] I32 base_getMergeRegionArea()      const noexcept { return _mergeRegionArea; }
+    [[nodiscard]] I32 base_getDetailSampleDist()     const noexcept { return to_I32(_base_detailSampleDist); }
+    [[nodiscard]] I32 base_getDetailSampleMaxError() const noexcept { return to_I32(_base_detailSampleMaxError); }
 
    private:
     /**

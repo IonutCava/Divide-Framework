@@ -87,9 +87,9 @@ class WorkingMemoryFact {
 
     void belief(const F32 belief) { _belief = belief; }
 
-    [[nodiscard]] const T& value() const { return _value; }
-    [[nodiscard]] FactType type() const { return _type; }
-    [[nodiscard]] F32 belief() const { return _belief; }
+    [[nodiscard]] const T& value() const noexcept { return _value; }
+    [[nodiscard]] FactType type() const noexcept { return _type; }
+    [[nodiscard]] F32 belief() const noexcept { return _belief; }
 
    protected:
     T _value;

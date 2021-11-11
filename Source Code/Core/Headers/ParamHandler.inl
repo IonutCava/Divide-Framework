@@ -46,18 +46,12 @@ bool ParamHandler::isParam(const HashType nameID) const {
     return _params.find(nameID) != std::cend(_params);
 }
 
-#if !defined(CPP_17_SUPPORT)
-namespace Cast = boost;
-#else
-namespace Cast = std;
-#endif
-
 template <typename T>
 T ParamHandler::getParam(HashType nameID, T defaultValue) const {
     SharedLock<SharedMutex> r_lock(_mutex);
     const ParamMap::const_iterator it = _params.find(nameID);
     if (it != std::cend(_params)) {
-        return Cast::any_cast<T>(it->second);
+        return std::any_cast<T>(it->second);
     }
 
     Console::errorfn(Locale::Get(_ID("ERROR_PARAM_GET")), nameID);

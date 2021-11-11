@@ -38,7 +38,7 @@ namespace Divide {
     namespace customRNG {
         namespace detail     {
             template<typename Engine>
-            Engine& getEngine() noexcept {
+            Engine& getEngine() {
                 static thread_local std::random_device rnddev{};
                 static thread_local Engine rndeng = Engine(rnddev());
                 return rndeng;
@@ -46,7 +46,7 @@ namespace Divide {
         }  // namespace detail
 
         template<typename Engine>
-        void srand(const U32 seed) noexcept {
+        void srand(const U32 seed) {
             detail::getEngine<Engine>().seed(seed);
         }
 
@@ -57,25 +57,25 @@ namespace Divide {
         }
 
         template<typename T,
-            typename Engine,
-            typename Distribution>
-            typename std::enable_if<std::is_fundamental<T>::value, T>::type
-            rand(T min, T max) noexcept {
+                 typename Engine,
+                 typename Distribution>
+        typename std::enable_if<std::is_fundamental<T>::value, T>::type
+        rand(T min, T max) {
             return static_cast<T>(Distribution{ min, max }(detail::getEngine<Engine>()));
         }
 
         template<typename T,
-            typename Engine,
-            typename Distribution>
-            T rand() noexcept {
-            return rand<T, Engine, Distribution>(T(0), std::numeric_limits<T>::max());
+                 typename Engine,
+                 typename Distribution>
+        T rand() {
+            return rand<T, Engine, Distribution>(0, std::numeric_limits<T>::max());
         }
     }  // namespace customRNG
 
     template <typename T,
         typename Engine,
         typename Distribution>
-        T Random(T min, T max) noexcept {
+        T Random(T min, T max) {
         static_assert(std::is_arithmetic<T>::value, "Only arithmetic values can be randomized!");
 
         if (min > max) {
@@ -88,7 +88,7 @@ namespace Divide {
     template <typename T,
         typename Engine,
         typename Distribution>
-        T Random(T max) noexcept {
+        T Random(T max) {
         static_assert(std::is_arithmetic<T>::value, "Only arithmetic values can be randomized!");
 
         return Random<T, Engine, Distribution>(max < 0 ? std::numeric_limits<T>::lowest() : 0, max);
@@ -97,7 +97,7 @@ namespace Divide {
     template <typename T,
         typename Engine,
         typename Distribution>
-        T Random() noexcept {
+        T Random() {
         static_assert(std::is_arithmetic<T>::value, "Only arithmetic values can be randomized!");
 
         return Random<T, Engine, Distribution>(std::numeric_limits<T>::max());
@@ -367,7 +367,7 @@ namespace Divide {
     }
 
     template <typename T, typename U>
-    T FastLerp(const T v1, const T v2, const U t) {
+    T FastLerp(const T v1, const T v2, const U t) noexcept {
         return v1 + t * (v2 - v1);
     }
 
@@ -813,7 +813,7 @@ namespace Util {
 
 /// a la Boost
 template <typename T>
-void Hash_combine(size_t& seed, const T& v) noexcept {
+void Hash_combine(size_t& seed, const T& v) {
     eastl::hash<T> hasher;
     seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }

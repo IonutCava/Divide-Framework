@@ -18,8 +18,8 @@ namespace NS_GLIM
     union Glim4ByteData
     {
         Glim4ByteData ()  noexcept : Int (0) {}
-        Glim4ByteData(int Int_) : Int(Int_) {}
-        Glim4ByteData(float Float_) : Float(Float_) {}
+        Glim4ByteData(int Int_) noexcept : Int(Int_) {}
+        Glim4ByteData(float Float_) noexcept : Float(Float_) {}
 
         int Int;
         float Float;
@@ -29,7 +29,7 @@ namespace NS_GLIM
     // one attribute array
     struct GlimArrayData
     {
-        GlimArrayData () noexcept;
+        GlimArrayData ();
 
         void Reset (void);
         void PushElement (void);
@@ -63,7 +63,7 @@ namespace NS_GLIM
     // the data of one entire batch
     struct glimBatchData
     {
-        glimBatchData () noexcept;
+        glimBatchData ();
         ~glimBatchData ();
 
         // Deletes all allocated data and resets default states
@@ -74,7 +74,7 @@ namespace NS_GLIM
         // Binds the vertex arrays for rendering.
         void Bind (Divide::I64 uiCurrentProgram);
         // Unbinds all data after rendering.
-        void Unbind (void);
+        void Unbind (void) noexcept;
 
 #ifdef AE_RENDERAPI_OPENGL
         // Uploads the data onto the GPU
@@ -82,7 +82,7 @@ namespace NS_GLIM
         // Binds the vertex arrays for rendering.
         void BindOGL (Divide::I64 uiCurrentProgram);
         // Unbinds all data after rendering.
-        void UnbindOGL (void);
+        void UnbindOGL (void) noexcept;
 #endif
 
 #ifdef AE_RENDERAPI_D3D11

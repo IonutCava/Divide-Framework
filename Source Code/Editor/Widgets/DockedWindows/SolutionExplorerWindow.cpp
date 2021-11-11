@@ -50,7 +50,7 @@ namespace Divide {
             return;
         }
 
-        const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_Leaf;
+        constexpr ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_Leaf;
         if (_filter.PassFilter(camera->resourceName().c_str())) {
             if (ImGui::TreeNodeEx((void*)(intptr_t)camera->getGUID(), node_flags, camera->resourceName().c_str())) {
                 if (ImGui::IsItemClicked()) {
@@ -586,7 +586,7 @@ namespace Divide {
             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
             ImGui::BeginChild("Type Specific Properties", ImVec2(0, 200), true, 0);
             if (g_particleEmitterData == nullptr) {
-                const U32 options =
+                constexpr U32 options =
                     to_U32(ParticleDataProperties::PROPERTIES_POS) |
                     to_U32(ParticleDataProperties::PROPERTIES_VEL) |
                     to_U32(ParticleDataProperties::PROPERTIES_ACC) |
@@ -706,7 +706,7 @@ namespace Divide {
 
             if (ImGui::BeginPopupModal("Select New Parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 SceneManager* sceneManager = context().kernel().sceneManager();
-                Scene& activeScene = sceneManager->getActiveScene();
+                const Scene& activeScene = sceneManager->getActiveScene();
                 SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
 
                 ImGui::Text("Selecting a new parent for SGN [ %d ][ %s ]?", _childNode->getGUID(), _childNode->name().c_str());

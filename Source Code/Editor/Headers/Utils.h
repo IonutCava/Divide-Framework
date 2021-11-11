@@ -113,7 +113,7 @@ namespace Util {
         const void* step = IS_ZERO(stepIn) ? nullptr : (void*)&stepIn;
         [[maybe_unused]] const void* step_fast = step == nullptr ? nullptr : (void*)&cStep;
 
-        bool ret;
+        bool ret = false;
         if_constexpr(num_comp == 1) {
             const T min = static_cast<T>(field._range.min);
             T max = static_cast<T>(field._range.max);

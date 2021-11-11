@@ -61,7 +61,7 @@ struct ImageMip final : LayerData {
         _dimensions.set(width, height, depth);
     }
 
-    [[nodiscard]] bufferPtr data() const override { return (bufferPtr)_data.data(); }
+    [[nodiscard]] bufferPtr data() const noexcept override { return (bufferPtr)_data.data(); }
 
 protected:
     vector<T> _data;
@@ -89,7 +89,7 @@ struct ImageLayer {
         return _mips[mip]->data();
     }
 
-     [[nodiscard]] LayerData* getMip(const U8 mip) const noexcept {
+     [[nodiscard]] LayerData* getMip(const U8 mip) const {
         if (mip < _mips.size()) {
             return _mips[mip].get();
         }

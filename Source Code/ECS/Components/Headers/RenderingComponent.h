@@ -348,7 +348,7 @@ class RenderingCompRenderBin {
 
 class RenderingCompRenderPassExecutor {
 
-    static void setIndirectionBufferEntry(RenderingComponent* renderable, const U32 indirectionBufferEntry) {
+    static void setIndirectionBufferEntry(RenderingComponent* renderable, const U32 indirectionBufferEntry) noexcept {
         renderable->indirectionBufferEntry(indirectionBufferEntry);
     }
 
@@ -356,7 +356,7 @@ class RenderingCompRenderPassExecutor {
 };
 
 class RenderingComponentSGN {
-    static void onParentUsageChanged(RenderingComponent& comp, const NodeUsageContext context) {
+    static void onParentUsageChanged(const RenderingComponent& comp, const NodeUsageContext context) {
         comp.onParentUsageChanged(context);
     }
     friend class Divide::SceneGraphNode;

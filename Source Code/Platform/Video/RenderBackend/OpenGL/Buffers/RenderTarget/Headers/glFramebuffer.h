@@ -142,7 +142,7 @@ namespace Attorney {
         static void begin(glFramebuffer& buffer, const RTDrawDescriptor& drawPolicy) {
             buffer.begin(drawPolicy);
         }
-        static void end(glFramebuffer& buffer, const bool needsUnbind) {
+        static void end(const glFramebuffer& buffer, const bool needsUnbind) {
             buffer.end(needsUnbind);
         }
 

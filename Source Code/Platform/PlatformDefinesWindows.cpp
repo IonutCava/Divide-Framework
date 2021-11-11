@@ -77,14 +77,14 @@ extern "C" {
     _declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
 }
 
-void* malloc_aligned(const size_t size, const size_t alignment, const size_t offset) {
+void* malloc_aligned(const size_t size, const size_t alignment, const size_t offset) noexcept {
     if (offset > 0u) {
         return _aligned_offset_malloc(size, alignment, offset);
     }
     return _aligned_malloc(size, alignment);
 }
 
-void  free_aligned(void*& ptr) {
+void  free_aligned(void*& ptr) noexcept {
     _aligned_free(ptr);
 }
 
@@ -190,6 +190,7 @@ namespace Divide {
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
+            DebugBreak();
         }
     }
 
@@ -197,7 +198,7 @@ namespace Divide {
         SetThreadName(GetCurrentThreadId(), threadName);
     }
 
-    void SetThreadName(std::thread* thread, const char* threadName) noexcept {
+    void SetThreadName(std::thread* thread, const char* threadName) {
         const DWORD threadId = GetThreadId(static_cast<HANDLE>(thread->native_handle()));
         SetThreadName(threadId, threadName);
     }

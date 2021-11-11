@@ -51,13 +51,13 @@ protected:
     Scene* getOrCreateScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name, bool& foundInCache);
     bool   deleteScene(I64 targetGUID);
 
-    bool   defaultSceneActive() const;
+    bool   defaultSceneActive() const noexcept;
 
-    Scene&       defaultScene();
-    const Scene& defaultScene() const;
-    Scene&       activeScene();
-    const Scene& activeScene() const;
-    void         activeScene(Scene& scene);
+    Scene&       defaultScene() noexcept;
+    const Scene& defaultScene() const noexcept;
+    Scene&       activeScene() noexcept;
+    const Scene& activeScene() const noexcept;
+    void         activeScene(Scene& scene) noexcept;
 
     vector<Str256> sceneNameList(bool sorted) const;
 

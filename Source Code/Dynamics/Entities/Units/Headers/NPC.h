@@ -50,7 +50,7 @@ class NPC final : public Character {
     ~NPC() = default;
     void update(U64 deltaTimeUS) override;
     
-    [[nodiscard]] AI::AIEntity* getAIEntity() const;
+    [[nodiscard]] AI::AIEntity* getAIEntity() const noexcept;
 
 protected:
     AI::AIEntity* _aiUnit;

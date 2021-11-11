@@ -18,7 +18,7 @@ ResourceState Resource::getState() const noexcept {
     return _resourceState.load(std::memory_order_relaxed);
 }
 
-void Resource::setState(const ResourceState currentState) noexcept {
+void Resource::setState(const ResourceState currentState) {
     _resourceState.store(currentState, std::memory_order_relaxed);
 }
 
@@ -72,7 +72,7 @@ void CachedResource::addStateCallback(const ResourceState targetState, const DEL
     }
 }
 
-void CachedResource::setState(const ResourceState currentState) noexcept {
+void CachedResource::setState(const ResourceState currentState) {
     Resource::setState(currentState);
     flushStateCallbacks();
 }

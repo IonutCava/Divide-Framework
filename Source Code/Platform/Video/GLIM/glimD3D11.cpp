@@ -351,6 +351,6 @@ namespace NS_GLIM
 
 }
 #else
-    void placeHolder() {} 
+    void placeHolder() noexcept {}
 #endif
 

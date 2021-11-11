@@ -43,7 +43,7 @@ class ParticleFloorUpdater final : public ParticleUpdater {
     F32 _bounceFactor = 0.5f;
 
    public:
-    ParticleFloorUpdater(PlatformContext& context) : ParticleUpdater(context)
+    ParticleFloorUpdater(PlatformContext& context) noexcept : ParticleUpdater(context)
     {
     }
 

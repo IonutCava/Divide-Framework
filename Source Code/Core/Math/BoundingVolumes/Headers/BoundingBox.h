@@ -91,8 +91,8 @@ class BoundingBox {
     void multiplyMin(const vec3<F32>& v) noexcept;
 
     void transform(vec3<F32> initialMin, vec3<F32> initialMax, const mat4<F32>& mat) noexcept;
-    void transform(const BoundingBox& initialBoundingBox, const mat4<F32>& mat);
-    void transform(const mat4<F32>& mat);
+    void transform(const BoundingBox& initialBoundingBox, const mat4<F32>& mat) noexcept;
+    void transform(const mat4<F32>& mat) noexcept;
 
     [[nodiscard]] const vec3<F32>& getMin() const noexcept;
     [[nodiscard]] const vec3<F32>& getMax() const noexcept;

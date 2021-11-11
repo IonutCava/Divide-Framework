@@ -13,8 +13,8 @@ void ParticleFloorUpdater::update(const U64 deltaTimeUS, ParticleData& p) {
 
     STUBBED("ToDo: add proper orientation support! -Ionut")
 
-    F32 floorY = _floorY;
-    F32 bounce = _bounceFactor;
+    const F32 floorY = _floorY;
+    const F32 bounce = _bounceFactor;
 
 
     ParallelForDescriptor descriptor = {};
@@ -25,11 +25,11 @@ void ParticleFloorUpdater::update(const U64 deltaTimeUS, ParticleData& p) {
             if (p._position[i].y - p._position[i].w / 2 < floorY) {
                 vec3<F32> force(p._acceleration[i]);
 
-                F32 normalFactor = force.dot(WORLD_Y_AXIS);
+                const F32 normalFactor = force.dot(WORLD_Y_AXIS);
                 if (normalFactor < 0.0f) {
                     force -= WORLD_Y_AXIS * normalFactor;
                 }
-                F32 velFactor = p._velocity[i].xyz.dot(WORLD_Y_AXIS);
+                const F32 velFactor = p._velocity[i].xyz.dot(WORLD_Y_AXIS);
                 // if (velFactor < 0.0)
                 p._velocity[i] -= vec4<F32>(WORLD_Y_AXIS * (1.0f + bounce) * velFactor, 0.0f);
                 p._acceleration[i].xyz = force;

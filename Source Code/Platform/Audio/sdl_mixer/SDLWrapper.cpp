@@ -12,7 +12,7 @@ namespace {
     SFXDevice* g_sfxDevice = nullptr;
 };
 
-void musicFinishedHook() {
+void musicFinishedHook() noexcept {
     if (g_sfxDevice) {
         g_sfxDevice->musicFinished();
     }
@@ -20,7 +20,7 @@ void musicFinishedHook() {
 
 ErrorCode SDL_API::initAudioAPI(PlatformContext& context) {
 
-    const I32 flags = MIX_INIT_OGG | MIX_INIT_MP3 | MIX_INIT_FLAC/* | MIX_INIT_MOD*/;
+    constexpr I32 flags = MIX_INIT_OGG | MIX_INIT_MP3 | MIX_INIT_FLAC/* | MIX_INIT_MOD*/;
 
     const I32 ret = Mix_Init(flags);
     if ((ret & flags) == flags) {
@@ -55,21 +55,21 @@ void SDL_API::closeAudioAPI() {
     g_sfxDevice = nullptr;
 }
 
-void SDL_API::beginFrame() {
+void SDL_API::beginFrame() noexcept {
     
 }
 
-void SDL_API::endFrame() {
+void SDL_API::endFrame() noexcept {
     
 }
 
-void SDL_API::musicFinished() {
+void SDL_API::musicFinished() noexcept {
 }
 
 
 void SDL_API::playMusic(const AudioDescriptor_ptr& music) {
     if (music) {
-        Mix_Music* musicPtr;
+        Mix_Music* musicPtr = nullptr;
         const MusicMap::iterator it = _musicMap.find(music->getGUID());
         if (it == std::cend(_musicMap)) {
             musicPtr = Mix_LoadMUS(music->assetPath().c_str());
@@ -98,7 +98,7 @@ void SDL_API::playMusic(const AudioDescriptor_ptr& music) {
 
 void SDL_API::playSound(const AudioDescriptor_ptr& sound) {
     if (sound) {
-        Mix_Chunk* soundPtr;
+        Mix_Chunk* soundPtr = nullptr;
         const SoundMap::iterator it = _soundMap.find(sound->getGUID());
         if (it == std::cend(_soundMap)) {
             soundPtr = Mix_LoadWAV(sound->assetPath().c_str());

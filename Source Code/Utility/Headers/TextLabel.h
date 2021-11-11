@@ -66,7 +66,7 @@ class TextLabelStyle final : public Hashable {
 
    TextLabelStyle(const char* font, const UColour4& colour, U8 fontSize);
 
-    [[nodiscard]] size_t getHash() const noexcept override;
+    [[nodiscard]] size_t getHash() const override;
 
     PROPERTY_RW(U8, fontSize, 1u);
     PROPERTY_RW(U8, width, 1u);

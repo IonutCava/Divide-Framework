@@ -47,11 +47,11 @@ public:
 
     NavigationComponent(SceneGraphNode* parentSGN, PlatformContext& context);
 
-    [[nodiscard]] const NavigationContext& navigationContext() const {
+    [[nodiscard]] const NavigationContext& navigationContext() const noexcept {
         return _navigationContext;
     }
 
-    [[nodiscard]] bool navMeshDetailOverride() const { return _overrideNavMeshDetail; }
+    [[nodiscard]] bool navMeshDetailOverride() const noexcept { return _overrideNavMeshDetail; }
 
     void navigationContext(const NavigationContext& newContext);
 

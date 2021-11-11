@@ -54,7 +54,7 @@ struct InputEvent {
 struct MouseButtonEvent final : InputEvent {
     friend class Attorney::MouseEventKernel;
 
-    explicit MouseButtonEvent(DisplayWindow* sourceWindow, U8 deviceIndex);
+    explicit MouseButtonEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
 
     PROPERTY_RW(bool, pressed, false);
     PROPERTY_RW(MouseButton, button, MouseButton::MB_Left);
@@ -68,7 +68,7 @@ protected:
 struct MouseMoveEvent final : InputEvent {
     friend class Attorney::MouseEventKernel;
 
-    explicit MouseMoveEvent(DisplayWindow* sourceWindow, U8 deviceIndex, MouseState stateIn, bool wheelEvent);
+    explicit MouseMoveEvent(DisplayWindow* sourceWindow, U8 deviceIndex, MouseState stateIn, bool wheelEvent) noexcept;
 
     [[nodiscard]] MouseAxis X() const noexcept;
     [[nodiscard]] MouseAxis Y() const noexcept;
@@ -109,20 +109,20 @@ namespace Attorney {
 } //Attorney
 
 struct JoystickEvent final : InputEvent {
-    explicit JoystickEvent(DisplayWindow* sourceWindow, U8 deviceIndex);
+    explicit JoystickEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
 
     JoystickElement _element;
 };
 
 struct UTF8Event final : InputEvent {
-    explicit UTF8Event(DisplayWindow* sourceWindow, U8 deviceIndex, const char* text);
+    explicit UTF8Event(DisplayWindow* sourceWindow, U8 deviceIndex, const char* text) noexcept;
 
     const char* _text = nullptr;
 };
 
 struct KeyEvent final : InputEvent {
 
-    explicit KeyEvent(DisplayWindow* sourceWindow, U8 deviceIndex);
+    explicit KeyEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
 
     KeyCode _key = KeyCode::KC_UNASSIGNED;
     bool _pressed = false;

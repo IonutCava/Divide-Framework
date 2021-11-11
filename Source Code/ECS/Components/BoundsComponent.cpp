@@ -116,7 +116,7 @@ void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool r
     }
 
     if (recursive) {
-        SceneGraphNode* parent = _parentSGN->parent();
+        const SceneGraphNode* parent = _parentSGN->parent();
         if (parent != nullptr) {
             BoundsComponent* bounds = parent->get<BoundsComponent>();
             // We stop if the parent sgn doesn't have a bounds component.
@@ -177,7 +177,7 @@ const BoundingBox& BoundsComponent::updateAndGetBoundingBox() {
     return _boundingBox;
 }
 
-const OBB& BoundsComponent::getOBB() noexcept {
+const OBB& BoundsComponent::getOBB() {
     if (_obbDirty.exchange(false)) {
         mat4<F32> mat;
         _tCompCache->getWorldMatrix(mat);

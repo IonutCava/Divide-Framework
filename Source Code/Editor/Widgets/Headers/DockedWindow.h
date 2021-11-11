@@ -48,7 +48,7 @@ class DockedWindow : NonCopyable, NonMovable {
         };
 
     public:
-        explicit DockedWindow(Editor& parent, Descriptor descriptor);
+        explicit DockedWindow(Editor& parent, Descriptor descriptor) noexcept;
         virtual ~DockedWindow() = default;
 
         // Called when the editor is visible
@@ -56,7 +56,7 @@ class DockedWindow : NonCopyable, NonMovable {
         // Always called, even if the editor is not visible
         void backgroundUpdate();
 
-        [[nodiscard]] virtual const char* name() const noexcept { return _descriptor.name.c_str(); }
+        [[nodiscard]] virtual const char* name() const { return _descriptor.name.c_str(); }
         
         [[nodiscard]] virtual bool hasFocus() const noexcept { return _focused; }
         [[nodiscard]] virtual bool isHovered() const noexcept { return _isHovered; }

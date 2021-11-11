@@ -14,7 +14,7 @@ U32 TerrainChunk::_chunkID = 0;
 
 TerrainChunk::TerrainChunk(GFXDevice& context,
                            Terrain* const parentTerrain,
-                           QuadtreeNode& parentNode)
+                           QuadtreeNode& parentNode) noexcept
     : _context(context),
       _quadtreeNode(parentNode),
       _ID(_chunkID++),
@@ -81,11 +81,11 @@ void TerrainChunk::initializeVegetation(const VegetationDetails& vegDetails) {
     _vegetation.reset(new Vegetation(_context, *this, vegDetails));
 }
 
-const BoundingBox& TerrainChunk::bounds() const {
+const BoundingBox& TerrainChunk::bounds() const noexcept {
     return _quadtreeNode.getBoundingBox();
 }
 
-U8 TerrainChunk::LoD() const {
+U8 TerrainChunk::LoD() const noexcept {
     return _quadtreeNode.LoD();
 }
 

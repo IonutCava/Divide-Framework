@@ -35,9 +35,9 @@ RenderQueue::~RenderQueue()
     }
 }
 
-U16 RenderQueue::getRenderQueueStackSize() const {
-    U16 temp = 0;
-    for (RenderBin* bin : _renderBins) {
+U16 RenderQueue::getRenderQueueStackSize() const noexcept {
+    U16 temp = 0u;
+    for (const RenderBin* bin : _renderBins) {
         if (bin != nullptr) {
             temp += bin->getBinSize();
         }
@@ -159,7 +159,7 @@ void RenderQueue::addNodeToQueue(const SceneGraphNode* sgn,
 void RenderQueue::populateRenderQueues(const RenderStagePass stagePass, const std::pair<RenderBinType, bool> binAndFlag, RenderQueuePackages& queueInOut) {
     OPTICK_EVENT();
 
-    auto [binType, includeBin] = binAndFlag;
+    const auto [binType, includeBin] = binAndFlag;
 
     if (binType == RenderBinType::COUNT) {
         if (!includeBin) {
@@ -167,12 +167,12 @@ void RenderQueue::populateRenderQueues(const RenderStagePass stagePass, const st
             return;
         }
 
-        for (RenderBin* renderBin : _renderBins) {
+        for (const RenderBin* renderBin : _renderBins) {
             renderBin->populateRenderQueue(stagePass, queueInOut);
         }
     } else {
         // Everything except the specified type or just the specified type
-        for (RenderBin* renderBin : _renderBins) {
+        for (const RenderBin* renderBin : _renderBins) {
             if ((renderBin->getType() == binType) == includeBin) {
                 renderBin->populateRenderQueue(stagePass, queueInOut);
             }
@@ -225,7 +225,7 @@ void RenderQueue::sort(const RenderStagePass& stagePass, const RenderBinType tar
     }
 }
 
-void RenderQueue::refresh(const RenderBinType targetBinType) {
+void RenderQueue::refresh(const RenderBinType targetBinType) noexcept {
     if (targetBinType == RenderBinType::COUNT) {
         for (RenderBin* renderBin : _renderBins) {
             renderBin->refresh();

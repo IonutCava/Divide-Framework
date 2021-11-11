@@ -47,11 +47,11 @@ namespace Divide {
 
 class PhysX;
 class PxDefaultAllocator final : public physx::PxAllocatorCallback {
-    void* allocate(const size_t size, const char*, const char*, int)  override {
+    void* allocate(const size_t size, const char*, const char*, int) noexcept  override {
         return malloc_aligned(size, 16);
     }
 
-    void deallocate(void* ptr)  override {
+    void deallocate(void* ptr) noexcept override {
         free_aligned(ptr);
     }
 };
@@ -72,7 +72,7 @@ public:
     [[nodiscard]] bool initPhysicsScene(Scene& scene) override;
     [[nodiscard]] bool destroyPhysicsScene(const Scene& scene) override;
 
-    [[nodiscard]] bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const;
+    [[nodiscard]] bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const override;
 
     [[nodiscard]] physx::PxPhysics* getSDK() const noexcept { return _gPhysicsSDK; }
 

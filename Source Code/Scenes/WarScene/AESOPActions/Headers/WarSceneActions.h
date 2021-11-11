@@ -90,7 +90,7 @@ class WarSceneAction final : public GOAPAction {
 
     bool preAction(WarSceneAIProcessor& parentProcessor) const;
     bool postAction(WarSceneAIProcessor& parentProcessor) const;
-    bool checkImplDependentCondition() const override { return true; }
+    bool checkImplDependentCondition() const noexcept override { return true; }
 
    protected:
     ActionType _type;

@@ -42,26 +42,26 @@ namespace MemoryManager {
 class MemoryTracker {
     class Entry {
        public:
-        Entry() : Entry(nullptr, 0, 0)
+        Entry() noexcept : Entry(nullptr, 0, 0)
         {
         }
 
-        Entry(const char* file, const size_t line, const size_t size)
+        Entry(const char* file, const size_t line, const size_t size) noexcept
             : _file(file),
               _line(line),
               _size(size)
         {
         }
 
-        [[nodiscard]] char const* File() const {
+        [[nodiscard]] char const* File() const noexcept {
             return _file;
         }
 
-        [[nodiscard]] size_t Line() const {
+        [[nodiscard]] size_t Line() const noexcept {
             return _line;
         }
 
-        [[nodiscard]] size_t Size() const {
+        [[nodiscard]] size_t Size() const noexcept {
             return _size;
         }
 
@@ -73,7 +73,7 @@ class MemoryTracker {
 
     class Lock {
        public:
-        Lock(MemoryTracker& tracer) 
+        Lock(MemoryTracker& tracer) noexcept
             : _tracer(tracer)
         {
             _tracer.lock();
@@ -90,7 +90,7 @@ class MemoryTracker {
     friend class Lock;
 
    public:
-    MemoryTracker()
+    MemoryTracker() noexcept
     {
         Ready = true;
     }
@@ -171,11 +171,11 @@ class MemoryTracker {
     static bool LogAllAllocations;
 
    private:
-    void lock() {
+    void lock() noexcept {
         _locked = true;
     }
 
-    void unlock() {
+    void unlock() noexcept {
         _locked = false;
     }
 

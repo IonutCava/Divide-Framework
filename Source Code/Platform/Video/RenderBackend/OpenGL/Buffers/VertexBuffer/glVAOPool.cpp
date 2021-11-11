@@ -25,7 +25,7 @@ void glVAOPool::init(const U32 capacity) {
     glCreateVertexArrays(g_numWarmupVAOs, warmupVAOs);
 
     _pool.resize(capacity, std::make_pair(0, false));
-    for (auto& [vaoID, isUsed] : _pool) {
+    for (auto& [vaoID, _] : _pool) {
         glCreateVertexArrays(1, &vaoID);
         if_constexpr(Config::ENABLE_GPU_VALIDATION) {
             glObjectLabel(GL_VERTEX_ARRAY,
@@ -40,13 +40,13 @@ void glVAOPool::init(const U32 capacity) {
 }
 
 void glVAOPool::destroy() {
-    for (auto& [vaoID, isUsed] : _pool) {
+    for (auto& [vaoID, _] : _pool) {
         GL_API::DeleteVAOs(1, &vaoID);
     }
     _pool.clear();
 }
 
-GLuint glVAOPool::allocate() {
+GLuint glVAOPool::allocate() noexcept {
     for (auto& [vaoID, isUsed] : _pool) {
         if (isUsed == false) {
             isUsed = true;
@@ -58,7 +58,7 @@ GLuint glVAOPool::allocate() {
     return 0;
 }
 
-void glVAOPool::allocate(const U32 count, GLuint* vaosOUT) {
+void glVAOPool::allocate(const U32 count, GLuint* vaosOUT) noexcept {
     for (U32 i = 0; i < count; ++i) {
         vaosOUT[i] = allocate();
     }

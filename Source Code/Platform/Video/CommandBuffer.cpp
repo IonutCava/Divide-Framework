@@ -70,7 +70,7 @@ void CommandBuffer::add(const CommandBuffer& other) {
     _batched = false;
 }
 
-void CommandBuffer::add(CommandBuffer** buffers, const size_t count) {
+void CommandBuffer::add(const CommandBuffer** const buffers, const size_t count) {
     OPTICK_EVENT();
     assert(buffers != nullptr);
 
@@ -89,7 +89,7 @@ void CommandBuffer::batch() {
 
     clean();
 
-    CommandBase* prevCommand;
+    CommandBase* prevCommand = nullptr;
 
     const auto EraseEmptyCommands = [](CommandOrderContainer& commandOrder) {
         const size_t initialSize = commandOrder.size();

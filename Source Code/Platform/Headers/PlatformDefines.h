@@ -81,12 +81,7 @@ do {                                                \
 
 
 #if !defined(if_constexpr)
-#if !defined(CPP_17_SUPPORT)
-#warning "Constexpr if statement in non C++17 code. Consider updating language version for current project"
-#define if_constexpr if
-#else
 #define if_constexpr if constexpr
-#endif
 #endif
 
 #define CONCATENATE_IMPL(s1, s2) s1##s2
@@ -184,7 +179,7 @@ constexpr U64 prime_64_const = 0x100000001b3;
 }
 
 struct SysInfo {
-    SysInfo();
+    SysInfo() noexcept;
 
     size_t _availableRamInBytes;
     int _systemResolutionWidth;
@@ -200,7 +195,7 @@ void InitSysInfo(SysInfo& info, I32 argc, char** argv);
 struct WindowHandle;
 extern void GetWindowHandle(void* window, WindowHandle& handleOut) noexcept;
 
-extern void SetThreadName(std::thread* thread, const char* threadName) noexcept;
+extern void SetThreadName(std::thread* thread, const char* threadName);
 extern void SetThreadName(const char* threadName) noexcept;
 
 extern bool CallSystemCmd(const char* cmd, const char* args);
@@ -465,7 +460,7 @@ namespace detail {
     class ScopeGuard
     {
         public:
-            ScopeGuard(Fun &&fn) : fn(std::move(fn)) {}
+            ScopeGuard(Fun &&fn) noexcept : fn(MOV(fn)) {}
             ~ScopeGuard() { fn(); }
         private:
             Fun fn;
@@ -495,7 +490,7 @@ namespace detail {
     };
 
     template <typename Fun>
-    auto operator+(ScopeGuardOnExit, Fun &&fn) 	{
+    auto operator+(ScopeGuardOnExit, Fun &&fn) noexcept {
         return ScopeGuard<Fun>(FWD(fn));
     }
 
@@ -694,26 +689,28 @@ template <typename TO>
 extern void DIVIDE_ASSERT_MSG_BOX(const char* failMessage) noexcept;
 
 namespace Assert {
-    /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
-    FORCE_INLINE bool DIVIDE_ASSERT([[maybe_unused]] const bool expression, [[maybe_unused]] const char* file, [[maybe_unused]] const I32 line, [[maybe_unused]] const char* failMessage = "UNEXPECTED CALL") {
-        if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
-            if (!expression) {
-                const auto msgOut = fmt::sprintf("[ %s ] [ %s ] AT [ %d ]", failMessage, file, line);
-                DIVIDE_ASSERT_MSG_BOX(msgOut.c_str());
+    constexpr size_t ASSERT_MSG_BUFFER_SIZE = 512;
+    thread_local static char ASSERT_TEXT_BUFFER[ASSERT_MSG_BUFFER_SIZE + 1];
 
-                if_constexpr(!Config::Assert::CONTINUE_ON_ASSERT) {
-                    assert((expression && msgOut.c_str()));
-                }
-
-                DebugBreak();
-            }
+    inline const char* FormatText(const char* format, ...) noexcept {
+        va_list args;
+        va_start(args, format);
+        SCOPE_EXIT{
+            va_end(args);
+        };
+        if (to_size(_vscprintf(format, args)) + 1 < ASSERT_MSG_BUFFER_SIZE) {
+            vsprintf(ASSERT_TEXT_BUFFER, format, args);
+            return ASSERT_TEXT_BUFFER;
         }
 
-        return expression;
+        return "";
     }
+
+    /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
+    extern bool DIVIDE_ASSERT_FUNC(bool expression, const char* file, I32 line, const char* failMessage = "UNEXPECTED CALL") noexcept;
 }
 
-#define DIVIDE_ASSERT_2_ARGS(expression, msg) Assert::DIVIDE_ASSERT(expression, __FILE__, __LINE__, msg)
+#define DIVIDE_ASSERT_2_ARGS(expression, msg) Assert::DIVIDE_ASSERT_FUNC(expression, __FILE__, __LINE__, msg)
 #define DIVIDE_ASSERT_1_ARGS(expression) DIVIDE_ASSERT_2_ARGS(expression, "UNEXPECTED CALL")
 
 #define ___DETAIL_DIVIDE_ASSERT(...) EXP(GET_3RD_ARG(__VA_ARGS__, DIVIDE_ASSERT_2_ARGS, DIVIDE_ASSERT_1_ARGS, ))

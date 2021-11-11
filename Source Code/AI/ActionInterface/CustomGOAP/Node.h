@@ -22,11 +22,11 @@ namespace goap {
         int h_;              // The estimated remaining cost to 'goal' form 'here'
         const Action* action_;     // The action that got us here (for replay purposes)
 
-        Node();
+        Node() noexcept;
         Node(const WorldState& state, int g, int h, int parent_id, const Action* action);
 
         // F -- which is simply G+H -- is autocalculated
-        int f() const {
+        int f() const noexcept {
             return g_ + h_;
         }
 
@@ -44,7 +44,7 @@ namespace goap {
         friend std::ostream& operator<<(std::ostream& out, const Node& n);
     };
 
-    bool operator<(const Node& lhs, const Node& rhs);
+    bool operator<(const Node& lhs, const Node& rhs) noexcept;
     
     inline std::ostream& operator<<(std::ostream& out, const Node& n) {
         out << "Node { id:" << n.id_ << " parent:" << n.parent_id_ << " F:" << n.f() << " G:" << n.g_ << " H:" << n.h_;

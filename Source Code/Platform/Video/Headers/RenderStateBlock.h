@@ -77,13 +77,13 @@ class RenderStateBlock final : public GUIDWrapper, public Hashable {
         /// Can't assign due to the GUID restrictions
         RenderStateBlock& operator=(const RenderStateBlock& other) noexcept = delete;
         /// Use "from" instead of "operator=" to bypass the GUID restrictions
-        void from(const RenderStateBlock& other) noexcept;
+        void from(const RenderStateBlock& other);
 
-       bool operator==(const RenderStateBlock& rhs) const noexcept {
+       bool operator==(const RenderStateBlock& rhs) const {
             return getHash() == rhs.getHash();
         }
 
-       bool operator!=(const RenderStateBlock& rhs) const noexcept {
+       bool operator!=(const RenderStateBlock& rhs) const {
             return getHash() != rhs.getHash();
         }
 
@@ -111,7 +111,7 @@ class RenderStateBlock final : public GUIDWrapper, public Hashable {
 
         bool cullEnabled() const noexcept;
 
-        size_t getHash() const noexcept override;
+        size_t getHash() const override;
 
     public:
         PROPERTY_R(P32, colourWrite, P32_FLAGS_TRUE);

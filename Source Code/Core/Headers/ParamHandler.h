@@ -52,7 +52,7 @@ public:
     using ParamFloatMap = hashMap<HashType, F32>;
 
   public:
-    ParamHandler() = default;
+    ParamHandler() noexcept = default;
     ~ParamHandler() = default;
 
     void setDebugOutput(bool logState) noexcept;

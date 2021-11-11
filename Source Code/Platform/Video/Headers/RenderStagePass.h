@@ -43,7 +43,7 @@ static constexpr U16 g_AllIndicesID = g_AllPassID;
 
 struct RenderStagePass {
     RenderStagePass() = default;
-    explicit RenderStagePass(const RenderStage stage, const RenderPassType passType, const U8 variant = 0u, const U16 index = 0u, const U16 pass = 0u)
+    explicit RenderStagePass(const RenderStage stage, const RenderPassType passType, const U8 variant = 0u, const U16 index = 0u, const U16 pass = 0u) noexcept 
         : _stage(stage),
           _passType(passType),
           _variant(variant),
@@ -78,7 +78,7 @@ struct RenderStagePass {
         };
     }
 
-    [[nodiscard]] static U16 IndexForStage(const RenderStagePass& renderStagePass) noexcept {
+    [[nodiscard]] static U16 IndexForStage(const RenderStagePass& renderStagePass) {
         switch (renderStagePass._stage) {
             case RenderStage::DISPLAY:
             {
@@ -121,14 +121,16 @@ struct RenderStagePass {
                 }
             }
             case RenderStage::COUNT:
-            default: DIVIDE_UNEXPECTED_CALL();
+                [[fallthrough]];
+            default: 
+                DIVIDE_UNEXPECTED_CALL();
         }
 
         DIVIDE_UNEXPECTED_CALL();
         return 0u;
     }
 
-    [[nodiscard]] static U8 TotalPassCountForStage(const RenderStage renderStage) noexcept {
+    [[nodiscard]] static U8 TotalPassCountForStage(const RenderStage renderStage) {
         switch (renderStage) {
             case RenderStage::DISPLAY:
                 return 1u;
@@ -146,7 +148,7 @@ struct RenderStagePass {
         return to_U8(1u);
     }
 
-    [[nodiscard]] static U16 TotalPassCountForAllStages() noexcept {
+    [[nodiscard]] static U16 TotalPassCountForAllStages() {
         U16 ret = 0u;
         for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i) {
             ret += TotalPassCountForStage(static_cast<RenderStage>(i));
@@ -154,7 +156,7 @@ struct RenderStagePass {
         return ret;
     }
 
-    [[nodiscard]] static U8 PassCountForStagePass(const RenderStagePass& renderStagePass) noexcept {
+    [[nodiscard]] static U8 PassCountForStagePass(const RenderStagePass& renderStagePass) {
         switch (renderStagePass._stage) {
             case RenderStage::DISPLAY:
                 return 1u;
@@ -167,7 +169,8 @@ struct RenderStagePass {
                     case to_base(LightType::DIRECTIONAL): return Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT;
                     case to_base(LightType::POINT): return 6u;
                     case to_base(LightType::SPOT): return 1u;
-                }
+                    default: DIVIDE_UNEXPECTED_CALL();
+                }break;
                 
             default:
                 DIVIDE_UNEXPECTED_CALL();

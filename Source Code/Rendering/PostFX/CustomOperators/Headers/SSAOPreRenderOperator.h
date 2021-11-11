@@ -58,7 +58,7 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
     void genHalfRes(bool state);
 
     [[nodiscard]] bool blurResults() const noexcept { return _blur[_genHalfRes ? 1 : 0]; }
-    void blurResults(bool state);
+    void blurResults(bool state) noexcept;
 
     [[nodiscard]] F32 blurThreshold() const noexcept { return _blurThreshold[_genHalfRes ? 1 : 0]; }
     void blurThreshold(F32 val); 
@@ -77,7 +77,7 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
 
     [[nodiscard]] U8 sampleCount() const noexcept;
 
-    [[nodiscard]] bool ready() const override;
+    [[nodiscard]] bool ready() const noexcept override;
 
    private:
     GFX::SendPushConstantsCommand _ssaoGenerateConstantsCmd;

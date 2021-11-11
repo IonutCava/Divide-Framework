@@ -83,7 +83,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     noiseSampler.anisotropyLevel(0);
     _noiseSampler = noiseSampler.getHash();
 
-    Str64 attachmentName("SSAOPreRenderOperator_NoiseTexture");
+    const Str64 attachmentName("SSAOPreRenderOperator_NoiseTexture");
 
     TextureDescriptor noiseDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::FLOAT_32);
     noiseDescriptor.mipCount(1u);
@@ -261,7 +261,7 @@ SSAOPreRenderOperator::~SSAOPreRenderOperator()
     _context.renderTargetPool().deallocateRT(_ssaoBlurBuffer);
 }
 
-bool SSAOPreRenderOperator::ready() const {
+bool SSAOPreRenderOperator::ready() const noexcept {
     if (_ssaoBlurShaderHorizontal->getState() == ResourceState::RES_LOADED && 
         _ssaoBlurShaderVertical->getState() == ResourceState::RES_LOADED && 
         _ssaoGenerateShader->getState() == ResourceState::RES_LOADED && 
@@ -348,7 +348,7 @@ void SSAOPreRenderOperator::bias(const F32 val) {
     }
 }
 
-void SSAOPreRenderOperator::blurResults(const bool state) {
+void SSAOPreRenderOperator::blurResults(const bool state) noexcept {
     if (blurResults() != state) {
         _blur[_genHalfRes ? 1 : 0] = state;
         if (_genHalfRes) {

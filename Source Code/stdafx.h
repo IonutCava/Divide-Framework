@@ -33,6 +33,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _DIVIDE_PCH_
 #define _DIVIDE_PCH_
 
+#define _ENFORCE_MATCHING_ALLOCATORS 0
+#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+
 #include "Platform/Headers/PlatformDefinesOS.h"
 
 #if !defined(CPP_VERSION)
@@ -58,11 +61,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // As of May 2020
 #if !defined(CPP_17_SUPPORT)
 #error "Divide Framework requires C++17 support at a minimum!."
-#else
-#define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
-#define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING
-#define _ENABLE_EXTENDED_ALIGNED_STORAGE
-#define _ENFORCE_MATCHING_ALLOCATORS 0
 #endif 
 
 #ifndef BOOST_EXCEPTION_DISABLE
@@ -128,6 +126,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <boost/functional/factory.hpp>
 
 #include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
+
 #include <Optick/src/optick.h>
 
 #define HAVE_M_PI
@@ -160,28 +159,36 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fmt/include/fmt/format.h>
 #include <fmt/include/fmt/printf.h>
 
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+#define IMGUI_DEFINE_MATH_OPERATORS
+#endif
+#include <imgui.h>
+
+#include <CEGUI/CEGUI.h>
+
 #include "Platform/Threading/Headers/SharedMutex.h"
-#include "Platform/Headers/ConditionalWait.h"
-#include "Core/Headers/NonCopyable.h"
-#include "Core/Headers/NonMovable.h"
-#include "Core/Headers/GUIDWrapper.h"
 
 #include "Core/TemplateLibraries/Headers/HashMap.h"
 #include "Core/TemplateLibraries/Headers/Vector.h"
 #include "Core/TemplateLibraries/Headers/String.h"
 #include "Core/TemplateLibraries/Headers/CircularBuffer.h"
+
+#include <EntityComponentSystem/include/ECS/ECS.h>
+
+#undef _ENFORCE_MATCHING_ALLOCATORS
+#define _ENFORCE_MATCHING_ALLOCATORS 1
+#undef _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+
+#include "Platform/Headers/ConditionalWait.h"
+#include "Core/Headers/NonCopyable.h"
+#include "Core/Headers/NonMovable.h"
+#include "Core/Headers/GUIDWrapper.h"
+
 #include "Platform/File/Headers/ResourcePath.h"
 #include "Core/Math/Headers/MathMatrices.h"
 #include "Core/Math/Headers/Quaternion.h"
 #include "Core/Headers/TaskPool.h"
 #include "Core/Headers/Console.h"
 #include "Core/Headers/ByteBuffer.h"
-
-#ifndef IMGUI_DEFINE_MATH_OPERATORS
-#define IMGUI_DEFINE_MATH_OPERATORS
-#endif
-#include <imgui.h>
-
-#include <EntityComponentSystem/include/ECS/ECS.h>
 
 #endif //_DIVIDE_PCH_

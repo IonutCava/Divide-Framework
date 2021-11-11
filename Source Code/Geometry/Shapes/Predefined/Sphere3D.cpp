@@ -16,12 +16,12 @@ Sphere3D::Sphere3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
     geometryDirty(true);
 }
 
-void Sphere3D::setRadius(const F32 radius) {
+void Sphere3D::setRadius(const F32 radius) noexcept {
     _radius = radius;
     geometryDirty(true);
 }
 
-void Sphere3D::setResolution(const U32 resolution) {
+void Sphere3D::setResolution(const U32 resolution) noexcept {
     _resolution = resolution;
     geometryDirty(true);
 }

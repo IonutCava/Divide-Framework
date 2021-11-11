@@ -60,7 +60,7 @@ class AutoRepeatKey {
    public:
     virtual ~AutoRepeatKey() = default;
     /// Default constructor
-    AutoRepeatKey(D64 repeatDelay = 0.035, D64 initialDelay = 0.300);
+    AutoRepeatKey(D64 repeatDelay = 0.035, D64 initialDelay = 0.300) noexcept;
     /// Called when a key is pressed
     void begin(const KeyEvent&evt) noexcept;
     /// Called when a key is released

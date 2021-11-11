@@ -42,7 +42,7 @@ namespace Divide {
     {
     public:
         static void registerListener(SDLEventListener& listener);
-        static void unregisterListener(SDLEventListener& listener);
+        static void unregisterListener(const SDLEventListener& listener);
         static void pollEvents();
 
     private:

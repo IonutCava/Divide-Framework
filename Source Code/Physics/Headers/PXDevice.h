@@ -50,7 +50,7 @@ public:
         COUNT
     };
 
-    explicit PXDevice(Kernel& parent);
+    explicit PXDevice(Kernel& parent) noexcept;
     ~PXDevice();
 
     void setAPI(const PhysicsAPI API) noexcept { _API_ID = API; }
@@ -70,10 +70,10 @@ public:
 
     PhysicsAsset* createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) override;
 
-    [[nodiscard]] PhysicsAPIWrapper& getImpl() noexcept { assert(_api != nullptr); return *_api; }
-    [[nodiscard]] const PhysicsAPIWrapper& getImpl() const noexcept { assert(_api != nullptr); return *_api; }
+    [[nodiscard]] PhysicsAPIWrapper& getImpl() { assert(_api != nullptr); return *_api; }
+    [[nodiscard]] const PhysicsAPIWrapper& getImpl() const { assert(_api != nullptr); return *_api; }
 
-    bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const;
+    bool intersect(const Ray& intersectionRay, const vec2<F32>& range, vector<SGNRayResult>& intersectionsOut) const override;
 
 private:
     F32 _simulationSpeed = 1.0f;

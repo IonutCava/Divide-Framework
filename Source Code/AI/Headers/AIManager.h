@@ -123,7 +123,7 @@ class AIManager final : public SceneComponent
     /// Unregister an AI Team
     void unregisterTeam(AITeam* team);
 
-    bool shouldStop() const;
+    bool shouldStop() const noexcept;
 
   private:
     bool processInput(U64 deltaTimeUS);    ///< sensors

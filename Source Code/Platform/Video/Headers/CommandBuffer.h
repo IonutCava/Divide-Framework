@@ -95,7 +95,7 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     [[nodiscard]] ErrorType validate() const;
 
     void add(const CommandBuffer& other);
-    void add(CommandBuffer** buffers, size_t count);
+    void add(const CommandBuffer** buffers, size_t count);
 
     void clean();
     void batch();
@@ -109,23 +109,23 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
 
     template<typename T>
     [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, const Container::EntryList&>::type
-    get() const noexcept;
+    get() const;
 
     template<typename T>
     [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    get(const CommandEntry& commandEntry) const  noexcept;
+    get(const CommandEntry& commandEntry) const;
 
     template<typename T>
     [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    get(const CommandEntry& commandEntry) noexcept;
+    get(const CommandEntry& commandEntry);
 
     template<typename T>
     [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    get(U24 index) noexcept;
+    get(U24 index);
 
     template<typename T>
     [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-    get(U24 index) const noexcept;
+    get(U24 index) const;
 
     [[nodiscard]] bool exists(U8 typeIndex, U24 index) const noexcept;
 

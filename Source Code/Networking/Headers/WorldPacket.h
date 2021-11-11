@@ -11,14 +11,17 @@ namespace Divide {
 class WorldPacket : public ByteBuffer {
    public:
     // just container for later use
-    WorldPacket() noexcept : WorldPacket(OPCodes::MSG_NOP, 0)
+    WorldPacket() noexcept 
+        : ByteBuffer(),
+          m_opcode(OPCodes::MSG_NOP)
     {
     }
 
-    explicit WorldPacket(const OPCodes::ValueType opcode, const size_t res = 200) noexcept
-        : ByteBuffer(res),
+    explicit WorldPacket(const OPCodes::ValueType opcode, const size_t res = 200)
+        : ByteBuffer(),
           m_opcode(opcode)
     {
+        _storage.reserve(res);
     }
 
     void Initialize(const U16 opcode, const size_t newres = 200) {

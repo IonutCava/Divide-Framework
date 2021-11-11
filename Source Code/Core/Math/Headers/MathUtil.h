@@ -56,11 +56,11 @@ struct NOINITVTABLE GraphPlot {
 };
 
 struct GraphPlot2D final : GraphPlot {
-    GraphPlot2D() noexcept : GraphPlot2D("UNNAMED_PLOT_2D")
+    GraphPlot2D() : GraphPlot2D("UNNAMED_PLOT_2D")
     {
     }
 
-    explicit GraphPlot2D(string&& name) : GraphPlot(MOV(name))
+    explicit GraphPlot2D(string&& name) noexcept : GraphPlot(MOV(name))
     {
     }
 
@@ -72,11 +72,11 @@ struct GraphPlot2D final : GraphPlot {
 };
 
 struct GraphPlot3D final : GraphPlot {
-    GraphPlot3D() noexcept : GraphPlot3D("UNNAMED_PLOT_3D")
+    GraphPlot3D() : GraphPlot3D("UNNAMED_PLOT_3D")
     {
     }
 
-    explicit GraphPlot3D(string&& name) : GraphPlot(MOV(name))
+    explicit GraphPlot3D(string&& name) noexcept : GraphPlot(MOV(name))
     {
     }
 

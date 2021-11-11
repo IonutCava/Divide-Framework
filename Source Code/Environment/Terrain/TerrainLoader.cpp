@@ -92,7 +92,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     vector<string> textures[to_base(TerrainTextureType::COUNT)] = {};
     vector<string> splatTextures = {};
 
-    size_t idxCount = layerCount * to_size(TerrainTextureChannel::COUNT);
+    const size_t idxCount = layerCount * to_size(TerrainTextureChannel::COUNT);
     std::array<vector<U16>, to_base(TerrainTextureType::COUNT)> indices;
     std::array<U16, to_base(TerrainTextureType::COUNT)> offsets{};
     vector<U8> channelCountPerLayer(layerCount, 0u);
@@ -118,7 +118,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
             }
 
             for (U8 k = 0; k < to_base(TerrainTextureType::COUNT); ++k) {
-                auto [index, wasNew] = FindOrInsert(textureQuality, textures[k], Util::StringFormat("%s.%s", textureNames[k], k == to_base(TerrainTextureType::ALBEDO_ROUGHNESS) ? "png" : "jpg"), currentMaterial);
+                const auto [index, wasNew] = FindOrInsert(textureQuality, textures[k], Util::StringFormat("%s.%s", textureNames[k], k == to_base(TerrainTextureType::ALBEDO_ROUGHNESS) ? "png" : "jpg"), currentMaterial);
                 indices[k][idx] = index;
                 if (wasNew) {
                     ++offsets[k];
@@ -672,16 +672,16 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
 
         constexpr F32 ushortMax = 1.f + U16_MAX;
 
-        I32 terrainWidth = to_I32(terrainDimensions.x);
-        I32 terrainHeight = to_I32(terrainDimensions.y);
+        const I32 terrainWidth = to_I32(terrainDimensions.x);
+        const I32 terrainHeight = to_I32(terrainDimensions.y);
 
         terrain->_physicsVerts.resize(to_size(terrainWidth) * terrainHeight);
 
         // scale and translate all heights by half to convert from 0-255 (0-65335) to -127 - 128 (-32767 - 32768)
-        F32 altitudeRange = maxAltitude - minAltitude;
+        const F32 altitudeRange = maxAltitude - minAltitude;
         
-        F32 bXRange = bMax.x - bMin.x;
-        F32 bZRange = bMax.z - bMin.z;
+        const F32 bXRange = bMax.x - bMin.x;
+        const F32 bZRange = bMax.z - bMin.z;
 
         #pragma omp parallel for
         for (I32 height = 0; height < terrainHeight; ++height) {
@@ -691,7 +691,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
 
 
                 F32 yOffset = 0.0f;
-                U16* heightData = reinterpret_cast<U16*>(data.data());
+                const U16* heightData = reinterpret_cast<U16*>(data.data());
 
                 const I32 coordX = width < terrainWidth - 1 ? width : width - 1;
                 const I32 coordY = height < terrainHeight - 1 ? height : height - 1;
@@ -707,7 +707,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
             }
         }
 
-        I32 offset = 2;
+        constexpr I32 offset = 2;
         #pragma omp parallel for
         for (I32 j = offset; j < terrainHeight - offset; ++j) {
             for (I32 i = offset; i < terrainWidth - offset; ++i) {
@@ -726,7 +726,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
                 //Again, not needed, I think
                 //#pragma omp critical
                 {
-                    I32 idx = TER_COORD(i, j, terrainWidth);
+                    const I32 idx = TER_COORD(i, j, terrainWidth);
                     VertexBuffer::Vertex& vert = terrain->_physicsVerts[idx];
                     vert._normal = Util::PACK_VEC3(vUV);
                     vert._tangent = Util::PACK_VEC3(vU);
@@ -777,7 +777,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
     Attorney::TerrainLoader::postBuild(*terrain);
 
     // Do this first in case we have any threaded loads
-    VegetationDetails& vegDetails = initializeVegetationDetails(terrain, context, terrainDescriptor);
+    const VegetationDetails& vegDetails = initializeVegetationDetails(terrain, context, terrainDescriptor);
     Vegetation::createAndUploadGPUData(context.gfx(), terrain, vegDetails);
 
     Console::printfn(Locale::Get(_ID("TERRAIN_LOAD_END")), terrain->resourceName().c_str());

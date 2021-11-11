@@ -79,16 +79,16 @@ public:
     /// Returns true if the probe was updated, false if skipped
     bool refresh(GFX::CommandBuffer& bufferInOut);
     /// Checks if the given bounding sphere has collided with the probe's AABB and if so, mark it for update if required
-    bool checkCollisionAndQueueUpdate(const BoundingSphere& sphere);
+    bool checkCollisionAndQueueUpdate(const BoundingSphere& sphere) noexcept;
 
-    void updateType(UpdateType type) noexcept;
+    void updateType(UpdateType type);
 
-    void setBounds(const vec3<F32>& min, const vec3<F32>& max);
-    void setBounds(const vec3<F32>& center, F32 radius);
+    void setBounds(const vec3<F32>& min, const vec3<F32>& max) noexcept;
+    void setBounds(const vec3<F32>& center, F32 radius) noexcept;
 
     void loadFromXML(const boost::property_tree::ptree& pt) override;
 
-    [[nodiscard]] F32 distanceSqTo(const vec3<F32>& pos) const;
+    [[nodiscard]] F32 distanceSqTo(const vec3<F32>& pos) const noexcept;
     
     [[nodiscard]] std::array<Camera*, 6> probeCameras() const noexcept;
 

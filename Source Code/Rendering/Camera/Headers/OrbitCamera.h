@@ -49,7 +49,7 @@ class OrbitCamera : public FreeFlyCamera {
                          const vec3<F32>& eye = VECTOR3_ZERO);
   public:
     void setTarget(SceneGraphNode* sgn,
-                   const vec3<F32>& offsetDirection = vec3<F32>(0, 0.75, 1.0));
+                   const vec3<F32>& offsetDirection = vec3<F32>(0, 0.75, 1.0)) noexcept;
 
     void fromCamera(const Camera& camera, bool flag = false) override;
 
@@ -74,7 +74,7 @@ class OrbitCamera : public FreeFlyCamera {
     virtual ~OrbitCamera() = default;
 
    protected:
-    bool updateViewMatrix() override;
+    bool updateViewMatrix() noexcept override;
 
    protected:
     F32 _maxRadius = 10.0f;

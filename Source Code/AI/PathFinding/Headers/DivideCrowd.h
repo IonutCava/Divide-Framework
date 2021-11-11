@@ -164,20 +164,20 @@ class DivideDtCrowd final : public NonCopyable {
     /// height, and height is
     /// determined by the agent height parameter with which the navmesh is
     /// build.
-    [[nodiscard]] D64 getAgentHeight() const { return Attorney::NavigationMeshCrowd::getConfigParams(*_recast).getAgentHeight(); }
+    [[nodiscard]] D64 getAgentHeight() const noexcept { return Attorney::NavigationMeshCrowd::getConfigParams(*_recast).getAgentHeight(); }
     /// The radius of agents in this crowd. All agents in a crowd have the same
     /// radius, and radius
     /// determined by the agent radius parameter with which the navmesh is
     /// build.
-    [[nodiscard]] D64 getAgentRadius() const { return Attorney::NavigationMeshCrowd::getConfigParams(*_recast).getAgentRadius(); }
+    [[nodiscard]] D64 getAgentRadius() const  noexcept { return Attorney::NavigationMeshCrowd::getConfigParams(*_recast).getAgentRadius(); }
     /// The number of (active) agents in this crowd.
-    [[nodiscard]] I32 getNbAgents() const { return _activeAgents; }
+    [[nodiscard]] I32 getNbAgents() const noexcept { return _activeAgents; }
     /// Get the navigation mesh associated with this crowd
-    [[nodiscard]] const NavigationMesh& getNavMesh() const { return *_recast; }
+    [[nodiscard]] const NavigationMesh& getNavMesh() const noexcept { return *_recast; }
     /// Check if the navMesh is valid
     [[nodiscard]] bool isValidNavMesh() const;
     /// Change the navigation mesh for this crowd
-    void setNavMesh(NavigationMesh* navMesh) { _recast = navMesh; }
+    void setNavMesh(NavigationMesh* navMesh) noexcept { _recast = navMesh; }
     /// The maximum number of agents that are allowed in this crowd.
     [[nodiscard]] I32 getMaxNbAgents() const { return _crowd->getAgentCount(); }
     /// Get all (active) agents in this crowd.
@@ -186,7 +186,7 @@ class DivideDtCrowd final : public NonCopyable {
     [[nodiscard]] vector<I32> getActiveAgentIDs() const;
     /// The last set destination for the crowd.
     /// This is the destination that will be assigned to newly added agents.
-    [[nodiscard]] vec3<F32> getLastDestination() const { return vec3<F32>(_targetPos); }
+    [[nodiscard]] vec3<F32> getLastDestination() const noexcept { return vec3<F32>(_targetPos); }
     /// Reference to the DetourCrowd object that is wrapped.
     dtCrowd* _crowd = nullptr;
     /// Reference to the Recast/Detour wrapper object for Divide.

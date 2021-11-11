@@ -21,7 +21,7 @@ Character::Character(const CharacterType type)
 
 void Character::setParentNode(SceneGraphNode* node) {
     Unit::setParentNode(node);
-    TransformComponent* const transform = node->get<TransformComponent>();
+    const TransformComponent* const transform = node->get<TransformComponent>();
     if (transform) {
         _newPosition.set(transform->getPosition());
         _oldPosition.set(_newPosition);

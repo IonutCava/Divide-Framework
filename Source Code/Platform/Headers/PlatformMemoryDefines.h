@@ -34,13 +34,13 @@
 #define _PLATFORM_MEMORY_DEFINES_H_
 #include "PlatformDataTypes.h"
 
-void* malloc_aligned(size_t size, size_t alignment, size_t offset = 0u);
-void  free_aligned(void*& ptr);
+void* malloc_aligned(size_t size, size_t alignment, size_t offset = 0u) noexcept;
+void  free_aligned(void*& ptr) noexcept;
 
-void* operator new[](   size_t size, const char* pName, int flags, unsigned int debugFlags, const char* file, int line);
+void* operator new[](   size_t size, const char* pName, int flags, unsigned int debugFlags, const char* file, int line) noexcept;
 void  operator delete[](void* ptr,   const char* pName, int flags, unsigned int debugFlags, const char* file, int line);
 
-void* operator new[](   size_t size, size_t alignment, size_t alignmentOffset, const char* pName, int flags, unsigned int debugFlags, const char* file, int line);
+void* operator new[](   size_t size, size_t alignment, size_t alignmentOffset, const char* pName, int flags, unsigned int debugFlags, const char* file, int line) noexcept;
 void  operator delete[](void* ptr,   size_t alignment, size_t alignmentOffset, const char* pName, int flags, unsigned int debugFlags, const char* file, int line);
 
 #if defined(_DEBUG)
@@ -50,7 +50,7 @@ void* operator new(size_t size, const char* zFile, size_t nLine) noexcept;
 #endif //!_DEBUG
 
 void  operator delete(  void* ptr,   const char* zFile, size_t nLine);
-void* operator new[](   size_t size, const char* zFile, size_t nLine);
+void* operator new[](   size_t size, const char* zFile, size_t nLine) noexcept;
 void  operator delete[](void* ptr,   const char* zFile, size_t nLine);
 
 #if !defined(MemoryManager_NEW)

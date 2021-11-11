@@ -59,7 +59,7 @@ namespace {
         return UseProgramStageMask::GL_NONE_BIT;
     }
 
-    FORCE_INLINE string GetUniformBufferName(glShader* shader) {
+    FORCE_INLINE string GetUniformBufferName(const glShader* const shader) {
         return "dvd_UniformBlock_" + Util::to_string(shader->getGUID());
     }
 }
@@ -494,6 +494,10 @@ bool glShader::DumpBinary(const GLuint handle, const Str256& name) {
     // allocate a big enough buffer to hold it
     char* binary = MemoryManager_NEW char[binaryLength];
     DIVIDE_ASSERT(binary != nullptr, "glShader error: could not allocate memory for the program binary!");
+    SCOPE_EXIT{
+        // delete our local code buffer
+        MemoryManager::DELETE(binary);
+    };
 
     // and fill the buffer with the binary code
     GLenum binaryFormat = GL_NONE;
@@ -513,8 +517,6 @@ bool glShader::DumpBinary(const GLuint handle, const Str256& name) {
         }
     }
 
-    // delete our local code buffer
-    MemoryManager::DELETE(binary);
     return ret;
 }
 

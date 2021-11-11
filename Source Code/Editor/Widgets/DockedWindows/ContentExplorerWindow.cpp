@@ -83,14 +83,14 @@ namespace Divide {
 
         while (!_textureLoadQueue.empty() || !_modelLoadQueue.empty()) {
             if (!_textureLoadQueue.empty()) {
-                auto [path, name] = _textureLoadQueue.top();
+                const auto [path, name] = _textureLoadQueue.top();
                 _textureLoadQueue.pop();
                 _loadedTextures[_ID((path + "/" + name).c_str())] = getTextureForPath(ResourcePath(path), ResourcePath(name));
             }
 
 
             if (!_modelLoadQueue.empty()) {
-                auto [path, name] = _modelLoadQueue.top();
+                const auto [path, name] = _modelLoadQueue.top();
                 _modelLoadQueue.pop();
                 _loadedModels[_ID((path + "/" + name).c_str())] = getModelForPath(ResourcePath(path), ResourcePath(name));
             }
@@ -176,14 +176,14 @@ namespace Divide {
                 bool lockTextureQueue = false;
                 bool lockModelQueue = false;
 
-                for (auto file : _selectedDir->_files) {
+                for (const auto& file : _selectedDir->_files) {
                     Texture_ptr tex = nullptr;
                     Mesh_ptr mesh = nullptr;
                     GeometryFormat format = GeometryFormat::COUNT;
                     { // Textures
                         for (const char* extension : g_imageExtensions) {
                             if (hasExtension(file.second.c_str(), extension)) {
-                                auto it = _loadedTextures.find(_ID((file.first + "/" + file.second).c_str()));
+                                const auto it = _loadedTextures.find(_ID((file.first + "/" + file.second).c_str()));
                                 if (it == std::cend(_loadedTextures) || it->second == nullptr) {
                                     if (!_textureLoadQueueLocked) {
                                         _textureLoadQueue.push(file);
@@ -199,7 +199,7 @@ namespace Divide {
                     { //Geometry
                         for (const char* extension : g_geometryExtensions) {
                             if (hasExtension(file.second.c_str(), extension)) {
-                                auto it = _loadedModels.find(_ID((file.first + "/" + file.second).c_str()));
+                                const auto it = _loadedModels.find(_ID((file.first + "/" + file.second).c_str()));
                                 if (it == std::cend(_loadedModels) || it->second == nullptr) {
                                     if (!_modelLoadQueueLocked) {
                                         _modelLoadQueue.push(file);

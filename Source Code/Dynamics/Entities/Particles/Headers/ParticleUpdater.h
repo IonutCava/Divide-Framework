@@ -40,7 +40,7 @@ namespace Divide {
 
 class ParticleUpdater : public PlatformContextComponent{
    public:
-    explicit ParticleUpdater(PlatformContext& context)
+    explicit ParticleUpdater(PlatformContext& context) noexcept
            : PlatformContextComponent(context)
     {
     }

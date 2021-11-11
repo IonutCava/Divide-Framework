@@ -8,7 +8,7 @@
 namespace Divide {
 
 namespace {
-    const U32 g_partitionSize = 128;
+    constexpr U32 g_partitionSize = 128;
 }
 
 void ParticleBasicColourUpdater::update(const U64 deltaTimeUS, ParticleData& p) {

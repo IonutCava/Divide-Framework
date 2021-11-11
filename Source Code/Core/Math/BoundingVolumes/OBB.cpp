@@ -44,7 +44,7 @@ namespace Divide {
         _axis = { WORLD_X_AXIS, WORLD_Y_AXIS, WORLD_Z_AXIS };
     }
 
-    void OBB::fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix)  noexcept {
+    void OBB::fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix) noexcept {
         //assert(worldMatrix.isColOrthogonal()); // We cannot convert transform an AABB to OBB if it gets sheared in the process.
         //assert(worldMatrix.isUniformScale());
         _position = worldMatrix * aabb.getCenter();

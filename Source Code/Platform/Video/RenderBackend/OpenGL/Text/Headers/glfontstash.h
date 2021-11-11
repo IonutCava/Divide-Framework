@@ -153,7 +153,7 @@ static int glfons__renderResize(void* userPtr, int width, int height)
 
 static void glfons__renderUpdate(void* userPtr, int* rect, const unsigned char* data)
 {
-	GLFONScontext* gl = (GLFONScontext*)userPtr;
+	const GLFONScontext* gl = (GLFONScontext*)userPtr;
 
     if (gl->tex != 0) {
         const int w = rect[2] - rect[0];

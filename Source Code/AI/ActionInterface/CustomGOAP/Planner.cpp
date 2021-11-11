@@ -6,8 +6,6 @@
 #include <assert.h>
 #include <sstream>
 
-goap::Planner::Planner() {
-}
 
 int goap::Planner::calculateHeuristic(const WorldState& now, const WorldState& goal) const {
     return now.distanceTo(goal);

@@ -8,7 +8,7 @@
 namespace Divide {
 namespace Input {
 
-InputHandler::InputHandler(InputAggregatorInterface& eventListener, Application& app)
+InputHandler::InputHandler(InputAggregatorInterface& eventListener, Application& app) noexcept
     : _app(app),
       _eventListener(eventListener)
 {

@@ -51,11 +51,11 @@ inline ProfileTimer& ADD_TIMER(const char* timerName) {
     return ProfileTimer::getNewTimer(timerName);
 }
 
-inline void START_TIMER(ProfileTimer& timer) {
+inline void START_TIMER(ProfileTimer& timer) noexcept {
     timer.start();
 }
 
-inline void STOP_TIMER(ProfileTimer& timer) {
+inline void STOP_TIMER(ProfileTimer& timer) noexcept {
     timer.stop();
 }
 

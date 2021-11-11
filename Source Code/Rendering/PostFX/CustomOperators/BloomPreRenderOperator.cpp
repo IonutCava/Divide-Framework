@@ -68,7 +68,7 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
         _bloomApplyPipeline = _context.newPipeline(pipelineDescriptor);
     });
 
-    vec2<U16> res = parent.screenRT()._rt->getResolution();
+    const vec2<U16> res = parent.screenRT()._rt->getResolution();
     if (res.height > 1440) {
         resolutionDownscaleFactor = 4.0f;
     }
@@ -111,7 +111,7 @@ BloomPreRenderOperator::~BloomPreRenderOperator() {
     _context.renderTargetPool().deallocateRT(_bloomBlurBuffer[1]);
 }
 
-bool BloomPreRenderOperator::ready() const {
+bool BloomPreRenderOperator::ready() const noexcept {
     if (_bloomCalcPipeline != nullptr && _bloomApplyPipeline != nullptr) {
         return PreRenderOperator::ready();
     }

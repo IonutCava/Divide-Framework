@@ -43,7 +43,7 @@ class ParticleVelocityColourUpdater final : public ParticleUpdater {
     vec4<F32> _maxVel = VECTOR4_UNIT;
 
    public:
-    ParticleVelocityColourUpdater(PlatformContext& context) : ParticleUpdater(context)
+    ParticleVelocityColourUpdater(PlatformContext& context) noexcept : ParticleUpdater(context)
     {
     }
 

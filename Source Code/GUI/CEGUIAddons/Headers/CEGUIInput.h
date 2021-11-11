@@ -43,7 +43,7 @@ class GUI;
 class CEGUIInput final : public Input::InputAggregatorInterface,
                          public Input::AutoRepeatKey {
    public:
-    explicit CEGUIInput(GUI& parent);
+    explicit CEGUIInput(GUI& parent) noexcept;
     /// Key pressed: return true if input was consumed
     bool onKeyDown(const Input::KeyEvent& key) override;
     /// Key released: return true if input was consumed

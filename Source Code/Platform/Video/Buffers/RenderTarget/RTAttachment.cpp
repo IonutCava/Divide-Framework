@@ -9,12 +9,12 @@
 
 namespace Divide {
 
-RTAttachment::RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor)
+RTAttachment::RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor) noexcept
     : RTAttachment(parent, descriptor, nullptr)
 {
 }
 
-RTAttachment::RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor, RTAttachment_ptr externalAtt)
+RTAttachment::RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor, RTAttachment_ptr externalAtt) noexcept
     : _samplerHash(descriptor._samplerHash),
       _descriptor(descriptor),
       _externalAttachment(MOV(externalAtt)),
@@ -27,7 +27,7 @@ const Texture_ptr& RTAttachment::texture(const bool autoResolve) const {
     return autoResolve && isExternal() ? _externalAttachment->texture() : _texture;
 }
 
-void RTAttachment::setTexture(const Texture_ptr& tex) {
+void RTAttachment::setTexture(const Texture_ptr& tex) noexcept {
     _texture = tex;
     if (tex != nullptr) {
         _descriptor._texDescriptor = tex->descriptor();
@@ -36,16 +36,16 @@ void RTAttachment::setTexture(const Texture_ptr& tex) {
     _changed = true;
 }
 
-bool RTAttachment::used() const {
+bool RTAttachment::used() const noexcept {
     return _texture != nullptr ||
            _externalAttachment != nullptr;
 }
 
-bool RTAttachment::isExternal() const {
+bool RTAttachment::isExternal() const noexcept {
     return _externalAttachment != nullptr;
 }
 
-bool RTAttachment::mipWriteLevel(const U16 level) {
+bool RTAttachment::mipWriteLevel(const U16 level) noexcept {
     //ToDo: Investigate why this isn't working ... -Ionut
     if (/*_descriptor._texDescriptor.mipLevels() > level && */_mipWriteLevel != level) {
         _mipWriteLevel = level;
@@ -55,7 +55,7 @@ bool RTAttachment::mipWriteLevel(const U16 level) {
     return false;
 }
 
-U16 RTAttachment::mipWriteLevel() const {
+U16 RTAttachment::mipWriteLevel() const noexcept {
     return _mipWriteLevel;
 }
 
@@ -69,41 +69,41 @@ bool RTAttachment::writeLayer(const U16 layer) {
     return false;
 }
 
-U16 RTAttachment::writeLayer() const {
+U16 RTAttachment::writeLayer() const noexcept {
     return _writeLayer;
 }
 
 U16 RTAttachment::numLayers() const {
     return to_U16(_descriptor._texDescriptor.layerCount());
 }
-bool RTAttachment::changed() const {
+bool RTAttachment::changed() const noexcept {
     return _changed;
 }
 
-void RTAttachment::clearColour(const FColour4& clearColour) {
+void RTAttachment::clearColour(const FColour4& clearColour) noexcept {
     _descriptor._clearColour.set(clearColour);
 }
 
-const FColour4& RTAttachment::clearColour() const {
+const FColour4& RTAttachment::clearColour() const noexcept {
     return _descriptor._clearColour;
 }
 
-void RTAttachment::clearChanged() {
+void RTAttachment::clearChanged() noexcept {
     _changed = false;
 }
 
-const RTAttachmentDescriptor& RTAttachment::descriptor() const {
+const RTAttachmentDescriptor& RTAttachment::descriptor() const noexcept {
     return _descriptor;
 }
 
-RTAttachmentPool& RTAttachment::parent() {
+RTAttachmentPool& RTAttachment::parent() noexcept {
     return _parent;
 }
-const RTAttachmentPool& RTAttachment::parent() const {
+const RTAttachmentPool& RTAttachment::parent() const  noexcept {
     return _parent;
 }
 
-const RTAttachment_ptr& RTAttachment::getExternal() const {
+const RTAttachment_ptr& RTAttachment::getExternal() const noexcept {
     return _externalAttachment;
 }
 

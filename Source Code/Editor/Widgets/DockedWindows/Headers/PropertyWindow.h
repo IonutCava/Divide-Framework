@@ -54,7 +54,7 @@ class PropertyWindow final : public DockedWindow, public PlatformContextComponen
         void drawInternal() override;
         void backgroundUpdateInternal() override;
 
-        [[nodiscard]] const char* name() const noexcept override;
+        [[nodiscard]] const char* name() const override;
     protected:
 
         [[nodiscard]] bool drawCamera(Camera* cam);

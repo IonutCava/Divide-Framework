@@ -40,7 +40,7 @@ void ProcessShadowMappingDefines(const Configuration& config, ModuleDefines& def
     }
 }
 
-size_t ShaderProgramDescriptor::getHash() const noexcept {
+size_t ShaderProgramDescriptor::getHash() const {
     _hash = PropertyDescriptor::getHash();
     for (const ShaderModuleDescriptor& desc : _modules) {
         Util::Hash_combine(_hash, ShaderProgram::DefinesHash(desc._defines));
@@ -282,15 +282,15 @@ ShaderProgram* ShaderProgram::FindShaderProgram(const size_t shaderHash) {
     return nullptr;
 }
 
-const ShaderProgram_ptr& ShaderProgram::DefaultShader() {
+const ShaderProgram_ptr& ShaderProgram::DefaultShader() noexcept {
     return s_imShader;
 }
 
-const ShaderProgram_ptr& ShaderProgram::NullShader() {
+const ShaderProgram_ptr& ShaderProgram::NullShader() noexcept {
     return s_nullShader;
 }
 
-const I64 ShaderProgram::NullShaderGUID() {
+const I64 ShaderProgram::NullShaderGUID() noexcept {
     return s_nullShader != nullptr ? s_nullShader->getGUID() : -1;
 }
 

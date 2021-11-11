@@ -63,9 +63,13 @@ struct AnimationChannel {
 struct BoneTransform
 {
     using Container = vector<mat4<F32>>;
-    PROPERTY_RW(Container, matrices);
 
-    [[nodiscard]] size_t count() const noexcept { return matrices().size(); }
+    void matrices(const Container& matricesIn) { _matrices = matricesIn; }
+    const Container& matrices() const noexcept { return _matrices; }
+    [[nodiscard]] size_t count() const noexcept { return _matrices.size(); }
+
+private:
+    Container _matrices;
 };
 
 class GFXDevice;
@@ -82,7 +86,7 @@ class AnimEvaluator {
 
     explicit AnimEvaluator(const aiAnimation* pAnim, U32 idx) noexcept;
 
-    void evaluate(D64 dt, Bone* skeleton);
+    void evaluate(D64 dt, const eastl::shared_ptr<Bone>& skeleton);
 
     [[nodiscard]] FrameIndex frameIndexAt(D64 elapsedTimeS) const noexcept;
 

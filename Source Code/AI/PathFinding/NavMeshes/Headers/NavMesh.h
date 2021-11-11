@@ -127,22 +127,22 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
     /// clients and posting a task.
     bool build(SceneGraphNode* sgn, CreationCallback creationCompleteCallback, bool threaded = true);
     /// Save the NavigationMesh to a file.
-    bool save(SceneGraphNode* sgn);
+    bool save(const SceneGraphNode* sgn);
     /// Load a saved NavigationMesh from a file.
-    bool load(SceneGraphNode* sgn);
+    bool load(const SceneGraphNode* sgn);
     /// Unload the navmesh reverting the instance to an empty container
     bool unload();
     /// Render the debug mesh if debug drawing is enabled
     GFX::CommandBuffer& draw(bool force);
-    void debugDraw(const bool state) { _debugDraw = state; }
-    bool debugDraw() const { return _debugDraw; }
+    void debugDraw(const bool state) noexcept { _debugDraw = state; }
+    bool debugDraw() const noexcept { return _debugDraw; }
 
-    void setRenderMode(const RenderMode& mode) { _renderMode = mode; }
-    void setRenderConnections(const bool state) { _renderConnections = state; }
+    void setRenderMode(const RenderMode& mode) noexcept { _renderMode = mode; }
+    void setRenderConnections(const bool state) noexcept { _renderConnections = state; }
 
-    const vec3<F32>& getExtents() const { return _extents; }
+    const vec3<F32>& getExtents() const noexcept { return _extents; }
 
-    const dtNavMeshQuery& getNavQuery() const { return *_navQuery; }
+    const dtNavMeshQuery& getNavQuery() const noexcept { return *_navQuery; }
 
     bool getRandomPosition(vec3<F32>& result) const;
 
@@ -171,8 +171,7 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
     /// mesh. Returns true if successful. Stores the created mesh in tnm.
     bool generateMesh();
     /// Performs the Recast part of the build process.
-    bool createPolyMesh(rcConfig& cfg, NavModelData& data,
-                        rcContextDivide* ctx);
+    bool createPolyMesh(const rcConfig& cfg, const NavModelData& data, rcContextDivide* ctx);
     /// Performs the Detour part of the build process.
     bool createNavigationMesh(dtNavMeshCreateParams& params);
     /// Load nav mesh configuration from file
@@ -180,7 +179,7 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
     /// Create a navigation mesh query to help in pathfinding.
     bool createNavigationQuery(U32 maxNodes = 2048);
     /// Create a unique mesh name using the given root node
-    static Str128 GenerateMeshName(SceneGraphNode* sgn);
+    static Str128 GenerateMeshName(const SceneGraphNode* sgn);
    private:
     bool _saveIntermediates = false;
     NavigationMeshConfig _configParams;
@@ -233,10 +232,10 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
 
 namespace Attorney {
 class NavigationMeshCrowd {
-    static dtNavMesh* getNavigationMesh(NavigationMesh& navMesh) {
+    static dtNavMesh* getNavigationMesh(NavigationMesh& navMesh) noexcept {
         return navMesh._navMesh;
     }
-    static const NavigationMeshConfig& getConfigParams( NavigationMesh& navMesh) {
+    static const NavigationMeshConfig& getConfigParams(const NavigationMesh& navMesh) noexcept {
         return navMesh._configParams;
     }
     friend class Navigation::DivideDtCrowd;

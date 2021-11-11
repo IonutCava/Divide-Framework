@@ -18,6 +18,7 @@ namespace goap {
         typedef eastl::unordered_map<int, bool> operations;
         typedef eastl::unordered_map<int, bool>::const_iterator operationsIterator;
 
+        virtual ~Action() = default;
     private:
         Divide::string name_; // The human-readable action name
         int cost_;        // The numeric cost of this action
@@ -30,7 +31,7 @@ namespace goap {
         operations effects_;
 
     public:
-        Action();
+        Action() noexcept;
         Action(const Divide::string& name, int cost);
 
         /**
@@ -66,11 +67,11 @@ namespace goap {
             effects_[key] = value;
         }
 
-        inline const operations& effects() const { return effects_; }
+        inline const operations& effects() const noexcept { return effects_; }
 
-        int cost() const { return cost_; }
+        int cost() const noexcept { return cost_; }
 
-        const Divide::string& name() const { return name_; }
+        const Divide::string& name() const noexcept { return name_; }
 
         virtual bool checkImplDependentCondition() const {
             return true;

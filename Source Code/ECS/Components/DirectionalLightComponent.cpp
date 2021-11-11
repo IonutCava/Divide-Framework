@@ -27,7 +27,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
 
     EditorComponentField directionField = {};
     directionField._name = "Direction";
-    directionField._dataGetter = [this](void* dataOut) { static_cast<vec3<F32>*>(dataOut)->set(directionCache()); };
+    directionField._dataGetter = [this](void* dataOut) noexcept { static_cast<vec3<F32>*>(dataOut)->set(directionCache()); };
     directionField._dataSetter = [this](const void* data) { setDirection(*static_cast<const vec3<F32>*>(data)); };
     directionField._type = EditorComponentFieldType::PUSH_TYPE;
     directionField._readOnly = true;

@@ -61,7 +61,7 @@ class QuadtreeChildren;
 
 class QuadtreeNode {
    public:
-     QuadtreeNode(GFXDevice& context, Quadtree* parent);
+     QuadtreeNode(GFXDevice& context, Quadtree* parent) noexcept;
      ~QuadtreeNode();
 
     /// recursive node building function
@@ -82,7 +82,7 @@ class QuadtreeNode {
 
     [[nodiscard]] const BoundingBox& getBoundingBox() const noexcept { return _boundingBox; }
     void setBoundingBox(const BoundingBox& bbox) noexcept { _boundingBox = bbox; }
-    [[nodiscard]] TerrainChunk* getChunk() const { return _terrainChunk.get(); }
+    [[nodiscard]] TerrainChunk* getChunk() const noexcept { return _terrainChunk.get(); }
 
     [[nodiscard]] QuadtreeNode& getChild(const ChildPosition pos) const noexcept { return *_children[to_base(pos)]; }
     [[nodiscard]] QuadtreeNode& getChild(const U32 index) const noexcept { return *_children[index]; }

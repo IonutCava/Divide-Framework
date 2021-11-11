@@ -223,8 +223,8 @@ class vec2 {
                     IS_ZERO(v.y) ? this->y : this->y / v.y);
     }
 
-    [[nodiscard]] operator       T *()       { return this->_v; }
-    [[nodiscard]] operator const T *() const { return this->_v; }
+    [[nodiscard]] operator       T *()       noexcept { return this->_v; }
+    [[nodiscard]] operator const T *() const noexcept { return this->_v; }
 
     /// swap the components  of this vector with that of the specified one
     void swap(vec2 *iv) noexcept { std::swap(this->x, iv->x); std::swap(this->x, iv->x); }
@@ -258,7 +258,7 @@ class vec2 {
     /// compute the vector's squared distance to another specified vector
     [[nodiscard]] T distanceSquared(const vec2 &v) const noexcept;
     /// convert the vector to unit length
-    [[nodiscard]] vec2& normalize();
+    [[nodiscard]] vec2& normalize() noexcept;
     /// get the smallest value of X or Y
     [[nodiscard]] T minComponent() const noexcept;
     /// get the largest value of X or Y
@@ -306,13 +306,13 @@ template <typename T>
 template <typename T>
 [[nodiscard]] vec2<T> Inverse(const vec2<T> &v) noexcept;
 template <typename T>
-[[nodiscard]] vec2<T> Normalize(vec2<T> &vector);
+[[nodiscard]] vec2<T> Normalize(vec2<T> &vector) noexcept;
 template <typename T>
-[[nodiscard]] vec2<T> Normalized(const vec2<T> &vector);
+[[nodiscard]] vec2<T> Normalized(const vec2<T> &vector) noexcept;
 template <typename T>
 [[nodiscard]] T Dot(const vec2<T> &a, const vec2<T> &b) noexcept;
 template <typename T>
-[[nodiscard]] void OrthoNormalize(vec2<T> &n, vec2<T> &u);
+[[nodiscard]] void OrthoNormalize(vec2<T> &n, vec2<T> &u) noexcept;
 /// multiply a vector by a value
 template <typename T>
 [[nodiscard]] vec2<T> operator*(T fl, const vec2<T> &v) noexcept;
@@ -467,7 +467,7 @@ class vec3 {
     /// compute the vector's squared distance to another specified vector
     [[nodiscard]] T distanceSquared(const vec3 &v) const noexcept;
     /// transform the vector to unit length
-    vec3& normalize();
+    vec3& normalize() noexcept;
     /// get the smallest value of X,Y or Z
     [[nodiscard]] T minComponent() const  noexcept;
     /// get the largest value of X,Y or Z
@@ -483,9 +483,9 @@ class vec3 {
     /// (A, B) and this vector
     [[nodiscard]] vec3 closestPointOnSegment(const vec3 &vA, const vec3 &vB);
     /// get the direction vector to the specified point
-    [[nodiscard]] vec3 direction(const vec3 &u) const;
+    [[nodiscard]] vec3 direction(const vec3 &u) const noexcept;
     /// project this vector onto the given direction
-    [[nodiscard]] vec3 projectToNorm(const vec3<T> &direction);
+    [[nodiscard]] vec3 projectToNorm(const vec3<T> &direction) noexcept;
     /// lerp between this and the specified vector by the specified amount
     void lerp(const vec3 &v, T factor) noexcept;
     /// lerp between this and the specified vector by the specified amount for
@@ -540,9 +540,9 @@ template <typename T>
 template <typename T>
 [[nodiscard]] vec3<T> Max(const vec3<T> &v1, const vec3<T> &v2) noexcept;
 template <typename T>
-[[nodiscard]] vec3<T> Normalize(vec3<T> &vector);
+[[nodiscard]] vec3<T> Normalize(vec3<T> &vector) noexcept;
 template <typename T>
-[[nodiscard]] vec3<T> Normalized(const vec3<T> &vector);
+[[nodiscard]] vec3<T> Normalized(const vec3<T> &vector) noexcept;
 /// general vec3 dot product
 template <typename T>
 [[nodiscard]] T Dot(const vec3<T> &a, const vec3<T> &b) noexcept;
@@ -557,9 +557,9 @@ template <typename T>
 template<typename T>
 [[nodiscard]] vec3<T> ProjectToNorm(const vec3<T>& in, const vec3<T> &direction);
 template <typename T>
-void OrthoNormalize(vec3<T> &n, vec3<T> &u);
+void OrthoNormalize(vec3<T> &n, vec3<T> &u) noexcept;
 template <typename T>
-void OrthoNormalize(vec3<T> &v1, vec3<T> &v2, vec3<T> &v3);
+void OrthoNormalize(vec3<T> &v1, vec3<T> &v2, vec3<T> &v3) noexcept;
 template<typename T>
 [[nodiscard]] vec3<T> Perpendicular(const vec3<T> &v) noexcept;
 template <typename T>
@@ -738,7 +738,7 @@ class vec4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     /// swap the components  of this vector with that of the specified one
     void swap(vec4 &iv) noexcept;
     /// transform the vector to unit length
-    vec4& normalize();
+    vec4& normalize() noexcept;
     /// The current vector is perpendicular to the specified one within epsilon
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     [[nodiscard]] bool isPerpendicular(const vec4<U>& other, F32 epsilon = EPSILON_F32) const noexcept;
@@ -755,7 +755,7 @@ class vec4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     /// project this vector onto the given direction
     [[nodiscard]] vec4 projectToNorm(const vec4<T> &direction);
     /// round all four values
-    void round();
+    void round() noexcept;
     /// lerp between this and the specified vector by the specified amount
     void lerp(const vec4 &v, T factor) noexcept;
     /// lerp between this and the specified vector by the specified amount for each component
@@ -799,9 +799,9 @@ template <typename T>
 template <typename T>
 [[nodiscard]] vec4<T> Max(const vec4<T> &v1, const vec4<T> &v2) noexcept;
 template <typename T>
-[[nodiscard]] vec4<T> Normalize(vec4<T> &vector);
+[[nodiscard]] vec4<T> Normalize(vec4<T> &vector) noexcept;
 template <typename T>
-[[nodiscard]] vec4<T> Normalized(const vec4<T> &vector);
+[[nodiscard]] vec4<T> Normalized(const vec4<T> &vector) noexcept;
 /// multiply a vector by a value
 template <typename T>
 [[nodiscard]] vec4<T> operator*(T fl, const vec4<T> &v) noexcept;

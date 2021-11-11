@@ -78,7 +78,7 @@ void SceneGraph::onNodeUpdated(const SceneGraphNode& node) {
 
     //ToDo: Maybe add particles too? -Ionut
     if (node.getNode<>().type() == SceneNodeType::TYPE_OBJECT3D) {
-        SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes(parentScene());
+        const SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes(parentScene());
         SceneEnvironmentProbePool::OnNodeUpdated(*probes, node);
     }
 }
@@ -89,7 +89,7 @@ void SceneGraph::onNodeMoved(const SceneGraphNode& node) {
 }
 
 void SceneGraph::onNodeDestroy(SceneGraphNode* oldNode) {
-    I64 guid = oldNode->getGUID();
+    const I64 guid = oldNode->getGUID();
 
     if (guid == _root->getGUID()) {
         return;
@@ -232,7 +232,7 @@ void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
               parentScene().context().taskPool(TaskPoolType::HIGH_PRIORITY),
               //TaskPriority::DONT_CARE,
               TaskPriority::REALTIME,
-              [this]() { _octreeUpdating = false; });
+              [this]() noexcept { _octreeUpdating = false; });
     }
 }
 

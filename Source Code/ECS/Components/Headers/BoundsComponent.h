@@ -46,7 +46,7 @@ BEGIN_COMPONENT(Bounds, ComponentType::BOUNDS)
         [[nodiscard]] const BoundingBox& getBoundingBox() const noexcept { return _boundingBox; }
         [[nodiscard]] const BoundingSphere& getBoundingSphere() const noexcept { return _boundingSphere; }
 
-        [[nodiscard]] const OBB& getOBB() noexcept;
+        [[nodiscard]] const OBB& getOBB();
 
         /*[[nodiscard]]*/ const BoundingBox& updateAndGetBoundingBox();
 

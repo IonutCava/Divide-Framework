@@ -18,7 +18,7 @@ namespace goap {
         Divide::string name_; // the human-readable name of the state
         std::map<int, bool> vars_; // the variables that in aggregate describe a worldstate
 
-        explicit WorldState(const Divide::string& name="");
+        explicit WorldState(const Divide::string& name="") noexcept;
 
         /**
          Set a world state variable, e.g. "gunLoaded" / true

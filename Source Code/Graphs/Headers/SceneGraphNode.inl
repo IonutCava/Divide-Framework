@@ -65,12 +65,12 @@ namespace Divide {
     }
 
     template <>
-    inline TransformComponent* SceneGraphNode::get<TransformComponent>() const {
+    inline TransformComponent* SceneGraphNode::get<TransformComponent>() const noexcept {
         return Hacks._transformComponentCache;
     }
 
     template <>
-    inline BoundsComponent* SceneGraphNode::get<BoundsComponent>() const {
+    inline BoundsComponent* SceneGraphNode::get<BoundsComponent>() const noexcept {
         return Hacks._boundsComponentCache;
     }
 

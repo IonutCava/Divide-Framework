@@ -53,7 +53,7 @@ class glGenericBuffer {
 
       [[nodiscard]] GLuint elementCount() const noexcept { return _elementCount; }
 
-      [[nodiscard]] GLuint bufferHandle() const;
+      [[nodiscard]] GLuint bufferHandle() const noexcept;
 
       void clearData(GLuint elementOffset,
                      GLuint ringWriteOffset) const;

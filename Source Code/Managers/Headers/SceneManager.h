@@ -100,8 +100,8 @@ public:
 
     [[nodiscard]] vector<Str256> sceneNameList(bool sorted = true) const;
 
-    Scene& getActiveScene();
-    [[nodiscard]] const Scene& getActiveScene() const;
+    Scene& getActiveScene() noexcept;
+    [[nodiscard]] const Scene& getActiveScene() const noexcept;
 
     void setActiveScene(Scene* scene);
 
@@ -129,7 +129,7 @@ public:
     // cull the SceneGraph against the current view frustum. 
     VisibleNodeList<>& cullSceneGraph(const NodeCullParams& cullParams, const U16 cullFlags);
     // init default culling values like max cull distance and other scene related states
-    void initDefaultCullValues(RenderStage stage, NodeCullParams& cullParamsInOut);
+    void initDefaultCullValues(RenderStage stage, NodeCullParams& cullParamsInOut) noexcept;
     // get the full list of reflective nodes
     void getSortedReflectiveNodes(const Camera* camera, RenderStage stage, bool inView, VisibleNodeList<>& nodesOut) const;
     // get the full list of refractive nodes
@@ -138,7 +138,7 @@ public:
     void onChangeFocus(bool hasFocus);
 
     /// Check if the scene was loaded properly
-    [[nodiscard]] bool loadComplete() const {
+    [[nodiscard]] bool loadComplete() const noexcept {
         return Attorney::SceneManager::loadComplete(getActiveScene());
     }
     /// Update animations, network data, sounds, triggers etc.
@@ -181,7 +181,7 @@ public:
 
     [[nodiscard]] AI::Navigation::DivideRecast* recast() const noexcept { return _recast.get(); }
 
-    [[nodiscard]] SceneEnvironmentProbePool* getEnvProbes() const;
+    [[nodiscard]] SceneEnvironmentProbePool* getEnvProbes() const noexcept;
 
 public:  /// Input
   /// Key pressed: return true if input was consumed
@@ -252,8 +252,8 @@ protected:
     void debugDraw(const RenderStagePass& stagePass, const Camera* camera, GFX::CommandBuffer& bufferInOut);
     void prepareLightData(RenderStage stage, const vec3<F32>& cameraPos, const mat4<F32>& viewMatrix);
 
-    [[nodiscard]] Camera* playerCamera() const;
-    [[nodiscard]] Camera* playerCamera(PlayerIndex idx) const;
+    [[nodiscard]] Camera* playerCamera() const noexcept;
+    [[nodiscard]] Camera* playerCamera(PlayerIndex idx) const noexcept;
     void currentPlayerPass(PlayerIndex idx);
     void moveCameraToNode(const SceneGraphNode* targetNode) const;
     bool saveNode(const SceneGraphNode* targetNode) const;
@@ -317,7 +317,7 @@ class SceneManagerScene {
 };
 
 class SceneManagerKernel {
-    static void initPostLoadState(Divide::SceneManager* manager) {
+    static void initPostLoadState(Divide::SceneManager* manager) noexcept {
         manager->initPostLoadState();
     }
 
@@ -337,15 +337,15 @@ class SceneManagerEditor {
      return manager->createNode(type, descriptor);
    }
 
-   static SceneEnvironmentProbePool* getEnvProbes(const Divide::SceneManager* manager) {
+   static SceneEnvironmentProbePool* getEnvProbes(const Divide::SceneManager* manager)noexcept {
        return manager->getEnvProbes();
    }
 
-   static bool saveNode(Divide::SceneManager* mgr, const SceneGraphNode* targetNode) {
+   static bool saveNode(const Divide::SceneManager* mgr, const SceneGraphNode* targetNode) {
        return mgr->saveNode(targetNode);
    }
 
-   static bool loadNode(Divide::SceneManager* mgr, SceneGraphNode* targetNode) {
+   static bool loadNode(const Divide::SceneManager* mgr, SceneGraphNode* targetNode) {
        return mgr->loadNode(targetNode);
    }
 
@@ -370,23 +370,23 @@ class SceneManagerSSRAccessor {
 };
 
 class SceneManagerCameraAccessor {
-    static Camera* playerCamera(const Divide::SceneManager* mgr) {
+    static Camera* playerCamera(const Divide::SceneManager* mgr) noexcept {
         return mgr->playerCamera();
     }
 
-    static Camera* playerCamera(const Divide::SceneManager& mgr) {
+    static Camera* playerCamera(const Divide::SceneManager& mgr) noexcept {
         return mgr.playerCamera();
     }
 
-    static Camera* playerCamera(const Divide::SceneManager* mgr, const PlayerIndex idx) {
+    static Camera* playerCamera(const Divide::SceneManager* mgr, const PlayerIndex idx) noexcept {
         return mgr->playerCamera(idx);
     }
 
-    static Camera* playerCamera(const Divide::SceneManager& mgr, const PlayerIndex idx) {
+    static Camera* playerCamera(const Divide::SceneManager& mgr, const PlayerIndex idx) noexcept {
         return mgr.playerCamera(idx);
     }
 
-    static void moveCameraToNode(Divide::SceneManager* mgr, const SceneGraphNode* targetNode) {
+    static void moveCameraToNode(const Divide::SceneManager* mgr, const SceneGraphNode* targetNode) {
         mgr->moveCameraToNode(targetNode);
     }
 
@@ -404,7 +404,7 @@ class SceneManagerRenderPass {
         return mgr->cullSceneGraph(cullParams, cullFlags);
     }
 
-    static void initDefaultCullValues(Divide::SceneManager* mgr, const RenderStage stage, NodeCullParams& cullParamsInOut) {
+    static void initDefaultCullValues(Divide::SceneManager* mgr, const RenderStage stage, NodeCullParams& cullParamsInOut) noexcept {
         mgr->initDefaultCullValues(stage, cullParamsInOut);
     }
 
@@ -420,11 +420,11 @@ class SceneManagerRenderPass {
         mgr->drawCustomUI(targetViewport, bufferInOut);
     }
 
-    static const Camera* playerCamera(const Divide::SceneManager* mgr) {
+    static const Camera* playerCamera(const Divide::SceneManager* mgr) noexcept {
         return mgr->playerCamera();
     }
 
-    static const SceneStatePerPlayer& playerState(const Divide::SceneManager* mgr) {
+    static const SceneStatePerPlayer& playerState(const Divide::SceneManager* mgr) noexcept {
         return mgr->getActiveScene().state()->playerState();
     }
 
@@ -432,7 +432,7 @@ class SceneManagerRenderPass {
         return *mgr->getActiveScene().lightPool();
     }
 
-    static  SceneRenderState& renderState(Divide::SceneManager* mgr) {
+    static  SceneRenderState& renderState(Divide::SceneManager* mgr) noexcept {
         return mgr->getActiveScene().state()->renderState();
     }
 

@@ -135,7 +135,7 @@ bool IsPowerOfTwo(const size_t size) {
     return !(size & mask);
 }
 
-ChunkAllocator::ChunkAllocator(const size_t size)
+ChunkAllocator::ChunkAllocator(const size_t size) noexcept
     : _size(size) 
 {
     assert(isPowerOfTwo(size));
@@ -181,7 +181,7 @@ void DeviceAllocator::deallocate(Block &block) {
     DIVIDE_UNEXPECTED_CALL_MSG("DeviceAllocator::deallocate error: unable to deallocate the block");
 }
 
-void DeviceAllocator::deallocate() {
+void DeviceAllocator::deallocate() noexcept {
     _chunks.clear();
 }
 } // namespace GLMemory
@@ -197,7 +197,6 @@ VBO::VBO()  noexcept
       _usage(GL_NONE),
       _filledManually(false)
 {
-    _chunkUsageState.fill(std::make_pair(false, 0));
 }
 
 void VBO::freeAll() {
@@ -240,8 +239,8 @@ bool VBO::allocateChunks(const U32 count, const GLenum usage, size_t& offsetOut)
                 offsetOut = i;
                 _chunkUsageState[i] = { true, count };
                 for (U32 j = 1; j < count; ++j) {
-                    _chunkUsageState[j + i].first = true;
-                    _chunkUsageState[j + i].second = count - j;
+                    _chunkUsageState[to_size(j) + i].first = true;
+                    _chunkUsageState[to_size(j) + i].second = count - j;
                 }
                 return true;
             }
@@ -288,35 +287,43 @@ size_t VBO::getMemUsage() noexcept {
     return MAX_VBO_CHUNK_SIZE_BYTES * 
            std::count_if(std::begin(_chunkUsageState),
                          std::end(_chunkUsageState),
-                         [](const auto& it) { return it.first; });
+                         [](const auto& it) noexcept { return it.first; });
+}
+
+bool allocateVBOChunks(const U32 chunkCount, const GLenum usage, GLuint& handleOut, size_t& offsetOut) {
+    VBO vbo;
+    if (vbo.allocateChunks(chunkCount, usage, offsetOut)) {
+        handleOut = vbo.handle();
+        g_globalVBOs.push_back(vbo);
+        return true;
+    }
+    return false;
+}
+
+bool allocateVBONew(const U32 chunkCount, const GLenum usage, GLuint& handleOut, size_t& offsetOut) {
+    VBO vbo;
+    if (vbo.allocateWhole(chunkCount, usage)) {
+        offsetOut = 0;
+        handleOut = vbo.handle();
+        g_globalVBOs.push_back(vbo);
+        return true;
+    }
+    return false;
 }
 
 bool commitVBO(const U32 chunkCount, const GLenum usage, GLuint& handleOut, size_t& offsetOut) {
-    if (chunkCount < VBO::MAX_VBO_CHUNK_COUNT) {
-        for (VBO& vbo : g_globalVBOs) {
-            if (vbo.allocateChunks(chunkCount, usage, offsetOut)) {
-                handleOut = vbo.handle();
-                return true;
-            }
-        }
+    if (chunkCount > VBO::MAX_VBO_CHUNK_COUNT) {
+        return allocateVBONew(chunkCount, usage, handleOut, offsetOut);
+    }
 
-        VBO vbo;
+    for (VBO& vbo : g_globalVBOs) {
         if (vbo.allocateChunks(chunkCount, usage, offsetOut)) {
             handleOut = vbo.handle();
-            g_globalVBOs.push_back(vbo);
-            return true;
-        }
-    } else {
-        VBO vbo;
-        if (vbo.allocateWhole(chunkCount, usage)) {
-            offsetOut = 0;
-            handleOut = vbo.handle();
-            g_globalVBOs.push_back(vbo);
             return true;
         }
     }
 
-    return false;
+    return allocateVBOChunks(chunkCount, usage, handleOut, offsetOut);
 }
 
 bool releaseVBO(GLuint& handle, size_t& offset) {
@@ -332,14 +339,14 @@ bool releaseVBO(GLuint& handle, size_t& offset) {
     return false;
 }
 
-size_t getVBOMemUsage(const GLuint handle) {
+size_t getVBOMemUsage(const GLuint handle) noexcept {
     for (VBO& vbo : g_globalVBOs) {
         if (vbo.handle() == handle) {
             return vbo.getMemUsage();
         }
     }
 
-    return 0;
+    return 0u;
 }
 
 U32 getVBOCount() noexcept {

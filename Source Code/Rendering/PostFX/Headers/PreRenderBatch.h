@@ -146,9 +146,9 @@ class PreRenderBatch {
 
     void onFilterToggle(FilterType filter, bool state);
 
-    [[nodiscard]] bool operatorsReady() const;
+    [[nodiscard]] bool operatorsReady() const noexcept;
 
-    [[nodiscard]] RenderTargetHandle getTarget(bool hdr, bool swapped) const;
+    [[nodiscard]] RenderTargetHandle getTarget(bool hdr, bool swapped) const noexcept;
 
   private:
     using OperatorBatch = vector<eastl::unique_ptr<PreRenderOperator>>;

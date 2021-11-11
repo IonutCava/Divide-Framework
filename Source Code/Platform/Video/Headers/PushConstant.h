@@ -112,7 +112,7 @@ namespace GFX {
             }
         }
 
-        void clear();
+        void clear() noexcept;
 
         [[nodiscard]] const Byte* data() const noexcept { return _buffer.data(); }
 

@@ -81,13 +81,8 @@ struct Selections
 {
     static constexpr U8 MAX_SELECTIONS = 254u;
 
-    std::array<I64, MAX_SELECTIONS> _selections;
+    std::array<I64, MAX_SELECTIONS> _selections = create_array<MAX_SELECTIONS, I64>(-1);
     U8 _selectionCount = 0u;
-
-    void reset() noexcept {
-        _selections.fill(-1);
-        _selectionCount = 0u;
-    }
 };
 
 struct DragSelectData
@@ -191,7 +186,7 @@ class Scene : public Resource, public PlatformContextComponent {
 #pragma region Task Management
         void registerTask(Task& taskItem, bool start = true, TaskPriority priority = TaskPriority::DONT_CARE);
         void clearTasks();
-        void removeTask(Task& task);
+        void removeTask(const Task& task);
 #pragma endregion
 
 #pragma region Object Picking
@@ -235,7 +230,7 @@ class Scene : public Resource, public PlatformContextComponent {
 #pragma region Player Camera
         [[nodiscard]] Camera* playerCamera() const;
         [[nodiscard]] Camera* playerCamera(U8 index) const;
-        bool lockCameraToPlayerMouse(PlayerIndex index, bool lockState) const;
+        bool lockCameraToPlayerMouse(PlayerIndex index, bool lockState) const noexcept;
 #pragma endregion
 
         /// Contains all game related info for the scene (wind speed, visibility ranges, etc)
@@ -313,7 +308,7 @@ class Scene : public Resource, public PlatformContextComponent {
         bool updateCameraControls(PlayerIndex idx) const;
         void updateSelectionData(PlayerIndex idx, DragSelectData& data, bool remapped);
         [[nodiscard]] bool checkCameraUnderwater(PlayerIndex idx) const;
-        [[nodiscard]] bool checkCameraUnderwater(const Camera& camera) const;
+        [[nodiscard]] bool checkCameraUnderwater(const Camera& camera) const noexcept;
         [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Scene"; }
 
     protected:
@@ -344,7 +339,7 @@ class Scene : public Resource, public PlatformContextComponent {
 namespace Attorney {
 class SceneManager {
    private:
-    static bool updateCameraControls(Scene& scene, const PlayerIndex idx) {
+    static bool updateCameraControls(const Scene& scene, const PlayerIndex idx) {
         return scene.updateCameraControls(idx);
     }
 
@@ -416,7 +411,7 @@ class SceneManager {
         return Scene::OnShutdown(context);
     }
 
-    static SceneGUIElements* gui(Scene& scene) noexcept {
+    static SceneGUIElements* gui(const Scene& scene) noexcept {
         return scene._GUI.get();
     }
 
@@ -432,7 +427,7 @@ class SceneManager {
         scene.clearHoverTarget(scene.input()->getPlayerIndexForDevice(arg._deviceIndex));
     }
 
-    static SceneNode_ptr createNode(Scene& scene, const SceneNodeType type, const ResourceDescriptor& descriptor) {
+    static SceneNode_ptr createNode(const Scene& scene, const SceneNodeType type, const ResourceDescriptor& descriptor) {
         return scene.createNode(type, descriptor);
     }
 
@@ -454,13 +449,13 @@ class SceneRenderPass {
 
 class SceneEnvironmentProbeComponent
 {
-    static void registerProbe(Scene& scene, EnvironmentProbeComponent* probe) noexcept {
+    static void registerProbe(const Scene& scene, EnvironmentProbeComponent* probe) {
         DIVIDE_ASSERT(scene._envProbePool != nullptr);
 
         scene._envProbePool->registerProbe(probe);
     }
 
-    static void unregisterProbe(Scene& scene, EnvironmentProbeComponent* probe) noexcept {
+    static void unregisterProbe(const Scene& scene, const EnvironmentProbeComponent* const probe) {
         DIVIDE_ASSERT(scene._envProbePool != nullptr);
 
         scene._envProbePool->unregisterProbe(probe);
@@ -502,7 +497,7 @@ class SceneGraph {
         return scene._envProbePool.get();
     }
 
-    static void addSceneGraphToLoad(Scene& scene, XML::SceneNode&& rootNode) { 
+    static void addSceneGraphToLoad(Scene& scene, const XML::SceneNode&& rootNode) { 
         scene._xmlSceneGraphRootNode = rootNode; 
     }
 
@@ -510,7 +505,7 @@ class SceneGraph {
 };
 
 class SceneGUI {
-    static SceneGUIElements* guiElements(Scene& scene) noexcept {
+    static SceneGUIElements* guiElements(const Scene& scene) noexcept {
         return scene._GUI.get();
     }
 

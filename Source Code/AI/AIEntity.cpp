@@ -132,7 +132,7 @@ bool AIEntity::addSensor(const SensorType type) {
     };
 
     if (sensor) {
-        auto result = insert(_sensorList, type, sensor);
+        const auto result = insert(_sensorList, type, sensor);
         if (!result.second) {
             MemoryManager::SAFE_UPDATE(result.first->second, sensor);
         } 
@@ -208,11 +208,11 @@ void AIEntity::addUnitRef(NPC* const npc) {
     }
 }
 
-D64 AIEntity::getAgentHeight() const {
+D64 AIEntity::getAgentHeight() const noexcept {
     return _detourCrowd ? _detourCrowd->getAgentHeight() : 0.0;
 }
 
-D64 AIEntity::getAgentRadius() const {
+D64 AIEntity::getAgentRadius() const noexcept {
     return _detourCrowd ? _detourCrowd->getAgentRadius() : 0.0;
 }
 
@@ -345,11 +345,11 @@ bool AIEntity::updateDestination(const vec3<F32>& destination, const bool update
     return isPointOnNavMesh;
 }
 
-const vec3<F32>& AIEntity::getPosition() const {
+const vec3<F32>& AIEntity::getPosition() const noexcept {
     return _currentPosition;
 }
 
-const vec3<F32>& AIEntity::getDestination() const {
+const vec3<F32>& AIEntity::getDestination() const noexcept {
     if (isAgentLoaded()) {
         return _destination;
     }
@@ -367,7 +367,7 @@ bool AIEntity::destinationReached() const {
            Navigation::DivideDtCrowd::destinationReached(getAgent(), DESTINATION_RADIUS_F);
 }
 
-void AIEntity::setDestination(const vec3<F32>& destination) {
+void AIEntity::setDestination(const vec3<F32>& destination) noexcept {
     if (!isAgentLoaded()) {
         return;
     }
@@ -413,15 +413,15 @@ void AIEntity::stop() {
     }
 }
 
-vec3<F32> AIEntity::getVelocity() const {
+vec3<F32> AIEntity::getVelocity() const noexcept {
     return isAgentLoaded() ? vec3<F32>(getAgent()->nvel) : vec3<F32>();
 }
 
-D64 AIEntity::getMaxSpeed() const {
+D64 AIEntity::getMaxSpeed() const noexcept {
     return isAgentLoaded() ? getAgent()->params.maxSpeed : 0.0;
 }
 
-D64 AIEntity::getMaxAcceleration() const {
+D64 AIEntity::getMaxAcceleration() const noexcept {
     return isAgentLoaded() ? getAgent()->params.maxAcceleration : 0.0;
 }
 

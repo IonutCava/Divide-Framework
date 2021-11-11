@@ -30,7 +30,7 @@ TextLabelStyle::TextLabelStyle(const char* font,
     }
 }
 
-size_t TextLabelStyle::getHash() const noexcept {
+size_t TextLabelStyle::getHash() const {
     const size_t previousHash = _hash;
     _hash = 17;
     Util::Hash_combine(_hash, _font);

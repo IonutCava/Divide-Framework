@@ -5,7 +5,7 @@
 namespace Divide {
 
 namespace {
-    DELEGATE<void, InputParams> no_op = [](InputParams) {};
+    DELEGATE<void, InputParams> no_op = [](InputParams) noexcept { NOP(); };
 }
 
 InputAction::InputAction(DELEGATE<void, InputParams> action)
@@ -37,7 +37,7 @@ bool InputActionList::registerInputAction(const U16 id, const DELEGATE<void, Inp
 }
 
 InputAction& InputActionList::getInputAction(const U16 id) {
-    hashMap<U16, InputAction>::iterator it = _inputActions.find(id);
+    const hashMap<U16, InputAction>::iterator it = _inputActions.find(id);
 
     if (it != std::cend(_inputActions)) {
         return it->second;
@@ -57,7 +57,7 @@ const InputAction& InputActionList::getInputAction(const U16 id) const {
 }
 
 
-void PressReleaseActions::clear() {
+void PressReleaseActions::clear() noexcept {
     for (Entry& entry : _entries) {
         entry.clear();
     }
@@ -65,7 +65,7 @@ void PressReleaseActions::clear() {
 
 bool PressReleaseActions::add(const Entry& entry) {
     _entries.push_back(entry);
-    std::sort(std::begin(_entries), std::end(_entries), [](const Entry& lhs, const Entry& rhs) {
+    std::sort(std::begin(_entries), std::end(_entries), [](const Entry& lhs, const Entry& rhs) noexcept {
         return lhs.modifiers().size() > rhs.modifiers().size();
     });
 

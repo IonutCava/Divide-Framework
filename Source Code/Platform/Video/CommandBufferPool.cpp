@@ -7,15 +7,15 @@ namespace GFX {
 
 static CommandBufferPool g_sCommandBufferPool;
 
-void InitPools() {
+void InitPools() noexcept {
     g_sCommandBufferPool.reset();
 }
 
-void DestroyPools() {
+void DestroyPools() noexcept {
     g_sCommandBufferPool.reset();
 }
 
-void CommandBufferPool::reset() {
+void CommandBufferPool::reset()  noexcept {
     _pool = {};
 }
 
@@ -32,7 +32,7 @@ void CommandBufferPool::deallocateBuffer(CommandBuffer*& buffer) {
     }
 }
 
-ScopedCommandBuffer::ScopedCommandBuffer()
+ScopedCommandBuffer::ScopedCommandBuffer() noexcept
     : _buffer(AllocateCommandBuffer())
 {
 }

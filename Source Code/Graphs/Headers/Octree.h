@@ -68,12 +68,12 @@ protected:
     void onNodeMoved(const SceneGraphNode& node);
 
 private:
-    [[nodiscard]] U8 activeNodes() const;
+    [[nodiscard]] U8 activeNodes() const noexcept;
 
     void buildTree();
     void insert(SceneGraphNode* object);
-    void findEnclosingBox();
-    void findEnclosingCube();
+    void findEnclosingBox() noexcept;
+    void findEnclosingCube() noexcept;
 
     [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, const vector<SceneGraphNode*>& objects);
     [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, SceneGraphNode* object);
@@ -85,8 +85,8 @@ private:
     void updateIntersectionCache(vector<SceneGraphNode*>& parentObjects);
     
     void handleIntersection(const IntersectionRecord& intersection) const;
-    [[nodiscard]] bool getIntersection(SceneGraphNode* node, const Frustum& frustum, IntersectionRecord& irOut) const;
-    [[nodiscard]] bool getIntersection(SceneGraphNode* node1, SceneGraphNode* node2, IntersectionRecord& irOut) const;
+    [[nodiscard]] bool getIntersection(SceneGraphNode* node, const Frustum& frustum, IntersectionRecord& irOut) const noexcept;
+    [[nodiscard]] bool getIntersection(SceneGraphNode* node1, SceneGraphNode* node2, IntersectionRecord& irOut) const noexcept;
     [[nodiscard]] bool getIntersection(SceneGraphNode* node, const Ray& intersectRay, F32 start, F32 end, IntersectionRecord& irOut) const;
     
 

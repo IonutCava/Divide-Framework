@@ -3,7 +3,7 @@
 #include "Action.h"
 #include "WorldState.h"
 
-goap::Action::Action() : cost_(0) {
+goap::Action::Action()  noexcept : cost_(0) {
 }
 
 goap::Action::Action(const Divide::string& name, int cost) : Action() {

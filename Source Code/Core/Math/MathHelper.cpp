@@ -211,7 +211,7 @@ vec3<F32_SNORM> UNPACK_VEC3(const F32 src) noexcept {
     return res;
 }
 
-[[nodiscard]] vec3<F32_NORM> UNPACK_11_11_10(const U32 src) noexcept {
+[[nodiscard]] vec3<F32_NORM> UNPACK_11_11_10(const U32 src) {
     vec3<F32_NORM> res;
     UNPACK_11_11_10(src, res);
     return res;
@@ -226,7 +226,7 @@ void UNPACK_HALF2x16(const U32 src, vec2<F32>& value) {
     value.set(ret.x, ret.y);
 }
 
-vec2<F32> UNPACK_HALF2x16(const U32 src) noexcept {
+vec2<F32> UNPACK_HALF2x16(const U32 src) {
     vec2<F32> ret;
     UNPACK_HALF2x16(src, ret);
     return ret;
@@ -288,27 +288,27 @@ void UNPACK_UNORM4x8(const U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z, F32_N
     assert(IS_IN_RANGE_INCLUSIVE(w, 0.f, 1.f));
 }
 
-vec4<U8> UNPACK_UNORM4x8_U8(const U32 src) noexcept {
+vec4<U8> UNPACK_UNORM4x8_U8(const U32 src) {
     vec4<U8> ret;
     UNPACK_UNORM4x8(src, ret.x, ret.y, ret.z, ret.w);
     return ret;
 }
 
-vec4<F32_NORM> UNPACK_UNORM4x8_F32(const U32 src) noexcept {
+vec4<F32_NORM> UNPACK_UNORM4x8_F32(const U32 src) {
     vec4<F32_NORM> ret;
     UNPACK_UNORM4x8(src, ret.x, ret.y, ret.z, ret.w);
     return ret;
 }
 
-U32 PACK_11_11_10(const vec3<F32_NORM>& value) noexcept {
+U32 PACK_11_11_10(const vec3<F32_NORM>& value) {
     return PACK_11_11_10(value.x, value.y, value.z);
 }
 
-void UNPACK_11_11_10(const U32 src, vec3<F32_NORM>& res) noexcept {
+void UNPACK_11_11_10(const U32 src, vec3<F32_NORM>& res) {
     UNPACK_11_11_10(src, res.x, res.y, res.z);
 }
 
-U32 PACK_11_11_10(const F32_NORM x, const F32_NORM y, const F32_NORM z) noexcept {
+U32 PACK_11_11_10(const F32_NORM x, const F32_NORM y, const F32_NORM z) {
     assert(x >= 0.f && x <= 1.0f);
     assert(y >= 0.f && y <= 1.0f);
     assert(z >= 0.f && z <= 1.0f);
@@ -316,7 +316,7 @@ U32 PACK_11_11_10(const F32_NORM x, const F32_NORM y, const F32_NORM z) noexcept
     return glm::packF2x11_1x10(glm::vec3(x, y, z));
 }
 
-void UNPACK_11_11_10(const U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z) noexcept {
+void UNPACK_11_11_10(const U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z) {
     const glm::vec3 ret = glm::unpackF2x11_1x10(src);
     x = ret.x;
     y = ret.y;

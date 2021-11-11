@@ -209,11 +209,11 @@ U8 RTAttachmentPool::attachmentCount(const RTAttachmentType type) const noexcept
     return _attachmentCount[to_U32(type)];
 }
 
-RenderTarget& RTAttachmentPool::parent() {
+RenderTarget& RTAttachmentPool::parent() noexcept {
     return _parent;
 }
 
-const RenderTarget& RTAttachmentPool::parent() const {
+const RenderTarget& RTAttachmentPool::parent() const noexcept {
     return _parent;
 }
 }; //namespace Divide

@@ -8,7 +8,7 @@
 namespace Divide {
 
 namespace {
-    const U32 g_partitionSize = 256;
+    constexpr U32 g_partitionSize = 256;
 }
 
 void ParticleEulerUpdater::update(const U64 deltaTimeUS, ParticleData& p) {

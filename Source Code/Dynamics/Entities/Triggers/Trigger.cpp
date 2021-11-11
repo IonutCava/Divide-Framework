@@ -28,7 +28,7 @@ void Trigger::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState
 
 void Trigger::setParams(Task& triggeredTask,
                         const vec3<F32>& triggerPosition,
-                        const F32 radius) {
+                        const F32 radius) noexcept {
     /// Check if position has changed
     if (!_triggerPosition.compare(triggerPosition)) {
         _triggerPosition = triggerPosition;

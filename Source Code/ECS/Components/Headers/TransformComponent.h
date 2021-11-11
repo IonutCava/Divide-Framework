@@ -150,7 +150,7 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      bool popTransforms();
 
      void resetInterpolation();
-     void setOffset(bool state, const mat4<F32>& offset = mat4<F32>());
+     void setOffset(bool state, const mat4<F32>& offset = mat4<F32>()) noexcept;
 
      [[nodiscard]] bool saveCache(ByteBuffer& outputBuffer) const override;
      [[nodiscard]] bool loadCache(ByteBuffer& inputBuffer) override;

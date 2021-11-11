@@ -58,15 +58,10 @@ GFXRTPool::GFXRTPool(GFXDevice& parent)
     _renderTargets[to_U32(RenderTargetUsage::OTHER)].resize(g_maxAdditionalRenderTargets, nullptr);
 }
 
-GFXRTPool::~GFXRTPool()
-{
-    clear();
-}
-
 void GFXRTPool::clear() {
     // Delete all of our rendering targets
-    for (U8 i = 0; i < to_base(RenderTargetUsage::COUNT); ++i) {
-        for (U16 j = 0; j < to_U16(_renderTargets[i].size()); ++j) {
+    for (U8 i = 0u; i < to_base(RenderTargetUsage::COUNT); ++i) {
+        for (U16 j = 0u; j < to_U16(_renderTargets[i].size()); ++j) {
             set(RenderTargetID(static_cast<RenderTargetUsage>(i), j), nullptr);
         }
     }
@@ -137,7 +132,7 @@ RenderTargetID GFXRTPool::screenTargetID() const noexcept
     return RenderTargetID(screenRT);
 }
 
-const RenderTarget& GFXRTPool::screenTarget() const noexcept {
+const RenderTarget& GFXRTPool::screenTarget() const {
     return renderTarget(screenTargetID());
 }
 

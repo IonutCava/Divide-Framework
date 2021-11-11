@@ -49,8 +49,8 @@ class RTDrawMask {
     [[nodiscard]] bool isEnabled(RTAttachmentType type, U8 index) const noexcept;
     void setEnabled(RTAttachmentType type, U8 index, bool state) noexcept;
 
-    void enableAll() noexcept;
-    void disableAll() noexcept;
+    void enableAll();
+    void disableAll();
 
     inline bool operator==(const RTDrawMask& other) const;
     inline bool operator!=(const RTDrawMask& other) const;
@@ -80,7 +80,7 @@ struct RTClearColourDescriptor
 };
 
 struct RTClearDescriptor {
-    RTClearDescriptor() noexcept;
+    RTClearDescriptor()  noexcept;
 
     void clearColour(const U8 index, const bool state) noexcept { _clearColourAttachment[index] = state; }
     [[nodiscard]] bool clearColour(const U8 index) const noexcept { return _clearColourAttachment[index]; }

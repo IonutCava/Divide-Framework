@@ -45,7 +45,7 @@ ScenePool::~ScenePool()
                           eastl::cend(_createdScenes));
     }
 
-    for (std::shared_ptr<Scene>& scene : tempScenes) {
+    for (const std::shared_ptr<Scene>& scene : tempScenes) {
         Attorney::SceneManagerScenePool::unloadScene(_parentMgr, scene.get());
         deleteScene(scene->getGUID());
     }
@@ -56,28 +56,28 @@ ScenePool::~ScenePool()
     }
 }
 
-bool ScenePool::defaultSceneActive() const {
+bool ScenePool::defaultSceneActive() const noexcept {
     return !_defaultScene || !_activeScene ||
             _activeScene->getGUID() == _defaultScene->getGUID();
 }
 
-Scene& ScenePool::activeScene() {
+Scene& ScenePool::activeScene() noexcept {
     return *_activeScene;
 }
 
-const Scene& ScenePool::activeScene() const {
+const Scene& ScenePool::activeScene() const noexcept {
     return *_activeScene;
 }
 
-void ScenePool::activeScene(Scene& scene) {
+void ScenePool::activeScene(Scene& scene) noexcept {
     _activeScene = &scene;
 }
 
-Scene& ScenePool::defaultScene() {
+Scene& ScenePool::defaultScene() noexcept {
     return *_defaultScene;
 }
 
-const Scene& ScenePool::defaultScene() const {
+const Scene& ScenePool::defaultScene() const noexcept {
     return *_defaultScene;
 }
 
@@ -88,7 +88,7 @@ Scene* ScenePool::getOrCreateScene(PlatformContext& context, ResourceCache* cach
     std::shared_ptr<Scene> ret = nullptr;
 
     ScopedLock<SharedMutex> lock(_sceneLock);
-    for (std::shared_ptr<Scene>& scene : _createdScenes) {
+    for (const std::shared_ptr<Scene>& scene : _createdScenes) {
         if (scene->resourceName().compare(name) == 0) {
             ret = scene;
             foundInCache = true;
@@ -132,7 +132,7 @@ bool ScenePool::deleteScene(const I64 targetGUID) {
 
         {
             ScopedLock<SharedMutex> w_lock(_sceneLock);
-            erase_if(_createdScenes, [&targetGUID](const auto& s) -> bool { return s->getGUID() == targetGUID; });
+            erase_if(_createdScenes, [&targetGUID](const auto& s) noexcept { return s->getGUID() == targetGUID; });
         }
         return true;
     }
@@ -142,7 +142,7 @@ bool ScenePool::deleteScene(const I64 targetGUID) {
 
 vector<Str256> ScenePool::sceneNameList(const bool sorted) const {
     vector<Str256> scenes;
-    for (SceneList::SceneNameMap::value_type it : SceneList::sceneNameMap()) {
+    for (const SceneList::SceneNameMap::value_type& it : SceneList::sceneNameMap()) {
         scenes.push_back(it.second);
     }
 

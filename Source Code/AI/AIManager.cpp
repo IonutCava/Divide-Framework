@@ -109,7 +109,7 @@ bool AIManager::updateEntities(const U64 deltaTimeUS) {  // react
 
 bool AIManager::registerEntity(const U32 teamID, AIEntity* entity) {
     ScopedLock<Mutex> w_lock(_updateMutex);
-    AITeamMap::const_iterator it = _aiTeams.find(teamID);
+    const AITeamMap::const_iterator it = _aiTeams.find(teamID);
     DIVIDE_ASSERT(it != std::end(_aiTeams),
                   "AIManager error: attempt to register an AI Entity to a "
                   "non-existent team!");
@@ -125,7 +125,7 @@ void AIManager::unregisterEntity(AIEntity* entity) {
 
 void AIManager::unregisterEntity(const U32 teamID, AIEntity* entity) {
     ScopedLock<Mutex> w_lock(_updateMutex);
-    AITeamMap::const_iterator it = _aiTeams.find(teamID);
+    const AITeamMap::const_iterator it = _aiTeams.find(teamID);
     DIVIDE_ASSERT(it != std::end(_aiTeams),
                   "AIManager error: attempt to remove an AI Entity from a "
                   "non-existent team!");
@@ -157,7 +157,7 @@ bool AIManager::addNavMesh(const AIEntity::PresetAgentRadius radius, Navigation:
 void AIManager::destroyNavMesh(const AIEntity::PresetAgentRadius radius) {
     {
         ScopedLock<SharedMutex> w_lock(_navMeshMutex);
-        NavMeshMap::iterator it = _navMeshes.find(radius);
+        const NavMeshMap::iterator it = _navMeshes.find(radius);
         DIVIDE_ASSERT(it != std::end(_navMeshes),
                       "AIManager error: Can't destroy NavMesh for specified radius "
                       "(NavMesh not found)!");
@@ -211,7 +211,7 @@ void AIManager::debugDraw(GFX::CommandBuffer& bufferInOut, const bool forceAll) 
     }
 }
 
-bool AIManager::shouldStop() const {
+bool AIManager::shouldStop() const noexcept {
     return _shouldStop;
 }
 };  // namespace Divide

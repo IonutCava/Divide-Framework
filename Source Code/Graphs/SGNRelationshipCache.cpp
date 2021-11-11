@@ -5,17 +5,17 @@
 
 namespace Divide {
 
-SGNRelationshipCache::SGNRelationshipCache(SceneGraphNode* parent)
+SGNRelationshipCache::SGNRelationshipCache(SceneGraphNode* parent) noexcept
     : _parentNode(parent)
 {
-    _isValid = false;
+    std::atomic_init(&_isValid, false);
 }
 
-bool SGNRelationshipCache::isValid() const {
+bool SGNRelationshipCache::isValid() const noexcept {
     return _isValid;
 }
 
-void SGNRelationshipCache::invalidate() {
+void SGNRelationshipCache::invalidate() noexcept {
     _isValid = false;
 }
 
@@ -48,7 +48,7 @@ SGNRelationshipCache::RelationshipType SGNRelationshipCache::classifyNode(const 
                                    : RelationshipType::PARENT;
             }
         }
-        SceneGraphNode* parent = _parentNode->parent();
+        const SceneGraphNode* parent = _parentNode->parent();
         if (parent != nullptr && parent->findChild(GUID) != nullptr) {
             return RelationshipType::SIBLING;
         }
@@ -67,7 +67,7 @@ void SGNRelationshipCache::updateChildren(U8 level, vector<std::pair<I64, U8>>& 
 }
 
 void SGNRelationshipCache::updateParents(U8 level, vector<std::pair<I64, U8>>& cache) const {
-    SceneGraphNode* parent = _parentNode->parent();
+    const SceneGraphNode* parent = _parentNode->parent();
     // We ignore the root note when considering grandparent status
     if (parent && parent->parent()) {
         cache.emplace_back(parent->getGUID(), level);

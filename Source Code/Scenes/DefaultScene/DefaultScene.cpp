@@ -14,9 +14,6 @@
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 
-#include <CEGUI/CEGUI.h>
-
-
 #include "Core/Headers/Application.h"
 #include "Platform/Headers/DisplayWindow.h"
 

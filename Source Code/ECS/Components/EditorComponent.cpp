@@ -69,7 +69,7 @@ namespace Divide {
         _fields.push_back(field);
     }
 
-    void EditorComponent::onChanged(EditorComponentField& field) const {
+    void EditorComponent::onChanged(const EditorComponentField& field) const {
         if (_onChangedCbk) {
             _onChangedCbk(field._name.c_str());
         }
@@ -111,13 +111,13 @@ namespace Divide {
                     saveFieldToXML(field, pt);
                 } break;
                 case EditorComponentFieldType::TRANSFORM: {
-                    TransformComponent* transform = field.getPtr<TransformComponent>();
+                    const TransformComponent* transform = field.getPtr<TransformComponent>();
 
-                    vec3<F32> scale = transform->getLocalScale();
-                    vec3<F32> position = transform->getLocalPosition();
+                    const vec3<F32> scale = transform->getLocalScale();
+                    const vec3<F32> position = transform->getLocalPosition();
 
                     vec3<Angle::DEGREES<F32>> orientationEuler;
-                    Quaternion<F32> orientation = transform->getLocalOrientation();
+                    const Quaternion<F32> orientation = transform->getLocalOrientation();
                     orientationEuler = Angle::to_DEGREES(orientation.getEuler());
 
                     pt.put(entryName + ".position.<xmlattr>.x", position.x);

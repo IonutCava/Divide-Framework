@@ -260,7 +260,7 @@ void RenderPassCuller::toVisibleNodes(const Camera* camera, const vector<SceneGr
     const vec3<F32>& cameraEye = camera->getEye();
     for (SceneGraphNode* node : nodes) {
         F32 distanceSqToCamera = std::numeric_limits<F32>::max();
-        BoundsComponent* bComp = node->get<BoundsComponent>();
+        const BoundsComponent* bComp = node->get<BoundsComponent>();
         if (bComp != nullptr) {
             distanceSqToCamera = bComp->getBoundingSphere().getCenter().distanceSquared(cameraEye);
         }

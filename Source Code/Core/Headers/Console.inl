@@ -33,18 +33,12 @@
 #define _CORE_CONSOLE_INL_
 
 #if !defined(if_constexpr)
-#if !defined(CPP_17_SUPPORT)
-#warning "Constexpr if statement in non C++17 code. Consider updating language version for current project"
-#define if_constexpr if
-#else
 #define if_constexpr if constexpr
-#endif
 #endif
 
 struct sink { 
     template<typename ...Args> 
-    explicit sink(Args const& ...)
-    {} 
+    explicit sink(Args const& ...) noexcept {}
 };
 
 namespace Divide {

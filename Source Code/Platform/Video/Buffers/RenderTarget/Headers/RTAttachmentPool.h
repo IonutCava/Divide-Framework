@@ -62,8 +62,8 @@ public:
 
     [[nodiscard]] U8 attachmentCount(RTAttachmentType type) const noexcept;
 
-    RenderTarget& parent();
-    [[nodiscard]] const RenderTarget& parent() const;
+    RenderTarget& parent() noexcept;
+    [[nodiscard]] const RenderTarget& parent() const noexcept;
 
 private:
     RTAttachment_ptr& getInternal(AttachmentPool& pool, RTAttachmentType type, U8 index) const;

@@ -149,7 +149,7 @@ SingleShadowMapGenerator::~SingleShadowMapGenerator()
 void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
 
-    SpotLightComponent& spotLight = static_cast<SpotLightComponent&>(light);
+    const SpotLightComponent& spotLight = static_cast<SpotLightComponent&>(light);
 
     const vec3<F32> lightPos = light.positionCache();
     const F32 farPlane = light.range() * 1.2f;
@@ -199,7 +199,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
     const auto& shadowAtt = shadowMapRT.getAttachment(RTAttachmentType::Colour, 0);
 
     const U16 layerOffset = light.getShadowOffset();
-    const I32 layerCount = 1;
+    constexpr I32 layerCount = 1;
 
     GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
     blitRenderTargetCommand._source = _drawBufferDepth._targetID;

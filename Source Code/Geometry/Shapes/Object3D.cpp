@@ -107,7 +107,7 @@ void Object3D::setGeometryVB(VertexBuffer* const vb) {
     _buffer = vb;
 }
 
-VertexBuffer* Object3D::getGeometryVB() const {
+VertexBuffer* Object3D::getGeometryVB() const noexcept {
     return _buffer;
 }
 

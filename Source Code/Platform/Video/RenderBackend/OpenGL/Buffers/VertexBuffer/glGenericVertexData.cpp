@@ -93,7 +93,7 @@ bool glGenericVertexData::waitBufferRange(const U32 buffer, const U32 elementCou
         return false;
     }
 
-    glGenericBuffer* buf = _bufferObjects[buffer];
+    const glGenericBuffer* buf = _bufferObjects[buffer];
 
     if (!buf->bufferImpl()->params()._bufferParams._sync) {
         const size_t elementSize = buf->bufferImpl()->params()._bufferParams._elementSize;
@@ -189,7 +189,7 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
 }
 
 void glGenericVertexData::bindBufferInternal(const U32 bufferIdx, const  U32 location) {
-    glGenericBuffer* buffer = _bufferObjects[bufferIdx];
+    const glGenericBuffer* buffer = _bufferObjects[bufferIdx];
     const size_t elementSize = buffer->bufferImpl()->params()._bufferParams._elementSize;
 
     BufferLockEntry entry;

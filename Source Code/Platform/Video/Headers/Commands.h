@@ -100,6 +100,7 @@ struct Command : CommandBase {
     static constexpr CommandType EType = EnumVal;
 
     Command() noexcept : CommandBase(EnumVal) {}
+    virtual ~Command() = default;
 
     void addToBuffer(CommandBuffer* buffer) const final;
 
@@ -118,7 +119,7 @@ decltype(CmdAllocator<Command>::s_Pool) CmdAllocator<Command>::s_Pool;
 
 #define DEFINE_COMMAND_BEGIN(Name, Enum) struct Name final : public Command<Name, Enum> { \
 using Base = Command<Name, Enum>; \
-Name() = default; \
+Name() noexcept = default; \
 
 #define DEFINE_COMMAND_END(Name) }
 

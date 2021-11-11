@@ -60,9 +60,9 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     /// Select an animation by index
     bool playAnimation(I32 pAnimIndex);
     /// Select next available animation
-    bool playNextAnimation();
+    bool playNextAnimation() noexcept;
     /// Select previous available animation
-    bool playPreviousAnimation();
+    bool playPreviousAnimation() noexcept;
 
     [[nodiscard]] I32 frameCount(U32 animationID) const;
 
@@ -78,7 +78,7 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
 
     [[nodiscard]] D64 animationTimeStamp() const noexcept { return _currentTimeStamp; }
     [[nodiscard]] AnimEvaluator::FrameIndex frameIndex() const noexcept { return _frameIndex; }
-    [[nodiscard]] I32 frameCount() const noexcept { return frameCount(_currentAnimIndex); }
+    [[nodiscard]] I32 frameCount() const { return frameCount(_currentAnimIndex); }
 
     [[nodiscard]] AnimEvaluator& getCurrentAnimation() const { return getAnimationByIndex(animationIndex()); }
     [[nodiscard]] I32 animationIndex() const noexcept { return _currentAnimIndex; }
@@ -92,7 +92,7 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     [[nodiscard]] bool playAnimations()                 const noexcept { return _playAnimations && s_globalAnimationState; }
 
    protected:
-    static void GlobalAnimationState(const bool state) { s_globalAnimationState = state; }
+    static void GlobalAnimationState(const bool state) noexcept { s_globalAnimationState = state; }
     [[nodiscard]] static bool GlobalAnimationState() noexcept { return s_globalAnimationState; }
 
    protected:

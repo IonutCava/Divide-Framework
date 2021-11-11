@@ -37,7 +37,7 @@ glHardwareQueryRing& glHardwareQueryPool::allocate(const GLenum queryType) {
     return *_queryPool[queryType][++_index[queryType]];
 }
 
-void glHardwareQueryPool::deallocate(glHardwareQueryRing& query) {
+void glHardwareQueryPool::deallocate(const glHardwareQueryRing& query) {
     const GLenum type = query.type();
     U32& index = _index[type];
     auto& pool = _queryPool[type];

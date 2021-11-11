@@ -39,24 +39,24 @@ namespace Divide {
 
 class OpenAL_API final : public AudioAPIWrapper {
 public:
-    ErrorCode initAudioAPI(PlatformContext& context) override;
-    void closeAudioAPI() override;
+    ErrorCode initAudioAPI(PlatformContext& context) noexcept override;
+    void closeAudioAPI() noexcept override;
 
-    void beginFrame() override;
-    void endFrame() override;
+    void beginFrame() noexcept override;
+    void endFrame() noexcept override;
 
-    void playSound(const AudioDescriptor_ptr& sound) override;
-    void playMusic(const AudioDescriptor_ptr& music) override;
+    void playSound(const AudioDescriptor_ptr& sound) noexcept override;
+    void playMusic(const AudioDescriptor_ptr& music) noexcept override;
 
-    void pauseMusic() override;
-    void stopMusic() override;
-    void stopAllSounds() override;
+    void pauseMusic() noexcept override;
+    void stopMusic() noexcept override;
+    void stopAllSounds() noexcept override;
 
-    void setMusicVolume(I8 value) override;
-    void setSoundVolume(I8 value) override;
+    void setMusicVolume(I8 value) noexcept override;
+    void setSoundVolume(I8 value) noexcept override;
 
 protected:
-    void musicFinished() override;
+    void musicFinished() noexcept override;
 
 private:
     U32 buffers[MAX_SOUND_BUFFERS] = {};

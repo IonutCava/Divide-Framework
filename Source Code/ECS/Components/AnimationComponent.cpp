@@ -44,7 +44,7 @@ AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContex
     EditorComponentField animationFrameIndexInfoField = {};
     animationFrameIndexInfoField._name = "Animation Frame Index";
     animationFrameIndexInfoField._tooltip = " [Curr - Prev - Next]";
-    animationFrameIndexInfoField._dataGetter = [this](void* dataOut) { *static_cast<vec3<I32>*>(dataOut) = vec3<I32>{ _frameIndex._curr, _frameIndex._prev, _frameIndex._next }; };
+    animationFrameIndexInfoField._dataGetter = [this](void* dataOut) noexcept { *static_cast<vec3<I32>*>(dataOut) = vec3<I32>{ _frameIndex._curr, _frameIndex._prev, _frameIndex._next }; };
     animationFrameIndexInfoField._type = EditorComponentFieldType::PUSH_TYPE;
     animationFrameIndexInfoField._basicType = GFX::PushConstantType::IVEC3;
     animationFrameIndexInfoField._readOnly = true;
@@ -103,7 +103,7 @@ bool AnimationComponent::playAnimation(const I32 pAnimIndex) {
 }
 
 /// Select next available animation
-bool AnimationComponent::playNextAnimation() {
+bool AnimationComponent::playNextAnimation() noexcept {
     if (!_animator) {
         return false;
     }
@@ -116,7 +116,7 @@ bool AnimationComponent::playNextAnimation() {
     return oldIndex != _currentAnimIndex;
 }
 
-bool AnimationComponent::playPreviousAnimation() {
+bool AnimationComponent::playPreviousAnimation() noexcept {
     if (!_animator) {
         return false;
     }

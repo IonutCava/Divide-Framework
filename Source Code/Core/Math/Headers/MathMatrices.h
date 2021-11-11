@@ -150,7 +150,7 @@ public:
     template<typename U>
     [[nodiscard]] mat2 operator*(const mat2<U> &B) const noexcept;
     template<typename U>
-    [[nodiscard]] mat2 operator/(const mat2<U> &B) const;
+    [[nodiscard]] mat2 operator/(const mat2<U> &B) const noexcept;
     template<typename U>
     [[nodiscard]] mat2 operator+(const mat2<U> &B) const noexcept;
     template<typename U>
@@ -159,7 +159,7 @@ public:
     template<typename U>
     mat2 &operator*=(const mat2<U> &B) noexcept;
     template<typename U>
-    mat2 &operator/=(const mat2<U> &B);
+    mat2 &operator/=(const mat2<U> &B) noexcept;
     template<typename U>
     mat2 &operator+=(const mat2<U> &B) noexcept;
     template<typename U>
@@ -168,7 +168,7 @@ public:
     template<typename U>
     [[nodiscard]] mat2 operator*(U f) const noexcept;
     template<typename U>
-    [[nodiscard]] mat2 operator/(U f) const;
+    [[nodiscard]] mat2 operator/(U f) const noexcept;
     template<typename U>
     [[nodiscard]] mat2 operator+(U f) const noexcept;
     template<typename U>
@@ -177,7 +177,7 @@ public:
     template<typename U>
     mat2 &operator*=(U f) noexcept;
     template<typename U>
-    mat2 &operator/=(U f);
+    mat2 &operator/=(U f) noexcept;
     template<typename U>
     mat2 &operator+=(U f) noexcept;
     template<typename U>
@@ -201,7 +201,7 @@ public:
     [[nodiscard]] T  operator[](I32 i) const;
 
     [[nodiscard]] T &element(I8 row, I8 column) noexcept;
-    [[nodiscard]] const T &element(I8 row, I8 column) const;
+    [[nodiscard]] const T &element(I8 row, I8 column) const noexcept;
 
     template<typename U>
     void set(U m0, U m1, U m2, U m3) noexcept;
@@ -303,7 +303,7 @@ class mat3 {
     template<typename U>
     [[nodiscard]] mat3 operator*(const mat3<U> &B) const noexcept;
     template<typename U>
-    [[nodiscard]] mat3 operator/(const mat3<U> &B) const;
+    [[nodiscard]] mat3 operator/(const mat3<U> &B) const noexcept;
     template<typename U>
     [[nodiscard]] mat3 operator+(const mat3<U> &B) const noexcept;
     template<typename U>
@@ -312,7 +312,7 @@ class mat3 {
     template<typename U>
     mat3 &operator*=(const mat3<U> &B) noexcept;
     template<typename U>
-    mat3 &operator/=(const mat3<U> &B);
+    mat3 &operator/=(const mat3<U> &B) noexcept;
     template<typename U>
     mat3 &operator+=(const mat3<U> &B) noexcept;
     template<typename U>
@@ -321,7 +321,7 @@ class mat3 {
     template<typename U>
     [[nodiscard]] mat3 operator*(U f) const noexcept;
     template<typename U>
-    [[nodiscard]] mat3 operator/(U f) const;
+    [[nodiscard]] mat3 operator/(U f) const noexcept;
     template<typename U>
     [[nodiscard]] mat3 operator+(U f) const noexcept;
     template<typename U>
@@ -330,7 +330,7 @@ class mat3 {
     template<typename U>
     mat3 &operator*=(U f) noexcept;
     template<typename U>
-    mat3 &operator/=(U f);
+    mat3 &operator/=(U f) noexcept;
     template<typename U>
     mat3 &operator+=(U f) noexcept;
     template<typename U>
@@ -355,7 +355,7 @@ class mat3 {
     [[nodiscard]] T operator[](I32 i) const noexcept;
 
     [[nodiscard]] T &element(I8 row, I8 column) noexcept;
-    [[nodiscard]] const T &element(I8 row, I8 column) const;
+    [[nodiscard]] const T &element(I8 row, I8 column) const noexcept;
 
     template<typename U>
     void set(U m0, U m1, U m2, U m3, U m4, U m5, U m6, U m7, U m8) noexcept;
@@ -495,7 +495,7 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     template<typename U>
     [[nodiscard]] mat4 operator*(const mat4<U>& matrix) const noexcept;
     template<typename U>
-    [[nodiscard]] mat4 operator/(const mat4<U>& matrix) const;
+    [[nodiscard]] mat4 operator/(const mat4<U>& matrix) const noexcept;
     template<typename U>
     [[nodiscard]] mat4 operator+(const mat4<U> &matrix) const noexcept;
     template<typename U>
@@ -504,7 +504,7 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     template<typename U>
     mat4 &operator*=(const mat4<U> &matrix) noexcept;
     template<typename U>
-    mat4 &operator/=(const mat4<U> &matrix);
+    mat4 &operator/=(const mat4<U> &matrix) noexcept;
     template<typename U>
     mat4 &operator+=(const mat4<U> &matrix) noexcept;
     template<typename U>
@@ -513,7 +513,7 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     template<typename U>
     [[nodiscard]] mat4 operator*(U f) const noexcept;
     template<typename U>
-    [[nodiscard]] mat4 operator/(U f) const;
+    [[nodiscard]] mat4 operator/(U f) const noexcept;
     template<typename U>
     [[nodiscard]] mat4 operator+(U f) const noexcept;
     template<typename U>
@@ -522,7 +522,7 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     template<typename U>
     mat4 &operator*=(U f) noexcept;
     template<typename U>
-    mat4 &operator/=(U f);
+    mat4 &operator/=(U f) noexcept;
     template<typename U>
     mat4 &operator+=(U f) noexcept;
     template<typename U>
@@ -588,7 +588,7 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
 
     [[nodiscard]] T det() const noexcept;
     [[nodiscard]] T elementSum() const noexcept;
-    void orthoNormalize();
+    void orthoNormalize() noexcept;
     void inverse() noexcept;
     void transpose() noexcept;
     void inverseTranspose() noexcept;
@@ -607,7 +607,7 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     void getTransposeRotation(mat4 &ret) const noexcept;
 
     template<typename U>
-    void fromRotation(U x, U y, U z, Angle::RADIANS<U> angle);
+    void fromRotation(U x, U y, U z, Angle::RADIANS<U> angle) noexcept;
     template<typename U>
     void fromXRotation(Angle::RADIANS<U> angle) noexcept;
     template<typename U>
@@ -648,25 +648,25 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
     [[nodiscard]] mat4 getRotation() const;
 
     template<typename U>
-    const mat4& reflect(U x, U y, U z, U w);
+    const mat4& reflect(U x, U y, U z, U w) noexcept;
     template<typename U>
-    const mat4& reflect(const Plane<U> &plane);
+    const mat4& reflect(const Plane<U> &plane) noexcept;
 
     template<typename U>
-    void lookAt(const vec3<U> &eye, const vec3<U> &target, const vec3<U> &up);
+    void lookAt(const vec3<U> &eye, const vec3<U> &target, const vec3<U> &up) noexcept;
     template<typename U>
-    void ortho(U left, U right, U bottom, U top, U zNear, U zFar);
+    void ortho(U left, U right, U bottom, U top, U zNear, U zFar) noexcept;
     template<typename U>
-    void perspective(Angle::DEGREES<U> fovyRad, U aspect, U zNear, U zFar);
+    void perspective(Angle::DEGREES<U> fovyRad, U aspect, U zNear, U zFar) noexcept;
     template<typename U>
-    void frustum(U left, U right, U bottom, U top, U nearVal, U farVal);
+    void frustum(U left, U right, U bottom, U top, U nearVal, U farVal) noexcept;
 
     template<typename U>
     void extractMat3(mat3<U> &matrix3) const noexcept;
 
     static mat4<T> Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB) noexcept;
 
-    static void Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB, mat4<T>& ret);
+    static void Multiply(const mat4<T>& matrixA, const mat4<T>& matrixB, mat4<T>& ret) noexcept;
 
     // Copyright 2011 The Closure Library Authors. All Rights Reserved.
     static void Inverse(const T* in, T* out) noexcept;

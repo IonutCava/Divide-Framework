@@ -59,22 +59,22 @@ class Quaternion {
     Quaternion(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, Angle::DEGREES<T> roll) noexcept;
     Quaternion(const Quaternion& q) noexcept;
 
-    Quaternion& operator=(const Quaternion& q);
+    Quaternion& operator=(const Quaternion& q) noexcept;
 
-    [[nodiscard]] T dot(const Quaternion& rq) const;
+    [[nodiscard]] T dot(const Quaternion& rq) const noexcept;
     [[nodiscard]] T magnitude() const;
     [[nodiscard]] T magnituteSQ() const;
 
     [[nodiscard]] bool compare(const Quaternion& rq, Angle::DEGREES<T> tolerance = 1e-3f) const;
 
-    void set(const vec4<T>& values);
-    void set(T x, T y, T z, T w);
-    void set(const Quaternion& q);
+    void set(const vec4<T>& values) noexcept;
+    void set(T x, T y, T z, T w) noexcept;
+    void set(const Quaternion& q) noexcept;
 
     //! normalizing a quaternion works similar to a vector. This method will not
     //do anything
     //! if the quaternion is close enough to being unit-length.
-    void normalize();
+    void normalize() noexcept;
     [[nodiscard]] Quaternion inverse() const;
 
     //! We need to get the inverse of a quaternion to properly apply a
@@ -88,14 +88,14 @@ class Quaternion {
     Quaternion operator*(const Quaternion& rq) const noexcept;
 
     //! Multiply so that rotations are applied in a left to right order.
-    Quaternion& operator*=(const Quaternion& rq);
+    Quaternion& operator*=(const Quaternion& rq) noexcept;
 
     //! Dividing q1 by q2
     Quaternion operator/(const Quaternion& rq) const;
     Quaternion& operator/=(const Quaternion& rq);
 
     //! Multiplying a quaternion q with a vector v applies the q-rotation to v
-    vec3<T> operator*(const vec3<T>& vec) const;
+    vec3<T> operator*(const vec3<T>& vec) const noexcept;
 
     bool operator==(const Quaternion& rq) const;
     bool operator!=(const Quaternion& rq) const;
@@ -121,27 +121,27 @@ class Quaternion {
     void slerp(const Quaternion& q0, const Quaternion& q1, F32 t);
 
     //! Convert from Axis Angle
-    void fromAxisAngle(const vec3<T>& v, Angle::DEGREES<T> angle);
+    void fromAxisAngle(const vec3<T>& v, Angle::DEGREES<T> angle) noexcept;
 
-    void fromEuler(const vec3<Angle::DEGREES<T>>& v);
+    void fromEuler(const vec3<Angle::DEGREES<T>>& v) noexcept;
 
     //! Convert from Euler Angles
-    void fromEuler(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, Angle::DEGREES<T> roll);
+    void fromEuler(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, Angle::DEGREES<T> roll) noexcept;
 
     void fromRotation(const vec3<T>& sourceDirection, const vec3<T>& destinationDirection, const vec3<T>& up);
 
     // a la Ogre3D
-    void fromMatrix(const mat3<T>& rotationMatrix);
+    void fromMatrix(const mat3<T>& rotationMatrix) noexcept;
 
-    void fromMatrix(const mat4<T>& viewMatrix);
+    void fromMatrix(const mat4<T>& viewMatrix) noexcept;
 
     //! Convert to Matrix
-    void getMatrix(mat3<T>& outMatrix) const;
+    void getMatrix(mat3<T>& outMatrix) const noexcept;
 
     //! Convert to Axis/Angles
     void getAxisAngle(vec3<T>& axis, Angle::DEGREES<T>& angle) const;
 
-    vec3<Angle::RADIANS<T>> getEuler() const;
+    vec3<Angle::RADIANS<T>> getEuler() const noexcept;
 
 
     /// X/Y/Z Axis get/set a la Ogre: OgreQuaternion.cpp
@@ -149,9 +149,9 @@ class Quaternion {
     void fromAxes(const vec3<T>& xAxis, const vec3<T>& yAxis, const vec3<T>& zAxis);
     void toAxes(vec3<T>* axis) const;
     void toAxes(vec3<T>& xAxis, vec3<T>& yAxis, vec3<T>& zAxis) const;
-    [[nodiscard]] vec3<T> xAxis() const;
-    [[nodiscard]] vec3<T> yAxis() const;
-    [[nodiscard]] vec3<T> zAxis() const;
+    [[nodiscard]] vec3<T> xAxis() const noexcept;
+    [[nodiscard]] vec3<T> yAxis() const noexcept;
+    [[nodiscard]] vec3<T> zAxis() const noexcept;
 
     [[nodiscard]] T X() const noexcept;
     [[nodiscard]] T Y() const noexcept;
@@ -169,9 +169,9 @@ class Quaternion {
     template<typename U>
     void W(U w) noexcept;
 
-    void identity();
+    void identity() noexcept;
 
-    [[nodiscard]] const vec4<T>& asVec4() const;
+    [[nodiscard]] const vec4<T>& asVec4() const noexcept;
 
    private:
     vec4<T> _elements;
@@ -180,13 +180,13 @@ class Quaternion {
 /// get the shortest arc quaternion to rotate vector 'v' to the target vector 'u'
 /// (from Ogre3D!)
 template <typename T>
-Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>& fallbackAxis = VECTOR3_ZERO);
+Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>& fallbackAxis = VECTOR3_ZERO) noexcept;
 
 template <typename T>
 Quaternion<T> Slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, F32 t);
 
 template <typename T>
-mat3<T> GetMatrix(const Quaternion<T>& q);
+mat3<T> GetMatrix(const Quaternion<T>& q) noexcept;
 
 template <typename T>
 vec3<Angle::RADIANS<T>> GetEuler(const Quaternion<T>& q);
@@ -195,10 +195,10 @@ template <typename T>
 vec3<T> operator*(vec3<T> const & v, Quaternion<T> const & q);
 
 template <typename T>
-vec3<T> Rotate(vec3<T> const & v, Quaternion<T> const & q);
+vec3<T> Rotate(vec3<T> const & v, Quaternion<T> const & q) noexcept;
 
 template <typename T>
-vec3<T> DirectionFromAxis(const Quaternion<T>& q, const vec3<T>& AXIS);
+vec3<T> DirectionFromAxis(const Quaternion<T>& q, const vec3<T>& AXIS) noexcept;
 
 template <typename T>
 vec3<T> DirectionFromEuler(vec3<Angle::DEGREES<T>> const & euler, const vec3<T>& FORWARD_DIRECTION);

@@ -4,7 +4,7 @@
 
 
 namespace Divide {
-    size_t HashMaterialData(const NodeMaterialData& dataIn) noexcept {
+    size_t HashMaterialData(const NodeMaterialData& dataIn) {
         size_t tempHash = 9999991;
         
         Util::Hash_combine(tempHash, dataIn._albedo.x * 255);
@@ -31,7 +31,7 @@ namespace Divide {
     }
 
 
-    size_t HashTexturesData(const NodeMaterialTextures& dataIn) noexcept {
+    size_t HashTexturesData(const NodeMaterialTextures& dataIn) {
         size_t tempHash = 9999991;
         for (U8 i = 0; i < MATERIAL_TEXTURE_COUNT; ++i) {
             Util::Hash_combine(tempHash, dataIn[i]);

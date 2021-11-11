@@ -52,14 +52,14 @@ static UColour4 BLUE_U8  = { 0,   0,   255, 255 };
 static FColour4 DIVIDE_BLUE    = { 0.1f, 0.1f, 0.8f, 1.0f};
 static UColour4 DIVIDE_BLUE_U8 = { 26,   26,   204,  255 };
 
-inline vec4<U8> RANDOM() noexcept {
+inline vec4<U8> RANDOM() {
     return vec4<U8>(Random<U8>(255),
                     Random<U8>(255),
                     Random<U8>(255),
                     to_U8(255));
 }
 
-inline vec4<F32> RANDOM_NORMALIZED() noexcept {
+inline vec4<F32> RANDOM_NORMALIZED() {
     return Util::ToFloatColour(RANDOM());
 }
 

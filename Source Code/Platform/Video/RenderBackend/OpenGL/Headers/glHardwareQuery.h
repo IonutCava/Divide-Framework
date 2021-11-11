@@ -42,7 +42,7 @@ namespace Divide {
 
 class glHardwareQuery : public glObject {
 public:
-    explicit glHardwareQuery(GFXDevice& context);
+    explicit glHardwareQuery(GFXDevice& context) noexcept;
 
     void create(GLenum queryType);
     void destroy();
@@ -66,7 +66,7 @@ public:
     explicit glHardwareQueryRing(GFXDevice& context, GLenum queryType, U32 queueLength, U32 id = 0);
     ~glHardwareQueryRing();
 
-    void resize(I32 queueLength) noexcept override;
+    void resize(I32 queueLength) override;
 
     U32 id() const noexcept { return _id; }
 
@@ -85,7 +85,7 @@ public:
         return readQuery().getResultNoWait();
     }
 
-    GLenum type() const {
+    GLenum type() const noexcept {
         return _queryType;
     }
 protected:

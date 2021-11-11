@@ -53,22 +53,22 @@ class GFXDevice;
 class SceneRenderState;
 class SceneEnvironmentProbePool final : public SceneComponent {
 public:
-    SceneEnvironmentProbePool(Scene& parentScene);
+    SceneEnvironmentProbePool(Scene& parentScene) noexcept;
     ~SceneEnvironmentProbePool();
 
     static void Prepare(GFX::CommandBuffer& bufferInOut);
     static void OnStartup(GFXDevice& context);
     static void OnShutdown(GFXDevice& context);
-    static RenderTargetHandle ReflectionTarget();
+    static RenderTargetHandle ReflectionTarget() noexcept;
 
     const EnvironmentProbeList& sortAndGetLocked(const vec3<F32>& position);
-    const EnvironmentProbeList& getLocked() const;
+    const EnvironmentProbeList& getLocked() const noexcept;
 
     void registerProbe(EnvironmentProbeComponent* probe);
-    void unregisterProbe(EnvironmentProbeComponent* probe);
+    void unregisterProbe(const EnvironmentProbeComponent* probe);
 
-    void lockProbeList() const;
-    void unlockProbeList() const;
+    void lockProbeList() const noexcept;
+    void unlockProbeList() const noexcept;
 
     void debugProbe(EnvironmentProbeComponent* probe);
     POINTER_R(EnvironmentProbeComponent, debugProbe, nullptr);
@@ -76,13 +76,13 @@ public:
     static vector<Camera*>& ProbeCameras() noexcept { return s_probeCameras; }
 
     static I16  AllocateSlice(bool lock);
-    static void UnlockSlice(I16 slice);
+    static void UnlockSlice(I16 slice) noexcept;
 
     static bool ProbesDirty()                 noexcept { return s_probesDirty; }
     static void ProbesDirty(const bool state) noexcept { s_probesDirty = state; }
 
-    static void OnNodeUpdated(SceneEnvironmentProbePool& probePool, const SceneGraphNode& node);
-    static void OnTimeOfDayChange(SceneEnvironmentProbePool& probePool);
+    static void OnNodeUpdated(const SceneEnvironmentProbePool& probePool, const SceneGraphNode& node) noexcept;
+    static void OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept;
 
 protected:
     mutable SharedMutex _probeLock;

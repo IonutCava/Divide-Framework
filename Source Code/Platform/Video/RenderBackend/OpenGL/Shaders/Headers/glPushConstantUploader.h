@@ -38,7 +38,7 @@
 namespace Divide {
     struct glPushConstantUploader
     {
-        explicit glPushConstantUploader(const GLuint programHandle) : _programHandle(programHandle) {}
+        explicit glPushConstantUploader(const GLuint programHandle) noexcept : _programHandle(programHandle) {}
         virtual ~glPushConstantUploader() = default;
 
         /// Gather the list of active uniforms in the parent program so that we can reference their location,size, etc later
@@ -48,7 +48,7 @@ namespace Divide {
         /// Make sure the current uploader is set-up for memory transactions (e.g., the buffer is bound and active)
         virtual void prepare() = 0;
         /// Update a single push constant. This MAY have no effect until "commit" is called.
-        virtual void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept = 0;
+        virtual void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) = 0;
 
     protected:
         GLuint _programHandle = 0u;

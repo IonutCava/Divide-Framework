@@ -78,7 +78,7 @@ class Object3D : public SceneNode {
 
     virtual ~Object3D() = default;
 
-    VertexBuffer* getGeometryVB() const;
+    VertexBuffer* getGeometryVB() const noexcept;
 
     ObjectType getObjectType() const noexcept { return _geometryType; }
 
@@ -134,22 +134,22 @@ class Object3D : public SceneNode {
         }
     }
 
-    [[nodiscard]] vector<vec3<U32>>& getTriangles(const U16 partitionID) noexcept {
+    [[nodiscard]] vector<vec3<U32>>& getTriangles(const U16 partitionID) {
         if (partitionID >= _geometryTriangles.size()) {
-            _geometryTriangles.resize(partitionID + 1);
+            _geometryTriangles.resize(to_size(partitionID) + 1);
         }
 
         return _geometryTriangles[std::min(partitionID, to_U16(_geometryTriangles.size()))];
     }
 
-    [[nodiscard]] const vector<vec3<U32>>& getTriangles(const U16 partitionID) const noexcept {
+    [[nodiscard]] const vector<vec3<U32>>& getTriangles(const U16 partitionID) const {
         DIVIDE_ASSERT(partitionID < _geometryTriangles.size());
         return _geometryTriangles[std::min(partitionID, to_U16(_geometryTriangles.size()))];
     }
 
     void addTriangles(const U16 partitionID, const vector<vec3<U32>>& triangles) {
         if (partitionID >= _geometryTriangles.size()) {
-            _geometryTriangles.resize(partitionID + 1);
+            _geometryTriangles.resize(to_size(partitionID) + 1);
         }
 
         _geometryTriangles[partitionID].insert(cend(_geometryTriangles[partitionID]),

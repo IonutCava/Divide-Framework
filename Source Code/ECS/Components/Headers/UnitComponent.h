@@ -46,7 +46,7 @@ public:
     bool setUnit(const Unit_ptr& unit);
 
     template <typename T = Unit>
-    [[nodiscard]] std::shared_ptr<T> getUnit() const {
+    [[nodiscard]] std::shared_ptr<T> getUnit() const noexcept {
         static_assert(std::is_base_of<Unit, T>::value,
             "UnitComponent::getUnit error: Invalid target unit type!");
         return std::static_pointer_cast<T>(_unit);

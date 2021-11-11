@@ -35,8 +35,6 @@
 
 constexpr size_t CEGUI_MAX_INPUT_HISTORY = 5;
 
-#include <CEGUI/CEGUI.h>
-
 #include "Core/Headers/PlatformContextComponent.h"
 
 namespace CEGUI {

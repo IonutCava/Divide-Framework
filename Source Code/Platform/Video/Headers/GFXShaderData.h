@@ -43,16 +43,14 @@ enum class RenderStage : U8;
 struct GFXShaderData {
 #pragma pack(push, 1)
       struct GPUData {
-          GPUData() noexcept;
-
-          mat4<F32> _ProjectionMatrix;
-          mat4<F32> _InvProjectionMatrix;
-          mat4<F32> _ViewMatrix;
-          mat4<F32> _InvViewMatrix;
-          mat4<F32> _ViewProjectionMatrix;
-          mat4<F32> _PreviousViewProjectionMatrix;
+          mat4<F32> _ProjectionMatrix = MAT4_IDENTITY;
+          mat4<F32> _InvProjectionMatrix = MAT4_IDENTITY;
+          mat4<F32> _ViewMatrix = MAT4_IDENTITY;
+          mat4<F32> _InvViewMatrix = MAT4_IDENTITY;
+          mat4<F32> _ViewProjectionMatrix = MAT4_IDENTITY;
+          mat4<F32> _PreviousViewProjectionMatrix = MAT4_IDENTITY;
           // xyz - position, w - aspect ratio
-          vec4<F32> _cameraPosition = { 0.0f, 0.0f, 0.0f, 1.0f };
+          vec4<F32> _cameraPosition = VECTOR4_ZERO;
           vec4<F32> _ViewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
           //x - near plane, y - far plane, z - FoV, w - elapsed time (ms)
           vec4<F32> _renderProperties = { 0.01f, 1.0f, 40.0f, 0.0f };
@@ -60,8 +58,8 @@ struct GFXShaderData {
           vec4<F32> _lightingProperties = { 120.0f, 100.0f, 1.0f, 1.0f };
           //x - material debug flag, y - reserved, z - camera flag, w - active clip plane count
           vec4<F32> _otherProperties;
-          std::array<Plane<F32>, to_base(FrustumPlane::COUNT)> _frustumPlanes;
-          std::array<Plane<F32>, Config::MAX_CLIP_DISTANCES> _clipPlanes;
+          std::array<Plane<F32>, to_base(FrustumPlane::COUNT)> _frustumPlanes = create_array<to_base(FrustumPlane::COUNT), Plane<F32>>(Plane<F32>{0.f, 0.f, 0.f, 0.f});
+          std::array<Plane<F32>, Config::MAX_CLIP_DISTANCES> _clipPlanes = create_array<Config::MAX_CLIP_DISTANCES, Plane<F32>>(Plane<F32>{0.f, 0.f, 0.f, 0.f});
       };
 #pragma pack(pop)
     GPUData _data{};

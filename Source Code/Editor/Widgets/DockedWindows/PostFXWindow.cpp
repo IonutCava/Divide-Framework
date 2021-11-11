@@ -108,7 +108,7 @@ namespace {
                 tempField._data = &fogColour;
                 tempField._format = "%.6f";
                 tempField._range = { 0.0f, 1.0f };
-                tempField._dataSetter = [&](const void* colour) {
+                tempField._dataSetter = [&](const void* colour) noexcept {
                     FogDetails details = activeSceneState->renderState().fogDetails();
                     details._colourAndDensity.rgb = *static_cast<const FColour3*>(colour);
                     activeSceneState->renderState().fogDetails(details);

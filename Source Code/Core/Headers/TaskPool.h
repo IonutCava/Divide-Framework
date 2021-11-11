@@ -67,7 +67,7 @@ public:
 
   public:
 
-    explicit TaskPool();
+    explicit TaskPool() noexcept;
     explicit TaskPool(U32 threadCount, TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const string& workerName = "DVD_WORKER");
 
     ~TaskPool();
@@ -75,7 +75,7 @@ public:
     bool init(U32 threadCount, TaskPoolType poolType, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const string& workerName = "DVD_WORKER");
     void shutdown();
 
-    static Task* AllocateTask(Task* parentTask, bool allowedInIdle);
+    static Task* AllocateTask(Task* parentTask, bool allowedInIdle) noexcept;
 
     /// Returns the number of callbacks processed
     size_t flushCallbackQueue();
@@ -120,7 +120,7 @@ public:
      ThreadPool<true>*  _blockingPool = nullptr;
      ThreadPool<false>* _lockFreePool = nullptr;
 
-     string _threadNamePrefix = "";
+     string _threadNamePrefix;
      std::atomic_uint _runningTaskCount = 0u;
 };
 

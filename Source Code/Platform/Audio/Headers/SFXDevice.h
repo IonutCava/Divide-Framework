@@ -73,12 +73,12 @@ public:
 
     void addMusic(U32 playlistEntry, const AudioDescriptor_ptr& music);
     [[nodiscard]] bool playMusic(U32 playlistEntry);
-    [[nodiscard]] bool playMusic(MusicPlaylist& playlist);
+    [[nodiscard]] bool playMusic(const MusicPlaylist& playlist);
 
     void dumpPlaylists();
 protected:
-    friend void musicFinishedHook();
-    void musicFinished() override;
+    friend void musicFinishedHook() noexcept;
+    void musicFinished() noexcept override;
 
 protected:
     AudioState _state;

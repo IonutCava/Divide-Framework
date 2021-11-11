@@ -55,7 +55,7 @@ SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
     { //Slow path. Cache miss
         ScopedLock<SharedMutex> w_lock(_gpuAddressesLock);
         // Check again as we may have updated this while switching locks
-        SamplerAddress address;
+        SamplerAddress address = 0u;
         const auto it = _gpuAddresses.find(samplerHash);
         if (it != std::cend(_gpuAddresses)) {
             address = it->second;
@@ -77,13 +77,12 @@ SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
 bool glTexture::unload() {
     assert(_data._textureType != TextureType::COUNT);
 
-    U32 textureID = _data._textureHandle;
-    if (textureID > 0) {
+    if (_data._textureHandle > 0u) {
         if (_lockManager) {
             _lockManager->wait(false);
         }
         GL_API::DequeueComputeMipMap(_data._textureHandle);
-        glDeleteTextures(1, &textureID);
+        glDeleteTextures(1, &_data._textureHandle);
         _data._textureHandle = 0u;
     }
 
@@ -280,12 +279,12 @@ void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {
     const U32 numLayers = imageData.layerCount();
 
     GL_API::getStateTracker().setPixelPackUnpackAlignment();
-    for (U32 l = 0; l < numLayers; ++l) {
+    for (U32 l = 0u; l < numLayers; ++l) {
         const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
         const U8 numMips = layer.mipCount();
 
-        for (U8 m = 0; m < numMips; ++m) {
-            ImageTools::LayerData* mip = layer.getMip(m);
+        for (U8 m = 0u; m < numMips; ++m) {
+            const ImageTools::LayerData* mip = layer.getMip(m);
             switch (_loadingData._textureType) {
                 case TextureType::TEXTURE_1D: {
                     assert(numLayers == 1);
@@ -352,11 +351,11 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) con
 
     GL_API::getStateTracker().setPixelPackUnpackAlignment();
 
-    for (U32 l = 0; l < numLayers; ++l) {
+    for (U32 l = 0u; l < numLayers; ++l) {
         const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
 
-        for (U8 m = 0; m < numMips; ++m) {
-            ImageTools::LayerData* mip = layer.getMip(m);
+        for (U8 m = 0u; m < numMips; ++m) {
+            const ImageTools::LayerData* mip = layer.getMip(m);
             switch (_loadingData._textureType) {
                 case TextureType::TEXTURE_1D: {
                     assert(numLayers == 1);

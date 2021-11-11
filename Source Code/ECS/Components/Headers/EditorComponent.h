@@ -253,7 +253,7 @@ namespace Divide {
         PROPERTY_RW(ComponentType, parentComponentType, ComponentType::COUNT);
 
       protected:
-        void onChanged(EditorComponentField& field) const;
+        void onChanged(const EditorComponentField& field) const;
         void saveToXML(boost::property_tree::ptree& pt) const;
         void loadFromXML(const boost::property_tree::ptree& pt);
 

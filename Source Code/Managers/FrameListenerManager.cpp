@@ -29,7 +29,7 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
     assert(listener != nullptr);
     listener->enabled(false);
     if (!dvd_erase_if(_listeners,
-                      [targetGUID = listener->getGUID()](FrameListener const* fl) {
+                      [targetGUID = listener->getGUID()](FrameListener const* fl) noexcept {
                             return fl->getGUID() == targetGUID;
                        }))
     {

@@ -9,7 +9,7 @@
 namespace Divide {
     
 namespace {
-    GLint GetBufferTargetIndex(const GLenum target) {
+    GLint GetBufferTargetIndex(const GLenum target) noexcept {
         // Select the appropriate index in the array based on the buffer target
         switch (target) {
             case GL_TEXTURE_BUFFER: return 0;
@@ -27,7 +27,7 @@ namespace {
     }
 }; //namespace 
 
-void GLStateTracker::init() noexcept 
+void GLStateTracker::init() 
 {
     _opengl46Supported = GLUtil::getGLValue<GLint>(GL_MINOR_VERSION) == 6;
     _vaoBufferData.init(GL_API::s_maxAttribBindings);
@@ -153,7 +153,7 @@ void GLStateTracker::toggleRasterization(const bool state) {
 
 bool GLStateTracker::bindSamplers(const GLushort unitOffset,
                                   const GLuint samplerCount,
-                                  GLuint* const samplerHandles) 
+                                  const GLuint* const samplerHandles) 
 {
     if (samplerCount > 0 && unitOffset + samplerCount < GL_API::s_maxTextureUnits)
     {
@@ -222,8 +222,8 @@ bool GLStateTracker::bindTexture(const GLushort unit, const TextureType type, GL
 bool GLStateTracker::bindTextures(const GLushort unitOffset,
                                   const GLuint textureCount,
                                   const TextureType texturesType,
-                                  GLuint* const textureHandles,
-                                  GLuint* const samplerHandles) {
+                                  const GLuint* const textureHandles,
+                                  const GLuint* const samplerHandles) {
 
     ProcessMipMapQueue(textureCount, textureHandles);
     return bindTexturesNoMipMap(unitOffset, textureCount, texturesType, textureHandles, samplerHandles);
@@ -232,8 +232,8 @@ bool GLStateTracker::bindTextures(const GLushort unitOffset,
 bool GLStateTracker::bindTexturesNoMipMap(const GLushort unitOffset,
                                           const GLuint textureCount,
                                           const TextureType texturesType,
-                                          GLuint* const textureHandles,
-                                          GLuint* const samplerHandles) {
+                                          const GLuint* const textureHandles,
+                                          const GLuint* const samplerHandles) {
 
     // This trick will save us from looking up the desired handle from the array twice (for single textures)
     // and also provide an easy way of figuring out if we bound anything
@@ -257,7 +257,7 @@ bool GLStateTracker::bindTexturesNoMipMap(const GLushort unitOffset,
                   // First handle should always be the first element in the array
                   const GLuint targetHandle = textureHandles ? textureHandles[idx] : 0u;
 
-                  GLuint& crtHandle = boundMap[unitOffset + idx];
+                  GLuint& crtHandle = boundMap[to_size(unitOffset) + idx];
                   if (targetHandle != crtHandle) {
                       crtHandle = targetHandle;
                       lastValidHandle = targetHandle;
@@ -369,13 +369,13 @@ bool GLStateTracker::setActiveFB(const RenderTarget::RenderTargetUsage usage, GL
     return true;
 }
 
-bool GLStateTracker::setActiveVAO(const GLuint ID) noexcept {
+bool GLStateTracker::setActiveVAO(const GLuint ID) {
     GLuint temp = 0;
     return setActiveVAO(ID, temp);
 }
 
 /// Switch the currently active vertex array object
-bool GLStateTracker::setActiveVAO(const GLuint ID, GLuint& previousID) noexcept {
+bool GLStateTracker::setActiveVAO(const GLuint ID, GLuint& previousID) {
     previousID = _activeVAOID;
     // Prevent double bind
     if (_activeVAOID != ID) {
@@ -683,7 +683,7 @@ TextureType GLStateTracker::getBoundTextureType(const U8 slot) const {
     return _textureTypeBoundMap[slot];
 }
 
-GLuint GLStateTracker::getBoundProgramHandle() const {
+GLuint GLStateTracker::getBoundProgramHandle() const noexcept {
     return _activeShaderPipeline == 0u ? _activeShaderProgram : _activeShaderPipeline;
 }
 
@@ -707,7 +707,7 @@ GLuint GLStateTracker::getBoundBuffer(const GLenum target, const GLuint bindInde
     return 0u;
 }
 
-void GLStateTracker::getActiveViewport(GLint* const vp) const {
+void GLStateTracker::getActiveViewport(GLint* const vp) const noexcept {
     if (vp != nullptr) {
         *vp = *_activeViewport._v;
     }

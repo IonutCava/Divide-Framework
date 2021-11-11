@@ -107,12 +107,12 @@ class Camera : public Resource {
 
     // Return true if the cached camera state wasn't up-to-date
     bool updateLookAt();
-    void setReflection(const Plane<F32>& reflectionPlane);
+    void setReflection(const Plane<F32>& reflectionPlane) noexcept;
     void clearReflection() noexcept;
 
     /// Global rotations are applied relative to the world axis, not the camera's
-    virtual void setGlobalRotation(F32 yaw, F32 pitch, F32 roll = 0.0f);
-    void setGlobalRotation(const vec3<Angle::DEGREES<F32>>& euler) { setGlobalRotation(euler.yaw, euler.pitch, euler.roll); }
+    virtual void setGlobalRotation(F32 yaw, F32 pitch, F32 roll = 0.0f) noexcept;
+    void setGlobalRotation(const vec3<Angle::DEGREES<F32>>& euler) noexcept { setGlobalRotation(euler.yaw, euler.pitch, euler.roll); }
 
     const mat4<F32>& lookAt(const mat4<F32>& viewMatrix);
     /// Sets the camera's position, target and up directions
@@ -123,26 +123,26 @@ class Camera : public Resource {
 
     /// Sets the camera's Yaw angle.
     /// This creates a new orientation quaternion for the camera and extracts the Euler angles
-    void setYaw(const Angle::DEGREES<F32> angle) { setRotation(angle, _euler.pitch, _euler.roll); }
+    void setYaw(const Angle::DEGREES<F32> angle) noexcept { setRotation(angle, _euler.pitch, _euler.roll); }
     /// Sets the camera's Pitch angle. Yaw and Roll are previous extracted values
-    void setPitch(const Angle::DEGREES<F32> angle) { setRotation(_euler.yaw, angle, _euler.roll); }
+    void setPitch(const Angle::DEGREES<F32> angle) noexcept { setRotation(_euler.yaw, angle, _euler.roll); }
     /// Sets the camera's Roll angle. Yaw and Pitch are previous extracted values
-    void setRoll(const Angle::DEGREES<F32> angle) { setRotation(_euler.yaw, _euler.pitch, angle); }
+    void setRoll(const Angle::DEGREES<F32> angle) noexcept { setRotation(_euler.yaw, _euler.pitch, angle); }
     /// Sets the camera's Yaw angle.
     /// This creates a new orientation quaternion for the camera and extracts the Euler angles
-    void setGlobalYaw(const Angle::DEGREES<F32> angle) { setGlobalRotation(angle, _euler.pitch, _euler.roll); }
+    void setGlobalYaw(const Angle::DEGREES<F32> angle) noexcept { setGlobalRotation(angle, _euler.pitch, _euler.roll); }
     /// Sets the camera's Pitch angle. Yaw and Roll are previous extracted values
-    void setGlobalPitch(const Angle::DEGREES<F32> angle) { setGlobalRotation(_euler.yaw, angle, _euler.roll); }
+    void setGlobalPitch(const Angle::DEGREES<F32> angle) noexcept { setGlobalRotation(_euler.yaw, angle, _euler.roll); }
     /// Sets the camera's Roll angle. Yaw and Pitch are previous extracted values
-    void setGlobalRoll(const Angle::DEGREES<F32> angle) { setGlobalRotation(_euler.yaw, _euler.pitch, angle); }
+    void setGlobalRoll(const Angle::DEGREES<F32> angle) noexcept { setGlobalRotation(_euler.yaw, _euler.pitch, angle); }
 
     void setEye(const F32 x, const F32 y, const F32 z) noexcept { _data._eye.set(x, y, z); _viewMatrixDirty = true; }
     void setEye(const vec3<F32>& position) noexcept { setEye(position.x, position.y, position.z); }
 
-    void setRotation(const Quaternion<F32>& q) { _data._orientation = q; _viewMatrixDirty = true; }
-    void setRotation(const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> roll = 0.0f) { setRotation(Quaternion<F32>(-pitch, -yaw, -roll)); }
+    void setRotation(const Quaternion<F32>& q) noexcept { _data._orientation = q; _viewMatrixDirty = true; }
+    void setRotation(const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> roll = 0.0f) noexcept { setRotation(Quaternion<F32>(-pitch, -yaw, -roll)); }
 
-    void setEuler(const vec3<Angle::DEGREES<F32>>& euler) { setRotation(euler.yaw, euler.pitch, euler.roll); }
+    void setEuler(const vec3<Angle::DEGREES<F32>>& euler) noexcept { setRotation(euler.yaw, euler.pitch, euler.roll); }
 
     void setAspectRatio(F32 ratio) noexcept;
     [[nodiscard]] F32 getAspectRatio() const noexcept { return _data._aspectRatio; }
@@ -180,10 +180,10 @@ class Camera : public Resource {
     }
 
     [[nodiscard]] const mat4<F32>& viewMatrix() const noexcept { return _data._viewMatrix; }
-    [[nodiscard]] const mat4<F32>& viewMatrix()                { updateViewMatrix(); return _data._viewMatrix; }
+    [[nodiscard]] const mat4<F32>& viewMatrix()       noexcept { updateViewMatrix(); return _data._viewMatrix; }
 
     [[nodiscard]] const mat4<F32>& projectionMatrix() const noexcept { return _data._projectionMatrix; }
-    [[nodiscard]] const mat4<F32>& projectionMatrix()                { updateProjection(); return _data._projectionMatrix; }
+    [[nodiscard]] const mat4<F32>& projectionMatrix()       noexcept { updateProjection(); return _data._projectionMatrix; }
 
     [[nodiscard]] mat4<F32> worldMatrix()                                      { return GetInverse(viewMatrix()); }
     [[nodiscard]] mat4<F32> worldMatrix()                       const noexcept { return GetInverse(viewMatrix()); }
@@ -208,8 +208,8 @@ class Camera : public Resource {
 
     /// Returns the world space direction for the specified winCoords for this camera
     /// Use getEye() + unProject(...) * distance for a world-space position
-    [[nodiscard]] vec3<F32> unProject(F32 winCoordsX, F32 winCoordsY, const Rect<I32>& viewport) const;
-    [[nodiscard]] vec3<F32> unProject(const vec3<F32>& winCoords, const Rect<I32>& viewport) const { return unProject(winCoords.x, winCoords.y, viewport); }
+    [[nodiscard]] vec3<F32> unProject(F32 winCoordsX, F32 winCoordsY, const Rect<I32>& viewport) const noexcept;
+    [[nodiscard]] vec3<F32> unProject(const vec3<F32>& winCoords, const Rect<I32>& viewport) const noexcept { return unProject(winCoords.x, winCoords.y, viewport); }
     [[nodiscard]] vec2<F32> project(const vec3<F32>& worldCoords, const Rect<I32>& viewport) const noexcept;
 
     [[nodiscard]] bool removeUpdateListener(U32 id);
@@ -221,8 +221,8 @@ class Camera : public Resource {
     PROPERTY_R_IW(mat4<F32>, viewProjectionMatrix);
 
    protected:
-    virtual bool updateViewMatrix();
-    virtual bool updateProjection();
+    virtual bool updateViewMatrix() noexcept;
+    virtual bool updateProjection() noexcept;
     virtual void update(F32 deltaTimeMS) noexcept;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Camera"; }

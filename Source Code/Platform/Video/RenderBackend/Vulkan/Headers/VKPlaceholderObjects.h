@@ -50,16 +50,16 @@ namespace Divide {
             : RenderTarget(context, descriptor)
         {}
 
-        void clear([[maybe_unused]] const RTClearDescriptor& descriptor) override {
+        void clear([[maybe_unused]] const RTClearDescriptor& descriptor) noexcept override {
         }
 
-        void setDefaultState([[maybe_unused]] const RTDrawDescriptor& drawPolicy) override {
+        void setDefaultState([[maybe_unused]] const RTDrawDescriptor& drawPolicy) noexcept override {
         }
 
-        void readData([[maybe_unused]] const vec4<U16>& rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] bufferPtr outData) const override {
+        void readData([[maybe_unused]] const vec4<U16>& rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] bufferPtr outData) const noexcept override {
         }
 
-        void blitFrom([[maybe_unused]] const RTBlitParams& params) override {
+        void blitFrom([[maybe_unused]] const RTBlitParams& params) noexcept override {
         }
     };
 
@@ -69,34 +69,34 @@ namespace Divide {
             : IMPrimitive(context)
         {}
 
-        void draw([[maybe_unused]] const GenericDrawCommand& cmd) override {
+        void draw([[maybe_unused]] const GenericDrawCommand& cmd) noexcept override {
         }
 
-        void beginBatch([[maybe_unused]] bool reserveBuffers, [[maybe_unused]] U32 vertexCount, [[maybe_unused]] U32 attributeCount) override {
+        void beginBatch([[maybe_unused]] bool reserveBuffers, [[maybe_unused]] U32 vertexCount, [[maybe_unused]] U32 attributeCount) noexcept override {
         }
 
-        void begin([[maybe_unused]] PrimitiveType type) override {
+        void begin([[maybe_unused]] PrimitiveType type) noexcept override {
         }
 
-        void vertex([[maybe_unused]] F32 x, [[maybe_unused]] F32 y, [[maybe_unused]] F32 z) override {
+        void vertex([[maybe_unused]] F32 x, [[maybe_unused]] F32 y, [[maybe_unused]] F32 z) noexcept override {
         }
 
-        void attribute1i([[maybe_unused]] U32 attribLocation, [[maybe_unused]] I32 value) override {
+        void attribute1i([[maybe_unused]] U32 attribLocation, [[maybe_unused]] I32 value) noexcept override {
         }
 
-        void attribute1f([[maybe_unused]] U32 attribLocation, [[maybe_unused]] F32 value) override {
+        void attribute1f([[maybe_unused]] U32 attribLocation, [[maybe_unused]] F32 value) noexcept override {
         }
 
-        void attribute4ub([[maybe_unused]] U32 attribLocation, [[maybe_unused]] U8 x, [[maybe_unused]] U8 y, [[maybe_unused]] U8 z, [[maybe_unused]] U8 w) override {
+        void attribute4ub([[maybe_unused]] U32 attribLocation, [[maybe_unused]] U8 x, [[maybe_unused]] U8 y, [[maybe_unused]] U8 z, [[maybe_unused]] U8 w) noexcept override {
         }
 
-        void attribute4f([[maybe_unused]] U32 attribLocation, [[maybe_unused]] F32 x, [[maybe_unused]] F32 y, [[maybe_unused]] F32 z, [[maybe_unused]] F32 w) override {
+        void attribute4f([[maybe_unused]] U32 attribLocation, [[maybe_unused]] F32 x, [[maybe_unused]] F32 y, [[maybe_unused]] F32 z, [[maybe_unused]] F32 w) noexcept override {
         }
 
-        void end() override {}
-        void endBatch() override {}
-        void clearBatch() override {}
-        bool hasBatch() const override { return false; }
+        void end() noexcept override {}
+        void endBatch() noexcept override {}
+        void clearBatch() noexcept override {}
+        bool hasBatch() const noexcept override { return false; }
     };
 
     class vkVertexBuffer final : public VertexBuffer {
@@ -105,12 +105,12 @@ namespace Divide {
             : VertexBuffer(context)
         {}
 
-        void draw([[maybe_unused]] const GenericDrawCommand& command) override {}
+        void draw([[maybe_unused]] const GenericDrawCommand& command) noexcept override {}
 
-        bool queueRefresh() override { return refresh(); }
+        bool queueRefresh() noexcept override { return refresh(); }
 
       protected:
-        bool refresh() override { return true; }
+        bool refresh() noexcept override { return true; }
     };
 
 
@@ -125,12 +125,12 @@ namespace Divide {
                     [[maybe_unused]] U16 depth = 0,
                     [[maybe_unused]] GFXImageFormat formatEnum = GFXImageFormat::RGBA,
                     [[maybe_unused]] GFXDataFormat dataTypeEnum = GFXDataFormat::FLOAT_32,
-                    [[maybe_unused]]  bool normalized = true) override
+                    [[maybe_unused]]  bool normalized = true) noexcept override
         {
             return true;
         }
 
-        void updatePixels([[maybe_unused]] const F32* pixels, [[maybe_unused]] U32 pixelCount) override {
+        void updatePixels([[maybe_unused]] const F32* pixels, [[maybe_unused]] U32 pixelCount) noexcept override {
         }
     };
 
@@ -141,25 +141,25 @@ namespace Divide {
             : GenericVertexData(context, ringBufferLength, name)
         {}
 
-        void create([[maybe_unused]] U8 numBuffers = 1) override {
+        void create([[maybe_unused]] U8 numBuffers = 1) noexcept override {
         }
 
-        void draw([[maybe_unused]] const GenericDrawCommand& command) override {
+        void draw([[maybe_unused]] const GenericDrawCommand& command) noexcept override {
         }
 
-        void setBuffer([[maybe_unused]] const SetBufferParams& params) override {
+        void setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept override {
         }
 
         void updateBuffer([[maybe_unused]] U32 buffer,
                           [[maybe_unused]] U32 elementCountOffset,
                           [[maybe_unused]] U32 elementCountRange,
-                          [[maybe_unused]] bufferPtr data) override
+                          [[maybe_unused]] bufferPtr data) noexcept override
         {
         }
 
-        void lockBuffers() override {}
+        void lockBuffers() noexcept override {}
 
-        bool waitBufferRange([[maybe_unused]] U32 buffer, [[maybe_unused]] U32 elementCountOffset, [[maybe_unused]] U32 elementCountRange, [[maybe_unused]] bool blockClient) override {
+        bool waitBufferRange([[maybe_unused]] U32 buffer, [[maybe_unused]] U32 elementCountOffset, [[maybe_unused]] U32 elementCountRange, [[maybe_unused]] bool blockClient) noexcept override {
             return false;
         }
     };
@@ -177,26 +177,26 @@ namespace Divide {
             : Texture(context, descriptorHash, name, assetNames, assetLocations, isFlipped, asyncLoad, texDescriptor)
         {}
 
-        [[nodiscard]] SamplerAddress getGPUAddress([[maybe_unused]] size_t samplerHash) override {
+        [[nodiscard]] SamplerAddress getGPUAddress([[maybe_unused]] size_t samplerHash) noexcept override {
             return 0u;
         }
 
-        void bindLayer([[maybe_unused]] U8 slot, [[maybe_unused]] U8 level, [[maybe_unused]] U8 layer, [[maybe_unused]] bool layered, [[maybe_unused]] Image::Flag rw_flag) override {
+        void bindLayer([[maybe_unused]] U8 slot, [[maybe_unused]] U8 level, [[maybe_unused]] U8 layer, [[maybe_unused]] bool layered, [[maybe_unused]] Image::Flag rw_flag) noexcept override {
         }
 
-        void loadData([[maybe_unused]] const ImageTools::ImageData& imageLayers) override {
+        void loadData([[maybe_unused]] const ImageTools::ImageData& imageLayers) noexcept override {
         }
 
-        void loadData([[maybe_unused]] const std::pair<Byte*, size_t>& ptr, [[maybe_unused]] const vec2<U16>& dimensions) override {
+        void loadData([[maybe_unused]] const std::pair<Byte*, size_t>& ptr, [[maybe_unused]] const vec2<U16>& dimensions) noexcept override {
         }
 
-        void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const override {
+        void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const noexcept override {
         }
 
-        void clearSubData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level, [[maybe_unused]] const vec4<I32>& rectToClear, [[maybe_unused]] const vec2<I32>& depthRange) const override {
+        void clearSubData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level, [[maybe_unused]] const vec4<I32>& rectToClear, [[maybe_unused]] const vec2<I32>& depthRange) const noexcept override {
         }
 
-        std::pair<std::shared_ptr<Byte[]>, size_t> readData([[maybe_unused]] U16 mipLevel, [[maybe_unused]] GFXDataFormat desiredFormat) const override {
+        std::pair<std::shared_ptr<Byte[]>, size_t> readData([[maybe_unused]] U16 mipLevel, [[maybe_unused]] GFXDataFormat desiredFormat) const noexcept override {
             return { nullptr, 0 };
         }
     };
@@ -213,7 +213,7 @@ namespace Divide {
             : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, asyncLoad)
         {}
 
-        bool isValid() const override { return true; }
+        bool isValid() const noexcept override { return true; }
     };
 
 
@@ -223,16 +223,16 @@ namespace Divide {
             : ShaderBuffer(context, descriptor)
         {}
 
-        void clearBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes) override {
+        void clearBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes) noexcept override {
         }
 
-        void writeBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes, [[maybe_unused]] bufferPtr data) override {
+        void writeBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes, [[maybe_unused]] bufferPtr data) noexcept override {
         }
 
-        void readBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes, [[maybe_unused]] bufferPtr result) const override {
+        void readBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes, [[maybe_unused]] bufferPtr result) const noexcept override {
         }
 
-        bool bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes) override {
+        bool bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes) noexcept override {
             return true; 
         }
     };

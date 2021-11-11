@@ -2,7 +2,7 @@
 
 #include "WorldState.h"
 
-goap::WorldState::WorldState(const Divide::string& name) : priority_(0), name_(name) {
+goap::WorldState::WorldState(const Divide::string& name)  noexcept : priority_(0), name_(name) {
     //nop
 }
 

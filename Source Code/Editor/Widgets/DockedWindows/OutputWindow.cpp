@@ -124,8 +124,8 @@ namespace Divide {
                              _inputBuf,
                              IM_ARRAYSIZE(_inputBuf),
                              ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory,
-                             [](ImGuiInputTextCallbackData* data){
-                                OutputWindow* console = static_cast<OutputWindow*>(data->UserData);
+                             [](ImGuiInputTextCallbackData* data) noexcept {
+                                const OutputWindow* console = static_cast<OutputWindow*>(data->UserData);
                                 return console->TextEditCallback(data);
                              },
                              (void*)this))
@@ -163,7 +163,7 @@ namespace Divide {
         _scrollToButtomReset = true;
     }
 
-    I32 OutputWindow::TextEditCallback(ImGuiInputTextCallbackData* data) {
+    I32 OutputWindow::TextEditCallback(const ImGuiInputTextCallbackData* data) noexcept {
         switch (data->EventFlag)
         {
             case ImGuiInputTextFlags_CallbackCompletion:

@@ -70,12 +70,12 @@ namespace Divide {
         [[nodiscard]] const ImGuiContext& getContext() const noexcept;
 
         [[nodiscard]] bool needsMouse() const;
-        [[nodiscard]] bool hovered() const;
+        [[nodiscard]] bool hovered() const noexcept;
         void enable(bool state) noexcept;
         [[nodiscard]] bool enabled() const noexcept;
         [[nodiscard]] bool active() const noexcept;
 
-        void onMouseButton(bool pressed);
+        void onMouseButton(bool pressed) noexcept;
         [[nodiscard]] bool onKey(bool pressed, const Input::KeyEvent& key);
 
     protected:

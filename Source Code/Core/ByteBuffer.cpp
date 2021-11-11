@@ -25,12 +25,6 @@ void ByteBufferException::printPosError() const {
                      _size);
 }
 
-// constructor
-ByteBuffer::ByteBuffer(const size_t res)
-{
-    _storage.reserve(res);
-}
-
 void ByteBuffer::clear() noexcept {
     _storage.clear();
     _rpos = _wpos = 0u;
@@ -38,6 +32,8 @@ void ByteBuffer::clear() noexcept {
 
 void ByteBuffer::append(const Byte *src, const size_t cnt) {
     if (src != nullptr && cnt > 0) {
+        _storage.reserve(DEFAULT_SIZE);
+
         if (_storage.size() < _wpos + cnt) {
             _storage.resize(_wpos + cnt);
         }
@@ -58,6 +54,7 @@ bool ByteBuffer::dumpToFile(const char* path, const char* fileName, const U8 ver
 
 bool ByteBuffer::loadFromFile(const char* path, const char* fileName, const U8 version) {
     clear();
+    _storage.reserve(DEFAULT_SIZE);
     if (readFile(path, fileName, _storage, FileType::BINARY) == FileError::NONE) {
         return version == 0u || to_U8(_storage.back()) == version;
     }

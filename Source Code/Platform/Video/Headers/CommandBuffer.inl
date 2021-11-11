@@ -114,19 +114,19 @@ CommandBuffer::add(const T&& command) {
 
 template<typename T>
 [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::get(const CommandEntry& commandEntry) noexcept {
+CommandBuffer::get(const CommandEntry& commandEntry) {
     return static_cast<T*>(_commands.get(commandEntry));
 }
 
 template<typename T>
 [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::get(const CommandEntry& commandEntry) const noexcept {
+CommandBuffer::get(const CommandEntry& commandEntry) const {
     return static_cast<T*>(_commands.get(commandEntry));
 }
 
 template<typename T>
 [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, const CommandBuffer::Container::EntryList&>::type
-CommandBuffer::get() const noexcept {
+CommandBuffer::get() const {
     return _commands.get(to_base(T::EType));
 }
 
@@ -142,13 +142,13 @@ CommandBuffer::exists(const U24 index) const noexcept {
 
 template<typename T>
 [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::get(const U24 index) noexcept {
+CommandBuffer::get(const U24 index) {
     return get<T>({to_base(T::EType), index});
 }
 
 template<typename T>
 [[nodiscard]] typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
-CommandBuffer::get(const U24 index) const noexcept {
+CommandBuffer::get(const U24 index) const {
     return get<T>({to_base(T::EType), index });
 }
 

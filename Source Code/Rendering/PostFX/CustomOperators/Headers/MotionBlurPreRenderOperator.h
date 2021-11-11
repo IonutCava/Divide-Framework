@@ -43,9 +43,9 @@ class MotionBlurPreRenderOperator final : public PreRenderOperator {
 
     [[nodiscard]] bool execute(const Camera* camera, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
 
-    void parametersChanged();
+    void parametersChanged() noexcept;
 
-    [[nodiscard]] bool ready() const override;
+    [[nodiscard]] bool ready() const noexcept override;
 
     PROPERTY_RW(U8, maxSamples, 16u);
    private:

@@ -27,7 +27,7 @@ NavigationMesh::NavigationMesh(PlatformContext& context, DivideRecast& recastInt
       PlatformContextComponent(context),
       _recastInterface(recastInterface)
 {
-    ParamHandler& par = context.paramHandler();
+    const ParamHandler& par = context.paramHandler();
     ResourcePath path(Paths::g_xmlDataLocation + Paths::g_scenesLocation);
     path.append(par.getParam<string>(_ID("currentScene")));
 
@@ -103,16 +103,16 @@ void NavigationMesh::freeIntermediates(const bool freeAll) {
 
 namespace {
     I32 charToInt(const char* val) {
-    return Util::ConvertData<I32, const char*>(val);
-}
+        return Util::ConvertData<I32, const char*>(val);
+    }
 
     F32 charToFloat(const char* val) {
-    return Util::ConvertData<F32, const char*>(val);
-}
+        return Util::ConvertData<F32, const char*>(val);
+    }
 
-    bool charToBool(const char* val) {
-    return _stricmp(val, "true") == 0;
-}
+    bool charToBool(const char* val) noexcept {
+        return _stricmp(val, "true") == 0;
+    }
 }
 
 bool NavigationMesh::loadConfigFromFile() {
@@ -285,7 +285,7 @@ bool NavigationMesh::buildProcess() {
 bool NavigationMesh::generateMesh() {
     assert(_sgn != nullptr);
 
-    Str128 nodeName(GenerateMeshName(_sgn));
+    const Str128 nodeName(GenerateMeshName(_sgn));
 
     // Parse objects from level into RC-compatible format
     _fileName.append(nodeName);
@@ -409,7 +409,7 @@ bool NavigationMesh::createNavigationQuery(const U32 maxNodes) {
     return _navQuery->init(_navMesh, maxNodes) == DT_SUCCESS;
 }
 
-bool NavigationMesh::createPolyMesh(rcConfig& cfg, NavModelData& data, rcContextDivide* ctx) {
+bool NavigationMesh::createPolyMesh(const rcConfig& cfg, const NavModelData& data, rcContextDivide* ctx) {
     if (_fileName.empty()) {
         _fileName = data.name();
     }
@@ -634,7 +634,7 @@ GFX::CommandBuffer& NavigationMesh::draw(const bool force) {
 }
 
 
-bool NavigationMesh::load(SceneGraphNode* sgn) {
+bool NavigationMesh::load(const SceneGraphNode* sgn) {
     if (!_fileName.length()) {
         return false;
     }
@@ -707,7 +707,7 @@ bool NavigationMesh::load(SceneGraphNode* sgn) {
     return createNavigationQuery();
 }
 
-bool NavigationMesh::save(SceneGraphNode* sgn) {
+bool NavigationMesh::save(const SceneGraphNode* sgn) {
     if (!_fileName.length() || !_navMesh) {
         return false;
     }
@@ -767,7 +767,7 @@ bool NavigationMesh::save(SceneGraphNode* sgn) {
     return true;
 }
 
-Str128 NavigationMesh::GenerateMeshName(SceneGraphNode* sgn) {
+Str128 NavigationMesh::GenerateMeshName(const SceneGraphNode* sgn) {
     return sgn->parent() != nullptr
                ? Str128{"_node_[_" + sgn->name() + "_]"}
                : Str128{ "_root_node" };

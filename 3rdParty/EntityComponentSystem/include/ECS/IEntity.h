@@ -54,7 +54,7 @@ namespace ECS
 		template<class T, class ...P>
 		T* AddComponent(P&&... param)
 		{
-			return this->m_ComponentManagerInstance->AddComponent<T>(this->m_EntityID, FWD(param)...);
+			return this->m_ComponentManagerInstance->AddComponent<T>(this->m_EntityID, std::forward<P>(param)...);
 		}
 
 		template<class T>

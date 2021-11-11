@@ -129,7 +129,7 @@ void GUIConsoleCommandParser::handlePlaySoundCommand(const string& args) {
             return;
         }
 
-        auto[name, path] = splitPathToNameAndLocation(filename);
+        const auto[name, path] = splitPathToNameAndLocation(filename);
 
         // The file is valid, so create a descriptor for it
         ResourceDescriptor sound("consoleFilePlayback");
@@ -154,7 +154,7 @@ void GUIConsoleCommandParser::handleNavMeshCommand(const string& args) {
     SceneManager* sMgr = _context.kernel().sceneManager();
     auto& sceneGraph = sMgr->getActiveScene().sceneGraph();
     if (!args.empty()) {
-        SceneGraphNode* sgn = sceneGraph->findNode(args.c_str());
+        const SceneGraphNode* sgn = sceneGraph->findNode(args.c_str());
         if (!sgn) {
             Console::errorfn(Locale::Get(_ID("CONSOLE_NAVMESH_NO_NODE")), args.c_str());
             return;

@@ -16,7 +16,7 @@ namespace {
     bool g_timersInit = false;
 }
 
-ScopedTimer::ScopedTimer(ProfileTimer& timer) 
+ScopedTimer::ScopedTimer(ProfileTimer& timer) noexcept
     : _timer(timer)
 {
     _timer.start();
@@ -27,11 +27,11 @@ ScopedTimer::~ScopedTimer()
     _timer.stop();
 }
 
-void ProfileTimer::start() {
+void ProfileTimer::start() noexcept {
     _timer = App::ElapsedMicroseconds();
 }
 
-void ProfileTimer::stop() {
+void ProfileTimer::stop() noexcept {
     _timerAverage += App::ElapsedMicroseconds() - _timer;
     _timerCounter++;
 }
@@ -56,7 +56,7 @@ void ProfileTimer::removeChildTimer(ProfileTimer& child) {
     child._parent = Config::Profile::MAX_PROFILE_TIMERS + 1u;
 }
 
-bool ProfileTimer::hasChildTimer(ProfileTimer& child) const {
+bool ProfileTimer::hasChildTimer(const ProfileTimer& child) const {
     return eastl::any_of(cbegin(_children),
                          cend(_children),
                          [childID = child._globalIndex](const U32 entry) {

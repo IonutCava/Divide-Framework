@@ -53,7 +53,7 @@ class ApplicationTimer {
     ApplicationTimer() noexcept;
 
     void update();
-    void reset();
+    void reset() noexcept;
 
     void resetFPSCounter() noexcept;
     [[nodiscard]] F32 getFps() const noexcept;
@@ -72,18 +72,18 @@ class ApplicationTimer {
 
 namespace Game {
     /// The following functions return the time updated in the main app loop only!
-    U64 ElapsedNanoseconds();
-    U64 ElapsedMicroseconds();
-    D64 ElapsedMilliseconds();
-    D64 ElapsedSeconds();
+    U64 ElapsedNanoseconds() noexcept;
+    U64 ElapsedMicroseconds() noexcept;
+    D64 ElapsedMilliseconds() noexcept;
+    D64 ElapsedSeconds() noexcept;
 }
 
 namespace App {
     /// The following functions force a timer update (a call to query performance timer).
-    U64 ElapsedNanoseconds();
-    U64 ElapsedMicroseconds();
-    D64 ElapsedMilliseconds();
-    D64 ElapsedSeconds();
+    U64 ElapsedNanoseconds() noexcept;
+    U64 ElapsedMicroseconds() noexcept;
+    D64 ElapsedMilliseconds() noexcept;
+    D64 ElapsedSeconds() noexcept;
 }
 
 }  // namespace Time

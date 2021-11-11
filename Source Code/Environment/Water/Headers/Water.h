@@ -48,7 +48,7 @@ class WaterPlane : public SceneNode {
     explicit WaterPlane(ResourceCache* parentCache, size_t descriptorHash, const Str256& name);
     ~WaterPlane();
 
-    static bool PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point);
+    static bool PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point) noexcept;
 
     const std::shared_ptr<Quad3D>& getQuad() const noexcept { return _plane; }
 
@@ -58,7 +58,7 @@ class WaterPlane : public SceneNode {
                              F32 offset) const;
 
     // width, length, depth
-    const vec3<U16>& getDimensions() const;
+    const vec3<U16>& getDimensions() const noexcept;
 
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
@@ -90,7 +90,7 @@ class WaterPlane : public SceneNode {
     friend class ImplResourceLoader;
 
     bool load() override;
-    void onEditorChange(std::string_view field);
+    void onEditorChange(std::string_view field) noexcept;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "WaterPlane"; }
 

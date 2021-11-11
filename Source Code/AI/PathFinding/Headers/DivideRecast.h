@@ -122,7 +122,7 @@ class DivideRecast {
     *meanings.
     * Returns 0 when a faulty pathSlot is given.
     **/
-    I32 getTarget(I32 pathSlot);
+    I32 getTarget(I32 pathSlot) noexcept;
     /**
     * Returns a random point on the navmesh.
     **/

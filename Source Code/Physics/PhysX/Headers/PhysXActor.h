@@ -42,13 +42,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 namespace Util {
-    vec3<F32> toVec3(const physx::PxVec3& vec);
-    physx::PxVec3 toVec3(const vec3<F32>& vec);
+    vec3<F32> toVec3(const physx::PxVec3& vec) noexcept;
+    physx::PxVec3 toVec3(const vec3<F32>& vec) noexcept;
 } //namespace Util
 
 class PhysXActor final : public PhysicsAsset {
 public:
-    explicit PhysXActor(RigidBodyComponent& parent);
+    explicit PhysXActor(RigidBodyComponent& parent) noexcept;
     ~PhysXActor();
 
     void setPosition(const vec3<F32>& position) override;

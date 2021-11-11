@@ -102,7 +102,7 @@ class SceneShaderData {
         _sceneDataDirty = true;
     }
 
-    bool waterDetails(const U8 index, const WaterBodyData& data) {
+    bool waterDetails(const U8 index, const WaterBodyData& data) noexcept {
         if (index < GLOBAL_WATER_BODIES_COUNT) {
             _sceneBufferData._waterEntities[index] = data;
             _sceneDataDirty = true;
@@ -113,7 +113,7 @@ class SceneShaderData {
         return false;
     }
 
-    bool probeState(const U16 index, const bool state) {
+    bool probeState(const U16 index, const bool state) noexcept {
         if (index < GLOBAL_PROBE_COUNT) {
             _probeData[index]._positionW.w = state ? 1.f : 0.f;
             return true;
@@ -122,7 +122,7 @@ class SceneShaderData {
         return false;
     }
 
-    bool probeData(const U16 index, const vec3<F32>& center, const vec3<F32>& halfExtents) {
+    bool probeData(const U16 index, const vec3<F32>& center, const vec3<F32>& halfExtents) noexcept {
         if (index < GLOBAL_PROBE_COUNT) {
             _probeData[index]._positionW.xyz = center;
             _probeData[index]._halfExtents.xyz = halfExtents;

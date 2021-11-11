@@ -24,7 +24,6 @@
 #include "Utility/Headers/Localization.h"
 
 #include <SDL_video.h>
-#include <CEGUI/CEGUI.h>
 
 #include <glbinding-aux/Meta.h>
 
@@ -548,7 +547,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     return glswState == 1;
 }
 
-bool GL_API::DeInitGLSW() {
+bool GL_API::DeInitGLSW() noexcept {
     // Shutdown GLSW
     return glswShutdown() == 1;
 }
@@ -655,7 +654,7 @@ void GL_API::drawText(const TextElementBatch& batch) {
     }
 }
 
-void GL_API::drawIMGUI(ImDrawData* data, I64 windowGUID) {
+void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
     OPTICK_EVENT();
 
     if (data != nullptr && data->Valid) {
@@ -802,7 +801,7 @@ void GL_API::PopDebugMessage() {
     }
 }
 
-void GL_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
+void GL_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
     getStateTracker()._flushingCommandBuffer = true;
 }
 
@@ -827,7 +826,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
             assert(GL_API::getStateTracker()._activeRenderTarget != nullptr);
             PopDebugMessage();
-            glFramebuffer& fb = *getStateTracker()._activeRenderTarget;
+            const glFramebuffer& fb = *getStateTracker()._activeRenderTarget;
             Attorney::GLAPIRenderTarget::end(fb, crtCmd->_setDefaultRTState);
         }break;
         case GFX::CommandType::BEGIN_PIXEL_BUFFER: {
@@ -1291,7 +1290,7 @@ bool GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, con
     const size_t totalTextureCount = textureData.count();
 
     count = std::min(count, to_U8(totalTextureCount - offset));
-    assert(offset + count <= totalTextureCount);
+    assert(to_size(offset) + count <= totalTextureCount);
     const auto& textures = textureData._entries;
 
     bool bound = false;
@@ -1334,7 +1333,7 @@ bool GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, con
                 handles.resize(s_maxTextureUnits, GLUtil::k_invalidObjectID);
                 samplers.resize(s_maxTextureUnits, GLUtil::k_invalidObjectID);
             } else {
-                std::memset(&handles[startBinding], GLUtil::k_invalidObjectID, (endBinding - startBinding + 1) * sizeof(GLuint));
+                std::memset(&handles[startBinding], GLUtil::k_invalidObjectID, (to_size(endBinding - startBinding) + 1) * sizeof(GLuint));
             }
 
             for (U8 idx = offset; idx < offset + matchingTexCount; ++idx) {
@@ -1367,8 +1366,8 @@ bool GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, con
         const TextureEntry& entry = textures[offset];
         if (entry._binding != INVALID_TEXTURE_BINDING) {
             assert(IsValid(entry._data));
-            GLuint handle = entry._data._textureHandle;
-            GLuint sampler = GetSamplerHandle(entry._sampler);
+            const GLuint handle = entry._data._textureHandle;
+            const GLuint sampler = GetSamplerHandle(entry._sampler);
             bound = stateTracker.bindTextures(entry._binding, 1, entry._data._textureType, &handle, &sampler) || bound;
         }
     } else {
@@ -1416,7 +1415,7 @@ bool GL_API::makeTextureViewsResidentInternal(const TextureViews& textureViews, 
 
         getStateTracker().ProcessMipMapQueue(1, &data._textureHandle);
 
-        GLuint samplerHandle = GetSamplerHandle(it._view._samplerHash);
+        const GLuint samplerHandle = GetSamplerHandle(it._view._samplerHash);
         bound = getStateTracker().bindTexturesNoMipMap(static_cast<GLushort>(it._binding), 1, view._targetType, &textureID, &samplerHandle) || bound;
         // Self delete after 3 frames unless we use it again
         s_textureViewCache.deallocate(textureID, 3u);

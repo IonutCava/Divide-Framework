@@ -53,13 +53,13 @@ class Trigger final : public SceneNode {
     [[nodiscard]] bool trigger() const;
     /// Draw a sphere at the trigger's position
     /// The impostor has the radius of the trigger's radius
-    void setDrawImpostor(const bool state) { _drawImpostor = state; }
+    void setDrawImpostor(const bool state) noexcept { _drawImpostor = state; }
     /// Enable or disable the trigger
-    void setEnabled(const bool state) { _enabled = state; }
+    void setEnabled(const bool state) noexcept { _enabled = state; }
     /// Set the callback, the position and the radius of the trigger
-    void setParams(Task& triggeredTask, const vec3<F32>& triggerPosition, F32 radius);
+    void setParams(Task& triggeredTask, const vec3<F32>& triggerPosition, F32 radius) noexcept;
     /// Just update the callback
-    void setParams(Task& triggeredTask) {
+    void setParams(Task& triggeredTask) noexcept {
         setParams(triggeredTask, _triggerPosition, _radius);
     }
 

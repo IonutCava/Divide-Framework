@@ -4,7 +4,7 @@
 
 namespace Divide {
 
-    DockedWindow::DockedWindow(Editor& parent, Descriptor descriptor)
+    DockedWindow::DockedWindow(Editor& parent, Descriptor descriptor) noexcept
         : _parent(parent),
           _focused(false),
           _isHovered(false),

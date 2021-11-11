@@ -45,7 +45,7 @@ namespace Input {
 class InputAggregatorInterface;
 class InputHandler final : public SDLEventListener {
    public:
-    explicit InputHandler(InputAggregatorInterface& eventListener, Application& app);
+    explicit InputHandler(InputAggregatorInterface& eventListener, Application& app) noexcept;
 
   protected:
     bool onSDLEvent(SDL_Event event) override;

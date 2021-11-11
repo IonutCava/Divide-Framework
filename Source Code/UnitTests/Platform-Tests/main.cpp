@@ -22,8 +22,7 @@ bool PreparePlatform() {
     return err == Divide::ErrorCode::NO_ERR;
 }
 
-int main(int argc, char **argv) {
-    (void)argv;
+int main(int argc, [[maybe_unused]] char **argv) {
 
     std::cout << "Running Engine Unit Tests!" << std::endl;
 

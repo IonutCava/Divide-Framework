@@ -48,7 +48,7 @@ constexpr auto MAX_PATHVERT = 512;  ///< most verts in a path
 namespace Divide {
 namespace AI {
 // Extra padding added to the border size of tiles (together with agent radius)
-const F32 BORDER_PADDING = -3;
+constexpr F32 BORDER_PADDING = -3;
 namespace Navigation {
 /// These are just sample areas to use consistent values across the samples.
 /// The use should specify these base on his needs.

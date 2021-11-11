@@ -6,7 +6,7 @@ namespace Divide::AnimUtils {
 
 /// there is some type of alignment issue with my mat4 and the aimatrix4x4
 /// class, so the copy must be done manually
-void TransformMatrix(const aiMatrix4x4& in, mat4<F32>& out, const bool rowMajor) {
+void TransformMatrix(const aiMatrix4x4& in, mat4<F32>& out, const bool rowMajor) noexcept {
     if (rowMajor) {
         out.set({ in.a1, in.a2, in.a3, in.a4,
                   in.b1, in.b2, in.b3, in.b4,
@@ -20,7 +20,7 @@ void TransformMatrix(const aiMatrix4x4& in, mat4<F32>& out, const bool rowMajor)
     }
 }
 
-void TransformMatrix(const mat4<F32>& in, aiMatrix4x4& out, const bool rowMajor) {
+void TransformMatrix(const mat4<F32>& in, aiMatrix4x4& out, const bool rowMajor) noexcept {
     if (rowMajor) {
         out.a1 = in._11; out.a2 = in._12; out.a3 = in._13; out.a4 = in._14;
         out.b1 = in._21; out.b2 = in._22; out.b3 = in._23; out.b4 = in._24;

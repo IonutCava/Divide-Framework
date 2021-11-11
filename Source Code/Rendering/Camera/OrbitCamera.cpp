@@ -32,13 +32,13 @@ void OrbitCamera::fromCamera(const Camera& camera, bool flag) {
     FreeFlyCamera::fromCamera(camera, flag);
 }
 
-void OrbitCamera::setTarget(SceneGraphNode* sgn, const vec3<F32>& offsetDirection) {
+void OrbitCamera::setTarget(SceneGraphNode* sgn, const vec3<F32>& offsetDirection) noexcept {
     _targetNode = sgn;
     _offsetDir = offsetDirection;
     _offsetDir.normalize();
 }
 
-bool OrbitCamera::updateViewMatrix() {
+bool OrbitCamera::updateViewMatrix() noexcept {
     setEye(_newEye);
 
     return FreeFlyCamera::updateViewMatrix();
@@ -51,7 +51,7 @@ void OrbitCamera::update(const F32 deltaTimeMS) noexcept {
         return;
     }
 
-    TransformComponent* const trans = _targetNode->get<TransformComponent>();
+    const TransformComponent* const trans = _targetNode->get<TransformComponent>();
 
     static vec3<F32> newTargetOrientation;
 

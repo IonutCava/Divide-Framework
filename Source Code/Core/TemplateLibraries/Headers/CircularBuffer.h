@@ -88,7 +88,7 @@ public:
         return T();
     }
 
-    [[nodiscard]] inline size_t size() const {
+    [[nodiscard]] inline size_t size() const noexcept {
         if (full()) {
             return _maxSize;
         }
@@ -98,9 +98,9 @@ public:
                        : _maxSize + _head - _tail;
     }
 
-    [[nodiscard]] inline bool empty() const { return (!full() && (_head == _tail)); }
-    [[nodiscard]] inline bool full() const { return _isFull; }
-    [[nodiscard]] inline size_t capacity() const { return _maxSize; }
+    [[nodiscard]] inline bool empty() const noexcept { return (!full() && (_head == _tail)); }
+    [[nodiscard]] inline bool full() const noexcept { return _isFull; }
+    [[nodiscard]] inline size_t capacity() const noexcept { return _maxSize; }
 
 private:
     mutable Mutex _lock;

@@ -42,21 +42,21 @@ public:
     ErrorCode initAudioAPI(PlatformContext& context) override;
     void closeAudioAPI() override;
 
-    void beginFrame() override;
-    void endFrame() override;
+    void beginFrame() noexcept override;
+    void endFrame() noexcept override;
 
     void playSound(const AudioDescriptor_ptr& sound) override;
     void playMusic(const AudioDescriptor_ptr& music) override;
 
-    void stopMusic() override { Mix_HaltMusic(); }
-    void stopAllSounds() override {}
-    void pauseMusic() override {}
+    void stopMusic() noexcept override { Mix_HaltMusic(); }
+    void stopAllSounds() noexcept override {}
+    void pauseMusic() noexcept override {}
 
-    void setMusicVolume(I8 value) override {}
-    void setSoundVolume(I8 value) override {}
+    void setMusicVolume(I8 value) noexcept override {}
+    void setSoundVolume(I8 value) noexcept override {}
 
 protected:
-    void musicFinished() override;
+    void musicFinished() noexcept override;
 
 private:
     using MusicMap = hashMap<I64, Mix_Music*>;

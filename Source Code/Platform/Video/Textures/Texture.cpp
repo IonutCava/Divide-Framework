@@ -236,7 +236,7 @@ bool Texture::checkTransparency(const ResourcePath& name, ImageTools::ImageData&
     return true;
 }
 
-void Texture::setSampleCount(U8 newSampleCount) noexcept { 
+void Texture::setSampleCount(U8 newSampleCount) { 
     CLAMP(newSampleCount, to_U8(0u), _context.gpuState().maxMSAASampleCount());
     if (_descriptor.msaaSamples() != newSampleCount) {
         _descriptor.msaaSamples(newSampleCount);

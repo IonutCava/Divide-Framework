@@ -46,7 +46,7 @@ namespace AI {
 namespace Navigation {
 
 /// Convert a Recast colour integer to RGBA components.
-inline void rcCol(U32 col, U8& r, U8& g, U8& b, U8& a) {
+inline void rcCol(U32 col, U8& r, U8& g, U8& b, U8& a) noexcept {
     r = col % 256;
     col /= 256;
     g = col % 256;
@@ -58,11 +58,11 @@ inline void rcCol(U32 col, U8& r, U8& g, U8& b, U8& a) {
 
 class NavMeshDebugDraw final : public duDebugDraw {
    public:
-    NavMeshDebugDraw(GFXDevice& context);
+    NavMeshDebugDraw(GFXDevice& context) noexcept;
     virtual ~NavMeshDebugDraw();
 
-    void paused(bool state);
-    void overrideColour(U32 col);
+    void paused(bool state) noexcept;
+    void overrideColour(U32 col) noexcept;
     void beginBatch();
     void endBatch();
 
@@ -75,9 +75,9 @@ class NavMeshDebugDraw final : public duDebugDraw {
     [[nodiscard]] bool paused() const noexcept { return _paused; }
     void cancelOverride() noexcept { _overrideColour = false; }
 
-    void texture([[maybe_unused]] bool state) override {}
+    void texture([[maybe_unused]] bool state) noexcept override {}
 
-    void depthMask(bool state);
+    void depthMask(bool state) noexcept override;
 
     void vertex(const F32* pos, const U32 colour) override
     {

@@ -27,7 +27,7 @@ private:
 Engine::Engine() 
     : _app(eastl::make_unique<Application>())
 {
-    std::set_new_handler([]() { DIVIDE_ASSERT(false, "Out of memory!"); });
+    std::set_new_handler([]() noexcept { DIVIDE_ASSERT(false, "Out of memory!"); });
     _outputStreams[0] = new StreamBuffer((Paths::g_logPath + OUTPUT_LOG_FILE).c_str());
     _outputStreams[1] = new StreamBuffer((Paths::g_logPath + ERROR_LOG_FILE).c_str());
     std::cout.rdbuf(_outputStreams[0]->buffer().rdbuf());

@@ -2,7 +2,6 @@
 
 #include "Headers/GUIMessageBox.h"
 
-#include <CEGUI/CEGUI.h>
 namespace Divide {
 
 GUIMessageBox::GUIMessageBox(const string& name,
@@ -36,7 +35,7 @@ GUIMessageBox::~GUIMessageBox()
     CEGUI::WindowManager::getSingletonPtr()->destroyWindow(_msgBoxWindow);
 }
 
-bool GUIMessageBox::onConfirm(const CEGUI::EventArgs& /*e*/) {
+bool GUIMessageBox::onConfirm(const CEGUI::EventArgs& /*e*/) noexcept {
     active(false);
     visible(false);
     return true;

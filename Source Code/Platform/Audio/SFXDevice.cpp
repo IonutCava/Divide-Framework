@@ -97,7 +97,7 @@ bool SFXDevice::playMusic(const U32 playlistEntry) {
     return false;
 }
 
-bool SFXDevice::playMusic(MusicPlaylist& playlist) {
+bool SFXDevice::playMusic(const MusicPlaylist& playlist) {
     if (!playlist.second.empty()) {
         _currentPlaylist = playlist;
         _api->playMusic(_currentPlaylist.second[_currentPlaylist.first]);
@@ -146,7 +146,7 @@ void SFXDevice::setSoundVolume(const I8 value) {
     _api->setSoundVolume(value);
 }
 
-void SFXDevice::musicFinished() {
+void SFXDevice::musicFinished() noexcept {
     _playNextInPlaylist = true;
 }
 

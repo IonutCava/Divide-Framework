@@ -132,7 +132,7 @@ void SceneGraphNode::RemoveComponents(const U32 componentMask) {
 
 void SceneGraphNode::setTransformDirty(const U32 transformMask) {
     SharedLock<SharedMutex> r_lock(_childLock);
-    for (SceneGraphNode* node : _children) {
+    for (const SceneGraphNode* node : _children) {
         TransformComponent* tComp = node->get<TransformComponent>();
         if (tComp != nullptr) {
             Attorney::TransformComponentSGN::onParentTransformDirty(*tComp, transformMask);
@@ -148,7 +148,7 @@ void SceneGraphNode::changeUsageContext(const NodeUsageContext& newContext) {
         Attorney::TransformComponentSGN::onParentUsageChanged(*tComp, _usageContext);
     }
 
-    RenderingComponent* rComp = get<RenderingComponent>();
+    const RenderingComponent* rComp = get<RenderingComponent>();
     if (rComp) {
         Attorney::RenderingComponentSGN::onParentUsageChanged(*rComp, _usageContext);
     }
@@ -200,7 +200,7 @@ void SceneGraphNode::setParentInternal() {
     }
     {// Carry over new parent's flags and settings
         constexpr Flags flags[] = { Flags::SELECTED, Flags::HOVERED, Flags::ACTIVE, Flags::VISIBILITY_LOCKED };
-        for (Flags flag : flags) {
+        for (const Flags flag : flags) {
             if (_parent->hasFlag(flag)) {
                 setFlag(flag);
             } else {
@@ -466,7 +466,7 @@ void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) 
     }
 
     if (get<RenderingComponent>() == nullptr) {
-        BoundsComponent* bComp = get<BoundsComponent>();
+        const BoundsComponent* bComp = get<BoundsComponent>();
         if (bComp->showAABB()) {
             const BoundingBox& bb = bComp->getBoundingBox();
             _context.gfx().debugDrawBox(bb.getMin(), bb.getMax(), DefaultColours::WHITE);
@@ -521,9 +521,9 @@ void SceneGraphNode::processEvents() {
 void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStagePass& renderStagePass, const Camera& camera, const bool refreshData) {
     OPTICK_EVENT();
 
-    AnimationComponent* aComp = get<AnimationComponent>();
+    const AnimationComponent* aComp = get<AnimationComponent>();
     if (aComp) {
-        RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
+        const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
         {
             const AnimationComponent::AnimData data = aComp->getAnimationData();
             if (data._boneBuffer != nullptr) {
@@ -753,7 +753,7 @@ void SceneGraphNode::saveToXML(const Str256& sceneLocation, DELEGATE<void, std::
 
     getNode().saveToXML(pt);
 
-    for (EditorComponent* editorComponent : Hacks._editorComponents) {
+    for (const EditorComponent* editorComponent : Hacks._editorComponents) {
         Attorney::EditorComponentSceneGraphNode::saveToXML(*editorComponent, pt);
     }
 
@@ -807,7 +807,7 @@ void SceneGraphNode::loadFromXML(const boost::property_tree::ptree& pt) {
     }
 }
 
-void SceneGraphNode::setFlag(const Flags flag, const bool recursive) noexcept {
+void SceneGraphNode::setFlag(const Flags flag, const bool recursive) {
     if (!hasFlag(flag)) {
         SetBit(_nodeFlags, to_U32(flag));
         ECS::CustomEvent evt = {
@@ -822,14 +822,14 @@ void SceneGraphNode::setFlag(const Flags flag, const bool recursive) noexcept {
     }
 
     if (recursive && PropagateFlagToChildren(flag)) {
-        forEachChild([flag, recursive](SceneGraphNode* child, I32 /*childIdx*/) {
+        forEachChild([flag, recursive](SceneGraphNode* child, I32 /*childIdx*/) noexcept {
             child->setFlag(flag, true);
             return true;
         });
     }
 }
 
-void SceneGraphNode::clearFlag(const Flags flag, const bool recursive) noexcept {
+void SceneGraphNode::clearFlag(const Flags flag, const bool recursive) {
     if (hasFlag(flag)) {
         ClearBit(_nodeFlags, to_U32(flag));
         ECS::CustomEvent evt = {
@@ -844,7 +844,7 @@ void SceneGraphNode::clearFlag(const Flags flag, const bool recursive) noexcept 
     }
 
     if (recursive && PropagateFlagToChildren(flag)) {
-        forEachChild([flag, recursive](SceneGraphNode* child, I32 /*childIdx*/) {
+        forEachChild([flag, recursive](SceneGraphNode* child, I32 /*childIdx*/) noexcept {
             child->clearFlag(flag, true);
             return true;
         });

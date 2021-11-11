@@ -49,7 +49,7 @@ class PhysXSceneInterface final : public PhysicsSceneInterface {
     virtual ~PhysXSceneInterface();
 
     [[nodiscard]] bool init() override;
-    [[nodiscard]] bool isInit() const override;
+    [[nodiscard]] bool isInit() const noexcept override;
     void idle() override;
     void release() override;
     void update(U64 deltaTimeUS) override;

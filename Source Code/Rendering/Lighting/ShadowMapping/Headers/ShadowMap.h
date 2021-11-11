@@ -65,11 +65,14 @@ namespace GFX {
 class SceneState;
 class PlatformContext;
 class ShadowMapGenerator {
+
+public:
+    virtual ~ShadowMapGenerator() = default;
+
 protected:
     SET_DELETE_FRIEND
 
     explicit ShadowMapGenerator(GFXDevice& context, ShadowType type) noexcept;
-    virtual ~ShadowMapGenerator() = default;
 
     friend class ShadowMap;
     virtual void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) = 0;

@@ -13,7 +13,7 @@
 
 namespace Divide::AI::Navigation {
 
-NavMeshDebugDraw::NavMeshDebugDraw(GFXDevice& context)
+NavMeshDebugDraw::NavMeshDebugDraw(GFXDevice& context) noexcept
     : _context(context)
 {
 }
@@ -25,11 +25,11 @@ NavMeshDebugDraw::~NavMeshDebugDraw()
     }
 }
 
-void NavMeshDebugDraw::paused(const bool state) {
+void NavMeshDebugDraw::paused(const bool state) noexcept {
     _paused = state;
 }
 
-void NavMeshDebugDraw::depthMask(const bool state) {
+void NavMeshDebugDraw::depthMask(const bool state) noexcept {
     _depthMask = state;
 }
 
@@ -118,7 +118,7 @@ GFX::CommandBuffer& NavMeshDebugDraw::toCommandBuffer() const {
     return _primitive->toCommandBuffer();
 }
 
-void NavMeshDebugDraw::overrideColour(const U32 col) {
+void NavMeshDebugDraw::overrideColour(const U32 col) noexcept {
     _overrideColour = true;
     _colour = col;
 }

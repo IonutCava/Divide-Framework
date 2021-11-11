@@ -16,7 +16,7 @@
 #define BUFFER_OFFSET(i) ((char*)NULL + (i))
 
 namespace NS_GLIM {
-GlimArrayData::GlimArrayData() noexcept { Reset(); }
+GlimArrayData::GlimArrayData() { Reset(); }
 
 void GlimArrayData::Reset(void) {
     m_uiBufferOffset = 0;
@@ -88,7 +88,7 @@ void glimBatchData::Bind(Divide::I64 uiCurrentProgram) {
 #endif
 }
 
-void glimBatchData::Unbind(void) {
+void glimBatchData::Unbind(void) noexcept {
 #ifdef AE_RENDERAPI_OPENGL
     UnbindOGL();
 #else
@@ -96,7 +96,7 @@ void glimBatchData::Unbind(void) {
 #endif
 }
 
-glimBatchData::glimBatchData() noexcept {
+glimBatchData::glimBatchData() {
     m_bUploadedToGPU = false;
     m_bCreatedVBOs = false;
 
@@ -205,7 +205,7 @@ unsigned int glimBatchData::AddVertex(float x, float y, float z) {
     m_PositionData.emplace_back(z);
 
     Divide::hashMap<unsigned int, GlimArrayData>::iterator it = begin(m_Attributes);
-    Divide::hashMap<unsigned int, GlimArrayData>::const_iterator itend = cend(m_Attributes);
+    const Divide::hashMap<unsigned int, GlimArrayData>::const_iterator itend = cend(m_Attributes);
 
     it->second.m_ArrayData.reserve(m_Attributes.size());
     for (; it != itend; ++it) {
@@ -307,7 +307,7 @@ void glimBatchData::GenerateSignature(void) {
 unsigned int glimBatchData::getVertexDataSize(void) const {
     unsigned int uiVertexDataSize = sizeof(float) * 3;
 
-    Divide::hashMap<unsigned int, GlimArrayData>::const_iterator itend = m_Attributes.end();
+    const Divide::hashMap<unsigned int, GlimArrayData>::const_iterator itend = m_Attributes.end();
 
     for (Divide::hashMap<unsigned int, GlimArrayData>::const_iterator it = m_Attributes.begin(); it != itend; ++it) {
         switch (it->second.m_DataType) {
@@ -349,7 +349,7 @@ unsigned int glimBatchData::getVertexDataSize(void) const {
 
 #ifdef AE_RENDERAPI_OPENGL
 
-void glimBatchData::UnbindOGL(void) {
+void glimBatchData::UnbindOGL(void) noexcept {
     if (!m_bUploadedToGPU) 
         return;
 
@@ -364,12 +364,12 @@ void glimBatchData::BindOGL(Divide::I64 uiCurrentProgram) {
     Divide::GL_API::getStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, m_uiVertexBufferID);
     Divide::GL_API::getStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    Divide::hashMap<unsigned int, GlimArrayData>::iterator itend = m_Attributes.end();
+    const Divide::hashMap<unsigned int, GlimArrayData>::iterator itend = m_Attributes.end();
 
     for (Divide::hashMap<unsigned int, GlimArrayData>::iterator it = m_Attributes.begin(); it != itend; ++it) {
         int iAttributeArray = 0;
         GlimArrayData::AttributeLocationMap& attribs = it->second.m_programAttribLocation;
-        GlimArrayData::AttributeLocationMap::const_iterator it2 = attribs.find(uiCurrentProgram);
+        const GlimArrayData::AttributeLocationMap::const_iterator it2 = attribs.find(uiCurrentProgram);
 
         if (it2 != std::cend(attribs)) {
             iAttributeArray = it2->second;
@@ -494,7 +494,7 @@ void glimBatchData::UploadOGL() {
     // space reservation pre-pass;
     size_t bufferSize = m_PositionData.size();
     Divide::hashMap<unsigned int, GlimArrayData>::iterator it = begin(m_Attributes);
-    Divide::hashMap<unsigned int, GlimArrayData>::iterator itend = end(m_Attributes);
+    const Divide::hashMap<unsigned int, GlimArrayData>::iterator itend = end(m_Attributes);
     for (; it != itend; ++it) {
         bufferSize += it->second.m_ArrayData.size();
     }

@@ -75,13 +75,12 @@ namespace NS_GLIM
 #endif
 
     //! Assert Macro used internally.
-    inline void GLIM_CHECK (bool bCondition, const char* szErrorMsg)
+    inline void GLIM_CHECK (bool bCondition, [[maybe_unused]] const char* szErrorMsg) noexcept
     {
         if (bCondition)
             return;
 
         assert(false && szErrorMsg);
-        (void)szErrorMsg;
     }
 
 }

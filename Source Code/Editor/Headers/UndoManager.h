@@ -53,7 +53,7 @@ namespace Divide {
         T _newVal = {};
         DELEGATE_STD<void, const T&> _dataSetter = {};
 
-        void swapValues() override {
+        void swapValues() noexcept override {
             std::swap(_oldVal, _newVal);
         }
 
@@ -80,7 +80,7 @@ namespace Divide {
         [[nodiscard]] size_t UndoStackSize() const noexcept { return _undoStack.size(); }
         [[nodiscard]] size_t RedoStackSize() const noexcept { return _redoStack.size(); }
 
-        [[nodiscard]] const string& lasActionName() const;
+        [[nodiscard]] const string& lasActionName() const noexcept;
 
         template<typename T>
         void registerUndoEntry(const UndoEntry<T>& entry) {

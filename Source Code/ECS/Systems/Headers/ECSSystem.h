@@ -76,8 +76,8 @@ namespace Divide {
         void OnFrameStart() override;
         void OnFrameEnd() override;
 
-        [[nodiscard]] ECS::ISystemSerializer& GetSerializer() override { return _serializer; };
-        [[nodiscard]] const ECS::ISystemSerializer& GetSerializer() const override { return _serializer; };
+        [[nodiscard]] ECS::ISystemSerializer& GetSerializer() noexcept override { return _serializer; };
+        [[nodiscard]] const ECS::ISystemSerializer& GetSerializer() const noexcept override { return _serializer; };
 
     protected:
         ECS::ECSEngine& _engine;
