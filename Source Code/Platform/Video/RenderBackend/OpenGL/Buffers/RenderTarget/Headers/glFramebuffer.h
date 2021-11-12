@@ -118,18 +118,17 @@ protected:
    protected:
     RTDrawDescriptor _previousPolicy;
     std::array<GLenum, MAX_RT_COLOUR_ATTACHMENTS> _activeColourBuffers;
-    GLenum _activeReadBuffer;
+    GLenum _activeReadBuffer = GL_NONE;
 
-    hashMap<GLenum, BindingState> _attachmentState;
-    hashMap<GLenum, eastl::set<U16, eastl::greater<U16>>> _attachmentResolvedLayers;
+    eastl::fixed_vector<BindingState, 8 + 2, true, eastl::dvd_allocator> _attachmentState;
 
     Rect<I32> _prevViewport;
     Str128 _debugMessage;
-    GLuint _framebufferHandle;
+    GLuint _framebufferHandle = 0u;
 
-    bool _isLayeredDepth;
-    bool _statusCheckQueued;
-    bool _activeDepthBuffer;
+    bool _isLayeredDepth = false;
+    bool _statusCheckQueued = false;
+    bool _activeDepthBuffer = false;
     static bool _zWriteEnabled;
 };
 

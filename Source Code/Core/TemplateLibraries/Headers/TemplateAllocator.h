@@ -70,7 +70,6 @@ namespace eastl {
         }
 
         void deallocate([[maybe_unused]] void* p, size_t n) noexcept {
-            //delete[](char*)p;
             xfree(p);
         }
 

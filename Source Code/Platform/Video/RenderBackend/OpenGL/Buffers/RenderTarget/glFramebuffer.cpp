@@ -19,6 +19,24 @@ namespace {
         return entry._inputLayer != INVALID_DEPTH_LAYER &&
                entry._outputLayer != INVALID_DEPTH_LAYER;
     }
+    FORCE_INLINE U32 ColorAttachmentToIndex(const GLenum colorAttachmentEnum) noexcept {
+        switch (colorAttachmentEnum) {
+            case GL_DEPTH_ATTACHMENT  : return GL_API::s_maxFBOAttachments + 1u;
+            case GL_STENCIL_ATTACHMENT: return GL_API::s_maxFBOAttachments + 2u;
+            default: { //GL_COLOR_ATTACHMENTn
+                constexpr U32 offset = to_U32(GL_COLOR_ATTACHMENT0);
+                const U32 enumValue = to_U32(colorAttachmentEnum);
+                if (enumValue >= offset) {
+                    const U32 diff = enumValue - offset;
+                    assert(diff < GL_API::s_maxFBOAttachments);
+                    return diff;
+                }
+            } break;
+        };
+
+        DIVIDE_UNEXPECTED_CALL();
+        return U32_MAX;
+    }
 };
 
 bool operator==(const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs) noexcept {
@@ -41,13 +59,8 @@ glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& d
     : RenderTarget(context, descriptor),
       glObject(glObjectType::TYPE_FRAMEBUFFER, context),
       _activeColourBuffers{},
-      _activeReadBuffer(GL_NONE),
       _prevViewport(-1),
-      _debugMessage("Render Target: [ " + name() + " ]"),
-      _framebufferHandle(0),
-      _isLayeredDepth(false),
-      _statusCheckQueued(false),
-      _activeDepthBuffer(false)
+      _debugMessage("Render Target: [ " + name() + " ]")
 {
     glCreateFramebuffers(1, &_framebufferHandle);
     assert(_framebufferHandle != 0 && "glFramebuffer error: Tried to bind an invalid framebuffer!");
@@ -65,6 +78,7 @@ glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& d
     // Everything disabled so that the initial "begin" will override this
     _previousPolicy.drawMask().disableAll();
     _activeColourBuffers.fill(GL_NONE);
+    _attachmentState.resize(GL_API::s_maxFBOAttachments + 2u); //colours + depth + stencil
 }
 
 glFramebuffer::~glFramebuffer()
@@ -425,7 +439,9 @@ void glFramebuffer::toggleAttachments() {
 void glFramebuffer::clear(const RTClearDescriptor& descriptor) {
     OPTICK_EVENT();
 
+    const bool validationEnabled = enableAttachmentChangeValidation();
     if (descriptor.resetToDefault()) {
+        enableAttachmentChangeValidation(false);
         toggleAttachments();
     }
 
@@ -433,6 +449,7 @@ void glFramebuffer::clear(const RTClearDescriptor& descriptor) {
 
     if (descriptor.resetToDefault()) {
         prepareBuffers({}, colourAttachments);
+        enableAttachmentChangeValidation(validationEnabled);
     }
 
     /// Clear the draw buffers
@@ -470,7 +487,10 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy) {
     }
 
     if (drawPolicy.setDefaultState()) {
+        const bool validationEnabled = enableAttachmentChangeValidation();
+        enableAttachmentChangeValidation(false);
         setDefaultState(drawPolicy);
+        enableAttachmentChangeValidation(validationEnabled);
     }
 
     if (_descriptor._msaaSamples > 0u && drawPolicy.alphaToCoverage()) {
@@ -683,20 +703,15 @@ bool glFramebuffer::hasColour() const noexcept {
 }
 
 void glFramebuffer::setAttachmentState(const GLenum binding, const BindingState state) {
-    _attachmentState[binding] = state;
+    _attachmentState[ColorAttachmentToIndex(binding)] = state;
 }
 
 glFramebuffer::BindingState glFramebuffer::getAttachmentState(const GLenum binding) const {
-    const hashMap<GLenum, BindingState>::const_iterator it = _attachmentState.find(binding);
-    if (it != std::cend(_attachmentState)) {
-        return it->second;
-    }
-
-    return { AttachmentState::COUNT, 0, 0 };
+    return _attachmentState[ColorAttachmentToIndex(binding)];
 }
 
 void glFramebuffer::queueCheckStatus() noexcept {
-    _statusCheckQueued = true;
+    _statusCheckQueued = enableAttachmentChangeValidation();
 }
 
 bool glFramebuffer::checkStatus() {

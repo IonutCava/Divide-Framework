@@ -1203,6 +1203,8 @@ void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAf
 
 void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     OPTICK_EVENT();
+    //ToDo: Should we fence only at the end of the frame instead of the end of the buffer and only flush required 
+    //ranges mid-frame if we issue other writes during the same frame? -Ionut
     const U32 frameIndex = _context.frameCount();
     for (const BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
         if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {

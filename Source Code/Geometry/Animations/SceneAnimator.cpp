@@ -13,14 +13,14 @@ namespace Divide {
 /// Calculates the global transformation matrix for the given internal node
 void CalculateBoneToWorldTransform(const eastl::shared_ptr<Bone>& pInternalNode) noexcept {
     pInternalNode->_globalTransform = pInternalNode->_localTransform;
-    auto& parent = pInternalNode->_parent;
+    Bone* parent = pInternalNode->_parent.get();
     // This will climb the nodes up along through the parents concatenating all
     // the matrices to get the Object to World transform,
     // or in this case, the Bone To World transform
     while (parent) {
         pInternalNode->_globalTransform *= parent->_localTransform;
         // get the parent of the bone we are working on
-        parent = parent->_parent;
+        parent = parent->_parent.get();
     }
 }
 
@@ -133,7 +133,7 @@ I32 SceneAnimator::boneIndex(const string& bName) const {
 /// Renders the current skeleton pose at time index dt
 const vector<Line>& SceneAnimator::skeletonLines(const I32 animationIndex, const D64 dt) {
     const I32 frameIndex = std::max(_animations[animationIndex]->frameIndexAt(dt)._curr - 1, 0);
-    I32& vecIndex = _skeletonLines.at(animationIndex).at(frameIndex);
+    I32& vecIndex = _skeletonLines[animationIndex][frameIndex];
 
     if (vecIndex == -1) {
         vecIndex = to_I32(_skeletonLinesContainer.size());
@@ -141,7 +141,7 @@ const vector<Line>& SceneAnimator::skeletonLines(const I32 animationIndex, const
     }
 
     // create all the needed points
-    vector<Line>& lines = _skeletonLinesContainer.at(vecIndex);
+    vector<Line>& lines = _skeletonLinesContainer[vecIndex];
     if (lines.empty()) {
         lines.reserve(boneCount());
         // Construct skeleton

@@ -66,13 +66,10 @@ class Plane {
         NEGATIVE_SIDE
     };
 
-    Plane() noexcept : Plane(WORLD_Y_AXIS, static_cast<T>(0))
-    {
-    }
+    Plane() noexcept = default;
 
     Plane(const Plane& rhs) noexcept
-        : _normal(rhs._normal),
-          _distance(rhs._distance)
+        : _normal(rhs._normal), _distance(rhs._distance)
     {
     }
 
@@ -83,11 +80,13 @@ class Plane {
     }
 
     /// distance is stored as the negative of the specified value
-    Plane(T a, T b, T c, T distance) noexcept : Plane(vec3<T>(a, b, c), distance)
+    Plane(const T a, const T b, const T c, const T distance) noexcept 
+        : _normal(a, b, c), _distance(distance)
     {
     }
 
-    explicit Plane(const vec4<T>& plane) : Plane(plane.xyz(), plane.w)
+    Plane(const vec4<T>& plane) noexcept
+        : _normal(plane.xyz()), _distance(plane.w)
     {
     }
 
@@ -135,10 +134,9 @@ class Plane {
         set(vec3<T>(a, b, c), distance);
     }
 
-    void redefine(const vec3<T>& point0, const vec3<T>& point1,
-                  const vec3<T>& point2) {
-        vec3<T> edge1 = point1 - point0;
-        vec3<T> edge2 = point2 - point0;
+    void redefine(const vec3<T>& point0, const vec3<T>& point1, const vec3<T>& point2) {
+        const vec3<T> edge1 = point1 - point0;
+        const vec3<T> edge2 = point2 - point0;
         _normal = edge1.cross(edge2);
         _normal.normalize();
         _distance = _normal.dot(point0);
@@ -179,7 +177,7 @@ class Plane {
               T _distance;
           };
 
-          vec4<T> _equation;
+          vec4<T> _equation = {0.f, 0.f, 0.f, 0.f};
      };
 };
 

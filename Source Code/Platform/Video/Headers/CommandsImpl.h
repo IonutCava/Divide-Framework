@@ -317,7 +317,7 @@ DEFINE_COMMAND_BEGIN(SetClippingStateCommand, CommandType::SET_CLIPING_STATE)
 DEFINE_COMMAND_END(SetClippingStateCommand);
 
 DEFINE_COMMAND_BEGIN(ExternalCommand, CommandType::EXTERNAL);
-    DELEGATE_STD<void> _cbk;
+    DELEGATE<void> _cbk;
 DEFINE_COMMAND_END(ExternalCommand);
 
 }; //namespace GFX

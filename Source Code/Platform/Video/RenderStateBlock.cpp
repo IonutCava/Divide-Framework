@@ -256,16 +256,15 @@ bool RenderStateBlock::cullEnabled() const noexcept {
 }
 
 size_t RenderStateBlock::getHash() const {
-    const size_t previousCache = Hashable::getHash();
-
     if (!_dirty) {
-        return previousCache;
+        return Hashable::getHash();
     }
 
     // Avoid small float rounding errors offsetting the general hash value
     const U32 zBias = to_U32(std::floor(_zBias * 1000.0f + 0.5f));
     const U32 zUnits = to_U32(std::floor(_zUnits * 1000.0f + 0.5f));
 
+    const size_t previousCache = Hashable::getHash();
     _hash = 59;
     Util::Hash_combine(_hash, _colourWrite.i);
     Util::Hash_combine(_hash, to_U32(_cullMode));

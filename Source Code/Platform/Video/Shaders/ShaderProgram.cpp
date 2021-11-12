@@ -220,7 +220,7 @@ void ShaderProgram::RegisterShaderProgram(ShaderProgram* shaderProgram) {
 /// Unloading/Deleting a program will unregister it from the manager
 bool ShaderProgram::UnregisterShaderProgram(size_t shaderHash) {
 
-    ScopedLock<SharedMutex> lock(s_programLock);
+    ScopedLock<SharedMutex> w_lock(s_programLock);
     s_lastRequestedShaderProgram = { -1, {} };
 
     if (s_shaderPrograms.empty()) {

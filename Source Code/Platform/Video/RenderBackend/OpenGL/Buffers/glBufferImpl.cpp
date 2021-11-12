@@ -26,8 +26,6 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
            (_params._bufferParams._initialData.second > 0 && _params._bufferParams._initialData.first != nullptr) ||
             _params._bufferParams._updateUsage == BufferUpdateUsage::GPU_R_GPU_W);
 
-    std::atomic_init(&_flushQueueSize, 0);
-
     // We can't use persistent mapping with ONCE usage because we use block allocator for memory and it may have been mapped using write bits and we wouldn't know.
     // Since we don't need to keep writing to the buffer, we can just use a regular glBufferData call once and be done with it.
     const bool usePersistentMapping = _params._bufferParams._usePersistentMapping &&
@@ -121,17 +119,25 @@ bool glBufferImpl::bindByteRange(const GLuint bindIndex, const size_t offsetInBy
     assert(_memoryBlock._bufferHandle != 0 && "BufferImpl error: Tried to bind an uninitialized UBO");
 
     if (_params._explicitFlush) {
-        size_t minOffset = std::numeric_limits<size_t>::max();
-        size_t maxRange = 0u;
-
-        BufferMapRange range;
-        while (_flushQueue.try_dequeue(range)) {
-            minOffset = std::min(minOffset, range._offset);
-            maxRange = std::max(maxRange, range._range);
-            _flushQueueSize.fetch_sub(1);
+        bool queueEmpty = true;
+        {
+            SharedLock<SharedMutex> r_lock(_flushQueueLock);
+            queueEmpty = _flushQueue.empty();
         }
-        if (maxRange > 0u) {
-            glFlushMappedNamedBufferRange(_memoryBlock._bufferHandle, minOffset, maxRange);
+        if (!queueEmpty) {
+            ScopedLock<SharedMutex> w_lock(_flushQueueLock);
+            size_t minOffset = std::numeric_limits<size_t>::max();
+            size_t maxRange = 0u;
+
+            while (!_flushQueue.empty()) {
+                const BufferMapRange& range = _flushQueue.front();
+                minOffset = std::min(minOffset, range._offset);
+                maxRange = std::max(maxRange, range._range);
+                _flushQueue.pop_front();
+            }
+            if (maxRange > 0u) {
+                glFlushMappedNamedBufferRange(_memoryBlock._bufferHandle, minOffset, maxRange);
+            }
         }
     }
 
@@ -147,6 +153,10 @@ bool glBufferImpl::bindByteRange(const GLuint bindIndex, const size_t offsetInBy
     }
 
     return bound;
+}
+
+[[nodiscard]] inline bool Overlaps(const BufferMapRange& lhs, const BufferMapRange& rhs) noexcept {
+    return lhs._offset < (rhs._offset + rhs._range) && rhs._offset < (lhs._offset + lhs._range);
 }
 
 void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data, const bool zeroMem) {
@@ -172,11 +182,23 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
         }
 
         if (_params._explicitFlush) {
-            if (_flushQueue.enqueue(BufferMapRange{offsetInBytes, rangeInBytes})) {
-                const I32 size = _flushQueueSize.fetch_add(1);
-                if (size >= g_maxFlushQueueLength) {
-                    BufferMapRange temp;
-                    _flushQueue.try_dequeue(temp);
+            ScopedLock<SharedMutex> w_lock(_flushQueueLock);
+            const BufferMapRange newRange{ offsetInBytes, rangeInBytes };
+
+            bool matched = false;
+            for (BufferMapRange& crtRange : _flushQueue) {
+                if (Overlaps(crtRange, newRange)) {
+                    crtRange._offset = std::min(crtRange._offset, newRange._offset);
+                    crtRange._range = std::max(crtRange._range, newRange._range);
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                _flushQueue.push_back(newRange);
+                if (_flushQueue.size() >= g_maxFlushQueueLength) {
+                    // We completely abandon the first range and pray that it was already signaled
+                    _flushQueue.pop_front();
                 }
             }
         }

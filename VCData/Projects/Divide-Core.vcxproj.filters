@@ -373,5 +373,8 @@
     <ClInclude Include="../../Source Code/Core\TemplateLibraries\Headers\PolyContainer.h">
       <Filter>TemplateLibraries\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Core\Headers\ImGUICustomConfig.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

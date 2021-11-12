@@ -200,6 +200,8 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
 
     [[nodiscard]] const Str64& name() const noexcept;
 
+    PROPERTY_RW(bool, enableAttachmentChangeValidation, true);
+
    protected:
     U8 _colourAttachmentCount = 0;
     RenderTargetDescriptor _descriptor;

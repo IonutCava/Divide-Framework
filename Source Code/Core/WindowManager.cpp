@@ -50,7 +50,7 @@ namespace {
 
 } // namespace 
 
-hashMap<CursorStyle, SDL_Cursor*> WindowManager::s_cursors;
+std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> WindowManager::s_cursors = create_array<to_base(CursorStyle::COUNT), SDL_Cursor*>(nullptr);
 
 WindowManager::WindowManager()  noexcept
 {
@@ -191,8 +191,7 @@ ErrorCode WindowManager::init(PlatformContext& context,
     }
 
     for (U8 i = 0; i < to_U8(CursorStyle::COUNT); ++i) {
-        const auto style = static_cast<CursorStyle>(i);
-        s_cursors[style] = SDL_CreateSystemCursor(CursorToSDL(style));
+        s_cursors[i] = SDL_CreateSystemCursor(CursorToSDL(static_cast<CursorStyle>(i)));
     }
 
     return err;
@@ -210,10 +209,10 @@ void WindowManager::close() {
     }
     MemoryManager::DELETE_CONTAINER(_windows);
 
-    for (const auto& it : s_cursors) {
-        SDL_FreeCursor(it.second);
+    for (SDL_Cursor* it : s_cursors) {
+        SDL_FreeCursor(it);
     }
-    s_cursors.clear();
+    s_cursors.fill(nullptr);
     SDL_QuitSubSystem(SDL_INIT_VIDEO);
 }
 
@@ -500,7 +499,7 @@ bool WindowManager::SetGlobalCursorPosition(I32 x, I32 y) noexcept {
 }
 
 void WindowManager::SetCursorStyle(const CursorStyle style) {
-    SDL_SetCursor(s_cursors[style]);
+    SDL_SetCursor(s_cursors[to_base(style)]);
 }
 
 void WindowManager::ToggleRelativeMouseMode(const bool state) noexcept {

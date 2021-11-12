@@ -37,7 +37,8 @@ void log_delete(void* p) {
 };  // namespace MemoryManager
 
 namespace Assert {
-    bool DIVIDE_ASSERT_FUNC(const bool expression, [[maybe_unused]] const char* file, [[maybe_unused]] const I32 line, [[maybe_unused]] const char* failMessage) noexcept {
+
+    bool DIVIDE_ASSERT_FUNC(const bool expression, [[maybe_unused]] const char* file, [[maybe_unused]] const int line, [[maybe_unused]] const char* failMessage) noexcept {
         if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
             if (!expression) {
                 const char* msgOut = FormatText("[ %s ] [ %s ] AT [ %d ]", failMessage, file, line);

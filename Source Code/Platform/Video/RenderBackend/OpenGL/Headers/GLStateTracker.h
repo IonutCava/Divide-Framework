@@ -137,9 +137,9 @@ namespace Divide {
       public:
           struct BindConfigEntry
           {
-              U32 _handle = 0;
-              size_t _offset = 0;
-              size_t _range = 0;
+              U32 _handle = 0u;
+              size_t _offset = 0u;
+              size_t _range = 0u;
           };
 
         RenderStateBlock _activeState{};
@@ -156,12 +156,7 @@ namespace Divide {
                                   GLUtil::k_invalidObjectID,
                                   GLUtil::k_invalidObjectID };
         /// VB, IB, SB, TB, UB, PUB, DIB
-        GLuint _activeBufferID[6] = { GLUtil::k_invalidObjectID,
-                                      GLUtil::k_invalidObjectID,
-                                      GLUtil::k_invalidObjectID,
-                                      GLUtil::k_invalidObjectID,
-                                      GLUtil::k_invalidObjectID,
-                                      GLUtil::k_invalidObjectID };
+        std::array<GLuint, 13> _activeBufferID = create_array<13, GLuint>(GLUtil::k_invalidObjectID);
         hashMap<GLuint, GLuint> _activeVAOIB;
 
         GLint  _activePackUnpackAlignments[2] = { 1 , 1 };
@@ -179,8 +174,9 @@ namespace Divide {
                                                       BlendOperation::ADD };
         GLboolean _blendEnabledGlobal = GL_FALSE;
 
-        using BindConfig = hashMap<U32 /*bindIndex*/, BindConfigEntry>;
-        using PerBufferConfig = hashMap<GLenum /*target*/, BindConfig>;
+        // 32 buffer bindings for now
+        using BindConfig = std::array<BindConfigEntry, 32>;
+        using PerBufferConfig = std::array<BindConfig, 13>;
         PerBufferConfig g_currentBindConfig;
 
         vector<BlendingProperties> _blendProperties;

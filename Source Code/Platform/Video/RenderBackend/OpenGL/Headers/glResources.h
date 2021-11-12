@@ -92,8 +92,8 @@ public:
     using BufferBindingParams = std::tuple<GLuint, size_t, size_t>;
 
 private:
-    using VAOBufferData = vector<BufferBindingParams>;
-    using VAODivisors = vector<GLuint>;
+    using VAOBufferData = vector_fast<BufferBindingParams>;
+    using VAODivisors = vector_fast<GLuint>;
     using VAOData = std::pair<VAOBufferData, VAODivisors>;
 
 public:

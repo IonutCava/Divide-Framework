@@ -188,10 +188,10 @@ protected:
     static GLuint s_maxTextureUnits;
     /// Number of available attribute binding indices
     static GLuint s_maxAttribBindings;
-    /// Max number of texture attachments to an FBO
-    static GLuint s_maxFBOAttachments;
 
 public:
+    /// Max number of texture attachments to an FBO
+    static GLuint s_maxFBOAttachments;
     /// Shader block data
     static GLuint s_UBOffsetAlignment;
     static GLuint s_UBMaxSize;

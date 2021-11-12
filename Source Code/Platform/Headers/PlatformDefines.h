@@ -707,7 +707,7 @@ namespace Assert {
     }
 
     /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
-    extern bool DIVIDE_ASSERT_FUNC(bool expression, const char* file, I32 line, const char* failMessage = "UNEXPECTED CALL") noexcept;
+    bool DIVIDE_ASSERT_FUNC(bool expression, const char* file, int line, const char* failMessage) noexcept;
 }
 
 #define DIVIDE_ASSERT_2_ARGS(expression, msg) Assert::DIVIDE_ASSERT_FUNC(expression, __FILE__, __LINE__, msg)

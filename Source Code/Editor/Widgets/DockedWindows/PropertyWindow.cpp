@@ -18,8 +18,6 @@
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 #include "ECS/Components/Headers/EnvironmentProbeComponent.h"
 
-#undef IMGUI_DEFINE_MATH_OPERATORS
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
@@ -566,12 +564,8 @@ namespace Divide {
     }
     
     const Selections& PropertyWindow::selections() const {
-        static Selections selections;
-
         const Scene& activeScene = context().kernel().sceneManager()->getActiveScene();
-
-        selections = activeScene.getCurrentSelection();
-        return selections;
+        return activeScene.getCurrentSelection();
     }
     
     SceneGraphNode* PropertyWindow::node(const I64 guid) const {

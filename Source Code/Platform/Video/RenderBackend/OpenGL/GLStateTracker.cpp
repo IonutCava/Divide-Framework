@@ -9,7 +9,8 @@
 namespace Divide {
     
 namespace {
-    GLint GetBufferTargetIndex(const GLenum target) noexcept {
+    // GL_NONE returns the count
+    FORCE_INLINE GLint GetBufferTargetIndex(const GLenum target) noexcept {
         // Select the appropriate index in the array based on the buffer target
         switch (target) {
             case GL_TEXTURE_BUFFER: return 0;
@@ -18,7 +19,14 @@ namespace {
             case GL_PIXEL_UNPACK_BUFFER: return 3;
             case GL_DRAW_INDIRECT_BUFFER: return 4;
             case GL_ARRAY_BUFFER: return 5;
-            //case GL_ELEMENT_ARRAY_BUFFER: return -1;
+            case GL_PARAMETER_BUFFER: return 6;
+            case GL_ELEMENT_ARRAY_BUFFER: return 7;
+            case GL_PIXEL_PACK_BUFFER: return 8;
+            case GL_TRANSFORM_FEEDBACK_BUFFER: return 9;
+            case GL_COPY_READ_BUFFER: return 10;
+            case GL_QUERY_BUFFER: return 11;
+            case GL_ATOMIC_COUNTER_BUFFER: return 12;
+            case GL_NONE: return 13;
             default: break;
         };
 
@@ -416,13 +424,17 @@ bool GLStateTracker::setActiveBuffer(const GLenum target, const GLuint bufferHan
 }
 
 bool GLStateTracker::setActiveBufferIndexRange(const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes, GLuint& previousID) {
-    BindConfigEntry& crtConfig = g_currentBindConfig[target][bindIndex];
+    BindConfig& crtConfig = g_currentBindConfig[GetBufferTargetIndex(target)];
+    DIVIDE_ASSERT(bindIndex < crtConfig.size());
 
-    if (crtConfig._handle != bufferHandle ||
-        crtConfig._offset != offsetInBytes ||
-        crtConfig._range != rangeInBytes)         {
-        previousID = crtConfig._handle;
-        crtConfig = { bufferHandle, offsetInBytes, rangeInBytes };
+    BindConfigEntry& entry = crtConfig[bindIndex];
+
+    if (entry._handle != bufferHandle ||
+        entry._offset != offsetInBytes ||
+        entry._range != rangeInBytes)
+    {
+        previousID = entry._handle;
+        entry = { bufferHandle, offsetInBytes, rangeInBytes };
         if (offsetInBytes == 0u && rangeInBytes == 0u) {
             glBindBufferBase(target, bindIndex, bufferHandle);
         } else {
@@ -693,18 +705,10 @@ GLuint GLStateTracker::getBoundBuffer(const GLenum target, const GLuint bindInde
 }
 
 GLuint GLStateTracker::getBoundBuffer(const GLenum target, const GLuint bindIndex, size_t& offsetOut, size_t& rangeOut) const {
-    const auto& it = g_currentBindConfig.find(target);
-    if (it != end(g_currentBindConfig)) {
-        const auto& it2 = it->second.find(bindIndex);
-        if (it2 != end(it->second)) {
-            const BindConfigEntry& crtConfig = it2->second;
-            offsetOut = crtConfig._offset;
-            rangeOut = crtConfig._range;
-            return crtConfig._handle;
-        }
-    }
-
-    return 0u;
+    const BindConfigEntry& entry = g_currentBindConfig[GetBufferTargetIndex(target)][bindIndex];
+    offsetOut = entry._offset;
+    rangeOut = entry._range;
+    return entry._handle;
 }
 
 void GLStateTracker::getActiveViewport(GLint* const vp) const noexcept {

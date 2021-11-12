@@ -169,7 +169,7 @@ protected:
     vector<MonitorData> _monitors;
     vector<DisplayWindow*> _windows;
 
-    static hashMap<CursorStyle, SDL_Cursor*> s_cursors;
+    static std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> s_cursors;
 };
 } //namespace Divide
 #endif //_CORE_WINDOW_MANAGER_H_

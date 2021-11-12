@@ -158,12 +158,12 @@ namespace {
 
         //Console::errorfn("Writing to buffer [%s - %d] frame end", executorBuffer._gpuBuffer->name().c_str(), executorBuffer._bufferIndex);
         const BufferUpdateRange rangeWrittenThisFrame = executorBuffer._bufferUpdateRangeHistory.back();
-        // At the end of the frame, bump our history queue by one position and prepare the tail for a new write
-        std::rotate(begin(executorBuffer._bufferUpdateRangeHistory),
-                    begin(executorBuffer._bufferUpdateRangeHistory) + 1,
-                    end(executorBuffer._bufferUpdateRangeHistory));
 
-        executorBuffer._bufferUpdateRangeHistory.back().reset();
+        // At the end of the frame, bump our history queue by one position and prepare the tail for a new write
+        for (U8 i = 0u; i < RenderPass::DataBufferRingSize - 1; ++i) {
+            executorBuffer._bufferUpdateRangeHistory[i] = executorBuffer._bufferUpdateRangeHistory[i + 1];
+        }
+        executorBuffer._bufferUpdateRangeHistory[RenderPass::DataBufferRingSize - 1].reset();
 
         // We can gather all of our history (once we evicted the oldest entry) into our "previous frame written range" entry
         executorBuffer._bufferUpdateRangePrev.reset();

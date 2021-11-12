@@ -79,9 +79,10 @@ public:
 protected:
     GFXDevice& _context;
 
-    std::atomic_int _flushQueueSize;
     eastl::unique_ptr<glBufferLockManager> _lockManager = nullptr;
-    moodycamel::BlockingConcurrentQueue<BufferMapRange> _flushQueue;
+
+    SharedMutex _flushQueueLock;
+    eastl::deque<BufferMapRange> _flushQueue;
 };
 }; //namespace Divide
 

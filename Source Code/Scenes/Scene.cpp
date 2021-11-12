@@ -69,6 +69,9 @@ Scene::Scene(PlatformContext& context, ResourceCache* cache, SceneManager& paren
       _resourceCache(cache)
 {
     _loadingTasks.store(0);
+    _flashLight.fill(nullptr);
+    _currentHoverTarget.fill(-1);
+    _cameraUpdateListeners.fill(0u);
 
     _state = eastl::make_unique<SceneState>(*this);
     _input = eastl::make_unique<SceneInput>(*this);
@@ -664,7 +667,7 @@ void Scene::toggleFlashlight(const PlayerIndex idx) {
         spotLight->castsShadows(true);
         spotLight->setDiffuseColour(DefaultColours::WHITE.rgb);
 
-        insert(_flashLight, idx, flashLight);
+        _flashLight[idx] = flashLight;
 
         _cameraUpdateListeners[idx] = playerCamera(idx)->addUpdateListener([this, idx](const Camera& cam) {
             if (idx < _scenePlayers.size() && idx < _flashLight.size() && _flashLight[idx]) {
@@ -1119,7 +1122,7 @@ bool Scene::unload() {
 
     /// Unload scenegraph
     _xmlSceneGraphRootNode = {};
-    _flashLight.clear();
+    _flashLight.fill(nullptr);
     _sceneGraph->unload();
 
     loadComplete(false);
@@ -1143,7 +1146,7 @@ void Scene::postLoadMainThread() {
 
 void Scene::rebuildShaders(const bool selectionOnly) const {
     if (selectionOnly) {
-        for (auto& [playerIdx, selections] : _currentSelection) {
+        for (const Selections& selections : _currentSelection) {
             for (U8 i = 0u; i < selections._selectionCount; ++i) {
                 const SceneGraphNode* node = sceneGraph()->findNode(selections._selections[i]);
                 if (node != nullptr) {
@@ -1253,12 +1256,9 @@ void Scene::onPlayerRemove(const Player_ptr& player) {
     input()->onPlayerRemove(idx);
     state()->onPlayerRemove(idx);
     _cameraUpdateListeners[idx] = 0u;
-    if (_flashLight.size() > idx) {
-        const SceneGraphNode* flashLight = _flashLight[idx];
-        if (flashLight) {
-            _sceneGraph->getRoot()->removeChildNode(flashLight);
-            _flashLight[idx] = nullptr;
-        }
+    if (_flashLight[idx] != nullptr) {
+        _sceneGraph->getRoot()->removeChildNode(_flashLight[idx]);
+        _flashLight[idx] = nullptr;
     }
     _sceneGraph->getRoot()->removeChildNode(player->getBoundNode());
 
@@ -1652,13 +1652,13 @@ void Scene::clearHoverTarget(const PlayerIndex idx) {
 
 void Scene::onNodeDestroy(SceneGraphNode* node) {
     const I64 guid = node->getGUID();
-    for (auto& iter : _currentHoverTarget) {
-        if (iter.second == guid) {
-            iter.second = -1;
+    for (I64& target : _currentHoverTarget) {
+        if (target == guid) {
+            target = -1;
         }
     }
 
-    for (auto& [playerIdx, playerSelections] : _currentSelection) {
+    for (Selections& playerSelections : _currentSelection) {
         for (I8 i = playerSelections._selectionCount; i > 0; --i) {
             const I64 crtGUID = playerSelections._selections[i - 1];
             if (crtGUID == guid) {
@@ -1697,13 +1697,8 @@ void Scene::setSelected(const PlayerIndex idx, const vector<SceneGraphNode*>& SG
     }
 }
 
-Selections Scene::getCurrentSelection(const PlayerIndex index) const {
-    const auto it = _currentSelection.find(index);
-    if (it != cend(_currentSelection)) {
-        return it->second;
-    }
-
-    return {};
+const Selections& Scene::getCurrentSelection(const PlayerIndex index) const {
+    return _currentSelection[index];
 }
 
 bool Scene::findSelection(const PlayerIndex idx, const bool clearOld) {
@@ -1833,7 +1828,7 @@ void Scene::updateSelectionData(PlayerIndex idx, DragSelectData& data, bool rema
 void Scene::endDragSelection(const PlayerIndex idx, const bool clearSelection) {
     constexpr F32 DRAG_SELECTION_THRESHOLD_PX_SQ = 9.f;
 
-    auto& data = _dragSelectData[idx];
+    DragSelectData& data = _dragSelectData[idx];
 
     _linesPrimitive->clearBatch();
     _parent.wantsMouse(false);

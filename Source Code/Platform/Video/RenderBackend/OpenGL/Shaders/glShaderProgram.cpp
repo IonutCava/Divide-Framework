@@ -392,7 +392,7 @@ void glShaderProgram::DumpShaderBinaryCacheToDisk(const BinaryDumpEntry& entry) 
 void glShaderProgram::Idle(PlatformContext& platformContext) {
     OPTICK_EVENT();
 
-    DIVIDE_ASSERT(Runtime::isMainThread());
+    assert(Runtime::isMainThread());
 
     // One validation per Idle call
     ProcessValidationQueue();
@@ -400,8 +400,7 @@ void glShaderProgram::Idle(PlatformContext& platformContext) {
     // Schedule all of the shader "dump to text file" operations
     static TextDumpEntry textOutputCache;
     while(g_sDumpToFileQueue.try_dequeue(textOutputCache)) {
-        DIVIDE_ASSERT(!textOutputCache._name.empty() &&
-            !textOutputCache._sourceCode.empty());
+        DIVIDE_ASSERT(!textOutputCache._name.empty() && !textOutputCache._sourceCode.empty());
         Start(*CreateTask([cache = MOV(textOutputCache)](const Task &) { DumpShaderTextCacheToDisk(cache); }), platformContext.taskPool(TaskPoolType::LOW_PRIORITY));
     }
 

@@ -120,6 +120,7 @@
     <ClInclude Include="../../Source Code/Utility\Headers\XMLParser.h" />
     <ClInclude Include="../../Source Code/Core\Math\Headers\Dimension.h" />
     <ClInclude Include="../../Source Code/Core\TemplateLibraries\Headers\PolyContainer.h" />
+    <ClInclude Include="..\..\Source Code\Core\Headers\ImGUICustomConfig.h" />
     <ClInclude Include="..\..\Source Code\Core\Headers\ObjectPool.h" />
     <ClInclude Include="..\..\Source Code\Core\Math\BoundingVolumes\Headers\OBB.h" />
     <ClInclude Include="..\..\Source Code\Core\TemplateLibraries\Headers\CircularBuffer.h" />

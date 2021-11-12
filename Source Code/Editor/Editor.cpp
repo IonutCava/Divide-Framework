@@ -67,6 +67,28 @@ namespace {
     hashMap<I64, TextureCallbackData> g_modalTextureData;
 }
 
+namespace ImGuiCustom {
+    struct ImGuiAllocatorUserData {
+        PlatformContext* _context = nullptr;
+    };
+
+    FORCE_INLINE void* MallocWrapper(const size_t size, void* user_data) noexcept {
+        [[maybe_unused]] PlatformContext* context = static_cast<PlatformContext*>(user_data);
+
+        return xmalloc(size);
+    }
+
+    FORCE_INLINE void FreeWrapper(void* ptr, void* user_data) noexcept {
+        [[maybe_unused]] PlatformContext* context = static_cast<PlatformContext*>(user_data);
+
+        xfree(ptr);
+    }
+
+    ImGuiMemAllocFunc g_ImAllocatorAllocFunc = MallocWrapper;
+    ImGuiMemFreeFunc  g_ImAllocatorFreeFunc = FreeWrapper;
+    ImGuiAllocatorUserData g_ImAllocatorUserData{};
+}; //namespace ImGuiCustom
+
 void InitBasicImGUIState(ImGuiIO& io) noexcept {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
@@ -119,6 +141,10 @@ Editor::Editor(PlatformContext& context, const ImGuiStyleEnum theme)
       _currentTheme(theme),
       _recentSceneList(10)
 {
+    ImGui::SetAllocatorFunctions(ImGuiCustom::g_ImAllocatorAllocFunc,
+                                 ImGuiCustom::g_ImAllocatorFreeFunc,
+                                 &ImGuiCustom::g_ImAllocatorUserData);
+
     _menuBar = eastl::make_unique<MenuBar>(context, true);
     _statusBar = eastl::make_unique<StatusBar>(context);
     _optionsWindow = eastl::make_unique<EditorOptionsWindow>(context);
@@ -195,6 +221,8 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 
     IMGUI_CHECKVERSION();
     assert(_imguiContexts[to_base(ImGuiContextType::Editor)] == nullptr);
+    
+    ImGuiCustom::g_ImAllocatorUserData._context = &context();
 
     _imguiContexts[to_base(ImGuiContextType::Editor)] = ImGui::CreateContext();
 
@@ -568,7 +596,7 @@ void Editor::toggle(const bool state) {
         activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
         updateCameraSnapshot();
         static_cast<ContentExplorerWindow*>(_dockedWindows[to_base(WindowType::ContentExplorer)])->init();
-        const Selections selections = activeScene.getCurrentSelection();
+        const Selections& selections = activeScene.getCurrentSelection();
         if (selections._selectionCount == 0) {
             //SceneGraphNode* root = activeScene.sceneGraph().getRoot();
             //_context.kernel().sceneManager()->setSelected(0, { &root });

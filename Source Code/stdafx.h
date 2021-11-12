@@ -38,6 +38,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Platform/Headers/PlatformDefinesOS.h"
 
+#define IMGUI_USER_CONFIG "Core\Headers\ImGUICustomConfig.h"
+
 #if !defined(CPP_VERSION)
 #   define CPP_VERSION __cplusplus
 #endif
@@ -159,9 +161,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fmt/include/fmt/format.h>
 #include <fmt/include/fmt/printf.h>
 
-#ifndef IMGUI_DEFINE_MATH_OPERATORS
-#define IMGUI_DEFINE_MATH_OPERATORS
-#endif
 #include <imgui.h>
 
 #include <CEGUI/CEGUI.h>

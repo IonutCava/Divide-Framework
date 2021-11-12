@@ -63,16 +63,15 @@ namespace Divide {
         OPTICK_EVENT();
 
         const size_t compCount = _container->size();
-
         // Keep memory in order to avoid mid-frame allocs
         if (_componentCache.size() < compCount) {
             _componentCache.resize(compCount);
         }
 
         auto iterBegin = _container->begin();
-        auto iterEnd = _container->end();
-        for (size_t idx = 0; iterBegin != iterEnd; ++iterBegin, ++idx) {
+        for (size_t idx = 0u; idx < compCount; ++idx) {
             _componentCache[idx] = &*iterBegin;
+            ++iterBegin;
         }
     }
 

@@ -190,8 +190,8 @@ class Scene : public Resource, public PlatformContextComponent {
 #pragma endregion
 
 #pragma region Object Picking
-        [[nodiscard]] Selections getCurrentSelection(const PlayerIndex index = 0) const;
-        [[nodiscard]] bool       findSelection(PlayerIndex idx, bool clearOld);
+        [[nodiscard]] const Selections& getCurrentSelection(const PlayerIndex index = 0) const;
+        [[nodiscard]] bool              findSelection(PlayerIndex idx, bool clearOld);
 
         void resetSelection(PlayerIndex idx);
         void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
@@ -318,12 +318,12 @@ class Scene : public Resource, public PlatformContextComponent {
         vector<D64>                           _guiTimersMS;
         std::atomic_uint                      _loadingTasks;
         XML::SceneNode                        _xmlSceneGraphRootNode;
-        hashMap<PlayerIndex, Selections>      _currentSelection;
-        hashMap<PlayerIndex, I64>             _currentHoverTarget;
-        hashMap<PlayerIndex, DragSelectData>  _dragSelectData;
-        hashMap<PlayerIndex, SceneGraphNode*> _flashLight;
-        hashMap<PlayerIndex, U32>             _cameraUpdateListeners;
 
+        std::array<Selections,      Config::MAX_LOCAL_PLAYER_COUNT> _currentSelection;
+        std::array<I64,             Config::MAX_LOCAL_PLAYER_COUNT> _currentHoverTarget;
+        std::array<DragSelectData,  Config::MAX_LOCAL_PLAYER_COUNT> _dragSelectData;
+        std::array<SceneGraphNode*, Config::MAX_LOCAL_PLAYER_COUNT> _flashLight;
+        std::array<U32,             Config::MAX_LOCAL_PLAYER_COUNT> _cameraUpdateListeners;
     private:
         SharedMutex          _tasksMutex;
         vector<Task*>        _tasks;

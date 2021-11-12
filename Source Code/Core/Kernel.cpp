@@ -388,23 +388,25 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
 }
 
 void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetViewports, const U8 count) {
-    
-    assert(count > 0);
     const I32 xOffset = mainViewport.x;
     const I32 yOffset = mainViewport.y;
-    const I32 width = mainViewport.z;
-    const I32 height = mainViewport.w;
+    const I32 width   = mainViewport.z;
+    const I32 height  = mainViewport.w;
 
-    targetViewports.resize(0);
-    if (count == 1) { //Single Player
-        targetViewports.push_back(mainViewport);
+    targetViewports.resize(count);
+    if (count == 0) {
+        return;
+    } else if (count == 1) { //Single Player
+        targetViewports[0].set(mainViewport);
         return;
     } else if (count == 2) { //Split Screen
-        I32 halfHeight = height / 2;
-        targetViewports.emplace_back(xOffset, halfHeight + yOffset, width, halfHeight);
-        targetViewports.emplace_back(xOffset, 0 + yOffset,          width, halfHeight);
+        const I32 halfHeight = height / 2;
+        targetViewports[0].set(xOffset, halfHeight + yOffset, width, halfHeight);
+        targetViewports[1].set(xOffset, 0 + yOffset,          width, halfHeight);
         return;
     }
+
+    OPTICK_EVENT();
 
     // Basic idea (X - viewport):
     // Odd # of players | Even # of players
@@ -440,11 +442,11 @@ void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetVi
     const U8 columnCount = resizeViewportContainer(count);
     const U8 extraColumns = columnCount * columnCount - count;
     const U8 extraRows = extraColumns / columnCount;
-    for (U8 i = 0; i < extraRows; ++i) {
+    for (U8 i = 0u; i < extraRows; ++i) {
         rows.pop_back();
     }
     const U8 columnsToRemove = extraColumns - extraRows * columnCount;
-    for (U8 i = 0; i < columnsToRemove; ++i) {
+    for (U8 i = 0u; i < columnsToRemove; ++i) {
         rows.back().pop_back();
     }
 
@@ -456,7 +458,7 @@ void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetVi
     // The number of rows is valid for the height;
     const I32 playerHeight = height / to_I32(rowCount);
 
-    for (U8 i = 0; i < rowCount; ++i) {
+    for (U8 i = 0u; i < rowCount; ++i) {
         ViewportRow& row = rows[i];
         const I32 playerYOffset = playerHeight * (rowCount - i - 1);
         for (U8 j = 0; j < to_U8(row.size()); ++j) {
@@ -477,9 +479,10 @@ void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetVi
     }
 
     // Update the system viewports
+    U8 idx = 0u;
     for (const ViewportRow& row : rows) {
         for (const Rect<I32>& viewport : row) {
-            targetViewports.push_back(viewport);
+            targetViewports[idx++].set(viewport);
         }
     }
 }
