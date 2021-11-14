@@ -171,7 +171,7 @@ void FreeFlyCamera::saveToXML(boost::property_tree::ptree& pt, const string pref
 
     pt.put(savePath + ".speedFactor.<xmlattr>.turn", _speedFactor.turn);
     pt.put(savePath + ".speedFactor.<xmlattr>.move", _speedFactor.move);
-    pt.put(savePath + ".speedFactor.<xmlattr>.zomm", _speedFactor.zoom); 
+    pt.put(savePath + ".speedFactor.<xmlattr>.zoom", _speedFactor.zoom); 
     pt.put(savePath + ".fixedYawAxis.<xmlattr>.x", _fixedYawAxis.x);
     pt.put(savePath + ".fixedYawAxis.<xmlattr>.y", _fixedYawAxis.y);
     pt.put(savePath + ".fixedYawAxis.<xmlattr>.z", _fixedYawAxis.z);
@@ -187,7 +187,7 @@ void FreeFlyCamera::loadFromXML(const boost::property_tree::ptree& pt, const str
 
     _speedFactor.turn = pt.get(savePath + ".speedFactor.<xmlattr>.turn", _speedFactor.turn);
     _speedFactor.move = pt.get(savePath + ".speedFactor.<xmlattr>.move", _speedFactor.move);
-    _speedFactor.zoom = pt.get(savePath + ".speedFactor.<xmlattr>.zomm", _speedFactor.zoom);
+    _speedFactor.zoom = pt.get(savePath + ".speedFactor.<xmlattr>.zoom", _speedFactor.zoom);
     _fixedYawAxis.set(
         pt.get(savePath + ".fixedYawAxis.<xmlattr>.x", _fixedYawAxis.x),
         pt.get(savePath + ".fixedYawAxis.<xmlattr>.y", _fixedYawAxis.y),

@@ -380,7 +380,7 @@ void Camera::saveToXML(boost::property_tree::ptree& pt, const string prefix) con
 
     pt.put(savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.x);
     pt.put(savePath + ".reflectionPlane.normal.<xmlattr>.y", _reflectionPlane._normal.y);
-    pt.put(savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.z);
+    pt.put(savePath + ".reflectionPlane.normal.<xmlattr>.z", _reflectionPlane._normal.z);
     pt.put(savePath + ".reflectionPlane.distance", _reflectionPlane._distance);
     pt.put(savePath + ".reflectionPlane.active", _reflectionActive);
     pt.put(savePath + ".accumPitchDegrees", _accumPitchDegrees);
@@ -408,7 +408,7 @@ void Camera::loadFromXML(const boost::property_tree::ptree& pt, const string pre
     _reflectionPlane.set(
         pt.get(savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.x),
         pt.get(savePath + ".reflectionPlane.normal.<xmlattr>.y", _reflectionPlane._normal.y),
-        pt.get(savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.z),
+        pt.get(savePath + ".reflectionPlane.normal.<xmlattr>.z", _reflectionPlane._normal.z),
         pt.get(savePath + ".reflectionPlane.distance", _reflectionPlane._distance)
     );
     _reflectionActive = pt.get(savePath + ".reflectionPlane.active", _reflectionActive);
