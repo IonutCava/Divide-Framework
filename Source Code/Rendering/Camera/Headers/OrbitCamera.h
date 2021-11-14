@@ -37,7 +37,7 @@
 
 namespace Divide {
 
-FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
+class TransformComponent;
 
 /// A camera that always looks at a given target and orbits around it.
 /// It's position / direction can't be changed by user input
@@ -48,23 +48,17 @@ class OrbitCamera : public FreeFlyCamera {
                          const CameraType& type = Type(),
                          const vec3<F32>& eye = VECTOR3_ZERO);
   public:
-    void setTarget(SceneGraphNode* sgn,
-                   const vec3<F32>& offsetDirection = vec3<F32>(0, 0.75, 1.0)) noexcept;
+    void setTarget(TransformComponent* tComp) noexcept;
+
+    void setTarget(TransformComponent* tComp, const vec3<F32>& offsetDirection) noexcept;
 
     void fromCamera(const Camera& camera, bool flag = false) override;
 
-    void maxRadius(const F32 radius) noexcept { _maxRadius = radius; }
-
-    void minRadius(const F32 radius) noexcept { _minRadius = radius; }
 
     void curRadius(const F32 radius) noexcept {
         _curRadius = radius;
         CLAMP<F32>(_curRadius, _minRadius, _maxRadius);
     }
-
-    F32 maxRadius() const noexcept { return _maxRadius; }
-    F32 minRadius() const noexcept { return _minRadius; }
-    F32 curRadius() const noexcept { return _curRadius; }
 
     void update(F32 deltaTimeMS) noexcept override;
     bool zoom(I32 zoomFactor) noexcept override;
@@ -73,22 +67,21 @@ class OrbitCamera : public FreeFlyCamera {
 
     virtual ~OrbitCamera() = default;
 
-   protected:
-    bool updateViewMatrix() noexcept override;
+    void saveToXML(boost::property_tree::ptree& pt, string prefix = "") const override;
+    void loadFromXML(const boost::property_tree::ptree& pt, string prefix = "") override;
+
+    PROPERTY_RW(F32, maxRadius, 10.f);
+    PROPERTY_RW(F32, minRadius, 0.1f);
+    PROPERTY_R(F32,  curRadius, 8.f);
 
    protected:
-    F32 _maxRadius = 10.0f;
-    F32 _minRadius = 0.1f;
-    F32 _curRadius = 8.0f;
     F32 _currentRotationX = 0.0f;
     F32 _currentRotationY = 0.0f;
     bool _rotationDirty = true;
     vec3<F32> _offsetDir = VECTOR3_ZERO;
     vec3<F32> _cameraRotation = VECTOR3_ZERO;
-    vec3<F32> _newEye = VECTOR3_ZERO;
-    SceneGraphNode* _targetNode = nullptr;
+    TransformComponent* _targetTransform = nullptr;
 };
-
 
 };  // namespace Divide
 

@@ -1,11 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<showMemEditor>true</showMemEditor>
-<showSampleWindow>false</showSampleWindow>
-<autoSaveCamera>false</autoSaveCamera>
-<autoFocusEditor>true</autoFocusEditor>
-<showEmissiveSelections>false</showEmissiveSelections>
-<themeIndex>6</themeIndex>
-<textEditor>C:/Program Files/Notepad++/notepad++.exe</textEditor>
-<recentScene>
-    <entry name="WarScene"/>
-</recentScene>
+<editor>
+    <showMemEditor>true</showMemEditor>
+    <showSampleWindow>false</showSampleWindow>
+    <autoFocusEditor>true</autoFocusEditor>
+    <showEmissiveSelections>false</showEmissiveSelections>
+    <themeIndex>6</themeIndex>
+    <textEditor>C:/Program Files/Notepad++/notepad++.exe</textEditor>
+    <lastOpenSceneGUID>354</lastOpenSceneGUID>
+    <camera>
+        <Editor__Camera>
+            <reflectionPlane>
+                <normal x="0" y="0"/>
+                <distance>0</distance>
+                <active>false</active>
+            </reflectionPlane>
+            <accumPitchDegrees>0</accumPitchDegrees>
+            <frustumLocked>false</frustumLocked>
+            <euler x="0" y="0" z="0"/>
+            <eye x="0" y="0" z="0"/>
+            <orientation x="0" y="0" z="0" w="1"/>
+            <aspectRatio>1.76999998</aspectRatio>
+            <FoV>60</FoV>
+            <flag>0</flag>
+            <speedFactor turn="35" move="35" zomm="35"/>
+            <fixedYawAxis x="0" y="1" z="0"/>
+            <yawFixed>false</yawFixed>
+            <rotationLocked>false</rotationLocked>
+            <movementLocked>false</movementLocked>
+        </Editor__Camera>
+    </camera>
+    <recentScene>
+        <entry name="WarScene"/>
+    </recentScene>
+</editor>

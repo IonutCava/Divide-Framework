@@ -814,8 +814,8 @@ void Kernel::shutdown() {
     MemoryManager::SAFE_DELETE(_renderPassManager);
 
     SceneEnvironmentProbePool::OnShutdown(_platformContext.gfx());
-    Camera::destroyPool();
     _platformContext.terminate();
+    Camera::destroyPool();
     resourceCache()->clear();
     MemoryManager::SAFE_DELETE(_resourceCache);
 

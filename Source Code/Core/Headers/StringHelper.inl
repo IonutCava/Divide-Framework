@@ -202,6 +202,17 @@ T_str ReplaceString(std::string_view subject,
     return ret;
 }
 
+template<typename T_str>
+T_str MakeXMLSafe(const std::string_view subject)
+{
+    constexpr std::array<std::string_view, 6> InvalidXMLStrings = {
+               " ", "[", "]", "...", "..", "."
+    };
+    T_str ret{ subject };
+    ReplaceStringInPlace(ret, InvalidXMLStrings, "__");
+    return ret;
+}
+
 template<typename T_strA, typename T_strB>
 bool BeginsWith(const T_strA& input, const T_strB& compare, const bool ignoreWhitespace) {
     if (ignoreWhitespace) {

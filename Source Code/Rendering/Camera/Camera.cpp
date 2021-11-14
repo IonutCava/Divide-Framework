@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/Camera.h"
+#include "Core/Headers/StringHelper.h"
 
 namespace Divide {
 
@@ -366,6 +367,75 @@ vec2<F32> Camera::project(const vec3<F32>& worldCoords, const Rect<I32>& viewpor
     const vec2<F32> winSpace = (ndcSpace + 1.0f) * 0.5f * winSize;
 
     return winOffset + winSpace;
+}
+
+string Camera::xmlSavePath(const string& prefix) const {
+    return (prefix.empty() ? "camera." : (prefix + ".camera.")) +  Util::MakeXMLSafe(resourceName());
+}
+
+void Camera::saveToXML(boost::property_tree::ptree& pt, const string prefix) const {
+    const vec4<F32> orientation = _data._orientation.asVec4();
+
+    const string savePath = xmlSavePath(prefix);
+
+    pt.put(savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.x);
+    pt.put(savePath + ".reflectionPlane.normal.<xmlattr>.y", _reflectionPlane._normal.y);
+    pt.put(savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.z);
+    pt.put(savePath + ".reflectionPlane.distance", _reflectionPlane._distance);
+    pt.put(savePath + ".reflectionPlane.active", _reflectionActive);
+    pt.put(savePath + ".accumPitchDegrees", _accumPitchDegrees);
+    pt.put(savePath + ".frustumLocked", _frustumLocked);
+    pt.put(savePath + ".euler.<xmlattr>.x", _euler.x);
+    pt.put(savePath + ".euler.<xmlattr>.y", _euler.y);
+    pt.put(savePath + ".euler.<xmlattr>.z", _euler.z);
+    pt.put(savePath + ".eye.<xmlattr>.x", _data._eye.x);
+    pt.put(savePath + ".eye.<xmlattr>.y", _data._eye.y);
+    pt.put(savePath + ".eye.<xmlattr>.z", _data._eye.z);
+    pt.put(savePath + ".orientation.<xmlattr>.x", orientation.x);
+    pt.put(savePath + ".orientation.<xmlattr>.y", orientation.y);
+    pt.put(savePath + ".orientation.<xmlattr>.z", orientation.z);
+    pt.put(savePath + ".orientation.<xmlattr>.w", orientation.w);
+    pt.put(savePath + ".aspectRatio", _data._aspectRatio);
+    pt.put(savePath + ".FoV", _data._FoV);
+    pt.put(savePath + ".flag", _data._flag);
+}
+
+void Camera::loadFromXML(const boost::property_tree::ptree& pt, const string prefix) {
+    const vec4<F32> orientation = _data._orientation.asVec4();
+
+    const string savePath = xmlSavePath(prefix);
+    
+    _reflectionPlane.set(
+        pt.get(savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.x),
+        pt.get(savePath + ".reflectionPlane.normal.<xmlattr>.y", _reflectionPlane._normal.y),
+        pt.get(savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.z),
+        pt.get(savePath + ".reflectionPlane.distance", _reflectionPlane._distance)
+    );
+    _reflectionActive = pt.get(savePath + ".reflectionPlane.active", _reflectionActive);
+    
+    _accumPitchDegrees = pt.get(savePath + ".accumPitchDegrees", _accumPitchDegrees);
+    _frustumLocked = pt.get(savePath + ".frustumLocked", _frustumLocked);
+    _euler.set(
+        pt.get(savePath + ".euler.<xmlattr>.x", _euler.x),
+        pt.get(savePath + ".euler.<xmlattr>.y", _euler.y),
+        pt.get(savePath + ".euler.<xmlattr>.z", _euler.z)
+    );
+    _data._eye.set(
+        pt.get(savePath + ".eye.<xmlattr>.x", _data._eye.x),
+        pt.get(savePath + ".eye.<xmlattr>.y", _data._eye.y),
+        pt.get(savePath + ".eye.<xmlattr>.z", _data._eye.z)
+    );
+    _data._orientation.set(
+        pt.get(savePath + ".orientation.<xmlattr>.x", orientation.x),
+        pt.get(savePath + ".orientation.<xmlattr>.y", orientation.y),
+        pt.get(savePath + ".orientation.<xmlattr>.z", orientation.z),
+        pt.get(savePath + ".orientation.<xmlattr>.w", orientation.w)
+    );
+    _data._aspectRatio = pt.get(savePath + ".aspectRatio", _data._aspectRatio);
+    _data._FoV = pt.get(savePath + ".FoV", _data._FoV);
+    _data._flag = pt.get(savePath + ".flag", _data._flag);
+
+    _viewMatrixDirty = _projectionDirty = _frustumDirty = true;
 }
 
 }

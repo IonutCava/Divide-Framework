@@ -76,6 +76,7 @@ class OutputWindow;
 class PanelManager;
 class PostFXWindow;
 class DisplayWindow;
+class FreeFlyCamera;
 class PropertyWindow;
 class SceneGraphNode;
 class SceneViewWindow;
@@ -147,6 +148,7 @@ class Editor final : public PlatformContextComponent,
     void toggle(bool state);
     void onSizeChange(const SizeChangeParams& params);
     void selectionChangeCallback(PlayerIndex idx, const vector<SceneGraphNode*>& nodes) const;
+    void onChangeScene(Scene* newScene);
 
     [[nodiscard]] bool Undo() const;
     [[nodiscard]] inline size_t UndoStackSize() const noexcept;
@@ -168,7 +170,7 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] inline const TransformSettings& getTransformSettings() const noexcept;
     inline void setTransformSettings(const TransformSettings& settings) const noexcept;
 
-    void showStatusMessage(const string& message, F32 durationMS) const;
+    void showStatusMessage(const string& message, F32 durationMS, bool error) const;
 
   protected: //frame listener
     [[nodiscard]] bool framePostRenderStarted(const FrameEvent& evt) override;
@@ -221,6 +223,7 @@ class Editor final : public PlatformContextComponent,
     PROPERTY_R_IW(bool, scenePreviewFocused, false);
     PROPERTY_R_IW(bool, scenePreviewHovered, false);
     POINTER_R_IW(Camera, selectedCamera, nullptr);
+    POINTER_R_IW(FreeFlyCamera, editorCamera, nullptr);
     PROPERTY_R(Rect<I32>, targetViewport, Rect<I32>(0, 0, 1, 1));
 
   protected: // attorney
@@ -232,7 +235,6 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] bool saveSceneChanges(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "") const;
     [[nodiscard]] bool switchScene(const char* scenePath);
 
-    void updateCameraSnapshot();
     // Returns true if the window was closed
     [[nodiscard]] bool modalTextureView(const char* modalName, const Texture* tex, const vec2<F32>& dimensions, bool preserveAspect, bool useModal) const;
     // Returns true if the modal window was closed
@@ -242,7 +244,7 @@ class Editor final : public PlatformContextComponent,
 
     [[nodiscard]] ECSManager& getECSManager() const;
     [[nodiscard]] LightPool& getActiveLightPool() const;
-    [[nodiscard]] SceneEnvironmentProbePool* getActiveEnvProbePool() const;
+    [[nodiscard]] SceneEnvironmentProbePool* getActiveEnvProbePool() const noexcept;
 
     inline void toggleMemoryEditor(bool state) noexcept;
 
@@ -270,12 +272,11 @@ class Editor final : public PlatformContextComponent,
     std::array<ImGuiContext*, to_base(ImGuiContextType::COUNT)> _imguiContexts = {};
     std::array<DockedWindow*, to_base(WindowType::COUNT)> _dockedWindows = {};
 
-    hashMap<I64, CameraSnapshot> _cameraSnapshots;
     string                       _externalTextEditorPath = "";
 
+    I64            _lastOpenSceneGUID = -1;
     U32            _stepQueue = 1u;
     ImGuiStyleEnum _currentTheme = ImGuiStyle_Count;
-    bool           _autoSaveCamera = false;
     bool           _autoFocusEditor = true;
     bool           _showSampleWindow = false;
     bool           _showOptionsWindow = false;
@@ -307,22 +308,10 @@ namespace Attorney {
             editor._gizmo->enable(state);
         }
 
-        static void updateCameraSnapshot(Editor& editor) {
-            editor.updateCameraSnapshot();
-        }
-
         static void editorStepQueue(Editor& editor, const U32 steps) noexcept {
             editor._stepQueue = steps;
         }
 
-        [[nodiscard]] static bool autoSaveCamera(const Editor& editor) noexcept {
-            return editor._autoSaveCamera;
-        }
-
-        static void autoSaveCamera(Editor& editor, const bool state) noexcept {
-            editor._autoSaveCamera = state;
-        } 
-        
         [[nodiscard]] static bool autoFocusEditor(const Editor& editor) noexcept {
             return editor._autoFocusEditor;
         }
@@ -524,8 +513,8 @@ namespace Attorney {
             return editor.removeComponent(selections, newComponentType);
         }
 
-        static void showStatusMessage(const Editor& editor, const string& message, const F32 durationMS) {
-            editor.showStatusMessage(message, durationMS);
+        static void showStatusMessage(const Editor& editor, const string& message, const F32 durationMS, const bool error) {
+            editor.showStatusMessage(message, durationMS, error);
         }
 
         [[nodiscard]] static const string& externalTextEditorPath(const Editor& editor) noexcept {

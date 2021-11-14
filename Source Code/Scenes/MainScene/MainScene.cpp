@@ -127,9 +127,9 @@ void MainScene::processTasks(const U64 deltaTimeUS) {
     Scene::processTasks(deltaTimeUS);
 }
 
-bool MainScene::load(const Str256& name) {
+bool MainScene::load() {
     // Load scene resources
-    const bool loadState = Scene::load(name);
+    const bool loadState = Scene::load();
     FreeFlyCamera* baseCamera = Camera::utilityCamera<FreeFlyCamera>(Camera::UtilityCamera::DEFAULT);
     baseCamera->setMoveSpeedFactor(10.0f);
 

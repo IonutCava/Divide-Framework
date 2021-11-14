@@ -13,4 +13,12 @@ void FirstPersonCamera::fromCamera(const Camera& camera, const bool flag) {
     FreeFlyCamera::fromCamera(camera, camera.type() == Type() || flag);
 }
 
+void FirstPersonCamera::saveToXML(boost::property_tree::ptree& pt, const string prefix) const {
+    FreeFlyCamera::saveToXML(pt, prefix);
+}
+
+void FirstPersonCamera::loadFromXML(const boost::property_tree::ptree& pt, const string prefix) {
+    FreeFlyCamera::loadFromXML(pt, prefix);
+}
+
 };

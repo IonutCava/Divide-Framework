@@ -50,6 +50,9 @@ namespace Divide {
         
         template<typename T_str = string>
         T_str ReplaceString(std::string_view subject, std::string_view search, std::string_view replace, bool recursive = false);
+        
+        template<typename T_str = string>
+        T_str MakeXMLSafe(std::string_view subject);
 
         template<typename T_str = string>
         void GetPermutations(std::string_view subject, vector<T_str>& permutationContainer);

@@ -349,11 +349,11 @@ void MenuBar::drawFileMenu() {
         };
 
         const auto closeDialog = [this](const bool success) {
-            Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), s_messages[success ? 1 : 2], Time::SecondsToMilliseconds<F32>(6));
+            Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), s_messages[success ? 1 : 2], Time::SecondsToMilliseconds<F32>(6), !success);
             g_saveSceneParams._closePopup = true;
         };
 
-        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), s_messages[0], Time::SecondsToMilliseconds<F32>(6));
+        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), s_messages[0], Time::SecondsToMilliseconds<F32>(6), false);
         if (!Attorney::EditorGeneralWidget::saveSceneChanges(_context.editor(), messageCbk, closeDialog, g_saveSceneParams._saveNameOverride)) {
             _errorMsg.append("Error occured while saving the current scene!\n Try again or check the logs for errors!\n");
         }
@@ -455,7 +455,7 @@ void MenuBar::drawFileMenu() {
                     if (hasUnsavedElements) {
                         saveSceneCbk();
                     }
-                    Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Exported game for [%s]!", platform), Time::SecondsToMilliseconds<F32>(3.0f));
+                    Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Exported game for [%s]!", platform), Time::SecondsToMilliseconds<F32>(3.0f), false);
                     break;
                 }
             }
@@ -483,13 +483,15 @@ void MenuBar::drawFileMenu() {
 
     const char* sceneOpenPath = _sceneOpenDialog.chooseFolderDialog(showSceneOpenDialog, g_scenePath.c_str());
     if (strlen(sceneOpenPath) > 0) {
-        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Chosen scene load directory: \"%s\"", sceneOpenPath), Time::SecondsToMilliseconds<F32>(3.0f));
-        Attorney::EditorGeneralWidget::switchScene(_context.editor(), sceneOpenPath);
+        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Chosen scene load directory: \"%s\"", sceneOpenPath), Time::SecondsToMilliseconds<F32>(3.0f), false);
+        if (!Attorney::EditorGeneralWidget::switchScene(_context.editor(), sceneOpenPath)) {
+            Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Failed to load scene: \"%s\"", sceneOpenPath), Time::SecondsToMilliseconds<F32>(3.0f), true);
+        }
     }
 
     const char* sceneSavePath = _sceneSaveDialog.chooseFolderDialog(showSceneSaveDialog, g_scenePath.c_str());
     if (strlen(sceneSavePath) > 0) {
-        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Chosen scene save directory: \"%s\"", sceneSavePath), Time::SecondsToMilliseconds<F32>(3.0f));
+        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Chosen scene save directory: \"%s\"", sceneSavePath), Time::SecondsToMilliseconds<F32>(3.0f), false);
         saveSceneCbk(sceneSavePath);
     }
 }
@@ -500,14 +502,14 @@ void MenuBar::drawEditMenu() const {
         if (ImGui::MenuItem("Undo", "CTRL+Z", false, _context.editor().UndoStackSize() > 0))
         {
             if (!_context.editor().Undo()) {
-                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Undo failed!", Time::SecondsToMilliseconds<F32>(3.0f));
+                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Undo failed!", Time::SecondsToMilliseconds<F32>(3.0f), true);
             }
         }
 
         if (ImGui::MenuItem("Redo", "CTRL+Y", false, _context.editor().RedoStackSize() > 0))
         {
             if (!_context.editor().Redo()) {
-                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Redo failed!", Time::SecondsToMilliseconds<F32>(3.0f));
+                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Redo failed!", Time::SecondsToMilliseconds<F32>(3.0f), true);
             }
         }
 
@@ -571,7 +573,7 @@ void MenuBar::drawToolsMenu() {
         if (ImGui::MenuItem("Memory Editor", nullptr, memEditorEnabled)) {
             Attorney::EditorMenuBar::toggleMemoryEditor(_context.editor(), !memEditorEnabled);
             if (!_context.editor().saveToXML()) {
-                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Save failed!", Time::SecondsToMilliseconds<F32>(3.0f));
+                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Save failed!", Time::SecondsToMilliseconds<F32>(3.0f), true);
             }
         }
 

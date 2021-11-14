@@ -63,28 +63,8 @@ namespace Divide {
         {
             Attorney::EditorSceneViewWindow::editorStepQueue(_parent, Config::TARGET_FRAME_RATE + 1);
         }
-        ImGui::SameLine();
 
-        bool autoSaveCamera = Attorney::EditorSceneViewWindow::autoSaveCamera(_parent);
-        if (autoSaveCamera) {
-            PushReadOnly();
-        }
-        if (ImGui::Button("Save Camera")) {
-            Attorney::EditorSceneViewWindow::updateCameraSnapshot(_parent);
-        }
-        if (autoSaveCamera) {
-            PopReadOnly();
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Keep the current camera position when closing the editor");
-        }
         ImGui::SameLine();
-
-        ImGui::Text("Auto camera:"); ImGui::SameLine(); ImGui::ToggleButton("Auto Save Camera", &autoSaveCamera);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Keep the current camera position and orientation when closing the editor.\nWhen off, the camera will snap back to the settings it had before opening the editor.");
-        }
-        Attorney::EditorSceneViewWindow::autoSaveCamera(_parent, autoSaveCamera);
 
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         ImGui::SameLine();

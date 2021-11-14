@@ -12,8 +12,7 @@ Player::Player(const U8 index)
     : Character(CharacterType::CHARACTER_TYPE_PLAYER),
       _index(index)
 {
-     const string& cameraName = Util::StringFormat("Player_Cam_%d", getGUID());
-     _camera = Camera::createCamera<FreeFlyCamera>(cameraName);
+     _camera = Camera::createCamera<FreeFlyCamera>(Util::StringFormat("Player_Cam_%d", _index));
 }
 
 Player::~Player()

@@ -218,6 +218,9 @@ class Camera : public Resource {
                   void flag(const U8 flag)       noexcept { _data._flag = flag; }
     [[nodiscard]] U8   flag()              const noexcept { return _data._flag; }
 
+    virtual void saveToXML(boost::property_tree::ptree& pt, string prefix = "") const;
+    virtual void loadFromXML(const boost::property_tree::ptree& pt, string prefix = "");
+
     PROPERTY_R_IW(mat4<F32>, viewProjectionMatrix);
 
    protected:
@@ -228,6 +231,9 @@ class Camera : public Resource {
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Camera"; }
 
     [[nodiscard]] bool dirty() const noexcept { return _projectionDirty || _viewMatrixDirty || _frustumDirty; }
+
+
+    [[nodiscard]] string xmlSavePath(const string& prefix) const;
    protected:
     SET_DELETE_FRIEND
     SET_DELETE_HASHMAP_FRIEND

@@ -9,7 +9,7 @@
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
-#include "Rendering/Camera/Headers/Camera.h"
+#include "Rendering/Camera/Headers/FreeFlyCamera.h"
 
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleBoxGenerator.h"
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleColourGenerator.h"
@@ -45,7 +45,7 @@ namespace Divide {
         g_framerateBufferCont.reserve(g_maxEntryCount);
     }
 
-    void SolutionExplorerWindow::printCameraNode(SceneManager* sceneManager, Camera* camera) const {
+    void SolutionExplorerWindow::printCameraNode(SceneManager* sceneManager, Camera* const camera) const {
         if (camera == nullptr) {
             return;
         }
@@ -215,8 +215,9 @@ namespace Divide {
         if (ImGui::TreeNodeEx(activeScene.resourceName().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
+            printCameraNode(sceneManager, _parent.editorCamera());
             for (PlayerIndex i = 0; i < static_cast<PlayerIndex>(Config::MAX_LOCAL_PLAYER_COUNT); ++i) {
-                printCameraNode(sceneManager, Attorney::SceneManagerCameraAccessor::playerCamera(sceneManager, i));
+                printCameraNode(sceneManager, Attorney::SceneManagerCameraAccessor::playerCamera(sceneManager, i, true));
             }
             printSceneGraphNode(sceneManager, root, 0, true, false);
             ImGui::PopStyleVar();

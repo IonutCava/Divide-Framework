@@ -893,10 +893,10 @@ namespace Divide {
                         if (ImGui::Button("Open Source File")) {
                             const string& textEditor = Attorney::EditorGeneralWidget::externalTextEditorPath(_context.editor());
                             if (textEditor.empty()) {
-                                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: No text editor specified!", Time::SecondsToMilliseconds<F32>(3));
+                                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: No text editor specified!", Time::SecondsToMilliseconds<F32>(3), true);
                             } else {
                                 if (openFile(textEditor.c_str(), (program->assetLocation() + Paths::Shaders::GLSL::g_parentShaderLoc).c_str(), module._sourceFile.data()) != FileError::NONE) {
-                                    Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Couldn't open specified source file!", Time::SecondsToMilliseconds<F32>(3));
+                                    Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Couldn't open specified source file!", Time::SecondsToMilliseconds<F32>(3), true);
                                 }
                             }
                         }
@@ -904,12 +904,12 @@ namespace Divide {
                 }
                 ImGui::Separator();
                 if (ImGui::Button("Rebuild from source") && !readOnly) {
-                    Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Rebuilding shader from source ...", Time::SecondsToMilliseconds<F32>(3));
+                    Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Rebuilding shader from source ...", Time::SecondsToMilliseconds<F32>(3), false);
                     bool skipped = false;
                     if (!program->recompile(true, skipped)) {
-                        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Failed to rebuild shader from source!", Time::SecondsToMilliseconds<F32>(3));
+                        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Failed to rebuild shader from source!", Time::SecondsToMilliseconds<F32>(3), true);
                     } else {
-                        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), skipped ? "Rebuilt shader not needed!" : "Rebuilt shader from source!", Time::SecondsToMilliseconds<F32>(3));
+                        Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), skipped ? "Rebuilt shader not needed!" : "Rebuilt shader from source!", Time::SecondsToMilliseconds<F32>(3), false);
                         ret = true;
                     }
                 }

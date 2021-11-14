@@ -277,11 +277,11 @@ class Scene : public Resource, public PlatformContextComponent {
 
         [[nodiscard]]         bool saveNodeToXML(const SceneGraphNode* node) const;
         [[nodiscard]]         bool loadNodeFromXML(SceneGraphNode* node) const;
-        [[nodiscard]] virtual bool loadXML(const Str256& name);
+        [[nodiscard]] virtual bool loadXML();
 
-        [[nodiscard]] virtual bool load(const Str256& name);
+        [[nodiscard]] virtual bool load();
         [[nodiscard]] virtual bool unload();
-        [[nodiscard]] virtual void postLoad();
+        [[nodiscard]] virtual bool postLoad();
         /// Gets called on the main thread when the scene finishes loading (e.g. used by the GUI system)
         virtual void postLoadMainThread();
 #pragma endregion
@@ -303,7 +303,6 @@ class Scene : public Resource, public PlatformContextComponent {
 #pragma endregion
 
     private:
-        void loadDefaultCamera();
         /// Returns true if the camera was moved/rotated/etc
         bool updateCameraControls(PlayerIndex idx) const;
         void updateSelectionData(PlayerIndex idx, DragSelectData& data, bool remapped);
@@ -375,20 +374,12 @@ class SceneManager {
         return scene.frameEnded();
     }
 
-    static bool loadXML(Scene& scene, const Str256& name) {
-        return scene.loadXML(name);
-    }
-
-    static bool load(Scene& scene, const Str256& name) {
-        return scene.load(name);
+    static bool load(Scene& scene) {
+        return scene.load();
     }
 
     static bool unload(Scene& scene) { 
         return scene.unload();
-    }
-
-    static void postLoad(Scene& scene) {
-        scene.postLoad();
     }
 
     static void postLoadMainThread(Scene& scene) {

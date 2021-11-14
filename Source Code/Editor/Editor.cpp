@@ -28,7 +28,7 @@
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
-#include "Rendering/Camera/Headers/Camera.h"
+#include "Rendering/Camera/Headers/FreeFlyCamera.h"
 
 #include "Geometry/Shapes/Headers/Mesh.h"
 
@@ -219,6 +219,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 
     _mainWindow = &_context.app().windowManager().getWindow(0u);
 
+    _editorCamera = Camera::createCamera<FreeFlyCamera>("Editor Camera");
     IMGUI_CHECKVERSION();
     assert(_imguiContexts[to_base(ImGuiContextType::Editor)] == nullptr);
     
@@ -539,13 +540,7 @@ void Editor::close() {
         ImGui::DestroyContext(context);
     }
     _imguiContexts.fill(nullptr);
-}
-
-void Editor::updateCameraSnapshot() {
-    const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
-    if (playerCam != nullptr) {
-        _cameraSnapshots[playerCam->getGUID()] = playerCam->snapshot();
-    }
+    Camera::destroyCamera<FreeFlyCamera>(_editorCamera);
 }
 
 void Editor::onPreviewFocus(const bool state) const {
@@ -574,16 +569,6 @@ void Editor::toggle(const bool state) {
         scenePreviewFocused(false);
         onPreviewFocus(false);
 
-        if (!_autoSaveCamera) {
-            Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
-            if (playerCam != nullptr) {
-                const auto it = _cameraSnapshots.find(playerCam->getGUID());
-                if (it != std::end(_cameraSnapshots)) {
-                    playerCam->fromSnapshot(it->second);
-                }
-            }
-        }
-
         _context.config().save();
         activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
         activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
@@ -594,13 +579,12 @@ void Editor::toggle(const bool state) {
         _stepQueue = 0;
         activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
         activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
-        updateCameraSnapshot();
         static_cast<ContentExplorerWindow*>(_dockedWindows[to_base(WindowType::ContentExplorer)])->init();
-        const Selections& selections = activeScene.getCurrentSelection();
+        /*const Selections& selections = activeScene.getCurrentSelection();
         if (selections._selectionCount == 0) {
-            //SceneGraphNode* root = activeScene.sceneGraph().getRoot();
-            //_context.kernel().sceneManager()->setSelected(0, { &root });
-        }
+            SceneGraphNode* root = activeScene.sceneGraph().getRoot();
+            _context.kernel().sceneManager()->setSelected(0, { &root });
+        }*/
     }
 
     _gizmo->enable(state && simulationPauseRequested());
@@ -669,13 +653,17 @@ void Editor::update(const U64 deltaTimeUS) {
             sMgr->resetSelection(0);
             const Scene& activeScene = sMgr->getActiveScene();
             
+            const PlayerIndex idx = sMgr->playerPass();
+            SceneStatePerPlayer& playerState = activeScene.state()->playerState(idx);
             if (_isScenePaused) {
+                playerState.overrideCamera(editorCamera());
                 activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
                 activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
                 if (allGizmosEnabled) {
                     activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
                 }
             } else {
+                playerState.overrideCamera(nullptr);
                 allGizmosEnabled = activeScene.state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
                 activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
                 activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
@@ -924,7 +912,7 @@ void Editor::selectionChangeCallback(const PlayerIndex idx, const vector<SceneGr
 
 bool Editor::Undo() const {
     if (_undoManager->Undo()) {
-        showStatusMessage(Util::StringFormat("Undo: %s", _undoManager->lasActionName().c_str()), Time::SecondsToMilliseconds<F32>(2.0f));
+        showStatusMessage(Util::StringFormat("Undo: %s", _undoManager->lasActionName().c_str()), Time::SecondsToMilliseconds<F32>(2.0f), false);
         return true;
     }
 
@@ -933,7 +921,7 @@ bool Editor::Undo() const {
 
 bool Editor::Redo() const {
     if (_undoManager->Redo()) {
-        showStatusMessage(Util::StringFormat("Redo: %s", _undoManager->lasActionName().c_str()), Time::SecondsToMilliseconds<F32>(2.0f));
+        showStatusMessage(Util::StringFormat("Redo: %s", _undoManager->lasActionName().c_str()), Time::SecondsToMilliseconds<F32>(2.0f), false);
         return true;
     }
 
@@ -1334,13 +1322,13 @@ bool Editor::switchScene(const char* scenePath) {
 
     const auto [sceneName, _] = splitPathToNameAndLocation(scenePath);
     if (Util::CompareIgnoreCase(sceneName, Config::DEFAULT_SCENE_NAME)) {
-        showStatusMessage("Error: can't load default scene! Selected scene is only used as a template!", Time::SecondsToMilliseconds<F32>(3.f));
+        showStatusMessage("Error: can't load default scene! Selected scene is only used as a template!", Time::SecondsToMilliseconds<F32>(3.f), true);
         return false;
     }
 
     if (!_context.kernel().sceneManager()->switchScene(sceneName.c_str(), true, true, false)) {
         Console::errorfn(Locale::Get(_ID("ERROR_SCENE_LOAD")), sceneName.c_str());
-        showStatusMessage(Util::StringFormat(Locale::Get(_ID("ERROR_SCENE_LOAD")), sceneName.c_str()), Time::SecondsToMilliseconds<F32>(3.f));
+        showStatusMessage(Util::StringFormat(Locale::Get(_ID("ERROR_SCENE_LOAD")), sceneName.c_str()), Time::SecondsToMilliseconds<F32>(3.f), true);
         return false;
     }
 
@@ -1360,6 +1348,10 @@ bool Editor::switchScene(const char* scenePath) {
     }
     
     return true;
+}
+
+void Editor::onChangeScene(Scene* newScene) {
+    _lastOpenSceneGUID = newScene == nullptr ? -1 : newScene->getGUID();
 }
 
 U32 Editor::saveItemCount() const noexcept {
@@ -1550,8 +1542,8 @@ bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const 
     return closed;
 }
 
-void Editor::showStatusMessage(const string& message, const F32 durationMS) const {
-    _statusBar->showMessage(message, durationMS);
+void Editor::showStatusMessage(const string& message, const F32 durationMS, bool error) const {
+    _statusBar->showMessage(message, durationMS, error);
 }
 
 bool Editor::spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const string& name) const {
@@ -1591,9 +1583,8 @@ LightPool& Editor::getActiveLightPool() const {
     return *activeScene.lightPool();
 }
 
-SceneEnvironmentProbePool* Editor::getActiveEnvProbePool() const {
+SceneEnvironmentProbePool* Editor::getActiveEnvProbePool() const noexcept {
     return Attorney::SceneManagerEditor::getEnvProbes(_context.kernel().sceneManager());
-    
 }
 
 void Editor::teleportToNode(const SceneGraphNode* sgn) const {
@@ -1615,13 +1606,13 @@ void Editor::saveNode(const SceneGraphNode* sgn) const {
                                              sgn->name().c_str(), 
                                              savedParent ? "Yes" : "No", 
                                              savedScene ? "Yes" : "No"), 
-                          Time::SecondsToMilliseconds<F32>(3));
+                          Time::SecondsToMilliseconds<F32>(3), false);
     }
 }
 
 void Editor::loadNode(SceneGraphNode* sgn) const {
     if (Attorney::SceneManagerEditor::loadNode(_context.kernel().sceneManager(), sgn)) {
-        showStatusMessage(Util::StringFormat("Reloaded node [ %s ] from file!", sgn->name().c_str()), Time::SecondsToMilliseconds<F32>(3));
+        showStatusMessage(Util::StringFormat("Reloaded node [ %s ] from file!", sgn->name().c_str()), Time::SecondsToMilliseconds<F32>(3), false);
     }
 }
 
@@ -1685,15 +1676,16 @@ bool Editor::saveToXML() const {
     boost::property_tree::ptree pt;
     const ResourcePath editorPath = Paths::g_xmlDataLocation + Paths::Editor::g_saveLocation;
 
-    pt.put("showMemEditor", _showMemoryEditor);
-    pt.put("showSampleWindow", _showSampleWindow);
-    pt.put("autoSaveCamera", _autoSaveCamera);
-    pt.put("autoFocusEditor", _autoFocusEditor);
-    pt.put("showEmissiveSelections", _showEmissiveSelections);
-    pt.put("themeIndex", to_I32(_currentTheme));
-    pt.put("textEditor", _externalTextEditorPath);
+    pt.put("editor.showMemEditor", _showMemoryEditor);
+    pt.put("editor.showSampleWindow", _showSampleWindow);
+    pt.put("editor.autoFocusEditor", _autoFocusEditor);
+    pt.put("editor.showEmissiveSelections", _showEmissiveSelections);
+    pt.put("editor.themeIndex", to_I32(_currentTheme));
+    pt.put("editor.textEditor", _externalTextEditorPath);
+    pt.put("editor.lastOpenSceneGUID", _lastOpenSceneGUID);
+    _editorCamera->saveToXML(pt, "editor");
     for (size_t i = 0u; i < _recentSceneList.size(); ++i) {
-        pt.put("recentScene.entry.<xmlattr>.name", _recentSceneList.get(i).c_str());
+        pt.put("editor.recentScene.entry.<xmlattr>.name", _recentSceneList.get(i).c_str());
     }
     if (createDirectory(editorPath.c_str())) {
         if (copyFile(editorPath.c_str(), g_editorSaveFile, editorPath.c_str(), g_editorSaveFileBak, true) == FileError::NONE) {
@@ -1719,16 +1711,17 @@ bool Editor::loadFromXML() {
     }
 
     if (fileExists((editorPath + g_editorSaveFile).c_str())) {
+        const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+
         XML::readXML((editorPath + g_editorSaveFile).str(), pt);
-        _showMemoryEditor = pt.get("showMemEditor", false);
-        _showSampleWindow = pt.get("showSampleWindow", false);
-        _autoSaveCamera = pt.get("autoSaveCamera", false);
-        _autoFocusEditor = pt.get("autoFocusEditor", true);
-        _showEmissiveSelections = pt.get("showEmissiveSelections", true);
+        _showMemoryEditor = pt.get("editor.showMemEditor", false);
+        _showSampleWindow = pt.get("editor.showSampleWindow", false);
+        _autoFocusEditor = pt.get("editor.autoFocusEditor", true);
+        _showEmissiveSelections = pt.get("editor.showEmissiveSelections", true);
         _currentTheme = static_cast<ImGuiStyleEnum>(pt.get("themeIndex", to_I32(_currentTheme)));
         ImGui::ResetStyle(_currentTheme);
-        _externalTextEditorPath = pt.get<string>("textEditor", "");
-        for (const auto& [tag, data] : pt.get_child("recentScene", g_emptyPtree))
+        _externalTextEditorPath = pt.get<string>("editor.textEditor", "");
+        for (const auto& [tag, data] : pt.get_child("editor.recentScene", g_emptyPtree))
         {
             if (tag == "<xmlcomment>") {
                 continue;
@@ -1739,8 +1732,10 @@ bool Editor::loadFromXML() {
                 _recentSceneList.put(name);
             }
         }
-
-
+        const I64 lastSceneGUID = pt.get("editor.lastOpenSceneGUID",-1);
+        if (lastSceneGUID == activeScene.getGUID()) {
+            _editorCamera->loadFromXML(pt, "editor");
+        }
         return true;
     }
 

@@ -196,8 +196,6 @@ bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const D
             msgCallback("Saving scene settings ...");
         }
 
-        const ParamHandler& par = _context.paramHandler();
-
         ptree pt;
         pt.put("assets", assetsFile);
         pt.put("musicPlaylist", "musicPlaylist.xml");
@@ -210,8 +208,11 @@ bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const D
         pt.put("wind.windSpeed", state()->windSpeed());
 
         pt.put("options.visibility", state()->renderState().generalVisibility());
-        pt.put("options.cameraSpeed.<xmlattr>.move", par.getParam<F32>(_ID((resourceName() + ".options.cameraSpeed.move").c_str())));
-        pt.put("options.cameraSpeed.<xmlattr>.turn", par.getParam<F32>(_ID((resourceName() + ".options.cameraSpeed.turn").c_str())));
+
+        const U8 activePlayerCount = _parent.getActivePlayerCount();
+        for (U8 i = 0u; i < activePlayerCount; ++i) {
+            playerCamera(i)->saveToXML(pt);
+        }
 
         pt.put("fog.fogDensityB", state()->renderState().fogDetails()._colourAndDensity.a);
         pt.put("fog.fogDensityC", state()->renderState().fogDetails()._colourSunScatter.a);
@@ -274,14 +275,13 @@ bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const D
     return true;
 }
 
-bool Scene::loadXML(const Str256& name) {
+bool Scene::loadXML() {
     const Configuration& config = _context.config();
-    ParamHandler& par = _context.paramHandler();
 
     const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
 
-    Console::printfn(Locale::Get(_ID("XML_LOAD_SCENE")), name.c_str());
-    const ResourcePath sceneLocation(scenePath + "/" + name.c_str());
+    Console::printfn(Locale::Get(_ID("XML_LOAD_SCENE")), resourceName().c_str());
+    const ResourcePath sceneLocation(scenePath + "/" + resourceName().c_str());
     const ResourcePath sceneDataFile(sceneLocation + ".xml");
 
     // A scene does not necessarily need external data files
@@ -314,25 +314,6 @@ bool Scene::loadXML(const Str256& name) {
     _dayNightData._speedFactor = pt.get("dayNight.timeOfDay.<xmlattr>.timeFactor", _dayNightData._speedFactor);
     _dayNightData._resetTime = true;
 
-    if (pt.get_child_optional("options.cameraStartPosition")) {
-        par.setParam(_ID((name + ".options.cameraStartPosition.x").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.x", 0.f));
-        par.setParam(_ID((name + ".options.cameraStartPosition.y").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.y", 0.f));
-        par.setParam(_ID((name + ".options.cameraStartPosition.z").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.z", 0.f));
-        par.setParam(_ID((name + ".options.cameraStartOrientation.xOffsetDegrees").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.xOffsetDegrees", 0.f));
-        par.setParam(_ID((name + ".options.cameraStartOrientation.yOffsetDegrees").c_str()), pt.get("options.cameraStartPosition.<xmlattr>.yOffsetDegrees", 0.f));
-        par.setParam(_ID((name + ".options.cameraStartPositionOverride").c_str()), true);
-    } else {
-        par.setParam(_ID((name + ".options.cameraStartPositionOverride").c_str()), false);
-    }
-
-    if (pt.get_child_optional("options.cameraSpeed")) {
-        par.setParam(_ID((name + ".options.cameraSpeed.move").c_str()), pt.get("options.cameraSpeed.<xmlattr>.move", DEFAULT_CAMERA_MOVE_SPEED));
-        par.setParam(_ID((name + ".options.cameraSpeed.turn").c_str()), pt.get("options.cameraSpeed.<xmlattr>.turn", DEFAULT_CAMERA_TURN_SPEED));
-    } else {
-        par.setParam(_ID((name + ".options.cameraSpeed.move").c_str()), DEFAULT_CAMERA_MOVE_SPEED);
-        par.setParam(_ID((name + ".options.cameraSpeed.turn").c_str()), DEFAULT_CAMERA_TURN_SPEED);
-    }
-
     FogDetails details = {};
     details._colourAndDensity.set(config.rendering.fogColour, config.rendering.fogDensity.x);
     details._colourSunScatter.a = config.rendering.fogDensity.y;
@@ -346,7 +327,6 @@ bool Scene::loadXML(const Str256& name) {
         };
         details._colourSunScatter.a = pt.get("fog.fogDensityC", details._colourSunScatter.a);
     }
-    
 
     state()->renderState().fogDetails(details);
 
@@ -1002,48 +982,24 @@ bool Scene::lockCameraToPlayerMouse(const PlayerIndex index, const bool lockStat
     return true;
 }
 
-void Scene::loadDefaultCamera() {
-    const ParamHandler& par = _context.paramHandler();
-    
-    // Camera position is overridden in the scene's XML configuration file
-    if (!par.isParam<bool>(_ID((resourceName() + ".options.cameraStartPositionOverride").c_str()))) {
-        return;
+bool Scene::load() {
+
+    // Load the main scene from XML
+    if (!loadXML()) {
+        return false;
     }
-
-    FreeFlyCamera* baseCamera = Camera::utilityCamera<FreeFlyCamera>(Camera::UtilityCamera::DEFAULT);
-    if (par.getParam<bool>(_ID((resourceName() + ".options.cameraStartPositionOverride").c_str()))) {
-        baseCamera->setEye(
-            par.getParam<F32>(_ID((resourceName() + ".options.cameraStartPosition.x").c_str())),
-            par.getParam<F32>(_ID((resourceName() + ".options.cameraStartPosition.y").c_str())),
-            par.getParam<F32>(_ID((resourceName() + ".options.cameraStartPosition.z").c_str()))
-        );
-
-        baseCamera->setGlobalRotation(
-            par.getParam<F32>(_ID((resourceName() + ".options.cameraStartOrientation.xOffsetDegrees").c_str())), //yaw
-            par.getParam<F32>(_ID((resourceName() + ".options.cameraStartOrientation.yOffsetDegrees").c_str()))  //pitch
-        );
-    } else {
-        baseCamera->setEye(0.f, 50.f, 0.f);
-    }
-
-    baseCamera->setMoveSpeedFactor(par.getParam<F32>(_ID((resourceName() + ".options.cameraSpeed.move").c_str()), 1.0f));
-    baseCamera->setTurnSpeedFactor(par.getParam<F32>(_ID((resourceName() + ".options.cameraSpeed.turn").c_str()), 1.0f));
-
-    const F32 hFoV = _context.config().runtime.horizontalFOV;
-    const F32 vFoV = Angle::to_VerticalFoV(hFoV, to_D64(baseCamera->getAspectRatio()));
-    baseCamera->setProjection(vFoV, { Camera::s_minNearZ, _context.config().runtime.cameraViewDistance });
-}
-
-bool Scene::load(const Str256& name) {
 
     const bool errorState = false;
 
     setState(ResourceState::RES_LOADING);
     std::atomic_init(&_loadingTasks, 0u);
 
-    _resourceName = name;
-
-    loadDefaultCamera();
+    FreeFlyCamera* baseCamera = Camera::utilityCamera<FreeFlyCamera>(Camera::UtilityCamera::DEFAULT);
+    const F32 hFoV = _context.config().runtime.horizontalFOV;
+    const F32 vFoV = Angle::to_VerticalFoV(hFoV, to_D64(baseCamera->getAspectRatio()));
+    baseCamera->setProjection(vFoV, { Camera::s_minNearZ, _context.config().runtime.cameraViewDistance });
+    baseCamera->setMoveSpeedFactor(DEFAULT_CAMERA_MOVE_SPEED);
+    baseCamera->setTurnSpeedFactor(DEFAULT_CAMERA_TURN_SPEED);
 
     SceneGraphNode* rootNode = _sceneGraph->getRoot();
     vector<XML::SceneNode>& rootChildren = _xmlSceneGraphRootNode.children;
@@ -1095,7 +1051,7 @@ bool Scene::load(const Str256& name) {
 
     XML::loadDefaultKeyBindings((Paths::g_xmlDataLocation + "keyBindings.xml").str(), this);
 
-    return true;
+    return postLoad();
 }
 
 bool Scene::unload() {
@@ -1131,12 +1087,10 @@ bool Scene::unload() {
     return true;
 }
 
-void Scene::postLoad() {
+bool Scene::postLoad() {
     _sceneGraph->postLoad();
 
-    if (!_context.pfx().initPhysicsScene(*this)) {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    return _context.pfx().initPhysicsScene(*this);
 }
 
 void Scene::postLoadMainThread() {
@@ -1182,7 +1136,7 @@ void Scene::onSetActive() {
     _context.sfx().stopMusic();
     _context.sfx().dumpPlaylists();
 
-    for (U32 i = 0; i < to_base(MusicType::COUNT); ++i) {
+    for (U32 i = 0u; i < to_base(MusicType::COUNT); ++i) {
         const SceneState::MusicPlaylist& playlist = state()->music(static_cast<MusicType>(i));
         if (!playlist.empty()) {
             for (const auto& song : playlist) {

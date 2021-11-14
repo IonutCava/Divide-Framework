@@ -277,12 +277,12 @@ void PingPongScene::processInput(const PlayerIndex idx, const U64 deltaTimeUS) {
     Scene::processInput(idx, deltaTimeUS);
 }
 
-bool PingPongScene::load(const Str256& name) {
+bool PingPongScene::load() {
     _freeFly = false;
     _wasInFreeFly = false;
 
     // Load scene resources
-    const bool loadState = Scene::load(name);
+    const bool loadState = Scene::load();
 
     const ResourceDescriptor ballDescriptor("Ping Pong Ball");
     _ball = CreateResource<Sphere3D>(resourceCache(), ballDescriptor);

@@ -349,9 +349,9 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
     }
 }
 
-bool WarScene::load(const Str256& name) {
+bool WarScene::load() {
     // Load scene resources
-    const bool loadState = Scene::load(name);
+    const bool loadState = Scene::load();
     setDayNightCycleTimeFactor(24);
 
     // Position camera
@@ -701,7 +701,7 @@ void WarScene::toggleCamera(const InputParams param) {
         if (node != nullptr) {
             if (flyCameraActive) {
                 state()->playerState(idx).overrideCamera(tpsCamera);
-                static_cast<ThirdPersonCamera*>(tpsCamera)->setTarget(node);
+                static_cast<ThirdPersonCamera*>(tpsCamera)->setTarget(node->get<TransformComponent>(), vec3<F32>(0.f, 0.75f, 1.f));
                 flyCameraActive = false;
                 tpsCameraActive = true;
                 return;

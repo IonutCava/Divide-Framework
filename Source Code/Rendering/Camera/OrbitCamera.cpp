@@ -24,39 +24,31 @@ void OrbitCamera::fromCamera(const Camera& camera, bool flag) {
         _rotationDirty = true;
         _offsetDir.set(orbitCam._offsetDir);
         _cameraRotation.set(orbitCam._cameraRotation);
-        _newEye.set(orbitCam._newEye);
-        _targetNode = orbitCam._targetNode;
+        _targetTransform = orbitCam._targetTransform;
         flag = true;
     }
 
     FreeFlyCamera::fromCamera(camera, flag);
 }
-
-void OrbitCamera::setTarget(SceneGraphNode* sgn, const vec3<F32>& offsetDirection) noexcept {
-    _targetNode = sgn;
-    _offsetDir = offsetDirection;
-    _offsetDir.normalize();
+void OrbitCamera::setTarget(TransformComponent* tComp) noexcept {
+    _targetTransform = tComp;
 }
 
-bool OrbitCamera::updateViewMatrix() noexcept {
-    setEye(_newEye);
-
-    return FreeFlyCamera::updateViewMatrix();
+void OrbitCamera::setTarget(TransformComponent* tComp, const vec3<F32>& offsetDirection) noexcept {
+    setTarget(tComp);
+    _offsetDir = Normalized(offsetDirection);
 }
 
 void OrbitCamera::update(const F32 deltaTimeMS) noexcept {
     FreeFlyCamera::update(deltaTimeMS);
 
-    if (!_targetNode) {
+    if (!_targetTransform) {
         return;
     }
 
-    const TransformComponent* const trans = _targetNode->get<TransformComponent>();
-
-    static vec3<F32> newTargetOrientation;
-
+    vec3<F32> newTargetOrientation;
     if (/*trans->changedLastFrame() || */ _rotationDirty || true) {
-        newTargetOrientation = trans->getOrientation().getEuler();
+        newTargetOrientation = _targetTransform->getOrientation().getEuler();
         newTargetOrientation.yaw = M_PI_f - newTargetOrientation.yaw;
         newTargetOrientation += _cameraRotation;
         Util::Normalize(newTargetOrientation, false);
@@ -64,7 +56,7 @@ void OrbitCamera::update(const F32 deltaTimeMS) noexcept {
     }
 
     _data._orientation.fromEuler(Angle::to_DEGREES(newTargetOrientation));
-    _newEye = trans->getPosition() + _data._orientation * (_offsetDir * _curRadius);
+    setEye(_targetTransform->getPosition() + _data._orientation * (_offsetDir * _curRadius));
     _viewMatrixDirty = true;
 }
 
@@ -74,6 +66,42 @@ bool OrbitCamera::zoom(const I32 zoomFactor) noexcept {
     }
 
     return FreeFlyCamera::zoom(zoomFactor);
+}
+
+void OrbitCamera::saveToXML(boost::property_tree::ptree& pt, const string prefix) const {
+    FreeFlyCamera::saveToXML(pt, prefix);
+
+    const string savePath = xmlSavePath(prefix);
+
+    pt.put(savePath + ".maxRadius", maxRadius());
+    pt.put(savePath + ".minRadius", minRadius());
+    pt.put(savePath + ".curRadius", curRadius());
+    pt.put(savePath + ".cameraRotation.<xmlattr>.x", _cameraRotation.x);
+    pt.put(savePath + ".cameraRotation.<xmlattr>.y", _cameraRotation.y);
+    pt.put(savePath + ".cameraRotation.<xmlattr>.z", _cameraRotation.z); 
+    pt.put(savePath + ".offsetDir.<xmlattr>.x", _offsetDir.x);
+    pt.put(savePath + ".offsetDir.<xmlattr>.y", _offsetDir.y);
+    pt.put(savePath + ".offsetDir.<xmlattr>.z", _offsetDir.z);
+}
+
+void OrbitCamera::loadFromXML(const boost::property_tree::ptree& pt, const string prefix) {
+    FreeFlyCamera::loadFromXML(pt, prefix);
+
+    const string savePath = xmlSavePath(prefix);
+
+    maxRadius(pt.get(savePath + ".maxRadius", maxRadius()));
+    minRadius(pt.get(savePath + ".minRadius", minRadius()));
+    curRadius(pt.get(savePath + ".curRadius", curRadius()));
+    _cameraRotation.set(
+        pt.get(savePath + ".cameraRotation.<xmlattr>.x", _cameraRotation.x),
+        pt.get(savePath + ".cameraRotation.<xmlattr>.y", _cameraRotation.y),
+        pt.get(savePath + ".cameraRotation.<xmlattr>.z", _cameraRotation.z)
+    );
+    _offsetDir.set(
+        pt.get(savePath + ".offsetDir.<xmlattr>.x", _offsetDir.x),
+        pt.get(savePath + ".offsetDir.<xmlattr>.y", _offsetDir.y),
+        pt.get(savePath + ".offsetDir.<xmlattr>.z", _offsetDir.z)
+    );
 }
 
 }  // namespace Divide

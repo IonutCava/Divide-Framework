@@ -153,20 +153,10 @@ Scene* SceneManager::load(const Str256& sceneName) {
 
     _platformContext->paramHandler().setParam(_ID("currentScene"), string(sceneName.c_str()));
 
-    const bool sceneNotLoaded = loadingScene->getState() != ResourceState::RES_LOADED;
-
-    if (sceneNotLoaded) {
-        
-        // Load the main scene from XML
-        if (!Attorney::SceneManager::loadXML(*loadingScene, sceneName)) {
-            return nullptr;
-        }
-
-        if (Attorney::SceneManager::load(*loadingScene, sceneName)) {
-            Attorney::SceneManager::postLoad(*loadingScene);
-        } else {
-            return nullptr;
-        }
+    if (loadingScene->getState() != ResourceState::RES_LOADED &&
+        !Attorney::SceneManager::load(*loadingScene)) 
+    {
+        return nullptr;
     }
 
     return loadingScene;
@@ -199,6 +189,7 @@ void SceneManager::setActiveScene(Scene* const scene) {
     }
 
     _platformContext->gui().onChangeScene(scene);
+    _platformContext->editor().onChangeScene(scene);
 }
 
 bool SceneManager::switchScene(const Str256& name, bool unloadPrevious, bool deferToIdle, const bool threaded) {
@@ -326,7 +317,7 @@ void SceneManager::addPlayerInternal(Scene& parentScene, SceneGraphNode* playerN
         }
     }
 
-    U32 i = 0;
+    U32 i = 0u;
     for (; i < Config::MAX_LOCAL_PLAYER_COUNT; ++i) {
         if (_players[i] == nullptr) {
             break;
@@ -337,6 +328,16 @@ void SceneManager::addPlayerInternal(Scene& parentScene, SceneGraphNode* playerN
         const Player_ptr player = std::make_shared<Player>(to_U8(i));
         player->camera()->fromCamera(*Camera::utilityCamera(Camera::UtilityCamera::DEFAULT));
         player->camera()->setFixedYawAxis(true);
+
+        {
+            boost::property_tree::ptree pt;
+            const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
+            const ResourcePath sceneLocation(scenePath + "/" + parentScene.resourceName().c_str());
+            const ResourcePath sceneDataFile(sceneLocation + ".xml");
+            XML::readXML(sceneDataFile.c_str(), pt);
+            player->camera()->loadFromXML(pt);
+        }
+
         _players[i] = playerNode->get<UnitComponent>();
         _players[i]->setUnit(player);
 
@@ -590,21 +591,21 @@ void SceneManager::debugDraw(const RenderStagePass& stagePass, const Camera* cam
     _platformContext->gfx().debugDraw(activeScene.state()->renderState(), camera, bufferInOut);
 }
 
-Camera* SceneManager::playerCamera(const PlayerIndex idx) const noexcept {
+Camera* SceneManager::playerCamera(const PlayerIndex idx, const bool skipOverride) const noexcept {
     if (getActivePlayerCount() <= idx) {
         return nullptr;
     }
 
-    Camera* overrideCamera = getActiveScene().state()->playerState(idx).overrideCamera();
-    if (overrideCamera == nullptr) {
-        overrideCamera = _players[idx]->getUnit<Player>()->camera();
+    Camera* overrideCamera = skipOverride ? nullptr : getActiveScene().state()->playerState(idx).overrideCamera();
+    if (overrideCamera != nullptr) {
+        return overrideCamera;
     }
 
-    return overrideCamera;
+    return _players[idx]->getUnit<Player>()->camera();
 }
 
-Camera* SceneManager::playerCamera() const noexcept {
-    return playerCamera(_currentPlayerPass);
+Camera* SceneManager::playerCamera(const bool skipOverride) const noexcept {
+    return playerCamera(_currentPlayerPass, skipOverride);
 }
 
 void SceneManager::currentPlayerPass(const PlayerIndex idx) {

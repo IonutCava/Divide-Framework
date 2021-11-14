@@ -12,7 +12,6 @@
 </wind>
 <options>
     <visibility>1000</visibility>
-    <cameraSpeed move="20.2000008" turn="40.75"/>
 </options>
 <fog>
     <fogDensityB>0.0700000003</fogDensityB>

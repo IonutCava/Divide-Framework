@@ -92,7 +92,7 @@ namespace Divide {
             open = false;
             _changeCount = 0u;
             if (!_context.editor().saveToXML()) {
-                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Save failed!", Time::SecondsToMilliseconds<F32>(3.0f));
+                Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Save failed!", Time::SecondsToMilliseconds<F32>(3.0f), true);
             }
         }
         ImGui::SameLine();

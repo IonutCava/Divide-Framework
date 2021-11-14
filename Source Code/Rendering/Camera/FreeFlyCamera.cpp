@@ -16,8 +16,6 @@ void FreeFlyCamera::fromCamera(const Camera& camera, bool flag) {
         const FreeFlyCamera& cam = static_cast<const FreeFlyCamera&>(camera);
         _speedFactor = cam._speedFactor;
         _speed = cam._speed;
-        _targetPosition.set(cam._targetPosition);
-        _currentVelocity.set(cam._currentVelocity);
         setFixedYawAxis(cam._yawFixed, cam._fixedYawAxis);
         _mouseSensitivity = cam._mouseSensitivity;
         lockRotation(cam._rotationLocked);
@@ -165,4 +163,40 @@ bool FreeFlyCamera::rotateRelative(const vec3<I32>& relRotation) {
 bool FreeFlyCamera::zoom(const I32 zoomFactor) noexcept {
     return zoomFactor != 0;
 }
+
+void FreeFlyCamera::saveToXML(boost::property_tree::ptree& pt, const string prefix) const {
+    Camera::saveToXML(pt, prefix);
+
+    const string savePath = xmlSavePath(prefix);
+
+    pt.put(savePath + ".speedFactor.<xmlattr>.turn", _speedFactor.turn);
+    pt.put(savePath + ".speedFactor.<xmlattr>.move", _speedFactor.move);
+    pt.put(savePath + ".speedFactor.<xmlattr>.zomm", _speedFactor.zoom); 
+    pt.put(savePath + ".fixedYawAxis.<xmlattr>.x", _fixedYawAxis.x);
+    pt.put(savePath + ".fixedYawAxis.<xmlattr>.y", _fixedYawAxis.y);
+    pt.put(savePath + ".fixedYawAxis.<xmlattr>.z", _fixedYawAxis.z);
+    pt.put(savePath + ".yawFixed", _yawFixed);
+    pt.put(savePath + ".rotationLocked", _rotationLocked);
+    pt.put(savePath + ".movementLocked", _movementLocked);
+}
+
+void FreeFlyCamera::loadFromXML(const boost::property_tree::ptree& pt, const string prefix) {
+    Camera::loadFromXML(pt, prefix);
+
+    const string savePath = xmlSavePath(prefix);
+
+    _speedFactor.turn = pt.get(savePath + ".speedFactor.<xmlattr>.turn", _speedFactor.turn);
+    _speedFactor.move = pt.get(savePath + ".speedFactor.<xmlattr>.move", _speedFactor.move);
+    _speedFactor.zoom = pt.get(savePath + ".speedFactor.<xmlattr>.zomm", _speedFactor.zoom);
+    _fixedYawAxis.set(
+        pt.get(savePath + ".fixedYawAxis.<xmlattr>.x", _fixedYawAxis.x),
+        pt.get(savePath + ".fixedYawAxis.<xmlattr>.y", _fixedYawAxis.y),
+        pt.get(savePath + ".fixedYawAxis.<xmlattr>.z", _fixedYawAxis.z)
+    );
+    _yawFixed = pt.get(savePath + ".yawFixed", _yawFixed);
+    _rotationLocked = pt.get(savePath + ".rotationLocked", _rotationLocked);
+    _movementLocked = pt.get(savePath + ".movementLocked", _movementLocked);
+  
+}
+
 };

@@ -252,8 +252,8 @@ protected:
     void debugDraw(const RenderStagePass& stagePass, const Camera* camera, GFX::CommandBuffer& bufferInOut);
     void prepareLightData(RenderStage stage, const vec3<F32>& cameraPos, const mat4<F32>& viewMatrix);
 
-    [[nodiscard]] Camera* playerCamera() const noexcept;
-    [[nodiscard]] Camera* playerCamera(PlayerIndex idx) const noexcept;
+    [[nodiscard]] Camera* playerCamera(bool skipOverride = false) const noexcept;
+    [[nodiscard]] Camera* playerCamera(PlayerIndex idx, bool skipOverride = false) const noexcept;
     void currentPlayerPass(PlayerIndex idx);
     void moveCameraToNode(const SceneGraphNode* targetNode) const;
     bool saveNode(const SceneGraphNode* targetNode) const;
@@ -370,20 +370,20 @@ class SceneManagerSSRAccessor {
 };
 
 class SceneManagerCameraAccessor {
-    static Camera* playerCamera(const Divide::SceneManager* mgr) noexcept {
-        return mgr->playerCamera();
+    static Camera* playerCamera(const Divide::SceneManager* mgr, const bool skipOverride = false) noexcept {
+        return mgr->playerCamera(skipOverride);
     }
 
-    static Camera* playerCamera(const Divide::SceneManager& mgr) noexcept {
-        return mgr.playerCamera();
+    static Camera* playerCamera(const Divide::SceneManager& mgr, const bool skipOverride = false) noexcept {
+        return mgr.playerCamera(skipOverride);
     }
 
-    static Camera* playerCamera(const Divide::SceneManager* mgr, const PlayerIndex idx) noexcept {
-        return mgr->playerCamera(idx);
+    static Camera* playerCamera(const Divide::SceneManager* mgr, const PlayerIndex idx, const bool skipOverride = false) noexcept {
+        return mgr->playerCamera(idx, skipOverride);
     }
 
-    static Camera* playerCamera(const Divide::SceneManager& mgr, const PlayerIndex idx) noexcept {
-        return mgr.playerCamera(idx);
+    static Camera* playerCamera(const Divide::SceneManager& mgr, const PlayerIndex idx, const bool skipOverride = false) noexcept {
+        return mgr.playerCamera(idx, skipOverride);
     }
 
     static void moveCameraToNode(const Divide::SceneManager* mgr, const SceneGraphNode* targetNode) {

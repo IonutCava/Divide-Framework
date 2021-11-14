@@ -115,34 +115,47 @@ namespace {
 
 
 StatusBar::StatusBar(PlatformContext& context) noexcept
-    : PlatformContextComponent(context),
-      _lastMessageDurationMS(0.0f)
+    : PlatformContextComponent(context)
 {
-
 }
 
 void StatusBar::draw() const {
     if (BeginStatusBar())
     {
-        if (!_lastMessage.empty()) {
-            ImGui::Text(_lastMessage.c_str());
+        if (!_messages.empty()) {
+            const Message& frontMsg = _messages.front();
+            if (!frontMsg._text.empty()) {
+                if (frontMsg._error) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 50, 0, 255));
+                }
+
+                ImGui::Text(frontMsg._text.c_str());
+
+                if (frontMsg._error) {
+                    ImGui::PopStyleColor();
+                }
+            }
         }
         EndStatusBar();
     }
 }
 
 void StatusBar::update(const U64 deltaTimeUS) noexcept {
-    if (_lastMessageDurationMS > 0.0f) {
-        _lastMessageDurationMS -= Time::MicrosecondsToMilliseconds(deltaTimeUS);
-        if (_lastMessageDurationMS < 0.0f) {
-            _lastMessage.clear();
+    if (_messages.empty()) {
+        return;
+    }
+    
+    Message& frontMsg = _messages.front();
+    if (frontMsg._durationMS > 0.f) {
+        frontMsg._durationMS -= Time::MicrosecondsToMilliseconds(deltaTimeUS);
+        if (frontMsg._text.empty() || frontMsg._durationMS < 0.f) {
+            _messages.pop();
         }
     }
 }
 
-void StatusBar::showMessage(const string& message, const F32 durationMS) {
-    _lastMessage = message;
-    _lastMessageDurationMS = durationMS;
+void StatusBar::showMessage(const string& message, const F32 durationMS, const bool error) {
+    _messages.push({message, durationMS, error});
 }
 
 F32 StatusBar::height() const noexcept {

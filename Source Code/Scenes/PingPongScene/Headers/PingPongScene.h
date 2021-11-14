@@ -45,7 +45,7 @@ BEGIN_SCENE(PingPongScene)
 
     ~PingPongScene() {}
 
-    bool load(const Str256& name) override;
+    bool load() override;
     void postLoadMainThread() override;
     void processInput(PlayerIndex idx, U64 deltaTimeUS) override;
     void processTasks(U64 deltaTimeUS) override;

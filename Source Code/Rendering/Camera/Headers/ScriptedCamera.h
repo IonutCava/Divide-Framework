@@ -45,6 +45,9 @@ class ScriptedCamera final : public FreeFlyCamera {
     explicit ScriptedCamera(const Str256& name, const vec3<F32>& eye = VECTOR3_ZERO);
 
     static constexpr CameraType Type() noexcept { return CameraType::SCRIPTED; }
+
+    void saveToXML(boost::property_tree::ptree& pt, string prefix = "") const override;
+    void loadFromXML(const boost::property_tree::ptree& pt, string prefix = "") override;
 };
 
 };  // namespace Divide

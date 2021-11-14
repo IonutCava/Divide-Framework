@@ -24,8 +24,8 @@ DefaultScene::DefaultScene(PlatformContext& context, ResourceCache* cache, Scene
     Scene::DEFAULT_SCENE_GUID = getGUID();
 }
 
-bool DefaultScene::load(const Str256& name) {
-    const bool loadState = Scene::load(name);
+bool DefaultScene::load() {
+    const bool loadState = Scene::load();
     state()->saveLoadDisabled(true);
     return loadState;
 }

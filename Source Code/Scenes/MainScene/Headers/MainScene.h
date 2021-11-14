@@ -44,7 +44,7 @@ BEGIN_SCENE(MainScene)
     explicit MainScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
 
     /*General Scene Requirement*/
-    bool load(const Str256& name) override;
+    bool load() override;
     bool unload() override;
     void postLoadMainThread() override;
 

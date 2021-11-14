@@ -116,11 +116,9 @@ class FreeFlyCamera : public Camera {
         _fixedYawAxis = fixedAxis;
     }
 
-
     F32 getTurnSpeedFactor() const noexcept { return _speedFactor.turn; }
     F32 getMoveSpeedFactor() const noexcept { return _speedFactor.move; }
     F32 getZoomSpeedFactor() const noexcept { return _speedFactor.zoom; }
-
 
     void lockMovement(const bool state) noexcept { _movementLocked = state; }
 
@@ -134,11 +132,12 @@ class FreeFlyCamera : public Camera {
 
     virtual ~FreeFlyCamera() = default;
 
+    void saveToXML(boost::property_tree::ptree& pt, string prefix = "") const override;
+    void loadFromXML(const boost::property_tree::ptree& pt, string prefix = "") override;
+
    protected:
      vec4<F32> _speedFactor = VECTOR4_UNIT;
      vec4<F32> _speed = VECTOR4_ZERO;
-     vec3<F32> _targetPosition = VECTOR3_ZERO;
-     vec3<F32> _currentVelocity = VECTOR3_ZERO;
      vec3<F32> _fixedYawAxis = WORLD_Y_AXIS;
      F32 _mouseSensitivity = 1.0f;
      bool _rotationLocked = false;

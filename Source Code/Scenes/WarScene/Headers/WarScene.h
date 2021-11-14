@@ -50,7 +50,7 @@ BEGIN_SCENE(WarScene)
     explicit WarScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str256& name);
     ~WarScene();
 
-    bool load(const Str256& name) override;
+    bool load() override;
     bool unload() override;
     void postLoadMainThread() override;
     void processTasks(U64 deltaTimeUS) override;

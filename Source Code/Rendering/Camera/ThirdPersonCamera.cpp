@@ -47,4 +47,12 @@ bool ThirdPersonCamera::rotateRelative(const vec3<I32>& relRotation) {
 void ThirdPersonCamera::fromCamera(const Camera& camera, const bool flag) {
     OrbitCamera::fromCamera(camera, camera.type() == Type() || flag);
 }
+
+void ThirdPersonCamera::saveToXML(boost::property_tree::ptree& pt, const string prefix) const {
+    OrbitCamera::saveToXML(pt, prefix);
+}
+
+void ThirdPersonCamera::loadFromXML(const boost::property_tree::ptree& pt, const string prefix) {
+    OrbitCamera::loadFromXML(pt, prefix);
+}
 };

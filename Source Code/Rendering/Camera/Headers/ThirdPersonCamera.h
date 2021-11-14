@@ -46,6 +46,9 @@ class ThirdPersonCamera final : public OrbitCamera {
 
     static constexpr CameraType Type() noexcept { return CameraType::THIRD_PERSON; }
 
+    void saveToXML(boost::property_tree::ptree& pt, string prefix = "") const override;
+    void loadFromXML(const boost::property_tree::ptree& pt, string prefix = "") override;
+
   public:
     bool rotateRelative(const vec3<I32>& relRotation) override;
     void fromCamera(const Camera& camera, bool flag = false) override;

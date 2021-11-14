@@ -37,8 +37,12 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
     class StatusBar final : public PlatformContextComponent {
+        struct Message {
+            string _text;
+            F32 _durationMS = 0.f;
+            bool _error = false;
+        };
     public:
-
         explicit StatusBar(PlatformContext& context) noexcept;
 
         void draw() const;
@@ -46,11 +50,10 @@ namespace Divide {
 
         [[nodiscard]] F32 height() const noexcept;
 
-        void showMessage(const string& message, F32 durationMS);
+        void showMessage(const string& message, F32 durationMS, bool error);
 
     private:
-        F32 _lastMessageDurationMS;
-        string _lastMessage;
+        eastl::queue<Message> _messages;
     };
 } //namespace Divide
 
