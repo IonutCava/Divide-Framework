@@ -65,7 +65,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
         }
   
         _memoryBlock = GL_API::getMemoryAllocator().allocate(_params._dataSize, storageMask, accessMask, _params._name, needsAdditionalData ? nullptr : _params._bufferParams._initialData.first);
-        assert(_memoryBlock._ptr != nullptr && _memoryBlock._size == _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!");
+        assert(_memoryBlock._ptr != nullptr && _memoryBlock._size >= _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!");
     }
 
     // In this scenario, we have storage allocated but our contents are undefined so we need to do 2 writes to the buffer:
@@ -174,11 +174,10 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
     }
 
     if (_memoryBlock._ptr != nullptr) {
-        void* dst = _memoryBlock._ptr + offsetInBytes;
         if (zeroMem) {
-            memset(dst, 0, rangeInBytes);
+            memset(&_memoryBlock._ptr[offsetInBytes], 0, rangeInBytes);
         } else {
-            memcpy(dst, data, rangeInBytes);
+            memcpy(&_memoryBlock._ptr[offsetInBytes], data, rangeInBytes);
         }
 
         if (_params._explicitFlush) {

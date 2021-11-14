@@ -84,12 +84,12 @@ void PlatformContext::beginFrame(const U32 componentMask) {
 void PlatformContext::idle(const bool fast, const U32 componentMask) {
     OPTICK_EVENT();
 
-    for (auto pool : _taskPool) {
+    for (TaskPool* pool : _taskPool) {
         pool->flushCallbackQueue();
     }
 
     if (BitCompare(componentMask, SystemComponentType::Application)) {
-       
+        NOP();
     }
 
     if (BitCompare(componentMask, SystemComponentType::GFXDevice)) {

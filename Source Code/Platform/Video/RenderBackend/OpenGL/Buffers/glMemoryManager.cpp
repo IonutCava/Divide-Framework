@@ -11,34 +11,27 @@ namespace GLUtil {
 namespace GLMemory {
 namespace {
     constexpr bool g_useBlockAllocator = false;
+
+    [[nodiscard]] ptrdiff_t GetAlignmentCorrected(const ptrdiff_t byteOffset) noexcept {
+        return byteOffset % GL_API::s_UBOffsetAlignment == 0u 
+                    ? byteOffset
+                    : ((byteOffset + GL_API::s_UBOffsetAlignment - 1u) / GL_API::s_UBOffsetAlignment) * GL_API::s_UBOffsetAlignment;
+    }
 }
 
 Chunk::Chunk(const size_t size, const BufferStorageMask storageMask, const MapBufferAccessMask accessMask, Byte* initialData) 
     : _storageMask(storageMask),
       _accessMask(accessMask),
-      _size(size)
+      _size(GetAlignmentCorrected(size))  // Code for the worst case?
 {
     if_constexpr (g_useBlockAllocator) {
         static U32 g_bufferIndex = 0u;
-
-        glCreateBuffers(1, &_bufferHandle);
-        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-            glObjectLabel(GL_BUFFER,
-                _bufferHandle,
-                -1,
-                Util::StringFormat("DVD_BUFFER_CHUNK_%d", g_bufferIndex++).c_str());
-        }
-        assert(_bufferHandle != 0 && "GLMemory chunk allocation error: buffer creation failed");
-        glNamedBufferStorage(_bufferHandle, size, initialData, storageMask);
-        _ptr = (Byte*)glMapNamedBufferRange(_bufferHandle, 0, _size, accessMask);
-    } else {
-        _ptr = nullptr;
+        _ptr = createAndAllocPersistentBuffer(_size, storageMask, accessMask, _bufferHandle, nullptr, Util::StringFormat("DVD_BUFFER_CHUNK_%d", g_bufferIndex++).c_str());
     }
 
     Block block;
-    block._free = true;
-    block._offset = 0;
-    block._size = size;
+    block._size = _size;
+    block._ptr = _ptr;
     block._bufferHandle = _bufferHandle;
     
     _blocks.emplace_back(block);
@@ -51,10 +44,9 @@ Chunk::~Chunk()
             glDeleteBuffers(1, &_bufferHandle);
         }
     } else {
-        const size_t count = _blocks.size();
-        for (size_t i = 0; i < count; ++i) {
-            if (_blocks[i]._bufferHandle > 0u) {
-                glDeleteBuffers(1, &_blocks[i]._bufferHandle);
+        for (Block& block : _blocks) {
+            if (block._bufferHandle > 0u) {
+                glDeleteBuffers(1, &block._bufferHandle);
             }
         }
     }
@@ -74,65 +66,53 @@ void Chunk::deallocate(const Block &block) {
 }
 
 bool Chunk::allocate(const size_t size, const char* name, Byte* initialData, Block &blockOut) {
-    if (size > _size) {
+    const size_t requestedSize = GetAlignmentCorrected(size);
+
+    if (requestedSize > _size) {
         return false;
     }
 
     const size_t count = _blocks.size();
-    for (size_t i = 0; i < count; ++i) {
+    for (size_t i = 0u; i < count; ++i) {
         Block& block = _blocks[i];
-        if (block._free) {
-            const size_t newSize = block._size;
-
-            if (newSize >= size) {
-                block._size = newSize;
-
-                if_constexpr(g_useBlockAllocator) {
-                    block._ptr = _ptr + block._offset;
-                    std::memcpy(block._ptr, initialData, size);
-                } else {
-                    block._ptr = createAndAllocPersistentBuffer(size, storageMask(), accessMask(), block._bufferHandle, initialData, name);
-                }
-
-                if (block._size == size) {
-                    block._free = false;
-                    blockOut = block;
-                    return true;
-                }
-
-                Block nextBlock;
-                nextBlock._free = true;
-                nextBlock._offset = g_useBlockAllocator ? block._offset + size : 0u;
-                nextBlock._bufferHandle = _bufferHandle;
-                nextBlock._size = block._size - size;
-
-                _blocks.emplace_back(nextBlock);
-
-                _blocks[i]._size = size;
-                _blocks[i]._free = false;
-                blockOut = _blocks[i];
-
-                return true;
-            }
+        if (!block._free || block._size < requestedSize) {
+            continue;
         }
+
+        if_constexpr(g_useBlockAllocator) {
+            if (initialData == nullptr) {
+                memset(block._ptr, 0, requestedSize);
+            } else {
+                memcpy(block._ptr, initialData, size);
+                memset(&block._ptr[size], 0, requestedSize - size);
+            }
+        } else {
+            block._ptr = createAndAllocPersistentBuffer(requestedSize, storageMask(), accessMask(), block._bufferHandle, initialData, name);
+        }
+
+        block._free = false;
+        if (block._size > requestedSize) {
+            Block nextBlock;
+            nextBlock._free = true;
+            nextBlock._offset = g_useBlockAllocator ? block._offset + requestedSize : 0u;
+            nextBlock._bufferHandle = _bufferHandle;
+            nextBlock._size = block._size - requestedSize;
+            nextBlock._ptr = &_ptr[nextBlock._offset];
+
+            block._size = requestedSize;
+            blockOut = block;
+            _blocks.emplace_back(nextBlock);
+        } else {
+            blockOut = block;
+        }
+        return true;
     }
 
     return false;
 }
 
-bool Chunk::isIn(const Block &block) const {
+bool Chunk::containsBlock(const Block &block) const {
     return eastl::find(begin(_blocks), end(_blocks), block) != cend(_blocks);
-}
-
-bool IsPowerOfTwo(const size_t size) {
-    size_t mask = 0u;
-    const size_t power = to_size(std::log2(size));
-
-    for (size_t i = 0; i < power; ++i) {
-        mask += to_size(1 << i);
-    }
-
-    return !(size & mask);
 }
 
 ChunkAllocator::ChunkAllocator(const size_t size) noexcept
@@ -141,21 +121,24 @@ ChunkAllocator::ChunkAllocator(const size_t size) noexcept
     assert(isPowerOfTwo(size));
 }
 
-std::unique_ptr<Chunk> ChunkAllocator::allocate(const size_t size, const BufferStorageMask storageMask, const MapBufferAccessMask accessMask, Byte* initialData) const {
-    const size_t power = to_size(std::log2(size) + 1);
-    return std::make_unique<Chunk>((size > _size) ? to_size(1 << power) : _size, storageMask, accessMask, initialData);
+Chunk* ChunkAllocator::allocate(const size_t size, const BufferStorageMask storageMask, const MapBufferAccessMask accessMask, Byte* initialData) const {
+    const size_t overflowSize = to_size(1) << to_size(std::log2(size) + 1);
+    return MemoryManager_NEW Chunk((size > _size ? overflowSize : _size), storageMask, accessMask, initialData);
 }
 
 void DeviceAllocator::init(size_t size) {
     deallocate();
 
     assert(size > 0u);
-    _chunkAllocator = std::make_unique<ChunkAllocator>(size);
+    ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
+    _chunkAllocator = eastl::make_unique<ChunkAllocator>(size);
 }
 
 Block DeviceAllocator::allocate(const size_t size, const BufferStorageMask storageMask, const MapBufferAccessMask accessMask, const char* blockName, Byte* initialData) {
+    ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
+
     Block block;
-    for (auto &chunk : _chunks) {
+    for (Chunk* chunk : _chunks) {
         if (chunk->storageMask() == storageMask && chunk->accessMask() == accessMask) {
             if (chunk->allocate(size, blockName, initialData, block)) {
                 return block;
@@ -170,9 +153,11 @@ Block DeviceAllocator::allocate(const size_t size, const BufferStorageMask stora
     return block;
 }
 
-void DeviceAllocator::deallocate(Block &block) {
-    for (auto &chunk : _chunks) {
-        if (chunk->isIn(block)) {
+void DeviceAllocator::deallocate(Block &block) const {
+    ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
+
+    for (Chunk* chunk : _chunks) {
+        if (chunk->containsBlock(block)) {
             chunk->deallocate(block);
             return;
         }
@@ -181,8 +166,9 @@ void DeviceAllocator::deallocate(Block &block) {
     DIVIDE_UNEXPECTED_CALL_MSG("DeviceAllocator::deallocate error: unable to deallocate the block");
 }
 
-void DeviceAllocator::deallocate() noexcept {
-    _chunks.clear();
+void DeviceAllocator::deallocate() {
+    ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
+    MemoryManager::DELETE_CONTAINER(_chunks);
 }
 } // namespace GLMemory
 

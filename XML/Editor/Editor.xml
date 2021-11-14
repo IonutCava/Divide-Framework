@@ -22,7 +22,7 @@
             <aspectRatio>1.76999998</aspectRatio>
             <FoV>60</FoV>
             <flag>0</flag>
-            <speedFactor turn="35" move="35" zomm="35"/>
+            <speedFactor turn="35" move="35" zoom="35"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>false</yawFixed>
             <rotationLocked>false</rotationLocked>

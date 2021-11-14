@@ -143,25 +143,29 @@ void TaskPool::waitForTask(const Task& task) {
 }
 
 size_t TaskPool::flushCallbackQueue() {
-    if (USE_OPTICK_PROFILER) {
-        OPTICK_EVENT();
-    }
+    size_t ret = 0u;
 
-    size_t ret = 0u, count = 0u;
-    std::array<U32, g_maxDequeueItems> taskIndex = {};
-    do {
-        count = _threadedCallbackBuffer.try_dequeue_bulk(std::begin(taskIndex), g_maxDequeueItems);
-        for (size_t i = 0u; i < count; ++i) {
-            auto& cbks = _taskCallbacks[taskIndex[i]];
-            for (auto& cbk : cbks) {
-                if (cbk) {
-                    cbk();
-                }
-            }
-            cbks.resize(0);
+    if (_threadedCallbackBuffer.size_approx() > 0u) {
+        if (USE_OPTICK_PROFILER) {
+            OPTICK_EVENT();
         }
-        ret += count;
-    } while (count > 0u);
+
+        std::array<U32, g_maxDequeueItems> taskIndex = {};
+        size_t count = 0u;
+        do {
+            count = _threadedCallbackBuffer.try_dequeue_bulk(std::begin(taskIndex), g_maxDequeueItems);
+            for (size_t i = 0u; i < count; ++i) {
+                auto& cbks = _taskCallbacks[taskIndex[i]];
+                for (auto& cbk : cbks) {
+                    if (cbk) {
+                        cbk();
+                    }
+                }
+                cbks.resize(0);
+            }
+            ret += count;
+        } while (count > 0u);
+    }
 
     return ret;
 }

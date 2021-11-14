@@ -62,13 +62,13 @@ namespace GLMemory{
         ~Chunk();
                       void deallocate(const Block& block);
         [[nodiscard]] bool allocate(size_t size, const char* name, Byte* initialData, Block& blockOut);
-        [[nodiscard]] bool isIn(const Block &block) const;
+        [[nodiscard]] bool containsBlock(const Block &block) const;
 
         PROPERTY_RW(BufferStorageMask, storageMask, BufferStorageMask::GL_NONE_BIT);
         PROPERTY_RW(MapBufferAccessMask, accessMask, MapBufferAccessMask::GL_NONE_BIT);
 
     protected:
-        vector<Block> _blocks;
+        vector_fast<Block> _blocks;
         Byte* _ptr = nullptr;
         size_t _size = 0u;
         GLuint _bufferHandle = 0u;
@@ -80,36 +80,24 @@ namespace GLMemory{
         explicit ChunkAllocator(size_t size) noexcept;
 
         // if size > mSize, allocate to the next power of 2
-        [[nodiscard]] std::unique_ptr<Chunk> allocate(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, Byte* initialData) const;
+        [[nodiscard]] Chunk* allocate(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, Byte* initialData) const;
 
     private:
         size_t _size = 0u;
     };
 
-    /**
-     * @brief The AbstractAllocator Let the user to allocate or deallocate some blocks
-     */
-    class AbstractAllocator : NonCopyable, NonMovable
-    {
-    public:
-        AbstractAllocator() = default;
-        virtual ~AbstractAllocator() = default;
-
-        virtual Block allocate(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, const char* blockName, Byte* initialData) = 0;
-        virtual void deallocate(Block &block) = 0;
-    };
-
-    class DeviceAllocator final : public AbstractAllocator
+    class DeviceAllocator
     {
     public:
         void init(size_t size);
-        [[nodiscard]] Block allocate(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, const char* blockName, Byte* initialData) override;
-        void deallocate(Block &block) override;
-        void deallocate() noexcept;
+        [[nodiscard]] Block allocate(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, const char* blockName, Byte* initialData);
+        void deallocate(Block &block) const;
+        void deallocate();
 
     private:
-        std::unique_ptr<ChunkAllocator> _chunkAllocator = nullptr;
-        vector<std::shared_ptr<Chunk>> _chunks;
+        mutable Mutex _chunkAllocatorLock;
+        eastl::unique_ptr<ChunkAllocator> _chunkAllocator = nullptr;
+        vector_fast<Chunk*> _chunks;
     };
 } // namespace GLMemory
 

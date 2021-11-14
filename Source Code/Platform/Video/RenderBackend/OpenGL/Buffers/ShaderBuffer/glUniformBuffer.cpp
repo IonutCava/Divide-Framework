@@ -52,7 +52,7 @@ glUniformBuffer::~glUniformBuffer()
 ptrdiff_t glUniformBuffer::getAlignmentCorrected(ptrdiff_t byteOffset) const noexcept {
     const size_t req = AlignmentRequirement(_usage);
     if (byteOffset % req != 0) {
-        byteOffset = (byteOffset + req - 1) / req * req;
+        byteOffset = ((byteOffset + req - 1) / req) * req;
     }
 
     return byteOffset;
