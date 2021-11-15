@@ -535,18 +535,4 @@ void glShader::prepare() const {
     }
 }
 
-/// Add a define to the shader. The defined must not have been added previously
-void glShader::addShaderDefine(const string& define, bool appendPrefix) {
-    // Find the string in the list of program defines
-    const auto* it = std::find(std::begin(_definesList), std::end(_definesList), std::make_pair(define, appendPrefix));
-    // If we can't find it, we add it
-    if (it == std::end(_definesList)) {
-        _definesList.emplace_back(define, appendPrefix);
-        shouldRecompile(true);
-    } else {
-        // If we did find it, we'll show an error message in debug builds about double add
-        Console::d_errorfn(Locale::Get(_ID("ERROR_INVALID_DEFINE_ADD")), define.c_str(), _name.c_str());
-    }
-}
-
 } // namespace Divide

@@ -4,8 +4,6 @@
 
 #include "Utility/Headers/Localization.h"
 
-#include <assimp/anim.h>
-
 namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION_EVALUATOR = 1u;
     constexpr U16 BYTE_BUFFER_VERSION_ANIMATOR = 1u;
@@ -148,7 +146,7 @@ void SceneAnimator::save([[maybe_unused]] PlatformContext& context, ByteBuffer& 
 
     dataOut << BYTE_BUFFER_VERSION_ANIMATOR;
     dataOut << to_U32(_bones.size());
-    for (const eastl::shared_ptr<Bone>& bone : _bones) {
+    for (Bone* bone : _bones) {
         dataOut << bone->name();
     }
 
@@ -163,7 +161,8 @@ void SceneAnimator::save([[maybe_unused]] PlatformContext& context, ByteBuffer& 
 
 void SceneAnimator::load(PlatformContext& context, ByteBuffer& dataIn) {
     // make sure to clear this before writing new data
-    release();
+    release(true);
+    assert(_animations.empty());
 
     _skeleton = loadSkeleton(dataIn, nullptr);
 
@@ -184,12 +183,11 @@ void SceneAnimator::load(PlatformContext& context, ByteBuffer& dataIn) {
         dataIn >> nsize;
         _animations.resize(nsize);
 
-        uint32_t idx = 0;
-        for (std::shared_ptr<AnimEvaluator>& anim : _animations) {
-            anim = std::make_shared<AnimEvaluator>();
-            AnimEvaluator::load(*anim, dataIn);
+        for (uint32_t idx = 0; idx < nsize; ++idx) {
+            _animations[idx] = MemoryManager_NEW AnimEvaluator();
+            AnimEvaluator::load(*_animations[idx], dataIn);
             // get all the animation names so I can reference them by name and get the correct id
-            insert(_animationNameToID, _ID(anim->name().c_str()), idx++);
+            insert(_animationNameToID, _ID(_animations[idx]->name().c_str()), idx);
         }
 
         init(context);
@@ -198,54 +196,54 @@ void SceneAnimator::load(PlatformContext& context, ByteBuffer& dataIn) {
     }
 }
 
-void SceneAnimator::saveSkeleton(ByteBuffer& dataOut, const eastl::shared_ptr<Bone>& parent) const {
+void SceneAnimator::saveSkeleton(ByteBuffer& dataOut, Bone* parent) const {
     dataOut << BYTE_BUFFER_VERSION_SKELETON;
 
     // the name of the bone
     dataOut << parent->name();
     // the bone offsets
-    dataOut << parent->_offsetMatrix;
+    dataOut << parent->offsetMatrix();
     // original bind pose
-    dataOut << parent->_originalLocalTransform;
+    dataOut << parent->originalLocalTransform();
 
     // number of children
     const uint32_t nsize = static_cast<uint32_t>(parent->_children.size());
     dataOut << nsize;
     // continue for all children
-    for (vector<eastl::shared_ptr<Bone>>::iterator it = std::begin(parent->_children); it != std::end(parent->_children); ++it) {
-        saveSkeleton(dataOut, *it);
+    for (Bone* child : parent->_children) {
+        saveSkeleton(dataOut, child);
     }
 }
 
-eastl::shared_ptr<Bone> SceneAnimator::loadSkeleton(ByteBuffer& dataIn, const eastl::shared_ptr<Bone>& parent) {
+Bone* SceneAnimator::loadSkeleton(ByteBuffer& dataIn, Bone* parent) {
 
     auto tempVer = decltype(BYTE_BUFFER_VERSION_SKELETON){0};
     dataIn >> tempVer;
     if (tempVer == BYTE_BUFFER_VERSION_SKELETON) {
 
         string tempString;
-        // create a node
-        eastl::shared_ptr<Bone> internalNode = eastl::make_shared<Bone>();
-        // set the parent, in the case this is the root node, it will be null
-        internalNode->_parent = parent;
         // the name of the bone
         dataIn >> tempString;
-        internalNode->name(tempString);
+        // create a node
+        Bone* internalNode = MemoryManager_NEW Bone(tempString);
+        // set the parent, in the case this is the root node, it will be null
+        internalNode->_parent = parent;
+        mat4<F32> temp;
         // the bone offsets
-        dataIn >> internalNode->_offsetMatrix;
+        dataIn >> temp; internalNode->offsetMatrix(temp);
         // original bind pose
-        dataIn >> internalNode->_originalLocalTransform;
+        dataIn >> temp; internalNode->originalLocalTransform(temp);
 
         // a copy saved
-        internalNode->_localTransform = internalNode->_originalLocalTransform;
+        internalNode->localTransform(internalNode->originalLocalTransform());
         CalculateBoneToWorldTransform(internalNode);
         // the number of children
-        U32 nsize = 0;
+        U32 nsize = 0u;
         dataIn >> nsize;
 
         // recursively call this function on all children
         // continue for all child nodes and assign the created internal nodes as our children
-        for (U32 a = 0; a < nsize; a++) {
+        for (U32 a = 0u; a < nsize; a++) {
             internalNode->_children.push_back(loadSkeleton(dataIn, internalNode));
         }
         return internalNode;

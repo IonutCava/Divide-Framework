@@ -34,9 +34,16 @@
 #define _OCTREE_H_
 
 #include "IntersectionRecord.h"
-#include "SceneGraphNode.h"
+#include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 
 namespace Divide {
+
+class Frustum;
+class SceneGraphNode;
+class BoundsComponent;
+
+struct SGNIntersectionParams;
+
 // ref: http://www.gamedev.net/page/resources/_/technical/game-programming/introduction-to-octrees-r3529
 struct Octree  {
     /// Minimum cube size is 1x1x1
@@ -47,11 +54,11 @@ struct Octree  {
 
     explicit Octree(Octree* parent, U16 nodeMask);
     explicit Octree(Octree* parent, U16 nodeMask, const BoundingBox& rootAABB);
-    explicit Octree(Octree* parent, U16 nodeMask, const BoundingBox& rootAABB, const vector<SceneGraphNode*>& nodes);
+    explicit Octree(Octree* parent, U16 nodeMask, const BoundingBox& rootAABB, const vector<const SceneGraphNode*>& nodes);
 
     void update(U64 deltaTimeUS);
     [[nodiscard]] bool addNode(SceneGraphNode* node) const;
-    [[nodiscard]] bool addNodes(const vector<SceneGraphNode*>& nodes);
+    [[nodiscard]] bool removeNode(SceneGraphNode* node) const;
     void getAllRegions(vector<BoundingBox>& regionsOut) const;
 
     [[nodiscard]] const BoundingBox& getRegion() const noexcept { return _region; }
@@ -60,39 +67,40 @@ struct Octree  {
 
     [[nodiscard]] vector<IntersectionRecord> allIntersections(const Frustum& region, U16 typeFilterMask);
     [[nodiscard]] vector<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end);
-    [[nodiscard]] IntersectionRecord nearestIntersection(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
     [[nodiscard]] vector<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
+    [[nodiscard]] IntersectionRecord         nearestIntersection(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
 
 protected:
     friend class SceneGraph;
-    void onNodeMoved(const SceneGraphNode& node);
+    void onNodeMoved(const SceneGraphNode& sgn);
 
 private:
     [[nodiscard]] U8 activeNodes() const noexcept;
 
     void buildTree();
-    void insert(SceneGraphNode* object);
+    void insert(const SceneGraphNode* object);
     void findEnclosingBox() noexcept;
     void findEnclosingCube() noexcept;
 
-    [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, const vector<SceneGraphNode*>& objects);
-    [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, SceneGraphNode* object);
+    [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, const vector<const SceneGraphNode*>& objects);
+    [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, const SceneGraphNode* object);
 
     [[nodiscard]] vector<IntersectionRecord> getIntersection(const Frustum& frustum, U16 typeFilterMask) const;
     [[nodiscard]] vector<IntersectionRecord> getIntersection(const Ray& intersectRay, F32 start, F32 end, U16 typeFilterMask) const;
 
     [[nodiscard]] size_t getTotalObjectCount() const;
-    void updateIntersectionCache(vector<SceneGraphNode*>& parentObjects);
+    void updateIntersectionCache(vector<const SceneGraphNode*>& parentObjects);
     
     void handleIntersection(const IntersectionRecord& intersection) const;
-    [[nodiscard]] bool getIntersection(SceneGraphNode* node, const Frustum& frustum, IntersectionRecord& irOut) const noexcept;
-    [[nodiscard]] bool getIntersection(SceneGraphNode* node1, SceneGraphNode* node2, IntersectionRecord& irOut) const noexcept;
-    [[nodiscard]] bool getIntersection(SceneGraphNode* node, const Ray& intersectRay, F32 start, F32 end, IntersectionRecord& irOut) const;
+    [[nodiscard]] bool getIntersection(BoundsComponent* bComp, const Frustum& frustum, IntersectionRecord& irOut) const noexcept;
+    [[nodiscard]] bool getIntersection(BoundsComponent* bComp1, BoundsComponent* bComp2, IntersectionRecord& irOut) const noexcept;
+    [[nodiscard]] bool getIntersection(BoundsComponent* bComp, const Ray& intersectRay, F32 start, F32 end, IntersectionRecord& irOut) const noexcept;
     
+    PROPERTY_R_IW(bool, active, false);
 
 private:
-    vector<SceneGraphNode*> _objects;
-    moodycamel::ConcurrentQueue<SceneGraphNode*> _movedObjects;
+    vector<const SceneGraphNode*> _objects;
+    moodycamel::ConcurrentQueue<const SceneGraphNode*> _movedObjects;
     vector<IntersectionRecord> _intersectionsCache;
     BoundingBox _region;
     Octree* _parent = nullptr;
@@ -100,14 +108,14 @@ private:
     I32 _maxLifespan = MAX_LIFE_SPAN_LIMIT / 8;
     U16 _nodeExclusionMask = 0u;
 
-    std::array<bool, 8> _activeNodes = {};
-    vector<Octree> _childNodes = {};
+    vector_fast<Octree> _childNodes;
 
     //ToDo: make this work in a multi-threaded environment
     mutable I8 _frustPlaneCache = -1;
 
-    static vector<SceneGraphNode*> s_intersectionsObjectCache;
+    static vector<const SceneGraphNode*> s_intersectionsObjectCache;
     static eastl::queue<SceneGraphNode*> s_pendingInsertion;
+    static eastl::queue<SceneGraphNode*> s_pendingRemoval;
     static Mutex s_pendingInsertLock;
     static bool s_treeReady;
     static bool s_treeBuilt;

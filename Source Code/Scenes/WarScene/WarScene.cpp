@@ -804,7 +804,7 @@ void WarScene::onSetActive() {
 }
 
 void WarScene::weaponCollision(const RigidBodyComponent& collider) {
-    Console::d_printfn("Weapon touched [ %s ]", collider.getSGN()->name().c_str());
+    Console::d_printfn("Weapon touched [ %s ]", collider.parentSGN()->name().c_str());
 }
 
 }

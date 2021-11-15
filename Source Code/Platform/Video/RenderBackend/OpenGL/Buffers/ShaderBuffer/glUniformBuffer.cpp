@@ -38,7 +38,7 @@ glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescripto
     if (descriptor._separateReadWrite && descriptor._bufferParams._initialData.second > 0) {
         assert(descriptor._bufferParams._updateFrequency != BufferUpdateFrequency::ONCE);
 
-        for (U32 i = 1; i < descriptor._ringBufferLength; ++i) {
+        for (U32 i = 1u; i < descriptor._ringBufferLength; ++i) {
             bufferImpl()->writeOrClearBytes(_alignedBufferSize * i, descriptor._bufferParams._initialData.second, descriptor._bufferParams._initialData.first, false);
         }
     }

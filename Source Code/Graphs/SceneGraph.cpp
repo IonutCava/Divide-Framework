@@ -47,7 +47,7 @@ SceneGraph::SceneGraph(Scene& parentScene)
                                         1 << to_base(SceneNodeType::TYPE_INFINITEPLANE) |
                                         1 << to_base(SceneNodeType::TYPE_VEGETATION);
 
-    _octree.reset(new Octree(nullptr, octreeExclusionMask));
+    _octree = eastl::make_unique<Octree>(nullptr, octreeExclusionMask);
     _octreeUpdating = false;
 }
 
@@ -84,7 +84,7 @@ void SceneGraph::onNodeUpdated(const SceneGraphNode& node) {
 }
 
 void SceneGraph::onNodeMoved(const SceneGraphNode& node) {
-    getOctree().onNodeMoved(node);
+    _octree->onNodeMoved(node);
     onNodeUpdated(node);
 }
 
@@ -113,7 +113,9 @@ void SceneGraph::onNodeAdd(SceneGraphNode* newNode) {
 
     if (_loadComplete) {
         WAIT_FOR_CONDITION(!_octreeUpdating);
-        _octreeChanged = _octree->addNode(newNode) || _octreeChanged;
+        if (newNode->get<BoundsComponent>()) {
+            _octreeChanged = _octree->addNode(newNode) || _octreeChanged;
+        }
     }
 }
 
@@ -127,6 +129,8 @@ bool SceneGraph::removeNode(const I64 guid) {
 
 bool SceneGraph::removeNode(SceneGraphNode* node) {
     if (node) {
+        _octreeChanged = _octree->removeNode(node) || _octreeChanged;
+
         SceneGraphNode* parent = node->parent();
         if (parent) {
             if (!parent->removeChildNode(node, true)) {
@@ -289,8 +293,12 @@ bool SceneGraph::intersect(const SGNIntersectionParams& params, vector<SGNRayRes
 
 void SceneGraph::postLoad() {
     for (const auto& nodes : _nodesByType) {
-        if (!_octree->addNodes(nodes)) {
-            NOP();
+        for (SceneGraphNode* node : nodes) {
+            if (node->get<BoundsComponent>()) {
+                if (!_octree->addNode(node)) {
+                    NOP();
+                }
+            }
         }
     }
     _octreeChanged = true;

@@ -11,29 +11,37 @@ namespace Divide {
 
 /// ------------------------------------------------------------------------------------------------
 /// Calculates the global transformation matrix for the given internal node
-void CalculateBoneToWorldTransform(const eastl::shared_ptr<Bone>& pInternalNode) noexcept {
-    pInternalNode->_globalTransform = pInternalNode->_localTransform;
-    Bone* parent = pInternalNode->_parent.get();
+void CalculateBoneToWorldTransform(Bone* pInternalNode) noexcept {
+    pInternalNode->globalTransform(pInternalNode->localTransform());
+    Bone* parent = pInternalNode->_parent;
     // This will climb the nodes up along through the parents concatenating all
     // the matrices to get the Object to World transform,
     // or in this case, the Bone To World transform
     while (parent) {
-        pInternalNode->_globalTransform *= parent->_localTransform;
+        pInternalNode->globalTransform() *= parent->localTransform();
         // get the parent of the bone we are working on
-        parent = parent->_parent.get();
+        parent = parent->_parent;
     }
+}
+
+SceneAnimator::~SceneAnimator()
+{
+    release(true);
 }
 
 void SceneAnimator::release(const bool releaseAnimations)
 {
+    _bones.clear();
+    MemoryManager::SAFE_DELETE(_skeleton);
+
     // this should clean everything up
     _skeletonLines.clear();
     _skeletonLinesContainer.clear();
     _skeletonDepthCache = -2;
     if (releaseAnimations) {
         // clear all animations
-        _animations.clear();
         _animationNameToID.clear();
+        MemoryManager::DELETE_CONTAINER(_animations);
     }
 }
 
@@ -48,8 +56,8 @@ bool SceneAnimator::init(PlatformContext& context) {
     _skeletonLines.resize(animationCount);
 
     // pre-calculate the animations
-    for (size_t i = 0; i < animationCount; ++i) {
-        const std::shared_ptr<AnimEvaluator>& crtAnimation = _animations[i];
+    for (size_t i = 0u; i < animationCount; ++i) {
+        AnimEvaluator* crtAnimation = _animations[i];
         const D64 duration = crtAnimation->duration();
         const D64 tickStep = crtAnimation->ticksPerSecond() / ANIMATION_TICKS_PER_SECOND;
         D64 dt = 0;
@@ -58,9 +66,9 @@ bool SceneAnimator::init(PlatformContext& context) {
             calculate(to_I32(i), dt);
             transforms.resize(_skeletonDepthCache, MAT4_IDENTITY);
             for (I32 a = 0; a < _skeletonDepthCache; ++a) {
-                const eastl::shared_ptr<Bone>& bone = _bones[a];
-                transforms[a] = bone->_offsetMatrix * bone->_globalTransform;
-                bone->_boneID = a;
+                Bone* bone = _bones[a];
+                transforms[a] = bone->offsetMatrix() * bone->globalTransform();
+                bone->boneID(a);
             }
             crtAnimation->transforms().emplace_back().matrices(transforms);
         }
@@ -70,7 +78,7 @@ bool SceneAnimator::init(PlatformContext& context) {
     }
 
     // pay the cost upfront
-    for(const std::shared_ptr<AnimEvaluator>& crtAnimation : _animations) {
+    for(AnimEvaluator* crtAnimation : _animations) {
         crtAnimation->initBuffers(context.gfx());
     }
 
@@ -80,7 +88,7 @@ bool SceneAnimator::init(PlatformContext& context) {
 }
 
 /// This will build the skeleton based on the scene passed to it and CLEAR EVERYTHING
-bool SceneAnimator::init(PlatformContext& context, const eastl::shared_ptr<Bone>& skeleton, const vector<eastl::shared_ptr<Bone>>& bones) {
+bool SceneAnimator::init(PlatformContext& context, Bone* skeleton, const vector<Bone*>& bones) {
     release(false);
 
     DIVIDE_ASSERT(_bones.size() < U8_MAX, "SceneAnimator::init error: Too many bones for current node!");
@@ -106,10 +114,10 @@ void SceneAnimator::calculate(const I32 animationIndex, const D64 pTime) {
 
 /// ------------------------------------------------------------------------------------------------
 /// Recursively updates the internal node transformations from the given matrix array
-void SceneAnimator::UpdateTransforms(const eastl::shared_ptr<Bone>& pNode) {
+void SceneAnimator::UpdateTransforms(Bone* pNode) {
     CalculateBoneToWorldTransform(pNode);  // update global transform as well
     /// continue for all children
-    for (const auto& bone : pNode->_children) {
+    for (Bone* bone : pNode->_children) {
         UpdateTransforms(bone);
     }
 }
@@ -117,17 +125,12 @@ void SceneAnimator::UpdateTransforms(const eastl::shared_ptr<Bone>& pNode) {
 Bone* SceneAnimator::boneByName(const string& name) const {
     assert(_skeleton != nullptr);
 
-    return _skeleton->find(name).get();
+    return _skeleton->find(name);
 }
 
 I32 SceneAnimator::boneIndex(const string& bName) const {
     const Bone* bone = boneByName(bName);
-
-    if (bone != nullptr) {
-        return bone->_boneID;
-    }
-
-    return -1;
+    return bone != nullptr ? bone->boneID() : -1;
 }
 
 /// Renders the current skeleton pose at time index dt
@@ -154,11 +157,11 @@ const vector<Line>& SceneAnimator::skeletonLines(const I32 animationIndex, const
 }
 
 /// Create animation skeleton
-I32 SceneAnimator::CreateSkeleton(const eastl::shared_ptr<Bone>& piNode,
+I32 SceneAnimator::CreateSkeleton(Bone* piNode,
                                   const mat4<F32>& parent,
                                   vector<Line>& lines) {
     static Line s_line = { VECTOR3_ZERO, VECTOR3_UNIT, DefaultColours::RED_U8, DefaultColours::RED_U8, 2.0f, 2.0f };
-    const mat4<F32>& me = piNode->_globalTransform;
+    const mat4<F32>& me = piNode->globalTransform();
 
     if (piNode->_parent) {
         Line& line = lines.emplace_back(s_line);

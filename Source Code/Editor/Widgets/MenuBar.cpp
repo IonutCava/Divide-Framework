@@ -698,7 +698,7 @@ void MenuBar::drawDebugMenu() {
             const auto PrintProbeEntry = [&envProbPool](const EnvironmentProbeList& probes, const size_t j) {
                 EnvironmentProbeComponent* crtProbe = probes[j];
                 bool selected = envProbPool->debugProbe() == crtProbe;
-                if (ImGui::MenuItem(crtProbe->getSGN()->name().c_str(), "", &selected)) {
+                if (ImGui::MenuItem(crtProbe->parentSGN()->name().c_str(), "", &selected)) {
                     envProbPool->debugProbe(crtProbe);
                 }
             };

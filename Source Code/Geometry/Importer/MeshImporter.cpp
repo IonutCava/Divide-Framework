@@ -269,7 +269,9 @@ namespace Import {
                 animator->load(context, tempBuffer);
             } else {
                 if (!dataIn.loadedFromFile()) {
+                    // We lose ownership of animations here ...
                     Attorney::SceneAnimatorMeshImporter::registerAnimations(*animator, dataIn._animations);
+
                     animator->init(context, dataIn._skeleton, dataIn._bones);
                     animator->save(context, tempBuffer);
                     if (!tempBuffer.dumpToFile((Paths::g_cacheLocation + Paths::g_geometryCacheLocation).c_str(),

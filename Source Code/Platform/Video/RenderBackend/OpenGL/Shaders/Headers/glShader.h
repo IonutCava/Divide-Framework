@@ -109,13 +109,10 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     [[nodiscard]] ShaderResult uploadToGPU();
 
     void prepare() const;
-    /// Add a define to the shader. The defined must not have been added previously
-    void addShaderDefine(const string& define, bool appendPrefix);
     [[nodiscard]] UseProgramStageMask stageMask() const noexcept { return _stageMask;  }
 
     PROPERTY_R(bool, valid, false);
     PROPERTY_R(bool, loadedFromBinary, false);
-    PROPERTY_R_IW(bool, shouldRecompile, false);
 
    private:
 

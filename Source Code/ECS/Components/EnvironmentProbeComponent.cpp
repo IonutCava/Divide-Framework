@@ -47,7 +47,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     layerField._basicType = GFX::PushConstantType::INT;
     layerField._basicTypeSize = GFX::PushConstantSize::WORD;
 
-    getEditorComponent().registerField(MOV(layerField));
+    editorComponent().registerField(MOV(layerField));
 
     EditorComponentField typeField = {};
     typeField._name = "Is Local";
@@ -61,14 +61,14 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     typeField._readOnly = false;
     typeField._basicType = GFX::PushConstantType::BOOL;
 
-    getEditorComponent().registerField(MOV(typeField));
+    editorComponent().registerField(MOV(typeField));
 
     EditorComponentField bbField = {};
     bbField._name = "Bounding Box";
     bbField._data = &_refaabb;
     bbField._type = EditorComponentFieldType::BOUNDING_BOX;
     bbField._readOnly = false;
-    getEditorComponent().registerField(MOV(bbField));
+    editorComponent().registerField(MOV(bbField));
 
     EditorComponentField updateTypeField = {};
     updateTypeField._name = "Update Type";
@@ -85,7 +85,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
         return TypeUtil::EnvProveUpdateTypeToString(static_cast<UpdateType>(index));
     };
 
-    getEditorComponent().registerField(MOV(updateTypeField));
+    editorComponent().registerField(MOV(updateTypeField));
 
     EditorComponentField updateRateField = {};
     updateRateField._name = "Update Rate";
@@ -97,7 +97,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     updateRateField._basicType = GFX::PushConstantType::UINT;
     updateRateField._basicTypeSize = GFX::PushConstantSize::BYTE;
 
-    getEditorComponent().registerField(MOV(updateRateField));
+    editorComponent().registerField(MOV(updateRateField));
 
     EditorComponentField showBoxField = {};
     showBoxField._name = "Show parallax correction AABB";
@@ -106,9 +106,9 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     showBoxField._readOnly = false;
     showBoxField._basicType = GFX::PushConstantType::BOOL;
 
-    getEditorComponent().registerField(MOV(showBoxField));
+    editorComponent().registerField(MOV(showBoxField));
 
-    getEditorComponent().onChangedCbk([this](std::string_view) {
+    editorComponent().onChangedCbk([this](std::string_view) {
         const vec3<F32> pos = _parentSGN->get<TransformComponent>()->getPosition();
         setBounds(_refaabb.getMin() + pos, _refaabb.getMax() + pos);
     });
@@ -125,8 +125,8 @@ EnvironmentProbeComponent::~EnvironmentProbeComponent()
 
 SceneGraphNode* EnvironmentProbeComponent::findNodeToIgnore() const noexcept {
     //If we are not a root-level probe. Avoid rendering our parent and children into the reflection
-    if (getSGN()->parent() != nullptr) {
-        SceneGraphNode* parent = getSGN()->parent();
+    if (parentSGN()->parent() != nullptr) {
+        SceneGraphNode* parent = parentSGN()->parent();
         while (parent != nullptr) {
             const SceneNodeType type = parent->getNode().type();
 

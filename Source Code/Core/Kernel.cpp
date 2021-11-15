@@ -507,11 +507,6 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
             return false;
         }
 
-        // perform time-sensitive shader tasks
-        if (!ShaderProgram::UpdateAll()) {
-            return false;
-        }
-
         if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_PRERENDER_END, evt)) {
             return false;
         }

@@ -1254,7 +1254,7 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
         texturesOut[i] = _textureAddresses[to_base(g_materialTextures[i])];
     }
 
-    const SceneGraphNode* parentSGN = parentComp.getSGN();
+    const SceneGraphNode* parentSGN = parentComp.parentSGN();
 
     F32 selectionFlag = 0.0f;
     if (parentSGN->hasFlag(SceneGraphNode::Flags::HOVERED)) {
@@ -1290,13 +1290,12 @@ void Material::rebuild() {
     recomputeShaders();
 
     // Alternatively we could just copy the maps directly
-    bool skipped = false;
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
             ShaderPerVariant& shaders = _shaderInfo[s][p];
             for (const ShaderProgramInfo& info : shaders) {
                 if (info._shaderRef != nullptr && info._shaderRef->getState() == ResourceState::RES_LOADED) {
-                    info._shaderRef->recompile(true, skipped);
+                    info._shaderRef->recompile();
                 }
             }
         }

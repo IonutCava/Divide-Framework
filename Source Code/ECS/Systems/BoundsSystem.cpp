@@ -34,9 +34,9 @@ namespace Divide {
             descriptor._cbk = [this](const Task*, const U32 start, const U32 end) {
                 for (U32 i = start; i < end; ++i) {
                     BoundsComponent* bComp = _componentCache[i];
-                    if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->getSGN()->getNode())) {
+                    if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->parentSGN()->getNode())) {
                         bComp->flagBoundingBoxDirty(to_U32(TransformType::ALL), false);
-                        OnBoundsChanged(bComp->getSGN());
+                        OnBoundsChanged(bComp->parentSGN());
                     }
                 }
             };
@@ -44,9 +44,9 @@ namespace Divide {
             parallel_for(_context, descriptor);
         } else {
             for (BoundsComponent* bComp : _componentCache) {
-                if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->getSGN()->getNode())) {
+                if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->parentSGN()->getNode())) {
                     bComp->flagBoundingBoxDirty(to_U32(TransformType::ALL), false);
-                    OnBoundsChanged(bComp->getSGN());
+                    OnBoundsChanged(bComp->parentSGN());
                 }
             }
         }
@@ -65,7 +65,7 @@ namespace Divide {
             descriptor._cbk = [this](const Task*, const U32 start, const U32 end) {
                 for (U32 i = start; i < end; ++i) {
                     BoundsComponent* bComp = _componentCache[i];
-                    const SceneNode& sceneNode = bComp->getSGN()->getNode();
+                    const SceneNode& sceneNode = bComp->parentSGN()->getNode();
                     if (Attorney::SceneNodeBoundsSystem::boundsChanged(sceneNode)) {
                         bComp->setRefBoundingBox(sceneNode.getBounds());
                     }
@@ -75,7 +75,7 @@ namespace Divide {
             parallel_for(_context, descriptor);
         } else {
             for (BoundsComponent* bComp : _componentCache) {
-                const SceneNode& sceneNode = bComp->getSGN()->getNode();
+                const SceneNode& sceneNode = bComp->parentSGN()->getNode();
                 if (Attorney::SceneNodeBoundsSystem::boundsChanged(sceneNode)) {
                     bComp->setRefBoundingBox(sceneNode.getBounds());
                 }
@@ -96,7 +96,7 @@ namespace Divide {
             descriptor._cbk = [this](const Task*, const U32 start, const U32 end) {
                 for (U32 i = start; i < end; ++i) {
                     BoundsComponent* bComp = _componentCache[i];
-                    Attorney::SceneNodeBoundsSystem::clearBoundsChanged(bComp->getSGN()->getNode());
+                    Attorney::SceneNodeBoundsSystem::clearBoundsChanged(bComp->parentSGN()->getNode());
                     bComp->updateAndGetBoundingBox();
                 }
             };
@@ -104,7 +104,7 @@ namespace Divide {
             parallel_for(_context, descriptor);
         } else {
             for (BoundsComponent* bComp : _componentCache) {
-                Attorney::SceneNodeBoundsSystem::clearBoundsChanged(bComp->getSGN()->getNode());
+                Attorney::SceneNodeBoundsSystem::clearBoundsChanged(bComp->parentSGN()->getNode());
                 bComp->updateAndGetBoundingBox();
             }
         }

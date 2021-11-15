@@ -139,7 +139,7 @@ namespace Divide {
             bool saveToFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName);
             bool loadFromFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName);
 
-            eastl::shared_ptr<Bone> _skeleton = nullptr;
+            Bone* _skeleton = nullptr;
 
             // Was it loaded from file, or just created?
             PROPERTY_RW(bool, loadedFromFile, false);
@@ -152,9 +152,9 @@ namespace Divide {
             PROPERTY_RW(ResourcePath, modelName);
             PROPERTY_RW(ResourcePath, modelPath);
             PROPERTY_RW(bool, fromFile, false);
-            vector<eastl::shared_ptr<Bone>> _bones;
+            vector<Bone*> _bones;
             vector<SubMeshData> _subMeshData;
-            vector<std::shared_ptr<AnimEvaluator>> _animations;
+            vector<AnimEvaluator*> _animations;
         };
     };
 

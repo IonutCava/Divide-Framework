@@ -302,7 +302,7 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, 
 
     NodeTransformData transformOut;
 
-    const SceneGraphNode* node = rComp->getSGN();
+    const SceneGraphNode* node = rComp->parentSGN();
     { // Transform
         const TransformComponent* const transform = node->get<TransformComponent>();
 
@@ -1334,8 +1334,8 @@ void RenderPassExecutor::PostRender() {
     {
         ScopedLock<Mutex> w_lock(s_materialBuffer._lock);
         // Increment material lifetime by 1 (a frame has passed)
-        for (auto& [_, lifetime] : s_materialBuffer._data._nodeMaterialLookupInfo) {
-            ++lifetime;
+        for (auto& info : s_materialBuffer._data._nodeMaterialLookupInfo) {
+            ++info.second;
         }
     }
 }

@@ -124,7 +124,7 @@ AnimEvaluator::FrameIndex AnimEvaluator::frameIndexAt(const D64 elapsedTimeS) co
 
 // ------------------------------------------------------------------------------------------------
 // Evaluates the animation tracks for a given time stamp.
-void AnimEvaluator::evaluate(const D64 dt, const eastl::shared_ptr<Bone>& skeleton) {
+void AnimEvaluator::evaluate(const D64 dt, Bone* skeleton) {
     const D64 pTime = dt * ticksPerSecond();
 
     D64 time = 0.0f;
@@ -142,7 +142,7 @@ void AnimEvaluator::evaluate(const D64 dt, const eastl::shared_ptr<Bone>& skelet
     for (U32 a = 0; a < _channels.size(); a++) {
         
         const AnimationChannel* channel = &_channels[a];
-        const eastl::shared_ptr<Bone> bonenode = skeleton->find(channel->_nameKey);
+        Bone* bonenode = skeleton->find(channel->_nameKey);
 
         if (bonenode == nullptr) {
             Console::d_errorfn(Locale::Get(_ID("ERROR_BONE_FIND")), channel->_name.c_str());
@@ -237,7 +237,9 @@ void AnimEvaluator::evaluate(const D64 dt, const eastl::shared_ptr<Bone>& skelet
         mat.a4  = presentPosition.x;
         mat.b4  = presentPosition.y;
         mat.c4  = presentPosition.z;
-        AnimUtils::TransformMatrix(mat, bonenode->_localTransform);
+        mat4<F32> out;
+        AnimUtils::TransformMatrix(mat, out);
+        bonenode->localTransform(out);
     }
     _lastTime = time;
 }

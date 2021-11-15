@@ -40,28 +40,26 @@
 namespace Divide {
 
 class Bone : public eastl::enable_shared_from_this<Bone> {
-   protected:
-       string _name;
-       U64    _nameKey = 0u;
-   public:
-    I32 _boneID = -1;
-    mat4<F32> _offsetMatrix;
-    mat4<F32> _localTransform;
-    mat4<F32> _globalTransform;
-    mat4<F32> _originalLocalTransform;
+    PROPERTY_RW(string, name);
+    PROPERTY_RW(I32, boneID, -1);
+    PROPERTY_RW(mat4<F32>, offsetMatrix);
+    PROPERTY_RW(mat4<F32>, localTransform);
+    PROPERTY_RW(mat4<F32>, globalTransform);
+    PROPERTY_RW(mat4<F32>, originalLocalTransform);
 
-    eastl::shared_ptr<Bone> _parent = nullptr;
-    vector<eastl::shared_ptr<Bone>> _children;
+public:
+    Bone* _parent = nullptr;
+    vector<Bone*> _children;
 
     // index in the current animation's channel array.
-    Bone(const string& name)
-        : _name(name),
-          _nameKey(_ID(name.c_str()))
+    explicit Bone(const string& name)
+        : _name(name)
     {
     }
 
-    Bone() noexcept = default;
-    ~Bone() = default;
+    ~Bone() {
+        MemoryManager::DELETE_CONTAINER(_children);
+    }
 
     [[nodiscard]] size_t hierarchyDepth() const {
         size_t size = _children.size();
@@ -72,17 +70,17 @@ class Bone : public eastl::enable_shared_from_this<Bone> {
         return size;
     }
 
-    [[nodiscard]] eastl::shared_ptr<Bone> find(const string& name) {
+    [[nodiscard]] Bone* find(const string& name) {
         return find(_ID(name.c_str()));
     }
 
-    [[nodiscard]] eastl::shared_ptr<Bone> find(const U64 nameKey) {
-        if (_nameKey == nameKey) {
-            return shared_from_this();
+    [[nodiscard]] Bone* find(const U64 nameKey) {
+        if (_ID(_name.c_str()) == nameKey) {
+            return this;
         }
 
         for (const auto& child : _children) {
-            eastl::shared_ptr<Bone> childNode = child->find(nameKey);
+            Bone* childNode = child->find(nameKey);
             if (childNode != nullptr) {
                 return childNode;
             }
@@ -91,20 +89,11 @@ class Bone : public eastl::enable_shared_from_this<Bone> {
         return nullptr;
     }
 
-    void createBoneList(vector<eastl::shared_ptr<Bone>>& boneList) {
-        boneList.push_back(shared_from_this());
-        for (const auto& child : _children) {
+    void createBoneList(vector<Bone*>& boneList) {
+        boneList.push_back(this);
+        for (Bone* child : _children) {
             child->createBoneList(boneList);
         }
-    }
-
-    [[nodiscard]] const string& name() const noexcept {
-        return _name;
-    }
-
-    void name(const string& name) {
-        _name = name;
-        _nameKey = _ID(name.c_str());
     }
 };
 

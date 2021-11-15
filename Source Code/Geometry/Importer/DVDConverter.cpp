@@ -54,13 +54,14 @@ namespace {
         };
 
         /// Recursively creates an internal node structure matching the current scene and animation.
-        eastl::shared_ptr<Bone> CreateBoneTree(aiNode* pNode, eastl::shared_ptr<Bone> parent) {
-            eastl::shared_ptr<Bone> internalNode = eastl::make_shared<Bone>(pNode->mName.data);
+        Bone* CreateBoneTree(aiNode* pNode, Bone* parent) {
+            Bone* internalNode = MemoryManager_NEW Bone(pNode->mName.data);
             // set the parent; in case this is the root node, it will be null
             internalNode->_parent = parent;
-
-            AnimUtils::TransformMatrix(pNode->mTransformation, internalNode->_localTransform);
-            internalNode->_originalLocalTransform = internalNode->_localTransform;
+            mat4<F32> out;
+            AnimUtils::TransformMatrix(pNode->mTransformation, out);
+            internalNode->localTransform(out);
+            internalNode->originalLocalTransform(internalNode->localTransform());
             CalculateBoneToWorldTransform(internalNode);
 
             // continue for all child nodes and assign the created internal nodes as our
@@ -177,24 +178,28 @@ bool DVDConverter::load(PlatformContext& context, Import::ImportData& target) co
         target._skeleton = CreateBoneTree(aiScenePointer->mRootNode, nullptr);
         target._bones.reserve(to_I32(target._skeleton->hierarchyDepth()));
 
-        for (U16 meshPointer = 0; meshPointer < aiScenePointer->mNumMeshes; ++meshPointer) {
+        for (U16 meshPointer = 0u; meshPointer < aiScenePointer->mNumMeshes; ++meshPointer) {
             const aiMesh* mesh = aiScenePointer->mMeshes[meshPointer];
             for (U32 n = 0; n < mesh->mNumBones; ++n) {
                 const aiBone* bone = mesh->mBones[n];
 
-                eastl::shared_ptr<Bone> found = target._skeleton->find(bone->mName.data);
+                Bone* found = target._skeleton->find(bone->mName.data);
                 if (found != nullptr) {
-                    AnimUtils::TransformMatrix(bone->mOffsetMatrix, found->_offsetMatrix);
+                    mat4<F32> out;
+                    AnimUtils::TransformMatrix(bone->mOffsetMatrix, out);
+                    found->offsetMatrix(out);
                     target._bones.push_back(found);
                 }
             }
         }
 
-        for (size_t i(0); i < aiScenePointer->mNumAnimations; i++) {
+        for (U32 i = 0u; i < aiScenePointer->mNumAnimations; i++) {
             aiAnimation* animation = aiScenePointer->mAnimations[i];
-            if (animation->mDuration > 0.0f) {
-                target._animations.push_back(std::make_shared<AnimEvaluator>(animation, to_U32(i)));
+            if (IS_ZERO(animation->mDuration > 0.f)) {
+                DIVIDE_UNEXPECTED_CALL();
             }
+
+            target._animations.push_back(MemoryManager_NEW AnimEvaluator(animation, i));
         }
     }
 
@@ -202,7 +207,7 @@ bool DVDConverter::load(PlatformContext& context, Import::ImportData& target) co
     target._subMeshData.reserve(numMeshes);
 
     Str64 prevName = "";
-    for (U16 n = 0; n < numMeshes; ++n) {
+    for (U16 n = 0u; n < numMeshes; ++n) {
         const aiMesh* currentMesh = aiScenePointer->mMeshes[n];
         // Skip points and lines ... for now -Ionut
         if (currentMesh->mNumVertices == 0) {
@@ -252,8 +257,8 @@ void DVDConverter::BuildGeometryBuffers(PlatformContext& context, Import::Import
     target.vertexBuffer(context.gfx().newVB());
     VertexBuffer* vb = target.vertexBuffer();
 
-    size_t indexCount = 0, vertexCount = 0;
-    for (U8 lod = 0; lod < Import::MAX_LOD_LEVELS; ++lod) {
+    size_t indexCount = 0u, vertexCount = 0u;
+    for (U8 lod = 0u; lod < Import::MAX_LOD_LEVELS; ++lod) {
         for (const Import::SubMeshData& data : target._subMeshData) {
             indexCount += data._indices[lod].size();
             vertexCount += data._vertices[lod].size();
@@ -264,14 +269,14 @@ void DVDConverter::BuildGeometryBuffers(PlatformContext& context, Import::Import
     vb->setVertexCount(vertexCount);
     vb->reserveIndexCount(indexCount);
 
-    U32 previousOffset = 0;
-    for (U8 lod = 0; lod < Import::MAX_LOD_LEVELS; ++lod) {
+    U32 previousOffset = 0u;
+    for (U8 lod = 0u; lod < Import::MAX_LOD_LEVELS; ++lod) {
         U8 subMeshBoneOffset = 0;
         for (Import::SubMeshData& data : target._subMeshData) {
             const size_t idxCount = data._indices[lod].size();
 
-            if (idxCount == 0) {
-                assert(lod > 0);
+            if (idxCount == 0u) {
+                assert(lod > 0u);
                 subMeshBoneOffset += data.boneCount();
                 data._partitionIDs[lod] = data._partitionIDs[lod - 1];
                 continue;
@@ -349,8 +354,8 @@ void DVDConverter::BuildGeometryBuffers(PlatformContext& context, Import::Import
 
 void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData) const {
     vector<U32> input_indices;
-    input_indices.reserve(source->mNumFaces * 3);
-    for (U32 k = 0; k < source->mNumFaces; k++) {
+    input_indices.reserve(to_size(source->mNumFaces) * 3);
+    for (U32 k = 0u; k < source->mNumFaces; k++) {
         // guaranteed to be 3 thanks to aiProcess_Triangulate 
         for (U32 m = 0; m < 3; ++m) {
             input_indices.push_back(source->mFaces[k].mIndices[m]);

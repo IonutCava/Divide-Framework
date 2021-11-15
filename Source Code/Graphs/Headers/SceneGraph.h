@@ -34,6 +34,7 @@
 #define _SCENE_GRAPH_H_
 
 #include "Octree.h"
+#include "SceneNode.h"
 #include "Scenes/Headers/SceneComponent.h"
 #include "Rendering/Headers/FrameListener.h"
 
@@ -46,6 +47,8 @@ class SceneState;
 class ECSManager;
 
 struct Ray;
+struct SGNRayResult;
+struct SceneGraphNodeDescriptor;
 
 namespace Attorney {
     class SceneGraphSGN;
@@ -71,9 +74,7 @@ class SceneGraph final : NonCopyable,
     SceneGraphNode* findNode(U64 nameHash, bool sceneNodeName = false) const;
     SceneGraphNode* findNode(I64 guid) const;
 
-    Octree& getOctree() noexcept { return *_octree; }
-
-    const Octree& getOctree() const noexcept { return *_octree; }
+    Octree* getOctree() noexcept { return _octree.get(); }
 
     /// Update all nodes. Called from "updateSceneState" from class Scene
     void sceneUpdate(U64 deltaTimeUS, SceneState& sceneState);
@@ -146,7 +147,7 @@ class SceneGraph final : NonCopyable,
     bool _nodeListChanged = false;
 
     SceneGraphNode* _root = nullptr;
-    std::shared_ptr<Octree> _octree;
+    eastl::unique_ptr<Octree> _octree;
     std::atomic_bool _octreeUpdating;
     vector<SceneGraphNode*> _nodeList;
 

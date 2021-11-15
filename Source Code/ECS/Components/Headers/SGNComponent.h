@@ -165,12 +165,6 @@ class SGNComponent : protected PlatformContextComponent,
         virtual void saveToXML(boost::property_tree::ptree& pt) const;
         virtual void loadFromXML(const boost::property_tree::ptree& pt);
 
-        [[nodiscard]] SceneGraphNode* getSGN() const noexcept { return _parentSGN; }
-        [[nodiscard]] ComponentType type() const noexcept { return _type; }
-
-        [[nodiscard]] EditorComponent& getEditorComponent() noexcept { return _editorComponent; }
-        [[nodiscard]] const EditorComponent& getEditorComponent() const noexcept { return _editorComponent; }
-
         virtual bool saveCache(ByteBuffer& outputBuffer) const;
         virtual bool loadCache(ByteBuffer& inputBuffer);
 
@@ -179,10 +173,13 @@ class SGNComponent : protected PlatformContextComponent,
         virtual bool enabled() const;
         virtual void enabled(bool state);
 
+        [[nodiscard]] EditorComponent& editorComponent() noexcept { return _editorComponent; }
+
+        POINTER_R_IW(SceneGraphNode, parentSGN, nullptr);
+        PROPERTY_R_IW(ComponentType, type, ComponentType::COUNT);
+        PROPERTY_R(EditorComponent, editorComponent);
+
     protected:
-        EditorComponent _editorComponent;
-        SceneGraphNode* _parentSGN = nullptr;
-        ComponentType _type = ComponentType::COUNT;
         std::atomic_bool _enabled;
         mutable std::atomic_bool _hasChanged;
 };

@@ -121,6 +121,49 @@ void SceneGraphNode::AddComponents(const U32 componentMask, const bool allowDupl
     };
 }
 
+void SceneGraphNode::AddSGNComponentInternal(SGNComponent* comp) {
+    Hacks._editorComponents.emplace_back(&comp->editorComponent());
+
+    SetBit(_componentMask, to_U32(comp->type()));
+
+    if (comp->type() == ComponentType::TRANSFORM) {
+        //Ewww
+        Hacks._transformComponentCache = (TransformComponent*)comp;
+    }
+    if (comp->type() == ComponentType::BOUNDS) {
+        //Ewww x2
+        Hacks._boundsComponentCache = (BoundsComponent*)comp;
+        if (sceneGraph()->getOctree() && !sceneGraph()->getOctree()->addNode(this)) {
+            NOP();
+        }
+    }
+}
+
+void SceneGraphNode::RemoveSGNComponentInternal(SGNComponent* comp) {
+    if (comp != nullptr) {
+        const I64 targetGUID = comp->editorComponent().getGUID();
+
+        Hacks._editorComponents.erase(std::remove_if(std::begin(Hacks._editorComponents),
+            std::end(Hacks._editorComponents),
+            [targetGUID](EditorComponent* editorComp) noexcept -> bool {
+                return editorComp->getGUID() == targetGUID;
+            }),
+            std::end(Hacks._editorComponents));
+
+        ClearBit(_componentMask, to_U32(comp->type()));
+
+        if (comp->type() == ComponentType::TRANSFORM) {
+            Hacks._transformComponentCache = nullptr;
+        }
+        if (comp->type() == ComponentType::BOUNDS) {
+            Hacks._boundsComponentCache = nullptr;
+            if (sceneGraph()->getOctree() && !sceneGraph()->getOctree()->removeNode(this)) {
+                NOP();
+            }
+        }
+    }
+}
+
 void SceneGraphNode::RemoveComponents(const U32 componentMask) {
     for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i) {
         const U32 componentBit = 1 << i;

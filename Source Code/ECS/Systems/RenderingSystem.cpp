@@ -31,7 +31,7 @@ namespace Divide {
                 comp->onMaterialChanged();
             }
 
-            if (comp->getSGN()->getNode().rebuildDrawCommands()) {
+            if (comp->parentSGN()->getNode().rebuildDrawCommands()) {
                 for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
                     RenderingComponent::FlagsPerPassType& perPassFlags = comp->_rebuildDrawCommandsFlags[s];
                     for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
@@ -39,7 +39,7 @@ namespace Divide {
                         perIndexFlags.fill(true);
                     }
                 }
-                comp->getSGN()->getNode().rebuildDrawCommands(false);
+                comp->parentSGN()->getNode().rebuildDrawCommands(false);
             }
         }
     }

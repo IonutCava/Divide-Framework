@@ -33,7 +33,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
     directionField._readOnly = true;
     directionField._basicType = GFX::PushConstantType::VEC3;
 
-    getEditorComponent().registerField(MOV(directionField));
+    editorComponent().registerField(MOV(directionField));
 
     for (U8 cascade = 0; cascade < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++cascade) {
         EditorComponentField sceneFitField = {};
@@ -43,7 +43,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
         sceneFitField._readOnly = cascade >= csmSplitCount();
         sceneFitField._basicType = GFX::PushConstantType::BOOL;
 
-        getEditorComponent().registerField(MOV(sceneFitField));
+        editorComponent().registerField(MOV(sceneFitField));
     }
 
     EditorComponentField csmNearClipField = {};
@@ -54,7 +54,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
     csmNearClipField._readOnly = false;
     csmNearClipField._basicType = GFX::PushConstantType::FLOAT;
 
-    getEditorComponent().registerField(MOV(csmNearClipField));
+    editorComponent().registerField(MOV(csmNearClipField));
 
     EditorComponentField showConeField = {};
     showConeField._name = "Show direction cone";
@@ -63,9 +63,9 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
     showConeField._readOnly = false;
     showConeField._basicType = GFX::PushConstantType::BOOL;
 
-    getEditorComponent().registerField(MOV(showConeField));
+    editorComponent().registerField(MOV(showConeField));
 
-    registerFields(getEditorComponent());
+    registerFields(editorComponent());
 
     BoundingBox bb = {};
     bb.setMin(-g_defaultLightDistance * 0.5f);

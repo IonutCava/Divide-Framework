@@ -65,7 +65,7 @@ void RenderBin::sort(const RenderingOrder renderOrder) {
             eastl::sort(begin(_renderBinStack),
                         binEndIt,
                         [](const RenderBinItem& a, const RenderBinItem&) noexcept -> bool {
-                            return a._renderable->getSGN()->getNode().type() == SceneNodeType::TYPE_WATER;
+                            return a._renderable->parentSGN()->getNode().type() == SceneNodeType::TYPE_WATER;
                         });
         } break;
         case RenderingOrder::NONE: {

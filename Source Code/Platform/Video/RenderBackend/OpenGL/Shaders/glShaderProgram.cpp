@@ -458,27 +458,29 @@ ShaderResult glShaderProgram::rebindStages() {
 }
 
 void glShaderProgram::queueValidation() {
-    if (_validationQueued) {
-        _validationQueued = false;
+    if (!_validationQueued) {
+        return;
+    }
 
-        UseProgramStageMask stageMask = UseProgramStageMask::GL_NONE_BIT;
-        for (const glShader* shader : _shaderStage) {
+    _validationQueued = false;
 
-            if (!shader->valid()) {
-                continue;
-            }
+    UseProgramStageMask stageMask = UseProgramStageMask::GL_NONE_BIT;
+    for (const glShader* shader : _shaderStage) {
 
-            if (!shader->loadedFromBinary()) {
-                g_sShaderBinaryDumpQueue.enqueue(BinaryDumpEntry{ shader->name(), shader->getProgramHandle() });
-            }
-
-            stageMask |= shader->stageMask();
+        if (!shader->valid()) {
+            continue;
         }
 
-        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-            g_sValidationQueue.enqueue({ resourceName(), _handle, stageMask });
-            g_newValidationQueueEntry.store(true);
+        if (!shader->loadedFromBinary()) {
+            g_sShaderBinaryDumpQueue.enqueue(BinaryDumpEntry{ shader->name(), shader->getProgramHandle() });
         }
+
+        stageMask |= shader->stageMask();
+    }
+
+    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+        g_sValidationQueue.enqueue({ resourceName(), _handle, stageMask });
+        g_newValidationQueueEntry.store(true);
     }
 }
 
@@ -732,8 +734,8 @@ void glShaderProgram::QueueShaderWriteToFile(const string& sourceCode, const Str
     g_sDumpToFileQueue.enqueue({ fileName, sourceCode });
 }
 
-bool glShaderProgram::recompile(const bool force, bool& skipped) {
-    if (!ShaderProgram::recompile(force, skipped)) {
+bool glShaderProgram::recompile(bool& skipped) {
+    if (!ShaderProgram::recompile(skipped)) {
         return false;
     }
 
@@ -741,25 +743,21 @@ bool glShaderProgram::recompile(const bool force, bool& skipped) {
         return false;
     }
 
-    if (force || shouldRecompile()) {
-        shouldRecompile(false);
-        skipped = false;
+    skipped = false;
+    if (getGUID() == ShaderProgram::NullShaderGUID()) {
+        _handle = 0u;
+        return true;
+    }
 
-        if (getGUID() == ShaderProgram::NullShaderGUID()) {
-            _handle = 0u;
-            return true;
-        }
-
-        // Remember bind state and unbind it if needed
-        const bool wasBound = GL_API::getStateTracker()._activeShaderPipeline == _handle;
-        if (wasBound) {
-            GL_API::getStateTracker().setActiveShaderPipeline(0u);
-        }
-        threadedLoad(true);
-        // Restore bind state
-        if (wasBound) {
-            bind();
-        }
+    // Remember bind state and unbind it if needed
+    const bool wasBound = GL_API::getStateTracker()._activeShaderPipeline == _handle;
+    if (wasBound) {
+        GL_API::getStateTracker().setActiveShaderPipeline(0u);
+    }
+    threadedLoad(true);
+    // Restore bind state
+    if (wasBound) {
+        bind();
     }
 
     return true;
@@ -786,12 +784,7 @@ ShaderResult glShaderProgram::bind() {
         // All of this needs to be run on an actual bind operation. If we are already bound, we assume we did all this
         queueValidation();
         for (const glShader* shader : _shaderStage) {
-            if (shader->valid()) {
-                shader->prepare();
-            }
-            if (shader->shouldRecompile()) {
-                shouldRecompile(true);
-            }
+            shader->prepare();
         }
     }
 

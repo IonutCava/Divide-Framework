@@ -234,20 +234,7 @@ public:
     typename std::enable_if<std::is_base_of<SGNComponent, T>::value, T*>::type
     AddSGNComponent(P&&... param) {
         SGNComponent* comp = static_cast<SGNComponent*>(AddComponent<T>(this, this->context(), FWD(param)...));
-
-        Hacks._editorComponents.emplace_back(&comp->getEditorComponent());
-
-        SetBit(_componentMask, to_U32(comp->type()));
-
-        if (comp->type() == ComponentType::TRANSFORM) {
-            //Ewww
-            Hacks._transformComponentCache = (TransformComponent*)comp;
-        }
-        if (comp->type() == ComponentType::BOUNDS) {
-            //Ewww x2
-            Hacks._boundsComponentCache = (BoundsComponent*)comp;
-        }
-
+        AddSGNComponentInternal(comp);
         return static_cast<T*>(comp);
     }
 
@@ -255,27 +242,8 @@ public:
     template<class T>
     typename std::enable_if<std::is_base_of<SGNComponent, T>::value, void>::type
     RemoveSGNComponent() {
-        SGNComponent* comp = static_cast<SGNComponent*>(GetComponent<T>());
-        if (comp != nullptr) {
-            const I64 targetGUID = comp->getEditorComponent().getGUID();
-
-            Hacks._editorComponents.erase(std::remove_if(std::begin(Hacks._editorComponents),
-                                                         std::end(Hacks._editorComponents),
-                                                         [targetGUID](EditorComponent* editorComp) noexcept -> bool {
-                                                             return editorComp->getGUID() == targetGUID;
-                                                         }),
-                                          std::end(Hacks._editorComponents));
-
-            ClearBit(_componentMask, to_U32(comp->type()));
-            RemoveComponent<T>();
-
-            if (comp->type() == ComponentType::TRANSFORM) {
-                Hacks._transformComponentCache = nullptr;
-            }
-            if (comp->type() == ComponentType::BOUNDS) {
-                Hacks._boundsComponentCache = nullptr;
-            }
-        }
+        RemoveSGNComponentInternal(static_cast<SGNComponent*>(GetComponent<T>()));
+        RemoveComponent<T>();
     }
 
     void AddComponents(U32 componentMask, bool allowDuplicates);
@@ -323,6 +291,8 @@ private:
 
     bool canDraw(const RenderStagePass& stagePass) const;
 
+    void AddSGNComponentInternal(SGNComponent* comp);
+    void RemoveSGNComponentInternal(SGNComponent* comp);
 private:
     SGNRelationshipCache _relationshipCache;
     vector<SceneGraphNode*> _children;

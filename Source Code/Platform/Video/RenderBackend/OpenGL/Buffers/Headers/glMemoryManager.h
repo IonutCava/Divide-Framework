@@ -58,7 +58,12 @@ namespace GLMemory{
     class Chunk final : NonCopyable, NonMovable
     {
     public:
-        explicit Chunk(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, Byte* initialData);
+        explicit Chunk(size_t size, 
+                       size_t alignment,
+                       BufferStorageMask storageMask,
+                       MapBufferAccessMask accessMask,
+                       GLenum usage,
+                       Byte* initialData);
         ~Chunk();
                       void deallocate(const Block& block);
         [[nodiscard]] bool allocate(size_t size, const char* name, Byte* initialData, Block& blockOut);
@@ -66,12 +71,11 @@ namespace GLMemory{
 
         PROPERTY_RW(BufferStorageMask, storageMask, BufferStorageMask::GL_NONE_BIT);
         PROPERTY_RW(MapBufferAccessMask, accessMask, MapBufferAccessMask::GL_NONE_BIT);
+        PROPERTY_RW(GLenum, usage, GL_NONE);
+        PROPERTY_RW(size_t, alignment, 0u);
 
     protected:
         vector_fast<Block> _blocks;
-        Byte* _ptr = nullptr;
-        size_t _size = 0u;
-        GLuint _bufferHandle = 0u;
     };
 
     class ChunkAllocator final : NonCopyable, NonMovable
@@ -80,7 +84,12 @@ namespace GLMemory{
         explicit ChunkAllocator(size_t size) noexcept;
 
         // if size > mSize, allocate to the next power of 2
-        [[nodiscard]] Chunk* allocate(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, Byte* initialData) const;
+        [[nodiscard]] Chunk* allocate(size_t size, 
+                                      size_t alignment,
+                                      BufferStorageMask storageMask,
+                                      MapBufferAccessMask accessMask,
+                                      GLenum usage,
+                                      Byte* initialData) const;
 
     private:
         size_t _size = 0u;
@@ -90,7 +99,13 @@ namespace GLMemory{
     {
     public:
         void init(size_t size);
-        [[nodiscard]] Block allocate(size_t size, BufferStorageMask storageMask, MapBufferAccessMask accessMask, const char* blockName, Byte* initialData);
+        [[nodiscard]] Block allocate(size_t size,
+                                     size_t alignment,
+                                     BufferStorageMask storageMask,
+                                     MapBufferAccessMask accessMask,
+                                     GLenum usage,
+                                     const char* blockName,
+                                     Byte* initialData);
         void deallocate(Block &block) const;
         void deallocate();
 

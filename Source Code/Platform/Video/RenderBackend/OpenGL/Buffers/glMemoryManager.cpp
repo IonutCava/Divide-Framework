@@ -12,36 +12,40 @@ namespace GLMemory {
 namespace {
     constexpr bool g_useBlockAllocator = false;
 
-    [[nodiscard]] ptrdiff_t GetAlignmentCorrected(const ptrdiff_t byteOffset) noexcept {
-        return byteOffset % GL_API::s_UBOffsetAlignment == 0u 
+    [[nodiscard]] ptrdiff_t GetAlignmentCorrected(const ptrdiff_t byteOffset, const size_t alignment) noexcept {
+        return byteOffset % alignment == 0u
                     ? byteOffset
-                    : ((byteOffset + GL_API::s_UBOffsetAlignment - 1u) / GL_API::s_UBOffsetAlignment) * GL_API::s_UBOffsetAlignment;
+                    : ((byteOffset + alignment - 1u) / alignment) * alignment;
     }
 }
 
-Chunk::Chunk(const size_t size, const BufferStorageMask storageMask, const MapBufferAccessMask accessMask, Byte* initialData) 
+Chunk::Chunk(const size_t size,
+             const size_t alignment,
+             const BufferStorageMask storageMask,
+             const MapBufferAccessMask accessMask,
+             const GLenum usage,
+             Byte* const initialData)
     : _storageMask(storageMask),
       _accessMask(accessMask),
-      _size(GetAlignmentCorrected(size))  // Code for the worst case?
+      _usage(usage),
+      _alignment(alignment)
 {
+    Block block;
+    block._size = GetAlignmentCorrected(size, alignment);// Code for the worst case?
+
     if_constexpr (g_useBlockAllocator) {
         static U32 g_bufferIndex = 0u;
-        _ptr = createAndAllocPersistentBuffer(_size, storageMask, accessMask, _bufferHandle, nullptr, Util::StringFormat("DVD_BUFFER_CHUNK_%d", g_bufferIndex++).c_str());
+        block._ptr = createAndAllocPersistentBuffer(block._size, storageMask, accessMask, block._bufferHandle, nullptr, Util::StringFormat("DVD_BUFFER_CHUNK_%d", g_bufferIndex++).c_str());
     }
 
-    Block block;
-    block._size = _size;
-    block._ptr = _ptr;
-    block._bufferHandle = _bufferHandle;
-    
     _blocks.emplace_back(block);
 }
 
 Chunk::~Chunk()
 {
     if_constexpr(g_useBlockAllocator) {
-        if (_bufferHandle > 0u) {
-            glDeleteBuffers(1, &_bufferHandle);
+        if (_blocks[0]._bufferHandle > 0u) {
+            glDeleteBuffers(1, &_blocks[0]._bufferHandle);
         }
     } else {
         for (Block& block : _blocks) {
@@ -66,16 +70,18 @@ void Chunk::deallocate(const Block &block) {
 }
 
 bool Chunk::allocate(const size_t size, const char* name, Byte* initialData, Block &blockOut) {
-    const size_t requestedSize = GetAlignmentCorrected(size);
+    const size_t requestedSize = GetAlignmentCorrected(size, _alignment);
 
-    if (requestedSize > _size) {
+    if (requestedSize > _blocks.back()._size) {
         return false;
     }
 
     const size_t count = _blocks.size();
     for (size_t i = 0u; i < count; ++i) {
         Block& block = _blocks[i];
-        if (!block._free || block._size < requestedSize) {
+        const size_t remainingSize = block._size;
+
+        if (!block._free || remainingSize < requestedSize) {
             continue;
         }
 
@@ -91,19 +97,20 @@ bool Chunk::allocate(const size_t size, const char* name, Byte* initialData, Blo
         }
 
         block._free = false;
-        if (block._size > requestedSize) {
-            Block nextBlock;
-            nextBlock._free = true;
-            nextBlock._offset = g_useBlockAllocator ? block._offset + requestedSize : 0u;
-            nextBlock._bufferHandle = _bufferHandle;
-            nextBlock._size = block._size - requestedSize;
-            nextBlock._ptr = &_ptr[nextBlock._offset];
+        block._size = requestedSize;
+        blockOut = block;
 
-            block._size = requestedSize;
-            blockOut = block;
+        if (remainingSize > requestedSize) {
+            Block nextBlock;
+            nextBlock._bufferHandle = block._bufferHandle;
+
+            if_constexpr(g_useBlockAllocator) {
+                nextBlock._offset = block._offset + requestedSize;
+            }
+            nextBlock._size = remainingSize - requestedSize;
+            nextBlock._ptr = &block._ptr[nextBlock._offset];
+            
             _blocks.emplace_back(nextBlock);
-        } else {
-            blockOut = block;
         }
         return true;
     }
@@ -121,9 +128,15 @@ ChunkAllocator::ChunkAllocator(const size_t size) noexcept
     assert(isPowerOfTwo(size));
 }
 
-Chunk* ChunkAllocator::allocate(const size_t size, const BufferStorageMask storageMask, const MapBufferAccessMask accessMask, Byte* initialData) const {
+Chunk* ChunkAllocator::allocate(const size_t size,
+                                const size_t alignment,
+                                const BufferStorageMask storageMask,
+                                const MapBufferAccessMask accessMask,
+                                const GLenum usage,
+                                Byte* const initialData) const
+{
     const size_t overflowSize = to_size(1) << to_size(std::log2(size) + 1);
-    return MemoryManager_NEW Chunk((size > _size ? overflowSize : _size), storageMask, accessMask, initialData);
+    return MemoryManager_NEW Chunk((size > _size ? overflowSize : _size), alignment, storageMask, accessMask, usage, initialData);
 }
 
 void DeviceAllocator::init(size_t size) {
@@ -134,19 +147,30 @@ void DeviceAllocator::init(size_t size) {
     _chunkAllocator = eastl::make_unique<ChunkAllocator>(size);
 }
 
-Block DeviceAllocator::allocate(const size_t size, const BufferStorageMask storageMask, const MapBufferAccessMask accessMask, const char* blockName, Byte* initialData) {
+Block DeviceAllocator::allocate(const size_t size,
+                                const size_t alignment,
+                                const BufferStorageMask storageMask,
+                                const MapBufferAccessMask accessMask,
+                                const GLenum usage,
+                                const char* blockName,
+                                Byte* const initialData)
+{
     ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
 
     Block block;
     for (Chunk* chunk : _chunks) {
-        if (chunk->storageMask() == storageMask && chunk->accessMask() == accessMask) {
+        if (chunk->storageMask() == storageMask && 
+            chunk->accessMask() == accessMask &&
+            chunk->usage() == usage &&
+            chunk->alignment() == alignment)
+        {
             if (chunk->allocate(size, blockName, initialData, block)) {
                 return block;
             }
         }
     }
 
-    _chunks.emplace_back(_chunkAllocator->allocate(size, storageMask, accessMask, initialData));
+    _chunks.emplace_back(_chunkAllocator->allocate(size, alignment, storageMask, accessMask, usage, initialData));
     if(!_chunks.back()->allocate(size, blockName, initialData, block)) {
         DIVIDE_UNEXPECTED_CALL();
     }
@@ -170,6 +194,7 @@ void DeviceAllocator::deallocate() {
     ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
     MemoryManager::DELETE_CONTAINER(_chunks);
 }
+
 } // namespace GLMemory
 
 static vector<VBO> g_globalVBOs;

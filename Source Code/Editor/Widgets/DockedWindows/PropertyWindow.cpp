@@ -906,7 +906,7 @@ namespace Divide {
                 if (ImGui::Button("Rebuild from source") && !readOnly) {
                     Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Rebuilding shader from source ...", Time::SecondsToMilliseconds<F32>(3), false);
                     bool skipped = false;
-                    if (!program->recompile(true, skipped)) {
+                    if (!program->recompile(skipped)) {
                         Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Failed to rebuild shader from source!", Time::SecondsToMilliseconds<F32>(3), true);
                     } else {
                         Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), skipped ? "Rebuilt shader not needed!" : "Rebuilt shader from source!", Time::SecondsToMilliseconds<F32>(3), false);

@@ -46,7 +46,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
                                      needsAdditionalData ? nullptr : _params._bufferParams._initialData.first,
                                      _params._name);
 
-        _memoryBlock._offset = 0;
+        _memoryBlock._offset = 0u;
         _memoryBlock._size = _params._dataSize;
         _memoryBlock._free = false;
     } else {
@@ -64,7 +64,16 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
             accessMask |= GL_MAP_COHERENT_BIT;
         }
   
-        _memoryBlock = GL_API::getMemoryAllocator().allocate(_params._dataSize, storageMask, accessMask, _params._name, needsAdditionalData ? nullptr : _params._bufferParams._initialData.first);
+        const size_t alignment = params._target == GL_UNIFORM_BUFFER ? GL_API::s_UBOffsetAlignment :
+            _params._target == GL_SHADER_STORAGE_BUFFER ? GL_API::s_SSBOffsetAlignment : sizeof(U32);
+
+        _memoryBlock = GL_API::getMemoryAllocator().allocate(_params._dataSize,
+                                                             alignment,
+                                                             storageMask,
+                                                             accessMask,
+                                                             params._target,
+                                                             _params._name,
+                                                             needsAdditionalData ? nullptr : _params._bufferParams._initialData.first);
         assert(_memoryBlock._ptr != nullptr && _memoryBlock._size >= _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!");
     }
 
@@ -101,7 +110,7 @@ glBufferImpl::~glBufferImpl()
 
 bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, const U32 frameID) const {
     if (_params._bufferParams._sync) {
-        return _lockManager->lockRange(offsetInBytes, rangeInBytes, frameID);
+        return _lockManager->lockRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, frameID);
     }
 
     return true;
@@ -109,7 +118,7 @@ bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeI
 
 bool glBufferImpl::waitByteRange(const size_t offsetInBytes, const size_t rangeInBytes, const bool blockClient) const {
     if (_params._bufferParams._sync) {
-        return _lockManager->waitForLockedRange(offsetInBytes, rangeInBytes, blockClient);
+        return _lockManager->waitForLockedRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, blockClient);
     }
 
     return true;
@@ -136,7 +145,7 @@ bool glBufferImpl::bindByteRange(const GLuint bindIndex, const size_t offsetInBy
                 _flushQueue.pop_front();
             }
             if (maxRange > 0u) {
-                glFlushMappedNamedBufferRange(_memoryBlock._bufferHandle, minOffset, maxRange);
+                glFlushMappedNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + minOffset, maxRange);
             }
         }
     }
@@ -145,7 +154,7 @@ bool glBufferImpl::bindByteRange(const GLuint bindIndex, const size_t offsetInBy
     if (bindIndex == to_base(ShaderBufferLocation::CMD_BUFFER)) {
         GL_API::getStateTracker().setActiveBuffer(GL_DRAW_INDIRECT_BUFFER, _memoryBlock._bufferHandle);
     } else {
-        bound = GL_API::getStateTracker().setActiveBufferIndexRange(_params._target, _memoryBlock._bufferHandle, bindIndex, offsetInBytes, rangeInBytes);
+        bound = GL_API::getStateTracker().setActiveBufferIndexRange(_params._target, _memoryBlock._bufferHandle, bindIndex, _memoryBlock._offset + offsetInBytes, rangeInBytes);
     }
 
     if (_params._bufferParams._sync) {
@@ -204,16 +213,10 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
     } else {
         if (zeroMem) {
             constexpr GLfloat zero = 0.f;
-            glClearNamedBufferData(_memoryBlock._bufferHandle, GL_R32F, GL_RED, GL_FLOAT, &zero);
+            glClearNamedBufferSubData(_memoryBlock._bufferHandle, GL_R32F, _memoryBlock._offset + offsetInBytes, rangeInBytes, GL_RED, GL_FLOAT, &zero);
         } else {
-            if (offsetInBytes == 0u && rangeInBytes == _memoryBlock._size) {
-                const GLenum usage = _params._target == GL_ATOMIC_COUNTER_BUFFER ? GL_STREAM_READ : GetBufferUsage(_params._bufferParams._updateFrequency, _params._bufferParams._updateUsage);
-                glInvalidateBufferData(_memoryBlock._bufferHandle);
-                glNamedBufferData(_memoryBlock._bufferHandle, _memoryBlock._size, data, usage);
-            } else {
-                glInvalidateBufferSubData(_memoryBlock._bufferHandle, offsetInBytes, rangeInBytes);
-                glNamedBufferSubData(_memoryBlock._bufferHandle, offsetInBytes, rangeInBytes, data);
-            }
+            glInvalidateBufferSubData(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes);
+            glNamedBufferSubData(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, data);
         }
     }
 }
@@ -234,9 +237,9 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
         }
         memcpy(data, _memoryBlock._ptr + offsetInBytes, rangeInBytes);
     } else {
-        const Byte* bufferData = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, offsetInBytes, rangeInBytes, MapBufferAccessMask::GL_MAP_READ_BIT);
+        const Byte* bufferData = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, MapBufferAccessMask::GL_MAP_READ_BIT);
         if (bufferData != nullptr) {
-            memcpy(data, &bufferData[offsetInBytes], rangeInBytes);
+            memcpy(data, bufferData, rangeInBytes);
         }
         glUnmapNamedBuffer(_memoryBlock._bufferHandle);
     }

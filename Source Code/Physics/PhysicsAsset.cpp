@@ -8,7 +8,7 @@
 namespace Divide {
 PhysicsAsset::PhysicsAsset(RigidBodyComponent& parent) noexcept
     : _parentComponent(parent),
-      _context(parent.getSGN()->context().pfx())
+      _context(parent.parentSGN()->context().pfx())
 {
 }
 

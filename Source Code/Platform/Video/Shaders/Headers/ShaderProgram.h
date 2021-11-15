@@ -122,7 +122,12 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     bool load() override;
     bool unload() override;
 
-    virtual bool recompile(bool force, bool& skipped);
+    inline bool recompile() {
+        bool skipped = false;
+        return recompile(skipped);
+    }
+
+    virtual bool recompile(bool& skipped);
 
     /** ------ BEGIN EXPERIMENTAL CODE ----- **/
     size_t getFunctionCount(const ShaderType shader) noexcept {
@@ -165,7 +170,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static void Idle();
     static void OnStartup(ResourceCache* parentCache);
     static void OnShutdown();
-    static bool UpdateAll();
     /// Queue a shaderProgram recompile request
     static bool RecompileShaderProgram(const Str256& name);
     /// Remove a shaderProgram from the program cache

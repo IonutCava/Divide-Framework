@@ -51,25 +51,27 @@ namespace Attorney {
 };
 
 /// Calculates the global transformation matrix for the given internal node
-void CalculateBoneToWorldTransform(const eastl::shared_ptr<Bone>& pInternalNode) noexcept;
+void CalculateBoneToWorldTransform(Bone* pInternalNode) noexcept;
 class ByteBuffer;
 class MeshImporter;
 class PlatformContext;
 
-FWD_DECLARE_MANAGED_CLASS(AnimEvaluator);
+class AnimEvaluator;
 
 class SceneAnimator {
     friend class Attorney::SceneAnimatorMeshImporter;
    public:
+    ~SceneAnimator();
     // index = frameIndex; entry = vectorIndex;
     using LineMap = vector<I32>;
     // index = animationID;
     using LineCollection = vector<LineMap>;
 
     /// This must be called to fill the SceneAnimator with valid data
-    bool init(PlatformContext& context, const eastl::shared_ptr<Bone>& skeleton, const vector<eastl::shared_ptr<Bone>>& bones);
+    /// PASS OWNERSHIP OF SKELETON (and bones) TO THE ANIMATOR!!!
+    bool init(PlatformContext& context, Bone* skeleton, const vector<Bone*>& bones);
     /// Frees all memory and initializes everything to a default state
-    void release(bool releaseAnimations = true);
+    void release(bool releaseAnimations);
     void save(PlatformContext& context, ByteBuffer& dataOut) const;
     void load(PlatformContext& context, ByteBuffer& dataIn);
     /// Lets the caller know if there is a skeleton present
@@ -88,7 +90,7 @@ class SceneAnimator {
     /// So, passing 100, would do nothing, passing 50, would decrease the speed
     /// by half, and 150 increase it by 50%
     void adjustAnimationSpeedBy(const I32 animationIndex, const D64 percent) {
-        const std::shared_ptr<AnimEvaluator>& animation = _animations.at(animationIndex);
+        AnimEvaluator* animation = _animations[animationIndex];
         animation->ticksPerSecond(animation->ticksPerSecond() * (percent / 100.0));
     }
     /// This will set the animation speed
@@ -113,14 +115,14 @@ class SceneAnimator {
 
     const AnimEvaluator& animationByIndex(const I32 animationIndex) const {
         assert(IS_IN_RANGE_INCLUSIVE(animationIndex, 0, to_I32(_animations.size()) - 1));
-        const std::shared_ptr<AnimEvaluator>& animation = _animations.at(animationIndex);
+        AnimEvaluator* animation = _animations[animationIndex];
         assert(animation != nullptr);
         return *animation;
     }
 
     AnimEvaluator& animationByIndex(const I32 animationIndex) {
         assert(IS_IN_RANGE_INCLUSIVE(animationIndex, 0, to_I32(_animations.size()) - 1));
-        const std::shared_ptr<AnimEvaluator>& animation = _animations.at(animationIndex);
+        AnimEvaluator* animation = _animations[animationIndex];
         assert(animation != nullptr);
         return *animation;
     }
@@ -129,7 +131,7 @@ class SceneAnimator {
         return _animations[animationIndex]->frameCount();
     }
 
-    const vector<std::shared_ptr<AnimEvaluator>>& animations() const noexcept {
+    const vector<AnimEvaluator*>& animations() const noexcept {
         return _animations;
     }
 
@@ -172,7 +174,7 @@ class SceneAnimator {
     const mat4<F32>& boneOffsetTransform(const string& bName) {
         const Bone* bone = boneByName(bName);
         if (bone != nullptr) {
-            _boneTransformCache = bone->_offsetMatrix;
+            _boneTransformCache = bone->offsetMatrix();
         }
         return _boneTransformCache;
     }
@@ -196,12 +198,12 @@ class SceneAnimator {
    private:
     bool init(PlatformContext& context);
     /// I/O operations
-    void saveSkeleton(ByteBuffer& dataOut, const eastl::shared_ptr<Bone>& parent) const;
-    eastl::shared_ptr<Bone> loadSkeleton(ByteBuffer& dataIn, const eastl::shared_ptr<Bone>& parent);
+    void saveSkeleton(ByteBuffer& dataOut, Bone* parent) const;
+    Bone* loadSkeleton(ByteBuffer& dataIn, Bone* parent);
 
-    static void UpdateTransforms(const eastl::shared_ptr<Bone>& pNode);
+    static void UpdateTransforms(Bone* pNode);
     void calculate(I32 animationIndex, D64 pTime);
-    static I32 CreateSkeleton(const eastl::shared_ptr<Bone>& piNode,
+    static I32 CreateSkeleton(Bone* piNode,
                               const mat4<F32>& parent,
                               vector<Line>& lines);
 
@@ -209,11 +211,11 @@ class SceneAnimator {
     /// Frame count of the longest registered animation
     U32 _maximumAnimationFrames = 0u;
     /// Root node of the internal scene structure
-    eastl::shared_ptr<Bone> _skeleton = nullptr;
+    Bone* _skeleton = nullptr;
     I16   _skeletonDepthCache = -1;
-    vector<eastl::shared_ptr<Bone>> _bones;
+    vector<Bone*> _bones;
     /// A vector that holds each animation
-    vector<AnimEvaluator_ptr> _animations;
+    vector<AnimEvaluator*> _animations;
     /// find animations quickly
     hashMap<U64, U32> _animationNameToID;
     mat4<F32> _boneTransformCache;
@@ -223,7 +225,8 @@ class SceneAnimator {
 
 namespace Attorney {
     class SceneAnimatorMeshImporter {
-        static void registerAnimations(SceneAnimator& animator, const vector<std::shared_ptr<AnimEvaluator>>& animations) {
+        /// PASS OWNERSHIP OF ANIMATIONS TO THE ANIMATOR!!!
+        static void registerAnimations(SceneAnimator& animator, const vector<AnimEvaluator*>& animations) {
             const size_t animationCount = animations.size();
             animator._animations.reserve(animationCount);
             for (size_t i = 0; i < animationCount; ++i) {

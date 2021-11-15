@@ -93,6 +93,9 @@ struct RenderPassParams
 class RenderPassManager final : public KernelComponent {
 
 public:
+    // Just an upper cap for containers. Increasing it will not break anything
+    static constexpr U32 MAX_RENDER_PASSES = 16u;
+
     struct RenderParams {
         SceneRenderState* _sceneRenderState = nullptr;
         Rect<I32> _targetViewport = {};
@@ -115,15 +118,17 @@ public:
 
     /// Find a render pass by name and remove it from the manager
     void removeRenderPass(const Str64& name);
-    [[nodiscard]] U32 getLastTotalBinSize(RenderStage renderStage) const;
+    [[nodiscard]] U32 getLastTotalBinSize(RenderStage renderStage) const noexcept;
     [[nodiscard]] I32 drawCallCount(const RenderStage stage) const noexcept { return _drawCallCount[to_base(stage)]; }
 
     void doCustomPass(RenderPassParams params, GFX::CommandBuffer& bufferInOut);
     void postInit();
 
 private:
+    void startRenderTasks(const RenderParams& params, TaskPool& pool, const Camera* cam);
+private:
     friend class RenderPassExecutor;
-    [[nodiscard]] const RenderPass& getPassForStage(RenderStage renderStage) const;
+    [[nodiscard]] const RenderPass& getPassForStage(RenderStage renderStage) const noexcept;
 
 private:
     GFXDevice& _context;
@@ -132,15 +137,15 @@ private:
     ShaderProgram_ptr _OITCompositionShaderMS = nullptr;
     ShaderProgram_ptr _screenResolveShader = nullptr;
 
-    vector<Task*> _renderTasks{};
-    vector<RenderPass*> _renderPasses{};
-    vector<GFX::CommandBuffer*> _renderPassCommandBuffer{};
+    U8 _renderPassCount = 0u;
+    std::array<RenderPass*, MAX_RENDER_PASSES> _renderPasses = create_array<MAX_RENDER_PASSES, RenderPass*>(nullptr);
+    std::array<GFX::CommandBuffer*, MAX_RENDER_PASSES + 1u> _renderPassCommandBuffer = create_array<MAX_RENDER_PASSES + 1u, GFX::CommandBuffer*>(nullptr);
+    std::array<Task*, MAX_RENDER_PASSES + 1u> _renderTasks = create_array<MAX_RENDER_PASSES + 1u, Task*>(nullptr);
 
     std::array<std::unique_ptr<RenderPassExecutor>, to_base(RenderStage::COUNT)> _executors;
-    std::array<Time::ProfileTimer*, to_base(RenderStage::COUNT)> _processCommandBufferTimer{};
-    std::array<I32, to_base(RenderStage::COUNT)> _drawCallCount{};
+    std::array<Time::ProfileTimer*, to_base(RenderStage::COUNT)> _processCommandBufferTimer = create_array<to_base(RenderStage::COUNT), Time::ProfileTimer*>(nullptr);
+    std::array<I32, to_base(RenderStage::COUNT)> _drawCallCount = create_array<to_base(RenderStage::COUNT), I32>(0);
 
-    GFX::CommandBuffer* _postFXCommandBuffer = nullptr;
     GFX::CommandBuffer* _postRenderBuffer = nullptr;
 
     Time::ProfileTimer* _renderPassTimer = nullptr;

@@ -27,7 +27,7 @@ namespace Divide {
             // If we have dirty transforms, inform everybody
             const U32 updateMask = comp->_transformUpdatedMask.load();
             if (updateMask != to_base(TransformType::NONE)) {
-                Attorney::SceneGraphNodeSystem::setTransformDirty(comp->getSGN(), updateMask);
+                Attorney::SceneGraphNodeSystem::setTransformDirty(comp->parentSGN(), updateMask);
                 comp->resetInterpolation();
             }
         }
@@ -62,7 +62,7 @@ namespace Divide {
 
 
         for (const auto& [comp, mask] : events) {
-            comp->getSGN()->SendEvent(
+            comp->parentSGN()->SendEvent(
                 ECS::CustomEvent{
                       ECS::CustomEvent::Type::TransformUpdated,
                       comp,

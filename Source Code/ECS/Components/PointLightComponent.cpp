@@ -14,7 +14,7 @@ PointLightComponent::PointLightComponent(SceneGraphNode* sgn, PlatformContext& c
 {
     _shadowProperties._lightDetails.z = 0.025f;
 
-    registerFields(getEditorComponent());
+    registerFields(editorComponent());
 
     BoundingBox bb = {};
     bb.setMin(-10.0f);

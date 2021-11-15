@@ -87,7 +87,7 @@ bool ShaderProgram::unload() {
 
 
 /// Rebuild the specified shader stages from source code
-bool ShaderProgram::recompile(bool force, bool& skipped) {
+bool ShaderProgram::recompile(bool& skipped) {
     skipped = true;
     return getState() == ResourceState::RES_LOADED;
 }
@@ -100,7 +100,7 @@ void ShaderProgram::Idle() {
     if (!s_recompileQueue.empty()) {
         // Else, recompile the top program from the queue
         bool skipped = false;
-        if (s_recompileQueue.top()->recompile(true, skipped)) {
+        if (s_recompileQueue.top()->recompile(skipped)) {
             if (!skipped) {
                 if (s_recompileQueue.top()->getGUID() == s_lastRequestedShaderProgram.first) {
                     s_lastRequestedShaderProgram = { -1, {} };
@@ -184,28 +184,6 @@ void ShaderProgram::OnShutdown() {
     }
     s_shaderPrograms.clear();
     s_lastRequestedShaderProgram = { -1, {} };
-}
-
-bool ShaderProgram::UpdateAll() {
-    OPTICK_EVENT();
-
-    static bool onOddFrame = false;
-
-    onOddFrame = !onOddFrame;
-    if_constexpr(!Config::Build::IS_RELEASE_BUILD) {
-        if (onOddFrame) {
-            SharedLock<SharedMutex> r_lock(s_programLock);
-            bool skipped = false;
-            for (const auto& [handle, programEntry] : s_shaderPrograms) {
-                programEntry.first->recompile(false, skipped);
-                if (!skipped && handle == s_lastRequestedShaderProgram.first) {
-                    s_lastRequestedShaderProgram = {-1, {}};
-                }
-            }
-        }
-    }
-
-    return true;
 }
 
 /// Whenever a new program is created, it's registered with the manager

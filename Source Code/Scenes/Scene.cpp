@@ -1447,7 +1447,7 @@ void Scene::debugDraw(const Camera* activeCamera, const RenderStagePass stagePas
     if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {
         if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_OCTREE_REGIONS)) {
             _octreeBoundingBoxes.resize(0);
-            sceneGraph()->getOctree().getAllRegions(_octreeBoundingBoxes);
+            sceneGraph()->getOctree()->getAllRegions(_octreeBoundingBoxes);
 
             const size_t primitiveCount = _octreePrimitives.size();
             const size_t regionCount = _octreeBoundingBoxes.size();

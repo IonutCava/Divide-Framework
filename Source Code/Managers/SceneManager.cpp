@@ -312,7 +312,7 @@ void SceneManager::addPlayer(Scene& parentScene, SceneGraphNode* playerNode, con
 void SceneManager::addPlayerInternal(Scene& parentScene, SceneGraphNode* playerNode) {
     const I64 sgnGUID = playerNode->getGUID();
     for (const UnitComponent* crtPlayer : _players) {
-        if (crtPlayer && crtPlayer->getSGN()->getGUID() == sgnGUID) {
+        if (crtPlayer && crtPlayer->parentSGN()->getGUID() == sgnGUID) {
             return;
         }
     }
@@ -363,7 +363,7 @@ void SceneManager::removePlayerInternal(Scene& parentScene, SceneGraphNode* play
 
     const I64 targetGUID = playerNode->getGUID();
     for (U32 i = 0; i < Config::MAX_LOCAL_PLAYER_COUNT; ++i) {
-        if (_players[i] != nullptr && _players[i]->getSGN()->getGUID() == targetGUID) {
+        if (_players[i] != nullptr && _players[i]->parentSGN()->getGUID() == targetGUID) {
             --_activePlayerCount;
             Attorney::SceneManager::onPlayerRemove(parentScene, _players[i]->getUnit<Player>());
             _players[i] = nullptr;

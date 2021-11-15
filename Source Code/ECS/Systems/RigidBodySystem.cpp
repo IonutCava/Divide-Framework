@@ -34,7 +34,7 @@ namespace Divide {
         Parent::OnFrameStart();
         for (RigidBodyComponent* comp : _componentCache) {
             if (comp->_rigidBody == nullptr) {
-                comp->_rigidBody.reset(context().pfx().createRigidActor(comp->getSGN(), *comp));
+                comp->_rigidBody.reset(context().pfx().createRigidActor(comp->parentSGN(), *comp));
             }
         }
     }

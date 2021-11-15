@@ -2,6 +2,7 @@
 
 #include "Headers/IntersectionRecord.h"
 #include "Graphs/Headers/SceneGraphNode.h"
+#include "ECS/Components/Headers/BoundsComponent.h"
 
 namespace Divide {
 
@@ -28,7 +29,7 @@ IntersectionRecord::IntersectionRecord(vec3<F32> hitPos,
 }
 
 /// Creates a new intersection record indicating whether there was a hit or not and the object which was hit.
-IntersectionRecord::IntersectionRecord(SceneGraphNode* hitObject)  noexcept :
+IntersectionRecord::IntersectionRecord(BoundsComponent* hitObject)  noexcept :
     _intersectedObject1(hitObject),
     _intersectedObject2(nullptr),
     _distance(std::numeric_limits<D64>::max()),
@@ -47,16 +48,16 @@ void IntersectionRecord::reset() noexcept
 
 bool IntersectionRecord::operator==(const IntersectionRecord& otherRecord) const noexcept
 {
-    const SceneGraphNode* node11 = _intersectedObject1;
-    const SceneGraphNode* node12 = _intersectedObject2;
-    const SceneGraphNode* node21 = otherRecord._intersectedObject1;
-    const SceneGraphNode* node22 = otherRecord._intersectedObject2;
+    const BoundsComponent* node11 = _intersectedObject1;
+    const BoundsComponent* node12 = _intersectedObject2;
+    const BoundsComponent* node21 = otherRecord._intersectedObject1;
+    const BoundsComponent* node22 = otherRecord._intersectedObject2;
 
     if (node11 && node12 && node21 && node22) {
-        if (node21->getGUID() == node11->getGUID() && node22->getGUID() == node12->getGUID()) {
+        if (node21->parentSGN()->getGUID() == node11->parentSGN()->getGUID() && node22->parentSGN()->getGUID() == node12->parentSGN()->getGUID()) {
             return true;
         }
-        if (node21->getGUID() == node12->getGUID() && node22->getGUID() == node11->getGUID()) {
+        if (node21->parentSGN()->getGUID() == node12->parentSGN()->getGUID() && node22->parentSGN()->getGUID() == node11->parentSGN()->getGUID()) {
             return true;
         }
     }

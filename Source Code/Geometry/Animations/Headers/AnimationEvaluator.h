@@ -38,11 +38,7 @@
 #define ANIMATION_EVALUATOR_H_
 
 #include "Bone.h"
-
-struct aiAnimation;
-struct aiVectorKey;
-struct aiQuatKey;
-struct aiVectorKey;
+#include <assimp/anim.h>
 
 namespace Divide {
 class ByteBuffer;
@@ -86,7 +82,7 @@ class AnimEvaluator {
 
     explicit AnimEvaluator(const aiAnimation* pAnim, U32 idx) noexcept;
 
-    void evaluate(D64 dt, const eastl::shared_ptr<Bone>& skeleton);
+    void evaluate(D64 dt, Bone* skeleton);
 
     [[nodiscard]] FrameIndex frameIndexAt(D64 elapsedTimeS) const noexcept;
 

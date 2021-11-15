@@ -149,7 +149,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     ShaderResult validatePreBind();
     void queueValidation();
     
-    bool recompile(bool force, bool& skipped) override;
+    bool recompile(bool& skipped) override;
     /// Creation of a new shader program. Pass in a shader token and use glsw to
     /// load the corresponding effects
     bool load() override;
@@ -162,8 +162,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
 
     /// Bind this shader program (returns false if the program failed validation)
     ShaderResult bind();
-
-    PROPERTY_R_IW(bool, shouldRecompile, false);
 
     static void ProcessValidationQueue();
     static void DumpShaderTextCacheToDisk(const TextDumpEntry& entry);

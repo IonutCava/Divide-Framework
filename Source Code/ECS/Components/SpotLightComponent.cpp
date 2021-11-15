@@ -22,7 +22,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     cutoffAngle._readOnly = false;
     cutoffAngle._range = { std::numeric_limits<F32>::epsilon(), 179.99f };
     cutoffAngle._basicType = GFX::PushConstantType::FLOAT;
-    getEditorComponent().registerField(MOV(cutoffAngle));
+    editorComponent().registerField(MOV(cutoffAngle));
 
     EditorComponentField outerCutoffAngle = {};
     outerCutoffAngle._name = "Outer Cutoff Angle";
@@ -31,7 +31,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     outerCutoffAngle._readOnly = false;
     outerCutoffAngle._range = { std::numeric_limits<F32>::epsilon(), 180.0f };
     outerCutoffAngle._basicType = GFX::PushConstantType::FLOAT;
-    getEditorComponent().registerField(MOV(outerCutoffAngle));
+    editorComponent().registerField(MOV(outerCutoffAngle));
 
     EditorComponentField directionField = {};
     directionField._name = "Direction";
@@ -41,7 +41,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     directionField._readOnly = true;
     directionField._basicType = GFX::PushConstantType::VEC3;
 
-    getEditorComponent().registerField(MOV(directionField));
+    editorComponent().registerField(MOV(directionField));
 
     EditorComponentField showConeField = {};
     showConeField._name = "Show direction cone";
@@ -50,11 +50,11 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     showConeField._readOnly = false;
     showConeField._basicType = GFX::PushConstantType::BOOL;
 
-    getEditorComponent().registerField(MOV(showConeField));
+    editorComponent().registerField(MOV(showConeField));
 
-    registerFields(getEditorComponent());
+    registerFields(editorComponent());
 
-    getEditorComponent().onChangedCbk([this](std::string_view) noexcept  {
+    editorComponent().onChangedCbk([this](std::string_view) noexcept  {
         if (coneCutoffAngle() > outerConeCutoffAngle()) {
             coneCutoffAngle(outerConeCutoffAngle());
         }
