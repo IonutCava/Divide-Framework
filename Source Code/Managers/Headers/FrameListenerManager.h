@@ -60,13 +60,11 @@ class FrameListenerManager {
   private:
 
     bool frameStarted(const FrameEvent& evt);
-    bool framePreRenderStarted(const FrameEvent& evt);
-    bool framePreRenderEnded(const FrameEvent& evt);
+    bool framePreRender(const FrameEvent& evt);
     bool frameSceneRenderStarted(const FrameEvent& evt);
     bool frameSceneRenderEnded(const FrameEvent& evt);
     bool frameRenderingQueued(const FrameEvent& evt);
-    bool framePostRenderStarted(const FrameEvent& evt);
-    bool framePostRenderEnded(const FrameEvent& evt);
+    bool framePostRender(const FrameEvent& evt);
     bool frameEnded(const FrameEvent& evt);
 
     /// pass the current time in microseconds as the first parameter

@@ -14,18 +14,18 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-59.1865349</accumPitchDegrees>
+            <accumPitchDegrees>-0</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="0" y="88.733902" z="180"/>
-            <eye x="43.1300011" y="147.089996" z="-4.40999985"/>
-            <orientation x="-0.349280655" y="0.614720225" z="0.349280655" w="0.614720225"/>
+            <euler x="0" y="-0" z="0"/>
+            <eye x="0" y="0" z="0"/>
+            <orientation x="0" y="0" z="0" w="0.99987793"/>
             <aspectRatio>1.76999998</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
-            <FoV>77.7975693</FoV>
+            <FoV>58.9304428</FoV>
             <flag>0</flag>
             <speedFactor turn="50" move="40" zoom="35"/>
             <fixedYawAxis x="0" y="1" z="0"/>
-            <yawFixed>false</yawFixed>
+            <yawFixed>true</yawFixed>
             <rotationLocked>false</rotationLocked>
             <movementLocked>false</movementLocked>
         </Editor__Camera>

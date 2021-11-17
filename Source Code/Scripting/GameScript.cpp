@@ -33,11 +33,9 @@ void GameScript::addGameInstance() const {
         },
         {
             { chaiscript::fun(&GameScriptInstance::frameStarted), "frameStarted"  },
-            { chaiscript::fun(&GameScriptInstance::framePreRenderStarted), "framePreRenderStarted" },
-            { chaiscript::fun(&GameScriptInstance::framePreRenderEnded), "framePreRenderEnded" },
+            { chaiscript::fun(&GameScriptInstance::framePreRender), "framePreRender" },
             { chaiscript::fun(&GameScriptInstance::frameRenderingQueued), "frameRenderingQueued" },
-            { chaiscript::fun(&GameScriptInstance::framePostRenderStarted), "framePostRenderStarted" },
-            { chaiscript::fun(&GameScriptInstance::framePostRenderEnded), "framePostRenderEnded" },
+            { chaiscript::fun(&GameScriptInstance::framePostRender), "framePostRender" },
             { chaiscript::fun(&GameScriptInstance::frameEnded), "frameEnded" }
         }
     );
@@ -45,31 +43,24 @@ void GameScript::addGameInstance() const {
     _script->add(m);
 }
 
-bool GameScript::frameStarted(const FrameEvent& evt) {
+bool GameScript::frameStarted([[maybe_unused]] const FrameEvent& evt) {
     return true;
 }
 
-bool GameScript::framePreRenderStarted(const FrameEvent& evt) {
+bool GameScript::framePreRender([[maybe_unused]] const FrameEvent& evt) {
     return true;
 }
 
-bool GameScript::framePreRenderEnded(const FrameEvent& evt) {
+bool GameScript::frameRenderingQueued([[maybe_unused]] const FrameEvent& evt) {
     return true;
 }
 
-bool GameScript::frameRenderingQueued(const FrameEvent& evt) {
+bool GameScript::framePostRender([[maybe_unused]] const FrameEvent& evt) {
     return true;
 }
 
-bool GameScript::framePostRenderStarted(const FrameEvent& evt) {
-    return true;
-}
 
-bool GameScript::framePostRenderEnded(const FrameEvent& evt) {
-    return true;
-}
-
-bool GameScript::frameEnded(const FrameEvent& evt) {
+bool GameScript::frameEnded([[maybe_unused]] const FrameEvent& evt) {
     return true;
 }
 

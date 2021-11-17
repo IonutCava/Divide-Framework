@@ -173,7 +173,7 @@ class Editor final : public PlatformContextComponent,
     void showStatusMessage(const string& message, F32 durationMS, bool error) const;
 
   protected: //frame listener
-    [[nodiscard]] bool framePostRenderStarted(const FrameEvent& evt) override;
+    [[nodiscard]] bool framePostRender(const FrameEvent& evt) override;
     [[nodiscard]] bool frameEnded(const FrameEvent& evt) noexcept override;
 
   public: // input

@@ -43,12 +43,10 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
 bool FrameListenerManager::frameEvent(const FrameEvent& evt) {
     switch (evt._type) {
         case FrameEventType::FRAME_EVENT_STARTED     : return frameStarted(evt);
-        case FrameEventType::FRAME_PRERENDER_START   : return framePreRenderStarted(evt);
-        case FrameEventType::FRAME_PRERENDER_END     : return framePreRenderEnded(evt);
+        case FrameEventType::FRAME_PRERENDER   : return framePreRender(evt);
         case FrameEventType::FRAME_SCENERENDER_START : return frameSceneRenderStarted(evt);
         case FrameEventType::FRAME_SCENERENDER_END   : return frameSceneRenderEnded(evt);
-        case FrameEventType::FRAME_POSTRENDER_START  : return framePostRenderStarted(evt);
-        case FrameEventType::FRAME_POSTRENDER_END    : return framePostRenderEnded(evt);
+        case FrameEventType::FRAME_POSTRENDER  : return framePostRender(evt);
         case FrameEventType::FRAME_EVENT_PROCESS     : return frameRenderingQueued(evt);
         case FrameEventType::FRAME_EVENT_ENDED       : return frameEnded(evt);
         case FrameEventType::FRAME_EVENT_ANY         : return true;
@@ -66,18 +64,9 @@ bool FrameListenerManager::frameStarted(const FrameEvent& evt) {
     return true;
 }
 
-bool FrameListenerManager::framePreRenderStarted(const FrameEvent& evt) {
+bool FrameListenerManager::framePreRender(const FrameEvent& evt) {
     for (FrameListener* listener : _listeners) {
-        if (listener->enabled() && !listener->framePreRenderStarted(evt)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool FrameListenerManager::framePreRenderEnded(const FrameEvent& evt) {
-    for (FrameListener* listener : _listeners) {
-        if (listener->enabled() && !listener->framePreRenderEnded(evt)) {
+        if (listener->enabled() && !listener->framePreRender(evt)) {
             return false;
         }
     }
@@ -111,18 +100,9 @@ bool FrameListenerManager::frameRenderingQueued(const FrameEvent& evt) {
     return true;
 }
 
-bool FrameListenerManager::framePostRenderStarted(const FrameEvent& evt) {
+bool FrameListenerManager::framePostRender(const FrameEvent& evt) {
     for (FrameListener* listener : _listeners) {
-        if (listener->enabled() && !listener->framePostRenderStarted(evt)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool FrameListenerManager::framePostRenderEnded(const FrameEvent& evt) {
-    for (FrameListener* listener : _listeners) {
-        if (listener->enabled() && !listener->framePostRenderEnded(evt)) {
+        if (listener->enabled() && !listener->framePostRender(evt)) {
             return false;
         }
     }

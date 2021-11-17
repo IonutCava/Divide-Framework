@@ -745,7 +745,7 @@ void Editor::drawScreenOverlay(const Camera* camera, const Rect<I32>& targetView
     Attorney::GizmoEditor::render(_gizmo.get(), camera, targetViewport, bufferInOut);
 }
 
-bool Editor::framePostRenderStarted(const FrameEvent& evt) {
+bool Editor::framePostRender(const FrameEvent& evt) {
     for (DockedWindow* window : _dockedWindows) {
         window->backgroundUpdate();
     }

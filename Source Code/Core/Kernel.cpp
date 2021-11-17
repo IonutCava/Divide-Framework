@@ -500,11 +500,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
 
     {
         Time::ScopedTimer time1(_preRenderTimer);
-        if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_PRERENDER_START, evt)) {
-            return false;
-        }
-
-        if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_PRERENDER_END, evt)) {
+        if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_PRERENDER, evt)) {
             return false;
         }
     }
@@ -550,11 +546,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
 
     {
         Time::ScopedTimer time4(_postRenderTimer);
-        if(!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_POSTRENDER_START, evt)) {
-            return false;
-        }
-
-        if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_POSTRENDER_END, evt)) {
+        if(!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_POSTRENDER, evt)) {
             return false;
         }
     }

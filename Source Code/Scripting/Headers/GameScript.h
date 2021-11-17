@@ -40,11 +40,9 @@ namespace Divide {
 class GameScriptInstance {
 public:
     void frameStarted() {}
-    void framePreRenderStarted() {}
-    void framePreRenderEnded() {}
+    void framePreRender() {}
     void frameRenderingQueued() {}
-    void framePostRenderStarted() {}
-    void framePostRenderEnded() {}
+    void framePostRender() {}
     void frameEnded() {}
 };
 
@@ -56,11 +54,9 @@ public:
 
     protected:
         bool frameStarted(const FrameEvent& evt) override;
-        bool framePreRenderStarted(const FrameEvent& evt) override;
-        bool framePreRenderEnded(const FrameEvent& evt) override;
+        bool framePreRender(const FrameEvent& evt) override;
         bool frameRenderingQueued(const FrameEvent& evt) override;
-        bool framePostRenderStarted(const FrameEvent& evt) override;
-        bool framePostRenderEnded(const FrameEvent& evt) override;
+        bool framePostRender(const FrameEvent& evt) override;
         bool frameEnded(const FrameEvent& evt) override;
 
     private:
