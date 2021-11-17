@@ -122,7 +122,7 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices, const Buffe
             _indexBufferSize,
             _indexBufferUsage,
             _indexBuffer,
-            indices.data,
+            { indices.data, _indexBufferSize },
             _name.empty() ? nullptr : (_name + "_index").c_str());
     }
 
@@ -133,7 +133,7 @@ void glGenericVertexData::updateIndexBuffer(const IndexBuffer& indices) {
     GenericVertexData::updateIndexBuffer(indices);
 
     DIVIDE_ASSERT(indices.count > 0, "glGenericVertexData::UpdateIndexBuffer error: Invalid index buffer data!");
-    assert(_indexBuffer != 0 && "glGenericVertexData::UpdateIndexBuffer error: no valid index buffer found!");
+    DIVIDE_ASSERT(_indexBuffer != 0 && "glGenericVertexData::UpdateIndexBuffer error: no valid index buffer found!");
 
     const size_t elementSize = indices.smallIndices ? sizeof(GLushort) : sizeof(GLuint);
 
@@ -163,10 +163,10 @@ void glGenericVertexData::setBuffer(const SetBufferParams& params) {
     const U32 buffer = params._buffer;
 
     // Make sure the buffer exists
-    assert(buffer >= 0 && buffer < _bufferObjects.size() &&
+    DIVIDE_ASSERT(buffer >= 0 && buffer < _bufferObjects.size() &&
            "glGenericVertexData error: set buffer called for invalid buffer index!");
 
-    assert(_bufferObjects[buffer] == nullptr &&
+    DIVIDE_ASSERT(_bufferObjects[buffer] == nullptr &&
            "glGenericVertexData::setBuffer : buffer re-purposing is not supported at the moment");
 
     GenericBufferParams paramsOut;

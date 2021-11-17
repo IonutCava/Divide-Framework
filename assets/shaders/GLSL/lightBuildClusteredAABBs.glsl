@@ -10,8 +10,7 @@
 vec4 screen2View(in vec4 screen);
 vec3 lineIntersectionToZPlane(vec3 A, vec3 B, float zDistance);
 
-layout(local_size_x = GRID_SIZE_X, local_size_y = GRID_SIZE_Y, local_size_z = GRID_SIZE_Z_THREADS) in;
-
+layout(local_size_x = CLUSTERS_X_THREADS, local_size_y = CLUSTERS_Y_THREADS, local_size_z = CLUSTERS_Z_THREADS) in;
 void main() {
     //Shared between all clusters
     const float zNear = dvd_zPlanes.x;
@@ -34,8 +33,8 @@ void main() {
     const vec3 minPoint_vS = screen2View(minPoint_sS).xyz;
 
     //Near and far values of the cluster in view space
-    const float tileNear = -zNear * pow(zFar / zNear,  gl_GlobalInvocationID.z      / float(GRID_SIZE_Z));
-    const float tileFar  = -zNear * pow(zFar / zNear, (gl_GlobalInvocationID.z + 1) / float(GRID_SIZE_Z));
+    const float tileNear = -zNear * pow(zFar / zNear,  gl_GlobalInvocationID.z      / float(CLUSTERS_Z));
+    const float tileFar  = -zNear * pow(zFar / zNear, (gl_GlobalInvocationID.z + 1) / float(CLUSTERS_Z));
 
     //Finding the 4 intersection points made from the maxPoint to the cluster near/far plane
     const vec3 minPointNear = lineIntersectionToZPlane(eyePos, minPoint_vS, tileNear);

@@ -269,8 +269,13 @@ class SceneNodeBoundsSystem {
         node._boundsChanged = true;
     }
 
-    static void clearBoundsChanged(SceneNode& node) noexcept {
+    static bool clearBoundsChanged(SceneNode& node) noexcept {
+        if (!node._boundsChanged) {
+            return false;
+        }
+
         node._boundsChanged = false;
+        return true;
     }
 
     friend class Divide::BoundsSystem;

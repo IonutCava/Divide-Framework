@@ -285,8 +285,9 @@ uniform bool  dvd_enableClouds;
 
 #define UP_DIR vec3(0.f, 1.f, 0.f)
 
-const float sky_b_radius = dvd_planetRadius + dvd_cloudLayerMinMaxHeight.x;//bottom of cloud layer
-const float sky_t_radius = dvd_planetRadius + dvd_cloudLayerMinMaxHeight.y;//top of cloud layer
+float sky_b_radius = 0.f;
+float sky_t_radius = 0.f;
+
 //precomputed 1/U2Tone(40)
 #define cwhiteScale 1.1575370919881305f
 
@@ -667,6 +668,8 @@ vec3 getRawAlbedo(in vec3 rayDirection, in float lerpValue) {
 
 vec3 atmosphereColour(in vec3 rayDirection, in float lerpValue) {
     if (rayDirection.y > -0.02f) {
+        sky_b_radius = dvd_planetRadius + dvd_cloudLayerMinMaxHeight.x;//bottom of cloud layer
+        sky_t_radius = dvd_planetRadius + dvd_cloudLayerMinMaxHeight.y;//top of cloud layer
         const vec3 skyColour = getSkyColour(rayDirection, lerpValue);
         return dvd_enableClouds ? computeClouds(rayDirection, skyColour, lerpValue) : skyColour;
     }

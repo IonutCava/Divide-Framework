@@ -591,7 +591,9 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
     using UniformList = eastl::set<ShaderProgram::UniformDeclaration, decltype(g_cmp)>;
     UniformList allUniforms(g_cmp);
 
-    //glswClearCurrentContext();
+    if (reloadExisting) {
+        glswClearCurrentContext();
+    }
     glswSetPath((assetLocation() + "/" + Paths::Shaders::GLSL::g_parentShaderLoc).c_str(), ".glsl");
 
     U64 batchCounter = 0;

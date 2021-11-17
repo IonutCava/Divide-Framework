@@ -61,6 +61,11 @@ struct WaterBodyData
     vec4<F32> _extents = VECTOR4_ZERO;
 };
 
+[[nodiscard]] FORCE_INLINE bool operator!=(const WaterBodyData& lhs, const WaterBodyData& rhs) noexcept {
+    return lhs._positionW != rhs._positionW ||
+           lhs._extents != rhs._extents;
+}
+
 struct ProbeData
 {
     // (w == 1) - enabled
@@ -73,6 +78,11 @@ struct FogDetails
     vec4<F32> _colourAndDensity = VECTOR4_ZERO;
     vec4<F32> _colourSunScatter = VECTOR4_ZERO;
 };
+
+[[nodiscard]] FORCE_INLINE bool operator!=(const FogDetails& lhs, const FogDetails& rhs) noexcept {
+    return lhs._colourAndDensity != rhs._colourAndDensity ||
+           lhs._colourSunScatter != rhs._colourSunScatter;
+}
 
 class Scene;
 class LightPool;
@@ -124,7 +134,7 @@ class SceneRenderState : public SceneComponent {
 
   protected:
     vec4<U16> _lodThresholds;
-    U16 _stateMask;
+    U16 _stateMask = 0u;
 };
 
 class Camera;

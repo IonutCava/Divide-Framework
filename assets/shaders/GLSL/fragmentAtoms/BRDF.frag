@@ -30,7 +30,7 @@ vec3 getLightContribution(in NodeMaterialProperties properties, in uint LoD, in 
     vec3 ret = vec3(0.f);
 
     const LightGrid grid        = lightGrid[GetClusterIndex(gl_FragCoord)];
-    const uint dirLightCount    = dvd_LightData.x;
+    const uint dirLightCount    = DIRECTIONAL_LIGHT_COUNT;
     const uint pointLightCount  = grid.countPoint;
     const uint spotLightCount   = grid.countSpot;
     const uint lightIndexOffset = grid.offset;

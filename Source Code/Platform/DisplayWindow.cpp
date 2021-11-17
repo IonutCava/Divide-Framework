@@ -17,8 +17,6 @@ DisplayWindow::DisplayWindow(WindowManager& parent, PlatformContext& context)
    _windowID(std::numeric_limits<Uint32>::max()),
    _parent(parent)
 {
-    SetBit(_flags, WindowFlags::SWAP_BUFFER);
-
     _prevDimensions.set(1u, 1u);
     _drawableSize.set(0u, 0u);
 }

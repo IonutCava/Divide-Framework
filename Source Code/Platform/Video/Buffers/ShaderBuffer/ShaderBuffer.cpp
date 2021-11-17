@@ -69,7 +69,7 @@ bool ShaderBuffer::bindRange(const U8 bindIndex,
                              const U32 rangeElementCount) {
     assert(rangeElementCount > 0);
 
-    return bindByteRange(to_U8(bindIndex),
+    return bindByteRange(bindIndex,
                          static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),
                          static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize));
 }

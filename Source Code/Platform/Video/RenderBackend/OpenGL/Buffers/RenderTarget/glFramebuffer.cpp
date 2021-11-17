@@ -369,7 +369,7 @@ void glFramebuffer::setBlendState(const RTBlendStates& blendStates) const {
 void glFramebuffer::setBlendState(const RTBlendStates& blendStates, const RTAttachmentPool::PoolEntry& activeAttachments) const {
     OPTICK_EVENT();
 
-    for (size_t i = 0; i < activeAttachments.size(); ++i) {
+    for (size_t i = 0u; i < activeAttachments.size(); ++i) {
         const RTAttachment_ptr& colourAtt = activeAttachments[i];
         const RTBlendState& blend = blendStates[i];
 

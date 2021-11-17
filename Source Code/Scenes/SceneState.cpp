@@ -6,17 +6,13 @@
 namespace Divide {
 
 SceneRenderState::SceneRenderState(Scene& parentScene) noexcept
-    : SceneComponent(parentScene),
-      _generalVisibility(1.0f),
-      _grassVisibility(1.0f),
-      _treeVisibility(1.0f),
-      _stateMask(0u)
+    : SceneComponent(parentScene)
 {
     enableOption(RenderOptions::RENDER_GEOMETRY);
     _lodThresholds.set(25, 45, 85, 165);
 }
 
-void SceneRenderState::renderMask(U16 mask) {
+void SceneRenderState::renderMask(const U16 mask) {
     constexpr bool validateRenderMask = false;
 
     if_constexpr (validateRenderMask) {

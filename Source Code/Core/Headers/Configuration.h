@@ -50,6 +50,7 @@ struct Configuration final : XML::IXMLSerializable {
             bool primitives = true;
             bool meshes = true;
             bool terrain = true;
+            bool vegetation = true;
             bool water = true;
             bool sky = true;
             bool particles = true;
@@ -125,7 +126,6 @@ struct Configuration final : XML::IXMLSerializable {
         U16 reflectionProbeResolution = 256;
         U16 reflectionPlaneResolution = 512;
         I32 numLightsPerCluster = -1;
-        vec3<U8> lightClusteredSizes = { 16, 9, 24 };
         bool enableFog = true;
         vec2<F32> fogDensity = { 0.01f, 0.01f };
         vec3<F32> fogColour = { 0.2f, 0.2f, 0.2f };

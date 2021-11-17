@@ -50,6 +50,8 @@ BEGIN_COMPONENT(Bounds, ComponentType::BOUNDS)
 
         /*[[nodiscard]]*/ const BoundingBox& updateAndGetBoundingBox();
 
+        [[nodiscard]] FORCE_INLINE const bool isClean() const noexcept { return _transformUpdatedMask.load() == 0u; }
+
         PROPERTY_R(bool, showAABB, false);
         PROPERTY_R(bool, showBS, false);
 
@@ -77,8 +79,6 @@ BEGIN_COMPONENT(Bounds, ComponentType::BOUNDS)
 
         OBB _obb;
         std::atomic_bool _obbDirty = false;
-
-        TransformComponent* _tCompCache = nullptr;
 END_COMPONENT(Bounds)
 
 }; //namespace Divide

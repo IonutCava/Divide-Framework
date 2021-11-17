@@ -60,32 +60,6 @@
 
 namespace Divide {
 
-template <size_t Alignment = 16>
-struct AlignedBase {
-    void *operator new (const size_t size)
-    {
-        return malloc_aligned(size, Alignment);
-    }
-
-    void *operator new[](const size_t size)
-    {
-        return malloc_aligned(size, Alignment);
-    }
-
-    void operator delete (void *mem)
-    {
-        free_aligned(mem);
-    }
-
-    void operator delete[](void *mem)
-    {
-        free_aligned(mem);
-    }
-};
-
-struct NonAlignedBase {
-};
-
 template<typename T, typename Enable = void>
 class SimdVector;
 
@@ -113,7 +87,7 @@ class SimdVector<T, std::enable_if_t<!std::is_same<T, F32>::value>> {
     explicit SimdVector(T reg[4])  noexcept : _reg(reg) {}
 
     bool operator==(const SimdVector& other) const noexcept {
-        for (U8 i = 0; i < 4; ++i) {
+        for (U8 i = 0u; i < 4u; ++i) {
             if (_reg[i] != other._reg[i]) {
                 return false;
             }
@@ -122,7 +96,7 @@ class SimdVector<T, std::enable_if_t<!std::is_same<T, F32>::value>> {
     }
 
     bool operator!=(const SimdVector& other) const noexcept {
-        for (U8 i = 0; i < 4; ++i) {
+        for (U8 i = 0u; i < 4u; ++i) {
             if (_reg[i] != other._reg[i]) {
                 return true;
             }
@@ -574,7 +548,7 @@ template <typename T>
 #pragma pack(1)
 //__declspec(align(alignment))
 template <typename T>
-class vec4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16>, NonAlignedBase>::type {
+class vec4 {
     static_assert(std::is_arithmetic<T>::value || std::is_same<T, bool>::value, "non-arithmetic vector type");
 
    public:

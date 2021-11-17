@@ -62,7 +62,6 @@ class glUniformBuffer final : public ShaderBuffer {
         PROPERTY_R(ptrdiff_t, alignedBufferSize, 0);
 
     protected:
-        ptrdiff_t getCorrectedOffset(ptrdiff_t offsetInBytes) const noexcept;
         ptrdiff_t getAlignmentCorrected(ptrdiff_t byteOffset) const noexcept;
 };
 

@@ -279,6 +279,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
                             const RenderStagePass& renderStagePass,
                             const Camera& camera,
                             const bool refreshData) {
+
     const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
     if (!pkg.empty()) {
         const F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
@@ -328,35 +329,33 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
 void Terrain::buildDrawCommands(SceneGraphNode* sgn,
                                 const RenderStagePass& renderStagePass,
                                 const Camera& crtCamera,
-                                RenderPackage& pkgInOut) {
-
-    if (sgn->context().config().debug.renderFilter.terrain) {
-        const F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
-        GFX::SendPushConstantsCommand pushConstantsCommand = {};
-        pushConstantsCommand._constants.set(_ID("dvd_terrainWorld"), GFX::PushConstantType::MAT4, MAT4_IDENTITY);
-        pushConstantsCommand._constants.set(_ID("dvd_uvEyeOffset"), GFX::PushConstantType::VEC2, VECTOR2_ZERO);
-        pushConstantsCommand._constants.set(_ID("dvd_tessTriangleWidth"), GFX::PushConstantType::FLOAT, triangleWidth);
+                                RenderPackage& pkgInOut)
+{
+    const F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
+    GFX::SendPushConstantsCommand pushConstantsCommand = {};
+    pushConstantsCommand._constants.set(_ID("dvd_terrainWorld"), GFX::PushConstantType::MAT4, MAT4_IDENTITY);
+    pushConstantsCommand._constants.set(_ID("dvd_uvEyeOffset"), GFX::PushConstantType::VEC2, VECTOR2_ZERO);
+    pushConstantsCommand._constants.set(_ID("dvd_tessTriangleWidth"), GFX::PushConstantType::FLOAT, triangleWidth);
         
-        pkgInOut.add(pushConstantsCommand);
+    pkgInOut.add(pushConstantsCommand);
 
-        GenericDrawCommand cmd = {};
-        cmd._primitiveType = PrimitiveType::PATCH;
-        cmd._sourceBuffer = _terrainBuffer->handle();
-        cmd._cmd.indexCount = to_U32(TessellationParams::QUAD_LIST_INDEX_COUNT);
-        cmd._bufferIndex = 0u;
+    GenericDrawCommand cmd = {};
+    cmd._primitiveType = PrimitiveType::PATCH;
+    cmd._sourceBuffer = _terrainBuffer->handle();
+    cmd._cmd.indexCount = to_U32(TessellationParams::QUAD_LIST_INDEX_COUNT);
+    cmd._bufferIndex = 0u;
 
-        for (const auto& tileRing : _tileRings) {
-            cmd._cmd.primCount = tileRing->tileCount();
-            pkgInOut.add(GFX::DrawCommand{ cmd });
-            if_constexpr(USE_BASE_VERTEX_OFFSETS) {
-                cmd._cmd.baseVertex += cmd._cmd.primCount;
-            } else {
-                ++cmd._bufferIndex;
-            }
+    for (const auto& tileRing : _tileRings) {
+        cmd._cmd.primCount = tileRing->tileCount();
+        pkgInOut.add(GFX::DrawCommand{ cmd });
+        if_constexpr(USE_BASE_VERTEX_OFFSETS) {
+            cmd._cmd.baseVertex += cmd._cmd.primCount;
+        } else {
+            ++cmd._bufferIndex;
         }
-        if (renderStagePass._stage == RenderStage::DISPLAY) {
-            _terrainQuadtree.drawBBox(pkgInOut);
-        }
+    }
+    if (renderStagePass._stage == RenderStage::DISPLAY) {
+        _terrainQuadtree.drawBBox(pkgInOut);
     }
 
     Object3D::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);

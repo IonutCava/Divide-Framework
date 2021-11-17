@@ -680,6 +680,35 @@ void MenuBar::drawDebugMenu() {
         SceneEnvironmentProbePool* envProbPool = Attorney::EditorGeneralWidget::getActiveEnvProbePool(_context.editor());
         LightPool& pool = Attorney::EditorGeneralWidget::getActiveLightPool(_context.editor());
         const ECSManager& ecsManager = Attorney::EditorGeneralWidget::getECSManager(_context.editor());
+        if (ImGui::BeginMenu("Render Filters")) {
+            Configuration::Debug::RenderFilter& renderFilters = _context.config().debug.renderFilter;
+            bool configDirty = false;
+            if (ImGui::MenuItem("MESHES", "", &renderFilters.meshes)) {
+                configDirty = true;
+            }
+            if (ImGui::MenuItem("PARTICLES", "", &renderFilters.particles)) {
+                configDirty = true;
+            }
+            if (ImGui::MenuItem("PRIMITIVES", "", &renderFilters.primitives)) {
+                configDirty = true;
+            }
+            if (ImGui::MenuItem("SKY", "", &renderFilters.sky)) {
+                configDirty = true;
+            }
+            if (ImGui::MenuItem("TERRAIN", "", &renderFilters.terrain)) {
+                configDirty = true;
+            }
+            if (ImGui::MenuItem("VEGETATION", "", &renderFilters.vegetation)) {
+                configDirty = true;
+            }
+            if (ImGui::MenuItem("WATER", "", &renderFilters.water)) {
+                configDirty = true;
+            }
+            if (configDirty) {
+                _context.config().changed(true);
+            }
+            ImGui::EndMenu();
+        }
 
         if (ImGui::BeginMenu("Toggle Light Types")) {
             for (U8 i = 0; i < to_U8(LightType::COUNT); ++i) {

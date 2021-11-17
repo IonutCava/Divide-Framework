@@ -192,7 +192,7 @@ bool glPixelBuffer::create(GLushort width, GLushort height, const GLushort depth
     GLUtil::createAndAllocBuffer(_bufferSize, 
                                  GL_STREAM_DRAW,
                                  _pixelBufferHandle,
-                                 nullptr,
+                                 {nullptr, 0u},
                                  _name.empty() ? nullptr : _name.c_str());
 
     return _pixelBufferHandle != 0 && _textureID != 0;

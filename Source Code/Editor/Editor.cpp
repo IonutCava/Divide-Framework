@@ -220,6 +220,9 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     _mainWindow = &_context.app().windowManager().getWindow(0u);
 
     _editorCamera = Camera::createCamera<FreeFlyCamera>("Editor Camera");
+    FreeFlyCamera* baseCamera = Camera::utilityCamera<FreeFlyCamera>(Camera::UtilityCamera::DEFAULT);
+    _editorCamera->fromCamera(*baseCamera);
+
     IMGUI_CHECKVERSION();
     assert(_imguiContexts[to_base(ImGuiContextType::Editor)] == nullptr);
     
@@ -908,6 +911,10 @@ void Editor::selectionChangeCallback(const PlayerIndex idx, const vector<SceneGr
     }
 
     Attorney::GizmoEditor::updateSelection(_gizmo.get(), nodes);
+}
+
+void Editor::copyPlayerCamToEditorCam() noexcept {
+    _editorCamera->fromCamera(*Attorney::SceneManagerEditor::playerCamera(_context.kernel().sceneManager(), 0, true));
 }
 
 bool Editor::Undo() const {

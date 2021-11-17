@@ -251,6 +251,10 @@ inline TransformValues Transform::getValues() const noexcept {
     return _transformValues;
 }
 
+inline const TransformValues& Transform::getValuesRef() const noexcept {
+    return _transformValues;
+}
+
 /// Set position, scale and rotation based on the specified transform values
 inline void Transform::setValues(const TransformValues& values) noexcept {
     _dirty = true;

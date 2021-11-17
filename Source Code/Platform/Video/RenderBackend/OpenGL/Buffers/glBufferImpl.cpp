@@ -33,7 +33,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
                                       _params._bufferParams._updateFrequency != BufferUpdateFrequency::ONCE;
 
     // Initial data may not fill the entire buffer
-    const bool needsAdditionalData = _params._bufferParams._initialData.second < _params._dataSize;
+    const bool needsAdditionalData = IS_IN_RANGE_EXCLUSIVE(_params._bufferParams._initialData.second, to_size(0), _params._dataSize);
 
     // Create all buffers with zero mem and then write the actual data that we have (If we want to initialise all memory)
     if (!usePersistentMapping) {
@@ -43,7 +43,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
         GLUtil::createAndAllocBuffer(_params._dataSize, 
                                      usage,
                                      _memoryBlock._bufferHandle,
-                                     needsAdditionalData ? nullptr : _params._bufferParams._initialData.first,
+                                     _params._bufferParams._initialData,
                                      _params._name);
 
         _memoryBlock._offset = 0u;
@@ -73,21 +73,8 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
                                                              accessMask,
                                                              params._target,
                                                              _params._name,
-                                                             needsAdditionalData ? nullptr : _params._bufferParams._initialData.first);
+                                                             _params._bufferParams._initialData);
         assert(_memoryBlock._ptr != nullptr && _memoryBlock._size >= _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!");
-    }
-
-    // In this scenario, we have storage allocated but our contents are undefined so we need to do 2 writes to the buffer:
-    if (needsAdditionalData) {
-        const BufferUpdateFrequency crtFrequency = _params._bufferParams._updateFrequency;
-        _params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-        //1) Zero the buffer memory
-        writeOrClearBytes(0, _params._dataSize, nullptr, true);
-        //2) Write the data at the start (if any)
-        if (_params._bufferParams._initialData.second > 0) {
-            writeOrClearBytes(0, _params._bufferParams._initialData.second, _params._bufferParams._initialData.first, false);
-        }
-        _params._bufferParams._updateFrequency = crtFrequency;
     }
 }
 
@@ -154,7 +141,11 @@ bool glBufferImpl::bindByteRange(const GLuint bindIndex, const size_t offsetInBy
     if (bindIndex == to_base(ShaderBufferLocation::CMD_BUFFER)) {
         GL_API::getStateTracker().setActiveBuffer(GL_DRAW_INDIRECT_BUFFER, _memoryBlock._bufferHandle);
     } else {
-        bound = GL_API::getStateTracker().setActiveBufferIndexRange(_params._target, _memoryBlock._bufferHandle, bindIndex, _memoryBlock._offset + offsetInBytes, rangeInBytes);
+        const size_t offset = _memoryBlock._offset + offsetInBytes;
+        // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
+        const size_t range = (offset == 0u && rangeInBytes == _memoryBlock._size) ? 0u : rangeInBytes;
+
+        bound = GL_API::getStateTracker().setActiveBufferIndexRange(_params._target, _memoryBlock._bufferHandle, bindIndex, offset, range);
     }
 
     if (_params._bufferParams._sync) {
@@ -212,8 +203,10 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
         }
     } else {
         if (zeroMem) {
-            constexpr GLfloat zero = 0.f;
-            glClearNamedBufferSubData(_memoryBlock._bufferHandle, GL_R32F, _memoryBlock._offset + offsetInBytes, rangeInBytes, GL_RED, GL_FLOAT, &zero);
+            const MapBufferAccessMask accessMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
+            Byte* ptr = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, accessMask);
+            memset(ptr, 0, rangeInBytes);
+            glUnmapNamedBuffer(_memoryBlock._bufferHandle);
         } else {
             glInvalidateBufferSubData(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes);
             glNamedBufferSubData(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, data);

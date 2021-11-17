@@ -60,7 +60,7 @@ class SceneShaderData {
         vec4<F32> _shadowingSettings = {0.2f, 0.001f, 1.0f, 1.0f};
         FogDetails _fogDetails{};
         WaterBodyData _waterEntities[GLOBAL_WATER_BODIES_COUNT] = {};
-
+        mat4<F32> _padding;
         //RenderDoc: vec4 fogDetails; vec4 windDetails; vec4 shadowSettings; vec4 otherData;
     };
 
@@ -68,45 +68,68 @@ class SceneShaderData {
     explicit SceneShaderData(GFXDevice& context);
 
     void sunDetails(const vec3<F32>& direction, const FColour3& colour) noexcept {
-        _sceneBufferData._sunDirection.set(direction);
-        _sceneBufferData._sunColour.set(colour);
-        _sceneDataDirty = true;
+        if (_sceneBufferData._sunDirection != direction ||
+            _sceneBufferData._sunColour != colour)
+        {
+            _sceneBufferData._sunDirection.set(direction);
+            _sceneBufferData._sunColour.set(colour);
+            _sceneDataDirty = true;
+        }
     }
 
     void skyColour(const FColour4& horizon, const FColour4& zenith) noexcept {
-        _sceneBufferData._horizonColour = horizon;
-        _sceneBufferData._zenithColour = zenith;
-        _sceneDataDirty = true;
+        if (_sceneBufferData._horizonColour != horizon ||
+            _sceneBufferData._zenithColour != zenith)
+        {
+            _sceneBufferData._horizonColour = horizon;
+            _sceneBufferData._zenithColour = zenith;
+            _sceneDataDirty = true;
+        }
     }
 
     void fogDetails(const FogDetails& details) noexcept {
-        _sceneBufferData._fogDetails = details;
-        _sceneDataDirty = true;
+        if (_sceneBufferData._fogDetails != details) {
+            _sceneBufferData._fogDetails = details;
+            _sceneDataDirty = true;
+        }
     }
 
     void fogDensity(F32 densityB, F32 densityC) noexcept {
         CLAMP_01(densityB);
         CLAMP_01(densityC);
-        _sceneBufferData._fogDetails._colourAndDensity.a = densityB;
-        _sceneBufferData._fogDetails._colourSunScatter.a = densityC;
-        _sceneDataDirty = true;
+        if (!COMPARE(_sceneBufferData._fogDetails._colourAndDensity.a, densityB) ||
+            !COMPARE(_sceneBufferData._fogDetails._colourSunScatter.a, densityC)) 
+        {
+            _sceneBufferData._fogDetails._colourAndDensity.a = densityB;
+            _sceneBufferData._fogDetails._colourSunScatter.a = densityC;
+            _sceneDataDirty = true;
+        }
     }
 
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept {
-        _sceneBufferData._shadowingSettings.xy = { lightBleedBias, minShadowVariance };
-        _sceneDataDirty = true;
+        if (!COMPARE(_sceneBufferData._shadowingSettings.x, lightBleedBias) ||
+            !COMPARE(_sceneBufferData._shadowingSettings.y, minShadowVariance))
+        {
+            _sceneBufferData._shadowingSettings.xy = { lightBleedBias, minShadowVariance };
+            _sceneDataDirty = true;
+        }
     }
 
     void windDetails(const F32 directionX, const F32 directionY, const F32 directionZ, const F32 speed) noexcept {
-        _sceneBufferData._windDetails.set(directionX, directionY, directionZ, speed);
-        _sceneDataDirty = true;
+        if (!COMPARE(_sceneBufferData._windDetails.x, directionX) ||
+            !COMPARE(_sceneBufferData._windDetails.y, directionY) ||
+            !COMPARE(_sceneBufferData._windDetails.z, directionZ) ||
+            !COMPARE(_sceneBufferData._windDetails.w, speed))
+        {
+            _sceneBufferData._windDetails.set(directionX, directionY, directionZ, speed);
+            _sceneDataDirty = true;
+        }
     }
 
     bool waterDetails(const U8 index, const WaterBodyData& data) noexcept {
-        if (index < GLOBAL_WATER_BODIES_COUNT) {
+        if (index < GLOBAL_WATER_BODIES_COUNT && _sceneBufferData._waterEntities[index] != data) {
             _sceneBufferData._waterEntities[index] = data;
             _sceneDataDirty = true;
-
             return true;
         }
 
@@ -115,8 +138,13 @@ class SceneShaderData {
 
     bool probeState(const U16 index, const bool state) noexcept {
         if (index < GLOBAL_PROBE_COUNT) {
-            _probeData[index]._positionW.w = state ? 1.f : 0.f;
-            return true;
+            ProbeData& data = _probeData[index];
+            const F32 fState = state ? 1.f : 0.f;
+            if (!COMPARE(data._positionW.w, fState)) {
+                data._positionW.w = fState;
+                _probeDataDirty = true;
+                return true;
+            }
         }
 
         return false;
@@ -124,9 +152,14 @@ class SceneShaderData {
 
     bool probeData(const U16 index, const vec3<F32>& center, const vec3<F32>& halfExtents) noexcept {
         if (index < GLOBAL_PROBE_COUNT) {
-            _probeData[index]._positionW.xyz = center;
-            _probeData[index]._halfExtents.xyz = halfExtents;
-            _probeDataDirty = true;
+            ProbeData& data = _probeData[index];
+            if (data._positionW.xyz != center ||
+                data._halfExtents.xyz != halfExtents)
+            {
+                data._positionW.xyz = center;
+                data._halfExtents.xyz = halfExtents;
+                _probeDataDirty = true;
+            }
             return true;
         }
 

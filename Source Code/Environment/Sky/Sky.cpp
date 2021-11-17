@@ -568,8 +568,6 @@ bool Sky::load() {
     _sky = CreateResource<Sphere3D>(_parentCache, skybox);
     _sky->renderState().drawState(false);
 
-    const bool isEnabledSky = _context.context().config().debug.renderFilter.sky;
-
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
     vertModule._sourceFile = "sky.glsl";
@@ -582,9 +580,9 @@ bool Sky::load() {
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.back()._variant = isEnabledSky ? "Clouds" : "NoClouds";
+    shaderDescriptor._modules.back()._variant = "Clouds";
     shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._modules.back()._variant = isEnabledSky ? "Clouds" : "PassThrough";
+    shaderDescriptor._modules.back()._variant = "Clouds";
     
     ResourceDescriptor skyShaderDescriptorLQ("sky_Display_Clouds_LQ");
     skyShaderDescriptorLQ.propertyDescriptor(shaderDescriptor);

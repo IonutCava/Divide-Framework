@@ -45,7 +45,7 @@ struct GenericDrawCommand;
 
 struct BufferParams
 {
-    std::pair<Byte*, size_t> _initialData = { nullptr, 0 };
+    std::pair<bufferPtr, size_t> _initialData = { nullptr, 0 };
     U32 _elementCount = 0;
     size_t _elementSize = 0;     ///< Buffer primitive size in bytes
     bool _sync = true;

@@ -85,16 +85,16 @@ void LightPool::init() {
     bufferDescriptor._ringBufferLength = DataBufferRingSize;
     bufferDescriptor._separateReadWrite = false;
     bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     
     {
-        bufferDescriptor._name = "LIGHT_BUFFER";
-        bufferDescriptor._bufferParams._elementCount = to_base(RenderStage::COUNT) - 1; ///< no shadows
-        bufferDescriptor._bufferParams._elementSize = sizeof(BufferData);
+        bufferDescriptor._name = "LIGHT_DATA_BUFFER";
+        bufferDescriptor._bufferParams._elementCount = Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME * (to_base(RenderStage::COUNT) - 1); ///< no shadows
+        bufferDescriptor._bufferParams._elementSize = sizeof(LightProperties);
         // Holds general info about the currently active lights: position, colour, etc.
-        _lightShaderBuffer = _context.gfx().newSB(bufferDescriptor);
-    }
+        _lightBuffer = _context.gfx().newSB(bufferDescriptor);
+    } 
     {
         // Holds info about the currently active shadow casting lights:
         // ViewProjection Matrices, View Space Position, etc
@@ -103,7 +103,14 @@ void LightPool::init() {
         bufferDescriptor._bufferParams._elementSize = sizeof(ShadowProperties);
         _shadowBuffer = _context.gfx().newSB(bufferDescriptor);
     }
-
+    {
+        bufferDescriptor._name = "LIGHT_SCENE_BUFFER";
+        bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
+        bufferDescriptor._bufferParams._elementCount = to_base(RenderStage::COUNT) - 1; ///< no shadows
+        bufferDescriptor._bufferParams._elementSize = sizeof(SceneData);
+        // Holds general info about the currently active scene: light count, ambient colour, etc.
+        _sceneBuffer = _context.gfx().newSB(bufferDescriptor);
+    }
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
     vertModule._sourceFile = "lightImpostorShader.glsl";
@@ -288,7 +295,7 @@ U32 LightPool::uploadLightList(const RenderStage stage, const LightList& lights,
     U32 ret = 0u;
 
     auto& lightCount = _activeLightCount[stageIndex];
-    BufferData& crtData = _sortedLightProperties[stageIndex];
+    LightData& crtData = _sortedLightProperties[stageIndex];
 
     SpotLightComponent* spot = nullptr;
 
@@ -310,7 +317,7 @@ U32 LightPool::uploadLightList(const RenderStage stage, const LightList& lights,
                 spot = static_cast<SpotLightComponent*>(light);
             }
 
-            LightProperties& temp = crtData._lightProperties[ret - 1];
+            LightProperties& temp = crtData[ret - 1];
             light->getDiffuseColour(tempColour);
             temp._diffuse.set(tempColour * light->intensity(), isSpot ? std::cos(Angle::DegreesToRadians(spot->outerConeCutoffAngle())) : 0.f);
             // Omni and spot lights have a position. Directional lights have this set to (0,0,0)
@@ -364,38 +371,58 @@ void LightPool::prepareLightData(const RenderStage stage, const vec3<F32>& eyePo
         sortedLights.insert(begin(sortedLights), cbegin(dirLights), cend(dirLights));
     }
 
-    const U32 totalLightCount = uploadLightList(stage, sortedLights, viewMatrix);
+    U32& totalLightCount = _sortedLightPropertiesCount[stageIndex];
+    totalLightCount = uploadLightList(stage, sortedLights, viewMatrix);
 
-    BufferData& crtData = _sortedLightProperties[stageIndex];
-    crtData._globalData.set(
+    SceneData& crtData = _sortedSceneProperties[stageIndex];
+    bool sceneDataDirty = false;
+
+    const vec4<U32> tempData(
         _activeLightCount[stageIndex][to_base(LightType::DIRECTIONAL)],
         _activeLightCount[stageIndex][to_base(LightType::POINT)],
         _activeLightCount[stageIndex][to_base(LightType::SPOT)],
         to_U32(_sortedShadowLights._count));
-
-    if (!sortedLights.empty()) {
-        crtData._ambientColour.rgb = { 0.05f * sortedLights.front()->getDiffuseColour() };
-    } else {
-        crtData._ambientColour = DefaultColours::BLACK;
+    if (tempData != crtData._globalData) {
+        crtData._globalData.set(tempData);
+        sceneDataDirty = true;
     }
 
+    FColour4 ambient = DefaultColours::BLACK;
+    if (!sortedLights.empty()) {
+        ambient.rgb = { 0.05f * sortedLights.front()->getDiffuseColour() };
+    }
+    if (ambient != crtData._ambientColour) {
+        crtData._ambientColour = ambient;
+        sceneDataDirty = true;
+    }
+    const U32 bufferOffset = LightBufferIndex(stage);
     {
-        const U32 lightDiff = Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME - totalLightCount;
-
         OPTICK_EVENT("LightPool::UploadLightDataToGPU");
-        _lightShaderBuffer->writeBytes(LightBufferIndex(stage) * sizeof(BufferData),
-                                       sizeof(BufferData) - (sizeof(LightProperties) * lightDiff),
-                                       (bufferPtr)&crtData);
+        _lightBuffer->writeData(bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME,
+                                totalLightCount,
+                                &_sortedLightProperties[stageIndex]);
+    }
 
+    if (/*sceneDataDirty*/true) {
+        OPTICK_EVENT("LightPool::UploadSceneDataToGPU");
+        _sceneBuffer->writeData(bufferOffset, 1, &_sortedSceneProperties[stageIndex]);
     }
 }
 
 void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& bufferInOut) {
+    const U8 stageIndex = to_U8(stage);
+    const U32 lightCount = _sortedLightPropertiesCount[stageIndex];
+    const size_t bufferOffset = to_size(LightBufferIndex(stage));
 
-    ShaderBufferBinding bufferLight;
-    bufferLight._binding = ShaderBufferLocation::LIGHT_NORMAL;
-    bufferLight._buffer = _lightShaderBuffer;
-    bufferLight._elementRange = { LightBufferIndex(stage), 1u };
+    ShaderBufferBinding bufferLightData;
+    bufferLightData._binding = ShaderBufferLocation::LIGHT_NORMAL;
+    bufferLightData._buffer = _lightBuffer;
+    bufferLightData._elementRange = { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount };
+    
+    ShaderBufferBinding bufferLightScene;
+    bufferLightScene._binding = ShaderBufferLocation::LIGHT_SCENE;
+    bufferLightScene._buffer = _sceneBuffer;
+    bufferLightScene._elementRange = { bufferOffset, 1u };
 
     ShaderBufferBinding bufferShadow;
     bufferShadow._binding = ShaderBufferLocation::LIGHT_SHADOW;
@@ -403,7 +430,8 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
     bufferShadow._elementRange = { 0u, 1u };
 
     GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-    descriptorSetCmd._set._buffers.add(bufferLight);
+    descriptorSetCmd._set._buffers.add(bufferLightData);
+    descriptorSetCmd._set._buffers.add(bufferLightScene);
     descriptorSetCmd._set._buffers.add(bufferShadow);
     EnqueueCommand(bufferInOut, descriptorSetCmd);
 }
@@ -486,7 +514,8 @@ void LightPool::postRenderAllPasses() noexcept {
         _shadowBufferDirty = false;
     }
 
-    _lightShaderBuffer->decQueue();
+    _lightBuffer->decQueue();
+    _sceneBuffer->decQueue();
 }
 
 void LightPool::drawLightImpostors(RenderStage stage, GFX::CommandBuffer& bufferInOut) const {
@@ -504,34 +533,21 @@ void LightPool::drawLightImpostors(RenderStage stage, GFX::CommandBuffer& buffer
         s_samplerHash = iconSampler.getHash();
     }
 
-    const U8 stageIndex = to_U8(stage);
-
     assert(_lightImpostorShader);
 
-    U32 totalLightCount = 0;
-    for (U8 i = 0; i < to_base(LightType::COUNT); ++i) {
-        totalLightCount += _activeLightCount[stageIndex][i];
-    }
-
+    const U32 totalLightCount = _sortedLightPropertiesCount[to_U8(stage)];
     if (totalLightCount > 0) {
-        PipelineDescriptor pipelineDescriptor;
+        PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = _context.gfx().getDefaultStateBlock(false);
         pipelineDescriptor._shaderProgramHandle = _lightImpostorShader->getGUID();
 
-        GenericDrawCommand pointsCmd;
+        GenericDrawCommand pointsCmd{};
         pointsCmd._primitiveType = PrimitiveType::API_POINTS;
         pointsCmd._drawCount = to_U16(totalLightCount);
 
-        GFX::BindPipelineCommand bindPipeline;
-        bindPipeline._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
-        EnqueueCommand(bufferInOut, bindPipeline);
-        
-        GFX::BindDescriptorSetsCommand descriptorSetCmd;
-        descriptorSetCmd._set._textureData.add(TextureEntry{ _lightIconsTexture->data(), s_samplerHash, TextureUsage::UNIT0 });
-        EnqueueCommand(bufferInOut, descriptorSetCmd);
-
-        GFX::DrawCommand drawCommand = { pointsCmd };
-        EnqueueCommand(bufferInOut, drawCommand);
+        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _context.gfx().newPipeline(pipelineDescriptor) });
+        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ _lightIconsTexture->data(), s_samplerHash, TextureUsage::UNIT0 });
+        GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ pointsCmd });
     }
 }
 

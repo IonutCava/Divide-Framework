@@ -31,10 +31,7 @@ void SubMesh::buildDrawCommands(SceneGraphNode* sgn,
     cmd._cmd.indexCount = to_U32(getGeometryVB()->getPartitionIndexCount(_geometryPartitionIDs[0]));
     cmd._cmd.primCount = sgn->instanceCount();
     cmd._bufferIndex = renderStagePass.baseIndex();
-    
-    if (sgn->context().config().debug.renderFilter.meshes) {
-        pkgInOut.add(GFX::DrawCommand{ cmd });
-    }
+    pkgInOut.add(GFX::DrawCommand{ cmd });
 
     Object3D::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
 }

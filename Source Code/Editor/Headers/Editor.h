@@ -248,6 +248,8 @@ class Editor final : public PlatformContextComponent,
 
     inline void toggleMemoryEditor(bool state) noexcept;
 
+    void copyPlayerCamToEditorCam() noexcept;
+
     [[nodiscard]] bool addComponent(SceneGraphNode* selection, ComponentType newComponentType) const;
     [[nodiscard]] bool addComponent(const Selections& selections, ComponentType newComponentType) const;
     [[nodiscard]] bool removeComponent(SceneGraphNode* selection, ComponentType newComponentType) const;
@@ -306,6 +308,10 @@ namespace Attorney {
 
         static void editorEnableGizmo(const Editor& editor, const bool state) noexcept {
             editor._gizmo->enable(state);
+        }
+
+        static void copyPlayerCamToEditorCam(Editor& editor) noexcept {
+            editor.copyPlayerCamToEditorCam();
         }
 
         static void editorStepQueue(Editor& editor, const U32 steps) noexcept {

@@ -118,13 +118,10 @@ void Kernel::startSplashScreen() {
         }
     });
     Start(*_splashTask, _platformContext.taskPool(TaskPoolType::HIGH_PRIORITY), TaskPriority::REALTIME/*HIGH*/);
-
-    window.swapBuffers(false);
 }
 
 void Kernel::stopSplashScreen() {
     DisplayWindow& window = _platformContext.mainWindow();
-    window.swapBuffers(true);
     const vec2<U16> previousDimensions = window.getPreviousDimensions();
     _splashScreenUpdating = false;
     Wait(*_splashTask, _platformContext.taskPool(TaskPoolType::HIGH_PRIORITY));

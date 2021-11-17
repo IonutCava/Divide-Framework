@@ -103,6 +103,8 @@ class Transform final : public ITransform, public GUIDWrapper, NonCopyable {
     /// Reset transform to identity
     void identity() noexcept;
 
+    /// Use with care!
+    [[nodiscard]] const TransformValues& getValuesRef() const noexcept;
    private:
     /// The actual scale, rotation and translation values
     TransformValues _transformValues {};

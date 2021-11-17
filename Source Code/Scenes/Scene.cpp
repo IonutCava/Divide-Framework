@@ -757,22 +757,28 @@ U16 Scene::registerInputActions() {
     };
 
     const auto increaseCameraSpeed = [this](const InputParams param){
-        FreeFlyCamera* cam = _scenePlayers[getPlayerIndexForDevice(param._deviceIndex)]->camera();
-
-        const F32 currentCamMoveSpeedFactor = cam->getMoveSpeedFactor();
-        if (currentCamMoveSpeedFactor < 50) {
-            cam->setMoveSpeedFactor(currentCamMoveSpeedFactor + 1.0f);
-            cam->setTurnSpeedFactor(cam->getTurnSpeedFactor() + 1.0f);
+        Camera* cam = playerCamera(getPlayerIndexForDevice(param._deviceIndex));
+        if (cam->type() != Camera::CameraType::STATIC &&
+            cam->type() != Camera::CameraType::SCRIPTED)
+        {
+            const F32 currentCamMoveSpeedFactor = static_cast<FreeFlyCamera*>(cam)->getMoveSpeedFactor();
+            if (currentCamMoveSpeedFactor < 50) {
+                static_cast<FreeFlyCamera*>(cam)->setMoveSpeedFactor(currentCamMoveSpeedFactor + 1.0f);
+                static_cast<FreeFlyCamera*>(cam)->setTurnSpeedFactor(static_cast<FreeFlyCamera*>(cam)->getTurnSpeedFactor() + 1.0f);
+            }
         }
     };
 
     const auto decreaseCameraSpeed = [this](const InputParams param) {
-        FreeFlyCamera* cam = _scenePlayers[getPlayerIndexForDevice(param._deviceIndex)]->camera();
-
-        const F32 currentCamMoveSpeedFactor = cam->getMoveSpeedFactor();
-        if (currentCamMoveSpeedFactor > 1.0f) {
-            cam->setMoveSpeedFactor(currentCamMoveSpeedFactor - 1.0f);
-            cam->setTurnSpeedFactor(cam->getTurnSpeedFactor() - 1.0f);
+        Camera* cam = playerCamera(getPlayerIndexForDevice(param._deviceIndex));
+        if (cam->type() != Camera::CameraType::STATIC &&
+            cam->type() != Camera::CameraType::SCRIPTED)
+        {
+            const F32 currentCamMoveSpeedFactor = static_cast<FreeFlyCamera*>(cam)->getMoveSpeedFactor();
+            if (currentCamMoveSpeedFactor > 1.0f) {
+                static_cast<FreeFlyCamera*>(cam)->setMoveSpeedFactor(currentCamMoveSpeedFactor - 1.0f);
+                static_cast<FreeFlyCamera*>(cam)->setTurnSpeedFactor(static_cast<FreeFlyCamera*>(cam)->getTurnSpeedFactor() - 1.0f);
+            }
         }
     };
 
@@ -1265,8 +1271,13 @@ bool Scene::mouseMoved(const Input::MouseMoveEvent& arg) {
 }
 
 bool Scene::updateCameraControls(const PlayerIndex idx) const {
-    FreeFlyCamera* cam = getPlayerForIndex(idx)->camera();
-    
+    Camera* camIn = playerCamera(idx);
+    if (camIn->type() == Camera::CameraType::STATIC ||
+        camIn->type() == Camera::CameraType::SCRIPTED) {
+        return false;
+    }
+    FreeFlyCamera* cam = static_cast<FreeFlyCamera*>(camIn);
+
     SceneStatePerPlayer& playerState = state()->playerState(idx);
 
     playerState.previousViewMatrix(cam->viewMatrix());

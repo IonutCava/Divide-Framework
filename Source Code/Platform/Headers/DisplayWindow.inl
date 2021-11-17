@@ -48,14 +48,6 @@ namespace Divide {
         setPosition(position.x, position.y, global);
     }
 
-    inline bool DisplayWindow::swapBuffers() const noexcept {
-        return BitCompare(_flags, WindowFlags::SWAP_BUFFER);
-    }
-
-    inline void DisplayWindow::swapBuffers(const bool state) noexcept {
-        ToggleBit(_flags, WindowFlags::SWAP_BUFFER, state);
-    }
-
     inline bool DisplayWindow::isHovered() const noexcept {
         return BitCompare(_flags, WindowFlags::IS_HOVERED);
     }

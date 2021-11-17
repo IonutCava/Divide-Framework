@@ -2001,9 +2001,9 @@ FORCE_INLINE T mat4<T>::elementSum() const noexcept {
 
 template<typename T>
 FORCE_INLINE void mat4<T>::orthoNormalize() noexcept {
-    _comp.right.normalize();
-    _comp.up.normalize();
-    _comp.dir.normalize();
+    _vec[0].normalize(); //right
+    _vec[1].normalize(); //up
+    _vec[2].normalize(); //dir
 }
 
 template<typename T>

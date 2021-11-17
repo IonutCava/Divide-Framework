@@ -842,7 +842,6 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
             GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
         }
 
-        // We try and render translucent items in the shadow pass and due some alpha-discard tricks
         renderQueueToSubPasses(bufferInOut);
 
         postRender(params._stagePass, *params._camera, _renderQueue, bufferInOut);
@@ -1062,7 +1061,7 @@ void RenderPassExecutor::postRender(const RenderStagePass& stagePass,
 
     if (stagePass._stage == RenderStage::DISPLAY && stagePass._passType == RenderPassType::MAIN_PASS) {
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Debug Draw";
-        /// These should be OIT rendered as well since things like debug nav meshes have translucency
+        // These should be OIT rendered as well since things like debug nav meshes have translucency
         Attorney::SceneManagerRenderPass::debugDraw(sceneManager, stagePass, &camera, bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
@@ -1114,7 +1113,7 @@ bool RenderPassExecutor::validateNodesForStagePass(VisibleNodeList<>& nodes, con
     const I32 nodeCount = to_I32(nodes.size());
     for (I32 i = nodeCount - 1; i >= 0; i--) {
         VisibleNode& node = nodes.node(i);
-        if (node._materialReady && !Attorney::SceneGraphNodeRenderPassManager::canDraw(node._node, stagePass)) {
+        if (node._node == nullptr || (node._materialReady && !Attorney::SceneGraphNodeRenderPassManager::canDraw(node._node, stagePass))) {
             node._materialReady = false;
             ret = true;
         }
@@ -1327,16 +1326,12 @@ void RenderPassExecutor::PostRender() {
 
     for (U32 i = 0u; i < s_materialBuffer._highWaterMark; ++i) {
         s_materialBuffer._data._processedThisFrame[i].store(false);
+        if (s_materialBuffer._data._nodeMaterialLookupInfo[i].first != Material::INVALID_MAT_HASH) {
+            ++s_materialBuffer._data._nodeMaterialLookupInfo[i].second;
+        }
     }
     for (U32 i = 0u; i < s_transformBuffer._highWaterMark; ++i) {
         s_transformBuffer._data._processedThisFrame[i].store(false);
-    }
-    {
-        ScopedLock<Mutex> w_lock(s_materialBuffer._lock);
-        // Increment material lifetime by 1 (a frame has passed)
-        for (auto& info : s_materialBuffer._data._nodeMaterialLookupInfo) {
-            ++info.second;
-        }
     }
 }
 

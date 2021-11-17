@@ -84,14 +84,13 @@ enum class WindowFlags : U16 {
     VSYNC = toBit(1),
     CLEAR_COLOUR = toBit(2),
     CLEAR_DEPTH = toBit(3),
-    SWAP_BUFFER = toBit(4),
-    HAS_FOCUS = toBit(5),
-    IS_HOVERED = toBit(6),
-    MINIMIZED = toBit(7),
-    MAXIMIZED = toBit(8),
-    HIDDEN = toBit(9),
-    DECORATED = toBit(10),
-    OWNS_RENDER_CONTEXT = toBit(11), //BAD
+    HAS_FOCUS = toBit(4),
+    IS_HOVERED = toBit(5),
+    MINIMIZED = toBit(6),
+    MAXIMIZED = toBit(7),
+    HIDDEN = toBit(8),
+    DECORATED = toBit(9),
+    OWNS_RENDER_CONTEXT = toBit(10), //BAD
     COUNT
 };
 
@@ -138,9 +137,6 @@ public:
     [[nodiscard]] inline SDL_Window* getRawWindow() const noexcept;
 
     [[nodiscard]] I32 currentDisplayIndex() const noexcept;
-
-    [[nodiscard]] inline bool swapBuffers() const noexcept;
-    inline void swapBuffers(bool state) noexcept;
 
     [[nodiscard]] inline bool isHovered() const noexcept;
     [[nodiscard]] inline bool hasFocus() const noexcept;

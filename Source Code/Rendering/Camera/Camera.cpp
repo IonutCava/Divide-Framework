@@ -30,7 +30,7 @@ Camera::Camera(const Str256& name, const CameraType& type, const vec3<F32>& eye)
     _data._aspectRatio = 1.77f;
     _data._viewMatrix.identity();
     _data._projectionMatrix.identity();
-    _data._zPlanes.set(0.1f, 1.0f);
+    _data._zPlanes.set(0.1f, 1000.0f);
     _data._orientation.identity();
 }
 
@@ -396,6 +396,8 @@ void Camera::saveToXML(boost::property_tree::ptree& pt, const string prefix) con
     pt.put(savePath + ".orientation.<xmlattr>.z", orientation.z);
     pt.put(savePath + ".orientation.<xmlattr>.w", orientation.w);
     pt.put(savePath + ".aspectRatio", _data._aspectRatio);
+    pt.put(savePath + ".zPlanes.<xmlattr>.min", _data._zPlanes.min);
+    pt.put(savePath + ".zPlanes.<xmlattr>.max", _data._zPlanes.max);
     pt.put(savePath + ".FoV", _data._FoV);
     pt.put(savePath + ".flag", _data._flag);
 }
@@ -430,6 +432,10 @@ void Camera::loadFromXML(const boost::property_tree::ptree& pt, const string pre
         pt.get(savePath + ".orientation.<xmlattr>.y", orientation.y),
         pt.get(savePath + ".orientation.<xmlattr>.z", orientation.z),
         pt.get(savePath + ".orientation.<xmlattr>.w", orientation.w)
+    );
+    _data._zPlanes.set(
+        pt.get(savePath + ".zPlanes.<xmlattr>.min", _data._zPlanes.min),
+        pt.get(savePath + ".zPlanes.<xmlattr>.max", _data._zPlanes.max)
     );
     _data._aspectRatio = pt.get(savePath + ".aspectRatio", _data._aspectRatio);
     _data._FoV = pt.get(savePath + ".FoV", _data._FoV);

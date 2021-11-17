@@ -135,7 +135,7 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn,
                                  const Camera& crtCamera,
                                  RenderPackage& pkgInOut) {
     VertexBuffer* vb = getGeometryVB();
-    if (vb != nullptr && sgn->context().config().debug.renderFilter.primitives) {
+    if (vb != nullptr) {
         if (pkgInOut.count<GFX::DrawCommand>() == 0) {
             const U16 partitionID = _geometryPartitionIDs[0];
             GenericDrawCommand cmd;

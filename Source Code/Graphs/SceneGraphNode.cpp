@@ -490,14 +490,13 @@ void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) 
     _elapsedTimeUS += deltaTimeUS;
 
     if (hasFlag(Flags::ACTIVE)) {
-        if (_lockToCamera != 0) {
+        if (_lockToCamera != 0u) {
             TransformComponent* tComp = get<TransformComponent>();
-            if (tComp) {
-                Camera* cam = Camera::findCamera(_lockToCamera);
-                if (cam) {
-                    cam->updateLookAt();
-                    tComp->setOffset(true, cam->worldMatrix());
-                }
+            assert(tComp != nullptr);
+            Camera* cam = Camera::findCamera(_lockToCamera);
+            if (cam) {
+                cam->updateLookAt();
+                tComp->setOffset(true, cam->worldMatrix());
             }
         }
 

@@ -349,6 +349,14 @@ class SceneManagerEditor {
        return mgr->loadNode(targetNode);
    }
 
+   static Camera* playerCamera(const Divide::SceneManager* mgr, bool skipOverride = false) noexcept {
+       return mgr->playerCamera(skipOverride);
+   }
+
+   static Camera* playerCamera(const Divide::SceneManager* mgr, PlayerIndex idx, bool skipOverride = false) noexcept {
+       return mgr->playerCamera(idx, skipOverride);
+   }
+
    friend class Divide::Editor;
 };
 

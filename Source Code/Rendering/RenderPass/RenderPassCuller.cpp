@@ -2,6 +2,7 @@
 
 #include "Headers/RenderPassCuller.h"
 
+#include "Core/Headers/Configuration.h"
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/PlatformContext.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
@@ -110,6 +111,51 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, c
         sceneGraph.getRoot()->unlockChildrenForRead();
     }
 
+    const auto removeNodeOfType = [](VisibleNodeList<>& nodes, const SceneNodeType snType, ObjectType objType = ObjectType::COUNT) {
+        const I32 nodeCount = to_I32(nodes.size());
+        for (I32 i = nodeCount - 1; i >= 0; i--) {
+            const SceneGraphNode* node = nodes.node(i)._node;
+            if (node == nullptr) {
+                // already culled
+                continue;
+            }
+
+            if (node->getNode<>().type() != snType) {
+                continue;
+            }
+
+            if (snType != SceneNodeType::TYPE_OBJECT3D || node->getNode<Object3D>().getObjectType() == objType) {
+                nodes.node(i)._node = nullptr;
+            }
+        }
+    };
+
+    const auto& filter = context.config().debug.renderFilter;
+    if (!filter.primitives) {
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_OBJECT3D, ObjectType::BOX_3D);
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_OBJECT3D, ObjectType::SPHERE_3D);
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_OBJECT3D, ObjectType::QUAD_3D);
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_OBJECT3D, ObjectType::PATCH_3D);
+    }
+    if (!filter.meshes) {
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_OBJECT3D, ObjectType::MESH);
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_OBJECT3D, ObjectType::SUBMESH);
+    }
+    if (!filter.terrain) {
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_OBJECT3D, ObjectType::TERRAIN);
+    }
+    if (!filter.vegetation) {
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_VEGETATION);
+    }
+    if (!filter.water) {
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_WATER);
+    }
+    if (!filter.sky) {
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_SKY);
+    }
+    if (!filter.particles) {
+        removeNodeOfType(nodeCache, SceneNodeType::TYPE_PARTICLE_EMITTER);
+    }
     return nodeCache;
 }
 

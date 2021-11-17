@@ -9,8 +9,7 @@
 namespace Divide {
 
 BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
-    : BaseComponentType<BoundsComponent, ComponentType::BOUNDS>(sgn, context),
-     _tCompCache(sgn->get<TransformComponent>())
+    : BaseComponentType<BoundsComponent, ComponentType::BOUNDS>(sgn, context)
 {
     _refBoundingBox.set(sgn->getNode().getBounds());
     _boundingBox.set(_refBoundingBox);
@@ -129,8 +128,6 @@ void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool r
 
 void BoundsComponent::OnData(const ECS::CustomEvent& data) {
     if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
-        _tCompCache = static_cast<TransformComponent*>(data._sourceCmp);
-
         flagBoundingBoxDirty(data._flag, true);
     }
 }
@@ -154,14 +151,12 @@ const BoundingBox& BoundsComponent::updateAndGetBoundingBox() {
         return true;
     });
 
-    assert(_tCompCache != nullptr);
-
     if (mask == to_U32(TransformType::TRANSLATION)) {
-        const vec3<F32>& pos = _tCompCache->getPosition();
+        const vec3<F32>& pos = _parentSGN->get<TransformComponent>()->getPosition();
         _boundingBox.set(_refBoundingBox.getMin() + pos, _refBoundingBox.getMax() + pos);
     } else {
         mat4<F32> mat;
-        _tCompCache->getWorldMatrix(mat);
+        _parentSGN->get<TransformComponent>()->getWorldMatrix(mat);
         _boundingBox.transform(_refBoundingBox.getMin(), _refBoundingBox.getMax(), mat);
     }
 
@@ -179,8 +174,7 @@ const BoundingBox& BoundsComponent::updateAndGetBoundingBox() {
 
 const OBB& BoundsComponent::getOBB() {
     if (_obbDirty.exchange(false)) {
-        mat4<F32> mat;
-        _tCompCache->getWorldMatrix(mat);
+        const mat4<F32> mat = _parentSGN->get<TransformComponent>()->getWorldMatrix();
         _obb.fromBoundingBox(_refBoundingBox, mat);
     }
 

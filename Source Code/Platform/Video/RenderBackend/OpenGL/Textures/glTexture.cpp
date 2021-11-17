@@ -92,7 +92,9 @@ bool glTexture::unload() {
 void glTexture::threadedLoad() {
 
     Texture::threadedLoad();
-    _lockManager->lock();
+    if (_asyncLoad) {
+        _lockManager->lock();
+    }
     CachedResource::load();
 }
 

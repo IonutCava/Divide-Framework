@@ -220,6 +220,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
     // Create a shader buffer to store the GFX rendering info (matrices, options, etc)
     {
+        DIVIDE_ASSERT(ValidateGPUDataStructure());
+
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
         bufferDescriptor._ringBufferLength = TargetBufferSize;
@@ -1404,7 +1406,7 @@ void GFXDevice::setClipPlanes(const FrustumClipPlanes& clipPlanes) {
         U8 count = 0u;
         for (U8 i = 0u; i < to_U8(ClipPlaneIndex::COUNT); ++i) {
             if (states[i]) {
-                _gpuBlock._data._clipPlanes[count++] = planes[i];
+                _gpuBlock._data._clipPlanes[count++].set(planes[i]._equation);
                 if (count == Config::MAX_CLIP_DISTANCES) {
                     break;
                 }
@@ -1438,7 +1440,9 @@ void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
     if (projectionDirty || viewDirty) {
         mat4<F32>::Multiply(data._ViewMatrix, data._ProjectionMatrix, data._ViewProjectionMatrix);
 
-        data._frustumPlanes = cameraSnapshot._frustumPlanes;
+        for (U8 i = 0u; i < to_U8(FrustumPlane::COUNT); ++i) {
+            data._frustumPlanes[i].set(cameraSnapshot._frustumPlanes[i]._equation);
+        }
         needsUpdate = true;
     }
 
@@ -1456,7 +1460,7 @@ void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
             data._lightingProperties.z = 1.f; //scale
             data._lightingProperties.w = 0.f; //bias
         } else {
-            const F32 gridSizeZ = to_F32(_context.config().rendering.lightClusteredSizes.z);
+            const F32 gridSizeZ = to_F32(Renderer::CLUSTER_SIZE.z);
             const F32 zFar = cameraSnapshot._zPlanes.max;
             const F32 zNear = cameraSnapshot._zPlanes.min;
             const F32 zLogRatio = std::log2f(zFar / zNear);
@@ -1488,10 +1492,8 @@ bool GFXDevice::setViewport(const Rect<I32>& viewport) {
         _gpuBlock._data._ViewPort.set(viewport.x, viewport.y, viewport.z, viewport.w);
         const F32 viewportWidth = to_F32(viewport.z);
         const F32 viewportHeight= to_F32(viewport.w);
-        const U32 gridSizeX = to_U32(context().config().rendering.lightClusteredSizes.x);
-        const U32 gridSizeY = to_U32(context().config().rendering.lightClusteredSizes.y);
-        const F32 clusterSizeX = std::ceil(viewportWidth  / gridSizeX);
-        const F32 clusterSizeY = std::ceil(viewportHeight / gridSizeY);
+        const F32 clusterSizeX = std::ceil(viewportWidth  / Renderer::CLUSTER_SIZE.x);
+        const F32 clusterSizeY = std::ceil(viewportHeight / Renderer::CLUSTER_SIZE.y);
         _gpuBlock._data._lightingProperties.x = clusterSizeX;
         _gpuBlock._data._lightingProperties.y = clusterSizeY;
         _gpuBlock._needsUpload = true;

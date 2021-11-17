@@ -58,10 +58,12 @@ struct GFXShaderData {
           vec4<F32> _lightingProperties = { 120.0f, 100.0f, 1.0f, 1.0f };
           //x - material debug flag, y - reserved, z - camera flag, w - active clip plane count
           vec4<F32> _otherProperties;
-          std::array<Plane<F32>, to_base(FrustumPlane::COUNT)> _frustumPlanes = create_array<to_base(FrustumPlane::COUNT), Plane<F32>>(Plane<F32>{0.f, 0.f, 0.f, 0.f});
-          std::array<Plane<F32>, Config::MAX_CLIP_DISTANCES> _clipPlanes = create_array<Config::MAX_CLIP_DISTANCES, Plane<F32>>(Plane<F32>{0.f, 0.f, 0.f, 0.f});
+          vec4<F32> _frustumPlanes[to_base(FrustumPlane::COUNT)];
+          vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
+          vec4<F32> _padding0[10];
       };
 #pragma pack(pop)
+
     GPUData _data{};
 
     bool _needsUpload = true;
@@ -71,6 +73,7 @@ struct GFXShaderData {
 [[nodiscard]] vec2<F32> CameraZPlanes(const GFXShaderData::GPUData& dataIn) noexcept;
 [[nodiscard]] F32 FoV(const GFXShaderData::GPUData& dataIn) noexcept;
 
+[[nodiscard]] bool ValidateGPUDataStructure() noexcept;
 //RenderDoc: mat4 projection; mat4 invprojection; mat4 view; mat4 viewproj; vec4 cam; vec4 renderProp; vec4 frustum[6]; vec4 clip[6];
 }; //namespace Divide
 

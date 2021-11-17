@@ -17,6 +17,7 @@
 
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
+#include "Rendering/Headers/Renderer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "GUI/Headers/GUIText.h"
@@ -76,16 +77,16 @@ void GL_API::beginFrame(DisplayWindow& window, const bool global) {
 
     GLStateTracker& stateTracker = getStateTracker();
 
+    SDL_GLContext glContext = static_cast<SDL_GLContext>(window.userData());
+    const I64 windowGUID = window.getGUID();
+
+    if (glContext != nullptr && (_currentContext.first != windowGUID || _currentContext.second != glContext)) {
+        SDL_GL_MakeCurrent(window.getRawWindow(), glContext);
+        _currentContext = std::make_pair(windowGUID, glContext);
+    }
+
     // Clear our buffers
-    if (window.swapBuffers() && !window.minimized() && !window.hidden()) {
-        SDL_GLContext glContext = static_cast<SDL_GLContext>(window.userData());
-        const I64 windowGUID = window.getGUID();
-
-        if (glContext != nullptr && (_currentContext.first != windowGUID || _currentContext.second != glContext)) {
-            SDL_GL_MakeCurrent(window.getRawWindow(), glContext);
-            _currentContext = std::make_pair(windowGUID, glContext);
-        }
-
+    if (!window.minimized() && !window.hidden()) {
         bool shouldClearColour = false, shouldClearDepth = false, shouldClearStencil = false;
         stateTracker.setClearColour(window.clearColour(shouldClearColour, shouldClearDepth));
         ClearBufferMask mask = ClearBufferMask::GL_NONE_BIT;
@@ -132,20 +133,20 @@ void GL_API::endFrame(DisplayWindow& window, const bool global) {
             _swapBufferTimer.start();
         }
 
-        if (window.swapBuffers() && !window.minimized() && !window.hidden()) {
-            SDL_GLContext glContext = static_cast<SDL_GLContext>(window.userData());
-            const I64 windowGUID = window.getGUID();
+        
+        SDL_GLContext glContext = static_cast<SDL_GLContext>(window.userData());
+        const I64 windowGUID = window.getGUID();
             
-            if (glContext != nullptr && (_currentContext.first != windowGUID || _currentContext.second != glContext)) {
-                OPTICK_EVENT("GL_API: Swap Context");
-                SDL_GL_MakeCurrent(window.getRawWindow(), glContext);
-                _currentContext = std::make_pair(windowGUID, glContext);
-            }
-            {
-                OPTICK_EVENT("GL_API: Swap Buffers");
-                SDL_GL_SwapWindow(window.getRawWindow());
-            }
+        if (glContext != nullptr && (_currentContext.first != windowGUID || _currentContext.second != glContext)) {
+            OPTICK_EVENT("GL_API: Swap Context");
+            SDL_GL_MakeCurrent(window.getRawWindow(), glContext);
+            _currentContext = std::make_pair(windowGUID, glContext);
         }
+        {
+            OPTICK_EVENT("GL_API: Swap Buffers");
+            SDL_GL_SwapWindow(window.getRawWindow());
+        }
+        
         if (global) {
             _swapBufferTimer.stop();
             s_textureViewCache.onFrameEnd();
@@ -295,16 +296,6 @@ bool GL_API::InitGLSW(Configuration& config) {
         config.changed(true);
     }
 
-    vec3<U8> gridSize = config.rendering.lightClusteredSizes;
-    CLAMP(gridSize.x, to_U8(1), to_U8(255));
-    CLAMP(gridSize.y, to_U8(1), to_U8(255));
-    CLAMP(gridSize.z, to_U8(Config::Lighting::ClusteredForward::CLUSTER_Z_THREADS), to_U8(255));
-
-    if (gridSize != config.rendering.lightClusteredSizes) {
-        config.rendering.lightClusteredSizes = gridSize;
-        config.changed(true);
-    }  
-
     DIVIDE_ASSERT(Config::MAX_CULL_DISTANCES <= GLUtil::getGLValue(GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES) - Config::MAX_CLIP_DISTANCES,
                   "GLWrapper error: incorrect combination of clip and cull distance counts");
     static_assert(Config::MAX_BONE_COUNT_PER_NODE <= 1024, "GLWrapper error: too many bones per vert. Can't fit inside UBO");
@@ -399,6 +390,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER "           + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_GPU_COMMANDS "             + Util::to_string(to_base(ShaderBufferLocation::GPU_COMMANDS)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_NORMAL "             + Util::to_string(to_base(ShaderBufferLocation::LIGHT_NORMAL)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_SCENE "              + Util::to_string(to_base(ShaderBufferLocation::LIGHT_SCENE)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_SHADOW "             + Util::to_string(to_base(ShaderBufferLocation::LIGHT_SHADOW)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_INDICES "            + Util::to_string(to_base(ShaderBufferLocation::LIGHT_INDICES)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_GRID "               + Util::to_string(to_base(ShaderBufferLocation::LIGHT_GRID)));
@@ -413,10 +405,12 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_GRASS_DATA "               + Util::to_string(to_base(ShaderBufferLocation::GRASS_DATA)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_TREE_DATA "                + Util::to_string(to_base(ShaderBufferLocation::TREE_DATA)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_UNIFORM_BLOCK "            + Util::to_string(to_base(ShaderBufferLocation::UNIFORM_BLOCK)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define GRID_SIZE_X "                     + Util::to_string(gridSize.x));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define GRID_SIZE_Y "                     + Util::to_string(gridSize.y));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define GRID_SIZE_Z "                     + Util::to_string(gridSize.z));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define GRID_SIZE_Z_THREADS "             + Util::to_string(Config::Lighting::ClusteredForward::CLUSTER_Z_THREADS));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_X_THREADS "              + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_Y_THREADS "              + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_Z_THREADS "              + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_X "                      + Util::to_string(Renderer::CLUSTER_SIZE.x));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_Y "                      + Util::to_string(Renderer::CLUSTER_SIZE.y));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_Z "                      + Util::to_string(Renderer::CLUSTER_SIZE.z));
     AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_LIGHTS_PER_CLUSTER "          + Util::to_string(numLightsPerCluster));
     AppendToShaderHeader(ShaderType::COUNT,    "#define REFLECTION_PROBE_RESOLUTION "     + Util::to_string(reflectionProbeRes));
     for (U8 i = 0; i < to_base(TextureUsage::COUNT); ++i) {
@@ -676,7 +670,7 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
 
             idxBuffer.smallIndices = sizeof(ImDrawIdx) == 2;
             idxBuffer.count = to_U32(cmd_list->IdxBuffer.Size);
-            idxBuffer.data = reinterpret_cast<Byte*>(cmd_list->IdxBuffer.Data);
+            idxBuffer.data = cmd_list->IdxBuffer.Data;
 
             buffer->waitBufferRange(0u, 0u, to_U32(cmd_list->VtxBuffer.size()), true);
             buffer->updateBuffer(0u, 0u, to_U32(cmd_list->VtxBuffer.size()), cmd_list->VtxBuffer.Data);

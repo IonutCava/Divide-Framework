@@ -73,6 +73,7 @@ layout(binding = BUFFER_GPU_BLOCK, std140) uniform dvd_GPUBlock
     vec4  dvd_otherProperties;
     vec4  dvd_frustumPlanes[6];
     vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
+    vec4  _gpu_padding0[10];
 };
 
 #define SHADOW_PASS_NORMAL 0
@@ -82,18 +83,16 @@ layout(binding = BUFFER_GPU_BLOCK, std140) uniform dvd_GPUBlock
 #define SHADOW_PASS_TYPE int(dvd_otherProperties.z)
 #define CAMERA_FLAG SHADOW_PASS_TYPE
 
-#define dvd_ClusterSizeX dvd_lightingProperties.x
-#define dvd_ClusterSizeY dvd_lightingProperties.y
 #define dvd_LightScale dvd_lightingProperties.z
 #define dvd_LightBias dvd_lightingProperties.w
 #define dvd_cameraForward vec3(dvd_ViewMatrix[3].xyz)
 #define windowWidth int(dvd_ViewPort.z)
 #define windowHeight int(dvd_ViewPort.w)
 
-#define dvd_ClusterSizes vec2(dvd_ClusterSizeX, dvd_ClusterSizeY)
+#define dvd_ClusterSizes dvd_lightingProperties.xy
 
 #define dvd_screenDimensions dvd_ViewPort.zw
-#define dvd_invScreenDimensions (1.0f / dvd_screenDimensions)
+#define dvd_invScreenDimensions (1.f / dvd_screenDimensions)
 #define dvd_aspectRatio dvd_cameraPosition.w
 #define dvd_zPlanes dvd_renderProperties.xy
 #define dvd_fieldOfView dvd_renderProperties.z

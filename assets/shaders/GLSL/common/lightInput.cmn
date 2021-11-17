@@ -29,12 +29,23 @@ struct Light {
 
 layout(binding = BUFFER_LIGHT_NORMAL, std430) coherent ACCESS_R buffer dvd_LightBlock
 {
+    Light dvd_LightSource[];
+    //RenderDoc: vec3 colour; float cosOuterCone; vec3 positionWV; float range; vec3 directionWV; float spotAngle; int lightType; int castsShadows; ivec2 null;
+};
+
+layout(binding = BUFFER_LIGHT_SCENE, std140) uniform dvd_LightSceneDataBlock
+{
     // x = directional light count, y = point light count, z = spot light count, w = shadow light count
     uvec4 dvd_LightData;
     vec4  dvd_AmbientColour;
-    Light dvd_LightSource[MAX_LIGHTS];
-    //RenderDoc: vec3 colour; float cosOuterCone; vec3 positionWV; float range; vec3 directionWV; float spotAngle; int lightType; int castsShadows; ivec2 null;
+    mat4 _light_padding0[3]; 
+    vec4 _light_padding1[2];
 };
+
+#define DIRECTIONAL_LIGHT_COUNT dvd_LightData.x
+#define POINT_LIGHT_COUNT       dvd_LightData.y
+#define SPOT_LIGHT_COUNT        dvd_LightData.z
+#define CLUSTERS_COUNT          CLUSTERS_X * CLUSTERS_Y * CLUSTERS_Z
 
 #if defined(FRAG_SHADER) || defined(COMPUTE_SHADER)
 struct LightGrid
@@ -42,9 +53,10 @@ struct LightGrid
     uint offset;
     uint countPoint;
     uint countSpot;
+    uint _padding;
 };
 
-layout(binding = BUFFER_LIGHT_GRID, std430) COMP_ONLY_RW buffer lightGridSSBO
+layout(binding = BUFFER_LIGHT_GRID, std430) buffer lightGridSSBO
 {
     LightGrid lightGrid[];
 };
@@ -67,7 +79,7 @@ struct VolumeTileAABB
 #endif
 layout(binding = BUFFER_LIGHT_CLUSTER_AABBS, std430) LIGHT_CLUSTER_ACCESS buffer lightClusterAABBs
 {
-    VolumeTileAABB cluster[GRID_SIZE_X * GRID_SIZE_Y * GRID_SIZE_Z];
+    VolumeTileAABB cluster[];
 };
 #else //COMPUTE_SHADER
 
@@ -84,8 +96,8 @@ uint GetClusterIndex(vec4 fragCoord) {
     const uint zIndex = GetClusterZIndex(fragCoord.z);
     uvec3 indices = uvec3(uvec2(fragCoord.xy / dvd_ClusterSizes), zIndex);
 
-    return (GRID_SIZE_X * GRID_SIZE_Y) * indices.z +
-            GRID_SIZE_X * indices.y +
+    return (CLUSTERS_X * CLUSTERS_Y) * indices.z +
+            CLUSTERS_X * indices.y +
             indices.x;
 }
 

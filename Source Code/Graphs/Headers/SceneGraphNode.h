@@ -379,7 +379,8 @@ namespace Attorney {
     {
         static void setTransformDirty(SceneGraphNode* node, const U32 transformMask) {
             node->setTransformDirty(transformMask);
-        }
+        }  
+        
         friend class Divide::TransformSystem;
     };
 

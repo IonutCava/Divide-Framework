@@ -112,7 +112,7 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      [[nodiscard]] bool isUniformScaled() const noexcept;
 
      /// Return the position
-     [[nodiscard]] vec3<F32> getPosition() const;
+     [[nodiscard]] vec3<F32> getPosition() const noexcept;
      /// Return the local position
      [[nodiscard]] vec3<F32> getLocalPosition() const;
      /// Return the position
@@ -120,12 +120,12 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      /// Return the local position
      [[nodiscard]] vec3<F32> getLocalPosition(D64 interpolationFactor) const;
 
-     [[nodiscard]] vec3<F32> getFwdVector() const;
-     [[nodiscard]] vec3<F32> getUpVector() const;
-     [[nodiscard]] vec3<F32> getRightVector() const;
+     [[nodiscard]] vec3<F32> getFwdVector() const noexcept;
+     [[nodiscard]] vec3<F32> getUpVector() const noexcept;
+     [[nodiscard]] vec3<F32> getRightVector() const noexcept;
 
      /// Return the scale factor
-     [[nodiscard]] vec3<F32> getScale() const;
+     [[nodiscard]] vec3<F32> getScale() const noexcept;
      /// Return the local scale factor
      [[nodiscard]] vec3<F32> getLocalScale() const;
      /// Return the scale factor
@@ -134,7 +134,7 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      [[nodiscard]] vec3<F32> getLocalScale(D64 interpolationFactor) const;
 
      /// Return the orientation quaternion
-     [[nodiscard]] Quaternion<F32> getOrientation() const;
+     [[nodiscard]] Quaternion<F32> getOrientation() const noexcept;
      /// Return the local orientation quaternion
      [[nodiscard]] Quaternion<F32> getLocalOrientation() const;
      /// Return the orientation quaternion
@@ -149,7 +149,7 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void pushTransforms();
      bool popTransforms();
 
-     void resetInterpolation();
+     void resetCache();
      void setOffset(bool state, const mat4<F32>& offset = mat4<F32>()) noexcept;
 
      [[nodiscard]] bool saveCache(ByteBuffer& outputBuffer) const override;
@@ -158,6 +158,8 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void getLocalMatrix(mat4<F32>& matOut) { getMatrix(matOut); }
      void getLocalMatrix(const D64 interpolationFactor, mat4<F32>& matOut) const { getMatrix(interpolationFactor, matOut); }
 
+     PROPERTY_R_IW(TransformValues, cachedTransform);
+
   protected:
      friend class TransformSystem;
      template<typename T, typename U>
@@ -165,6 +167,8 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
      void setTransformDirty(TransformType type) noexcept;
      void setTransformDirty(U32 typeMask) noexcept;
+
+     void updateCachedValues();
 
      void onParentTransformDirty(U32 transformMask) noexcept;
      void onParentUsageChanged(NodeUsageContext context) noexcept;
@@ -186,6 +190,9 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void getPosition(vec3<F32>& posOut) const override;
      void getOrientation(Quaternion<F32>& quatOut) const override;
 
+     [[nodiscard]] Quaternion<F32> getOrientationInternal() const;
+     [[nodiscard]] vec3<F32> getPositionInternal() const;
+     [[nodiscard]] vec3<F32> getScaleInternal() const;
   private:
     std::pair<bool, mat4<F32>> _transformOffset;
 
@@ -198,6 +205,7 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
     NodeUsageContext _parentUsageContext;
 
+    bool _cacheDirty = true;
     bool _uniformScaled = true;
     bool _prevWorldMatrixDirty = true;
 

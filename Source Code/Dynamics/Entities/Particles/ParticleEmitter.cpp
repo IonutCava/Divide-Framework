@@ -186,10 +186,6 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
 }
 
 bool ParticleEmitter::updateData() {
-    if (!_context.context().config().debug.renderFilter.particles) {
-        return true;
-    }
-
     constexpr U32 positionAttribLocation = 13;
     constexpr U32 colourAttribLocation = to_base(AttribLocation::COLOR);
 
@@ -263,30 +259,28 @@ void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn,
                                         const RenderStagePass& renderStagePass,
                                         const Camera& crtCamera,
                                         RenderPackage& pkgInOut) {
-    if (_context.context().config().debug.renderFilter.particles) {
-        if (_particleTexture) {
-            SamplerDescriptor textureSampler = {};
-            pkgInOut.get<GFX::BindDescriptorSetsCommand>(0)->_set._textureData.add(TextureEntry{ _particleTexture->data(), textureSampler.getHash(), TextureUsage::UNIT0 });
-        }
-
-        const Pipeline* pipeline = pkgInOut.get<GFX::BindPipelineCommand>(0)->_pipeline;
-        PipelineDescriptor pipeDesc = pipeline->descriptor();
-
-        pipeDesc._stateHash = renderStagePass.isDepthPass() ? _particleStateBlockHashDepth
-            : _particleStateBlockHash;
-        pkgInOut.get<GFX::BindPipelineCommand>(0)->_pipeline = _context.newPipeline(pipeDesc);
-
-        U32 indexCount = to_U32(_particles->particleGeometryIndices().size());
-        if (indexCount == 0) {
-            indexCount = to_U32(_particles->particleGeometryVertices().size());
-        }
-
-        GenericDrawCommand cmd = {};
-        cmd._primitiveType = _particles->particleGeometryType();
-        cmd._cmd.indexCount = indexCount;
-
-        pkgInOut.add(GFX::DrawCommand{ cmd });
+    if (_particleTexture) {
+        SamplerDescriptor textureSampler = {};
+        pkgInOut.get<GFX::BindDescriptorSetsCommand>(0)->_set._textureData.add(TextureEntry{ _particleTexture->data(), textureSampler.getHash(), TextureUsage::UNIT0 });
     }
+
+    const Pipeline* pipeline = pkgInOut.get<GFX::BindPipelineCommand>(0)->_pipeline;
+    PipelineDescriptor pipeDesc = pipeline->descriptor();
+
+    pipeDesc._stateHash = renderStagePass.isDepthPass() ? _particleStateBlockHashDepth
+        : _particleStateBlockHash;
+    pkgInOut.get<GFX::BindPipelineCommand>(0)->_pipeline = _context.newPipeline(pipeDesc);
+
+    U32 indexCount = to_U32(_particles->particleGeometryIndices().size());
+    if (indexCount == 0) {
+        indexCount = to_U32(_particles->particleGeometryVertices().size());
+    }
+
+    GenericDrawCommand cmd = {};
+    cmd._primitiveType = _particles->particleGeometryType();
+    cmd._cmd.indexCount = indexCount;
+
+    pkgInOut.add(GFX::DrawCommand{ cmd });
 
     SceneNode::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
 }
@@ -298,52 +292,50 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                                     const bool refreshData) {
 
     if ( _enabled &&  getAliveParticleCount() > 0) {
-        if (_context.context().config().debug.renderFilter.particles) {
-            Wait(*_bufferUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
+        Wait(*_bufferUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
 
-            if (refreshData && _buffersDirty[to_U32(renderStagePass._stage)]) {
-                GenericVertexData& buffer = getDataBuffer(renderStagePass._stage, 0);
-                buffer.updateBuffer(g_particlePositionBuffer, 0u, to_U32(_particles->_renderingPositions.size()), _particles->_renderingPositions.data());
-                buffer.updateBuffer(g_particleColourBuffer, 0u, to_U32(_particles->_renderingColours.size()), _particles->_renderingColours.data());
-                buffer.incQueue();
-                _buffersDirty[to_U32(renderStagePass._stage)] = false;
-            }
+        if (refreshData && _buffersDirty[to_U32(renderStagePass._stage)]) {
+            GenericVertexData& buffer = getDataBuffer(renderStagePass._stage, 0);
+            buffer.updateBuffer(g_particlePositionBuffer, 0u, to_U32(_particles->_renderingPositions.size()), _particles->_renderingPositions.data());
+            buffer.updateBuffer(g_particleColourBuffer, 0u, to_U32(_particles->_renderingColours.size()), _particles->_renderingColours.data());
+            buffer.incQueue();
+            _buffersDirty[to_U32(renderStagePass._stage)] = false;
+        }
 
-            const RenderPackage& pkg = sgn->get<RenderingComponent>()->getDrawPackage(renderStagePass);
+        const RenderPackage& pkg = sgn->get<RenderingComponent>()->getDrawPackage(renderStagePass);
 
-            GenericDrawCommand& cmd = pkg.get<GFX::DrawCommand>(0)->_drawCommands[0];
-            cmd._cmd.primCount = to_U32(_particles->_renderingPositions.size());
-            cmd._sourceBuffer = getDataBuffer(renderStagePass._stage, 0).handle();
-            cmd._bufferIndex = renderStagePass.baseIndex();
+        GenericDrawCommand& cmd = pkg.get<GFX::DrawCommand>(0)->_drawCommands[0];
+        cmd._cmd.primCount = to_U32(_particles->_renderingPositions.size());
+        cmd._sourceBuffer = getDataBuffer(renderStagePass._stage, 0).handle();
+        cmd._bufferIndex = renderStagePass.baseIndex();
 
-            if (renderStagePass._passType == RenderPassType::PRE_PASS) {
-                const vec3<F32>& eyePos = camera.getEye();
-                const U32 aliveCount = getAliveParticleCount();
+        if (renderStagePass._passType == RenderPassType::PRE_PASS) {
+            const vec3<F32>& eyePos = camera.getEye();
+            const U32 aliveCount = getAliveParticleCount();
 
-                vector<vec4<F32>>& misc = _particles->_misc;
-                vector<vec4<F32>>& pos = _particles->_position;
+            vector<vec4<F32>>& misc = _particles->_misc;
+            vector<vec4<F32>>& pos = _particles->_position;
 
 
-                ParallelForDescriptor descriptor = {};
-                descriptor._iterCount = aliveCount;
-                descriptor._partitionSize = 1000u;
-                descriptor._cbk = [&eyePos, &misc, &pos](const Task*, const U32 start, const U32 end) {
-                    for (U32 i = start; i < end; ++i) {
-                        misc[i].w = pos[i].xyz.distanceSquared(eyePos);
-                    }
-                };
+            ParallelForDescriptor descriptor = {};
+            descriptor._iterCount = aliveCount;
+            descriptor._partitionSize = 1000u;
+            descriptor._cbk = [&eyePos, &misc, &pos](const Task*, const U32 start, const U32 end) {
+                for (U32 i = start; i < end; ++i) {
+                    misc[i].w = pos[i].xyz.distanceSquared(eyePos);
+                }
+            };
 
-                parallel_for(_context.context(), descriptor);
+            parallel_for(_context.context(), descriptor);
 
-                _bufferUpdate = CreateTask(
-                    [this, &renderStagePass](const Task&) {
-                    // invalidateCache means that the existing particle data is no longer partially sorted
-                    _particles->sort();
-                    _buffersDirty[to_U32(renderStagePass._stage)] = true;
-                });
+            _bufferUpdate = CreateTask(
+                [this, &renderStagePass](const Task&) {
+                // invalidateCache means that the existing particle data is no longer partially sorted
+                _particles->sort();
+                _buffersDirty[to_U32(renderStagePass._stage)] = true;
+            });
 
-                Start(*_bufferUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
-            }
+            Start(*_bufferUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
         }
     }
 

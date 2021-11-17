@@ -82,7 +82,6 @@ namespace Divide {
             ImGui::SetTooltip("If on, selected scene nodes will have an emissive component attached to them for easier navigation.\nDisable if editing materials!");
         }
         Attorney::EditorSceneViewWindow::emissiveSelections(_parent, emissiveSelections);
-        ImGui::SameLine();
 
         const bool enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
         TransformSettings settings = _parent.getTransformSettings();
@@ -92,6 +91,13 @@ namespace Divide {
         static F32 RButtonWidth = 10.0f;
         static F32 SButtonWidth = 10.0f;
         static F32 NButtonWidth = 10.0f;
+
+        ImGui::SameLine(window->ContentSize.x / 2);
+
+        if (button(false, "[_]<|", "Copy the player's camera snapshot to the editor camera"))
+        {
+            Attorney::EditorSceneViewWindow::copyPlayerCamToEditorCam(_parent);
+        }
 
         F32 pos = SButtonWidth + ItemSpacing + 25;
         ImGui::SameLine(window->ContentSize.x - pos);

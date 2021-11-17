@@ -533,15 +533,13 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
 
     vec3<F32> sunDirection = { 0.0f, -0.75f, -0.75f };
     if (dayNightData._skyInstance != nullptr) {
-        sunDirection = dayNightData._skyInstance->getCurrentDetails()._eulerDirection;
-        sunDirection = DirectionFromEuler(sunDirection, WORLD_Z_NEG_AXIS);
+        sunDirection = DirectionFromEuler(dayNightData._skyInstance->getCurrentDetails()._eulerDirection, WORLD_Z_NEG_AXIS);
     }
 
     _sceneData->sunDetails(sunDirection, sunColour);
     //_sceneData->skyColour(horizonColour, zenithColour);
 
     FogDetails fog = activeScene.state()->renderState().fogDetails();
-    fog._colourAndDensity.a = fog._colourAndDensity.a;
     fog._colourSunScatter.rgb = sunColour;
     _sceneData->fogDetails(fog);
 
@@ -554,7 +552,7 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
     _sceneData->shadowingSettings(activeSceneState->lightBleedBias(), activeSceneState->minShadowVariance());
     activeScene.updateSceneState(deltaTimeUS);
 
-    U8 index = 0;
+    U8 index = 0u;
 
     const vector<WaterBodyData>& waterBodies = activeSceneState->waterBodies();
     for (const auto& body : waterBodies) {

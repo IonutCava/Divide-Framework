@@ -360,19 +360,13 @@ void WaterPlane::buildDrawCommands(SceneGraphNode* sgn,
     cmd._sourceBuffer = _plane->getGeometryVB()->handle();
     cmd._bufferIndex = renderStagePass.baseIndex();
 
-    if (sgn->context().config().debug.renderFilter.water) {
-        pkgInOut.add(GFX::DrawCommand{ cmd });
-    }
+    pkgInOut.add(GFX::DrawCommand{ cmd });
 
     SceneNode::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
 }
 
 /// update water refraction
 void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut) const {
-    if (!renderParams._sgn->context().config().debug.renderFilter.water) {
-        return;
-    }
-
     static RTClearColourDescriptor clearColourDescriptor;
     clearColourDescriptor._customClearColour[0] = DefaultColours::BLUE;
 
@@ -410,10 +404,6 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
 
 /// Update water reflections
 void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut) const {
-    if (!renderParams._sgn->context().config().debug.renderFilter.water) {
-        return;
-    }
-
     static RTClearColourDescriptor clearColourDescriptor;
     clearColourDescriptor._customClearColour[0] = DefaultColours::BLUE;
 

@@ -62,11 +62,10 @@ namespace GLMemory{
                        size_t alignment,
                        BufferStorageMask storageMask,
                        MapBufferAccessMask accessMask,
-                       GLenum usage,
-                       Byte* initialData);
+                       GLenum usage);
         ~Chunk();
                       void deallocate(const Block& block);
-        [[nodiscard]] bool allocate(size_t size, const char* name, Byte* initialData, Block& blockOut);
+        [[nodiscard]] bool allocate(size_t size, const char* name, std::pair<bufferPtr, size_t> initialData, Block& blockOut);
         [[nodiscard]] bool containsBlock(const Block &block) const;
 
         PROPERTY_RW(BufferStorageMask, storageMask, BufferStorageMask::GL_NONE_BIT);
@@ -88,8 +87,7 @@ namespace GLMemory{
                                       size_t alignment,
                                       BufferStorageMask storageMask,
                                       MapBufferAccessMask accessMask,
-                                      GLenum usage,
-                                      Byte* initialData) const;
+                                      GLenum usage) const;
 
     private:
         size_t _size = 0u;
@@ -105,8 +103,8 @@ namespace GLMemory{
                                      MapBufferAccessMask accessMask,
                                      GLenum usage,
                                      const char* blockName,
-                                     Byte* initialData);
-        void deallocate(Block &block) const;
+                                     std::pair<bufferPtr, size_t> initialData);
+        void deallocate(const Block &block) const;
         void deallocate();
 
     private:
@@ -172,14 +170,14 @@ void clearVBOs() noexcept;
 void createAndAllocBuffer(size_t bufferSize,
                           GLenum usageMask,
                           GLuint& bufferIdOut,
-                          bufferPtr data,
+                          std::pair<bufferPtr, size_t> initialData,
                           const char* name = nullptr);
 
 Byte* createAndAllocPersistentBuffer(size_t bufferSize,
                                      BufferStorageMask storageMask,
                                      MapBufferAccessMask accessMask,
                                      GLuint& bufferIdOut,
-                                     bufferPtr data,
+                                     std::pair<bufferPtr, size_t> initialData,
                                      const char* name = nullptr);
 
 void freeBuffer(GLuint &bufferId, bufferPtr mappedPtr = nullptr);

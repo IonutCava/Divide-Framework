@@ -59,8 +59,8 @@ void main()
         return;
     }
 
-    uint TRANSFORM_IDX = dvd_IndirectionData[BASE_INSTANCE - 1u]._transformIdx;
-    const NodeTransformData transformData = dvd_Transforms[TRANSFORM_IDX];
+    uint transformIdx = dvd_IndirectionData[BASE_INSTANCE - 1u]._transformIdx;
+    const NodeTransformData transformData = dvd_Transforms[transformIdx];
     // Skip occlusion cull if the flag is set
     if (!dvd_cullNode(transformData)) {
         return;

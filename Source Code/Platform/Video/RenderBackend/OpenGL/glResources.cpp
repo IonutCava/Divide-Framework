@@ -18,16 +18,13 @@ void VAOBindings::init(const U32 maxBindings) noexcept {
 }
 
 VAOBindings::VAOData* VAOBindings::getVAOData(const GLuint vao) {
-    VAOData* data = nullptr;
     if (vao == _cachedVao) {
-        data = _cachedData;
-    } else {
-        data = &_bindings[vao];
-        _cachedData = data;
-        _cachedVao = vao;
+        return _cachedData;
     }
 
-    return data;
+    _cachedVao = vao;
+    _cachedData = &_bindings[_cachedVao];
+    return _cachedData;
 }
 
 GLuint VAOBindings::instanceDivisor(const GLuint vao, const GLuint index) {
@@ -580,38 +577,38 @@ void glTextureViewCache::onFrameEnd() {
     OPTICK_EVENT("Texture Pool: onFrameEnd");
 
     ScopedLock<SharedMutex> w_lock(_lock);
-    GLuint count = 0;
+    GLuint count = 0u;
     const U32 entryCount = to_U32(_tempBuffer.size());
-    for (U32 i = 0; i < entryCount; ++i) {
+    for (U32 i = 0u; i < entryCount; ++i) {
         if (_usageMap[i] != State::CLEAN) {
             continue;
         }
 
         U32& lifeLeft = _lifeLeft[i];
 
-        if (lifeLeft > 0) {
+        if (lifeLeft > 0u) {
             lifeLeft -= 1u;
         }
 
-        if (lifeLeft == 0) {
+        if (lifeLeft == 0u) {
             _tempBuffer[count++] = _handles[i];
             GL_API::DequeueComputeMipMap(_handles[i]);
         }
     }
 
-    if (count > 0) {
+    if (count > 0u) {
         glDeleteTextures(count, _tempBuffer.data());
         glGenTextures(count, _tempBuffer.data());
 
-        U32 newIndex = 0;
-        for (U32 i = 0; i < entryCount; ++i) {
-            if (_lifeLeft[i] == 0 && _usageMap[i] == State::CLEAN) {
+        U32 newIndex = 0u;
+        for (U32 i = 0u; i < entryCount; ++i) {
+            if (_lifeLeft[i] == 0u && _usageMap[i] == State::CLEAN) {
                 _usageMap[i] = State::FREE;
                 _handles[i] = _tempBuffer[newIndex++];
                 erase_if(_cache, [i](const auto& idx) { return i == idx.second; });
             }
         }
-        std::memset(_tempBuffer.data(), 0, sizeof(GLuint) * count);
+        memset(_tempBuffer.data(), 0, sizeof(GLuint) * count);
     }
 }
 
@@ -619,8 +616,8 @@ void glTextureViewCache::destroy() {
     ScopedLock<SharedMutex> w_lock(_lock);
     const U32 entryCount = to_U32(_tempBuffer.size());
     glDeleteTextures(static_cast<GLsizei>(entryCount), _handles.data());
-    std::memset(_handles.data(), 0, sizeof(GLuint) * entryCount);
-    std::memset(_lifeLeft.data(), 0, sizeof(U32) * entryCount);
+    memset(_handles.data(), 0, sizeof(GLuint) * entryCount);
+    memset(_lifeLeft.data(), 0, sizeof(U32) * entryCount);
     std::fill(begin(_usageMap), end(_usageMap), State::CLEAN);
     _cache.clear();
 }
@@ -650,10 +647,10 @@ std::pair<GLuint, bool> glTextureViewCache::allocate(const size_t hash, const bo
         }
 
         const U32 count = to_U32(_handles.size());
-        for (U32 i = 0; i < count; ++i) {
+        for (U32 i = 0u; i < count; ++i) {
             if (_usageMap[i] == State::FREE) {
                 _usageMap[i] = State::USED;
-                if (hash != 0) {
+                if (hash != 0u) {
                     _cache[hash] = i;
                 }
 
@@ -675,9 +672,9 @@ void glTextureViewCache::deallocate(GLuint& handle, const U32 frameDelay) {
 
     ScopedLock<SharedMutex> w_lock(_lock);
     const U32 count = to_U32(_handles.size());
-    for (U32 i = 0; i < count; ++i) {
+    for (U32 i = 0u; i < count; ++i) {
         if (_handles[i] == handle) {
-            handle = 0;
+            handle = 0u;
             _lifeLeft[i] = frameDelay;
             _usageMap[i] = State::CLEAN;
             return;

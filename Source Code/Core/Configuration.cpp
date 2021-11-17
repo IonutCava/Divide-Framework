@@ -17,6 +17,7 @@ bool Configuration::fromXML(const char* xmlFile) {
         GET_PARAM(debug.renderFilter.primitives);
         GET_PARAM(debug.renderFilter.meshes);
         GET_PARAM(debug.renderFilter.terrain);
+        GET_PARAM(debug.renderFilter.vegetation);
         GET_PARAM(debug.renderFilter.water);
         GET_PARAM(debug.renderFilter.sky);
         GET_PARAM(debug.renderFilter.particles);
@@ -59,9 +60,6 @@ bool Configuration::fromXML(const char* xmlFile) {
         GET_PARAM(rendering.reflectionProbeResolution);
         GET_PARAM(rendering.reflectionPlaneResolution);
         GET_PARAM(rendering.numLightsPerCluster);
-        GET_PARAM_ATTRIB(rendering.lightClusteredSizes, width);
-        GET_PARAM_ATTRIB(rendering.lightClusteredSizes, height);
-        GET_PARAM_ATTRIB(rendering.lightClusteredSizes, depth);
         GET_PARAM(rendering.enableFog);
         GET_PARAM_ATTRIB(rendering.fogDensity, x);
         GET_PARAM_ATTRIB(rendering.fogDensity, y);
@@ -176,6 +174,7 @@ bool Configuration::toXML(const char* xmlFile) const {
         PUT_PARAM(debug.renderFilter.primitives);
         PUT_PARAM(debug.renderFilter.meshes);
         PUT_PARAM(debug.renderFilter.terrain);
+        PUT_PARAM(debug.renderFilter.vegetation);
         PUT_PARAM(debug.renderFilter.water);
         PUT_PARAM(debug.renderFilter.sky);
         PUT_PARAM(debug.renderFilter.particles);
@@ -218,9 +217,6 @@ bool Configuration::toXML(const char* xmlFile) const {
         PUT_PARAM(rendering.reflectionProbeResolution);
         PUT_PARAM(rendering.reflectionPlaneResolution);
         PUT_PARAM(rendering.numLightsPerCluster);
-        PUT_PARAM_ATTRIB(rendering.lightClusteredSizes, width);
-        PUT_PARAM_ATTRIB(rendering.lightClusteredSizes, height);
-        PUT_PARAM_ATTRIB(rendering.lightClusteredSizes, depth);
         PUT_PARAM(rendering.enableFog);
         PUT_PARAM_ATTRIB(rendering.fogDensity, x);
         PUT_PARAM_ATTRIB(rendering.fogDensity, y);

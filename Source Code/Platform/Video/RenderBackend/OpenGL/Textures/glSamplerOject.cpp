@@ -34,12 +34,10 @@ GLuint glSamplerObject::construct(const SamplerDescriptor& descriptor) {
         glSamplerParameteri(samplerID, GL_TEXTURE_COMPARE_MODE, to_base(GL_NONE));
     }
 
-    if (descriptor.anisotropyLevel() > 1) {
-        glSamplerParameterf(samplerID,
-                            GL_API::getStateTracker()._opengl46Supported ? GL_TEXTURE_MAX_ANISOTROPY
-                                                                         : GL_TEXTURE_MAX_ANISOTROPY_EXT,
-                            std::min<GLfloat>(to_F32(descriptor.anisotropyLevel()),
-                                              to_F32(GL_API::s_maxAnisotropicFilteringLevel)));
+    const GLfloat minAnisotropy = std::min<GLfloat>(to_F32(descriptor.anisotropyLevel()), to_F32(GL_API::s_maxAnisotropicFilteringLevel));
+    if (minAnisotropy > 1) {
+        const GLenum anisoEnum = GL_API::getStateTracker()._opengl46Supported ? GL_TEXTURE_MAX_ANISOTROPY : GL_TEXTURE_MAX_ANISOTROPY_EXT;
+        glSamplerParameterf(samplerID, anisoEnum, minAnisotropy);
     }
 
     return samplerID;

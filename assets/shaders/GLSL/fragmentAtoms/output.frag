@@ -9,6 +9,9 @@ layout(location = TARGET_SPECULAR) out vec3 _specularDataOut;
 #endif //MAIN_DISPLAY_PASS
 
 #if !defined(OIT_PASS)
+#if defined(MAIN_DISPLAY_PASS)
+#include "utility.frag"
+#endif //MAIN_DISPLAY_PASS
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 #else //OIT_PASS
 layout(location = TARGET_ACCUMULATION) out vec4  _accum;

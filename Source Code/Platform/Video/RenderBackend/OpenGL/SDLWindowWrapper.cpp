@@ -255,6 +255,9 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     // How many uniforms can we send to vertex shaders
     Console::printfn(Locale::Get(_ID("GL_MAX_VERT_UNIFORM")),
                      GLUtil::getGLValue(GL_MAX_VERTEX_UNIFORM_COMPONENTS));
+    // How many uniforms can we send to vertex + fragment shaders at the same time
+    Console::printfn(Locale::Get(_ID("GL_MAX_FRAG_AND_VERT_UNIFORM")),
+                     GLUtil::getGLValue(GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS));
     // How many attributes can we send to a vertex shader
     Console::printfn(Locale::Get(_ID("GL_MAX_VERT_ATTRIB")),
                      GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIBS));
@@ -262,6 +265,9 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     Console::printfn(Locale::Get(_ID("GL_MAX_TEX_UNITS")),
                      GLUtil::getGLValue(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS),
                      s_maxTextureUnits);
+    // Maximum number of varying components supported as outputs in the vertex shader
+    Console::printfn(Locale::Get(_ID("GL_MAX_VERTEX_OUTPUT_COMPONENTS")),
+                     GLUtil::getGLValue(GL_MAX_VERTEX_OUTPUT_COMPONENTS));
     // Query shading language version support
     Console::printfn(Locale::Get(_ID("GL_GLSL_SUPPORT")),
                      glGetString(GL_SHADING_LANGUAGE_VERSION));
@@ -273,9 +279,11 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     //           minimum required alignment for uniform buffer sizes and offset
     GLUtil::getGLValue(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, s_UBOffsetAlignment);
     GLUtil::getGLValue(GL_MAX_UNIFORM_BLOCK_SIZE, s_UBMaxSize);
+    const bool UBOSizeOver1Mb = s_UBMaxSize / 1024 > 1024;
     Console::printfn(Locale::Get(_ID("GL_UBO_INFO")),
                      GLUtil::getGLValue(GL_MAX_UNIFORM_BUFFER_BINDINGS),
-                     s_UBMaxSize / 1024,
+                     (s_UBMaxSize / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
+                     UBOSizeOver1Mb ? "Mb" : "Kb",
                      s_UBOffsetAlignment);
 
     // In order: Maximum number of shader storage buffer binding points,

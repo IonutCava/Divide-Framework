@@ -67,7 +67,7 @@ class LightPool : public SceneComponent,
           /// y = shadow index (-1 = no shadows)
           /// z = reserved
           /// w = reserved
-          vec4<I32> _options = { 3, 1, 0, 0 };
+          vec4<I32> _options = { 3, -1, 0, 0 };
       };
 
 #pragma pack(push, 1)
@@ -195,17 +195,21 @@ class LightPool : public SceneComponent,
                           const mat4<F32>& viewMatrix);
 
   private:
-     struct BufferData {
+     struct SceneData {
          // x = directional light count, y = point light count, z = spot light count, w = shadow light count
-         vec4<U32> _globalData = {0, 0, 0, 0};
+         vec4<U32> _globalData = { 0, 0, 0, 0 };
          // a = reserved
          vec4<F32> _ambientColour = DefaultColours::BLACK;
-         std::array<LightProperties, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME> _lightProperties;
+         mat4<F32> _padding0[3]; vec4<F32> _padding1[2];
      };
+
+    using LightData = std::array<LightProperties, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME>;
 
     std::array<std::array<U32, to_base(LightType::COUNT)>, to_base(RenderStage::COUNT)> _activeLightCount{};
     std::array<LightList, to_base(RenderStage::COUNT)> _sortedLights{};
-    std::array<BufferData, to_base(RenderStage::COUNT)> _sortedLightProperties{};
+    std::array<LightData, to_base(RenderStage::COUNT)> _sortedLightProperties{};
+    std::array<U32, to_base(RenderStage::COUNT)> _sortedLightPropertiesCount{};
+    std::array<SceneData, to_base(RenderStage::COUNT)> _sortedSceneProperties{};
     std::array<LightList, to_base(LightType::COUNT)> _lights{};
     std::array<bool, to_base(LightType::COUNT)> _lightTypeState{};
 
@@ -216,7 +220,8 @@ class LightPool : public SceneComponent,
 
     Texture_ptr _lightIconsTexture = nullptr;
     ShaderProgram_ptr _lightImpostorShader = nullptr;
-    ShaderBuffer* _lightShaderBuffer = nullptr;
+    ShaderBuffer* _lightBuffer = nullptr;
+    ShaderBuffer* _sceneBuffer = nullptr;
     ShaderBuffer* _shadowBuffer = nullptr;
     bool _shadowBufferDirty = false;
     Time::ProfileTimer& _shadowPassTimer;

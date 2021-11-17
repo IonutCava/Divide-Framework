@@ -28,7 +28,7 @@ namespace Divide {
             const U32 updateMask = comp->_transformUpdatedMask.load();
             if (updateMask != to_base(TransformType::NONE)) {
                 Attorney::SceneGraphNodeSystem::setTransformDirty(comp->parentSGN(), updateMask);
-                comp->resetInterpolation();
+                comp->resetCache();
             }
         }
     }
@@ -50,16 +50,19 @@ namespace Divide {
 
         ParallelForDescriptor descriptor = {};
         descriptor._iterCount = to_U32(events.size());
-        descriptor._partitionSize = g_parallelPartitionSize;
-        descriptor._cbk = [this](const Task*, const U32 start, const U32 end) {
-            for (U32 i = start; i < end; ++i) {
-                TransformComponent* tComp = events[i].first;
-                tComp->updateWorldMatrix();
+        if (descriptor._iterCount > g_parallelPartitionSize * 3) {
+            descriptor._partitionSize = g_parallelPartitionSize;
+            descriptor._cbk = [this](const Task*, const U32 start, const U32 end) {
+                for (U32 i = start; i < end; ++i) {
+                    events[i].first->updateWorldMatrix();
+                }
+            };
+            parallel_for(_context, descriptor);
+        } else {
+            for (U32 i = 0u; i < descriptor._iterCount; ++i) {
+                events[i].first->updateWorldMatrix();
             }
-        };
-
-        parallel_for(_context, descriptor);
-
+        }
 
         for (const auto& [comp, mask] : events) {
             comp->parentSGN()->SendEvent(
@@ -74,6 +77,10 @@ namespace Divide {
 
     void TransformSystem::PostUpdate(const F32 dt) {
         Parent::PostUpdate(dt);
+
+        for (TransformComponent* comp : _componentCache) {
+            comp->updateCachedValues();
+        }
     }
 
     void TransformSystem::OnFrameStart() {

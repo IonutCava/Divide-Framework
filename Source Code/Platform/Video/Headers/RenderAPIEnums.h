@@ -197,6 +197,7 @@ enum class ShaderBufferLocation : U8 {
     GPU_BLOCK,
     GPU_COMMANDS,
     LIGHT_NORMAL,
+    LIGHT_SCENE,
     LIGHT_SHADOW,
     LIGHT_INDICES,
     LIGHT_GRID,

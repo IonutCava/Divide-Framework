@@ -50,8 +50,6 @@ public:
     void PreUpdate(F32 dt) override;
     void Update(F32 dt) override;
     void PostUpdate(F32 dt) override;
-    void OnFrameStart() override;
-    void OnFrameEnd() override;
 protected:
     static void OnBoundsChanged(const SceneGraphNode* sgn);
 };

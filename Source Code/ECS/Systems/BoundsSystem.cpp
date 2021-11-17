@@ -25,29 +25,11 @@ namespace Divide {
         OPTICK_EVENT();
 
         Parent::PreUpdate(dt);
-
-        const U32 compCount = to_U32(_componentCache.size());
-        if (compCount > g_parallelPartitionSize * 2) {
-            ParallelForDescriptor descriptor = {};
-            descriptor._iterCount = compCount;
-            descriptor._partitionSize = g_parallelPartitionSize;
-            descriptor._cbk = [this](const Task*, const U32 start, const U32 end) {
-                for (U32 i = start; i < end; ++i) {
-                    BoundsComponent* bComp = _componentCache[i];
-                    if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->parentSGN()->getNode())) {
-                        bComp->flagBoundingBoxDirty(to_U32(TransformType::ALL), false);
-                        OnBoundsChanged(bComp->parentSGN());
-                    }
-                }
-            };
-
-            parallel_for(_context, descriptor);
-        } else {
-            for (BoundsComponent* bComp : _componentCache) {
-                if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->parentSGN()->getNode())) {
-                    bComp->flagBoundingBoxDirty(to_U32(TransformType::ALL), false);
-                    OnBoundsChanged(bComp->parentSGN());
-                }
+        // This is fast and does not need to run in parallel
+        for (BoundsComponent* bComp : _componentCache) {
+            if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->parentSGN()->getNode())) {
+                bComp->flagBoundingBoxDirty(to_U32(TransformType::ALL), false);
+                OnBoundsChanged(bComp->parentSGN());
             }
         }
     }
@@ -56,31 +38,14 @@ namespace Divide {
         OPTICK_EVENT();
 
         Parent::Update(dt);
-
-        const U32 compCount = to_U32(_componentCache.size());
-        if (compCount > g_parallelPartitionSize * 2) {
-            ParallelForDescriptor descriptor = {};
-            descriptor._iterCount = compCount;
-            descriptor._partitionSize = g_parallelPartitionSize;
-            descriptor._cbk = [this](const Task*, const U32 start, const U32 end) {
-                for (U32 i = start; i < end; ++i) {
-                    BoundsComponent* bComp = _componentCache[i];
-                    const SceneNode& sceneNode = bComp->parentSGN()->getNode();
-                    if (Attorney::SceneNodeBoundsSystem::boundsChanged(sceneNode)) {
-                        bComp->setRefBoundingBox(sceneNode.getBounds());
-                    }
-                }
-            };
-
-            parallel_for(_context, descriptor);
-        } else {
-            for (BoundsComponent* bComp : _componentCache) {
-                const SceneNode& sceneNode = bComp->parentSGN()->getNode();
-                if (Attorney::SceneNodeBoundsSystem::boundsChanged(sceneNode)) {
-                    bComp->setRefBoundingBox(sceneNode.getBounds());
-                }
+        // This is fast and does not need to run in parallel
+        for (BoundsComponent* bComp : _componentCache) {
+            const SceneNode& sceneNode = bComp->parentSGN()->getNode();
+            if (Attorney::SceneNodeBoundsSystem::boundsChanged(sceneNode)) {
+                bComp->setRefBoundingBox(sceneNode.getBounds());
             }
         }
+        
     }
 
     void BoundsSystem::PostUpdate(const F32 dt) {
@@ -88,8 +53,19 @@ namespace Divide {
 
         Parent::PostUpdate(dt);
 
+        // Updating bounding boxes could be slow so we need to make sure we have a fast parallel approach in case of many
+        // update requests
         const U32 compCount = to_U32(_componentCache.size());
-        if (compCount > g_parallelPartitionSize * 2) {
+        U32 requiredUpdates = 0u;
+        for (const BoundsComponent* bComp : _componentCache) {
+            if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->parentSGN()->getNode()) ||
+                !bComp->isClean())
+            {
+                ++requiredUpdates;
+            }
+        }
+
+        if (requiredUpdates > g_parallelPartitionSize * 2) {
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = compCount;
             descriptor._partitionSize = g_parallelPartitionSize;
@@ -108,14 +84,6 @@ namespace Divide {
                 bComp->updateAndGetBoundingBox();
             }
         }
-    }
-
-    void BoundsSystem::OnFrameStart() {
-        Parent::OnFrameStart();
-    }
-
-    void BoundsSystem::OnFrameEnd() {
-        Parent::OnFrameEnd();
     }
 
     void BoundsSystem::OnBoundsChanged(const SceneGraphNode* sgn) {

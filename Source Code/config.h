@@ -164,8 +164,14 @@ namespace Lighting {
         /// Upper limit of lights used in a cluster. The lower, the better performance at the cost of pop-in/glitches. At ~100, any temporal issues should remain fairly hidden
         constexpr unsigned short MAX_LIGHTS_PER_CLUSTER = 100u;
 
-        /// Controls compute shader dispatch. Dispatch Z count = GRID_SIZE_Z / CLUSTER_Z_THREADS
-        constexpr unsigned short CLUSTER_Z_THREADS = 4u;
+        /// Controls compute shader dispatch. e.g. Dispatch Z count = CLUSTERS_Z / CLUSTERS_Z_THREADS
+        constexpr unsigned short CLUSTERS_X_THREADS = 16u;
+        constexpr unsigned short CLUSTERS_Y_THREADS = 8u;
+        constexpr unsigned short CLUSTERS_Z_THREADS = 4u;
+        constexpr unsigned short MAX_COMPUTE_THREADS = 1024u; //Value from some random, old D3D spec, I think ...
+
+        // This may not be a hard requirement but for now it works fine
+        static_assert(CLUSTERS_X_THREADS * CLUSTERS_Y_THREADS * CLUSTERS_Z_THREADS <= MAX_COMPUTE_THREADS);
     } // namespace ClusteredForward
 } // namespace Lighting
 

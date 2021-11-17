@@ -14,14 +14,27 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
+    
+vec3<U8> Renderer::CLUSTER_SIZE {
+    Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS,
+    Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS,
+    24u
+};
 
 Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
     : PlatformContextComponent(context)
 {
+    DIVIDE_ASSERT(CLUSTER_SIZE.x % Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS == 0);
+    DIVIDE_ASSERT(CLUSTER_SIZE.y % Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS == 0);
+    DIVIDE_ASSERT(CLUSTER_SIZE.z % Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS == 0);
+    _computeWorkgroupSize.set(
+        CLUSTER_SIZE.x / Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS,
+        CLUSTER_SIZE.y / Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS,
+        CLUSTER_SIZE.z / Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS
+    );
+
     const Configuration& config = context.config();
-    const U32 numClusters = to_U32(config.rendering.lightClusteredSizes.x) *
-                            to_U32(config.rendering.lightClusteredSizes.y) *
-                            to_U32(config.rendering.lightClusteredSizes.z);
+    const U32 numClusters = to_U32(CLUSTER_SIZE.x) * CLUSTER_SIZE.y * CLUSTER_SIZE.z;
 
     ShaderModuleDescriptor computeDescriptor = {};
     computeDescriptor._moduleType = ShaderType::COMPUTE;
@@ -69,7 +82,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
     { // Light Grid Buffer
         bufferDescriptor._name = "LIGHT_GRID_SSBO";
         bufferDescriptor._bufferParams._elementCount = numClusters;
-        bufferDescriptor._bufferParams._elementSize = 3 * sizeof(U32);
+        bufferDescriptor._bufferParams._elementSize = 4 * sizeof(U32);
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
         bufferDescriptor._bufferParams._initialData = { nullptr, 0 };
@@ -78,7 +91,8 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
     }
     { // Global Index Count
         bufferDescriptor._name = "GLOBAL_INDEX_COUNT_SSBO";
-        bufferDescriptor._bufferParams._elementSize = sizeof(U32);
+        bufferDescriptor._bufferParams._elementCount = 1u; 
+        bufferDescriptor._bufferParams._elementSize = 4 * sizeof(U32);
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
         bufferDescriptor._bufferParams._initialData = { nullptr, 0 };
@@ -86,6 +100,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         _globalIndexCountBuffer->bind(ShaderBufferLocation::LIGHT_INDEX_COUNT);
     }
     { // Cluster AABBs
+        bufferDescriptor._name = "GLOBAL_CLUSTER_AABB_SSBO";
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = 2 * (4 * sizeof(F32));
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
@@ -142,23 +157,21 @@ void Renderer::preRender(RenderStagePass stagePass,
         return;
     }
 
-    const U32 zThreads = to_U32(_context.config().rendering.lightClusteredSizes.z) / Config::Lighting::ClusteredForward::CLUSTER_Z_THREADS;
-
     const mat4<F32>& projectionMatrix = camera->projectionMatrix();
     if (_previousProjMatrix != projectionMatrix) {
         _previousProjMatrix = projectionMatrix;
 
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
         GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
-        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, zThreads });
+        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ _computeWorkgroupSize });
         GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Cull Lights" });
     GFX::EnqueueCommand(bufferInOut, _lightCullPipelineCmd);
-    GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, zThreads });
-    GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::BUFFER_UPDATE) });
+    GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ _computeWorkgroupSize });
+    GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) | to_base(MemoryBarrierType::BUFFER_UPDATE) });
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 

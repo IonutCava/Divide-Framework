@@ -162,15 +162,15 @@ U64 FrameListenerManager::calculateEventTime(const U64 currentTimeUS, const Fram
     EventTimeMap& times = _eventTimers[to_U32(type)];
     times.push_back(currentTimeUS);
 
-    if (times.size() == 1) {
-        return 0;
+    if (times.size() == 1u) {
+        return 0u;
     }
 
     EventTimeMap::const_iterator it = cbegin(times);
     const EventTimeMap::const_iterator end = cend(times) - 2;
 
     while (it != end) {
-        if (currentTimeUS - *it > 0) {
+        if (currentTimeUS - *it > 0u) {
             ++it;
         } else {
             break;

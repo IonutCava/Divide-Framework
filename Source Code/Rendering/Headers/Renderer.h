@@ -45,6 +45,8 @@ class PlatformContext;
 /// TiledForwardShading
 class Renderer final : public PlatformContextComponent {
    public:
+       static vec3<U8> CLUSTER_SIZE;
+   public:
     Renderer(PlatformContext& context, ResourceCache* cache);
     ~Renderer();
 
@@ -75,6 +77,8 @@ class Renderer final : public PlatformContextComponent {
 
     GFX::BindPipelineCommand _lightCullPipelineCmd;
     GFX::BindPipelineCommand _lightBuildClusteredAABBsPipelineCmd;
+
+    vec3<U32> _computeWorkgroupSize;
 };
 
 };  // namespace Divide

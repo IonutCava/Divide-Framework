@@ -23,8 +23,7 @@ Chunk::Chunk(const size_t size,
              const size_t alignment,
              const BufferStorageMask storageMask,
              const MapBufferAccessMask accessMask,
-             const GLenum usage,
-             Byte* const initialData)
+             const GLenum usage)
     : _storageMask(storageMask),
       _accessMask(accessMask),
       _usage(usage),
@@ -35,7 +34,7 @@ Chunk::Chunk(const size_t size,
 
     if_constexpr (g_useBlockAllocator) {
         static U32 g_bufferIndex = 0u;
-        block._ptr = createAndAllocPersistentBuffer(block._size, storageMask, accessMask, block._bufferHandle, nullptr, Util::StringFormat("DVD_BUFFER_CHUNK_%d", g_bufferIndex++).c_str());
+        block._ptr = createAndAllocPersistentBuffer(block._size, storageMask, accessMask, block._bufferHandle, { nullptr, 0u }, Util::StringFormat("DVD_BUFFER_CHUNK_%d", g_bufferIndex++).c_str());
     }
 
     _blocks.emplace_back(block);
@@ -69,7 +68,7 @@ void Chunk::deallocate(const Block &block) {
     }
 }
 
-bool Chunk::allocate(const size_t size, const char* name, Byte* initialData, Block &blockOut) {
+bool Chunk::allocate(const size_t size, const char* name, const std::pair<bufferPtr, size_t> initialData, Block &blockOut) {
     const size_t requestedSize = GetAlignmentCorrected(size, _alignment);
 
     if (requestedSize > _blocks.back()._size) {
@@ -86,11 +85,11 @@ bool Chunk::allocate(const size_t size, const char* name, Byte* initialData, Blo
         }
 
         if_constexpr(g_useBlockAllocator) {
-            if (initialData == nullptr) {
+            if (initialData.second == 0 || initialData.first == nullptr) {
                 memset(block._ptr, 0, requestedSize);
             } else {
-                memcpy(block._ptr, initialData, size);
-                memset(&block._ptr[size], 0, requestedSize - size);
+                memcpy(block._ptr, initialData.first, initialData.second);
+                memset(&block._ptr[initialData.second], 0, requestedSize - size);
             }
         } else {
             block._ptr = createAndAllocPersistentBuffer(requestedSize, storageMask(), accessMask(), block._bufferHandle, initialData, name);
@@ -132,11 +131,10 @@ Chunk* ChunkAllocator::allocate(const size_t size,
                                 const size_t alignment,
                                 const BufferStorageMask storageMask,
                                 const MapBufferAccessMask accessMask,
-                                const GLenum usage,
-                                Byte* const initialData) const
+                                const GLenum usage) const
 {
     const size_t overflowSize = to_size(1) << to_size(std::log2(size) + 1);
-    return MemoryManager_NEW Chunk((size > _size ? overflowSize : _size), alignment, storageMask, accessMask, usage, initialData);
+    return MemoryManager_NEW Chunk((size > _size ? overflowSize : _size), alignment, storageMask, accessMask, usage);
 }
 
 void DeviceAllocator::init(size_t size) {
@@ -153,7 +151,7 @@ Block DeviceAllocator::allocate(const size_t size,
                                 const MapBufferAccessMask accessMask,
                                 const GLenum usage,
                                 const char* blockName,
-                                Byte* const initialData)
+                                const std::pair<bufferPtr, size_t> initialData)
 {
     ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
 
@@ -170,14 +168,14 @@ Block DeviceAllocator::allocate(const size_t size,
         }
     }
 
-    _chunks.emplace_back(_chunkAllocator->allocate(size, alignment, storageMask, accessMask, usage, initialData));
+    _chunks.emplace_back(_chunkAllocator->allocate(size, alignment, storageMask, accessMask, usage));
     if(!_chunks.back()->allocate(size, blockName, initialData, block)) {
         DIVIDE_UNEXPECTED_CALL();
     }
     return block;
 }
 
-void DeviceAllocator::deallocate(Block &block) const {
+void DeviceAllocator::deallocate(const Block &block) const {
     ScopedLock<Mutex> w_lock(_chunkAllocatorLock);
 
     for (Chunk* chunk : _chunks) {
@@ -220,7 +218,7 @@ U32 VBO::handle() const noexcept {
 }
 
 bool VBO::checkChunksAvailability(const size_t offset, const U32 count, U32& chunksUsedTotal) noexcept {
-    assert(MAX_VBO_CHUNK_COUNT > offset);
+    assert(MAX_VBO_CHUNK_COUNT > offset + count);
 
     U32 freeChunkCount = 0;
     chunksUsedTotal = _chunkUsageState[offset].second;
@@ -244,7 +242,7 @@ bool VBO::allocateChunks(const U32 count, const GLenum usage, size_t& offsetOut)
         for (U32 i = 0; i < MAX_VBO_CHUNK_COUNT; ++i) {
             if (checkChunksAvailability(i, count, crtOffset)) {
                 if (_handle == 0) {
-                    createAndAllocBuffer(MAX_VBO_SIZE_BYTES, usage, _handle, nullptr, Util::StringFormat("VBO_CHUNK_%d", i).c_str());
+                    createAndAllocBuffer(MAX_VBO_SIZE_BYTES, usage, _handle, { nullptr, 0u }, Util::StringFormat("VBO_CHUNK_%d", i).c_str());
                     _usage = usage;
                 }
                 offsetOut = i;
@@ -268,7 +266,7 @@ bool VBO::allocateWhole(const U32 count, const GLenum usage) {
     static U32 idx = 0;
 
     assert(_handle == 0);
-    createAndAllocBuffer(static_cast<size_t>(count) * MAX_VBO_CHUNK_SIZE_BYTES, usage, _handle, nullptr, Util::StringFormat("VBO_WHOLE_CHUNK_%d", idx++).c_str());
+    createAndAllocBuffer(static_cast<size_t>(count) * MAX_VBO_CHUNK_SIZE_BYTES, usage, _handle, { nullptr, 0u }, Util::StringFormat("VBO_WHOLE_CHUNK_%d", idx++).c_str());
     _usage = usage;
     _chunkUsageState.fill(std::make_pair(true, 0));
     _chunkUsageState[0].second = count;
@@ -372,7 +370,7 @@ Byte* createAndAllocPersistentBuffer(const size_t bufferSize,
                                      const BufferStorageMask storageMask,
                                      const MapBufferAccessMask accessMask,
                                      GLuint& bufferIdOut,
-                                     bufferPtr const data,
+                                     const std::pair<bufferPtr, size_t> initialData,
                                      const char* name)
 {
     glCreateBuffers(1, &bufferIdOut);
@@ -386,16 +384,24 @@ Byte* createAndAllocPersistentBuffer(const size_t bufferSize,
     }
     assert(bufferIdOut != 0 && "GLUtil::allocPersistentBuffer error: buffer creation failed");
 
-    glNamedBufferStorage(bufferIdOut, bufferSize, data, storageMask);
+    glNamedBufferStorage(bufferIdOut, bufferSize, initialData.second >= bufferSize ? initialData.first : nullptr, storageMask);
     Byte* ptr = (Byte*)glMapNamedBufferRange(bufferIdOut, 0, bufferSize, accessMask);
     assert(ptr != nullptr);
+    if (initialData.second < bufferSize) {
+        if (initialData.second > 0 && initialData.first != nullptr) {
+            memcpy(ptr, initialData.first, initialData.second);
+            memset(&ptr[initialData.second], 0, bufferSize - initialData.second);
+        } else {
+            memset(ptr, 0, bufferSize);
+        }
+    }
     return ptr;
 }
 
 void createAndAllocBuffer(const size_t bufferSize,
                           const GLenum usageMask,
                           GLuint& bufferIdOut,
-                          const bufferPtr data,
+                          const std::pair<bufferPtr, size_t> initialData,
                           const char* name)
 {
     glCreateBuffers(1, &bufferIdOut);
@@ -410,7 +416,19 @@ void createAndAllocBuffer(const size_t bufferSize,
     }
 
     assert(bufferIdOut != 0 && "GLUtil::allocBuffer error: buffer creation failed");
-    glNamedBufferData(bufferIdOut, bufferSize, data, usageMask);
+    glNamedBufferData(bufferIdOut, bufferSize, initialData.second >= bufferSize ? initialData.first : nullptr, usageMask);
+    if (initialData.second < bufferSize) {
+        const MapBufferAccessMask accessMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
+        // We don't want undefined, we want zero as a default. Performance considerations be damned!
+        Byte* ptr = (Byte*)glMapNamedBufferRange(bufferIdOut, 0, bufferSize, accessMask);
+        if (initialData.second > 0u && initialData.first != nullptr) {
+            memcpy(ptr, initialData.first, initialData.second);
+            memset(ptr + initialData.second, 0, bufferSize - initialData.second);
+        } else {
+            memset(ptr, 0, bufferSize);
+        }
+        glUnmapNamedBuffer(bufferIdOut);
+    }
 }
 
 void freeBuffer(GLuint& bufferId, bufferPtr mappedPtr) {

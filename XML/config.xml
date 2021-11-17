@@ -11,6 +11,7 @@
 			<primitives>true</primitives>
 			<meshes>true</meshes>
 			<terrain>true</terrain>
+			<vegetation>true</vegetation>
 			<water>true</water>
 			<sky>true</sky>
 			<particles>true</particles>
@@ -83,7 +84,6 @@
 		<!-- Planar reflector resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->
 		<reflectionPlaneResolution>512</reflectionPlaneResolution>
 		<numLightsPerCluster>100</numLightsPerCluster>
-		<lightClusteredSizes width="16" height="9" depth="24"/>
 		<enableFog>true</enableFog>
 		<fogDensity x="0.0700000003" y="0.00700000022"/>
 		<fogColour r="0.5" g="0.5" b="0.550000012"/>

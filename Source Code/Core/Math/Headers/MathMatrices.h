@@ -442,9 +442,10 @@ class mat3 {
 /***************
  * mat4
  ***************/
-#pragma pack(push, 1)
+#pragma pack(push)
+#pragma pack(1)
 template <typename T>
-class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16>, NonAlignedBase>::type {
+class mat4 {
     // m0  m1  m2  m3
     // m4  m5  m6  m7
     // m8  m9  m10 m11
@@ -681,11 +682,6 @@ class mat4 : public std::conditional<std::is_same<T, F32>::value, AlignedBase<16
         T mat[16];
         T m[4][4];
         vec4<T> _vec[4];
-        struct
-        {
-            vec4<T> right, up, dir, position;
-        } _comp;
-
         SimdVector<T> _reg[4];
     };
 };

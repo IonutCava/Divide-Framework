@@ -18,7 +18,16 @@ glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescripto
 {
     _maxSize = _usage == Usage::CONSTANT_BUFFER ? GL_API::s_UBMaxSize : GL_API::s_SSBMaxSize;
 
-    _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset(_params._elementCount * _params._elementSize, AlignmentRequirement(_usage)));
+    const size_t targetElementSize = getAlignmentCorrected(_params._elementSize);
+    if (targetElementSize > _params._elementSize) {
+        DIVIDE_ASSERT((_params._elementSize * _params._elementCount) % AlignmentRequirement(_usage) == 0u,
+            "ERROR: glUniformBuffer - element size and count combo is less than the minimum alignment requirement for current hardware! Pad the element size and or count a bit");
+    } else {
+        DIVIDE_ASSERT(_params._elementSize == targetElementSize,
+                        "ERROR: glUniformBuffer - element size is less than the minimum alignment requirement for current hardware! Pad the element size a bit");
+    }
+    _alignedBufferSize = _params._elementCount * _params._elementSize;
+    _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset(_alignedBufferSize, AlignmentRequirement(_usage)));
 
     BufferImplParams implParams;
     implParams._bufferParams = _params;
@@ -58,48 +67,49 @@ ptrdiff_t glUniformBuffer::getAlignmentCorrected(ptrdiff_t byteOffset) const noe
     return byteOffset;
 }
 
-ptrdiff_t glUniformBuffer::getCorrectedOffset(ptrdiff_t offsetInBytes) const noexcept {
-    offsetInBytes = getAlignmentCorrected(offsetInBytes);
-    if (queueLength() > 1) {
-        offsetInBytes += queueReadIndex() * _alignedBufferSize;
-    }
-    return offsetInBytes;
-}
-
-void glUniformBuffer::clearBytes(const ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes) {
-    OPTICK_EVENT();
-
-    if (rangeInBytes > 0) {
-        assert(offsetInBytes + rangeInBytes <= _alignedBufferSize && "glUniformBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
-
-        bufferImpl()->writeOrClearBytes(getCorrectedOffset(offsetInBytes), rangeInBytes, nullptr, true);
-    }
-}
-
-void glUniformBuffer::readBytes(const ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes, bufferPtr result) const {
-    OPTICK_EVENT();
-
-    if (rangeInBytes > 0) {
-        bufferImpl()->readBytes(getCorrectedOffset(offsetInBytes), rangeInBytes, result);
-    }
-}
-
-void glUniformBuffer::writeBytes(const ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes, bufferPtr data) {
-    OPTICK_EVENT();
-
-    if (rangeInBytes > 0) {
-        assert(offsetInBytes == getAlignmentCorrected(offsetInBytes));
-        bufferImpl()->writeOrClearBytes(getCorrectedOffset(offsetInBytes), rangeInBytes, data, false);
-    }
-}
-
-bool glUniformBuffer::bindByteRange(const U8 bindIndex, const ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes) {
+void glUniformBuffer::clearBytes(ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes) {
     if (rangeInBytes > 0) {
         OPTICK_EVENT();
 
-        assert(to_size(rangeInBytes) <= _maxSize && "glUniformBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
-        assert(offsetInBytes == getAlignmentCorrected(offsetInBytes));
-        return bufferImpl()->bindByteRange(bindIndex, getCorrectedOffset(offsetInBytes), getAlignmentCorrected(rangeInBytes));
+        DIVIDE_ASSERT(offsetInBytes == getAlignmentCorrected(offsetInBytes));
+        assert(offsetInBytes + rangeInBytes <= _alignedBufferSize && "glUniformBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
+
+        offsetInBytes += queueWriteIndex() * _alignedBufferSize;
+
+        bufferImpl()->writeOrClearBytes(offsetInBytes, rangeInBytes, nullptr, true);
+    }
+}
+
+void glUniformBuffer::readBytes(ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes, bufferPtr result) const {
+    if (rangeInBytes > 0) {
+        OPTICK_EVENT();
+
+        DIVIDE_ASSERT(offsetInBytes == getAlignmentCorrected(offsetInBytes));
+        offsetInBytes += queueReadIndex() * _alignedBufferSize;
+
+        bufferImpl()->readBytes(offsetInBytes, rangeInBytes, result);
+    }
+}
+
+void glUniformBuffer::writeBytes(ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes, bufferPtr data) {
+    if (rangeInBytes > 0) {
+        OPTICK_EVENT();
+
+        DIVIDE_ASSERT(offsetInBytes == getAlignmentCorrected(offsetInBytes));
+        offsetInBytes += queueWriteIndex() * _alignedBufferSize;
+
+        bufferImpl()->writeOrClearBytes(offsetInBytes, rangeInBytes, data, false);
+    }
+}
+
+bool glUniformBuffer::bindByteRange(const U8 bindIndex, ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes) {
+    if (rangeInBytes > 0) {
+        OPTICK_EVENT();
+
+        DIVIDE_ASSERT(to_size(rangeInBytes) <= _maxSize && "glUniformBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
+        DIVIDE_ASSERT(offsetInBytes == getAlignmentCorrected(offsetInBytes));
+        offsetInBytes += queueReadIndex() * _alignedBufferSize;
+        return bufferImpl()->bindByteRange(bindIndex, offsetInBytes, getAlignmentCorrected(rangeInBytes));
     }
 
     return false;
