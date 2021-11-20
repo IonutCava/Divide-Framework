@@ -17,8 +17,8 @@ layout(binding = BUFFER_NODE_INDIRECTION_DATA, std430) coherent ACCESS_R buffer 
 };
 
 #define ComputeIndirectionData() \
-    VAR._indirectionIDs.x = dvd_IndirectionData[INDIRECT_DATA_IDX]._transformIdx; \
-    VAR._indirectionIDs.y = dvd_IndirectionData[INDIRECT_DATA_IDX]._materialIdx;
+const NodeIndirectionData indirectionData = dvd_IndirectionData[INDIRECT_DATA_IDX]; \
+VAR._indirectionIDs = uvec4(indirectionData._transformIdx, indirectionData._materialIdx, indirectionData._texturesIdx, indirectionData._padding); \
 
 #endif //VERT_SHADER
 
@@ -35,20 +35,25 @@ layout(binding = BUFFER_NODE_MATERIAL_DATA, std430) coherent ACCESS_R buffer dvd
     NodeMaterialData dvd_Materials[];
 };
 
+layout(binding = BUFFER_NODE_TEXTURE_DATA, std430) coherent ACCESS_R buffer dvd_textureBlock
+{
+    NodeTextureData dvd_Textures[];
+};
+
 #if defined(USE_BINDLESS_TEXTURES)
-#define texDiffuse0   samplerUnit0(dvd_Materials[MATERIAL_IDX]._textures[0].xy)
-#define texOpacityMap samplerOpacity(dvd_Materials[MATERIAL_IDX]._textures[0].zw)
-#define texNormalMap  samplerNormal(dvd_Materials[MATERIAL_IDX]._textures[3].xy)
-#define texHeight     samplerHeight(dvd_Materials[MATERIAL_IDX]._textures[2].xy)
-#define texSpecular   samplerSpecular(dvd_Materials[MATERIAL_IDX]._textures[1].zw)
-#define texMetalness  samplerMetalness(dvd_Materials[MATERIAL_IDX]._textures[1].zw)
-#define texRoughness  samplerRoughness(dvd_Materials[MATERIAL_IDX]._textures[1].zw)
-#define texOcclusion  samplerOcclusion(dvd_Materials[MATERIAL_IDX]._textures[1].zw)
-#define texEmissive   samplerEmissive(dvd_Materials[MATERIAL_IDX]._textures[1].zw)
-#define texDiffuse1   samplerUnit1(dvd_Materials[MATERIAL_IDX]._textures[1].xy)
-#define texProjected  samplerProj(dvd_Materials[MATERIAL_IDX]._textures[2].zw)
-#define texReflect    samplerReflect(dvd_Materials[MATERIAL_IDX]._textures[3].zw)
-#define texReract     samplerRefract(dvd_Materials[MATERIAL_IDX]._textures[4].xy)
+#define texDiffuse0   samplerUnit0(dvd_Textures[MATERIAL_IDX]._textures[0].xy)
+#define texOpacityMap samplerOpacity(dvd_Textures[MATERIAL_IDX]._textures[0].zw)
+#define texNormalMap  samplerNormal(dvd_Textures[MATERIAL_IDX]._textures[3].xy)
+#define texHeight     samplerHeight(dvd_Textures[MATERIAL_IDX]._textures[2].xy)
+#define texSpecular   samplerSpecular(dvd_Textures[MATERIAL_IDX]._textures[1].zw)
+#define texMetalness  samplerMetalness(dvd_Textures[MATERIAL_IDX]._textures[1].zw)
+#define texRoughness  samplerRoughness(dvd_Textures[MATERIAL_IDX]._textures[1].zw)
+#define texOcclusion  samplerOcclusion(dvd_Textures[MATERIAL_IDX]._textures[1].zw)
+#define texEmissive   samplerEmissive(dvd_Textures[MATERIAL_IDX]._textures[1].zw)
+#define texDiffuse1   samplerUnit1(dvd_Textures[MATERIAL_IDX]._textures[1].xy)
+#define texProjected  samplerProj(dvd_Textures[MATERIAL_IDX]._textures[2].zw)
+#define texReflect    samplerReflect(dvd_Textures[MATERIAL_IDX]._textures[3].zw)
+#define texRefract    samplerRefract(dvd_Textures[MATERIAL_IDX]._textures[4].xy)
 #else //USE_BINDLESS_TEXTURES
 layout(binding = TEXTURE_UNIT0)      uniform samplerUnit0 texDiffuse0;
 layout(binding = TEXTURE_OPACITY)    uniform samplerOpacity texOpacityMap;

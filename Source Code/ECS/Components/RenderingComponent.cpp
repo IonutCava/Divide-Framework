@@ -344,7 +344,7 @@ void RenderingComponent::retrieveDrawCommands(const RenderStagePass& stagePass, 
     PackagesPerIndex& packages = _renderPackages[stageIdx][to_U8(stagePass._passType)];
     U32 startCmdOffset = cmdOffset + to_U32(cmdsInOut.size());
     for (U16 i = 0u; i < pkgCount; ++i) {
-        RenderPackage& pkg = packages[i + pkgIndex];
+        RenderPackage& pkg = packages[to_U32(i) + pkgIndex];
         startCmdOffset += Attorney::RenderPackageRenderingComponent::updateAndRetrieveDrawCommands(pkg, indirectionBufferEntry(), startCmdOffset, lodLevel, cmdsInOut);
     }
 }
@@ -353,12 +353,20 @@ bool RenderingComponent::hasDrawCommands(const RenderStagePass& stagePass) {
     return getDrawPackage(stagePass).count<GFX::DrawCommand>() > 0u;
 }
 
-void RenderingComponent::getMaterialData(NodeMaterialData& dataOut, NodeMaterialTextures& texturesOut) const {
+void RenderingComponent::getMaterialData(NodeMaterialData& dataOut) const {
     OPTICK_EVENT();
 
     if (_materialInstance != nullptr) {
         //ProbeID: 0u = sky cubemap. Shader: (Probe - 1u) = environment cube array index and probe data lookup index
-        _materialInstance->getData(*this, _reflectionProbeIndex + 1u, dataOut, texturesOut);
+        _materialInstance->getData(*this, _reflectionProbeIndex + 1u, dataOut);
+    
+    }
+}
+
+void RenderingComponent::getMaterialTextures(NodeMaterialTextures& texturesOut) const {
+    if (_materialInstance != nullptr) {
+        _materialInstance->getTextures(*this, texturesOut);
+
         for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
             // We don't overwrite custom reflection/refraction textures!
             if (texturesOut[i] == 0u) {
@@ -366,7 +374,8 @@ void RenderingComponent::getMaterialData(NodeMaterialData& dataOut, NodeMaterial
                     const ReflectRefractData& refData = _reflectRefractData[to_base(DataType::REFLECT)];
                     SharedLock<SharedMutex> r_lock(refData._lock);
                     texturesOut[i] = refData._gpuAddress;
-                } else if (g_materialTextures[i] == TextureUsage::REFRACTION) {
+                }
+                else if (g_materialTextures[i] == TextureUsage::REFRACTION) {
                     const ReflectRefractData& refData = _reflectRefractData[to_base(DataType::REFRACT)];
                     SharedLock<SharedMutex> r_lock(refData._lock);
                     texturesOut[i] = refData._gpuAddress;

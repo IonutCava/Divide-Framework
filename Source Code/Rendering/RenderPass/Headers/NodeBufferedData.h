@@ -87,9 +87,9 @@ using NodeMaterialTextures = std::array<SamplerAddress, MATERIAL_TEXTURE_COUNT>;
         //z = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, bump method
         //w = Probe lookup index + 1 (0 = sky cubemap)
         vec4<U32> _data;
-
-        vec4<U32> _textures[(MATERIAL_TEXTURE_COUNT + 1) / 2];
     };
+
+    using NodeTexturesData = std::array<vec4<U32>,  (MATERIAL_TEXTURE_COUNT + 1) / 2>;
 
     [[nodiscard]] size_t HashMaterialData(const NodeMaterialData& dataIn);
     [[nodiscard]] size_t HashTexturesData(const NodeMaterialTextures& dataIn);

@@ -214,7 +214,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     const Configuration& config = _parent.platformContext().config();
 
     // Initialize the shader manager
-    RenderPassExecutor::OnStartup();
+    RenderPassExecutor::OnStartup(*this);
     ShaderProgram::OnStartup(cache);
     GFX::InitPools();
 

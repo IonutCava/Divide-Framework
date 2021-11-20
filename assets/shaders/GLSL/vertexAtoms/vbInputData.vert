@@ -36,7 +36,6 @@ vec4 computeData(in NodeTransformData data) {
     VAR._LoDLevel  = dvd_LoDLevel(data);
     VAR._vertexW   = data._worldMatrix * dvd_Vertex;
     VAR._vertexWV  = dvd_ViewMatrix * VAR._vertexW;
-    vec4 vertexWVP = dvd_ProjectionMatrix * VAR._vertexWV;
 
 #if defined(HAS_VELOCITY)
     vec4 inputVertex = vec4(inVertexData, 1.f);
@@ -48,7 +47,7 @@ vec4 computeData(in NodeTransformData data) {
     VAR._prevVertexWVP = dvd_PreviousViewProjectionMatrix * data._prevWorldMatrix * inputVertex;
 #endif //HAS_VELOCITY
 
-    return vertexWVP;
+    return dvd_ProjectionMatrix * VAR._vertexWV;
 }
 
 #endif //_VB_INPUT_DATA_VERT_

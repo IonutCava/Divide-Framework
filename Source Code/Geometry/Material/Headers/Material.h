@@ -186,7 +186,6 @@ class Material final : public CachedResource {
     F32 getMetallic(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
     F32 getRoughness(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
     F32 getOcclusion(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
-    
 
     /// Add the specified shader to specific RenderStagePass parameters. Use "COUNT" and/or g_AllVariantsID for global options
     /// e.g. a RenderPassType::COUNT will use the shader in the specified stage+variant combo but for all of the passes
@@ -196,7 +195,8 @@ class Material final : public CachedResource {
     void setRenderStateBlock(size_t renderStateBlockHash, RenderStage stage, RenderPassType pass, U8 variant = g_AllVariantsID);
 
     // Returns the material's hash value (just for the uploadable data)
-    void getData(const RenderingComponent& parentComp, U32 bestProbeID, NodeMaterialData& dataOut, NodeMaterialTextures& texturesOut);
+    void getData(const RenderingComponent& parentComp, U32 bestProbeID, NodeMaterialData& dataOut);
+    void getTextures(const RenderingComponent& parentComp, NodeMaterialTextures& texturesOut);
 
     size_t getRenderStateBlock(const RenderStagePass& renderStagePass) const;
     Texture_wptr getTexture(TextureUsage textureUsage) const;
@@ -223,7 +223,7 @@ class Material final : public CachedResource {
     const ModuleDefines& shaderDefines(ShaderType type) const;
 
    protected:
-       void getSortKeys(const RenderStagePass& renderStagePass, I64& shaderKey, I32& textureKey) const;
+    void getSortKeys(const RenderStagePass& renderStagePass, I64& shaderKey, I32& textureKey) const;
 
    private:
     /// Constructs a shader for the specified renderStatePass

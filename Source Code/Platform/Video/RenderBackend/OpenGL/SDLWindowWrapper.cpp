@@ -147,16 +147,26 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     GFXDevice::setGPURenderer(renderer);
     GFXDevice::setGPUVendor(vendor);
 
-    //Extension check disabled for now as it causes conflicts with RenderDoc
-    s_UseBindlessTextures = config.rendering.useBindlessTextures && true;
-                            //glbinding::aux::ContextInfo::supported(
-                            //    {
-                            //        GLextension::GL_ARB_bindless_texture 
-                            //    });
+    s_UseBindlessTextures = config.rendering.useBindlessTextures;
+     
+    if_constexpr(Config::ENABLE_GPU_VALIDATION && false) {
+        // Not supported in RenderDoc or nsight (as of 2021)
+        DIVIDE_ASSERT(!s_UseBindlessTextures || s_UseBindlessTextures ==
+            glbinding::aux::ContextInfo::supported(
+                {
+                    GLextension::GL_ARB_bindless_texture
+                }));
+    }
 
     if (s_UseBindlessTextures != config.rendering.useBindlessTextures) {
         config.rendering.useBindlessTextures = s_UseBindlessTextures;
         config.changed(true);
+    }
+
+    if (s_UseBindlessTextures) {
+        Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURES_ENABLED")));
+    } else {
+        Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURES_DISABLED")));
     }
 
     if (s_hardwareQueryPool == nullptr) {

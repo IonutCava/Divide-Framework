@@ -230,13 +230,13 @@ bool GL_API::InitGLSW(Configuration& config) {
         { "vec3"       , "_normalWV"},         // 60 bytes
         { "vec3"       , "_viewDirectionWV"},  // 72 bytes
         { "vec2"       , "_texCoord"},         // 80 bytes
-        { "flat uvec2" , "_indirectionIDs"},   // 88 bytes
-        { "flat uint"  , "_LoDLevel"}          // 92 bytes
+        { "flat uvec4" , "_indirectionIDs"},   // 96 bytes
+        { "flat uint"  , "_LoDLevel"}          // 100 bytes
     };
 
     constexpr std::pair<const char*, const char*> shaderVaryingsBump[] =
     {
-        { "mat3" , "_tbnWV"}, // 128 bytes
+        { "mat3" , "_tbnWV"}, // 136 bytes
     };
 
     constexpr const char* crossTypeGLSLHLSL = "#define float2 vec2\n"
@@ -376,6 +376,7 @@ bool GL_API::InitGLSW(Configuration& config) {
 
     constexpr F32 Z_TEST_SIGMA = 0.00001f;// 1.f / U8_MAX;
 
+    // ToDo: Automate adding of buffer bindings by using, for example, a TypeUtil::bufferBindingToString -Ionut
     AppendToShaderHeader(ShaderType::COUNT,    "#define Z_TEST_SIGMA "                    + Util::to_string(Z_TEST_SIGMA) + "f");
     AppendToShaderHeader(ShaderType::COUNT,    "#define INV_Z_TEST_SIGMA "                + Util::to_string(1.f - Z_TEST_SIGMA) + "f");
     AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_CSM_SPLITS_PER_LIGHT "        + Util::to_string(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
@@ -409,6 +410,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_INDEX_COUNT "        + Util::to_string(to_base(ShaderBufferLocation::LIGHT_INDEX_COUNT)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_CLUSTER_AABBS "      + Util::to_string(to_base(ShaderBufferLocation::LIGHT_CLUSTER_AABBS)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_TRANSFORM_DATA "      + Util::to_string(to_base(ShaderBufferLocation::NODE_TRANSFORM_DATA)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_TEXTURE_DATA "        + Util::to_string(to_base(ShaderBufferLocation::NODE_TEXTURE_DATA)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_MATERIAL_DATA "       + Util::to_string(to_base(ShaderBufferLocation::NODE_MATERIAL_DATA)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_INDIRECTION_DATA "    + Util::to_string(to_base(ShaderBufferLocation::NODE_INDIRECTION_DATA)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_SCENE_DATA "               + Util::to_string(to_base(ShaderBufferLocation::SCENE_DATA)));

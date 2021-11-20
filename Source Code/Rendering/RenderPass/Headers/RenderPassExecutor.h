@@ -77,6 +77,8 @@ public:
     {
         U32 _transformIDX = U32_MAX;
         U32 _materialIDX = U32_MAX;
+        U32 _texturesIDX = U32_MAX;
+        U32 _padding = U32_MAX;
     };
 
     // 2Mb worth of data
@@ -94,6 +96,15 @@ public:
         FlagContainer _processedThisFrame{};
     };
 
+    struct BufferTexturesData
+    {
+        using FlagContainer = std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES>;
+        using TexturesDataContainer = std::array<NodeTexturesData, MAX_INDIRECTION_ENTRIES>;
+        TexturesDataContainer _gpuData{};
+        std::array<bool, MAX_INDIRECTION_ENTRIES> _freeList{};
+        FlagContainer _processedThisFrame{};
+
+    };
     struct BufferTransformData
     {
         using FlagContainer = std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES>;
@@ -128,7 +139,7 @@ public:
                   const ShaderProgram_ptr& OITCompositionShaderMS,
                   const ShaderProgram_ptr& ResolveScreenTargetsShaderMS) const;
 
-    static void OnStartup();
+    static void OnStartup(const GFXDevice& gfx);
     static void OnShutdown();
     static void PreRender();
     static void PostRender();
@@ -180,6 +191,8 @@ private:
 
     void processVisibleNodeTransform(RenderingComponent* rComp,
                                      D64 interpolationFactor);
+    
+    void processVisibleNodeTextures(RenderingComponent* rComp);
 
     [[nodiscard]] U16 processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit);
 
@@ -190,7 +203,7 @@ private:
 
     [[nodiscard]] U32 renderQueueSize(RenderPackage::MinQuality qualityRequirement = RenderPackage::MinQuality::COUNT) const;
 
-    void setMaterialInfoAt(size_t idx, NodeMaterialData& dataInOut, const NodeMaterialData& tempData, const NodeMaterialTextures& tempTextures);
+    void copyNodeTextureData(const NodeMaterialTextures& materialTexturesIn, NodeTexturesData& dataOut);
 
     void resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const;
 
@@ -223,6 +236,7 @@ private:
     static Pipeline* s_ResolveScreenTargetsPipeline;
 
     static ExecutorBuffer<BufferMaterialData> s_materialBuffer;
+    static ExecutorBuffer<BufferTexturesData> s_texturesBuffer;
     static ExecutorBuffer<BufferTransformData> s_transformBuffer;
     static ExecutorBuffer<BufferIndirectionData> s_indirectionBuffer;
 };
