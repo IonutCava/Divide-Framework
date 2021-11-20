@@ -1249,11 +1249,7 @@ F32 Material::getOcclusion(bool& hasTextureOverride, Texture*& textureOut) const
     return occlusion();
 }
 
-void Material::getData(const RenderingComponent& parentComp, const U32 bestProbeID, NodeMaterialData& dataOut, NodeMaterialTextures& texturesOut) {
-    for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
-        texturesOut[i] = _textureAddresses[to_base(g_materialTextures[i])];
-    }
-
+void Material::getData(const RenderingComponent& parentComp, const U32 bestProbeID, NodeMaterialData& dataOut) {
     const SceneGraphNode* parentSGN = parentComp.parentSGN();
 
     F32 selectionFlag = 0.0f;
@@ -1284,6 +1280,12 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
                                           to_U8(_textureOperations[to_base(TextureUsage::SPECULAR)]),
                                           to_U8(bumpMethod()));
     dataOut._data.w = bestProbeID;
+}
+
+void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTextures& texturesOut) {
+    for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
+        texturesOut[i] = _textureAddresses[to_base(g_materialTextures[i])];
+    }
 }
 
 void Material::rebuild() {

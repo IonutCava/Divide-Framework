@@ -106,7 +106,8 @@
 #endif //USE_PLANAR_REFRACTION
 
 #define TRANSFORM_IDX VAR._indirectionIDs.x
-#define MATERIAL_IDX  VAR._indirectionIDs.y
+#define MATERIAL_IDX VAR._indirectionIDs.y
+#define TEXTURE_IDX VAR._indirectionIDs.z
 
 struct NodeTransformData {
     mat4 _worldMatrix;
@@ -124,6 +125,8 @@ struct NodeTransformData {
 struct NodeIndirectionData {
     uint _transformIdx;
     uint _materialIdx;
+    uint _texturesIdx;
+    uint _padding;
 };
 
 #if defined(PROJECTED_TEXTURE)
@@ -147,8 +150,10 @@ struct NodeMaterialData
     //z = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, bump method
     //w = Probe lookup index + 1 (0 = sky cubemap)
     uvec4 _data;
+};
 
-    //TextureData
+struct NodeTextureData
+{
     uvec4 _textures[(MATERIAL_TEXTURE_COUNT + 1) / 2];
 };
 

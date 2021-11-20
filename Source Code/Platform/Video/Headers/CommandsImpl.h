@@ -254,7 +254,7 @@ DEFINE_COMMAND_BEGIN(BindDescriptorSetsCommand, CommandType::BIND_DESCRIPTOR_SET
 DEFINE_COMMAND_END(BindDescriptorSetsCommand);
 
 DEFINE_COMMAND_BEGIN(SetTexturesResidencyCommand, CommandType::SET_TEXTURE_RESIDENCY);
-    eastl::set<SamplerAddress> _addresses;
+    std::array<SamplerAddress, 16> _addresses;
     bool _state = true;
 DEFINE_COMMAND_END(SetTexturesResidencyCommand);
 

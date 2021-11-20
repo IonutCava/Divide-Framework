@@ -145,7 +145,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     [[nodiscard]] bool lodLocked(const RenderStage stage) const noexcept { return _lodLockLevels[to_base(stage)].first; }
 
-    void getMaterialData(NodeMaterialData& dataOut, NodeMaterialTextures& texturesOut) const;
+    void getMaterialData(NodeMaterialData& dataOut) const;
+    void getMaterialTextures(NodeMaterialTextures& texturesOut) const;
 
     [[nodiscard]] RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass);
     [[nodiscard]] const RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass) const;
