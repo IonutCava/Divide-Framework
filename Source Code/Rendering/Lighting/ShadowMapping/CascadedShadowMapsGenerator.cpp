@@ -438,11 +438,6 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
         const auto& shadowAtt = shadowMapRT.getAttachment(RTAttachmentType::Colour, 0);
         TextureData texData = shadowAtt.texture()->data();
 
-        GFX::ComputeMipMapsCommand computeMipMapsCommand{};
-        computeMipMapsCommand._texture = shadowAtt.texture().get();
-        computeMipMapsCommand._clearOnly = true;
-        GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
-
         GFX::EnqueueCommand(bufferInOut, s_beginRenderPassHorizontalCmd);
 
         GFX::EnqueueCommand(bufferInOut, s_blurPipelineCmd);

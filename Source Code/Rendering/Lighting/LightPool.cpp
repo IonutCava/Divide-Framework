@@ -258,18 +258,6 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
         EnqueueCommand(bufferInOut, computeMipMapsCommand);
     }
 
-    for (U8 i = 0; i < to_base(LightType::COUNT); ++i) {
-        if (!shadowsGenerated[i]) {
-            RenderTarget* rt = ShadowMap::getDepthMap(static_cast<LightType>(i))._rt;
-            if (rt != nullptr) {
-                GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-                computeMipMapsCommand._texture = rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
-                computeMipMapsCommand._clearOnly = true;
-                EnqueueCommand(bufferInOut, computeMipMapsCommand);
-            }
-        }
-    }
-
     _shadowBuffer->writeData(_shadowBufferData.data());
     _shadowBufferDirty = true;
 
