@@ -2,6 +2,7 @@
 #define _MATERIAL_DATA_FRAG_
 
 #include "nodeBufferedInput.cmn"
+
 #include "utility.frag"
 
 #if defined(PBR_SHADING)
@@ -17,11 +18,11 @@
 #endif //COMPUTE_TBN
 
 #if defined(USE_CUSTOM_ROUGHNESS)
-vec3 getOMR(in NodeMaterialData matData, in vec2 uv);
+void getOMR(in NodeMaterialData matData, in vec2 uv, inout float occlusion, inout float metallic, inout float roughness);
 #else //USE_CUSTOM_ROUGHNESS
-vec3 getOMR(in NodeMaterialData matData, in vec2 uv) {
+void getOMR(in NodeMaterialData matData, in vec2 uv, inout float occlusion, inout float metallic, inout float roughness) {
 #if defined(SAMPLER_OMR_COMPACT)
-    return texture(texMetalness, uv).rgb;
+    vec3 OMR = texture(texMetalness, uv).rgb;
 #else //SAMPLER_OMR_COMPACT
     vec3 OMR = PACKED_OMR(matData);
 #if defined(USE_OCCLUSION_MAP)
@@ -33,9 +34,11 @@ vec3 getOMR(in NodeMaterialData matData, in vec2 uv) {
 #if defined(USE_ROUGHNESS_MAP)
     OMR[2] = texture(texRoughness, uv).r;
 #endif //USE_ROUGHNESS_MAP
-
-    return OMR;
 #endif //SAMPLER_OMR_COMPACT
+
+    occlusion = OMR[0];
+    metallic = OMR[1];
+    roughness = OMR[2];
 }
 #endif //USE_CUSTOM_ROUGHNESS
 
@@ -76,30 +79,33 @@ vec3 computeFresnelSchlickRoughness(in vec3 H, in vec3 V, in vec3 F0, in float r
     return F0 + (max(vec3(1.f - roughness), F0) - F0) * pow(1.f - cosTheta, 5.f);
 }
 
-void initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, in vec2 uv, in vec3 V, in vec3 N, in float normalVariation, inout NodeMaterialProperties properties) {
-    properties._albedo = albedo + Ambient(matData);
-    properties._OMR = getOMR(matData, uv);
-    properties._emissive = getEmissiveColour(matData, uv);
-    properties._specular = getSpecular(matData, uv);
+PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, in vec2 uv, in vec3 V, in vec3 N, in float normalVariation) {
+    PBRMaterial material;
 
+    const vec3 albedoIn = albedo + Ambient(matData);
+
+    getOMR(matData, uv, material._occlusion, material._metallic, material._roughness);
+    material._emissive = getEmissiveColour(matData, uv);
+    material._specular = getSpecular(matData, uv);
 #if !defined(PBR_SHADING)
     // Deduce a roughness factor from specular colour and shininess
-    const float specularIntensity = Luminance(properties._specular.rgb);
-    const float specularPower = properties._specular.a / 1000.f;
+    const float specularIntensity = Luminance(material._specular.rgb);
+    const float specularPower = material._specular.a / 1000.f;
     const float roughnessFactor = 1.f - sqrt(specularPower);
     // Specular intensity directly impacts roughness regardless of shininess
-    properties._OMR[2] = (1.f - (saturate(pow(roughnessFactor, 2)) * specularIntensity));
+    material._roughness = (1.f - (saturate(pow(roughnessFactor, 2)) * specularIntensity));
 #endif //!PBR_SHADING
 
     // Try to reduce specular aliasing by increasing roughness when minified normal maps have high variation.
-    properties._OMR[2] = mix(properties._OMR[2], 1.f, normalVariation);
+    material._roughness = mix(material._roughness, 1.f, normalVariation);
 
-#if defined(PBR_SHADING)
-    const vec3 F0 = mix(vec3(0.04f), albedo, properties._OMR[1]);
-    properties._kS = computeFresnelSchlickRoughness(N, V, F0, properties._OMR[2]);
-#else //PBR_SHADING
-    properties._kS = mix(vec3(0.f), properties._specular.rgb, specularPower);
-#endif //PBR_SHADING
+    const vec3 dielectricSpecular = vec3(0.04f);
+    const vec3 black = vec3(0.f);
+    material._diffuseColour = mix(albedoIn * (vec3(1.f) - dielectricSpecular), black, material._metallic);
+    material._F0 = mix(dielectricSpecular, albedoIn, material._metallic);
+    material._a = max(SQUARED(material._roughness), 0.01f);
+
+    return material;
 }
 
 

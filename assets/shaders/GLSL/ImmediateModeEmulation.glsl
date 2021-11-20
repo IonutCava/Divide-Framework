@@ -84,7 +84,6 @@ void main(void) {
 
 --Fragment.EnvironmentProbe
 
-#include "utility.frag"
 #include "output.frag"
 
 uniform mat4 dvd_WorldMatrixOverride;

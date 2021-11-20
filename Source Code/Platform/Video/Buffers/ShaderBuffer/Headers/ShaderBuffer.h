@@ -68,6 +68,8 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
 
     virtual ~ShaderBuffer() = default;
 
+            void clearData();
+
     virtual void clearData(U32 offsetElementCount,
                            U32 rangeElementCount);
 

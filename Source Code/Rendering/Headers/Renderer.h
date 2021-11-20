@@ -50,12 +50,7 @@ class Renderer final : public PlatformContextComponent {
     Renderer(PlatformContext& context, ResourceCache* cache);
     ~Renderer();
 
-    void preRender(RenderStagePass stagePass,
-                   const Texture_ptr& hizColourTexture,
-                   size_t samplerHash,
-                   LightPool& lightPool,
-                   const Camera* camera,
-                   GFX::CommandBuffer& bufferInOut);
+    void prepareLighting(RenderStage stage, const mat4<F32>& projectionMatrix, GFX::CommandBuffer& bufferInOut);
 
     void idle() const;
 
@@ -68,6 +63,7 @@ class Renderer final : public PlatformContextComponent {
   private:
     mat4<F32>         _previousProjMatrix;
     ShaderProgram_ptr _lightCullComputeShader = nullptr;
+    ShaderProgram_ptr _lightCounterResetComputeShader = nullptr;
     ShaderProgram_ptr _lightBuildClusteredAABBsComputeShader = nullptr;
     ShaderBuffer*     _lightIndexBuffer = nullptr;
     ShaderBuffer*     _lightGridBuffer = nullptr;
@@ -76,6 +72,7 @@ class Renderer final : public PlatformContextComponent {
     eastl::unique_ptr<PostFX> _postFX = nullptr;
 
     GFX::BindPipelineCommand _lightCullPipelineCmd;
+    GFX::BindPipelineCommand _lightResetCounterPipelineCmd;
     GFX::BindPipelineCommand _lightBuildClusteredAABBsPipelineCmd;
 
     vec3<U32> _computeWorkgroupSize;

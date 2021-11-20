@@ -126,7 +126,7 @@ void PostFX::updateResolution(const U16 newWidth, const U16 newHeight) {
     _setCameraCmd._cameraSnapshot = Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot();
 }
 
-void PostFX::apply(const Camera* camera, GFX::CommandBuffer& bufferInOut) {
+void PostFX::apply(const Camera* camera, const DELEGATE<void>& screenTargetCallback, GFX::CommandBuffer& bufferInOut) {
     static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: Apply" };
     static GFX::BeginRenderPassCommand s_beginRenderPassCmd{};
     static GFX::BindDescriptorSetsCommand s_descriptorSetCmd{};
@@ -183,6 +183,8 @@ void PostFX::apply(const Camera* camera, GFX::CommandBuffer& bufferInOut) {
     GFX::EnqueueCommand(bufferInOut, s_descriptorSetCmd);
 
     GFX::EnqueueCommand(bufferInOut, s_drawCommand);
+
+    screenTargetCallback();
 
     GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 

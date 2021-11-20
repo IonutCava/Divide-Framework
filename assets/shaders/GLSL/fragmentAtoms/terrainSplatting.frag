@@ -23,7 +23,7 @@ vec4 TextureNoTile(in sampler2DArray tex, in vec3 texUV) {
 vec4 SampleTextureNoTile(in sampler2DArray tex, in vec3 texUV)
 {
 #if !defined(REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS)
-    if (dvd_LoD >= 2) {
+    if (VAR._LoDLevel >= 2) {
         return texture(tex, texUV);
     }
 #endif //!REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS
@@ -54,8 +54,8 @@ mat3 cotangentFrame() {
     const vec3 V = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
 
     // get edge vectors of the pixel triangle
-    const vec3 dp1 = dFdx(-V);
-    const vec3 dp2 = dFdy(-V);
+    const vec3 dp1  = dFdx(-V);
+    const vec3 dp2  = dFdy(-V);
     const vec2 duv1 = dFdx(VAR._texCoord);
     const vec2 duv2 = dFdy(VAR._texCoord);
 
@@ -144,7 +144,7 @@ vec2 getScaledCoords(vec2 uv, in float[TOTAL_LAYER_COUNT] amnt) {
     vec2 scaledCoords = scaledTextureCoords(uv);
 #if 0
     //ToDo: Maybe bump this 1 unit? -Ionut
-    if (dvd_LoD == 0u) {
+    if (VAR._LoDLevel == 0u) {
         const uint bumpMethod = dvd_bumpMethod(MATERIAL_IDX);
         if (bumpMethod == BUMP_PARALLAX || bumpMethod == BUMP_PARALLAX_OCCLUSION) {
             const vec3 viewDirT = transpose(getTBNW()) * normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
@@ -215,7 +215,7 @@ vec4 BuildTerrainData(out vec3 normalWV, out float normalVariation) {
     normalWV = normalize(mat3(dvd_ViewMatrix) * VAR._normalW);
     return getTerrainAlbedo();
 #endif //LOW_QUALITY
-    if (dvd_LoD > 1) {
+    if (VAR._LoDLevel > 1) {
         const vec4 normalMap = getTerrainNormal();
         normalVariation = normalMap.w;
         normalWV = normalize(mat3(dvd_ViewMatrix) * cotangentFrame() * normalMap.xyz);

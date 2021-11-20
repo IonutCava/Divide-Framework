@@ -282,10 +282,6 @@ layout(location = 13) out float tes_PatternValue;
 
 #endif //TOGGLE_DEBUG || TOGGLE_TESS_LEVEL
 
-#if !defined(TOGGLE_DEBUG)
-layout(location = 10) out flat uint dvd_LoD;
-#endif //!TOGGLE_DEBUG
-
 #define Bilerp(v0, v1, v2, v3, i) lerp(lerp(v0, v3, i.x), lerp(v1, v2, i.x), i.y)
 
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
@@ -338,7 +334,7 @@ void main()
 
     gl_Position = _out._vertexW;
 #else //TOGGLE_DEBUG
-    dvd_LoD = tcs_ringID[0];
+    _out._LoDLevel = tcs_ringID[0];
     gl_Position = dvd_ProjectionMatrix * _out._vertexWV;
 #endif //TOGGLE_DEBUG
 }
@@ -355,9 +351,8 @@ layout(location = 11) in flat uint tes_ringID[];
 layout(location = 12) in vec3 tes_debugColour[];
 layout(location = 13) in float tes_PatternValue[];
 
-layout(location = 10) out flat uint dvd_LoD;
-layout(location = 11) out vec3 gs_wireColor;
-layout(location = 12) noperspective out vec4 gs_edgeDist;  //w - patternValue
+layout(location = 10) out vec3 gs_wireColor;
+layout(location = 11) noperspective out vec4 gs_edgeDist;  //w - patternValue
 
 #if defined(TOGGLE_NORMALS)
 layout(line_strip, max_vertices = 18) out;
@@ -371,7 +366,7 @@ void PerVertex(in int i, in vec3 edge_dist) {
     PassData(i);
     gl_Position = GetWVPPositon(i);
 
-    dvd_LoD = tes_ringID[i];
+    _out._LoDLevel = tes_ringID[i];
     
     gs_edgeDist = vec4(i == 0 ? edge_dist.x : 0.0,
                        i == 1 ? edge_dist.y : 0.0,
@@ -487,12 +482,10 @@ layout(early_fragment_tests) in;
 #define DIRECTIONAL_LIGHT_ONLY
 #endif //LOW_QUALITY
 
-layout(location = 10) in flat uint dvd_LoD;
-
 #if defined(TOGGLE_DEBUG)
 
-layout(location = 11) in vec3 gs_wireColor;
-layout(location = 12) noperspective in vec4 gs_edgeDist;  //w - patternValue
+layout(location = 10) in vec3 gs_wireColor;
+layout(location = 11) noperspective in vec4 gs_edgeDist;  //w - patternValue
 
 #else //TOGGLE_DEBUG
 
@@ -502,14 +495,16 @@ layout(location = 12) in vec3 tes_debugColour;
 
 #endif //TOGGLE_DEBUG
 
+#include "output.frag"
 #include "BRDF.frag"
 #include "terrainSplatting.frag"
-#include "output.frag"
 #include "terrainUtils.cmn"
 
 float _private_roughness = 0.f;
-vec3 getOMR(in NodeMaterialData matData, in vec2 uv) {
-    return vec3(1.f, 0.f, _private_roughness);
+void getOMR(in NodeMaterialData matData, in vec2 uv, inout float occlusion, inout float metallic, inout float roughness) {
+    occlusion = 1.f;
+    roughness = 0.f;
+    roughness = _private_roughness;
 }
 
 void main(void) {
@@ -519,16 +514,15 @@ void main(void) {
     _private_roughness = albedo.a;
 
     vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
-    vec3 SpecularColourOut = vec3(0.f);
 #if defined (TOGGLE_LODS)
     vec4 colourOut = vec4(0.0f);
-    switch (dvd_LoD) {
+    switch (VAR._LoDLevel) {
         case 0  : colourOut = vec4(1.0f, 0.0f, 0.0f, 1.0f); break;
         case 1  : colourOut = vec4(0.0f, 1.0f, 0.0f, 1.0f); break;
         case 2  : colourOut = vec4(0.0f, 0.0f, 1.0f, 1.0f); break;
         case 3  : colourOut = vec4(0.0f, 1.0f, 1.0f, 1.0f); break;
         case 4  : colourOut = vec4(1.0f, 0.0f, 1.0f, 1.0f); break;
-        default : colourOut = vec4(turboColormap(float(dvd_LoD)), 1.0f); break;
+        default : colourOut = vec4(turboColormap(float(VAR._LoDLevel)), 1.0f); break;
     }
 #else  //TOGGLE_LODS
 #if defined(TOGGLE_TESS_LEVEL)
@@ -542,7 +536,7 @@ void main(void) {
     }
 #else //TOGGLE_BLEND_MAP
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
-    vec4 colourOut = getPixelColour(vec4(albedo.rgb, 1.0f), data, normalWV, normalVariation, VAR._texCoord, SpecularColourOut, MetalnessRoughnessProbeID);
+    vec4 colourOut = getPixelColour(vec4(albedo.rgb, 1.0f), data, normalWV, normalVariation, VAR._texCoord, MetalnessRoughnessProbeID);
 
 #endif //TOGGLE_BLEND_MAP
 #endif //TOGGLE_TESS_LEVEL
@@ -563,5 +557,5 @@ void main(void) {
 #endif //TOGGLE_DEBUG
 
 #endif //TOGGLE_LODS
-    writeScreenColour(colourOut, normalWV, SpecularColourOut, MetalnessRoughnessProbeID);
+    writeScreenColour(colourOut, normalWV, MetalnessRoughnessProbeID);
 }

@@ -6,8 +6,8 @@
 
 layout(early_fragment_tests) in;
 
-#include "BRDF.frag"
 #include "output.frag"
+#include "BRDF.frag"
 
 void main (void) {
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
@@ -22,7 +22,6 @@ void main (void) {
     float normalVariation = 0.f;
     const vec3 normalWV = getNormalWV(VAR._texCoord, normalVariation);
     vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
-    vec3 SpecularColourOut = vec3(0.f);
-    const vec4 rgba = getPixelColour(albedo, data, normalWV, normalVariation, VAR._texCoord, SpecularColourOut, MetalnessRoughnessProbeID);
-    writeScreenColour(rgba, normalWV, SpecularColourOut, MetalnessRoughnessProbeID);
+    const vec4 rgba = getPixelColour(albedo, data, normalWV, normalVariation, VAR._texCoord, MetalnessRoughnessProbeID);
+    writeScreenColour(rgba, normalWV, MetalnessRoughnessProbeID);
 }

@@ -258,7 +258,7 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
         if (cascadeIterator > 0 && light.csmUseSceneAABBFit()[cascadeIterator]) {
             // Only meshes should be enough
             bool validResult = false;
-            auto& prevPassResults = light.feedBackContainers()[cascadeIterator]._visibleNodes;
+            auto& prevPassResults = light.feedBackContainers()[cascadeIterator];
             if (!prevPassResults.empty()) {
                 BoundingBox meshAABB = {};
                 for (auto& node : prevPassResults) {
@@ -294,7 +294,7 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
             maxExtents.z - minExtents.z
         };
 
-        mat4<F32> lightOrthoMatrix = {
+        mat4<F32> lightOrthoMatrix{
             Rect<F32>{
                 minExtents.x,
                 maxExtents.x,
@@ -381,7 +381,7 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
         if (i > 0 && dirLight.csmUseSceneAABBFit()[i]) {
             STUBBED("CascadedShadowMapsGenerator::render: Validate AABBFit for first cascade!");
             params._feedBackContainer = &dirLight.feedBackContainers()[i];
-            params._feedBackContainer->_visibleNodes.resize(0);
+            params._feedBackContainer->resize(0);
         }
 
         rpm->doCustomPass(params, bufferInOut);

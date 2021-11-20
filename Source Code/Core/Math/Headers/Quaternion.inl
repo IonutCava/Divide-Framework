@@ -272,12 +272,12 @@ Quaternion<T> Quaternion<T>::operator/(T scalar) const {
 }
 
 template <typename T>
-void Quaternion<T>::slerp(const Quaternion<T>& q, const F32 t) {
+void Quaternion<T>::slerp(const Quaternion<T>& q, const F32 t) noexcept {
     slerp(*this, q, t);
 }
 
 template <typename T>
-void Quaternion<T>::slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, const F32 t) {
+void Quaternion<T>::slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, const F32 t) noexcept {
     F32 k0 = 0.f, k1 = 0.f;
     T cosomega = q0.dot(q1);
     Quaternion<T> q;
@@ -667,7 +667,7 @@ Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>
 }
 
 template <typename T>
-Quaternion<T> Slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, F32 t) {
+Quaternion<T> Slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, F32 t) noexcept {
     Quaternion<T> temp;
     temp.slerp(q0, q1, t);
     return temp;

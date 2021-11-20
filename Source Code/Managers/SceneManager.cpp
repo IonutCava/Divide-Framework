@@ -579,12 +579,12 @@ void SceneManager::drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuf
     Attorney::SceneManager::drawCustomUI(getActiveScene(), targetViewport, bufferInOut);
 }
 
-void SceneManager::debugDraw(const RenderStagePass& stagePass, const Camera* camera, GFX::CommandBuffer& bufferInOut) {
+void SceneManager::debugDraw(const Camera* camera, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
 
     Scene& activeScene = getActiveScene();
 
-    Attorney::SceneManager::debugDraw(activeScene, camera, stagePass, bufferInOut);
+    Attorney::SceneManager::debugDraw(activeScene, camera, bufferInOut);
     // Draw bounding boxes, skeletons, axis gizmo, etc.
     _platformContext->gfx().debugDraw(activeScene.state()->renderState(), camera, bufferInOut);
 }

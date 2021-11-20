@@ -280,7 +280,6 @@ uniform bool  dvd_enableClouds;
 
 #define NEED_SCENE_DATA
 #include "sceneData.cmn"
-#include "utility.frag"
 #include "output.frag"
 
 #define UP_DIR vec3(0.f, 1.f, 0.f)
@@ -687,7 +686,7 @@ void main() {
         case DEBUG_ALBEDO:        ret = getRawAlbedo(rayDirection, lerpValue); break;
         case DEBUG_LIGHTING:      ret = getSkyColour(rayDirection, lerpValue); break;
         case DEBUG_SPECULAR:      
-        case DEBUG_KS:            ret = vec3(0.f); break;
+        case DEBUG_KS:            ret = vec3(0.f);
         case DEBUG_UV:            ret = vec3(fract(rayDirection)); break;
         case DEBUG_EMISSIVE:      ret = getSkyColour(rayDirection, lerpValue); break;
         case DEBUG_ROUGHNESS:

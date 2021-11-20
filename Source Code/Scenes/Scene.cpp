@@ -1454,7 +1454,7 @@ void Scene::drawCustomUI([[maybe_unused]] const Rect<I32>& targetViewport, GFX::
     }
 }
 
-void Scene::debugDraw(const Camera* activeCamera, const RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut) {
+void Scene::debugDraw(const Camera* activeCamera, GFX::CommandBuffer& bufferInOut) {
     if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {
         if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_OCTREE_REGIONS)) {
             _octreeBoundingBoxes.resize(0);
@@ -1487,7 +1487,7 @@ void Scene::debugDraw(const Camera* activeCamera, const RenderStagePass stagePas
 
     // Show NavMeshes
     _aiManager->debugDraw(bufferInOut, false);
-    _lightPool->drawLightImpostors(stagePass._stage, bufferInOut);
+    _lightPool->drawLightImpostors(bufferInOut);
 }
 
 bool Scene::checkCameraUnderwater(const PlayerIndex idx) const {

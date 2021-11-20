@@ -133,7 +133,7 @@ class LightPool : public SceneComponent,
 
     void uploadLightData(RenderStage stage, GFX::CommandBuffer& bufferInOut);
 
-    void drawLightImpostors(RenderStage stage, GFX::CommandBuffer& bufferInOut) const;
+    void drawLightImpostors(GFX::CommandBuffer& bufferInOut) const;
 
     void preRenderAllPasses(const Camera* playerCamera);
     void postRenderAllPasses() noexcept;

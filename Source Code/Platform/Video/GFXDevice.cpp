@@ -290,10 +290,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     //MainPass
     TextureDescriptor screenDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
     TextureDescriptor normalsAndMaterialDataDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
-    TextureDescriptor specularDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
     screenDescriptor.autoMipMaps(false);
     normalsAndMaterialDataDescriptor.mipCount(1u);
-    specularDescriptor.mipCount(1u);
 
     // Normal and MSAA
     for (U8 i = 0; i < 2; ++i) {
@@ -305,7 +303,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         depthDescriptor.msaaSamples(sampleCount);
         normalsAndMaterialDataDescriptor.msaaSamples(sampleCount);
         velocityDescriptor.msaaSamples(sampleCount);
-        specularDescriptor.msaaSamples(sampleCount);
 
         {
 
@@ -313,7 +310,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 { screenDescriptor,                 screenSampler, RTAttachmentType::Colour, to_U8(ScreenTargets::ALBEDO),   DefaultColours::DIVIDE_BLUE },
                 { velocityDescriptor,               samplerHash,   RTAttachmentType::Colour, to_U8(ScreenTargets::VELOCITY), VECTOR4_ZERO },
                 { normalsAndMaterialDataDescriptor, samplerHash,   RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES), VECTOR4_ZERO },
-                { specularDescriptor,               samplerHash,   RTAttachmentType::Colour, to_U8(ScreenTargets::SPECULAR), VECTOR4_ZERO },
                 { depthDescriptor,                  samplerHash,   RTAttachmentType::Depth }
             };
 
@@ -491,12 +487,10 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
         const RenderTarget& screenTarget = _rtPool->renderTarget(i == 0 ? RenderTargetUsage::SCREEN : RenderTargetUsage::SCREEN_MS);
         const RTAttachment_ptr& screenNormalsAttachment = screenTarget.getAttachmentPtr(RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
-        const RTAttachment_ptr& specularAttachment = screenTarget.getAttachmentPtr(RTAttachmentType::Colour, to_U8(ScreenTargets::SPECULAR));
         const RTAttachment_ptr& screenDepthAttachment = screenTarget.getAttachmentPtr(RTAttachmentType::Depth, 0);
         
         vector<ExternalRTAttachmentDescriptor> externalAttachments = {
             { screenNormalsAttachment, RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES) },
-            { specularAttachment,      RTAttachmentType::Colour, to_U8(ScreenTargets::SPECULAR) },
             { screenDepthAttachment,   RTAttachmentType::Depth }
         };
 
@@ -1460,13 +1454,14 @@ void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
             data._lightingProperties.z = 1.f; //scale
             data._lightingProperties.w = 0.f; //bias
         } else {
-            const F32 gridSizeZ = to_F32(Renderer::CLUSTER_SIZE.z);
             const F32 zFar = cameraSnapshot._zPlanes.max;
             const F32 zNear = cameraSnapshot._zPlanes.min;
-            const F32 zLogRatio = std::log2f(zFar / zNear);
 
-            data._lightingProperties.z = cameraSnapshot._isOrthoCamera ? 1.0f : gridSizeZ / zLogRatio; //scale
-            data._lightingProperties.w = cameraSnapshot._isOrthoCamera ? 0.0f : -(gridSizeZ * std::log2f(zNear) / zLogRatio); //bias
+            const F32 CLUSTERS_Z = to_F32(Renderer::CLUSTER_SIZE.z);
+            const F32 zLogRatio = std::log(zFar / zNear);
+
+            data._lightingProperties.z = CLUSTERS_Z / zLogRatio; //scale
+            data._lightingProperties.w = -(CLUSTERS_Z * std::log(zNear) / zLogRatio); //bias
         }
         needsUpdate = true;
     }
@@ -1490,12 +1485,8 @@ bool GFXDevice::setViewport(const Rect<I32>& viewport) {
     if (_api->setViewport(viewport)) {
         // Update the buffer with the new value
         _gpuBlock._data._ViewPort.set(viewport.x, viewport.y, viewport.z, viewport.w);
-        const F32 viewportWidth = to_F32(viewport.z);
-        const F32 viewportHeight= to_F32(viewport.w);
-        const F32 clusterSizeX = std::ceil(viewportWidth  / Renderer::CLUSTER_SIZE.x);
-        const F32 clusterSizeY = std::ceil(viewportHeight / Renderer::CLUSTER_SIZE.y);
-        _gpuBlock._data._lightingProperties.x = clusterSizeX;
-        _gpuBlock._data._lightingProperties.y = clusterSizeY;
+        _gpuBlock._data._lightingProperties.x = std::ceil(to_F32(viewport.z) / Renderer::CLUSTER_SIZE.x);
+        _gpuBlock._data._lightingProperties.y = std::ceil(to_F32(viewport.w) / Renderer::CLUSTER_SIZE.y);
         _gpuBlock._needsUpload = true;
         _viewport.set(viewport);
 
@@ -1791,36 +1782,32 @@ void GFXDevice::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull" });
 
     // Not worth the overhead for a handful of items and the Pre-Z pass should handle overdraw just fine
-    if (threadCount < 3u) {
-        GFX::EnqueueCommand(bufferInOut, GFX::AddDebugMessageCommand{ "Skipped. Node count too low." });
-    } else {
-        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _HIZCullPipeline });
+    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _HIZCullPipeline });
 
-        ShaderBufferBinding shaderBuffer = {};
-        shaderBuffer._binding = ShaderBufferLocation::GPU_COMMANDS;
-        shaderBuffer._buffer = bufferData._commandBuffer;
-        shaderBuffer._elementRange = { RenderStagePass::IndexForStage(stagePass) * Config::MAX_VISIBLE_NODES, cmdCount };
+    ShaderBufferBinding shaderBuffer = {};
+    shaderBuffer._binding = ShaderBufferLocation::GPU_COMMANDS;
+    shaderBuffer._buffer = bufferData._commandBuffer;
+    shaderBuffer._elementRange = { RenderStagePass::IndexForStage(stagePass) * Config::MAX_VISIBLE_NODES, cmdCount };
 
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._textureData.add(TextureEntry{ depthBuffer->data(), samplerHash, TextureUsage::UNIT0 });
-        set._buffers.add(shaderBuffer);
+    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+    set._textureData.add(TextureEntry{ depthBuffer->data(), samplerHash, TextureUsage::UNIT0 });
+    set._buffers.add(shaderBuffer);
 
-        if (bufferData._cullCounterBuffer != nullptr) {
-            ShaderBufferBinding atomicCount = {};
-            atomicCount._binding = ShaderBufferLocation::ATOMIC_COUNTER;
-            atomicCount._buffer = bufferData._cullCounterBuffer;
-            atomicCount._elementRange.set(0, 1);
-            set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
-        }
-
-        HIZPushConstantsCMDInOut._constants.set(_ID("dvd_countCulledItems"), GFX::PushConstantType::UINT, bufferData._cullCounterBuffer != nullptr ? 1u : 0u);
-        HIZPushConstantsCMDInOut._constants.set(_ID("dvd_numEntities"), GFX::PushConstantType::UINT, cmdCount);
-        HIZPushConstantsCMDInOut._constants.set(_ID("dvd_viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(depthBuffer->width(), depthBuffer->height()));
-
-        GFX::EnqueueCommand(bufferInOut, HIZPushConstantsCMDInOut);
-
-        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ threadCount, 1, 1 });
+    if (bufferData._cullCounterBuffer != nullptr) {
+        ShaderBufferBinding atomicCount = {};
+        atomicCount._binding = ShaderBufferLocation::ATOMIC_COUNTER_0;
+        atomicCount._buffer = bufferData._cullCounterBuffer;
+        atomicCount._elementRange.set(0, 1);
+        set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
     }
+
+    HIZPushConstantsCMDInOut._constants.set(_ID("dvd_countCulledItems"), GFX::PushConstantType::UINT, bufferData._cullCounterBuffer != nullptr ? 1u : 0u);
+    HIZPushConstantsCMDInOut._constants.set(_ID("dvd_numEntities"), GFX::PushConstantType::UINT, cmdCount);
+    HIZPushConstantsCMDInOut._constants.set(_ID("dvd_viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(depthBuffer->width(), depthBuffer->height()));
+
+    GFX::EnqueueCommand(bufferInOut, HIZPushConstantsCMDInOut);
+
+    GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ threadCount, 1, 1 });
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
@@ -1965,17 +1952,6 @@ void GFXDevice::initDebugViews() {
         NormalPreview->_shaderData.set(_ID("channelCount"), GFX::PushConstantType::UINT, 2u);
         NormalPreview->_shaderData.set(_ID("multiplier"), GFX::PushConstantType::FLOAT, 1.0f);  
         
-        DebugView_ptr SpecularPreview = std::make_shared<DebugView>();
-        SpecularPreview->_shader = _renderTargetDraw;
-        SpecularPreview->_texture = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SCREEN)).getAttachment(RTAttachmentType::Colour, to_U8(ScreenTargets::SPECULAR)).texture();
-        SpecularPreview->_samplerHash = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SCREEN)).getAttachment(RTAttachmentType::Colour, to_U8(ScreenTargets::SPECULAR)).samplerHash();
-        SpecularPreview->_name = "Specular";
-        SpecularPreview->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, 0.0f);
-        SpecularPreview->_shaderData.set(_ID("channelsArePacked"), GFX::PushConstantType::BOOL, false);
-        SpecularPreview->_shaderData.set(_ID("startChannel"), GFX::PushConstantType::UINT, 0u);
-        SpecularPreview->_shaderData.set(_ID("channelCount"), GFX::PushConstantType::UINT, 3u);
-        SpecularPreview->_shaderData.set(_ID("multiplier"), GFX::PushConstantType::FLOAT, 1.0f);
-
         DebugView_ptr VelocityPreview = std::make_shared<DebugView>();
         VelocityPreview->_shader = _renderTargetDraw;
         VelocityPreview->_texture = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SCREEN)).getAttachment(RTAttachmentType::Colour, to_U8(ScreenTargets::VELOCITY)).texture();
@@ -2053,7 +2029,6 @@ void GFXDevice::initDebugViews() {
         HiZView = addDebugView(HiZ);
         addDebugView(DepthPreview);
         addDebugView(NormalPreview);
-        addDebugView(SpecularPreview);
         addDebugView(VelocityPreview);
         addDebugView(SSAOPreview);
         addDebugView(AlphaAccumulationHigh);

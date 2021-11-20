@@ -29,6 +29,10 @@ void ShaderBuffer::writeData(const bufferPtr data) {
     writeBytes(0, static_cast<ptrdiff_t>(_params._elementCount * _params._elementSize), data);
 }
 
+void ShaderBuffer::clearData() {
+    clearData(0, _params._elementCount);
+}
+
 void ShaderBuffer::clearData(const U32 offsetElementCount, const U32 rangeElementCount) {
 
     clearBytes(static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),

@@ -127,13 +127,22 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
     { //PostFX should be pretty fast
         PostFX& postFX = _context.getRenderer().postFX();
         _renderTasks[_renderPassCount] = CreateTask(nullptr,
-            [buf = _renderPassCommandBuffer[_renderPassCount], &postFX, cam, timer = _postFxRenderTimer](const Task& /*parentTask*/) {
+            [buf = _renderPassCommandBuffer[_renderPassCount], sceneManager = parent().sceneManager(), &postFX, cam, timer = _postFxRenderTimer](const Task& /*parentTask*/) {
                 OPTICK_EVENT("PostFX: BuildCommandBuffer");
 
                 buf->clear(false);
 
+                const auto screenTargetCallback = [&sceneManager, cam, buf]() {
+                    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(*buf)->_scopeName = "Debug Draw Pass";
+                    GFX::EnqueueCommand(*buf, GFX::PushCameraCommand{ cam->snapshot() });
+                    Attorney::SceneManagerRenderPass::debugDraw(sceneManager, cam, *buf);
+                    GFX::EnqueueCommand(*buf, GFX::PopCameraCommand{});
+                    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(*buf);
+                };
+
                 Time::ScopedTimer time(*timer);
-                postFX.apply(cam, *buf);
+                postFX.apply(cam, screenTargetCallback, *buf);
+
                 buf->batch();
             },
             false);

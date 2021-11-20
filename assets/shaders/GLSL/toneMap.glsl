@@ -3,7 +3,6 @@
 #include "sceneData.cmn"
 #include "utility.frag"
 layout(binding = TEXTURE_UNIT0)         uniform sampler2D texScreen;
-layout(binding = TEXTURE_UNIT1)         uniform sampler2D texSpecular;
 layout(binding = TEXTURE_OPACITY)       uniform sampler2D texSSAO;
 layout(binding = TEXTURE_PROJECTION)    uniform sampler2D texSSR;
 layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texNormalsAndMatData;
@@ -28,14 +27,29 @@ vec3 applyFog(in vec3  rgb,      // original color of the pixel
     return mix(rgb, dvd_fogDetails._colourAndDensity.rgb, fogAmount);
 }
 
+float fresnel(vec3 V, vec3 N) {
+    const vec3 H = normalize(N + V);
+    #define fresnelExp 5.0
+    float cosine = dot(H, V);
+    float product = max(cosine, 0.0);
+    float factor = 1.0 - pow(product, fresnelExp);
+
+    return factor;
+}
+
+vec3 computeFresnelSchlickRoughness(in vec3 H, in vec3 V, in vec3 F0, in float roughness) {
+    const float cosTheta = saturate(dot(H, V));
+    return F0 + (max(vec3(1.f - roughness), F0) - F0) * pow(1.f - cosTheta, 5.f);
+}
+
 void main() {
     vec4 albedo = texture(texScreen, VAR._texCoord);
 
-    if (enableFog) {
-        const float depth = texture(texDepth, VAR._texCoord).r;
-        const vec3 vsPos = ViewSpacePos(VAR._texCoord, depth, invProjectionMatrix);
-        const vec3 worldPos = (invViewMatrix * vec4(vsPos.xyz, 1.f)).xyz;
+    const float depth = texture(texDepth, VAR._texCoord).r;
+    const vec3 vsPos = ViewSpacePos(VAR._texCoord, depth, invProjectionMatrix);
+    const vec3 worldPos = (invViewMatrix * vec4(vsPos.xyz, 1.f)).xyz;
 
+    if (enableFog) {
         albedo.rgb = applyFog(albedo.rgb,
                               distance(worldPos, cameraPosition),
                               cameraPosition,
@@ -48,10 +62,21 @@ void main() {
         return;
     }
 
-    const float ssao = texture(texSSAO, VAR._texCoord).r;
-    const vec3 reflection = texture(texSSR, VAR._texCoord).rgb;
-    const vec3 kS = texture(texSpecular, VAR._texCoord).rgb;
-    const float metalness = unpackVec2(matData.b).x;
+    const vec2 MR = unpackVec2(matData.b);
+    const vec3 normalWV = normalize(unpackNormal(matData.rg));
+    const vec3 N = (invViewMatrix * vec4(normalWV, 0.f)).xyz;
+    const vec3 V = normalize(cameraPosition - worldPos);
+
+    const float metalness = MR.x;
+    const float roughness = MR.y;
+#if 0
+    const vec3 kS = fresnel(V, N);
+#else 
+    const vec3 dielectricSpecular = vec3(0.04f);
+    const vec3 F0 = mix(dielectricSpecular, albedo.rgb, metalness);
+    const vec3 H = normalize(N + V);
+    const vec3 kS = computeFresnelSchlickRoughness(H, V, F0, roughness);
+#endif
 
     // Energy conservation
     vec3 kD = vec3(1.f) - kS;
@@ -59,9 +84,12 @@ void main() {
 
     // Diffuse irradience computation
     const vec3 diffuseIrradiance = albedo.rgb;
+
     // Specular radiance computation
+    const vec3 reflection = texture(texSSR, VAR._texCoord).rgb;
     const vec3 specularRadiance = reflection * kS;
 
+    const float ssao = texture(texSSAO, VAR._texCoord).r;
     const vec3 ambientIBL = ssao * (kD * diffuseIrradiance + specularRadiance);
 
     _colourOut = vec4(ambientIBL, 1.f);

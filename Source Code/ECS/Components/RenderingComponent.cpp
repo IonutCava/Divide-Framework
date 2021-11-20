@@ -416,7 +416,16 @@ void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, co
     }
 }
 
+U8 RenderingComponent::getLoDLevel(const RenderStage renderStage) const noexcept {
+    const auto& [_, level] = _lodLockLevels[to_base(renderStage)];
+    return CLAMPED(level, to_U8(0u), MAX_LOD_LEVEL);
+}
+
 U8 RenderingComponent::getLoDLevel(const F32 distSQtoCenter, const RenderStage renderStage, const vec4<U16>& lodThresholds) {
+    return getLoDLevelInternal(distSQtoCenter, renderStage, lodThresholds);
+}
+
+U8 RenderingComponent::getLoDLevelInternal(const F32 distSQtoCenter, const RenderStage renderStage, const vec4<U16>& lodThresholds) {
     const auto&[state, level] = _lodLockLevels[to_base(renderStage)];
 
     if (state) {
@@ -454,7 +463,7 @@ void RenderingComponent::prepareDrawPackage(const Camera& camera, const SceneRen
             const BoundingBox& aabb = bComp->getBoundingBox();
             const vec3<F32> LoDtarget = renderState.useBoundsCenterForLoD() ? aabb.getCenter() : aabb.nearestPoint(cameraEye);
             const F32 distanceSQToCenter = LoDtarget.distanceSquared(cameraEye);
-            _lodLevels[to_base(renderStagePass._stage)] = getLoDLevel(distanceSQToCenter, renderStagePass._stage, sceneRenderState.lodThresholds(renderStagePass._stage));
+            _lodLevels[to_base(renderStagePass._stage)] = getLoDLevelInternal(distanceSQToCenter, renderStagePass._stage, sceneRenderState.lodThresholds(renderStagePass._stage));
         }
     }
 

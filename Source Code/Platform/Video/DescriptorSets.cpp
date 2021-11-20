@@ -189,55 +189,37 @@ namespace Divide {
         const size_t rhsCount = rhs.count();
 
         if (lhsCount != rhsCount) {
+            // Easy: different texture count
             return false;
         }
 
+        // Hard. See if texture data matches
         const auto & lhsTextures = lhs._entries;
         const auto & rhsTextures = rhs._entries;
 
-        bool foundEntry = false;
-        for (size_t i = 0; i < lhsCount; ++i) {
-            const auto & lhsEntry = lhsTextures[i];
+        for (size_t i = 0u; i < lhsCount; ++i) {
+            bool found = false;
+            const TextureEntry& lhsEntry = lhsTextures[i];
 
-            for (const TextureEntry& rhsEntry : rhsTextures) {
-                if (rhsEntry._binding == lhsEntry._binding) {
-                    if (lhsEntry != rhsEntry) {
-                        return false;
-                    }
-                    foundEntry = true;
+            for (size_t j = 0u; j < rhsCount; ++j) {
+                const TextureEntry& rhsEntry = rhsTextures[j];
+                if (lhsEntry == rhsEntry) {
+                    found = true;
+                    break;
                 }
+            }
+
+            if (!found) {
+                return false;
             }
         }
 
-        return foundEntry;
+        return true;
     }
 
     bool operator!=(const TextureDataContainer & lhs, const TextureDataContainer & rhs) {
-        const size_t lhsCount = lhs.count();
-        const size_t rhsCount = rhs.count();
-
-        if (lhsCount != rhsCount) {
-            return true;
-        }
-
-        const auto & lhsTextures = lhs._entries;
-        const auto & rhsTextures = rhs._entries;
-
-        bool foundEntry = false;
-        for (size_t i = 0; i < lhsCount; ++i) {
-            const auto & lhsEntry = lhsTextures[i];
-
-            for (const auto& rhsEntry : rhsTextures) {
-                if (rhsEntry._binding == lhsEntry._binding) {
-                    if (lhsEntry != rhsEntry) {
-                        return true;
-                    }
-                    foundEntry = true;
-                }
-            }
-        }
-
-        return !foundEntry;
+        // I know ... This is bad. But the logic is complex enough as it is
+        return !(lhs == rhs);
     }
 
     bool operator==(const DescriptorSet &lhs, const DescriptorSet &rhs) {

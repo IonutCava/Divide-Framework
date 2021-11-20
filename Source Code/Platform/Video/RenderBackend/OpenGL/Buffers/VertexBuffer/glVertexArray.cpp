@@ -222,9 +222,9 @@ bool glVertexArray::refresh() {
     // entire buffer.
     const bool sizeChanged = totalSize != _prevSize;
     bool needsReallocation = false;
-    const U32 countRequirement = GLUtil::VBO::getChunkCountForSize(totalSize);
+    const U32 countRequirement = GLUtil::VBO::GetChunkCountForSize(totalSize);
     if (sizeChanged) {
-        needsReallocation = countRequirement > GLUtil::VBO::getChunkCountForSize(_prevSize);
+        needsReallocation = countRequirement > GLUtil::VBO::GetChunkCountForSize(_prevSize);
         _prevSize = totalSize;
     }
 

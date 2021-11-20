@@ -49,8 +49,8 @@ void main() {
 
 -- Fragment
 
-#include "utility.frag"
 #if defined(PRE_PASS)
+#include "utility.frag"
 #include "prePass.frag"
 #else
 #include "output.frag"

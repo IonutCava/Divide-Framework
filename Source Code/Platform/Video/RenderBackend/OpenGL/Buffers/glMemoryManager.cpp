@@ -197,15 +197,8 @@ void DeviceAllocator::deallocate() {
 
 static vector<VBO> g_globalVBOs;
 
-U32 VBO::getChunkCountForSize(const size_t sizeInBytes) noexcept {
+U32 VBO::GetChunkCountForSize(const size_t sizeInBytes) noexcept {
     return to_U32(std::ceil(to_F32(sizeInBytes) / MAX_VBO_CHUNK_SIZE_BYTES));
-}
-
-VBO::VBO()  noexcept
-    : _handle(0),
-      _usage(GL_NONE),
-      _filledManually(false)
-{
 }
 
 void VBO::freeAll() {
@@ -213,13 +206,7 @@ void VBO::freeAll() {
     _usage = GL_NONE;
 }
 
-U32 VBO::handle() const noexcept {
-    return _handle;
-}
-
 bool VBO::checkChunksAvailability(const size_t offset, const U32 count, U32& chunksUsedTotal) noexcept {
-    assert(MAX_VBO_CHUNK_COUNT > offset + count);
-
     U32 freeChunkCount = 0;
     chunksUsedTotal = _chunkUsageState[offset].second;
     if (!_chunkUsageState[offset].first) {
@@ -239,7 +226,7 @@ bool VBO::checkChunksAvailability(const size_t offset, const U32 count, U32& chu
 bool VBO::allocateChunks(const U32 count, const GLenum usage, size_t& offsetOut) {
     if (_usage == GL_NONE || _usage == usage) {
         U32 crtOffset = 0u;
-        for (U32 i = 0; i < MAX_VBO_CHUNK_COUNT; ++i) {
+        for (U32 i = 0; i < (MAX_VBO_CHUNK_COUNT - count); ++i) {
             if (checkChunksAvailability(i, count, crtOffset)) {
                 if (_handle == 0) {
                     createAndAllocBuffer(MAX_VBO_SIZE_BYTES, usage, _handle, { nullptr, 0u }, Util::StringFormat("VBO_CHUNK_%d", i).c_str());

@@ -12,7 +12,7 @@
 #include "sceneData.cmn"
 #include "lightingDefaults.vert"
 
-layout(location = 0) flat out uvec2 _layerAndLoD;
+layout(location = 0) flat out uint  _layer;
 layout(location = 1) flat out uint  _instanceID;
 layout(location = 2)      out float _alphaFactor;
 layout(location = 3)      out mat3  _tbnWV;
@@ -50,11 +50,11 @@ void main() {
 
     _alphaFactor = saturate(data.data.z);
 
-    _layerAndLoD.x = uint(data.data.x);
-    _layerAndLoD.y = uint(data.data.y);
+    _layer = uint(data.data.x);
+    VAR._LoDLevel = uint(data.data.y);
 
     const float timeGrass = dvd_windDetails.w * MSToSeconds(dvd_time) * 0.5f;
-    const bool animate = _layerAndLoD.y < 2u && dvd_Vertex.y > 0.5f;
+    const bool animate = VAR._LoDLevel < 2u && dvd_Vertex.y > 0.5f;
 
     const float height = dvd_Vertex.y;
     dvd_Vertex.xyz *= scale;
@@ -109,10 +109,9 @@ layout(early_fragment_tests) in;
 //#define DEBUG_LODS
 
 #include "BRDF.frag"
-#include "utility.frag"
 #include "output.frag"
 
-layout(location = 0) flat in uvec2 _layerAndLoD;
+layout(location = 0) flat in uint  _layer;
 layout(location = 1) flat in uint  _instanceID;
 layout(location = 2)      in float _alphaFactor;
 layout(location = 3)      in mat3  _tbnWV;
@@ -124,8 +123,7 @@ mat3 getTBNWV() {
 void main (void){
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 
-    const uint LoD = _layerAndLoD.y;
-    vec4 albedo = texture(texDiffuse0, vec3(VAR._texCoord, _layerAndLoD.x));
+    vec4 albedo = texture(texDiffuse0, vec3(VAR._texCoord, _layer));
 
     if (_instanceID % 3 == 0) {
         albedo.rgb = overlayVec(albedo.rgb, vec3(0.9f, 0.85f, 0.55f));
@@ -134,13 +132,13 @@ void main (void){
     }
 
 #if defined(DEBUG_LODS)
-    if (LoD == 0) {
+    if (VAR._LoDLevel == 0) {
         albedo.rgb = vec3(1.f, 0.f, 0.f);
-    } else if (LoD == 1) {
+    } else if (VAR._LoDLevel == 1) {
         albedo.rgb = vec3(0.f, 1.f, 0.f);
-    } else if (LoD == 2) {
+    } else if (VAR._LoDLevel == 2) {
         albedo.rgb = vec3(0.f, 0.f, 1.f);
-    } else if (LoD == 3) {
+    } else if (VAR._LoDLevel == 3) {
         albedo.rgb = vec3(1.f, 0.f, 1.f);
     } else {
         albedo.rgb = vec3(0.f, 1.f, 1.f);
@@ -152,11 +150,10 @@ void main (void){
 
     vec4 colour = vec4(albedo.rgb, min(albedo.a, _alphaFactor));
     vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
-    vec3 SpecularColourOut = vec3(0.f);
     if (albedo.a >= Z_TEST_SIGMA) {
-        colour = getPixelColour(LoD, albedo, data, normalWV, normalVariation, VAR._texCoord, SpecularColourOut, MetalnessRoughnessProbeID);
+        colour = getPixelColour(albedo, data, normalWV, normalVariation, VAR._texCoord, MetalnessRoughnessProbeID);
     }
-    writeScreenColour(colour, normalWV, SpecularColourOut, MetalnessRoughnessProbeID);
+    writeScreenColour(colour, normalWV, MetalnessRoughnessProbeID);
 }
 
 --Fragment.PrePass
@@ -168,19 +165,19 @@ void main (void){
 #define NO_VELOCITY
 #include "prePass.frag"
 
-layout(location = 0) flat in uvec2 _layerAndLoD;
+layout(location = 0) flat in uint  _layer;
 layout(location = 1) flat in uint  _instanceID;
 layout(location = 2)      in float _alphaFactor;
 layout(location = 3)      in mat3  _tbnWV;
 
 void main() {
-    const float albedoAlpha = texture(texDiffuse0, vec3(VAR._texCoord, _layerAndLoD.x)).a * _alphaFactor;
+    const float albedoAlpha = texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a * _alphaFactor;
     writeGBuffer(albedoAlpha);
 }
 
 --Fragment.Shadow.VSM
 
-layout(location = 0) flat in uvec2 _layerAndLoD;
+layout(location = 0) flat in uint  _layer;
 layout(location = 1) flat in uint  _instanceID;
 layout(location = 2)      in float _alphaFactor;
 layout(location = 3)      in mat3  _tbnWV;
@@ -191,7 +188,7 @@ layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 out vec2 _colourOut;
 
 void main(void) {
-    const float albedoAlpha = texture(texDiffuse0, vec3(VAR._texCoord, _layerAndLoD.x)).a;
+    const float albedoAlpha = texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a;
     // Only discard alhpa == 0
     if (albedoAlpha < Z_TEST_SIGMA) {
         discard;

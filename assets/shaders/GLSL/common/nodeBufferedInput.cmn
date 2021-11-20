@@ -22,10 +22,12 @@ layout(binding = BUFFER_NODE_INDIRECTION_DATA, std430) coherent ACCESS_R buffer 
 
 #endif //VERT_SHADER
 
+#if !defined(FRAG_SHADER)
 layout(binding = BUFFER_NODE_TRANSFORM_DATA, std430) coherent ACCESS_R buffer dvd_TransformBlock
 {
     NodeTransformData dvd_Transforms[];
 };
+#endif //!FRAG_SHADER
 
 #if defined(FRAG_SHADER) || defined(NEED_MATERIAL_DATA)
 layout(binding = BUFFER_NODE_MATERIAL_DATA, std430) coherent ACCESS_R buffer dvd_MaterialBlock 

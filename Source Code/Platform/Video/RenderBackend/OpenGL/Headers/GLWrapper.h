@@ -190,6 +190,7 @@ protected:
     static GLuint s_maxAttribBindings;
 
 public:
+    static GLuint s_maxAtomicBufferBindingIndices;
     /// Max number of texture attachments to an FBO
     static GLuint s_maxFBOAttachments;
     /// Shader block data
@@ -244,6 +245,11 @@ private:
     static GLuint s_dummyVAO;
     /// Maximum anisotropic filtering level
     static GLuint s_maxAnisotropicFilteringLevel;
+    /// Maximum wourkgroup info
+    static GLuint s_maxWorgroupInvocations;
+    static GLuint s_maxWorgroupCount[3];
+    static GLuint s_maxWorgroupSize[3];
+    static GLuint s_maxComputeSharedMemory;
     /// /*sampler hash value*/ /*sampler object*/
     using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
 

@@ -487,10 +487,13 @@ namespace Divide {
     }
 
     vec3<F32> TransformComponent::getPosition() const noexcept {
+        if (_cacheDirty) {
+            return getPositionInternal();
+        }
         return _cachedTransform._translation;
     }
 
-    vec3<F32> TransformComponent::getPositionInternal() const {
+    vec3<F32> TransformComponent::getPositionInternal() const noexcept {
         const SceneGraphNode* grandParent = _parentSGN->parent();
         if (grandParent != nullptr) {
             return getLocalPosition() + grandParent->get<TransformComponent>()->getPositionInternal();
@@ -499,7 +502,7 @@ namespace Divide {
         return getLocalPosition();
     }
 
-    vec3<F32> TransformComponent::getPosition(const D64 interpolationFactor) const {
+    vec3<F32> TransformComponent::getPosition(const D64 interpolationFactor) const noexcept {
         const SceneGraphNode* grandParent = _parentSGN->parent();
         if (grandParent != nullptr) {
             return getLocalPosition(interpolationFactor) + grandParent->get<TransformComponent>()->getPosition(interpolationFactor);
@@ -509,10 +512,14 @@ namespace Divide {
     }
 
     vec3<F32> TransformComponent::getScale() const noexcept {
+        if (_cacheDirty) {
+            return getScaleInternal();
+        }
+
         return _cachedTransform._scale;
     }
 
-    vec3<F32> TransformComponent::getScaleInternal() const {
+    vec3<F32> TransformComponent::getScaleInternal() const noexcept {
         const SceneGraphNode* grandParent = _parentSGN->parent();
         if (grandParent != nullptr) {
             return getLocalScale() * grandParent->get<TransformComponent>()->getScaleInternal();
@@ -521,7 +528,7 @@ namespace Divide {
         return getLocalScale();
     }
 
-    vec3<F32> TransformComponent::getScale(const D64 interpolationFactor) const {
+    vec3<F32> TransformComponent::getScale(const D64 interpolationFactor) const noexcept {
         const SceneGraphNode* grandParent = _parentSGN->parent();
         if (grandParent != nullptr) {
             return getLocalScale(interpolationFactor) * grandParent->get<TransformComponent>()->getScale(interpolationFactor);
@@ -531,10 +538,14 @@ namespace Divide {
     }
 
     Quaternion<F32> TransformComponent::getOrientation() const noexcept {
+        if (_cacheDirty) {
+            return getOrientationInternal();
+        }
+
         return _cachedTransform._orientation;
     }
 
-    Quaternion<F32> TransformComponent::getOrientationInternal() const {
+    Quaternion<F32> TransformComponent::getOrientationInternal() const noexcept {
         const SceneGraphNode* grandParent = _parentSGN->parent();
         if (grandParent != nullptr) {
             return grandParent->get<TransformComponent>()->getOrientationInternal() * getLocalOrientation();
@@ -543,7 +554,7 @@ namespace Divide {
         return getLocalOrientation();
     }
 
-    Quaternion<F32> TransformComponent::getOrientation(const D64 interpolationFactor) const {
+    Quaternion<F32> TransformComponent::getOrientation(const D64 interpolationFactor) const noexcept {
         const SceneGraphNode* grandParent = _parentSGN->parent();
         if (grandParent != nullptr) {
             return grandParent->get<TransformComponent>()->getOrientation(interpolationFactor) * getLocalOrientation(interpolationFactor);
@@ -552,26 +563,26 @@ namespace Divide {
         return getLocalOrientation(interpolationFactor);
     }
 
-    vec3<F32> TransformComponent::getLocalPosition() const {
+    vec3<F32> TransformComponent::getLocalPosition() const noexcept {
         SharedLock<SharedMutex> r_lock(_lock);
         return _transformInterface.getValuesRef()._translation;
     }
 
-    vec3<F32> TransformComponent::getLocalScale() const {
+    vec3<F32> TransformComponent::getLocalScale() const noexcept {
         SharedLock<SharedMutex> r_lock(_lock);
         return _transformInterface.getValuesRef()._scale;
     }
 
-    Quaternion<F32> TransformComponent::getLocalOrientation() const {
+    Quaternion<F32> TransformComponent::getLocalOrientation() const noexcept {
         SharedLock<SharedMutex> r_lock(_lock);
         return _transformInterface.getValuesRef()._orientation;
     }
 
-    vec3<F32> TransformComponent::getLocalPosition(const D64 interpolationFactor) const {
+    vec3<F32> TransformComponent::getLocalPosition(const D64 interpolationFactor) const noexcept {
         return Lerp(_prevTransformValues._translation, getLocalPosition(), to_F32(interpolationFactor));
     }
 
-    vec3<F32> TransformComponent::getLocalScale(const D64 interpolationFactor) const {
+    vec3<F32> TransformComponent::getLocalScale(const D64 interpolationFactor) const  noexcept {
         return Lerp(_prevTransformValues._scale, getLocalScale(), to_F32(interpolationFactor));
     }
 
@@ -587,24 +598,24 @@ namespace Divide {
         return Rotate(WORLD_X_AXIS, getOrientation());
     }
 
-    Quaternion<F32> TransformComponent::getLocalOrientation(const D64 interpolationFactor) const {
+    Quaternion<F32> TransformComponent::getLocalOrientation(const D64 interpolationFactor) const noexcept {
         return Slerp(_prevTransformValues._orientation, getLocalOrientation(), to_F32(interpolationFactor));
     }
 
     // Transform interface access
-    void TransformComponent::getScale(vec3<F32>& scaleOut) const {
+    void TransformComponent::getScale(vec3<F32>& scaleOut) const noexcept {
         SharedLock<SharedMutex> r_lock(_lock);
 
         _transformInterface.getScale(scaleOut);
     }
 
-    void TransformComponent::getPosition(vec3<F32>& posOut) const {
+    void TransformComponent::getPosition(vec3<F32>& posOut) const noexcept {
         SharedLock<SharedMutex> r_lock(_lock);
 
         _transformInterface.getPosition(posOut);
     }
 
-    void TransformComponent::getOrientation(Quaternion<F32>& quatOut) const {
+    void TransformComponent::getOrientation(Quaternion<F32>& quatOut) const noexcept {
         SharedLock<SharedMutex> r_lock(_lock);
 
         _transformInterface.getOrientation(quatOut);

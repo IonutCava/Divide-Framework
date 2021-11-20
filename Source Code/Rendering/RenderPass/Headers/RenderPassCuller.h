@@ -77,10 +77,7 @@ struct VisibleNode {
     bool _materialReady = true;
 };
 
-struct FeedBackContainer
-{
-    vector<VisibleNode> _visibleNodes;
-};
+using FeedBackContainer = vector_fast<VisibleNode>;
 
 template<size_t N = Config::MAX_VISIBLE_NODES>
 struct VisibleNodeList

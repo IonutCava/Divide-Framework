@@ -86,8 +86,7 @@ void main()
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 
     vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
-    vec3 SpecularColourOut = vec3(0.f);
-    const vec4 outColour = getPixelColour(vec4(texColour, 1.0f), data, normalWV, normalVariation, VAR._texCoord, SpecularColourOut, MetalnessRoughnessProbeID);
+    const vec4 outColour = getPixelColour(vec4(texColour, 1.0f), data, normalWV, normalVariation, VAR._texCoord, MetalnessRoughnessProbeID);
 
     // Guess work based on what "look right"
     const float lerpValue = saturate(2.95f * (dvd_sunDirection.y + 0.15f));
@@ -99,5 +98,5 @@ void main()
     const float specular = dot(normalize(reflection), incident);
     // Increase the specular light by the shininess value and add the specular to the final color.
     // Check to make sure the specular was positive so we aren't adding black spots to the water.
-    writeScreenColour(outColour + (specular > 0.f ? pow(specular, _specularShininess) : 0.f), normalWV, SpecularColourOut, MetalnessRoughnessProbeID);
+    writeScreenColour(outColour + (specular > 0.f ? pow(specular, _specularShininess) : 0.f), normalWV, MetalnessRoughnessProbeID);
 }

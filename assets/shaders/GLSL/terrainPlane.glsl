@@ -34,7 +34,6 @@ layout(early_fragment_tests) in;
 
 layout(location = 0) in vec4 _scrollingUV;
 
-#include "utility.frag"
 #include "output.frag"
 
 layout(binding = TEXTURE_UNIT0) uniform sampler2D texWaterCaustics;

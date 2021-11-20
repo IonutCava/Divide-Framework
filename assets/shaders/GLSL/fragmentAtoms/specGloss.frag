@@ -8,7 +8,7 @@
 //   lightColour = the colour of the light we're computing the BRDF factors for
 //   lightAttenuation = attenuation factor to multiply the light's colour by (includes shadow, distance fade, etc)
 //   ndl       = dot(normal,lightVec) [M_EPSILON,1.0f]
-//   properties = material properties value for the target pixel (base colour, OMR, spec value, etc)
+//   material = material value for the target pixel (base colour, OMR, spec value, etc)
 vec3 GetBRDF(in vec3 L,
              in vec3 V,
              in vec3 N,
@@ -16,12 +16,12 @@ vec3 GetBRDF(in vec3 L,
              in float lightAttenuation,
              in float ndl,
              in float ndv,
-             in NodeMaterialProperties properties) 
+             in PBRMaterial material)
 {
     if (ndl > M_EPSILON) {
-        const vec3 diffColour = properties._albedo;
-        const float occlusion = properties._OMR[0];
-        const vec4 specColour = properties._specular;
+        const vec3 diffColour = material._diffuseColour;
+        const float occlusion = material._occlusion;
+        const vec4 specColour = material._specular;
 
         const vec3 H = normalize(V + L);
 

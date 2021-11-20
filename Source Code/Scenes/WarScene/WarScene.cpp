@@ -158,7 +158,7 @@ void WarScene::toggleTerrainMode() {
     _terrainMode = !_terrainMode;
 }
 
-void WarScene::debugDraw(const Camera* activeCamera, const RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut) {
+void WarScene::debugDraw(const Camera* activeCamera, GFX::CommandBuffer& bufferInOut) {
     if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_CUSTOM_PRIMITIVES)) {
         if (!_targetLines) {
             _targetLines = _context.gfx().newIMP();
@@ -176,7 +176,7 @@ void WarScene::debugDraw(const Camera* activeCamera, const RenderStagePass stage
     } else if (_targetLines) {
         _context.gfx().destroyIMP(_targetLines);
     }
-    Scene::debugDraw(activeCamera, stagePass, bufferInOut);
+    Scene::debugDraw(activeCamera, bufferInOut);
 }
 
 void WarScene::processTasks(const U64 deltaTimeUS) {
@@ -207,35 +207,35 @@ void WarScene::processTasks(const U64 deltaTimeUS) {
     const size_t lightCount = _lightNodeTransforms.size();
     if (!initPosSetLight) {
         initPosLight.resize(lightCount);
-        for (U8 i = 0; i < lightCount; ++i) {
+        for (size_t i = 0u; i < lightCount; ++i) {
             initPosLight[i].set(_lightNodeTransforms[i]->getPosition());
         }
         initPosSetLight = true;
     }
 
     if (_taskTimers[3] >= updateLights) {
-        constexpr F32 radius = 20;
-        constexpr F32 halfRadius = radius * 0.5f;
+        constexpr F32 radius = 150.f;
+        constexpr F32 height = 25.f;
 
         phiLight += 0.01f;
         if (phiLight > 360.0f) {
             phiLight = 0.0f;
         }
 
-        const F32 s1 = std::sin(phiLight);
-        const F32 c1 = std::cos(phiLight);
+        const F32 s1 = std::sin( phiLight);
+        const F32 c1 = std::cos( phiLight);
         const F32 s2 = std::sin(-phiLight);
         const F32 c2 = std::cos(-phiLight);
         
-        for (size_t i = 0; i < lightCount; ++i) {
+        for (size_t i = 0u; i < lightCount; ++i) {
             const F32 c = i % 2 == 0 ? c1 : c2;
             const F32 s = i % 2 == 0 ? s1 : s2;
 
             const vec3<F32>& initPos = initPosLight[i];
             _lightNodeTransforms[i]->setPosition(
-                radius * c + initPos.x,
-                halfRadius * s + initPos.y,
-                radius * s + initPos.z
+                radius  * c + initPos.x,
+                height  * s + initPos.y,
+                radius  * s + initPos.z
             );
         }
         _taskTimers[3] = 0.0;
@@ -290,7 +290,7 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
         }
 
         SceneGraphNode* particles = _particleEmitter;
-        const F32 radius = 20;
+        const F32 radius = 200;
 
         if (particles) {
             phi += 0.001f;

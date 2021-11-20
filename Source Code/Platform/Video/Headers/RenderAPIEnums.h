@@ -193,8 +193,7 @@ enum class AttribLocation : U8 {
 };
 
 enum class ShaderBufferLocation : U8 {
-    ATOMIC_COUNTER = 0,
-    GPU_BLOCK,
+    GPU_BLOCK = 0,
     GPU_COMMANDS,
     LIGHT_NORMAL,
     LIGHT_SCENE,
@@ -215,7 +214,13 @@ enum class ShaderBufferLocation : U8 {
     CMD_BUFFER,
     LUMINANCE_HISTOGRAM,
     COUNT,
-    UNIFORM_BLOCK = COUNT
+    UNIFORM_BLOCK = COUNT,
+
+    ATOMIC_COUNTER_0 = 0,
+    ATOMIC_COUNTER_1 = 1,
+    ATOMIC_COUNTER_2 = 2,
+    ATOMIC_COUNTER_3 = 3,
+    ATOMIC_COUNTER_4 = 4,
 };
 
 enum class RenderStage : U8 {
@@ -543,6 +548,7 @@ enum class BufferUpdateUsage : U8 {
     CPU_W_GPU_R = 0, //DRAW
     CPU_R_GPU_W = 1, //READ
     GPU_R_GPU_W = 2, //COPY
+    GPU_W_CPU_R = GPU_R_GPU_W, //COPY? Again?
     COUNT
 };
 

@@ -1,7 +1,29 @@
+--Compute.ResetCounter
+
+layout(binding = BUFFER_LIGHT_INDEX_COUNT, std430) COMP_ONLY_W buffer globalIndexCountSSBO {
+    uint globalIndexCount[];
+};
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    if (gl_GlobalInvocationID.x == 0)
+    {
+        // reset the atomic counter for the light grid generation
+        // writable compute buffers can't be updated by CPU so do it here
+        globalIndexCount[0] = 0;
+    }
+}
+
 --Compute
 
 //Most of the stuff is from here:https://github.com/Angelo1211/HybridRenderingEngine/blob/master/assets/shaders/ComputeShaders/clusterCullLightShader.comp
-//With a lot of : https://github.com/pezcode/Cluster
+//With a lot of : https://github.com/pezcode/Cluster :
+
+// compute shader to cull lights against cluster bounds
+// builds a light grid that holds indices of lights for each cluster
+// largely inspired by http://www.aortiz.me/2018/12/21/CG.html
+
 #define USE_LIGHT_CLUSTERS
 #include "lightInput.cmn"
 
@@ -11,50 +33,52 @@ layout(binding = BUFFER_LIGHT_INDEX_COUNT, std430) COMP_ONLY_RW buffer globalInd
 
 #define GROUP_SIZE (CLUSTERS_X_THREADS * CLUSTERS_Y_THREADS * CLUSTERS_Z_THREADS)
 
-struct TempLight
-{
-    vec3 position;
-    float radius;
-    uint type;
-};
-
 // check if light radius extends into the cluster
-bool lightIntersectsCluster(TempLight light, VolumeTileAABB cluster) {
-
+bool lightIntersectsCluster(in vec3 clusterMin, in vec3 clusterMax, in vec4 light) {
     // NOTE: expects light.position to be in view space like the cluster bounds
     // global light list has world space coordinates, but we transform the
     // coordinates in the shared array of lights after copying
 
-    // only add distance in either dimension if it's outside the bounding box
-    const vec3 belowDist = cluster.minPoint.xyz - light.position;
-    const vec3 aboveDist = light.position - cluster.maxPoint.xyz;
-
-    const vec3 isBelow = vec3(greaterThan(belowDist, vec3(0.0)));
-    const vec3 isAbove = vec3(greaterThan(aboveDist, vec3(0.0)));
-
-    const vec3 distSqVec = (isBelow * belowDist) + (isAbove * aboveDist);
-    const float distsq = dot(distSqVec, distSqVec);
-
-    return distsq <= SQUARED(light.radius);
+    // get closest point to sphere center
+    const vec3 dist = max(clusterMin, min(light.xyz, clusterMax)) - light.xyz;
+    // check if point is inside the sphere
+    return dot(dist, dist) <= SQUARED(light.w);
 }
 
-void clearLightListForCluster(in uint clusterIndex)
-{
-    lightGrid[clusterIndex].offset = 0u;
-    lightGrid[clusterIndex].countPoint = 0u;
-    lightGrid[clusterIndex].countSpot = 0u;
-}
+// light cache for the current workgroup
+// group shared memory has lower latency than global memory
 
-shared TempLight sharedLights[GROUP_SIZE];
-void computeLightList(in uint clusterIndex, in uint lightCount)
-{
-    uint visibleLights[2][MAX_LIGHTS_PER_CLUSTER];
-    uint visibleCount[2];
+// there's no guarantee on the available shared memory
+// as a guideline the minimum value of GL_MAX_COMPUTE_SHARED_MEMORY_SIZE is 32KB
+// with a workgroup size of 16*8*4 this is 64 bytes per light
+// however, using all available memory would limit the compute shader invocation to only 1 workgroup
+shared vec4 sharedLights[GROUP_SIZE];
 
-    visibleCount[0] = visibleCount[1] = 0u;
+// each thread handles one cluster
+layout(local_size_x = CLUSTERS_X_THREADS, local_size_y = CLUSTERS_Y_THREADS, local_size_z = CLUSTERS_Z_THREADS) in;
+void main() {
+    // the way we calculate the index doesn't really matter here since we write to the same index in the light grid as we read from the cluster buffer
+    const uint clusterIndex = gl_GlobalInvocationID.z * gl_WorkGroupSize.x * gl_WorkGroupSize.y +
+                              gl_GlobalInvocationID.y * gl_WorkGroupSize.x +
+                              gl_GlobalInvocationID.x;
+    VolumeTileAABB currentCluster = lightClusterAABBs[clusterIndex];
+    const vec3 clusterMin = currentCluster.minPoint.xyz;
+    const vec3 clusterMax = currentCluster.maxPoint.xyz;
 
-    VolumeTileAABB cluster = cluster[clusterIndex];
+    // local thread variables
+    // hold the result of light culling for this cluster
+    uint visibleLights[LIGHT_TYPE_COUNT][MAX_LIGHTS_PER_CLUSTER];
+    uint visibleCount[LIGHT_TYPE_COUNT];
+    for (uint i = 0u; i < LIGHT_TYPE_COUNT; ++i) {
+        visibleCount[i] = 0u;
+    }
+    uint visibleCountTotal = 0u;
 
+    uint lightCount = POINT_LIGHT_COUNT + SPOT_LIGHT_COUNT;
+    const uint localID = gl_LocalInvocationIndex;
+
+    // we have a cache of GROUP_SIZE lights
+    // have to run this loop several times if we have more than GROUP_SIZE lights
     uint lightOffset = 0u;
     while (lightOffset < lightCount)
     {
@@ -62,19 +86,13 @@ void computeLightList(in uint clusterIndex, in uint lightCount)
         // each thread copies one light
         const uint batchSize = min(GROUP_SIZE, lightCount - lightOffset); 
 
-        if (uint(gl_LocalInvocationIndex) < batchSize) {
-            const uint lightIndex = lightOffset + gl_LocalInvocationIndex;
-            const Light source = dvd_LightSource[lightIndex + DIRECTIONAL_LIGHT_COUNT];
+        if (localID < batchSize) {
+            const Light source = dvd_LightSource[DIRECTIONAL_LIGHT_COUNT + localID + lightOffset];
+            // Light position is already in view space and thus it matches our cluster format
+            sharedLights[localID] = getPositionAndRangeForLight(source);
             if (source._TYPE == LIGHT_SPOT) {
-                const vec3 position = source._positionWV.xyz;
-                const float range = source._SPOT_CONE_SLANT_HEIGHT * 0.5f;//range to radius conversion
-                sharedLights[gl_LocalInvocationIndex].position = position + source._directionWV.xyz * range;
-                sharedLights[gl_LocalInvocationIndex].radius   = range;
-                sharedLights[gl_LocalInvocationIndex].type = 1u;
-            } else {
-                sharedLights[gl_LocalInvocationIndex].position = source._positionWV.xyz;
-                sharedLights[gl_LocalInvocationIndex].radius   = source._positionWV.w;
-                sharedLights[gl_LocalInvocationIndex].type = 0u;
+                //negative range is for spot lights only
+                sharedLights[localID].w *= -1.f;
             }
         }
 
@@ -82,16 +100,15 @@ void computeLightList(in uint clusterIndex, in uint lightCount)
         barrier();
 
         // each thread is one cluster and checks against all lights in the cache
-        uint lightsPerCluster = 0u;
         for (uint i = 0u; i < batchSize; ++i) {
-            if (lightsPerCluster >= MAX_LIGHTS_PER_CLUSTER) {
-                break;
-            }
-            if (lightIntersectsCluster(sharedLights[i], cluster)) {
-                ++lightsPerCluster;
+            if (visibleCountTotal < MAX_LIGHTS_PER_CLUSTER &&
+                lightIntersectsCluster(clusterMin, clusterMax, sharedLights[i]))
+            {
+                const uint idx = (sharedLights[i].w < 0.f ? LIGHT_SPOT_IDX : LIGHT_POINT_IDX);
+                const uint count = visibleCount[idx]++;
+                visibleLights[idx][count] = lightOffset + i;
 
-                const uint type = sharedLights[i].type;
-                visibleLights[type][visibleCount[type]++] = lightOffset + i;
+                ++visibleCountTotal;
             }
         }
 
@@ -100,40 +117,20 @@ void computeLightList(in uint clusterIndex, in uint lightCount)
 
     // wait for all threads to finish checking lights
     barrier();
-
     // get a unique index into the light index list where we can write this cluster's lights
-    const uint offset = atomicAdd(globalIndexCount[0], visibleCount[0] + visibleCount[1]);
+    const uint offset = atomicAdd(globalIndexCount[0], visibleCountTotal);
 
     // copy indices of lights
-    for (uint i = 0u; i < visibleCount[0]; ++i) {
-        globalLightIndexList[offset + i] = visibleLights[0][i];
+    for (uint i = 0u; i < visibleCount[LIGHT_POINT_IDX]; ++i) {
+        globalLightIndexList[offset + i] = visibleLights[LIGHT_POINT_IDX][i];
     }
-    for (uint i = 0u; i < visibleCount[1]; ++i) {
-        globalLightIndexList[visibleCount[0] + offset + i] = visibleLights[1][i];
+    for (uint i = 0u; i < visibleCount[LIGHT_SPOT_IDX]; ++i) {
+        globalLightIndexList[offset + visibleCount[LIGHT_POINT_IDX] + i] = visibleLights[LIGHT_SPOT_IDX][i];
     }
-    lightGrid[clusterIndex].offset = offset;
-    lightGrid[clusterIndex].countPoint = visibleCount[0];
-    lightGrid[clusterIndex].countSpot = visibleCount[1];
-}
 
-layout(local_size_x = CLUSTERS_X_THREADS, local_size_y = CLUSTERS_Y_THREADS, local_size_z = CLUSTERS_Z_THREADS) in;
-void main() {
-    // the way we calculate the index doesn't really matter here since we write to the same index in the light grid as we read from the cluster buffer
-    const uint clusterIndex = gl_GlobalInvocationID.z * gl_WorkGroupSize.x * gl_WorkGroupSize.y +
-                              gl_GlobalInvocationID.y * gl_WorkGroupSize.x +
-                              gl_GlobalInvocationID.x;
-
-    // reset the atomic counter
-    // writable compute buffers can't be updated by CPU so do it here
-    if (clusterIndex == 0u) {
-        globalIndexCount[0] = 0u;
-    }
-    barrier();
-
-    const uint lightCount = POINT_LIGHT_COUNT + SPOT_LIGHT_COUNT;
-    if (lightCount > 0u) {
-        computeLightList(clusterIndex, lightCount);
-    } else {
-        clearLightListForCluster(clusterIndex);
-    }
+    // write light grid for this cluster
+    lightGrid[clusterIndex]._offset = offset;
+    lightGrid[clusterIndex]._countTotal = visibleCountTotal;
+    lightGrid[clusterIndex]._countPoint = visibleCount[LIGHT_POINT_IDX];
+    lightGrid[clusterIndex]._countSpot  = visibleCount[LIGHT_SPOT_IDX];
 }

@@ -23,30 +23,28 @@
 #endif
 
 #if defined(USE_SHADING_FLAT)
-#define getLightContribution(Prop, LoD, N, V) (Prop._albedo * Prop._OMR[0] * getShadowMultiplier(N, LoD));
+#define getLightContribution(Mat, N, V, R) (R = Mat._diffuseColour * Prop._occlusion * getShadowMultiplier(N));
 #else //USE_SHADING_FLAT
-vec3 getLightContribution(in NodeMaterialProperties properties, in uint LoD, in vec3 N, in vec3 V)
+void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, inout vec3 radianceOut)
 {
-    vec3 ret = vec3(0.f);
-
     const LightGrid grid        = lightGrid[GetClusterIndex(gl_FragCoord)];
     const uint dirLightCount    = DIRECTIONAL_LIGHT_COUNT;
-    const uint pointLightCount  = grid.countPoint;
-    const uint spotLightCount   = grid.countSpot;
-    const uint lightIndexOffset = grid.offset;
+    const uint pointLightCount  = grid._countPoint;
+    const uint spotLightCount   = grid._countSpot;
+    const uint lightIndexOffset = grid._offset;
     const float ndv = abs(dot(N, V)) + M_EPSILON;
 
-    for (uint lightIdx = 0; lightIdx < dirLightCount; ++lightIdx) {
+    for (uint lightIdx = 0u; lightIdx < dirLightCount; ++lightIdx) {
         const Light light = dvd_LightSource[lightIdx];
         const vec3 lightVec = normalize(-light._directionWV.xyz);
         const float ndl = GetNdotL(N, lightVec);
 #if defined(MAX_SHADOW_MAP_LOD)
-        const float shadowMultiplier = LoD > MAX_SHADOW_MAP_LOD ? 1.f : getShadowMultiplierDirectional(light._options.y, TanAcosNdL(ndl));
+        const float shadowMultiplier = VAR._LoDLevel > MAX_SHADOW_MAP_LOD ? 1.f : getShadowMultiplierDirectional(light._options.y, TanAcosNdL(ndl));
 #else //MAX_SHADOW_MAP_LOD
         const float shadowMultiplier = getShadowMultiplierDirectional(light._options.y, TanAcosNdL(ndl));
 #endif //MAX_SHADOW_MAP_LOD
         if (shadowMultiplier > M_EPSILON) {
-            ret += GetBRDF(lightVec, V, N, light._colour.rgb, shadowMultiplier, ndl, ndv, properties);
+            radianceOut += GetBRDF(lightVec, V, N, light._colour.rgb, shadowMultiplier, ndl, ndv, material);
         }
     }
 
@@ -61,7 +59,7 @@ vec3 getLightContribution(in NodeMaterialProperties properties, in uint LoD, in 
         const float ndl = GetNdotL(N, lightVec);
 
 #if defined(MAX_SHADOW_MAP_LOD)
-        const float shadowMultiplier = LoD > MAX_SHADOW_MAP_LOD ? 1.f : getShadowMultiplierPoint(light._options.y, TanAcosNdL(ndl));
+        const float shadowMultiplier = VAR._LoDLevel > MAX_SHADOW_MAP_LOD ? 1.f : getShadowMultiplierPoint(light._options.y, TanAcosNdL(ndl));
 #else //MAX_SHADOW_MAP_LOD
         const float shadowMultiplier = getShadowMultiplierPoint(light._options.y, TanAcosNdL(ndl));
 #endif //MAX_SHADOW_MAP_LOD
@@ -71,11 +69,11 @@ vec3 getLightContribution(in NodeMaterialProperties properties, in uint LoD, in 
             const float dist = length(lightDir);
             const float att = saturate(1.f - (SQUARED(dist) / radiusSQ));
             const float lightAtt = SQUARED(att) * shadowMultiplier;
-            ret += GetBRDF(lightVec, V, N, light._colour.rgb, lightAtt, ndl, ndv, properties);
+            radianceOut += GetBRDF(lightVec, V, N, light._colour.rgb, lightAtt, ndl, ndv, material);
         }
     }
 
-    for (uint i = 0; i < spotLightCount; ++i) {
+    for (uint i = 0u; i < spotLightCount; ++i) {
         const uint lightIdx = globalLightIndexList[lightIndexOffset + pointLightCount + i] + dirLightCount;
 
         const Light light = dvd_LightSource[lightIdx];
@@ -85,7 +83,7 @@ vec3 getLightContribution(in NodeMaterialProperties properties, in uint LoD, in 
         const float ndl = GetNdotL(N, lightVec);
 
 #if defined(MAX_SHADOW_MAP_LOD)
-        const float shadowMultiplier = LoD > MAX_SHADOW_MAP_LOD ? 1.f : getShadowMultiplierSpot(light._options.y, TanAcosNdL(ndl));
+        const float shadowMultiplier = VAR._LoDLevel > MAX_SHADOW_MAP_LOD ? 1.f : getShadowMultiplierSpot(light._options.y, TanAcosNdL(ndl));
 #else //MAX_SHADOW_MAP_LOD
         const float shadowMultiplier = getShadowMultiplierSpot(light._options.y, TanAcosNdL(ndl));
 #endif //MAX_SHADOW_MAP_LOD
@@ -103,19 +101,17 @@ vec3 getLightContribution(in NodeMaterialProperties properties, in uint LoD, in 
             const float att = saturate(1.0f - (SQUARED(dist) / SQUARED(radius))) * intensity;
             const float lightAtt = att * shadowMultiplier;
 
-            ret += GetBRDF(lightVec, V, N, light._colour.rgb, lightAtt, ndl, ndv, properties);
+            radianceOut += GetBRDF(lightVec, V, N, light._colour.rgb, lightAtt, ndl, ndv, material);
         }
     }
 #endif //!DIRECTIONAL_LIGHT_ONLY
-
-    return ret;
 }
 #endif //USE_SHADING_FLAT
 
-float getShadowMultiplier(in vec3 normalWV, in uint LoD) {
+float getShadowMultiplier(in vec3 normalWV) {
     float ret = 1.0f;
 #if defined(MAX_SHADOW_MAP_LOD)
-    if (LoD > MAX_SHADOW_MAP_LOD) {
+    if (VAR._LoDLevel > MAX_SHADOW_MAP_LOD) {
         return ret;
     }
 #endif //MAX_SHADOW_MAP_LOD
@@ -130,9 +126,9 @@ float getShadowMultiplier(in vec3 normalWV, in uint LoD) {
     }
 
     const uint cluster          = GetClusterIndex(gl_FragCoord);
-    const uint lightIndexOffset = lightGrid[cluster].offset;
-    const uint lightCountPoint  = lightGrid[cluster].countPoint;
-    const uint lightCountSpot   = lightGrid[cluster].countSpot;
+    const uint lightIndexOffset = lightGrid[cluster]._offset;
+    const uint lightCountPoint  = lightGrid[cluster]._countPoint;
+    const uint lightCountSpot   = lightGrid[cluster]._countSpot;
 
     for (uint i = 0; i < lightCountPoint; ++i) {
         const uint lightIdx = globalLightIndexList[lightIndexOffset + i] + dirLightCount;
@@ -157,33 +153,29 @@ float getShadowMultiplier(in vec3 normalWV, in uint LoD) {
     return ret;
 }
 
-vec3 lightClusterColours(const bool debugDepthClusters) {
-    if (debugDepthClusters) {
-        const uint zTile = GetClusterZIndex(gl_FragCoord.z) % 8;
-
-        switch (zTile) {
-            case 0:  return vec3(1.0f, 0.0f, 0.0f);
-            case 1:  return vec3(0.0f, 1.0f, 0.0f);
-            case 2:  return vec3(0.0f, 0.0f, 1.0f);
-            case 3:  return vec3(1.0f, 1.0f, 0.0f);
-            case 4:  return vec3(1.0f, 0.0f, 1.0f);
-            case 5:  return vec3(1.0f, 1.0f, 1.0f);
-            case 6:  return vec3(1.0f, 0.5f, 0.5f);
-            case 7:  return vec3(0.0f, 0.0f, 0.0f);
-        }
-
-        return vec3(0.5f, 0.25f, 0.75f);
+vec3 lightClusters() {
+    switch (GetClusterZIndex(gl_FragCoord.z) % 8) {
+        case 0:  return vec3(1.0f, 0.0f, 0.0f);
+        case 1:  return vec3(0.0f, 1.0f, 0.0f);
+        case 2:  return vec3(0.0f, 0.0f, 1.0f);
+        case 3:  return vec3(1.0f, 1.0f, 0.0f);
+        case 4:  return vec3(1.0f, 0.0f, 1.0f);
+        case 5:  return vec3(1.0f, 1.0f, 1.0f);
+        case 6:  return vec3(1.0f, 0.5f, 0.5f);
+        case 7:  return vec3(0.0f, 0.0f, 0.0f);
     }
 
-    const LightGrid grid = lightGrid[GetClusterIndex(gl_FragCoord)];
+    return vec3(0.5f, 0.25f, 0.75f);
+}
 
-    uint lights = grid.countPoint + grid.countSpot;
+vec3 lightHeatMap() {
+    uint lights = lightGrid[GetClusterIndex(gl_FragCoord)]._countTotal;
 
     // show possible clipping
     if (lights == 0) {
-        lights--;
+        --lights;
     } else if (lights == MAX_LIGHTS_PER_CLUSTER) {
-        lights++;
+        ++lights;
     }
 
     return turboColormap(float(lights) / MAX_LIGHTS_PER_CLUSTER);
@@ -216,51 +208,72 @@ vec3 CSMSplitColour() {
 }
 #endif //DISABLE_SHADOW_MAPPING
 
+vec4 getOverlayColour(in NodeMaterialData materialData) {
+    const uint selection = dvd_selectionFlag(materialData);
+    return vec4(0.f, 
+                selection == 1u ? 2.f : 0.f,
+                selection == 2u ? 2.f : 0.f,
+                0.f);
+}
+
 /// returns RGB - pixel lit colour, A - reserved
-vec4 getPixelColour(in uint LoD, in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV, in float normalVariation, in vec2 uv, out vec3 SpecularColourOut, out vec3 MetalnessRoughnessProbeID) {
+vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV, in float normalVariation, in vec2 uv, out vec3 MetalnessRoughnessProbeID) {
     const vec3 viewVec = normalize(VAR._viewDirectionWV);
 
-    NodeMaterialProperties materialProperties;
-    initMaterialProperties(materialData, albedo.rgb, uv, viewVec, normalWV, normalVariation, materialProperties);
-    SpecularColourOut = materialProperties._kS;
+    const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, uv, viewVec, normalWV, normalVariation);
 
-    MetalnessRoughnessProbeID = vec3(materialProperties._OMR[1], materialProperties._OMR[2], float(dvd_probeIndex(materialData)));
+    MetalnessRoughnessProbeID = vec3(material._metallic, material._roughness, float(dvd_probeIndex(materialData)));
 
-    const uint selection = dvd_selectionFlag(materialData);
-    const vec4 overlayCol = vec4(0.f, selection == 1u ? 2.f : 0.f, selection == 2u ? 2.f : 0.f, 0.f);
+    const vec4 overlayCol = getOverlayColour(materialData);
 
     switch (dvd_materialDebugFlag) {
-        case DEBUG_ALBEDO:         return vec4(materialProperties._albedo, 1.f) + overlayCol;
+        case DEBUG_ALBEDO:       
+        {
+            return vec4(material._diffuseColour, 1.f) + overlayCol;
+        }
         case DEBUG_LIGHTING:
         {
-            materialProperties._albedo = vec3(1.f);
-            return vec4(getLightContribution(materialProperties, LoD, normalWV, viewVec), 1.f) + overlayCol;
+            PBRMaterial materialCopy = material;
+            materialCopy._diffuseColour = vec3(1.f);
+            vec3 radianceOut = vec3(0.f);
+            getLightContribution(materialCopy, normalWV, viewVec, radianceOut);
+            radianceOut += dvd_AmbientColour.rgb * materialCopy._diffuseColour * materialCopy._occlusion;
+            return vec4(radianceOut, 1.f) + overlayCol;
         }
-        case DEBUG_SPECULAR:       return vec4(materialProperties._specular.rgb, 1.f) + overlayCol;
-        case DEBUG_KS:             return vec4(SpecularColourOut, 1.f) + overlayCol;
+        case DEBUG_SPECULAR: 
+        {
+            return vec4(material._specular.rgb, 1.f) + overlayCol;
+        }
+        case DEBUG_KS:            
+        {
+            const vec3 H = normalize(normalWV + viewVec);
+            const vec3 kS = computeFresnelSchlickRoughness(H, viewVec, material._F0, material._roughness);
+            return vec4(kS, 1.f);
+        }
         case DEBUG_UV:             return vec4(fract(uv), 0.f, 1.f) + overlayCol;
-        case DEBUG_EMISSIVE:       return vec4(materialProperties._emissive, 1.f) + overlayCol;
-        case DEBUG_ROUGHNESS:      return vec4(vec3(materialProperties._OMR[2]), 1.f) + overlayCol;
-        case DEBUG_METALNESS:      return vec4(vec3(materialProperties._OMR[1]), 1.f) + overlayCol;
+        case DEBUG_EMISSIVE:       return vec4(material._emissive, 1.f) + overlayCol;
+        case DEBUG_ROUGHNESS:      return vec4(vec3(material._roughness), 1.f) + overlayCol;
+        case DEBUG_METALNESS:      return vec4(vec3(material._metallic), 1.f) + overlayCol;
         case DEBUG_NORMALS:        return vec4(normalize(mat3(dvd_InverseViewMatrix) * normalWV), 1.f) + overlayCol;
         case DEBUG_TANGENTS:       return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[0]), 1.f) + overlayCol;
         case DEBUG_BITANGENTS:     return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[1]), 1.f) + overlayCol;
-        case DEBUG_SHADOW_MAPS:    return vec4(vec3(getShadowMultiplier(normalWV, LoD)), 1.f) + overlayCol;
+        case DEBUG_SHADOW_MAPS:    return vec4(vec3(getShadowMultiplier(normalWV)), 1.f) + overlayCol;
 #if defined(MAIN_DISPLAY_PASS)
         case DEBUG_CSM_SPLITS:     return vec4(CSMSplitColour(), 1.f) + overlayCol;
-        case DEBUG_LIGHT_HEATMAP:  return vec4(lightClusterColours(false), 1.f) + overlayCol;
-        case DEBUG_DEPTH_CLUSTERS: return vec4(lightClusterColours(true), 1.f) + overlayCol;
+        case DEBUG_LIGHT_HEATMAP:  return vec4(lightHeatMap(), 1.f) + overlayCol;
+        case DEBUG_DEPTH_CLUSTERS: return vec4(lightClusters(), 1.f) + overlayCol;
         case DEBUG_REFRACTIONS:
         case DEBUG_REFLECTIONS:    return vec4(vec3(0.f), 1.f) + overlayCol;
 #endif //MAIN_DISPLAY_PASS
         case DEBUG_MATERIAL_IDS:   return vec4(turboColormap(float(MATERIAL_IDX + 1) / MAX_CONCURRENT_MATERIALS), 1.f) + overlayCol;
     }
 
-    const vec3 oColour = getLightContribution(materialProperties, LoD, normalWV, viewVec) + materialProperties._emissive;
-    return vec4(oColour, albedo.a) + overlayCol;
+    vec3 radianceOut = overlayCol.rgb;
+    getLightContribution(material, normalWV, viewVec, radianceOut);
+    radianceOut += dvd_AmbientColour.rgb * material._diffuseColour * material._occlusion;
+    radianceOut += material._emissive;
+
+    return vec4(radianceOut, albedo.a);
 }
 
-vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV, in float normalVariation, in vec2 uv, out vec3 SpecularColourOut, out vec3 MetalnessRoughnessProbeID) {
-    return getPixelColour(0u, albedo, materialData, normalWV, normalVariation, uv, SpecularColourOut, MetalnessRoughnessProbeID);
-}
 #endif //_BRDF_FRAG_

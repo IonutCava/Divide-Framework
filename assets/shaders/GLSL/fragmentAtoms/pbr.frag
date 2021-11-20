@@ -41,35 +41,33 @@ float NeumannVisibility(in float NdotV, in float NdotL)
 // Blinn Distribution
 //   roughness    = the roughness of the pixel
 //   NdotH        = the dot product of the normal and the half vector
-float BlinnPhongDistribution(in float roughness, in float NdotH)
+float BlinnPhongDistribution(in float roughnessSq, in float NdotH)
 {
     // Calculate specular power from roughness
-    const float specPower = max((2.f / SQUARED(roughness)) - 2.f, 1e-4);
+    const float specPower = max((2.f / roughnessSq) - 2.f, 1e-4);
     return pow(saturate(NdotH), specPower);
 }
 
 // Beckmann Distribution
 //   roughness    = the roughness of the pixel
 //   NdotH        = the dot product of the normal and the half vector
-float BeckmannDistribution(in float roughness, in float NdotH)
+float BeckmannDistribution(in float roughnessSq, in float NdotH)
 {
-    const float rough2 = SQUARED(roughness);
     const float NdotH2 = SQUARED(NdotH);
 
-    const float roughnessA = 1.f / (4.f * rough2 * pow(NdotH, 4.f));
+    const float roughnessA = 1.f / (4.f * roughnessSq * pow(NdotH, 4.f));
     const float roughnessB = NdotH2 - 1.f;
-    const float roughnessC = rough2 * NdotH2;
+    const float roughnessC = roughnessSq * NdotH2;
     return roughnessA * exp(roughnessB / roughnessC);
 }
 
 // GGX Distribution
 //   roughness    = the roughness of the pixel
 //   NdotH        = the dot product of the normal and the half vector
-float GGXDistribution(in float roughness, in float NdotH)
+float GGXDistribution(in float roughnessSq, in float NdotH)
 {
-    const float rough2 = SQUARED(roughness);
-    const float tmp = (NdotH * rough2 - NdotH) * NdotH + 1.f;
-    return rough2 / SQUARED(tmp);
+    const float tmp = (NdotH * roughnessSq - NdotH) * NdotH + 1.f;
+    return roughnessSq / SQUARED(tmp);
 }
 //----------------------------------------------------------------------------------
 
@@ -160,13 +158,13 @@ vec3 Fresnel(in vec3 specular, in float VdotH, in float LdotH) {
 }
 
 // Get Distribution
-//   roughness    = the roughness of the pixel
+//   roughnessSq  = the roughnessSq of the pixel squared
 //   NdotH        = the dot product of the normal and the half vector
-float Distribution(in float roughness, in float NdotH) {
+float Distribution(in float roughnessSq, in float NdotH) {
 #if defined(USE_SHADING_COOK_TORRANCE) || defined(USE_SHADING_OREN_NAYAR)
-    return GGXDistribution(roughness, NdotH);
+    return GGXDistribution(roughnessSq, NdotH);
 #else //USE_SHADING_COOK_TORRANCE || USE_SHADING_OREN_NAYAR
-    return BlinnPhongDistribution(roughness, NdotH);
+    return BlinnPhongDistribution(roughnessSq, NdotH);
 #endif //USE_SHADING_COOK_TORRANCE || USE_SHADING_OREN_NAYAR
 }
 
@@ -206,7 +204,7 @@ float Visibility(in float roughness, in float NdotL, in float NdotV) {
 //   lightColour = the colour of the light we're computing the BRDF factors for
 //   lightAttenuation = attenuation factor to multiply the light's colour by (includes shadow, distance fade, etc)
 //   ndl       = dot(normal,lightVec) [M_EPSILON,1.0f]
-//   properties = material properties value for the target pixel (base colour, OMR, spec value, etc)
+//   material = material value for the target pixel (base colour, OMR, spec value, etc)
 vec3 GetBRDF(in vec3 L,
              in vec3 V,
              in vec3 N,
@@ -214,13 +212,8 @@ vec3 GetBRDF(in vec3 L,
              in float lightAttenuation,
              in float ndl,
              in float ndv,
-             in NodeMaterialProperties properties)
+             in PBRMaterial material)
 {
-    const vec3 diffColour = properties._albedo;
-    const vec3 specColour = properties._specular.rgb;
-    const float roughness = properties._OMR[2];
-    const float occlusion = properties._OMR[0];
-
     const vec3 H = normalize(V + L);
 
     const float vdh = clamp((dot(V, H)), M_EPSILON, 1.f);
@@ -228,14 +221,14 @@ vec3 GetBRDF(in vec3 L,
     const float ndh = clamp((dot(N, H)), M_EPSILON, 1.f);
 
     // Material data
-    const vec3 diffuseFactor = Diffuse(diffColour, roughness, ndv, ndl, vdh, ldh);
-    const vec3 fresnelTerm   = Fresnel(specColour, vdh, ldh);
-    const float distTerm     = Distribution(roughness, ndh);
-    const float visTerm      = Visibility(roughness, ndl, ndv);
+    const vec3 diffuseFactor = Diffuse(material._diffuseColour, material._roughness, ndv, ndl, vdh, ldh);
+    const vec3 fresnelTerm   = Fresnel(material._specular.rgb, vdh, ldh);
+    const float distTerm     = Distribution(material._a, ndh);
+    const float visTerm      = Visibility(material._roughness, ndl, ndv);
 
     const vec3 specularFactor = distTerm * visTerm * fresnelTerm * ndl * INV_M_PI;
 
-    const vec3 brdf = (diffuseFactor * occlusion) + specularFactor;
+    const vec3 brdf = (diffuseFactor * material._occlusion) + specularFactor;
 
     return brdf * lightColour * lightAttenuation;
 }

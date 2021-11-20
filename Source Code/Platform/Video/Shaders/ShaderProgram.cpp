@@ -106,11 +106,11 @@ void ShaderProgram::Idle() {
                     s_lastRequestedShaderProgram = { -1, {} };
                 }
             }
+            //Re-register because the handle is probably different by now
+            RegisterShaderProgram(s_recompileQueue.top());
         } else {
-            DIVIDE_UNEXPECTED_CALL();
+            Console::errorfn(Locale::Get(_ID("ERROR_SHADER_RECOMPILE_FAILED")), s_recompileQueue.top()->resourceName().c_str());
         }
-        //Re-register because the handle is probably different by now
-        RegisterShaderProgram(s_recompileQueue.top());
         s_recompileQueue.pop();
     }
 }

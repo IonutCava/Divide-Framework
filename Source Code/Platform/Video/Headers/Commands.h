@@ -120,6 +120,7 @@ decltype(CmdAllocator<Command>::s_Pool) CmdAllocator<Command>::s_Pool;
 #define DEFINE_COMMAND_BEGIN(Name, Enum) struct Name final : public Command<Name, Enum> { \
 using Base = Command<Name, Enum>; \
 Name() noexcept = default; \
+PROPERTY_RW(bool, flag, false); \
 
 #define DEFINE_COMMAND_END(Name) }
 

@@ -118,17 +118,16 @@ class VBO final {
 public:
     // Allocate VBOs in 16K chunks. This will HIGHLY depend on actual data usage and requires testing.
     static constexpr U32 MAX_VBO_CHUNK_SIZE_BYTES = 16 * 1024;
-    // nVidia recommended (years ago) to use up to 4 megs per VBO. Use 16 MEG VBOs :D
-    static constexpr U32  MAX_VBO_SIZE_BYTES = 16 * 1024 * 1024;
+    // nVidia recommended (years ago) to use up to 4 megs per VBO. Use 32 MEG VBOs :D
+    static constexpr U32  MAX_VBO_SIZE_BYTES = 32 * 1024 * 1024;
     // The total number of available chunks per VBO is easy to figure out
     static constexpr U32 MAX_VBO_CHUNK_COUNT = MAX_VBO_SIZE_BYTES / MAX_VBO_CHUNK_SIZE_BYTES;
 
-    static U32 getChunkCountForSize(size_t sizeInBytes) noexcept;
+    static U32 GetChunkCountForSize(size_t sizeInBytes) noexcept;
 
-    VBO() noexcept;
+    VBO() noexcept = default;
 
     void freeAll();
-    [[nodiscard]] U32 handle() const noexcept;
     bool checkChunksAvailability(size_t offset, U32 count, U32& chunksUsedTotal) noexcept;
 
     bool allocateChunks(U32 count, GLenum usage, size_t& offsetOut);
@@ -143,10 +142,11 @@ public:
     //for each chunk, keep track how many next chunks are also part of the same allocation
     std::array<std::pair<bool, U32>, MAX_VBO_CHUNK_COUNT> _chunkUsageState = create_array<MAX_VBO_CHUNK_COUNT, std::pair<bool, U32>>(std::make_pair(false, 0));
 
+    PROPERTY_R_IW(GLuint, handle, 0u);
+
 private:
-    GLuint _handle;
-    GLenum _usage;
-    bool   _filledManually;
+    GLenum _usage = GL_NONE;
+    bool   _filledManually = false;
 };
 
 struct AllocationHandle {

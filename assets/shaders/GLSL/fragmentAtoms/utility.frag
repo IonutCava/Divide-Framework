@@ -112,12 +112,14 @@ vec3 getTriPlanarBlend(in vec3 normalW) {
     return blending / (blending.x + blending.y + blending.z);
 }
 
-float ToLinearDepth(in float z_b, in vec2 Z) {
+float ToLinearDepth(in float D, in vec2 Z) {
     const float zNear = Z.x;
     const float zFar = Z.y;
-    const float z_n = 2.f * z_b - 1.f;
-    const float z_e = 2.f * zNear * zFar / (zFar + zNear - z_n * (zFar - zNear));
-    return z_e;
+
+    const float ndc = 2.f * D - 1.f;
+    const float eye = 2.f * zFar * zNear / (zFar + zNear + ndc * (zNear - zFar));
+
+    return eye;
 }
 
 float ToLinearDepth(in float D)                     { return ToLinearDepth(D, dvd_zPlanes); }

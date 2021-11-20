@@ -249,7 +249,7 @@ protected:
     [[nodiscard]] bool frameEnded(const FrameEvent& evt) override;
 
     void drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
-    void debugDraw(const RenderStagePass& stagePass, const Camera* camera, GFX::CommandBuffer& bufferInOut);
+    void debugDraw(const Camera* camera, GFX::CommandBuffer& bufferInOut);
     void prepareLightData(RenderStage stage, const vec3<F32>& cameraPos, const mat4<F32>& viewMatrix);
 
     [[nodiscard]] Camera* playerCamera(bool skipOverride = false) const noexcept;
@@ -420,8 +420,8 @@ class SceneManagerRenderPass {
         mgr->prepareLightData(stage, camPosition, viewMatrix);
     }
 
-    static void debugDraw(Divide::SceneManager* mgr, const RenderStagePass& stagePass, const Camera* camera, GFX::CommandBuffer& bufferInOut) {
-        mgr->debugDraw(stagePass, camera, bufferInOut);
+    static void debugDraw(Divide::SceneManager* mgr, const Camera* camera, GFX::CommandBuffer& bufferInOut) {
+        mgr->debugDraw(camera, bufferInOut);
     }
 
     static void drawCustomUI(Divide::SceneManager* mgr, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {

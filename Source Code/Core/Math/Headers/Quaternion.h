@@ -116,9 +116,9 @@ class Quaternion {
 
     Quaternion operator/(T scalar) const;
 
-    void slerp(const Quaternion& q, F32 t);
+    void slerp(const Quaternion& q, F32 t) noexcept;
 
-    void slerp(const Quaternion& q0, const Quaternion& q1, F32 t);
+    void slerp(const Quaternion& q0, const Quaternion& q1, F32 t) noexcept;
 
     //! Convert from Axis Angle
     void fromAxisAngle(const vec3<T>& v, Angle::DEGREES<T> angle) noexcept;
@@ -183,7 +183,7 @@ template <typename T>
 Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>& fallbackAxis = VECTOR3_ZERO) noexcept;
 
 template <typename T>
-Quaternion<T> Slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, F32 t);
+Quaternion<T> Slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, F32 t) noexcept;
 
 template <typename T>
 mat3<T> GetMatrix(const Quaternion<T>& q) noexcept;

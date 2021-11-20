@@ -25,12 +25,12 @@
 #endif //M_PI
 
 //ref: http://theorangeduck.com/page/avoiding-shader-conditionals
-#define when_eq(x, y) (1.0f - abs(sign(x - y)))
+#define when_eq(x, y) (1.f - abs(sign(x - y)))
 #define when_neq(x, y) abs(sign(x - y))
-#define when_gt(x, y)  max(sign(x - y), 0.0f)
-#define when_lt(x, y)  max(sign(y - x), 0.0f)
-#define when_ge(x, y) (1.0f - when_lt(x, y))
-#define when_le(x, y) (1.0f - when_gt(x, y))
+#define when_gt(x, y)  max(sign(x - y), 0.f)
+#define when_lt(x, y)  max(sign(y - x), 0.f)
+#define when_ge(x, y) (1.f - when_lt(x, y))
+#define when_le(x, y) (1.f - when_gt(x, y))
 #define AND(a, b) (a * b)
 #define OR(a, b) min(a + b, 1.0f)
 #define XOR(a, b) ((a + b) % 2.0f)
@@ -39,11 +39,10 @@
 #define ROUND(v) floor((v) + .5)
 
 #define saturate(X) clamp(X, 0.f, 1.f)
-#define mad(a, b, c) (a * b + c)
 
 #define MSToSeconds(ms) (ms * 0.001f)
 
-#define UNPACK_VEC3(VAL) (2.0f * fract(vec3(1.0, 256.0, 65536.0) * VAL) - 1.0f)
+#define UNPACK_VEC3(VAL) (2.f * fract(vec3(1.f, 256.f, 65536.f) * VAL) - 1.f)
 
 #define QUATERNION_ROTATE(V, Q) (V + 2.f * cross(Q.xyz, cross(Q.xyz, V) + Q.w * V))
 

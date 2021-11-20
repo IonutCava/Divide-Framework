@@ -224,18 +224,19 @@ void GL_API::AppendToShaderHeader(const ShaderType type, const string& entry) {
 bool GL_API::InitGLSW(Configuration& config) {
     constexpr std::pair<const char*, const char*> shaderVaryings[] =
     {
-        { "vec4"       , "_vertexW"},
-        { "vec4"       , "_vertexWV"},
-        { "vec4"       , "_prevVertexWVP"},
-        { "vec3"       , "_normalWV"},
-        { "vec3"       , "_viewDirectionWV"},
-        { "vec2"       , "_texCoord"},
-        { "flat uvec2" , "_indirectionIDs"}
+        { "vec4"       , "_vertexW"},          // 16 bytes
+        { "vec4"       , "_vertexWV"},         // 32 bytes
+        { "vec4"       , "_prevVertexWVP"},    // 48 bytes
+        { "vec3"       , "_normalWV"},         // 60 bytes
+        { "vec3"       , "_viewDirectionWV"},  // 72 bytes
+        { "vec2"       , "_texCoord"},         // 80 bytes
+        { "flat uvec2" , "_indirectionIDs"},   // 88 bytes
+        { "flat uint"  , "_LoDLevel"}          // 92 bytes
     };
 
     constexpr std::pair<const char*, const char*> shaderVaryingsBump[] =
     {
-        { "mat3" , "_tbnWV"},
+        { "mat3" , "_tbnWV"}, // 128 bytes
     };
 
     constexpr const char* crossTypeGLSLHLSL = "#define float2 vec2\n"
@@ -365,6 +366,14 @@ bool GL_API::InitGLSW(Configuration& config) {
         AppendToShaderHeader(ShaderType::COUNT, "#define USE_BINDLESS_TEXTURES");
     }
 
+    DIVIDE_ASSERT(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < GL_API::s_maxWorgroupSize[0] &&
+                  Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < GL_API::s_maxWorgroupSize[1] &&
+                  Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < GL_API::s_maxWorgroupSize[2]);
+
+    DIVIDE_ASSERT(to_U32(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS) * 
+                         Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS * 
+                         Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < GL_API::s_maxWorgroupInvocations);
+
     constexpr F32 Z_TEST_SIGMA = 0.00001f;// 1.f / U8_MAX;
 
     AppendToShaderHeader(ShaderType::COUNT,    "#define Z_TEST_SIGMA "                    + Util::to_string(Z_TEST_SIGMA) + "f");
@@ -383,11 +392,14 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_ALBEDO "                   + Util::to_string(to_base(GFXDevice::ScreenTargets::ALBEDO)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_VELOCITY "                 + Util::to_string(to_base(GFXDevice::ScreenTargets::VELOCITY)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_NORMALS_AND_MATERIAL_DATA "+ Util::to_string(to_base(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_SPECULAR "                 + Util::to_string(to_base(GFXDevice::ScreenTargets::SPECULAR)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_REVEALAGE "                + Util::to_string(to_base(GFXDevice::ScreenTargets::REVEALAGE)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_MODULATE "                 + Util::to_string(to_base(GFXDevice::ScreenTargets::MODULATE)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_GPU_BLOCK "                + Util::to_string(to_base(ShaderBufferLocation::GPU_BLOCK)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER "           + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_0 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_0)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_1 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_1)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_2 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_2)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_3 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_3)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_4 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_4)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_GPU_COMMANDS "             + Util::to_string(to_base(ShaderBufferLocation::GPU_COMMANDS)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_NORMAL "             + Util::to_string(to_base(ShaderBufferLocation::LIGHT_NORMAL)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_SCENE "              + Util::to_string(to_base(ShaderBufferLocation::LIGHT_SCENE)));
@@ -1066,6 +1078,10 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
             if(getStateTracker()._activePipeline != nullptr) {
                 OPTICK_EVENT("GL: Dispatch Compute");
+                const vec3<U32>& workGroupCount = crtCmd->_computeGroupSize;
+                DIVIDE_ASSERT(workGroupCount.x < GL_API::s_maxWorgroupCount[0] &&
+                              workGroupCount.y < GL_API::s_maxWorgroupCount[1] &&
+                              workGroupCount.z < GL_API::s_maxWorgroupCount[2]);
                 glDispatchCompute(crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z);
             }
         }break;

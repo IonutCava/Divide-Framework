@@ -85,7 +85,7 @@ void LightPool::init() {
     bufferDescriptor._ringBufferLength = DataBufferRingSize;
     bufferDescriptor._separateReadWrite = false;
     bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     
     {
@@ -305,7 +305,7 @@ U32 LightPool::uploadLightList(const RenderStage stage, const LightList& lights,
         const LightType type = light->getLightType();
         const U32 typeIndex = to_U32(type);
 
-        if (_lightTypeState[typeIndex] && light->enabled()) {
+        if (_lightTypeState[typeIndex] && light->enabled() && light->range() > 0.f) {
             if (++ret > Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME) {
                 break;
             }
@@ -429,7 +429,7 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
     bufferShadow._buffer = _shadowBuffer;
     bufferShadow._elementRange = { 0u, 1u };
 
-    GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
+    GFX::BindDescriptorSetsCommand descriptorSetCmd{};
     descriptorSetCmd._set._buffers.add(bufferLightData);
     descriptorSetCmd._set._buffers.add(bufferLightScene);
     descriptorSetCmd._set._buffers.add(bufferShadow);
@@ -518,7 +518,7 @@ void LightPool::postRenderAllPasses() noexcept {
     _sceneBuffer->decQueue();
 }
 
-void LightPool::drawLightImpostors(RenderStage stage, GFX::CommandBuffer& bufferInOut) const {
+void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
     if (!lightImpostorsEnabled()) {
         return;
     }
@@ -533,10 +533,13 @@ void LightPool::drawLightImpostors(RenderStage stage, GFX::CommandBuffer& buffer
         s_samplerHash = iconSampler.getHash();
     }
 
-    assert(_lightImpostorShader);
-
-    const U32 totalLightCount = _sortedLightPropertiesCount[to_U8(stage)];
+    const U32 totalLightCount = _sortedLightPropertiesCount[to_U8(RenderStage::DISPLAY)];
     if (totalLightCount > 0) {
+        ShaderBufferBinding bufferLightData;
+        bufferLightData._binding = ShaderBufferLocation::LIGHT_NORMAL;
+        bufferLightData._buffer = _lightBuffer;
+        bufferLightData._elementRange = { to_size(LightBufferIndex(RenderStage::DISPLAY)) * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount };
+
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = _context.gfx().getDefaultStateBlock(false);
         pipelineDescriptor._shaderProgramHandle = _lightImpostorShader->getGUID();

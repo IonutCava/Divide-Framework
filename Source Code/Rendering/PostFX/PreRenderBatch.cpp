@@ -669,9 +669,6 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         const auto& ssrDataAtt = ssrDataRT.getAttachment(RTAttachmentType::Colour, 0);
         const TextureData& ssrData = ssrDataAtt.texture()->data();
 
-        const auto& specularAtt = screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::SPECULAR));
-        const TextureData& specularData = specularAtt.texture()->data();
-
         const auto& materialAtt = screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
         const TextureData& materialData = materialAtt.texture()->data();
         
@@ -681,7 +678,6 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         set._textureData.add(TextureEntry{ screenData,   screenAtt.samplerHash(),   TextureUsage::UNIT0 });
         set._textureData.add(TextureEntry{ fxData,       fxDataAtt.samplerHash(),   TextureUsage::OPACITY });
         set._textureData.add(TextureEntry{ ssrData,      ssrDataAtt.samplerHash(),  TextureUsage::PROJECTION });
-        set._textureData.add(TextureEntry{ specularData, specularAtt.samplerHash(), TextureUsage::UNIT1 });
         set._textureData.add(TextureEntry{ materialData, materialAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
         set._textureData.add(TextureEntry{ depthTexData, depthAtt.samplerHash(),    TextureUsage::DEPTH });
 

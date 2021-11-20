@@ -166,6 +166,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void drawSkeleton(GFX::CommandBuffer& bufferInOut);
     void drawBounds(bool AABB, bool OBB, bool Sphere, GFX::CommandBuffer& bufferInOut);
 
+    [[nodiscard]] U8 getLoDLevel(RenderStage renderStage) const noexcept;
     [[nodiscard]] U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
     void addShaderBuffer(const ShaderBufferBinding& binding) { _externalBufferBindings.push_back(binding); }
@@ -174,6 +175,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
 
   protected:
+    [[nodiscard]] U8 getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
+
     void toggleBoundsDraw(bool showAABB, bool showBS, bool recursive);
 
     void retrieveDrawCommands(const RenderStagePass& stagePass, U32 cmdOffset, DrawCommandContainer& cmdsInOut);

@@ -43,7 +43,6 @@
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
 
 namespace Divide {
-struct FeedBackContainer;
 struct NodeTransformData;
 struct NodeMaterialData;
 struct PerPassData;

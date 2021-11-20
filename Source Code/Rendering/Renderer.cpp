@@ -2,13 +2,13 @@
 
 #include "Headers/Renderer.h"
 
+#include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
-#include "Rendering/Camera/Headers/Camera.h"
-#include "Rendering/Lighting/Headers/LightPool.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
+
+#include "Managers/Headers/SceneManager.h"
 
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -52,6 +52,19 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         _lightCullPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
     {
+        ShaderProgramDescriptor cullDescritpor = {};
+        computeDescriptor._variant = "ResetCounter";
+        cullDescritpor._modules.push_back(computeDescriptor);
+
+        ResourceDescriptor cullShaderDesc("lightCounterReset");
+        cullShaderDesc.propertyDescriptor(cullDescritpor);
+        _lightCounterResetComputeShader = CreateResource<ShaderProgram>(cache, cullShaderDesc);
+
+        PipelineDescriptor pipelineDescriptor = {};
+        pipelineDescriptor._shaderProgramHandle = _lightCounterResetComputeShader->getGUID();
+        _lightResetCounterPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
+    }
+    {
         computeDescriptor._sourceFile = "lightBuildClusteredAABBs.glsl";
         ShaderProgramDescriptor buildDescritpor = {};
         buildDescritpor._modules.push_back(computeDescriptor);
@@ -63,53 +76,44 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         pipelineDescriptor._shaderProgramHandle = _lightBuildClusteredAABBsComputeShader->getGUID();
         _lightBuildClusteredAABBsPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
-
-
+  
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
     bufferDescriptor._ringBufferLength = 1;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
+    bufferDescriptor._bufferParams._initialData = { nullptr, 0 };
+
     { //Light Index Buffer
         const U32 totalLights = numClusters * to_U32(config.rendering.numLightsPerCluster);
         bufferDescriptor._name = "LIGHT_INDEX_SSBO";
         bufferDescriptor._bufferParams._elementCount = totalLights;
         bufferDescriptor._bufferParams._elementSize = sizeof(U32);
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
-        bufferDescriptor._bufferParams._initialData = { nullptr, 0 };
         _lightIndexBuffer = _context.gfx().newSB(bufferDescriptor);
         _lightIndexBuffer->bind(ShaderBufferLocation::LIGHT_INDICES);
-    }
-    { // Light Grid Buffer
-        bufferDescriptor._name = "LIGHT_GRID_SSBO";
-        bufferDescriptor._bufferParams._elementCount = numClusters;
-        bufferDescriptor._bufferParams._elementSize = 4 * sizeof(U32);
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
-        bufferDescriptor._bufferParams._initialData = { nullptr, 0 };
-        _lightGridBuffer = _context.gfx().newSB(bufferDescriptor);
-        _lightGridBuffer->bind(ShaderBufferLocation::LIGHT_GRID);
-    }
-    { // Global Index Count
-        bufferDescriptor._name = "GLOBAL_INDEX_COUNT_SSBO";
-        bufferDescriptor._bufferParams._elementCount = 1u; 
-        bufferDescriptor._bufferParams._elementSize = 4 * sizeof(U32);
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
-        bufferDescriptor._bufferParams._initialData = { nullptr, 0 };
-        _globalIndexCountBuffer = _context.gfx().newSB(bufferDescriptor);
-        _globalIndexCountBuffer->bind(ShaderBufferLocation::LIGHT_INDEX_COUNT);
     }
     { // Cluster AABBs
         bufferDescriptor._name = "GLOBAL_CLUSTER_AABB_SSBO";
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = 2 * (4 * sizeof(F32));
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
-        bufferDescriptor._bufferParams._initialData = { nullptr, 0 };
         _lightClusterAABBsBuffer = _context.gfx().newSB(bufferDescriptor);
         _lightClusterAABBsBuffer->bind(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
     }
+    { // Light Grid Buffer
+        bufferDescriptor._name = "LIGHT_GRID_SSBO";
+        bufferDescriptor._bufferParams._elementCount = numClusters;
+        bufferDescriptor._bufferParams._elementSize = sizeof(vec4<U32>);
+        _lightGridBuffer = _context.gfx().newSB(bufferDescriptor);
+        _lightGridBuffer->bind(ShaderBufferLocation::LIGHT_GRID);
+    }
 
+    { // Global Index Count
+        bufferDescriptor._name = "GLOBAL_INDEX_COUNT_SSBO";
+        bufferDescriptor._bufferParams._elementCount = 1u;
+        bufferDescriptor._bufferParams._elementSize =  sizeof(vec4<U32>);
+        _globalIndexCountBuffer = _context.gfx().newSB(bufferDescriptor);
+        _globalIndexCountBuffer->bind(ShaderBufferLocation::LIGHT_INDEX_COUNT);
+    }
     _postFX = eastl::make_unique<PostFX>(context, cache);
 
     if (config.rendering.postFX.postAA.qualityLevel > 0) {
@@ -141,37 +145,37 @@ Renderer::~Renderer()
     Console::printfn(Locale::Get(_ID("STOP_POST_FX")));
 }
 
-void Renderer::preRender(RenderStagePass stagePass,
-                         const Texture_ptr& hizColourTexture,
-                         [[maybe_unused]] const size_t samplerHash,
-                         LightPool& lightPool,
-                         const Camera* camera,
-                         GFX::CommandBuffer& bufferInOut)
+void Renderer::prepareLighting(const RenderStage stage,
+                               const mat4<F32>& projectionMatrix,
+                               GFX::CommandBuffer& bufferInOut)
 {
-    if (stagePass._stage == RenderStage::SHADOW) {
-        return;
-    }
-
-    lightPool.uploadLightData(stagePass._stage, bufferInOut);
-    if (!hizColourTexture) {
-        return;
-    }
-
-    const mat4<F32>& projectionMatrix = camera->projectionMatrix();
-    if (_previousProjMatrix != projectionMatrix) {
-        _previousProjMatrix = projectionMatrix;
-
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
-        GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
-        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ _computeWorkgroupSize });
-        GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
-        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-    }
+    assert(stage != RenderStage::SHADOW);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Cull Lights" });
-    GFX::EnqueueCommand(bufferInOut, _lightCullPipelineCmd);
-    GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ _computeWorkgroupSize });
-    GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) | to_base(MemoryBarrierType::BUFFER_UPDATE) });
+    {
+        context().kernel().sceneManager()->getActiveScene().lightPool()->uploadLightData(stage, bufferInOut);
+
+        if (_previousProjMatrix != projectionMatrix) {
+            _previousProjMatrix = projectionMatrix;
+
+            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
+            {
+                GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
+                GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ _computeWorkgroupSize });
+                GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
+            }
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+        }
+        
+        GFX::EnqueueCommand(bufferInOut, _lightResetCounterPipelineCmd);
+        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, 1u }); 
+        GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
+
+        GFX::EnqueueCommand(bufferInOut, _lightCullPipelineCmd);
+        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ _computeWorkgroupSize });
+        GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
+
+    }
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 

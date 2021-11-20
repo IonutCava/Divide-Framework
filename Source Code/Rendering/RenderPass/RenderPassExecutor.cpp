@@ -231,15 +231,13 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
         s_ResolveScreenTargetsPipeline = _context.newPipeline(pipelineDescriptor);
 
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-        //bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = false;
         bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
         bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
         bufferDescriptor._separateReadWrite = false;
         bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
         bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::NONE);
-        //bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
         {// Node Material buffer
             bufferDescriptor._bufferParams._elementCount = Config::MAX_CONCURRENT_MATERIALS;
             bufferDescriptor._bufferParams._elementSize = sizeof(NodeMaterialData);
@@ -255,7 +253,6 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
             s_transformBuffer._bufferUpdateRangeHistory.resize(bufferDescriptor._ringBufferLength);
         }
         {// Indirection Buffer
-            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
             bufferDescriptor._bufferParams._elementSize = sizeof(NodeIndirectionData);
             bufferDescriptor._name = "NODE_INDIRECTION_DATA";
             //bufferDescriptor._ringBufferLength = 1u;
@@ -332,7 +329,7 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, 
     { //Misc
         const F32 nodeFlagValue = rComp->dataFlag();
         const U8 occlusionCull = rComp->occlusionCull() ? 1u : 0u;
-
+        const U8 lodLevel = rComp->getLoDLevel(_stage);
         // Since the normal matrix is 3x3, we can use the extra row and column to store additional data
         const BoundsComponent* const bounds = node->get<BoundsComponent>();
         const BoundingSphere& bSphere = bounds->getBoundingSphere();
@@ -340,7 +337,7 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, 
         const vec3<F32> bBoxHalfExtents = bounds->getBoundingBox().getHalfExtent();
 
         transformOut._normalMatrixW.setRow(3, bSphereCenter.x, bSphereCenter.y, bSphereCenter.z, nodeFlagValue);
-        transformOut._normalMatrixW.element(0, 3) = to_F32(Util::PACK_UNORM4x8(boneCount, 0u, frameTicked, occlusionCull));
+        transformOut._normalMatrixW.element(0, 3) = to_F32(Util::PACK_UNORM4x8(boneCount, lodLevel, frameTicked, occlusionCull));
         transformOut._normalMatrixW.element(1, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.xy));
         transformOut._normalMatrixW.element(2, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.z, bSphere.getRadius()));
     }
@@ -796,33 +793,21 @@ void RenderPassExecutor::occlusionPass(const VisibleNodeList<>& nodes,
 void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPassParams& params, RenderTarget& target, const bool prePassExecuted, const bool hasHiZ, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
 
-    const RenderStagePass& stagePass = params._stagePass;
-    assert(stagePass._passType == RenderPassType::MAIN_PASS);
+    assert(params._stagePass._passType == RenderPassType::MAIN_PASS);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - MainPass" });
 
     prepareRenderQueues(params, nodes, false);
 
     if (params._target._usage != RenderTargetUsage::COUNT) {
-        LightPool& activeLightPool = Attorney::SceneManagerRenderPass::lightPool(_parent.parent().sceneManager());
-
         Texture_ptr hizTex = nullptr;
-        size_t hizSampler = 0;
         if (hasHiZ) {
             const RenderTarget& hizTarget = _context.renderTargetPool().renderTarget(params._targetHIZ);
             const auto& hizAtt = hizTarget.getAttachment(RTAttachmentType::Depth, 0);
-            hizTex = hizAtt.texture();
-            hizSampler = hizAtt.samplerHash();
-        }
-
-        const RenderTarget& nonMSTarget = _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN);
-
-        _context.getRenderer().preRender(stagePass, hizTex, hizSampler, activeLightPool, params._camera, bufferInOut);
-
-        if (hasHiZ) {
-            GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ hizTex->data(), hizSampler, TextureUsage::DEPTH });
+            GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ hizAtt.texture()->data(), hizAtt.samplerHash(), TextureUsage::DEPTH });
         } else if (prePassExecuted) {
             if (params._target._usage == RenderTargetUsage::SCREEN_MS) {
+                const RenderTarget& nonMSTarget = _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN);
                 const auto& depthAtt = nonMSTarget.getAttachment(RTAttachmentType::Depth, 0);
                 GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
             } else {
@@ -904,17 +889,12 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
             state2._blendProperties._blendOp = BlendOperation::MAX;
             state2._blendProperties._blendOpAlpha = BlendOperation::MAX;
 
-            RTBlendState& state3 = setBlendStateCmd->_blendStates[to_U8(GFXDevice::ScreenTargets::SPECULAR)];
-            state3._blendProperties._enabled = true;
-            state3._blendProperties._blendOp = BlendOperation::MAX;
-            state3._blendProperties._blendOpAlpha = BlendOperation::MAX;
-
             if_constexpr(Config::USE_COLOURED_WOIT) {
-                RTBlendState& state4 = setBlendStateCmd->_blendStates[to_U8(GFXDevice::ScreenTargets::MODULATE)];
-                state4._blendProperties._enabled = true;
-                state4._blendProperties._blendSrc = BlendProperty::ONE;
-                state4._blendProperties._blendDest = BlendProperty::ONE;
-                state4._blendProperties._blendOp = BlendOperation::ADD;
+                RTBlendState& state3 = setBlendStateCmd->_blendStates[to_U8(GFXDevice::ScreenTargets::MODULATE)];
+                state3._blendProperties._enabled = true;
+                state3._blendProperties._blendSrc = BlendProperty::ONE;
+                state3._blendProperties._blendDest = BlendProperty::ONE;
+                state3._blendProperties._blendOp = BlendOperation::ADD;
             }
         }
 
@@ -1055,16 +1035,8 @@ void RenderPassExecutor::postRender(const RenderStagePass& stagePass,
     OPTICK_EVENT();
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = Util::StringFormat("Post Render pass for stage [ %s ]", TypeUtil::RenderStageToString(stagePass._stage));
 
-    SceneManager* sceneManager = _parent.parent().sceneManager();
-    const SceneRenderState& activeSceneRenderState = Attorney::SceneManagerRenderPass::renderState(sceneManager);
+    const SceneRenderState& activeSceneRenderState = Attorney::SceneManagerRenderPass::renderState(_parent.parent().sceneManager());
     renderQueue.postRender(activeSceneRenderState, stagePass, bufferInOut);
-
-    if (stagePass._stage == RenderStage::DISPLAY && stagePass._passType == RenderPassType::MAIN_PASS) {
-        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Debug Draw";
-        // These should be OIT rendered as well since things like debug nav meshes have translucency
-        Attorney::SceneManagerRenderPass::debugDraw(sceneManager, stagePass, &camera, bufferInOut);
-        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-    }
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
@@ -1080,12 +1052,10 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
         const auto& albedoAtt = MSSource.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
         const auto& velocityAtt = MSSource.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY));
         const auto& normalsAtt = MSSource.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
-        const auto& specularAtt = MSSource.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::SPECULAR));
 
         const TextureData albedoTex = albedoAtt.texture()->data();
         const TextureData velocityTex = velocityAtt.texture()->data();
         const TextureData normalsTex = normalsAtt.texture()->data();
-        const TextureData specularTex = specularAtt.texture()->data();
 
         GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         beginRenderPassCommand->_target = { RenderTargetUsage::SCREEN, 0u };
@@ -1098,7 +1068,6 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
         set._textureData.add(TextureEntry{ albedoTex, albedoAtt.samplerHash(), to_base(TextureUsage::UNIT0) });
         set._textureData.add(TextureEntry{ velocityTex, velocityAtt.samplerHash(), to_base(TextureUsage::NORMALMAP) });
         set._textureData.add(TextureEntry{ normalsTex, normalsAtt.samplerHash(), to_base(TextureUsage::HEIGHTMAP) });
-        set._textureData.add(TextureEntry{ specularTex, specularAtt.samplerHash(), to_base(TextureUsage::OPACITY) });
 
         GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ GenericDrawCommand{} })->_drawCommands.front()._primitiveType = PrimitiveType::TRIANGLES;
 
@@ -1167,12 +1136,6 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
 
     VisibleNodeList<>& visibleNodes = Attorney::SceneManagerRenderPass::cullScene(_parent.parent().sceneManager(), cullParams, cullFlags);
 
-    if (params._feedBackContainer != nullptr) {
-        auto& container = params._feedBackContainer->_visibleNodes;
-        container.resize(visibleNodes.size());
-        std::memcpy(container.data(), visibleNodes.data(), visibleNodes.size() * sizeof(VisibleNode));
-    }
-
     constexpr bool doMainPass = true;
     // PrePass requires a depth buffer
     const bool doPrePass = _stage != RenderStage::SHADOW &&
@@ -1198,6 +1161,16 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
         }
     }
 
+    if (params._feedBackContainer != nullptr) {
+        params._feedBackContainer->resize(visibleNodes.size());
+        std::memcpy(params._feedBackContainer->data(), visibleNodes.data(), visibleNodes.size() * sizeof(VisibleNode));
+        if (hasInvalidNodes) {
+            // This may hurt ... a lot ... -Ionut
+            dvd_erase_if(*params._feedBackContainer, [](VisibleNode& node) {
+                return node._node == nullptr || !node._materialReady;
+            });
+        };
+    }
     // We prepare all nodes for the MAIN_PASS rendering. PRE_PASS and OIT_PASS are support passes only. Their order and sorting are less important.
     params._stagePass._passType = RenderPassType::MAIN_PASS;
     const U32 visibleNodeCount = prepareNodeData(visibleNodes, params, hasInvalidNodes, doPrePass, doOITPass, bufferInOut);
@@ -1262,9 +1235,16 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
     }
 #   pragma endregion
 
+#   pragma region LIGHT_PASS
+    if (params._stagePass._stage != RenderStage::SHADOW) {
+        _context.getRenderer().prepareLighting(_stage, params._camera->projectionMatrix(), bufferInOut);
+    }
+#   pragma endregion
+
 #   pragma region MAIN_PASS
     // Same as for PRE_PASS. Subsequent operations expect a certain state
     params._stagePass._passType = RenderPassType::MAIN_PASS;
+
     if (doMainPass) {
         mainPass(visibleNodes, params, target, doPrePass, doOcclusionPass, bufferInOut);
     } else {

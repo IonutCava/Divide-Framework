@@ -115,7 +115,7 @@ struct NodeTransformData {
     // [0...2][0...2] = normal matrix
     // [3][0...2]     = bounds center
     // [3][3]         = Data Flag
-    // [0][3]         = 4x8U: bone count, reserved, animation ticked this frame (for motion blur), occlusion cull
+    // [0][3]         = 4x8U: bone count, LoDLevel, animation ticked this frame (for motion blur), occlusion cull
     // [1][3]         = 2x16F: BBox HalfExtent (X, Y) 
     // [2][3]         = 2x16F: BBox HalfExtent (Z), BSphere Radius
     mat4 _normalMatrixW;
@@ -152,13 +152,17 @@ struct NodeMaterialData
     uvec4 _textures[(MATERIAL_TEXTURE_COUNT + 1) / 2];
 };
 
-struct NodeMaterialProperties
+struct PBRMaterial
 {
-    vec3 _albedo;
-    vec3 _OMR;
-    vec3 _emissive;
-    vec3 _kS;
-    vec4 _specular;
+    vec4  _specular;
+    vec3  _diffuseColour;
+    vec3 _F0;
+    vec3  _emissive;
+    float _a;
+    float _occlusion;
+    float _metallic;
+    float _roughness;
+    float _padding;
 };
 
 #define BaseColour(materialData) materialData._albedo
@@ -186,11 +190,12 @@ struct NodeMaterialProperties
 
 #define dvd_boneCount(transformData) uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).x * 255)
 
-#define dvd_dataFlag dvd_Transforms[TRANSFORM_IDX]._normalMatrixW[3][3]
+#define dvd_LoDLevel(transformData) uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).y * 255)
 
 #define dvd_frameTicked(transformData) (uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).z  * 255) == 1)
 
 #define dvd_cullNode(transformData) (uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).w * 255) == 1)
 
+#define dvd_dataFlag dvd_Transforms[TRANSFORM_IDX]._normalMatrixW[3][3]
 
 #endif //_NODE_DATA_DEFINITION_CMN_

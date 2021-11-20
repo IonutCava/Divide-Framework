@@ -27,16 +27,16 @@ void main(void){
 
     float scale = data.positionAndScale.w;
 
-    const float LoDValue = data.data.z;
+    VAR._LoDLevel = data.data.z;
 #if defined(HAS_CULLING_OUT)
-    gl_CullDistance[0] = -0.01f * when_gt(LoDValue, 2.1f);
+    gl_CullDistance[0] = -0.01f * when_gt(VAR._LoDLevel, 2.1f);
 #else
-    scale -= scale * when_gt(LoDValue, 2.1f);
+    scale -= scale * when_gt(VAR._LoDLevel, 2.1f);
 #endif
 
 
     dvd_Vertex.xyz = rotate_vertex_position(dvd_Vertex.xyz * scale, data.orientationQuad);
-    if (LoDValue < 1.1f && dvd_Vertex.y * scale > 0.85f) {
+    if (VAR._LoDLevel < 1.1f && dvd_Vertex.y * scale > 0.85f) {
         //computeFoliageMovementTree(dvd_Vertex, dvd_Vertex.y * 0.5f);
     }
 

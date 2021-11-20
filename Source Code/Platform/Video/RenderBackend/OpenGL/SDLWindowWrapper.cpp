@@ -195,6 +195,9 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
 
 
     GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIB_BINDINGS, s_maxAttribBindings);
+    GLUtil::getGLValue(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS, s_maxAtomicBufferBindingIndices);
+    Console::printfn(Locale::Get(_ID("GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS")),
+                     s_maxAtomicBufferBindingIndices);
 
     if (to_base(TextureUsage::COUNT) >= s_maxTextureUnits) {
         Console::errorfn(Locale::Get(_ID("ERROR_INSUFFICIENT_TEXTURE_UNITS")));
@@ -260,7 +263,23 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
                      GLUtil::getGLValue(GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS));
     // How many attributes can we send to a vertex shader
     Console::printfn(Locale::Get(_ID("GL_MAX_VERT_ATTRIB")),
-                     GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIBS));
+                     GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIBS)); 
+    // How many workgroups can we have per compute dispatch
+    for (U8 i = 0u; i < 3; ++i) {
+        GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_COUNT, s_maxWorgroupCount[i], i);
+        GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_SIZE, s_maxWorgroupSize[i], i);
+    }
+
+    s_maxWorgroupInvocations = GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
+    s_maxComputeSharedMemory = GLUtil::getGLValue(GL_MAX_COMPUTE_SHARED_MEMORY_SIZE);
+
+    Console::printfn(Locale::Get(_ID("GL_MAX_COMPUTE_WORK_GROUP_INFO")),
+                     s_maxWorgroupCount[0], s_maxWorgroupCount[1], s_maxWorgroupCount[2], 
+                     s_maxWorgroupSize[0], s_maxWorgroupSize[1], s_maxWorgroupSize[2],
+                     s_maxWorgroupInvocations);
+    Console::printfn(Locale::Get(_ID("GL_MAX_COMPUTE_SHARED_MEMORY_SIZE")),
+                     s_maxComputeSharedMemory / 1024);
+    
     // Maximum number of texture units we can address in shaders
     Console::printfn(Locale::Get(_ID("GL_MAX_TEX_UNITS")),
                      GLUtil::getGLValue(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS),

@@ -75,7 +75,7 @@ private:
 public:
     explicit PostFX(PlatformContext& context, ResourceCache* cache);
 
-    void apply(const Camera* camera, GFX::CommandBuffer& bufferInOut);
+    void apply(const Camera* camera, const DELEGATE<void>& screenTargetCallback, GFX::CommandBuffer& bufferInOut);
 
     void idle(const Configuration& config);
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);

@@ -114,11 +114,11 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      /// Return the position
      [[nodiscard]] vec3<F32> getPosition() const noexcept;
      /// Return the local position
-     [[nodiscard]] vec3<F32> getLocalPosition() const;
+     [[nodiscard]] vec3<F32> getLocalPosition() const noexcept;
      /// Return the position
-     [[nodiscard]] vec3<F32> getPosition(D64 interpolationFactor) const;
+     [[nodiscard]] vec3<F32> getPosition(D64 interpolationFactor) const noexcept;
      /// Return the local position
-     [[nodiscard]] vec3<F32> getLocalPosition(D64 interpolationFactor) const;
+     [[nodiscard]] vec3<F32> getLocalPosition(D64 interpolationFactor) const noexcept;
 
      [[nodiscard]] vec3<F32> getFwdVector() const noexcept;
      [[nodiscard]] vec3<F32> getUpVector() const noexcept;
@@ -127,20 +127,20 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      /// Return the scale factor
      [[nodiscard]] vec3<F32> getScale() const noexcept;
      /// Return the local scale factor
-     [[nodiscard]] vec3<F32> getLocalScale() const;
+     [[nodiscard]] vec3<F32> getLocalScale() const noexcept;
      /// Return the scale factor
-     [[nodiscard]] vec3<F32> getScale(D64 interpolationFactor) const;
+     [[nodiscard]] vec3<F32> getScale(D64 interpolationFactor) const noexcept;
      /// Return the local scale factor
-     [[nodiscard]] vec3<F32> getLocalScale(D64 interpolationFactor) const;
+     [[nodiscard]] vec3<F32> getLocalScale(D64 interpolationFactor) const noexcept;
 
      /// Return the orientation quaternion
      [[nodiscard]] Quaternion<F32> getOrientation() const noexcept;
      /// Return the local orientation quaternion
-     [[nodiscard]] Quaternion<F32> getLocalOrientation() const;
+     [[nodiscard]] Quaternion<F32> getLocalOrientation() const noexcept;
      /// Return the orientation quaternion
-     [[nodiscard]] Quaternion<F32> getOrientation(D64 interpolationFactor) const;
+     [[nodiscard]] Quaternion<F32> getOrientation(D64 interpolationFactor) const noexcept;
      /// Return the local orientation quaternion
-     [[nodiscard]] Quaternion<F32> getLocalOrientation(D64 interpolationFactor) const;
+     [[nodiscard]] Quaternion<F32> getLocalOrientation(D64 interpolationFactor) const noexcept;
 
      void setTransforms(const mat4<F32>& transform);
 
@@ -177,7 +177,6 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
      void getMatrix(D64 interpolationFactor, mat4<F32>& matOut) const;
 
-     //A simple lock-unlock and mutex-free matrix calculation system //
      [[nodiscard]] vec3<F32> getLocalPositionLocked(D64 interpolationFactor) const;
      [[nodiscard]] vec3<F32> getLocalScaleLocked(D64 interpolationFactor) const;
      [[nodiscard]] Quaternion<F32> getLocalOrientationLocked(D64 interpolationFactor) const;
@@ -186,13 +185,13 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void updateWorldMatrix();
 
      // Local transform interface access (all are in local space)
-     void getScale(vec3<F32>& scaleOut) const override;
-     void getPosition(vec3<F32>& posOut) const override;
-     void getOrientation(Quaternion<F32>& quatOut) const override;
+     void getScale(vec3<F32>& scaleOut) const noexcept override;
+     void getPosition(vec3<F32>& posOut) const noexcept override;
+     void getOrientation(Quaternion<F32>& quatOut) const noexcept override;
 
-     [[nodiscard]] Quaternion<F32> getOrientationInternal() const;
-     [[nodiscard]] vec3<F32> getPositionInternal() const;
-     [[nodiscard]] vec3<F32> getScaleInternal() const;
+     [[nodiscard]] Quaternion<F32> getOrientationInternal() const noexcept;
+     [[nodiscard]] vec3<F32> getPositionInternal() const noexcept;
+     [[nodiscard]] vec3<F32> getScaleInternal() const noexcept;
   private:
     std::pair<bool, mat4<F32>> _transformOffset;
 
