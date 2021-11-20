@@ -1236,9 +1236,7 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
 #   pragma endregion
 
 #   pragma region LIGHT_PASS
-    if (params._stagePass._stage != RenderStage::SHADOW) {
-        _context.getRenderer().prepareLighting(_stage, params._camera->projectionMatrix(), bufferInOut);
-    }
+    _context.getRenderer().prepareLighting(_stage, params._camera->projectionMatrix(), bufferInOut);
 #   pragma endregion
 
 #   pragma region MAIN_PASS

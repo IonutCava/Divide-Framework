@@ -124,8 +124,6 @@ bool Scene::frameEnded() {
 }
 
 bool Scene::idle() {  // Called when application is idle
-    LightPool::idle();
-
     if (!_tasks.empty()) {
         // Check again to avoid race conditions
         {

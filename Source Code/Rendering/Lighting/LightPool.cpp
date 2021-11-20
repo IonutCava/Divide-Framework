@@ -191,9 +191,6 @@ bool LightPool::removeLight(const Light& light) {
     return true;
 }
 
-void LightPool::idle() noexcept {
-}
-
 //ToDo: Generate shadow maps in parallel - Ionut
 void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();

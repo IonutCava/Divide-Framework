@@ -216,7 +216,7 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
         const ShadowType shadowType = static_cast<ShadowType>(i);
         const U16 useCount = lastUsedDepthMapOffset(shadowType);
 
-        const U8 bindSlot = LightPool::getShadowBindSlotOffset(static_cast<ShadowType>(i));
+        const U8 bindSlot = LightPool::GetShadowBindSlotOffset(static_cast<ShadowType>(i));
         const RTAttachment& shadowTexture = sm._rt->getAttachment(RTAttachmentType::Colour, 0);
         const TextureDescriptor& texDescriptor = shadowTexture.descriptor()._texDescriptor;
 

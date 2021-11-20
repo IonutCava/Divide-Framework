@@ -61,14 +61,19 @@ class Renderer final : public PlatformContextComponent {
     [[nodiscard]] const PostFX& postFX() const { return *_postFX; }
 
   private:
-    mat4<F32>         _previousProjMatrix;
+      struct PerRenderStageData {
+          mat4<F32>     _previousProjMatrix;
+          ShaderBuffer* _lightIndexBuffer = nullptr;
+          ShaderBuffer* _lightGridBuffer = nullptr;
+          ShaderBuffer* _globalIndexCountBuffer = nullptr;
+          ShaderBuffer* _lightClusterAABBsBuffer = nullptr;
+      };
+    // No shadow stage
+    std::array<PerRenderStageData, to_base(RenderStage::COUNT) - 1> _lightDataPerStage;
+
     ShaderProgram_ptr _lightCullComputeShader = nullptr;
     ShaderProgram_ptr _lightCounterResetComputeShader = nullptr;
     ShaderProgram_ptr _lightBuildClusteredAABBsComputeShader = nullptr;
-    ShaderBuffer*     _lightIndexBuffer = nullptr;
-    ShaderBuffer*     _lightGridBuffer = nullptr;
-    ShaderBuffer*     _globalIndexCountBuffer = nullptr;
-    ShaderBuffer*     _lightClusterAABBsBuffer = nullptr;
     eastl::unique_ptr<PostFX> _postFX = nullptr;
 
     GFX::BindPipelineCommand _lightCullPipelineCmd;

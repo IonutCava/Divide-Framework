@@ -14,11 +14,34 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
-    
+
 vec3<U8> Renderer::CLUSTER_SIZE {
     Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS,
     Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS,
     24u
+};
+
+namespace {
+    U8 GetIndexForStage(const RenderStage stage) noexcept {
+        switch (stage) {
+            case RenderStage::DISPLAY:    return 0u;
+            case RenderStage::REFLECTION: return 1u;
+            case RenderStage::REFRACTION: return 2u;
+        }
+        DIVIDE_UNEXPECTED_CALL();
+        return 0u;
+    }
+
+    RenderStage GetStageForIndex(const U8 index) noexcept {
+        switch (index) {
+            case 0u: return RenderStage::DISPLAY;
+            case 1u: return RenderStage::REFLECTION;
+            case 2u: return RenderStage::REFRACTION;
+        }
+
+        DIVIDE_UNEXPECTED_CALL();
+        return RenderStage::DISPLAY;
+    }
 };
 
 Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
@@ -86,34 +109,39 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
 
     { //Light Index Buffer
         const U32 totalLights = numClusters * to_U32(config.rendering.numLightsPerCluster);
-        bufferDescriptor._name = "LIGHT_INDEX_SSBO";
         bufferDescriptor._bufferParams._elementCount = totalLights;
         bufferDescriptor._bufferParams._elementSize = sizeof(U32);
-        _lightIndexBuffer = _context.gfx().newSB(bufferDescriptor);
-        _lightIndexBuffer->bind(ShaderBufferLocation::LIGHT_INDICES);
+        for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
+            bufferDescriptor._name = Util::StringFormat("LIGHT_INDEX_SSBO_%s", TypeUtil::RenderStageToString(GetStageForIndex(i)));
+            _lightDataPerStage[i]._lightIndexBuffer = _context.gfx().newSB(bufferDescriptor);
+        }
     }
     { // Cluster AABBs
-        bufferDescriptor._name = "GLOBAL_CLUSTER_AABB_SSBO";
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = 2 * (4 * sizeof(F32));
-        _lightClusterAABBsBuffer = _context.gfx().newSB(bufferDescriptor);
-        _lightClusterAABBsBuffer->bind(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
+        for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
+            bufferDescriptor._name = Util::StringFormat("GLOBAL_CLUSTER_AABB_SSBO_%s", TypeUtil::RenderStageToString(GetStageForIndex(i)));
+            _lightDataPerStage[i]._lightClusterAABBsBuffer = _context.gfx().newSB(bufferDescriptor);
+        }
     }
     { // Light Grid Buffer
-        bufferDescriptor._name = "LIGHT_GRID_SSBO";
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = sizeof(vec4<U32>);
-        _lightGridBuffer = _context.gfx().newSB(bufferDescriptor);
-        _lightGridBuffer->bind(ShaderBufferLocation::LIGHT_GRID);
+        for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
+            bufferDescriptor._name = Util::StringFormat("LIGHT_GRID_SSBO_%s", TypeUtil::RenderStageToString(GetStageForIndex(i)));
+            _lightDataPerStage[i]._lightGridBuffer = _context.gfx().newSB(bufferDescriptor);
+        }
     }
 
     { // Global Index Count
-        bufferDescriptor._name = "GLOBAL_INDEX_COUNT_SSBO";
         bufferDescriptor._bufferParams._elementCount = 1u;
         bufferDescriptor._bufferParams._elementSize =  sizeof(vec4<U32>);
-        _globalIndexCountBuffer = _context.gfx().newSB(bufferDescriptor);
-        _globalIndexCountBuffer->bind(ShaderBufferLocation::LIGHT_INDEX_COUNT);
+        for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
+            bufferDescriptor._name = Util::StringFormat("GLOBAL_INDEX_COUNT_SSBO_%s", TypeUtil::RenderStageToString(GetStageForIndex(i)));
+            _lightDataPerStage[i]._globalIndexCountBuffer = _context.gfx().newSB(bufferDescriptor);
+        }
     }
+
     _postFX = eastl::make_unique<PostFX>(context, cache);
 
     if (config.rendering.postFX.postAA.qualityLevel > 0) {
@@ -149,14 +177,43 @@ void Renderer::prepareLighting(const RenderStage stage,
                                const mat4<F32>& projectionMatrix,
                                GFX::CommandBuffer& bufferInOut)
 {
-    assert(stage != RenderStage::SHADOW);
+    if (stage == RenderStage::SHADOW) {
+        // Nothing to do in the shadow pass
+        return;
+    }
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Cull Lights" });
     {
         context().kernel().sceneManager()->getActiveScene().lightPool()->uploadLightData(stage, bufferInOut);
+        PerRenderStageData& data = _lightDataPerStage[GetIndexForStage(stage)];
 
-        if (_previousProjMatrix != projectionMatrix) {
-            _previousProjMatrix = projectionMatrix;
+        GFX::BindDescriptorSetsCommand bindDescriptorSetsCommand{};
+
+        ShaderBufferBinding bufferBinding{};
+        bufferBinding._binding = ShaderBufferLocation::LIGHT_INDICES;
+        bufferBinding._buffer = data._lightIndexBuffer;
+        bufferBinding._elementRange = { 0u, data._lightIndexBuffer->getPrimitiveCount() };
+        bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
+
+        bufferBinding._binding = ShaderBufferLocation::LIGHT_CLUSTER_AABBS;
+        bufferBinding._buffer = data._lightClusterAABBsBuffer;
+        bufferBinding._elementRange = { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() };
+        bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
+
+        bufferBinding._binding = ShaderBufferLocation::LIGHT_GRID;
+        bufferBinding._buffer = data._lightGridBuffer;
+        bufferBinding._elementRange = { 0u, data._lightGridBuffer->getPrimitiveCount() };
+        bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
+
+        bufferBinding._binding = ShaderBufferLocation::LIGHT_INDEX_COUNT;
+        bufferBinding._buffer = data._globalIndexCountBuffer;
+        bufferBinding._elementRange = { 0u, data._globalIndexCountBuffer->getPrimitiveCount() };
+        bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
+
+        GFX::EnqueueCommand(bufferInOut, bindDescriptorSetsCommand);
+
+        if (data._previousProjMatrix != projectionMatrix) {
+            data._previousProjMatrix = projectionMatrix;
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
             {

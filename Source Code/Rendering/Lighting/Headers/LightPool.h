@@ -141,22 +141,20 @@ class LightPool : public SceneComponent,
     /// nullptr = disabled
     void debugLight(Light* light);
 
-    static void idle() noexcept;
-
     /// Get the appropriate shadow bind slot for every light's shadow
-    [[nodiscard]] static U8 getShadowBindSlotOffset(const ShadowType type) noexcept {
+    [[nodiscard]] static U8 GetShadowBindSlotOffset(const ShadowType type) noexcept {
         return to_U8(_shadowLocation[to_U32(type)]);
     }
 
     /// Get the appropriate shadow bind slot offset for every light's shadow
-    [[nodiscard]] static U8 getShadowBindSlotOffset(const LightType lightType) noexcept {
+    [[nodiscard]] static U8 GetShadowBindSlotOffset(const LightType lightType) noexcept {
         switch (lightType) {
             case LightType::SPOT:
-                return getShadowBindSlotOffset(ShadowType::SINGLE);
+                return GetShadowBindSlotOffset(ShadowType::SINGLE);
             case LightType::POINT:
-                return getShadowBindSlotOffset(ShadowType::CUBEMAP);
+                return GetShadowBindSlotOffset(ShadowType::CUBEMAP);
             case LightType::DIRECTIONAL:
-                return getShadowBindSlotOffset(ShadowType::LAYERED);
+                return GetShadowBindSlotOffset(ShadowType::LAYERED);
             case LightType::COUNT:
                 DIVIDE_UNEXPECTED_CALL();
                 break;
@@ -205,13 +203,16 @@ class LightPool : public SceneComponent,
 
     using LightData = std::array<LightProperties, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME>;
 
-    std::array<std::array<U32, to_base(LightType::COUNT)>, to_base(RenderStage::COUNT)> _activeLightCount{};
-    std::array<LightList, to_base(RenderStage::COUNT)> _sortedLights{};
-    std::array<LightData, to_base(RenderStage::COUNT)> _sortedLightProperties{};
-    std::array<U32, to_base(RenderStage::COUNT)> _sortedLightPropertiesCount{};
-    std::array<SceneData, to_base(RenderStage::COUNT)> _sortedSceneProperties{};
-    std::array<LightList, to_base(LightType::COUNT)> _lights{};
-    std::array<bool, to_base(LightType::COUNT)> _lightTypeState{};
+    using LightCountPerType = std::array<U32, to_base(LightType::COUNT)>;
+
+    std::array<LightCountPerType, to_base(RenderStage::COUNT)> _activeLightCount{};
+    std::array<LightList,         to_base(RenderStage::COUNT)> _sortedLights{};
+    std::array<LightData,         to_base(RenderStage::COUNT)> _sortedLightProperties{};
+    std::array<U32,               to_base(RenderStage::COUNT)> _sortedLightPropertiesCount{};
+    std::array<SceneData,         to_base(RenderStage::COUNT)> _sortedSceneProperties{};
+
+    std::array<LightList,         to_base(LightType::COUNT)>   _lights{};
+    std::array<bool,              to_base(LightType::COUNT)>   _lightTypeState{};
 
     ShadowLightList _sortedShadowLights = {};
     ShadowProperties _shadowBufferData;
