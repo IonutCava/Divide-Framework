@@ -227,7 +227,6 @@ bool Texture::checkTransparency(const ResourcePath& name, ImageTools::ImageData&
     }
 
     if (!skip) {
-        STUBBED("ToDo: Add support for 16bit and HDR image alpha! -Ionut");
         if (fileData.alpha()) {
 
             ParallelForDescriptor descriptor = {};

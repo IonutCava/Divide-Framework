@@ -161,10 +161,11 @@ struct ImageData final : NonCopyable {
     [[nodiscard]] UColour4 getColour(I32 x, I32 y, U32 layer = 0u, U8 mipLevel = 0u) const;
     void getColour(I32 x, I32 y, U8& r, U8& g, U8& b, U8& a, U32 layer = 0u, U8 mipLevel = 0u) const;
 
-    void getRed(I32 x, I32 y, U8& r, U32 layer = 0u, U8 mipLevel = 0u) const;
-    void getGreen(I32 x, I32 y, U8& g, U32 layer = 0u, U8 mipLevel = 0u) const;
-    void getBlue(I32 x, I32 y, U8& b, U32 layer = 0u, U8 mipLevel = 0u) const;
-    void getAlpha(I32 x, I32 y, U8& a, U32 layer = 0u, U8 mipLevel = 0u) const;
+    void getColourComponent(const I32 x, const I32 y, const U8 comp, U8& c, const U32 layer, const U8 mipLevel = 0) const;
+    FORCE_INLINE void getRed(const I32 x, const I32 y, U8& r, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 0, r, layer, mipLevel); }
+    FORCE_INLINE void getGreen(const I32 x, const I32 y, U8& g, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 1, g, layer, mipLevel); }
+    FORCE_INLINE void getBlue(const I32 x, const I32 y, U8& b, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 2, b, layer, mipLevel); }
+    FORCE_INLINE void getAlpha(const I32 x, const I32 y, U8& a, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 3, a, layer, mipLevel); }
 
     [[nodiscard]] TextureType compressedTextureType() const noexcept { return _compressedTextureType; }
 

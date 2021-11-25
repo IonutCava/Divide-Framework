@@ -300,38 +300,39 @@ UColour4 ImageData::getColour(const I32 x, const I32 y, [[maybe_unused]] U32 lay
     return returnColour;
 }
 
-void ImageData::getRed(const I32 x, const I32 y, U8& r, const U32 layer, const U8 mipLevel) const {
+namespace {
+    constexpr F32 U32_MAX_F = (U32_MAX - 1u) * 1.f;
+    constexpr F32 U16_MAX_F = U16_MAX * 1.f;
+    FORCE_INLINE [[nodiscard]] U8 F32ToU8Colour(const F32 val) noexcept { return to_U8((val / U32_MAX_F) * 255); }
+    FORCE_INLINE [[nodiscard]] U8 U16ToU8Colour(const U16 val) noexcept { return to_U8((val / U16_MAX_F) * 255); }
+    FORCE_INLINE [[nodiscard]] U8 U8ToU8Colour(const U8 val) noexcept { return val; }
+};
+
+void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& c, const U32 layer, const U8 mipLevel) const {
+    assert(comp >= 0 && comp < 4);
     assert(!_compressed || mipLevel == 0);
     assert(_layers.size() > layer);
 
-    const I32 idx = (y * _layers[layer].getMip(mipLevel)->_dimensions.width + x) * (_bpp / 8);
-    r = _compressed ? _decompressedData[idx + 0] : static_cast<U8*>(_layers[layer].getMip(mipLevel)->data())[idx + 0];
-}
+    if (!_alpha && comp == 3) {
+        c = 255;
+        return;
+    }
 
-void ImageData::getGreen(const I32 x, const I32 y, U8& g, const U32 layer, const U8 mipLevel) const {
     assert(!_compressed || mipLevel == 0);
     assert(_layers.size() > layer);
 
-    const size_t idx = to_size(y * _layers[layer].getMip(mipLevel)->_dimensions.width + x) * (_bpp / 8);
-    g = _compressed ? _decompressedData[idx + 1] : static_cast<U8*>(_layers[layer].getMip(mipLevel)->data())[idx + 1];
-}
-
-void ImageData::getBlue(const I32 x, const I32 y, U8& b, const U32 layer, const U8 mipLevel) const {
-    assert(!_compressed || mipLevel == 0);
-    assert(_layers.size() > layer);
-
-    const size_t idx = to_size(y * _layers[layer].getMip(mipLevel)->_dimensions.width + x) * (_bpp / 8);
-    b = _compressed ? _decompressedData[idx + 2] : static_cast<U8*>(_layers[layer].getMip(mipLevel)->data())[idx + 2];
-}
-
-void ImageData::getAlpha(const I32 x, const I32 y, U8& a, const U32 layer, const U8 mipLevel) const {
-    assert(!_compressed || mipLevel == 0);
-    assert(_layers.size() > layer);
-
-    a = 255;
-    if (_alpha) {
-        const size_t idx = to_size(y * _layers[layer].getMip(mipLevel)->_dimensions.width + x) * (_bpp / 8);
-        a = _compressed ? _decompressedData[idx + 3] : static_cast<U8*>(_layers[layer].getMip(mipLevel)->data())[idx + 3];
+    const I32 idx = ((y * _layers[layer].getMip(mipLevel)->_dimensions.width + x) * (_bpp / 8)) + comp;
+    if (_compressed) {
+        c = _decompressedData[idx];
+    } else {
+        const bufferPtr data = _layers[layer].getMip(mipLevel)->data();
+        if (isHDR()) {
+            c = F32ToU8Colour(static_cast<const F32*>(data)[idx]);
+        } else if (is16Bit()) {
+            c = U16ToU8Colour(static_cast<const U16*>(data)[idx]);
+        } else {
+            c = U8ToU8Colour(static_cast<const U8*>(data)[idx]);
+        }
     }
 }
 
@@ -340,9 +341,35 @@ void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, 
     assert(_layers.size() > layer);
 
     const I32 idx = (y * _layers[layer].getMip(mipLevel)->_dimensions.width + x) * (_bpp / 8);
-    const U8* src = _compressed ? _decompressedData.data() : static_cast<U8*>(_layers[layer].getMip(mipLevel)->data());
 
-    r = src[idx + 0]; g = src[idx + 1]; b = src[idx + 2]; a = _alpha ? src[idx + 3] : 255;
+    if (_compressed) {
+        const U8* src = _decompressedData.data();
+        r = src[idx + 0];
+        g = src[idx + 1];
+        b = src[idx + 2]; 
+        a = _alpha ? src[idx + 3] : 255;
+    } else {
+        const bufferPtr data = _layers[layer].getMip(mipLevel)->data();
+        if (isHDR()) {
+            const F32* src = static_cast<F32*>(data);
+            r = F32ToU8Colour(src[idx + 0]);
+            g = F32ToU8Colour(src[idx + 1]);
+            b = F32ToU8Colour(src[idx + 2]);
+            a = _alpha ? F32ToU8Colour(src[idx + 3]) : 255;
+        } else if (is16Bit()) {
+            const U16* src = static_cast<U16*>(data);
+            r = U16ToU8Colour(src[idx + 0]); 
+            g = U16ToU8Colour(src[idx + 1]);
+            b = U16ToU8Colour(src[idx + 2]);
+            a = _alpha ? U16ToU8Colour(src[idx + 3]) : 255;
+        } else {
+            const U8* src = static_cast<U8*>(data);
+            r = U8ToU8Colour(src[idx + 0]);
+            g = U8ToU8Colour(src[idx + 1]);
+            b = U8ToU8Colour(src[idx + 2]);
+            a = _alpha ? U8ToU8Colour(src[idx + 3]) : 255;
+        }
+    }
 }
 
 bool ImageDataInterface::CreateImageData(const ResourcePath& filename, const U16 refWidth, const U16 refHeight, const bool srgb, ImageData& imgOut) {

@@ -220,8 +220,8 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     _mainWindow = &_context.app().windowManager().getWindow(0u);
 
     _editorCamera = Camera::createCamera<FreeFlyCamera>("Editor Camera");
-    FreeFlyCamera* baseCamera = Camera::utilityCamera<FreeFlyCamera>(Camera::UtilityCamera::DEFAULT);
-    _editorCamera->fromCamera(*baseCamera);
+    _editorCamera->fromCamera(*Camera::utilityCamera(Camera::UtilityCamera::DEFAULT));
+    _editorCamera->setFixedYawAxis(true);
 
     IMGUI_CHECKVERSION();
     assert(_imguiContexts[to_base(ImGuiContextType::Editor)] == nullptr);
