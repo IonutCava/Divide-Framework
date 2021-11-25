@@ -216,7 +216,6 @@ DEFINE_COMMAND_BEGIN(ComputeMipMapsCommand, CommandType::COMPUTE_MIPMAPS);
     Texture* _texture = nullptr;
     vec2<U16> _layerRange = { 0u, 1u };
     vec2<U16> _mipRange = { 0u, 0u };
-    bool _defer = true;
 DEFINE_COMMAND_END(ComputeMipMapsCommand);
 
 DEFINE_COMMAND_BEGIN(SetScissorCommand, CommandType::SET_SCISSOR);

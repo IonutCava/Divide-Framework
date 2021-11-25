@@ -69,8 +69,7 @@ class glTexture final : public Texture,
 
    protected:
     void threadedLoad() override;
-    void reserveStorage(bool fromFile) const;
-    void updateMipsInternal() const;
+    void reserveStorage(bool fromFile);
 
     void loadDataCompressed(const ImageTools::ImageData& imageData);
 
@@ -83,16 +82,12 @@ class glTexture final : public Texture,
     void validateDescriptor();
 
    private:
-    GLenum _type;
+    GLenum _type = GL_NONE;
+    std::pair<SamplerAddress, GLuint> _cachedAddressForSampler = {0u, 0u};
+    SamplerAddress _baseTexAddress = 0u;
     TextureData _loadingData;
-    glLockManager* _lockManager;
-
-
-    using TextureAddressMap = hashMap<size_t, SamplerAddress>;
-    // One GPU address per handle + sampler combo
-    SharedMutex _gpuAddressesLock;
-    static Mutex s_GLgpuAddressesLock;
-    TextureAddressMap _gpuAddresses;
+    glLockManager* _lockManager = nullptr;
+    Mutex _gpuAddressesLock;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(glTexture);

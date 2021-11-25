@@ -147,27 +147,22 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     GFXDevice::setGPURenderer(renderer);
     GFXDevice::setGPUVendor(vendor);
 
-    s_UseBindlessTextures = config.rendering.useBindlessTextures;
-     
-    if_constexpr(Config::ENABLE_GPU_VALIDATION && false) {
-        // Not supported in RenderDoc or nsight (as of 2021)
-        DIVIDE_ASSERT(!s_UseBindlessTextures || s_UseBindlessTextures ==
-            glbinding::aux::ContextInfo::supported(
-                {
-                    GLextension::GL_ARB_bindless_texture
-                }));
-    }
+    // GPU info, including vendor, gpu and driver
+    Console::printfn(Locale::Get(_ID("GL_VENDOR_STRING")), gpuVendorStr, gpuRendererStr, glGetString(GL_VERSION));
+
+    // Not supported in RenderDoc (as of 2021). Will always return false when using it to debug the app
+    const bool extensionSupported = glbinding::aux::ContextInfo::supported({ GLextension::GL_ARB_bindless_texture });
+    Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURE_EXTENSION_STATE")), extensionSupported ? "True" : "False");
+
+    s_UseBindlessTextures = config.rendering.useBindlessTextures && extensionSupported;
+    s_DebugBindlessTextures = config.rendering.debugBindlessTextures;
 
     if (s_UseBindlessTextures != config.rendering.useBindlessTextures) {
         config.rendering.useBindlessTextures = s_UseBindlessTextures;
         config.changed(true);
     }
 
-    if (s_UseBindlessTextures) {
-        Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURES_ENABLED")));
-    } else {
-        Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURES_DISABLED")));
-    }
+    Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURES_STATE")), s_UseBindlessTextures ? "True" : "False", s_DebugBindlessTextures ? "True": "False");
 
     if (s_hardwareQueryPool == nullptr) {
         s_hardwareQueryPool = MemoryManager_NEW glHardwareQueryPool(_context);
@@ -203,7 +198,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     s_maxTextureUnits = static_cast<GLuint>(std::max(GLUtil::getGLValue(GL_MAX_TEXTURE_IMAGE_UNITS), 16));
     s_residentTextures.resize(to_size(s_maxTextureUnits) * (1 << 4));
 
-
     GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIB_BINDINGS, s_maxAttribBindings);
     GLUtil::getGLValue(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS, s_maxAtomicBufferBindingIndices);
     Console::printfn(Locale::Get(_ID("GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS")),
@@ -223,7 +217,7 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     GLint minGLVersion = GLUtil::getGLValue(GL_MINOR_VERSION);
     Console::printfn(Locale::Get(_ID("GL_MAX_VERSION")), majGLVersion, minGLVersion);
 
-    if (majGLVersion <= 4 && minGLVersion < 3) {
+    if (majGLVersion <= 4 && minGLVersion < 6) {
         Console::errorfn(Locale::Get(_ID("ERROR_OPENGL_VERSION_TO_OLD")));
         return ErrorCode::GFX_NOT_SUPPORTED;
     }
@@ -300,9 +294,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     // Query shading language version support
     Console::printfn(Locale::Get(_ID("GL_GLSL_SUPPORT")),
                      glGetString(GL_SHADING_LANGUAGE_VERSION));
-    // GPU info, including vendor, gpu and driver
-    Console::printfn(Locale::Get(_ID("GL_VENDOR_STRING")),
-                     gpuVendorStr, gpuRendererStr, glGetString(GL_VERSION));
     // In order: Maximum number of uniform buffer binding points,
     //           maximum size in basic machine units of a uniform block and
     //           minimum required alignment for uniform buffer sizes and offset
@@ -385,6 +376,8 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     glUniformBuffer::OnGLInit();
     // Init static program data
     glShaderProgram::OnStartup();
+    // Init any buffer locking mechanism we might need
+    glBufferLockManager::OnStartup();
     // We need a dummy VAO object for point rendering
     s_dummyVAO = s_vaoPool.allocate();
 
@@ -463,19 +456,50 @@ void GL_API::QueueFlush() noexcept {
     s_glFlushQueued.store(true);
 }
 
-void GL_API::QueueComputeMipMap(const GLuint textureHandle) {
+void GL_API::QueueComputeMipMaps(const GLuint textureHandle) {
     ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
     if (s_mipmapQueue.find(textureHandle) == std::cend(s_mipmapQueue)) {
         s_mipmapQueue.insert(textureHandle);
     }
 }
 
-void GL_API::DequeueComputeMipMap(const GLuint textureHandle) {
+void GL_API::DequeueComputeMipMaps(const GLuint textureHandle) {
     ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
     const auto it = s_mipmapQueue.find(textureHandle);
     if (it != std::cend(s_mipmapQueue)) {
         s_mipmapQueue.erase(it);
     }
+}
+
+void GL_API::ComputeMipMaps(const GLuint textureHandle) {
+    ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
+    const auto it = s_mipmapQueue.find(textureHandle);
+    if (it != std::cend(s_mipmapQueue)) {
+        glGenerateTextureMipmap(*it);
+        s_mipmapQueue.erase(it);
+    } else {
+        glGenerateTextureMipmap(textureHandle);
+    }
+}
+
+bool GL_API::ComputeMipMapsQueued(const GLuint textureHandle) {
+    ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
+    return s_mipmapQueue.find(textureHandle) != std::cend(s_mipmapQueue);
+}
+
+void GL_API::ProcessMipMapsQueue() noexcept {
+    {
+        SharedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
+        if (GL_API::s_mipmapQueue.empty()) {
+            return;
+        }
+    }
+
+    ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
+    for (const GLuint handle : s_mipmapQueue) {
+        glGenerateTextureMipmap(handle);
+    }
+    s_mipmapQueue.clear();
 }
 
 void GL_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) {

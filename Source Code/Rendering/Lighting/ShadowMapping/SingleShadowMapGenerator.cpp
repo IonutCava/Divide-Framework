@@ -123,7 +123,8 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
     //Blur FBO
     {
         TextureDescriptor blurMapDescriptor(TextureType::TEXTURE_2D, texDescriptor.baseFormat(), texDescriptor.dataType());
-        blurMapDescriptor.layerCount(1);
+        blurMapDescriptor.layerCount(1u);
+        blurMapDescriptor.mipCount(1u);
 
         RTAttachmentDescriptors att = {
             { blurMapDescriptor, samplerHash, RTAttachmentType::Colour }

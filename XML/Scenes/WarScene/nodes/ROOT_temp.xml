@@ -16,13 +16,13 @@
 <RENDERING>
     <Material>
         <version>1</version>
-        <shadingMode>COOK_TORRANCE</shadingMode>
+        <shadingMode>OREN_NAYAR</shadingMode>
         <colour r="1" g="1" b="1" a="1"/>
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>
         <specular r="0" g="0" b="0" a="1"/>
-        <metallic>0.0430000015</metallic>
-        <roughness>0</roughness>
+        <metallic>0.601999998</metallic>
+        <roughness>0.0309999995</roughness>
         <doubleSided>false</doubleSided>
         <receivesShadows>true</receivesShadows>
         <ignoreTexDiffuseAlpha>false</ignoreTexDiffuseAlpha>

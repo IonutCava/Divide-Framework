@@ -1,8 +1,6 @@
 #ifndef _TERRAIN_SPLATTING_FRAG_
 #define _TERRAIN_SPLATTING_FRAG_
 
-#define SAMPLE_NO_TILE_ARRAYS
-
 #include "texturing.frag"
 #include "waterData.cmn"
 
@@ -38,7 +36,7 @@ float[TOTAL_LAYER_COUNT] getBlendFactor(in vec2 uv) {
 
     uint offset = 0;
     for (uint i = 0; i < MAX_TEXTURE_LAYERS; ++i) {
-        const vec4 blendColour = texture(texOpacityMap, vec3(uv, i));
+        const vec4 blendColour = GetBlend(vec3(uv, i));
         for (uint j = 0; j < CURRENT_LAYER_COUNT[i]; ++j) {
             blendAmount[offset + j] = blendColour[j];
         }
@@ -94,7 +92,7 @@ mat3 getTBNWV() {
 float getDisplacementValueFromCoords(in vec2 sampleUV, in float[TOTAL_LAYER_COUNT] amnt) {
     float ret = 0.0f;
     for (uint i = 0; i < TOTAL_LAYER_COUNT; ++i) {
-        ret = max(ret, SampleTextureNoTile(texProjected, vec3(sampleUV * CURRENT_TILE_FACTORS[i], DISPLACEMENT_IDX[i])).r * amnt[i]);
+        ret = max(ret, SampleTextureNoTile(texMetalness, vec3(sampleUV * CURRENT_TILE_FACTORS[i], DISPLACEMENT_IDX[i])).r * amnt[i]);
     }
     // Transform the height to displacement (easier to fake depth than height on flat surfaces)
     return 1.f - ret;
@@ -173,14 +171,14 @@ vec4 getTerrainNormal() {
 
     vec3 normal = vec3(0.f);
     for (uint i = 0; i < TOTAL_LAYER_COUNT; ++i) {
-        normal = mix(normal, SampleTextureNoTile(texDiffuse1, vec3(uv * CURRENT_TILE_FACTORS[i], NORMAL_IDX[i])).rgb, blendAmount[i]);
+        normal = mix(normal, SampleTextureNoTile(texNormalMap, vec3(uv * CURRENT_TILE_FACTORS[i], NORMAL_IDX[i])).rgb, blendAmount[i]);
     }
 
     return vec4(2.f * normal - 1.f, 0.f);
 }
 
 vec4 getUnderwaterNormal() {
-    const vec3 normal = texture(texSpecular, vec3(VAR._texCoord * UNDERWATER_TILE_SCALE, 2)).rgb;
+    const vec3 normal = GetCaustics(vec3(VAR._texCoord * UNDERWATER_TILE_SCALE, 2)).rgb;
 
     return vec4(2.f * normal - 1.f, 0.f);
 }
@@ -202,8 +200,8 @@ vec4 getUnderwaterAlbedo(in vec2 uv, in float waterDepth) {
     const float time2 = MSToSeconds(dvd_time) * 0.1f;
     const vec4 uvNormal = vec4(uv + time2.xx, uv + vec2(-time2, time2));
 
-    return vec4(mix(0.5f * (texture(texSpecular, vec3(uvNormal.xy, 0)).rgb + texture(texSpecular, vec3(uvNormal.zw, 0)).rgb),
-                    texture(texSpecular, vec3(uv, 1)).rgb,
+    return vec4(mix(0.5f * (GetCaustics(vec3(uvNormal.xy, 0)).rgb + texture(texSpecular, vec3(uvNormal.zw, 0)).rgb),
+                    GetCaustics(vec3(uv, 1)).rgb,
                     waterDepth),
                 0.3f);
 }

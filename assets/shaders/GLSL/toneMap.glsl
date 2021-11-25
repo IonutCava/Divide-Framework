@@ -27,14 +27,14 @@ vec3 applyFog(in vec3  rgb,      // original color of the pixel
     return mix(rgb, dvd_fogDetails._colourAndDensity.rgb, fogAmount);
 }
 
-float fresnel(vec3 V, vec3 N) {
+vec3 computeFresnel(in vec3 V, in vec3 N) {
     const vec3 H = normalize(N + V);
     #define fresnelExp 5.0
     float cosine = dot(H, V);
     float product = max(cosine, 0.0);
     float factor = 1.0 - pow(product, fresnelExp);
 
-    return factor;
+    return vec3(factor);
 }
 
 vec3 computeFresnelSchlickRoughness(in vec3 H, in vec3 V, in vec3 F0, in float roughness) {
@@ -68,10 +68,10 @@ void main() {
     const vec3 V = normalize(cameraPosition - worldPos);
 
     const float metalness = MR.x;
-    const float roughness = MR.y;
 #if 0
-    const vec3 kS = fresnel(V, N);
+    const vec3 kS = computeFresnel(V, N);
 #else 
+    const float roughness = MR.y;
     const vec3 dielectricSpecular = vec3(0.04f);
     const vec3 F0 = mix(dielectricSpecular, albedo.rgb, metalness);
     const vec3 H = normalize(N + V);

@@ -102,7 +102,6 @@ namespace Divide {
         bool bindTextureImage(GLushort unit, GLuint handle, GLint level, bool layered, GLint layer, GLenum access, GLenum format);
         /// Bind multiple textures specified by an array of handles and an offset unit
         bool bindTextures(GLushort unitOffset, GLuint textureCount, TextureType texturesType, const GLuint* textureHandles, const GLuint* samplerHandles);
-        bool bindTexturesNoMipMap(GLushort unitOffset, GLuint textureCount, TextureType texturesType, const GLuint* textureHandles, const GLuint* samplerHandles);
 
         void setStateBlock(size_t stateBlockHash);
 
@@ -131,8 +130,6 @@ namespace Divide {
         [[nodiscard]] TextureType getBoundTextureType(U8 slot) const;
 
         void getActiveViewport(GLint* vp) const noexcept;
-
-        static void ProcessMipMapQueue(GLuint textureCount, const GLuint* textureHandles);
 
       public:
           struct BindConfigEntry

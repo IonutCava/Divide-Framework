@@ -248,10 +248,10 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
         light->cleanShadowProperties(shadowIndex);
 
         shadowsGenerated[to_base(lType)] = true;
+
         GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
         computeMipMapsCommand._texture = ShadowMap::getDepthMap(lType)._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
         computeMipMapsCommand._layerRange = layerRange;
-        computeMipMapsCommand._defer = false;
         EnqueueCommand(bufferInOut, computeMipMapsCommand);
     }
 

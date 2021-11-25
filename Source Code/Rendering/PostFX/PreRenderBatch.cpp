@@ -76,7 +76,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     desc._attachmentCount = 1u;
 
     TextureDescriptor outputDescriptor = _screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO)).texture()->descriptor();
-    outputDescriptor.mipMapsRequired(false);
+    outputDescriptor.mipCount(1u);
     {
         RTAttachmentDescriptors att = { { outputDescriptor, screenSampler.getHash(), RTAttachmentType::Colour } };
         desc._name = "PostFX Output HDR";
@@ -617,7 +617,6 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
     if (_needScreenCopy) {
         GFX::ComputeMipMapsCommand computeMipMapsCommand{};
         computeMipMapsCommand._texture = _screenCopyPreToneMap._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
-        computeMipMapsCommand._defer = false;
         GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
     }
 

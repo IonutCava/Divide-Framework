@@ -5,68 +5,89 @@
 
 #include "utility.frag"
 
-#if defined(PBR_SHADING)
 #include "pbr.frag"
-#elif defined(USE_SHADING_BLINN_PHONG)
 #include "specGloss.frag"
-#else //PBR_SHADING
 #include "specialBRDFs.frag"
-#endif //PBR_SHADING
 
+vec3 GetBRDF(in vec3 L,
+             in vec3 V,
+             in vec3 N,
+             in vec3 lightColour,
+             in float lightAttenuation,
+             in float NdotL,
+             in float NdotV,
+             in PBRMaterial material) 
+{
+    if (material._shadingMode == SHADING_OREN_NAYAR || material._shadingMode == SHADING_COOK_TORRANCE) {
+        return GetBRDF_PBR(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
+    } else if (material._shadingMode == SHADING_BLINN_PHONG || material._shadingMode == SHADING_PHONG) {
+        return GetBRDF_Phong(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
+    }
+
+    return GetBRDF_Special(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
+}
 #if defined(COMPUTE_TBN)
 #include "bumpMapping.frag"
 #endif //COMPUTE_TBN
 
-#if defined(USE_CUSTOM_ROUGHNESS)
-void getOMR(in NodeMaterialData matData, in vec2 uv, inout float occlusion, inout float metallic, inout float roughness);
-#else //USE_CUSTOM_ROUGHNESS
-void getOMR(in NodeMaterialData matData, in vec2 uv, inout float occlusion, inout float metallic, inout float roughness) {
-#if defined(SAMPLER_OMR_COMPACT)
-    vec3 OMR = texture(texMetalness, uv).rgb;
-#else //SAMPLER_OMR_COMPACT
-    vec3 OMR = PACKED_OMR(matData);
-#if defined(USE_OCCLUSION_MAP)
-    OMR[0] = texture(texOcclusion, uv).r;
-#endif //USE_OCCLUSION_MAP
-#if defined(USE_METALLIC_MAP)
-    OMR[1] = texture(texMetalness, uv).r;
-#endif //USE_METALLIC_MAP
-#if defined(USE_ROUGHNESS_MAP)
-    OMR[2] = texture(texRoughness, uv).r;
-#endif //USE_ROUGHNESS_MAP
-#endif //SAMPLER_OMR_COMPACT
-
-    occlusion = OMR[0];
-    metallic = OMR[1];
-    roughness = OMR[2];
+#if defined(USE_CUSTOM_TEXTURE_OMR)
+void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR);
+#else //USE_CUSTOM_TEXTURE_OMR
+#if defined(NO_OMR_TEX)
+#define getTextureOMR(usePacked, uv, texOps, OMR)
+#else //NO_OMR_TEX
+void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR) {
+    if (usePacked) {
+#if !defined(NO_METALNESS_TEX)
+        OMR = texture(texMetalness, uv).rgb;
+#endif //NO_METALNESS_TEX
+    } else {
+        if (texOps.x != TEX_NONE) {
+#if !defined(NO_OCCLUSION_TEX)
+            OMR.r = texture(texOcclusion, uv).r;
+#endif //NO_METALNESS_TEX
+        }
+        if (texOps.y != TEX_NONE) {
+#if !defined(NO_METALNESS_TEX)
+            OMR.g = texture(texMetalness, uv).r;
+#endif //NO_METALNESS_TEX
+        }
+        if (texOps.z != TEX_NONE) {
+#if !defined(NO_ROUGHNESS_TEX)
+            OMR.b = texture(texRoughness, uv).r;
+#endif //NO_ROUGHNESS_TEX
+        }
+    }
 }
-#endif //USE_CUSTOM_ROUGHNESS
+#endif //NO_OMR_TEX
+#endif //USE_CUSTOM_TEXTURE_OMR
 
 #if defined(USE_CUSTOM_SPECULAR)
-vec4 getSpecular(in NodeMaterialData matData, in vec2 uv);
+vec4 getSpecular(in NodeMaterialData matData, in vec3 uv);
 #else //USE_CUSTOM_SPECULAR
-vec4 getSpecular(in NodeMaterialData matData, in vec2 uv) {
+vec4 getSpecular(in NodeMaterialData matData, in vec3 uv) {
     vec4 specData = vec4(Specular(matData), SpecularStrength(matData));
 
-#if defined(USE_SPECULAR_MAP)
     // Specular strength is baked into the specular colour, so even if we use a texture, we still need to multiply the strength in
-    const vec4 texIn = texture(texSpecular, uv);
-    specData.rgb = ApplyTexOperation(vec4(specData.rgb, 1.f),
-                                     texture(texSpecular, uv),
-                                     dvd_texOperations(matData).z).rgb;
-#endif //USE_SPECULAR_MAP
+    const uint texOp = dvd_TexOpSpecular(matData);
+    if (texOp != TEX_NONE) {
+        specData.rgb = ApplyTexOperation(vec4(specData.rgb, 1.f),
+                                         texture(texSpecular, uv),
+                                         texOp).rgb;
+    }
 
     return specData;
 }
 #endif //USE_CUSTOM_SPECULAR
 
 #if defined(USE_CUSTOM_EMISSIVE)
-vec3 getEmissiveColour(in NodeMaterialData matData, in vec2 uv);
+vec3 getEmissiveColour(in NodeMaterialData matData, in vec3 uv);
 #else //USE_CUSTOM_EMISSIVE
-vec3 getEmissiveColour(in NodeMaterialData matData, in vec2 uv) {
-#if defined(USE_EMISSIVE_MAP)
-    return texture(texEmissive, uv).rgb;
-#endif //USE_EMISSIVE_MAP
+vec3 getEmissiveColour(in NodeMaterialData matData, in vec3 uv) {
+    const uint texOp = dvd_TexOpEmissive(matData);
+    if (texOp != TEX_NONE) {
+        return texture(texEmissive, uv).rgb;
+    }
 
     return EmissiveColour(matData);
 }
@@ -82,23 +103,42 @@ vec3 computeFresnelSchlickRoughness(in vec3 H, in vec3 V, in vec3 F0, in float r
 PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, in vec2 uv, in vec3 V, in vec3 N, in float normalVariation) {
     PBRMaterial material;
 
-    const vec3 albedoIn = albedo + Ambient(matData);
+    const vec4 unpackedData = (unpackUnorm4x8(matData._data.z) * 255);
 
-    getOMR(matData, uv, material._occlusion, material._metallic, material._roughness);
-    material._emissive = getEmissiveColour(matData, uv);
-    material._specular = getSpecular(matData, uv);
-#if !defined(PBR_SHADING)
+    material._shadingMode = uint(unpackedData.y);
+
+    vec4 OMR_Selection = unpackUnorm4x8(matData._data.x);
+    {
+        const bool usePacked = uint(unpackedData.z) == 1u;
+        const uvec4 texOpsB = dvd_texOperationsB(matData);
+        getTextureOMR(usePacked, vec3(uv, 0), texOpsB.xyz, OMR_Selection.rgb);
+
+        material._occlusion = OMR_Selection.r;
+        material._metallic = OMR_Selection.g;
+        material._roughness = OMR_Selection.b;
+    }
+
+    material._emissive = getEmissiveColour(matData, vec3(uv, 0));
+    { //selection
+        const uint selection = uint(OMR_Selection.a * 2);
+        material._emissive += vec3(0.f, selection == 1u ? 2.f : 0.f, selection == 2u ? 2.f : 0.f);
+    }
+
+    material._specular = getSpecular(matData, vec3(uv, 0));
+
     // Deduce a roughness factor from specular colour and shininess
-    const float specularIntensity = Luminance(material._specular.rgb);
-    const float specularPower = material._specular.a / 1000.f;
-    const float roughnessFactor = 1.f - sqrt(specularPower);
-    // Specular intensity directly impacts roughness regardless of shininess
-    material._roughness = (1.f - (saturate(pow(roughnessFactor, 2)) * specularIntensity));
-#endif //!PBR_SHADING
+    if (material._shadingMode != SHADING_OREN_NAYAR && material._shadingMode != SHADING_COOK_TORRANCE) {
+        const float specularIntensity = Luminance(material._specular.rgb);
+        const float specularPower = material._specular.a / 1000.f;
+        const float roughnessFactor = 1.f - sqrt(specularPower);
+        // Specular intensity directly impacts roughness regardless of shininess
+        material._roughness = (1.f - (saturate(pow(roughnessFactor, 2)) * specularIntensity));
+    }
 
     // Try to reduce specular aliasing by increasing roughness when minified normal maps have high variation.
     material._roughness = mix(material._roughness, 1.f, normalVariation);
 
+    const vec3 albedoIn = albedo + Ambient(matData);
     const vec3 dielectricSpecular = vec3(0.04f);
     const vec3 black = vec3(0.f);
     material._diffuseColour = mix(albedoIn * (vec3(1.f) - dielectricSpecular), black, material._metallic);
@@ -124,83 +164,91 @@ mat3 getTBNWV();
 // Reduce specular aliasing by producing a modified roughness value
 // Tokuyoshi et al. 2019. Improved Geometric Specular Antialiasing.
 // http://www.jp.square-enix.com/tech/library/pdf/ImprovedGeometricSpecularAA.pdf
-float specularAntiAliasing(vec3 N, float a) {
+float specularAntiAliasing(in vec3 N, in float a) {
     // normal-based isotropic filtering
     // this is originally meant for deferred rendering but is a bit simpler to implement than the forward version
     // saves us from calculating uv offsets and sampling textures for every light
-    const float SIGMA2 = 0.25f; // squared std dev of pixel filter kernel (in pixels)
-    const float KAPPA = 0.18f; // clamping threshold
-    vec3 dndu = dFdx(N);
-    vec3 dndv = dFdy(N);
-    float variance = SIGMA2 * (dot(dndu, dndu) + dot(dndv, dndv));
-    float kernelRoughness2 = min(2.f * variance, KAPPA);
+
+     // squared std dev of pixel filter kernel (in pixels)
+    #define SIGMA2 0.25f
+    // clamping threshold
+    #define KAPPA  0.18f
+
+    const vec3 dndu = dFdx(N);
+    const vec3 dndv = dFdy(N);
+    const float variance = SIGMA2 * (dot(dndu, dndu) + dot(dndv, dndv));
+    const float kernelRoughness2 = min(2.f * variance, KAPPA);
     return saturate(a + kernelRoughness2);
 }
 #endif //!PRE_PASS
 
-#if !defined(PRE_PASS) || defined(HAS_TRANSPARENCY)
-vec4 getTextureColour(in vec4 albedo, in vec2 uv, in uvec2 texOperations) {
-    vec4 colour = albedo;
-#if !defined(SKIP_TEX0)
-    const vec4 colourA = texture(texDiffuse0, uv);
-    colour = ApplyTexOperation(colour, colourA, texOperations.x);
-#endif //SKIP_TEX0
-#if !defined(SKIP_TEX1)
-    const vec4 colourB = texture(texDiffuse1, uv);
-    colour = ApplyTexOperation(colour, colourB, texOperations.y);
-#endif //!SKIP_TEX1
+#if !defined(PRE_PASS)
+#if defined(USE_PLANAR_REFLECTION)
+#define getReflectionColour(UV) texture(texReflectPlanar, UV)
+#else //USE_PLANAR_REFLECTION
+#define getReflectionColour(UV) texture(texReflectCube, UV)
+#endif //USE_PLANAR_REFLECTION
 
-#if 0
-    colour = saturate(colour);
-#endif
+#if defined(USE_PLANAR_REFRACTION)
+#define getRefractionColour(UV) texture(texRefractPlanar, UV)
+#else //USE_PLANAR_REFLECTION
+#define getRefractionColour(UV) texture(texRefractCube, UV)
+#endif //USE_PLANAR_REFLECTION
+#endif //!PRE_PASS
+
+#if !defined(PRE_PASS) || defined(HAS_TRANSPARENCY)
+vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {
+    vec4 colour = BaseColour(data);
+
+    const uvec2 texOps = dvd_texOperationsA(data).xy;
+
+    if (texOps.x != TEX_NONE) {
+        colour = ApplyTexOperation(colour, texture(texDiffuse0, uv), texOps.x);
+    }
+    if (texOps.y != TEX_NONE) {
+        colour = ApplyTexOperation(colour, texture(texDiffuse1, uv), texOps.y);
+    }
 
     return colour;
 }
 
 #if defined(HAS_TRANSPARENCY)
-float getAlpha(in NodeMaterialData data, in vec2 uv) {
-#   if defined(USE_OPACITY_MAP)
-#       if defined(USE_OPACITY_MAP_RED_CHANNEL)
-            return texture(texOpacityMap, uv).r;
-#       else //USE_OPACITY_MAP_RED_CHANNEL
-            return texture(texOpacityMap, uv).a;
-#       endif //USE_OPACITY_MAP_RED_CHANNEL
-#   elif defined(USE_ALBEDO_COLOUR_ALPHA) || defined(USE_ALBEDO_TEX_ALPHA)
-            return getTextureColour(BaseColour(data), uv, dvd_texOperations(data).xy).a;
-#   endif //USE_OPACITY_MAP
+float getAlpha(in NodeMaterialData data, in vec3 uv) {
+    if (dvd_TexOpOpacity(data) != TEX_NONE) {
+        return dvd_useOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a
+                                                : texture(texOpacityMap, uv).r;
+    }
 
-    return 1.f;
+    if (dvd_useAlbedoTextureAlphaChannel(data) && dvd_TexOpUnit0(data) != TEX_NONE) {
+        return getTextureColour(data, uv).a;
+    }
+
+    return BaseColour(data).a;
 }
 
-vec4 getAlbedo(in NodeMaterialData data, in vec2 uv) {
-    vec4 albedo = getTextureColour(BaseColour(data), uv, dvd_texOperations(data).xy);
-#   if defined(USE_OPACITY_MAP)
-#       if defined(USE_OPACITY_MAP_RED_CHANNEL)
-            albedo.a = texture(texOpacityMap, uv).r;
-#       else //USE_OPACITY_MAP_RED_CHANNEL
-            albedo.a = texture(texOpacityMap, uv).a;
-#       endif //USE_OPACITY_MAP_RED_CHANNEL
-#   endif //USE_OPACITY_MAP
+vec4 getAlbedo(in NodeMaterialData data, in vec3 uv) {
+    vec4 albedo = getTextureColour(data, uv);
+
+    if (dvd_TexOpOpacity(data) != TEX_NONE) {
+        albedo.a = dvd_useOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a
+                                                    : texture(texOpacityMap, uv).r;
+    }
+
+    if (!dvd_useAlbedoTextureAlphaChannel(data)) {
+        albedo.a = BaseColour(data).a;
+    }
 
     return albedo;
 }
 #else //HAS_TRANSPARENCY
-#define getAlbedo(DATA, UV) getTextureColour(BaseColour(DATA), UV, dvd_texOperations(DATA).xy)
+#define getAlbedo getTextureColour
 #endif //HAS_TRANSPARENCY
 
 #endif //!PRE_PASS || HAS_TRANSPARENCY
 
-#if defined(SAMPLER_NORMALMAP_IS_ARRAY)
-#define UV_TYPE vec3
-#define SamplerType sampler2DArray
-#else //SAMPLER_NORMALMAP_IS_ARRAY
-#define UV_TYPE vec2
-#define SamplerType sampler2D
-#endif //SAMPLER_NORMALMAP_IS_ARRAY
-
-vec4 getNormalMapAndVariation(in SamplerType tex, in UV_TYPE uv) {
+vec4 getNormalMapAndVariation(in sampler2DArray tex, in vec3 uv) {
     const vec3 normalMap = 2.f * texture(tex, uv).rgb - 1.f;
-    const float normalMap_Mip = textureQueryLod(tex, uv).x;
+    const float normalMap_Mip = textureQueryLod(tex, uv.xy).x;
     const float normalMap_Length = length(normalMap);
     const float variation = 1.f - pow(normalMap_Length, 8.f);
     const float minification = saturate(normalMap_Mip - 2.f);
@@ -211,7 +259,7 @@ vec4 getNormalMapAndVariation(in SamplerType tex, in UV_TYPE uv) {
     return vec4(normalW, normalVariation);
 }
 
-vec3 getNormalWV(in UV_TYPE uv, out float normalVariation) {
+vec3 getNormalWV(in NodeMaterialData data, in vec3 uv, out float normalVariation) {
     normalVariation = 0.f;
 
     vec3 normalWV = VAR._normalWV;
@@ -223,12 +271,9 @@ vec3 getNormalWV(in UV_TYPE uv, out float normalVariation) {
     }
 #endif //COMPUTE_TBN && !USE_CUSTOM_NORMAL_MAP
 
-    normalWV = normalize(normalWV);
-#if defined (USE_DOUBLE_SIDED) && !defined(SKIP_DOUBLE_SIDED_NORMALS)
-    return gl_FrontFacing ? normalWV : -normalWV;
-#else //USE_DOUBLE_SIDED && !SKIP_DOUBLE_SIDED_NORMALS
-    return normalWV;
-#endif //USE_DOUBLE_SIDED && !SKIP_DOUBLE_SIDED_NORMALS
+    return normalize(normalWV) * 
+        (dvd_isDoubleSided(data) ? (2.f * float(gl_FrontFacing) - 1.f)
+                                 : 1.f);
 }
 
 #endif //_MATERIAL_DATA_FRAG_

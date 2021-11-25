@@ -83,7 +83,7 @@ namespace Divide {
         }
         Attorney::EditorSceneViewWindow::emissiveSelections(_parent, emissiveSelections);
 
-        const bool enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
+        bool enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
         TransformSettings settings = _parent.getTransformSettings();
 
         const F32 ItemSpacing = ImGui::GetStyle().ItemSpacing.x;
@@ -91,6 +91,10 @@ namespace Divide {
         static F32 RButtonWidth = 10.0f;
         static F32 SButtonWidth = 10.0f;
         static F32 NButtonWidth = 10.0f;
+        static F32 XButtonWidth = 10.0f;
+        static F32 YButtonWidth = 10.0f;
+        static F32 ZButtonWidth = 10.0f;
+        static F32 AButtonWidth = 10.0f;
 
         ImGui::SameLine(window->ContentSize.x / 2);
 
@@ -101,32 +105,66 @@ namespace Divide {
 
         F32 pos = SButtonWidth + ItemSpacing + 25;
         ImGui::SameLine(window->ContentSize.x - pos);
-        if (button(!enableGizmo || settings.currentGizmoOperation == ImGuizmo::SCALE, "S", "Scale", true)) {
-            settings.currentGizmoOperation = ImGuizmo::SCALE;
+        if (button(!enableGizmo || settings.currentGizmoOperation == ImGuizmo::SCALE || settings.currentGizmoOperation == ImGuizmo::SCALE_X || settings.currentGizmoOperation == ImGuizmo::SCALE_Y || settings.currentGizmoOperation == ImGuizmo::SCALE_Z, 
+                    "S",
+                    "Scale",
+                    true))
+        {
+            switch (settings.previousAxisSelected[2]) {
+                case 0u: settings.currentGizmoOperation = ImGuizmo::SCALE;   break;
+                case 1u: settings.currentGizmoOperation = ImGuizmo::SCALE_X; break;
+                case 2u: settings.currentGizmoOperation = ImGuizmo::SCALE_Y; break;
+                case 3u: settings.currentGizmoOperation = ImGuizmo::SCALE_Z; break;
+            }
+            settings.currentAxisSelected = settings.previousAxisSelected[2];
+            Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, true);
         }
         SButtonWidth = ImGui::GetItemRectSize().x;
 
         pos += RButtonWidth + ItemSpacing + 5;
         ImGui::SameLine(window->ContentSize.x - pos);
-        if (button(!enableGizmo || settings.currentGizmoOperation == ImGuizmo::ROTATE, "R", "Rotate", true)) {
-            settings.currentGizmoOperation = ImGuizmo::ROTATE;
+        if (button(!enableGizmo || settings.currentGizmoOperation == ImGuizmo::ROTATE || settings.currentGizmoOperation == ImGuizmo::ROTATE_X || settings.currentGizmoOperation == ImGuizmo::ROTATE_Y || settings.currentGizmoOperation == ImGuizmo::ROTATE_Z,
+                    "R",
+                    "Rotate",
+                    true))
+        {
+            switch (settings.previousAxisSelected[1]) {
+                case 0u: settings.currentGizmoOperation = ImGuizmo::ROTATE;   break;
+                case 1u: settings.currentGizmoOperation = ImGuizmo::ROTATE_X; break;
+                case 2u: settings.currentGizmoOperation = ImGuizmo::ROTATE_Y; break;
+                case 3u: settings.currentGizmoOperation = ImGuizmo::ROTATE_Z; break;
+            }
+            settings.currentAxisSelected = settings.previousAxisSelected[1];
+            Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, true);
         }
         RButtonWidth = ImGui::GetItemRectSize().x;
 
         pos += TButtonWidth + ItemSpacing + 5;
         ImGui::SameLine(window->ContentSize.x - pos);
-        if (button(!enableGizmo || settings.currentGizmoOperation == ImGuizmo::TRANSLATE, "T", "Translate", true)) {
-            settings.currentGizmoOperation = ImGuizmo::TRANSLATE;
+        if (button(!enableGizmo || settings.currentGizmoOperation == ImGuizmo::TRANSLATE || settings.currentGizmoOperation == ImGuizmo::TRANSLATE_X || settings.currentGizmoOperation == ImGuizmo::TRANSLATE_Y || settings.currentGizmoOperation == ImGuizmo::TRANSLATE_Z,
+                    "T",
+                    "Translate",
+                    true))
+        {
+            switch (settings.previousAxisSelected[0]) {
+                case 0u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE;   break;
+                case 1u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_X; break;
+                case 2u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_Y; break;
+                case 3u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_Z; break;
+            }
+            settings.currentAxisSelected = settings.previousAxisSelected[0];
+            Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, true);
         }
         TButtonWidth = ImGui::GetItemRectSize().x;
 
         pos += NButtonWidth + ItemSpacing + 5;
         ImGui::SameLine(window->ContentSize.x - pos);
         if (button(false, "N", "Select", true)) {
-            
+            Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, false);
+            settings.currentAxisSelected = 0u;
         }
         NButtonWidth = ImGui::GetItemRectSize().x;
-
+       
         const RenderTarget& rt = _parent.context().gfx().renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::EDITOR));
         const Texture_ptr& gameView = rt.getAttachment(RTAttachmentType::Colour, 0).texture();
 
@@ -208,18 +246,147 @@ namespace Divide {
             switch (settings.currentGizmoOperation)
             {
                 case ImGuizmo::TRANSLATE:
+                case ImGuizmo::TRANSLATE_X:
+                case ImGuizmo::TRANSLATE_Y:
+                case ImGuizmo::TRANSLATE_Z:
                     ImGui::InputFloat3("Position", &settings.snap[0]);
                     break;
                 case ImGuizmo::ROTATE:
+                case ImGuizmo::ROTATE_X:
+                case ImGuizmo::ROTATE_Y:
+                case ImGuizmo::ROTATE_Z:
                     ImGui::InputFloat("Angle", &settings.snap[0]);
                     break;
                 case ImGuizmo::SCALE:
+                case ImGuizmo::SCALE_X:
+                case ImGuizmo::SCALE_Y:
+                case ImGuizmo::SCALE_Z:
                     ImGui::InputFloat("Scale", &settings.snap[0]);
                     break;
                 case ImGuizmo::BOUNDS: break;
             }
             ImGui::PopItemWidth();
         }
+
+        ImGui::SameLine(0.f, 25.0f);
+        ImGui::Text("Gizmo Axis [ ");
+        enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
+        ImGui::SameLine();
+        if (button(!enableGizmo || settings.currentAxisSelected == 1u, "X", "X Axis Only", true)) {
+            settings.currentAxisSelected = 1u;
+
+            switch (settings.currentGizmoOperation) {
+                case ImGuizmo::TRANSLATE: 
+                case ImGuizmo::TRANSLATE_X: 
+                case ImGuizmo::TRANSLATE_Y: 
+                case ImGuizmo::TRANSLATE_Z: 
+                    settings.currentGizmoOperation = ImGuizmo::TRANSLATE_X;
+                    settings.previousAxisSelected[0] = 1u;
+                    break;
+                case ImGuizmo::ROTATE:
+                case ImGuizmo::ROTATE_X:
+                case ImGuizmo::ROTATE_Y:
+                case ImGuizmo::ROTATE_Z:
+                    settings.currentGizmoOperation = ImGuizmo::ROTATE_X;
+                    settings.previousAxisSelected[1] = 1u;
+                    break;
+                case ImGuizmo::SCALE:
+                case ImGuizmo::SCALE_X:
+                case ImGuizmo::SCALE_Y:
+                case ImGuizmo::SCALE_Z:
+                    settings.currentGizmoOperation = ImGuizmo::SCALE_X;
+                    settings.previousAxisSelected[2] = 1u;
+                    break;
+            };
+        }
+
+        ImGui::SameLine();
+        if (button(!enableGizmo || settings.currentAxisSelected == 2u, "Y", "Y Axis Only", true)) {
+            settings.currentAxisSelected = 2u;
+
+            switch (settings.currentGizmoOperation) {
+                case ImGuizmo::TRANSLATE: 
+                case ImGuizmo::TRANSLATE_X: 
+                case ImGuizmo::TRANSLATE_Y: 
+                case ImGuizmo::TRANSLATE_Z: 
+                    settings.currentGizmoOperation = ImGuizmo::TRANSLATE_Y;
+                    settings.previousAxisSelected[0] = 2u;
+                    break;
+                case ImGuizmo::ROTATE:
+                case ImGuizmo::ROTATE_X:
+                case ImGuizmo::ROTATE_Y:
+                case ImGuizmo::ROTATE_Z:
+                    settings.currentGizmoOperation = ImGuizmo::ROTATE_Y;
+                    settings.previousAxisSelected[1] = 2u;
+                    break;
+                case ImGuizmo::SCALE:
+                case ImGuizmo::SCALE_X:
+                case ImGuizmo::SCALE_Y:
+                case ImGuizmo::SCALE_Z:
+                    settings.currentGizmoOperation = ImGuizmo::SCALE_Y;
+                    settings.previousAxisSelected[2] = 2u;
+                    break;
+            };
+        }
+
+        ImGui::SameLine();
+        if (button(!enableGizmo || settings.currentAxisSelected == 3u, "Z", "Z Axis Only", true)) {
+            settings.currentAxisSelected = 3u;
+
+            switch (settings.currentGizmoOperation) {
+                case ImGuizmo::TRANSLATE: 
+                case ImGuizmo::TRANSLATE_X: 
+                case ImGuizmo::TRANSLATE_Y: 
+                case ImGuizmo::TRANSLATE_Z: 
+                    settings.currentGizmoOperation = ImGuizmo::TRANSLATE_Z;
+                    settings.previousAxisSelected[0] = 3u;
+                    break;
+                case ImGuizmo::ROTATE:
+                case ImGuizmo::ROTATE_X:
+                case ImGuizmo::ROTATE_Y:
+                case ImGuizmo::ROTATE_Z:
+                    settings.currentGizmoOperation = ImGuizmo::ROTATE_Z;
+                    settings.previousAxisSelected[1] = 3u;
+                    break;
+                case ImGuizmo::SCALE:
+                case ImGuizmo::SCALE_X:
+                case ImGuizmo::SCALE_Y:
+                case ImGuizmo::SCALE_Z:
+                    settings.currentGizmoOperation = ImGuizmo::SCALE_Z;
+                    settings.previousAxisSelected[2] = 3u;
+                    break;
+            };
+        }
+
+        ImGui::SameLine();
+        if (button(!enableGizmo || settings.currentAxisSelected == 0u, "All", "All Axis", true)) {
+            settings.currentAxisSelected = 0u;
+
+              switch (settings.currentGizmoOperation) {
+                case ImGuizmo::TRANSLATE_X:
+                case ImGuizmo::TRANSLATE_Y:
+                case ImGuizmo::TRANSLATE_Z: 
+                    settings.currentGizmoOperation = ImGuizmo::TRANSLATE;
+                    settings.previousAxisSelected[0] = 0u;
+                    break;
+                case ImGuizmo::ROTATE_X:
+                case ImGuizmo::ROTATE_Y:
+                case ImGuizmo::ROTATE_Z:
+                    settings.currentGizmoOperation = ImGuizmo::ROTATE;
+                    settings.previousAxisSelected[1] = 0u;
+                    break;
+                case ImGuizmo::SCALE_X:
+                case ImGuizmo::SCALE_Y:
+                case ImGuizmo::SCALE_Z:
+                    settings.currentGizmoOperation = ImGuizmo::SCALE;
+                    settings.previousAxisSelected[2] = 0u;
+                    break;
+            };
+        }
+        AButtonWidth = ImGui::GetItemRectSize().x;
+
+        ImGui::SameLine();
+        ImGui::Text(" ]");
 
         _parent.setTransformSettings(settings);
     }

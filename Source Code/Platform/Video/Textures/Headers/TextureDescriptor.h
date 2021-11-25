@@ -124,7 +124,6 @@ class TextureDescriptor final : public PropertyDescriptor {
     PROPERTY_RW(TextureType, texType, TextureType::COUNT);
     /// Automatically compute mip maps (overwrites any manual mipmap computation)
     PROPERTY_RW(bool, autoMipMaps, true);
-    PROPERTY_RW(bool, mipMapsRequired, true);
     /// Use SRGB colour space
     PROPERTY_RW(bool, srgb, false);
     PROPERTY_RW(bool, normalized, true);

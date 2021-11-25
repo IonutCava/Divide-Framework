@@ -138,7 +138,6 @@ bool SSRPreRenderOperator::execute(const Camera* camera, const RenderTargetHandl
     /// We need mipmaps for roughness based LoD lookup
     GFX::ComputeMipMapsCommand* mipCmd = GFX::EnqueueCommand<GFX::ComputeMipMapsCommand>(bufferInOut);
     mipCmd->_texture = screenAtt.texture().get();
-    mipCmd->_defer = false;
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });

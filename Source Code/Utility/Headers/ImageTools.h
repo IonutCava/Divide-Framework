@@ -50,14 +50,18 @@ struct LayerData {
 template<typename T>
 struct ImageMip final : LayerData {
 
-    explicit ImageMip(T* data, size_t len, const U16 width, const U16 height, const U16 depth)
-        : _data(len, nullptr)
+    explicit ImageMip(T* data, size_t len, const U16 width, const U16 height, const U16 depth, const U16 bitsPerPixel)
     {
-        if (data != nullptr) {
+        const size_t totalSizeBits = to_size(width) * height * depth * bitsPerPixel;;
+        const size_t totalSizeBytes = std::max(len, totalSizeBits / 8);
+
+        _data.resize(totalSizeBytes, T{ 0u });
+
+        if (data != nullptr && len > 0u) {
             std::memcpy(_data.data(), data, len * sizeof(T));
         }
 
-        _size = len;
+        _size = totalSizeBytes;
         _dimensions.set(width, height, depth);
     }
 
@@ -69,16 +73,16 @@ protected:
 
 struct ImageLayer {
     template<typename T>
-    [[nodiscard]] T* allocateMip(T* data, size_t len, U16 width, U16 height, U16 depth) {
+    [[nodiscard]] T* allocateMip(T* data, size_t len, U16 width, U16 height, U16 depth, const U16 bitsPerPixel) {
         assert(_mips.size() < U8_MAX - 1);
 
-        _mips.emplace_back(eastl::make_unique<ImageMip<T>>(data, len, width, height, depth));
+        _mips.emplace_back(eastl::make_unique<ImageMip<T>>(data, len, width, height, depth, bitsPerPixel));
         return static_cast<T*>(_mips.back()->data());
     }
 
     template<typename T>
-    [[nodiscard]] T* allocateMip(const size_t len, const U16 width, const U16 height, const U16 depth) {
-        return allocateMip<T>(nullptr, len, width, height, depth);
+    [[nodiscard]] T* allocateMip(const size_t len, const U16 width, const U16 height, const U16 depth, const U16 bitsPerPixel) {
+        return allocateMip<T>(nullptr, len, width, height, depth, bitsPerPixel);
     }
 
      [[nodiscard]] bufferPtr data(const U8 mip) const {
@@ -148,7 +152,7 @@ struct ImageData final : NonCopyable {
     /// image depth information
     [[nodiscard]] U8 bpp() const noexcept { return _bpp; }
     /// the filename from which the image is created
-    [[nodiscard]] const string& name() const noexcept { return _name; }
+    [[nodiscard]] const ResourcePath& name() const noexcept { return _name; }
     /// the image format as given by STB
     [[nodiscard]] GFXImageFormat format() const noexcept { return _format; }
 
@@ -164,13 +168,13 @@ struct ImageData final : NonCopyable {
 
     [[nodiscard]] TextureType compressedTextureType() const noexcept { return _compressedTextureType; }
 
-    [[nodiscard]] bool addLayer(Byte* data, size_t size, U16 width, U16 height, U16 depth);
+    [[nodiscard]] bool addLayer(Byte* data, size_t size, U16 width, U16 height, U16 depth, U16 bitsPerPixel);
     /// creates this image instance from the specified data
-    [[nodiscard]] bool addLayer(bool srgb, U16 refWidth, U16 refHeight, const string& fileName);
+    [[nodiscard]] bool addLayer(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& fileName);
 
   protected:
     friend class ImageDataInterface;
-    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const string& filename);
+    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& filename);
 
    private:
     //Each entry is a separate mip map.
@@ -193,7 +197,7 @@ struct ImageData final : NonCopyable {
     /// used by compressed images to load 2D/3D/cubemap textures etc
     TextureType _compressedTextureType = TextureType::COUNT;
     /// the actual image filename
-    string _name{};
+    ResourcePath _name{};
     /// image's bits per pixel
     U8 _bpp = 0;
 };
@@ -209,9 +213,9 @@ protected:
 };
 
 /// save a single file to TGA
-I8 SaveToTGA(const string& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept;
+I8 SaveToTGA(const ResourcePath& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept;
 /// save a single file to tga using a sequential naming pattern
-I8 SaveSeries(const string& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData);
+I8 SaveSeries(const ResourcePath& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData);
 
 }  // namespace ImageTools
 }  // namespace Divide

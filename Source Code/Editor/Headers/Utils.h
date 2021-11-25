@@ -65,8 +65,8 @@ namespace Util {
     }
 
     const char* GetFormat(ImGuiDataType dataType, const char* input, bool hex);
-    bool colourInput4(Editor& parent, EditorComponentField& field);
-    bool colourInput3(Editor& parent, EditorComponentField& field);
+    bool colourInput4(Editor& parent, EditorComponentField& field, const char* name = "");
+    bool colourInput3(Editor& parent, EditorComponentField& field, const char* name = "");
 
     template<typename Pred>
     bool colourInput4(Editor& parent, const char* name, FColour4& col, const bool readOnly, Pred&& dataSetter) {
@@ -74,10 +74,8 @@ namespace Util {
         if (!readOnly) {
             RegisterUndo<FColour4, true>(parent, GFX::PushConstantType::FCOLOUR4, col, col, name, dataSetter);
         }
-        if (ret) {
-            dataSetter(col);
-        }
-        return ret;
+            
+        return dataSetter(col);
     }
 
     template<typename Pred>
@@ -86,10 +84,8 @@ namespace Util {
         if (!readOnly) {
             RegisterUndo<FColour3, true>(parent, GFX::PushConstantType::FCOLOUR3, col, col, name, dataSetter);
         }
-        if (ret) {
-            dataSetter(col);
-        }
-        return ret;
+
+        return dataSetter(col);
     }
 
 

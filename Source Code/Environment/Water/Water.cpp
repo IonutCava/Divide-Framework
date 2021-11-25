@@ -2,6 +2,7 @@
 
 #include "Headers/Water.h"
 
+#include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -25,9 +26,11 @@ namespace {
 WaterPlane::WaterPlane(ResourceCache* parentCache, size_t descriptorHash, const Str256& name)
     : SceneNode(parentCache, descriptorHash, name, ResourcePath{ name }, {}, SceneNodeType::TYPE_WATER, to_base(ComponentType::TRANSFORM))
 {
+    _fogStartEnd = { 648.f, 1300.f };
     _noiseTile = { 15.0f, 15.0f };
     _noiseFactor = { 0.1f, 0.1f };
     _refractionTint = {0.f, 0.567f, 0.845f};
+    _waterDistanceFogColour = {0.9f, 0.9f, 1.f};
 
     // The water doesn't cast shadows, doesn't need ambient occlusion and doesn't have real "depth"
     renderState().addToDrawExclusionMask(RenderStage::SHADOW);
@@ -75,6 +78,25 @@ WaterPlane::WaterPlane(ResourceCache* parentCache, size_t descriptorHash, const 
 
     getEditorComponent().registerField(MOV(refrPlaneOffsetField));
 
+    EditorComponentField fogDistanceField = {};
+    fogDistanceField._name = "Fog start/end distances";
+    fogDistanceField._data = &_fogStartEnd;
+    fogDistanceField._range = { 0.0f, 4096.0f };
+    fogDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
+    fogDistanceField._readOnly = false;
+    fogDistanceField._basicType = GFX::PushConstantType::VEC2;
+
+    getEditorComponent().registerField(MOV(fogDistanceField));
+    
+    EditorComponentField waterFogField = {};
+    waterFogField._name = "Water fog colour";
+    waterFogField._data = &_waterDistanceFogColour;
+    waterFogField._type = EditorComponentFieldType::PUSH_TYPE;
+    waterFogField._readOnly = false;
+    waterFogField._basicType = GFX::PushConstantType::FCOLOUR3;
+
+    getEditorComponent().registerField(MOV(waterFogField));
+    
     EditorComponentField noiseTileSizeField = {};
     noiseTileSizeField._name = "Noise tile factor";
     noiseTileSizeField._data = &_noiseTile;
@@ -125,6 +147,9 @@ WaterPlane::~WaterPlane()
 
 void WaterPlane::onEditorChange(std::string_view) noexcept {
     _editorDataDirtyState = EditorDataState::QUEUED;
+    if (_fogStartEnd.y <= _fogStartEnd.y) {
+        _fogStartEnd.y = _fogStartEnd.x + 0.1f;
+    }
 }
 
 bool WaterPlane::load() {
@@ -144,8 +169,7 @@ bool WaterPlane::load() {
     defaultSampler.magFilter(TextureFilter::LINEAR);
     defaultSampler.anisotropyLevel(4);
 
-    TextureDescriptor texDescriptor(TextureType::TEXTURE_2D);
-
+    TextureDescriptor texDescriptor(TextureType::TEXTURE_2D_ARRAY);
     std::atomic_uint loadTasks = 0u;
 
     ResourceDescriptor waterTexture("waterTexture_" + name);
@@ -159,7 +183,7 @@ bool WaterPlane::load() {
     ResourceDescriptor waterMaterial("waterMaterial_" + name);
     Material_ptr waterMat = CreateResource<Material>(_parentCache, waterMaterial);
 
-    waterMat->shadingMode(ShadingMode::COOK_TORRANCE);
+    waterMat->shadingMode(ShadingMode::BLINN_PHONG);
 
     ModuleDefines globalDefines = {};
     globalDefines.emplace_back("COMPUTE_TBN", true);
@@ -232,12 +256,12 @@ bool WaterPlane::load() {
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
-    waterMat->setTexture(TextureUsage::NORMALMAP, waterNM, defaultSampler.getHash());
+    waterMat->setTexture(TextureUsage::NORMALMAP, waterNM, defaultSampler.getHash(), TextureOperation::REPLACE);
 
     waterMat->setShaderProgram(waterPrePassLQ, RenderStage::COUNT, RenderPassType::PRE_PASS);
     waterMat->setShaderProgram(waterColourLQ,  RenderStage::COUNT, RenderPassType::MAIN_PASS);
-    waterMat->setShaderProgram(waterPrePassHQ,   RenderStage::DISPLAY, RenderPassType::PRE_PASS);
-    waterMat->setShaderProgram(waterColourHQ,    RenderStage::DISPLAY, RenderPassType::MAIN_PASS);
+    waterMat->setShaderProgram(waterPrePassHQ, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
+    waterMat->setShaderProgram(waterColourHQ,  RenderStage::DISPLAY, RenderPassType::MAIN_PASS);
     waterMat->roughness(0.01f);
 
     setMaterialTpl(waterMat);
@@ -331,7 +355,9 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
         PushConstants& constants = pkg.get<GFX::SendPushConstantsCommand>(0)->_constants;
         constants.set(_ID("_noiseFactor"), GFX::PushConstantType::VEC2, noiseFactor());
         constants.set(_ID("_noiseTile"), GFX::PushConstantType::VEC2, noiseTile());
+        constants.set(_ID("_fogStartEndDistances"), GFX::PushConstantType::VEC2, fogStartEnd());
         constants.set(_ID("_refractionTint"), GFX::PushConstantType::FCOLOUR3, refractionTint());
+        constants.set(_ID("_waterDistanceFogColour"), GFX::PushConstantType::FCOLOUR3, waterDistanceFogColour());
         constants.set(_ID("_specularShininess"), GFX::PushConstantType::FLOAT, specularShininess());
     }
 
@@ -350,7 +376,9 @@ void WaterPlane::buildDrawCommands(SceneGraphNode* sgn,
     GFX::SendPushConstantsCommand pushConstantsCommand = {};
     pushConstantsCommand._constants.set(_ID("_noiseFactor"), GFX::PushConstantType::VEC2, noiseFactor());
     pushConstantsCommand._constants.set(_ID("_noiseTile"), GFX::PushConstantType::VEC2, noiseTile());
+    pushConstantsCommand._constants.set(_ID("_fogStartEndDistances"), GFX::PushConstantType::VEC2, fogStartEnd());
     pushConstantsCommand._constants.set(_ID("_refractionTint"), GFX::PushConstantType::FCOLOUR3, refractionTint());
+    pushConstantsCommand._constants.set(_ID("_waterDistanceFogColour"), GFX::PushConstantType::FCOLOUR3, waterDistanceFogColour());
     pushConstantsCommand._constants.set(_ID("_specularShininess"), GFX::PushConstantType::FLOAT, specularShininess());
     pkgInOut.add(pushConstantsCommand);
 
@@ -400,6 +428,13 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
     EnqueueCommand(bufferInOut, clearMainTarget);
 
     passManager->doCustomPass(params, bufferInOut);
+
+    const PlatformContext& context = passManager->parent().platformContext();
+    const RenderTarget& rt = context.gfx().renderTargetPool().renderTarget(params._target);
+
+    GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
+    computeMipMapsCommand._texture = rt.getAttachment(RTAttachmentType::Colour, 0).texture().get();
+    EnqueueCommand(bufferInOut, computeMipMapsCommand);
 }
 
 /// Update water reflections
@@ -465,6 +500,13 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
                                          1,
                                          bufferInOut);
     }
+
+    const PlatformContext& context = passManager->parent().platformContext();
+    const RenderTarget& rt = context.gfx().renderTargetPool().renderTarget(params._target);
+
+    GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
+    computeMipMapsCommand._texture = rt.getAttachment(RTAttachmentType::Colour, 0).texture().get();
+    EnqueueCommand(bufferInOut, computeMipMapsCommand);
 }
 
 void WaterPlane::updatePlaneEquation(const SceneGraphNode* sgn, Plane<F32>& plane, const bool reflection, const F32 offset) const {

@@ -195,11 +195,11 @@ bool DVDConverter::load(PlatformContext& context, Import::ImportData& target) co
 
         for (U32 i = 0u; i < aiScenePointer->mNumAnimations; i++) {
             aiAnimation* animation = aiScenePointer->mAnimations[i];
-            if (IS_ZERO(animation->mDuration > 0.f)) {
-                DIVIDE_UNEXPECTED_CALL();
+            if (IS_ZERO(animation->mDuration)) {
+                Console::errorfn(Locale::Get(_ID("LOADED_0_LENGTH_ANIMATION")), animation->mName.C_Str());
+            } else {
+                target._animations.push_back(MemoryManager_NEW AnimEvaluator(animation, i));
             }
-
-            target._animations.push_back(MemoryManager_NEW AnimEvaluator(animation, i));
         }
     }
 

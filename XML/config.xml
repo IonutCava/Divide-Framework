@@ -78,7 +78,8 @@
 	<rendering>
 		<MSAASamples>4</MSAASamples>
 		<maxAnisotropicFilteringLevel>16</maxAnisotropicFilteringLevel>
-		<useBindlessTextures>false</useBindlessTextures>
+		<useBindlessTextures>true</useBindlessTextures>
+		<debugBindlessTextures>false</debugBindlessTextures>
 		<!-- Environment probe resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->
 		<reflectionProbeResolution>256</reflectionProbeResolution>
 		<!-- Planar reflector resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->
@@ -96,7 +97,7 @@
 				<qualityLevel>2</qualityLevel>
 			</postAA>
 			<toneMap>
-				<adaptive>false</adaptive>
+				<adaptive>true</adaptive>
 				<manualExposureFactor>1</manualExposureFactor>
 				<minLogLuminance>-4</minLogLuminance>
 				<maxLogLuminance>3</maxLogLuminance>

@@ -213,9 +213,9 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     ResourceCache* cache = parent().resourceCache();
     const Configuration& config = _parent.platformContext().config();
 
-    // Initialize the shader manager
-    RenderPassExecutor::OnStartup(*this);
     ShaderProgram::OnStartup(cache);
+    Texture::OnStartup(*this);
+    RenderPassExecutor::OnStartup(*this);
     GFX::InitPools();
 
     // Create a shader buffer to store the GFX rendering info (matrices, options, etc)
@@ -289,8 +289,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
     //MainPass
     TextureDescriptor screenDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
-    TextureDescriptor normalsAndMaterialDataDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
     screenDescriptor.autoMipMaps(false);
+    TextureDescriptor normalsAndMaterialDataDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
     normalsAndMaterialDataDescriptor.mipCount(1u);
 
     // Normal and MSAA
@@ -424,7 +424,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         TextureDescriptor environmentDescriptorPlanar(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
         TextureDescriptor depthDescriptorPlanar(TextureType::TEXTURE_2D, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
 
-        environmentDescriptorPlanar.mipCount(1u);
+        environmentDescriptorPlanar.autoMipMaps(false);
         depthDescriptorPlanar.mipCount(1u);
 
         RenderTargetDescriptor hizRTDesc = {};
@@ -453,10 +453,15 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 _rtPool->allocateRT(RenderTargetUsage::REFRACTION_PLANAR, refDesc);
             }
 
-            refDesc._attachmentCount = 1; //skip depth
+            environmentDescriptorPlanar.mipCount(1u);
+            RTAttachmentDescriptors attachmentsBlur = {//skip depth
+                { environmentDescriptorPlanar, reflectionSamplerHash, RTAttachmentType::Colour }
+            };
+
+            refDesc._attachmentCount = to_U8(attachmentsBlur.size()); 
+            refDesc._attachments = attachmentsBlur.data();
             refDesc._name = "Reflection_blur";
             _rtPool->allocateRT(RenderTargetUsage::REFLECTION_PLANAR_BLUR, refDesc);
-
         }
     }
 
@@ -882,6 +887,7 @@ void GFXDevice::closeRenderingAPI() {
     MemoryManager::DELETE(_shaderComputeQueue);
     RenderPassExecutor::OnShutdown();
     ShaderProgram::OnShutdown();
+    Texture::OnShutdown();
     _gpuObjectArena.clear();
     assert(ShaderProgram::ShaderProgramCount() == 0);
     // Close the rendering API
@@ -2728,8 +2734,10 @@ const ShaderComputeQueue& GFXDevice::shaderComputeQueue() const noexcept {
 }
 
 /// Extract the pixel data from the main render target's first colour attachment and save it as a TGA image
-void GFXDevice::screenshot(const string& filename) const {
+void GFXDevice::screenshot(const ResourcePath& filename) const {
     // Get the screen's resolution
+    STUBBED("Screenshot should save the final render target after post processing, not the current screen target!");
+
     const RenderTarget& screenRT = _rtPool->screenTarget();
     const U16 width = screenRT.getWidth();
     const U16 height = screenRT.getHeight();

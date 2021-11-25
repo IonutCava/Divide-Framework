@@ -59,32 +59,30 @@ namespace Divide {
             return input;
         }
 
-        bool colourInput4(Editor& parent, EditorComponentField& field) {
+        bool colourInput4(Editor& parent, EditorComponentField& field, const char* name) {
             FColour4 val = field.get<FColour4>();
-            const auto setter = [&field](const FColour4& col) {
-                field.set(col);
+            const auto setter = [val/*by value*/, &field](const FColour4& col) {
+                if (col != val) {
+                    field.set(col);
+                    return true;
+                }
+                return false;
             };
 
-            if (colourInput4(parent, field._name.c_str(), val, field._readOnly, setter) && val != field.get<FColour4>()) {
-                field.set(val);
-                return true;
-            }
-
-            return false;
+            return colourInput4(parent, name, val, field._readOnly, setter);
         }
 
-        bool colourInput3(Editor& parent, EditorComponentField& field) {
+        bool colourInput3(Editor& parent, EditorComponentField& field, const char* name) {
             FColour3 val = field.get<FColour3>();
-            const auto setter = [&field](const FColour3& col) {
-                field.set(col);
+            const auto setter = [val/*by value*/, &field](const FColour3& col) {
+                if (col != val) {
+                    field.set(col);
+                    return true;
+                }
+                return false;
             };
 
-            if (colourInput3(parent, field._name.c_str(), val, field._readOnly, setter) && val != field.get<FColour3>()) {
-                field.set(val);
-                return true;
-            }
-
-            return false;
+            return colourInput3(parent, name, val, field._readOnly, setter);
         }
     }
 } //namespace Divide

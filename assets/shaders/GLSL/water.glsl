@@ -14,10 +14,8 @@ void main(void)
     computeLightVectors(data);
 
     _underwater = dvd_cameraPosition.y < VAR._vertexW.y ? 1 : 0;
-
     gl_Position = _vertexWVP;
 }
-
 
 -- Fragment
 
@@ -25,23 +23,24 @@ layout(location = 0) in flat int _underwater;
 layout(location = 1) in vec4 _vertexWVP;
 
 uniform vec3 _refractionTint;
+uniform vec3 _waterDistanceFogColour;
 uniform float _specularShininess;
 uniform vec2 _noiseTile;
 uniform vec2 _noiseFactor;
+uniform vec2 _fogStartEndDistances;
 
+#define NO_OMR_TEX
 #define NO_ENV_MAPPING
 #define NO_SSAO
-#define USE_SHADING_BLINN_PHONG
 #define SHADOW_INTENSITY_FACTOR 0.5f
 
-#include "environment.frag"
 #include "BRDF.frag"
 #include "output.frag"
 
 const float Eta = 0.15f; //water
 
 float Fresnel(in vec3 viewDir, in vec3 normal) {
-    const float fresnel = Eta + (1.0f - Eta) * pow(max(0.0f, 1.0f - dot(viewDir, normal)), 5.0f);
+    const float fresnel = Eta + (1.f - Eta) * pow(max(0.f, 1.f - dot(viewDir, normal)), 5.f);
     return saturate(fresnel);
 }
 
@@ -51,8 +50,8 @@ void main()
     const vec2 uvNormal0 = (VAR._texCoord * _noiseTile) + vec2( time2, time2);
     const vec2 uvNormal1 = (VAR._texCoord * _noiseTile) + vec2(-time2, time2);
 
-    const vec4 normalData0 = getNormalMapAndVariation(texNormalMap, uvNormal0);
-    const vec4 normalData1 = getNormalMapAndVariation(texNormalMap, uvNormal1);
+    const vec4 normalData0 = getNormalMapAndVariation(texNormalMap, vec3(uvNormal0, 0));
+    const vec4 normalData1 = getNormalMapAndVariation(texNormalMap, vec3(uvNormal1, 0));
 
     const vec3 normal0 = normalData0.xyz;
     const vec3 normal1 = normalData1.xyz;
@@ -66,27 +65,31 @@ void main()
     const vec3 incident = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
 
     const vec2 waterUV = clamp(0.5f * homogenize(_vertexWVP).xy + 0.5f, vec2(0.001f), vec2(0.999f));
-    const vec3 refractionColour = overlayVec(texture(texRefract, waterUV).rgb, _refractionTint);
+    const vec3 refractionColour = overlayVec(getRefractionColour(waterUV).rgb, _refractionTint);
 
     switch (dvd_materialDebugFlag) {
         case DEBUG_REFRACTIONS:
             writeScreenColour(vec4(refractionColour, 1.f), normalWV);
             return;
         case DEBUG_REFLECTIONS:
-            writeScreenColour(texture(texReflect, waterUV), normalWV);
+            writeScreenColour(getReflectionColour(waterUV), normalWV);
             return;
     }
 
     // Get a modified viewing direction of the camera that only takes into account height.
     // ref: https://www.rastertek.com/terdx10tut16.html
     const vec3 texColour = (_underwater == 1 ? refractionColour : mix(refractionColour, 
-                                                                      texture(texReflect, waterUV).rgb,
+                                                                      getReflectionColour(waterUV).rgb,
                                                                       Fresnel(incident, normalW)));
-
+    
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
-
     vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
-    const vec4 outColour = getPixelColour(vec4(texColour, 1.0f), data, normalWV, normalVariation, VAR._texCoord, MetalnessRoughnessProbeID);
+    vec4 outColour = getPixelColour(vec4(texColour, 1.f), data, normalWV, normalVariation, VAR._texCoord, MetalnessRoughnessProbeID);
+
+    // Add some distance based fog to the water to hide reflection/refraction artifacts where no geometry is rendered
+    const float fogDensity = smoothstep(_fogStartEndDistances.x, _fogStartEndDistances.y, length(VAR._vertexWV));
+    //const float fogDensity = smoothstep(1.1f, 2.1f, fragDepth);
+    outColour.rgb = mix(outColour.rgb, _waterDistanceFogColour, fogDensity);
 
     // Guess work based on what "look right"
     const float lerpValue = saturate(2.95f * (dvd_sunDirection.y + 0.15f));

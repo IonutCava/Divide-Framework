@@ -1,8 +1,5 @@
 --Vertex
 
-#define NEED_MATERIAL_DATA
-
-#include "nodeBufferedInput.cmn"
 #include "terrainUtils.cmn"
 
 layout(location = ATTRIB_POSITION) in vec4 inVertexData;
@@ -33,8 +30,6 @@ void main(void)
 
 --TessellationC
 
-#define NEED_MATERIAL_DATA
-#include "nodeBufferedInput.cmn"
 #include "terrainUtils.cmn"
 
 // Most of the stuff here is from nVidia's DX11 terrain tessellation sample
@@ -263,8 +258,6 @@ layout(quads, fractional_even_spacing, cw) in;
 // VAR._normalWV is in world-space!!!!
 #define _normalW _normalWV
 
-#define NEED_MATERIAL_DATA
-#include "nodeBufferedInput.cmn"
 #include "terrainUtils.cmn"
 
 layout(location = 10) in float tcs_tileSize[];
@@ -313,7 +306,7 @@ void main()
     _out._vertexWV = dvd_ViewMatrix * _out._vertexW;
     setClipPlanes(); //Only need world vertex position for clipping
     _out._normalW = dvd_NormalMatrixW(dvd_Transforms[TRANSFORM_IDX]) * getNormal(_out._texCoord);
-
+    _out._indirectionIDs = _in[0]._indirectionIDs;
 #if !defined(PRE_PASS) && !defined(SHADOW_PASS)
     _out._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_cameraPosition.xyz - _out._vertexW.xyz);
 #endif //PRE_PASS && SHADOW_PASS
@@ -341,8 +334,8 @@ void main()
 
 --Geometry
 
-#define NEED_MATERIAL_DATA
-#include "nodeBufferedInput.cmn"
+#define NEED_TEXTURE_DATA
+#include "terrainUtils.cmn"
 
 layout(triangles) in;
 
@@ -472,12 +465,10 @@ layout(early_fragment_tests) in;
 // VAR._normalWV is in world-space!!!!
 #define _normalW _normalWV
 
-#define USE_CUSTOM_ROUGHNESS
+#define USE_CUSTOM_TEXTURE_OMR
 #define SHADOW_INTENSITY_FACTOR 0.5f
 #define USE_CUSTOM_TBN
-#define SKIP_TEX1
 #define NO_IBL
-
 #if defined(LOW_QUALITY)
 #define DIRECTIONAL_LIGHT_ONLY
 #endif //LOW_QUALITY
@@ -495,67 +486,78 @@ layout(location = 12) in vec3 tes_debugColour;
 
 #endif //TOGGLE_DEBUG
 
+#include "terrainUtils.cmn" 
 #include "output.frag"
 #include "BRDF.frag"
 #include "terrainSplatting.frag"
-#include "terrainUtils.cmn"
 
-float _private_roughness = 0.f;
-void getOMR(in NodeMaterialData matData, in vec2 uv, inout float occlusion, inout float metallic, inout float roughness) {
-    occlusion = 1.f;
-    roughness = 0.f;
-    roughness = _private_roughness;
+vec3 _private_OMR = vec3(1.f, 0.f, 1.f);
+void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR) {
+    OMR = _private_OMR;
 }
 
 void main(void) {
 
     vec3 normalWV; float normalVariation;
     const vec4 albedo = BuildTerrainData(normalWV, normalVariation);
-    _private_roughness = albedo.a;
-
+    _private_OMR.b = albedo.a;
+    
     vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
+    vec4 colourOut = vec4(0.f, 0.f, 0.f, 1.f);
+
 #if defined (TOGGLE_LODS)
-    vec4 colourOut = vec4(0.0f);
     switch (VAR._LoDLevel) {
-        case 0  : colourOut = vec4(1.0f, 0.0f, 0.0f, 1.0f); break;
-        case 1  : colourOut = vec4(0.0f, 1.0f, 0.0f, 1.0f); break;
-        case 2  : colourOut = vec4(0.0f, 0.0f, 1.0f, 1.0f); break;
-        case 3  : colourOut = vec4(0.0f, 1.0f, 1.0f, 1.0f); break;
-        case 4  : colourOut = vec4(1.0f, 0.0f, 1.0f, 1.0f); break;
-        default : colourOut = vec4(turboColormap(float(VAR._LoDLevel)), 1.0f); break;
+        case 0  : colourOut.r  = 1.f; break;
+        case 1  : colourOut.g  = 1.f break;
+        case 2  : colourOut.b  = 1.f; break;
+        case 3  : colourOut.gb = vec2(1.f, 1.f); break;
+        case 4  : colourOut.rb = vec2(1.f, 1.f); break;
+        default : colourOut.rgb = turboColormap(float(VAR._LoDLevel)); break;
     }
 #else  //TOGGLE_LODS
 #if defined(TOGGLE_TESS_LEVEL)
-    vec4 colourOut = vec4(tes_debugColour, 1.0f);
+    colourOut.rgb = tes_debugColour;
 #else //TOGGLE_TESS_LEVEL
 #if defined(TOGGLE_BLEND_MAP)
-    vec4 colourOut = vec4(vec3(0.f), 1.0f);
-    uint offset = 0;
-    for (uint i = 0; i < MAX_TEXTURE_LAYERS; ++i) {
-        colourOut.rgb += texture(texOpacityMap, vec3(VAR._texCoord, i)).rgb;
+    for (uint i = 0u; i < MAX_TEXTURE_LAYERS; ++i) {
+        colourOut.rgb += GetBlend(vec3(VAR._texCoord, i)).rgb;
     }
 #else //TOGGLE_BLEND_MAP
-    NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
-    vec4 colourOut = getPixelColour(vec4(albedo.rgb, 1.0f), data, normalWV, normalVariation, VAR._texCoord, MetalnessRoughnessProbeID);
-
+    const NodeMaterialData materialData = dvd_Materials[MATERIAL_IDX];
+    colourOut = getPixelColour(
+                               vec4(albedo.rgb, 1.f),
+                               materialData,
+                               normalWV,
+                               normalVariation,
+                               VAR._texCoord,
+                               MetalnessRoughnessProbeID
+                              );
 #endif //TOGGLE_BLEND_MAP
 #endif //TOGGLE_TESS_LEVEL
 
 #if defined (TOGGLE_DEBUG)
 
 #if defined(TOGGLE_NORMALS)
-    colourOut = vec4(gs_wireColor, 1.0f);
+    colourOut.rgb = gs_wireColor;
 #else //TOGGLE_NORMALS
-    float val = 0.5f * gs_edgeDist.w;
-    colourOut.rgb *= val;// vec4(vec3(val), 1.0f);
+    colourOut.rgb *= (0.5f * gs_edgeDist.w);// vec4(vec3(0.5f * gs_edgeDist.w), 1.0f);
 
-    const float LineWidth = 0.75f;
-    const float d = min(min(gs_edgeDist.x, gs_edgeDist.y), gs_edgeDist.z);
-    colourOut = mix(vec4(gs_wireColor, 1.0f), colourOut, smoothstep(LineWidth - 1, LineWidth + 1, d));
+    #define LineWidth 0.75f
+    #define D min(min(gs_edgeDist.x, gs_edgeDist.y), gs_edgeDist.z)
+    colourOut = mix(vec4(gs_wireColor, 1.f), colourOut, smoothstep(LineWidth - 1, LineWidth + 1, D));
 #endif //TOGGLE_NORMALS
 
 #endif //TOGGLE_DEBUG
 
 #endif //TOGGLE_LODS
     writeScreenColour(colourOut, normalWV, MetalnessRoughnessProbeID);
+}
+
+--Fragment.Shadow.VSM
+
+#include "vsm.frag"
+out vec2 _colourOut;
+
+void main() {
+    _colourOut = computeMoments();
 }

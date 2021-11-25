@@ -66,7 +66,7 @@ vec4 ApplyTexOperation(in vec4 a, in vec4 b, in uint texOperation) {
 #if defined(PROJECTED_TEXTURE)
 void projectTexture(in vec3 PoxPosInMap, inout vec4 targetTexture){
     targetTexture.xyz = mix(targetTexture.rgb, 
-                            texture(texProjected, vec2(PoxPosInMap.s, 1.0 - PoxPosInMap.t)).rgb,
+                            texture(texProjected, vec3(PoxPosInMap.s, 1.0 - PoxPosInMap.t, 0)).rgb,
                             projectedTextureMixWeight);
 }
 #endif //PROJECTED_TEXTURE

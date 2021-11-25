@@ -22,11 +22,15 @@
 #define TanAcosNdL(NdL) (saturate(sqrt(1.f - SQUARED(ndl)) / ndl))
 #endif
 
-#if defined(USE_SHADING_FLAT)
-#define getLightContribution(Mat, N, V, R) (R = Mat._diffuseColour * Prop._occlusion * getShadowMultiplier(N));
-#else //USE_SHADING_FLAT
+float getShadowMultiplier(in vec3 normalWV);
+
 void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, inout vec3 radianceOut)
 {
+    if (material._shadingMode == SHADING_FLAT) {
+        radianceOut += material._diffuseColour * material._occlusion* getShadowMultiplier(N);
+        return;
+    }
+
     const LightGrid grid        = lightGrid[GetClusterIndex(gl_FragCoord)];
     const uint dirLightCount    = DIRECTIONAL_LIGHT_COUNT;
     const uint pointLightCount  = grid._countPoint;
@@ -106,7 +110,6 @@ void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, inout v
     }
 #endif //!DIRECTIONAL_LIGHT_ONLY
 }
-#endif //USE_SHADING_FLAT
 
 float getShadowMultiplier(in vec3 normalWV) {
     float ret = 1.0f;
@@ -208,28 +211,19 @@ vec3 CSMSplitColour() {
 }
 #endif //DISABLE_SHADOW_MAPPING
 
-vec4 getOverlayColour(in NodeMaterialData materialData) {
-    const uint selection = dvd_selectionFlag(materialData);
-    return vec4(0.f, 
-                selection == 1u ? 2.f : 0.f,
-                selection == 2u ? 2.f : 0.f,
-                0.f);
-}
-
 /// returns RGB - pixel lit colour, A - reserved
 vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV, in float normalVariation, in vec2 uv, out vec3 MetalnessRoughnessProbeID) {
+
     const vec3 viewVec = normalize(VAR._viewDirectionWV);
 
     const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, uv, viewVec, normalWV, normalVariation);
 
     MetalnessRoughnessProbeID = vec3(material._metallic, material._roughness, float(dvd_probeIndex(materialData)));
 
-    const vec4 overlayCol = getOverlayColour(materialData);
-
     switch (dvd_materialDebugFlag) {
         case DEBUG_ALBEDO:       
         {
-            return vec4(material._diffuseColour, 1.f) + overlayCol;
+            return vec4(material._diffuseColour, 1.f);
         }
         case DEBUG_LIGHTING:
         {
@@ -238,11 +232,11 @@ vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 no
             vec3 radianceOut = vec3(0.f);
             getLightContribution(materialCopy, normalWV, viewVec, radianceOut);
             radianceOut += dvd_AmbientColour.rgb * materialCopy._diffuseColour * materialCopy._occlusion;
-            return vec4(radianceOut, 1.f) + overlayCol;
+            return vec4(radianceOut, 1.f);
         }
         case DEBUG_SPECULAR: 
         {
-            return vec4(material._specular.rgb, 1.f) + overlayCol;
+            return vec4(material._specular.rgb, 1.f);
         }
         case DEBUG_KS:            
         {
@@ -250,25 +244,25 @@ vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 no
             const vec3 kS = computeFresnelSchlickRoughness(H, viewVec, material._F0, material._roughness);
             return vec4(kS, 1.f);
         }
-        case DEBUG_UV:             return vec4(fract(uv), 0.f, 1.f) + overlayCol;
-        case DEBUG_EMISSIVE:       return vec4(material._emissive, 1.f) + overlayCol;
-        case DEBUG_ROUGHNESS:      return vec4(vec3(material._roughness), 1.f) + overlayCol;
-        case DEBUG_METALNESS:      return vec4(vec3(material._metallic), 1.f) + overlayCol;
-        case DEBUG_NORMALS:        return vec4(normalize(mat3(dvd_InverseViewMatrix) * normalWV), 1.f) + overlayCol;
-        case DEBUG_TANGENTS:       return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[0]), 1.f) + overlayCol;
-        case DEBUG_BITANGENTS:     return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[1]), 1.f) + overlayCol;
-        case DEBUG_SHADOW_MAPS:    return vec4(vec3(getShadowMultiplier(normalWV)), 1.f) + overlayCol;
+        case DEBUG_UV:             return vec4(fract(uv), 0.f, 1.f);
+        case DEBUG_EMISSIVE:       return vec4(material._emissive, 1.f);
+        case DEBUG_ROUGHNESS:      return vec4(vec3(material._roughness), 1.f);
+        case DEBUG_METALNESS:      return vec4(vec3(material._metallic), 1.f);
+        case DEBUG_NORMALS:        return vec4(normalize(mat3(dvd_InverseViewMatrix) * normalWV), 1.f);
+        case DEBUG_TANGENTS:       return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[0]), 1.f);
+        case DEBUG_BITANGENTS:     return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[1]), 1.f);
+        case DEBUG_SHADOW_MAPS:    return vec4(vec3(getShadowMultiplier(normalWV)), 1.f);
 #if defined(MAIN_DISPLAY_PASS)
-        case DEBUG_CSM_SPLITS:     return vec4(CSMSplitColour(), 1.f) + overlayCol;
-        case DEBUG_LIGHT_HEATMAP:  return vec4(lightHeatMap(), 1.f) + overlayCol;
-        case DEBUG_DEPTH_CLUSTERS: return vec4(lightClusters(), 1.f) + overlayCol;
+        case DEBUG_CSM_SPLITS:     return vec4(CSMSplitColour(), 1.f);
+        case DEBUG_LIGHT_HEATMAP:  return vec4(lightHeatMap(), 1.f);
+        case DEBUG_DEPTH_CLUSTERS: return vec4(lightClusters(), 1.f);
         case DEBUG_REFRACTIONS:
-        case DEBUG_REFLECTIONS:    return vec4(vec3(0.f), 1.f) + overlayCol;
+        case DEBUG_REFLECTIONS:    return vec4(vec3(0.f), 1.f);
 #endif //MAIN_DISPLAY_PASS
-        case DEBUG_MATERIAL_IDS:   return vec4(turboColormap(float(MATERIAL_IDX + 1) / MAX_CONCURRENT_MATERIALS), 1.f) + overlayCol;
+        case DEBUG_MATERIAL_IDS:   return vec4(turboColormap(float(MATERIAL_IDX + 1) / MAX_CONCURRENT_MATERIALS), 1.f);
     }
 
-    vec3 radianceOut = overlayCol.rgb;
+    vec3 radianceOut = vec3(0.f);
     getLightContribution(material, normalWV, viewVec, radianceOut);
     radianceOut += dvd_AmbientColour.rgb * material._diffuseColour * material._occlusion;
     radianceOut += material._emissive;

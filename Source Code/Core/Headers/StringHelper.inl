@@ -205,8 +205,8 @@ T_str ReplaceString(std::string_view subject,
 template<typename T_str>
 T_str MakeXMLSafe(const std::string_view subject)
 {
-    constexpr std::array<std::string_view, 6> InvalidXMLStrings = {
-               " ", "[", "]", "...", "..", "."
+    constexpr std::array<std::string_view, 8> InvalidXMLStrings = {
+               " ", "[", "]", "...", "..", ".", "/", "'\'"
     };
     T_str ret{ subject };
     ReplaceStringInPlace(ret, InvalidXMLStrings, "__");

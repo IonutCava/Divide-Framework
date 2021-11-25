@@ -39,6 +39,11 @@ inline Texture_wptr Material::getTexture(const TextureUsage textureUsage) const 
     return _textures[to_U32(textureUsage)];
 }
 
+inline bool Material::hasTexture(const TextureUsage textureUsage) const {
+    SharedLock<SharedMutex> r_lock(_textureLock);
+    return _textures[to_U32(textureUsage)] != nullptr;
+}
+
 inline bool Material::hasTransparency() const noexcept {
     return _translucencySource != TranslucencySource::COUNT && _transparencyEnabled;
 }

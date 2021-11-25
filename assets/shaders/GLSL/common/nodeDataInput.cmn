@@ -7,10 +7,6 @@
 #   define DEPTH_PASS
 #endif
 
-#if defined(USE_SHADING_COOK_TORRANCE) || defined(USE_SHADING_OREN_NAYAR)
-#define PBR_SHADING
-#endif //USE_SHADING_COOK_TORRANCE || USE_SHADING_OREN_NAYAR
-
 #if defined(GEOM_SHADER)
 #define InBlock gl_in[];
 #else //GEOM_SHADER

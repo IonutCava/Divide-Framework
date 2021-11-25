@@ -53,10 +53,12 @@ namespace Divide {
     }
 
     struct TransformSettings {
-        ImGuizmo::OPERATION currentGizmoOperation = ImGuizmo::ROTATE;
+        ImGuizmo::OPERATION currentGizmoOperation = ImGuizmo::TRANSLATE;
         ImGuizmo::MODE currentGizmoMode = ImGuizmo::WORLD;
-        bool useSnap = false;
         F32 snap[3] = { 1.f, 1.f, 1.f };
+        U8 previousAxisSelected[3] = { 0u, 0u, 0u }; //0 = all, 1 = x, 2 = y, 3 = z
+        U8 currentAxisSelected = 0u;
+        bool useSnap = false;
     };
 
     class Gizmo {

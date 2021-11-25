@@ -3,8 +3,11 @@
 #include "Headers/glBufferImpl.h"
 #include "Headers/glBufferLockManager.h"
 #include "Headers/glMemoryManager.h"
+
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
+
+#include "Utility/Headers/Localization.h"
 
 namespace Divide {
 namespace {
@@ -170,7 +173,7 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
     assert(_params._bufferParams._updateFrequency != BufferUpdateFrequency::ONCE);
 
     if (!waitByteRange(offsetInBytes, rangeInBytes, true)) {
-        DIVIDE_UNEXPECTED_CALL();
+        Console::errorfn(Locale::Get(_ID("ERROR_BUFFER_LOCK_MANAGER_WAIT")));
     }
 
     if (_memoryBlock._ptr != nullptr) {

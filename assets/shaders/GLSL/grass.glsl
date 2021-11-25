@@ -1,7 +1,5 @@
 --Vertex
 
-#define HAS_TRANSPARENCY
-#define NO_VELOCITY
 #define NEED_SCENE_DATA
 #if !defined(DEPTH_PASS)
 #define NEED_TANGENT
@@ -98,11 +96,6 @@ void main() {
 
 layout(early_fragment_tests) in;
 
-#define NO_VELOCITY
-#define SAMPLER_UNIT0_IS_ARRAY
-#define USE_SHADING_BLINN_PHONG
-#define HAS_TRANSPARENCY
-#define SKIP_DOUBLE_SIDED_NORMALS
 #define NO_IBL
 #define USE_CUSTOM_TBN
 #define MAX_SHADOW_MAP_LOD 1
@@ -146,7 +139,7 @@ void main (void){
 #endif //DEBUG_LODS
 
     float normalVariation = 0.f;
-    const vec3 normalWV = getNormalWV(VAR._texCoord, normalVariation);
+    const vec3 normalWV = getNormalWV(data, vec3(VAR._texCoord, 0), normalVariation);
 
     vec4 colour = vec4(albedo.rgb, min(albedo.a, _alphaFactor));
     vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
@@ -158,11 +151,6 @@ void main (void){
 
 --Fragment.PrePass
 
-// This is needed so that the inner "output" discards don't take place
-// We still manually alpha-discard in main
-#define SAMPLER_UNIT0_IS_ARRAY
-#define USE_ALPHA_DISCARD
-#define NO_VELOCITY
 #include "prePass.frag"
 
 layout(location = 0) flat in uint  _layer;

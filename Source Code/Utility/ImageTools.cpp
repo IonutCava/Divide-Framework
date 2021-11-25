@@ -26,15 +26,15 @@ namespace Divide::ImageTools {
 
 Mutex ImageDataInterface::_loadingMutex;
 
-bool ImageData::addLayer(Byte* data, const size_t size, const U16 width, const U16 height, const U16 depth) {
+bool ImageData::addLayer(Byte* data, const size_t size, const U16 width, const U16 height, const U16 depth, const U16 bitsPerPixel) {
     ImageLayer& layer = _layers.emplace_back();
-    return layer.allocateMip(data, size, width, height, depth);
+    return layer.allocateMip(data, size, width, height, depth, bitsPerPixel);
 }
 
-bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeight, const string& fileName) {
+bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& fileName) {
     _name = fileName;
 
-    if (Util::CompareIgnoreCase(_name.substr(_name.find_last_of('.') + 1), "DDS")) {
+    if (hasExtension(_name, "DDS")) {
         return loadDDS_IL(srgb, refWidth, refHeight, fileName);
     }
 
@@ -119,11 +119,11 @@ bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeigh
     bool ret = false;
     if (data != nullptr) {
         if (_isHDR) {
-            ret = layer.allocateMip(static_cast<F32*>(data), baseSize / 4, to_U16(width), to_U16(height), 1u);
+            ret = layer.allocateMip(static_cast<F32*>(data), baseSize / 4, to_U16(width), to_U16(height), 1u, _bpp);
         } else if (is16Bit()) {
-            ret = layer.allocateMip(static_cast<U16*>(data), baseSize / 2, to_U16(width), to_U16(height), 1u);
+            ret = layer.allocateMip(static_cast<U16*>(data), baseSize / 2, to_U16(width), to_U16(height), 1u, _bpp);
         } else {
-            ret = layer.allocateMip(static_cast<U8*>(data), baseSize / 1, to_U16(width), to_U16(height), 1u);
+            ret = layer.allocateMip(static_cast<U8*>(data), baseSize / 1, to_U16(width), to_U16(height), 1u, _bpp);
         }
         stbi_image_free(data);
     }
@@ -131,7 +131,7 @@ bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeigh
     return ret;
 }
 
-bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, [[maybe_unused]] const U16 refWidth, [[maybe_unused]] const U16 refHeight, const string& filename) {
+bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, [[maybe_unused]] const U16 refWidth, [[maybe_unused]] const U16 refHeight, const ResourcePath& filename) {
     const auto checkError = []() noexcept {
         ILenum error = ilGetError();
         while (error != IL_NO_ERROR) {
@@ -251,7 +251,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, [[maybe_unused]] co
         const ILint width = ilGetInteger(IL_IMAGE_WIDTH);
         const ILint height = ilGetInteger(IL_IMAGE_HEIGHT);
         const ILint depth = ilGetInteger(IL_IMAGE_DEPTH);
-        _decompressedData.resize(to_size(width) * height * depth * 4);
+        _decompressedData.resize(to_size(width) * height * depth * channelCount);
 
         ilCopyPixels(0, 0, 0, width, height, depth, IL_RGBA, IL_UNSIGNED_BYTE, _decompressedData.data());
         checkError();
@@ -278,7 +278,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, [[maybe_unused]] co
                 const I32 size = _compressed ? ilGetDXTCData(nullptr, 0, dxtc) : width * height * depth * _bpp;
                 checkError();
 
-                U8* data = layer.allocateMip<U8>(to_size(size), to_U16(width), to_U16(height), to_U16(depth));
+                U8* data = layer.allocateMip<U8>(to_size(size), to_U16(width), to_U16(height), to_U16(depth), _bpp);
                 if (_compressed) {
                     ilGetDXTCData(data, size, dxtc);
                     checkError();
@@ -347,13 +347,13 @@ void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, 
 
 bool ImageDataInterface::CreateImageData(const ResourcePath& filename, const U16 refWidth, const U16 refHeight, const bool srgb, ImageData& imgOut) {
     if (fileExists(filename)) {
-        return imgOut.addLayer(srgb, refWidth, refHeight, filename.str());
+        return imgOut.addLayer(srgb, refWidth, refHeight, filename);
     }
 
     return false;
 }
 
-I8 SaveToTGA(const string& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept {
+I8 SaveToTGA(const ResourcePath& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept {
     constexpr U8 cGarbage = 0;
     constexpr I16 iGarbage = 0;
     const U16 width = dimensions.width;
@@ -400,11 +400,10 @@ I8 SaveToTGA(const string& filename, const vec2<U16>& dimensions, U8 pixelDepth,
 }
 
 /// saves a series of files with names "filenameX.tga"
-I8 SaveSeries(const string& filename, const vec2<U16>& dimensions, const U8 pixelDepth, U8* imageData) {
+I8 SaveSeries(const ResourcePath& filename, const vec2<U16>& dimensions, const U8 pixelDepth, U8* imageData) {
     static I32 savedImages = 0;
-    // compute the new filename by adding the
-    // series number and the extension
-    const string newFilename(Util::StringFormat("%s_%d.tga", filename.c_str(), savedImages));
+    // compute the new filename by adding the series number and the extension
+    const ResourcePath newFilename(Util::StringFormat("Screenshots/%s_%d.tga", filename.c_str(), savedImages));
 
     // save the image
     const I8 status = SaveToTGA(newFilename, dimensions, pixelDepth, imageData);

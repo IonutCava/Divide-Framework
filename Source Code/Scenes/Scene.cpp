@@ -807,7 +807,7 @@ U16 Scene::registerInputActions() {
         _context.kernel().timingData().freezeTime(!_context.kernel().timingData().freezeLoopTime());
     };
 
-    const auto takeScreenShot = [this]([[maybe_unused]] const InputParams param) { _context.gfx().screenshot("screenshot_"); };
+    const auto takeScreenShot = [this]([[maybe_unused]] const InputParams param) { _context.gfx().screenshot(ResourcePath{ "screenshot_" }); };
 
     const auto toggleFullScreen = [this]([[maybe_unused]] const InputParams param) { _context.gfx().toggleFullScreen(); };
 

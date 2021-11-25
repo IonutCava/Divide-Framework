@@ -73,13 +73,10 @@ public:
         }
     };
 
-    struct NodeIndirectionData
-    {
-        U32 _transformIDX = U32_MAX;
-        U32 _materialIDX = U32_MAX;
-        U32 _texturesIDX = U32_MAX;
-        U32 _padding = U32_MAX;
-    };
+    using NodeIndirectionData = vec4<U32>;
+    static constexpr U8 TRANSFORM_IDX = 0u;
+    static constexpr U8 MATERIAL_IDX = 1u;
+    static constexpr U8 TEXTURES_IDX = 2u;
 
     // 2Mb worth of data
     static constexpr U32 MAX_INDIRECTION_ENTRIES = (2 * 1024 * 1024) / sizeof(NodeIndirectionData);
@@ -99,9 +96,10 @@ public:
     struct BufferTexturesData
     {
         using FlagContainer = std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES>;
-        using TexturesDataContainer = std::array<NodeTexturesData, MAX_INDIRECTION_ENTRIES>;
+        using LookupInfoContainer = std::array<std::pair<size_t, U32>, MAX_INDIRECTION_ENTRIES>;
+        using TexturesDataContainer = std::array<NodeMaterialTextures, MAX_INDIRECTION_ENTRIES>;
         TexturesDataContainer _gpuData{};
-        std::array<bool, MAX_INDIRECTION_ENTRIES> _freeList{};
+        LookupInfoContainer _nodeTexturesLookupInfo{};
         FlagContainer _processedThisFrame{};
 
     };
@@ -192,8 +190,7 @@ private:
     void processVisibleNodeTransform(RenderingComponent* rComp,
                                      D64 interpolationFactor);
     
-    void processVisibleNodeTextures(RenderingComponent* rComp);
-
+    [[nodiscard]] U32 processVisibleNodeTextures(RenderingComponent* rComp, bool& cacheHit);
     [[nodiscard]] U16 processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit);
 
     U16 buildDrawCommands(const RenderPassParams& params, bool doPrePass, bool doOITPass, GFX::CommandBuffer& bufferInOut);
@@ -203,11 +200,10 @@ private:
 
     [[nodiscard]] U32 renderQueueSize(RenderPackage::MinQuality qualityRequirement = RenderPackage::MinQuality::COUNT) const;
 
-    void copyNodeTextureData(const NodeMaterialTextures& materialTexturesIn, NodeTexturesData& dataOut);
-
     void resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const;
 
     [[nodiscard]] bool validateNodesForStagePass(VisibleNodeList<>& nodes, const RenderStagePass& stagePass);
+    void parseTextureRange(RenderBin::SortedQueue& queue, const U32 start, const U32 end);
     void parseMaterialRange(RenderBin::SortedQueue& queue, U32 start, U32 end);
     static void RegisterIndirectionEntry(RenderingComponent* rComp);
 
@@ -231,6 +227,7 @@ private:
 
     static bool s_globalDataInit;
 
+    static SamplerAddress s_defaultTextureSamplerAddress;
     static Pipeline* s_OITCompositionPipeline;
     static Pipeline* s_OITCompositionMSPipeline;
     static Pipeline* s_ResolveScreenTargetsPipeline;

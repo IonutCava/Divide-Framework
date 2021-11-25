@@ -146,7 +146,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     [[nodiscard]] bool lodLocked(const RenderStage stage) const noexcept { return _lodLockLevels[to_base(stage)].first; }
 
     void getMaterialData(NodeMaterialData& dataOut) const;
-    void getMaterialTextures(NodeMaterialTextures& texturesOut) const;
+    void getMaterialTextures(NodeMaterialTextures& texturesOut, SamplerAddress defaultTexAddress) const;
 
     [[nodiscard]] RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass);
     [[nodiscard]] const RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass) const;
@@ -244,18 +244,10 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
         REFRACT,
         COUNT
     };
-    struct ReflectRefractData {
-        mutable SharedMutex _lock{};
-        TextureData _texture;
-        size_t _samplerHash = 0u;
-        SamplerAddress _gpuAddress = 0u;
-    };
+
 
     U16 _reflectionProbeIndex = 0u; //<Offset by 2 (and dec by 2 in shader) as 0 & 1 are the sky cubemaps (day & night respectively)
-    
-    // One for the reflection pass and one for the other passes
-    std::array<ReflectRefractData, to_base(DataType::COUNT)> _reflectRefractData{};
-
+  
     vector<EnvironmentProbeComponent*> _envProbes{};
     vector<ShaderBufferBinding> _externalBufferBindings{};
 

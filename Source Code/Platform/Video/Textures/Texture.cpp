@@ -2,9 +2,11 @@
 
 #include "Headers/Texture.h"
 
+#include "Core/Headers/Kernel.h"
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Utility/Headers/Localization.h"
@@ -13,6 +15,39 @@ namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 const char* Texture::s_missingTextureFileName = nullptr;
+
+Texture_ptr Texture::s_defaulTexture = nullptr;
+
+void Texture::OnStartup(GFXDevice& gfx) {
+    TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D_ARRAY);
+    textureDescriptor.srgb(false);
+    textureDescriptor.baseFormat(GFXImageFormat::RGBA);
+
+    ResourceDescriptor textureResourceDescriptor("defaultEmptyTexture");
+    textureResourceDescriptor.propertyDescriptor(textureDescriptor);
+    textureResourceDescriptor.waitForReady(true);
+    textureResourceDescriptor.threaded(false);
+    s_defaulTexture = CreateResource<Texture>(gfx.parent().resourceCache(), textureResourceDescriptor);
+
+    Byte* defaultTexData = MemoryManager_NEW Byte[1u * 1u * 4];
+    defaultTexData[0] = defaultTexData[1] = defaultTexData[2] = to_byte(0u); //RGB: black
+    defaultTexData[3] = to_byte(1u); //Alpha: 1
+
+    ImageTools::ImageData imgDataDefault = {};
+    if (!imgDataDefault.addLayer(defaultTexData, 4, 1u, 1u, 1u, 4 * 8)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    s_defaulTexture->loadData(imgDataDefault);
+    MemoryManager::DELETE_ARRAY(defaultTexData);
+}
+
+void Texture::OnShutdown() noexcept {
+    s_defaulTexture.reset();
+}
+
+const Texture_ptr& Texture::DefaultTexture() noexcept {
+    return s_defaulTexture;
+}
 
 Texture::Texture(GFXDevice& context,
                  const size_t descriptorHash,

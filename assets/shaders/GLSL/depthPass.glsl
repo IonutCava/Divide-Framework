@@ -5,7 +5,7 @@
 void main() {
 #if defined(HAS_TRANSPARENCY)
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
-    const float alpha = getAlpha(data, VAR._texCoord);
+    const float alpha = getAlpha(data, vec3(VAR._texCoord, 0));
     writeGBuffer(alpha);
 #else //HAS_TRANSPARENCY
     writeGBuffer();
@@ -21,7 +21,7 @@ void main() {
 void main() {
 #if defined(HAS_TRANSPARENCY)
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
-    if (getAlpha(data, VAR._texCoord).a < INV_Z_TEST_SIGMA) {
+    if (getAlpha(data, vec3(VAR._texCoord, 0)).a < INV_Z_TEST_SIGMA) {
         discard;
     }
 #endif //HAS_TRANSPARENCY
@@ -39,7 +39,7 @@ out vec2 _colourOut;
 void main() {
 #if defined(HAS_TRANSPARENCY)
     const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
-    if (getAlpha(data, VAR._texCoord) < INV_Z_TEST_SIGMA) {
+    if (getAlpha(data, vec3(VAR._texCoord, 0)) < INV_Z_TEST_SIGMA) {
         discard;
     }
 #endif //HAS_TRANSPARENCY
@@ -48,7 +48,6 @@ void main() {
 }
 
 --Fragment.LineariseDepthBuffer
-
 
 #include "utility.frag"
 

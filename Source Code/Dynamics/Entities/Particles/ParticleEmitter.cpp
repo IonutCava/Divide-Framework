@@ -235,7 +235,7 @@ bool ParticleEmitter::updateData() {
     }
 
     if (!_particles->_textureFileName.empty()) {
-        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D);
+        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D_ARRAY);
         textureDescriptor.srgb(true);
 
         ResourceDescriptor texture(_particles->_textureFileName);

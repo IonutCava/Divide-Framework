@@ -28,7 +28,6 @@
 
 #include <glbinding-aux/Meta.h>
 
-
 #include "Scenes/Headers/SceneShaderData.h"
 #include "Text/Headers/fontstash.h"
 
@@ -165,10 +164,8 @@ void GL_API::endFrame(DisplayWindow& window, const bool global) {
                 }
             }
 
-            GLsync fence = nullptr;
-            while (s_fenceSyncDeletionQueue.try_dequeue(fence)) {
-                assert(fence != nullptr);
-                glDeleteSync(fence);
+            while (TryDeleteExpiredSync()){
+                NOP();
             }
         }
     }
@@ -202,19 +199,9 @@ PerformanceMetrics GL_API::getPerformanceMetrics() const noexcept {
     return _perfMetrics;
 }
 
-void GL_API::idle(const bool fast) {
+void GL_API::idle([[maybe_unused]] const bool fast) {
     OPTICK_EVENT("GL_API: fast idle");
     glShaderProgram::Idle(_context.context());
-
-    if (!fast) {
-        OPTICK_EVENT("GL_API: slow idle");
-        ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
-        if (!s_mipmapQueue.empty()) {
-            const auto it = s_mipmapQueue.begin();
-            glGenerateTextureMipmap(*it);
-            s_mipmapQueue.erase(it);
-        }
-    }
 }
 
 void GL_API::AppendToShaderHeader(const ShaderType type, const string& entry) {
@@ -305,7 +292,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#version 4%d0 core", GLUtil::getGLValue(GL_MINOR_VERSION)));
     AppendToShaderHeader(ShaderType::COUNT, "/*Copyright 2009-2020 DIVIDE-Studio*/");
 
-    if (s_UseBindlessTextures) {
+    if (s_UseBindlessTextures || s_DebugBindlessTextures) {
         AppendToShaderHeader(ShaderType::COUNT, "#extension  GL_ARB_bindless_texture : require");
     }
 
@@ -363,7 +350,10 @@ bool GL_API::InitGLSW(Configuration& config) {
     }
 
     if (s_UseBindlessTextures) {
-        AppendToShaderHeader(ShaderType::COUNT, "#define USE_BINDLESS_TEXTURES");
+        AppendToShaderHeader(ShaderType::COUNT, "#define BINDLESS_TEXTURES_ENABLED");
+    }
+    if (s_DebugBindlessTextures) {
+        AppendToShaderHeader(ShaderType::COUNT, "#define DEBUG_BINDLESS_TEXTURES");
     }
 
     DIVIDE_ASSERT(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < GL_API::s_maxWorgroupSize[0] &&
@@ -810,6 +800,7 @@ void GL_API::PopDebugMessage() {
 }
 
 void GL_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
+    GL_API::ProcessMipMapsQueue();
     getStateTracker()._flushingCommandBuffer = true;
 }
 
@@ -871,11 +862,15 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             getStateTracker()._activeRenderTarget->setBlendState(crtCmd->_blendStates);
         }break;
         case GFX::CommandType::COPY_TEXTURE: {
+            GL_API::ProcessMipMapsQueue();
+
             const GFX::CopyTextureCommand* crtCmd = commandBuffer.get<GFX::CopyTextureCommand>(entry);
 
             glTexture::copy(crtCmd->_source, crtCmd->_destination, crtCmd->_params);
         }break;
         case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
+            GL_API::ProcessMipMapsQueue();
+
             GFX::BindDescriptorSetsCommand* crtCmd = commandBuffer.get<GFX::BindDescriptorSetsCommand>(entry);
 
             DescriptorSet& set = crtCmd->_set;
@@ -942,7 +937,6 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         }break;
         case GFX::CommandType::SET_TEXTURE_RESIDENCY: {
             const GFX::SetTexturesResidencyCommand* crtCmd = commandBuffer.get<GFX::SetTexturesResidencyCommand>(entry);
-
             if (crtCmd->_state) {
                 for (const SamplerAddress address : crtCmd->_addresses) {
                     MakeTexturesResidentInternal(address);
@@ -972,15 +966,8 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             const GFX::ComputeMipMapsCommand* crtCmd = commandBuffer.get<GFX::ComputeMipMapsCommand>(entry);
 
             if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
-                if (crtCmd->_defer) {
-                    OPTICK_EVENT("GL: Deferred computation");
-                    QueueComputeMipMap(crtCmd->_texture->data()._textureHandle);
-                } else {
-                    OPTICK_EVENT("GL: In-place computation");
-                    const GLuint handle = crtCmd->_texture->data()._textureHandle;
-                    glGenerateTextureMipmap(handle);
-                    DequeueComputeMipMap(handle);
-                }
+                OPTICK_EVENT("GL: In-place computation");
+                GL_API::ComputeMipMaps(crtCmd->_texture->data()._textureHandle);
             } else {
                 OPTICK_EVENT("GL: View-based computation");
 
@@ -1033,30 +1020,30 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                                     static_cast<GLuint>(view._layerRange.y));
                 }
 
-                if (crtCmd->_defer) {
-                    OPTICK_EVENT("GL: Deferred computation");
-                    QueueComputeMipMap(handle);
-                } else {
-                    OPTICK_EVENT("GL: In-place computation");
-                    glGenerateTextureMipmap(handle);
-                    DequeueComputeMipMap(handle);
-                }
+                OPTICK_EVENT("GL: In-place computation");
+                GL_API::ComputeMipMaps(handle);
                 s_textureViewCache.deallocate(handle, 3);
             }
         }break;
         case GFX::CommandType::DRAW_TEXT: {
+            GL_API::ProcessMipMapsQueue();
+
             if (getStateTracker()._activePipeline != nullptr) {
                 const GFX::DrawTextCommand* crtCmd = commandBuffer.get<GFX::DrawTextCommand>(entry);
                 drawText(crtCmd->_batch);
             }
         }break;
         case GFX::CommandType::DRAW_IMGUI: {
+            GL_API::ProcessMipMapsQueue();
+
             if (getStateTracker()._activePipeline != nullptr) {
                 const GFX::DrawIMGUICommand* crtCmd = commandBuffer.get<GFX::DrawIMGUICommand>(entry);
                 drawIMGUI(crtCmd->_data, crtCmd->_windowGUID);
             }
         }break;
         case GFX::CommandType::DRAW_COMMANDS : {
+            GL_API::ProcessMipMapsQueue();
+
             const GLStateTracker& stateTracker = getStateTracker();
             const GFX::DrawCommand::CommandContainer& drawCommands = commandBuffer.get<GFX::DrawCommand>(entry)->_drawCommands;
 
@@ -1074,6 +1061,8 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             _context.registerDrawCalls(drawCount);
         }break;
         case GFX::CommandType::DISPATCH_COMPUTE: {
+            GL_API::ProcessMipMapsQueue();
+
             const GFX::DispatchComputeCommand* crtCmd = commandBuffer.get<GFX::DispatchComputeCommand>(entry);
 
             if(getStateTracker()._activePipeline != nullptr) {
@@ -1184,6 +1173,17 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
 void GL_API::RegisterSyncDelete(GLsync fenceSync) {
     s_fenceSyncDeletionQueue.enqueue(fenceSync);
+}
+
+bool GL_API::TryDeleteExpiredSync() {
+    GLsync fence = nullptr;
+    if (s_fenceSyncDeletionQueue.try_dequeue(fence)) {
+        assert(fence != nullptr);
+        glDeleteSync(fence);
+        return true;
+    }
+
+    return false;
 }
 
 void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAfterFirstDraw) {
@@ -1425,10 +1425,8 @@ bool GL_API::makeTextureViewsResidentInternal(const TextureViews& textureViews, 
                 view._layerRange.max);
         }
 
-        getStateTracker().ProcessMipMapQueue(1, &data._textureHandle);
-
         const GLuint samplerHandle = GetSamplerHandle(it._view._samplerHash);
-        bound = getStateTracker().bindTexturesNoMipMap(static_cast<GLushort>(it._binding), 1, view._targetType, &textureID, &samplerHandle) || bound;
+        bound = getStateTracker().bindTextures(static_cast<GLushort>(it._binding), 1, view._targetType, &textureID, &samplerHandle) || bound;
         // Self delete after 3 frames unless we use it again
         s_textureViewCache.deallocate(textureID, 3u);
     }
@@ -1437,6 +1435,10 @@ bool GL_API::makeTextureViewsResidentInternal(const TextureViews& textureViews, 
 }
 
 bool GL_API::MakeTexturesResidentInternal(const SamplerAddress address) {
+    if (!s_UseBindlessTextures) {
+        return true;
+    }
+
     if (address > 0u) {
         bool valid = false;
         // Check for existing resident textures
@@ -1468,6 +1470,10 @@ bool GL_API::MakeTexturesResidentInternal(const SamplerAddress address) {
 }
 
 bool GL_API::MakeTexturesNonResidentInternal(const SamplerAddress address) {
+    if (!s_UseBindlessTextures) {
+        return true;
+    }
+
     if (address > 0u) {
         for (ResidentTexture& texture : s_residentTextures) {
             if (texture._address == address) {

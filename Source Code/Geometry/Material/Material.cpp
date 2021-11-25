@@ -96,6 +96,8 @@ namespace TypeUtil {
     }
 }; //namespace TypeUtil
 
+SamplerAddress Material::s_defaultTextureAddress = 0u;
+
 void Material::ApplyDefaultStateBlocks(Material& target) {
     /// Normal state for final rendering
     RenderStateBlock stateDescriptor = {};
@@ -122,15 +124,20 @@ void Material::ApplyDefaultStateBlocks(Material& target) {
     target.setRenderStateBlock(shadowDescriptor.getHash(),   RenderStage::SHADOW, RenderPassType::COUNT);
 }
 
+void Material::OnStartup(const SamplerAddress defaultTexAddress) {
+    s_defaultTextureAddress = defaultTexAddress;
+}
+
 Material::Material(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name)
     : CachedResource(ResourceType::DEFAULT, descriptorHash, name),
       _useBindlessTextures(context.context().config().rendering.useBindlessTextures),
+      _debugBindlessTextures(context.context().config().rendering.debugBindlessTextures),
       _context(context),
       _parentCache(parentCache)
 {
     receivesShadows(_context.context().config().rendering.shadowMapping.enabled);
 
-    _textureAddresses.fill(0u);
+    _textureAddresses.fill(s_defaultTextureAddress);
     _textureOperations.fill(TextureOperation::NONE);
 
     const ShaderProgramInfo defaultShaderInfo = {};
@@ -228,30 +235,30 @@ bool Material::setSampler(const TextureUsage textureUsageSlot, const size_t samp
     }
 
     const U32 slot = to_U32(textureUsageSlot);
-    _samplers[slot] = samplerHash;
-    if (_textureAddresses[slot] != 0u) {
+    if (_textureAddresses[slot] != s_defaultTextureAddress &&  _samplers[slot] != samplerHash) {
         assert(_textures[slot] != nullptr);
         assert(_textures[slot]->getState() == ResourceState::RES_LOADED);
+        _samplers[slot] = samplerHash;
         _textureAddresses[slot] = _textures[slot]->getGPUAddress(samplerHash);
     }
+
     return true;
 }
 
-// base = base texture
-// second = second texture used for multitexturing
-// bump = bump map
 bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr& texture, const size_t samplerHash, const TextureOperation op, const bool applyToInstances) 
 {
-    setSampler(textureUsageSlot, samplerHash, applyToInstances);
-
     if (applyToInstances) {
         for (Material* instance : _instances) {
-            instance->setTexture(textureUsageSlot, texture, samplerHash, op, true);
+            instance->setTexture(textureUsageSlot, texture, samplerHash, op, applyToInstances);
         }
     }
 
     const U32 slot = to_U32(textureUsageSlot);
-    setTextureOperation(textureUsageSlot, op, false);
+    if (samplerHash != _samplers[slot]) {
+        setSampler(textureUsageSlot, samplerHash, applyToInstances);
+    }
+
+    setTextureOperation(textureUsageSlot, texture ? op : TextureOperation::NONE, false);
 
     {
         ScopedLock<SharedMutex> w_lock(_textureLock);
@@ -263,43 +270,19 @@ bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr
         }
 
         _textures[slot] = texture;
-        _textureAddresses[slot] = texture ? texture->getGPUAddress(samplerHash) : 0u;
+        _textureAddresses[slot] = texture ? texture->getGPUAddress(samplerHash) : s_defaultTextureAddress;
 
         if (textureUsageSlot == TextureUsage::METALNESS) {
             _usePackedOMR = (texture != nullptr && texture->numChannels() > 2u);
         }
         
-        if (textureUsageSlot == TextureUsage::NORMALMAP ||
-            textureUsageSlot == TextureUsage::HEIGHTMAP)
-        {
-            const bool isHeight = textureUsageSlot == TextureUsage::HEIGHTMAP;
-
-            // If we have the opacity texture is the albedo map, we don't need it. We can just use albedo alpha
-            const Texture_ptr& otherTex = _textures[isHeight ? to_base(TextureUsage::NORMALMAP)
-                                                             : to_base(TextureUsage::HEIGHTMAP)];
-
-            if (otherTex != nullptr && texture != nullptr && otherTex->data()._textureHandle == texture->data()._textureHandle) {
-                _textures[to_base(TextureUsage::HEIGHTMAP)] = nullptr;
-                _textureAddresses[to_base(TextureUsage::HEIGHTMAP)] = 0u;
-            }
-        }
-
         if (textureUsageSlot == TextureUsage::UNIT0 ||
             textureUsageSlot == TextureUsage::OPACITY)
         {
             bool isOpacity = true;
             if (textureUsageSlot == TextureUsage::UNIT0) {
-                _textureKeyCache = texture == nullptr ? std::numeric_limits<I32>::lowest() : (_useBindlessTextures ? 0u : texture->data()._textureHandle);
+                _textureKeyCache = texture == nullptr ? std::numeric_limits<I32>::lowest() : (useBindlessTextures() ? 0u : texture->data()._textureHandle);
                 isOpacity = false;
-            }
-
-            // If the opacity texture is the same as the albedo map, we don't need it. We can just use albedo alpha
-            const Texture_ptr& otherTex = _textures[isOpacity ? to_base(TextureUsage::UNIT0)
-                                                              : to_base(TextureUsage::OPACITY)];
-
-            if (otherTex != nullptr && texture != nullptr && otherTex->data()._textureHandle == texture->data()._textureHandle) {
-                _textures[to_base(TextureUsage::OPACITY)] = nullptr;
-                _textureAddresses[to_base(TextureUsage::OPACITY)] = 0u;
             }
 
             updateTransparency();
@@ -536,20 +519,6 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
                        std::cbegin(_extraShaderDefines[to_base(ShaderType::FRAGMENT)]),
                        std::cend(_extraShaderDefines[to_base(ShaderType::FRAGMENT)]));
 
-    for(const TextureUsage usage : g_materialTextures) {
-        const U8 slot = to_base(usage);
-        if (_textures[slot] != nullptr) {
-            if (_textures[slot]->data()._textureType == TextureType::TEXTURE_2D_ARRAY) {
-                  globalDefines.emplace_back(Util::StringFormat("SAMPLER_%s_IS_ARRAY", Names::textureUsage[slot]), true);
-            }
-        }
-    }
-
-    if (_textures[slot1] && !_textures[slot0]) {
-        std::swap(_textures[slot0], _textures[slot1]);
-        std::swap(_textureAddresses[slot0], _textureAddresses[slot1]);
-        updateTransparency();
-    }
 
     const Str64 vertSource = isDepthPass ? baseShaderData()._depthShaderVertSource : baseShaderData()._colourShaderVertSource;
     const Str64 fragSource = isDepthPass ? baseShaderData()._depthShaderFragSource : baseShaderData()._colourShaderFragSource;
@@ -586,14 +555,6 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
         fragDefines.emplace_back("MAIN_DISPLAY_PASS", true);
     }
 
-    if (!_textures[slot0]) {
-        fragDefines.emplace_back("SKIP_TEX0", true);
-        shaderName += ".NTex0";
-    }
-    if (!_textures[slot1]) {
-        fragDefines.emplace_back("SKIP_TEX1", true);
-        shaderName += ".NTex1";
-    }
     // Display pre-pass caches normal maps in a GBuffer, so it's the only exception
     if ((!isDepthPass || renderStagePass._stage == RenderStage::DISPLAY) &&
         _textures[to_base(TextureUsage::NORMALMAP)] != nullptr &&
@@ -601,71 +562,12 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
     {
         // Bump mapping?
         globalDefines.emplace_back("COMPUTE_TBN", true);
-        if (_bumpMethod != BumpMethod::NORMAL) {
-            globalDefines.emplace_back("COMPUTE_POM", true);
-        }
-    }
-
-    if (!isDepthPass) {
-        if (_textures[to_base(TextureUsage::SPECULAR)] != nullptr) {
-            shaderName += ".S";
-            fragDefines.emplace_back("USE_SPECULAR_MAP", true);
-        }
-        if (_textures[to_base(TextureUsage::METALNESS)] != nullptr) {
-            shaderName += ".M";
-            fragDefines.emplace_back("USE_METALLIC_MAP", true);
-        }
-        if (_textures[to_base(TextureUsage::ROUGHNESS)] != nullptr) {
-            shaderName += ".R";
-            fragDefines.emplace_back("USE_ROUGHNESS_MAP", true);
-        }
-        if (_textures[to_base(TextureUsage::OCCLUSION)] != nullptr) {
-            shaderName += ".O";
-            fragDefines.emplace_back("USE_OCCLUSION_MAP", true);
-        }
-        if (_textures[to_base(TextureUsage::EMISSIVE)] != nullptr) {
-            shaderName += ".E";
-            fragDefines.emplace_back("USE_EMISSIVE_MAP", true);
-        }
     }
 
     updateTransparency();
     if (hasTransparency()) {
         shaderName += ".T";
         fragDefines.emplace_back("HAS_TRANSPARENCY", true);
-
-        if (renderStagePass._passType != RenderPassType::OIT_PASS) {
-            shaderName += ".AD";
-            fragDefines.emplace_back("USE_ALPHA_DISCARD", true);
-        }
-
-        switch (_translucencySource) {
-            case TranslucencySource::OPACITY_MAP_A:
-            case TranslucencySource::OPACITY_MAP_R: {
-                fragDefines.emplace_back("USE_OPACITY_MAP", true);
-                if (_translucencySource == TranslucencySource::OPACITY_MAP_R) {
-                    shaderName += ".OMapR";
-                    fragDefines.emplace_back("USE_OPACITY_MAP_RED_CHANNEL", true);
-                } else {
-                    shaderName += ".OMapA";
-                }
-            } break;
-            case TranslucencySource::ALBEDO_COLOUR: {
-                shaderName += ".ACAlpha";
-                fragDefines.emplace_back("USE_ALBEDO_COLOUR_ALPHA", true);
-            } break; 
-            
-            case TranslucencySource::ALBEDO_TEX: {
-                shaderName += ".ATAlpha";
-                fragDefines.emplace_back("USE_ALBEDO_TEX_ALPHA", true);
-            } break;
-            default: break;
-        };
-    }
-
-    if (doubleSided()) {
-        shaderName += ".2Sided";
-        fragDefines.emplace_back("USE_DOUBLE_SIDED", true);
     }
 
     if (!receivesShadows()) {
@@ -693,41 +595,9 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
         globalDefines.emplace_back("USE_PLANAR_REFRACTION", true);
     }
 
-    if (!isDepthPass) {
-        switch (_shadingMode) {
-            default:
-            case ShadingMode::FLAT: {
-                fragDefines.emplace_back("USE_SHADING_FLAT", true);
-                shaderName += ".Flat";
-            } break;
-            case ShadingMode::PHONG:
-            case ShadingMode::BLINN_PHONG: {
-                fragDefines.emplace_back("USE_SHADING_BLINN_PHONG", true);
-                shaderName += ".Phong";
-            } break;
-            case ShadingMode::TOON: {
-                fragDefines.emplace_back("USE_SHADING_TOON", true);
-                shaderName += ".Toon";
-            } break;
-            case ShadingMode::OREN_NAYAR: {
-                fragDefines.emplace_back("USE_SHADING_OREN_NAYAR", true);
-                shaderName += ".OrenN";
-            } break;
-            case ShadingMode::COOK_TORRANCE: {
-                fragDefines.emplace_back("USE_SHADING_COOK_TORRANCE", true);
-                shaderName += ".CookT";
-            } break;
-        }
-    }
-
     if (_hardwareSkinning) {
         globalDefines.emplace_back("USE_GPU_SKINNING", true);
         shaderName += ".Sknd";
-    }
-
-    if (_usePackedOMR) {
-        globalDefines.emplace_back("SAMPLER_OMR_COMPACT", true);
-        shaderName += ".OMRCompact";
     }
 
     vertDefines.emplace_back("HAS_CLIPPING_OUT", true);
@@ -773,41 +643,6 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
     shaderResDescriptor.flag(true);
 
     setShaderProgramInternal(shaderResDescriptor, renderStagePass, false);
-}
-
-bool Material::getTextureData(const RenderStagePass& renderStagePass, TextureDataContainer& textureData) {
-    OPTICK_EVENT();
-    if (_useBindlessTextures) {
-        return true;
-    }
-
-    const auto registerTexture = [this](const U8 slot, const bool condition, TextureDataContainer& textureData) {
-        if (condition) {
-            const Texture_ptr& crtTexture = _textures[slot];
-            if (crtTexture != nullptr) {
-                // We only need to actually bind NON-RESIDENT textures. 
-                textureData.add(TextureEntry{ crtTexture->data(), _samplers[slot], slot });
-                return true;
-            }
-        }
-
-        return false;
-    };
-
-    bool ret = false;
-    const bool depthStage = renderStagePass.isDepthPass();
-    const bool transparencyState = hasTransparency() && _translucencySource != TranslucencySource::ALBEDO_COLOUR;
-
-    SharedLock<SharedMutex> r_lock(_textureLock);
-    for (const U8 slot : g_TransparentSlots) {
-        ret = registerTexture(slot, (transparencyState || !depthStage || _textureUseForDepth[slot]), textureData) || ret;
-    }
-
-    for (const U8 slot : g_ExtraSlots) {
-        ret = registerTexture(slot, (!depthStage || _textureUseForDepth[slot]), textureData) || ret;
-    }
-
-    return ret;
 }
 
 bool Material::unload() {
@@ -1116,7 +951,6 @@ void Material::bumpMethod(const BumpMethod newBumpMethod, const bool applyToInst
 void Material::shadingMode(const ShadingMode mode, const bool applyToInstances) {
     if (_shadingMode != mode) {
         _shadingMode = mode;
-        _needsNewShader = true;
     }
 
     if (applyToInstances) {
@@ -1269,23 +1103,75 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
 
     const FColour4& specColour = specular(); //< For PHONG_SPECULAR
 
+    const bool useOpacityAlphaChannel = _translucencySource == TranslucencySource::OPACITY_MAP_A;
+    const bool useAlbedoTexAlphachannel = _translucencySource == TranslucencySource::ALBEDO_TEX;
+
     //ToDo: Maybe store all of these material properties in an internal, cached, NodeMaterialData structure? -Ionut
     dataOut._albedo.set(baseColour());
     dataOut._colourData.set(ambient(), specColour.a);
     dataOut._emissiveAndParallax.set(emissive(), parallaxFactor());
     dataOut._data.x = Util::PACK_UNORM4x8(occlusion(), metallic(), roughness(), selectionFlag);
-    dataOut._data.y = Util::PACK_UNORM4x8(specColour.r, specColour.g, specColour.b, 1.f);
-    dataOut._data.z = Util::PACK_UNORM4x8(to_U8(_textureOperations[to_base(TextureUsage::UNIT0)]),
-                                          to_U8(_textureOperations[to_base(TextureUsage::UNIT1)]),
-                                          to_U8(_textureOperations[to_base(TextureUsage::SPECULAR)]),
-                                          to_U8(bumpMethod()));
+    dataOut._data.y = Util::PACK_UNORM4x8(specColour.r, specColour.g, specColour.b, (doubleSided() ? 1.f : 0.f));
+    dataOut._data.z = Util::PACK_UNORM4x8(0u, to_U8(shadingMode()), usePackedOMR() ? 1u : 0u, to_U8(bumpMethod()));
     dataOut._data.w = bestProbeID;
+
+    dataOut._textureOperations.x = Util::PACK_UNORM4x8(to_U8(_textureOperations[to_base(TextureUsage::UNIT0)]),
+                                                       to_U8(_textureOperations[to_base(TextureUsage::UNIT1)]),
+                                                       to_U8(_textureOperations[to_base(TextureUsage::SPECULAR)]),
+                                                       to_U8(_textureOperations[to_base(TextureUsage::EMISSIVE)]));
+    dataOut._textureOperations.y = Util::PACK_UNORM4x8(to_U8(_textureOperations[to_base(TextureUsage::OCCLUSION)]),
+                                                       to_U8(_textureOperations[to_base(TextureUsage::METALNESS)]),
+                                                       to_U8(_textureOperations[to_base(TextureUsage::ROUGHNESS)]),
+                                                       to_U8(_textureOperations[to_base(TextureUsage::OPACITY)]));
+    dataOut._textureOperations.z = Util::PACK_UNORM4x8(to_U8(useAlbedoTexAlphachannel ? 1u : 0u), 
+                                                       to_U8(useOpacityAlphaChannel ? 1u : 0u),
+                                                       0u,
+                                                       0u);
+    dataOut._textureOperations.w = 0u;
 }
 
 void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTextures& texturesOut) {
     for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
-        texturesOut[i] = _textureAddresses[to_base(g_materialTextures[i])];
+        texturesOut[i] = TextureToUVec2(_textureAddresses[to_base(g_materialTextures[i])]);
     }
+}
+
+bool Material::getTextureData(const RenderStagePass& renderStagePass, TextureDataContainer& textureData) {
+    OPTICK_EVENT();
+    // We only need to actually bind NON-RESIDENT textures. 
+    if (useBindlessTextures() && !debugBindlessTextures()) {
+        return true;
+    }
+
+    const auto registerTexture = [this](const U8 slot, const bool condition, TextureDataContainer& textureData) {
+        if (condition) {
+            const Texture_ptr& crtTexture = _textures[slot];
+            if (crtTexture != nullptr) {
+                textureData.add(TextureEntry{ crtTexture->data(), _samplers[slot], slot });
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    bool ret = false;
+    const bool depthStage = renderStagePass.isDepthPass();
+    SharedLock<SharedMutex> r_lock(_textureLock);
+    for (const U8 slot : g_ReflectRefractSlots) {
+        ret = registerTexture(slot, (!depthStage || _textureUseForDepth[slot]), textureData) || ret;
+    }
+
+    const bool transparencyState = hasTransparency() && _translucencySource != TranslucencySource::ALBEDO_COLOUR;
+    for (const U8 slot : g_TransparentSlots) {
+        ret = registerTexture(slot, (transparencyState || !depthStage || _textureUseForDepth[slot]), textureData) || ret;
+    }
+
+    for (const U8 slot : g_ExtraSlots) {
+        ret = registerTexture(slot, (!depthStage || _textureUseForDepth[slot]), textureData) || ret;
+    }
+
+    return ret;
 }
 
 void Material::rebuild() {
@@ -1524,21 +1410,20 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
                     setSampler(usage, hash);
                 }
 
-                const TextureOperation op = TextureOperation::NONE;
-                _textureOperations[to_base(usage)] = TypeUtil::StringToTextureOperation(pt.get<string>(textureNode + ".usage", TypeUtil::TextureOperationToString(_textureOperations[to_base(usage)])));
+                TextureOperation& op = _textureOperations[to_base(usage)];
+                op = TypeUtil::StringToTextureOperation(pt.get<string>(textureNode + ".usage", TypeUtil::TextureOperationToString(_textureOperations[to_base(usage)])));
 
                 {
                     ScopedLock<SharedMutex> w_lock(_textureLock);
                     const Texture_ptr& crtTex = _textures[to_base(usage)];
-                    if (crtTex != nullptr &&
-                        crtTex->flipped() == flipped &&
-                        crtTex->assetLocation() + crtTex->assetName() == texPath + texName)
-                    {
-                      continue;
+                    if (crtTex == nullptr) {
+                        op = TextureOperation::NONE;
+                    } else  if (crtTex->flipped() == flipped && crtTex->assetLocation() + crtTex->assetName() == texPath + texName) {
+                        continue;
                     }
                 }
 
-                TextureDescriptor texDesc(TextureType::TEXTURE_2D);
+                TextureDescriptor texDesc(TextureType::TEXTURE_2D_ARRAY);
                 ResourceDescriptor texture(texName.str());
                 texture.assetName(texName);
                 texture.assetLocation(texPath);

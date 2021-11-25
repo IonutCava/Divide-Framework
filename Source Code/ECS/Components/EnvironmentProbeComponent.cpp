@@ -192,7 +192,6 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut) {
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
     computeMipMapsCommand._texture = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
     computeMipMapsCommand._layerRange = { rtLayerIndex(), 1 };
-    computeMipMapsCommand._defer = false;
     EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);

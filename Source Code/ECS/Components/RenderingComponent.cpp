@@ -359,30 +359,19 @@ void RenderingComponent::getMaterialData(NodeMaterialData& dataOut) const {
     if (_materialInstance != nullptr) {
         //ProbeID: 0u = sky cubemap. Shader: (Probe - 1u) = environment cube array index and probe data lookup index
         _materialInstance->getData(*this, _reflectionProbeIndex + 1u, dataOut);
-    
     }
 }
 
-void RenderingComponent::getMaterialTextures(NodeMaterialTextures& texturesOut) const {
+void RenderingComponent::getMaterialTextures(NodeMaterialTextures& texturesOut, const SamplerAddress defaultTexAddress) const {
+    const vec2<U32> defaultAddress = TextureToUVec2(defaultTexAddress);
     if (_materialInstance != nullptr) {
         _materialInstance->getTextures(*this, texturesOut);
-
+    } else {
         for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
-            // We don't overwrite custom reflection/refraction textures!
-            if (texturesOut[i] == 0u) {
-                if (g_materialTextures[i] == TextureUsage::REFLECTION) {
-                    const ReflectRefractData& refData = _reflectRefractData[to_base(DataType::REFLECT)];
-                    SharedLock<SharedMutex> r_lock(refData._lock);
-                    texturesOut[i] = refData._gpuAddress;
-                }
-                else if (g_materialTextures[i] == TextureUsage::REFRACTION) {
-                    const ReflectRefractData& refData = _reflectRefractData[to_base(DataType::REFRACT)];
-                    SharedLock<SharedMutex> r_lock(refData._lock);
-                    texturesOut[i] = refData._gpuAddress;
-                }
-            }
+            texturesOut[i] = defaultAddress;
         }
     }
+    texturesOut[MATERIAL_TEXTURE_COUNT] = defaultAddress;
 }
 
 /// Called after the current node was rendered
@@ -442,7 +431,7 @@ U8 RenderingComponent::getLoDLevelInternal(const F32 distSQtoCenter, const Rende
     }
 
     const F32 distSQtoCenterClamped = std::max(distSQtoCenter, std::numeric_limits<F32>::epsilon());
-    for (U8 i = 0; i < MAX_LOD_LEVEL; ++i) {
+    for (U8 i = 0u; i < MAX_LOD_LEVEL; ++i) {
         if (distSQtoCenterClamped <= to_F32(SQUARED(lodThresholds[i]))) {
             return i;
         }
@@ -482,36 +471,12 @@ void RenderingComponent::prepareDrawPackage(const Camera& camera, const SceneRen
     pkg.setDrawOption(CmdRenderOptions::RENDER_WIREFRAME, (renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) ||
                                                            sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME)));
 
-    DescriptorSet& set = pkg.get<GFX::BindDescriptorSetsCommand>(0)->_set;
     if (pkg.textureDataDirty()) {
         if (_materialInstance != nullptr) {
-            _materialInstance->getTextureData(renderStagePass, set._textureData);
+            _materialInstance->getTextureData(renderStagePass, pkg.get<GFX::BindDescriptorSetsCommand>(0)->_set._textureData);
         }
+
         pkg.textureDataDirty(false);
-    }
-
-    if (!renderStagePass.isDepthPass()) {
-        if (renderStagePass._stage != RenderStage::REFLECTION) {
-            ReflectRefractData& refData = _reflectRefractData[to_base(DataType::REFLECT)];
-            SharedLock<SharedMutex> r_lock(refData._lock);
-            if (refData._texture._textureType != TextureType::COUNT) {
-                const TextureEntry* existingEntry = set._textureData.find(to_U8(TextureUsage::REFLECTION));
-                if (existingEntry == nullptr || !IsValid(*existingEntry)) {
-                    set._textureData.add(TextureEntry{ refData._texture, refData._samplerHash, TextureUsage::REFLECTION });
-                }
-            }
-        }
-
-        if (renderStagePass._stage != RenderStage::REFRACTION) {
-            ReflectRefractData& refData = _reflectRefractData[to_base(DataType::REFRACT)];
-            SharedLock<SharedMutex> r_lock(refData._lock);
-            if (refData._texture._textureType != TextureType::COUNT) {
-                const TextureEntry* existingEntry = set._textureData.find(to_U8(TextureUsage::REFRACTION));
-                if (existingEntry == nullptr || !IsValid(*existingEntry)) {
-                    set._textureData.add(TextureEntry{ refData._texture, refData._samplerHash, TextureUsage::REFRACTION });
-                }
-            }
-        }
     }
 }
 
@@ -553,27 +518,31 @@ bool RenderingComponent::updateReflection(const U16 reflectionIndex,
                                           const SceneRenderState& renderState,
                                           GFX::CommandBuffer& bufferInOut)
 {
+    if (_materialInstance == nullptr) {
+        return false;
+    }
+
     //Target texture: the opposite of what we bind during the regular passes
-    ReflectRefractData& refData = _reflectRefractData[to_base(DataType::REFLECT)];
     if (_reflectorType != ReflectorType::COUNT && _reflectionCallback && inBudget) {
         const RenderTargetID reflectRTID(_reflectorType == ReflectorType::PLANAR 
                                                          ? RenderTargetUsage::REFLECTION_PLANAR
                                                          : RenderTargetUsage::REFLECTION_CUBE,
                                          reflectionIndex);
         RenderPassManager* passManager = _context.parent().renderPassManager();
-        RenderCbkParams params(_context, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8(_reflectorType), camera);
+        RenderCbkParams params{ _context, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8(_reflectorType), camera };
         _reflectionCallback(passManager, params, bufferInOut);
 
-        const auto& targetAtt = _context.renderTargetPool().renderTarget(reflectRTID).getAttachment(RTAttachmentType::Colour, 0u);
-        ScopedLock<SharedMutex> w_lock(refData._lock);
-        refData._texture = targetAtt.texture()->data();
-        refData._samplerHash = targetAtt.samplerHash();
-        refData._gpuAddress = targetAtt.texture()->getGPUAddress(refData._samplerHash);
+        const RTAttachment& targetAtt = _context.renderTargetPool().renderTarget(reflectRTID).getAttachment(RTAttachmentType::Colour, 0u);
+        _materialInstance->setTexture(
+            _reflectorType == ReflectorType::PLANAR ? TextureUsage::REFLECTION_PLANAR : TextureUsage::REFLECTION_CUBE,
+            targetAtt.texture(),
+            targetAtt.samplerHash(),
+            TextureOperation::REPLACE,
+            true
+        );
         return true;
     }
-
-    ScopedLock<SharedMutex> w_lock(refData._lock);
-    refData._texture = {};
+    // No need to clear the reflection texture (if there is one) as an outdated reflection is better than random artefacts
     return false;
 }
 
@@ -581,30 +550,31 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
                                           const bool inBudget,
                                           Camera* camera,
                                           const SceneRenderState& renderState,
-                                          GFX::CommandBuffer& bufferInOut) {
-    //Target texture: the opposite of what we bind during the regular passes
-    ReflectRefractData& refData = _reflectRefractData[to_base(DataType::REFRACT)];
+                                          GFX::CommandBuffer& bufferInOut)
+{
+    if (_materialInstance == nullptr) {
+        return false;
+    }
 
     // no default refraction system!
     if (_refractorType != RefractorType::COUNT && _refractionCallback && inBudget) {
-        RenderPassManager* passManager = _context.parent().renderPassManager();
-
         const RenderTargetID refractRTID(RenderTargetUsage::REFRACTION_PLANAR, refractionIndex);
+
+        RenderPassManager* passManager = _context.parent().renderPassManager();
         RenderCbkParams params{ _context, _parentSGN, renderState, refractRTID, refractionIndex, to_U8(_refractorType), camera };
         _refractionCallback(passManager, params, bufferInOut);
 
-        const auto& targetAtt = _context.renderTargetPool().renderTarget(refractRTID).getAttachment(RTAttachmentType::Colour, 0u);
-        const Texture_ptr& refractionTexture = targetAtt.texture();
-
-        ScopedLock<SharedMutex> w_lock(refData._lock);
-        refData._texture = refractionTexture->data();
-        refData._samplerHash = targetAtt.samplerHash();
-        refData._gpuAddress = targetAtt.texture()->getGPUAddress(refData._samplerHash);
+        const RTAttachment& targetAtt = _context.renderTargetPool().renderTarget(refractRTID).getAttachment(RTAttachmentType::Colour, 0u);
+        _materialInstance->setTexture(
+            _refractorType == RefractorType::PLANAR ? TextureUsage::REFRACTION_PLANAR : TextureUsage::REFRACTION_CUBE,
+            targetAtt.texture(),
+            targetAtt.samplerHash(),
+            TextureOperation::REPLACE,
+            true
+        );
         return true;
     }
 
-    ScopedLock<SharedMutex> w_lock(refData._lock);
-    refData._texture = {};
     return false;
 }
 

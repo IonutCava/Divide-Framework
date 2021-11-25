@@ -64,11 +64,13 @@ class WaterPlane : public SceneNode {
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
 
     PROPERTY_RW(FColour3, refractionTint);
+    PROPERTY_RW(FColour3, waterDistanceFogColour);
     PROPERTY_R(F32, reflPlaneOffset, 0.0f);
     PROPERTY_R(F32, refrPlaneOffset, 0.0f);
     PROPERTY_RW(F32, specularShininess, 200.f);
     PROPERTY_RW(vec2<F32>, noiseTile);
     PROPERTY_RW(vec2<F32>, noiseFactor);
+    PROPERTY_RW(vec2<F32>, fogStartEnd);
     PROPERTY_RW(U16, blurKernelSize, 9u);
     PROPERTY_RW(bool, blurReflections, true);
 

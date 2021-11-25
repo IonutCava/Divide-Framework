@@ -1373,7 +1373,7 @@ namespace Divide {
                 ImGui::Separator();
                 ImGui::PushItemWidth(250);
                 FColour4 diffuse = material->getBaseColour(fromTexture, texture);
-                if (Util::colourInput4(_parent, "[Albedo]", diffuse, readOnly, [material](const FColour4& col) { material->baseColour(col); })) {
+                if (Util::colourInput4(_parent, "[Albedo]", diffuse, readOnly, [material](const FColour4& col) { material->baseColour(col); return true; })) {
                     ret = true;
                 }
                 ImGui::PopItemWidth();
@@ -1445,7 +1445,7 @@ namespace Divide {
 
                 ImGui::PushItemWidth(250);
                 FColour3 emissive = material->getEmissive(fromTexture, texture);
-                if (Util::colourInput3(_parent, "[Emissive]", emissive, fromTexture || readOnly, [&material](const FColour3& col) {material->emissiveColour(col);})) {
+                if (Util::colourInput3(_parent, "[Emissive]", emissive, fromTexture || readOnly, [&material](const FColour3& col) { material->emissiveColour(col); return true; })) {
                     ret = true;
                 }
                 ImGui::PopItemWidth();
@@ -1466,7 +1466,7 @@ namespace Divide {
                 ImGui::Separator();
                 ImGui::PushItemWidth(250);
                 FColour3 ambient = material->getAmbient(fromTexture, texture);
-                if (Util::colourInput3(_parent, "[Ambient]", ambient, fromTexture || readOnly, [material](const FColour3& colour) { material->ambientColour(colour); })) {
+                if (Util::colourInput3(_parent, "[Ambient]", ambient, fromTexture || readOnly, [material](const FColour3& colour) { material->ambientColour(colour); return true; })) {
                     ret = true;
                 }
                 ImGui::PopItemWidth();
@@ -1514,7 +1514,7 @@ namespace Divide {
                 { //Specular colour
                     ImGui::Separator();
                     ImGui::PushItemWidth(250);
-                    if (Util::colourInput3(_parent, "[Specular]", specular.rgb, fromTexture || readOnly, [material](const FColour4& col) { material->specularColour(col); })) {
+                    if (Util::colourInput3(_parent, "[Specular]", specular.rgb, fromTexture || readOnly, [material](const FColour4& col) { material->specularColour(col); return true; })) {
                         ret = true;
                     }
                     ImGui::PopItemWidth();

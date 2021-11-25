@@ -72,6 +72,10 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     virtual ~Texture() = default;
 
+    static void OnStartup(GFXDevice& gfx);
+    static void OnShutdown() noexcept;
+    static [[nodiscard]] const Texture_ptr& DefaultTexture() noexcept;
+
     // Returns the GPU address of the texture
     virtual SamplerAddress getGPUAddress(size_t samplerHash) = 0;
 
@@ -122,6 +126,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     bool _asyncLoad = true;
 
   protected:
+    static Texture_ptr s_defaulTexture;
     static const char* s_missingTextureFileName;
 };
 

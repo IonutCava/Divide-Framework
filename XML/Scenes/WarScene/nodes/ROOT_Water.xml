@@ -5,10 +5,11 @@
     <Blur__reflections>true</Blur__reflections>
     <Blur__kernel__size>9</Blur__kernel__size>
     <Reflection__Plane__Offset>0</Reflection__Plane__Offset>
-    <Refraction__Plane__Offset>1.75</Refraction__Plane__Offset>
-    <Noise__tile__factor x="75" y="75"/>
-    <Noise__factor x="0.100000001" y="0.100000001"/>
-    <Refraction__tint r="0.318198264" g="0.649830282" b="0.934065938"/>
+    <Refraction__Plane__Offset>2</Refraction__Plane__Offset>
+    <Fog__start__end__distances x="256" y="1024"/>
+    <Noise__tile__factor x="100" y="100"/>
+    <Noise__factor x="0.200000003" y="0.200000003"/>
+    <Refraction__tint r="0.260355055" g="0.757363498" b="0.967032969"/>
     <Specular__Shininess>200</Specular__Shininess>
 </WATER>
 <TRANSFORM>
@@ -244,6 +245,7 @@
                 <name>terrain_water_NM_old.jpg</name>
                 <path>assets/misc_images/</path>
                 <flipped>true</flipped>
+                <usage>REPLACE</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>

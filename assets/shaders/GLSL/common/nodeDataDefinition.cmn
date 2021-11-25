@@ -1,110 +1,6 @@
 #ifndef _NODE_DATA_DEFINITION_CMN_
 #define _NODE_DATA_DEFINITION_CMN_
 
-#if defined(SAMPLER_UNIT0_IS_ARRAY)
-#define samplerUnit0 sampler2DArray
-#define samplerUnit0UVType vec3
-#else //SAMPLER_UNIT0_IS_ARRAY
-#define samplerUnit0 sampler2D
-#define samplerUnit0UVType vec2
-#endif //SAMPLER_UNIT0_IS_ARRAY
-
-#if defined(SAMPLER_OPACITY_IS_ARRAY)
-#define samplerOpacity sampler2DArray
-#define samplerOpacityUVType vec3
-#else //SAMPLER_OPACITY_IS_ARRAY
-#define samplerOpacity sampler2D
-#define samplerOpacityUVType vec2
-#endif //SAMPLER_OPACITY_IS_ARRAY
-
-#if defined(SAMPLER_NORMALMAP_IS_ARRAY)
-#define samplerNormal sampler2DArray
-#define samplerNormalUVType vec3
-#else //SAMPLER_NORMALMAP_IS_ARRAY
-#define samplerNormal sampler2D
-#define samplerNormalUVType vec3
-#endif //SAMPLER_NORMALMAP_IS_ARRAY
-
-#if defined(SAMPLER_HEIGHTMAP_IS_ARRAY)
-#define samplerHeight sampler2DArray
-#define samplerHeightUVType vec3
-#else //SAMPLER_HEIGHTMAP_IS_ARRAY
-#define samplerHeight sampler2D
-#define samplerHeightUVType vec3
-#endif //SAMPLER_HEIGHTMAP_IS_ARRAY
-
-#if defined(SAMPLER_SPECULAR_IS_ARRAY)
-#define samplerSpecular sampler2DArray
-#define samplerSpecularUVType vec3
-#else //SAMPLER_SPECULAR_IS_ARRAY
-#define samplerSpecular sampler2D
-#define samplerSpecularUVType vec3
-#endif //SAMPLER_SPECULAR_IS_ARRAY
-
-#if defined(SAMPLER_METALNESS_IS_ARRAY)
-#define samplerMetalness sampler2DArray
-#define samplerMetalnessUVType vec3
-#else //SAMPLER_METALNESS_IS_ARRAY
-#define samplerMetalness sampler2D
-#define samplerMetalnessUVType vec3
-#endif //SAMPLER_METALNESS_IS_ARRAY
-
-#if defined(SAMPLER_ROUGHNESS_IS_ARRAY)
-#define samplerRoughness sampler2DArray
-#define samplerRoughnessUVType vec3
-#else //SAMPLER_ROUGHNESS_IS_ARRAY
-#define samplerRoughness sampler2D
-#define samplerRoughnessUVType vec3
-#endif //SAMPLER_ROUGHNESS_IS_ARRAY
-
-#if defined(SAMPLER_OCCLUSION_IS_ARRAY)
-#define samplerOcclusion sampler2DArray
-#define samplerOcclusionUVType vec3
-#else //SAMPLER_OCCLUSION_IS_ARRAY
-#define samplerOcclusion sampler2D
-#define samplerOcclusionUVType vec3
-#endif //SAMPLER_OCCLUSION_IS_ARRAY
-
-#if defined(SAMPLER_EMISSIVE_IS_ARRAY)
-#define samplerEmissive sampler2DArray
-#define samplerEmissiveUVType vec3
-#else //SAMPLER_EMISSIVE_IS_ARRAY
-#define samplerEmissive sampler2D
-#define samplerEmissiveUVType vec3
-#endif //SAMPLER_EMISSIVE_IS_ARRAY
-
-#if defined(SAMPLER_UNIT1_IS_ARRAY)
-#define samplerUnit1 sampler2DArray
-#define samplerUnit1UVType vec3
-#else //SAMPLER_UNIT1_IS_ARRAY
-#define samplerUnit1 sampler2D
-#define samplerUnit1UVType vec2
-#endif //SAMPLER_UNIT1_IS_ARRAY
-
-#if defined(SAMPLER_PROJECTION_IS_ARRAY)
-#define samplerProj sampler2DArray
-#define samplerrProjUVType vec3
-#else //SAMPLER_PROJECTION_IS_ARRAY
-#define samplerProj sampler2D
-#define samplerrProjUVType vec3
-#endif //SAMPLER_PROJECTION_IS_ARRAY
-
-#if defined(USE_PLANAR_REFLECTION)
-#define samplerReflect sampler2D
-#define samplerReflectUVType vec2
-#else //USE_PLANAR_REFLECTION
-#define samplerReflect samplerCube
-#define samplerReflectUVType vec3
-#endif //USE_PLANAR_REFLECTION
-
-#if defined(USE_PLANAR_REFRACTION)
-#define samplerRefract sampler2D
-#define samplerRefractUVType vec2
-#else //USE_PLANAR_REFRACTION
-#define samplerRefract samplerCube
-#define samplerRefractUVType vec3
-#endif //USE_PLANAR_REFRACTION
-
 #define TRANSFORM_IDX VAR._indirectionIDs.x
 #define MATERIAL_IDX VAR._indirectionIDs.y
 #define TEXTURE_IDX VAR._indirectionIDs.z
@@ -122,12 +18,10 @@ struct NodeTransformData {
     mat4 _normalMatrixW;
 };
 
-struct NodeIndirectionData {
-    uint _transformIdx;
-    uint _materialIdx;
-    uint _texturesIdx;
-    uint _padding;
-};
+#define NodeIndirectionData uvec4
+#define _transformIdx x
+#define _materialIdx y
+#define _texturesIdx z
 
 #if defined(PROJECTED_TEXTURE)
 uniform float projectedTextureMixWeight;
@@ -146,16 +40,24 @@ struct NodeMaterialData
     //a - specular strength [0...1000]. Used mainly by Phong shading
     vec4 _colourData;
     //x = 4x8U: occlusion, metallic, roughness, selection flag (1 == hovered, 2 == selected)
-    //y = 4x8U: specularR, specularG, specularB, reserved
-    //z = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, bump method
+    //y = 4x8U: specularR, specularG, specularB, isDoubleSided
+    //z = 4x8U: reserved, shadingMode, use packed OMR, bump method
     //w = Probe lookup index + 1 (0 = sky cubemap)
     uvec4 _data;
+    //x = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, Emissive
+    //y = 4x8U: tex op Occlusion, tex op Metalness, tex op Roughness, tex op Opcaity
+    //z = 4x8U: use albedo texture alpha channel, use opacity map alpha channel, reserved, reserved
+    //w = reserved
+    uvec4 _textureOperations;
 };
 
-struct NodeTextureData
-{
-    uvec4 _textures[(MATERIAL_TEXTURE_COUNT + 1) / 2];
-};
+#define SHADING_FLAT 0
+#define SHADING_PHONG 1
+#define SHADING_BLINN_PHONG 2
+#define SHADING_TOON 3
+#define SHADING_OREN_NAYAR 4
+#define SHADING_COOK_TORRANCE 5
+#define SHADING_COUNT 6
 
 struct PBRMaterial
 {
@@ -167,25 +69,32 @@ struct PBRMaterial
     float _occlusion;
     float _metallic;
     float _roughness;
-    float _padding;
+    uint _shadingMode;
 };
 
 #define BaseColour(materialData) materialData._albedo
 #define EmissiveColour(materialData) materialData._emissiveAndParallax.rgb
-#define PACKED_OMR(materialData) unpackUnorm4x8(materialData._data.x).rgb
 #define Specular(materialData) unpackUnorm4x8(materialData._data.y).rgb
 #define Ambient(materialData) materialData._colourData.rgb
 #define SpecularStrength(materialData) materialData._colourData.a
 
-#define dvd_selectionFlag(materialData) uint(unpackUnorm4x8(materialData._data.x).a * 2)
-
 #define dvd_probeIndex(materialData) materialData._data.w
-
-#define dvd_texOperations(materialData) uvec3(unpackUnorm4x8(materialData._data.z).xyz * 255)
+#define dvd_texOperationsA(materialData) uvec4(unpackUnorm4x8(materialData._textureOperations.x) * 255)
+#define dvd_texOperationsB(materialData) uvec4(unpackUnorm4x8(materialData._textureOperations.y) * 255)
+#define dvd_TexOpUnit0(materialData) dvd_texOperationsA(materialData).x
+#define dvd_TexOpSpecular(materialData) dvd_texOperationsA(materialData).z
+#define dvd_TexOpEmissive(materialData) dvd_texOperationsA(materialData).w
+#define dvd_TexOpOpacity(materialData)  dvd_texOperationsB(materialData).w
 
 #define dvd_bumpMethod(X) uint(unpackUnorm4x8(dvd_Materials[X]._data.z).w * 255)
 
+#define dvd_useAlbedoTextureAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).x * 255) == 1u)
+
+#define dvd_useOpacityAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).y * 255) == 1u)
+
 #define dvd_parallaxFactor(X) dvd_Materials[X]._emissiveAndParallax.a
+
+#define dvd_isDoubleSided(materialData) (uint(unpackUnorm4x8(materialData._data.y).a * 255) == 1u)
 
 #endif //FRAG_SHADER || NEED_MATERIAL_DATA
 
@@ -197,9 +106,9 @@ struct PBRMaterial
 
 #define dvd_LoDLevel(transformData) uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).y * 255)
 
-#define dvd_frameTicked(transformData) (uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).z  * 255) == 1)
+#define dvd_frameTicked(transformData) (uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).z  * 255) == 1u)
 
-#define dvd_cullNode(transformData) (uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).w * 255) == 1)
+#define dvd_cullNode(transformData) (uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).w * 255) == 1u)
 
 #define dvd_dataFlag dvd_Transforms[TRANSFORM_IDX]._normalMatrixW[3][3]
 

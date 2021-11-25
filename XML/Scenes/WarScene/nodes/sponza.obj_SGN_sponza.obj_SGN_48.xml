@@ -244,6 +244,7 @@
                 <name>sponza_arch_ddn.tga</name>
                 <path>assets/textures/sponza</path>
                 <flipped>true</flipped>
+                <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
@@ -252,6 +253,7 @@
                 <name>sponza_arch_spec.png</name>
                 <path>assets/textures/sponza</path>
                 <flipped>true</flipped>
+                <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
@@ -275,3 +277,4 @@
     </Material>
     <Lock__LoD__Level>0</Lock__LoD__Level>
 </RENDERING>
+<RIGID_BODY/>

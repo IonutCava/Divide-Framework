@@ -50,18 +50,40 @@ constexpr TextureUsage g_materialTextures[] = {
     TextureUsage::EMISSIVE,
     TextureUsage::UNIT1,
     TextureUsage::PROJECTION,
-    TextureUsage::REFLECTION,
-    TextureUsage::REFRACTION
+    TextureUsage::REFLECTION_PLANAR,
+    TextureUsage::REFRACTION_PLANAR,
+    TextureUsage::REFLECTION_CUBE,
+    TextureUsage::REFRACTION_CUBE
 };
 
-constexpr size_t MATERIAL_TEXTURE_COUNT = (sizeof(g_materialTextures) / sizeof(g_materialTextures[0]));
-using NodeMaterialTextures = std::array<SamplerAddress, MATERIAL_TEXTURE_COUNT>;
+constexpr size_t MATERIAL_TEXTURE_COUNT = std::size(g_materialTextures);
+using NodeMaterialTextures = std::array<vec2<U32>, MATERIAL_TEXTURE_COUNT + 1>;
+
+FORCE_INLINE [[nodiscard]] vec2<U32> TextureToUVec2(const SamplerAddress address) noexcept {
+    // GL_ARB_bindless_texture:
+    // In the following four constructors, the low 32 bits of the sampler
+    // type correspond to the .x component of the uvec2 and the high 32 bits
+    // correspond to the .y component.
+    // uvec2(any sampler type)     // Converts a sampler type to a pair of 32-bit unsigned integers
+    // any sampler type(uvec2)     // Converts a pair of 32-bit unsigned integers to a sampler type
+    // uvec2(any image type)       // Converts an image type to a pair of 32-bit unsigned integers
+    // any image type(uvec2)       // Converts a pair of 32-bit unsigned integers to an image type
+
+    return vec2<U32> {
+        to_U32(address & 0xFFFFFFFF), //low -> x
+        to_U32(address >> 32) // high -> y
+    };
+}
+
+FORCE_INLINE [[nodiscard]] SamplerAddress Uvec2ToTexture(const vec2<U32> address) noexcept {
+    return ((SamplerAddress(address.y) << 32) | address.x);
+}
 
 #pragma pack(push, 1)
     struct NodeTransformData
     {
-        mat4<F32> _worldMatrix = MAT4_IDENTITY;
-        mat4<F32> _prevWorldMatrix = MAT4_IDENTITY;
+        mat4<F32> _worldMatrix = MAT4_INITIAL_TRANSFORM;
+        mat4<F32> _prevWorldMatrix = MAT4_INITIAL_TRANSFORM;
 
         // [0...2][0...2] = normal matrix
         // [3][0...2]     = bounds center
@@ -83,13 +105,16 @@ using NodeMaterialTextures = std::array<SamplerAddress, MATERIAL_TEXTURE_COUNT>;
         //a - specular strength [0...1000]. Used mainly by Phong shading
         vec4<F32> _colourData;
         //x = 4x8U: occlusion, metallic, roughness, selection flag (1 == hovered, 2 == selected)
-        //y = 4x8U: specularR, specularG, specularB, reserved
-        //z = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, bump method
+        //y = 4x8U: reserved, reserved, reserved, isDoubleSided
+        //z = 4x8U: reserved, shadingMode, use packed OMR, bump method
         //w = Probe lookup index + 1 (0 = sky cubemap)
         vec4<U32> _data;
+        //x = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, Emissive
+        //y = 4x8U: tex op Occlusion, tex op Metalness, tex op Roughness, tex op Opcaity
+        //z = 4x8U: use albedo texture alpha channel, use opacity map alpha channel, reserved, reserved
+        //w = reserved
+        vec4<U32> _textureOperations;
     };
-
-    using NodeTexturesData = std::array<vec4<U32>,  (MATERIAL_TEXTURE_COUNT + 1) / 2>;
 
     [[nodiscard]] size_t HashMaterialData(const NodeMaterialData& dataIn);
     [[nodiscard]] size_t HashTexturesData(const NodeMaterialTextures& dataIn);

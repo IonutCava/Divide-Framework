@@ -789,30 +789,30 @@ template <typename T>
 [[nodiscard]] vec4<T> Clamped(const vec4<T>& v, const vec4<T> &min, const vec4<T> &max) noexcept;
 
 /// Quaternion multiplications require these to be floats
-extern vec2<F32> VECTOR2_ZERO;
-extern vec3<F32> VECTOR3_ZERO;
-extern vec4<F32> VECTOR4_ZERO;
-extern vec2<F32> VECTOR2_UNIT;
-extern vec3<F32> VECTOR3_UNIT;
-extern vec4<F32> VECTOR4_UNIT;
-extern vec3<F32> WORLD_X_AXIS;
-extern vec3<F32> WORLD_Y_AXIS;
-extern vec3<F32> WORLD_Z_AXIS;
-extern vec3<F32> WORLD_X_NEG_AXIS;
-extern vec3<F32> WORLD_Y_NEG_AXIS;
-extern vec3<F32> WORLD_Z_NEG_AXIS;
-extern vec3<F32> DEFAULT_GRAVITY;
-extern vec4<F32> UNIT_RECT;
+static const vec2<F32> VECTOR2_ZERO{ 0.0f };
+static const vec3<F32> VECTOR3_ZERO{ 0.0f };
+static const vec4<F32> VECTOR4_ZERO{ 0.0f };
+static const vec2<F32> VECTOR2_UNIT{ 1.0f };
+static const vec3<F32> VECTOR3_UNIT{ 1.0f };
+static const vec4<F32> VECTOR4_UNIT{ 1.0f };
+static const vec3<F32> WORLD_X_AXIS{ 1.0f, 0.0f, 0.0f };
+static const vec3<F32> WORLD_Y_AXIS{ 0.0f, 1.0f, 0.0f };
+static const vec3<F32> WORLD_Z_AXIS{ 0.0f, 0.0f, 1.0f };
+static const vec3<F32> WORLD_X_NEG_AXIS{ -1.0f,  0.0f,  0.0f };
+static const vec3<F32> WORLD_Y_NEG_AXIS{  0.0f, -1.0f,  0.0f };
+static const vec3<F32> WORLD_Z_NEG_AXIS{  0.0f,  0.0f, -1.0f };
+static const vec3<F32> DEFAULT_GRAVITY{ 0.0f, -9.81f, 0.0f };
+static const vec4<F32> UNIT_RECT{ -1.0f, 1.0f, -1.0f, 1.0f };
 
-extern vec2<I32> iVECTOR2_ZERO;
-extern vec3<I32> iVECTOR3_ZERO;
-extern vec4<I32> iVECTOR4_ZERO;
-extern vec3<I32> iWORLD_X_AXIS;
-extern vec3<I32> iWORLD_Y_AXIS;
-extern vec3<I32> iWORLD_Z_AXIS;
-extern vec3<I32> iWORLD_X_NEG_AXIS;
-extern vec3<I32> iWORLD_Y_NEG_AXIS;
-extern vec3<I32> iWORLD_Z_NEG_AXIS;
+static const vec2<I32> iVECTOR2_ZERO{ 0 };
+static const vec3<I32> iVECTOR3_ZERO{ 0 };
+static const vec4<I32> iVECTOR4_ZERO{ 0 };
+static const vec3<I32> iWORLD_X_AXIS{ 1, 0, 0 };
+static const vec3<I32> iWORLD_Y_AXIS{ 0, 1, 0 };
+static const vec3<I32> iWORLD_Z_AXIS{ 0, 0, 1 };
+static const vec3<I32> iWORLD_X_NEG_AXIS{ -1,  0,  0 };
+static const vec3<I32> iWORLD_Y_NEG_AXIS{  0, -1,  0 };
+static const vec3<I32> iWORLD_Z_NEG_AXIS{  0,  0, -1 };
 
 //ToDo: Move this to its own file
 template<typename T>

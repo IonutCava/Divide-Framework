@@ -365,7 +365,6 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     TextureDescriptor grassTexDescriptor(TextureType::TEXTURE_2D_ARRAY);
     grassTexDescriptor.layerCount(vegDetails.billboardCount);
     grassTexDescriptor.srgb(true);
-    grassTexDescriptor.autoMipMaps(true);
 
     ResourceDescriptor textureDetailMaps("Vegetation Billboards");
     textureDetailMaps.assetLocation(Paths::g_assetsLocation + terrain->descriptor()->getVariable("vegetationTextureLocation"));
@@ -376,7 +375,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
 
     ResourceDescriptor vegetationMaterial("grassMaterial");
     Material_ptr vegMaterial = CreateResource<Material>(terrain->parentResourceCache(), vegetationMaterial);
-    vegMaterial->shadingMode(ShadingMode::COOK_TORRANCE);
+    vegMaterial->shadingMode(ShadingMode::BLINN_PHONG);
     vegMaterial->baseColour(DefaultColours::WHITE);
     vegMaterial->roughness(0.9f);
     vegMaterial->metallic(0.02f);
@@ -401,9 +400,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     fragModule._sourceFile = "grass.glsl";
     fragModule._defines.emplace_back("OVERRIDE_DATA_IDX", true);
     fragModule._defines.emplace_back("NODE_DYNAMIC", true);
-    fragModule._defines.emplace_back("SKIP_TEX0", true);
     fragModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
-    fragModule._defines.emplace_back("USE_DOUBLE_SIDED", true);
     
     ProcessShadowMappingDefines(gfxDevice.context().config(), fragModule._defines);
     fragModule._variant = "Colour";
@@ -442,7 +439,14 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
     shaderDescriptor._modules[0]._defines.emplace_back("PRE_PASS", true);
+    shaderDescriptor._modules[0]._defines.emplace_back("HAS_TRANSPARENCY", true);
+    shaderDescriptor._modules[0]._defines.emplace_back("NO_VELOCITY", true);
     shaderDescriptor._modules[1]._defines.emplace_back("PRE_PASS", true);
+    // This is needed so that the inner "output" discards don't take place
+    // We still manually alpha-discard in main
+    shaderDescriptor._modules[1]._defines.emplace_back("HAS_TRANSPARENCY", true);
+    shaderDescriptor._modules[1]._defines.emplace_back("USE_ALPHA_DISCARD", true);
+    shaderDescriptor._modules[1]._defines.emplace_back("NO_VELOCITY", true);
 
     ResourceDescriptor grassPrePassLQShader("grassPrePassLQ");
     grassPrePassLQShader.propertyDescriptor(shaderDescriptor);
@@ -505,7 +509,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     vegMaterial->setShaderProgram(grassShadowVSM,        RenderStage::SHADOW,  RenderPassType::COUNT);
     vegMaterial->setShaderProgram(grassShadowVSMOrtho,   RenderStage::SHADOW,  RenderPassType::COUNT, to_base(LightType::DIRECTIONAL));
 
-    vegMaterial->setTexture(TextureUsage::UNIT0, grassBillboardArray, grassSampler.getHash());
+    vegMaterial->setTexture(TextureUsage::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE);
     s_vegetationMaterial = vegMaterial;
 }
 

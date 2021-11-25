@@ -373,7 +373,7 @@ namespace Import {
 
         SamplerDescriptor textureSampler = {};
 
-        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D);
+        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D_ARRAY);
 
         for (U32 i = 0; i < to_base(TextureUsage::COUNT); ++i) {
             const Import::TextureEntry& tex = importData._textures[i];

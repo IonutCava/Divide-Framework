@@ -250,7 +250,7 @@ public:  // GPU interface
     void setShadowMSAASampleCount(ShadowType type, U8 sampleCount);
 
     /// Save a screenshot in TGA format
-    void screenshot(const string& filename) const;
+    void screenshot(const ResourcePath& filename) const;
 
     ShaderComputeQueue& shaderComputeQueue() noexcept;
     const ShaderComputeQueue& shaderComputeQueue() const noexcept;

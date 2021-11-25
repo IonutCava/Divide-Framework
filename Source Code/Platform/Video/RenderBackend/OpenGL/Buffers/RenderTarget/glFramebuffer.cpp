@@ -109,6 +109,10 @@ void glFramebuffer::initAttachment(const RTAttachmentType type, const U8 index) 
         if (updateSampleCount) {
             tex->setSampleCount(_descriptor._msaaSamples);
         }
+        if (!tex->descriptor().autoMipMaps() && tex->descriptor().mipCount() > 1u) {
+            // We do this here to avoid any undefined data if we use this attachment as a texture before we actually draw to it
+            GL_API::ComputeMipMaps(tex->data()._textureHandle);
+        }
     } else {
         RTAttachment* attachmentTemp = _attachmentPool->get(type, index).get();
         if (attachmentTemp->isExternal()) {
@@ -332,7 +336,7 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
                                                 : GL_COLOR_BUFFER_BIT,
                                    GL_NEAREST);
             _context.registerDrawCall();
-            QueueMipMapRecomputation(*outAtt);
+            QueueMipMapsRecomputation(*outAtt);
         }
 
         if (currentOutputBuffers != output->_activeColourBuffers) {
@@ -357,7 +361,7 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
                                GL_DEPTH_BUFFER_BIT,
                                GL_NEAREST);
         _context.registerDrawCall();
-        QueueMipMapRecomputation(*outAtt);
+        QueueMipMapsRecomputation(*outAtt);
     }
 }
 
@@ -526,23 +530,23 @@ void glFramebuffer::queueMipMapRecomputation() const {
     if (hasColour()) {
         const RTAttachmentPool::PoolEntry& colourAttachments = _attachmentPool->get(RTAttachmentType::Colour);
         for (const RTAttachment_ptr& att : colourAttachments) {
-            QueueMipMapRecomputation(*att);
+            QueueMipMapsRecomputation(*att);
         }
     }
 
     if (hasDepth()) {
         const RTAttachment_ptr& attDepth = _attachmentPool->get(RTAttachmentType::Depth, 0);
-        QueueMipMapRecomputation(*attDepth);
+        QueueMipMapsRecomputation(*attDepth);
     }
 }
 
-void glFramebuffer::QueueMipMapRecomputation(const RTAttachment& attachment) {
+void glFramebuffer::QueueMipMapsRecomputation(const RTAttachment& attachment) {
     const Texture_ptr& texture = attachment.texture(false);
     if (attachment.used() && 
         texture->descriptor().autoMipMaps() &&
         texture->descriptor().mipCount() > 1)
     {
-        GL_API::QueueComputeMipMap(texture->data()._textureHandle);
+        GL_API::QueueComputeMipMaps(texture->data()._textureHandle);
     }
 }
 

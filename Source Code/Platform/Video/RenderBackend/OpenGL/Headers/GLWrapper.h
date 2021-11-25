@@ -150,9 +150,13 @@ public:
     static bool MakeTexturesNonResidentInternal(SamplerAddress address);
 
     static void QueueFlush() noexcept;
+
     /// Queue a mipmap recalculation
-    static void QueueComputeMipMap(GLuint textureHandle);
-    static void DequeueComputeMipMap(GLuint textureHandle);
+    static void QueueComputeMipMaps(GLuint textureHandle);
+    static void DequeueComputeMipMaps(GLuint textureHandle);
+    static void ComputeMipMaps(GLuint textureHandle);
+    static [[nodiscard]] bool ComputeMipMapsQueued(GLuint textureHandle);
+    static void ProcessMipMapsQueue() noexcept;
 
     static void PushDebugMessage(const char* message);
     static void PopDebugMessage();
@@ -166,6 +170,7 @@ public:
     static bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
 
     static void RegisterSyncDelete(GLsync fenceSync);
+    static bool TryDeleteExpiredSync();
     static void RegisterBufferBind(const BufferLockEntry&& data, bool fenceAfterFirstDraw);
 
     using IMPrimitivePool = MemoryPool<glIMPrimitive, 2048>;
@@ -200,6 +205,7 @@ public:
     static GLuint s_SSBMaxSize;
 
     static bool s_UseBindlessTextures;
+    static bool s_DebugBindlessTextures;
 
     static glHardwareQueryPool* s_hardwareQueryPool;
 

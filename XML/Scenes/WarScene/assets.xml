@@ -3,13 +3,13 @@
 <entities>
     <node name="ROOT" type="TRANSFORM">
         <node name="ShadowOmniLight" type="TRANSFORM"/>
-        <node name="DefaultLight" type="TRANSFORM"/>
-        <node name="Ground_placeholder" type="QUAD_3D"/>
-        <node name="temp" type="SPHERE_3D"/>
         <node name="ShadowSpotLight" type="TRANSFORM"/>
+        <node name="temp" type="SPHERE_3D"/>
+        <node name="DefaultLight" type="TRANSFORM"/>
         <node name="Soldier2" type="MESH">
             <node name="Soldier2_0" type="SUBMESH"/>
         </node>
+        <node name="Ground_placeholder" type="QUAD_3D"/>
         <node name="flag" type="MESH">
             <node name="flag_0" type="SUBMESH"/>
             <node name="flag_1" type="SUBMESH"/>
@@ -18,23 +18,15 @@
             <node name="flag_4" type="SUBMESH"/>
             <node name="TestProbe" type="TRANSFORM"/>
         </node>
-        <node name="cylinderNW" type="MESH">
-            <node name="cylinderNW_0" type="SUBMESH"/>
-        </node>
-        <node name="cylinderSW" type="MESH">
-            <node name="cylinderSW_0" type="SUBMESH"/>
-        </node>
-        <node name="Water" type="WATER"/>
-        <node name="cylinderSE" type="MESH">
-            <node name="cylinderSE_0" type="SUBMESH"/>
-        </node>
         <node name="cylinderNE" type="MESH">
             <node name="cylinderNE_0" type="SUBMESH"/>
         </node>
         <node name="cylinderC" type="MESH">
             <node name="cylinderC_0" type="SUBMESH"/>
         </node>
-        <node name="InfPlane" type="INFINITE_PLANE"/>
+        <node name="cylinderSW" type="MESH">
+            <node name="cylinderSW_0" type="SUBMESH"/>
+        </node>
         <node name="CopacelBVlablabla" type="MESH">
             <node name="CopacelBVlablabla_0" type="SUBMESH"/>
             <node name="CopacelBVlablabla_1" type="SUBMESH"/>
@@ -48,11 +40,19 @@
             <node name="Soldier3_4" type="SUBMESH"/>
             <node name="Soldier3_5" type="SUBMESH"/>
         </node>
+        <node name="cylinderNW" type="MESH">
+            <node name="cylinderNW_0" type="SUBMESH"/>
+        </node>
+        <node name="Water" type="WATER"/>
         <node name="DefaultSky" type="SKY"/>
+        <node name="cylinderSE" type="MESH">
+            <node name="cylinderSE_0" type="SUBMESH"/>
+        </node>
         <node name="Soldier1" type="MESH">
             <node name="Soldier1_0" type="SUBMESH"/>
             <node name="Soldier1_1" type="SUBMESH"/>
         </node>
+        <node name="InfPlane" type="INFINITE_PLANE"/>
         <node name="Terrain" type="TERRAIN"/>
         <node name="sponza.obj_SGN" type="MESH">
             <node name="sponza.obj_SGN_0" type="SUBMESH"/>

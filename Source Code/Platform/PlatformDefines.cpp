@@ -144,6 +144,9 @@ bool CreateDirectories(const ResourcePath& path) {
 }
 
 bool CreateDirectories(const char* path) {
+    static Mutex s_DirectoryLock;
+
+    ScopedLock<Mutex> w_lock(s_DirectoryLock);
     assert(path != nullptr && strlen(path) > 0);
     //Always end in a '/'
     assert(path[strlen(path) - 1] == '/');

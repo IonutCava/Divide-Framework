@@ -476,14 +476,14 @@ bool Sky::load() {
     I32 x, y, n;
     Byte* perlWorlData = (Byte*)stbi_load((procLocation() + perlWorlTexName).c_str(), &x, &y, &n, 0);
     ImageTools::ImageData imgDataPerl = {};
-    if (!imgDataPerl.addLayer(perlWorlData, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y))) {
+    if (!imgDataPerl.addLayer(perlWorlData, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y), to_U16(n * 8))) {
         DIVIDE_UNEXPECTED_CALL();
     }
     stbi_image_free(perlWorlData);
 
     Byte* worlNoise = (Byte*)stbi_load((procLocation() + worlTexName).c_str(), &x, &y, &n, 0);
     ImageTools::ImageData imgDataWorl = {};
-    if (!imgDataWorl.addLayer(worlNoise, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y))) {
+    if (!imgDataWorl.addLayer(worlNoise, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y), to_U16(n * 8))) {
         DIVIDE_UNEXPECTED_CALL();
     }
     stbi_image_free(worlNoise);
@@ -525,7 +525,7 @@ bool Sky::load() {
         _worlNoiseTex = CreateResource<Texture>(_parentCache, worlDescriptor);
         _worlNoiseTex->loadData(imgDataWorl);
 
-        textureDescriptor.texType(TextureType::TEXTURE_2D);
+        textureDescriptor.texType(TextureType::TEXTURE_2D_ARRAY);
         textureDescriptor.layerCount(1u);
         // We should still keep mipmaps, but filtering should be set to linear
         //textureDescriptor.mipCount(1u);

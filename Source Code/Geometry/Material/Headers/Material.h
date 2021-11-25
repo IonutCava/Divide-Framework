@@ -77,6 +77,13 @@ constexpr U8 g_TransparentSlots[] = {
    to_base(TextureUsage::OPACITY)
 };
 
+constexpr U8 g_ReflectRefractSlots[] = {
+    to_base(TextureUsage::REFLECTION_PLANAR),
+    to_base(TextureUsage::REFLECTION_CUBE),
+    to_base(TextureUsage::REFRACTION_PLANAR),
+    to_base(TextureUsage::REFRACTION_CUBE),
+};
+
 constexpr U8 g_ExtraSlots[] = {
     to_base(TextureUsage::NORMALMAP),
     to_base(TextureUsage::HEIGHTMAP),
@@ -87,7 +94,6 @@ constexpr U8 g_ExtraSlots[] = {
     to_base(TextureUsage::EMISSIVE),
     to_base(TextureUsage::UNIT1),
     to_base(TextureUsage::PROJECTION)
-    // Reflection and Refraction are handled by the RenderingComponent
 };
 
 namespace TypeUtil {
@@ -114,6 +120,7 @@ class Material final : public CachedResource {
     /// Since most variants come from different light sources, this seems like a good idea (famous last words ...)
     static constexpr size_t g_maxVariantsPerPass = 3;
     static constexpr size_t INVALID_MAT_HASH = std::numeric_limits<size_t>::max();
+    static constexpr size_t INVALID_TEX_HASH = std::numeric_limits<size_t>::max();
 
     struct ShaderData {
         Str64 _depthShaderVertSource = "baseVertexShaders";
@@ -136,6 +143,7 @@ class Material final : public CachedResource {
    public:
     explicit Material(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name);
 
+    static void OnStartup(SamplerAddress defaultTexAddress);
     static void ApplyDefaultStateBlocks(Material& target);
 
     /// Return a new instance of this material with the name composed of the
@@ -152,7 +160,7 @@ class Material final : public CachedResource {
     bool setTexture(TextureUsage textureUsageSlot,
                     const Texture_ptr& texture,
                     size_t samplerHash,
-                    TextureOperation op = TextureOperation::REPLACE,
+                    TextureOperation op,
                     bool applyToInstances = false);
     void setTextureOperation(TextureUsage textureUsageSlot,
                              TextureOperation op,
@@ -200,6 +208,7 @@ class Material final : public CachedResource {
 
     size_t getRenderStateBlock(const RenderStagePass& renderStagePass) const;
     Texture_wptr getTexture(TextureUsage textureUsage) const;
+    [[nodiscard]] bool hasTexture(TextureUsage textureUsage) const;
     size_t getSampler(const TextureUsage textureUsage) const noexcept { return _samplers[to_base(textureUsage)]; }
 
     bool getTextureData(const RenderStagePass& renderStagePass, TextureDataContainer& textureData);
@@ -292,6 +301,7 @@ class Material final : public CachedResource {
     PROPERTY_R(bool, usePlanarRefractions, true);
 
     PROPERTY_R(bool, useBindlessTextures, false);
+    PROPERTY_R(bool, debugBindlessTextures, false);
 
     PROPERTY_R(TexOpArray, textureOperations);
 
@@ -319,6 +329,7 @@ class Material final : public CachedResource {
     std::array<size_t, to_base(TextureUsage::COUNT)> _samplers = {};
     std::array<bool, to_base(TextureUsage::COUNT)> _textureUseForDepth = {};
 
+    static SamplerAddress s_defaultTextureAddress;
     std::array<SamplerAddress, to_base(TextureUsage::COUNT)> _textureAddresses = {};
 
     I32 _textureKeyCache = std::numeric_limits<I32>::lowest();

@@ -25,6 +25,7 @@ GLuint GL_API::s_maxComputeSharedMemory = 0u;
 GLuint GL_API::s_maxWorgroupCount[3] = { 0u, 0u, 0u };
 GLuint GL_API::s_maxWorgroupSize[3] = { 0u, 0u, 0u };
 bool GL_API::s_UseBindlessTextures = false;
+bool GL_API::s_DebugBindlessTextures = false;
 SharedMutex GL_API::s_mipmapQueueSetLock;
 eastl::unordered_set<GLuint> GL_API::s_mipmapQueue;
 

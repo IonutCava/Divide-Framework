@@ -34,14 +34,12 @@ layout(early_fragment_tests) in;
 
 layout(location = 0) in vec4 _scrollingUV;
 
+#include "BRDF.frag"
 #include "output.frag"
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texWaterCaustics;
-
-
 void main(void) {
-    const vec3 colourOut = overlayVec(texture(texWaterCaustics, _scrollingUV.st).rgb,
-                                      texture(texWaterCaustics, _scrollingUV.pq).rgb);
+    const vec3 albedo = overlayVec(texture(texDiffuse0, vec3(_scrollingUV.st, 0)).rgb,
+                                   texture(texDiffuse0, vec3(_scrollingUV.pq, 0)).rgb);
 
-    writeScreenColour(vec4(colourOut, 1.f), VAR._normalWV);
+    writeScreenColour(vec4(albedo, 1.f), VAR._normalWV);
 }

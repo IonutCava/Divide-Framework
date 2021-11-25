@@ -13,6 +13,7 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
+#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferLockManager.h"
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/StringHelper.h"
@@ -487,7 +488,7 @@ void glShaderProgram::queueValidation() {
 ShaderResult glShaderProgram::validatePreBind() {
     if (!isValid()) {
         OPTICK_EVENT();
-
+        glBufferLockManager::DriverBusy(true);
         assert(getState() == ResourceState::RES_LOADED);
         glCreateProgramPipelines(1, &_handle);
         glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
@@ -496,6 +497,7 @@ ShaderResult glShaderProgram::validatePreBind() {
         if (ret == ShaderResult::OK) {
             _validationQueued = true;
         }
+        glBufferLockManager::DriverBusy(false);
 
         return ret;
         

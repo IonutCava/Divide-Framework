@@ -12,8 +12,47 @@
 
 namespace Divide {
 
-Mutex glTexture::s_GLgpuAddressesLock;
+namespace {
+    FORCE_INLINE [[nodiscard]] U8 GetSizeFactor(const GFXDataFormat format) noexcept {
+        switch (format) {
+            case GFXDataFormat::UNSIGNED_BYTE:
+            case GFXDataFormat::SIGNED_BYTE: return 1u;
 
+            case GFXDataFormat::UNSIGNED_SHORT:
+            case GFXDataFormat::SIGNED_SHORT:
+            case GFXDataFormat::FLOAT_16: return 2u;
+
+            case GFXDataFormat::UNSIGNED_INT:
+            case GFXDataFormat::SIGNED_INT:
+            case GFXDataFormat::FLOAT_32: return 4u;
+        };
+
+        return 1u;
+    }
+
+    FORCE_INLINE [[nodiscard]] U8 GetChannelCount(const GFXImageFormat baseFormat) noexcept {
+        switch (baseFormat) {
+            case GFXImageFormat::RED: {
+                return 1u;
+            } break;
+            case GFXImageFormat::RG: {
+                return  2u;
+            } break;
+            case GFXImageFormat::RGB: {
+                return  3u;
+            } break;
+            case GFXImageFormat::RGBA: {
+                return  4u;
+            } break;
+        };
+
+        return 4u;
+    }
+
+    FORCE_INLINE [[nodiscard]] U8 GetBitsPerPixel(const GFXDataFormat format, const GFXImageFormat baseFormat) noexcept {
+        return GetSizeFactor(format) * GetChannelCount(baseFormat) * 8;
+    }
+};
 glTexture::glTexture(GFXDevice& context,
                      const size_t descriptorHash,
                      const Str256& name,
@@ -40,48 +79,31 @@ glTexture::~glTexture()
 SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
     assert(_data._textureType != TextureType::COUNT);
 
-    // Poor man's check if we want to and actually can use bindless textures
-    if (!GL_API::s_UseBindlessTextures) {
-        return 0u;
+    if (!GL_API::s_DebugBindlessTextures) {
+        const GLuint sampler = GL_API::GetSamplerHandle(samplerHash);
+        ScopedLock<Mutex> w_lock(_gpuAddressesLock);
+        if (_cachedAddressForSampler.second != sampler) {
+            if (sampler != 0u) {
+                _lockManager->wait(true);
+                assert(!GL_API::ComputeMipMapsQueued(_data._textureHandle));
+                _cachedAddressForSampler.first = glGetTextureSamplerHandleARB(_data._textureHandle, sampler);
+                _cachedAddressForSampler.second = sampler;
+            } else {
+                _cachedAddressForSampler.first = _baseTexAddress;
+                _cachedAddressForSampler.second = 0u;
+            }
+        }
     }
 
-    { //Fast path. We likely have the address already
-        SharedLock<SharedMutex> r_lock(_gpuAddressesLock);
-        const auto it = _gpuAddresses.find(samplerHash);
-        if (it != std::cend(_gpuAddresses)) {
-            return it->second;
-        }
-    }
-    { //Slow path. Cache miss
-        ScopedLock<SharedMutex> w_lock(_gpuAddressesLock);
-        // Check again as we may have updated this while switching locks
-        SamplerAddress address = 0u;
-        const auto it = _gpuAddresses.find(samplerHash);
-        if (it != std::cend(_gpuAddresses)) {
-            address = it->second;
-        } else {
-            if (samplerHash == 0) {
-                ScopedLock<Mutex> w_lock2(s_GLgpuAddressesLock);
-                address = glGetTextureHandleARB(_data._textureHandle);
-            } else {
-                const GLuint sampler = GL_API::GetSamplerHandle(samplerHash);
-                ScopedLock<Mutex> w_lock2(s_GLgpuAddressesLock);
-                address = glGetTextureSamplerHandleARB(_data._textureHandle, sampler);
-            }
-            emplace(_gpuAddresses, samplerHash, address);
-        }
-        return address;
-    }
+    return _cachedAddressForSampler.first;
 }
 
 bool glTexture::unload() {
     assert(_data._textureType != TextureType::COUNT);
 
     if (_data._textureHandle > 0u) {
-        if (_lockManager) {
-            _lockManager->wait(false);
-        }
-        GL_API::DequeueComputeMipMap(_data._textureHandle);
+        _lockManager->wait(true);
+        GL_API::DequeueComputeMipMaps(_data._textureHandle);
         glDeleteTextures(1, &_data._textureHandle);
         _data._textureHandle = 0u;
     }
@@ -92,13 +114,10 @@ bool glTexture::unload() {
 void glTexture::threadedLoad() {
 
     Texture::threadedLoad();
-    if (_asyncLoad) {
-        _lockManager->lock();
-    }
     CachedResource::load();
 }
 
-void glTexture::reserveStorage(const bool fromFile) const {
+void glTexture::reserveStorage(const bool fromFile) {
     assert(
         !(_loadingData._textureType == TextureType::TEXTURE_CUBE_MAP && _width != _height) &&
         "glTexture::reserverStorage error: width and height for cube map texture do not match!");
@@ -161,14 +180,6 @@ void glTexture::reserveStorage(const bool fromFile) const {
                 _numLayers * numFaces);
         } break;
         default: break;
-    }
-}
-
-void glTexture::updateMipsInternal() const  {
-    glTextureParameteri(_loadingData._textureHandle, GL_TEXTURE_BASE_LEVEL, _descriptor.mipBaseLevel());
-    glTextureParameteri(_loadingData._textureHandle, GL_TEXTURE_MAX_LEVEL, _descriptor.mipCount());
-    if (_descriptor.autoMipMaps() && _descriptor.mipCount() > 1) {
-        GL_API::QueueComputeMipMap(_loadingData._textureHandle);
     }
 }
 
@@ -237,8 +248,23 @@ void glTexture::prepareTextureData(const U16 width, const U16 height) {
 }
 
 void glTexture::submitTextureData() {
-    updateMipsInternal();
+    glTextureParameteri(_loadingData._textureHandle, GL_TEXTURE_BASE_LEVEL, _descriptor.mipBaseLevel());
+    glTextureParameteri(_loadingData._textureHandle, GL_TEXTURE_MAX_LEVEL, _descriptor.mipCount());
+    if (_descriptor.autoMipMaps() && _descriptor.mipCount() > 1) {
+        GL_API::ComputeMipMaps(_loadingData._textureHandle);
+    }
+    ScopedLock<Mutex> w_lock(_gpuAddressesLock);
+    _lockManager->lock();
+    glFlush();
     _data = _loadingData;
+
+    if (GL_API::s_UseBindlessTextures) {
+        _baseTexAddress = glGetTextureHandleARB(_data._textureHandle);
+    } else {
+        _baseTexAddress = _data._textureHandle;
+    }
+    _cachedAddressForSampler.first = _baseTexAddress;
+    _cachedAddressForSampler.second = 0u;
 }
 
 void glTexture::loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& dimensions) {
@@ -248,15 +274,14 @@ void glTexture::loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& 
     assert(!_descriptor.compressed());
 
     reserveStorage(false);
-
-    if (data.first != nullptr && data.second > 0) {
-        ImageTools::ImageData imgData = {};
-        if (imgData.addLayer(data.first, data.second, _width, _height, 1)) {
-            loadDataUncompressed(imgData);
-            assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
-        }
+    if (!IsMultisampledTexture(_loadingData._textureType)) {
+        const U8 bpp = GetBitsPerPixel(_descriptor.dataType(), _descriptor.baseFormat());
+            ImageTools::ImageData imgData = {};
+            if (imgData.addLayer(data.first, data.second, _width, _height, 1, bpp)) {
+                loadDataUncompressed(imgData);
+                    assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
+            }
     }
-
     submitTextureData();
 }
 
@@ -266,6 +291,7 @@ void glTexture::loadData(const ImageTools::ImageData& imageData) {
     reserveStorage(true);
 
     if (_descriptor.compressed()) {
+        _descriptor.autoMipMaps(false);
         loadDataCompressed(imageData);
     } else {
         loadDataUncompressed(imageData);
@@ -276,7 +302,6 @@ void glTexture::loadData(const ImageTools::ImageData& imageData) {
 
 void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {
 
-    _descriptor.autoMipMaps(false);
     const GLenum glFormat = GLUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
     const U32 numLayers = imageData.layerCount();
 
@@ -358,6 +383,8 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) con
 
         for (U8 m = 0u; m < numMips; ++m) {
             const ImageTools::LayerData* mip = layer.getMip(m);
+            assert(mip->_size > 0u);
+
             switch (_loadingData._textureType) {
                 case TextureType::TEXTURE_1D: {
                     assert(numLayers == 1);
@@ -368,7 +395,8 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) con
                         mip->_dimensions.width,
                         glFormat,
                         glType,
-                        mip->_size == 0 ? nullptr : mip->data());
+                        mip->data()
+                    );
                 } break;
                 case TextureType::TEXTURE_2D:
                 case TextureType::TEXTURE_2D_MS: {
@@ -382,7 +410,8 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) con
                         mip->_dimensions.height,
                         glFormat,
                         glType,
-                        mip->_size == 0 ? nullptr : mip->data());
+                        IsMultisampledTexture(_loadingData._textureType) ? nullptr : mip->data()
+                    );
                 } break;
                 case TextureType::TEXTURE_3D:
                 case TextureType::TEXTURE_2D_ARRAY:
@@ -400,8 +429,8 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) con
                         mip->_dimensions.depth,
                         glFormat,
                         glType,
-                        mip->_size == 0 ? nullptr : mip->data()
-                       );
+                        IsMultisampledTexture(_loadingData._textureType) ? nullptr : mip->data()
+                    );
                 } break;
                 default: break;
             }
@@ -421,7 +450,6 @@ void glTexture::clearSubData(const UColour4& clearColour, const U8 level, const 
 }
 
 void glTexture::clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const{
-
     FColour4 floatData;
     vec4<U16> shortData;
     vec4<U32> intData;
@@ -539,26 +567,10 @@ std::pair<std::shared_ptr<Byte[]>, size_t> glTexture::readData(U16 mipLevel, con
       * Finally, three-component textures are treated as RGBA buffers with red set to component zero, green set to component one, blue set to component two, and alpha set to 1.
       **/
       
-    const auto GetSizeFactor = [](const GFXDataFormat format) {
-        switch (format) {
-            default:
-            case GFXDataFormat::UNSIGNED_BYTE: 
-            case GFXDataFormat::SIGNED_BYTE: return 1;
-
-            case GFXDataFormat::UNSIGNED_SHORT:
-            case GFXDataFormat::SIGNED_SHORT:
-            case GFXDataFormat::FLOAT_16: return 2;
-
-            case GFXDataFormat::UNSIGNED_INT:
-            case GFXDataFormat::SIGNED_INT:
-            case GFXDataFormat::FLOAT_32: return 4;
-        }
-    };
-
     const GFXDataFormat dataFormat = desiredFormat == GFXDataFormat::COUNT ? _descriptor.dataType() : desiredFormat;
-    const size_t sizeFactor = GetSizeFactor(dataFormat);
+    const U8 bpp = GetBitsPerPixel(desiredFormat, _descriptor.baseFormat());
 
-    const GLsizei size = texWidth * texHeight * 4 * static_cast<GLsizei>(sizeFactor);
+    const GLsizei size = GLsizei{ texWidth } * texHeight * bpp;
 
     std::shared_ptr<Byte[]> grabData(new Byte[size]);
 

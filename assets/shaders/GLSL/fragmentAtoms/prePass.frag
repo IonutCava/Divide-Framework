@@ -5,12 +5,6 @@
 #   define PRE_PASS
 #endif //!PRE_PASS
 
-#if !defined(HAS_TRANSPARENCY)
-#if defined(USE_ALPHA_DISCARD) || defined(USE_ALBEDO_ALPHA) || defined(USE_OPACITY_MAP)
-#   define HAS_TRANSPARENCY
-#endif //USE_ALPHA_DISCARD || USE_ALBEDO_ALPHA || USE_OPACITY_MAP
-#endif //!HAS_TRANSPARENCY
-
 // This will also do our check for us
 #include "velocityCalc.frag"
 
@@ -18,7 +12,7 @@
 layout(location = TARGET_VELOCITY) out vec2 _velocityOut;
 #endif //HAS_VELOCITY
 
-#if defined(USE_ALPHA_DISCARD)
+#if defined(HAS_TRANSPARENCY)
 #include "materialData.frag"
 #endif //USE_ALPHA_DISCARD
 

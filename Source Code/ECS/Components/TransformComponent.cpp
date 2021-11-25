@@ -9,7 +9,7 @@ namespace Divide {
       : BaseComponentType<TransformComponent, ComponentType::TRANSFORM>(parentSGN, context),
         _parentUsageContext(parentSGN->usageContext())
     {
-        _worldMatrix.fill(MAT4_IDENTITY);
+        _worldMatrix.fill(MAT4_INITIAL_TRANSFORM);
 
         setTransformDirty(TransformType::ALL);
 
@@ -79,7 +79,7 @@ namespace Divide {
     }
 
     void TransformComponent::reset() {
-        _worldMatrix.fill(MAT4_IDENTITY);
+        _worldMatrix.fill(MAT4_INITIAL_TRANSFORM);
 
         while (!_transformStack.empty()) {
             _transformStack.pop();

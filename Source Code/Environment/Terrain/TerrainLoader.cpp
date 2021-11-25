@@ -302,17 +302,16 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     heightMapTexture.assetLocation(terrainLocation);
     heightMapTexture.assetName(ResourcePath{ terrainDescriptor->getVariable("heightfieldTex") });
 
-    TextureDescriptor heightMapDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_SHORT);
-    heightMapDescriptor.autoMipMaps(true);
+    TextureDescriptor heightMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_SHORT);
     heightMapTexture.propertyDescriptor(heightMapDescriptor);
     heightMapTexture.flag(true);
 
-    terrainMaterial->setTexture(TextureUsage::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash);
-    terrainMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash);
-    terrainMaterial->setTexture(TextureUsage::UNIT1, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash);
-    terrainMaterial->setTexture(TextureUsage::PROJECTION, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash);
-    terrainMaterial->setTexture(TextureUsage::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash);
-    terrainMaterial->setTexture(TextureUsage::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash);
+    terrainMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureUsage::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureUsage::NORMALMAP, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureUsage::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureUsage::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureUsage::METALNESS, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash, TextureOperation::NONE);
     terrainMaterial->textureUseForDepth(TextureUsage::HEIGHTMAP, true);
 
     const Configuration::Terrain terrainConfig = context.config().terrain;
@@ -418,15 +417,8 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
             }
 
             shaderModule._defines.emplace_back("OVERRIDE_DATA_IDX", true);
+            shaderModule._defines.emplace_back("USE_CUSTOM_NORMAL_MAP", true);
             shaderModule._defines.emplace_back("NODE_STATIC", true);
-            shaderModule._defines.emplace_back("SAMPLER_OPACITY_IS_ARRAY", true);
-            shaderModule._defines.emplace_back("SAMPLER_UNIT0_IS_ARRAY", true);
-            shaderModule._defines.emplace_back("SAMPLER_PROJECTION_IS_ARRAY", true);
-            shaderModule._defines.emplace_back("SAMPLER_METALNESS_IS_ARRAY", true);
-            shaderModule._defines.emplace_back("SAMPLER_SPECULAR_IS_ARRAY", true);
-            shaderModule._defines.emplace_back("SAMPLER_ROUGHNESS_IS_ARRAY", true);
-            shaderModule._defines.emplace_back("SAMPLER_OCCLUSION_IS_ARRAY", true);
-            shaderModule._defines.emplace_back("SAMPLER_OMR_COMPACT", true);
 
             shaderModule._defines.emplace_back("TEXTURE_TILE_SIZE " + Util::to_string(tileMapSize), true);
             shaderModule._defines.emplace_back("TERRAIN_HEIGHT_OFFSET " + Util::to_string(altitudeRange.x), true);
@@ -446,8 +438,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                     shaderModule._defines.emplace_back("DISABLE_SHADOW_MAPPING", true);
                 }
 
-                shaderModule._defines.emplace_back("SKIP_TEX0", true);
-                shaderModule._defines.emplace_back("USE_SHADING_COOK_TORRANCE", true);
                 shaderModule._defines.emplace_back(Util::StringFormat("UNDERWATER_TILE_SCALE %d", to_I32(underwaterTileScale)), true);
                 shaderModule._defines.emplace_back(Util::StringFormat("TOTAL_LAYER_COUNT %d", totalLayerCount), true);
                 shaderModule._defines.emplace_back(layerCountDataStr, false);
@@ -473,7 +463,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
             ShaderModuleDescriptor& tempModule = shadowDescriptorVSM._modules.back();
 
             if (tempModule._moduleType == ShaderType::FRAGMENT) {
-                tempModule._sourceFile = "depthPass";
                 tempModule._variant = "Shadow.VSM";
             }
             tempModule._defines.emplace_back("SHADOW_PASS", true);
@@ -501,7 +490,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         for (ShaderModuleDescriptor& shaderModule : colourDescriptor._modules) {
             if (shaderModule._moduleType == ShaderType::FRAGMENT) {
                 shaderModule._variant = "MainPass";
-                shaderModule._defines.emplace_back("SAMPLER_UNIT1_IS_ARRAY", true);
                 shaderModule._defines.emplace_back("MAIN_DISPLAY_PASS", true);
                 if (hasParallax) {
                     shaderModule._defines.emplace_back("HAS_PARALLAX", true);
@@ -521,7 +509,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         for (ShaderModuleDescriptor& shaderModule : prePassDescriptor._modules) {
             assert(shaderModule._moduleType != ShaderType::FRAGMENT);
             shaderModule._defines.emplace_back("PRE_PASS", true);
-            shaderModule._defines.emplace_back("SAMPLER_UNIT1_IS_ARRAY", true);
         }
 
         ResourceDescriptor terrainShaderPrePass("Terrain_PrePass-" + name + propName + (hasParallax ? ".Parallax" : ""));
@@ -538,7 +525,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
             shaderModule._defines.emplace_back("PRE_PASS", true);
             shaderModule._defines.emplace_back("LOW_QUALITY", true);
             shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
-            shaderModule._defines.emplace_back("SAMPLER_UNIT1_IS_ARRAY", true);
         }
 
         ResourceDescriptor terrainShaderPrePassLQ("Terrain_PrePass_LowQuality-" + name + propName);
@@ -553,7 +539,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                 shaderModule._variant = "LQPass";
             }
 
-            shaderModule._defines.emplace_back("SAMPLER_UNIT1_IS_ARRAY", true);
             shaderModule._defines.emplace_back("LOW_QUALITY", true);
             shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
         }

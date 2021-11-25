@@ -13,6 +13,29 @@
 <options>
     <visibility>1000</visibility>
 </options>
+<camera>
+    <Editor__Camera>
+        <reflectionPlane>
+            <normal x="0" y="0" z="0"/>
+            <distance>0</distance>
+            <active>false</active>
+        </reflectionPlane>
+        <accumPitchDegrees>-28.7292747</accumPitchDegrees>
+        <frustumLocked>false</frustumLocked>
+        <euler x="-29.4943523" y="46.0175514" z="-1.05918133"/>
+        <eye x="325.024353" y="121.156059" z="96.1933365"/>
+        <orientation x="0.230797738" y="-0.380148351" z="-0.0912672952" w="-0.890999556"/>
+        <aspectRatio>1.76999998</aspectRatio>
+        <zPlanes min="0.100000001" max="1000"/>
+        <FoV>77.7975693</FoV>
+        <flag>0</flag>
+        <speedFactor turn="50" move="40" zoom="35"/>
+        <fixedYawAxis x="0" y="1" z="0"/>
+        <yawFixed>true</yawFixed>
+        <rotationLocked>false</rotationLocked>
+        <movementLocked>false</movementLocked>
+    </Editor__Camera>
+</camera>
 <fog>
     <fogDensityB>0.0700000003</fogDensityB>
     <fogDensityC>0.00700000022</fogDensityC>
@@ -23,6 +46,6 @@
 </lod>
 <shadowing lightBleedBias="0.0199999996" minShadowVariance="9.99999975e-06"/>
 <dayNight enabled="false">
-    <timeOfDay hour="12" minute="34" timeFactor="24"/>
+    <timeOfDay hour="12" minute="35" timeFactor="24"/>
     <location latitude="-12.1804504" longitude="8.12028503"/>
 </dayNight>

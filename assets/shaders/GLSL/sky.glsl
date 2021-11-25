@@ -6,6 +6,7 @@ void main(void){
     const NodeTransformData data = fetchInputData();
     VAR._vertexW = data._worldMatrix * dvd_Vertex + vec4(dvd_cameraPosition.xyz, 0.f);
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
+    setClipPlanes();
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
     gl_Position.z = gl_Position.w - Z_TEST_SIGMA;
 }
@@ -201,6 +202,7 @@ void main() {
     const NodeTransformData data = fetchInputData();
     VAR._vertexW = data._worldMatrix * dvd_Vertex + vec4(dvd_cameraPosition.xyz, 0.f);
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
+    setClipPlanes();
 
     vSunDirection.xyz = normalize(-dvd_sunDirection.xyz);
 
@@ -247,8 +249,8 @@ layout(location = 13) in vec3 vBetaR;
 layout(location = 14) in vec3 vBetaM;
 
 layout(binding = TEXTURE_UNIT0)     uniform samplerCubeArray texSky;
-layout(binding = TEXTURE_HEIGHTMAP) uniform sampler2D weather;
-layout(binding = TEXTURE_OPACITY)   uniform sampler2D curl;
+layout(binding = TEXTURE_HEIGHTMAP) uniform sampler2DArray weather;
+layout(binding = TEXTURE_OPACITY)   uniform sampler2DArray curl;
 layout(binding = TEXTURE_SPECULAR)  uniform sampler3D worl;
 layout(binding = TEXTURE_NORMALMAP) uniform sampler3D perlworl;
 
@@ -510,7 +512,7 @@ float density(vec3 p, in vec3 weather, in bool hq, in float LOD) {
     base_cloud = ReMap(base_cloud * g, 1.f - cloud_coverage, 1.f, 0.f, 1.f);
     base_cloud *= cloud_coverage;
     if (hq) {
-        const vec2 whisp = texture(curl, p.xy * 0.0003f).xy;
+        const vec2 whisp = texture(curl, vec3(p.xy * 0.0003f, 0)).xy;
 
         p.xy += whisp * 400.f * (1.f - height_fraction);
         const vec3 hn = texture(worl, p * 0.004f, LOD - 2.f).xyz;
@@ -541,7 +543,7 @@ vec4 march(in vec3 colourIn, in vec3 ambientIn, in vec3 pos, in vec3 end, in vec
         p += dir;
         const float height_fraction = GetHeightFractionForPoint(length(p));
 
-        const vec3 weather_sample = texture(weather, p.xz * dvd_weatherScale).rgb;
+        const vec3 weather_sample = texture(weather, vec3(p.xz * dvd_weatherScale, 0)).rgb;
 
         const float t = density(p, weather_sample, true, 0.0);
         const float dt = exp(-0.5f * t * ss);
@@ -556,7 +558,7 @@ vec4 march(in vec3 colourIn, in vec3 ambientIn, in vec3 pos, in vec3 end, in vec
             for (int j = 0; j < 6; ++j) {
                 lp += (ldir + (RANDOM_VECTORS[j] * float(j + 1)) * lss);
 
-                const vec3 lweather = texture(weather, lp.xz * dvd_weatherScale).xyz;
+                const vec3 lweather = texture(weather, vec3(lp.xz * dvd_weatherScale, 0)).xyz;
                 const float lt = density(lp, lweather, false, float(j));
 
                 cd += lt;
@@ -564,7 +566,7 @@ vec4 march(in vec3 colourIn, in vec3 ambientIn, in vec3 pos, in vec3 end, in vec
             }
             lp += ldir * 12.f;
 
-            const vec3 lweather = texture(weather, lp.xz * dvd_weatherScale).xyz;
+            const vec3 lweather = texture(weather, vec3(lp.xz * dvd_weatherScale, 0)).xyz;
             const float lt = density(lp, lweather, false, 5.f);
 
             cd += lt;

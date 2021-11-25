@@ -9,14 +9,14 @@
 //   lightAttenuation = attenuation factor to multiply the light's colour by (includes shadow, distance fade, etc)
 //   ndl       = dot(normal,lightVec) [M_EPSILON,1.0f]
 //   material = material value for the target pixel (base colour, OMR, spec value, etc)
-vec3 GetBRDF(in vec3 L,
-             in vec3 V,
-             in vec3 N,
-             in vec3 lightColour,
-             in float lightAttenuation,
-             in float ndl,
-             in float ndv,
-             in PBRMaterial material)
+vec3 GetBRDF_Phong(in vec3 L,
+                   in vec3 V,
+                   in vec3 N,
+                   in vec3 lightColour,
+                   in float lightAttenuation,
+                   in float ndl,
+                   in float ndv,
+                   in PBRMaterial material)
 {
     if (ndl > M_EPSILON) {
         const vec3 diffColour = material._diffuseColour;

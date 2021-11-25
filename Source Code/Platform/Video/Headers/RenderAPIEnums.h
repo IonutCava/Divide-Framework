@@ -84,8 +84,10 @@ enum class TextureUsage : U8 {
     EMISSIVE,
     UNIT1,
     PROJECTION,
-    REFLECTION,
-    REFRACTION,
+    REFLECTION_PLANAR,
+    REFLECTION_CUBE,
+    REFRACTION_PLANAR,
+    REFRACTION_CUBE,
     REFLECTION_ENV,
     REFLECTION_SKY,
     POST_FX_DATA,
@@ -110,8 +112,10 @@ namespace Names {
         "EMISSIVE",
         "UNIT1",
         "PROJECTION",
-        "REFLECTION",
-        "REFRACTION",
+        "REFLECTION_PLANAR",
+        "REFLECTION_CUBE",
+        "REFRACTION_PLANAR",
+        "REFRACTION_CUBE",
         "REFLECTION_ENV",
         "REFLECTION_SKY",
         "POST_FX_DATA",
@@ -119,6 +123,8 @@ namespace Names {
         "NONE"
     };
 };
+
+static_assert(std::size(Names::textureUsage) == to_base(TextureUsage::COUNT) + 1);
 
 enum class RefractorType : U8
 {
