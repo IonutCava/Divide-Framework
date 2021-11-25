@@ -113,7 +113,7 @@ protected:
     void begin(const RTDrawDescriptor& drawPolicy);
     void end(bool needsUnbind) const;
     void queueMipMapRecomputation() const;
-    static void QueueMipMapRecomputation(const RTAttachment& attachment);
+    static void QueueMipMapsRecomputation(const RTAttachment& attachment);
 
    protected:
     RTDrawDescriptor _previousPolicy;
