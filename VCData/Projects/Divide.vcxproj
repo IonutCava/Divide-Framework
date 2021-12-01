@@ -326,6 +326,9 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(O
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>false</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">
     <ClCompile>
@@ -408,6 +411,9 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(O
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>false</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -482,6 +488,9 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>false</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">
     <ClCompile>
@@ -556,6 +565,9 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>false</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <ClCompile>
@@ -630,6 +642,9 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>false</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">
     <ClCompile>
@@ -704,6 +719,9 @@ robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $
 robocopy $(TargetDir)..\3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ $(OutDir) PhysXDevice64.dll /NP /NJH /NJS
 if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     </PreBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>false</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

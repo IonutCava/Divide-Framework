@@ -53,6 +53,8 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
 
     vec2<I32> position(descriptor.position);
 
+    _initialDisplay = descriptor.targetDisplay;
+
     if (position.x == -1) {
         position.x = SDL_WINDOWPOS_CENTERED_DISPLAY(descriptor.targetDisplay);
     }

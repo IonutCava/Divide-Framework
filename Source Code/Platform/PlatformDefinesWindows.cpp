@@ -11,11 +11,14 @@
 #include "Core/Headers/StringHelper.h"
 
 #include <direct.h>
+#include <ShellScalingAPI.h>
+#include <comdef.h>
 
 #pragma comment(lib, "OpenAL32.lib")
 #pragma comment(lib, "Winmm.lib")
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
+#pragma comment(lib, "Shcore.lib")
 
 #pragma comment(lib, "PhysX_64.lib")
 #pragma comment(lib, "PhysXCooking_64.lib")
@@ -124,6 +127,10 @@ namespace Divide {
         return(pBuf);
     }
 
+    F32 PlatformDefaultDPI() noexcept {
+        return 96.f;
+    }
+
     void GetWindowHandle(void* window, WindowHandle& handleOut) noexcept {
         SDL_SysWMinfo wmInfo = {};
         SDL_VERSION(&wmInfo.version);
@@ -140,6 +147,12 @@ namespace Divide {
     }
 
     ErrorCode PlatformInitImpl([[maybe_unused]] int argc, [[maybe_unused]] char** argv) noexcept {
+        const HRESULT hr = SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+        if (FAILED(hr)) {
+            const _com_error err(hr);
+            std::cerr << "SetProcessDpiAwareness: " << err.ErrorMessage() << std::endl;
+        }
+
         return ErrorCode::NO_ERR;
     }
 

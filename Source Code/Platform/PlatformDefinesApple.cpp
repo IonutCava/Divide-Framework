@@ -51,6 +51,10 @@ namespace Divide {
         return true;
     }
 
+    F32 PlatformDefaultDPI() noexcept {
+        return 72.f;
+    }
+
     void getWindowHandle(void* window, WindowHandle& handleOut) noexcept {
         SDL_SysWMinfo wmInfo;
         SDL_VERSION(&wmInfo.version);

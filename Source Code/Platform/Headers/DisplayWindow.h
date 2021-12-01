@@ -215,6 +215,8 @@ public:
 
     [[nodiscard]] bool onSDLEvent(SDL_Event event) override;
 
+    /// The display on which this window was initially created on
+    PROPERTY_R(U32, initialDisplay, 0u);
 private:
     void restore() noexcept;
     /// Changing from one window type to another

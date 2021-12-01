@@ -43,7 +43,6 @@
 namespace Divide {
 
 namespace {
-    constexpr F32 DEFAULT_MONITOR_DPI = 96.0f;
     const char* g_editorFontFile = "Arial.ttf";
     const char* g_editorSaveFile = "Editor.xml";
     const char* g_editorSaveFileBak = "Editor.xml.bak";
@@ -229,8 +228,12 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     ImGuiCustom::g_ImAllocatorUserData._context = &context();
 
     _imguiContexts[to_base(ImGuiContextType::Editor)] = ImGui::CreateContext();
+    ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
 
-    createFontTexture(1.f);
+    const vector<WindowManager::MonitorData>& monitors = g_windowManager->monitorData();
+    const WindowManager::MonitorData& mainMonitor = monitors[_mainWindow->initialDisplay()];
+
+    createFontTexture(mainMonitor.dpi / PlatformDefaultDPI());
 
     ResourceCache* parentCache = _context.kernel().resourceCache();
 
@@ -250,7 +253,6 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     shaderResDescriptor.propertyDescriptor(shaderDescriptor);
     _imguiProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
 
-    ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
     ImGui::ResetStyle(_currentTheme);
 
     io.ConfigViewportsNoDecoration = true;
@@ -456,7 +458,6 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         }
     };
 
-    const vector<WindowManager::MonitorData>& monitors = g_windowManager->monitorData();
     const I32 monitorCount = to_I32(monitors.size());
 
     platform_io.Monitors.resize(monitorCount);
@@ -471,7 +472,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 
         imguiMonitor.MainSize = ImVec2(to_F32(monitor.viewport.z), to_F32(monitor.viewport.w));
         imguiMonitor.WorkSize = ImVec2(to_F32(monitor.drawableArea.z), to_F32(monitor.drawableArea.w));
-        imguiMonitor.DpiScale = monitor.dpi / DEFAULT_MONITOR_DPI;
+        imguiMonitor.DpiScale = monitor.dpi / PlatformDefaultDPI();
     }
     ImGuiViewportData* data = IM_NEW(ImGuiViewportData)();
     data->_window = _mainWindow;

@@ -192,6 +192,8 @@ struct SysInfo {
 
 void InitSysInfo(SysInfo& info, I32 argc, char** argv);
 
+extern [[nodiscard]] F32 PlatformDefaultDPI() noexcept;
+
 struct WindowHandle;
 extern void GetWindowHandle(void* window, WindowHandle& handleOut) noexcept;
 
