@@ -528,7 +528,7 @@ bool Sky::load() {
         textureDescriptor.texType(TextureType::TEXTURE_2D_ARRAY);
         textureDescriptor.layerCount(1u);
         // We should still keep mipmaps, but filtering should be set to linear
-        //textureDescriptor.mipCount(1u);
+        //textureDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         
         ResourceDescriptor weatherDescriptor("Weather");
         weatherDescriptor.assetName(ResourcePath(weatherTexName));

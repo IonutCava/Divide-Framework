@@ -91,6 +91,13 @@ public:
 /// We do not define copy constructors as we must define descriptors only with POD
 class TextureDescriptor final : public PropertyDescriptor {
    public:
+    enum class MipMappingState : U8 {
+        AUTO = 0,
+        MANUAL,
+        OFF,
+        COUNT
+    };
+
     TextureDescriptor() noexcept
         : TextureDescriptor(TextureType::TEXTURE_2D)
     {
@@ -117,17 +124,15 @@ class TextureDescriptor final : public PropertyDescriptor {
 
     PROPERTY_RW(U16, layerCount, 1);
     PROPERTY_RW(U16, mipBaseLevel, 0);
-    PROPERTY_RW(U16, mipCount, U16_MAX);
     PROPERTY_RW(U8,  msaaSamples, 0);
     PROPERTY_RW(GFXDataFormat,  dataType, GFXDataFormat::COUNT);
     PROPERTY_RW(GFXImageFormat, baseFormat, GFXImageFormat::COUNT);
     PROPERTY_RW(TextureType, texType, TextureType::COUNT);
-    /// Automatically compute mip maps (overwrites any manual mipmap computation)
-    PROPERTY_RW(bool, autoMipMaps, true);
     /// Use SRGB colour space
     PROPERTY_RW(bool, srgb, false);
     PROPERTY_RW(bool, normalized, true);
     PROPERTY_RW(bool, compressed, false);
+    PROPERTY_RW(MipMappingState, mipMappingState, MipMappingState::AUTO);
 };
 
 inline bool operator==(const TextureDescriptor& lhs, const TextureDescriptor& rhs) {

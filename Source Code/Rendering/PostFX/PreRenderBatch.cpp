@@ -76,7 +76,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     desc._attachmentCount = 1u;
 
     TextureDescriptor outputDescriptor = _screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO)).texture()->descriptor();
-    outputDescriptor.mipCount(1u);
+    outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
     {
         RTAttachmentDescriptors att = { { outputDescriptor, screenSampler.getHash(), RTAttachmentType::Colour } };
         desc._name = "PostFX Output HDR";
@@ -99,7 +99,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     }
     {
         TextureDescriptor edgeDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
-        edgeDescriptor.mipCount(1u);
+        edgeDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RTAttachmentDescriptors att = { { edgeDescriptor, screenSampler.getHash(), RTAttachmentType::Colour } };
 
@@ -109,7 +109,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     }
     {
         TextureDescriptor screenCopyDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
-        screenCopyDescriptor.autoMipMaps(false);
+        screenCopyDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
         RTAttachmentDescriptors att = { { screenCopyDescriptor, screenSampler.getHash(), RTAttachmentType::Colour } };
 
@@ -119,7 +119,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     }
     {
         TextureDescriptor lumaDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
-        lumaDescriptor.mipCount(1u);
+        lumaDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         lumaDescriptor.srgb(false);
 
         ResourceDescriptor texture("Luminance Texture");

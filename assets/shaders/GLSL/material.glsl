@@ -2,10 +2,6 @@
 
 layout(early_fragment_tests) in;
 
-#if !defined(OIT_PASS) && defined(HAS_TRANSPARENCY)
-#define USE_ALPHA_DISCARD
-#endif
-
 #include "output.frag"
 #include "BRDF.frag"
 

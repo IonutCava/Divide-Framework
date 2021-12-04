@@ -980,7 +980,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                 view._targetType = view._textureData._textureType;
 
                 if (crtCmd->_mipRange.max == 0u) {
-                    view._mipLevels.set(0, descriptor.mipCount());
+                    view._mipLevels.set(0, crtCmd->_texture->mipCount());
                 } else {
                     view._mipLevels.set(crtCmd->_mipRange);
                 }

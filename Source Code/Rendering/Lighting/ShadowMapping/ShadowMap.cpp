@@ -112,7 +112,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                 TextureDescriptor depthMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXImageFormat::RG, isCSM ? GFXDataFormat::FLOAT_32 : GFXDataFormat::FLOAT_16);
                 depthMapDescriptor.layerCount(isCSM ? Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT
                                                     : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS);
-                depthMapDescriptor.autoMipMaps(false);
+                depthMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
                 RTAttachmentDescriptors att = {
                     { depthMapDescriptor, depthMapSampler.getHash(), RTAttachmentType::Colour },
@@ -139,14 +139,14 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
 
                 TextureDescriptor colourMapDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
                 colourMapDescriptor.layerCount(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS);
-                colourMapDescriptor.autoMipMaps(false);
+                colourMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
                 depthMapSampler.minFilter(TextureFilter::LINEAR);
                 depthMapSampler.anisotropyLevel(0);
                 const size_t samplerHash = depthMapSampler.getHash();
 
                 TextureDescriptor depthDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
                 depthDescriptor.layerCount(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS);
-                depthDescriptor.autoMipMaps(false);
+                depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
                 RTAttachmentDescriptors att = {
                     { colourMapDescriptor, samplerHash, RTAttachmentType::Colour },
@@ -223,10 +223,10 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
         if (IS_IN_RANGE_EXCLUSIVE(useCount, to_U16(0u), texDescriptor.layerCount())) {
             TextureViewEntry entry = {};
             entry._binding = bindSlot;
-            entry._view._textureData = shadowTexture.texture().get()->data();
-            entry._descriptor = shadowTexture.texture().get()->descriptor();
+            entry._view._textureData = shadowTexture.texture()->data();
+            entry._descriptor = shadowTexture.texture()->descriptor();
             entry._view._samplerHash = shadowTexture.samplerHash();
-            entry._view._mipLevels.set(0, texDescriptor.mipCount());
+            entry._view._mipLevels.set(0, shadowTexture.texture()->mipCount());
             entry._view._layerRange.set(0, useCount);
             descriptorSetCmd._set._textureViews.add(entry);
         } else {

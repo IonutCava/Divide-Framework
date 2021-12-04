@@ -101,11 +101,11 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
         TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D_MS, texDescriptor.baseFormat(), texDescriptor.dataType());
         colourDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
-        colourDescriptor.mipCount(1u);
+        colourDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
         depthDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
-        depthDescriptor.mipCount(1u);
+        depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RTAttachmentDescriptors att = {
             { colourDescriptor, samplerHash, RTAttachmentType::Colour },
@@ -124,7 +124,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
     {
         TextureDescriptor blurMapDescriptor(TextureType::TEXTURE_2D, texDescriptor.baseFormat(), texDescriptor.dataType());
         blurMapDescriptor.layerCount(1u);
-        blurMapDescriptor.mipCount(1u);
+        blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RTAttachmentDescriptors att = {
             { blurMapDescriptor, samplerHash, RTAttachmentType::Colour }

@@ -166,7 +166,8 @@ class Editor final : public PlatformContextComponent,
     void registerUndoEntry(const UndoEntry<T>& entry);
 
     [[nodiscard]] inline bool inEditMode() const noexcept;
-    [[nodiscard]] inline bool simulationPauseRequested() const noexcept;
+    [[nodiscard]] inline bool simulationPaused() const noexcept;
+    [[nodiscard]] inline U32  stepQueue() const noexcept;
     [[nodiscard]] inline const TransformSettings& getTransformSettings() const noexcept;
     inline void setTransformSettings(const TransformSettings& settings) const noexcept;
 
@@ -278,6 +279,7 @@ class Editor final : public PlatformContextComponent,
 
     I64            _lastOpenSceneGUID = -1;
     U32            _stepQueue = 1u;
+    bool           _simulationPaused = true;
     ImGuiStyleEnum _currentTheme = ImGuiStyle_Count;
     bool           _autoFocusEditor = true;
     bool           _showSampleWindow = false;
@@ -318,6 +320,10 @@ namespace Attorney {
             editor._stepQueue = steps;
         }
 
+        static void simulationPaused(Editor& editor, const bool state) noexcept {
+            editor._simulationPaused = state;
+        }
+        
         [[nodiscard]] static bool autoFocusEditor(const Editor& editor) noexcept {
             return editor._autoFocusEditor;
         }

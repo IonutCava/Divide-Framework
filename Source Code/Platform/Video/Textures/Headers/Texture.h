@@ -103,6 +103,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     PROPERTY_R(U16, width, 0u);
     /// Texture height depth as returned by STB/DDS loader
     PROPERTY_R(U16, height, 0u);
+    /// Number of mipmaps (if mipMapState is off , returns 1u);
+    PROPERTY_R(U16, mipCount, 1u);
     /// If the texture has an alpha channel and at least one pixel is translucent, return true
     PROPERTY_R(bool, hasTranslucency, false);
     /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true

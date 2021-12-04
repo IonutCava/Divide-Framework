@@ -39,7 +39,7 @@ inline bool Editor::isInit() const noexcept {
 }
 
 inline bool Editor::inEditMode() const noexcept {
-    return running() && simulationPauseRequested();
+    return running() && simulationPaused();
 }
 
 inline void Editor::setTransformSettings(const TransformSettings& settings) const noexcept {
@@ -50,8 +50,12 @@ inline const TransformSettings& Editor::getTransformSettings() const noexcept {
     return Attorney::GizmoEditor::getTransformSettings(_gizmo.get());
 }
 
-inline bool Editor::simulationPauseRequested() const noexcept {
-    return _stepQueue == 0;
+ U32 Editor::stepQueue() const noexcept {
+     return _stepQueue;
+}
+
+inline bool Editor::simulationPaused() const noexcept {
+    return _simulationPaused;
 }
 
 template<typename T>

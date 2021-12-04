@@ -71,17 +71,19 @@ void main()
 
 -- Fragment
 
+#include "texturing.frag"
+
 #define COLOUR_OUTPUT_ONLY
 
 layout(location = 0) in flat vec3 lightColour;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 
 void main()
 {
-    if (texture(texDiffuse0, VAR._texCoord).a < INV_Z_TEST_SIGMA) {
+    if (getAlpha(texDiffuse0, vec3(VAR._texCoord, 0)) < INV_Z_TEST_SIGMA) {
         discard;
     }
     

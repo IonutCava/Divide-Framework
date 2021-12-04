@@ -30,7 +30,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         sampler.anisotropyLevel(0);
 
         TextureDescriptor weightsDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
-        weightsDescriptor.mipCount(1u);
+        weightsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RTAttachmentDescriptors att = {
             { weightsDescriptor, sampler.getHash(), RTAttachmentType::Colour }

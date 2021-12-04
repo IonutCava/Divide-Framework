@@ -109,7 +109,7 @@ void glFramebuffer::initAttachment(const RTAttachmentType type, const U8 index) 
         if (updateSampleCount) {
             tex->setSampleCount(_descriptor._msaaSamples);
         }
-        if (!tex->descriptor().autoMipMaps() && tex->descriptor().mipCount() > 1u) {
+        if (tex->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
             // We do this here to avoid any undefined data if we use this attachment as a texture before we actually draw to it
             GL_API::ComputeMipMaps(tex->data()._textureHandle);
         }
@@ -542,10 +542,7 @@ void glFramebuffer::queueMipMapRecomputation() const {
 
 void glFramebuffer::QueueMipMapsRecomputation(const RTAttachment& attachment) {
     const Texture_ptr& texture = attachment.texture(false);
-    if (attachment.used() && 
-        texture->descriptor().autoMipMaps() &&
-        texture->descriptor().mipCount() > 1)
-    {
+    if (attachment.used() && texture->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
         GL_API::QueueComputeMipMaps(texture->data()._textureHandle);
     }
 }
@@ -663,7 +660,7 @@ void glFramebuffer::setMipLevel(const U16 writeLevel) {
 
         for (const RTAttachment_ptr& attachment : attachments) {
             const Texture_ptr& texture = attachment->texture(false);
-            if (texture->descriptor().mipCount() > writeLevel && !IsMultisampledTexture(texture->descriptor().texType()))
+            if (texture->mipCount() > writeLevel && !IsMultisampledTexture(texture->descriptor().texType()))
             {
                 const BindingState& state = getAttachmentState(static_cast<GLenum>(attachment->binding()));
                 attachment->mipWriteLevel(writeLevel);

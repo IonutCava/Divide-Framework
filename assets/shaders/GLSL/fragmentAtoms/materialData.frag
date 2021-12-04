@@ -1,9 +1,8 @@
 #ifndef _MATERIAL_DATA_FRAG_
 #define _MATERIAL_DATA_FRAG_
 
-#include "nodeBufferedInput.cmn"
-
 #include "utility.frag"
+#include "texturing.frag"
 
 #include "pbr.frag"
 #include "specGloss.frag"
@@ -196,7 +195,6 @@ float specularAntiAliasing(in vec3 N, in float a) {
 #endif //USE_PLANAR_REFLECTION
 #endif //!PRE_PASS
 
-#if !defined(PRE_PASS) || defined(HAS_TRANSPARENCY)
 vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {
     vec4 colour = BaseColour(data);
 
@@ -213,29 +211,34 @@ vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {
 }
 
 #if defined(HAS_TRANSPARENCY)
+
+#if defined(USE_ALPHA_DISCARD)
 float getAlpha(in NodeMaterialData data, in vec3 uv) {
     if (dvd_TexOpOpacity(data) != TEX_NONE) {
-        return dvd_useOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a
-                                                : texture(texOpacityMap, uv).r;
+        const float refAlpha = dvd_useOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
+        return getScaledAlpha(refAlpha, uv.xy, textureSize(texOpacityMap, 0));
     }
 
     if (dvd_useAlbedoTextureAlphaChannel(data) && dvd_TexOpUnit0(data) != TEX_NONE) {
-        return getTextureColour(data, uv).a;
+        return getAlpha(texDiffuse0, uv);
     }
 
     return BaseColour(data).a;
 }
+#endif //USE_ALPHA_DISCARD
 
 vec4 getAlbedo(in NodeMaterialData data, in vec3 uv) {
     vec4 albedo = getTextureColour(data, uv);
 
     if (dvd_TexOpOpacity(data) != TEX_NONE) {
-        albedo.a = dvd_useOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a
-                                                    : texture(texOpacityMap, uv).r;
+        const float refAlpha = dvd_useOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
+        albedo.a = getScaledAlpha(refAlpha, uv.xy, textureSize(texOpacityMap, 0));
     }
 
     if (!dvd_useAlbedoTextureAlphaChannel(data)) {
         albedo.a = BaseColour(data).a;
+    } else if (dvd_TexOpUnit0(data) != TEX_NONE) {
+        albedo.a = getScaledAlpha(albedo.a, uv.xy, textureSize(texDiffuse0, 0));
     }
 
     return albedo;
@@ -243,8 +246,6 @@ vec4 getAlbedo(in NodeMaterialData data, in vec3 uv) {
 #else //HAS_TRANSPARENCY
 #define getAlbedo getTextureColour
 #endif //HAS_TRANSPARENCY
-
-#endif //!PRE_PASS || HAS_TRANSPARENCY
 
 vec4 getNormalMapAndVariation(in sampler2DArray tex, in vec3 uv) {
     const vec3 normalMap = 2.f * texture(tex, uv).rgb - 1.f;

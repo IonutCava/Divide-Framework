@@ -75,7 +75,7 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
 
     const auto& screenAtt = parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO));
     TextureDescriptor screenDescriptor = screenAtt.texture()->descriptor();
-    screenDescriptor.mipCount(1u);
+    screenDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     RTAttachmentDescriptors att = {
         {

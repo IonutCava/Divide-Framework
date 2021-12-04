@@ -112,11 +112,11 @@ bool SSRPreRenderOperator::execute(const Camera* camera, const RenderTargetHandl
     }
 
     const vec3<U32> mipCounts {
-        screenAtt.texture()->descriptor().mipCount(),
-        reflectionTexture->descriptor().mipCount(),
+        screenAtt.texture()->mipCount(),
+        reflectionTexture->mipCount(),
         skyTexture == nullptr
-                    ? reflectionTexture->descriptor().mipCount()
-                    : skyTexture->descriptor().mipCount()
+                    ? reflectionTexture->mipCount()
+                    : skyTexture->mipCount()
     };
 
     _constantsCmd._constants.set(_ID("projToPixel"), GFX::PushConstantType::MAT4, camera->projectionMatrix() * _projToPixelBasis);

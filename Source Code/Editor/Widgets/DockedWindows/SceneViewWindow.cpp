@@ -37,10 +37,10 @@ namespace Divide {
             return ret;
         };
 
-        bool play = !_parent.simulationPauseRequested();
-        ImGui::Text("Play:"); ImGui::SameLine(); ImGui::ToggleButton("Play", &play);
-        if (play) {
-            Attorney::EditorSceneViewWindow::editorStepQueue(_parent, 2);
+        bool play = !_parent.simulationPaused();
+        ImGui::Text("Play:"); ImGui::SameLine(); ;
+        if (ImGui::ToggleButton("Play", &play)) {
+            Attorney::EditorSceneViewWindow::simulationPaused(_parent, !play);
         }
 
         if (ImGui::IsItemHovered()) {

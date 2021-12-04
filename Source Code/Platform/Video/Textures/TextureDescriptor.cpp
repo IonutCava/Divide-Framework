@@ -103,12 +103,11 @@ namespace Divide {
 
         Util::Hash_combine(_hash, _layerCount);
         Util::Hash_combine(_hash, _mipBaseLevel);
-        Util::Hash_combine(_hash, _mipCount);
+        Util::Hash_combine(_hash, to_base(_mipMappingState));
         Util::Hash_combine(_hash, _msaaSamples);
         Util::Hash_combine(_hash, to_U32(_dataType));
         Util::Hash_combine(_hash, to_U32(_baseFormat));
         Util::Hash_combine(_hash, to_U32(_texType));
-        Util::Hash_combine(_hash, _autoMipMaps);
         Util::Hash_combine(_hash, _srgb);
         Util::Hash_combine(_hash, _normalized);
         Util::Hash_combine(_hash, _compressed);

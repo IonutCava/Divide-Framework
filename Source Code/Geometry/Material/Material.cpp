@@ -180,6 +180,7 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
     cloneMat->_bumpMethod = base._bumpMethod;
     cloneMat->_doubleSided = base._doubleSided;
     cloneMat->_transparencyEnabled = base._transparencyEnabled;
+    cloneMat->_useAlphaDiscard = base._useAlphaDiscard;
     cloneMat->_receivesShadows = base._receivesShadows;
     cloneMat->_isStatic = base._isStatic;
     cloneMat->_ignoreTexDiffuseAlpha = base._ignoreTexDiffuseAlpha;
@@ -568,6 +569,11 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
     if (hasTransparency()) {
         shaderName += ".T";
         fragDefines.emplace_back("HAS_TRANSPARENCY", true);
+
+        if (useAlphaDiscard() && renderStagePass._passType != RenderPassType::OIT_PASS) {
+            shaderName += ".AD";
+            fragDefines.emplace_back("USE_ALPHA_DISCARD", true);
+        }
     }
 
     if (!receivesShadows()) {
@@ -840,6 +846,19 @@ void Material::toggleTransparency(const bool state, const bool applyToInstances)
     if (applyToInstances) {
         for (Material* instance : _instances) {
             instance->toggleTransparency(state, true);
+        }
+    }
+}
+
+void Material::useAlphaDiscard(const bool state, const bool applyToInstances) {
+    if (_useAlphaDiscard != state) {
+        _useAlphaDiscard = state;
+        _needsNewShader = true;
+    }
+
+    if (applyToInstances) {
+        for (Material* instance : _instances) {
+            instance->useAlphaDiscard(state, true);
         }
     }
 }
@@ -1229,6 +1248,8 @@ void Material::saveToXML(const string& entryName, boost::property_tree::ptree& p
 
     pt.put(entryName + ".transparencyEnabled", transparencyEnabled());
 
+    pt.put(entryName + ".useAlphaDiscard", useAlphaDiscard());
+
     pt.put(entryName + ".isRefractive", _isRefractive);
 
     saveRenderStatesToXML(entryName, pt);
@@ -1280,7 +1301,9 @@ void Material::loadFromXML(const string& entryName, const boost::property_tree::
 
     parallaxFactor(pt.get<F32>(entryName + ".parallaxFactor", parallaxFactor()), false);
 
-    toggleTransparency(pt.get<bool>(entryName + ".transparencyEnabled", transparencyEnabled()), false);
+    toggleTransparency(pt.get<bool>(entryName + ".transparencyEnabled", transparencyEnabled()), true);
+    
+    useAlphaDiscard(pt.get<bool>(entryName + ".useAlphaDiscard", useAlphaDiscard()), true);
 
     refractive(pt.get<bool>(entryName + ".isRefractive", refractive()), false);
 

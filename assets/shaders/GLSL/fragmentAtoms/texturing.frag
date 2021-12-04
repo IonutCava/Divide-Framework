@@ -1,6 +1,8 @@
 #ifndef _TEXTURING_FRAG_
 #define _TEXTURING_FRAG_
 
+#include "nodeBufferedInput.cmn"
+
 // The MIT License
 // Copyright (C) 2015 Inigo Quilez
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), 
@@ -145,5 +147,30 @@ vec4 textureNoTile(sampler2DArray samp, sampler2DArray noiseSampler, in int nois
 
     // interpolate between the two virtual patterns    
     return mix(cola, colb, smoothstep(0.2, 0.8, f - 0.1 * sum(cola - colb)));
+}
+
+#ifndef MipScale
+#define MipScale 0.25f
+#endif //MipScale
+
+//ref: https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
+float calcMipLevel(in vec2 texture_coord) {
+    const vec2 dx = dFdx(texture_coord);
+    const vec2 dy = dFdy(texture_coord);
+    const float delta_max_sqr = max(dot(dx, dx), dot(dy, dy));
+
+    return max(0.f, 0.5f * log2(delta_max_sqr));
+}
+
+float getScaledAlpha(in float refAlpha, in vec2 uv, in ivec3 texSize) {
+    refAlpha *= 1.f + max(0.f, calcMipLevel(uv * texSize.xy)) * MipScale;
+    // rescale alpha by partial derivative
+    refAlpha = (refAlpha - Z_TEST_SIGMA) / max(fwidth(refAlpha), 0.0001f) + 0.5f;
+    return refAlpha;
+}
+
+float getAlpha(in sampler2DArray tex, in vec3 uv) {
+    const float refAlpha = texture(tex, uv).a;
+    return getScaledAlpha(refAlpha, uv.xy, textureSize(tex, 0));
 }
 #endif //_TEXTURING_FRAG_

@@ -154,7 +154,7 @@ void Kernel::idle(const bool fast) {
     }
 
     if_constexpr(Config::Build::ENABLE_EDITOR) {
-        const bool freezeLoopTime = _platformContext.editor().simulationPauseRequested();
+        const bool freezeLoopTime = _platformContext.editor().simulationPaused() && _platformContext.editor().stepQueue() == 0u;
         if (_timingData.freezeTime(freezeLoopTime)) {
             _platformContext.app().mainLoopPaused(_timingData.freezeLoopTime());
         }
@@ -310,7 +310,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
         U8 loopCount = 0;
         while (_timingData.runUpdateLoop()) {
             // Everything inside here should use fixed timesteps, apart from GFX updates which should use both!
-            // Some things (e.g. tonemaping) need to resolve even if the simulation is paused (might not remain true in the future)
+            // Some things (e.g. tonemapping) need to resolve even if the simulation is paused (might not remain true in the future)
 
             if (loopCount == 0) {
                 _sceneUpdateLoopTimer.start();

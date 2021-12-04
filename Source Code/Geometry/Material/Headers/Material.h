@@ -178,6 +178,7 @@ class Material final : public CachedResource {
     void parallaxFactor(F32 factor, bool applyToInstances = false);
     void bumpMethod(BumpMethod newBumpMethod, bool applyToInstances = false);
     void toggleTransparency(bool state, bool applyToInstances = false);
+    void useAlphaDiscard(bool state, bool applyToInstances = false);
     void baseColour(const FColour4& colour, bool applyToInstances = false);
     void emissiveColour(const FColour3& colour, bool applyToInstances = false);
     void ambientColour(const FColour3& colour, bool applyToInstances = false);
@@ -284,6 +285,7 @@ class Material final : public CachedResource {
     PROPERTY_R(BumpMethod, bumpMethod, BumpMethod::NONE);
     PROPERTY_R(bool, doubleSided, false);
     PROPERTY_R(bool, transparencyEnabled, true);
+    PROPERTY_R(bool, useAlphaDiscard, true);
     PROPERTY_R(bool, receivesShadows, true);
     PROPERTY_R(bool, isStatic, false);
     PROPERTY_R(bool, specTextureHasAlpha, false);

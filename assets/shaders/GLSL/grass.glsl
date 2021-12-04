@@ -5,6 +5,7 @@
 #define NEED_TANGENT
 #endif //DEPTH_PASS
 
+#define NO_VELOCITY
 #include "vbInputData.vert"
 #include "vegetationData.cmn"
 #include "sceneData.cmn"
@@ -97,6 +98,7 @@ void main() {
 layout(early_fragment_tests) in;
 
 #define NO_IBL
+#define NO_VELOCITY
 #define USE_CUSTOM_TBN
 #define MAX_SHADOW_MAP_LOD 1
 //#define DEBUG_LODS
@@ -151,7 +153,9 @@ void main (void){
 
 --Fragment.PrePass
 
+#define NO_VELOCITY
 #include "prePass.frag"
+#include "texturing.frag"
 
 layout(location = 0) flat in uint  _layer;
 layout(location = 1) flat in uint  _instanceID;
@@ -159,8 +163,11 @@ layout(location = 2)      in float _alphaFactor;
 layout(location = 3)      in mat3  _tbnWV;
 
 void main() {
-    const float albedoAlpha = texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a * _alphaFactor;
-    writeGBuffer(albedoAlpha);
+    if (getAlpha(texDiffuse0, vec3(VAR._texCoord, _layer)) * _alphaFactor < INV_Z_TEST_SIGMA) {
+        discard;
+    }
+
+    writeGBuffer();
 }
 
 --Fragment.Shadow.VSM
@@ -173,12 +180,13 @@ layout(location = 3)      in mat3  _tbnWV;
 layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 #include "vsm.frag"
+#include "texturing.frag"
+
 out vec2 _colourOut;
 
 void main(void) {
-    const float albedoAlpha = texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a;
-    // Only discard alhpa == 0
-    if (albedoAlpha < Z_TEST_SIGMA) {
+    // Only discard alpha == 0
+    if (getAlpha(texDiffuse0, vec3(VAR._texCoord, _layer)) < Z_TEST_SIGMA) {
         discard;
     }
 

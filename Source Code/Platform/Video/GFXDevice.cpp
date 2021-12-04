@@ -284,20 +284,20 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     //PrePass
     TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
     TextureDescriptor velocityDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
-    depthDescriptor.mipCount(1u);
-    velocityDescriptor.mipCount(1u);
+    depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+    velocityDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     //MainPass
     TextureDescriptor screenDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
-    screenDescriptor.autoMipMaps(false);
+    screenDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
     TextureDescriptor normalsAndMaterialDataDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
-    normalsAndMaterialDataDescriptor.mipCount(1u);
+    normalsAndMaterialDataDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     // Normal and MSAA
     for (U8 i = 0; i < 2; ++i) {
         const U8 sampleCount = i == 0 ? 0 : config.rendering.MSAASamples;
         const size_t screenSampler = i == 0 ? samplerHashMips : samplerHash;
-        screenDescriptor.mipCount(i == 0 ? U16_MAX : 1u);
+        screenDescriptor.mipMappingState(i == 0 ? TextureDescriptor::MipMappingState::AUTO : TextureDescriptor::MipMappingState::OFF);
 
         screenDescriptor.msaaSamples(sampleCount);
         depthDescriptor.msaaSamples(sampleCount);
@@ -328,7 +328,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     {
         //R = SSAO, G = Linear depth
         TextureDescriptor postFXDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
-        postFXDescriptor.mipCount(1u);
+        postFXDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RTAttachmentDescriptors attachments = {
             { postFXDescriptor, samplerHash, RTAttachmentType::Colour, 0u, vec4<F32>{1.f, 0.f, 0.f, 0.f} }
@@ -345,10 +345,10 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
     {
         TextureDescriptor ssrDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::FLOAT_16);
-        ssrDescriptor.mipCount(1u);
+        ssrDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         TextureDescriptor kDkSDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::UNSIGNED_BYTE);
-        ssrDescriptor.mipCount(1u);
+        ssrDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         
         RTAttachmentDescriptors attachments = {
             { ssrDescriptor, samplerHash, RTAttachmentType::Colour, 0u, VECTOR4_ZERO }
@@ -366,7 +366,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     const U32 reflectRes = nextPOW2(CLAMPED(to_U32(config.rendering.reflectionPlaneResolution), 16u, 4096u) - 1u);
 
     TextureDescriptor hiZDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
-    hiZDescriptor.autoMipMaps(false);
+    hiZDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
     SamplerDescriptor hiZSampler = {};
     hiZSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
@@ -399,7 +399,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         editorSampler.anisotropyLevel(0);
 
         TextureDescriptor editorDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
-        editorDescriptor.mipCount(1u);
+        editorDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RTAttachmentDescriptors attachments = {
             { editorDescriptor, editorSampler.getHash(), RTAttachmentType::Colour, to_U8(ScreenTargets::ALBEDO), DefaultColours::DIVIDE_BLUE }
@@ -424,8 +424,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         TextureDescriptor environmentDescriptorPlanar(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
         TextureDescriptor depthDescriptorPlanar(TextureType::TEXTURE_2D, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
 
-        environmentDescriptorPlanar.autoMipMaps(false);
-        depthDescriptorPlanar.mipCount(1u);
+        environmentDescriptorPlanar.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
+        depthDescriptorPlanar.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RenderTargetDescriptor hizRTDesc = {};
         hizRTDesc._resolution.set(reflectRes, reflectRes);
@@ -453,7 +453,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 _rtPool->allocateRT(RenderTargetUsage::REFRACTION_PLANAR, refDesc);
             }
 
-            environmentDescriptorPlanar.mipCount(1u);
+            environmentDescriptorPlanar.mipMappingState(TextureDescriptor::MipMappingState::OFF);
             RTAttachmentDescriptors attachmentsBlur = {//skip depth
                 { environmentDescriptorPlanar, reflectionSamplerHash, RTAttachmentType::Colour }
             };
@@ -472,11 +472,11 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     const size_t accumulationSamplerHash = accumulationSampler.getHash();
 
     TextureDescriptor accumulationDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
-    accumulationDescriptor.mipCount(1u);
+    accumulationDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     //R = revealage
     TextureDescriptor revealageDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RED, GFXDataFormat::UNSIGNED_BYTE);
-    revealageDescriptor.mipCount(1u);
+    revealageDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     RTAttachmentDescriptors oitAttachments = {
         { accumulationDescriptor, accumulationSamplerHash, RTAttachmentType::Colour, to_U8(ScreenTargets::ACCUMULATION), VECTOR4_ZERO },
@@ -550,8 +550,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         TextureDescriptor environmentDescriptorCube(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
         TextureDescriptor depthDescriptorCube(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
 
-        environmentDescriptorCube.mipCount(1u);
-        depthDescriptorCube.mipCount(1u);
+        environmentDescriptorCube.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        depthDescriptorCube.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RTAttachmentDescriptors attachments = {
             { environmentDescriptorCube, reflectionSamplerHash, RTAttachmentType::Colour },
@@ -1685,7 +1685,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     const Texture_ptr& hizDepthTex = att.texture();
 
     const TextureData& hizData = hizDepthTex->data();
-    DIVIDE_ASSERT(!hizDepthTex->descriptor().autoMipMaps());
+    DIVIDE_ASSERT(hizDepthTex->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::MANUAL);
 
     // We use a special shader that downsamples the buffer
     // We will use a state block that disables colour writes as we will render only a depth image,
@@ -1911,7 +1911,7 @@ void GFXDevice::initDebugViews() {
         HiZ->_texture = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::HI_Z)).getAttachment(RTAttachmentType::Depth, 0).texture();
         HiZ->_samplerHash = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::HI_Z)).getAttachment(RTAttachmentType::Depth, 0).samplerHash();
         HiZ->_name = "Hierarchical-Z";
-        HiZ->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, to_F32(HiZ->_texture->descriptor().mipCount() - 1));
+        HiZ->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, to_F32(HiZ->_texture->mipCount() - 1));
         HiZ->_shaderData.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, vec2<F32>(Camera::s_minNearZ, _context.config().runtime.cameraViewDistance));
 
         DebugView_ptr DepthPreview = std::make_shared<DebugView>();
@@ -2032,7 +2032,7 @@ void GFXDevice::renderDebugViews(Rect<I32> targetViewport, const I32 padding, GF
         //HiZ preview
         I32 LoDLevel = 0;
         RenderTarget& HiZRT = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::HI_Z));
-        LoDLevel = to_I32(std::ceil(Time::Game::ElapsedMilliseconds() / 750.0f)) % (HiZRT.getAttachment(RTAttachmentType::Depth, 0).texture()->descriptor().mipCount() - 1);
+        LoDLevel = to_I32(std::ceil(Time::Game::ElapsedMilliseconds() / 750.0f)) % (HiZRT.getAttachment(RTAttachmentType::Depth, 0).texture()->mipCount() - 1);
         HiZView->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, to_F32(LoDLevel));
     }
 

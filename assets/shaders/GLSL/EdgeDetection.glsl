@@ -56,7 +56,7 @@ void main(){
     vec2 delta = abs(neighbours.xx - vec2(neighbours.y, neighbours.z));
     vec2 edges = step(DEPTH_THRESHOLD, delta);
 
-    if (dot(edges, vec2(1.0, 1.0)) == 0.0) {
+    if (dot(edges, vec2(1.f, 1.f)) == 0.f) {
         discard;
     }
 
@@ -94,7 +94,7 @@ void main() {
     vec2 edges = step(threshold, delta.xy);
 
     // Then discard if there is no edge:
-    if (dot(edges, vec2(1.0, 1.0)) == 0.0)
+    if (dot(edges, vec2(1.f, 1.f)) == 0.f)
         discard;
 
     // Calculate right and bottom deltas:
@@ -155,7 +155,7 @@ void main() {
     vec2 edges = step(threshold, delta.xy);
 
     // Then discard if there is no edge:
-    if (dot(edges, vec2(1.0, 1.0)) == 0.0)
+    if (dot(edges, vec2(1.f, 1.f)) == 0.f)
         discard;
 
     // Calculate right and bottom deltas:

@@ -35,11 +35,10 @@ void main()
 out vec2 _colourOut;
 
 layout(location = 0) in vec4 particleColour;
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 void main() {
-    const float albedo = (particleColour * texture(texDiffuse0, VAR._texCoord)).a;
-    if (albedo < INV_Z_TEST_SIGMA) {
+    if (getAlpha(texDiffuse0, vec3(VAR._texCoord,0)) < INV_Z_TEST_SIGMA) {
         discard;
     }
 
@@ -59,7 +58,7 @@ void main() {
 layout(location = 0) in vec4 particleColour;
 
 #ifdef HAS_TEXTURE
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 #endif
 
 layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepthMap;
@@ -67,17 +66,23 @@ layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepthMap;
 void main(){
    
 #ifdef HAS_TEXTURE
-    vec4 colour = particleColour * texture(texDiffuse0, VAR._texCoord);
+    vec4 texColour = texture(texDiffuse0, vec3(VAR._texCoord, 0));
+    texColour.a = getScaledAlpha(texColour.a, VAR._texCoord, textureSize(texDiffuse0, 0));
+
+    vec4 colour = particleColour * texColour;
 #else
     vec4 colour = particleColour;
 #endif
 
     float d = texture(texDepthMap, gl_FragCoord.xy * ivec2(dvd_ViewPort.zw)).r - gl_FragCoord.z;
-    float softness = pow(1.0 - min(1.0, 200.0 * d), 2.0);
-    colour.a *= max(0.1, 1.0 - pow(softness, 2.0));
+    float softness = pow(1.f - min(1.f, 200.f * d), 2.f);
+    colour.a *= max(0.1f, 1.f - pow(softness, 2.f));
 
 #if defined(PRE_PASS)
-    writeGBuffer(colour.a);
+    if (colour.a <= INV_Z_TEST_SIGMA) {
+        discard;
+    }
+    writeGBuffer();
 #else //PRE_PASS
     writeScreenColour(colour, VAR._normalWV);
 #ensif //PRE_PASS

@@ -578,7 +578,6 @@ void Editor::toggle(const bool state) {
         activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
         activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
         _context.kernel().sceneManager()->resetSelection(0);
-        _stepQueue = 2;
     } else {
         _stepQueue = 0;
         activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
@@ -591,7 +590,7 @@ void Editor::toggle(const bool state) {
         }*/
     }
 
-    _gizmo->enable(state && simulationPauseRequested());
+    _gizmo->enable(state);
 }
 
 void Editor::update(const U64 deltaTimeUS) {
@@ -649,8 +648,9 @@ void Editor::update(const U64 deltaTimeUS) {
         static_cast<ContentExplorerWindow*>(_dockedWindows[to_base(WindowType::ContentExplorer)])->update(deltaTimeUS);
 
 
-        if (_isScenePaused != simulationPauseRequested()) {
-            _isScenePaused = simulationPauseRequested();
+        const bool scenePaused = (simulationPaused() && _stepQueue == 0);
+        if (_isScenePaused != scenePaused) {
+            _isScenePaused = scenePaused;
 
             _gizmo->enable(_isScenePaused);
             SceneManager* sMgr = _context.kernel().sceneManager();
@@ -667,7 +667,7 @@ void Editor::update(const U64 deltaTimeUS) {
                     activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
                 }
             } else {
-                playerState.overrideCamera(nullptr);
+                playerState.overrideCamera(stepQueue() == 0 ? nullptr : editorCamera());
                 allGizmosEnabled = activeScene.state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
                 activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
                 activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
@@ -890,7 +890,7 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         { (R + L) / (L - R), (T + B) / (B - T),  0.0f,   1.0f },
     };
 
-    GFX::SetCameraCommand cameraCmd = {};
+    GFX::SetCameraCommand cameraCmd{};
     cameraCmd._cameraSnapshot = Camera::utilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->snapshot();
     memcpy(cameraCmd._cameraSnapshot._projectionMatrix.m, ortho_projection, sizeof(F32) * 16);
     EnqueueCommand(bufferInOut, cameraCmd);
@@ -1227,7 +1227,7 @@ bool Editor::wantsMouse() const {
     }
 
     if (scenePreviewFocused()) {
-        if (!simulationPauseRequested()) {
+        if (!simulationPaused()) {
             return false;
         }
 
@@ -1247,7 +1247,7 @@ bool Editor::wantsKeyboard() const noexcept {
     if (!isInit() || !running() || scenePreviewFocused()) {
         return false;
     }
-    if (scenePreviewFocused() && !simulationPauseRequested()) {
+    if (scenePreviewFocused() && !simulationPaused()) {
         return false;
     }
     for (const ImGuiContext* ctx : _imguiContexts) {

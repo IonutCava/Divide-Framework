@@ -134,7 +134,8 @@ void LightPool::init() {
     lightImpostorShader.waitForReady(false);
     _lightImpostorShader = CreateResource<ShaderProgram>(_parentScene.resourceCache(), lightImpostorShader, loadingTasks);
 
-    TextureDescriptor iconDescriptor(TextureType::TEXTURE_2D);
+    TextureDescriptor iconDescriptor(TextureType::TEXTURE_2D_ARRAY);
+    iconDescriptor.layerCount(1u);
     iconDescriptor.srgb(true);
 
     ResourceDescriptor iconImage("LightIconTexture");

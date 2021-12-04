@@ -438,15 +438,6 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._modules[0]._defines.emplace_back("PRE_PASS", true);
-    shaderDescriptor._modules[0]._defines.emplace_back("HAS_TRANSPARENCY", true);
-    shaderDescriptor._modules[0]._defines.emplace_back("NO_VELOCITY", true);
-    shaderDescriptor._modules[1]._defines.emplace_back("PRE_PASS", true);
-    // This is needed so that the inner "output" discards don't take place
-    // We still manually alpha-discard in main
-    shaderDescriptor._modules[1]._defines.emplace_back("HAS_TRANSPARENCY", true);
-    shaderDescriptor._modules[1]._defines.emplace_back("USE_ALPHA_DISCARD", true);
-    shaderDescriptor._modules[1]._defines.emplace_back("NO_VELOCITY", true);
 
     ResourceDescriptor grassPrePassLQShader("grassPrePassLQ");
     grassPrePassLQShader.propertyDescriptor(shaderDescriptor);
