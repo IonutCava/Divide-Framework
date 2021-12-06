@@ -63,7 +63,7 @@ U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept 
     return _attachmentPool->attachmentCount(type);
 }
 
-void RenderTarget::readData(const GFXImageFormat imageFormat, const GFXDataFormat dataType, const bufferPtr outData) const {
+void RenderTarget::readData(const GFXImageFormat imageFormat, const GFXDataFormat dataType, const std::pair<bufferPtr, size_t> outData) const {
     readData(vec4<U16>(0u, 0u, _descriptor._resolution.width, _descriptor._resolution.height), imageFormat, dataType, outData);
 }
 

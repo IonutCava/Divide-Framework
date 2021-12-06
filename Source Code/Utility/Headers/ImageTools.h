@@ -37,6 +37,11 @@
 namespace Divide {
 namespace ImageTools {
 
+void OnStartup(bool upperLeftOrigin);
+void OnShutdown();
+
+[[nodiscard]] bool UseUpperLeftOrigin() noexcept;
+
 struct LayerData {
     virtual ~LayerData() = default;
     [[nodiscard]] virtual bufferPtr data() const = 0;
@@ -50,18 +55,18 @@ struct LayerData {
 template<typename T>
 struct ImageMip final : LayerData {
 
-    explicit ImageMip(T* data, size_t len, const U16 width, const U16 height, const U16 depth, const U16 bitsPerPixel)
+    explicit ImageMip(T* data, size_t len, const U16 width, const U16 height, const U16 depth, const U8 numComponents)
     {
-        const size_t totalSizeBits = to_size(width) * height * depth * bitsPerPixel;;
-        const size_t totalSizeBytes = std::max(len, totalSizeBits / 8);
+        const size_t totalSizeTest = to_size(width) * height * depth * numComponents;
+        const size_t actualSize = std::max(len, totalSizeTest);
 
-        _data.resize(totalSizeBytes, T{ 0u });
+        _data.resize(actualSize, T{ 0u });
 
         if (data != nullptr && len > 0u) {
             std::memcpy(_data.data(), data, len * sizeof(T));
         }
 
-        _size = totalSizeBytes;
+        _size = actualSize;
         _dimensions.set(width, height, depth);
     }
 
@@ -73,19 +78,19 @@ protected:
 
 struct ImageLayer {
     template<typename T>
-    [[nodiscard]] T* allocateMip(T* data, size_t len, U16 width, U16 height, U16 depth, const U16 bitsPerPixel) {
+    [[nodiscard]] T* allocateMip(T* data, size_t len, U16 width, U16 height, U16 depth, const U8 numComponents) {
         assert(_mips.size() < U8_MAX - 1);
 
-        _mips.emplace_back(eastl::make_unique<ImageMip<T>>(data, len, width, height, depth, bitsPerPixel));
+        _mips.emplace_back(eastl::make_unique<ImageMip<T>>(data, len, width, height, depth, numComponents));
         return static_cast<T*>(_mips.back()->data());
     }
 
     template<typename T>
-    [[nodiscard]] T* allocateMip(const size_t len, const U16 width, const U16 height, const U16 depth, const U16 bitsPerPixel) {
-        return allocateMip<T>(nullptr, len, width, height, depth, bitsPerPixel);
+    [[nodiscard]] T* allocateMip(const size_t len, const U16 width, const U16 height, const U16 depth, const U8 numComponents) {
+        return allocateMip<T>(nullptr, len, width, height, depth, numComponents);
     }
 
-     [[nodiscard]] bufferPtr data(const U8 mip) const {
+    [[nodiscard]] bufferPtr data(const U8 mip) const {
         if (_mips.size() <= mip) {
             return nullptr;
         }
@@ -93,7 +98,7 @@ struct ImageLayer {
         return _mips[mip]->data();
     }
 
-     [[nodiscard]] LayerData* getMip(const U8 mip) const {
+    [[nodiscard]] LayerData* getMip(const U8 mip) const {
         if (mip < _mips.size()) {
             return _mips[mip].get();
         }
@@ -101,7 +106,7 @@ struct ImageLayer {
         return nullptr;
     }
 
-     [[nodiscard]] U8 mipCount() const noexcept {
+    [[nodiscard]] U8 mipCount() const noexcept {
         return to_U8(_mips.size());
     }
 
@@ -111,13 +116,7 @@ private:
 
 struct ImageData final : NonCopyable {
     /// image origin information
-    void flip(const bool state) noexcept { _flip = state; }
-    [[nodiscard]] bool flip() const noexcept { return _flip; }
-
-    void set16Bit(const bool state) noexcept { _16Bit = state; }
-    [[nodiscard]] bool is16Bit() const noexcept { return _16Bit; }
-
-    [[nodiscard]] bool isHDR() const noexcept { return _isHDR; }
+    void requestedFormat(const GFXDataFormat format) noexcept { _requestedDataFormat = format; }
 
     /// set and get the image's actual data 
     [[nodiscard]] bufferPtr data(const U32 layer, const U8 mipLevel) const {
@@ -147,8 +146,6 @@ struct ImageData final : NonCopyable {
     [[nodiscard]] U8 mipCount() const { return _layers.empty() ? 0u : _layers.front().mipCount(); }
     /// get the total number of image layers
     [[nodiscard]] U32 layerCount() const noexcept { return to_U32(_layers.size()); }
-    /// image transparency information
-    [[nodiscard]] bool alpha() const noexcept { return _alpha; }
     /// image depth information
     [[nodiscard]] U8 bpp() const noexcept { return _bpp; }
     /// the filename from which the image is created
@@ -167,15 +164,15 @@ struct ImageData final : NonCopyable {
     FORCE_INLINE void getBlue(const I32 x, const I32 y, U8& b, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 2, b, layer, mipLevel); }
     FORCE_INLINE void getAlpha(const I32 x, const I32 y, U8& a, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 3, a, layer, mipLevel); }
 
-    [[nodiscard]] TextureType compressedTextureType() const noexcept { return _compressedTextureType; }
+    [[nodiscard]] bool hasAlphaChannel() const noexcept;
 
-    [[nodiscard]] bool addLayer(Byte* data, size_t size, U16 width, U16 height, U16 depth, U16 bitsPerPixel);
+    [[nodiscard]] bool loadFromMemory(Byte* data, size_t size, U16 width, U16 height, U16 depth, U8 numComponents);
     /// creates this image instance from the specified data
-    [[nodiscard]] bool addLayer(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& fileName);
+    [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, bool loadFromDDSCache, bool autoCompressToDXT);
 
   protected:
     friend class ImageDataInterface;
-    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& filename);
+    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
 
    private:
     //Each entry is a separate mip map.
@@ -183,40 +180,37 @@ struct ImageData final : NonCopyable {
     vector<U8> _decompressedData{};
     /// is the image stored as a regular image or in a compressed format? (eg. DXT1 / DXT3 / DXT5)
     bool _compressed = false;
-    /// should we flip the image's origin on load?
-    bool _flip = false;
     /// 16bit data
     bool _16Bit = false;
     /// HDR data
     bool _isHDR = false;
-    /// does the image have transparency?
-    bool _alpha = false;
     /// the image format
     GFXImageFormat _format = GFXImageFormat::COUNT;
-    /// the image date type
+    /// the image data type
     GFXDataFormat _dataType = GFXDataFormat::COUNT;
-    /// used by compressed images to load 2D/3D/cubemap textures etc
-    TextureType _compressedTextureType = TextureType::COUNT;
+    /// the image requested data type. COUNT == AUTO
+    GFXDataFormat _requestedDataFormat = GFXDataFormat::COUNT;
+    /// the image path
+    ResourcePath _path{};
     /// the actual image filename
     ResourcePath _name{};
     /// image's bits per pixel
     U8 _bpp = 0;
 };
 
-class ImageDataInterface {
-public:
-    //refWidth/Height = if not 0, we will attempt to resize the texture to the specified dimensions
-    static bool CreateImageData(const ResourcePath& filename, U16 refWidth, U16 refHeight, bool srgb, ImageData& imgOut);
-protected:
-    friend struct ImageData;
-    /// used to lock image loader in a sequential operating mode in a multithreaded environment
-    static Mutex _loadingMutex;
+enum class SaveImageFormat : U8 {
+    PNG,
+    BMP,
+    TGA,
+    //HDR, /// Use special function for this!
+    JPG,
+    COUNT
 };
 
-/// save a single file to TGA
-I8 SaveToTGA(const ResourcePath& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept;
-/// save a single file to tga using a sequential naming pattern
-I8 SaveSeries(const ResourcePath& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData);
+/// Save an image to file of the desired format. Only ubyte is supported as input data.
+bool SaveImage(const ResourcePath& filename, const vec2<U16>& dimensions, U8 numberOfComponents, U8* imageData, SaveImageFormat format);
+/// Save an HDR image to file of the desired format.
+bool SaveImageHDR(const ResourcePath& filename, const vec2<U16>& dimensions, U8 numberOfComponents, F32* imageData);
 
 }  // namespace ImageTools
 }  // namespace Divide

@@ -704,6 +704,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     Attorney::ShaderProgramKernel::UseShaderTextCache(config.debug.useShaderTextCache);
     Attorney::ShaderProgramKernel::UseShaderBinaryCache(config.debug.useShaderBinaryCache);
+    Attorney::TextureKernel::UseTextureDDSCache(config.debug.useTextureDDSCache);
 
     winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _sceneManager](const DisplayWindow::WindowEventArgs& ) {
         mgr->onChangeFocus(false);

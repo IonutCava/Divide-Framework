@@ -27,6 +27,7 @@
         <bumpMethod>NORMAL</bumpMethod>
         <parallaxFactor>1</parallaxFactor>
         <transparencyEnabled>true</transparencyEnabled>
+        <useAlphaDiscard>true</useAlphaDiscard>
         <isRefractive>false</isRefractive>
         <RenderStates>
             <1>

@@ -3,7 +3,7 @@
 <INFINITE_PLANE/>
 <TRANSFORM>
     <Transform>
-        <position x="325.024353" y="-50" z="96.1933365"/>
+        <position x="144.087372" y="-50" z="3.35853434"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
@@ -25,6 +25,7 @@
         <bumpMethod>NONE</bumpMethod>
         <parallaxFactor>1</parallaxFactor>
         <transparencyEnabled>true</transparencyEnabled>
+        <useAlphaDiscard>true</useAlphaDiscard>
         <isRefractive>false</isRefractive>
         <RenderStates>
             <1>

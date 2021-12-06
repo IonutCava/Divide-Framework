@@ -43,6 +43,7 @@ struct Configuration final : XML::IXMLSerializable {
         bool useGeometryCache = true;
         bool useVegetationCache = true;
         bool useShaderBinaryCache = true;
+        bool useTextureDDSCache = true;
         bool useShaderTextCache = true;
         bool enableTreeInstances = true;
         bool enableGrassInstances = true;

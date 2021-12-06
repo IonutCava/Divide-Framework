@@ -46,10 +46,8 @@ class glTexture final : public Texture,
                        const Str256& name,
                        const ResourcePath& resourceName,
                        const ResourcePath& resourceLocation,
-                       bool isFlipped,
                        bool asyncLoad,
                        const TextureDescriptor& texDescriptor);
-    ~glTexture();
 
     [[nodiscard]] SamplerAddress getGPUAddress(size_t samplerHash) override;
 
@@ -68,7 +66,6 @@ class glTexture final : public Texture,
     std::pair<std::shared_ptr<Byte[]>, size_t> readData(U16 mipLevel, GFXDataFormat desiredFormat) const override;
 
    protected:
-    void threadedLoad() override;
     void reserveStorage(bool fromFile);
 
     void loadDataCompressed(const ImageTools::ImageData& imageData);
@@ -86,7 +83,7 @@ class glTexture final : public Texture,
     std::pair<SamplerAddress, GLuint> _cachedAddressForSampler = {0u, 0u};
     SamplerAddress _baseTexAddress = 0u;
     TextureData _loadingData;
-    glLockManager* _lockManager = nullptr;
+    eastl::unique_ptr<glLockManager> _lockManager = nullptr;
     Mutex _gpuAddressesLock;
 };
 

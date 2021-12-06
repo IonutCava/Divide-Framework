@@ -274,7 +274,6 @@ namespace Divide {
         const TextureDescriptor texturePreviewDescriptor(TextureType::TEXTURE_2D);
 
         ResourceDescriptor textureResource(textureName.str());
-        textureResource.flag(true);
         textureResource.assetName(textureName);
         textureResource.assetLocation(Paths::g_assetsLocation + texturePath);
         textureResource.propertyDescriptor(texturePreviewDescriptor);

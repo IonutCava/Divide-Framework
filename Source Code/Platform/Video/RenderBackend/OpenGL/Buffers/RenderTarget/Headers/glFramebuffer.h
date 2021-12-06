@@ -77,7 +77,7 @@ class glFramebuffer final : public RenderTarget,
     void readData(const vec4<U16>& rect,
                   GFXImageFormat imageFormat,
                   GFXDataFormat dataType,
-                  bufferPtr outData) const override;
+                  std::pair<bufferPtr, size_t> outData) const override;
 
     void blitFrom(const RTBlitParams& params) override;
 

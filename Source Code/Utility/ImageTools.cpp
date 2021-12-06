@@ -6,6 +6,7 @@
 #include "Utility/Headers/Localization.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/RenderAPIEnums.h"
+#include "Platform/Video/Textures/Headers/Texture.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #pragma warning(push)
@@ -15,123 +16,38 @@
 #include "stb_image.h"
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 #define IL_STATIC_LIB
 #undef _UNICODE
 #include <IL/il.h>
 #include <IL/ilu.h>
+//#include <IL/ilut.h>
 #pragma warning(pop)
 
 namespace Divide::ImageTools {
 
-Mutex ImageDataInterface::_loadingMutex;
+namespace {
+    Mutex s_imageLoadingMutex;
+    bool s_useUpperLeftOrigin = false;
 
-bool ImageData::addLayer(Byte* data, const size_t size, const U16 width, const U16 height, const U16 depth, const U16 bitsPerPixel) {
-    ImageLayer& layer = _layers.emplace_back();
-    return layer.allocateMip(data, size, width, height, depth, bitsPerPixel);
-}
-
-bool ImageData::addLayer(const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& fileName) {
-    _name = fileName;
-
-    if (hasExtension(_name, "DDS")) {
-        return loadDDS_IL(srgb, refWidth, refHeight, fileName);
-    }
-
-    ImageLayer& layer = _layers.emplace_back();
-    stbi_set_flip_vertically_on_load_thread(_flip ? TRUE : FALSE);
-
-    I32 width = 0, height = 0, comp = 0;
-    bufferPtr data = nullptr;
-    _isHDR = stbi_is_hdr(_name.c_str()) == TRUE;
-    if (_isHDR) {
-        set16Bit(false);
-        data = stbi_loadf(_name.c_str(), &width, &height, &comp, 0);
-    } else {
-        data = is16Bit() ? static_cast<bufferPtr>(stbi_load_16(_name.c_str(), &width, &height, &comp, 0))
-                         : static_cast<bufferPtr>(stbi_load(_name.c_str(), &width, &height, &comp, 0));
-    }
-
-    if (data == nullptr) {
-        Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), _name.c_str());
-        return false;
-    }
-
-    switch (comp) {
-        case 1 : {
-            _format = GFXImageFormat::RED;
-            _bpp = 8;
-        } break;
-        case 2: {
-            _format = GFXImageFormat::RG;
-            _bpp = 16;
-        } break;
-        case 3: {
-            _format = GFXImageFormat::RGB;
-            _bpp = 24;
-        } break;
-        case 4: {
-            _format = GFXImageFormat::RGBA;
-            _bpp = 32;
-        } break;
-        default:
-            DIVIDE_UNEXPECTED_CALL();
-            break;
-    }
-
-    _dataType = is16Bit() ? GFXDataFormat::UNSIGNED_SHORT : isHDR() ? GFXDataFormat::FLOAT_32 : GFXDataFormat::UNSIGNED_BYTE;
-
-    if (_isHDR) {
-        _bpp *= 4;
-    } else if (is16Bit()) {
-        _bpp *= 2;
-    }
-
-    vector<U32> resizedData(to_size(refWidth) * refHeight, 0u);
-    if (refWidth != 0 && refHeight != 0 && (refWidth != width || refHeight != height)) {
-        I32 ret = -1;
-        if (is16Bit()) {
-            ret = stbir_resize_uint16_generic(static_cast<U16*>(data), width, height, 0,
-                                              reinterpret_cast<U16*>(resizedData.data()), refWidth, refHeight, 0,
-                                              comp, -1, 0,
-                                              STBIR_EDGE_CLAMP, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_LINEAR,
-                                              nullptr);
-        } else if (isHDR()) {
-            ret = stbir_resize_float(static_cast<F32*>(data), width, height, 0, reinterpret_cast<F32*>(resizedData.data()), refWidth, refHeight, 0, comp);
-        } else {
-            ret = srgb ? stbir_resize_uint8_srgb(static_cast<U8*>(data), width, height, 0, reinterpret_cast<U8*>(resizedData.data()), refWidth, refHeight, 0, comp, -1, 0) 
-                       : stbir_resize_uint8(static_cast<U8*>(data), width, height, 0, reinterpret_cast<U8*>(resizedData.data()), refWidth, refHeight, 0, comp);
+    //ref: https://github.com/nvpro-pipeline/pipeline/blob/master/dp/sg/io/IL/Loader/ILTexLoader.cpp
+    static I32 determineFace(const I32 i, const bool isDDS, const bool isCube) {
+        I32 image = i;
+        if (isDDS) {
+            if (isCube) {
+                if (4 == image) {
+                    image = 5;
+                } else if (5 == image) {
+                    image = 4;
+                }
+            }
         }
 
-        if (ret == 1) {
-            width = refWidth;
-            height = refHeight;
-            stbi_image_free(static_cast<U16*>(data));
-            data = static_cast<bufferPtr>(resizedData.data());
-        }
+        return(image);
     }
 
-    const size_t baseSize = to_size(width) * height * (_bpp / 8);
-
-    // most formats do not have an alpha channel
-    _alpha = comp % 2 == 0;
-    _compressed = false;
-    bool ret = false;
-    if (data != nullptr) {
-        if (_isHDR) {
-            ret = layer.allocateMip(static_cast<F32*>(data), baseSize / 4, to_U16(width), to_U16(height), 1u, _bpp);
-        } else if (is16Bit()) {
-            ret = layer.allocateMip(static_cast<U16*>(data), baseSize / 2, to_U16(width), to_U16(height), 1u, _bpp);
-        } else {
-            ret = layer.allocateMip(static_cast<U8*>(data), baseSize / 1, to_U16(width), to_U16(height), 1u, _bpp);
-        }
-        stbi_image_free(data);
-    }
-
-    return ret;
-}
-
-bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, [[maybe_unused]] const U16 refWidth, [[maybe_unused]] const U16 refHeight, const ResourcePath& filename) {
     const auto checkError = []() noexcept {
         ILenum error = ilGetError();
         while (error != IL_NO_ERROR) {
@@ -139,159 +55,461 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, [[maybe_unused]] co
             error = ilGetError();
         }
     };
+};
 
-    std::lock_guard<Mutex> lock(ImageDataInterface::_loadingMutex);
+void OnStartup(const bool upperLeftOrigin) {
+    s_useUpperLeftOrigin = upperLeftOrigin;
 
-    U32 ilTexture = 0;
-    ilInit(); 
-    checkError();
-
-    ilGenImages(1, &ilTexture);
-    checkError();
-
-    ilBindImage(ilTexture);
-    ilEnable(IL_TYPE_SET);
-    //ilEnable(IL_ORIGIN_SET);
-    //ilOriginFunc(_flip ? IL_ORIGIN_LOWER_LEFT : IL_ORIGIN_UPPER_LEFT);
+    ilInit();
+    iluInit();
+    //ilutInit();
+    ilEnable(IL_FILE_OVERWRITE);
     ilSetInteger(IL_KEEP_DXTC_DATA, IL_TRUE);
+    //ilutRenderer(ILUT_WIN32);
+    iluImageParameter(ILU_FILTER, ILU_SCALE_MITCHELL);
+    ilEnable(IL_TYPE_SET);
     ilTypeFunc(IL_UNSIGNED_BYTE);
-    if (ilLoadImage(filename.c_str()) == IL_FALSE) {
+    ilEnable(IL_FORMAT_SET);
+    ilFormatFunc(IL_RGB);
+}
+
+void OnShutdown() {
+    // Restore IL state
+    ilDisable(IL_FORMAT_SET);
+    ilDisable(IL_TYPE_SET);
+    ilShutDown();
+}
+
+bool UseUpperLeftOrigin() noexcept {
+    return s_useUpperLeftOrigin;
+}
+
+bool ImageData::loadFromMemory(Byte* data, const size_t size, const U16 width, const U16 height, const U16 depth, const U8 numComponents) {
+    ImageLayer& layer = _layers.emplace_back();
+    return layer.allocateMip(data, size, width, height, depth, numComponents);
+}
+
+bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name, bool loadFromDDSCache, bool autoCompressToDXT) {
+    _path = path;
+    _name = name;
+
+    // We can handle DDS files directly
+    if (hasExtension(_name, "DDS")) {
+        return loadDDS_IL(srgb, refWidth, refHeight, _path, _name);
+    }
+
+    const ResourcePath fullPath = _path + _name;
+    FILE* f = stbi__fopen(fullPath.c_str(), "rb");
+    SCOPE_EXIT{
+        if (f) {
+            fclose(f);
+        }
+    };
+
+    if (!f) {
+        return false;
+    }
+
+    _isHDR = (stbi_is_hdr_from_file(f) == TRUE);
+    _16Bit = _isHDR ? false : (stbi_is_16_bit_from_file(f) == TRUE);
+
+    if (Texture::UseTextureDDSCache() && !_isHDR && !_16Bit) {
+        const ResourcePath cachePath = Texture::GetCachePath(_path);
+        const ResourcePath cacheName = _name + ".DDS";
+
+        // Try and save regular images to DDS for better compression next time
+        if (autoCompressToDXT && !fileExists(cachePath + cacheName)) {
+            ScopedLock<Mutex> lock(s_imageLoadingMutex);
+            ILuint imageID = 0u;
+            ilGenImages(1, &imageID);
+            ilBindImage(imageID);
+            checkError();
+            if (ilLoadImage(fullPath.c_str()) == IL_TRUE) {
+                const ILint channelCount = ilGetInteger(IL_IMAGE_CHANNELS);
+                checkError();
+                ilSetInteger(IL_DXTC_FORMAT, channelCount == 4 ? IL_DXT5 : IL_DXT1);
+                iluBuildMipmaps();
+                if (createDirectory(cachePath)) {
+                    ilSave(IL_DDS, (cachePath + cacheName).c_str());
+                    checkError();
+                }
+            }
+            ilDeleteImages(1, &imageID);
+            checkError();
+        }
+
+        if (loadFromDDSCache && fileExists(cachePath + cacheName)) {
+            return loadDDS_IL(srgb, refWidth, refHeight, cachePath, cacheName);
+        }
+    }
+
+    _compressed = false;
+
+    ImageLayer& layer = _layers.emplace_back();
+    // If TRUE: flip the image vertically, so the first pixel in the output array is the bottom left
+    // By default, STB images are loaded with the origin in the top(upper) left. So don't flip if s_useUpperLeftOrigin is TRUE as that is our loading default
+    stbi_set_flip_vertically_on_load_thread(s_useUpperLeftOrigin ? FALSE : TRUE);
+
+    I32 width = 0, height = 0, comp = 0;
+    U8* dataLDR = nullptr;
+    U16* data16Bit = nullptr;
+    F32* dataHDR = nullptr;
+
+    if (_isHDR) {
+        dataHDR = stbi_loadf_from_file(f, &width, &height, &comp, 0);
+        _dataType = GFXDataFormat::FLOAT_32;
+    } else if (_16Bit) {
+        data16Bit = stbi_load_from_file_16(f, &width, &height, &comp, 0);
+        _dataType = GFXDataFormat::UNSIGNED_SHORT;
+    } else {
+        dataLDR = stbi_load_from_file(f, &width, &height, &comp, 0);
+        _dataType = GFXDataFormat::UNSIGNED_BYTE;
+    }
+
+    if (dataHDR == nullptr && data16Bit == nullptr && dataLDR == nullptr) {
+        Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), fullPath.c_str());
+        return false;
+    }
+    
+    if (_requestedDataFormat != GFXDataFormat::COUNT && _requestedDataFormat != _dataType) {
+        switch (_requestedDataFormat) {
+            case GFXDataFormat::UNSIGNED_BYTE: {
+                if (_isHDR) {
+                    _isHDR = false;
+                    dataLDR = stbi__hdr_to_ldr(dataHDR, width, height, comp);
+                    dataHDR = nullptr;
+                } else if (_16Bit) {
+                    _16Bit = false;
+                    dataLDR = stbi__convert_16_to_8(data16Bit, width, height, comp);
+                    data16Bit = nullptr;
+                }
+            } break;
+            case GFXDataFormat::UNSIGNED_SHORT: {
+                if (_isHDR || !_16Bit) {
+                    if (_isHDR) {
+                        _isHDR = false;
+                        dataLDR = stbi__hdr_to_ldr(dataHDR, width, height, comp);
+                        dataHDR = nullptr;
+                    }
+                    data16Bit = stbi__convert_8_to_16(dataLDR, width, height, comp);
+                    dataLDR = nullptr;
+                }
+                _16Bit = true;
+            } break;
+            case GFXDataFormat::FLOAT_32: {
+                if (!_isHDR) {
+                    if (_16Bit) {
+                        _16Bit = false;
+                        dataLDR = stbi__convert_16_to_8(data16Bit, width, height, comp);
+                        data16Bit = nullptr;
+                    }
+                    dataHDR = stbi__ldr_to_hdr(dataLDR, width, height, comp);
+                    _isHDR = true;
+                }
+            } break;
+        };
+    }
+
+    switch (comp) {
+        case 1 : _format = GFXImageFormat::RED;  break;
+        case 2 : _format = GFXImageFormat::RG;   break;
+        case 3 : _format = GFXImageFormat::RGB;  break;
+        case 4 : _format = GFXImageFormat::RGBA; break;
+        default:
+            DIVIDE_UNEXPECTED_CALL();
+            break;
+    }
+
+    _bpp = to_U8((_isHDR ? 32u : _16Bit ? 16u : 8u) * comp);
+
+    if (refWidth != 0 && refHeight != 0 && (refWidth != width || refHeight != height)) {
+        if (_16Bit) {
+            U16* resizedData16 = (U16*)STBI_MALLOC(to_size(refWidth)* refHeight * 2);
+            const I32 ret = stbir_resize_uint16_generic(data16Bit, width, height, 0,
+                                                        resizedData16, refWidth, refHeight, 0,
+                                                        comp, -1, 0,
+                                                        STBIR_EDGE_CLAMP, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_LINEAR,
+                                                        nullptr);
+            if (ret == 1) {
+                width = refWidth;
+                height = refHeight;
+                stbi_image_free(data16Bit);
+                data16Bit = resizedData16;
+            }
+        } else if (_isHDR) {
+            F32* resizedDataHDR = (F32*)STBI_MALLOC(to_size(refWidth) * refHeight * 4);
+            const I32 ret = stbir_resize_float(dataHDR, width, height, 0, resizedDataHDR, refWidth, refHeight, 0, comp);
+            if (ret == 1) {
+                width = refWidth;
+                height = refHeight;
+                stbi_image_free(dataHDR);
+                dataHDR = resizedDataHDR;
+            }
+        } else {
+            U8* resizedDataLDR = (U8*)STBI_MALLOC(to_size(refWidth) * refHeight * 1);
+            const I32 ret = srgb ? stbir_resize_uint8_srgb(dataLDR, width, height, 0, resizedDataLDR, refWidth, refHeight, 0, comp, -1, 0)
+                                 : stbir_resize_uint8(dataLDR, width, height, 0, resizedDataLDR, refWidth, refHeight, 0, comp);
+            if (ret == 1) {
+                width = refWidth;
+                height = refHeight;
+                stbi_image_free(dataLDR);
+                dataLDR = resizedDataLDR;
+            }
+        }
+    }
+
+    bool ret = false;
+    const size_t dataSize = to_size(width) * height * comp;
+    if (_isHDR && dataHDR != nullptr) {
+        ret = layer.allocateMip(dataHDR, dataSize, to_U16(width), to_U16(height), 1u, to_U8(comp));
+        stbi_image_free(dataHDR);
+    } else if (_16Bit && data16Bit != nullptr) {
+        ret = layer.allocateMip(data16Bit, dataSize, to_U16(width), to_U16(height), 1u, to_U8(comp));
+        stbi_image_free(data16Bit);
+    } else if (dataLDR != nullptr) {
+        ret = layer.allocateMip(dataLDR, dataSize, to_U16(width), to_U16(height), 1u, to_U8(comp));
+        stbi_image_free(dataLDR);
+    }
+
+    
+    return ret;
+}
+
+bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name) {
+    const ResourcePath fullPath = path + name;
+
+    ScopedLock<Mutex> lock(s_imageLoadingMutex);
+
+    ILuint imageID = 0u;
+    ilGenImages(1, &imageID);
+    ilBindImage(imageID);
+    checkError();
+    ilEnable(IL_ORIGIN_SET);
+    if (s_useUpperLeftOrigin) {
+        ilOriginFunc(IL_ORIGIN_UPPER_LEFT);
+    } else {
+        ilOriginFunc(IL_ORIGIN_LOWER_LEFT);
+    }
+    ilSetInteger(IL_ORIGIN_MODE, s_useUpperLeftOrigin ? IL_ORIGIN_UPPER_LEFT : IL_ORIGIN_LOWER_LEFT);
+    checkError();
+
+    SCOPE_EXIT{
+        ilDeleteImage(imageID);
+        ilDisable(IL_ORIGIN_SET);
+        checkError();
+    };
+
+    if (ilLoadImage(fullPath.c_str()) == IL_FALSE) {
         checkError();
         Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), _name.c_str());
-        ilDeleteImage(ilTexture);
         return false;
+    }
+    
+    const ILint dxtFormat = ilGetInteger(IL_DXTC_DATA_FORMAT);
+    _compressed = dxtFormat == IL_DXT1 ||
+                  dxtFormat == IL_DXT1A||
+                  dxtFormat == IL_DXT2 ||
+                  dxtFormat == IL_DXT3 ||
+                  dxtFormat == IL_DXT4 ||
+                  dxtFormat == IL_DXT5;
+    
+    if (!s_useUpperLeftOrigin) {
+        if (_compressed) {
+            ilFlipSurfaceDxtcData();
+        } else {
+            iluFlipImage();
+        }
+        checkError();
     }
 
     ILinfo imageInfo;
     iluGetImageInfo(&imageInfo);
     checkError();
 
-    if (imageInfo.Origin == IL_ORIGIN_UPPER_LEFT) {
-        iluFlipImage();
+    // Avoid, double, longs, unsigned ints, etc
+    if (imageInfo.Type != IL_BYTE && imageInfo.Type != IL_UNSIGNED_BYTE &&
+        imageInfo.Type != IL_FLOAT &&
+        imageInfo.Type != IL_UNSIGNED_SHORT && imageInfo.Type != IL_SHORT) {
+        ilConvertImage(imageInfo.Format, IL_FLOAT);
+        imageInfo.Type = IL_FLOAT;
+        checkError();
     }
 
-    const I32 numLayers = ilGetInteger(IL_NUM_LAYERS) + 1;
-    assert(ilGetInteger(IL_IMAGE_TYPE) == IL_UNSIGNED_BYTE);
-    const I32 dxtc = ilGetInteger(IL_DXTC_DATA_FORMAT);
-    _bpp = to_U8(ilGetInteger(IL_IMAGE_BPP));
-    if (ilGetInteger(IL_IMAGE_CUBEFLAGS) > 0) {
-        _compressedTextureType = TextureType::TEXTURE_CUBE_MAP;
-    } else {
-        _compressedTextureType = ilGetInteger(IL_IMAGE_DEPTH) > 1
-                                     ? TextureType::TEXTURE_3D
-                                     : TextureType::TEXTURE_2D;
+    // We don't support paletted images
+    if (imageInfo.Format == IL_COLOUR_INDEX) {
+        ilConvertImage(IL_RGBA, IL_UNSIGNED_BYTE);
+        imageInfo.Format = IL_RGBA;
+        imageInfo.Type = IL_UNSIGNED_BYTE;
+        checkError();
     }
-    _compressed = dxtc == IL_DXT1 ||
-        dxtc == IL_DXT2 ||
-        dxtc == IL_DXT3 ||
-        dxtc == IL_DXT4 ||
-        dxtc == IL_DXT5;
 
-    const I32 channelCount = ilGetInteger(IL_IMAGE_CHANNELS);
+    size_t storageSizeFactor = 1u;
+    switch (imageInfo.Type) {
+        case IL_BYTE:
+            _dataType = GFXDataFormat::SIGNED_BYTE;
+            [[fallthrough]];
+        case IL_UNSIGNED_BYTE:
+            _isHDR = _16Bit = false;
+            _dataType = GFXDataFormat::UNSIGNED_BYTE;
+            break;
+        case IL_SHORT:
+            _dataType = GFXDataFormat::SIGNED_SHORT;
+            [[fallthrough]];
+        case IL_UNSIGNED_SHORT:
+            _isHDR = false;
+            _16Bit = true;
+            _dataType = GFXDataFormat::UNSIGNED_SHORT;
+            storageSizeFactor = 2;
+            break;
+        case IL_FLOAT:
+            _isHDR = true;
+            _16Bit = false;
+            _dataType = GFXDataFormat::FLOAT_32;
+            storageSizeFactor = 4;
+            break;
+        default: {
+            return false;
+        } break;
+    };
+
+    // Resize if needed
+    if (refWidth != 0 && refHeight != 0 && (imageInfo.Width != refWidth || imageInfo.Height != refHeight)) {
+        if (iluScale(refWidth, refHeight, imageInfo.Depth)) {
+            imageInfo.Width = refWidth;
+            imageInfo.Height = refHeight;
+        }
+        checkError();
+    }
+
+    const ILint channelCount = ilGetInteger(IL_IMAGE_CHANNELS);
     checkError();
 
-    _alpha = false;
     if (_compressed) {
-        switch (dxtc) {
+        switch (dxtFormat) {
             case IL_DXT1: {
                 _format = channelCount == 3 ? GFXImageFormat::COMPRESSED_RGB_DXT1 : GFXImageFormat::COMPRESSED_RGBA_DXT1;
-                _alpha = channelCount == 4;
             }  break;
             case IL_DXT3: {
                 _format = GFXImageFormat::COMPRESSED_RGBA_DXT3;
-                _alpha = true;
             } break;
             case IL_DXT5: {
                 _format = GFXImageFormat::COMPRESSED_RGBA_DXT5;
-                _alpha = true;
             } break;
             default: {
                 DIVIDE_UNEXPECTED_CALL();
-                ilDeleteImage(ilTexture);
-                checkError();
                 return false;
             }
         }
     } else {
-        const I32 format = ilGetInteger(IL_IMAGE_FORMAT);
-        switch (format) {
-            case IL_BGR:
-                _format = GFXImageFormat::BGR;
+        switch (imageInfo.Format) {
+            default:
+            case IL_COLOUR_INDEX: 
+                DIVIDE_UNEXPECTED_CALL();
+                return false;
+            case IL_ALPHA:
+            case IL_LUMINANCE:
+                _format = GFXImageFormat::RED;
+                break;
+            case IL_LUMINANCE_ALPHA:
+                _format = GFXImageFormat::RG;
                 break;
             case IL_RGB:
                 _format = GFXImageFormat::RGB;
                 break;
+            case IL_BGR:
+                _format = GFXImageFormat::BGR;
+                break;
+            case IL_RGBA:
+                _format = GFXImageFormat::RGBA;
+                break;
             case IL_BGRA:
                 _format = GFXImageFormat::BGRA;
-                _alpha = true;
                 break;
-            case IL_RGBA: {
-                _format = GFXImageFormat::RGBA;
-                _alpha = true;
-            } break;
-            case IL_LUMINANCE: {
-                assert(false && "LUMINANCE image format is no longer supported!");
-            } break;
-            default: {
-                DIVIDE_UNEXPECTED_CALL();
-                ilDeleteImage(ilTexture);
-                checkError();
-                return false;
-            }
-        }
+        };
     }
 
-    const I32 numMips = ilGetInteger(IL_NUM_MIPMAPS) + 1;
-    if (_compressed && _alpha) {
-        ilBindImage(ilTexture);
+    if (_compressed) {
         ilActiveLayer(0);
         ilActiveImage(0);
         ilActiveMipmap(0);
 
-        const ILint width = ilGetInteger(IL_IMAGE_WIDTH);
-        const ILint height = ilGetInteger(IL_IMAGE_HEIGHT);
-        const ILint depth = ilGetInteger(IL_IMAGE_DEPTH);
-        _decompressedData.resize(to_size(width) * height * depth * channelCount);
+        _decompressedData.resize(to_size(imageInfo.Width) * imageInfo.Height * imageInfo.Depth * 4);
 
-        ilCopyPixels(0, 0, 0, width, height, depth, IL_RGBA, IL_UNSIGNED_BYTE, _decompressedData.data());
+        ilCopyPixels(0, 0, 0, imageInfo.Width, imageInfo.Height, imageInfo.Depth, IL_RGBA, IL_UNSIGNED_BYTE, _decompressedData.data());
         checkError();
     }
 
-    const I32 numImagePasses = _compressedTextureType == TextureType::TEXTURE_CUBE_MAP ? 6 : 1;
-    _dataType = GFXDataFormat::UNSIGNED_BYTE;
+    const ILint numImages = ilGetInteger(IL_NUM_IMAGES) + 1;
+    // ^^^^^^^^^^^^^ Querying for IL_NUM_IMAGES returns the number of images
+    //               following the current one. Add 1 for the right image count!
+    const ILint numMipMaps = ilGetInteger(IL_NUM_MIPMAPS);
+    const bool isCube = ilGetInteger(IL_IMAGE_CUBEFLAGS) != 0 || numImages % 6 == 0;
+    
+    ILint numFaces = ilGetInteger(IL_NUM_FACES) + 1;
 
-    _layers.reserve(_layers.size() + to_size(numLayers) * numImagePasses);
-    for (I32 l = 0; l < numLayers; ++l) {
-        for (I32 p = 0; p < numImagePasses; ++p) {
+    _bpp = imageInfo.Bpp * 8;
+
+    _layers.reserve(_layers.size() + to_size(numFaces) * numImages);
+    for (ILint image = 0; image < numImages; ++image) {
+        // cube faces within DevIL philosophy are organized like this:
+        //
+        //   image -> 1st face -> face index 0
+        //   face1 -> 2nd face -> face index 1
+        //   ...
+        //   face5 -> 6th face -> face index 5
+        numFaces = ilGetInteger(IL_NUM_FACES) + 1;
+
+        for (I32 f = 0; f < numFaces; ++f) {
+            // need to juggle with the faces to get them aligned with
+            // how OpenGL expects cube faces ...
+            const I32 face = determineFace(f, true, isCube);
             ImageLayer& layer = _layers.emplace_back();
 
-            for (U8 m = 0; m < numMips; ++m) {
-                ilBindImage(ilTexture);
-                ilActiveLayer(l);
-                ilActiveImage(p);
+            for (ILuint m = 0u; m <= imageInfo.NumMips; ++m) {
+                // DevIL frequently loses track of the current state
+                ilBindImage(imageID);
+                ilActiveImage(image);
+                ilActiveFace(face);
                 ilActiveMipmap(m);
-                const ILint width = ilGetInteger(IL_IMAGE_WIDTH);
+                checkError();
+
+                const ILint width  = ilGetInteger(IL_IMAGE_WIDTH);
                 const ILint height = ilGetInteger(IL_IMAGE_HEIGHT);
-                const ILint depth = ilGetInteger(IL_IMAGE_DEPTH);
+                const ILint depth  = ilGetInteger(IL_IMAGE_DEPTH);
                 checkError();
 
-                const I32 size = _compressed ? ilGetDXTCData(nullptr, 0, dxtc) : width * height * depth * _bpp;
-                checkError();
-
-                U8* data = layer.allocateMip<U8>(to_size(size), to_U16(width), to_U16(height), to_U16(depth), _bpp);
+                ILuint size = width * height * depth * imageInfo.Bpp;
                 if (_compressed) {
-                    ilGetDXTCData(data, size, dxtc);
+                    size = ilGetDXTCData(nullptr, 0, dxtFormat);
+                    checkError();
+                }
+
+                Byte* data = layer.allocateMip<Byte>(to_size(size),
+                                                     to_U16(width),
+                                                     to_U16(height),
+                                                     to_U16(depth),
+                                                     _compressed ? 0  // 0 here means that our calculated size will be 0, thus our specified size will always be used
+                                                                 : to_U8(channelCount * storageSizeFactor)); //For short and float type data we need to increase the available storage a bit (channel count assumes a Byte per component here)
+                if (_compressed) {
+                    ilGetDXTCData(data, size, dxtFormat);
                     checkError();
                 } else {
                     memcpy(data, ilGetData(), size);
+                    checkError();
                 }
             }
         }
     }
 
-    ilDeleteImage(ilTexture);
-    checkError();
     return true;
+}
+
+bool ImageData::hasAlphaChannel() const noexcept {
+    if (_compressed) {
+        return _format != GFXImageFormat::COMPRESSED_RGB_DXT1;
+    }
+
+    return _format == GFXImageFormat::BGRA || _format == GFXImageFormat::RGBA;
 }
 
 UColour4 ImageData::getColour(const I32 x, const I32 y, [[maybe_unused]] U32 layer, const U8 mipLevel) const {
@@ -313,25 +531,29 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
     assert(!_compressed || mipLevel == 0);
     assert(_layers.size() > layer);
 
-    if (!_alpha && comp == 3) {
-        c = 255;
+    if (!hasAlphaChannel() && comp == 3) {
+        c = U8_MAX;
         return;
     }
 
     assert(!_compressed || mipLevel == 0);
     assert(_layers.size() > layer);
 
-    const I32 idx = ((y * _layers[layer].getMip(mipLevel)->_dimensions.width + x) * (_bpp / 8)) + comp;
+    LayerData* mip = _layers[layer].getMip(mipLevel);
+
+    // Decompressed data is always UByte-RGBA
+    const U32 pixelStride = _compressed ? 4 : _bpp / 8;
+    const I32 idx = ((y * mip->_dimensions.width + x) * pixelStride) + comp;
     if (_compressed) {
+        // Decompressed data is always UByte-RGBA
         c = _decompressedData[idx];
     } else {
-        const bufferPtr data = _layers[layer].getMip(mipLevel)->data();
-        if (isHDR()) {
-            c = F32ToU8Colour(static_cast<const F32*>(data)[idx]);
-        } else if (is16Bit()) {
-            c = U16ToU8Colour(static_cast<const U16*>(data)[idx]);
+        if (_isHDR) {
+            c = F32ToU8Colour(static_cast<const F32*>(mip->data())[idx]);
+        } else if (_16Bit) {
+            c = U16ToU8Colour(static_cast<const U16*>(mip->data())[idx]);
         } else {
-            c = U8ToU8Colour(static_cast<const U8*>(data)[idx]);
+            c = U8ToU8Colour(static_cast<const U8*>(mip->data())[idx]);
         }
     }
 }
@@ -340,107 +562,54 @@ void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, 
     assert(!_compressed || mipLevel == 0);
     assert(_layers.size() > layer);
 
-    const I32 idx = (y * _layers[layer].getMip(mipLevel)->_dimensions.width + x) * (_bpp / 8);
+    LayerData* mip = _layers[layer].getMip(mipLevel);
+    // Decompressed data is always UByte-RGBA
+    const U32 pixelStride = _compressed ? 4 : _bpp / 8;
+    const I32 idx = ((y * mip->_dimensions.width + x) * pixelStride);
 
     if (_compressed) {
+        // Decompressed data is always UByte-RGBA
         const U8* src = _decompressedData.data();
         r = src[idx + 0];
         g = src[idx + 1];
         b = src[idx + 2]; 
-        a = _alpha ? src[idx + 3] : 255;
+        a = hasAlphaChannel() ? src[idx + 3] : 255;
     } else {
-        const bufferPtr data = _layers[layer].getMip(mipLevel)->data();
-        if (isHDR()) {
-            const F32* src = static_cast<F32*>(data);
+        if (_isHDR) {
+            const F32* src = static_cast<F32*>(mip->data());
             r = F32ToU8Colour(src[idx + 0]);
             g = F32ToU8Colour(src[idx + 1]);
             b = F32ToU8Colour(src[idx + 2]);
-            a = _alpha ? F32ToU8Colour(src[idx + 3]) : 255;
-        } else if (is16Bit()) {
-            const U16* src = static_cast<U16*>(data);
+            a = hasAlphaChannel() ? F32ToU8Colour(src[idx + 3]) : 255;
+        } else if (_16Bit) {
+            const U16* src = static_cast<U16*>(mip->data());
             r = U16ToU8Colour(src[idx + 0]); 
             g = U16ToU8Colour(src[idx + 1]);
             b = U16ToU8Colour(src[idx + 2]);
-            a = _alpha ? U16ToU8Colour(src[idx + 3]) : 255;
+            a = hasAlphaChannel() ? U16ToU8Colour(src[idx + 3]) : 255;
         } else {
-            const U8* src = static_cast<U8*>(data);
+            const U8* src = static_cast<U8*>(mip->data());
             r = U8ToU8Colour(src[idx + 0]);
             g = U8ToU8Colour(src[idx + 1]);
             b = U8ToU8Colour(src[idx + 2]);
-            a = _alpha ? U8ToU8Colour(src[idx + 3]) : 255;
+            a = hasAlphaChannel() ? U8ToU8Colour(src[idx + 3]) : 255;
         }
     }
 }
 
-bool ImageDataInterface::CreateImageData(const ResourcePath& filename, const U16 refWidth, const U16 refHeight, const bool srgb, ImageData& imgOut) {
-    if (fileExists(filename)) {
-        return imgOut.addLayer(srgb, refWidth, refHeight, filename);
+bool SaveImage(const ResourcePath& filename, const vec2<U16>& dimensions, const U8 numberOfComponents, U8* imageData, const SaveImageFormat format) {
+    switch (format) {
+        case SaveImageFormat::PNG: return stbi_write_png(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData, dimensions.width * numberOfComponents) == TRUE;
+        case SaveImageFormat::BMP: return stbi_write_bmp(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData) == TRUE;
+        case SaveImageFormat::TGA: return stbi_write_tga(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData) == TRUE;
+        case SaveImageFormat::JPG: return stbi_write_jpg(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData, 85) == TRUE;
     }
 
     return false;
 }
 
-I8 SaveToTGA(const ResourcePath& filename, const vec2<U16>& dimensions, U8 pixelDepth, U8* imageData) noexcept {
-    constexpr U8 cGarbage = 0;
-    constexpr I16 iGarbage = 0;
-    const U16 width = dimensions.width;
-    const U16 height = dimensions.height;
-
-    // open file and check for errors
-    FILE* file = fopen(filename.c_str(), "wb");
-    if (file == nullptr) {
-        return -1;
-    }
-
-    // compute image type: 2 for RGB(A), 3 for greyscale
-    const U8 mode = pixelDepth / 8;
-    const U8 type = pixelDepth == 24 || pixelDepth == 32 ? 2 : 3;
-
-    // write the header
-    fwrite(&cGarbage, sizeof(U8), 1, file);
-    fwrite(&cGarbage, sizeof(U8), 1, file);
-    fwrite(&type, sizeof(U8), 1, file);
-
-    fwrite(&iGarbage, sizeof(I16), 1, file);
-    fwrite(&iGarbage, sizeof(I16), 1, file);
-    fwrite(&cGarbage, sizeof(U8), 1, file);
-    fwrite(&iGarbage, sizeof(I16), 1, file);
-    fwrite(&iGarbage, sizeof(I16), 1, file);
-
-    fwrite(&width, sizeof(U16), 1, file);
-    fwrite(&height, sizeof(U16), 1, file);
-    fwrite(&pixelDepth, sizeof(U8), 1, file);
-    fwrite(&cGarbage, sizeof(U8), 1, file);
-
-    // convert the image data from RGB(a) to BGR(A)
-    if (mode >= 3)
-        for (I32 i = 0; i < width * height * mode; i += mode) {
-            const U8 aux = imageData[i];
-            imageData[i] = imageData[i + 2];
-            imageData[i + 2] = aux;
-        }
-
-    // save the image data
-    fwrite(imageData, sizeof(U8), to_size(width) * height * mode, file);
-    fclose(file);
-    return 0;
-}
-
-/// saves a series of files with names "filenameX.tga"
-I8 SaveSeries(const ResourcePath& filename, const vec2<U16>& dimensions, const U8 pixelDepth, U8* imageData) {
-    static I32 savedImages = 0;
-    // compute the new filename by adding the series number and the extension
-    const ResourcePath newFilename(Util::StringFormat("Screenshots/%s_%d.tga", filename.c_str(), savedImages));
-
-    // save the image
-    const I8 status = SaveToTGA(newFilename, dimensions, pixelDepth, imageData);
-
-    // increase the counter
-    if (status == 0) {
-        savedImages++;
-    }
-
-    return status;
+bool SaveImageHDR(const ResourcePath& filename, const vec2<U16>& dimensions, const U8 numberOfComponents, F32* imageData) {
+    return stbi_write_hdr(filename.c_str(), dimensions.width, dimensions.height, numberOfComponents, imageData) == TRUE;
 }
 }  // namespace Divide::ImageTools
 

@@ -59,22 +59,18 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     // Blend maps
     ResourceDescriptor textureBlendMap("Terrain Blend Map_" + name);
     textureBlendMap.assetLocation(terrainLocation);
-    textureBlendMap.flag(true);
 
     // Albedo maps and roughness
     ResourceDescriptor textureAlbedoMaps("Terrain Albedo Maps_" + name);
     textureAlbedoMaps.assetLocation(ClimatesLocation(textureQuality));
-    textureAlbedoMaps.flag(true);
 
     // Normals
     ResourceDescriptor textureNormalMaps("Terrain Normal Maps_" + name);
     textureNormalMaps.assetLocation(ClimatesLocation(textureQuality));
-    textureNormalMaps.flag(true);
 
     // AO and displacement
     ResourceDescriptor textureExtraMaps("Terrain Extra Maps_" + name);
     textureExtraMaps.assetLocation(ClimatesLocation(textureQuality));
-    textureExtraMaps.flag(true);
 
     //temp data
     string layerOffsetStr;
@@ -197,6 +193,9 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     TextureDescriptor normalDescriptor(TextureType::TEXTURE_2D_ARRAY);
     normalDescriptor.layerCount(to_U16(textures[to_base(TerrainTextureType::NORMAL)].size()));
     normalDescriptor.srgb(false);
+    STUBBED("Find a way to properly compress normal maps! -Ionut");
+    normalDescriptor.loadFromDDSCache(false);
+    normalDescriptor.autoCompressToDXT(false);
 
     TextureDescriptor extraDescriptor(TextureType::TEXTURE_2D_ARRAY);
     extraDescriptor.layerCount(extraMapCount);
@@ -302,9 +301,8 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     heightMapTexture.assetLocation(terrainLocation);
     heightMapTexture.assetName(ResourcePath{ terrainDescriptor->getVariable("heightfieldTex") });
 
-    TextureDescriptor heightMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_SHORT);
+    TextureDescriptor heightMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::COUNT);
     heightMapTexture.propertyDescriptor(heightMapDescriptor);
-    heightMapTexture.flag(true);
 
     terrainMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE);
     terrainMaterial->setTexture(TextureUsage::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE);
@@ -668,6 +666,8 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
         const F32 bXRange = bMax.x - bMin.x;
         const F32 bZRange = bMax.z - bMin.z;
 
+        const bool flipHeight = !ImageTools::UseUpperLeftOrigin();
+
         #pragma omp parallel for
         for (I32 height = 0; height < terrainHeight; ++height) {
             for (I32 width = 0; width < terrainWidth; ++width) {
@@ -679,7 +679,10 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
                 const U16* heightData = reinterpret_cast<U16*>(data.data());
 
                 const I32 coordX = width < terrainWidth - 1 ? width : width - 1;
-                const I32 coordY = height < terrainHeight - 1 ? height : height - 1;
+                I32 coordY = (height < terrainHeight - 1 ? height : height - 1);
+                if (flipHeight) {
+                    coordY = terrainHeight - 1 - coordY;
+                }
                 const I32 idxIMG = TER_COORD(coordX, coordY, terrainWidth);
                 yOffset = altitudeRange * (heightData[idxIMG] / ushortMax) + minAltitude;
 
@@ -838,14 +841,16 @@ VegetationDetails& TerrainLoader::initializeVegetationDetails(const Terrain_ptr&
     const ResourcePath terrainLocation{ Paths::g_assetsLocation + Paths::g_heightmapLocation + terrainDescriptor->getVariable("descriptor") };
 
     vegDetails.grassMap.reset(new ImageTools::ImageData);
-    ImageTools::ImageDataInterface::CreateImageData(terrainLocation + "/" + terrainDescriptor->getVariable("grassMap"),
-                                                    0, 0, false,
-                                                    *vegDetails.grassMap);
-
     vegDetails.treeMap.reset(new ImageTools::ImageData);
-    ImageTools::ImageDataInterface::CreateImageData(terrainLocation + "/" + terrainDescriptor->getVariable("treeMap"),
-                                                    0, 0, false,
-                                                    *vegDetails.treeMap);
+
+    const ResourcePath grassMap{ terrainDescriptor->getVariable("grassMap")};
+    const ResourcePath treeMap{ terrainDescriptor->getVariable("treeMap") };
+    if (!vegDetails.grassMap->loadFromFile(false, 0, 0, terrainLocation, grassMap, true, true)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    if (!vegDetails.treeMap->loadFromFile(false, 0, 0, terrainLocation, treeMap, true, true)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 
     return vegDetails;
 }

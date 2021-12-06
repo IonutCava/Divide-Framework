@@ -5,7 +5,7 @@
 <TRANSFORM>
     <Transform>
         <position x="100" y="14.75" z="-50"/>
-        <orientation x="-89.8056564" y="4.76153811e-15" z="2.17174243e-18"/>
+        <orientation x="-89.8056564" y="4.76037599e-15" z="2.17117375e-18"/>
         <scale x="102.562851" y="102.06208" z="102.613083"/>
     </Transform>
 </TRANSFORM>
@@ -20,12 +20,13 @@
         <specular r="0" g="0" b="0" a="1"/>
         <metallic>0.600000024</metallic>
         <roughness>0.300000012</roughness>
-        <doubleSided>false</doubleSided>
+        <doubleSided>true</doubleSided>
         <receivesShadows>true</receivesShadows>
         <ignoreTexDiffuseAlpha>false</ignoreTexDiffuseAlpha>
         <bumpMethod>NONE</bumpMethod>
         <parallaxFactor>1</parallaxFactor>
         <transparencyEnabled>true</transparencyEnabled>
+        <useAlphaDiscard>true</useAlphaDiscard>
         <isRefractive>false</isRefractive>
         <RenderStates>
             <1>
@@ -34,7 +35,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LESS</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>None</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -54,7 +55,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>None</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>
@@ -74,7 +75,7 @@
                 <zUnits>0</zUnits>
                 <zFunc>EQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
+                <cullMode>None</cullMode>
                 <fillMode>Solid</fillMode>
                 <frontFaceCCW>true</frontFaceCCW>
                 <scissorTestEnabled>false</scissorTestEnabled>

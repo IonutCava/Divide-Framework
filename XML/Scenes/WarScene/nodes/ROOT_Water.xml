@@ -7,6 +7,7 @@
     <Reflection__Plane__Offset>0</Reflection__Plane__Offset>
     <Refraction__Plane__Offset>2</Refraction__Plane__Offset>
     <Fog__start__end__distances x="256" y="1024"/>
+    <Water__fog__colour r="0.899999976" g="0.899999976" b="1"/>
     <Noise__tile__factor x="100" y="100"/>
     <Noise__factor x="0.200000003" y="0.200000003"/>
     <Refraction__tint r="0.260355055" g="0.757363498" b="0.967032969"/>
@@ -37,6 +38,7 @@
         <bumpMethod>NONE</bumpMethod>
         <parallaxFactor>1</parallaxFactor>
         <transparencyEnabled>true</transparencyEnabled>
+        <useAlphaDiscard>true</useAlphaDiscard>
         <isRefractive>false</isRefractive>
         <RenderStates>
             <1>
@@ -250,6 +252,24 @@
                     <id>1</id>
                 </Sampler>
             </NORMALMAP>
+            <REFLECTION_PLANAR>
+                <name>FBO_Reflection_Planar_0_Att_Colour_0_65</name>
+                <path/>
+                <flipped>true</flipped>
+                <usage>REPLACE</usage>
+                <Sampler>
+                    <id>2</id>
+                </Sampler>
+            </REFLECTION_PLANAR>
+            <REFRACTION_PLANAR>
+                <name>FBO_Refraction_Planar_0_Att_Colour_0_80</name>
+                <path/>
+                <flipped>true</flipped>
+                <usage>REPLACE</usage>
+                <Sampler>
+                    <id>2</id>
+                </Sampler>
+            </REFRACTION_PLANAR>
         </texture>
         <SamplerDescriptors>
             <1>
@@ -265,6 +285,19 @@
                     <borderColour r="0" g="0" b="0" a="1"/>
                 </Sampler>
             </1>
+            <2>
+                <Sampler>
+                    <Filter min="NEAREST" mag="NEAREST"/>
+                    <Map U="CLAMP_TO_EDGE" V="CLAMP_TO_EDGE" W="CLAMP_TO_EDGE"/>
+                    <useRefCompare>false</useRefCompare>
+                    <comparisonFunction>LEQUAL</comparisonFunction>
+                    <anisotropy>255</anisotropy>
+                    <minLOD>-1000</minLOD>
+                    <maxLOD>1000</maxLOD>
+                    <biasLOD>0</biasLOD>
+                    <borderColour r="0" g="0" b="0" a="1"/>
+                </Sampler>
+            </2>
         </SamplerDescriptors>
     </Material>
     <Lock__LoD__Level>0</Lock__LoD__Level>

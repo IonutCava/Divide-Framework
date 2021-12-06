@@ -2615,7 +2615,6 @@ Texture* GFXDevice::newTexture(const size_t descriptorHash,
                                const Str256& resourceName,
                                const ResourcePath& assetNames,
                                const ResourcePath& assetLocations,
-                               const bool isFlipped,
                                const bool asyncLoad,
                                const TextureDescriptor& texDescriptor) {
 
@@ -2626,13 +2625,13 @@ Texture* GFXDevice::newTexture(const size_t descriptorHash,
     switch (renderAPI()) {
         case RenderAPI::OpenGL:
         case RenderAPI::OpenGLES: {
-            temp = new (objectArena()) glTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, isFlipped, asyncLoad, texDescriptor);
+            temp = new (objectArena()) glTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, asyncLoad, texDescriptor);
         } break;
         case RenderAPI::Vulkan: {
-            temp = new (objectArena()) vkTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, isFlipped, asyncLoad, texDescriptor);
+            temp = new (objectArena()) vkTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, asyncLoad, texDescriptor);
         } break;
         case RenderAPI::None: {
-            temp = new (objectArena()) noTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, isFlipped, asyncLoad, texDescriptor);
+            temp = new (objectArena()) noTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, asyncLoad, texDescriptor);
         } break;
         default: {
             DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
@@ -2741,16 +2740,25 @@ void GFXDevice::screenshot(const ResourcePath& filename) const {
     const RenderTarget& screenRT = _rtPool->screenTarget();
     const U16 width = screenRT.getWidth();
     const U16 height = screenRT.getHeight();
+    const U8 numChannels = 3;
+
+    static I32 savedImages = 0;
+    // compute the new filename by adding the series number and the extension
+    const ResourcePath newFilename(Util::StringFormat("Screenshots/%s_%d.tga", filename.c_str(), savedImages));
+
     // Allocate sufficiently large buffers to hold the pixel data
-    const U32 bufferSize = width * height * 4;
+    const U32 bufferSize = width * height * numChannels;
     vector<U8> imageData(bufferSize, 0u);
     // Read the pixels from the main render target (RGBA16F)
-    screenRT.readData(GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE, (bufferPtr)imageData.data());
+    screenRT.readData(GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE, { (bufferPtr)imageData.data(), imageData.size() });
     // Save to file
-    ImageTools::SaveSeries(filename,
-                           vec2<U16>(width, height),
-                           32,
-                           imageData.data());
+    if (ImageTools::SaveImage(filename,
+                              vec2<U16>(width, height),
+                              numChannels,
+                              imageData.data(), 
+                              ImageTools::SaveImageFormat::PNG)) {
+        ++savedImages;
+    }
 }
 
 /// returns the standard state block

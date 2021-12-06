@@ -476,14 +476,14 @@ bool Sky::load() {
     I32 x, y, n;
     Byte* perlWorlData = (Byte*)stbi_load((procLocation() + perlWorlTexName).c_str(), &x, &y, &n, 0);
     ImageTools::ImageData imgDataPerl = {};
-    if (!imgDataPerl.addLayer(perlWorlData, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y), to_U16(n * 8))) {
+    if (!imgDataPerl.loadFromMemory(perlWorlData, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y), to_U8(n))) {
         DIVIDE_UNEXPECTED_CALL();
     }
     stbi_image_free(perlWorlData);
 
     Byte* worlNoise = (Byte*)stbi_load((procLocation() + worlTexName).c_str(), &x, &y, &n, 0);
     ImageTools::ImageData imgDataWorl = {};
-    if (!imgDataWorl.addLayer(worlNoise, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y), to_U16(n * 8))) {
+    if (!imgDataWorl.loadFromMemory(worlNoise, to_size(x * y * n), to_U16(y), to_U16(y), to_U16(x / y), to_U8(n))) {
         DIVIDE_UNEXPECTED_CALL();
     }
     stbi_image_free(worlNoise);

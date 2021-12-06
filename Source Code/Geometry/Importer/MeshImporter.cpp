@@ -202,6 +202,7 @@ namespace Import {
         dataOut << _textureName;
         dataOut << _texturePath;
         dataOut << _srgb;
+        dataOut << _useDDSCache;
         dataOut << to_U32(_wrapU);
         dataOut << to_U32(_wrapV);
         dataOut << to_U32(_wrapW);
@@ -214,6 +215,7 @@ namespace Import {
         dataIn >> _textureName;
         dataIn >> _texturePath;
         dataIn >> _srgb;
+        dataIn >> _useDDSCache;
         dataIn >> data; _wrapU = static_cast<TextureWrap>(data);
         dataIn >> data; _wrapV = static_cast<TextureWrap>(data);
         dataIn >> data; _wrapW = static_cast<TextureWrap>(data);
@@ -383,7 +385,8 @@ namespace Import {
                 textureSampler.wrapW(tex.wrapW());
 
                 textureDescriptor.srgb(tex.srgb());
-
+                textureDescriptor.loadFromDDSCache(tex.useDDSCache());
+                textureDescriptor.autoCompressToDXT(tex.useDDSCache());
                 ResourceDescriptor texture(tex.textureName().str());
                 texture.assetName(tex.textureName());
                 texture.assetLocation(tex.texturePath());

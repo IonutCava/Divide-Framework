@@ -19,6 +19,7 @@
 		<!-- this is only taken into consideration if binary cache is disabled-->
 		<useShaderTextCache>false</useShaderTextCache>
 		<useShaderBinaryCache>false</useShaderBinaryCache>
+		<useTextureDDSCache>true</useTextureDDSCache>
 		<!-- memFile: file name that the application should use to write  memory allocation info. Leave empty for none! -->
 		<memFile>mem.log</memFile>
 	</debug>
@@ -78,7 +79,7 @@
 	<rendering>
 		<MSAASamples>4</MSAASamples>
 		<maxAnisotropicFilteringLevel>16</maxAnisotropicFilteringLevel>
-		<useBindlessTextures>true</useBindlessTextures>
+		<useBindlessTextures>false</useBindlessTextures>
 		<debugBindlessTextures>false</debugBindlessTextures>
 		<!-- Environment probe resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->
 		<reflectionProbeResolution>256</reflectionProbeResolution>

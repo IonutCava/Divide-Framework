@@ -12,13 +12,18 @@
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
-    constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
-const char* Texture::s_missingTextureFileName = nullptr;
+constexpr U16 BYTE_BUFFER_VERSION = 1u;
+
+ResourcePath Texture::s_missingTextureFileName("missing_texture.jpg");
 
 Texture_ptr Texture::s_defaulTexture = nullptr;
+bool Texture::s_useDDSCache = true;
 
 void Texture::OnStartup(GFXDevice& gfx) {
+    ImageTools::OnStartup(gfx.renderAPI() != RenderAPI::OpenGL &&
+                          gfx.renderAPI() != RenderAPI::OpenGLES);
+
     TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D_ARRAY);
     textureDescriptor.srgb(false);
     textureDescriptor.baseFormat(GFXImageFormat::RGBA);
@@ -34,7 +39,7 @@ void Texture::OnStartup(GFXDevice& gfx) {
     defaultTexData[3] = to_byte(1u); //Alpha: 1
 
     ImageTools::ImageData imgDataDefault = {};
-    if (!imgDataDefault.addLayer(defaultTexData, 4, 1u, 1u, 1u, 4 * 8)) {
+    if (!imgDataDefault.loadFromMemory(defaultTexData, 4, 1u, 1u, 1u, 4)) {
         DIVIDE_UNEXPECTED_CALL();
     }
     s_defaulTexture->loadData(imgDataDefault);
@@ -43,10 +48,30 @@ void Texture::OnStartup(GFXDevice& gfx) {
 
 void Texture::OnShutdown() noexcept {
     s_defaulTexture.reset();
+    ImageTools::OnShutdown();
+}
+
+bool Texture::UseTextureDDSCache() noexcept {
+    return s_useDDSCache;
 }
 
 const Texture_ptr& Texture::DefaultTexture() noexcept {
     return s_defaulTexture;
+}
+
+ResourcePath Texture::GetCachePath(ResourcePath originalPath) noexcept {
+    constexpr std::array<std::string_view, 2> searchPattern = {
+        "//", "\\"
+    };
+
+    Util::ReplaceStringInPlace(originalPath, searchPattern, "/");
+    Util::ReplaceStringInPlace(originalPath, "/", "_");
+    if (originalPath.str().back() == '_') {
+        originalPath.pop_back();
+    }
+    const ResourcePath cachePath = Paths::g_cacheLocation + Paths::Textures::g_metadataLocation + originalPath + "/";
+
+    return cachePath;
 }
 
 Texture::Texture(GFXDevice& context,
@@ -54,7 +79,6 @@ Texture::Texture(GFXDevice& context,
                  const Str256& name,
                  const ResourcePath& assetNames,
                  const ResourcePath& assetLocations,
-                 const bool isFlipped,
                  const bool asyncLoad,
                  const TextureDescriptor& texDescriptor)
     : CachedResource(ResourceType::GPU_OBJECT, descriptorHash, name, assetNames, assetLocations),
@@ -62,9 +86,13 @@ Texture::Texture(GFXDevice& context,
       _descriptor(texDescriptor),
       _data{0u, TextureType::COUNT},
       _numLayers(texDescriptor.layerCount()),
-      _flipped(isFlipped),
       _asyncLoad(asyncLoad)
 {
+}
+
+Texture::~Texture()
+{
+    unload();
 }
 
 bool Texture::load() {
@@ -81,84 +109,97 @@ bool Texture::load() {
 void Texture::threadedLoad() {
     OPTICK_EVENT();
 
-    constexpr std::array<std::string_view, 2> searchPattern = {
-     "//", "\\"
-    };
+    if (!assetLocation().empty()) {
+
+        const GFXDataFormat requestedFormat = _descriptor.dataType();
+        assert(requestedFormat == GFXDataFormat::UNSIGNED_BYTE ||  // Regular image format
+               requestedFormat == GFXDataFormat::UNSIGNED_SHORT || // 16Bit
+               requestedFormat == GFXDataFormat::FLOAT_32 ||       // HDR
+               requestedFormat == GFXDataFormat::COUNT);           // Auto
+
+        constexpr std::array<std::string_view, 2> searchPattern = {
+         "//", "\\"
+        };
 
 
-    // Each texture face/layer must be in a comma separated list
-    stringstream textureLocationList(assetLocation().str());
-    stringstream textureFileList(assetName().c_str());
+        // Each texture face/layer must be in a comma separated list
+        stringstream textureLocationList(assetLocation().str());
+        stringstream textureFileList(assetName().c_str());
 
-    ImageTools::ImageData dataStorage = {};
-    // Flip image if needed
-    dataStorage.flip(_flipped);
-    dataStorage.set16Bit(_descriptor.dataType() == GFXDataFormat::FLOAT_16 ||
-                         _descriptor.dataType() == GFXDataFormat::SIGNED_SHORT ||
-                         _descriptor.dataType() == GFXDataFormat::UNSIGNED_SHORT);
+        ImageTools::ImageData dataStorage = {};
+        dataStorage.requestedFormat(requestedFormat);
 
-    bool loadedFromFile = false;
-    // We loop over every texture in the above list and store it in this temporary string
-    string currentTextureFile;
-    string currentTextureLocation;
-    ResourcePath currentTextureFullPath;
-    while (std::getline(textureLocationList, currentTextureLocation, ',') &&
-           std::getline(textureFileList, currentTextureFile, ','))
-    {
-        Util::Trim(currentTextureFile);
+        bool loadedFromFile = false;
+        // We loop over every texture in the above list and store it in this temporary string
+        string currentTextureFile;
+        string currentTextureLocation;
+        ResourcePath currentTextureFullPath;
+        while (std::getline(textureLocationList, currentTextureLocation, ',') &&
+               std::getline(textureFileList, currentTextureFile, ','))
+        {
+            Util::Trim(currentTextureFile);
 
-        // Skip invalid entries
-        if (!currentTextureFile.empty()) {
+            // Skip invalid entries
+            if (!currentTextureFile.empty()) {
+                Util::ReplaceStringInPlace(currentTextureFile, searchPattern, "/");
+                currentTextureFullPath = currentTextureLocation.empty() ? Paths::g_texturesLocation : ResourcePath{ currentTextureLocation };
+                auto[file, path] = splitPathToNameAndLocation(currentTextureFile.c_str());
+                const ResourcePath fileName = file;
+                if (!path.empty()) {
+                    currentTextureFullPath += path;
+                }
+                
+                Util::ReplaceStringInPlace(currentTextureFullPath, searchPattern, "/");
+                
+                // Attempt to load the current entry
+                if (!loadFile(currentTextureFullPath, file, dataStorage)) {
+                    // Invalid texture files are not handled yet, so stop loading
+                    continue;
+                }
 
-            currentTextureFullPath = currentTextureLocation.empty() ? Paths::g_texturesLocation : ResourcePath{currentTextureLocation};
-            currentTextureFullPath.append("/" + currentTextureFile);
-            Util::ReplaceStringInPlace(currentTextureFullPath, searchPattern, "/");
-            // Attempt to load the current entry
-            if (!loadFile(currentTextureFullPath, dataStorage)) {
-                // Invalid texture files are not handled yet, so stop loading
-                continue;
+                loadedFromFile = true;
+            }
+        }
+
+        if (loadedFromFile) {
+            // Create a new Rendering API-dependent texture object
+            _descriptor.compressed(dataStorage.compressed());
+            _descriptor.baseFormat(dataStorage.format());
+            _descriptor.dataType(dataStorage.dataType());
+            // Uploading to the GPU dependents on the rendering API
+            loadData(dataStorage);
+
+            if (_descriptor.texType() == TextureType::TEXTURE_CUBE_MAP ||
+                _descriptor.texType() == TextureType::TEXTURE_CUBE_ARRAY) {
+                if (dataStorage.layerCount() % 6 != 0) {
+                    Console::errorfn(
+                        Locale::Get(_ID("ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT")),
+                        resourceName().c_str());
+                    return;
+                }
             }
 
-            loadedFromFile = true;
+            if (_descriptor.texType() == TextureType::TEXTURE_2D_ARRAY ||
+                _descriptor.texType() == TextureType::TEXTURE_2D_ARRAY_MS) {
+                if (dataStorage.layerCount() != _numLayers) {
+                    Console::errorfn(
+                        Locale::Get(_ID("ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT")),
+                        resourceName().c_str());
+                    return;
+                }
+            }
+
+            /*if (_descriptor.texType() == TextureType::TEXTURE_CUBE_ARRAY) {
+                if (dataStorage.layerCount() / 6 != _numLayers) {
+                    Console::errorfn(
+                        Locale::Get(_ID("ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT")),
+                        resourceName().c_str());
+                }
+            }*/
         }
     }
 
-    if (loadedFromFile) {
-        // Create a new Rendering API-dependent texture object
-        _descriptor.compressed(dataStorage.compressed());
-        _descriptor.baseFormat(dataStorage.format());
-        _descriptor.dataType(dataStorage.dataType());
-        // Uploading to the GPU dependents on the rendering API
-        loadData(dataStorage);
-
-        if (_descriptor.texType() == TextureType::TEXTURE_CUBE_MAP ||
-            _descriptor.texType() == TextureType::TEXTURE_CUBE_ARRAY) {
-            if (dataStorage.layerCount() % 6 != 0) {
-                Console::errorfn(
-                    Locale::Get(_ID("ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT")),
-                    resourceName().c_str());
-                return;
-            }
-        }
-
-        if (_descriptor.texType() == TextureType::TEXTURE_2D_ARRAY ||
-            _descriptor.texType() == TextureType::TEXTURE_2D_ARRAY_MS) {
-            if (dataStorage.layerCount() != _numLayers) {
-                Console::errorfn(
-                    Locale::Get(_ID("ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT")),
-                    resourceName().c_str());
-                return;
-            }
-        }
-
-        /*if (_descriptor.texType() == TextureType::TEXTURE_CUBE_ARRAY) {
-            if (dataStorage.layerCount() / 6 != _numLayers) {
-                Console::errorfn(
-                    Locale::Get(_ID("ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT")),
-                    resourceName().c_str());
-            }
-        }*/
-    }
+    CachedResource::load();
 }
 
 U8 Texture::numChannels() const noexcept {
@@ -172,29 +213,35 @@ U8 Texture::numChannels() const noexcept {
     return 0u;
 }
 
-bool Texture::loadFile(const ResourcePath& name, ImageTools::ImageData& fileData) {
+bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData) {
 
-    if (!ImageTools::ImageDataInterface::CreateImageData(name, _width, _height, _descriptor.srgb(), fileData)) {
+    if (!fileExists(path + name) || 
+        !fileData.loadFromFile(_descriptor.srgb(),
+                               _width,
+                               _height,
+                               path,
+                               name,
+                               _descriptor.loadFromDDSCache(),
+                               _descriptor.autoCompressToDXT())) 
+    {
         if (fileData.layerCount() > 0) {
             Console::errorfn(Locale::Get(_ID("ERROR_TEXTURE_LAYER_LOAD")), name.c_str());
             return false;
         }
         Console::errorfn(Locale::Get(_ID("ERROR_TEXTURE_LOAD")), name.c_str());
-        // Missing texture fallback.
-        fileData.flip(false);
         // missing_texture.jpg must be something that really stands out
-        ImageTools::ImageDataInterface::CreateImageData(Paths::g_assetsLocation + Paths::g_texturesLocation + s_missingTextureFileName, _width, _height, _descriptor.srgb(), fileData);
+        if (!fileData.loadFromFile(_descriptor.srgb(), _width, _height, Paths::g_assetsLocation + Paths::g_texturesLocation, s_missingTextureFileName, false, false)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     } else {
-        return checkTransparency(name, fileData);
+        return checkTransparency(path, name, fileData);
     }
 
     return true;
 }
 
-bool Texture::checkTransparency(const ResourcePath& name, ImageTools::ImageData& fileData) {
-    constexpr std::array<std::string_view, 2> searchPattern = {
-        "//", "\\"
-    };
+bool Texture::checkTransparency(const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData) {
+
 
     const U32 layer = to_U32(fileData.layerCount() - 1);
 
@@ -203,14 +250,8 @@ bool Texture::checkTransparency(const ResourcePath& name, ImageTools::ImageData&
     const U16 height = fileData.dimensions(layer, 0u).height;
     // If we have an alpha channel, we must check for translucency/transparency
 
-    auto[file, path] = splitPathToNameAndLocation(name.c_str());
-    Util::ReplaceStringInPlace(path, searchPattern, "/");
-    Util::ReplaceStringInPlace(path, "/", "_");
-    if (path.str().back() == '_') {
-        path.pop_back();
-    }
-    const ResourcePath cachePath = Paths::g_cacheLocation + Paths::Textures::g_metadataLocation + path + "/" ;
-    const ResourcePath cacheName = file + ".cache";
+    const ResourcePath cachePath = GetCachePath(path);
+    const ResourcePath cacheName = name + ".cache";
 
     ByteBuffer metadataCache;
     bool skip = false;
@@ -227,7 +268,7 @@ bool Texture::checkTransparency(const ResourcePath& name, ImageTools::ImageData&
     }
 
     if (!skip) {
-        if (fileData.alpha()) {
+        if (fileData.hasAlphaChannel()) {
 
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = width;

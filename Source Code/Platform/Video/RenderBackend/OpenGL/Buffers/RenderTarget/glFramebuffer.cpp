@@ -684,15 +684,17 @@ void glFramebuffer::setMipLevel(const U16 writeLevel) {
 void glFramebuffer::readData(const vec4<U16>& rect,
                              const GFXImageFormat imageFormat,
                              const GFXDataFormat dataType,
-                             const bufferPtr outData) const {
+                             const std::pair<bufferPtr, size_t> outData) const {
     OPTICK_EVENT();
 
     GL_API::getStateTracker().setPixelPackUnpackAlignment();
     GL_API::getStateTracker().setActiveFB(RenderTargetUsage::RT_READ_ONLY, _framebufferHandle);
-    glReadPixels(
+    glReadnPixels(
         rect.x, rect.y, rect.z, rect.w,
         GLUtil::glImageFormatTable[to_U32(imageFormat)],
-        GLUtil::glDataFormat[to_U32(dataType)], outData);
+        GLUtil::glDataFormat[to_U32(dataType)],
+        (GLsizei)outData.second,
+        outData.first);
 }
 
 bool glFramebuffer::hasDepth() const noexcept {

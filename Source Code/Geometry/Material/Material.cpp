@@ -239,9 +239,10 @@ bool Material::setSampler(const TextureUsage textureUsageSlot, const size_t samp
     if (_textureAddresses[slot] != s_defaultTextureAddress &&  _samplers[slot] != samplerHash) {
         assert(_textures[slot] != nullptr);
         assert(_textures[slot]->getState() == ResourceState::RES_LOADED);
-        _samplers[slot] = samplerHash;
         _textureAddresses[slot] = _textures[slot]->getGPUAddress(samplerHash);
     }
+
+    _samplers[slot] = samplerHash;
 
     return true;
 }
@@ -1391,7 +1392,6 @@ void Material::saveTextureDataToXML(const string& entryName, boost::property_tre
 
             pt.put(textureNode + ".name", texture->assetName().str());
             pt.put(textureNode + ".path", texture->assetLocation().str());
-            pt.put(textureNode + ".flipped", texture->flipped());
             pt.put(textureNode + ".usage", TypeUtil::TextureOperationToString(_textureOperations[to_base(usage)]));
 
             const size_t samplerHash = _samplers[to_base(usage)];
@@ -1415,7 +1415,10 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
 
             const ResourcePath texName = ResourcePath(pt.get<string>(textureNode + ".name", ""));
             const ResourcePath texPath = ResourcePath(pt.get<string>(textureNode + ".path", ""));
-            const bool flipped = pt.get(textureNode + ".flipped", false);
+            // May be a procedural texture
+            if (texPath.empty()) {
+                continue;
+            }
 
             if (!texName.empty()) {
                 const U32 index = pt.get<U32>(textureNode + ".Sampler.id", 0);
@@ -1441,7 +1444,7 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
                     const Texture_ptr& crtTex = _textures[to_base(usage)];
                     if (crtTex == nullptr) {
                         op = TextureOperation::NONE;
-                    } else  if (crtTex->flipped() == flipped && crtTex->assetLocation() + crtTex->assetName() == texPath + texName) {
+                    } else if (crtTex->assetLocation() + crtTex->assetName() == texPath + texName) {
                         continue;
                     }
                 }
@@ -1452,7 +1455,6 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
                 texture.assetLocation(texPath);
                 texture.propertyDescriptor(texDesc);
                 texture.waitForReady(true);
-                texture.flag(!flipped);
 
                 Texture_ptr tex = CreateResource<Texture>(_context.parent().resourceCache(), texture);
                 setTexture(usage, tex, hash, op);

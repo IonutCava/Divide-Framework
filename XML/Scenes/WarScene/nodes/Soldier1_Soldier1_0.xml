@@ -11,7 +11,7 @@
 </TRANSFORM>
 <ANIMATION>
     <Animation__Speed>1</Animation__Speed>
-    <Animation__Frame__Index x="45" y="44" z="46"/>
+    <Animation__Frame__Index x="6" y="5" z="7"/>
 </ANIMATION>
 <INVERSE_KINEMATICS/>
 <RAGDOLL/>
@@ -33,6 +33,7 @@
         <bumpMethod>NONE</bumpMethod>
         <parallaxFactor>1</parallaxFactor>
         <transparencyEnabled>true</transparencyEnabled>
+        <useAlphaDiscard>true</useAlphaDiscard>
         <isRefractive>false</isRefractive>
         <RenderStates>
             <1>

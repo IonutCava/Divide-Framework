@@ -56,7 +56,7 @@ namespace Divide {
         void setDefaultState([[maybe_unused]] const RTDrawDescriptor& drawPolicy) noexcept override {
         }
 
-        void readData([[maybe_unused]] const vec4<U16>& rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] bufferPtr outData) const noexcept override {
+        void readData([[maybe_unused]] const vec4<U16>& rect, [[maybe_unused]] GFXImageFormat imageFormat, [[maybe_unused]] GFXDataFormat dataType, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override {
         }
 
         void blitFrom([[maybe_unused]] const RTBlitParams& params) noexcept override {
@@ -171,10 +171,9 @@ namespace Divide {
                   const Str256& name,
                   const ResourcePath& assetNames,
                   const ResourcePath& assetLocations,
-                  const bool isFlipped,
                   const bool asyncLoad,
                   const TextureDescriptor& texDescriptor)
-            : Texture(context, descriptorHash, name, assetNames, assetLocations, isFlipped, asyncLoad, texDescriptor)
+            : Texture(context, descriptorHash, name, assetNames, assetLocations, asyncLoad, texDescriptor)
         {}
 
         [[nodiscard]] SamplerAddress getGPUAddress([[maybe_unused]] size_t samplerHash) noexcept override {

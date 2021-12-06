@@ -310,7 +310,6 @@ public:
                                   const Str256& resourceName,
                                   const ResourcePath& assetNames,
                                   const ResourcePath& assetLocations,
-                                  bool isFlipped,
                                   bool asyncLoad,
                                   const TextureDescriptor& texDescriptor);
 

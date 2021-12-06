@@ -694,6 +694,12 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
             texture.texturePath(img_path);
             texture.operation(texOp);
             texture.srgb(srgb);
+            if (usage == TextureUsage::NORMALMAP) {
+                STUBBED("Find a way to properly compress normal maps! -Ionut");
+                texture.useDDSCache(false);
+            } else {
+                texture.useDDSCache(true);
+            }
             material._textures[to_base(usage)] = texture;
         }
     };

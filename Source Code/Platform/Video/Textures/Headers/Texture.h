@@ -43,6 +43,11 @@
 
 namespace Divide {
 
+class Kernel;
+namespace Attorney {
+    class TextureKernel;
+};
+
 namespace TypeUtil {
     const char* WrapModeToString(TextureWrap wrapMode) noexcept;
     TextureWrap StringToWrapMode(const string& wrapMode);
@@ -59,6 +64,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     friend class ResourceLoader;
     template <typename T>
     friend class ImplResourceLoader;
+    friend class Attorney::TextureKernel;
+
   public:
 
     explicit Texture(GFXDevice& context,
@@ -66,14 +73,15 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
                      const Str256& name,
                      const ResourcePath& assetNames,
                      const ResourcePath& assetLocations,
-                     bool isFlipped,
                      bool asyncLoad,
                      const TextureDescriptor& texDescriptor);
 
-    virtual ~Texture() = default;
+    virtual ~Texture();
 
     static void OnStartup(GFXDevice& gfx);
     static void OnShutdown() noexcept;
+    static ResourcePath GetCachePath(ResourcePath originalPath) noexcept;
+    static [[nodiscard]] bool UseTextureDDSCache() noexcept;
     static [[nodiscard]] const Texture_ptr& DefaultTexture() noexcept;
 
     // Returns the GPU address of the texture
@@ -109,15 +117,13 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     PROPERTY_R(bool, hasTranslucency, false);
     /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true
     PROPERTY_R(bool, hasTransparency, false);
-    /// Flipped Y-coord
-    PROPERTY_R(bool, flipped, false);
 
     [[nodiscard]] U8 numChannels() const noexcept;
 
    protected:
     /// Use STB to load a file into a Texture Object
-    bool loadFile(const ResourcePath& name, ImageTools::ImageData& fileData);
-    bool checkTransparency(const ResourcePath& name, ImageTools::ImageData& fileData);
+    bool loadFile(const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData);
+    bool checkTransparency(const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData);
     /// Load texture data using the specified file name
     bool load() override;
     virtual void threadedLoad();
@@ -128,9 +134,22 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     bool _asyncLoad = true;
 
   protected:
+    static bool s_useDDSCache;
     static Texture_ptr s_defaulTexture;
-    static const char* s_missingTextureFileName;
+    static ResourcePath s_missingTextureFileName;
 };
+
+
+namespace Attorney {
+    class TextureKernel {
+    protected:
+        static void UseTextureDDSCache(const bool state) noexcept {
+            Texture::s_useDDSCache = state;
+        }
+
+        friend class Kernel;
+    };
+}
 
 };  // namespace Divide
 #endif // _TEXTURE_H_

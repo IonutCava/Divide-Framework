@@ -111,6 +111,12 @@ class TextureDescriptor final : public PropertyDescriptor {
     }
 
     TextureDescriptor(const TextureType type,
+                      const GFXDataFormat dataType) noexcept
+        : TextureDescriptor(type, GFXImageFormat::RGB, dataType)
+    {
+    }
+
+     TextureDescriptor(const TextureType type,
                       const GFXImageFormat format,
                       const GFXDataFormat dataType) noexcept
         : PropertyDescriptor(DescriptorType::DESCRIPTOR_TEXTURE),
@@ -131,6 +137,8 @@ class TextureDescriptor final : public PropertyDescriptor {
     /// Use SRGB colour space
     PROPERTY_RW(bool, srgb, false);
     PROPERTY_RW(bool, normalized, true);
+    PROPERTY_RW(bool, loadFromDDSCache, true);
+    PROPERTY_RW(bool, autoCompressToDXT, true);
     PROPERTY_RW(bool, compressed, false);
     PROPERTY_RW(MipMappingState, mipMappingState, MipMappingState::AUTO);
 };

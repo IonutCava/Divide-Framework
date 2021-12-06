@@ -182,7 +182,7 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
 
     virtual void clear(const RTClearDescriptor& descriptor) = 0;
     virtual void setDefaultState(const RTDrawDescriptor& drawPolicy) = 0;
-    virtual void readData(const vec4<U16>& rect, GFXImageFormat imageFormat, GFXDataFormat dataType, bufferPtr outData) const = 0;
+    virtual void readData(const vec4<U16>& rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const = 0;
     virtual void blitFrom(const RTBlitParams& params) = 0;
 
     /// Resize all attachments
@@ -190,7 +190,7 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     /// Change msaa sampel count for all attachments
     bool updateSampleCount(U8 newSampleCount);
 
-    void readData(GFXImageFormat imageFormat, GFXDataFormat dataType, bufferPtr outData) const;
+    void readData(GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const;
 
     [[nodiscard]] U16 getWidth()  const noexcept;
     [[nodiscard]] U16 getHeight() const noexcept;

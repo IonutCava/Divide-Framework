@@ -23,6 +23,7 @@ bool Configuration::fromXML(const char* xmlFile) {
         GET_PARAM(debug.renderFilter.particles);
         GET_PARAM(debug.useShaderTextCache);
         GET_PARAM(debug.useShaderBinaryCache);
+        GET_PARAM(debug.useTextureDDSCache);
         GET_PARAM(debug.memFile);
         GET_PARAM(language);
         GET_PARAM(runtime.title);
@@ -181,6 +182,7 @@ bool Configuration::toXML(const char* xmlFile) const {
         PUT_PARAM(debug.renderFilter.particles);
         PUT_PARAM(debug.useShaderTextCache);
         PUT_PARAM(debug.useShaderBinaryCache);
+        PUT_PARAM(debug.useTextureDDSCache);
         PUT_PARAM(debug.memFile);
         PUT_PARAM(language);
         PUT_PARAM(runtime.title);

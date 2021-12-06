@@ -22,10 +22,6 @@ CachedResource_ptr ImplResourceLoader<Texture>::operator()() {
     // Samplers are not optional!
     assert(texDescriptor != nullptr);
 
-    if (Texture::s_missingTextureFileName == nullptr) {
-        Texture::s_missingTextureFileName = "missing_texture.jpg";
-    }
-
     std::string resourceLocation = _descriptor.assetLocation().str();
 
     const size_t numCommas = std::count(std::cbegin(_descriptor.assetName().str()),
@@ -59,7 +55,6 @@ CachedResource_ptr ImplResourceLoader<Texture>::operator()() {
                                               _descriptor.resourceName(),
                                               _descriptor.assetName(),
                                               _descriptor.assetLocation(),
-                                              !_descriptor.flag(),
                                               _descriptor.threaded(),
                                               *texDescriptor),
                     DeleteResource(_cache));

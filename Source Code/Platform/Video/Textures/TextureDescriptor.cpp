@@ -110,6 +110,8 @@ namespace Divide {
         Util::Hash_combine(_hash, to_U32(_texType));
         Util::Hash_combine(_hash, _srgb);
         Util::Hash_combine(_hash, _normalized);
+        Util::Hash_combine(_hash, _loadFromDDSCache);
+        Util::Hash_combine(_hash, _autoCompressToDXT);
         Util::Hash_combine(_hash, _compressed);
 
         return _hash;

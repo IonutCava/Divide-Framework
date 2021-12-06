@@ -58,22 +58,15 @@ glTexture::glTexture(GFXDevice& context,
                      const Str256& name,
                      const ResourcePath& resourceName,
                      const ResourcePath& resourceLocation,
-                     const bool isFlipped,
                      const bool asyncLoad,
                      const TextureDescriptor& texDescriptor)
 
-    : Texture(context, descriptorHash, name, resourceName, resourceLocation, isFlipped, asyncLoad, texDescriptor),
+    : Texture(context, descriptorHash, name, resourceName, resourceLocation, asyncLoad, texDescriptor),
       glObject(glObjectType::TYPE_TEXTURE, context),
      _type(GL_NONE),
      _loadingData(_data),
-     _lockManager(MemoryManager_NEW glLockManager())
+     _lockManager(eastl::make_unique<glLockManager>())
 {
-}
-
-glTexture::~glTexture()
-{
-    unload();
-    MemoryManager::DELETE(_lockManager);
 }
 
 SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
@@ -109,12 +102,6 @@ bool glTexture::unload() {
     }
 
     return true;
-}
-
-void glTexture::threadedLoad() {
-
-    Texture::threadedLoad();
-    CachedResource::load();
 }
 
 void glTexture::reserveStorage(const bool fromFile) {
@@ -279,12 +266,11 @@ void glTexture::loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& 
 
     reserveStorage(false);
     if (!IsMultisampledTexture(_loadingData._textureType)) {
-        const U8 bpp = GetBitsPerPixel(_descriptor.dataType(), _descriptor.baseFormat());
-            ImageTools::ImageData imgData = {};
-            if (imgData.addLayer(data.first, data.second, _width, _height, 1, bpp)) {
-                loadDataUncompressed(imgData);
-                    assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
-            }
+        ImageTools::ImageData imgData = {};
+        if (imgData.loadFromMemory(data.first, data.second, _width, _height, 1, GetSizeFactor(_descriptor.dataType()) * GetChannelCount(_descriptor.baseFormat()))) {
+            loadDataUncompressed(imgData);
+                assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
+        }
     }
     submitTextureData();
 }
