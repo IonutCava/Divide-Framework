@@ -199,6 +199,12 @@ typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true
 [[nodiscard]] bool hasExtension(const char* filePath, const Str16& extension);
 [[nodiscard]] bool hasExtension(const ResourcePath& filePath, const Str16& extension);
 
+[[nodiscard]] string getExtension(const char* filePath);
+[[nodiscard]] string getExtension(const ResourcePath& filePath);
+
+[[nodiscard]] ResourcePath stripExtension(const char* filePath) noexcept;
+[[nodiscard]] ResourcePath stripExtension(const ResourcePath& filePath) noexcept;
+
 [[nodiscard]] string stripQuotes(const char* input);
 
 [[nodiscard]] FileAndPath splitPathToNameAndLocation(const char* input);

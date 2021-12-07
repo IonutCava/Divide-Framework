@@ -296,13 +296,31 @@ FileError findFile(const char* filePath, const char* fileName, string& foundPath
     return FileError::NONE;
 }
 
+string getExtension(const ResourcePath& filePath) {
+    return getExtension(filePath.c_str());
+}
+
+string getExtension(const char* filePath) {
+    const std::filesystem::path pathIn(filePath);
+    return pathIn.extension().string();
+}
+
+ResourcePath stripExtension(const char* filePath) noexcept {
+    const std::filesystem::path pathIn(filePath);
+    return ResourcePath{ pathIn.stem().string() };
+}
+
+ResourcePath stripExtension(const ResourcePath& filePath) noexcept {
+    return stripExtension(filePath.c_str());
+}
+
 bool hasExtension(const ResourcePath& filePath, const Str16& extension) {
     return hasExtension(filePath.c_str(), extension);
 }
 
 bool hasExtension(const char* filePath, const Str16& extension) {
     const Str16 ext("." + extension);
-    return Util::CompareIgnoreCase(Util::GetTrailingCharacters(string_fast{ filePath }, ext.length()), ext);
+    return Util::CompareIgnoreCase(getExtension(filePath).c_str(), ext.c_str());
 }
 
 bool deleteAllFiles(const ResourcePath& filePath, const char* extension) {

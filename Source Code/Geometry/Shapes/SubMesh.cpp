@@ -37,6 +37,8 @@ void SubMesh::buildDrawCommands(SceneGraphNode* sgn,
 }
 
 void SubMesh::setParentMesh(Mesh* const parentMesh) {
+    assert(_parentMesh == nullptr);
+
     _parentMesh = parentMesh;
     setGeometryVB(_parentMesh->getGeometryVB());
 }

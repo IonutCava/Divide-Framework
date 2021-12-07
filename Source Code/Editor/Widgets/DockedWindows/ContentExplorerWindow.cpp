@@ -181,8 +181,9 @@ namespace Divide {
                     Mesh_ptr mesh = nullptr;
                     GeometryFormat format = GeometryFormat::COUNT;
                     { // Textures
+                        const string imageExtension = getExtension(file.second.c_str()).substr(1);
                         for (const char* extension : g_imageExtensions) {
-                            if (hasExtension(file.second.c_str(), extension)) {
+                            if (Util::CompareIgnoreCase(imageExtension.c_str(), extension)) {
                                 const auto it = _loadedTextures.find(_ID((file.first + "/" + file.second).c_str()));
                                 if (it == std::cend(_loadedTextures) || it->second == nullptr) {
                                     if (!_textureLoadQueueLocked) {
@@ -197,20 +198,16 @@ namespace Divide {
                         }
                     }
                     { //Geometry
-                        for (const char* extension : g_geometryExtensions) {
-                            if (hasExtension(file.second.c_str(), extension)) {
-                                const auto it = _loadedModels.find(_ID((file.first + "/" + file.second).c_str()));
-                                if (it == std::cend(_loadedModels) || it->second == nullptr) {
-                                    if (!_modelLoadQueueLocked) {
-                                        _modelLoadQueue.push(file);
-                                        lockModelQueue = true;
-                                    }
-                                } else if (it->second->getState() == ResourceState::RES_LOADED) {
-                                    mesh = it->second;
+                        format = GetGeometryFormatForExtension(getExtension(file.second.c_str()).c_str());
+                        if (format != GeometryFormat::COUNT) {
+                            const auto it = _loadedModels.find(_ID((file.first + "/" + file.second).c_str()));
+                            if (it == std::cend(_loadedModels) || it->second == nullptr) {
+                                if (!_modelLoadQueueLocked) {
+                                    _modelLoadQueue.push(file);
+                                    lockModelQueue = true;
                                 }
-
-                                format = GetGeometryFormatForExtension(extension);
-                                break;
+                            } else if (it->second->getState() == ResourceState::RES_LOADED) {
+                                mesh = it->second;
                             }
                         }
                     }
