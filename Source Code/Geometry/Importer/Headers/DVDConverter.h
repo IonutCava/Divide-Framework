@@ -83,38 +83,28 @@ namespace Divide {
 class SubMesh;
 class VertexBuffer;
 class PlatformContext;
-class DVDConverter {
-  public:
 
-    DVDConverter() = default;
+namespace DVDConverter {
+    void OnStartup(const PlatformContext& context);
+    void OnShutdown();
 
-    explicit DVDConverter(PlatformContext& context, Import::ImportData& target, bool& result);
+    [[nodiscard]] bool Load(PlatformContext& context, Import::ImportData& target);
 
-    bool load(PlatformContext& context, Import::ImportData& target) const;
-   private:
+    namespace detail{
+        void LoadSubMeshGeometry(const aiMesh* source, 
+                                 Import::SubMeshData& subMeshData);
 
-    void loadSubMeshGeometry(const aiMesh* source, 
-                             Import::SubMeshData& subMeshData) const;
+        void LoadSubMeshMaterial(Import::MaterialData& material,
+                                 const aiScene* source,
+                                 const string& modelDirectoryName,
+                                 U16 materialIndex,
+                                 const Str128& materialName,
+                                 GeometryFormat format,
+                                 bool convertHeightToBumpMap);
 
-    void loadSubMeshMaterial(Import::MaterialData& material,
-                             const aiScene* source,
-                             U16 materialIndex,
-                             const Str128& materialName,
-                             GeometryFormat format,
-                             bool convertHeightToBumpMap) const;
-
-  private:
-    static void   BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target);
-
-    static hashMap<U32, TextureWrap> fillTextureWrapMap();
-    static hashMap<U32, ShadingMode> fillShadingModeMap();
-    static hashMap<U32, TextureOperation> fillTextureOperationMap();
-
-  private:
-    static hashMap<U32, TextureWrap> aiTextureMapModeTable;
-    static hashMap<U32, ShadingMode> aiShadingModeInternalTable;
-    static hashMap<U32, TextureOperation> aiTextureOperationTable;
-};
+        static void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target);
+    }; //namespace Detail
+}; //namespace DVDConverter
 
 };  // namespace Divide
 

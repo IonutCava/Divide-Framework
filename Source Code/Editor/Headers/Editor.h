@@ -241,7 +241,7 @@ class Editor final : public PlatformContextComponent,
     // Returns true if the modal window was closed
     [[nodiscard]] bool modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const;
     // Return true if the model was spawned as a scene node
-    [[nodiscard]] bool spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const string& name) const;
+    [[nodiscard]] bool spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& rotation, const string& name) const;
 
     [[nodiscard]] ECSManager& getECSManager() const;
     [[nodiscard]] LightPool& getActiveLightPool() const;

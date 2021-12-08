@@ -34,19 +34,15 @@ void threadedMeshLoad(MeshLoadData loadData, ResourcePath modelPath, ResourcePat
     OPTICK_EVENT();
 
     Import::ImportData tempMeshData(modelPath, modelName);
-    if (MeshImporter::loadMeshDataFromFile(*loadData._context, tempMeshData)) {
-        if (!MeshImporter::loadMesh(tempMeshData.loadedFromFile(), loadData._mesh, *loadData._context, loadData._cache, tempMeshData)) {
-            loadData._mesh.reset();
-        }
+    if (MeshImporter::loadMeshDataFromFile(*loadData._context, tempMeshData) &&
+        MeshImporter::loadMesh(tempMeshData.loadedFromFile(), loadData._mesh, *loadData._context, loadData._cache, tempMeshData) &&
+        loadData._mesh->load())
+    {
+        NOP();
     } else {
         loadData._mesh.reset();
-        //handle error
-        const string msg = Util::StringFormat("Failed to import mesh [ %s ]!", modelName.c_str());
-        DIVIDE_UNEXPECTED_CALL_MSG(msg.c_str());
-    }
-
-    if (!loadData._mesh->load()) {
-        loadData._mesh.reset();
+        Console::errorfn(Locale::Get(_ID("ERROR_IMPORTER_MESH")), modelName.c_str());
+        return;
     }
 }
 

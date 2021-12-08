@@ -202,6 +202,9 @@ typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true
 [[nodiscard]] string getExtension(const char* filePath);
 [[nodiscard]] string getExtension(const ResourcePath& filePath);
 
+[[nodiscard]] string getTopLevelFolderName(const char* filePath);
+[[nodiscard]] string getTopLevelFolderName(const ResourcePath& filePath);
+
 [[nodiscard]] ResourcePath stripExtension(const char* filePath) noexcept;
 [[nodiscard]] ResourcePath stripExtension(const ResourcePath& filePath) noexcept;
 

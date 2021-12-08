@@ -29,52 +29,52 @@
 namespace Divide {
 
 namespace {
-        constexpr bool g_useSloppyMeshSimplification = false;
-        constexpr U8 g_SloppyTrianglePercentPerLoD = 80;
-        constexpr U8 g_PreciseTrianglePercentPerLoD = 70;
-        constexpr size_t g_minIndexCountForAutoLoD = 1024;
+    constexpr bool g_useSloppyMeshSimplification = false;
+    constexpr U8 g_SloppyTrianglePercentPerLoD = 80;
+    constexpr U8 g_PreciseTrianglePercentPerLoD = 70;
+    constexpr size_t g_minIndexCountForAutoLoD = 1024;
 
-        std::atomic_bool g_wasSetUp = false;
-
-        struct AssimpStream final : Assimp::LogStream {
-            void write(const char* message) override
-            {
-                Console::printf("%s\n", message);
-            }
-        };
-
-        // Select the kinds of messages you want to receive on this log stream
-        constexpr U32 g_severity = Config::Build::IS_DEBUG_BUILD ? Assimp::Logger::VERBOSE : Assimp::Logger::NORMAL;
-
-        constexpr bool g_removeLinesAndPoints = true;
-
-        struct vertexWeight {
-            U8 _boneID = 0;
-            F32 _boneWeight = 0.0f;
-        };
-
-        /// Recursively creates an internal node structure matching the current scene and animation.
-        Bone* CreateBoneTree(aiNode* pNode, Bone* parent) {
-            Bone* internalNode = MemoryManager_NEW Bone(pNode->mName.data);
-            // set the parent; in case this is the root node, it will be null
-            internalNode->_parent = parent;
-            mat4<F32> out;
-            AnimUtils::TransformMatrix(pNode->mTransformation, out);
-            internalNode->localTransform(out);
-            internalNode->originalLocalTransform(internalNode->localTransform());
-            CalculateBoneToWorldTransform(internalNode);
-
-            // continue for all child nodes and assign the created internal nodes as our
-            // children recursively call this function on all children
-            for (U32 i = 0u; i < pNode->mNumChildren; ++i) {
-                internalNode->_children.push_back(CreateBoneTree(pNode->mChildren[i], internalNode));
-            }
-
-            return internalNode;
+    struct AssimpStream final : Assimp::LogStream {
+        void write(const char* message) override
+        {
+            Console::printf("%s\n", message);
         }
     };
 
-    hashMap<U32, TextureWrap> DVDConverter::fillTextureWrapMap() {
+    // Select the kinds of messages you want to receive on this log stream
+    constexpr U32 g_severity = Config::Build::IS_DEBUG_BUILD ? Assimp::Logger::VERBOSE : Assimp::Logger::NORMAL;
+
+    constexpr bool g_removeLinesAndPoints = true;
+
+    struct vertexWeight {
+        U8 _boneID = 0;
+        F32 _boneWeight = 0.0f;
+    };
+
+    /// Recursively creates an internal node structure matching the current scene and animation.
+    Bone* CreateBoneTree(aiNode* pNode, Bone* parent) {
+        Bone* internalNode = MemoryManager_NEW Bone(pNode->mName.data);
+        // set the parent; in case this is the root node, it will be null
+        internalNode->_parent = parent;
+        mat4<F32> out;
+        AnimUtils::TransformMatrix(pNode->mTransformation, out);
+        internalNode->localTransform(out);
+        internalNode->originalLocalTransform(internalNode->localTransform());
+        CalculateBoneToWorldTransform(internalNode);
+
+        // continue for all child nodes and assign the created internal nodes as our
+        // children recursively call this function on all children
+        for (U32 i = 0u; i < pNode->mNumChildren; ++i) {
+            internalNode->_children.push_back(CreateBoneTree(pNode->mChildren[i], internalNode));
+        }
+
+        return internalNode;
+    }
+}; //namespace 
+
+namespace DVDConverter {
+namespace detail {
+    hashMap<U32, TextureWrap> fillTextureWrapMap() {
         hashMap<U32, TextureWrap> wrapMap;
         wrapMap[aiTextureMapMode_Wrap] = TextureWrap::CLAMP;
         wrapMap[aiTextureMapMode_Clamp] = TextureWrap::CLAMP_TO_EDGE;
@@ -83,7 +83,7 @@ namespace {
         return wrapMap;
     }
 
-    hashMap<U32, ShadingMode> DVDConverter::fillShadingModeMap() {
+    hashMap<U32, ShadingMode> fillShadingModeMap() {
         hashMap<U32, ShadingMode> shadingMap;
         shadingMap[aiShadingMode_Fresnel] = ShadingMode::COOK_TORRANCE;
         shadingMap[aiShadingMode_NoShading] = ShadingMode::FLAT;
@@ -98,7 +98,7 @@ namespace {
         return shadingMap;
     }
 
-    hashMap<U32, TextureOperation> DVDConverter::fillTextureOperationMap() {
+    hashMap<U32, TextureOperation> fillTextureOperationMap() {
         hashMap<U32, TextureOperation> operationMap;
         operationMap[aiTextureOp_Multiply] = TextureOperation::MULTIPLY;
         operationMap[aiTextureOp_Add] = TextureOperation::ADD;
@@ -110,25 +110,23 @@ namespace {
         return operationMap;
     }
 
+    hashMap<U32, TextureWrap> aiTextureMapModeTable = fillTextureWrapMap();
+    hashMap<U32, ShadingMode> aiShadingModeInternalTable = fillShadingModeMap();
+    hashMap<U32, TextureOperation> aiTextureOperationTable = fillTextureOperationMap();
+}; //namespace detail
 
-    hashMap<U32, TextureWrap>
-    DVDConverter::aiTextureMapModeTable = fillTextureWrapMap();
-    hashMap<U32, ShadingMode>
-    DVDConverter::aiShadingModeInternalTable = fillShadingModeMap();
-    hashMap<U32, TextureOperation>
-    DVDConverter::aiTextureOperationTable = fillTextureOperationMap();
-
-DVDConverter::DVDConverter(PlatformContext& context, Import::ImportData& target, bool& result) {
-    bool expected = false;
-    if (g_wasSetUp.compare_exchange_strong(expected, true)) {
-        Assimp::DefaultLogger::create("", Assimp::Logger::VERBOSE);
-        Assimp::DefaultLogger::get()->attachStream(new AssimpStream(), g_severity);
-    }
-
-    result = load(context, target);
+void OnStartup([[maybe_unused]] const PlatformContext& context)
+{
+    Assimp::DefaultLogger::create("", Assimp::Logger::VERBOSE);
+    Assimp::DefaultLogger::get()->attachStream(new AssimpStream(), g_severity);
 }
 
-bool DVDConverter::load(PlatformContext& context, Import::ImportData& target) const {
+void OnShutdown()
+{
+    NOP();
+}
+
+bool Load(PlatformContext& context, Import::ImportData& target) {
     const ResourcePath& filePath = target.modelPath();
     const ResourcePath& fileName = target.modelName();
 
@@ -193,7 +191,7 @@ bool DVDConverter::load(PlatformContext& context, Import::ImportData& target) co
         }
 
         for (U32 i = 0u; i < aiScenePointer->mNumAnimations; i++) {
-            aiAnimation* animation = aiScenePointer->mAnimations[i];
+            const aiAnimation* animation = aiScenePointer->mAnimations[i];
             if (IS_ZERO(animation->mDuration)) {
                 Console::errorfn(Locale::Get(_ID("LOADED_0_LENGTH_ANIMATION")), animation->mName.C_Str());
             } else {
@@ -227,24 +225,28 @@ bool DVDConverter::load(PlatformContext& context, Import::ImportData& target) co
         subMeshTemp.name(fullName.length() >= maxMeshNameLength ? fullName.substr(0, maxMeshNameLength - 1u) : fullName);
         subMeshTemp.index(to_U32(n));
         subMeshTemp.boneCount(to_U8(currentMesh->mNumBones));
-        loadSubMeshGeometry(currentMesh, subMeshTemp);
+        detail::LoadSubMeshGeometry(currentMesh, subMeshTemp);
 
-        loadSubMeshMaterial(subMeshTemp._material,
-                            aiScenePointer,
-                            to_U16(currentMesh->mMaterialIndex),
-                            Str128(subMeshTemp.name()) + "_material",
-                            format,
-                            true);
-
+        const string& modelFolderName = getTopLevelFolderName(filePath.c_str());
+        detail::LoadSubMeshMaterial(subMeshTemp._material,
+                                    aiScenePointer,
+                                    modelFolderName,
+                                    to_U16(currentMesh->mMaterialIndex),
+                                    Str128(subMeshTemp.name()) + "_material",
+                                    format,
+                                    true);
+                        
 
         target._subMeshData.push_back(subMeshTemp);
     }
 
-    BuildGeometryBuffers(context, target);
+    detail::BuildGeometryBuffers(context, target);
     return true;
 }
 
-void DVDConverter::BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) {
+namespace detail {
+
+void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) {
     target.vertexBuffer(context.gfx().newVB());
     VertexBuffer* vb = target.vertexBuffer();
 
@@ -343,7 +345,7 @@ void DVDConverter::BuildGeometryBuffers(PlatformContext& context, Import::Import
     } //lod
 }
 
-void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData) const {
+void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData) {
     vector<U32> input_indices;
     input_indices.reserve(to_size(source->mNumFaces) * 3);
     for (U32 k = 0u; k < source->mNumFaces; k++) {
@@ -501,12 +503,13 @@ void DVDConverter::loadSubMeshGeometry(const aiMesh* source, Import::SubMeshData
     }
 }
 
-void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
-                                       const aiScene* source,
-                                       const U16 materialIndex,
-                                       const Str128& materialName,
-                                       const GeometryFormat format,
-                                       bool convertHeightToBumpMap) const
+void LoadSubMeshMaterial(Import::MaterialData& material,
+                         const aiScene* source,
+                         const string& modelDirectoryName,
+                         const U16 materialIndex,
+                         const Str128& materialName,
+                         const GeometryFormat format,
+                         bool convertHeightToBumpMap)
 {
 
     const aiMaterial* mat = source->mMaterials[materialIndex];
@@ -537,13 +540,19 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
     { // Load shading mode
         // The default shading model should be set to the classic SpecGloss Phong
         I32 shadingModel = 0, unlit = 0, flags = 0;
-        if (AI_SUCCESS == aiGetMaterialInteger(mat, AI_MATKEY_GLTF_UNLIT, &unlit) && unlit == 1) {
-            material.shadingMode(ShadingMode::FLAT);
-        } else if (AI_SUCCESS == aiGetMaterialInteger(mat, AI_MATKEY_SHADING_MODEL, &shadingModel)) {
-            material.shadingMode(aiShadingModeInternalTable[shadingModel]);
+        if (format != GeometryFormat::GLTF) {
+            if (AI_SUCCESS == aiGetMaterialInteger(mat, AI_MATKEY_GLTF_UNLIT, &unlit) && unlit == 1) {
+                material.shadingMode(ShadingMode::FLAT);
+            } else if (AI_SUCCESS == aiGetMaterialInteger(mat, AI_MATKEY_SHADING_MODEL, &shadingModel)) {
+                material.shadingMode(detail::aiShadingModeInternalTable[shadingModel]);
+            } else {
+                material.shadingMode(ShadingMode::BLINN_PHONG);
+            }
         } else {
-            material.shadingMode(ShadingMode::BLINN_PHONG);
+            // GLTF is a pure PBR material-based format
+            material.shadingMode(ShadingMode::COOK_TORRANCE);
         }
+
         aiGetMaterialInteger(mat, AI_MATKEY_TEXFLAGS_DIFFUSE(0), &flags);
         const bool hasIgnoreAlphaFlag = (flags & aiTextureFlags_IgnoreAlpha) != 0;
         if (hasIgnoreAlphaFlag) {
@@ -657,32 +666,59 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
                                  _aiTextureMapMode_Force32Bit,
                                  _aiTextureMapMode_Force32Bit };
 
-    const auto loadTexture = [&material](const TextureUsage usage, TextureOperation texOp, const aiString& name, aiTextureMapMode* wrapMode, const bool srgb = false) {
+    const auto loadTexture = [&material, &modelDirectoryName](const TextureUsage usage, TextureOperation texOp, const aiString& name, aiTextureMapMode* wrapMode, const bool srgb = false) {
         DIVIDE_ASSERT(name.length > 0);
+        constexpr char* const g_backupImageExtensions[] = {
+            "png", "jpg", "jpeg", "tga", "dds"
+        };
 
-        // it might be an embedded texture
-        /*const aiTexture* texture = mat->GetEmbeddedTexture(name.C_Str());
+        ResourcePath filePath(Paths::g_assetsLocation + Paths::g_texturesLocation);
+        ResourcePath fileName(name.C_Str());
+        const Str64 originalExtension = getExtension(fileName);
 
-        if (texture != nullptr )
-        {
-        }*/
-        const ResourcePath path(Paths::g_assetsLocation + Paths::g_texturesLocation + name.C_Str());
-        const auto [img_name, img_path] = splitPathToNameAndLocation(path);
+        bool found = fileExists(filePath + fileName);
+        if (!found) {
+            //Try backup extensions
+            ResourcePath fileNameStem = stripExtension(fileName);
+            for (const char* ext : g_backupImageExtensions) {
+                fileName = fileNameStem + "." + ext;
+                if (fileExists(filePath + fileName)) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if (!found) {
+            filePath = Paths::g_assetsLocation + Paths::g_texturesLocation + modelDirectoryName + "/";
+            fileName = stripExtension(fileName) + originalExtension;
+            found = fileExists(filePath + fileName);
+            if (!found) {
+                //Try backup extensions
+                ResourcePath fileNameStem = stripExtension(fileName);
+                for (const char* ext : g_backupImageExtensions) {
+                    fileName = fileNameStem + "." + ext;
+                    if (fileExists(filePath + fileName)) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        }
 
         // if we have a name and an extension
-        if (!img_name.str().substr(img_name.str().find_first_of('.'), Str64::npos).empty()) {
+        if (found) {
             Import::TextureEntry& texture = material._textures[to_base(usage)];
             // Load the texture resource
             if (IS_IN_RANGE_INCLUSIVE(wrapMode[0], aiTextureMapMode_Wrap, aiTextureMapMode_Decal) &&
                 IS_IN_RANGE_INCLUSIVE(wrapMode[1], aiTextureMapMode_Wrap, aiTextureMapMode_Decal) &&
                 IS_IN_RANGE_INCLUSIVE(wrapMode[2], aiTextureMapMode_Wrap, aiTextureMapMode_Decal)) {
-                texture.wrapU(aiTextureMapModeTable[wrapMode[0]]);
-                texture.wrapV(aiTextureMapModeTable[wrapMode[1]]);
-                texture.wrapW(aiTextureMapModeTable[wrapMode[2]]);
+                texture.wrapU(detail::aiTextureMapModeTable[wrapMode[0]]);
+                texture.wrapV(detail::aiTextureMapModeTable[wrapMode[1]]);
+                texture.wrapW(detail::aiTextureMapModeTable[wrapMode[2]]);
             }
 
-            texture.textureName(img_name);
-            texture.texturePath(img_path);
+            texture.textureName(fileName);
+            texture.texturePath(filePath);
             texture.operation(texOp);
             texture.srgb(srgb);
             if (usage == TextureUsage::NORMALMAP) {
@@ -702,7 +738,7 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
         {
             if (tName.length > 0) {
                 // The first texture operation defines how we should mix the diffuse colour with the texture itself
-                loadTexture(TextureUsage::UNIT0, aiTextureOperationTable[op], tName, mode, true);
+                loadTexture(TextureUsage::UNIT0, detail::aiTextureOperationTable[op], tName, mode, true);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "UNIT0");
             }
@@ -714,7 +750,7 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
         {
             if (tName.length > 0) {
                 // The second operation is how we mix the albedo generated from the diffuse and Tex0 with this texture
-                loadTexture(TextureUsage::UNIT1, aiTextureOperationTable[op], tName, mode, true);
+                loadTexture(TextureUsage::UNIT1, detail::aiTextureOperationTable[op], tName, mode, true);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "UNIT1");
             }
@@ -732,7 +768,7 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
             AI_SUCCESS == mat->GetTexture(aiTextureType_NORMALS, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) 
         {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::NORMALMAP, aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureUsage::NORMALMAP, detail::aiTextureOperationTable[op], tName, mode);
                 material.bumpMethod(BumpMethod::NORMAL);
                 hasNormalMap = true;
             } else {
@@ -744,11 +780,11 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_HEIGHT, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
                 if (convertHeightToBumpMap && !hasNormalMap) {
-                    loadTexture(TextureUsage::NORMALMAP, aiTextureOperationTable[op], tName, mode);
+                    loadTexture(TextureUsage::NORMALMAP, detail::aiTextureOperationTable[op], tName, mode);
                     material.bumpMethod(BumpMethod::NORMAL);
                     hasNormalMap = true;
                 } else {
-                    loadTexture(TextureUsage::HEIGHTMAP, aiTextureOperationTable[op], tName, mode);
+                    loadTexture(TextureUsage::HEIGHTMAP, detail::aiTextureOperationTable[op], tName, mode);
                     material.bumpMethod(BumpMethod::PARALLAX);
                 }
             } else {
@@ -758,7 +794,7 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
 
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_DISPLACEMENT, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::HEIGHTMAP, aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureUsage::HEIGHTMAP, detail::aiTextureOperationTable[op], tName, mode);
                 material.bumpMethod(BumpMethod::PARALLAX);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "HEIGHTMAP");
@@ -768,7 +804,7 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
     { // Opacity map
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_OPACITY, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::OPACITY, aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureUsage::OPACITY, detail::aiTextureOperationTable[op], tName, mode);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "OPACITY");
             }
@@ -777,7 +813,7 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
     { // Specular map
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_SPECULAR, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::SPECULAR, aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureUsage::SPECULAR, detail::aiTextureOperationTable[op], tName, mode);
                 // Undo the spec colour and leave only the strength component in!
                 material.specular({ specStrength, specStrength, specStrength, material.specular().a });
             } else {
@@ -789,34 +825,42 @@ void DVDConverter::loadSubMeshMaterial(Import::MaterialData& material,
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_EMISSIVE, 0, &tName, &mapping, &uvInd, &blend, &op, mode) ||
             AI_SUCCESS == mat->GetTexture(aiTextureType_EMISSION_COLOR, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
             if (tName.length > 0) {
-                loadTexture(TextureUsage::EMISSIVE, aiTextureOperationTable[op], tName, mode);
+                loadTexture(TextureUsage::EMISSIVE, detail::aiTextureOperationTable[op], tName, mode);
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "EMISSIVE");
             }
         }
     }
-    if (AI_SUCCESS == mat->GetTexture(aiTextureType_METALNESS, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
+    if (AI_SUCCESS == mat->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, &tName, &mapping, &uvInd, &blend, &op, mode)) {
         if (tName.length > 0) {
-            loadTexture(TextureUsage::METALNESS, aiTextureOperationTable[op], tName, mode);
+            loadTexture(TextureUsage::METALNESS, detail::aiTextureOperationTable[op], tName, mode);
         } else {
-            Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "METALNESS");
+            Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "METALLIC_ROUGHNESS");
+        }
+    } else {
+        if (AI_SUCCESS == mat->GetTexture(aiTextureType_METALNESS, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
+            if (tName.length > 0) {
+                loadTexture(TextureUsage::METALNESS, detail::aiTextureOperationTable[op], tName, mode);
+            } else {
+                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "METALNESS");
+            }
+        }
+        if (AI_SUCCESS == mat->GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
+            if (tName.length > 0) {
+                loadTexture(TextureUsage::ROUGHNESS, detail::aiTextureOperationTable[op], tName, mode);
+            } else {
+                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "ROUGHNESS");
+            }
+        }
+        if (AI_SUCCESS == mat->GetTexture(aiTextureType_AMBIENT_OCCLUSION, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
+            if (tName.length > 0) {
+                loadTexture(TextureUsage::OCCLUSION, detail::aiTextureOperationTable[op], tName, mode);
+            } else {
+                Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "OCCLUSION");
+            }
         }
     }
-    if (AI_SUCCESS == mat->GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
-        if (tName.length > 0) {
-            loadTexture(TextureUsage::ROUGHNESS, aiTextureOperationTable[op], tName, mode);
-        } else {
-            Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "ROUGHNESS");
-        }
-    }
-    if (AI_SUCCESS == mat->GetTexture(aiTextureType_AMBIENT_OCCLUSION, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
-        if (tName.length > 0) {
-            loadTexture(TextureUsage::OCCLUSION, aiTextureOperationTable[op], tName, mode);
-        } else {
-            Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "OCCLUSION");
-        }
-    }
-
 }
-
-};
+}; //namespace detail
+}; //namespace DVDConverter
+}; //namespace Divide

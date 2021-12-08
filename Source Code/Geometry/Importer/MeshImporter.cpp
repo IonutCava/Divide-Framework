@@ -231,14 +231,13 @@ namespace Import {
         if (!context.config().debug.useGeometryCache || !dataOut.loadFromFile(context, Paths::g_cacheLocation + Paths::g_geometryCacheLocation, dataOut.modelName())) {
             Console::printfn(Locale::Get(_ID("MESH_NOT_LOADED_FROM_FILE")), dataOut.modelName().c_str());
 
-            [[maybe_unused]] const DVDConverter converter(context, dataOut, success);
-
-            if (success) {
+            if (DVDConverter::Load(context, dataOut)) {
                 if (dataOut.saveToFile(context, Paths::g_cacheLocation + Paths::g_geometryCacheLocation, dataOut.modelName())) {
                     Console::printfn(Locale::Get(_ID("MESH_SAVED_TO_FILE")), dataOut.modelName().c_str());
                 } else {
                     Console::printfn(Locale::Get(_ID("MESH_NOT_SAVED_TO_FILE")), dataOut.modelName().c_str());
                 }
+                success = true;
             }
         } else {
             Console::printfn(Locale::Get(_ID("MESH_LOADED_FROM_FILE")), dataOut.modelName().c_str());

@@ -59,6 +59,7 @@ namespace {
     struct TextureCallbackData {
         vec4<I32> _colourData = { 1, 1, 1, 1 };
         vec2<F32> _depthRange = { 0.002f, 1.f };
+        I32 _arrayLayer = -1;
         bool _isDepthTexture = false;
         bool _flip = true;
     };
@@ -1421,7 +1422,6 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
 
         TextureCallbackData& data = g_modalTextureData[tex->getGUID()];
         data._isDepthTexture = tex->descriptor().baseFormat() == GFXImageFormat::DEPTH_COMPONENT;
-
         const U8 numChannels = NumChannels(tex->descriptor().baseFormat());
 
         assert(numChannels > 0);
@@ -1432,6 +1432,13 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
             ImGui::Text("Range: "); ImGui::SameLine();
             ImGui::DragFloatRange2("", &data._depthRange[0], &data._depthRange[1], 0.005f, 0.f, 1.f);
         } else {
+            if (IsArrayTexture(tex->descriptor().texType())) {
+                U16 arrayLayer = to_U16(data._arrayLayer > -1 ? data._arrayLayer : 0);
+                ImGui::Text("Layer: "); ImGui::SameLine(); ImGui::InputScalar("", ImGuiDataType_U16, &arrayLayer);
+                CLAMP(arrayLayer, to_U16(0), tex->descriptor().layerCount());
+                //ToDo: Implement array layer views
+                DIVIDE_UNEXPECTED_CALL();
+            }
             ImGui::Text("R: ");  ImGui::SameLine(); ImGui::ToggleButton("R", &state[0]);
 
             if (numChannels > 1) {
@@ -1504,12 +1511,22 @@ bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const 
     }
 
     static vec3<F32> scale(1.0f);
+    static vec3<F32> position(0.0f);
+    static vec3<F32> rotation(0.0f);
     static char inputBuf[256] = {};
 
     bool closed = false;
 
+    static bool wasClosed = true;
+
     ImGui::OpenPopup(modalName);
     if (ImGui::BeginPopupModal(modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (wasClosed) {
+            wasClosed = false;
+            const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
+            position = playerCam->getEye();
+        }
+
         assert(mesh != nullptr);
         if (Util::IsEmptyOrNull(inputBuf)) {
             strcpy_s(&inputBuf[0], std::min(to_size(254), mesh->resourceName().length()) + 1, mesh->resourceName().c_str());
@@ -1517,18 +1534,24 @@ bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const 
         ImGui::Text("Spawn [ %s ]?", mesh->resourceName().c_str());
         ImGui::Separator();
 
+     
 
         if (ImGui::InputFloat3("Scale", scale._v)) {
         }
-
+        if (ImGui::InputFloat3("Position", position._v)) {
+        }
+        if (ImGui::InputFloat3("Rotation (euler)", rotation._v)) {
+        }
         if (ImGui::InputText("Name", inputBuf, IM_ARRAYSIZE(inputBuf), ImGuiInputTextFlags_EnterReturnsTrue)) {
         }
 
         ImGui::Separator();
         if (ImGui::Button("Cancel", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
+            wasClosed = true;
             closed = true;
             scale.set(1.0f);
+            rotation.set(0.f);
             inputBuf[0] = '\0';
         }
 
@@ -1536,11 +1559,13 @@ bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const 
         ImGui::SameLine();
         if (ImGui::Button("Yes", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
+            wasClosed = true;
             closed = true;
-            if (!spawnGeometry(mesh, scale, inputBuf)) {
-                
+            if (!spawnGeometry(mesh, scale, position, rotation, inputBuf)) {
+                DIVIDE_UNEXPECTED_CALL();
             }
             scale.set(1.0f);
+            rotation.set(0.f);
             inputBuf[0] = '\0';
         }
         ImGui::EndPopup();
@@ -1553,7 +1578,7 @@ void Editor::showStatusMessage(const string& message, const F32 durationMS, bool
     _statusBar->showMessage(message, durationMS, error);
 }
 
-bool Editor::spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const string& name) const {
+bool Editor::spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& rotation, const string& name) const {
     constexpr U32 normalMask = to_base(ComponentType::TRANSFORM) |
                                to_base(ComponentType::BOUNDS) |
                                to_base(ComponentType::NETWORKING) |
@@ -1567,11 +1592,9 @@ bool Editor::spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const s
     const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
     const SceneGraphNode* node = activeScene.sceneGraph()->getRoot()->addChildNode(nodeDescriptor);
     if (node != nullptr) {
-        const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
-
         TransformComponent* tComp = node->get<TransformComponent>();
-        tComp->setPosition(playerCam->getEye());
-        tComp->rotate(RotationFromVToU(tComp->getFwdVector(), playerCam->getForwardDir()));
+        tComp->setPosition(position);
+        tComp->rotate(rotation);
         tComp->setScale(scale);
 
         return true;

@@ -27,6 +27,7 @@
 #include "Geometry/Shapes/Predefined/Headers/Box3D.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 #include "Geometry/Shapes/Predefined/Headers/Sphere3D.h"
+#include "Geometry/Importer/Headers/DVDConverter.h"
 
 #include "GUI/Headers/GUI.h"
 #include "GUI/Headers/GUIConsole.h"
@@ -105,10 +106,12 @@ Scene::~Scene()
 
 bool Scene::OnStartup(PlatformContext& context) {
     Sky::OnStartup(context);
+    DVDConverter::OnStartup(context);
     return true;
 }
 
 bool Scene::OnShutdown([[maybe_unused]] PlatformContext& context) {
+    DVDConverter::OnShutdown();
     return true;
 }
 

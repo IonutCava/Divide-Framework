@@ -305,6 +305,15 @@ string getExtension(const char* filePath) {
     return pathIn.extension().string();
 }
 
+string getTopLevelFolderName(const char* filePath) {
+    const std::filesystem::path pathIn(filePath);
+    return pathIn.parent_path().filename().generic_string();
+}
+
+string getTopLevelFolderName(const ResourcePath& filePath) {
+    return getTopLevelFolderName(filePath.c_str());
+}
+
 ResourcePath stripExtension(const char* filePath) noexcept {
     const std::filesystem::path pathIn(filePath);
     return ResourcePath{ pathIn.stem().string() };
