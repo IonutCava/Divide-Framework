@@ -11,6 +11,7 @@
 #include "Geometry/Shapes/Headers/Mesh.h"
 
 #include <filesystem>
+#include <imgui_internal.h>
 
 namespace Divide {
     namespace {
@@ -146,6 +147,8 @@ namespace Divide {
 
     void ContentExplorerWindow::drawInternal() {
 
+        const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_parent, Editor::ImGuiContextType::Editor);
+
         static Texture_ptr previewTexture = nullptr;
         static Mesh_ptr spawnMesh = nullptr;
 
@@ -165,6 +168,7 @@ namespace Divide {
             ImGui::BeginChild("Folders", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.3f, -1), true, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_HorizontalScrollbar);
             if (ImGui::BeginMenuBar()) {
                 if (ImGui::BeginMenu("Menu")) {
+                    ImGui::MenuItem("Refresh", nullptr, nullptr, false);
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenuBar();
@@ -181,12 +185,14 @@ namespace Divide {
             ImGui::BeginChild("Contents", ImVec2(0, -1), true, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_HorizontalScrollbar);
             if (ImGui::BeginMenuBar()) {
                 if (ImGui::BeginMenu("Menu")) {
+                    ImGui::MenuItem("Refresh", nullptr, nullptr, false);
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenuBar();
             }
-            ImGui::Columns(4);
+
             if (_selectedDir != nullptr) {
+                ImGui::Columns(to_I32(std::min(4u, to_U32(_selectedDir->_files.size()))));
                 bool lockTextureQueue = false;
 
                 for (const auto& file : _selectedDir->_files) {
@@ -212,6 +218,7 @@ namespace Divide {
 
                     const GeometryFormat format = tex != nullptr ? GeometryFormat::COUNT : GetGeometryFormatForExtension(getExtension(file.second.c_str()).c_str());
 
+                    bool hasTooltip = false;
                     if (tex != nullptr) {
                         const U16 w = tex->width();
                         const U16 h = tex->height();
@@ -226,13 +233,18 @@ namespace Divide {
                         const U16 h = icon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)(intptr_t)icon->data()._textureHandle, ImVec2(64, 64 / aspect))) {
+                        ImVec4 bgColour(imguiContext.IO.KeyShift ? 1.f : 0.f, 0.f, 0.f, imguiContext.IO.KeyShift ? 1.f : 0.f);
+                        if (ImGui::ImageButton((void*)(intptr_t)icon->data()._textureHandle, ImVec2(64, 64 / aspect), ImVec2(0,0), ImVec2(1,1), 2, bgColour, ImVec4(1,1,1,1))) {
                             spawnMesh = getModelForPath(ResourcePath(file.first), ResourcePath(file.second));
+                        }
+                        hasTooltip = true;
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Hold down [Shift] to spawn directly at the camera position");
                         }
                     } else if (isSoundFile(file.second)) {
                         const U16 w = _soundIcon->width();
                         const U16 h = _soundIcon->height();
-                        const F32 aspect = w / to_F32(h);
+                         const F32 aspect = w / to_F32(h);
 
                         if (ImGui::ImageButton((void*)(intptr_t)_soundIcon->data()._textureHandle, ImVec2(64, 64 / aspect))) {
                             //ToDo: Play sound file -Ionut
@@ -245,7 +257,7 @@ namespace Divide {
                         if (ImGui::ImageButton((void*)(intptr_t)_fileIcon->data()._textureHandle, ImVec2(64, 64 / aspect))) {
                         }
                     }
-                    if (ImGui::IsItemHovered()) {
+                    if (!hasTooltip && ImGui::IsItemHovered()) {
                         ImGui::SetTooltip(file.second.c_str());
                     }
                     ImGui::Text(file.second.c_str());

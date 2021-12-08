@@ -61,7 +61,7 @@ namespace {
         vec2<F32> _depthRange = { 0.002f, 1.f };
         I32 _arrayLayer = -1;
         bool _isDepthTexture = false;
-        bool _flip = true;
+        bool _flip = false;
     };
 
     hashMap<I64, TextureCallbackData> g_modalTextureData;
@@ -1519,6 +1519,17 @@ bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const 
 
     static bool wasClosed = true;
 
+    {
+        const ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
+        if (io.KeyShift) {
+            const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager());
+            position = playerCam->getEye();
+            if (!spawnGeometry(mesh, scale, position, rotation, mesh->resourceName().c_str())) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+            return true;
+        }
+    }
     ImGui::OpenPopup(modalName);
     if (ImGui::BeginPopupModal(modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         if (wasClosed) {
@@ -1533,7 +1544,6 @@ bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const 
         }
         ImGui::Text("Spawn [ %s ]?", mesh->resourceName().c_str());
         ImGui::Separator();
-
      
 
         if (ImGui::InputFloat3("Scale", scale._v)) {
