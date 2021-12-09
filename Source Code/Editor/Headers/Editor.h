@@ -219,7 +219,6 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] bool isDefaultScene() const noexcept;
 
     PROPERTY_R_IW(bool, running, false);
-    PROPERTY_R_IW(bool, showEmissiveSelections, true);
     PROPERTY_R_IW(bool, unsavedSceneChanges, false);
     PROPERTY_R_IW(bool, scenePreviewFocused, false);
     PROPERTY_R_IW(bool, scenePreviewHovered, false);
@@ -281,7 +280,6 @@ class Editor final : public PlatformContextComponent,
     U32            _stepQueue = 1u;
     bool           _simulationPaused = true;
     ImGuiStyleEnum _currentTheme = ImGuiStyle_Count;
-    bool           _autoFocusEditor = true;
     bool           _showSampleWindow = false;
     bool           _showOptionsWindow = false;
     bool           _showMemoryEditor = false;
@@ -324,22 +322,6 @@ namespace Attorney {
             editor._simulationPaused = state;
         }
         
-        [[nodiscard]] static bool autoFocusEditor(const Editor& editor) noexcept {
-            return editor._autoFocusEditor;
-        }
-
-        static void autoFocusEditor(Editor& editor, const bool state) noexcept {
-            editor._autoFocusEditor = state;
-        } 
-        
-        [[nodiscard]] static bool emissiveSelections(const Editor& editor) noexcept {
-            return editor._showEmissiveSelections;
-        }
-
-        static void emissiveSelections(Editor& editor, const bool state) noexcept {
-            editor._showEmissiveSelections = state;
-        }
-
         friend class Divide::SceneViewWindow;
     };
 

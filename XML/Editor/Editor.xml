@@ -2,10 +2,8 @@
 <editor>
     <showMemEditor>true</showMemEditor>
     <showSampleWindow>false</showSampleWindow>
-    <autoFocusEditor>true</autoFocusEditor>
-    <showEmissiveSelections>false</showEmissiveSelections>
     <themeIndex>6</themeIndex>
-    <textEditor>C:/Program Files/Notepad++/notepad++.exe</textEditor>
+    <textEditor>C:/Program Files (x86)/Notepad++/notepad++.exe</textEditor>
     <lastOpenSceneGUID>378</lastOpenSceneGUID>
     <camera>
         <Editor__Camera>

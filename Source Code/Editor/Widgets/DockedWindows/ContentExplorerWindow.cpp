@@ -33,6 +33,10 @@ namespace Divide {
            "wav", "ogg", "mp3", "mid"
         };
 
+        constexpr char* const g_shaderExtensions[] = {
+           "glsl", "vert", "frag", "geom", "comp", "cmn", "tesc", "tese"
+        };
+
         bool IsValidFile(const char* name) {
             for (const char* extension : g_extensions) {
                 if (hasExtension(name, extension)) {
@@ -73,8 +77,9 @@ namespace Divide {
         getDirectoryStructureForPath(Paths::g_xmlDataLocation, _currentDirectories[1]);
         _currentDirectories[1]._name = "XML";
 
-        _fileIcon = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("file_icon.png"));
-        _soundIcon = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("sound_icon.png"));
+        _fileIcon   = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("file_icon.png"));
+        _soundIcon  = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("sound_icon.png"));
+        _shaderIcon = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("shader_icon.png"));
 
         _geometryIcons[to_base(GeometryFormat::_3DS)]     = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("3ds_icon.png"));
         _geometryIcons[to_base(GeometryFormat::ASE)]      = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("ase_icon.png"));
@@ -160,8 +165,28 @@ namespace Divide {
                 }
             }
             return false;
+        }; 
+        
+        const auto isShaderFile = [](const Str64& fileName) {
+            const string extension = getExtension(fileName.c_str());
+            for (const char* ext : g_shaderExtensions) {
+                if (Util::CompareIgnoreCase(extension.substr(1).c_str(), ext)) {
+                    return true;
+                }
+            }
+            return false;
         };
-
+        
+        const auto openFileInEditor = [&](const std::pair<Str256, Str64>& file) {
+            const string& textEditor = Attorney::EditorGeneralWidget::externalTextEditorPath(_parent);
+            if (textEditor.empty()) {
+                Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: No text editor specified!", Time::SecondsToMilliseconds<F32>(3), true);
+            } else {
+                if (openFile(textEditor.c_str(), file.first.c_str(), file.second.c_str()) != FileError::NONE) {
+                    Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't open specified source file!", Time::SecondsToMilliseconds<F32>(3), true);
+                }
+            }
+        };
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
 
         {
@@ -192,7 +217,7 @@ namespace Divide {
             }
 
             if (_selectedDir != nullptr) {
-                ImGui::Columns(to_I32(std::min(4u, to_U32(_selectedDir->_files.size()))));
+                ImGui::Columns(CLAMPED(to_I32(_selectedDir->_files.size()), 1, 4));
                 bool lockTextureQueue = false;
 
                 for (const auto& file : _selectedDir->_files) {
@@ -233,7 +258,7 @@ namespace Divide {
                         const U16 h = icon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        ImVec4 bgColour(imguiContext.IO.KeyShift ? 1.f : 0.f, 0.f, 0.f, imguiContext.IO.KeyShift ? 1.f : 0.f);
+                        const ImVec4 bgColour(imguiContext.IO.KeyShift ? 1.f : 0.f, 0.f, 0.f, imguiContext.IO.KeyShift ? 1.f : 0.f);
                         if (ImGui::ImageButton((void*)(intptr_t)icon->data()._textureHandle, ImVec2(64, 64 / aspect), ImVec2(0,0), ImVec2(1,1), 2, bgColour, ImVec4(1,1,1,1))) {
                             spawnMesh = getModelForPath(ResourcePath(file.first), ResourcePath(file.second));
                         }
@@ -249,12 +274,21 @@ namespace Divide {
                         if (ImGui::ImageButton((void*)(intptr_t)_soundIcon->data()._textureHandle, ImVec2(64, 64 / aspect))) {
                             //ToDo: Play sound file -Ionut
                         }
+                    } else if (isShaderFile(file.second)) {
+                        const U16 w = _shaderIcon->width();
+                        const U16 h = _shaderIcon->height();
+                        const F32 aspect = w / to_F32(h);
+
+                        if (ImGui::ImageButton((void*)(intptr_t)_shaderIcon->data()._textureHandle, ImVec2(64, 64 / aspect))) {
+                            openFileInEditor(file);
+                        }
                     } else {
                         const U16 w = _fileIcon->width();
                         const U16 h = _fileIcon->height();
                         const F32 aspect = w / to_F32(h);
 
                         if (ImGui::ImageButton((void*)(intptr_t)_fileIcon->data()._textureHandle, ImVec2(64, 64 / aspect))) {
+                            openFileInEditor(file);
                         }
                     }
                     if (!hasTooltip && ImGui::IsItemHovered()) {

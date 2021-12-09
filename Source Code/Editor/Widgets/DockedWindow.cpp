@@ -28,11 +28,13 @@ namespace Divide {
         ImGui::SetNextWindowPos(_descriptor.position, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(_descriptor.size, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(_descriptor.minSize, _descriptor.maxSize);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, _descriptor.minSize);
         if (ImGui::Begin(_descriptor.name.c_str(), nullptr, windowFlags() | _descriptor.flags)) {
             _focused = ImGui::IsWindowFocused();
             _isHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
             drawInternal();
         }
+        ImGui::PopStyleVar();
         ImGui::End();
     }
 

@@ -64,6 +64,7 @@ namespace Divide {
         
     private:
         Texture_ptr _fileIcon = nullptr;
+        Texture_ptr _shaderIcon = nullptr;
         Texture_ptr _soundIcon = nullptr;
         std::array<Texture_ptr, to_base(GeometryFormat::COUNT) + 1> _geometryIcons = {};
         mutable const Directory* _selectedDir = nullptr;

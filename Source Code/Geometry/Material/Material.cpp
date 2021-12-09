@@ -1107,18 +1107,12 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
     const SceneGraphNode* parentSGN = parentComp.parentSGN();
 
     F32 selectionFlag = 0.0f;
-    if (parentSGN->hasFlag(SceneGraphNode::Flags::HOVERED)) {
-        selectionFlag = 0.5f;
-    }
     // We don't propagate selection flags to children outside of the editor, so check for that
     if (parentSGN->hasFlag(SceneGraphNode::Flags::SELECTED) ||
         parentSGN->parent() && parentSGN->parent()->hasFlag(SceneGraphNode::Flags::SELECTED)) {
-        if_constexpr(Config::Build::ENABLE_EDITOR) {
-            const Editor& editor = _context.parent().platformContext().editor();
-            selectionFlag = (!editor.running() || editor.showEmissiveSelections()) ? 1.0f : selectionFlag;
-        } else {
-            selectionFlag = 1.0f;
-        }
+        selectionFlag = 1.0f;
+    } else if (parentSGN->hasFlag(SceneGraphNode::Flags::HOVERED)) {
+        selectionFlag = 0.5f;
     }
 
     const FColour4& specColour = specular(); //< For PHONG_SPECULAR

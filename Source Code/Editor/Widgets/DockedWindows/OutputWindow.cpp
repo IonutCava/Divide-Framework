@@ -4,6 +4,9 @@
 #include "Core/Headers/StringHelper.h"
 #include "Editor/Headers/Editor.h"
 
+#include <imgui_internal.h>
+#include <IconFontCppHeaders/IconsForkAwesome.h>
+
 namespace Divide {
     constexpr U16 g_maxLogEntries = 512;
 
@@ -42,20 +45,21 @@ namespace Divide {
     void OutputWindow::drawInternal() {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
 
+        ImGui::Text(ICON_FK_SEARCH);
+        ImGui::SameLine();
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+        _filter.Draw("##Filter", 180);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Search/Filter (\"incl,-excl\") (\"error\")");
+        }
+        ImGui::PopStyleVar();
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        ImGui::SameLine(window->SizeFull.x - 100);
         if (ImGui::SmallButton("Clear")) {
             clearLog();
         }
         ImGui::SameLine();
-
         const bool copy_to_clipboard = ImGui::SmallButton("Copy");
-        ImGui::SameLine();
-        if (ImGui::Checkbox("Auto-scroll to bottom", &_scrollToBottom)) {
-            
-        }
-
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-        _filter.Draw("Filter (\"incl,-excl\") (\"error\")", 180);
-        ImGui::PopStyleVar();
         ImGui::Separator();
 
         ImGui::BeginChild("ScrollingRegion", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()), false, ImGuiWindowFlags_HorizontalScrollbar);
@@ -141,7 +145,17 @@ namespace Divide {
             }
             strcpy(_inputBuf, "");
         }
+        ImGui::SameLine(window->SizeFull.x - 55);
+        ImGui::Text(ICON_FK_ARROW_CIRCLE_DOWN);
+        ImGui::SameLine();
+        ImGui::PushID(ICON_FK_ARROW_CIRCLE_DOWN"_ID");
+        if (ImGui::Checkbox("", &_scrollToBottom)) {
 
+        }
+        ImGui::PopID();
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Auto-scroll to bottom");
+        }
         // Demonstrate keeping auto focus on the input box
         if (ImGui::IsItemHovered() || ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)) {
             ImGui::SetKeyboardFocusHere(-1); // Auto focus previous widget

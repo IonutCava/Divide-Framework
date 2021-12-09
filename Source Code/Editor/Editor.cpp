@@ -40,10 +40,13 @@
 #include <imgui_club/imgui_memory_editor/imgui_memory_editor.h>
 #include <ImGuiMisc/imguivariouscontrols/imguivariouscontrols.h>
 
+#include <IconFontCppHeaders/IconsForkAwesome.h>
+
 namespace Divide {
 
 namespace {
-    const char* g_editorFontFile = "Arial.ttf";
+    const char* g_editorFontFile = "Roboto-Medium.ttf";
+    const char* g_editorIconFile = FONT_ICON_FILE_NAME_FK;
     const char* g_editorSaveFile = "Editor.xml";
     const char* g_editorSaveFileBak = "Editor.xml.bak";
 
@@ -72,15 +75,13 @@ namespace ImGuiCustom {
         PlatformContext* _context = nullptr;
     };
 
-    FORCE_INLINE void* MallocWrapper(const size_t size, void* user_data) noexcept {
-        [[maybe_unused]] PlatformContext* context = static_cast<PlatformContext*>(user_data);
-
+    FORCE_INLINE void* MallocWrapper(const size_t size, [[maybe_unused]] void* user_data) noexcept {
+        //PlatformContext* user_data;
         return xmalloc(size);
     }
 
-    FORCE_INLINE void FreeWrapper(void* ptr, void* user_data) noexcept {
-        [[maybe_unused]] PlatformContext* context = static_cast<PlatformContext*>(user_data);
-
+    FORCE_INLINE void FreeWrapper(void* ptr, [[maybe_unused]] void* user_data) noexcept {
+        //PlatformContext* user_data;
         xfree(ptr);
     }
 
@@ -170,6 +171,7 @@ void Editor::idle() noexcept {
 
 void Editor::createFontTexture(const F32 DPIScaleFactor) {
     constexpr F32 fontSize = 13.f;
+    constexpr F32 iconSize = 16.f;
 
     if (!_fontTexture) {
         TextureDescriptor texDescriptor(TextureType::TEXTURE_2D,
@@ -188,7 +190,8 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
     U8* pPixels = nullptr;
     I32 iWidth = 0;
     I32 iHeight = 0;
-    ResourcePath fontPath(Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath + g_editorFontFile);
+    ResourcePath textFontPath(Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath + g_editorFontFile);
+    ResourcePath iconFontPath(Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath + g_editorIconFile);
 
     ImFontConfig font_cfg;
     font_cfg.OversampleH = font_cfg.OversampleV = 1;
@@ -199,7 +202,16 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
     ImFormatString(font_cfg.Name, IM_ARRAYSIZE(font_cfg.Name), "%s, %dpx", g_editorFontFile, (int)font_cfg.SizePixels);
 
     io.Fonts->Clear();
-    io.Fonts->AddFontFromFileTTF(fontPath.c_str(), fontSize * DPIScaleFactor, &font_cfg);
+    io.Fonts->AddFontFromFileTTF(textFontPath.c_str(), fontSize * DPIScaleFactor, &font_cfg);
+
+    font_cfg.MergeMode = true;
+    font_cfg.SizePixels = iconSize * DPIScaleFactor;
+    font_cfg.PixelSnapH = true;
+    font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / iconSize);  // Add +1 offset per 16 units
+
+    static const ImWchar icons_ranges[] = { ICON_MIN_FK, ICON_MAX_FK, 0 };
+    io.Fonts->AddFontFromFileTTF(iconFontPath.c_str(), iconSize * DPIScaleFactor, &font_cfg, icons_ranges);
+
     io.Fonts->GetTexDataAsRGBA32(&pPixels, &iWidth, &iHeight);
     _fontTexture->loadData({ (Byte*)pPixels, iWidth * iHeight * 4 }, vec2<U16>(iWidth, iHeight));
     // Store our identifier as reloding data may change the handle!
@@ -492,32 +504,32 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     descriptor.position = ImVec2(0, 0);
     descriptor.size = ImVec2(300, 550);
     descriptor.minSize = ImVec2(200, 200);
-    descriptor.name = "Solution Explorer";
+    descriptor.name = ICON_FK_HUBZILLA" Solution Explorer";
     _dockedWindows[to_base(WindowType::SolutionExplorer)] = MemoryManager_NEW SolutionExplorerWindow(*this, _context, descriptor);
 
     descriptor.position = ImVec2(0, 0);
     descriptor.minSize = ImVec2(200, 200);
-    descriptor.name = "PostFX Settings";
+    descriptor.name = ICON_FK_PICTURE_O" PostFX Settings";
     _dockedWindows[to_base(WindowType::PostFX)] = MemoryManager_NEW PostFXWindow(*this, _context, descriptor);
 
     descriptor.position = ImVec2(to_F32(renderResolution.width) - 300, 0);
-    descriptor.name = "Property Explorer";
+    descriptor.name = ICON_FK_PENCIL_SQUARE_O" Property Explorer";
     _dockedWindows[to_base(WindowType::Properties)] = MemoryManager_NEW PropertyWindow(*this, _context, descriptor);
 
     descriptor.position = ImVec2(0, 550.0f);
     descriptor.size = ImVec2(to_F32(renderResolution.width * 0.5f), to_F32(renderResolution.height) - 550 - 3);
-    descriptor.name = "Content Explorer";
+    descriptor.name = ICON_FK_FOLDER_OPEN" Content Explorer";
     descriptor.flags |= ImGuiWindowFlags_NoTitleBar;
     _dockedWindows[to_base(WindowType::ContentExplorer)] = MemoryManager_NEW ContentExplorerWindow(*this, descriptor);
 
     descriptor.position = ImVec2(to_F32(renderResolution.width * 0.5f), 550);
     descriptor.size = ImVec2(to_F32(renderResolution.width * 0.5f), to_F32(renderResolution.height) - 550 - 3);
-    descriptor.name = "Application Output";
+    descriptor.name = ICON_FK_PRINT" Application Output";
     _dockedWindows[to_base(WindowType::Output)] = MemoryManager_NEW OutputWindow(*this, descriptor);
 
     descriptor.position = ImVec2(150, 150);
     descriptor.size = ImVec2(640, 480);
-    descriptor.name = "Scene View";
+    descriptor.name = "Scene View ###AnimatedTitlePlayState";
     descriptor.minSize = ImVec2(100, 100);
     descriptor.flags = 0;
     _dockedWindows[to_base(WindowType::SceneView)] = MemoryManager_NEW SceneViewWindow(*this, descriptor);
@@ -1139,9 +1151,6 @@ bool Editor::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
 
         ImGuiContext* editorContext = _imguiContexts[to_base(ImGuiContextType::Editor)];
         ImGui::SetCurrentContext(editorContext);
-        if (!_autoFocusEditor) {
-            return !scenePreviewHovered();
-        }
     }
 
     for (ImGuiContext* ctx : _imguiContexts) {
@@ -1718,8 +1727,6 @@ bool Editor::saveToXML() const {
 
     pt.put("editor.showMemEditor", _showMemoryEditor);
     pt.put("editor.showSampleWindow", _showSampleWindow);
-    pt.put("editor.autoFocusEditor", _autoFocusEditor);
-    pt.put("editor.showEmissiveSelections", _showEmissiveSelections);
     pt.put("editor.themeIndex", to_I32(_currentTheme));
     pt.put("editor.textEditor", _externalTextEditorPath);
     pt.put("editor.lastOpenSceneGUID", _lastOpenSceneGUID);
@@ -1756,8 +1763,6 @@ bool Editor::loadFromXML() {
         XML::readXML((editorPath + g_editorSaveFile).str(), pt);
         _showMemoryEditor = pt.get("editor.showMemEditor", false);
         _showSampleWindow = pt.get("editor.showSampleWindow", false);
-        _autoFocusEditor = pt.get("editor.autoFocusEditor", true);
-        _showEmissiveSelections = pt.get("editor.showEmissiveSelections", true);
         _currentTheme = static_cast<ImGuiStyleEnum>(pt.get("themeIndex", to_I32(_currentTheme)));
         ImGui::ResetStyle(_currentTheme);
         _externalTextEditorPath = pt.get<string>("editor.textEditor", "");

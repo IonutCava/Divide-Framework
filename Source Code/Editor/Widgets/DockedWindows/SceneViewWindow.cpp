@@ -11,23 +11,25 @@
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 #include <imgui_internal.h>
+#include <IconFontCppHeaders/IconsForkAwesome.h>
 
 namespace Divide {
 
     SceneViewWindow::SceneViewWindow(Editor& parent, const Descriptor& descriptor)
         : DockedWindow(parent, descriptor)
     {
+        _originalName = descriptor.name;
     }
 
     void SceneViewWindow::drawInternal() {
 
-        const auto button = [](const bool disabled, const char* label, const char* tooltip, const bool small = false) -> bool {
-            if (disabled) {
+        const auto button = [](const bool enabled, const char* label, const char* tooltip, const bool small = false) -> bool {
+            if (!enabled) {
                 PushReadOnly();
             }
             const bool ret = small ? ImGui::SmallButton(label) : ImGui::Button(label);
 
-            if (disabled) {
+            if (!enabled) {
                 PopReadOnly();
             }
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
@@ -38,7 +40,9 @@ namespace Divide {
         };
 
         bool play = !_parent.simulationPaused();
-        ImGui::Text("Play:"); ImGui::SameLine(); ;
+        _descriptor.name = (play ? ICON_FK_PLAY_CIRCLE : ICON_FK_PAUSE_CIRCLE) + _originalName;
+        ImGui::Text("Play:");
+        ImGui::SameLine();
         if (ImGui::ToggleButton("Play", &play)) {
             Attorney::EditorSceneViewWindow::simulationPaused(_parent, !play);
         }
@@ -48,40 +52,21 @@ namespace Divide {
         }
         ImGui::SameLine();
         const bool enableStepButtons = !play;
-        if (button(!enableStepButtons,
-                   ">|",
-                    "When playback is paused, advanced the simulation by 1 full frame"))
+        if (button(enableStepButtons,
+            ICON_FK_FORWARD,
+            "When playback is paused, advanced the simulation by 1 full frame"))
         {
             Attorney::EditorSceneViewWindow::editorStepQueue(_parent, 2);
         }
 
         ImGui::SameLine();
 
-        if (button(!enableStepButtons,
-                   ">>|",
-                   Util::StringFormat("When playback is paused, advanced the simulation by %d full frame", Config::TARGET_FRAME_RATE).c_str()))
+        if (button(enableStepButtons,
+            ICON_FK_FAST_FORWARD,
+            Util::StringFormat("When playback is paused, advanced the simulation by %d full frame", Config::TARGET_FRAME_RATE).c_str()))
         {
             Attorney::EditorSceneViewWindow::editorStepQueue(_parent, Config::TARGET_FRAME_RATE + 1);
         }
-
-        ImGui::SameLine();
-
-        ImGuiWindow* window = ImGui::GetCurrentWindow();
-        ImGui::SameLine();
-        bool autoFocusEditor = Attorney::EditorSceneViewWindow::autoFocusEditor(_parent);
-        ImGui::Text("Auto focus:"); ImGui::SameLine(); ImGui::ToggleButton("Auto Focus Editor", &autoFocusEditor);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("If off, the first click outside of the scene view will act as a \"focus\" click. (i.e. not be passed down to editor widgets.)");
-        }
-        Attorney::EditorSceneViewWindow::autoFocusEditor(_parent, autoFocusEditor);
-        ImGui::SameLine();
-
-        bool emissiveSelections = Attorney::EditorSceneViewWindow::emissiveSelections(_parent);
-        ImGui::Text("Emissive Selections:"); ImGui::SameLine(); ImGui::ToggleButton("Emissive Selections", &emissiveSelections);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("If on, selected scene nodes will have an emissive component attached to them for easier navigation.\nDisable if editing materials!");
-        }
-        Attorney::EditorSceneViewWindow::emissiveSelections(_parent, emissiveSelections);
 
         bool enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
         TransformSettings settings = _parent.getTransformSettings();
@@ -96,17 +81,24 @@ namespace Divide {
         static F32 ZButtonWidth = 10.0f;
         static F32 AButtonWidth = 10.0f;
 
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
         ImGui::SameLine(window->ContentSize.x / 2);
-
-        if (button(false, "[_]<|", "Copy the player's camera snapshot to the editor camera"))
+        if (play) {
+            PushReadOnly();
+        }
+        if (button(true, ICON_FK_CAMERA_RETRO, "Copy the player's camera snapshot to the editor camera"))
         {
             Attorney::EditorSceneViewWindow::copyPlayerCamToEditorCam(_parent);
         }
 
         F32 pos = SButtonWidth + ItemSpacing + 25;
         ImGui::SameLine(window->ContentSize.x - pos);
-        if (button(!enableGizmo || settings.currentGizmoOperation == ImGuizmo::SCALE || settings.currentGizmoOperation == ImGuizmo::SCALE_X || settings.currentGizmoOperation == ImGuizmo::SCALE_Y || settings.currentGizmoOperation == ImGuizmo::SCALE_Z, 
-                    "S",
+        if (button(!enableGizmo || 
+                    (settings.currentGizmoOperation != ImGuizmo::SCALE && 
+                     settings.currentGizmoOperation != ImGuizmo::SCALE_X &&
+                     settings.currentGizmoOperation != ImGuizmo::SCALE_Y &&
+                     settings.currentGizmoOperation != ImGuizmo::SCALE_Z),
+                    ICON_FK_EXPAND,
                     "Scale",
                     true))
         {
@@ -121,10 +113,14 @@ namespace Divide {
         }
         SButtonWidth = ImGui::GetItemRectSize().x;
 
-        pos += RButtonWidth + ItemSpacing + 5;
+        pos += RButtonWidth + ItemSpacing + 1;
         ImGui::SameLine(window->ContentSize.x - pos);
-        if (button(!enableGizmo || settings.currentGizmoOperation == ImGuizmo::ROTATE || settings.currentGizmoOperation == ImGuizmo::ROTATE_X || settings.currentGizmoOperation == ImGuizmo::ROTATE_Y || settings.currentGizmoOperation == ImGuizmo::ROTATE_Z,
-                    "R",
+        if (button(!enableGizmo || 
+                    (settings.currentGizmoOperation != ImGuizmo::ROTATE &&
+                     settings.currentGizmoOperation != ImGuizmo::ROTATE_X &&
+                     settings.currentGizmoOperation != ImGuizmo::ROTATE_Y &&
+                     settings.currentGizmoOperation != ImGuizmo::ROTATE_Z),
+                    ICON_FK_REPEAT,
                     "Rotate",
                     true))
         {
@@ -139,10 +135,14 @@ namespace Divide {
         }
         RButtonWidth = ImGui::GetItemRectSize().x;
 
-        pos += TButtonWidth + ItemSpacing + 5;
+        pos += TButtonWidth + ItemSpacing + 1;
         ImGui::SameLine(window->ContentSize.x - pos);
-        if (button(!enableGizmo || settings.currentGizmoOperation == ImGuizmo::TRANSLATE || settings.currentGizmoOperation == ImGuizmo::TRANSLATE_X || settings.currentGizmoOperation == ImGuizmo::TRANSLATE_Y || settings.currentGizmoOperation == ImGuizmo::TRANSLATE_Z,
-                    "T",
+        if (button(!enableGizmo || 
+                   (settings.currentGizmoOperation != ImGuizmo::TRANSLATE &&
+                    settings.currentGizmoOperation != ImGuizmo::TRANSLATE_X &&
+                    settings.currentGizmoOperation != ImGuizmo::TRANSLATE_Y &&
+                    settings.currentGizmoOperation != ImGuizmo::TRANSLATE_Z),
+                    ICON_FK_ARROWS,
                     "Translate",
                     true))
         {
@@ -157,14 +157,16 @@ namespace Divide {
         }
         TButtonWidth = ImGui::GetItemRectSize().x;
 
-        pos += NButtonWidth + ItemSpacing + 5;
+        pos += NButtonWidth + ItemSpacing + 1;
         ImGui::SameLine(window->ContentSize.x - pos);
-        if (button(false, "N", "Select", true)) {
+        if (button(enableGizmo, ICON_FK_MOUSE_POINTER, "Select", true)) {
             Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, false);
             settings.currentAxisSelected = 0u;
         }
         NButtonWidth = ImGui::GetItemRectSize().x;
-       
+        if (play) {
+            PopReadOnly();
+        }
         const RenderTarget& rt = _parent.context().gfx().renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::EDITOR));
         const Texture_ptr& gameView = rt.getAttachment(RTAttachmentType::Colour, 0).texture();
 
@@ -228,7 +230,9 @@ namespace Divide {
             }
         }
         
-
+        if (play) {
+            PushReadOnly();
+        }
         if (ImGui::RadioButton("Local", settings.currentGizmoMode == ImGuizmo::LOCAL)) {
             settings.currentGizmoMode = ImGuizmo::LOCAL;
         }
@@ -272,7 +276,7 @@ namespace Divide {
         ImGui::Text("Gizmo Axis [ ");
         enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
         ImGui::SameLine();
-        if (button(!enableGizmo || settings.currentAxisSelected == 1u, "X", "X Axis Only", true)) {
+        if (button(enableGizmo && settings.currentAxisSelected != 1u, "X", "X Axis Only", true)) {
             settings.currentAxisSelected = 1u;
 
             switch (settings.currentGizmoOperation) {
@@ -301,7 +305,7 @@ namespace Divide {
         }
 
         ImGui::SameLine();
-        if (button(!enableGizmo || settings.currentAxisSelected == 2u, "Y", "Y Axis Only", true)) {
+        if (button(enableGizmo && settings.currentAxisSelected != 2u, "Y", "Y Axis Only", true)) {
             settings.currentAxisSelected = 2u;
 
             switch (settings.currentGizmoOperation) {
@@ -330,7 +334,7 @@ namespace Divide {
         }
 
         ImGui::SameLine();
-        if (button(!enableGizmo || settings.currentAxisSelected == 3u, "Z", "Z Axis Only", true)) {
+        if (button(enableGizmo && settings.currentAxisSelected != 3u, "Z", "Z Axis Only", true)) {
             settings.currentAxisSelected = 3u;
 
             switch (settings.currentGizmoOperation) {
@@ -359,7 +363,7 @@ namespace Divide {
         }
 
         ImGui::SameLine();
-        if (button(!enableGizmo || settings.currentAxisSelected == 0u, "All", "All Axis", true)) {
+        if (button(enableGizmo && settings.currentAxisSelected != 0u, "All", "All Axis", true)) {
             settings.currentAxisSelected = 0u;
 
               switch (settings.currentGizmoOperation) {
@@ -387,7 +391,9 @@ namespace Divide {
 
         ImGui::SameLine();
         ImGui::Text(" ]");
-
+        if (play) {
+            PopReadOnly();
+        }
         _parent.setTransformSettings(settings);
     }
 

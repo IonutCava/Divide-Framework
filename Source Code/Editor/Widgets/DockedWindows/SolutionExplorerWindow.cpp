@@ -11,6 +11,11 @@
 #include "Managers/Headers/SceneManager.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 
+#include "Dynamics/Entities/Units/Headers/Unit.h"
+#include "Dynamics/Entities/Units/Headers/Character.h"
+#include "Dynamics/Entities/Units/Headers/NPC.h"
+#include "Dynamics/Entities/Units/Headers/Player.h"
+
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleBoxGenerator.h"
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleColourGenerator.h"
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleTimeGenerator.h"
@@ -20,7 +25,16 @@
 #include "Dynamics/Entities/Particles/ConcreteUpdaters/Headers/ParticleEulerUpdater.h"
 #include "Dynamics/Entities/Particles/ConcreteUpdaters/Headers/ParticleFloorUpdater.h"
 
+#include "ECS/Components/Headers/TransformComponent.h"
+#include "ECS/Components/Headers/SpotLightComponent.h"
+#include "ECS/Components/Headers/PointLightComponent.h"
+#include "ECS/Components/Headers/DirectionalLightComponent.h"
+#include "ECS/Components/Headers/EnvironmentProbeComponent.h"
+#include "ECS/Components/Headers/ScriptComponent.h"
+#include "ECS/Components/Headers/UnitComponent.h"
+
 #include <EASTL/deque.h>
+#include <IconFontCppHeaders/IconsForkAwesome.h>
 
 namespace Divide {
     namespace {
@@ -36,6 +50,61 @@ namespace Divide {
         vec3<F32> g_particleAcceleration = {0.f, -20.f, 0.f};
         FColour4 g_particleStartColour = DefaultColours::BLACK;
         FColour4 g_particleEndColour = DefaultColours::WHITE;
+
+
+        FORCE_INLINE const char* getIconForNode(const SceneGraphNode* sgn) noexcept {
+            switch (sgn->getNode().type()) {
+                case SceneNodeType::TYPE_OBJECT3D: {
+                    switch (sgn->getNode<Object3D>().getObjectType()) {
+                        case ObjectType::SPHERE_3D: return ICON_FK_CIRCLE;
+                        case ObjectType::BOX_3D: return ICON_FK_CUBE;
+                        case ObjectType::QUAD_3D: return ICON_FK_SQUARE;
+                        case ObjectType::PATCH_3D: return ICON_FK_PLUS_SQUARE;
+                        case ObjectType::MESH: return ICON_FK_BUILDING;
+                        case ObjectType::SUBMESH: return ICON_FK_PUZZLE_PIECE;
+                        case ObjectType::TERRAIN: return ICON_FK_TREE;
+                        case ObjectType::DECAL: return ICON_FK_STICKY_NOTE;
+                    };
+                    case SceneNodeType::TYPE_TRANSFORM:{
+                        if (sgn->GetComponent<DirectionalLightComponent>()) {
+                            return ICON_FK_SUN;
+                        } else if (sgn->GetComponent<PointLightComponent>()) {
+                            return ICON_FK_LIGHTBULB_O;
+                        } else if (sgn->GetComponent<SpotLightComponent>()) {
+                            return ICON_FK_DOT_CIRCLE_O;
+                        } else if (sgn->GetComponent<ScriptComponent>()) {
+                            return ICON_FK_FILE_TEXT;
+                        } else if (sgn->GetComponent<EnvironmentProbeComponent>()) {
+                            return ICON_FK_GLOBE;
+                        } else if (sgn->GetComponent<UnitComponent>()) {
+                            const UnitComponent* comp = sgn->GetComponent<UnitComponent>();
+                            if (comp->getUnit() != nullptr) {
+                                switch(comp->getUnit()->type()) {
+                                    case UnitType::UNIT_TYPE_CHARACTER: {
+                                        switch (comp->getUnit<Character>()->characterType()) {
+                                            case Character::CharacterType::CHARACTER_TYPE_NPC: return ICON_FK_FEMALE;
+                                            case Character::CharacterType::CHARACTER_TYPE_PLAYER: return ICON_FK_GAMEPAD;
+                                        }
+                                    }
+                                    case UnitType::UNIT_TYPE_VEHICLE: {
+                                        return ICON_FK_CAR;
+                                    }
+                                }
+                            }
+                        }
+                         return ICON_FK_ARROWS;
+                    }
+                    case SceneNodeType::TYPE_WATER: return ICON_FK_SHIP;
+                    case SceneNodeType::TYPE_TRIGGER: return ICON_FK_COGS;
+                    case SceneNodeType::TYPE_PARTICLE_EMITTER: return ICON_FK_FIRE;
+                    case SceneNodeType::TYPE_SKY: return ICON_FK_CLOUD;
+                    case SceneNodeType::TYPE_INFINITEPLANE: return ICON_FK_ARROWS;
+                    case SceneNodeType::TYPE_VEGETATION: return ICON_FK_TREE;
+                }break;
+            }
+
+            return ICON_FK_QUESTION;
+        }
     }
 
     SolutionExplorerWindow::SolutionExplorerWindow(Editor& parent, PlatformContext& context, const Descriptor& descriptor)
@@ -52,7 +121,7 @@ namespace Divide {
 
         constexpr ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_Leaf;
         if (_filter.PassFilter(camera->resourceName().c_str())) {
-            if (ImGui::TreeNodeEx((void*)(intptr_t)camera->getGUID(), node_flags, camera->resourceName().c_str())) {
+            if (ImGui::TreeNodeEx((void*)(intptr_t)camera->getGUID(), node_flags, Util::StringFormat("%s %s", ICON_FK_CAMERA, camera->resourceName().c_str()).c_str())) {
                 if (ImGui::IsItemClicked()) {
                     sceneManager->resetSelection(0);
                     if (Attorney::EditorSolutionExplorerWindow::getSelectedCamera(_parent) == camera) {
@@ -143,12 +212,12 @@ namespace Divide {
             node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet;
         }
 
-        const auto printNode = [&]() {
+        const auto printNode = [&](const char* icon) {
             if (s_onlyVisibleNodes && sgn->parent() != nullptr && !sgn->visiblePostCulling()) {
                 return false;
             }
 
-            const bool nodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)sgn->getGUID(), node_flags, Util::StringFormat("[%d] %s", nodeIDX, sgn->name().c_str()).c_str());
+            const bool nodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)sgn->getGUID(), node_flags, Util::StringFormat("%s [%d] %s", icon == nullptr ? ICON_FK_QUESTION : icon, nodeIDX, sgn->name().c_str()).c_str());
             const bool isRoot = sgn->parent() == nullptr;
 
             if (!secondaryView && wasSelected) {
@@ -176,7 +245,7 @@ namespace Divide {
         };
 
         if (_filter.Filters.empty()) {
-            if (printNode()) {
+            if (printNode(getIconForNode(sgn))) {
                 sgn->forEachChild([this, &sceneManager, secondaryView](SceneGraphNode* child, const I32 childIdx) {
                     printSceneGraphNode(sceneManager, child, childIdx, false, secondaryView);
                     return true;
@@ -186,7 +255,7 @@ namespace Divide {
         } else {
             bool nodeOpen = false;
             if (_filter.PassFilter(sgn->name().c_str())) {
-                nodeOpen = printNode();
+                nodeOpen = printNode(getIconForNode(sgn));
             }
             sgn->forEachChild([this, &sceneManager, secondaryView](SceneGraphNode* child, const I32 childIdx) {
                 printSceneGraphNode(sceneManager, child, childIdx, false, secondaryView);
@@ -203,16 +272,19 @@ namespace Divide {
         Scene& activeScene = sceneManager->getActiveScene();
         SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
 
-        ImGui::PushItemWidth(200);
         ImGui::AlignTextToFramePadding();
-        ImGui::Text("Find node: ");
+        ImGui::Text(ICON_FK_SEARCH" Find node: ");
         ImGui::SameLine();
         ImGui::PushID("GraphSearchFilter");
-        _filter.Draw("", 200);
+        _filter.Draw("", 150);
         ImGui::PopID();
-        ImGui::Checkbox("Only visible", &s_onlyVisibleNodes);
+        ImGui::SameLine();
+        ImGui::Checkbox(ICON_FK_EYE, &s_onlyVisibleNodes);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Only visible nodes");
+        }
         ImGui::BeginChild("SceneGraph", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * .5f), true, 0);
-        if (ImGui::TreeNodeEx(activeScene.resourceName().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+        if (ImGui::TreeNodeEx(Util::StringFormat("%s%s",ICON_FK_HOME, activeScene.resourceName().c_str()).c_str(), ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
             printCameraNode(sceneManager, _parent.editorCamera());
@@ -224,23 +296,8 @@ namespace Divide {
             ImGui::TreePop();
         }
 
-        ImGui::Separator();
-        ImGui::NewLine();
-        ImGui::NewLine();
-        ImGui::Text("All scenes");
-        ImGui::Separator();
-
-        const vector<Str256>& scenes = sceneManager->sceneNameList();
-        for (const Str256& scene : scenes) {
-            if (scene != activeScene.resourceName()) {
-                if (ImGui::TreeNodeEx(scene.c_str(), ImGuiTreeNodeFlags_Leaf)) {
-                    ImGui::TreePop();
-                }
-            }
-        }
 
         ImGui::EndChild();
-        ImGui::PopItemWidth();
         ImGui::Separator();
 
         drawTransformSettings();
@@ -271,6 +328,7 @@ namespace Divide {
         g_framerateBufferCont.insert(cbegin(g_framerateBufferCont),
                                      cbegin(g_framerateBuffer),
                                      cend(g_framerateBuffer));
+        ImGui::PushItemWidth(-1);
         ImGui::PlotHistogram("",
                              g_framerateBufferCont.data(),
                              to_I32(g_framerateBufferCont.size()),
@@ -279,9 +337,10 @@ namespace Divide {
                              0.0f,
                              max_ms_per_frame,
                              ImVec2(0, 50));
+        ImGui::PopItemWidth();
 
         static bool performanceStatsWereEnabled = false;
-        if (ImGui::CollapsingHeader("Performance Stats")) {
+        if (ImGui::CollapsingHeader(ICON_FK_TACHOMETER" Performance Stats")) {
             performanceStatsWereEnabled = context().gfx().queryPerformanceStats();
             context().gfx().queryPerformanceStats(true);
             const auto& rpm = _context.kernel().renderPassManager();
@@ -305,7 +364,7 @@ namespace Divide {
             ImGui::Text("Refractions"); ImGui::NextColumn();
             ImGui::Separator();
 
-            ImGui::Text("Draw Calls");                                               ImGui::NextColumn();
+            ImGui::Text(ICON_FK_PENCIL); if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Draw Calls"); } ImGui::NextColumn();
             for (U8 i = 0; i < 4; ++i) {
                 if (crtDrawCallCount[i] == prevDrawCallCount[i]) {
                     ImGui::Text("%d", crtDrawCallCount[i]); ImGui::NextColumn();
@@ -314,11 +373,11 @@ namespace Divide {
                 }
             }
 
-            ImGui::Text("Visible Nodes");                                         ImGui::NextColumn();
-            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::DISPLAY));    ImGui::NextColumn();
-            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::SHADOW));     ImGui::NextColumn();
-            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::REFLECTION)); ImGui::NextColumn();
-            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::REFRACTION)); ImGui::NextColumn();
+            ImGui::Text(ICON_FK_EYE); if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Visible Nodes"); } ImGui::NextColumn();
+            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::DISPLAY));                            ImGui::NextColumn();
+            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::SHADOW));                             ImGui::NextColumn();
+            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::REFLECTION));                         ImGui::NextColumn();
+            ImGui::Text("%d", rpm->getLastTotalBinSize(RenderStage::REFRACTION));                         ImGui::NextColumn();
             ImGui::Columns(1);
             ImGui::Separator();
 
@@ -349,13 +408,15 @@ namespace Divide {
             }
         }
 
-        if (ImGui::CollapsingHeader("Day/Night Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        static string dayNightText = Util::StringFormat("%s/%s Day/Night Settings", ICON_FK_SUN_O, ICON_FK_MOON_O).c_str();
+
+        if (ImGui::CollapsingHeader(dayNightText.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
             bool dayNightEnabled = activeScene.dayNightCycleEnabled();
             if (ImGui::Checkbox("Enable day/night cycle", &dayNightEnabled)) {
                 activeScene.dayNightCycleEnabled(dayNightEnabled);
             }
 
-            ImGui::Text("Time of Day:");
+            ImGui::Text(ICON_FK_CLOCK_O" Time of Day:");
             SimpleTime time = activeScene.getTimeOfDay();
             SimpleLocation location = activeScene.getGeographicLocation();
 
@@ -367,7 +428,12 @@ namespace Divide {
                 ImGui::SliderScalar("Minute", ImGuiDataType_U8, &time._minutes, &min, &maxMinute, "%02d"))         {
                 activeScene.setTimeOfDay(time);
             }
+            F32 timeFactor = activeScene.getDayNightCycleTimeFactor();
+            if (ImGui::InputFloat("Time factor", &timeFactor)) {
+                activeScene.setDayNightCycleTimeFactor(CLAMPED(timeFactor, -500.f, 500.f));
+            }
 
+            ImGui::Text(ICON_FK_GLOBE_W" Global positioning:");
             if (ImGui::SliderFloat("Latitude", &location._latitude, -90.f, 90.f, "%.6f") ||
                 ImGui::SliderFloat("Longitude", &location._longitude, -180.f, 180.f, "%.6f")) {
                 activeScene.setGeographicLocation(location);
@@ -377,12 +443,9 @@ namespace Divide {
                 PushReadOnly();
             }
 
-            F32 timeFactor = activeScene.getDayNightCycleTimeFactor();
-            if (ImGui::InputFloat("Time factor", &timeFactor)) {
-                activeScene.setDayNightCycleTimeFactor(CLAMPED(timeFactor, -500.f, 500.f));
-            }
-
             const SunDetails sun = activeScene.getCurrentSunDetails();
+            ImGui::Text(ICON_FK_INFO_CIRCLE);
+            ImGui::SameLine();
             ImGui::Text("Sunset: %02d:%02d", sun._info.sunsetTime._hour, sun._info.sunsetTime._minutes);
             ImGui::SameLine(); ImGui::Text(" | "); ImGui::SameLine();
             ImGui::Text("Sunrise: %02d:%02d", sun._info.sunriseTime._hour, sun._info.sunriseTime._minutes);
@@ -658,7 +721,7 @@ namespace Divide {
 
     void SolutionExplorerWindow::drawTransformSettings() const {
          bool enableGizmo = Attorney::EditorSolutionExplorerWindow::editorEnableGizmo(_parent);
-         ImGui::Checkbox("Transform Gizmo", &enableGizmo);
+         ImGui::Checkbox(ICON_FK_ARROWS_ALT" Transform Gizmo", &enableGizmo);
          Attorney::EditorSolutionExplorerWindow::editorEnableGizmo(_parent, enableGizmo);
     }
 

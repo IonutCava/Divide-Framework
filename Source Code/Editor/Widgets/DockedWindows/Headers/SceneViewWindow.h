@@ -51,6 +51,7 @@ namespace Divide {
     protected:
         Rect<I32> _sceneRect;
         vec2<I32> _windowOffset;
+        string    _originalName;
     };
 } //namespace Divide
 
