@@ -253,6 +253,16 @@ namespace Divide {
     }
 
     namespace {
+        template<typename T>
+        T GetClamped(const EditorComponentField& field, const boost::property_tree::ptree& pt, const char* name) {
+            T val = pt.get(name, field.get<T>());
+            if (field._range.max - field._range.min > 1.f) {
+                CLAMP(val, field._range.min, field._range.max);
+            }
+
+            return val;
+        }
+
         template<typename T, size_t num_comp>
         void saveVector(const string& entryName, const EditorComponentField& field, boost::property_tree::ptree& pt) {
             T data = {};
@@ -281,6 +291,18 @@ namespace Divide {
                     data.w = pt.get((entryName + ".<xmlattr>.w").c_str(), data.w);
                 }
             }
+
+            if (field._range.max - field._range.min > 1.f) {
+                CLAMP(data.x, field._range.min, field._range.max);
+                CLAMP(data.y, field._range.min, field._range.max);
+                if_constexpr(num_comp > 2) {
+                    CLAMP(data.z, field._range.min, field._range.max);
+                    if_constexpr(num_comp > 3) {
+                        CLAMP(data.w, field._range.min, field._range.max);
+                    }
+                }
+            }
+
             field.set<T>(data);
         }
 
@@ -337,6 +359,12 @@ namespace Divide {
                     data.m[3][1] = pt.get((entryName + ".<xmlattr>.31").c_str(), data.m[3][1]);
                     data.m[3][2] = pt.get((entryName + ".<xmlattr>.32").c_str(), data.m[3][2]);
                     data.m[3][3] = pt.get((entryName + ".<xmlattr>.33").c_str(), data.m[3][3]);
+                }
+            }
+
+            if (field._range.max - field._range.min > 1.f) {
+                for (U8 i = 0u; i < num_rows * num_rows; ++i) {
+                    CLAMP(data.mat[i], field._range.min, field._range.max);
                 }
             }
 
@@ -636,7 +664,7 @@ namespace Divide {
 
     void EditorComponent::loadFieldFromXML(EditorComponentField& field, const boost::property_tree::ptree& pt) {
         auto entryName = GetFullFieldName(_name.c_str(), field._name);
-
+        
         switch (field._basicType) {
             case GFX::PushConstantType::BOOL:
             {
@@ -646,32 +674,30 @@ namespace Divide {
             case GFX::PushConstantType::INT:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: field.set<I64>(pt.get(entryName.c_str(), field.get<I64>())); break;
-                    case GFX::PushConstantSize::DWORD: field.set<I32>(pt.get(entryName.c_str(), field.get<I32>())); break;
-                    case GFX::PushConstantSize::WORD:  field.set<I16>(pt.get(entryName.c_str(), field.get<I16>())); break;
-                    case GFX::PushConstantSize::BYTE:  field.set<I8>(pt.get(entryName.c_str(), field.get<I8>())); break;
+                    case GFX::PushConstantSize::QWORD: field.set<I64>(GetClamped<I64>(field, pt, entryName.c_str())); break;
+                    case GFX::PushConstantSize::DWORD: field.set<I32>(GetClamped<I32>(field, pt, entryName.c_str())); break;
+                    case GFX::PushConstantSize::WORD:  field.set<I16>(GetClamped<I16>(field, pt, entryName.c_str())); break;
+                    case GFX::PushConstantSize::BYTE:  field.set<I8>(GetClamped<I8>(field, pt, entryName.c_str())); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
             case GFX::PushConstantType::UINT:
             {
                 switch (field._basicTypeSize) {
-                    case GFX::PushConstantSize::QWORD: field.set<U64>(pt.get(entryName.c_str(), field.get<U64>())); break;
-                    case GFX::PushConstantSize::DWORD: field.set<U32>(pt.get(entryName.c_str(), field.get<U32>())); break;
-                    case GFX::PushConstantSize::WORD:  field.set<U16>(pt.get(entryName.c_str(), field.get<U16>())); break;
-                    case GFX::PushConstantSize::BYTE:  field.set<U8>(pt.get(entryName.c_str(), field.get<U8>())); break;
+                    case GFX::PushConstantSize::QWORD: field.set<U64>(GetClamped<U64>(field, pt, entryName.c_str())); break;
+                    case GFX::PushConstantSize::DWORD: field.set<U32>(GetClamped<U32>(field, pt, entryName.c_str())); break;
+                    case GFX::PushConstantSize::WORD:  field.set<U16>(GetClamped<U16>(field, pt, entryName.c_str())); break;
+                    case GFX::PushConstantSize::BYTE:  field.set<U8>(GetClamped<U8>(field, pt, entryName.c_str())); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
             case GFX::PushConstantType::FLOAT:
             {
-                F32 val = pt.get(entryName.c_str(), field.get<F32>());
-                field.set<F32>(val);
+                field.set<F32>(GetClamped<F32>(field, pt, entryName.c_str()));
             } break;
             case GFX::PushConstantType::DOUBLE:
             {
-                D64 val = pt.get(entryName.c_str(), field.get<D64>());
-                field.set<D64>(val);
+                field.set<D64>(GetClamped<D64>(field, pt, entryName.c_str()));
             } break;
             case GFX::PushConstantType::IVEC2:
             {

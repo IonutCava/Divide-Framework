@@ -3,7 +3,7 @@
 <INFINITE_PLANE/>
 <TRANSFORM>
     <Transform>
-        <position x="144.087372" y="-50" z="3.35853434"/>
+        <position x="160.660172" y="-50" z="31.682251"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
@@ -233,7 +233,6 @@
             <UNIT0>
                 <name>terrain_water_caustics.jpg</name>
                 <path>assets/misc_images/</path>
-                <flipped>true</flipped>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>1</id>

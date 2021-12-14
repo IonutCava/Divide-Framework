@@ -107,6 +107,10 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void rotateZ(Angle::DEGREES<F32> angle) override;
      using ITransform::rotate;
 
+     [[nodiscard]] const vec3<F32> getDirection(const vec3<F32>& worldForward = WORLD_Z_NEG_AXIS, bool local = false) const;
+     /// Sets a new, local only, direction for the current component based on the specified world forward direction
+     void setDirection(const vec3<F32>& fwdDirection, const vec3<F32>& upDirection = WORLD_Y_AXIS);
+
      void setTransform(const TransformValues& values);
 
      [[nodiscard]] bool isUniformScaled() const noexcept;
@@ -159,6 +163,10 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void getLocalMatrix(const D64 interpolationFactor, mat4<F32>& matOut) const { getMatrix(interpolationFactor, matOut); }
 
      PROPERTY_R_IW(TransformValues, cachedTransform);
+
+     PROPERTY_RW(bool, editorLockPosition, false);
+     PROPERTY_RW(bool, editorLockRotation, false);
+     PROPERTY_RW(bool, editorLockScale, false);
 
   protected:
      friend class TransformSystem;

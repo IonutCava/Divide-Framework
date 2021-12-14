@@ -226,6 +226,8 @@ class Editor final : public PlatformContextComponent,
     POINTER_R_IW(FreeFlyCamera, editorCamera, nullptr);
     PROPERTY_R(Rect<I32>, targetViewport, Rect<I32>(0, 0, 1, 1));
 
+    PROPERTY_INTERNAL(bool, lockSolutionExplorer, false);
+
   protected: // attorney
     void renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, GFX::CommandBuffer& bufferInOut) const;
 
@@ -362,6 +364,10 @@ namespace Attorney {
             return editor.createNode(type, descriptor);
         }
 
+        [[nodiscard]] static bool lockSolutionExplorer(const Editor& editor) {
+            return editor.lockSolutionExplorer();
+        }
+
         friend class Divide::SolutionExplorerWindow;
     };
 
@@ -372,6 +378,10 @@ namespace Attorney {
 
         [[nodiscard]] static Camera* getSelectedCamera(const Editor& editor)  noexcept {
             return editor.selectedCamera();
+        }
+
+        static void lockSolutionExplorer(Editor& editor, const bool state) noexcept {
+            editor.lockSolutionExplorer(state);
         }
 
         friend class Divide::PropertyWindow;

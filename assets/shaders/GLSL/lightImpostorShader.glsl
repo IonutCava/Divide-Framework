@@ -73,8 +73,6 @@ void main()
 
 #include "texturing.frag"
 
-#define COLOUR_OUTPUT_ONLY
-
 layout(location = 0) in flat vec3 lightColour;
 
 layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;

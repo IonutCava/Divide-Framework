@@ -1397,6 +1397,7 @@ void Scene::processTasks(const U64 deltaTimeUS) {
             if (_envProbePool != nullptr) {
                 SceneEnvironmentProbePool::OnTimeOfDayChange(*_envProbePool);
             }
+            _dayNightData._sunLight->getSGN()->get<TransformComponent>()->setDirection(getSunDirection());
         }
 
         const F32 speedFactor = dayNightCycleEnabled() ? _dayNightData._speedFactor : 0.f;
@@ -1417,27 +1418,25 @@ void Scene::processTasks(const U64 deltaTimeUS) {
                 _dayNightData._timeAccumulatorHour = 0.f;
             }
             const FColour3 moonColour = Normalized(_dayNightData._skyInstance->moonColour().rgb);
-            const SunDetails details = _dayNightData._skyInstance->setDateTimeAndLocation(localtime(&now), _dayNightData._location);
+            const SunInfo details = _dayNightData._skyInstance->setDateTimeAndLocation(localtime(&now), _dayNightData._location);
             Light* light = _dayNightData._sunLight;
 
             const FColour3 sunsetOrange = FColour3(99.2f, 36.9f, 32.5f) / 100.f;
 
             // Sunset / sunrise
-            const vec3<Angle::DEGREES<F32>> eulerDirection = details._eulerDirection;
-            light->getSGN()->get<TransformComponent>()->setRotationEuler(eulerDirection);
-            // Morning
-            if (IS_IN_RANGE_INCLUSIVE(details._intensity, 0.0f, 25.0f)) {
-                light->setDiffuseColour(Lerp(sunsetOrange, DefaultColours::WHITE.rgb, details._intensity / 25.f));
+            const F32 altitudeDegrees = Angle::RadiansToDegrees(details.altitude);
+            const bool isNight = altitudeDegrees < -25.f;
+            // Dawn
+            if (IS_IN_RANGE_INCLUSIVE(altitudeDegrees, 0.0f, 25.0f)) {
+                light->setDiffuseColour(Lerp(sunsetOrange, DefaultColours::WHITE.rgb, altitudeDegrees / 25.f));
             }
-            // Early night time
-            else if (IS_IN_RANGE_INCLUSIVE(details._intensity, -25.0f, 0.0f)) {
-                light->setDiffuseColour(Lerp(sunsetOrange, moonColour, -details._intensity / 25.f));
+            // Dusk
+            else if (IS_IN_RANGE_INCLUSIVE(altitudeDegrees, -25.0f, 0.0f)) {
+                light->setDiffuseColour(Lerp(sunsetOrange, moonColour, -altitudeDegrees / 25.f));
             }
             // Night
-            else if (details._intensity < -25.f) {
+            else if (isNight) {
                 light->setDiffuseColour(moonColour);
-                light->getSGN()->get<TransformComponent>()->rotateZ(-180.f);
-                light->getSGN()->get<TransformComponent>()->rotateX(-90.f);
             }
             // Day
             else {
@@ -1445,6 +1444,8 @@ void Scene::processTasks(const U64 deltaTimeUS) {
             }
             _dayNightData._time._hour = to_U8(timeOfDay.tm_hour);
             _dayNightData._time._minutes = to_U8(timeOfDay.tm_min);
+
+            light->getSGN()->get<TransformComponent>()->setDirection(getSunDirection() * (isNight ? -1 : 1));
         }
     }
 }
@@ -1637,19 +1638,25 @@ void Scene::onNodeDestroy(SceneGraphNode* node) {
     _parent.onNodeDestroy(node);
 }
 
-void Scene::resetSelection(const PlayerIndex idx) {
+bool Scene::resetSelection(const PlayerIndex idx, const bool resetIfLocked) {
+    Selections& tempSelections = _tempSelection[idx];
     Selections& playerSelections = _currentSelection[idx];
     const U8 selectionCount = playerSelections._selectionCount;
 
+    tempSelections = {};
+
     for (U8 i = 0; i < selectionCount; ++i) {
         SceneGraphNode* node = sceneGraph()->findNode(playerSelections._selections[i]);
-        if (node != nullptr) {
+        if (node != nullptr && (!node->hasFlag(SceneGraphNode::Flags::SELECTION_LOCKED) || resetIfLocked)) {
             node->clearFlag(SceneGraphNode::Flags::HOVERED, true);
             node->clearFlag(SceneGraphNode::Flags::SELECTED, true);
+        } else if (node != nullptr) {
+            tempSelections._selections[tempSelections._selectionCount++] = node->getGUID();
         }
     }
 
-    playerSelections = {};
+    playerSelections = tempSelections;
+    return tempSelections._selectionCount == 0u;
 }
 
 void Scene::setSelected(const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive) {
@@ -1670,7 +1677,9 @@ const Selections& Scene::getCurrentSelection(const PlayerIndex index) const {
 bool Scene::findSelection(const PlayerIndex idx, const bool clearOld) {
     // Clear old selection
     if (clearOld) {
-        _parent.resetSelection(idx);
+        if (!_parent.resetSelection(idx, false)) {
+            return false;
+        }
     }
 
     const I64 hoverGUID = _currentHoverTarget[idx];
@@ -1692,7 +1701,9 @@ bool Scene::findSelection(const PlayerIndex idx, const bool clearOld) {
         _parent.setSelected(idx, { selectedNode }, false);
         return true;
     }
-    _parent.resetSelection(idx);
+    if (!_parent.resetSelection(idx, false)) {
+        NOP();
+    }
     return false;
 }
 
@@ -1784,10 +1795,11 @@ void Scene::updateSelectionData(PlayerIndex idx, DragSelectData& data, bool rema
 
     if (_context.gfx().frameCount() % 2 == 0) {
         clearHoverTarget(idx);
-        _parent.resetSelection(idx);
-        const Camera* crtCamera = getPlayerForIndex(idx)->camera();
-        vector<SceneGraphNode*> nodes = Attorney::SceneManagerScene::getNodesInScreenRect(_parent, selectionRect, *crtCamera, data._targetViewport);
-        _parent.setSelected(idx, nodes, false);
+        if (_parent.resetSelection(idx, false)) {
+            const Camera* crtCamera = getPlayerForIndex(idx)->camera();
+            vector<SceneGraphNode*> nodes = Attorney::SceneManagerScene::getNodesInScreenRect(_parent, selectionRect, *crtCamera, data._targetViewport);
+            _parent.setSelected(idx, nodes, false);
+        }
     }
 }
 
@@ -1816,6 +1828,8 @@ void Scene::initDayNightCycle(Sky& skyInstance, DirectionalLightComponent& sunLi
     }
     _dayNightData._timeAccumulatorSec = Time::Seconds(1.1f);
     _dayNightData._timeAccumulatorHour = 0.f;
+    sunLight.lockDirection(true);
+    sunLight.getSGN()->get<TransformComponent>()->setDirection(getSunDirection());
 }
 
 void Scene::setDayNightCycleTimeFactor(const F32 factor) noexcept {
@@ -1844,7 +1858,19 @@ const SimpleLocation& Scene::getGeographicLocation() const noexcept {
     return _dayNightData._location;
 }
 
-SunDetails Scene::getCurrentSunDetails() const noexcept {
+[[nodiscard]] vec3<F32> Scene::getSunPosition() const {
+    if (_dayNightData._skyInstance != nullptr) {
+        return _dayNightData._skyInstance->getSunPosition(_dayNightData._sunLight->range());
+    }
+
+    return vec3<F32>{ 0.f, 500.f, -100.f };
+}
+
+[[nodiscard]] vec3<F32> Scene::getSunDirection() const {
+    return Normalized(-getSunPosition());
+}
+
+SunInfo Scene::getCurrentSunDetails() const noexcept {
     if (_dayNightData._skyInstance != nullptr) {
         return _dayNightData._skyInstance->getCurrentDetails();
     }

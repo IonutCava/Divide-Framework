@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>true</static>
-<model>sponza_259</model>
+<model>sponza_259_260_sponza</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
@@ -27,6 +27,7 @@
         <bumpMethod>NONE</bumpMethod>
         <parallaxFactor>1</parallaxFactor>
         <transparencyEnabled>true</transparencyEnabled>
+        <useAlphaDiscard>true</useAlphaDiscard>
         <isRefractive>false</isRefractive>
         <RenderStates>
             <1>
@@ -234,7 +235,6 @@
             <UNIT0>
                 <name>sponza_flagpole_diff.png</name>
                 <path>assets/textures/sponza</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
@@ -243,7 +243,6 @@
             <SPECULAR>
                 <name>sponza_flagpole_spec.png</name>
                 <path>assets/textures/sponza</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

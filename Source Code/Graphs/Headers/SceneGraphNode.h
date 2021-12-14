@@ -111,7 +111,8 @@ public:
         ACTIVE = toBit(4),
         VISIBILITY_LOCKED = toBit(5),
         PARENT_POST_RENDERED = toBit(6),
-        COUNT = 7
+        SELECTION_LOCKED = toBit(7),
+        COUNT = 8
     };
 
 public:

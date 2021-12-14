@@ -70,8 +70,8 @@ namespace AVX {
 
 template <typename T>
 Quaternion<T>::Quaternion() noexcept
+    : Quaternion(0, 0, 0, 1)
 {
-    identity();
 }
 
 template <typename T>
@@ -96,6 +96,12 @@ template <typename T>
 Quaternion<T>::Quaternion(const vec3<T>& axis, Angle::DEGREES<T> angle) noexcept
 {
     fromAxisAngle(axis, angle);
+}
+
+template <typename T>
+Quaternion<T>::Quaternion(const vec3<T>& forward, const vec3<T>& up) noexcept
+{
+    lookRotation(forward, up);
 }
 
 template <typename T>
@@ -330,23 +336,59 @@ void Quaternion<T>::fromEuler(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, An
     // normalize(); this method does produce a normalized quaternion
 }
 
-
-//ref: https://gamedev.stackexchange.com/questions/15070/orienting-a-model-to-face-a-target
+//ref: http://answers.unity3d.com/questions/467614/what-is-the-source-code-of-quaternionlookrotation.html
 template <typename T>
-void Quaternion<T>::fromRotation(const vec3<T>& sourceDirection, const vec3<T>& destinationDirection, const vec3<T>& up) {
-    const F32 dot = to_F32(Dot(sourceDirection, destinationDirection));
+void Quaternion<T>::lookRotation(vec3<T> forward, vec3<T> up) {
+    Normalize(forward);
+    const vec3<T> right = Normalized(Cross(up, forward));
+    up = Cross(forward, right);
+    const T m00 = right.x;
+    const T m01 = right.y;
+    const T m02 = right.z;
+    const T m10 = up.x;
+    const T m11 = up.y;
+    const T m12 = up.z;
+    const T m20 = forward.x;
+    const T m21 = forward.y;
+    const T m22 = forward.z;
 
-    if (std::abs(dot - -1.f) < EPSILON_F32) {
-        // vector a and b point exactly in the opposite direction, 
-        // so it is a 180 degrees turn around the up-axis
-        fromAxisAngle(up, M_PI);
-    } else if (std::abs(dot - 1.f) < EPSILON_F32) {
-        // vector a and b point exactly in the same direction
-        // so we return the identity quaternion
-        identity();
-    } else {
-        fromAxisAngle(Normalized(Cross(sourceDirection, destinationDirection)), std::acos(dot));
+    const T num8 = (m00 + m11) + m22;
+    
+    if (num8 > 0) {
+        T num = Divide::Sqrt(num8 + 1);
+        W(num * 0.5); num = T{ 0.5f / num };
+        X((m12 - m21) * num);
+        Y((m20 - m02) * num);
+        Z((m01 - m10) * num);
+        return;
     }
+
+    if ((m00 >= m11) && (m00 >= m22)) {
+        const T num7 = Divide::Sqrt(((1 + m00) - m11) - m22);
+        const T num4 = T{ 0.5f / num7 };
+        X(0.5 * num7);
+        Y((m01 + m10) * num4);
+        Z((m02 + m20) * num4);
+        W((m12 - m21) * num4);
+        return;
+    }
+
+    if (m11 > m22) {
+        const T num6 = Divide::Sqrt(((1 + m11) - m00) - m22);
+        const T num3 = T{ 0.5f / num6 };
+        X((m10 + m01) * num3);
+        Y(0.5 * num6);
+        Z((m21 + m12) * num3);
+        W((m20 - m02) * num3);
+        return;
+    }
+
+    const T num5 = Divide::Sqrt(((1 + m22) - m00) - m11);
+    const T num2 = T{ 0.5f / num5 };
+    X((m20 + m02) * num2);
+    Y((m21 + m12) * num2);
+    Z(0.5 * num5);
+    W((m01 - m10) * num2);
 }
 
 template <typename T>

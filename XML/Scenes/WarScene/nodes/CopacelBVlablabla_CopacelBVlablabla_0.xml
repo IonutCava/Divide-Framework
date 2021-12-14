@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>true</static>
-<model>defaultobject_copac.obj</model>
+<model>defaultobject_0_copac</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
@@ -235,7 +235,6 @@
             <UNIT0>
                 <name>branch.png</name>
                 <path>assets/textures</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

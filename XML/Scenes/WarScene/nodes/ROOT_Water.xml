@@ -246,7 +246,6 @@
             <NORMALMAP>
                 <name>terrain_water_NM_old.jpg</name>
                 <path>assets/misc_images/</path>
-                <flipped>true</flipped>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>1</id>
@@ -255,7 +254,6 @@
             <REFLECTION_PLANAR>
                 <name>FBO_Reflection_Planar_0_Att_Colour_0_65</name>
                 <path/>
-                <flipped>true</flipped>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>2</id>
@@ -264,7 +262,6 @@
             <REFRACTION_PLANAR>
                 <name>FBO_Refraction_Planar_0_Att_Colour_0_80</name>
                 <path/>
-                <flipped>true</flipped>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>2</id>

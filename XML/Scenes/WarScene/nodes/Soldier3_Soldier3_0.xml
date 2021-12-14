@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>false</static>
-<model>guard1_body.png.msh</model>
+<model>guard1_body.png.msh_0_Bob</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
@@ -241,7 +241,6 @@
             <UNIT0>
                 <name>guard1_body.png</name>
                 <path>assets/textures</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

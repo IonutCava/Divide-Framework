@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>false</static>
-<model>round_grill.png.msh</model>
+<model>round_grill.png.msh_4_Bob</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
@@ -241,7 +241,6 @@
             <UNIT0>
                 <name>round_grill.png</name>
                 <path>assets/textures</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

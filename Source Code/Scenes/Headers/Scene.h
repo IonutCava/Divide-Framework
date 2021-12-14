@@ -193,7 +193,7 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] const Selections& getCurrentSelection(const PlayerIndex index = 0) const;
         [[nodiscard]] bool              findSelection(PlayerIndex idx, bool clearOld);
 
-        void resetSelection(PlayerIndex idx);
+        [[nodiscard]] bool resetSelection(PlayerIndex idx, const bool resetIfLocked);
         void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
 
         void beginDragSelection(PlayerIndex idx, const vec2<I32>& mousePos);
@@ -222,7 +222,9 @@ class Scene : public Resource, public PlatformContextComponent {
                       void                  setGeographicLocation(const SimpleLocation& location) noexcept;
         [[nodiscard]] const SimpleLocation& getGeographicLocation() const noexcept;
 
-        [[nodiscard]] SunDetails      getCurrentSunDetails() const noexcept;
+        [[nodiscard]] vec3<F32>       getSunPosition() const;
+        [[nodiscard]] vec3<F32>       getSunDirection() const;
+        [[nodiscard]] SunInfo         getCurrentSunDetails() const noexcept;
         [[nodiscard]] Sky::Atmosphere getCurrentAtmosphere() const noexcept;
                       void            setCurrentAtmosphere(const Sky::Atmosphere& atmosphere) const noexcept;
 #pragma endregion
@@ -319,6 +321,7 @@ class Scene : public Resource, public PlatformContextComponent {
         XML::SceneNode                        _xmlSceneGraphRootNode;
 
         std::array<Selections,      Config::MAX_LOCAL_PLAYER_COUNT> _currentSelection;
+        std::array<Selections,      Config::MAX_LOCAL_PLAYER_COUNT> _tempSelection;
         std::array<I64,             Config::MAX_LOCAL_PLAYER_COUNT> _currentHoverTarget;
         std::array<DragSelectData,  Config::MAX_LOCAL_PLAYER_COUNT> _dragSelectData;
         std::array<SceneGraphNode*, Config::MAX_LOCAL_PLAYER_COUNT> _flashLight;
@@ -406,8 +409,8 @@ class SceneManager {
         return scene._GUI.get();
     }
 
-    static void resetSelection(Scene& scene, const PlayerIndex idx) {
-        scene.resetSelection(idx);
+    static bool resetSelection(Scene& scene, const PlayerIndex idx, const bool resetIfLocked) {
+        return scene.resetSelection(idx, resetIfLocked);
     }
 
     static void setSelected(Scene& scene, const PlayerIndex idx, const vector<SceneGraphNode*>& sgns, const bool recursive) {

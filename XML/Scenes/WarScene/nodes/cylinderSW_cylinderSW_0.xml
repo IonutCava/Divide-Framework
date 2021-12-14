@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>true</static>
-<model>defaultobject_cylinder.obj</model>
+<model>defaultobject_0_cylinder</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
@@ -235,7 +235,6 @@
             <UNIT0>
                 <name>diffuse.dds</name>
                 <path>assets/textures</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
@@ -244,7 +243,6 @@
             <NORMALMAP>
                 <name>normal.tga</name>
                 <path>assets/textures</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

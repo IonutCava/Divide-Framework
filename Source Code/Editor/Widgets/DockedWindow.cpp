@@ -1,6 +1,21 @@
 #include "stdafx.h"
 
 #include "Headers/DockedWindow.h"
+#include "Geometry/Shapes/Headers/Object3D.h"
+
+#include "ECS/Components/Headers/TransformComponent.h"
+#include "ECS/Components/Headers/SpotLightComponent.h"
+#include "ECS/Components/Headers/PointLightComponent.h"
+#include "ECS/Components/Headers/DirectionalLightComponent.h"
+#include "ECS/Components/Headers/EnvironmentProbeComponent.h"
+#include "ECS/Components/Headers/ScriptComponent.h"
+#include "ECS/Components/Headers/UnitComponent.h"
+#include "Dynamics/Entities/Units/Headers/Unit.h"
+#include "Dynamics/Entities/Units/Headers/Character.h"
+#include "Dynamics/Entities/Units/Headers/NPC.h"
+#include "Dynamics/Entities/Units/Headers/Player.h"
+
+#include <IconFontCppHeaders/IconsForkAwesome.h>
 
 namespace Divide {
 
@@ -38,4 +53,58 @@ namespace Divide {
         ImGui::End();
     }
 
+    
+    const char* DockedWindow::getIconForNode(const SceneGraphNode* sgn) noexcept {
+        switch (sgn->getNode().type()) {
+            case SceneNodeType::TYPE_OBJECT3D: {
+                switch (sgn->getNode<Object3D>().getObjectType()) {
+                    case ObjectType::SPHERE_3D: return ICON_FK_CIRCLE;
+                    case ObjectType::BOX_3D: return ICON_FK_CUBE;
+                    case ObjectType::QUAD_3D: return ICON_FK_SQUARE;
+                    case ObjectType::PATCH_3D: return ICON_FK_PLUS_SQUARE;
+                    case ObjectType::MESH: return ICON_FK_BUILDING;
+                    case ObjectType::SUBMESH: return ICON_FK_PUZZLE_PIECE;
+                    case ObjectType::TERRAIN: return ICON_FK_TREE;
+                    case ObjectType::DECAL: return ICON_FK_STICKY_NOTE;
+                };
+                case SceneNodeType::TYPE_TRANSFORM:{
+                    if (sgn->GetComponent<DirectionalLightComponent>()) {
+                        return ICON_FK_SUN;
+                    } else if (sgn->GetComponent<PointLightComponent>()) {
+                        return ICON_FK_LIGHTBULB_O;
+                    } else if (sgn->GetComponent<SpotLightComponent>()) {
+                        return ICON_FK_DOT_CIRCLE_O;
+                    } else if (sgn->GetComponent<ScriptComponent>()) {
+                        return ICON_FK_FILE_TEXT;
+                    } else if (sgn->GetComponent<EnvironmentProbeComponent>()) {
+                        return ICON_FK_GLOBE;
+                    } else if (sgn->GetComponent<UnitComponent>()) {
+                        const UnitComponent* comp = sgn->GetComponent<UnitComponent>();
+                        if (comp->getUnit() != nullptr) {
+                            switch(comp->getUnit()->type()) {
+                                case UnitType::UNIT_TYPE_CHARACTER: {
+                                    switch (comp->getUnit<Character>()->characterType()) {
+                                        case Character::CharacterType::CHARACTER_TYPE_NPC: return ICON_FK_FEMALE;
+                                        case Character::CharacterType::CHARACTER_TYPE_PLAYER: return ICON_FK_GAMEPAD;
+                                    }
+                                }
+                                case UnitType::UNIT_TYPE_VEHICLE: {
+                                    return ICON_FK_CAR;
+                                }
+                            }
+                        }
+                    }
+                        return ICON_FK_ARROWS;
+                }
+                case SceneNodeType::TYPE_WATER: return ICON_FK_SHIP;
+                case SceneNodeType::TYPE_TRIGGER: return ICON_FK_COGS;
+                case SceneNodeType::TYPE_PARTICLE_EMITTER: return ICON_FK_FIRE;
+                case SceneNodeType::TYPE_SKY: return ICON_FK_CLOUD;
+                case SceneNodeType::TYPE_INFINITEPLANE: return ICON_FK_ARROWS;
+                case SceneNodeType::TYPE_VEGETATION: return ICON_FK_TREE;
+            }break;
+        }
+
+        return ICON_FK_QUESTION;
+    }
 } //namespace Divide

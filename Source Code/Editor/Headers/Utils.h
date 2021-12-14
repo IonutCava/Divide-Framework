@@ -118,7 +118,7 @@ namespace Util {
                 ret = ImGui::SliderScalar(label, data_type, (void*)&val, (void*)&min, (void*)&max, GetFormat(data_type, format, field._hexadecimal), power);
             } else {
                 ret = ImGui::InputScalar(label, data_type, (void*)&val, step, step_fast, GetFormat(data_type, format, field._hexadecimal), flags);
-                if (max > min) {
+                if (ret && ImGui::IsItemDeactivated() && max > min) {
                     CLAMP(val, min, max);
                 }
             }
@@ -131,7 +131,7 @@ namespace Util {
                 ret = ImGui::SliderScalarN(label, data_type, (void*)&val, num_comp, (void*)&min, (void*)&max, GetFormat(data_type, format, field._hexadecimal), power);
             } else {
                 ret = ImGui::InputScalarN(label, data_type, (void*)&val, num_comp, step, step_fast, GetFormat(data_type, format, field._hexadecimal), flags);
-                if (max > min) {
+                if (ret && ImGui::IsItemDeactivated() && max > min) {
                     for (I32 i = 0; i < to_I32(num_comp); ++i) {
                         val[i] = CLAMPED(val[i], min[i], max[i]);
                     }

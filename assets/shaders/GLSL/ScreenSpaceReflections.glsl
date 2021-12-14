@@ -172,9 +172,11 @@ vec3 GetReflectionColour() {
     const float depth = texture(texDepth, VAR._texCoord).r;
     if (depth < INV_Z_TEST_SIGMA) {
         const vec4 normalsAndMaterialData = texture(texNormal, VAR._texCoord);
+        const vec2 probeIDandFlags = unpackVec2(normalsAndMaterialData.a);
 
-        const uint probeID = uint(abs(normalsAndMaterialData.a));
-        if (probeID != PROBE_ID_NO_REFLECTIONS) {
+        const uint materialFlags = floatBitsToUint(probeIDandFlags.y);
+
+        if (!BitCompare(materialFlags, FLAG_NO_REFLECTIONS)) {
             const vec2 MR = unpackVec2(normalsAndMaterialData.b);
             const float roughness = saturate(MR.y);
 
@@ -186,14 +188,15 @@ vec3 GetReflectionColour() {
             const vec3 vsPos = ViewSpacePos(VAR._texCoord, depth, invProjectionMatrix);
             const vec3 vsReflect = reflect(normalize(vsPos), vsNormal);
 
-            {
+            if (!BitCompare(materialFlags, FLAG_NO_ENV_REFLECTIONS)) {
                 const vec3 worldReflect = (invViewMatrix * vec4(vsReflect.xyz, 0.f)).xyz;
                 const vec3 worldPos = (invViewMatrix * vec4(vsPos.xyz, 1.f)).xyz;
                 const vec3 worldNormal = (invViewMatrix * vec4(vsNormal.xyz, 0.f)).xyz;
+                const uint probeID = uint(probeIDandFlags.x) - 1u;
                 ambientReflected = GetCubeReflection(worldReflect, worldNormal, worldPos, probeID, roughness);
             }
 
-            if (ssrEnabled && probeID != PROBE_ID_NO_SSR) {
+            if (ssrEnabled && !BitCompare(materialFlags, FLAG_NO_SSR)) {
                 const vec2 uv2 = VAR._texCoord * dvd_screenDimensions;
                 const float jitter = mod((uv2.x + uv2.y) * 0.25f, 1.f) * jitterAmount;
 

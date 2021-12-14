@@ -423,11 +423,12 @@ bool GL_API::InitGLSW(Configuration& config) {
     for (U8 i = 0; i < to_base(TextureOperation::COUNT); ++i) {
         AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define TEX_%s %d", TypeUtil::TextureOperationToString(static_cast<TextureOperation>(i)), i).c_str());
     }
+    AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define WORLD_X_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_X_AXIS.x, WORLD_X_AXIS.y, WORLD_X_AXIS.z));
+    AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define WORLD_Y_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_Y_AXIS.x, WORLD_Y_AXIS.y, WORLD_Y_AXIS.z));
+    AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define WORLD_Z_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_Z_AXIS.x, WORLD_Z_AXIS.y, WORLD_Z_AXIS.z));
+
     AppendToShaderHeader(ShaderType::COUNT,    "#define GLOBAL_WATER_BODIES_COUNT "       + Util::to_string(GLOBAL_WATER_BODIES_COUNT));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define GLOBAL_PROBE_COUNT "              + Util::to_string(GLOBAL_PROBE_COUNT + 0));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define PROBE_ID_NO_REFLECTIONS "         + Util::to_string(GLOBAL_PROBE_COUNT + 1));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define PROBE_ID_NO_SSR "                 + Util::to_string(GLOBAL_PROBE_COUNT + 2));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define PROBE_ID_NO_ENV_REFLECTIONS "     + Util::to_string(GLOBAL_PROBE_COUNT + 3));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define GLOBAL_PROBE_COUNT "              + Util::to_string(GLOBAL_PROBE_COUNT));
     AppendToShaderHeader(ShaderType::COUNT,    "#define MATERIAL_TEXTURE_COUNT "          + Util::to_string(MATERIAL_TEXTURE_COUNT));
     AppendToShaderHeader(ShaderType::COMPUTE,  "#define BUFFER_LUMINANCE_HISTOGRAM "      + Util::to_string(to_base(ShaderBufferLocation::LUMINANCE_HISTOGRAM)));
     AppendToShaderHeader(ShaderType::VERTEX,   "#define BUFFER_BONE_TRANSFORMS "          + Util::to_string(to_base(ShaderBufferLocation::BONE_TRANSFORMS)));

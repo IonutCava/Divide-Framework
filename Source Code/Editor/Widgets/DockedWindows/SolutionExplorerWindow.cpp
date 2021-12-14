@@ -11,11 +11,6 @@
 #include "Managers/Headers/SceneManager.h"
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 
-#include "Dynamics/Entities/Units/Headers/Unit.h"
-#include "Dynamics/Entities/Units/Headers/Character.h"
-#include "Dynamics/Entities/Units/Headers/NPC.h"
-#include "Dynamics/Entities/Units/Headers/Player.h"
-
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleBoxGenerator.h"
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleColourGenerator.h"
 #include "Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleTimeGenerator.h"
@@ -50,61 +45,6 @@ namespace Divide {
         vec3<F32> g_particleAcceleration = {0.f, -20.f, 0.f};
         FColour4 g_particleStartColour = DefaultColours::BLACK;
         FColour4 g_particleEndColour = DefaultColours::WHITE;
-
-
-        FORCE_INLINE const char* getIconForNode(const SceneGraphNode* sgn) noexcept {
-            switch (sgn->getNode().type()) {
-                case SceneNodeType::TYPE_OBJECT3D: {
-                    switch (sgn->getNode<Object3D>().getObjectType()) {
-                        case ObjectType::SPHERE_3D: return ICON_FK_CIRCLE;
-                        case ObjectType::BOX_3D: return ICON_FK_CUBE;
-                        case ObjectType::QUAD_3D: return ICON_FK_SQUARE;
-                        case ObjectType::PATCH_3D: return ICON_FK_PLUS_SQUARE;
-                        case ObjectType::MESH: return ICON_FK_BUILDING;
-                        case ObjectType::SUBMESH: return ICON_FK_PUZZLE_PIECE;
-                        case ObjectType::TERRAIN: return ICON_FK_TREE;
-                        case ObjectType::DECAL: return ICON_FK_STICKY_NOTE;
-                    };
-                    case SceneNodeType::TYPE_TRANSFORM:{
-                        if (sgn->GetComponent<DirectionalLightComponent>()) {
-                            return ICON_FK_SUN;
-                        } else if (sgn->GetComponent<PointLightComponent>()) {
-                            return ICON_FK_LIGHTBULB_O;
-                        } else if (sgn->GetComponent<SpotLightComponent>()) {
-                            return ICON_FK_DOT_CIRCLE_O;
-                        } else if (sgn->GetComponent<ScriptComponent>()) {
-                            return ICON_FK_FILE_TEXT;
-                        } else if (sgn->GetComponent<EnvironmentProbeComponent>()) {
-                            return ICON_FK_GLOBE;
-                        } else if (sgn->GetComponent<UnitComponent>()) {
-                            const UnitComponent* comp = sgn->GetComponent<UnitComponent>();
-                            if (comp->getUnit() != nullptr) {
-                                switch(comp->getUnit()->type()) {
-                                    case UnitType::UNIT_TYPE_CHARACTER: {
-                                        switch (comp->getUnit<Character>()->characterType()) {
-                                            case Character::CharacterType::CHARACTER_TYPE_NPC: return ICON_FK_FEMALE;
-                                            case Character::CharacterType::CHARACTER_TYPE_PLAYER: return ICON_FK_GAMEPAD;
-                                        }
-                                    }
-                                    case UnitType::UNIT_TYPE_VEHICLE: {
-                                        return ICON_FK_CAR;
-                                    }
-                                }
-                            }
-                        }
-                         return ICON_FK_ARROWS;
-                    }
-                    case SceneNodeType::TYPE_WATER: return ICON_FK_SHIP;
-                    case SceneNodeType::TYPE_TRIGGER: return ICON_FK_COGS;
-                    case SceneNodeType::TYPE_PARTICLE_EMITTER: return ICON_FK_FIRE;
-                    case SceneNodeType::TYPE_SKY: return ICON_FK_CLOUD;
-                    case SceneNodeType::TYPE_INFINITEPLANE: return ICON_FK_ARROWS;
-                    case SceneNodeType::TYPE_VEGETATION: return ICON_FK_TREE;
-                }break;
-            }
-
-            return ICON_FK_QUESTION;
-        }
     }
 
     SolutionExplorerWindow::SolutionExplorerWindow(Editor& parent, PlatformContext& context, const Descriptor& descriptor)
@@ -123,11 +63,12 @@ namespace Divide {
         if (_filter.PassFilter(camera->resourceName().c_str())) {
             if (ImGui::TreeNodeEx((void*)(intptr_t)camera->getGUID(), node_flags, Util::StringFormat("%s %s", ICON_FK_CAMERA, camera->resourceName().c_str()).c_str())) {
                 if (ImGui::IsItemClicked()) {
-                    sceneManager->resetSelection(0);
-                    if (Attorney::EditorSolutionExplorerWindow::getSelectedCamera(_parent) == camera) {
-                        Attorney::EditorSolutionExplorerWindow::setSelectedCamera(_parent, nullptr);
-                    } else {
-                        Attorney::EditorSolutionExplorerWindow::setSelectedCamera(_parent, camera);
+                    if (sceneManager->resetSelection(0, false)) {
+                        if (Attorney::EditorSolutionExplorerWindow::getSelectedCamera(_parent) == camera) {
+                            Attorney::EditorSolutionExplorerWindow::setSelectedCamera(_parent, nullptr);
+                        } else {
+                            Attorney::EditorSolutionExplorerWindow::setSelectedCamera(_parent, camera);
+                        }
                     }
                 }
 
@@ -231,11 +172,12 @@ namespace Divide {
                     const bool parentSelected = !isRoot && sgn->parent()->hasFlag(SceneGraphNode::Flags::SELECTED);
                     const bool childrenSelected = sgn->getChildCount() > 0 && sgn->getChild(0u)->hasFlag(SceneGraphNode::Flags::SELECTED);
 
-                    sceneManager->resetSelection(0);
-                    if (!wasSelected || parentSelected || childrenSelected) {
-                        sceneManager->setSelected(0, { sgn }, !wasSelected);
+                    if (sceneManager->resetSelection(0, false)) {
+                        if (!wasSelected || parentSelected || childrenSelected) {
+                            sceneManager->setSelected(0, { sgn }, !wasSelected);
+                        }
+                        Attorney::EditorSolutionExplorerWindow::setSelectedCamera(_parent, nullptr);
                     }
-                    Attorney::EditorSolutionExplorerWindow::setSelectedCamera(_parent, nullptr);
                 }
             }
             if (!secondaryView && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
@@ -272,6 +214,10 @@ namespace Divide {
         Scene& activeScene = sceneManager->getActiveScene();
         SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
 
+        const bool lockExplorer = Attorney::EditorSolutionExplorerWindow::lockSolutionExplorer(_parent);
+        if (lockExplorer) {
+            PushReadOnly();
+        }
         ImGui::AlignTextToFramePadding();
         ImGui::Text(ICON_FK_SEARCH" Find node: ");
         ImGui::SameLine();
@@ -298,10 +244,13 @@ namespace Divide {
 
 
         ImGui::EndChild();
+        if (lockExplorer) {
+            PopReadOnly();
+        }
+
         ImGui::Separator();
-
         drawTransformSettings();
-
+        
         ImGui::Separator();
 
         // Calculate and show framerate
@@ -424,8 +373,9 @@ namespace Divide {
             constexpr U8 maxHour = 24u;
             constexpr U8 maxMinute = 59u;
 
-            if (ImGui::SliderScalar("Hour", ImGuiDataType_U8, &time._hour, &min, &maxHour, "%02d") ||
-                ImGui::SliderScalar("Minute", ImGuiDataType_U8, &time._minutes, &min, &maxMinute, "%02d"))         {
+            const bool hourChanged = ImGui::SliderScalar("Hour", ImGuiDataType_U8, &time._hour, &min, &maxHour, "%02d");
+            const bool minutesChanged = ImGui::SliderScalar("Minute", ImGuiDataType_U8, &time._minutes, &min, &maxMinute, "%02d");
+            if (hourChanged || minutesChanged) {
                 activeScene.setTimeOfDay(time);
             }
             F32 timeFactor = activeScene.getDayNightCycleTimeFactor();
@@ -434,8 +384,9 @@ namespace Divide {
             }
 
             ImGui::Text(ICON_FK_GLOBE_W" Global positioning:");
-            if (ImGui::SliderFloat("Latitude", &location._latitude, -90.f, 90.f, "%.6f") ||
-                ImGui::SliderFloat("Longitude", &location._longitude, -180.f, 180.f, "%.6f")) {
+            const bool latitudeChanged = ImGui::SliderFloat("Latitude", &location._latitude, -90.f, 90.f, "%.6f");
+            const bool longitudeChanged = ImGui::SliderFloat("Longitude", &location._longitude, -180.f, 180.f, "%.6f");
+            if (latitudeChanged || longitudeChanged) {
                 activeScene.setGeographicLocation(location);
             }
 
@@ -443,14 +394,19 @@ namespace Divide {
                 PushReadOnly();
             }
 
-            const SunDetails sun = activeScene.getCurrentSunDetails();
+            const SunInfo sun = activeScene.getCurrentSunDetails();
+            const vec3<F32> sunPosition = activeScene.getSunPosition();
+            const vec3<F32> sunDirection = activeScene.getSunDirection();
+
             ImGui::Text(ICON_FK_INFO_CIRCLE);
             ImGui::SameLine();
-            ImGui::Text("Sunset: %02d:%02d", sun._info.sunsetTime._hour, sun._info.sunsetTime._minutes);
+            ImGui::Text("Sunset: %02d:%02d", sun.sunsetTime._hour, sun.sunsetTime._minutes);
             ImGui::SameLine(); ImGui::Text(" | "); ImGui::SameLine();
-            ImGui::Text("Sunrise: %02d:%02d", sun._info.sunriseTime._hour, sun._info.sunriseTime._minutes);
+            ImGui::Text("Sunrise: %02d:%02d", sun.sunriseTime._hour, sun.sunriseTime._minutes);
             ImGui::SameLine();  ImGui::Text(" | "); ImGui::SameLine();
-            ImGui::Text("Noon: %02d:%02d", sun._info.noonTime._hour, sun._info.noonTime._minutes);
+            ImGui::Text("Noon: %02d:%02d", sun.noonTime._hour, sun.noonTime._minutes);
+            ImGui::Text("Sun Pos|Dir: (%1.2f, %1.2f, %1.2f) | (%1.2f, %1.2f, %1.2f)", sunPosition.x, sunPosition.y, sunPosition.z, sunDirection.x, sunDirection.y, sunDirection.z);
+            ImGui::Text("Sun altitude(max) | azimuth : (%3.2f | %3.2f) degrees", Angle::RadiansToDegrees(sun.altitude), sun.altitudeMax, Angle::RadiansToDegrees(sun.azimuth));
 
             if (!dayNightEnabled) {
                 PopReadOnly();

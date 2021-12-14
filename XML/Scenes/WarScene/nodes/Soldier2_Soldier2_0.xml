@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>false</static>
-<model>Wuson</model>
+<model>Wuson_0_Testwuson</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
@@ -11,7 +11,7 @@
 </TRANSFORM>
 <ANIMATION>
     <Animation__Speed>1</Animation__Speed>
-    <Animation__Frame__Index x="11" y="10" z="12"/>
+    <Animation__Frame__Index x="6" y="5" z="7"/>
 </ANIMATION>
 <INVERSE_KINEMATICS/>
 <RAGDOLL/>

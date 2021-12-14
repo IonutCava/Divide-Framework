@@ -36,6 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 class Editor;
+class SceneGraphNode;
 class DockedWindow : NonCopyable, NonMovable {
     public:
         struct Descriptor {
@@ -69,6 +70,7 @@ class DockedWindow : NonCopyable, NonMovable {
         virtual void drawInternal() = 0;
         virtual void backgroundUpdateInternal() {}
 
+        const char* getIconForNode(const SceneGraphNode* sgn) noexcept;
     protected:
         Editor & _parent;
 

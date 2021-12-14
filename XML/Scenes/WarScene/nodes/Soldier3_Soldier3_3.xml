@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>false</static>
-<model>iron_grill.png.msh</model>
+<model>iron_grill.png.msh_3_Bob</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
@@ -241,7 +241,6 @@
             <UNIT0>
                 <name>iron_grill.png</name>
                 <path>assets/textures</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

@@ -47,7 +47,7 @@ constexpr U16 GLOBAL_PROBE_COUNT = 512u;
 class SceneShaderData {
     struct SceneShaderBufferData {
         // w - reserved
-        vec4<F32> _sunDirection = { 0.0f };
+        vec4<F32> _sunPosition = { 0.0f };
         // w - reserved
         FColour4 _sunColour = DefaultColours::WHITE;
         // w - reserved
@@ -67,11 +67,11 @@ class SceneShaderData {
   public:
     explicit SceneShaderData(GFXDevice& context);
 
-    void sunDetails(const vec3<F32>& direction, const FColour3& colour) noexcept {
-        if (_sceneBufferData._sunDirection != direction ||
+    void sunDetails(const vec3<F32>& sunPosition, const FColour3& colour) noexcept {
+        if (_sceneBufferData._sunPosition != sunPosition ||
             _sceneBufferData._sunColour != colour)
         {
-            _sceneBufferData._sunDirection.set(direction);
+            _sceneBufferData._sunPosition.set(sunPosition);
             _sceneBufferData._sunColour.set(colour);
             _sceneDataDirty = true;
         }

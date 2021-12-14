@@ -44,10 +44,16 @@ void main(void) {
         return;
     }
 
-    // Calculate out of the current fragment in screen space the view space position.
-    if (sign(texture(texNormalsAndMatData, VAR._texCoord).a) < -0.5f) {
-        _ssaoOut = 1.f;
-        return;
+    {
+        const vec4 normalsAndMaterialData = texture(texNormalsAndMatData, VAR._texCoord);
+        const vec2 probeIDandFlags = unpackVec2(normalsAndMaterialData.a);
+        const uint materialFlags = floatBitsToUint(probeIDandFlags.y);
+
+        // Calculate out of the current fragment in screen space the view space position.
+        if (BitCompare(materialFlags, FLAG_NO_SSAO)) {
+            _ssaoOut = 1.f;
+            return;
+        }
     }
 
     const float sceneDepth = GetDepth(VAR._texCoord);

@@ -49,52 +49,52 @@ void main() {
     const vec3 vsPos = ViewSpacePos(VAR._texCoord, depth, invProjectionMatrix);
     const vec3 worldPos = (invViewMatrix * vec4(vsPos.xyz, 1.f)).xyz;
 
-    if (enableFog) {
+    const vec4 matData = texture(texNormalsAndMatData, VAR._texCoord);
+    const uint materialFlags = uint(unpackVec2(matData.a).y);
+
+    vec3 ambientIBL = albedo.rgb;
+    if (!BitCompare(materialFlags, FLAG_NO_REFLECTIONS)) {
+        const vec2 MR = unpackVec2(matData.b);
+        const vec3 normalWV = normalize(unpackNormal(matData.rg));
+        const vec3 N = (invViewMatrix * vec4(normalWV, 0.f)).xyz;
+        const vec3 V = normalize(cameraPosition - worldPos);
+
+        const float metalness = MR.x;
+#if 0
+        const vec3 kS = computeFresnel(V, N);
+#else 
+        const float roughness = MR.y;
+        const vec3 dielectricSpecular = vec3(0.04f);
+        const vec3 F0 = mix(dielectricSpecular, albedo.rgb, metalness);
+        const vec3 H = normalize(N + V);
+        const vec3 kS = computeFresnelSchlickRoughness(H, V, F0, roughness);
+#endif
+
+        // Energy conservation
+        vec3 kD = vec3(1.f) - kS;
+        kD *= 1.f - metalness;
+
+        // Diffuse irradience computation
+        const vec3 diffuseIrradiance = albedo.rgb;
+
+        // Specular radiance computation
+        const vec3 reflection = texture(texSSR, VAR._texCoord).rgb;
+        const vec3 specularRadiance = reflection * kS;
+        ambientIBL = (kD * diffuseIrradiance + specularRadiance);
+    }
+
+    const float ssao = texture(texSSAO, VAR._texCoord).r;
+    albedo.rgb = ssao * ambientIBL;
+
+    if (enableFog && !BitCompare(materialFlags, FLAG_NO_FOG)) {
         albedo.rgb = applyFog(albedo.rgb,
                               distance(worldPos, cameraPosition),
                               cameraPosition,
                               normalize(worldPos - cameraPosition));
     }
 
-    const vec4 matData = texture(texNormalsAndMatData, VAR._texCoord);
-    if (uint(abs(matData.a)) == PROBE_ID_NO_REFLECTIONS) {
-        _colourOut = vec4(albedo.rgb, 1.f);
-        return;
-    }
-
-    const vec2 MR = unpackVec2(matData.b);
-    const vec3 normalWV = normalize(unpackNormal(matData.rg));
-    const vec3 N = (invViewMatrix * vec4(normalWV, 0.f)).xyz;
-    const vec3 V = normalize(cameraPosition - worldPos);
-
-    const float metalness = MR.x;
-#if 0
-    const vec3 kS = computeFresnel(V, N);
-#else 
-    const float roughness = MR.y;
-    const vec3 dielectricSpecular = vec3(0.04f);
-    const vec3 F0 = mix(dielectricSpecular, albedo.rgb, metalness);
-    const vec3 H = normalize(N + V);
-    const vec3 kS = computeFresnelSchlickRoughness(H, V, F0, roughness);
-#endif
-
-    // Energy conservation
-    vec3 kD = vec3(1.f) - kS;
-    kD *= 1.f - metalness;
-
-    // Diffuse irradience computation
-    const vec3 diffuseIrradiance = albedo.rgb;
-
-    // Specular radiance computation
-    const vec3 reflection = texture(texSSR, VAR._texCoord).rgb;
-    const vec3 specularRadiance = reflection * kS;
-
-    const float ssao = texture(texSSAO, VAR._texCoord).r;
-    const vec3 ambientIBL = ssao * (kD * diffuseIrradiance + specularRadiance);
-
-    _colourOut = vec4(ambientIBL, 1.f);
+    _colourOut = vec4(albedo.rgb, 1.f);
 }
-
 
 -- Fragment
 

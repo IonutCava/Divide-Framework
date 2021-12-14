@@ -589,7 +589,9 @@ void Editor::toggle(const bool state) {
         activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
         activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
         activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
-        _context.kernel().sceneManager()->resetSelection(0);
+        if (!_context.kernel().sceneManager()->resetSelection(0, true)) {
+            NOP();
+        }
     } else {
         _stepQueue = 0;
         activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
@@ -666,7 +668,10 @@ void Editor::update(const U64 deltaTimeUS) {
 
             _gizmo->enable(_isScenePaused);
             SceneManager* sMgr = _context.kernel().sceneManager();
-            sMgr->resetSelection(0);
+            // ToDo: Find a way to keep current selection between running and editing states. Maybe have 2 different selections flags?(i.e. in-editor and in-game) - Ionut
+            if (!sMgr->resetSelection(0, true)) {
+                NOP();
+            }
             const Scene& activeScene = sMgr->getActiveScene();
             
             const PlayerIndex idx = sMgr->playerPass();

@@ -141,11 +141,21 @@ FWD_DECLARE_MANAGED_STRUCT(DebugView);
 template<typename Data, size_t N>
 struct DebugPrimitiveHandler
 {
+    static constexpr U8 g_maxFrameLifetime = 6u;
+
+    constexpr [[nodiscard]] size_t Size() noexcept { return N; }
+
+    struct DataEntry {
+        Data _data;
+        I64 _Id = 0u;
+        U8 _frameLifeTime = 0u;
+    };
+
     DebugPrimitiveHandler()   noexcept
     {
-        std::atomic_init(&_Id, 0u);
         _debugPrimitives.fill(nullptr);
     }
+
     ~DebugPrimitiveHandler()
     {
         reset();
@@ -153,17 +163,31 @@ struct DebugPrimitiveHandler
 
     void reset();
 
-    void add(Data&& data) noexcept {
-        if (_Id.load() == N) {
-            return;
-        }
+    void add(const I64 ID, Data&& data) noexcept {
+        ScopedLock<Mutex> w_lock(_dataLock);
 
-        _debugData[_Id.fetch_add(1)] = MOV(data);
+        for (U32 i = 0u; i < N; ++i) {
+            DataEntry& entry = _debugData[i];
+            if (entry._Id == ID) {
+                entry._data = MOV(data);
+                entry._frameLifeTime = g_maxFrameLifetime;
+                return;
+            }
+        }
+        for (U32 i = 0u; i < N; ++i) {
+            DataEntry& entry = _debugData[i];
+            if (entry._frameLifeTime == 0u) {
+                entry._Id = ID;
+                entry._data = MOV(data);
+                entry._frameLifeTime = g_maxFrameLifetime;
+                return;
+            }
+        }
     }
 
+    Mutex _dataLock;
     std::array<IMPrimitive*, N>  _debugPrimitives;
-    std::array<Data, N> _debugData;
-    std::atomic_uint _Id;
+    std::array<DataEntry, N> _debugData;
 };
 
 /// Rough around the edges Adapter pattern abstracting the actual rendering API and access to the GPU
@@ -203,11 +227,11 @@ public:  // GPU interface
     void endFrame(DisplayWindow& window, bool global);
 
     void debugDraw(const SceneRenderState& sceneRenderState, const Camera* activeCamera, GFX::CommandBuffer& bufferInOut);
-    void debugDrawLines(const Line* lines, size_t count) noexcept;
-    void debugDrawBox(const vec3<F32>& min, const vec3<F32>& max, const FColour3& colour) noexcept;
-    void debugDrawSphere(const vec3<F32>& center, F32 radius, const FColour3& colour) noexcept;
-    void debugDrawCone(const vec3<F32>& root, const vec3<F32>& direction, F32 length, F32 radius, const FColour3& colour) noexcept;
-    void debugDrawFrustum(const Frustum& frustum, const FColour3& colour) noexcept;
+    void debugDrawLines(const I64 ID, const Line* lines, size_t count) noexcept;
+    void debugDrawBox(const I64 ID, const vec3<F32>& min, const vec3<F32>& max, const FColour3& colour) noexcept;
+    void debugDrawSphere(const I64 ID, const vec3<F32>& center, F32 radius, const FColour3& colour) noexcept;
+    void debugDrawCone(const I64 ID, const vec3<F32>& root, const vec3<F32>& direction, F32 length, F32 radius, const FColour3& colour) noexcept;
+    void debugDrawFrustum(const I64 ID, const Frustum& frustum, const FColour3& colour) noexcept;
     void flushCommandBuffer(GFX::CommandBuffer& commandBuffer, bool batch = true);
     
     /// Generate a cubemap from the given position

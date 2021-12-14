@@ -24,6 +24,7 @@
 #include "Core/Math/BoundingVolumes/Headers/OBB.h"
 #include "Headers/Utils.h"
 #include <Editor/Widgets/Headers/ImGuiExtensions.h>
+#include <IconFontCppHeaders/IconsForkAwesome.h>
 
 namespace Divide {
     namespace {
@@ -265,9 +266,10 @@ namespace Divide {
     }
 
     void PropertyWindow::backgroundUpdateInternal() {
+        I64 guid = 12344231;
         for (const auto& it : g_debugFrustums) {
             const auto& [frustum, colour, realtime] = it.second;
-            _context.gfx().debugDrawFrustum(frustum, colour);
+            _context.gfx().debugDrawFrustum(guid++, frustum, colour);
         }
     }
 
@@ -276,7 +278,8 @@ namespace Divide {
 
         const Selections crtSelections = selections();
         const bool hasSelections = crtSelections._selectionCount > 0u;
-
+        
+        bool lockSolutionExplorer = false;
         Camera* selectedCamera = Attorney::EditorPropertyWindow::getSelectedCamera(_parent);
         if (selectedCamera != nullptr) {
             sceneChanged = drawCamera(selectedCamera);
@@ -286,17 +289,30 @@ namespace Divide {
 
             for (U8 i = 0u; i < crtSelections._selectionCount; ++i) {
                 SceneGraphNode* sgnNode = node(crtSelections._selections[i]);
-                ImGui::PushID(sgnNode->name().c_str());
-
                 if (sgnNode != nullptr) {
+                    ImGui::PushID(sgnNode->name().c_str());
+
                     bool enabled = sgnNode->hasFlag(SceneGraphNode::Flags::ACTIVE);
-                    if (ImGui::Checkbox(sgnNode->name().c_str(), &enabled)) {
+                    if (ImGui::Checkbox(Util::StringFormat("%s %s", getIconForNode(sgnNode), sgnNode->name().c_str()).c_str(), &enabled)) {
                         if (enabled) {
                             sgnNode->setFlag(SceneGraphNode::Flags::ACTIVE);
                         } else {
                             sgnNode->clearFlag(SceneGraphNode::Flags::ACTIVE);
                         }
                         sceneChanged = true;
+                    }
+
+                    ImGui::SameLine();
+                    bool selectionLocked = sgnNode->hasFlag(SceneGraphNode::Flags::SELECTION_LOCKED);
+                    if (ImGui::Checkbox(ICON_FK_LOCK"Lock Selection", &selectionLocked)) {
+                        if (selectionLocked) {
+                            sgnNode->setFlag(SceneGraphNode::Flags::SELECTION_LOCKED);
+                        } else {
+                            sgnNode->clearFlag(SceneGraphNode::Flags::SELECTION_LOCKED);
+                        }
+                    }
+                    if (selectionLocked) {
+                        lockSolutionExplorer = true;
                     }
                     ImGui::Separator();
 
@@ -370,7 +386,7 @@ namespace Divide {
                                 if (probe != nullptr) {
                                     const auto& cameras = probe->probeCameras();
 
-                                    for (U8 face = 0; face < 6; ++face) {
+                                    for (U8 face = 0u; face < 6u; ++face) {
                                         Camera* probeCameras = cameras[face];
                                         if (drawCamera(probeCameras)) {
                                             sceneChanged = true;
@@ -558,6 +574,8 @@ namespace Divide {
             }
         }
 
+        Attorney::EditorPropertyWindow::lockSolutionExplorer(_parent, lockSolutionExplorer);
+
         if (sceneChanged) {
             Attorney::EditorGeneralWidget::registerUnsavedSceneChanges(_context.editor());
         }
@@ -581,7 +599,7 @@ namespace Divide {
                                    field._type == EditorComponentFieldType::SWITCH_TYPE ||
                                    field._type == EditorComponentFieldType::PUSH_TYPE);
 
-        if (!sameLineText) {
+        if (!sameLineText && field._type != EditorComponentFieldType::BUTTON) {
             ImGui::Text("[ %s ]", field._name.c_str());
         }
 
@@ -592,11 +610,9 @@ namespace Divide {
         bool ret = false;
         switch (field._type) {
             case EditorComponentFieldType::SEPARATOR: {
-                ImGui::Text(field._name.c_str());
                 ImGui::Separator();
             }break;
             case EditorComponentFieldType::BUTTON: {
-                ImGui::Text(field._name.c_str());
                 if (field._range.y - field._range.x > 1.0f) {
                     ret = ImGui::Button(field._name.c_str(), ImVec2(field._range.x, field._range.y));
                 } else {
@@ -791,10 +807,12 @@ namespace Divide {
         const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsNoBlank | (readOnly ? ImGuiInputTextFlags_ReadOnly : 0u) | (hex ? ImGuiInputTextFlags_CharsHexadecimal : 0u);
 
         const TransformValues transformValues = transform->getValues();
-
+        if (transform->editorLockPosition()) {
+            PushReadOnly();
+        }
         vec3<F32> pos = transformValues._translation;
-        if (ImGui::InputFloat3(" - Position ", pos, "%.3f", flags)) {
-            if (!readOnly) {
+        if (ImGui::InputFloat3(" - Position ", pos, "%.3f", flags | (transform->editorLockPosition() ? ImGuiInputTextFlags_ReadOnly : 0u))) {
+            if (!readOnly && !transform->editorLockPosition()) {
                 ret = true;
                 RegisterUndo<vec3<F32>, false>(_parent, GFX::PushConstantType::VEC3, transformValues._translation, pos, "Transform position", [transform](const vec3<F32>& val) {
                     transform->setPosition(val);
@@ -802,11 +820,16 @@ namespace Divide {
                 transform->setPosition(pos);
             }
         }
-
+        if (transform->editorLockPosition()) {
+            PopReadOnly();
+        }
+        if (transform->editorLockRotation()) {
+            PushReadOnly();
+        }
         vec3<F32> rot = Angle::to_DEGREES(transformValues._orientation.getEuler());
         const vec3<F32> oldRot = rot;
-        if (ImGui::InputFloat3(" - Rotation ", rot, "%.3f", flags)) {
-            if (!readOnly) {
+        if (ImGui::InputFloat3(" - Rotation ", rot, "%.3f", flags | (transform->editorLockRotation() ? ImGuiInputTextFlags_ReadOnly : 0u))) {
+            if (!readOnly && !transform->editorLockRotation()) {
                 ret = true;
                 RegisterUndo<vec3<F32>, false>(_parent, GFX::PushConstantType::VEC3, oldRot, rot, "Transform rotation", [transform](const vec3<F32>& val) {
                     transform->setRotationEuler(val);
@@ -814,10 +837,15 @@ namespace Divide {
                 transform->setRotationEuler(rot);
             }
         }
-
+        if (transform->editorLockRotation()) {
+            PopReadOnly();
+        }
+        if (transform->editorLockScale()) {
+            PushReadOnly();
+        }
         vec3<F32> scale = transformValues._scale;
-        if (ImGui::InputFloat3(" - Scale ", scale, "%.3f", flags)) {
-            if (!readOnly) {
+        if (ImGui::InputFloat3(" - Scale ", scale, "%.3f", flags | (transform->editorLockScale() ? ImGuiInputTextFlags_ReadOnly : 0u))) {
+            if (!readOnly && !transform->editorLockScale()) {
                 ret = true;
                 // Scale is tricky as it may invalidate everything if it's set wrong!
                 for (U8 i = 0; i < 3; ++i) {
@@ -829,7 +857,9 @@ namespace Divide {
                 transform->setScale(scale);
             }
         }
-
+        if (transform->editorLockScale()) {
+            PopReadOnly();
+        }
         return ret;
     }
 

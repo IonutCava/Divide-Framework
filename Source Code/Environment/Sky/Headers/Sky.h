@@ -56,19 +56,16 @@ enum class RebuildCommandsState : U8 {
 class Sky final : public SceneNode {
    public: 
        struct Atmosphere {
-           vec3<F32> _RayleighCoeff =
-           { 5.5f, 13.0f, 22.4f };         // Rayleigh scattering coefficient
-           vec2<F32> _cloudLayerMinMaxHeight =
-           { 1000.f, 2300.f}; // Clouds will be limited between [planerRadius + min - planetRadius + height]
-           F32 _sunIntensity = 11.2f;      // intensity of the sun
-           F32 _sunScale = 0.4f;           // x 1000. visual size of the sun disc
-           F32 _planetRadius = 0.5f;       // x 6371e3m (radius of the planet in meters)
-           F32 _atmosphereOffset = 100.f;  // planetRadius + (atmoOffset * distanceMult) = radius of the atmosphere in meters
-           F32 _MieCoeff = 21.f;           // Mie scattering coefficient
-           F32 _RayleighScale = 8.f;       // Rayleigh scale height
-           F32 _MieScaleHeight = 1.2f;     // Mie scale height
-           F32 _rayOriginDistance = 1.25f; // Offset from planetRadius for the ray origin
-           I32 _distanceMultiplier = 1000; // Factor to multiply all distances by
+           vec3<F32> _RayleighCoeff = { 5.5f, 13.0f, 22.4f };     // Rayleigh scattering coefficient
+           vec2<F32> _cloudLayerMinMaxHeight = { 1000.f, 2300.f}; // Clouds will be limited between [planerRadius + min - planetRadius + height]
+           F32 _sunIntensity = 1.f;        // x 1000. visual size of the sun disc
+           F32 _sunPenetrationPower = 30.f;// Factor used to calculate atmosphere transmitance for clour layer
+           F32 _planetRadius = 6360e3f;    // radius of the planet in meters
+           F32 _cloudSphereRadius = 200e3f;// cloud sphere radius. Does not need to match planet radius
+           F32 _atmosphereOffset = 60.f;   // planetRadius + atmoOffset = radius of the atmosphere in meters
+           F32 _MieCoeff = 21e-6f;         // Mie scattering coefficient
+           F32 _RayleighScale = 7994.f;    // Rayleigh scale height
+           F32 _MieScaleHeight = 1200.f;   // Mie scale height
        };
 
    public:
@@ -76,20 +73,22 @@ class Sky final : public SceneNode {
 
     static void OnStartup(PlatformContext& context);
     // Returns the sun position and intensity details for the specified date-time
-    const SunDetails& setDateTime(struct tm *dateTime) noexcept;
-    const SunDetails& setGeographicLocation(SimpleLocation location) noexcept;
-    const SunDetails& setDateTimeAndLocation(struct tm *dateTime, SimpleLocation location) noexcept;
+    const SunInfo& setDateTime(struct tm *dateTime) noexcept;
+    const SunInfo& setGeographicLocation(SimpleLocation location) noexcept;
+    const SunInfo& setDateTimeAndLocation(struct tm *dateTime, SimpleLocation location) noexcept;
 
     [[nodiscard]] SimpleTime GetTimeOfDay() const noexcept;
     [[nodiscard]] SimpleLocation GetGeographicLocation() const noexcept;
 
-    [[nodiscard]] const SunDetails& getCurrentDetails() const;
+    [[nodiscard]] const SunInfo& getCurrentDetails() const;
+    [[nodiscard]] vec3<F32> getSunPosition(F32 radius = 1.f) const;
     [[nodiscard]] bool isDay() const;
 
     PROPERTY_R(Atmosphere, atmosphere);
     void setAtmosphere(const Atmosphere& atmosphere) noexcept;
 
     PROPERTY_R(Atmosphere, defaultAtmosphere);
+    PROPERTY_R(Atmosphere, initialAtmosphere);
 
     PROPERTY_R(size_t, skyboxSampler, 0);
     PROPERTY_R(size_t, noiseSamplerLinear, 0);

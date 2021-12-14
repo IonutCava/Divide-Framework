@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>false</static>
-<model>Body</model>
+<model>Body_0_dwarf</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
@@ -11,7 +11,7 @@
 </TRANSFORM>
 <ANIMATION>
     <Animation__Speed>1</Animation__Speed>
-    <Animation__Frame__Index x="6" y="5" z="7"/>
+    <Animation__Frame__Index x="30" y="29" z="31"/>
 </ANIMATION>
 <INVERSE_KINEMATICS/>
 <RAGDOLL/>
@@ -241,7 +241,6 @@
             <UNIT0>
                 <name>axe.jpg</name>
                 <path>assets/textures</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

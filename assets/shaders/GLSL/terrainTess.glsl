@@ -468,7 +468,7 @@ layout(early_fragment_tests) in;
 #define USE_CUSTOM_TEXTURE_OMR
 #define SHADOW_INTENSITY_FACTOR 0.5f
 #define USE_CUSTOM_TBN
-#define NO_IBL
+#define NO_REFLECTIONS
 #if defined(LOW_QUALITY)
 #define DIRECTIONAL_LIGHT_ONLY
 #endif //LOW_QUALITY

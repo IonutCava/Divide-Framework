@@ -20,18 +20,15 @@ namespace Divide {
     void DirectionalLightSystem::PreUpdate(const F32 dt) {
         OPTICK_EVENT();
 
-        const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(context().kernel().sceneManager());
         Parent::PreUpdate(dt);
         for (DirectionalLightComponent* comp : _componentCache) {
             if (comp->drawImpostor() || comp->showDirectionCone()) {
-                constexpr F32 coneDist = 11.f;
-                // Try and place the cone in such a way that it's always in view, because directional lights have no "source"
-                const vec3<F32> min = -coneDist * comp->directionCache() +
-                                      playerCam->getEye() +
-                                      playerCam->getForwardDir() * 10.0f +
-                                      playerCam->getRightDir() * 2.0f;
-
-                context().gfx().debugDrawCone(min, comp->directionCache(), coneDist, 1.f, comp->getDiffuseColour());
+                context().gfx().debugDrawCone(comp->getGUID(),
+                                              -comp->directionCache() * comp->range(),
+                                               comp->directionCache(), 
+                                               comp->range(),
+                                               2.f,
+                                               comp->getDiffuseColour());
             }
         }
     }

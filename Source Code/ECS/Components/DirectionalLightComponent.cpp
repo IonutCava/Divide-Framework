@@ -30,7 +30,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
     directionField._dataGetter = [this](void* dataOut) noexcept { static_cast<vec3<F32>*>(dataOut)->set(directionCache()); };
     directionField._dataSetter = [this](const void* data) { setDirection(*static_cast<const vec3<F32>*>(data)); };
     directionField._type = EditorComponentFieldType::PUSH_TYPE;
-    directionField._readOnly = true;
+    directionField._readOnly = lockDirection();
     directionField._basicType = GFX::PushConstantType::VEC3;
 
     editorComponent().registerField(MOV(directionField));
@@ -76,6 +76,15 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
     _feedbackContainers.resize(csmSplitCount());
 }
 
+void DirectionalLightComponent::lockDirection(const bool state) noexcept {
+    _lockDirection = state;
+
+    TransformComponent* tComp = _parentSGN->get<TransformComponent>();
+    if (tComp != nullptr) {
+        tComp->editorLockRotation(lockDirection());
+    }
+}
+
 void DirectionalLightComponent::OnData(const ECS::CustomEvent& data) {
     if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
         updateCache(data);
@@ -90,10 +99,8 @@ void DirectionalLightComponent::OnData(const ECS::CustomEvent& data) {
 
 void DirectionalLightComponent::setDirection(const vec3<F32>& direction) {
     TransformComponent* tComp = _parentSGN->get<TransformComponent>();
-    if (tComp) {
-        Quaternion<F32> rot = tComp->getOrientation();
-        rot.fromRotation(directionCache(), direction, tComp->getUpVector());
-        tComp->setRotation(rot);
+    if (tComp != nullptr) {
+        tComp->setDirection(direction);
     }
 }
 

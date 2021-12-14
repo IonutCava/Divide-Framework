@@ -39,7 +39,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 
 namespace Divide {
-BEGIN_COMPONENT(Bounds, ComponentType::BOUNDS)
+BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
     public:
         BoundsComponent(SceneGraphNode* sgn, PlatformContext& context);
 

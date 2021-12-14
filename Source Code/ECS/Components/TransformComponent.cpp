@@ -321,6 +321,14 @@ namespace Divide {
         setTransformDirty(TransformType::ROTATION);
     }
 
+    const vec3<F32> TransformComponent::getDirection(const vec3<F32>& worldForward, bool local) const {
+        return DirectionFromAxis(local ? getLocalOrientation() : getOrientation(), worldForward);
+    }
+
+    void TransformComponent::setDirection(const vec3<F32>& fwdDirection, const vec3<F32>& upDirection) {
+        setRotation(RotationFromVToU(getDirection(WORLD_Z_NEG_AXIS, true), fwdDirection, WORLD_Z_NEG_AXIS));
+    }
+
     void TransformComponent::setPositionX(const F32 positionX) {
         {
             ScopedLock<SharedMutex> w_lock(_lock);

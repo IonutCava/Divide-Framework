@@ -24,6 +24,7 @@ namespace Divide {
         for (SpotLightComponent* comp : _componentCache) {
             if (comp->_drawImpostor) {
                context().gfx().debugDrawCone(
+                   comp->getGUID(),
                    comp->positionCache(),
                    comp->directionCache(),
                    comp->range(),

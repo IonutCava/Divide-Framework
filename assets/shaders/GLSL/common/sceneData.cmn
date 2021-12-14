@@ -16,8 +16,8 @@ struct FogDetails
 };
 
 layout(binding = BUFFER_SCENE_DATA, std140) uniform dvd_SceneData {
-    // w - reserved
-    vec4 dvd_sunDirection;
+    // w - reserved (normalize(-dvd_sunPosition) == dvd_sunDirection)
+    vec4 dvd_sunPosition;
     // w - reserved
     vec4 dvd_sunColour;
     // w - reserved
@@ -33,6 +33,7 @@ layout(binding = BUFFER_SCENE_DATA, std140) uniform dvd_SceneData {
     mat4 _padding;
 };
 
+#define GetSunDirection() normalize(-dvd_sunPosition.xyz)
 #define dvd_LightBleedBias dvd_shadowingSettings.x
 #define dvd_MinVariance dvd_shadowingSettings.y
 

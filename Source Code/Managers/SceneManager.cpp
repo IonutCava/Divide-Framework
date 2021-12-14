@@ -529,14 +529,11 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
 
     const Scene::DayNightData& dayNightData = activeScene.dayNightData();
 
-    const FColour3 sunColour = dayNightData._sunLight != nullptr ? dayNightData._sunLight->getDiffuseColour() : DefaultColours::WHITE;
+    const FColour3 sunColour = dayNightData._sunLight != nullptr 
+                                            ? dayNightData._sunLight->getDiffuseColour()
+                                            : DefaultColours::WHITE;
 
-    vec3<F32> sunDirection = { 0.0f, -0.75f, -0.75f };
-    if (dayNightData._skyInstance != nullptr) {
-        sunDirection = DirectionFromEuler(dayNightData._skyInstance->getCurrentDetails()._eulerDirection, WORLD_Z_NEG_AXIS);
-    }
-
-    _sceneData->sunDetails(sunDirection, sunColour);
+    _sceneData->sunDetails(activeScene.getSunPosition(), sunColour);
     //_sceneData->skyColour(horizonColour, zenithColour);
 
     FogDetails fog = activeScene.state()->renderState().fogDetails();
@@ -728,11 +725,15 @@ void SceneManager::onChangeFocus(const bool hasFocus) {
     getActiveScene().onChangeFocus(hasFocus);
 }
 
-void SceneManager::resetSelection(const PlayerIndex idx) {
-    Attorney::SceneManager::resetSelection(getActiveScene(), idx);
-    for (auto& cbk : _selectionChangeCallbacks) {
-        cbk.second(idx, {});
+bool SceneManager::resetSelection(const PlayerIndex idx, const bool resetIfLocked) {
+    if (Attorney::SceneManager::resetSelection(getActiveScene(), idx, resetIfLocked)) {
+        for (auto& cbk : _selectionChangeCallbacks) {
+            cbk.second(idx, {});
+        }
+        return true;
     }
+
+    return false;
 }
 
 void SceneManager::setSelected(const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive) {
@@ -744,7 +745,9 @@ void SceneManager::setSelected(const PlayerIndex idx, const vector<SceneGraphNod
 
 void SceneManager::onNodeDestroy([[maybe_unused]] SceneGraphNode* node) {
     for (PlayerIndex p = 0; p < _activePlayerCount; ++p) {
-        resetSelection(p);
+        if (!resetSelection(p, true)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     }
 }
 

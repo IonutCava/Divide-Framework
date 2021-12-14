@@ -56,6 +56,7 @@ class Quaternion {
 
     explicit Quaternion(const mat3<T>& rotationMatrix) noexcept;
     Quaternion(const vec3<T>& axis, Angle::DEGREES<T> angle) noexcept;
+    Quaternion(const vec3<T>& forward, const vec3<T>& up = WORLD_Y_AXIS) noexcept;
     Quaternion(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, Angle::DEGREES<T> roll) noexcept;
     Quaternion(const Quaternion& q) noexcept;
 
@@ -128,7 +129,7 @@ class Quaternion {
     //! Convert from Euler Angles
     void fromEuler(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, Angle::DEGREES<T> roll) noexcept;
 
-    void fromRotation(const vec3<T>& sourceDirection, const vec3<T>& destinationDirection, const vec3<T>& up);
+    void lookRotation(vec3<T> forward, vec3<T> up);
 
     // a la Ogre3D
     void fromMatrix(const mat3<T>& rotationMatrix) noexcept;

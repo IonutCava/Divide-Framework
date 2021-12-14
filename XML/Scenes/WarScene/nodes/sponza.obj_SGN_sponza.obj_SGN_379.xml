@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>true</static>
-<model>sponza_372</model>
+<model>sponza_372_379_sponza</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
@@ -27,6 +27,7 @@
         <bumpMethod>NONE</bumpMethod>
         <parallaxFactor>1</parallaxFactor>
         <transparencyEnabled>true</transparencyEnabled>
+        <useAlphaDiscard>true</useAlphaDiscard>
         <isRefractive>false</isRefractive>
         <RenderStates>
             <1>
@@ -234,7 +235,6 @@
             <UNIT0>
                 <name>vase_plant.png</name>
                 <path>assets/textures/sponza</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
@@ -243,7 +243,6 @@
             <OPACITY>
                 <name>vase_plant_mask.png</name>
                 <path>assets/textures/sponza</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
@@ -252,7 +251,6 @@
             <SPECULAR>
                 <name>vase_plant_spec.png</name>
                 <path>assets/textures/sponza</path>
-                <flipped>true</flipped>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

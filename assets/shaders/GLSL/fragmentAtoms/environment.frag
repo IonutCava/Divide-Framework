@@ -121,7 +121,8 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
 vec3 atmosphereColor(vec3 rayDirection) {
     float a = max(0.f, dot(rayDirection, vec3(0.0, 1.0, 0.0)));
     vec3 skyColor = mix(dvd_horizonColour, dvd_zenithColour, a).rgb;
-    float sunTheta = max(dot(rayDirection, dvd_sunDirection.xyz), 0.0);
+    const vec3 sunDirection = GetSunDirection();
+    float sunTheta = max(dot(rayDirection, sunDirection), 0.0);
     return skyColor + dvd_sunColour.rgb * pow(sunTheta, 256.0) * 0.5;
 }
 

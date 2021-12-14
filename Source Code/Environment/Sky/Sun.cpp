@@ -221,17 +221,26 @@ SimpleLocation Sun::GetGeographicLocation() const noexcept {
     };
 }
 
-const SunDetails& Sun::GetDetails() const {
+const SunInfo& Sun::GetDetails() const {
     if (_dirty) {
-        _cachedDetails = {};
-        _cachedDetails._info = SunPosition::CalculateSunPosition(_dateTime, _latitude, _longitude);
-        _cachedDetails._eulerDirection.x = -Angle::RadiansToDegrees(_cachedDetails._info.altitude);
-        _cachedDetails._eulerDirection.y = Angle::RadiansToDegrees(_cachedDetails._info.azimuth);
-        _cachedDetails._intensity = _cachedDetails._info.altitude * 100.f;
+        _cachedDetails = SunPosition::CalculateSunPosition(_dateTime, _latitude, _longitude);
         _dirty = false;
     }
 
     return _cachedDetails;
 }
 
+[[nodiscard]] vec3<F32> Sun::GetSunPosition(const F32 radius) const {
+    const SunInfo& info = GetDetails();
+
+    const F32 phi = Angle::DegreesToRadians(90 - Angle::RadiansToDegrees(info.altitude));
+    const F32 theta = info.azimuth;
+    const F32 sinPhiRadius = std::sin(phi) * radius;
+
+    return vec3<F32> {
+        sinPhiRadius * std::sin(theta),
+        std::cos(phi) * radius,
+        sinPhiRadius * std::cos(theta)
+    };
+}
 } //namespace Divide

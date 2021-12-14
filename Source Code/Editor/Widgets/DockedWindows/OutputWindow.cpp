@@ -44,13 +44,15 @@ namespace Divide {
 
     void OutputWindow::drawInternal() {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
-
-        ImGui::Text(ICON_FK_SEARCH);
-        ImGui::SameLine();
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-        _filter.Draw("##Filter", 180);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Search/Filter (\"incl,-excl\") (\"error\")");
+        {
+            bool tooltip = false;
+            ImGui::Text(ICON_FK_SEARCH); tooltip = tooltip || ImGui::IsItemHovered();
+            ImGui::SameLine();
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+            _filter.Draw("##Filter", 180); tooltip = tooltip || ImGui::IsItemHovered();
+            if (tooltip) {
+                ImGui::SetTooltip("Search/Filter (\"incl,-excl\") (\"error\")");
+            }
         }
         ImGui::PopStyleVar();
         ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -145,16 +147,17 @@ namespace Divide {
             }
             strcpy(_inputBuf, "");
         }
-        ImGui::SameLine(window->SizeFull.x - 55);
-        ImGui::Text(ICON_FK_ARROW_CIRCLE_DOWN);
-        ImGui::SameLine();
-        ImGui::PushID(ICON_FK_ARROW_CIRCLE_DOWN"_ID");
-        if (ImGui::Checkbox("", &_scrollToBottom)) {
-
-        }
-        ImGui::PopID();
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Auto-scroll to bottom");
+        {
+            bool tooltip = false;
+            ImGui::SameLine(window->SizeFull.x - 55);
+            ImGui::Text(ICON_FK_ARROW_CIRCLE_DOWN); tooltip = tooltip || ImGui::IsItemHovered();
+            ImGui::SameLine();
+            ImGui::PushID(ICON_FK_ARROW_CIRCLE_DOWN"_ID");
+            ImGui::Checkbox("", &_scrollToBottom); tooltip = tooltip || ImGui::IsItemHovered();
+            ImGui::PopID();
+            if (tooltip) {
+                ImGui::SetTooltip("Auto-scroll to bottom");
+            }
         }
         // Demonstrate keeping auto focus on the input box
         if (ImGui::IsItemHovered() || ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)) {

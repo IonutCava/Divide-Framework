@@ -123,7 +123,7 @@ public:
         return dvd_erase_if(_selectionChangeCallbacks, [idx](const auto& entry) noexcept { return entry.first == idx; });
     }
 
-    void resetSelection(PlayerIndex idx);
+    [[nodiscard]] bool resetSelection(PlayerIndex idx, const bool resetIfLocked);
     void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
     void onNodeDestroy(SceneGraphNode* node);
     // cull the SceneGraph against the current view frustum. 

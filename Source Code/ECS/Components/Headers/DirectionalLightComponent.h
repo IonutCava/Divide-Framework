@@ -59,9 +59,12 @@ BEGIN_COMPONENT_EXT1(DirectionalLight, ComponentType::DIRECTIONAL_LIGHT, Light)
     PROPERTY_RW(PerSplitToggle, csmUseSceneAABBFit, create_array<Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT>(true));
     /// If this is true, we render a cone narrow cone to approximate the light's direction
     PROPERTY_RW(bool, showDirectionCone, false);
+    /// If true, the direction of this light component can't be modified in the editor (e.g. the light attached to the sun depends on the sun position!)
+    PROPERTY_R(bool, lockDirection, false);
     /// Same as showDirectionCone but triggered differently (i.e. on selection in editor)
-    PROPERTY_R_IW(bool,  drawImpostor, false);
+    PROPERTY_R_IW(bool, drawImpostor, false);
 
+    void lockDirection(const bool state) noexcept;
 protected:
      void OnData(const ECS::CustomEvent& data) override;
 

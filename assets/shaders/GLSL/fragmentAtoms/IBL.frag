@@ -70,10 +70,6 @@ vec3 GetAdjustedReflectionWS(in vec3 reflectionWS, in vec3 posWS, in uint probeI
 ///     probeID: probe index associated with the current environment cube map (used for BPCEM)
 ///     roughness: surface roughness
 vec3 GetCubeReflection(in vec3 worldReflect, in vec3 worldNormal, in vec3 worldPos, in uint probeID, in float roughness) {
-    if (probeID == PROBE_ID_NO_ENV_REFLECTIONS) {
-        //return vec3(0.69f);
-    }
-
     if (probeID > 0u) {
         const uint probeIDX = probeID - 1u;
 #if 1

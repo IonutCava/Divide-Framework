@@ -53,13 +53,6 @@ namespace Divide {
         [[nodiscard]] static D64 CorrectAngle(D64 angleInRadians) noexcept;
     };
 
-    struct SunDetails
-    {
-        SunInfo _info = {};
-        vec3<Angle::DEGREES<F32>> _eulerDirection = VECTOR3_ZERO;
-        F32 _intensity = 0.f;
-    };
-
     struct Sun
     {
         void SetLocation(F32 longitude, F32 latitude) noexcept;
@@ -67,10 +60,11 @@ namespace Divide {
         SimpleTime GetTimeOfDay() const noexcept;
         SimpleLocation GetGeographicLocation() const noexcept;
 
-        [[nodiscard]] const SunDetails& GetDetails() const;
+        [[nodiscard]] const SunInfo& GetDetails() const;
 
+        [[nodiscard]] vec3<F32> GetSunPosition(F32 radius = 1.f) const;
     private:
-        mutable SunDetails _cachedDetails;
+        mutable SunInfo _cachedDetails;
         F32 _longitude = 0.f;
         F32 _latitude = 0.f;
         struct tm _dateTime {};

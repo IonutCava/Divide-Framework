@@ -92,8 +92,9 @@ void main()
     outColour.rgb = mix(outColour.rgb, _waterDistanceFogColour, fogDensity);
 
     // Guess work based on what "look right"
-    const float lerpValue = saturate(2.95f * (dvd_sunDirection.y + 0.15f));
-    const vec3 lightDirection = mix(-dvd_sunDirection.xyz, dvd_sunDirection.xyz, lerpValue);
+    const vec3 sunDirection = GetSunDirection();
+    const float lerpValue = saturate(2.95f * (sunDirection.y + 0.15f));
+    const vec3 lightDirection = mix(-sunDirection.xyz, sunDirection.xyz, lerpValue);
 
     // Calculate the reflection vector using the normal and the direction of the light.
     const vec3 reflection = -reflect(lightDirection, normalW);

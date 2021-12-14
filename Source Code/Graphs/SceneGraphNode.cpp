@@ -37,8 +37,7 @@ namespace {
 };
 
 SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor)
-    : GUIDWrapper(),
-      PlatformContextComponent(sceneGraph->parentScene().context()),
+    : PlatformContextComponent(sceneGraph->parentScene().context()),
       _relationshipCache(this),
       _sceneGraph(sceneGraph),
       _node(descriptor._node),
@@ -511,7 +510,7 @@ void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) 
         const BoundsComponent* bComp = get<BoundsComponent>();
         if (bComp->showAABB()) {
             const BoundingBox& bb = bComp->getBoundingBox();
-            _context.gfx().debugDrawBox(bb.getMin(), bb.getMax(), DefaultColours::WHITE);
+            _context.gfx().debugDrawBox(bComp->getGUID(), bb.getMin(), bb.getMax(), DefaultColours::WHITE);
         }
     }
 }

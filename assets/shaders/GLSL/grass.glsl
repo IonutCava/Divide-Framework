@@ -97,7 +97,7 @@ void main() {
 
 layout(early_fragment_tests) in;
 
-#define NO_IBL
+#define NO_REFLECTIONS
 #define NO_VELOCITY
 #define USE_CUSTOM_TBN
 #define MAX_SHADOW_MAP_LOD 1

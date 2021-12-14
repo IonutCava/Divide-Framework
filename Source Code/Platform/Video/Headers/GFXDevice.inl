@@ -36,12 +36,16 @@ namespace Divide {
 
 template <typename Data, size_t N>
 void DebugPrimitiveHandler<Data, N>::reset() {
+    ScopedLock<Mutex> w_lock(_dataLock);
+
     for (IMPrimitive*& primitive : _debugPrimitives) {
         if (primitive != nullptr) {
             primitive->context().destroyIMP(primitive);
         }
     }
-    _Id.store(0u);
+    for (U32 i = 0u; i < N; ++i) {
+        _debugData[i] = {};
+    }
     _debugPrimitives.fill(nullptr);
 }
 

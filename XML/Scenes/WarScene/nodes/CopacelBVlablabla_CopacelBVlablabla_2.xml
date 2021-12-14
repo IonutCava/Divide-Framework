@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>true</static>
-<model>copac.obj-submesh-2</model>
+<model>submesh_2_2_copac</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
@@ -235,7 +235,6 @@
             <UNIT0>
                 <name>elmleaf.png</name>
                 <path>assets/textures</path>
-                <flipped>true</flipped>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>1</id>

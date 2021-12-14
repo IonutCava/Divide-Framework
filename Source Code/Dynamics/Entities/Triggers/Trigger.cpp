@@ -21,7 +21,7 @@ void Trigger::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState
     if (_drawImpostor) {
         /// update dummy position if it is so
         sgn->getChild(0)->get<TransformComponent>()->setPosition(_triggerPosition);
-        sgn->context().gfx().debugDrawSphere(_triggerPosition, _radius, DefaultColours::RED);
+        sgn->context().gfx().debugDrawSphere(getGUID(), _triggerPosition, _radius, DefaultColours::RED);
         sgn->getChild(0)->setFlag(SceneGraphNode::Flags::ACTIVE);
     }
 }

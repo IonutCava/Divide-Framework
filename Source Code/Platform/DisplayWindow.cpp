@@ -11,8 +11,7 @@
 namespace Divide {
 
 DisplayWindow::DisplayWindow(WindowManager& parent, PlatformContext& context)
- : GUIDWrapper(),
-   PlatformContextComponent(context),
+ : PlatformContextComponent(context),
    _clearColour(DefaultColours::BLACK),
    _windowID(std::numeric_limits<Uint32>::max()),
    _parent(parent)

@@ -59,25 +59,36 @@ void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpa
 
 void writeAdditionalData(in vec2 packedNormalWV, in vec3 MetalnessRoughnessProbeID) {
 #if defined(MAIN_DISPLAY_PASS)
-#if !defined(COLOUR_OUTPUT_ONLY)
+#if defined(NO_POST_FX)
+    const uint materialFlags = FLAG_NO_POST_FX;
+#else //NO_POST_FX
+    uint materialFlags = 0u;
+
+#if defined(NO_IBL)
+    materialFlags |= FLAG_NO_REFLECTIONS;
+#endif //NO_IBL
+
+#if defined(NO_ENV_MAPPING)
+    materialFlags |= FLAG_NO_ENV_REFLECTIONS;
+#endif //NO_ENV_MAPPING
+
+#if defined(NO_SSR)
+    materialFlags |= FLAG_NO_SSR;
+#endif // NO_SSR
+
+#if defined(NO_SSAO)
+    materialFlags |= FLAG_NO_SSAO;
+#endif //NO_SSAO
+
+#if defined(NO_FOG)
+    materialFlags |= FLAG_NO_FOG;
+#endif //NO_FOG
+
+#endif //NO_POST_FX
+
     _matDataOut.rg = packedNormalWV;
     _matDataOut.b = packVec2(MetalnessRoughnessProbeID.xy);
-#if defined(NO_IBL)
-    _matDataOut.a = float(PROBE_ID_NO_REFLECTIONS);
-#elif defined(NO_ENV_MAPPING)
-    _matDataOut.a = float(PROBE_ID_NO_ENV_REFLECTIONS);
-#elif defined(NO_SSR)
-    _matDataOut.a = float(PROBE_ID_NO_SSR);
-#else // NO_IBL
-    _matDataOut.a = MetalnessRoughnessProbeID.z;
-#endif // NO_IBL
-#if defined(NO_SSAO)
-    _matDataOut.a = -_matDataOut.a;
-#endif //NO_SSAO
-#else //!COLOUR_OUTPUT_ONLY
-    _matDataOut.a = float(PROBE_ID_NO_REFLECTIONS); // no reflections
-    _matDataOut.a = -_matDataOut.a; //no SSAO
-#endif //!COLOUR_OUTPUT_ONLY
+    _matDataOut.a = packVec2(MetalnessRoughnessProbeID.z + 1.f, float(materialFlags));
 #endif //MAIN_DISPLAY_PASS
 }
 
