@@ -49,7 +49,6 @@ class SolutionExplorerWindow final : public DockedWindow, public PlatformContext
 
       void drawInternal() override;
   protected:
-      void drawTransformSettings() const;
       void drawRemoveNodeDialog();
       void drawReparentNodeDialog();
       void drawAddNodeDialog();

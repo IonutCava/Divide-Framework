@@ -218,15 +218,21 @@ vec4 ToSRGBAccurate(in vec4 linearCol) {
 
 #define dvd_screenPositionNormalised (gl_FragCoord.xy / dvd_ViewPort.zw)
 
-float computeDepth(in vec4 posWV) {
-    const float near = gl_DepthRange.near;
-    const float far = gl_DepthRange.far;
+float computeDepth(in vec4 posWV, in vec2 zPlanes) {
+    const float near = zPlanes.x;
+    const float far = zPlanes.y;
 
     const vec4 clip_space_pos = dvd_ProjectionMatrix * posWV;
 
     const float ndc_depth = clip_space_pos.z / clip_space_pos.w;
 
     return (((far - near) * ndc_depth) + near + far) * 0.5f;
+}
+
+float computeDepth(in vec4 posWV) {
+    const float near = gl_DepthRange.near;
+    const float far = gl_DepthRange.far;
+    return computeDepth(posWV, vec2(near, far));
 }
 
 vec3 viewPositionFromDepth(in float depth,

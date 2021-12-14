@@ -249,7 +249,11 @@ namespace Divide {
         }
 
         ImGui::Separator();
-        drawTransformSettings();
+
+        bool enableGrid = _parent.infiniteGridEnabled();
+        if (ImGui::Checkbox(ICON_FK_PLUS_SQUARE_O" Infinite Grid", &enableGrid)) {
+            _parent.infiniteGridEnabled(enableGrid);
+        }
         
         ImGui::Separator();
 
@@ -673,12 +677,6 @@ namespace Divide {
             ImGui::EndChild();
             ImGui::PopStyleVar();
         }
-    }
-
-    void SolutionExplorerWindow::drawTransformSettings() const {
-         bool enableGizmo = Attorney::EditorSolutionExplorerWindow::editorEnableGizmo(_parent);
-         ImGui::Checkbox(ICON_FK_ARROWS_ALT" Transform Gizmo", &enableGizmo);
-         Attorney::EditorSolutionExplorerWindow::editorEnableGizmo(_parent, enableGizmo);
     }
 
     void SolutionExplorerWindow::goToNode(const SceneGraphNode* sgn) const {

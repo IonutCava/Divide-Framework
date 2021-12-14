@@ -6,6 +6,8 @@
 #include "Headers/EditorOptionsWindow.h"
 #include "Core/Headers/PlatformContext.h"
 
+#include <IconFontCppHeaders/IconsForkAwesome.h>
+
 namespace Divide {
     EditorOptionsWindow::EditorOptionsWindow(PlatformContext& context)
         : PlatformContextComponent(context),
@@ -41,6 +43,16 @@ namespace Divide {
             return;
         }
         
+        static F32 axisWidth = _context.editor().infiniteGridAxisWidth(), gridLineWidth = _context.editor().infiniteGridScale();
+        ImGui::Text(ICON_FK_PLUS_SQUARE_O);
+        ImGui::SameLine();
+        if (ImGui::SliderFloat("Grid axis width", &axisWidth, 0.01f, 10.0f, "%.3f")) {
+            _context.editor().infiniteGridAxisWidth(axisWidth);
+        }
+        ImGui::SameLine();
+        if (ImGui::SliderFloat("Grid scale", &gridLineWidth, 0.01f, 10.0f, "%.3f")) {
+            _context.editor().infiniteGridScale(gridLineWidth);
+        }
         static UndoEntry<I32> undo = {};
         const I32 crtThemeIdx = to_I32(Attorney::EditorOptionsWindow::getTheme(_context.editor()));
         I32 selection = crtThemeIdx;

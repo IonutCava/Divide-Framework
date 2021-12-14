@@ -249,22 +249,60 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 
     ResourceCache* parentCache = _context.kernel().resourceCache();
 
-    ShaderModuleDescriptor vertModule = {};
-    vertModule._moduleType = ShaderType::VERTEX;
-    vertModule._sourceFile = "IMGUI.glsl";
+    {
+        ShaderModuleDescriptor vertModule = {};
+        vertModule._moduleType = ShaderType::VERTEX;
+        vertModule._sourceFile = "IMGUI.glsl";
 
-    ShaderModuleDescriptor fragModule = {};
-    fragModule._moduleType = ShaderType::FRAGMENT;
-    fragModule._sourceFile = "IMGUI.glsl";
+        ShaderModuleDescriptor fragModule = {};
+        fragModule._moduleType = ShaderType::FRAGMENT;
+        fragModule._sourceFile = "IMGUI.glsl";
 
-    ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
+        ShaderProgramDescriptor shaderDescriptor = {};
+        shaderDescriptor._modules.push_back(vertModule);
+        shaderDescriptor._modules.push_back(fragModule);
 
-    ResourceDescriptor shaderResDescriptor("IMGUI");
-    shaderResDescriptor.propertyDescriptor(shaderDescriptor);
-    _imguiProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
+        ResourceDescriptor shaderResDescriptor("IMGUI");
+        shaderResDescriptor.propertyDescriptor(shaderDescriptor);
+        _imguiProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
+    }
+    {
+        RenderStateBlock gridStateBlock = {};
+        gridStateBlock.setCullMode(CullMode::NONE);
 
+        PipelineDescriptor gridPipeDesc;
+        gridPipeDesc._stateHash = gridStateBlock.getHash();
+
+        ShaderModuleDescriptor vertModule = {};
+        vertModule._moduleType = ShaderType::VERTEX;
+        vertModule._sourceFile = "InfiniteGrid.glsl";
+
+        ShaderModuleDescriptor fragModule = {};
+        fragModule._moduleType = ShaderType::FRAGMENT;
+        fragModule._sourceFile = "InfiniteGrid.glsl";
+
+        ShaderProgramDescriptor shaderDescriptor = {};
+        shaderDescriptor._modules.push_back(vertModule);
+        shaderDescriptor._modules.push_back(fragModule);
+
+        ResourceDescriptor shaderResDescriptor("InfiniteGrid.Colour");
+        shaderResDescriptor.propertyDescriptor(shaderDescriptor);
+        _infiniteGridProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
+        gridPipeDesc._shaderProgramHandle = _infiniteGridProgram->getGUID();
+        _infiniteGridPipeline = _context.gfx().newPipeline(gridPipeDesc);
+    }
+
+    _infiniteGridPrimitive = _context.gfx().newIMP();
+    _infiniteGridPrimitive->beginBatch(true, 6, 0);
+        _infiniteGridPrimitive->begin(PrimitiveType::TRIANGLES);
+            _infiniteGridPrimitive->vertex( 1.f, 1.f, 0.f);
+            _infiniteGridPrimitive->vertex(-1.f,-1.f, 0.f);
+            _infiniteGridPrimitive->vertex(-1.f, 1.f, 0.f);
+            _infiniteGridPrimitive->vertex(-1.f,-1.f, 0.f);
+            _infiniteGridPrimitive->vertex( 1.f, 1.f, 0.f);
+            _infiniteGridPrimitive->vertex( 1.f,-1.f, 0.f);
+        _infiniteGridPrimitive->end();
+    _infiniteGridPrimitive->endBatch();
     ImGui::ResetStyle(_currentTheme);
 
     io.ConfigViewportsNoDecoration = true;
@@ -541,7 +579,10 @@ void Editor::close() {
     if (saveToXML()) {
         _context.config().save();
     }
-
+    if (_infiniteGridPrimitive) {
+        _context.gfx().destroyIMP(_infiniteGridPrimitive);
+    }
+    _infiniteGridProgram.reset();
     _fontTexture.reset();
     _imguiProgram.reset();
     _gizmo.reset();
@@ -757,6 +798,19 @@ bool Editor::render([[maybe_unused]] const U64 deltaTime) {
     ImGui::End();
 
     return true;
+}
+
+void Editor::postRender(const Camera& camera, GFX::CommandBuffer& bufferInOut) {
+    if (infiniteGridEnabled() && _infiniteGridPrimitive) {
+        _infiniteGridPrimitive->pipeline(*_infiniteGridPipeline);
+        PushConstants constants{};
+        constants.set(_ID("axisWidth"), GFX::PushConstantType::FLOAT, infiniteGridAxisWidth());
+        constants.set(_ID("gridScale"), GFX::PushConstantType::FLOAT, infiniteGridScale());
+        _infiniteGridPrimitive->setPushConstants(constants);
+        GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{camera.snapshot()});
+        bufferInOut.add(_infiniteGridPrimitive->toCommandBuffer());
+        GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
+    }
 }
 
 void Editor::drawScreenOverlay(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) const {
@@ -1735,6 +1789,10 @@ bool Editor::saveToXML() const {
     pt.put("editor.themeIndex", to_I32(_currentTheme));
     pt.put("editor.textEditor", _externalTextEditorPath);
     pt.put("editor.lastOpenSceneGUID", _lastOpenSceneGUID);
+    pt.put("editor.<xmlattr>.enabled", infiniteGridEnabled());
+    pt.put("editor.<xmlattr>.axisWidth", infiniteGridAxisWidth());
+    pt.put("editor.<xmlattr>.scale", infiniteGridScale());
+
     _editorCamera->saveToXML(pt, "editor");
     for (size_t i = 0u; i < _recentSceneList.size(); ++i) {
         pt.put("editor.recentScene.entry.<xmlattr>.name", _recentSceneList.get(i).c_str());
@@ -1786,6 +1844,9 @@ bool Editor::loadFromXML() {
         if (lastSceneGUID == activeScene.getGUID()) {
             _editorCamera->loadFromXML(pt, "editor");
         }
+        infiniteGridEnabled(pt.get("editor.grid.<xmlattr>.enabled", infiniteGridEnabled()));
+        infiniteGridAxisWidth(pt.get("editor.grid.<xmlattr>.axisWidth", infiniteGridAxisWidth()));
+        infiniteGridScale(pt.get("editor.grid.<xmlattr>.scale", infiniteGridScale()));
         return true;
     }
 

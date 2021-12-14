@@ -117,7 +117,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
                 clearDescriptor.clearColours(true);
                 clearDescriptor.clearDepth(true);
                 // We don't need to clear colour targets as we always overwrite them!
-                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::ALBEDO), false);
+                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::ALBEDO), true);
                 clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::VELOCITY), true); //Not everything gets drawn during the depth PrePass (E.g. sky)
                 clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES), false);
                 clearMainTarget._descriptor = clearDescriptor;

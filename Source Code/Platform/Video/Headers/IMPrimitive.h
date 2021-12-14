@@ -38,6 +38,7 @@
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 #include "Platform/Video/Headers/Pipeline.h"
+#include "Platform/Video/Headers/PushConstants.h"
 
 namespace Divide {
 class OBB;
@@ -56,6 +57,8 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
     const Pipeline* pipeline() const noexcept {
         return _pipeline;
     }
+
+    void setPushConstants(const PushConstants& constants);
 
     virtual void pipeline(const Pipeline& pipeline) noexcept;
 
@@ -160,9 +163,11 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
     bool _forceWireframe = false;
     TextureEntry _textureEntry;
     Rect<I32> _viewport = {-1, -1, -1, -1};
+
    private:
     /// The transform matrix for this element
     mat4<F32> _worldMatrix;
+    PushConstants _additionalConstats;
 };
 
 };  // namespace Divide

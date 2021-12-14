@@ -154,10 +154,10 @@ void glimBatchData::Reset(bool reserveBuffers, unsigned int vertexCount, unsigne
 
     if (reserveBuffers) {
         m_PositionData.reserve(vertexCount);
-        m_IndexBuffer_Points.reserve(vertexCount / 4);
-        m_IndexBuffer_Lines.reserve(vertexCount / 2);
-        m_IndexBuffer_Triangles.reserve((size_t)vertexCount * 2);
-        m_IndexBuffer_Wireframe.reserve((size_t)vertexCount * 2);
+        m_IndexBuffer_Points.reserve(std::max(vertexCount / 4, 1u));
+        m_IndexBuffer_Lines.reserve(std::max(vertexCount / 2, 1u));
+        m_IndexBuffer_Triangles.reserve(vertexCount * 2u);
+        m_IndexBuffer_Wireframe.reserve(vertexCount * 2u);
     }
 #ifdef AE_RENDERAPI_D3D11
     if (m_pVertexBuffer) {
@@ -207,7 +207,10 @@ unsigned int glimBatchData::AddVertex(float x, float y, float z) {
     Divide::hashMap<unsigned int, GlimArrayData>::iterator it = begin(m_Attributes);
     const Divide::hashMap<unsigned int, GlimArrayData>::const_iterator itend = cend(m_Attributes);
 
-    it->second.m_ArrayData.reserve(m_Attributes.size());
+    if (!m_Attributes.empty()) {
+        it->second.m_ArrayData.reserve(m_Attributes.size());
+    }
+
     for (; it != itend; ++it) {
         it->second.PushElement();
     }

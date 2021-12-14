@@ -5,6 +5,8 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/EngineTaskPool.h"
+#include "Editor/Headers/Editor.h"
+
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
@@ -987,7 +989,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - W-OIT Pass" });
 
-    if (renderQueueSize() > 0) {
+    if (renderQueueSize() > 0 || Config::Build::ENABLE_EDITOR) {
         GFX::ClearRenderTargetCommand clearRTCmd{};
         clearRTCmd._target = params._targetOIT;
         if_constexpr(Config::USE_COLOURED_WOIT) {
@@ -1155,8 +1157,6 @@ void RenderPassExecutor::transparencyPass(const VisibleNodeList<>& nodes, const 
             }
 
             GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-
-            resolveMainScreenTarget(params, bufferInOut);
         }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -1413,6 +1413,29 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
     }
     transparencyPass(visibleNodes, params, bufferInOut);
 #   pragma endregion
+
+    if_constexpr(Config::Build::ENABLE_EDITOR) {
+        if (_stage == RenderStage::DISPLAY) {
+            GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+            beginRenderPassTransparentCmd->_name = "DO_EDITOR_TRANSPARENCY_PASS";
+            beginRenderPassTransparentCmd->_target = params._target;
+            beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 1, false);
+            beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 2, false);
+            beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, true);
+
+            RTBlendState& state0 = GFX::EnqueueCommand<GFX::SetBlendStateCommand>(bufferInOut)->_blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
+            state0._blendProperties._enabled = true;
+            state0._blendProperties._blendSrc = BlendProperty::SRC_ALPHA;
+            state0._blendProperties._blendDest = BlendProperty::INV_SRC_ALPHA;
+            state0._blendProperties._blendOp = BlendOperation::ADD;
+
+            Attorney::EditorRenderPassExecutor::postRender(_context.context().editor(), *params._camera, bufferInOut);
+
+            // Reset blend states
+            GFX::EnqueueCommand(bufferInOut, GFX::SetBlendStateCommand{});
+            GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        }
+    }
 
     resolveMainScreenTarget(params, bufferInOut);
 

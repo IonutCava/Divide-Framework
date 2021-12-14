@@ -191,6 +191,10 @@ void IMPrimitive::fromLines(const Line* lines, const size_t count) {
     }
 }
 
+void IMPrimitive::setPushConstants(const PushConstants& constants) {
+    _additionalConstats = constants;
+}
+
 void IMPrimitive::pipeline(const Pipeline& pipeline) noexcept {
     if (_pipeline == nullptr || *_pipeline != pipeline) {
         _pipeline = &pipeline;
@@ -223,6 +227,11 @@ GFX::CommandBuffer& IMPrimitive::toCommandBuffer() const {
         constants.set(_ID("useTexture"), GFX::PushConstantType::BOOL, IsValid(_textureEntry));
         // Upload the primitive's world matrix to the shader
         constants.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix());
+
+        if (!_additionalConstats.empty()) {
+            bool partial = false;
+            Merge(constants, _additionalConstats, partial);
+        }
 
         if (IsValid(_textureEntry)) {
             GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(*_cmdBuffer)->_set._textureData.add(_textureEntry);

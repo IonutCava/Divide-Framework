@@ -62,6 +62,7 @@ namespace Attorney {
     class EditorPropertyWindow;
     class EditorSceneViewWindow;
     class EditorSolutionExplorerWindow;
+    class EditorRenderPassExecutor;
 }
 
 class Gizmo;
@@ -71,6 +72,7 @@ class StatusBar;
 class LightPool;
 class ECSManager;
 class UndoManager;
+class IMPrimitive;
 class DockedWindow;
 class OutputWindow;
 class PanelManager;
@@ -114,6 +116,7 @@ class Editor final : public PlatformContextComponent,
     friend class Attorney::EditorPropertyWindow;
     friend class Attorney::EditorSceneViewWindow;
     friend class Attorney::EditorSolutionExplorerWindow;
+    friend class Attorney::EditorRenderPassExecutor;
 
   public:
     static std::array<Input::MouseButton, 5> g_oisButtons;
@@ -218,6 +221,8 @@ class Editor final : public PlatformContextComponent,
 
     [[nodiscard]] bool isDefaultScene() const noexcept;
 
+    void postRender(const Camera& camera, GFX::CommandBuffer& bufferInOut);
+
     PROPERTY_R_IW(bool, running, false);
     PROPERTY_R_IW(bool, unsavedSceneChanges, false);
     PROPERTY_R_IW(bool, scenePreviewFocused, false);
@@ -225,7 +230,9 @@ class Editor final : public PlatformContextComponent,
     POINTER_R_IW(Camera, selectedCamera, nullptr);
     POINTER_R_IW(FreeFlyCamera, editorCamera, nullptr);
     PROPERTY_R(Rect<I32>, targetViewport, Rect<I32>(0, 0, 1, 1));
-
+    PROPERTY_RW(bool, infiniteGridEnabled, true);
+    PROPERTY_RW(F32, infiniteGridAxisWidth, 2.f);
+    PROPERTY_RW(F32, infiniteGridScale, 1.f);
     PROPERTY_INTERNAL(bool, lockSolutionExplorer, false);
 
   protected: // attorney
@@ -271,6 +278,10 @@ class Editor final : public PlatformContextComponent,
     DisplayWindow*    _mainWindow = nullptr;
     Texture_ptr       _fontTexture = nullptr;
     ShaderProgram_ptr _imguiProgram = nullptr;
+
+    IMPrimitive*  _infiniteGridPrimitive = nullptr;
+    ShaderProgram_ptr _infiniteGridProgram;
+    Pipeline*     _infiniteGridPipeline = nullptr;
 
     std::pair<bufferPtr, size_t> _memoryEditorData = { nullptr, 0 };
     std::array<ImGuiContext*, to_base(ImGuiContextType::COUNT)> _imguiContexts = {};
@@ -533,7 +544,15 @@ namespace Attorney {
         friend class Divide::ContentExplorerWindow;
         friend class Divide::SolutionExplorerWindow;
     };
-}
+
+    class EditorRenderPassExecutor {
+        static void postRender(Editor& editor, const Camera& camera, GFX::CommandBuffer& bufferInOut) {
+            editor.postRender(camera, bufferInOut);
+        }
+
+        friend class RenderPassExecutor;
+    };
+} //namespace Attorney
 
 void PushReadOnly();
 void PopReadOnly();
