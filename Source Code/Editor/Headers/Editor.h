@@ -174,6 +174,9 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] inline const TransformSettings& getTransformSettings() const noexcept;
     inline void setTransformSettings(const TransformSettings& settings) const noexcept;
 
+    void infiniteGridAxisWidth(const F32 value) noexcept;
+    void infiniteGridScale(const F32 value) noexcept;
+
     void showStatusMessage(const string& message, F32 durationMS, bool error) const;
 
   protected: //frame listener
@@ -221,7 +224,7 @@ class Editor final : public PlatformContextComponent,
 
     [[nodiscard]] bool isDefaultScene() const noexcept;
 
-    void postRender(const Camera& camera, GFX::CommandBuffer& bufferInOut);
+    void postRender(const Camera& camera, RenderTargetID target, GFX::CommandBuffer& bufferInOut);
 
     PROPERTY_R_IW(bool, running, false);
     PROPERTY_R_IW(bool, unsavedSceneChanges, false);
@@ -231,8 +234,8 @@ class Editor final : public PlatformContextComponent,
     POINTER_R_IW(FreeFlyCamera, editorCamera, nullptr);
     PROPERTY_R(Rect<I32>, targetViewport, Rect<I32>(0, 0, 1, 1));
     PROPERTY_RW(bool, infiniteGridEnabled, true);
-    PROPERTY_RW(F32, infiniteGridAxisWidth, 2.f);
-    PROPERTY_RW(F32, infiniteGridScale, 1.f);
+    PROPERTY_R(F32, infiniteGridAxisWidth, 2.f);
+    PROPERTY_R(F32, infiniteGridScale, 1.f);
     PROPERTY_INTERNAL(bool, lockSolutionExplorer, false);
 
   protected: // attorney
@@ -297,7 +300,7 @@ class Editor final : public PlatformContextComponent,
     bool           _showOptionsWindow = false;
     bool           _showMemoryEditor = false;
     bool           _isScenePaused = false;
-
+    bool           _gridSettingsDirty = true;
     CircularBuffer<Str256> _recentSceneList;
 }; //Editor
 
@@ -546,8 +549,8 @@ namespace Attorney {
     };
 
     class EditorRenderPassExecutor {
-        static void postRender(Editor& editor, const Camera& camera, GFX::CommandBuffer& bufferInOut) {
-            editor.postRender(camera, bufferInOut);
+        static void postRender(Editor& editor, const Camera& camera, const RenderTargetID target, GFX::CommandBuffer& bufferInOut) {
+            editor.postRender(camera, target, bufferInOut);
         }
 
         friend class RenderPassExecutor;

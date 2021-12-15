@@ -43,15 +43,17 @@ namespace Divide {
             return;
         }
         
-        static F32 axisWidth = _context.editor().infiniteGridAxisWidth(), gridLineWidth = _context.editor().infiniteGridScale();
+        F32 axisWidth = _context.editor().infiniteGridAxisWidth();
         ImGui::Text(ICON_FK_PLUS_SQUARE_O);
         ImGui::SameLine();
         if (ImGui::SliderFloat("Grid axis width", &axisWidth, 0.01f, 10.0f, "%.3f")) {
             _context.editor().infiniteGridAxisWidth(axisWidth);
         }
+
         ImGui::SameLine();
-        if (ImGui::SliderFloat("Grid scale", &gridLineWidth, 0.01f, 10.0f, "%.3f")) {
-            _context.editor().infiniteGridScale(gridLineWidth);
+        F32 gridLineWidth = 10.1f - _context.editor().infiniteGridScale();
+        if (ImGui::SliderFloat("Grid scale", &gridLineWidth, 1.f, 10.f, "%.3f")) {
+            _context.editor().infiniteGridScale(10.1f - gridLineWidth);
         }
         static UndoEntry<I32> undo = {};
         const I32 crtThemeIdx = to_I32(Attorney::EditorOptionsWindow::getTheme(_context.editor()));
@@ -90,7 +92,7 @@ namespace Divide {
         ImGui::Separator();
         if (ImGui::Button("Cancel", ImVec2(120, 0))) {
             open = false;
-            assert(_changeCount < _context.editor().UndoStackSize());
+            assert(_changeCount <= _context.editor().UndoStackSize());
             for (U16 i = 0; i < _changeCount; ++i) {
                 if (!_context.editor().Undo()) {
                     NOP();

@@ -395,6 +395,17 @@ namespace Divide {
             PopReadOnly();
         }
         _parent.setTransformSettings(settings);
+
+
+        ImGui::SameLine(window->ContentSize.x - 100.f);
+
+        bool enableGrid = _parent.infiniteGridEnabled();
+        if (ImGui::Checkbox(ICON_FK_PLUS_SQUARE_O" Infinite Grid", &enableGrid)) {
+            _parent.infiniteGridEnabled(enableGrid);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Toggle the editor XZ grid on/off.\nGrid sizing is controlled in the \"Editor options\" window (under \"File\" in the menu bar)");
+        }
     }
 
     const Rect<I32>& SceneViewWindow::sceneRect() const noexcept {

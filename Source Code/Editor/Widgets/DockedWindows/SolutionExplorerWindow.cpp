@@ -250,13 +250,6 @@ namespace Divide {
 
         ImGui::Separator();
 
-        bool enableGrid = _parent.infiniteGridEnabled();
-        if (ImGui::Checkbox(ICON_FK_PLUS_SQUARE_O" Infinite Grid", &enableGrid)) {
-            _parent.infiniteGridEnabled(enableGrid);
-        }
-        
-        ImGui::Separator();
-
         // Calculate and show framerate
         static F32 max_ms_per_frame = 0;
 

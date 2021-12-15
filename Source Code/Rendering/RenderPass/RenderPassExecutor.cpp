@@ -1416,24 +1416,7 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
 
     if_constexpr(Config::Build::ENABLE_EDITOR) {
         if (_stage == RenderStage::DISPLAY) {
-            GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-            beginRenderPassTransparentCmd->_name = "DO_EDITOR_TRANSPARENCY_PASS";
-            beginRenderPassTransparentCmd->_target = params._target;
-            beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 1, false);
-            beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 2, false);
-            beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, true);
-
-            RTBlendState& state0 = GFX::EnqueueCommand<GFX::SetBlendStateCommand>(bufferInOut)->_blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
-            state0._blendProperties._enabled = true;
-            state0._blendProperties._blendSrc = BlendProperty::SRC_ALPHA;
-            state0._blendProperties._blendDest = BlendProperty::INV_SRC_ALPHA;
-            state0._blendProperties._blendOp = BlendOperation::ADD;
-
-            Attorney::EditorRenderPassExecutor::postRender(_context.context().editor(), *params._camera, bufferInOut);
-
-            // Reset blend states
-            GFX::EnqueueCommand(bufferInOut, GFX::SetBlendStateCommand{});
-            GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+            Attorney::EditorRenderPassExecutor::postRender(_context.context().editor(), *params._camera, params._target, bufferInOut);
         }
     }
 

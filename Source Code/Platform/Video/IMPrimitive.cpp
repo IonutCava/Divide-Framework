@@ -193,6 +193,7 @@ void IMPrimitive::fromLines(const Line* lines, const size_t count) {
 
 void IMPrimitive::setPushConstants(const PushConstants& constants) {
     _additionalConstats = constants;
+    _cmdBufferDirty = true;
 }
 
 void IMPrimitive::pipeline(const Pipeline& pipeline) noexcept {

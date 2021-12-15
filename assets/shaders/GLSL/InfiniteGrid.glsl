@@ -67,8 +67,7 @@ void main()
     const float t = -nearPoint.y / (farPoint.y - nearPoint.y);
     const vec3 fragPos3D = nearPoint + t * (farPoint - nearPoint);
     float fade_factor = length(dvd_cameraPosition.xz - fragPos3D.xz);
-    // make it to be 1 near the camera and 0 if its more then 100 units.
-    fade_factor = clamp(1.0 - fade_factor / dvd_zPlanes.y, 0.0, 1.0);
+    fade_factor = saturate(1.f - (fade_factor / dvd_zPlanes.y));
 
     vec4 outColour = grid(fragPos3D, gridScale) * float(t > 0);
     outColour.a *= fade_factor;

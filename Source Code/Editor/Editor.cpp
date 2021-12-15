@@ -799,17 +799,47 @@ bool Editor::render([[maybe_unused]] const U64 deltaTime) {
 
     return true;
 }
+void Editor::infiniteGridAxisWidth(const F32 value) noexcept {
+    _infiniteGridAxisWidth = value;
+    _gridSettingsDirty = true;
+}
 
-void Editor::postRender(const Camera& camera, GFX::CommandBuffer& bufferInOut) {
+void Editor::infiniteGridScale(const F32 value) noexcept {
+    _infiniteGridScale = value;
+    _gridSettingsDirty = true;
+}
+
+void Editor::postRender(const Camera& camera, const RenderTargetID target, GFX::CommandBuffer& bufferInOut) {
     if (infiniteGridEnabled() && _infiniteGridPrimitive) {
         _infiniteGridPrimitive->pipeline(*_infiniteGridPipeline);
-        PushConstants constants{};
-        constants.set(_ID("axisWidth"), GFX::PushConstantType::FLOAT, infiniteGridAxisWidth());
-        constants.set(_ID("gridScale"), GFX::PushConstantType::FLOAT, infiniteGridScale());
-        _infiniteGridPrimitive->setPushConstants(constants);
+        if (_gridSettingsDirty) {
+            PushConstants constants{};
+            constants.set(_ID("axisWidth"), GFX::PushConstantType::FLOAT, infiniteGridAxisWidth());
+            constants.set(_ID("gridScale"), GFX::PushConstantType::FLOAT, infiniteGridScale());
+            _infiniteGridPrimitive->setPushConstants(constants);
+            _gridSettingsDirty = false;
+        }
+
+        GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+        beginRenderPassTransparentCmd->_name = "DO_EDITOR_POST_RENDER_PASS";
+        beginRenderPassTransparentCmd->_target = target;
+        beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 1, false);
+        beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 2, false);
+        beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, false);
+
+        RTBlendState& state0 = GFX::EnqueueCommand<GFX::SetBlendStateCommand>(bufferInOut)->_blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
+        state0._blendProperties._enabled = true;
+        state0._blendProperties._blendSrc = BlendProperty::SRC_ALPHA;
+        state0._blendProperties._blendDest = BlendProperty::INV_SRC_ALPHA;
+        state0._blendProperties._blendOp = BlendOperation::ADD;
+
         GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{camera.snapshot()});
         bufferInOut.add(_infiniteGridPrimitive->toCommandBuffer());
         GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
+
+        // Reset blend states
+        GFX::EnqueueCommand(bufferInOut, GFX::SetBlendStateCommand{});
+        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
     }
 }
 
@@ -1789,9 +1819,9 @@ bool Editor::saveToXML() const {
     pt.put("editor.themeIndex", to_I32(_currentTheme));
     pt.put("editor.textEditor", _externalTextEditorPath);
     pt.put("editor.lastOpenSceneGUID", _lastOpenSceneGUID);
-    pt.put("editor.<xmlattr>.enabled", infiniteGridEnabled());
-    pt.put("editor.<xmlattr>.axisWidth", infiniteGridAxisWidth());
-    pt.put("editor.<xmlattr>.scale", infiniteGridScale());
+    pt.put("editor.grid.<xmlattr>.enabled", infiniteGridEnabled());
+    pt.put("editor.grid.<xmlattr>.axisWidth", infiniteGridAxisWidth());
+    pt.put("editor.grid.<xmlattr>.scale", infiniteGridScale());
 
     _editorCamera->saveToXML(pt, "editor");
     for (size_t i = 0u; i < _recentSceneList.size(); ++i) {

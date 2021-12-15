@@ -57,8 +57,8 @@ void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpa
 }
 #endif //OIT_PASS
 
-void writeAdditionalData(in vec2 packedNormalWV, in vec3 MetalnessRoughnessProbeID) {
 #if defined(MAIN_DISPLAY_PASS)
+void writeAdditionalData(in vec2 packedNormalWV, in vec3 MetalnessRoughnessProbeID) {
 #if defined(NO_POST_FX)
     const uint materialFlags = FLAG_NO_POST_FX;
 #else //NO_POST_FX
@@ -89,8 +89,8 @@ void writeAdditionalData(in vec2 packedNormalWV, in vec3 MetalnessRoughnessProbe
     _matDataOut.rg = packedNormalWV;
     _matDataOut.b = packVec2(MetalnessRoughnessProbeID.xy);
     _matDataOut.a = packVec2(MetalnessRoughnessProbeID.z + 1.f, float(materialFlags));
-#endif //MAIN_DISPLAY_PASS
 }
+#endif //MAIN_DISPLAY_PASS
 
 void writeScreenColour(in vec4 colour, in vec3 normalWV, in vec3 MetalnessRoughnessProbeID) {
 #if defined(OIT_PASS)
@@ -104,7 +104,9 @@ void writeScreenColour(in vec4 colour, in vec3 normalWV, in vec3 MetalnessRoughn
 #else //OIT_PASS
     _colourOut = colour;
 #endif //OIT_PASS
+#if defined(MAIN_DISPLAY_PASS)
     writeAdditionalData(packNormal(normalWV), MetalnessRoughnessProbeID);
+#endif //MAIN_DISPLAY_PASS
 }
 
 void writeScreenColour(in vec4 colour, in vec3 normalWV) {
