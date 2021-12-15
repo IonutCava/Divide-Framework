@@ -5,18 +5,18 @@
 * ToDo List: https://trello.com/b/mujYqtxR/divide-todo
 
 
-![Framework Screenshot](http://divide-studio.com/Editor.png)
+![Framework Screenshot](http://divide-studio.co.uk/Editor.png)
 
-![Scene Manipulation Screenshot](http://divide-studio.com/Editor2.png)
+![Scene Manipulation Screenshot](http://divide-studio.co.uk/Editor2.png)
 
-![Day night cycle](http://divide-studio.com/fun2.png)
+![Day night cycle](http://divide-studio.co.uk/fun2.png)
 
-![Editor_Grid](http://divide-studio.com/EditorGrid.png)
+![Editor_Grid](http://divide-studio.co.uk/EditorGrid.png)
 
-![Sponza rendering](http://divide-studio.com/Rendering.png)
+![Sponza rendering](http://divide-studio.co.uk/Rendering.png)
 
-![ImGUI Docking](http://divide-studio.com/Windows.png)
+![ImGUI Docking](http://divide-studio.co.uk/Windows.png)
 
-![SSR](http://divide-studio.com/SSR.png)
+![SSR](http://divide-studio.co.uk/SSR.png)
 
-![Grass/Sky/Fog](http://divide-studio.com/sky_fog_2.png)
+![Grass/Sky/Fog](http://divide-studio.co.uk/sky_fog_2.png)
