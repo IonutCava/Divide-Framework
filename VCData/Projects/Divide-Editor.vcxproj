@@ -63,6 +63,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Source Code\Editor\Headers\Editor.inl" />
+    <None Include="..\..\Source Code\Editor\Headers\Utils.inl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D8177F00-194F-42AE-8389-63B114DBEE63}</ProjectGuid>

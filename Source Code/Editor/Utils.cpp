@@ -45,6 +45,27 @@ namespace ImGui {
 
 namespace Divide {
     namespace Util {
+        void BeginPropertyTable(const I32 numComponents, const char* label) {
+            ImFont* boldFont = ImGui::GetIO().Fonts->Fonts[1];
+
+            ImGui::PushID(label);
+            ImGui::Columns(2);
+            ImGui::SetColumnWidth(0, LabelColumnWidth);
+            ImGui::PushFont(boldFont);
+            ImGui::Text(label);
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip(label);
+            }
+            ImGui::PopFont();
+            ImGui::NextColumn();
+            ImGui::PushMultiItemsWidths(numComponents, ImGui::CalcItemWidth());
+        }
+
+        void EndPropertyTable() {
+            ImGui::Columns(1);
+            ImGui::PopID();
+        }
+
         const char* GetFormat(ImGuiDataType dataType, const char* input, const bool hex) {
             if (input == nullptr || strlen(input) == 0) {
                 const auto unsignedType = [dataType]() {
@@ -84,5 +105,5 @@ namespace Divide {
 
             return colourInput3(parent, name, val, field._readOnly, setter);
         }
-    }
+    } //namespace Util
 } //namespace Divide

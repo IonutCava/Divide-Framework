@@ -113,5 +113,8 @@
     <None Include="..\..\Source Code\Editor\Headers\Editor.inl">
       <Filter>Headers</Filter>
     </None>
+    <None Include="..\..\Source Code\Editor\Headers\Utils.inl">
+      <Filter>Headers</Filter>
+    </None>
   </ItemGroup>
 </Project>

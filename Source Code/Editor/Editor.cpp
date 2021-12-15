@@ -46,6 +46,7 @@ namespace Divide {
 
 namespace {
     const char* g_editorFontFile = "Roboto-Medium.ttf";
+    const char* g_editorFontFileBold = "OpenSans-Bold.ttf";
     const char* g_editorIconFile = FONT_ICON_FILE_NAME_FK;
     const char* g_editorSaveFile = "Editor.xml";
     const char* g_editorSaveFileBak = "Editor.xml.bak";
@@ -171,6 +172,7 @@ void Editor::idle() noexcept {
 
 void Editor::createFontTexture(const F32 DPIScaleFactor) {
     constexpr F32 fontSize = 13.f;
+    constexpr F32 fontSizeBold = 16.f;
     constexpr F32 iconSize = 16.f;
 
     if (!_fontTexture) {
@@ -191,6 +193,7 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
     I32 iWidth = 0;
     I32 iHeight = 0;
     ResourcePath textFontPath(Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath + g_editorFontFile);
+    ResourcePath textFontBoldPath(Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath + g_editorFontFileBold);
     ResourcePath iconFontPath(Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath + g_editorIconFile);
 
     ImFontConfig font_cfg;
@@ -198,7 +201,7 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
     font_cfg.PixelSnapH = true;
     font_cfg.SizePixels = fontSize * DPIScaleFactor;
     font_cfg.EllipsisChar = (ImWchar)0x0085;
-    font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / fontSize);  // Add +1 offset per 13 units
+    font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / fontSize);  // Add +1 offset per fontSize units
     ImFormatString(font_cfg.Name, IM_ARRAYSIZE(font_cfg.Name), "%s, %dpx", g_editorFontFile, (int)font_cfg.SizePixels);
 
     io.Fonts->Clear();
@@ -206,11 +209,15 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
 
     font_cfg.MergeMode = true;
     font_cfg.SizePixels = iconSize * DPIScaleFactor;
-    font_cfg.PixelSnapH = true;
     font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / iconSize);  // Add +1 offset per 16 units
 
     static const ImWchar icons_ranges[] = { ICON_MIN_FK, ICON_MAX_FK, 0 };
     io.Fonts->AddFontFromFileTTF(iconFontPath.c_str(), iconSize * DPIScaleFactor, &font_cfg, icons_ranges);
+
+    font_cfg.MergeMode = false;
+    font_cfg.SizePixels = fontSizeBold * DPIScaleFactor;
+    font_cfg.GlyphOffset.y = 0.f;// 1.0f * IM_FLOOR(font_cfg.SizePixels / fontSizeBold);  // Add +1 offset per fontSize units
+    io.Fonts->AddFontFromFileTTF(textFontBoldPath.c_str(), fontSizeBold * DPIScaleFactor, &font_cfg);
 
     io.Fonts->GetTexDataAsRGBA32(&pPixels, &iWidth, &iHeight);
     _fontTexture->loadData({ (Byte*)pPixels, iWidth * iHeight * 4 }, vec2<U16>(iWidth, iHeight));
@@ -543,6 +550,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     descriptor.size = ImVec2(300, 550);
     descriptor.minSize = ImVec2(200, 200);
     descriptor.name = ICON_FK_HUBZILLA" Solution Explorer";
+    descriptor.showCornerButton = true;
     _dockedWindows[to_base(WindowType::SolutionExplorer)] = MemoryManager_NEW SolutionExplorerWindow(*this, _context, descriptor);
 
     descriptor.position = ImVec2(0, 0);
@@ -550,6 +558,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     descriptor.name = ICON_FK_PICTURE_O" PostFX Settings";
     _dockedWindows[to_base(WindowType::PostFX)] = MemoryManager_NEW PostFXWindow(*this, _context, descriptor);
 
+    descriptor.showCornerButton = false;
     descriptor.position = ImVec2(to_F32(renderResolution.width) - 300, 0);
     descriptor.name = ICON_FK_PENCIL_SQUARE_O" Property Explorer";
     _dockedWindows[to_base(WindowType::Properties)] = MemoryManager_NEW PropertyWindow(*this, _context, descriptor);
@@ -764,7 +773,13 @@ bool Editor::render([[maybe_unused]] const U64 deltaTime) {
     ImGui::PopStyleVar();
     ImGui::PopStyleVar(2);
 
-    ImGui::DockSpace(ImGui::GetID("EditorDockspace"), ImVec2(0.0f, 0.0f), opt_flags);
+    {
+        ImGuiStyle& style = ImGui::GetStyle();
+        const F32 originalSize = style.WindowMinSize.x;
+        style.WindowMinSize.x = 350.f;
+        ImGui::DockSpace(ImGui::GetID("EditorDockspace"), ImVec2(0.0f, 0.0f), opt_flags);
+        style.WindowMinSize.x = originalSize;
+    }
 
     if (scenePreviewFocused() || optionsVisible) {
         PushReadOnly();
@@ -781,6 +796,9 @@ bool Editor::render([[maybe_unused]] const U64 deltaTime) {
         if (_memoryEditorData.first != nullptr && _memoryEditorData.second > 0) {
             static MemoryEditor memEditor;
             memEditor.DrawWindow("Memory Editor", _memoryEditorData.first, _memoryEditorData.second);
+            if (!memEditor.Open) {
+                _memoryEditorData = { nullptr, 0 };
+            }
         }
     }
 

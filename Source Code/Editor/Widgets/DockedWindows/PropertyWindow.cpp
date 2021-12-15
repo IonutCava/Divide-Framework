@@ -66,7 +66,7 @@ namespace Divide {
             if (ImGui::SmallButton("A")) {
                 predicate();
             }
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                 ImGui::SetTooltip("Apply to all instances");
             }
             if (readOnly) {
@@ -85,7 +85,7 @@ namespace Divide {
             if (ImGui::SmallButton("T")) {
                 ret = true;
             }
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                 ImGui::SetTooltip(Util::StringFormat("Preview texture : %s", tex->assetName().c_str()).c_str());
             }
             if (readOnly) {
@@ -208,8 +208,6 @@ namespace Divide {
                 sceneChanged = processField(camField) || sceneChanged;
             }
             {
-                ImGui::Text("View Matrix");
-                ImGui::Spacing();
                 mat4<F32> viewMatrix = cam->viewMatrix();
                 EditorComponentField worldMatrixField = {};
                 worldMatrixField._name = "View Matrix";
@@ -222,8 +220,6 @@ namespace Divide {
                 }
             }
             {
-                ImGui::Text("Projection Matrix");
-                ImGui::Spacing();
                 mat4<F32> projMatrix = cam->projectionMatrix();
                 EditorComponentField projMatrixField;
                 projMatrixField._basicType = GFX::PushConstantType::MAT4;
@@ -342,7 +338,7 @@ namespace Divide {
                             continue;
                         }
 
-                        if (ImGui::CollapsingHeader(fieldName, ImGuiTreeNodeFlags_OpenOnArrow | (fieldWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u))) {
+                        if (ImGui::CollapsingHeader(fieldName, ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | (fieldWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u))) {
                             if (!fieldWasOpen) {
                                 for (U64& p : s_openProperties) {
                                     if (p == 0u) {
@@ -405,7 +401,7 @@ namespace Divide {
                             }
                             if (light != nullptr) {
                                 if (light->castsShadows()) {
-                                    if (ImGui::CollapsingHeader("Light Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow)) {
+                                    if (ImGui::CollapsingHeader("Light Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
                                         ImGui::Text("Shadow Offset: %d", to_U32(light->getShadowOffset()));
 
                                         switch (light->getLightType()) {
@@ -443,7 +439,7 @@ namespace Divide {
                                     }
                                 }
 
-                                if (ImGui::CollapsingHeader("Scene Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow)) {
+                                if (ImGui::CollapsingHeader("Scene Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
                                     {
                                         F32 bleedBias = activeSceneState->lightBleedBias();
                                         EditorComponentField tempField = {};
@@ -593,30 +589,24 @@ namespace Divide {
     }
 
     bool PropertyWindow::processField(EditorComponentField& field) {
-        const bool sameLineText =  field._type != EditorComponentFieldType::BUTTON &&
-                                   field._type != EditorComponentFieldType::SEPARATOR &&
-                                  (field._type == EditorComponentFieldType::SLIDER_TYPE ||
-                                   field._type == EditorComponentFieldType::SWITCH_TYPE ||
-                                   field._type == EditorComponentFieldType::PUSH_TYPE);
-
-        if (!sameLineText && field._type != EditorComponentFieldType::BUTTON) {
-            ImGui::Text("[ %s ]", field._name.c_str());
-        }
-
-        if (field._readOnly) {
-            PushReadOnly();
-        }
-
+        const auto printFieldName = [&field]() { ImGui::Text("[%s]", field._name.c_str()); };
         bool ret = false;
         switch (field._type) {
             case EditorComponentFieldType::SEPARATOR: {
+                printFieldName();
                 ImGui::Separator();
             }break;
             case EditorComponentFieldType::BUTTON: {
+                if (field._readOnly) {
+                    PushReadOnly();
+                }
                 if (field._range.y - field._range.x > 1.0f) {
                     ret = ImGui::Button(field._name.c_str(), ImVec2(field._range.x, field._range.y));
                 } else {
                     ret = ImGui::Button(field._name.c_str());
+                }
+                if (field._readOnly) {
+                    PopReadOnly();
                 }
             }break;
             case EditorComponentFieldType::SLIDER_TYPE:
@@ -627,6 +617,11 @@ namespace Divide {
                 ImGui::PopItemWidth();
             } break;
             case EditorComponentFieldType::DROPDOWN_TYPE: {
+                if (field._readOnly) {
+                    PushReadOnly();
+                }
+
+                printFieldName();
                 const U8 entryStart = to_U8(field._range.min);
                 const U8 entryCount = to_U8(field._range.max);
                 static UndoEntry<I32> typeUndo = {};
@@ -657,8 +652,12 @@ namespace Divide {
                         ImGui::EndCombo();
                     }
                 }
+                if (field._readOnly) {
+                    PopReadOnly();
+                }
             }break;
             case EditorComponentFieldType::BOUNDING_BOX: {
+                printFieldName();
                 BoundingBox bb = {};
                 field.get<BoundingBox>(bb);
 
@@ -666,7 +665,7 @@ namespace Divide {
                 F32* bbMax = Attorney::BoundingBoxEditor::max(bb);
                 {
                     EditorComponentField bbField = {};
-                    bbField._name = "- Min ";
+                    bbField._name = "Min ";
                     bbField._basicType = GFX::PushConstantType::VEC3;
                     bbField._type = EditorComponentFieldType::PUSH_TYPE;
                     bbField._readOnly = field._readOnly;
@@ -682,7 +681,7 @@ namespace Divide {
                 }
                 {
                     EditorComponentField bbField = {};
-                    bbField._name = "- Max ";
+                    bbField._name = "Max ";
                     bbField._basicType = GFX::PushConstantType::VEC3;
                     bbField._type = EditorComponentFieldType::PUSH_TYPE;
                     bbField._readOnly = field._readOnly;
@@ -697,8 +696,8 @@ namespace Divide {
                     ret = processField(bbField) || ret;
                 }
             }break;
-            case EditorComponentFieldType::ORIENTED_BOUNDING_BOX:
-            {
+            case EditorComponentFieldType::ORIENTED_BOUNDING_BOX: {
+                printFieldName();
                 OBB obb = {};
                 field.get<OBB>(obb);
                 vec3<F32> position = obb.position();
@@ -706,7 +705,7 @@ namespace Divide {
                 OBB::OBBAxis axis = obb.axis();
                 {
                     EditorComponentField bbField = {};
-                    bbField._name = "- Center ";
+                    bbField._name = "Center ";
                     bbField._basicType = GFX::PushConstantType::VEC3;
                     bbField._type = EditorComponentFieldType::PUSH_TYPE;
                     bbField._readOnly = true;
@@ -716,7 +715,7 @@ namespace Divide {
                 }
                 {
                     EditorComponentField bbField = {};
-                    bbField._name = "- Half Extents ";
+                    bbField._name = "Half Extents ";
                     bbField._basicType = GFX::PushConstantType::VEC3;
                     bbField._type = EditorComponentFieldType::PUSH_TYPE;
                     bbField._readOnly = true;
@@ -726,7 +725,7 @@ namespace Divide {
                 }
                 for (U8 i = 0; i < 3; ++i) {
                     EditorComponentField bbField = {};
-                    bbField._name = Util::StringFormat( "- Axis [ %d ]", i).c_str();
+                    bbField._name = Util::StringFormat( "Axis [ %d ]", i).c_str();
                     bbField._basicType = GFX::PushConstantType::VEC3;
                     bbField._type = EditorComponentFieldType::PUSH_TYPE;
                     bbField._readOnly = true;
@@ -736,13 +735,15 @@ namespace Divide {
                 }
             }break;
             case EditorComponentFieldType::BOUNDING_SPHERE: {
+                printFieldName();
+
                 BoundingSphere bs = {};
                 field.get<BoundingSphere>(bs);
                 F32* center = Attorney::BoundingSphereEditor::center(bs);
                 F32& radius = Attorney::BoundingSphereEditor::radius(bs);
                 {
                     EditorComponentField bbField = {};
-                    bbField._name = "- Center ";
+                    bbField._name = "Center ";
                     bbField._basicType = GFX::PushConstantType::VEC3;
                     bbField._type = EditorComponentFieldType::PUSH_TYPE;
                     bbField._readOnly = field._readOnly;
@@ -758,7 +759,7 @@ namespace Divide {
                 }
                 {
                     EditorComponentField bbField = {};
-                    bbField._name = "- Radius ";
+                    bbField._name = "Radius ";
                     bbField._basicType = GFX::PushConstantType::FLOAT;
                     bbField._type = EditorComponentFieldType::PUSH_TYPE;
                     bbField._readOnly = field._readOnly;
@@ -784,15 +785,9 @@ namespace Divide {
             }break;
             case EditorComponentFieldType::COUNT: break;
         }
-        if (field._readOnly) {
-            PopReadOnly();
-        }
-        if (!field._tooltip.empty() && ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(field._tooltip.c_str());
-        }
-        if (sameLineText) {
-            ImGui::SameLine();
-            ImGui::Text("[ %s ]", field._name.c_str());
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip(field._tooltip.empty() ? field._name.c_str() : field._tooltip.c_str());
         }
 
         return ret;
@@ -802,64 +797,59 @@ namespace Divide {
         if (transform == nullptr) {
             return false;
         }
-
         bool ret = false;
-        const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsNoBlank | (readOnly ? ImGuiInputTextFlags_ReadOnly : 0u) | (hex ? ImGuiInputTextFlags_CharsHexadecimal : 0u);
+        const bool transformReadOnly = readOnly || transform->editorLockPosition();
+        const bool rotationReadOnly = readOnly || transform->editorLockRotation();
+        const bool scaleReadOnly = readOnly || transform->editorLockScale();
 
         const TransformValues transformValues = transform->getValues();
-        if (transform->editorLockPosition()) {
-            PushReadOnly();
-        }
         vec3<F32> pos = transformValues._translation;
-        if (ImGui::InputFloat3(" - Position ", pos, "%.3f", flags | (transform->editorLockPosition() ? ImGuiInputTextFlags_ReadOnly : 0u))) {
-            if (!readOnly && !transform->editorLockPosition()) {
-                ret = true;
-                RegisterUndo<vec3<F32>, false>(_parent, GFX::PushConstantType::VEC3, transformValues._translation, pos, "Transform position", [transform](const vec3<F32>& val) {
-                    transform->setPosition(val);
-                });
-                transform->setPosition(pos);
-            }
-        }
-        if (transform->editorLockPosition()) {
-            PopReadOnly();
-        }
-        if (transform->editorLockRotation()) {
-            PushReadOnly();
-        }
         vec3<F32> rot = Angle::to_DEGREES(transformValues._orientation.getEuler());
-        const vec3<F32> oldRot = rot;
-        if (ImGui::InputFloat3(" - Rotation ", rot, "%.3f", flags | (transform->editorLockRotation() ? ImGuiInputTextFlags_ReadOnly : 0u))) {
-            if (!readOnly && !transform->editorLockRotation()) {
-                ret = true;
-                RegisterUndo<vec3<F32>, false>(_parent, GFX::PushConstantType::VEC3, oldRot, rot, "Transform rotation", [transform](const vec3<F32>& val) {
-                    transform->setRotationEuler(val);
-                });
-                transform->setRotationEuler(rot);
-            }
-        }
-        if (transform->editorLockRotation()) {
-            PopReadOnly();
-        }
-        if (transform->editorLockScale()) {
-            PushReadOnly();
-        }
         vec3<F32> scale = transformValues._scale;
-        if (ImGui::InputFloat3(" - Scale ", scale, "%.3f", flags | (transform->editorLockScale() ? ImGuiInputTextFlags_ReadOnly : 0u))) {
-            if (!readOnly && !transform->editorLockScale()) {
-                ret = true;
-                // Scale is tricky as it may invalidate everything if it's set wrong!
-                for (U8 i = 0; i < 3; ++i) {
-                    scale[i] = std::max(std::numeric_limits<F32>::epsilon(), scale[i]);
-                }
-                RegisterUndo<vec3<F32>, false>(_parent, GFX::PushConstantType::VEC3, transformValues._scale, scale, "Transform scale", [transform](const vec3<F32>& val) {
-                    transform->setScale(val);
-                });
-                transform->setScale(scale);
+
+        const char* labels[] = { "X", "Y", "Z" };
+        const vec3<F32> oldRot = rot;
+        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Position", labels, pos._v, transformReadOnly, false, 0.f, 0.f, 0.f, 0.f, 0.f, "%.2f").wasChanged) {
+            ret = true;
+            RegisterUndo<vec3<F32>, false>(_parent,
+                                           GFX::PushConstantType::VEC3,
+                                           transformValues._translation,
+                                           pos,
+                                           "Transform position",
+                                           [transform](const vec3<F32>& val) {
+                                                transform->setPosition(val);
+                                           });
+            transform->setPosition(pos);
+        }
+        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Rotation", labels, rot._v, rotationReadOnly, false, 0.f, 0.f, 0.f, 0.f, 0.f, "%.2f").wasChanged) {
+            ret = true;
+            RegisterUndo<vec3<F32>, false>(_parent,
+                                           GFX::PushConstantType::VEC3,
+                                           oldRot,
+                                           rot,
+                                           "Transform rotation",
+                                           [transform](const vec3<F32>& val) {
+                                               transform->setRotationEuler(val);
+                                           });
+            transform->setRotationEuler(rot);
+        }
+        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Scale", labels, scale._v, scaleReadOnly, false, 1.f, 0.f, 0.f, 0.f, 0.f, "%.2f").wasChanged) {
+            ret = true;
+            // Scale is tricky as it may invalidate everything if it's set wrong!
+            for (U8 i = 0; i < 3; ++i) {
+                scale[i] = std::max(std::numeric_limits<F32>::epsilon(), scale[i]);
             }
+            RegisterUndo<vec3<F32>, false>(_parent,
+                                           GFX::PushConstantType::VEC3,
+                                           transformValues._scale,
+                                           scale,
+                                           "Transform scale",
+                                           [transform](const vec3<F32>& val) {
+                                               transform->setScale(val);
+                                           });
+            transform->setScale(scale);
         }
-        if (transform->editorLockScale()) {
-            PopReadOnly();
-        }
+
         return ret;
     }
 
@@ -948,7 +938,7 @@ namespace Divide {
         }
 
         static bool renderStateWasOpen = false;
-        if (!ImGui::CollapsingHeader(Util::StringFormat("Render State: %zu", stateHash).c_str(), (renderStateWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u))) {
+        if (!ImGui::CollapsingHeader(Util::StringFormat("Render State: %zu", stateHash).c_str(), (renderStateWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u) | ImGuiTreeNodeFlags_SpanAvailWidth)) {
             renderStateWasOpen = false;
         } else if (stateHash > 0) {
             renderStateWasOpen = true;
@@ -1357,7 +1347,7 @@ namespace Divide {
         static bool shadingModeWasOpen = false;
         const ShadingMode crtMode = material->shadingMode();
         const char* crtModeName = TypeUtil::ShadingModeToString(crtMode);
-        if (!ImGui::CollapsingHeader(Util::StringFormat("Shading Mode [ %s ]", crtModeName).c_str(), (shadingModeWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u))) {
+        if (!ImGui::CollapsingHeader(Util::StringFormat("Shading Mode [ %s ]", crtModeName).c_str(), (shadingModeWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u) | ImGuiTreeNodeFlags_SpanAvailWidth)) {
             shadingModeWasOpen = false;
         } else {
             shadingModeWasOpen = true;
@@ -1407,7 +1397,7 @@ namespace Divide {
                     ret = true;
                 }
                 ImGui::PopItemWidth();
-                if (fromTexture && ImGui::IsItemHovered()) {
+                if (fromTexture && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     ImGui::SetTooltip("Albedo is sampled from a texture. Base colour possibly unused!");
                 }
                 ApplyAllButton(id, fromTexture || readOnly, [&material]() {
@@ -1433,7 +1423,7 @@ namespace Divide {
                 if (ro || readOnly) {
                     PopReadOnly();
                 }
-                if (ImGui::IsItemHovered()) {
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     if (ro) {
                         ImGui::SetTooltip("No detail texture specified!");
                     } else {
@@ -1458,7 +1448,7 @@ namespace Divide {
                 if (ro || readOnly) {
                     PopReadOnly();
                 }
-                if (ImGui::IsItemHovered()) {
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     if (ro) {
                         ImGui::SetTooltip("No normal map specified!");
                     } else {
@@ -1479,7 +1469,7 @@ namespace Divide {
                     ret = true;
                 }
                 ImGui::PopItemWidth();
-                if (fromTexture && ImGui::IsItemHovered()) {
+                if (fromTexture && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     ImGui::SetTooltip("Control managed by application (e.g. is overriden by a texture)");
                 }
                 ApplyAllButton(id, fromTexture || readOnly, [&material]() {
@@ -1500,7 +1490,7 @@ namespace Divide {
                     ret = true;
                 }
                 ImGui::PopItemWidth();
-                if (fromTexture && ImGui::IsItemHovered()) {
+                if (fromTexture && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     ImGui::SetTooltip("Control managed by application (e.g. is overriden by a texture)");
                 }
                 ApplyAllButton(id, fromTexture || readOnly, [&material]() {
@@ -1548,7 +1538,7 @@ namespace Divide {
                         ret = true;
                     }
                     ImGui::PopItemWidth();
-                    if (fromTexture && ImGui::IsItemHovered()) {
+                    if (fromTexture && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                         ImGui::SetTooltip("Control managed by application (e.g. is overriden by a texture)");
                     }
                     ApplyAllButton(id, fromTexture || readOnly, [&material]() {
@@ -1822,199 +1812,212 @@ namespace Divide {
           ImGui::PushID(name);
 
           const F32 step = field._step;
-
           bool ret = false;
           switch (field._basicType) {
               case GFX::PushConstantType::BOOL: {
+                  if (field._readOnly) {
+                      PushReadOnly();
+                  }
+
+                  ImFont* boldFont = ImGui::GetIO().Fonts->Fonts[1];
+
                   static UndoEntry<bool> undo = {};
                   bool val = field.get<bool>();
                   if (field._type == EditorComponentFieldType::SWITCH_TYPE) {
-                      ImGui::SameLine();
                       ret = ImGui::ToggleButton("", &val);
                   } else {
-                      ImGui::SameLine();
                       ret = ImGui::Checkbox("", &val);
                   }
+                  ImGui::SameLine();
+                  ImGui::PushFont(boldFont);
+                  ImGui::Text(name);
+                  ImGui::PopFont();
+
                   if (ret && !field._readOnly) {
                       RegisterUndo<bool, false>(_parent, GFX::PushConstantType::BOOL, !val, val, name, [&field](const bool& oldVal) {
                           field.set(oldVal);
                       });
                       field.set<bool>(val);
                   }
+                  if (field._readOnly) {
+                      PopReadOnly();
+                  }
               }break;
               case GFX::PushConstantType::INT: {
               switch (field._basicTypeSize) {
-                  case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<I64, 1>(_parent, isSlider, "", name, step, ImGuiDataType_S64, field, flags, field._format); break;
-                  case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<I32, 1>(_parent, isSlider, "", name, step, ImGuiDataType_S32, field, flags, field._format); break;
-                  case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<I16, 1>(_parent, isSlider, "", name, step, ImGuiDataType_S16, field, flags, field._format); break;
-                  case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<I8,  1>(_parent, isSlider, "", name, step, ImGuiDataType_S8,  field, flags, field._format); break;
+                  case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<I64, I64, 1>(_parent, isSlider, name, step, ImGuiDataType_S64, field, flags, field._format); break;
+                  case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<I32, I32, 1>(_parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format); break;
+                  case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<I16, I16, 1>(_parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format); break;
+                  case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<I8,  I8,  1>(_parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format); break;
                   case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::UINT: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<U64, 1>(_parent, isSlider, "", name, step, ImGuiDataType_U64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<U32, 1>(_parent, isSlider, "", name, step, ImGuiDataType_U32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<U16, 1>(_parent, isSlider, "", name, step, ImGuiDataType_U16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<U8,  1>(_parent, isSlider, "", name, step, ImGuiDataType_U8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<U64, U64, 1>(_parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<U32, U32, 1>(_parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<U16, U16, 1>(_parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<U8,  U8,  1>(_parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::DOUBLE: {
-                  ret = Util::inputOrSlider<D64, 1>(_parent, isSlider, "", name, step, ImGuiDataType_Double, field, flags, field._format);
+                  ret = Util::inputOrSlider<D64, D64, 1>(_parent, isSlider, name, step, ImGuiDataType_Double, field, flags, field._format);
               }break;
               case GFX::PushConstantType::FLOAT: {
-                  ret = Util::inputOrSlider<F32, 1>(_parent, isSlider, "", name, step, ImGuiDataType_Float, field, flags, field._format);
+                  ret = Util::inputOrSlider<F32, F32, 1>(_parent, isSlider, name, step, ImGuiDataType_Float, field, flags, field._format);
               }break;
               case GFX::PushConstantType::IVEC2: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec2<I64>, 2>(_parent, isSlider, "", name, step, ImGuiDataType_S64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec2<I32>, 2>(_parent, isSlider, "", name, step, ImGuiDataType_S32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec2<I16>, 2>(_parent, isSlider, "", name, step, ImGuiDataType_S16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<I8>,  2>(_parent, isSlider, "", name, step, ImGuiDataType_S8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec2<I64>, I64, 2>(_parent, isSlider, name, step, ImGuiDataType_S64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec2<I32>, I32, 2>(_parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec2<I16>, I16, 2>(_parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<I8>,  I8,  2>(_parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::IVEC3: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec3<I64>, 3>(_parent, isSlider, "", name, step, ImGuiDataType_S64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec3<I32>, 3>(_parent, isSlider, "", name, step, ImGuiDataType_S32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec3<I16>, 3>(_parent, isSlider, "", name, step, ImGuiDataType_S16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<I8>,  3>(_parent, isSlider, "", name, step, ImGuiDataType_S8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec3<I64>, I64, 3>(_parent, isSlider, name, step, ImGuiDataType_S64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec3<I32>, I32, 3>(_parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec3<I16>, I16, 3>(_parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<I8>,  I8,  3>(_parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::IVEC4: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec4<I64>, 4>(_parent, isSlider, "", name, step, ImGuiDataType_S64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec4<I32>, 4>(_parent, isSlider, "", name, step, ImGuiDataType_S32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec4<I16>, 4>(_parent, isSlider, "", name, step, ImGuiDataType_S16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<I8>,  4>(_parent, isSlider, "", name, step, ImGuiDataType_S8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec4<I64>, I64, 4>(_parent, isSlider, name, step, ImGuiDataType_S64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec4<I32>, I32, 4>(_parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec4<I16>, I16, 4>(_parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<I8>,  I8,  4>(_parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::UVEC2: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec2<U64>, 2>(_parent, isSlider, "", name, step, ImGuiDataType_U64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec2<U32>, 2>(_parent, isSlider, "", name, step, ImGuiDataType_U32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec2<U16>, 2>(_parent, isSlider, "", name, step, ImGuiDataType_U16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<U8>,  2>(_parent, isSlider, "", name, step, ImGuiDataType_U8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec2<U64>, U64, 2>(_parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec2<U32>, U32, 2>(_parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec2<U16>, U16, 2>(_parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<U8>,  U8,  2>(_parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::UVEC3: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec3<U64>, 3>(_parent, isSlider, "", name, step, ImGuiDataType_U64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec3<U32>, 3>(_parent, isSlider, "", name, step, ImGuiDataType_U32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec3<U16>, 3>(_parent, isSlider, "", name, step, ImGuiDataType_U16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<U8>,  3>(_parent, isSlider, "", name, step, ImGuiDataType_U8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec3<U64>, U64, 3>(_parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec3<U32>, U32, 3>(_parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec3<U16>, U16, 3>(_parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<U8>,  U8,  3>(_parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::UVEC4: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec4<U64>, 4>(_parent, isSlider, "", name, step, ImGuiDataType_U64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec4<U32>, 4>(_parent, isSlider, "", name, step, ImGuiDataType_U32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec4<U16>, 4>(_parent, isSlider, "", name, step, ImGuiDataType_U16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<U8>,  4>(_parent, isSlider, "", name, step, ImGuiDataType_U8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputOrSlider<vec4<U64>, U64, 4>(_parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputOrSlider<vec4<U32>, U32, 4>(_parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputOrSlider<vec4<U16>, U16, 4>(_parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<U8>,  U8,  4>(_parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::VEC2: {
-                  ret = Util::inputOrSlider<vec2<F32>, 2>(_parent, isSlider, "", name, step, ImGuiDataType_Float, field, flags, field._format);
+                  ret = Util::inputOrSlider<vec2<F32>, F32, 2>(_parent, isSlider, name, step, ImGuiDataType_Float, field, flags, field._format);
               }break;
               case GFX::PushConstantType::VEC3: {
-                  ret = Util::inputOrSlider<vec3<F32>, 3>(_parent, isSlider, "", name, step, ImGuiDataType_Float, field, flags, field._format);
+                  ret = Util::inputOrSlider<vec3<F32>, F32, 3>(_parent, isSlider, name, step, ImGuiDataType_Float, field, flags, field._format);
               }break;
               case GFX::PushConstantType::VEC4: {
-                  ret = Util::inputOrSlider<vec4<F32>, 4>(_parent, isSlider, "", name, step, ImGuiDataType_Float, field, flags, field._format);
+                  ret = Util::inputOrSlider<vec4<F32>, F32, 4>(_parent, isSlider, name, step, ImGuiDataType_Float, field, flags, field._format);
               }break;
               case GFX::PushConstantType::DVEC2: {
-                  ret = Util::inputOrSlider<vec2<D64>, 2>(_parent, isSlider, "", name, step, ImGuiDataType_Double, field, flags, field._format);
+                  ret = Util::inputOrSlider<vec2<D64>, D64, 2>(_parent, isSlider, name, step, ImGuiDataType_Double, field, flags, field._format);
               }break;
               case GFX::PushConstantType::DVEC3: {
-                  ret = Util::inputOrSlider<vec3<D64>, 3>(_parent, isSlider, "", name, step, ImGuiDataType_Double, field, flags, field._format);
+                  ret = Util::inputOrSlider<vec3<D64>, D64, 3>(_parent, isSlider, name, step, ImGuiDataType_Double, field, flags, field._format);
               }break;
               case GFX::PushConstantType::DVEC4: {
-                  ret = Util::inputOrSlider<vec4<D64>, 4>(_parent, isSlider, "", name, step, ImGuiDataType_Double, field, flags, field._format);
+                  ret = Util::inputOrSlider<vec4<D64>, D64, 4>(_parent, isSlider, name, step, ImGuiDataType_Double, field, flags, field._format);
               }break;
               case GFX::PushConstantType::IMAT2: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat2<I64>, 2>(_parent, "", name, step, ImGuiDataType_S64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat2<I32>, 2>(_parent, "", name, step, ImGuiDataType_S32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat2<I16>, 2>(_parent, "", name, step, ImGuiDataType_S16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat2<I8>,  2>(_parent, "", name, step, ImGuiDataType_S8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat2<I64>, 2>(_parent, name, step, ImGuiDataType_S64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat2<I32>, 2>(_parent, name, step, ImGuiDataType_S32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat2<I16>, 2>(_parent, name, step, ImGuiDataType_S16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat2<I8>,  2>(_parent, name, step, ImGuiDataType_S8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::IMAT3: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat3<I64>, 3>(_parent, "", name, step, ImGuiDataType_S64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat3<I32>, 3>(_parent, "", name, step, ImGuiDataType_S32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat3<I16>, 3>(_parent, "", name, step, ImGuiDataType_S16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat3<I8>,  3>(_parent, "", name, step, ImGuiDataType_S8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat3<I64>, 3>(_parent, name, step, ImGuiDataType_S64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat3<I32>, 3>(_parent, name, step, ImGuiDataType_S32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat3<I16>, 3>(_parent, name, step, ImGuiDataType_S16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat3<I8>,  3>(_parent, name, step, ImGuiDataType_S8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
+                  ImGui::Separator();
               }break;
               case GFX::PushConstantType::IMAT4: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat4<I64>, 4>(_parent, "", name, step, ImGuiDataType_S64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat4<I32>, 4>(_parent, "", name, step, ImGuiDataType_S32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat4<I16>, 4>(_parent, "", name, step, ImGuiDataType_S16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat4<I8>,  4>(_parent, "", name, step, ImGuiDataType_S8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat4<I64>, 4>(_parent, name, step, ImGuiDataType_S64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat4<I32>, 4>(_parent, name, step, ImGuiDataType_S32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat4<I16>, 4>(_parent, name, step, ImGuiDataType_S16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat4<I8>,  4>(_parent, name, step, ImGuiDataType_S8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
+                  ImGui::Separator();
               }break;
               case GFX::PushConstantType::UMAT2: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat2<U64>, 2>(_parent, "", name, step, ImGuiDataType_U64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat2<U32>, 2>(_parent, "", name, step, ImGuiDataType_U32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat2<U16>, 2>(_parent, "", name, step, ImGuiDataType_U16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat2<U8>,  2>(_parent, "", name, step, ImGuiDataType_U8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat2<U64>, 2>(_parent, name, step, ImGuiDataType_U64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat2<U32>, 2>(_parent, name, step, ImGuiDataType_U32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat2<U16>, 2>(_parent, name, step, ImGuiDataType_U16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat2<U8>,  2>(_parent, name, step, ImGuiDataType_U8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::UMAT3: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat3<U64>, 3>(_parent, "", name, step, ImGuiDataType_U64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat3<U32>, 3>(_parent, "", name, step, ImGuiDataType_U32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat3<U16>, 3>(_parent, "", name, step, ImGuiDataType_U16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat3<U8>,  3>(_parent, "", name, step, ImGuiDataType_U8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat3<U64>, 3>(_parent, name, step, ImGuiDataType_U64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat3<U32>, 3>(_parent, name, step, ImGuiDataType_U32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat3<U16>, 3>(_parent, name, step, ImGuiDataType_U16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat3<U8>,  3>(_parent, name, step, ImGuiDataType_U8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::UMAT4: {
                   switch (field._basicTypeSize) {
-                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat4<U64>, 4>(_parent, "", name, step, ImGuiDataType_U64, field, flags, field._format); break;
-                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat4<U32>, 4>(_parent, "", name, step, ImGuiDataType_U32, field, flags, field._format); break;
-                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat4<U16>, 4>(_parent, "", name, step, ImGuiDataType_U16, field, flags, field._format); break;
-                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat4<U8>,  4>(_parent, "", name, step, ImGuiDataType_U8,  field, flags, field._format); break;
+                      case GFX::PushConstantSize::QWORD: ret = Util::inputMatrix<mat4<U64>, 4>(_parent, name, step, ImGuiDataType_U64, field, flags, field._format); break;
+                      case GFX::PushConstantSize::DWORD: ret = Util::inputMatrix<mat4<U32>, 4>(_parent, name, step, ImGuiDataType_U32, field, flags, field._format); break;
+                      case GFX::PushConstantSize::WORD:  ret = Util::inputMatrix<mat4<U16>, 4>(_parent, name, step, ImGuiDataType_U16, field, flags, field._format); break;
+                      case GFX::PushConstantSize::BYTE:  ret = Util::inputMatrix<mat4<U8>,  4>(_parent, name, step, ImGuiDataType_U8,  field, flags, field._format); break;
                       case GFX::PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                   }
               }break;
               case GFX::PushConstantType::MAT2: {
-                  ret = Util::inputMatrix<mat2<F32>, 2>(_parent, "", name, step, ImGuiDataType_Float, field, flags, field._format);
+                  ret = Util::inputMatrix<mat2<F32>, 2>(_parent, name, step, ImGuiDataType_Float, field, flags, field._format);
               }break;
               case GFX::PushConstantType::MAT3: {
-                  ret = Util::inputMatrix<mat3<F32>, 3>(_parent, "", name, step, ImGuiDataType_Float, field, flags, field._format);
+                  ret = Util::inputMatrix<mat3<F32>, 3>(_parent, name, step, ImGuiDataType_Float, field, flags, field._format);
               }break;
               case GFX::PushConstantType::MAT4: {
-                  ret = Util::inputMatrix<mat4<F32>, 4>(_parent, "", name, step, ImGuiDataType_Float, field, flags, field._format);
+                  ret = Util::inputMatrix<mat4<F32>, 4>(_parent, name, step, ImGuiDataType_Float, field, flags, field._format);
               }break;
               case GFX::PushConstantType::DMAT2: {
-                  ret = Util::inputMatrix<mat2<D64>, 2>(_parent, "", name, step, ImGuiDataType_Double, field, flags, field._format);
+                  ret = Util::inputMatrix<mat2<D64>, 2>(_parent, name, step, ImGuiDataType_Double, field, flags, field._format);
               }break;
               case GFX::PushConstantType::DMAT3: {
-                  ret = Util::inputMatrix<mat3<D64>, 3>(_parent, "", name, step, ImGuiDataType_Double, field, flags, field._format);
+                  ret = Util::inputMatrix<mat3<D64>, 3>(_parent, name, step, ImGuiDataType_Double, field, flags, field._format);
               }break;
               case GFX::PushConstantType::DMAT4: {
-                  ret = Util::inputMatrix<mat4<D64>, 4>(_parent, "", name, step, ImGuiDataType_Double, field, flags, field._format);
+                  ret = Util::inputMatrix<mat4<D64>, 4>(_parent, name, step, ImGuiDataType_Double, field, flags, field._format);
               }break;
               case GFX::PushConstantType::FCOLOUR3: {
-                  ret = Util::colourInput3(_parent, field);
+                  ret = Util::colourInput3(_parent, field, name);
               }break;
               case GFX::PushConstantType::FCOLOUR4: {
-                  ret = Util::colourInput4(_parent, field);
+                  ret = Util::colourInput4(_parent, field, name);
               }break;
               case GFX::PushConstantType::COUNT: {
                   ImGui::Text(name);

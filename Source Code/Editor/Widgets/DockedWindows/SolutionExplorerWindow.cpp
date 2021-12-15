@@ -59,7 +59,7 @@ namespace Divide {
             return;
         }
 
-        constexpr ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_Leaf;
+        constexpr ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
         if (_filter.PassFilter(camera->resourceName().c_str())) {
             if (ImGui::TreeNodeEx((void*)(intptr_t)camera->getGUID(), node_flags, Util::StringFormat("%s %s", ICON_FK_CAMERA, camera->resourceName().c_str()).c_str())) {
                 if (ImGui::IsItemClicked()) {
@@ -137,7 +137,7 @@ namespace Divide {
     }
 
     void SolutionExplorerWindow::printSceneGraphNode(SceneManager* sceneManager, SceneGraphNode* sgn, I32 nodeIDX, const bool open, bool secondaryView) {
-        ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow;
+        ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
                                         //Conflicts with "Teleport to node on double click"
                                         // | ImGuiTreeNodeFlags_OpenOnDoubleClick;
         const bool wasSelected = secondaryView ? _tempParent != nullptr && _tempParent->getGUID() == sgn->getGUID() : sgn->hasFlag(SceneGraphNode::Flags::SELECTED);
@@ -230,7 +230,7 @@ namespace Divide {
             ImGui::SetTooltip("Only visible nodes");
         }
         ImGui::BeginChild("SceneGraph", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * .5f), true, 0);
-        if (ImGui::TreeNodeEx(Util::StringFormat("%s%s",ICON_FK_HOME, activeScene.resourceName().c_str()).c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+        if (ImGui::TreeNodeEx(Util::StringFormat("%s%s",ICON_FK_HOME, activeScene.resourceName().c_str()).c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
         {
             ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
             printCameraNode(sceneManager, _parent.editorCamera());
@@ -356,7 +356,7 @@ namespace Divide {
 
         static string dayNightText = Util::StringFormat("%s/%s Day/Night Settings", ICON_FK_SUN_O, ICON_FK_MOON_O).c_str();
 
-        if (ImGui::CollapsingHeader(dayNightText.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader(dayNightText.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth)) {
             bool dayNightEnabled = activeScene.dayNightCycleEnabled();
             if (ImGui::Checkbox("Enable day/night cycle", &dayNightEnabled)) {
                 activeScene.dayNightCycleEnabled(dayNightEnabled);

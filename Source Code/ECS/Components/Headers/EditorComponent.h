@@ -122,6 +122,7 @@ namespace Divide {
         vec2<F32> _range = { 0.0f, 0.0f }; ///< Used by slider_type as a min / max range or dropdown as selected_index / count
         Str32  _name = "";
         F32 _step = 0.0f; ///< 0.0f == no +- buttons
+        F32 _resetValue = 0.f;
         const char* _format = "";
         GFX::PushConstantType _basicType = GFX::PushConstantType::COUNT;
         EditorComponentFieldType _type = EditorComponentFieldType::COUNT;

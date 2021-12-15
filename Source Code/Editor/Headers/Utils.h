@@ -47,150 +47,83 @@ namespace ImGui {
 namespace Divide {
 
 namespace Util {
+    constexpr F32 LabelColumnWidth = 130.f;
+    static const ImVec4 Colours[] = {
+         {0.8f, 0.1f, 0.15f, 1.f},
+         {0.2f, 0.7f, 0.2f, 1.f},
+         {0.1f, 0.25f, 0.8f, 1.f}
+    };
+    static const ImVec4 ColoursHovered[] = {
+         {0.9f, 0.2f, 0.2f, 1.f},
+         {0.3f, 0.8f, 0.3f, 1.f},
+         {0.2f, 0.35f, 0.8f, 1.f}
+    };
+
+    constexpr char* FieldLabels[] = {
+        "X", "Y", "Z", "W", "U", "V", "T"
+    };
     // Separate activate is used for stuff that do continuous value changes, e.g. colour selectors, but you only want to register the old val once
     template<typename T, bool SeparateActivate, typename Pred>
-    void RegisterUndo(Editor& editor, GFX::PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter) {
-        static hashMap<U64, UndoEntry<T>> _undoEntries;
-        UndoEntry<T>& undo = _undoEntries[_ID(name)];
-        if (!SeparateActivate || ImGui::IsItemActivated()) {
-            undo._oldVal = oldVal;
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            undo._type = type;
-            undo._name = name;
-            undo._newVal = newVal;
-            undo._dataSetter = dataSetter;
-            editor.registerUndoEntry(undo);
-        }
-    }
+    void RegisterUndo(Editor& editor, GFX::PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter);
+
+    struct DrawReturnValue {
+        bool wasChanged = false;
+        bool wasDeactivated = false;
+    };
+
+    template<typename T, size_t N, bool isSlider>
+    DrawReturnValue DrawVec(ImGuiDataType data_type, 
+                            const char* label, 
+                            const char* const compLabels[],
+                            T* values,
+                            bool readOnly,
+                            bool hexadecimal,
+                            T resetValue,
+                            T minValue,
+                            T maxValue,
+                            T step,
+                            T stepFast,
+                            const char* format);
+
+    template<typename T, bool isSlider>
+    DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
+                                     const char* label,
+                                     T& value,
+                                     T resetValue,
+                                     T minValue,
+                                     T maxValue,
+                                     T step,
+                                     T stepFast,
+                                     bool readOnly,
+                                     bool hexadecimal,
+                                     ImVec4 buttonColour,
+                                     ImVec4 buttonColourHovered,
+                                     ImVec4 buttonColourActive,
+                                     const char* format = "%.2f");
 
     const char* GetFormat(ImGuiDataType dataType, const char* input, bool hex);
     bool colourInput4(Editor& parent, EditorComponentField& field, const char* name = "");
     bool colourInput3(Editor& parent, EditorComponentField& field, const char* name = "");
 
     template<typename Pred>
-    bool colourInput4(Editor& parent, const char* name, FColour4& col, const bool readOnly, Pred&& dataSetter) {
-        const bool ret = ImGui::ColorEdit4(name, col._v, ImGuiColorEditFlags__OptionsDefault);
-        if (!readOnly) {
-            RegisterUndo<FColour4, true>(parent, GFX::PushConstantType::FCOLOUR4, col, col, name, dataSetter);
-        }
-            
-        return dataSetter(col);
-    }
-
+    bool colourInput4(Editor& parent, const char* name, FColour4& col, const bool readOnly, Pred&& dataSetter);
     template<typename Pred>
-    bool colourInput3(Editor& parent, const char* name, FColour3& col, const bool readOnly, Pred&& dataSetter) {
-        const bool ret = ImGui::ColorEdit3(name, col._v, ImGuiColorEditFlags__OptionsDefault);
-        if (!readOnly) {
-            RegisterUndo<FColour3, true>(parent, GFX::PushConstantType::FCOLOUR3, col, col, name, dataSetter);
-        }
+    bool colourInput3(Editor& parent, const char* name, FColour3& col, const bool readOnly, Pred&& dataSetter);
 
-        return dataSetter(col);
-    }
+    template<typename FieldDataType, typename ComponentType, size_t num_comp>
+    bool inputOrSlider(Editor& parent, const bool isSlider, const char* label, const F32 stepIn, ImGuiDataType data_type, EditorComponentField& field, ImGuiInputTextFlags flags, const char* format);
 
-
-    template<typename T, size_t num_comp>
-    bool inputOrSlider(Editor& parent, const bool isSlider, const char* label, const char* name, const float stepIn, ImGuiDataType data_type, EditorComponentField& field, ImGuiInputTextFlags flags, const char* format, float power = 1.0f) {
-        if (isSlider) {
-            return inputOrSlider<T, num_comp, true>(parent, label, name, stepIn, data_type, field, flags, format, power);
-        }
-        return inputOrSlider<T, num_comp, false>(parent, label, name, stepIn, data_type, field, flags, format, power);
-    }
-
-    template<typename T, size_t num_comp, bool IsSlider>
-    bool inputOrSlider(Editor& parent, const char* label, const char* name, const float stepIn, const ImGuiDataType data_type, EditorComponentField& field, const ImGuiInputTextFlags flags, const char* format, const float power = 1.0f) {
-        if (field._readOnly) {
-            PushReadOnly();
-        }
-
-        T val = field.get<T>();
-        const T cStep = static_cast<T>(stepIn * 100);
-
-        const void* step = IS_ZERO(stepIn) ? nullptr : (void*)&stepIn;
-        [[maybe_unused]] const void* step_fast = step == nullptr ? nullptr : (void*)&cStep;
-
-        bool ret = false;
-        if_constexpr(num_comp == 1) {
-            const T min = static_cast<T>(field._range.min);
-            T max = static_cast<T>(field._range.max);
-            if_constexpr(IsSlider) {
-                assert(min <= max);
-                ret = ImGui::SliderScalar(label, data_type, (void*)&val, (void*)&min, (void*)&max, GetFormat(data_type, format, field._hexadecimal), power);
-            } else {
-                ret = ImGui::InputScalar(label, data_type, (void*)&val, step, step_fast, GetFormat(data_type, format, field._hexadecimal), flags);
-                if (ret && ImGui::IsItemDeactivated() && max > min) {
-                    CLAMP(val, min, max);
-                }
-            }
-        } else {
-            T min = T{ field._range.min };
-            T max = T{ field._range.max };
-
-            if_constexpr(IsSlider) {
-                assert(min <= max);
-                ret = ImGui::SliderScalarN(label, data_type, (void*)&val, num_comp, (void*)&min, (void*)&max, GetFormat(data_type, format, field._hexadecimal), power);
-            } else {
-                ret = ImGui::InputScalarN(label, data_type, (void*)&val, num_comp, step, step_fast, GetFormat(data_type, format, field._hexadecimal), flags);
-                if (ret && ImGui::IsItemDeactivated() && max > min) {
-                    for (I32 i = 0; i < to_I32(num_comp); ++i) {
-                        val[i] = CLAMPED(val[i], min[i], max[i]);
-                    }
-                }
-            }
-        }
-        if (IsSlider || ret) {
-            auto* tempData = field._data;
-            auto tempSetter = field._dataSetter;
-            RegisterUndo<T, IsSlider>(parent, field._basicType, field.get<T>(), val, name, [tempData, tempSetter](const T& oldVal) {
-                if (tempSetter != nullptr) {
-                    tempSetter(&oldVal);
-                } else {
-                    *static_cast<T*>(tempData) = oldVal;
-                }
-            });
-        }
-        if (!field._readOnly && ret && !COMPARE(val, field.get<T>())) {
-            field.set(val);
-        }
-
-        if (field._readOnly) {
-            PopReadOnly();
-        }
-
-        return ret;
-    }
+    template<typename FieldDataType, typename ComponentType, size_t num_comp, bool IsSlider>
+    bool inputOrSlider(Editor& parent, const char* label, const F32 stepIn, const ImGuiDataType data_type, EditorComponentField& field, const ImGuiInputTextFlags flags, const char* format);
 
     template<typename T, size_t num_rows>
-    bool inputMatrix(Editor & parent, const char* label, const char* name, const float stepIn, const ImGuiDataType data_type, EditorComponentField& field, const ImGuiInputTextFlags flags, const char* format) {
-        const T cStep = T(stepIn * 100);
+    bool inputMatrix(Editor& parent, const char* label, const F32 stepIn, const ImGuiDataType data_type, EditorComponentField& field, const ImGuiInputTextFlags flags, const char* format);
 
-        const void* step = IS_ZERO(stepIn) ? nullptr : (void*)&stepIn;
-        const void* step_fast = step == nullptr ? nullptr : (void*)&cStep;
-
-        T mat = field.get<T>();
-        bool ret = ImGui::InputScalarN(label, data_type, (void*)mat._vec[0]._v, num_rows, step, step_fast, GetFormat(data_type, format, field._hexadecimal), flags) ||
-                   ImGui::InputScalarN(label, data_type, (void*)mat._vec[1]._v, num_rows, step, step_fast, GetFormat(data_type, format, field._hexadecimal), flags);
-        if_constexpr(num_rows > 2) {
-            ret = ImGui::InputScalarN(label, data_type, (void*)mat._vec[2]._v, num_rows, step, step_fast, GetFormat(data_type, format, field._hexadecimal), flags) || ret;
-            if_constexpr(num_rows > 3) {
-                ret = ImGui::InputScalarN(label, data_type, (void*)mat._vec[3]._v, num_rows, step, step_fast, GetFormat(data_type, format, field._hexadecimal), flags) || ret;
-            }
-        }
-
-        if (ret && !field._readOnly && mat != field.get<T>()) {
-            auto* tempData = field._data;
-            auto tempSetter = field._dataSetter;
-            RegisterUndo<T, false>(parent, field._basicType, field.get<T>(), mat, name, [tempData, tempSetter](const T& oldVal) {
-                if (tempSetter != nullptr) {
-                    tempSetter(&oldVal);
-                } else {
-                    *static_cast<T*>(tempData) = oldVal;
-                }
-            });
-            field.set<>(mat);
-        }
-        return ret;
-    }
+    void BeginPropertyTable(I32 numComponents, const char* label);
+    void EndPropertyTable();
 } //namespace Util
 } //namespace Divide
+
+#include "Utils.inl"
+
 #endif // _EDITOR_UTILS_H_
