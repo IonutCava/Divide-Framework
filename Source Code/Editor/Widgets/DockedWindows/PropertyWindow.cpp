@@ -115,6 +115,7 @@ namespace Divide {
         ImGui::PushID(to_I32(camID) * 54321);
 
         if (ImGui::CollapsingHeader(camName)) {
+            Util::PushNarrowLabelWidth();
             {
                 vec3<F32> eye = cam->getEye();
                 EditorComponentField camField = {};
@@ -255,6 +256,7 @@ namespace Divide {
                 }
                 ImGui::PopID();
             }
+            Util::PopNarrowLabelWidth();
         }
         ImGui::PopID();
 
@@ -613,8 +615,9 @@ namespace Divide {
             case EditorComponentFieldType::PUSH_TYPE:
             case EditorComponentFieldType::SWITCH_TYPE: {
                 ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
-                ret = processBasicField(field);
-                ImGui::PopItemWidth();
+                {
+                    ret = processBasicField(field);
+                }ImGui::PopItemWidth();
             } break;
             case EditorComponentFieldType::DROPDOWN_TYPE: {
                 if (field._readOnly) {
@@ -797,6 +800,7 @@ namespace Divide {
         if (transform == nullptr) {
             return false;
         }
+        Util::PushNarrowLabelWidth();
         bool ret = false;
         const bool transformReadOnly = readOnly || transform->editorLockPosition();
         const bool rotationReadOnly = readOnly || transform->editorLockRotation();
@@ -807,9 +811,8 @@ namespace Divide {
         vec3<F32> rot = Angle::to_DEGREES(transformValues._orientation.getEuler());
         vec3<F32> scale = transformValues._scale;
 
-        const char* labels[] = { "X", "Y", "Z" };
         const vec3<F32> oldRot = rot;
-        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Position", labels, pos._v, transformReadOnly, false, 0.f, 0.f, 0.f, 0.f, 0.f, "%.2f").wasChanged) {
+        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Position", pos._v, transformReadOnly).wasChanged) {
             ret = true;
             RegisterUndo<vec3<F32>, false>(_parent,
                                            GFX::PushConstantType::VEC3,
@@ -821,7 +824,7 @@ namespace Divide {
                                            });
             transform->setPosition(pos);
         }
-        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Rotation", labels, rot._v, rotationReadOnly, false, 0.f, 0.f, 0.f, 0.f, 0.f, "%.2f").wasChanged) {
+        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Rotation", rot._v, rotationReadOnly).wasChanged) {
             ret = true;
             RegisterUndo<vec3<F32>, false>(_parent,
                                            GFX::PushConstantType::VEC3,
@@ -833,7 +836,7 @@ namespace Divide {
                                            });
             transform->setRotationEuler(rot);
         }
-        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Scale", labels, scale._v, scaleReadOnly, false, 1.f, 0.f, 0.f, 0.f, 0.f, "%.2f").wasChanged) {
+        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Scale", scale._v, scaleReadOnly, 1.f).wasChanged) {
             ret = true;
             // Scale is tricky as it may invalidate everything if it's set wrong!
             for (U8 i = 0; i < 3; ++i) {
@@ -849,7 +852,7 @@ namespace Divide {
                                            });
             transform->setScale(scale);
         }
-
+        Util::PopNarrowLabelWidth();
         return ret;
     }
 

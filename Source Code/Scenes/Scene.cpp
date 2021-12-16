@@ -1380,6 +1380,8 @@ void Scene::processGUI(const U64 deltaTimeUS) {
 }
 
 void Scene::processTasks(const U64 deltaTimeUS) {
+    static bool increaseWeatherScale = true;
+
     const D64 delta = Time::MicrosecondsToMilliseconds<D64>(deltaTimeUS);
 
     eastl::for_each(begin(_taskTimers), end(_taskTimers), [delta](D64& timer) { timer += delta; });
@@ -1401,11 +1403,18 @@ void Scene::processTasks(const U64 deltaTimeUS) {
         }
 
         const F32 speedFactor = dayNightCycleEnabled() ? _dayNightData._speedFactor : 0.f;
-        const F32 addTime = speedFactor * Time::MillisecondsToSeconds<F32>(delta);
+        const F32 deltaSeconds = Time::MillisecondsToSeconds<F32>(delta);
+        const F32 addTime = speedFactor * deltaSeconds;
 
         _dayNightData._timeAccumulatorSec += addTime;
         _dayNightData._timeAccumulatorHour += addTime;
-
+        const F32 weatherScale = _dayNightData._skyInstance->weatherScale();
+        if (weatherScale > 16.0f && increaseWeatherScale) {
+            increaseWeatherScale = false;
+        } else if (weatherScale < 0.01f && !increaseWeatherScale) {
+            increaseWeatherScale = true;
+        }
+        _dayNightData._skyInstance->weatherScale(weatherScale + (deltaSeconds * (increaseWeatherScale ? 1 : -1)));
         if (std::abs(_dayNightData._timeAccumulatorSec) > Time::Seconds(1.f)) {
             timeOfDay.tm_sec += to_I32(_dayNightData._timeAccumulatorSec);
             const time_t now = mktime(&timeOfDay); // normalize it

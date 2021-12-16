@@ -51,16 +51,35 @@ namespace Divide {
     namespace Attorney {
         class GizmoEditor;
     }
-
     struct TransformSettings {
         ImGuizmo::OPERATION currentGizmoOperation = ImGuizmo::TRANSLATE;
         ImGuizmo::MODE currentGizmoMode = ImGuizmo::WORLD;
-        F32 snap[3] = { 1.f, 1.f, 1.f };
+        F32 snapTranslation[3] = { 1.f, 1.f, 1.f };
+        F32 snapScale[3] = { 1.f, 1.f, 1.f };
+        F32 snapRotation[3] = { 1.f, 1.f, 1.f };
         U8 previousAxisSelected[3] = { 0u, 0u, 0u }; //0 = all, 1 = x, 2 = y, 3 = z
         U8 currentAxisSelected = 0u;
         bool useSnap = false;
     };
 
+    FORCE_INLINE [[nodiscard]] bool IsTranslationOperation(const TransformSettings& settings) {
+        return settings.currentGizmoOperation == ImGuizmo::OPERATION::TRANSLATE ||
+               settings.currentGizmoOperation == ImGuizmo::OPERATION::TRANSLATE_X ||
+               settings.currentGizmoOperation == ImGuizmo::OPERATION::TRANSLATE_Y ||
+               settings.currentGizmoOperation == ImGuizmo::OPERATION::TRANSLATE_Z;
+    }
+    FORCE_INLINE [[nodiscard]] bool IsRotationOperation(const TransformSettings& settings) {
+        return settings.currentGizmoOperation == ImGuizmo::OPERATION::ROTATE ||
+               settings.currentGizmoOperation == ImGuizmo::OPERATION::ROTATE_X ||
+               settings.currentGizmoOperation == ImGuizmo::OPERATION::ROTATE_Y ||
+               settings.currentGizmoOperation == ImGuizmo::OPERATION::ROTATE_Z;
+    }
+    FORCE_INLINE [[nodiscard]] bool IsScaleOperation(const TransformSettings& settings) {
+        return settings.currentGizmoOperation == ImGuizmo::OPERATION::SCALE ||
+               settings.currentGizmoOperation == ImGuizmo::OPERATION::SCALE_X ||
+               settings.currentGizmoOperation == ImGuizmo::OPERATION::SCALE_Y ||
+               settings.currentGizmoOperation == ImGuizmo::OPERATION::SCALE_Z;
+    }
     class Gizmo {
         friend class Attorney::GizmoEditor;
 

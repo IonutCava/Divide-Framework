@@ -389,6 +389,8 @@ class mat3 {
     void zero() noexcept;
     void identity() noexcept;
     [[nodiscard]] bool isIdentity() const noexcept;
+    [[nodiscard]] bool isUniformScale() const noexcept;
+    [[nodiscard]] bool isColOrthogonal() const noexcept;
     void swap(mat3 &B) noexcept;
 
     [[nodiscard]] T det() const noexcept;
@@ -423,7 +425,8 @@ class mat3 {
     template<typename U>
     void setScale(const vec3<U> &v) noexcept;
 
-    vec3<T> getScale() const noexcept;
+    [[nodiscard]] vec3<T> getScale() const noexcept;
+    [[nodiscard]] vec3<T> getScaleSq() const noexcept;
 
     void orthoNormalize();
 
@@ -625,7 +628,9 @@ class mat4 {
     void setScale(U x, U y, U z) noexcept;
     template<typename U>
     void setScale(const vec3<U> &v) noexcept;
+
     [[nodiscard]] vec3<T> getScale() const noexcept;
+    [[nodiscard]] vec3<T> getScaleSq() const noexcept;
 
     template<typename U>
     [[nodiscard]] vec3<U> transform(const vec3<U> &v, bool homogeneous) const;

@@ -4,6 +4,14 @@
 
 #include <imgui_internal.h>
 
+namespace Divide {
+namespace {
+    static I32 g_lastComponentWidhtPushCount = 0;
+    static bool g_isBoldButtonPushed = false;
+    static bool g_isNarrowLabelWidthPushed = false;
+}
+} //namespace Divide
+
 namespace ImGui {
     bool InputDoubleN(const char* label, double* v, const int components, const char* display_format, const ImGuiInputTextFlags extra_flags)     {
         const ImGuiWindow* window = GetCurrentWindow();
@@ -45,12 +53,23 @@ namespace ImGui {
 
 namespace Divide {
     namespace Util {
+        F32 GetLineHeight() noexcept {
+            return GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.f;
+        }
+        
+        void AddUnderLine() {
+            ImVec2 min = ImGui::GetItemRectMin();
+            const ImVec2 max = ImGui::GetItemRectMax();
+            min.y = max.y;
+            ImGui::GetWindowDrawList()->AddLine(min, max, ImGui::GetColorU32(ImGuiCol_Text), 1.0f);
+        }
+
         void BeginPropertyTable(const I32 numComponents, const char* label) {
             ImFont* boldFont = ImGui::GetIO().Fonts->Fonts[1];
 
             ImGui::PushID(label);
             ImGui::Columns(2);
-            ImGui::SetColumnWidth(0, LabelColumnWidth);
+            ImGui::SetColumnWidth(0, g_isNarrowLabelWidthPushed ? LabelColumnWidthNarrow : LabelColumnWidth);
             ImGui::PushFont(boldFont);
             ImGui::Text(label);
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
@@ -59,12 +78,62 @@ namespace Divide {
             ImGui::PopFont();
             ImGui::NextColumn();
             ImGui::PushMultiItemsWidths(numComponents, ImGui::CalcItemWidth());
+            g_lastComponentWidhtPushCount = numComponents;
         }
 
         void EndPropertyTable() {
+            for (I32 i = 0; i < g_lastComponentWidhtPushCount; ++i) {
+                ImGui::PopItemWidth();
+            }
+            g_lastComponentWidhtPushCount = 0;
             ImGui::Columns(1);
             ImGui::PopID();
         }
+
+        void PushBoldFont() {
+            if (!g_isBoldButtonPushed) {
+                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+                g_isBoldButtonPushed = true;
+            }
+        }
+
+        void PopBoldFont() {
+            if (g_isBoldButtonPushed) {
+                ImGui::PopFont();
+                g_isBoldButtonPushed = false;
+            }
+        }
+
+        void PushNarrowLabelWidth() {
+            if (!g_isNarrowLabelWidthPushed) {
+                g_isNarrowLabelWidthPushed = true;
+            }
+        }
+
+        void PopNarrowLabelWidth() {
+            if (g_isNarrowLabelWidthPushed) {
+                g_isNarrowLabelWidthPushed = false;
+            }
+        }
+
+        void PushButtonStyle(const bool bold,
+                             const ImVec4 buttonColour,
+                             const ImVec4 buttonColourHovered,
+                             const ImVec4 buttonColourActive)
+        {
+            if (bold) {
+                PushBoldFont();
+            }
+            ImGui::PushStyleColor(ImGuiCol_Button, buttonColour);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, buttonColourHovered);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonColourActive);
+        }
+
+        void PopButtonStyle() {
+            PopBoldFont();
+            ImGui::PopStyleColor(3);
+        }
+
 
         const char* GetFormat(ImGuiDataType dataType, const char* input, const bool hex) {
             if (input == nullptr || strlen(input) == 0) {

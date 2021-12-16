@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/SolutionExplorerWindow.h"
+#include "Headers/Utils.h"
 
 #include "Editor/Headers/Editor.h"
 
@@ -30,6 +31,7 @@
 
 #include <EASTL/deque.h>
 #include <IconFontCppHeaders/IconsForkAwesome.h>
+#include <imgui_internal.h>
 
 namespace Divide {
     namespace {
@@ -136,7 +138,13 @@ namespace Divide {
         }
     }
 
-    void SolutionExplorerWindow::printSceneGraphNode(SceneManager* sceneManager, SceneGraphNode* sgn, I32 nodeIDX, const bool open, bool secondaryView) {
+    void SolutionExplorerWindow::printSceneGraphNode(SceneManager* sceneManager,
+                                                     SceneGraphNode* sgn,
+                                                     const I32 nodeIDX,
+                                                     const bool open,
+                                                     const bool secondaryView,
+                                                     const bool modifierPressed)
+    {
         ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
                                         //Conflicts with "Teleport to node on double click"
                                         // | ImGuiTreeNodeFlags_OpenOnDoubleClick;
@@ -157,10 +165,14 @@ namespace Divide {
             if (s_onlyVisibleNodes && sgn->parent() != nullptr && !sgn->visiblePostCulling()) {
                 return false;
             }
-
-            const bool nodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)sgn->getGUID(), node_flags, Util::StringFormat("%s [%d] %s", icon == nullptr ? ICON_FK_QUESTION : icon, nodeIDX, sgn->name().c_str()).c_str());
             const bool isRoot = sgn->parent() == nullptr;
-
+            const bool nodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)sgn->getGUID(),
+                                                    node_flags,
+                                                    Util::StringFormat("%s [%d] %s %s",
+                                                                       icon == nullptr ? ICON_FK_QUESTION : icon,
+                                                                       nodeIDX,
+                                                                       sgn->name().c_str(),
+                                                                       (modifierPressed && !isRoot) ? ICON_FK_CHECK_SQUARE_O : "").c_str());
             if (!secondaryView && wasSelected) {
                 drawContextMenu(sgn);
             }
@@ -172,7 +184,7 @@ namespace Divide {
                     const bool parentSelected = !isRoot && sgn->parent()->hasFlag(SceneGraphNode::Flags::SELECTED);
                     const bool childrenSelected = sgn->getChildCount() > 0 && sgn->getChild(0u)->hasFlag(SceneGraphNode::Flags::SELECTED);
 
-                    if (sceneManager->resetSelection(0, false)) {
+                    if (modifierPressed || sceneManager->resetSelection(0, false)) {
                         if (!wasSelected || parentSelected || childrenSelected) {
                             sceneManager->setSelected(0, { sgn }, !wasSelected);
                         }
@@ -188,8 +200,8 @@ namespace Divide {
 
         if (_filter.Filters.empty()) {
             if (printNode(getIconForNode(sgn))) {
-                sgn->forEachChild([this, &sceneManager, secondaryView](SceneGraphNode* child, const I32 childIdx) {
-                    printSceneGraphNode(sceneManager, child, childIdx, false, secondaryView);
+                sgn->forEachChild([this, &sceneManager, secondaryView, modifierPressed](SceneGraphNode* child, const I32 childIdx) {
+                    printSceneGraphNode(sceneManager, child, childIdx, false, secondaryView, modifierPressed);
                     return true;
                 });
                 ImGui::TreePop();
@@ -199,8 +211,8 @@ namespace Divide {
             if (_filter.PassFilter(sgn->name().c_str())) {
                 nodeOpen = printNode(getIconForNode(sgn));
             }
-            sgn->forEachChild([this, &sceneManager, secondaryView](SceneGraphNode* child, const I32 childIdx) {
-                printSceneGraphNode(sceneManager, child, childIdx, false, secondaryView);
+            sgn->forEachChild([this, &sceneManager, secondaryView, modifierPressed](SceneGraphNode* child, const I32 childIdx) {
+                printSceneGraphNode(sceneManager, child, childIdx, false, secondaryView, modifierPressed);
                 return true;
             });
             if (nodeOpen) {
@@ -215,6 +227,8 @@ namespace Divide {
         SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
 
         const bool lockExplorer = Attorney::EditorSolutionExplorerWindow::lockSolutionExplorer(_parent);
+        const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_context.editor(), Editor::ImGuiContextType::Editor);
+        const bool modifierPressed = imguiContext.IO.KeyShift;
         if (lockExplorer) {
             PushReadOnly();
         }
@@ -222,7 +236,7 @@ namespace Divide {
         ImGui::Text(ICON_FK_SEARCH" Find node: ");
         ImGui::SameLine();
         ImGui::PushID("GraphSearchFilter");
-        _filter.Draw("", 150);
+        _filter.Draw("", 170);
         ImGui::PopID();
         ImGui::SameLine();
         ImGui::Checkbox(ICON_FK_EYE, &s_onlyVisibleNodes);
@@ -237,7 +251,7 @@ namespace Divide {
             for (PlayerIndex i = 0; i < static_cast<PlayerIndex>(Config::MAX_LOCAL_PLAYER_COUNT); ++i) {
                 printCameraNode(sceneManager, Attorney::SceneManagerCameraAccessor::playerCamera(sceneManager, i, true));
             }
-            printSceneGraphNode(sceneManager, root, 0, true, false);
+            printSceneGraphNode(sceneManager, root, 0, true, false, modifierPressed);
             ImGui::PopStyleVar();
             ImGui::TreePop();
         }
@@ -275,15 +289,16 @@ namespace Divide {
                                      cbegin(g_framerateBuffer),
                                      cend(g_framerateBuffer));
         ImGui::PushItemWidth(-1);
-        ImGui::PlotHistogram("",
-                             g_framerateBufferCont.data(),
-                             to_I32(g_framerateBufferCont.size()),
-                             0,
-                             Util::StringFormat("%.3f ms/frame (%.1f FPS)", ms_per_frame_avg, ms_per_frame_avg > 0.01f ? 1000.0f / ms_per_frame_avg : 0.0f).c_str(),
-                             0.0f,
-                             max_ms_per_frame,
-                             ImVec2(0, 50));
-        ImGui::PopItemWidth();
+        {
+            ImGui::PlotHistogram("",
+                                 g_framerateBufferCont.data(),
+                                 to_I32(g_framerateBufferCont.size()),
+                                 0,
+                                 Util::StringFormat("%.3f ms/frame (%.1f FPS)", ms_per_frame_avg, ms_per_frame_avg > 0.01f ? 1000.0f / ms_per_frame_avg : 0.0f).c_str(),
+                                 0.0f,
+                                 max_ms_per_frame,
+                                 ImVec2(0, 50));
+        }ImGui::PopItemWidth();
 
         static bool performanceStatsWereEnabled = false;
         if (ImGui::CollapsingHeader(ICON_FK_TACHOMETER" Performance Stats")) {
@@ -724,7 +739,7 @@ namespace Divide {
 
                 if (ImGui::BeginChild("SceneGraph", ImVec2(0, 400), true, 0)) {
                     ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
-                    printSceneGraphNode(sceneManager, root, 0, true, true);
+                    printSceneGraphNode(sceneManager, root, 0, true, true, false);
                     ImGui::PopStyleVar();
 
                     ImGui::EndChild();

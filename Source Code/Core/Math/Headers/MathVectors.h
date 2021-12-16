@@ -524,6 +524,8 @@ template <typename T>
 template <typename T>
 [[nodiscard]] vec3<T> Cross(const vec3<T> &v1, const vec3<T> &v2) noexcept;
 template <typename T>
+[[nodiscard]] vec3<T> AreOrthogonal(const vec3<T> &v1, const vec3<T> &v2) noexcept;
+template <typename T>
 [[nodiscard]] vec3<T> Inverse(const vec3<T> &v) noexcept;
 template <typename T>
 [[nodiscard]] vec3<T> operator*(T fl, const vec3<T> &v) noexcept;

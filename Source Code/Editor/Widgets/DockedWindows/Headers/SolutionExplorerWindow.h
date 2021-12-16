@@ -57,7 +57,7 @@ class SolutionExplorerWindow final : public DockedWindow, public PlatformContext
       void drawContextMenu(SceneGraphNode* sgn);
 
       void printCameraNode(SceneManager* sceneManager, Camera* const camera) const;
-      void printSceneGraphNode(SceneManager* sceneManager, SceneGraphNode* sgn, I32 nodeIDX, bool open, bool secondaryView);
+      void printSceneGraphNode(SceneManager* sceneManager, SceneGraphNode* sgn, I32 nodeIDX, bool open, bool secondaryView, bool modifierPressed);
 
       void goToNode(const SceneGraphNode* sgn) const;
       void saveNode(const SceneGraphNode* sgn) const;

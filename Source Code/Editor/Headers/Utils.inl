@@ -73,27 +73,24 @@
         const void* step_ptr = IS_ZERO(step) ? nullptr : (void*)&step;
         const void* step_fast_ptr = step_ptr == nullptr ? nullptr : (void*)&cStep;
 
-        ImFont* font = ImGui::GetIO().Fonts->Fonts[1];
-        const F32 lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.f;
+        const F32 lineHeight = GetLineHeight();
         const ImVec2 buttonSize = { lineHeight + 3.f, lineHeight };
 
         if (readOnly) {
             PushReadOnly();
         }
 
-        ImGui::PushStyleColor(ImGuiCol_Button, buttonColour);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, buttonColourHovered);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonColourActive);
-        ImGui::PushFont(font);
+        PushButtonStyle(true, buttonColour, buttonColourHovered, buttonColourActive);
         if (ImGui::Button(label, buttonSize)) {
             value = resetValue;
             ret = true;
         }
+        PopButtonStyle();
+
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip("Reset to %s", Util::StringFormat(format, resetValue).c_str());
         }
-        ImGui::PopFont();
-        ImGui::PopStyleColor(3);
+        
         ImGui::SameLine();
 
         if_constexpr(isSlider) {
@@ -115,7 +112,6 @@
         if (readOnly) {
             PopReadOnly();
         }
-        ImGui::PopItemWidth();
 
         return { ret, wasDeactivated };
     }
@@ -146,6 +142,17 @@
         EndPropertyTable();
 
         return { ret, wasDeactivated };
+    }
+
+    template<typename T, size_t N, bool isSlider>
+    FORCE_INLINE DrawReturnValue DrawVec(ImGuiDataType data_type,
+                                         const char* label,
+                                         T* values,
+                                         bool readOnly,
+                                         T resetValue,
+                                         const char* format) 
+    {
+        return DrawVec<T, N, isSlider>(data_type, label, FieldLabels, values, readOnly, false, resetValue, T{ 0 }, T{ 0 }, T{ 0 }, T{ 0 }, format);
     }
 
     template<typename Pred>

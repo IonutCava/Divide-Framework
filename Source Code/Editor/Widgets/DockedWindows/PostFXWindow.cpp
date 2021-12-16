@@ -72,8 +72,10 @@ namespace {
         ImGui::AlignTextToFramePadding();
         ImGui::Text("Edge Threshold: "); ImGui::SameLine();
         ImGui::PushItemWidth(170);
-        if (ImGui::SliderFloat("##hidelabel", &edgeThreshold, 0.01f, 1.0f)) {
-            batch.edgeDetectionThreshold(edgeThreshold);
+        {
+            if (ImGui::SliderFloat("##hidelabel", &edgeThreshold, 0.01f, 1.0f)) {
+                batch.edgeDetectionThreshold(edgeThreshold);
+            }
         }
         ImGui::PopItemWidth();
         if (ImGui::CollapsingHeader("Fog Settings")) {
@@ -127,13 +129,15 @@ namespace {
             I32 level = to_I32(aaOp.postAAQualityLevel());
 
             ImGui::PushItemWidth(175);
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Quality level: "); ImGui::SameLine();
-            ImGui::PushID("quality_level_slider");
-            if (ImGui::SliderInt("##hidelabel", &level, 0, 5)) {
-                aaOp.postAAQualityLevel(to_U8(level));
+            {
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text("Quality level: "); ImGui::SameLine();
+                ImGui::PushID("quality_level_slider");
+                if (ImGui::SliderInt("##hidelabel", &level, 0, 5)) {
+                    aaOp.postAAQualityLevel(to_U8(level));
+                }
+                ImGui::PopID();
             }
-            ImGui::PopID();
             ImGui::PopItemWidth();
             ImGui::AlignTextToFramePadding();
             ImGui::Text("Method: "); ImGui::SameLine();

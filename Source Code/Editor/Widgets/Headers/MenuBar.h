@@ -50,15 +50,15 @@ namespace Divide {
         void draw();
 
       protected:
-          void drawFileMenu();
-          void drawEditMenu() const;
-          void drawProjectMenu() const;
-          void drawObjectMenu();
-          void drawToolsMenu();
-          void drawWindowsMenu() const;
-          void drawPostFXMenu() const;
-          void drawDebugMenu();
-          void drawHelpMenu() const;
+          void drawFileMenu(bool modifierPressed);
+          void drawEditMenu(bool modifierPressed) const;
+          void drawProjectMenu(bool modifierPressed) const;
+          void drawObjectMenu(bool modifierPressed);
+          void drawToolsMenu(bool modifierPressed);
+          void drawWindowsMenu(bool modifierPressed) const;
+          void drawPostFXMenu(bool modifierPressed) const;
+          void drawDebugMenu(bool modifierPressed);
+          void drawHelpMenu(bool modifierPressed) const;
 
       protected:
         bool _isMainMenu = true;

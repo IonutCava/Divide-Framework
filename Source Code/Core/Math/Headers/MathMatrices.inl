@@ -345,25 +345,25 @@ mat2<T>::mat2(const mat4<U> &B) noexcept
 template<typename T>
 template<typename U>
 vec2<T> mat2<T>::operator*(const vec2<U> &v) const noexcept {
-    return vec2<T>(mat[0] * v[0] + mat[1] * v[1],
-                   mat[2] * v[0] + mat[3] * v[1]);
+    return {mat[0] * v[0] + mat[1] * v[1],
+            mat[2] * v[0] + mat[3] * v[1]};
 }
 
 template<typename T>
 template<typename U>
 vec3<T> mat2<T>::operator*(const vec3<U> &v) const noexcept {
-    return vec3<T>(mat[0] * v[0] + mat[1] * v[1],
-                   mat[2] * v[0] + mat[3] * v[1],
-                   v[2]);
+    return {mat[0] * v[0] + mat[1] * v[1],
+            mat[2] * v[0] + mat[3] * v[1],
+            v[2] };
 }
 
 template<typename T>
 template<typename U>
 vec4<T> mat2<T>::operator*(const vec4<U> &v) const noexcept {
-    return vec4<T>(mat[0] * v[0] + mat[1] * v[1],
-                   mat[2] * v[0] + mat[3] * v[1],
-                   v[2],
-                   v[3]);
+    return {mat[0] * v[0] + mat[1] * v[1],
+            mat[2] * v[0] + mat[3] * v[1],
+            v[2],
+            v[3]};
 }
 
 template<typename T>
@@ -1174,7 +1174,7 @@ void mat3<T>::setCol(I32 index, const U x, const U y, const U z) noexcept {
 }
 
 template<typename T>
-vec3<T> mat3<T>::getCol(I32 index) const noexcept {
+FORCE_INLINE vec3<T> mat3<T>::getCol(I32 index) const noexcept {
     return vec3<T>(m[0][index], m[1][index], m[2][index]);
 }
 
@@ -1197,6 +1197,22 @@ bool mat3<T>::isIdentity() const noexcept {
     return COMPARE(mat[0], 1) && IS_ZERO(mat[1])    && IS_ZERO(mat[2]) &&
         IS_ZERO(mat[3])    && COMPARE(mat[4], 1) && IS_ZERO(mat[5]) &&
         IS_ZERO(mat[6])    && IS_ZERO(mat[7])    && COMPARE(mat[8], 1);
+}
+
+template<typename T>
+FORCE_INLINE bool mat3<T>::isUniformScale() const noexcept {
+    return isColOrthogonal() && getScaleSq().isUniform();
+}
+
+template<typename T>
+FORCE_INLINE bool mat3<T>::isColOrthogonal() const noexcept {
+    const vec3<F32> col0 = getCol(0).xyz();
+    const vec3<F32> col1 = getCol(1).xyz();
+    const vec3<F32> col2 = getCol(2).xyz();
+
+    return AreOrthogonal(col0, col1) &&
+           AreOrthogonal(col0, col2) &&
+           AreOrthogonal(col1, col2);
 }
 
 template<typename T>
@@ -1389,11 +1405,23 @@ template<typename U>
 void mat3<T>::setScale(const vec3<U> &v) noexcept {
     setScale(v.x, v.y, v.z);
 }
+
 template<typename T>
 vec3<T> mat3<T>::getScale() const noexcept {
-    return vec3<T>(getCol(0).xyz().length(),
-                   getCol(1).xyz().length(),
-                   getCol(2).xyz().length());
+    return {
+        getCol(0).xyz().length(),
+        getCol(1).xyz().length(),
+        getCol(2).xyz().length()
+    };
+}
+
+template<typename T>
+vec3<T> mat3<T>::getScaleSq() const noexcept {
+    return {
+        getCol(0).xyz().lengthSquared(),
+        getCol(1).xyz().lengthSquared(),
+        getCol(2).xyz().lengthSquared()
+    };
 }
 
 template<typename T>
@@ -1576,10 +1604,10 @@ FORCE_INLINE vec3<U> mat4<T>::operator*(const vec3<U> &v) const noexcept {
 template<typename T>
 template<typename U>
 FORCE_INLINE vec4<U> mat4<T>::operator*(const vec4<U> &v) const noexcept {
-    return vec4<U>(mat[0] * v.x + mat[4] * v.y + mat[8]  * v.z + mat[12] * v.w,
-                   mat[1] * v.x + mat[5] * v.y + mat[9]  * v.z + mat[13] * v.w,
-                   mat[2] * v.x + mat[6] * v.y + mat[10] * v.z + mat[14] * v.w,
-                   mat[3] * v.x + mat[7] * v.y + mat[11] * v.z + mat[15] * v.w);
+    return {mat[0] * v.x + mat[4] * v.y + mat[8]  * v.z + mat[12] * v.w,
+            mat[1] * v.x + mat[5] * v.y + mat[9]  * v.z + mat[13] * v.w,
+            mat[2] * v.x + mat[6] * v.y + mat[10] * v.z + mat[14] * v.w,
+            mat[3] * v.x + mat[7] * v.y + mat[11] * v.z + mat[15] * v.w};
 }
 
 template<typename T>
@@ -1951,14 +1979,18 @@ FORCE_INLINE bool mat4<T>::isIdentity() const noexcept {
 
 template<typename T>
 FORCE_INLINE bool mat4<T>::isUniformScale() const noexcept {
-    return getScale().isUniform();
+    return isColOrthogonal() && getScaleSq().isUniform();
 }
 
 template<typename T>
 bool mat4<T>::isColOrthogonal() const noexcept {
-    return getCol(0).xyz().isPerpendicular(getCol(1).xyz()) &&
-           getCol(0).xyz().isPerpendicular(getCol(2).xyz()) &&
-           getCol(1).xyz().isPerpendicular(getCol(2).xyz());
+    const vec3<F32> col0 = getCol(0).xyz();
+    const vec3<F32> col1 = getCol(1).xyz();
+    const vec3<F32> col2 = getCol(2).xyz();
+
+    return AreOrthogonal(col0, col1) &&
+        AreOrthogonal(col0, col2) &&
+        AreOrthogonal(col1, col2);
 }
 
 template<typename T>
@@ -2219,9 +2251,20 @@ FORCE_INLINE void mat4<T>::setScale(const vec3<U> &v) noexcept {
 
 template<typename T>
 FORCE_INLINE vec3<T> mat4<T>::getScale() const noexcept {
-    return vec3<T>(getCol(0).xyz().length(),
-                   getCol(1).xyz().length(),
-                   getCol(2).xyz().length());
+    return {
+        getCol(0).xyz().length(),
+        getCol(1).xyz().length(),
+        getCol(2).xyz().length()
+    };
+}
+
+template<typename T>
+FORCE_INLINE vec3<T> mat4<T>::getScaleSq() const noexcept {
+    return {
+        getCol(0).xyz().lengthSquared(),
+        getCol(1).xyz().lengthSquared(),
+        getCol(2).xyz().lengthSquared()
+    };
 }
 
 template<typename T>
@@ -2238,9 +2281,9 @@ FORCE_INLINE vec3<U> mat4<T>::transformHomogeneous(const vec3<U> &v) const {
     const F32 fInvW = 1.f / (m[0][3] * v.x + m[1][3] * v.y +
                              m[2][3] * v.z + m[3][3]);
 
-    return vec3<U>((m[0][0] * v.x + m[1][1] * v.y + m[2][0] * v.z + m[3][0]) * fInvW,
-                   (m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1]) * fInvW,
-                   (m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z + m[3][2]) * fInvW);
+    return {(m[0][0] * v.x + m[1][1] * v.y + m[2][0] * v.z + m[3][0]) * fInvW,
+            (m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1]) * fInvW,
+            (m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z + m[3][2]) * fInvW};
 }
 
 template<typename T>
@@ -2289,7 +2332,11 @@ void mat4<T>::scale(U x, U y, U z) noexcept {
 template<typename T>
 template<typename U>
 FORCE_INLINE vec3<U> mat4<T>::getTranslation() const noexcept {
-    return vec3<U>(mat[12], mat[13], mat[14]);
+    return {
+        mat[12],
+        mat[13],
+        mat[14]
+    };
 }
 
 template<typename T>

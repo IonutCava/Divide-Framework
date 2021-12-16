@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/MenuBar.h"
+#include "Headers/Utils.h"
 
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
@@ -24,11 +25,12 @@
 
 #include <ImGuiMisc/imguifilesystem/imguifilesystem.h>
 
-
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Systems/Headers/AnimationSystem.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Material/Headers/MaterialEnums.h"
+
+#include <imgui_internal.h>
 
 namespace Divide {
 namespace {
@@ -98,19 +100,22 @@ MenuBar::MenuBar(PlatformContext& context, const bool mainMenu)
 }
 
 void MenuBar::draw() {
-    if (ImGui::BeginMenuBar())
-    {
-        drawFileMenu();
-        drawEditMenu();
-        drawProjectMenu();
-        drawObjectMenu();
-        drawToolsMenu();
-        //drawWindowsMenu();
-        drawPostFXMenu();
-        drawDebugMenu();
-        drawHelpMenu();
+    const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_context.editor(), Editor::ImGuiContextType::Editor);
+    const bool modifierPressed = imguiContext.IO.KeyShift;
 
-        ImGui::EndMenuBar();
+    if (ImGui::BeginMainMenuBar())
+    {
+        drawFileMenu(modifierPressed);
+        drawEditMenu(modifierPressed);
+        drawProjectMenu(modifierPressed);
+        drawObjectMenu(modifierPressed);
+        drawToolsMenu(modifierPressed);
+        //drawWindowsMenu(modifierPressed);
+        drawPostFXMenu(modifierPressed);
+        drawDebugMenu(modifierPressed);
+        drawHelpMenu(modifierPressed);
+
+        ImGui::EndMainMenuBar();
 
        for (vector<Texture_ptr>::iterator it = std::begin(_previewTextures); it != std::end(_previewTextures); ) {
             if (Attorney::EditorGeneralWidget::modalTextureView(_context.editor(), Util::StringFormat("Image Preview: %s", (*it)->resourceName().c_str()).c_str(), (*it).get(), vec2<F32>(512, 512), true, false)) {
@@ -242,95 +247,121 @@ void MenuBar::draw() {
             }
         }
 
+        static F32 sphereRadius = 1.f;
+        static U32 resolution = 16u;
+        static vec3<F32> sides{ 1.f, 1.f, 1.f };
+        static bool doubleSided = true;
+
+        const auto createPrimitive = [&]() {
+            g_currentNodeType = SceneNodeType::TYPE_OBJECT3D;
+            g_nodeDescriptor._componentMask = to_U32(ComponentType::TRANSFORM) |
+                to_U32(ComponentType::BOUNDS) |
+                to_U32(ComponentType::RIGID_BODY) |
+                to_U32(ComponentType::RENDERING) |
+                to_U32(ComponentType::SELECTION) |
+                to_U32(ComponentType::NAVIGATION);
+            g_nodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
+
+            ResourceCache* parentCache = _context.kernel().resourceCache();
+            ResourceDescriptor nodeDescriptor(g_nodeDescriptor._name + "_n");
+            switch (_newPrimitiveType) {
+                case ObjectType::SPHERE_3D:
+                {
+                    Sphere3D_ptr node = CreateResource<Sphere3D>(parentCache, nodeDescriptor);
+                    node->setResolution(resolution);
+                    node->setRadius(sphereRadius);
+                    g_nodeDescriptor._node = node;
+                } break;
+                case ObjectType::BOX_3D:
+                {
+                    Box3D_ptr node = CreateResource<Box3D>(parentCache, nodeDescriptor);
+                    node->setHalfExtent(sides * 0.5f);
+                    g_nodeDescriptor._node = node;
+                } break;
+                case ObjectType::QUAD_3D:
+                {
+                    P32 quadMask;
+                    quadMask.i = 0;
+                    quadMask.b[0] = doubleSided ? 0 : 1;
+                    nodeDescriptor.mask(quadMask);
+                    vec3<F32> halfSides = sides * 0.5f;
+                    Quad3D_ptr node = CreateResource<Quad3D>(parentCache, nodeDescriptor);
+                    node->setCorner(Quad3D::CornerLocation::TOP_LEFT,     vec3<F32>(-halfSides.x, halfSides.y, 0));
+                    node->setCorner(Quad3D::CornerLocation::TOP_RIGHT,    vec3<F32>( halfSides.x, halfSides.y, 0));
+                    node->setCorner(Quad3D::CornerLocation::BOTTOM_LEFT,  vec3<F32>(-halfSides.x,-halfSides.y, 0));
+                    node->setCorner(Quad3D::CornerLocation::BOTTOM_RIGHT, vec3<F32>( halfSides.x,-halfSides.y, 0));
+
+                    g_nodeDescriptor._node = node;
+                } break;
+                default: 
+                    DIVIDE_UNEXPECTED_CALL();
+                    break;
+            }
+            if (g_nodeDescriptor._node != nullptr) {
+                g_nodeDescriptor._node->getMaterialTpl()->shadingMode(ShadingMode::BLINN_PHONG);
+                g_nodeDescriptor._node->getMaterialTpl()->baseColour(FColour4(0.4f, 0.4f, 0.4f, 1.0f));
+                g_nodeDescriptor._node->getMaterialTpl()->roughness(0.5f);
+                g_nodeDescriptor._node->getMaterialTpl()->metallic(0.5f);
+                const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+                activeScene.sceneGraph()->getRoot()->addChildNode(g_nodeDescriptor);
+                Attorney::EditorGeneralWidget::registerUnsavedSceneChanges(_context.editor());
+            }
+
+            _newPrimitiveType = ObjectType::COUNT;
+        };
+
         if (_newPrimitiveType != ObjectType::COUNT) {
-            ImGui::OpenPopup("Create Primitive");
-            if (ImGui::BeginPopupModal("Create Primitive", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text(Util::StringFormat("Create a new [ %s ]?", TypeUtil::ObjectTypeToString(_newPrimitiveType)).c_str());
-                ImGui::Separator();
+            if (modifierPressed) {
+                createPrimitive();
+            } else {
+                ImGui::OpenPopup("Create Primitive");
+                if (ImGui::BeginPopupModal("Create Primitive", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::Text(Util::StringFormat("Create a new [ %s ]?", TypeUtil::ObjectTypeToString(_newPrimitiveType)).c_str());
+                    ImGui::Separator();
 
-                static char buf[64];
-                if (ImGui::InputText("Name", &buf[0], 61)) {
-                    g_nodeDescriptor._name = buf;
-                }
+                    static char buf[64];
+                    if (ImGui::InputText("Name", &buf[0], 61)) {
+                        g_nodeDescriptor._name = buf;
+                    }
                 
-                if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-                    ImGui::CloseCurrentPopup();
-                    _newPrimitiveType = ObjectType::COUNT;
-                }
-                ImGui::SetItemDefaultFocus();
-                ImGui::SameLine();
-                if (g_nodeDescriptor._name.empty()) {
-                    PushReadOnly();
-                }
-                if (ImGui::Button("Create", ImVec2(120, 0))) {
-                    g_currentNodeType = SceneNodeType::TYPE_OBJECT3D;
-
-                    g_nodeDescriptor._componentMask = to_U32(ComponentType::TRANSFORM) |
-                        to_U32(ComponentType::BOUNDS) |
-                        to_U32(ComponentType::RIGID_BODY) |
-                        to_U32(ComponentType::RENDERING) |
-                        to_U32(ComponentType::SELECTION) |
-                        to_U32(ComponentType::NAVIGATION);
-                    g_nodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
-
-                    ResourceCache* parentCache = _context.kernel().resourceCache();
-                    ResourceDescriptor nodeDescriptor(g_nodeDescriptor._name + "_n");
                     switch (_newPrimitiveType) {
                         case ObjectType::SPHERE_3D:
-                        {
-                            auto node = CreateResource<Sphere3D>(parentCache, nodeDescriptor);
-                            node->setResolution(16);
-                            node->setRadius(1.0f);
-                            g_nodeDescriptor._node = node;
-                        } break;
+                            ImGui::InputFloat("Radius", &sphereRadius);
+                            ImGui::InputScalar("Resolution", ImGuiDataType_U32, &resolution);
+                            break;
                         case ObjectType::BOX_3D:
-                        {
-                            auto node = CreateResource<Box3D>(parentCache, nodeDescriptor);
-                            node->setHalfExtent(1.0f);
-                            g_nodeDescriptor._node = node;
-                        } break;
+                            Util::DrawVec<F32, 3, false>(ImGuiDataType_Float, "Side length", Util::FieldLabels, sides._v, false, false, 0.1f, 0.001f, 10000.f);
+                            break;
                         case ObjectType::QUAD_3D:
-                        {
-                            P32 quadMask;
-                            quadMask.i = 0;
-                            quadMask.b[0] = 1;
-                            nodeDescriptor.mask(quadMask);
-
-                            auto node = CreateResource<Quad3D>(parentCache, nodeDescriptor);
-                            node->setCorner(Quad3D::CornerLocation::TOP_LEFT, vec3<F32>(0, 1, 0));
-                            node->setCorner(Quad3D::CornerLocation::TOP_RIGHT, vec3<F32>(1, 1, 0));
-                            node->setCorner(Quad3D::CornerLocation::BOTTOM_LEFT, vec3<F32>(0, 0, 0));
-                            node->setCorner(Quad3D::CornerLocation::BOTTOM_RIGHT, vec3<F32>(1, 0, 0));
-
-                            g_nodeDescriptor._node = node;
-                        } break;
-                        default: 
-                            DIVIDE_UNEXPECTED_CALL();
+                            Util::DrawVec<F32, 2, false>(ImGuiDataType_Float, "Side length", Util::FieldLabels, sides._v, false, false, 0.1f, 0.001f, 10000.f);
+                            ImGui::Checkbox("Double Sided", &doubleSided);
                             break;
                     }
-                    if (g_nodeDescriptor._node != nullptr) {
-                        g_nodeDescriptor._node->getMaterialTpl()->shadingMode(ShadingMode::BLINN_PHONG);
-                        g_nodeDescriptor._node->getMaterialTpl()->baseColour(FColour4(0.4f, 0.4f, 0.4f, 1.0f));
-                        g_nodeDescriptor._node->getMaterialTpl()->roughness(0.5f);
-                        g_nodeDescriptor._node->getMaterialTpl()->metallic(0.5f);
-                        const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
-                        activeScene.sceneGraph()->getRoot()->addChildNode(g_nodeDescriptor);
-                        Attorney::EditorGeneralWidget::registerUnsavedSceneChanges(_context.editor());
+                    if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                        ImGui::CloseCurrentPopup();
+                        _newPrimitiveType = ObjectType::COUNT;
                     }
-
-                    ImGui::CloseCurrentPopup();
-                    _newPrimitiveType = ObjectType::COUNT;
+                    ImGui::SetItemDefaultFocus();
+                    ImGui::SameLine();
+                    if (g_nodeDescriptor._name.empty()) {
+                        PushReadOnly();
+                    }
+                    if (ImGui::Button("Create", ImVec2(120, 0))) {
+                        createPrimitive();
+                        ImGui::CloseCurrentPopup();
+                        _newPrimitiveType = ObjectType::COUNT;
+                    }
+                    if (g_nodeDescriptor._name.empty()) {
+                        PopReadOnly();
+                    }
+                    ImGui::EndPopup();
                 }
-                if (g_nodeDescriptor._name.empty()) {
-                    PopReadOnly();
-                }
-                ImGui::EndPopup();
             }
         }
     }
 }
 
-void MenuBar::drawFileMenu() {
+void MenuBar::drawFileMenu([[maybe_unused]] const bool modifierPressed) {
     bool showSceneOpenDialog = false;
     bool showSceneSaveDialog = false;
 
@@ -496,7 +527,7 @@ void MenuBar::drawFileMenu() {
     }
 }
 
-void MenuBar::drawEditMenu() const {
+void MenuBar::drawEditMenu([[maybe_unused]] const bool modifierPressed) const {
     if (ImGui::BeginMenu("Edit"))
     {
         if (ImGui::MenuItem("Undo", "CTRL+Z", false, _context.editor().UndoStackSize() > 0))
@@ -532,7 +563,7 @@ void MenuBar::drawEditMenu() const {
     }
 }
 
-void MenuBar::drawProjectMenu() const {
+void MenuBar::drawProjectMenu([[maybe_unused]] const bool modifierPressed) const {
     if (ImGui::BeginMenu("Project"))
     {
         if(ImGui::MenuItem("Configuration", "", false, false))
@@ -542,22 +573,29 @@ void MenuBar::drawProjectMenu() const {
         ImGui::EndMenu();
     }
 }
-void MenuBar::drawObjectMenu() {
-    if (ImGui::BeginMenu("Object"))
-    {
-        if (ImGui::BeginMenu("New Primitive")) 
-        {
+void MenuBar::drawObjectMenu(const bool modifierPressed) {
+    if (ImGui::BeginMenu("Object")) {
+        if (ImGui::BeginMenu("New Primitive")) {
             if (ImGui::MenuItem("Sphere")) {
                 g_nodeDescriptor = {};
                 _newPrimitiveType = ObjectType::SPHERE_3D;
+            }
+            if (modifierPressed) {
+                Util::AddUnderLine();
             }
             if (ImGui::MenuItem("Box")) {
                 g_nodeDescriptor = {};
                 _newPrimitiveType = ObjectType::BOX_3D;
             }
+            if (modifierPressed) {
+                Util::AddUnderLine();
+            }
             if (ImGui::MenuItem("Plane")) {
                 g_nodeDescriptor = {};
                 _newPrimitiveType = ObjectType::QUAD_3D;
+            }
+            if (modifierPressed) {
+                Util::AddUnderLine();
             }
             ImGui::EndMenu();
         }
@@ -566,7 +604,7 @@ void MenuBar::drawObjectMenu() {
     }
 
 }
-void MenuBar::drawToolsMenu() {
+void MenuBar::drawToolsMenu([[maybe_unused]] const bool modifierPressed) {
     if (ImGui::BeginMenu("Tools"))
     {
         const bool memEditorEnabled = Attorney::EditorMenuBar::memoryEditorEnabled(_context.editor());
@@ -629,7 +667,7 @@ void MenuBar::drawToolsMenu() {
     }
 }
 
-void MenuBar::drawWindowsMenu() const {
+void MenuBar::drawWindowsMenu([[maybe_unused]] const bool modifierPressed) const {
     if (ImGui::BeginMenu("Window"))
     {
         bool& sampleWindowEnabled = Attorney::EditorMenuBar::sampleWindowEnabled(_context.editor());
@@ -641,7 +679,7 @@ void MenuBar::drawWindowsMenu() const {
 
 }
 
-void MenuBar::drawPostFXMenu() const {
+void MenuBar::drawPostFXMenu([[maybe_unused]] const bool modifierPressed) const {
     if (ImGui::BeginMenu("PostFX"))
     {
         PostFX& postFX = _context.gfx().getRenderer().postFX();
@@ -661,7 +699,7 @@ void MenuBar::drawPostFXMenu() const {
     }
 }
 
-void MenuBar::drawDebugMenu() {
+void MenuBar::drawDebugMenu([[maybe_unused]] const bool modifierPressed) {
     if (ImGui::BeginMenu("Debug"))
     {
         if (ImGui::BeginMenu("BRDF Settings")) {
@@ -943,7 +981,7 @@ void MenuBar::drawDebugMenu() {
     }
 }
 
-void MenuBar::drawHelpMenu() const {
+void MenuBar::drawHelpMenu([[maybe_unused]] const bool modifierPressed) const {
     if (ImGui::BeginMenu("Help"))
     {
         bool& sampleWindowEnabled = Attorney::EditorMenuBar::sampleWindowEnabled(_context.editor());

@@ -776,7 +776,7 @@ bool Editor::render([[maybe_unused]] const U64 deltaTime) {
     {
         ImGuiStyle& style = ImGui::GetStyle();
         const F32 originalSize = style.WindowMinSize.x;
-        style.WindowMinSize.x = 350.f;
+        style.WindowMinSize.x = 300.f;
         ImGui::DockSpace(ImGui::GetID("EditorDockspace"), ImVec2(0.0f, 0.0f), opt_flags);
         style.WindowMinSize.x = originalSize;
     }
@@ -828,7 +828,7 @@ void Editor::infiniteGridScale(const F32 value) noexcept {
 }
 
 void Editor::postRender(const Camera& camera, const RenderTargetID target, GFX::CommandBuffer& bufferInOut) {
-    if (infiniteGridEnabled() && _infiniteGridPrimitive) {
+    if (infiniteGridEnabled() && _infiniteGridPrimitive && _isScenePaused) {
         _infiniteGridPrimitive->pipeline(*_infiniteGridPipeline);
         if (_gridSettingsDirty) {
             PushConstants constants{};

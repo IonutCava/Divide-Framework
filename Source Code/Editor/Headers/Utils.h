@@ -48,6 +48,8 @@ namespace Divide {
 
 namespace Util {
     constexpr F32 LabelColumnWidth = 130.f;
+    constexpr F32 LabelColumnWidthNarrow = 100.f;
+
     static const ImVec4 Colours[] = {
          {0.8f, 0.1f, 0.15f, 1.f},
          {0.2f, 0.7f, 0.2f, 1.f},
@@ -72,18 +74,26 @@ namespace Util {
     };
 
     template<typename T, size_t N, bool isSlider>
+    DrawReturnValue DrawVec(ImGuiDataType data_type,
+                            const char* label,
+                            T* values,
+                            bool readOnly,
+                            T resetValue = 0,
+                            const char* format = "%.2f");
+
+    template<typename T, size_t N, bool isSlider>
     DrawReturnValue DrawVec(ImGuiDataType data_type, 
                             const char* label, 
                             const char* const compLabels[],
                             T* values,
                             bool readOnly,
-                            bool hexadecimal,
-                            T resetValue,
-                            T minValue,
-                            T maxValue,
-                            T step,
-                            T stepFast,
-                            const char* format);
+                            bool hexadecimal = false,
+                            T resetValue = 0,
+                            T minValue = 0,
+                            T maxValue = 0,
+                            T step = 0,
+                            T stepFast = 0,
+                            const char* format = "%.2f");
 
     template<typename T, bool isSlider>
     DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
@@ -119,8 +129,21 @@ namespace Util {
     template<typename T, size_t num_rows>
     bool inputMatrix(Editor& parent, const char* label, const F32 stepIn, const ImGuiDataType data_type, EditorComponentField& field, const ImGuiInputTextFlags flags, const char* format);
 
+    [[nodiscard]] F32 GetLineHeight() noexcept;
+    void AddUnderLine();
+
     void BeginPropertyTable(I32 numComponents, const char* label);
     void EndPropertyTable();
+
+    void PushButtonStyle(bool bold,
+                        ImVec4 buttonColour,
+                        ImVec4 buttonColourHovered,
+                        ImVec4 buttonColourActive);
+    void PopButtonStyle();
+    void PushBoldFont();
+    void PopBoldFont();
+    void PushNarrowLabelWidth();
+    void PopNarrowLabelWidth();
 } //namespace Util
 } //namespace Divide
 

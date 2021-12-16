@@ -3,6 +3,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceLoader.h"
 #include "Core/Resources/Headers/ResourceCache.h"
+#include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Predefined/Headers/Box3D.h"
 
 namespace Divide {
@@ -18,6 +19,13 @@ CachedResource_ptr ImplResourceLoader<Box3D>::operator()() {
                                                          _descriptor.resourceName(),
                                                          vec3<F32>(to_F32(size))),
                                   DeleteResource(_cache));
+
+    if (!_descriptor.flag()) {
+        const ResourceDescriptor matDesc("Material_" + _descriptor.resourceName());
+        Material_ptr matTemp = CreateResource<Material>(_cache, matDesc);
+        matTemp->shadingMode(ShadingMode::BLINN_PHONG);
+        ptr->setMaterialTpl(matTemp);
+    }
 
     if (!Load(ptr)) {
         ptr.reset();

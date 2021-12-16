@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/SceneViewWindow.h"
-
+#include "Headers/Utils.h"
 #include "Editor/Headers/Editor.h"
 
 #include "Editor/Widgets/Headers/ImGuiExtensions.h"
@@ -93,14 +93,7 @@ namespace Divide {
 
         F32 pos = SButtonWidth + ItemSpacing + 25;
         ImGui::SameLine(window->ContentSize.x - pos);
-        if (button(!enableGizmo || 
-                    (settings.currentGizmoOperation != ImGuizmo::SCALE && 
-                     settings.currentGizmoOperation != ImGuizmo::SCALE_X &&
-                     settings.currentGizmoOperation != ImGuizmo::SCALE_Y &&
-                     settings.currentGizmoOperation != ImGuizmo::SCALE_Z),
-                    ICON_FK_EXPAND,
-                    "Scale",
-                    true))
+        if (button(!enableGizmo || !IsScaleOperation(settings), ICON_FK_EXPAND, "Scale", true))
         {
             switch (settings.previousAxisSelected[2]) {
                 case 0u: settings.currentGizmoOperation = ImGuizmo::SCALE;   break;
@@ -115,14 +108,7 @@ namespace Divide {
 
         pos += RButtonWidth + ItemSpacing + 1;
         ImGui::SameLine(window->ContentSize.x - pos);
-        if (button(!enableGizmo || 
-                    (settings.currentGizmoOperation != ImGuizmo::ROTATE &&
-                     settings.currentGizmoOperation != ImGuizmo::ROTATE_X &&
-                     settings.currentGizmoOperation != ImGuizmo::ROTATE_Y &&
-                     settings.currentGizmoOperation != ImGuizmo::ROTATE_Z),
-                    ICON_FK_REPEAT,
-                    "Rotate",
-                    true))
+        if (button(!enableGizmo || !IsRotationOperation(settings), ICON_FK_REPEAT, "Rotate", true))
         {
             switch (settings.previousAxisSelected[1]) {
                 case 0u: settings.currentGizmoOperation = ImGuizmo::ROTATE;   break;
@@ -137,14 +123,7 @@ namespace Divide {
 
         pos += TButtonWidth + ItemSpacing + 1;
         ImGui::SameLine(window->ContentSize.x - pos);
-        if (button(!enableGizmo || 
-                   (settings.currentGizmoOperation != ImGuizmo::TRANSLATE &&
-                    settings.currentGizmoOperation != ImGuizmo::TRANSLATE_X &&
-                    settings.currentGizmoOperation != ImGuizmo::TRANSLATE_Y &&
-                    settings.currentGizmoOperation != ImGuizmo::TRANSLATE_Z),
-                    ICON_FK_ARROWS,
-                    "Translate",
-                    true))
+        if (button(!enableGizmo || !IsTranslationOperation(settings), ICON_FK_ARROWS, "Translate", true))
         {
             switch (settings.previousAxisSelected[0]) {
                 case 0u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE;   break;
@@ -229,8 +208,9 @@ namespace Divide {
                 _sceneRect.set(startPos.x, startPos.y, imageSz.x, imageSz.y);
             }
         }
-        
-        if (play) {
+
+        enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
+        if (play || !enableGizmo) {
             PushReadOnly();
         }
         if (ImGui::RadioButton("Local", settings.currentGizmoMode == ImGuizmo::LOCAL)) {
@@ -241,42 +221,10 @@ namespace Divide {
             settings.currentGizmoMode = ImGuizmo::WORLD;
         }
         ImGui::SameLine();
-        ImGui::Checkbox("Snap", &settings.useSnap);
-        if (settings.useSnap) {
-            ImGui::SameLine();
-            ImGui::Text("Step:");
-            ImGui::SameLine();
-            ImGui::PushItemWidth(150);
-            switch (settings.currentGizmoOperation)
-            {
-                case ImGuizmo::TRANSLATE:
-                case ImGuizmo::TRANSLATE_X:
-                case ImGuizmo::TRANSLATE_Y:
-                case ImGuizmo::TRANSLATE_Z:
-                    ImGui::InputFloat3("Position", &settings.snap[0]);
-                    break;
-                case ImGuizmo::ROTATE:
-                case ImGuizmo::ROTATE_X:
-                case ImGuizmo::ROTATE_Y:
-                case ImGuizmo::ROTATE_Z:
-                    ImGui::InputFloat("Angle", &settings.snap[0]);
-                    break;
-                case ImGuizmo::SCALE:
-                case ImGuizmo::SCALE_X:
-                case ImGuizmo::SCALE_Y:
-                case ImGuizmo::SCALE_Z:
-                    ImGui::InputFloat("Scale", &settings.snap[0]);
-                    break;
-                case ImGuizmo::BOUNDS: break;
-            }
-            ImGui::PopItemWidth();
-        }
-
-        ImGui::SameLine(0.f, 25.0f);
         ImGui::Text("Gizmo Axis [ ");
-        enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
         ImGui::SameLine();
-        if (button(enableGizmo && settings.currentAxisSelected != 1u, "X", "X Axis Only", true)) {
+        Util::PushButtonStyle(true, Util::Colours[0], Util::ColoursHovered[0], Util::Colours[0]);
+        if (button(enableGizmo && settings.currentAxisSelected != 1u, Util::FieldLabels[0], "X Axis Only", true)) {
             settings.currentAxisSelected = 1u;
 
             switch (settings.currentGizmoOperation) {
@@ -303,9 +251,10 @@ namespace Divide {
                     break;
             };
         }
-
+        Util::PopButtonStyle();
         ImGui::SameLine();
-        if (button(enableGizmo && settings.currentAxisSelected != 2u, "Y", "Y Axis Only", true)) {
+        Util::PushButtonStyle(true, Util::Colours[1], Util::ColoursHovered[1], Util::Colours[1]);
+        if (button(enableGizmo && settings.currentAxisSelected != 2u, Util::FieldLabels[1], "Y Axis Only", true)) {
             settings.currentAxisSelected = 2u;
 
             switch (settings.currentGizmoOperation) {
@@ -332,9 +281,10 @@ namespace Divide {
                     break;
             };
         }
-
+        Util::PopButtonStyle();
         ImGui::SameLine();
-        if (button(enableGizmo && settings.currentAxisSelected != 3u, "Z", "Z Axis Only", true)) {
+        Util::PushButtonStyle(true, Util::Colours[2], Util::ColoursHovered[2], Util::Colours[2]);
+        if (button(enableGizmo && settings.currentAxisSelected != 3u, Util::FieldLabels[2], "Z Axis Only", true)) {
             settings.currentAxisSelected = 3u;
 
             switch (settings.currentGizmoOperation) {
@@ -361,12 +311,14 @@ namespace Divide {
                     break;
             };
         }
+        Util::PopButtonStyle();
 
         ImGui::SameLine();
+        Util::PushBoldFont();
         if (button(enableGizmo && settings.currentAxisSelected != 0u, "All", "All Axis", true)) {
             settings.currentAxisSelected = 0u;
 
-              switch (settings.currentGizmoOperation) {
+            switch (settings.currentGizmoOperation) {
                 case ImGuizmo::TRANSLATE_X:
                 case ImGuizmo::TRANSLATE_Y:
                 case ImGuizmo::TRANSLATE_Z: 
@@ -387,16 +339,229 @@ namespace Divide {
                     break;
             };
         }
+        Util::PopBoldFont();
         AButtonWidth = ImGui::GetItemRectSize().x;
 
         ImGui::SameLine();
         ImGui::Text(" ]");
-        if (play) {
-            PopReadOnly();
+
+        ImGui::SameLine(0.f, 25.0f);
+        ImGui::Checkbox("Snap", &settings.useSnap);
+
+        if (settings.useSnap) {
+            ImGui::SameLine();
+            ImGui::Text("Step:");
+            ImGui::SameLine();
+            ImGui::PushItemWidth(150);
+            {
+                if (IsTranslationOperation(settings)) {
+                    switch (settings.currentGizmoOperation) {
+                        case ImGuizmo::TRANSLATE:
+                            for (size_t i = 0; i < 3; ++i) {
+                                Util::DrawVecComponent<F32, false>(ImGuiDataType_Float, 
+                                                                   Util::FieldLabels[i], 
+                                                                   settings.snapTranslation[i],
+                                                                   0.f,
+                                                                   0.001f,
+                                                                   1000.f,
+                                                                   0.f,
+                                                                   0.f,
+                                                                   false,
+                                                                   false,
+                                                                   Util::Colours[i],
+                                                                   Util::ColoursHovered[i],
+                                                                   Util::Colours[i]);
+                                ImGui::SameLine();
+                            }
+                            ImGui::Dummy(ImVec2(0, 0));
+                            break;
+                        case ImGuizmo::TRANSLATE_X:
+                            Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
+                                                               Util::FieldLabels[0],
+                                                               settings.snapTranslation[0],
+                                                               0.f,
+                                                               0.001f,
+                                                               1000.f,
+                                                               0.f,
+                                                               0.f,
+                                                               false,
+                                                               false,
+                                                               Util::Colours[0],
+                                                               Util::ColoursHovered[0],
+                                                               Util::Colours[0]);
+                            break;
+                        case ImGuizmo::TRANSLATE_Y:
+                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
+                                                               Util::FieldLabels[1],
+                                                               settings.snapTranslation[1],
+                                                               0.f,
+                                                               0.001f,
+                                                               1000.f,
+                                                               0.f,
+                                                               0.f,
+                                                               false,
+                                                               false,
+                                                               Util::Colours[1],
+                                                               Util::ColoursHovered[1],
+                                                               Util::Colours[1]);
+                            break;
+                        case ImGuizmo::TRANSLATE_Z:
+                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
+                                                               Util::FieldLabels[2],
+                                                               settings.snapTranslation[2],
+                                                               0.f,
+                                                               0.001f,
+                                                               1000.f,
+                                                               0.f,
+                                                               0.f,
+                                                               false,
+                                                               false,
+                                                               Util::Colours[2],
+                                                               Util::ColoursHovered[2],
+                                                               Util::Colours[2]);
+                            break;
+                    }
+                } else if (IsRotationOperation(settings)) {
+                    switch (settings.currentGizmoOperation) {
+                        case ImGuizmo::ROTATE:
+                            for (size_t i = 0; i < 3; ++i) {
+                                Util::DrawVecComponent<F32, false>(ImGuiDataType_Float, 
+                                                                   Util::FieldLabels[i], 
+                                                                   settings.snapTranslation[i],
+                                                                   0.f,
+                                                                   0.001f,
+                                                                   1000.f,
+                                                                   0.f,
+                                                                   0.f,
+                                                                   false,
+                                                                   false,
+                                                                   Util::Colours[i],
+                                                                   Util::ColoursHovered[i],
+                                                                   Util::Colours[i]);
+                                ImGui::SameLine();
+                            }
+                            ImGui::Dummy(ImVec2(0, 0));
+                            break;
+                        case ImGuizmo::ROTATE_X:
+                            Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
+                                                               Util::FieldLabels[0],
+                                                               settings.snapRotation[0],
+                                                               0.f,
+                                                               0.001f,
+                                                               180.f,
+                                                               0.f,
+                                                               0.f,
+                                                               false,
+                                                               false,
+                                                               Util::Colours[0],
+                                                               Util::ColoursHovered[0],
+                                                               Util::Colours[0]);
+                            break;
+                        case ImGuizmo::ROTATE_Y:
+                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
+                                                               Util::FieldLabels[1],
+                                                               settings.snapRotation[1],
+                                                               0.f,
+                                                               0.001f,
+                                                               180.f,
+                                                               0.f,
+                                                               0.f,
+                                                               false,
+                                                               false,
+                                                               Util::Colours[1],
+                                                               Util::ColoursHovered[1],
+                                                               Util::Colours[1]);
+                            break;
+                        case ImGuizmo::ROTATE_Z:
+                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
+                                                               Util::FieldLabels[2],
+                                                               settings.snapRotation[2],
+                                                               0.f,
+                                                               0.001f,
+                                                               180.f,
+                                                               0.f,
+                                                               0.f,
+                                                               false,
+                                                               false,
+                                                               Util::Colours[2],
+                                                               Util::ColoursHovered[2],
+                                                               Util::Colours[2]);
+                            break;
+                    }
+                } else if (IsScaleOperation(settings)) {
+                    switch (settings.currentGizmoOperation) {
+                        case ImGuizmo::SCALE:
+                            for (size_t i = 0; i < 3; ++i) {
+                                Util::DrawVecComponent<F32, false>(ImGuiDataType_Float, 
+                                                                   Util::FieldLabels[i], 
+                                                                   settings.snapScale[i],
+                                                                   0.f,
+                                                                   0.001f,
+                                                                   1000.f,
+                                                                   0.f,
+                                                                   0.f,
+                                                                   false,
+                                                                   false,
+                                                                   Util::Colours[i],
+                                                                   Util::ColoursHovered[i],
+                                                                   Util::Colours[i]);
+                                ImGui::SameLine();
+                            }
+                            ImGui::Dummy(ImVec2(0, 0));
+                            break;
+                        case ImGuizmo::SCALE_X:
+                            Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
+                                                               Util::FieldLabels[0],
+                                                               settings.snapScale[0],
+                                                               0.f,
+                                                               0.001f,
+                                                               1000.f,
+                                                               0.f,
+                                                               0.f,
+                                                               false,
+                                                               false,
+                                                               Util::Colours[0],
+                                                               Util::ColoursHovered[0],
+                                                               Util::Colours[0]);
+                            break;
+                        case ImGuizmo::SCALE_Y:
+                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
+                                                               Util::FieldLabels[1],
+                                                               settings.snapScale[1],
+                                                               0.f,
+                                                               0.001f,
+                                                               1000.f,
+                                                               0.f,
+                                                               0.f,
+                                                               false,
+                                                               false,
+                                                               Util::Colours[1],
+                                                               Util::ColoursHovered[1],
+                                                               Util::Colours[1]);
+                            break;
+                        case ImGuizmo::SCALE_Z:
+                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
+                                                               Util::FieldLabels[2],
+                                                               settings.snapScale[2],
+                                                               0.f,
+                                                               0.001f,
+                                                               1000.f,
+                                                               0.f,
+                                                               0.f,
+                                                               false,
+                                                               false,
+                                                               Util::Colours[2],
+                                                               Util::ColoursHovered[2],
+                                                               Util::Colours[2]);
+                            break;
+                    }
+                }
+            }ImGui::PopItemWidth();
         }
         _parent.setTransformSettings(settings);
-
-
+        if (play || !enableGizmo) {
+            PopReadOnly();
+        }
         ImGui::SameLine(window->ContentSize.x - 100.f);
 
         bool enableGrid = _parent.infiniteGridEnabled();

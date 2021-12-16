@@ -138,13 +138,27 @@ namespace Divide {
         const vec2<U16> size = mainWindow->getDrawableSize();
         ImGuizmo::SetRect(0.f, 0.f, to_F32(size.width), to_F32(size.height));
 
+        const auto getSnapValues = [](const TransformSettings& settings) -> const F32* {
+            if (settings.useSnap) {
+                if (IsTranslationOperation(settings)) {
+                    return &settings.snapTranslation[0];
+                } else if (IsRotationOperation(settings)) {
+                    return &settings.snapRotation[0];
+                } else if (IsScaleOperation(settings)) {
+                    return &settings.snapScale[0];
+                }
+            }
+
+            return nullptr;
+        };
+
         Manipulate(camera->viewMatrix(),
                    camera->projectionMatrix(),
                    _transformSettings.currentGizmoOperation,
                    _transformSettings.currentGizmoMode,
                    matrix,
                    nullptr,
-                   _transformSettings.useSnap ? &_transformSettings.snap[0] : nullptr);
+                   getSnapValues(_transformSettings));
 
         if (ImGuizmo::IsUsing()) {
             if (!_wasUsed) {
