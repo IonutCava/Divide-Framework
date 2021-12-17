@@ -13,11 +13,11 @@ CachedResource_ptr ImplResourceLoader<Sphere3D>::operator()() {
                                                                _cache,
                                                                _loadingDescriptorHash,
                                                                _descriptor.resourceName(),
-                                                               _descriptor.enumValue() == 0
-                                                                                        ? 1.0f
-                                                                                        : to_F32(_descriptor.enumValue()),
-                                                               _descriptor.ID() == 0 
-                                                                                 ? 32 
+                                                               _descriptor.enumValue() == 0u
+                                                                                        ? 1.f
+                                                                                        : Util::UINT_TO_FLOAT(_descriptor.enumValue()),
+                                                               _descriptor.ID() == 0u
+                                                                                 ? 16u 
                                                                                  : _descriptor.ID()),
                                     DeleteResource(_cache));
 

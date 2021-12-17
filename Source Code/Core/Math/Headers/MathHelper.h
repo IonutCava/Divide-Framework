@@ -559,6 +559,13 @@ void ToFloatColour(const UColour3& byteColour, FColour3& colourOut) noexcept;
 void ToFloatColour(const vec4<U32>& uintColour, FColour4& colourOut) noexcept;
 void ToFloatColour(const vec3<U32>& uintColour, FColour3& colourOut) noexcept;
 
+
+bool decomposeMatrix(const mat4<F32>& transform,
+                     vec3<F32>& translationOut,
+                     vec3<F32>& scaleOut,
+                     vec3<Angle::RADIANS<F32>>& rotationOut,
+                     bool& isUniformScaleOut);
+
 //ref: https://community.khronos.org/t/glsl-packing-a-normal-in-a-single-float/52039/3
 // Pack 3 values into 1 float
 [[nodiscard]] F32 PACK_VEC3(F32_SNORM x, F32_SNORM y, F32_SNORM z) noexcept;
@@ -572,6 +579,16 @@ void UNPACK_HALF2x16(U32 src, vec2<F32>& value);
 
 [[nodiscard]] U32 PACK_HALF2x16(F32 x, F32 y);
 void UNPACK_HALF2x16(U32 src, F32& x, F32& y);
+
+[[nodiscard]] U16 PACK_HALF1x16(F32 value);
+void UNPACK_HALF1x16(U16 src, F32& value);
+[[nodiscard]] F32 UNPACK_HALF1x16(U16 src);
+
+[[nodiscard]] F32 UINT_TO_FLOAT(U32 src);
+U32 FLOAT_TO_UINT(F32 src);
+
+[[nodiscard]] F32 INT_TO_FLOAT(I32 src);
+I32 FLOAT_TO_INT(F32 src);
 
 [[nodiscard]] U32 PACK_UNORM4x8(const vec4<F32_NORM>& value);
 [[nodiscard]] U32 PACK_UNORM4x8(const vec4<U8>& value);

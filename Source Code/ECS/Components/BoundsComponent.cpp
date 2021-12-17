@@ -59,6 +59,16 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
 
     _editorComponent.registerField(MOV(vbbField));
 
+    EditorComponentField vobbField = {};
+    vobbField._name = "Show OBB";
+    vobbField._dataGetter = [this](void* dataOut) { *static_cast<bool*>(dataOut) = _showOBB; };
+    vobbField._dataSetter = [this](const void* data) { showOBB(*static_cast<const bool*>(data)); };
+    vobbField._type = EditorComponentFieldType::SWITCH_TYPE;
+    vobbField._basicType = GFX::PushConstantType::BOOL;
+    vobbField._readOnly = false;
+
+    _editorComponent.registerField(MOV(vobbField));
+
     EditorComponentField vbsField = {};
     vbsField._name = "Show Bounding Sphere";
     vbsField._dataGetter = [this](void* dataOut) { *static_cast<bool*>(dataOut) = _showBS; };
@@ -85,6 +95,18 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
 void BoundsComponent::showAABB(const bool state) {
     if (_showAABB != state) {
         _showAABB = state;
+
+        _parentSGN->SendEvent(
+            {
+                ECS::CustomEvent::Type::DrawBoundsChanged,
+                this
+            });
+    }
+}
+
+void BoundsComponent::showOBB(const bool state) {
+    if (_showOBB != state) {
+        _showOBB = state;
 
         _parentSGN->SendEvent(
             {
@@ -174,8 +196,8 @@ const BoundingBox& BoundsComponent::updateAndGetBoundingBox() {
 
 const OBB& BoundsComponent::getOBB() {
     if (_obbDirty.exchange(false)) {
-        const mat4<F32> mat = _parentSGN->get<TransformComponent>()->getWorldMatrix();
-        _obb.fromBoundingBox(_refBoundingBox, mat);
+        const TransformComponent* transform = _parentSGN->get<TransformComponent>();
+        _obb.fromBoundingBox(_refBoundingBox, transform->getPosition(), transform->getOrientation(), transform->getScale());
     }
 
     return _obb;

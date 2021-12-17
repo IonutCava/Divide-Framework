@@ -177,13 +177,14 @@ namespace Divide {
                 g_undoEntry._oldVal = { g_transformCache, g_selectedNodesCache };
             }
 
-            //ToDo: This seems slow as hell, but it works. Should I bother? -Ionut
-            vec3<F32> euler;
-            ImGuizmo::DecomposeMatrixToComponents(matrix, _workValues._translation._v, euler._v, _workValues._scale._v);
-            matrix.orthoNormalize();
-            _workValues._orientation.fromMatrix(mat3<F32>(matrix));
+            vec3<F32> position, euler, scale;
+            bool isUniformScale = false;
+            if (Util::decomposeMatrix(matrix, position, scale, euler, isUniformScale)) {
 
-            _workValues._translation = _workValues._translation - startPos;
+                _workValues._translation = position - startPos;
+                _workValues._scale = scale;
+                _workValues._orientation.fromEuler(Angle::to_DEGREES(euler));
+            }
             for (const auto& node : _selectedNodes) {
                 const TransformComponent* tComp = node->get<TransformComponent>();
                 if (tComp != nullptr) {
@@ -202,7 +203,7 @@ namespace Divide {
                         gotScale = true;
                     }
                     tComp->scale(_workValues._scale);
-                    tComp->rotate(_workValues._orientation);
+                    tComp->rotate(_workValues._orientation.getConjugate());
                     tComp->translate(_workValues._translation);
                     g_transformCache[selectionCounter] = tComp->getValues();
                     if (++selectionCounter == g_maxSelectedNodes) {

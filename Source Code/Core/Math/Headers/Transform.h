@@ -80,7 +80,7 @@ class Transform final : public ITransform, public GUIDWrapper, NonCopyable {
     void getPosition(vec3<F32>& posOut) const noexcept override;
     void getOrientation(Quaternion<F32>& quatOut) const noexcept override;
 
-    [[nodiscard]] bool isUniformScale() const noexcept;
+    [[nodiscard]] bool isUniformScale(const F32 tolerance = EPSILON_F32) const noexcept;
 
     void getMatrix(mat4<F32>& matrix) noexcept override;
 

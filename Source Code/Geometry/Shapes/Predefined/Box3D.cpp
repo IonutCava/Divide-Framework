@@ -42,7 +42,7 @@ Box3D::Box3D(GFXDevice& context, ResourceCache* parentCache, const size_t descri
     }
 
     vb->create(false);
-    setBounds(BoundingBox(-_halfExtent * 0.5f, _halfExtent * 0.5f));
+    setBounds(BoundingBox(-_halfExtent, _halfExtent));
 }
 
 void Box3D::setHalfExtent(const vec3<F32>& halfExtent) {

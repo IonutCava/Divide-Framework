@@ -2,8 +2,70 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/packing.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/matrix_decompose.hpp>
 
 namespace Divide::Util {
+
+bool decomposeMatrix(const mat4<F32>& transform,
+                     vec3<F32>& translationOut,
+                     vec3<F32>& scaleOut,
+                     vec3<Angle::RADIANS<F32>>& rotationOut,
+                     bool& isUniformScaleOut)
+{
+    using T = F32;
+
+    glm::mat4 LocalMatrix = glm::make_mat4(transform.mat);
+
+    // Normalize the matrix.
+    if (glm::epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), glm::epsilon<T>()))
+        return false;
+
+    // First, isolate perspective.  This is the messiest.
+    if (glm::epsilonNotEqual(LocalMatrix[0][3], static_cast<T>(0), glm::epsilon<T>()) ||
+        glm::epsilonNotEqual(LocalMatrix[1][3], static_cast<T>(0), glm::epsilon<T>()) ||
+        glm::epsilonNotEqual(LocalMatrix[2][3], static_cast<T>(0), glm::epsilon<T>()))
+    {
+        LocalMatrix[0][3] = LocalMatrix[1][3] = LocalMatrix[2][3] = static_cast<T>(0);
+        LocalMatrix[3][3] = static_cast<T>(1);
+    }
+
+    // Next take care of translation (easy).
+    glm::vec3 translation(LocalMatrix[3]);
+    translationOut.set(translation.x, translation.y, translation.z);
+    LocalMatrix[3] = glm::vec4(0, 0, 0, LocalMatrix[3].w);
+
+    glm::vec3 Row[3];
+
+    // Now get scale and shear.
+    for (glm::length_t i = 0; i < 3; ++i)
+        for (glm::length_t j = 0; j < 3; ++j)
+            Row[i][j] = LocalMatrix[i][j];
+
+    // Compute X scale factor and normalize first row.
+    scaleOut.x = length(Row[0]);// v3Length(Row[0]);
+    Row[0] = glm::detail::scale(Row[0], static_cast<T>(1));
+    // Now, compute Y scale and normalize 2nd row.
+    scaleOut.y = length(Row[1]);
+    Row[1] = glm::detail::scale(Row[1], static_cast<T>(1));
+    scaleOut.z = length(Row[2]);
+    Row[2] = glm::detail::scale(Row[2], static_cast<T>(1));
+
+      
+    rotationOut.y = asin(-Row[0][2]);
+    if (cos(rotationOut.y) != 0) {
+        rotationOut.x = atan2(Row[1][2], Row[2][2]);
+        rotationOut.z = atan2(Row[0][1], Row[0][0]);
+    } else {
+        rotationOut.x = atan2(-Row[2][0], Row[1][1]);
+        rotationOut.z = 0;
+    }
+
+    isUniformScaleOut = scaleOut.isUniform();
+    return true;
+}
 
 bool IntersectCircles(const Circle& cA, const Circle& cB, vec2<F32>* pointsOut) noexcept {
     assert(pointsOut != nullptr);
@@ -232,11 +294,41 @@ vec2<F32> UNPACK_HALF2x16(const U32 src) {
     return ret;
 }
 
+U16 PACK_HALF1x16(const F32 value) {
+    return to_U16(glm::packHalf1x16(value));
+}
+
+void UNPACK_HALF1x16(const U16 src, F32& value) {
+    value = glm::unpackHalf1x16(src);
+}
+
+F32 UNPACK_HALF1x16(const U16 src) {
+    F32 ret = 0.f;
+    UNPACK_HALF1x16(src, ret);
+    return ret;
+}
+
+F32 UINT_TO_FLOAT(const U32 src) {
+    return glm::uintBitsToFloat(src);
+}
+
+U32 FLOAT_TO_UINT(const F32 src) {
+    return glm::floatBitsToUint(src);
+}
+
+F32 UINT_TO_FLOAT(const I32 src) {
+    return glm::intBitsToFloat(src);
+}
+
+I32 FLOAT_TO_INT(const F32 src) {
+    return glm::floatBitsToInt(src);
+}
 U32 PACK_HALF2x16(const F32 x, const F32 y) {
     return to_U32(glm::packHalf2x16(glm::mediump_vec2(x, y)));
 }
 
 void UNPACK_HALF2x16(const U32 src, F32& x, F32& y) {
+
     const glm::vec2 ret = glm::unpackHalf2x16(src);
     x = ret.x;
     y = ret.y;

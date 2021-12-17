@@ -652,7 +652,7 @@ void Scene::toggleFlashlight(const PlayerIndex idx) {
 
         _cameraUpdateListeners[idx] = playerCamera(idx)->addUpdateListener([this, idx](const Camera& cam) {
             if (idx < _scenePlayers.size() && idx < _flashLight.size() && _flashLight[idx]) {
-                if (cam.getGUID() == _scenePlayers[getSceneIndexForPlayer(idx)]->camera()->getGUID()) {
+                if (cam.getGUID() == playerCamera(idx)->getGUID()) {
                     TransformComponent* tComp = _flashLight[idx]->get<TransformComponent>();
                     tComp->setPosition(cam.getEye());
                     tComp->setRotationEuler(cam.getEuler());
@@ -1528,15 +1528,15 @@ bool Scene::checkCameraUnderwater(const Camera& camera) const noexcept {
 
 void Scene::findHoverTarget(PlayerIndex idx, const vec2<I32>& aimPos) {
     constexpr std::array<SceneNodeType, 6> s_ignoredNodes = {
-     SceneNodeType::TYPE_TRANSFORM,
-     SceneNodeType::TYPE_WATER,
-     SceneNodeType::TYPE_SKY,
-     SceneNodeType::TYPE_PARTICLE_EMITTER,
-     SceneNodeType::TYPE_INFINITEPLANE,
-     SceneNodeType::TYPE_VEGETATION
+        SceneNodeType::TYPE_TRANSFORM,
+        SceneNodeType::TYPE_WATER,
+        SceneNodeType::TYPE_SKY,
+        SceneNodeType::TYPE_PARTICLE_EMITTER,
+        SceneNodeType::TYPE_INFINITEPLANE,
+        SceneNodeType::TYPE_VEGETATION
     };
 
-    const Camera* crtCamera = getPlayerForIndex(idx)->camera();
+    const Camera* crtCamera = playerCamera(idx);
 
     const vec2<F32>& zPlanes = crtCamera->getZPlanes();
     const Rect<I32>& viewport = _context.gfx().getCurrentViewport();
@@ -1805,7 +1805,7 @@ void Scene::updateSelectionData(PlayerIndex idx, DragSelectData& data, bool rema
     if (_context.gfx().frameCount() % 2 == 0) {
         clearHoverTarget(idx);
         if (_parent.resetSelection(idx, false)) {
-            const Camera* crtCamera = getPlayerForIndex(idx)->camera();
+            const Camera* crtCamera = playerCamera(idx);
             vector<SceneGraphNode*> nodes = Attorney::SceneManagerScene::getNodesInScreenRect(_parent, selectionRect, *crtCamera, data._targetViewport);
             _parent.setSelected(idx, nodes, false);
         }

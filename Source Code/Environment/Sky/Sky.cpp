@@ -576,7 +576,7 @@ bool Sky::load() {
     ResourceDescriptor skybox("SkyBox");
     skybox.flag(true);  // no default material;
     skybox.ID(4); // resolution
-    skybox.enumValue(to_U32(radius)); // radius
+    skybox.enumValue(Util::FLOAT_TO_UINT(radius)); // radius
     _sky = CreateResource<Sphere3D>(_parentCache, skybox);
     _sky->renderState().drawState(false);
 

@@ -291,6 +291,8 @@ class mat3 {
     template<typename U>
     explicit mat3(const mat4<U> &B) noexcept;
     template<typename U>
+    explicit mat3(const vec3<U>& scale) noexcept; 
+    template<typename U>
     explicit mat3(const vec3<U>& rotStart, const vec3<U>& rotEnd) noexcept;
 
     template<typename U>
@@ -389,7 +391,7 @@ class mat3 {
     void zero() noexcept;
     void identity() noexcept;
     [[nodiscard]] bool isIdentity() const noexcept;
-    [[nodiscard]] bool isUniformScale() const noexcept;
+    [[nodiscard]] bool isUniformScale(F32 tolerance = 0.0001f) const noexcept;
     [[nodiscard]] bool isColOrthogonal() const noexcept;
     void swap(mat3 &B) noexcept;
 
@@ -586,7 +588,7 @@ class mat4 {
     void zero() noexcept;
     void identity() noexcept;
     [[nodiscard]] bool isIdentity() const noexcept;
-    [[nodiscard]] bool isUniformScale() const noexcept;
+    [[nodiscard]] bool isUniformScale(F32 tolerance = 0.0001f) const noexcept;
     [[nodiscard]] bool isColOrthogonal() const noexcept;
     void swap(mat4 &B) noexcept;
 

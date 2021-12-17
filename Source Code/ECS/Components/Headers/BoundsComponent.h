@@ -53,9 +53,11 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         [[nodiscard]] FORCE_INLINE const bool isClean() const noexcept { return _transformUpdatedMask.load() == 0u; }
 
         PROPERTY_R(bool, showAABB, false);
+        PROPERTY_R(bool, showOBB, false);
         PROPERTY_R(bool, showBS, false);
 
         void showAABB(bool state);
+        void showOBB(bool state);
         void showBS(bool state);
 
     protected:

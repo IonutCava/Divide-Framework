@@ -460,7 +460,7 @@ namespace Divide {
                                     {
                                         F32 shadowVariance = activeSceneState->minShadowVariance();
                                         EditorComponentField tempField = {};
-                                        tempField._name = "Min shadow variance";
+                                        tempField._name = "Minimum variance";
                                         tempField._basicType = GFX::PushConstantType::FLOAT;
                                         tempField._type = EditorComponentFieldType::PUSH_TYPE;
                                         tempField._readOnly = false;

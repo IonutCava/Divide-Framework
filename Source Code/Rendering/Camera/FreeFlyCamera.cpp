@@ -27,8 +27,7 @@ void FreeFlyCamera::fromCamera(const Camera& camera, bool flag) {
 }
 
 void FreeFlyCamera::update(const F32 deltaTimeMS) noexcept {
-    _speed = _speedFactor;
-    _speed *= Time::MillisecondsToSeconds(deltaTimeMS);
+    _speed = _speedFactor * Time::MillisecondsToSeconds(deltaTimeMS);
 }
 
 void FreeFlyCamera::setGlobalRotation(const F32 yaw, const F32 pitch, const F32 roll) noexcept {

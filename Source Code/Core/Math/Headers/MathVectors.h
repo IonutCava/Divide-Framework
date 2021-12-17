@@ -426,7 +426,7 @@ class vec3 {
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     [[nodiscard]] bool compare(const vec3<U> &v, U epsi) const noexcept;
     /// uniform vector: x = y = z
-    [[nodiscard]] bool isUniform() const noexcept;
+    [[nodiscard]] bool isUniform(F32 tolerance = 0.0001f) const noexcept;
     /// The current vector is perpendicular to the specified one within epsilon
     template<typename U, std::enable_if_t<std::is_pod_v<U>, bool> = true>
     [[nodiscard]] bool isPerpendicular(const vec3<U>& other, F32 epsilon = EPSILON_F32) const noexcept;

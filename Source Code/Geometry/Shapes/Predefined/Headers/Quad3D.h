@@ -51,7 +51,8 @@ class Quad3D final : public Object3D {
                     ResourceCache* parentCache,
                     size_t descriptorHash,
                     const Str256& name,
-                    bool doubleSided);
+                    bool doubleSided,
+                    const vec3<F32>& sideLength);
 
     vec3<F32> getCorner(CornerLocation corner) const;
 

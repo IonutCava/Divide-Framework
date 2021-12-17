@@ -34,6 +34,7 @@
 
 namespace Divide {
 namespace {
+    I64 DefaultObjectIndex = 0u;
     SceneGraphNodeDescriptor g_nodeDescriptor;
     SceneNodeType g_currentNodeType = SceneNodeType::TYPE_OBJECT3D;
 
@@ -262,21 +263,28 @@ void MenuBar::draw() {
                 to_U32(ComponentType::NAVIGATION);
             g_nodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
 
+            if (g_nodeDescriptor._name.empty()) {
+                g_nodeDescriptor._name = Util::StringFormat("Primitive_%d", DefaultObjectIndex++);
+            }
             ResourceCache* parentCache = _context.kernel().resourceCache();
             ResourceDescriptor nodeDescriptor(g_nodeDescriptor._name + "_n");
             switch (_newPrimitiveType) {
                 case ObjectType::SPHERE_3D:
                 {
-                    Sphere3D_ptr node = CreateResource<Sphere3D>(parentCache, nodeDescriptor);
-                    node->setResolution(resolution);
-                    node->setRadius(sphereRadius);
-                    g_nodeDescriptor._node = node;
+                    nodeDescriptor.ID(resolution);
+                    nodeDescriptor.enumValue(Util::FLOAT_TO_UINT(sphereRadius));
+                    g_nodeDescriptor._node = CreateResource<Sphere3D>(parentCache, nodeDescriptor);
                 } break;
                 case ObjectType::BOX_3D:
                 {
-                    Box3D_ptr node = CreateResource<Box3D>(parentCache, nodeDescriptor);
-                    node->setHalfExtent(sides * 0.5f);
-                    g_nodeDescriptor._node = node;
+                    nodeDescriptor.data(
+                        {
+                            Util::PACK_HALF1x16(sides.x),
+                            Util::PACK_HALF1x16(sides.y),
+                            Util::PACK_HALF1x16(sides.z)
+                        }
+                    );
+                    g_nodeDescriptor._node = CreateResource<Box3D>(parentCache, nodeDescriptor);
                 } break;
                 case ObjectType::QUAD_3D:
                 {

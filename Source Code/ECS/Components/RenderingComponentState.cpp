@@ -36,18 +36,19 @@ bool RenderingComponent::renderOptionsEnabled(const U32 mask) const noexcept {
     return BitCompare(_renderMask, mask);
 }
 
-void RenderingComponent::toggleBoundsDraw(bool showAABB, bool showBS, bool recursive) {
+void RenderingComponent::toggleBoundsDraw(const bool showAABB, const bool showBS, const bool showOBB, bool recursive) {
     if (recursive) {
-        _parentSGN->forEachChild([showAABB, showBS, recursive](const SceneGraphNode* child, I32 /*childIdx*/) {
+        _parentSGN->forEachChild([showAABB, showBS, showOBB, recursive](const SceneGraphNode* child, I32 /*childIdx*/) {
             RenderingComponent* const renderable = child->get<RenderingComponent>();
             if (renderable) {
-                renderable->toggleBoundsDraw(showAABB, showBS, recursive);
+                renderable->toggleBoundsDraw(showAABB, showBS, showOBB, recursive);
             }
             return true;
         });
     }
     _drawAABB = showAABB;
     _drawBS = showBS;
+    _drawOBB = showOBB;
 }
 
 void RenderingComponent::onRenderOptionChanged(const RenderOptions option, const bool state) {

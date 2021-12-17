@@ -100,13 +100,9 @@ bool InfinitePlane::load() {
     ResourceDescriptor infinitePlane("infinitePlane");
     infinitePlane.flag(true);  // No default material
     infinitePlane.threaded(false);
+    infinitePlane.data().set(Util::PACK_HALF1x16(_dimensions.x * 1.5f) * 2u, 0u, Util::PACK_HALF1x16(_dimensions.y * 1.5f) * 2u);
 
     _plane = CreateResource<Quad3D>(_parentCache, infinitePlane);
-    
-    _plane->setCorner(Quad3D::CornerLocation::TOP_LEFT, vec3<F32>(-_dimensions.x * 1.5f, 0.0f, -_dimensions.y * 1.5f));
-    _plane->setCorner(Quad3D::CornerLocation::TOP_RIGHT, vec3<F32>(_dimensions.x * 1.5f, 0.0f, -_dimensions.y * 1.5f));
-    _plane->setCorner(Quad3D::CornerLocation::BOTTOM_LEFT, vec3<F32>(-_dimensions.x * 1.5f, 0.0f, _dimensions.y * 1.5f));
-    _plane->setCorner(Quad3D::CornerLocation::BOTTOM_RIGHT, vec3<F32>(_dimensions.x * 1.5f, 0.0f, _dimensions.y * 1.5f));
     _boundingBox.set(vec3<F32>(-_dimensions.x * 1.5f, -0.5f, -_dimensions.y * 1.5f),
                      vec3<F32>( _dimensions.x * 1.5f,  0.5f,  _dimensions.y * 1.5f));
 

@@ -67,7 +67,18 @@ namespace Divide {
         {
             Attorney::EditorSceneViewWindow::editorStepQueue(_parent, Config::TARGET_FRAME_RATE + 1);
         }
+        /*ImGui::SameLine();
+        vec3<F32> cameraSpeed = Attorney::EditorSceneViewWindow::getEditorCameraSpeed(_parent);
 
+        Util::PushNarrowLabelWidth();
+        constexpr char* CameraSpeedLabels[] = {
+            "M", "R", "Z"
+        };
+        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Camera speed", CameraSpeedLabels, cameraSpeed._v, false, false, 0.001f).wasChanged) {
+            Attorney::EditorSceneViewWindow::setEditorCameraSpeed(_parent, cameraSpeed);
+        }
+        Util::PopNarrowLabelWidth();
+        */
         bool enableGizmo = Attorney::EditorSceneViewWindow::editorEnabledGizmo(_parent);
         TransformSettings settings = _parent.getTransformSettings();
 
@@ -82,7 +93,7 @@ namespace Divide {
         static F32 AButtonWidth = 10.0f;
 
         ImGuiWindow* window = ImGui::GetCurrentWindow();
-        ImGui::SameLine(window->ContentSize.x / 2);
+        ImGui::SameLine(window->ContentSize.x * 0.5f);
         if (play) {
             PushReadOnly();
         }

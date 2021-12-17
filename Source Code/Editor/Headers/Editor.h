@@ -261,6 +261,8 @@ class Editor final : public PlatformContextComponent,
     inline void toggleMemoryEditor(bool state) noexcept;
 
     void copyPlayerCamToEditorCam() noexcept;
+    void setEditorCameraSpeed(const vec3<F32>& speed) noexcept;
+    [[nodiscard]] vec3<F32> getEditorCameraSpeed() const noexcept;
 
     [[nodiscard]] bool addComponent(SceneGraphNode* selection, ComponentType newComponentType) const;
     [[nodiscard]] bool addComponent(const Selections& selections, ComponentType newComponentType) const;
@@ -328,6 +330,14 @@ namespace Attorney {
 
         static void copyPlayerCamToEditorCam(Editor& editor) noexcept {
             editor.copyPlayerCamToEditorCam();
+        }
+
+        static vec3<F32> getEditorCameraSpeed(const Editor& editor) noexcept {
+            return editor.getEditorCameraSpeed();
+        }
+
+        static void setEditorCameraSpeed(Editor& editor, const vec3<F32>& speed) noexcept {
+            editor.setEditorCameraSpeed(speed);
         }
 
         static void editorStepQueue(Editor& editor, const U32 steps) noexcept {

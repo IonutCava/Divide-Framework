@@ -178,7 +178,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
   protected:
     [[nodiscard]] U8 getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
-    void toggleBoundsDraw(bool showAABB, bool showBS, bool recursive);
+    void toggleBoundsDraw(bool showAABB, bool showBS, bool showOBB, bool recursive);
 
     void retrieveDrawCommands(const RenderStagePass& stagePass, U32 cmdOffset, DrawCommandContainer& cmdsInOut);
     [[nodiscard]] bool hasDrawCommands(const RenderStagePass& stagePass);

@@ -849,6 +849,13 @@ mat3<T>::mat3(const vec3<U>& rotStart, const vec3<U>& rotEnd) noexcept
 
 template<typename T>
 template<typename U>
+mat3<T>::mat3(const vec3<U>& scale) noexcept 
+{
+    setScale(scale);
+}
+
+template<typename T>
+template<typename U>
 vec2<U> mat3<T>::operator*(const vec2<U> &v) const noexcept {
     return *this * vec3<U>(v);
 }
@@ -1200,15 +1207,15 @@ bool mat3<T>::isIdentity() const noexcept {
 }
 
 template<typename T>
-FORCE_INLINE bool mat3<T>::isUniformScale() const noexcept {
-    return isColOrthogonal() && getScaleSq().isUniform();
+FORCE_INLINE bool mat3<T>::isUniformScale(const F32 tolerance) const noexcept {
+    return isColOrthogonal() && getScaleSq().isUniform(tolerance);
 }
 
 template<typename T>
 FORCE_INLINE bool mat3<T>::isColOrthogonal() const noexcept {
-    const vec3<F32> col0 = getCol(0).xyz();
-    const vec3<F32> col1 = getCol(1).xyz();
-    const vec3<F32> col2 = getCol(2).xyz();
+    const vec3<F32> col0 = getCol(0);
+    const vec3<F32> col1 = getCol(1);
+    const vec3<F32> col2 = getCol(2);
 
     return AreOrthogonal(col0, col1) &&
            AreOrthogonal(col0, col2) &&
@@ -1408,19 +1415,25 @@ void mat3<T>::setScale(const vec3<U> &v) noexcept {
 
 template<typename T>
 vec3<T> mat3<T>::getScale() const noexcept {
+    const vec3<F32>& right = _vec[0];
+    const vec3<F32>& up = _vec[1];
+    const vec3<F32>& dir = _vec[2];
     return {
-        getCol(0).xyz().length(),
-        getCol(1).xyz().length(),
-        getCol(2).xyz().length()
+       right.length(),
+       up.length(),
+       dir.length()
     };
 }
 
 template<typename T>
 vec3<T> mat3<T>::getScaleSq() const noexcept {
+    const vec3<F32>& right = _vec[0];
+    const vec3<F32>& up = _vec[1];
+    const vec3<F32>& dir = _vec[2];
     return {
-        getCol(0).xyz().lengthSquared(),
-        getCol(1).xyz().lengthSquared(),
-        getCol(2).xyz().lengthSquared()
+       right.lengthSquared(),
+       up.lengthSquared(),
+       dir.lengthSquared()
     };
 }
 
@@ -1978,19 +1991,19 @@ FORCE_INLINE bool mat4<T>::isIdentity() const noexcept {
 }
 
 template<typename T>
-FORCE_INLINE bool mat4<T>::isUniformScale() const noexcept {
-    return isColOrthogonal() && getScaleSq().isUniform();
+FORCE_INLINE bool mat4<T>::isUniformScale(const F32 tolerance) const noexcept {
+    return isColOrthogonal() && getScaleSq().isUniform(tolerance);
 }
 
 template<typename T>
 bool mat4<T>::isColOrthogonal() const noexcept {
-    const vec3<F32> col0 = getCol(0).xyz();
-    const vec3<F32> col1 = getCol(1).xyz();
-    const vec3<F32> col2 = getCol(2).xyz();
+    const vec3<F32> col0 = getCol(0).xyz;
+    const vec3<F32> col1 = getCol(1).xyz;
+    const vec3<F32> col2 = getCol(2).xyz;
 
     return AreOrthogonal(col0, col1) &&
-        AreOrthogonal(col0, col2) &&
-        AreOrthogonal(col1, col2);
+           AreOrthogonal(col0, col2) &&
+           AreOrthogonal(col1, col2);
 }
 
 template<typename T>
@@ -2251,19 +2264,27 @@ FORCE_INLINE void mat4<T>::setScale(const vec3<U> &v) noexcept {
 
 template<typename T>
 FORCE_INLINE vec3<T> mat4<T>::getScale() const noexcept {
+    const vec4<F32>& right = _vec[0];
+    const vec4<F32>& up = _vec[1];
+    const vec4<F32>& dir = _vec[2];
+    //const vec4<F32>& position = _vec[3];
     return {
-        getCol(0).xyz().length(),
-        getCol(1).xyz().length(),
-        getCol(2).xyz().length()
+       right.length(),
+       up.length(),
+       dir.length()
     };
 }
 
 template<typename T>
 FORCE_INLINE vec3<T> mat4<T>::getScaleSq() const noexcept {
+    const vec4<F32>& right = _vec[0];
+    const vec4<F32>& up = _vec[1];
+    const vec4<F32>& dir = _vec[2];
+    //const vec4<F32>& position = _vec[3];
     return {
-        getCol(0).xyz().lengthSquared(),
-        getCol(1).xyz().lengthSquared(),
-        getCol(2).xyz().lengthSquared()
+       right.lengthSquared(),
+       up.lengthSquared(),
+       dir.lengthSquared()
     };
 }
 

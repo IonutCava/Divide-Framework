@@ -236,8 +236,8 @@ inline void Transform::getOrientation(Quaternion<F32>& quatOut) const noexcept {
     quatOut.set(_transformValues._orientation);
 }
 
-inline bool Transform::isUniformScale() const noexcept {
-    return _transformValues._scale.isUniform();
+inline bool Transform::isUniformScale(const F32 tolerance) const noexcept {
+    return _transformValues._scale.isUniform(tolerance);
 }
 
 inline void Transform::clone(const Transform* const transform) noexcept {

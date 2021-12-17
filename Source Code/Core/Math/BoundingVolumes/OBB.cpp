@@ -44,30 +44,55 @@ namespace Divide {
         _axis = { WORLD_X_AXIS, WORLD_Y_AXIS, WORLD_Z_AXIS };
     }
 
-    void OBB::fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix) noexcept {
-        //assert(worldMatrix.isColOrthogonal()); // We cannot convert transform an AABB to OBB if it gets sheared in the process.
-        //assert(worldMatrix.isUniformScale());
-        _position = worldMatrix * aabb.getCenter();
-        _halfExtents = aabb.getHalfExtent();
-        _axis[0] = worldMatrix.getRow(0).xyz;
-        _axis[1] = worldMatrix.getRow(1).xyz;
-        _axis[2] = worldMatrix.getRow(2).xyz;
-        // If the matrix m contains scaling, propagate the scaling from the axis vectors to the half-length vectors,
-        // since we want to keep the axis vectors always normalized in our representation.
-        F32 matrixScale = _axis[0].length();
-        _halfExtents *= matrixScale;
-        matrixScale = 1.f / matrixScale;
-        _axis[0] *= matrixScale;
-        _axis[1] *= matrixScale;
-        _axis[2] *= matrixScale;
+    void OBB::fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix) {
+        fromBoundingBox(aabb);
+        transform(worldMatrix);
+    }
 
-        OrthoNormalize(_axis[0], _axis[1], _axis[2]);
+    void OBB::fromBoundingBox(const BoundingBox& aabb, const Quaternion<F32>& orientation) {
+        fromBoundingBox(aabb, mat4<F32>(GetMatrix(orientation), false));
+    }
+
+    void OBB::fromBoundingBox(const BoundingBox& aabb, const vec3<F32>& position, const Quaternion<F32>& rotation, const vec3<F32>& scale) {
+        fromBoundingBox(aabb, mat4<F32>(VECTOR3_ZERO, scale, GetMatrix(rotation)));
+        translate(position);
     }
 
     void OBB::fromBoundingSphere(const BoundingSphere& sphere)  noexcept {
         _position.set(sphere.getCenter());
         _halfExtents.set(sphere.getRadius());
         _axis = { WORLD_X_AXIS, WORLD_Y_AXIS, WORLD_Z_AXIS };
+    }
+
+    void OBB::translate(const vec3<F32>& offset) {
+        _position += offset;
+    }
+
+    void OBB::scale(const vec3<F32>& centerPoint, const F32 scaleFactor) {
+        scale(centerPoint, vec3<F32>(scaleFactor));
+    }
+
+    void OBB::scale(const vec3<F32>& centerPoint, const vec3<F32>& scaleFactor) {
+        transform(mat4<F32>(centerPoint, scaleFactor, mat3<F32>()));
+    }
+
+    void OBB::transform(const mat3<F32>& transformIn) {
+        assert(transformIn.isColOrthogonal());
+        transform(mat4<F32>(transformIn, false));
+    }
+
+    void OBB::transform(const mat4<F32>& transform) {
+        assert(transform.isColOrthogonal());
+        _position = transform.transform(_position, true);
+        for (U8 i = 0u; i < 3u; ++i) {
+            _axis[i] = transform.transform((_halfExtents[i] * _axis[i]), false);
+            _halfExtents[i] = _axis[i].length();
+            _axis[i].normalize();
+        }
+    }
+
+    void OBB::transform(const Quaternion<F32>& rotation) {
+        transform(GetMatrix(rotation));
     }
 
     BoundingBox OBB::toBoundingBox() const noexcept {

@@ -1037,6 +1037,20 @@ void Editor::copyPlayerCamToEditorCam() noexcept {
     _editorCamera->fromCamera(*Attorney::SceneManagerEditor::playerCamera(_context.kernel().sceneManager(), 0, true));
 }
 
+void Editor::setEditorCameraSpeed(const vec3<F32>& speed) noexcept {
+    _editorCamera->setMoveSpeedFactor(speed.move);
+    _editorCamera->setTurnSpeedFactor(speed.turn);
+    _editorCamera->setZoomSpeedFactor(speed.zoom);
+}
+
+vec3<F32> Editor::getEditorCameraSpeed() const noexcept {
+    return {
+        _editorCamera->getMoveSpeedFactor(),
+        _editorCamera->getTurnSpeedFactor(),
+        _editorCamera->getZoomSpeedFactor()
+    };
+}
+
 bool Editor::Undo() const {
     if (_undoManager->Undo()) {
         showStatusMessage(Util::StringFormat("Undo: %s", _undoManager->lasActionName().c_str()), Time::SecondsToMilliseconds<F32>(2.0f), false);

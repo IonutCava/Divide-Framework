@@ -56,9 +56,20 @@ public:
     explicit OBB(const BoundingBox &aabb)  noexcept;
     explicit OBB(const BoundingSphere &bSphere)  noexcept;
 
-    void fromBoundingBox(const BoundingBox& aabb)  noexcept;
-    void fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix) noexcept;
+    void fromBoundingBox(const BoundingBox& aabb) noexcept;
+    void fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix);
+    void fromBoundingBox(const BoundingBox& aabb, const Quaternion<F32>& orientation);
+    void fromBoundingBox(const BoundingBox& aabb, const vec3<F32>& position, const Quaternion<F32>& rotation, const vec3<F32>& scale);
     void fromBoundingSphere(const BoundingSphere &sphere)  noexcept;
+
+    void translate(const vec3<F32>& offset);
+    /// Uniform scaling
+    void scale(const vec3<F32>& centerPoint, F32 scaleFactor);
+    /// Non-uniform scaling
+    void scale(const vec3<F32>& centerPoint, const vec3<F32>& scaleFactor);
+    void transform(const mat3<F32>& transform);
+    void transform(const mat4<F32>& transform);
+    void transform(const Quaternion<F32>& rotation);
 
     [[nodiscard]] BoundingBox toBoundingBox() const noexcept;
 

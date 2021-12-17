@@ -8,7 +8,8 @@ Quad3D::Quad3D(GFXDevice& context,
                ResourceCache* parentCache,
                const size_t descriptorHash,
                const Str256& name,
-               const bool doubleSided)
+               const bool doubleSided,
+               const vec3<F32>& sideLength)
     : Object3D(context,
                 parentCache,
                 descriptorHash,
@@ -20,12 +21,16 @@ Quad3D::Quad3D(GFXDevice& context,
 {
     const U16 indices[] = { 2, 0, 1, 1, 2, 3, 1, 0, 2, 2, 1, 3 };
 
+    const F32 halfExtentX = sideLength.x * 0.5f;
+    const F32 halfExtentY = sideLength.y * 0.5f;
+    const F32 halfExtentZ = sideLength.z * 0.5f;
+    
     getGeometryVB()->setVertexCount(4);
     getGeometryVB()->keepData(true);
-    getGeometryVB()->modifyPositionValue(0, -1.0f, 1.0f, 0.0f); // TOP LEFT
-    getGeometryVB()->modifyPositionValue(1, 1.0f, 1.0f, 0.0f); // TOP RIGHT
-    getGeometryVB()->modifyPositionValue(2, -1.0f, -1.0f, 0.0f); // BOTTOM LEFT
-    getGeometryVB()->modifyPositionValue(3, 1.0f, -1.0f, 0.0f); // BOTTOM RIGHT
+    getGeometryVB()->modifyPositionValue(0, -halfExtentX,  halfExtentY, -halfExtentZ); // TOP LEFT
+    getGeometryVB()->modifyPositionValue(1,  halfExtentX,  halfExtentY, -halfExtentZ); // TOP RIGHT
+    getGeometryVB()->modifyPositionValue(2, -halfExtentX, -halfExtentY,  halfExtentZ); // BOTTOM LEFT
+    getGeometryVB()->modifyPositionValue(3,  halfExtentX, -halfExtentY,  halfExtentZ); // BOTTOM RIGHT
 
     getGeometryVB()->modifyNormalValue(0, 0, 0, -1);
     getGeometryVB()->modifyNormalValue(1, 0, 0, -1);

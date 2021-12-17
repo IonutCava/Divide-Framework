@@ -724,6 +724,15 @@ void RenderingComponent::drawSkeleton(GFX::CommandBuffer& bufferInOut) {
 
 void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool Sphere, GFX::CommandBuffer& bufferInOut) {
     if (!AABB && !Sphere && !OBB) {
+        if (_boundingBoxPrimitive != nullptr) {
+            _context.destroyIMP(_boundingBoxPrimitive);
+        }
+        if (_orientedBoundingBoxPrimitive != nullptr) {
+            _context.destroyIMP(_orientedBoundingBoxPrimitive);
+        }
+        if (_boundingSpherePrimitive != nullptr) {
+            _context.destroyIMP(_boundingSpherePrimitive);
+        }
         return;
     }
 
@@ -793,7 +802,7 @@ void RenderingComponent::OnData(const ECS::CustomEvent& data) {
         case ECS::CustomEvent::Type::DrawBoundsChanged:
         {
             const BoundsComponent* bComp = static_cast<BoundsComponent*>(data._sourceCmp);
-            toggleBoundsDraw(bComp->showAABB(), bComp->showBS(), true);
+            toggleBoundsDraw(bComp->showAABB(), bComp->showBS(), bComp->showOBB(), true);
         } break;
         case ECS::CustomEvent::Type::BoundsUpdated:
         {

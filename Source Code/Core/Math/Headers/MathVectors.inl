@@ -155,7 +155,7 @@ FORCE_INLINE vec3<T> Cross(const vec3<T> &v1, const vec3<T> &v2) noexcept {
 template <typename T>
 FORCE_INLINE vec3<T> AreOrthogonal(const vec3<T>& v1, const vec3<T>& v2) noexcept {
     constexpr F32 tolerance = 1e-6;
-    return SQUARED(Dot(v, w)) < Dot(v1, v1) * Dot(v2, v2) * tolerance;
+    return SQUARED(Dot(v1, v2)) < Dot(v1, v1) * Dot(v2, v2) * tolerance;
 }
 
 template <typename T>
@@ -452,8 +452,8 @@ FORCE_INLINE bool vec3<T>::compare(const vec3<U> &v, U epsi) const noexcept {
 
 /// uniform vector: x = y = z
 template <typename T>
-FORCE_INLINE bool vec3<T>::isUniform() const noexcept {
-    return COMPARE(this->x, this->y) && COMPARE(this->y, this->z);
+FORCE_INLINE bool vec3<T>::isUniform(const F32 tolerance) const noexcept {
+    return COMPARE_TOLERANCE(this->x, this->y, tolerance) && COMPARE_TOLERANCE(this->y, this->z, tolerance);
 }
 
 template <typename T>
