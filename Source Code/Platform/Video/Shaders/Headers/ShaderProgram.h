@@ -183,6 +183,10 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     /// Return a default shader used for general purpose rendering
     [[nodiscard]] static const ShaderProgram_ptr& DefaultShader() noexcept;
+    /// Return a default shader used for general purpose rendering in the main rendering pass
+    [[nodiscard]] static const ShaderProgram_ptr& DefaultShaderWorld() noexcept;
+    /// Return a default shader used for general purpose rendering in the main OIT pass
+    [[nodiscard]] static const ShaderProgram_ptr& DefaultShaderOIT() noexcept;
 
     [[nodiscard]] static const ShaderProgram_ptr& NullShader() noexcept;
     [[nodiscard]] static const I64                NullShaderGUID() noexcept;
@@ -212,6 +216,8 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     /// Used to render geometry without valid materials.
     /// Should emulate the basic fixed pipeline functions (no lights, just colour and texture)
     static ShaderProgram_ptr s_imShader;
+    static ShaderProgram_ptr s_imWorldShader;
+    static ShaderProgram_ptr s_imWorldOITShader;
     /// Pointer to a shader that we will perform operations on
     static ShaderProgram_ptr s_nullShader;
     /// Only 1 shader program per frame should be recompiled to avoid a lot of stuttering

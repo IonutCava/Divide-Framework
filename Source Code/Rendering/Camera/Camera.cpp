@@ -267,6 +267,10 @@ void Camera::setHorizontalFoV(const Angle::DEGREES<F32> horizontalFoV) noexcept 
     _projectionDirty = true;
 }
 
+void Camera::setRotation(const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> roll) noexcept {
+    setRotation(Quaternion<F32>(pitch, yaw, roll)); 
+}
+
 bool Camera::updateViewMatrix() noexcept {
     if (!_viewMatrixDirty) {
         return false;

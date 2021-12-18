@@ -115,10 +115,12 @@ void QuadtreeNode::drawBBox(RenderPackage& packageOut) {
             _bbPrimitive->name("QuadtreeBoundingBox");
             _bbPrimitive->pipeline(*_parent->bbPipeline());
         }
+        IMPrimitive::BoxDescriptor descriptor;
+        descriptor.min = _boundingBox.getMin();
+        descriptor.max = _boundingBox.getMax();
+        descriptor.colour = UColour4(0, 128, 255, 255);
 
-        _bbPrimitive->fromBox(_boundingBox.getMin(),
-                              _boundingBox.getMax(),
-                              UColour4(0, 128, 255, 255));
+        _bbPrimitive->fromBox(descriptor);
 
         packageOut.appendCommandBuffer(_bbPrimitive->toCommandBuffer());
     }

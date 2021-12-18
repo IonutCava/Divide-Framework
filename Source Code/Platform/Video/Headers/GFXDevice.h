@@ -438,9 +438,6 @@ private:
 
     ShaderComputeQueue* _shaderComputeQueue = nullptr;
 
-    std::array<Line, 3> _axisLines;
-    IMPrimitive* _axisGizmo = nullptr;
-
     DebugPrimitiveHandler<std::tuple<const Line* /*lines*/, size_t/*count*/>, 16u> _debugLines;
     DebugPrimitiveHandler<std::tuple<vec3<F32> /*min*/, vec3<F32> /*max*/, FColour3>, 16u> _debugBoxes;
     DebugPrimitiveHandler<std::tuple<vec3<F32> /*center*/, F32 /*radius*/, FColour3>, 16u> _debugSpheres;
@@ -479,7 +476,6 @@ private:
     
     Pipeline* _HIZPipeline = nullptr;
     Pipeline* _HIZCullPipeline = nullptr;
-    Pipeline* _axisGizmoPipeline = nullptr;
     Pipeline* _debugGizmoPipeline = nullptr;
     GFX::BindPipelineCommand _drawFSTexturePipelineCmd;
     GFX::BindPipelineCommand _drawFSDepthPipelineCmd;

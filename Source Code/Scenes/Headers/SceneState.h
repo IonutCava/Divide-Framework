@@ -108,10 +108,9 @@ class SceneRenderState : public SceneComponent {
         /// Render wireframe for all scene geometry
         RENDER_WIREFRAME = toBit(7),
         RENDER_OCTREE_REGIONS = toBit(8),
-        SCENE_GIZMO = toBit(9),
-        SELECTION_GIZMO = toBit(10),
-        ALL_GIZMOS = toBit(11),
-        COUNT = 11
+        SELECTION_GIZMO = toBit(9),
+        ALL_GIZMOS = toBit(10),
+        COUNT = 10
     };
 
     explicit SceneRenderState(Scene& parentScene) noexcept;

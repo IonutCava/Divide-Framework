@@ -240,7 +240,8 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     _editorCamera = Camera::createCamera<FreeFlyCamera>("Editor Camera");
     _editorCamera->fromCamera(*Camera::utilityCamera(Camera::UtilityCamera::DEFAULT));
     _editorCamera->setFixedYawAxis(true);
-
+    _editorCamera->setEye(60.f, 45.f, 60.f);
+    _editorCamera->setEuler(-15.f, 40.f, 0.f);
     IMGUI_CHECKVERSION();
     assert(_imguiContexts[to_base(ImGuiContextType::Editor)] == nullptr);
     
@@ -297,6 +298,11 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         _infiniteGridProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
         gridPipeDesc._shaderProgramHandle = _infiniteGridProgram->getGUID();
         _infiniteGridPipeline = _context.gfx().newPipeline(gridPipeDesc);
+
+        PipelineDescriptor pipelineDesc;
+        pipelineDesc._stateHash = _context.gfx().getDefaultStateBlock(true);
+        pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
+        _axisGizmoPipeline = _context.gfx().newPipeline(pipelineDesc);
     }
 
     _infiniteGridPrimitive = _context.gfx().newIMP();
@@ -591,6 +597,9 @@ void Editor::close() {
     if (_infiniteGridPrimitive) {
         _context.gfx().destroyIMP(_infiniteGridPrimitive);
     }
+    if (_axisGizmo) {
+        _context.gfx().destroyIMP(_axisGizmo);
+    }
     _infiniteGridProgram.reset();
     _fontTexture.reset();
     _imguiProgram.reset();
@@ -636,7 +645,7 @@ void Editor::toggle(const bool state) {
         onPreviewFocus(false);
 
         _context.config().save();
-        activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
+        sceneGizmoEnabled(false);
         activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
         activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
         if (!_context.kernel().sceneManager()->resetSelection(0, true)) {
@@ -644,7 +653,7 @@ void Editor::toggle(const bool state) {
         }
     } else {
         _stepQueue = 0;
-        activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
+        sceneGizmoEnabled(true);
         activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
         static_cast<ContentExplorerWindow*>(_dockedWindows[to_base(WindowType::ContentExplorer)])->init();
         /*const Selections& selections = activeScene.getCurrentSelection();
@@ -728,17 +737,17 @@ void Editor::update(const U64 deltaTimeUS) {
             SceneStatePerPlayer& playerState = activeScene.state()->playerState(idx);
             if (_isScenePaused) {
                 playerState.overrideCamera(editorCamera());
-                activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
                 activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
                 if (allGizmosEnabled) {
                     activeScene.state()->renderState().enableOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
                 }
+                sceneGizmoEnabled(true);
             } else {
                 playerState.overrideCamera(stepQueue() == 0 ? nullptr : editorCamera());
                 allGizmosEnabled = activeScene.state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
-                activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
                 activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
                 activeScene.state()->renderState().disableOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
+                sceneGizmoEnabled(false);
             }
         }
     }
@@ -828,6 +837,18 @@ void Editor::infiniteGridScale(const F32 value) noexcept {
 }
 
 void Editor::postRender(const Camera& camera, const RenderTargetID target, GFX::CommandBuffer& bufferInOut) {
+    if (!sceneGizmoEnabled() && !infiniteGridEnabled()) {
+        return;
+    }
+
+    GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+    beginRenderPassTransparentCmd->_name = "DO_EDITOR_POST_RENDER_PASS";
+    beginRenderPassTransparentCmd->_target = target;
+    beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 1, false);
+    beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 2, false);
+    beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, false);
+    GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ camera.snapshot() });
+
     if (infiniteGridEnabled() && _infiniteGridPrimitive && _isScenePaused) {
         _infiniteGridPrimitive->pipeline(*_infiniteGridPipeline);
         if (_gridSettingsDirty) {
@@ -838,27 +859,93 @@ void Editor::postRender(const Camera& camera, const RenderTargetID target, GFX::
             _gridSettingsDirty = false;
         }
 
-        GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-        beginRenderPassTransparentCmd->_name = "DO_EDITOR_POST_RENDER_PASS";
-        beginRenderPassTransparentCmd->_target = target;
-        beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 1, false);
-        beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 2, false);
-        beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, false);
-
         RTBlendState& state0 = GFX::EnqueueCommand<GFX::SetBlendStateCommand>(bufferInOut)->_blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
         state0._blendProperties._enabled = true;
         state0._blendProperties._blendSrc = BlendProperty::SRC_ALPHA;
         state0._blendProperties._blendDest = BlendProperty::INV_SRC_ALPHA;
         state0._blendProperties._blendOp = BlendOperation::ADD;
 
-        GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{camera.snapshot()});
         bufferInOut.add(_infiniteGridPrimitive->toCommandBuffer());
-        GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
-
         // Reset blend states
         GFX::EnqueueCommand(bufferInOut, GFX::SetBlendStateCommand{});
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
     }
+    {
+        // Debug axis form the axis arrow gizmo in the corner of the screen
+        // This is toggleable, so check if it's actually requested
+        if (sceneGizmoEnabled()) {
+            if (!_axisGizmo) {
+                _axisGizmo = _context.gfx().newIMP();
+                _axisGizmo->name("EditorDeviceAxisGizmo");
+                _axisGizmo->pipeline(*_axisGizmoPipeline);
+
+                const auto addValAnd10Percent = [](const F32 val) { return val + ((val + 10) / 100.f); };
+                const auto addValMinus20Percent = [](const F32 val) { return val - ((val + 20) / 100.f); };
+
+                std::array<IMPrimitive::ConeDescriptor, 6> descriptors;
+                // Shafts
+                descriptors[0].direction = WORLD_X_NEG_AXIS;
+                descriptors[1].direction = WORLD_Y_NEG_AXIS;
+                descriptors[2].direction = WORLD_Z_NEG_AXIS;
+
+                descriptors[0].length = 2.0f;
+                descriptors[1].length = 2.5f;
+                descriptors[2].length = 2.0f;
+
+                descriptors[0].root = VECTOR3_ZERO + vec3<F32>(addValAnd10Percent(descriptors[0].length), 0.f, 0.f);
+                descriptors[1].root = VECTOR3_ZERO + vec3<F32>(0.f, addValAnd10Percent(descriptors[1].length), 0.f);
+                descriptors[2].root = VECTOR3_ZERO + vec3<F32>(0.f, 0.f, addValAnd10Percent(descriptors[2].length));
+
+                descriptors[0].radius = 0.05f;
+                descriptors[1].radius = 0.05f;
+                descriptors[2].radius = 0.05f;
+
+                descriptors[0].colour = UColour4(255, 0,   0,   255);
+                descriptors[1].colour = UColour4(0,   255, 0,   255);
+                descriptors[2].colour = UColour4(0,   0,   255, 255);
+
+                // Arrow heads
+                descriptors[3].direction = WORLD_X_NEG_AXIS;
+                descriptors[4].direction = WORLD_Y_NEG_AXIS;
+                descriptors[5].direction = WORLD_Z_NEG_AXIS;
+
+                descriptors[3].length = 0.5f;
+                descriptors[4].length = 0.5f;
+                descriptors[5].length = 0.5f;
+
+                descriptors[3].root = VECTOR3_ZERO + vec3<F32>(addValMinus20Percent(descriptors[0].length) + 0.50f, 0.f, 0.f);
+                descriptors[4].root = VECTOR3_ZERO + vec3<F32>(0.f, addValMinus20Percent(descriptors[1].length) - 0.50f, 0.f);
+                descriptors[5].root = VECTOR3_ZERO + vec3<F32>(0.f, 0.f, addValMinus20Percent(descriptors[2].length) + 0.50f);
+
+                descriptors[3].radius = 0.15f;
+                descriptors[4].radius = 0.15f;
+                descriptors[5].radius = 0.15f; 
+
+                descriptors[3].colour = UColour4(255, 0,   0,   255);
+                descriptors[4].colour = UColour4(0,   255, 0,   255);
+                descriptors[5].colour = UColour4(0,   0,   255, 255);
+
+                _axisGizmo->fromCones(descriptors);
+            }
+
+            // Apply the inverse view matrix so that it cancels out in the shader
+            // Submit the draw command, rendering it in a tiny viewport in the lower
+            // right corner
+            const U16 windowWidth = _context.gfx().renderTargetPool().renderTarget(target).getWidth();
+            _axisGizmo->viewport(Rect<I32>(windowWidth - 250, 6, 256, 256));
+
+            // We need to transform the gizmo so that it always remains axis aligned
+            // Create a world matrix using a look at function with the eye position
+            // backed up from the camera's view direction
+            _axisGizmo->worldMatrix(mat4<F32>(-camera.getForwardDir() * 5,
+                                               VECTOR3_ZERO,
+                                               camera.getUpDir()) * camera.worldMatrix());
+            bufferInOut.add(_axisGizmo->toCommandBuffer());
+        } else if (_axisGizmo) {
+            _context.gfx().destroyIMP(_axisGizmo);
+        }
+    }
+    GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
+    GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 }
 
 void Editor::drawScreenOverlay(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) const {
@@ -1075,8 +1162,8 @@ bool Editor::onKeyDown(const Input::KeyEvent& key) {
         return false;
     }
 
-    if (scenePreviewFocused()) {
-        return _gizmo->onKey(true, key);
+    if (_gizmo->onKey(true, key)) {
+        return true;
     }
 
     ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
@@ -1121,8 +1208,8 @@ bool Editor::onKeyUp(const Input::KeyEvent& key) {
         }
     }
 
-    if (scenePreviewFocused()) {
-        return _gizmo->onKey(false, key);
+    if (_gizmo->onKey(false, key)){
+        return true;
     }
 
     io.KeysDown[to_I32(key._key)] = false;

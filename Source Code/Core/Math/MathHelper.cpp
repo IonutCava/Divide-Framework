@@ -4,6 +4,7 @@
 #include <glm/gtc/packing.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+//ref for decomposeMatrix:
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
 

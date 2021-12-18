@@ -10,8 +10,6 @@ layout(location = TARGET_NORMALS_AND_MATERIAL_DATA) out vec4 _matDataOut;
 #endif //MAIN_DISPLAY_PASS
 
 #if !defined(OIT_PASS)
-#if defined(MAIN_DISPLAY_PASS)
-#endif //MAIN_DISPLAY_PASS
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 #else //OIT_PASS
 layout(location = TARGET_ACCUMULATION) out vec4  _accum;

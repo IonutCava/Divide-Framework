@@ -327,6 +327,10 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
                      GLUtil::getGLValue(GL_MAX_SUBROUTINES),
                      GLUtil::getGLValue(GL_MAX_SUBROUTINE_UNIFORM_LOCATIONS));
 
+    GLint range[2];
+    GLUtil::getGLValue(GL_SMOOTH_LINE_WIDTH_RANGE, range);
+    Console::printfn(Locale::Get(_ID("GL_LINE_WIDTH_INFO")), range[0], range[1]);
+
     // Seamless cubemaps are a nice feature to have enabled (core since 3.2)
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
     //glEnable(GL_FRAMEBUFFER_SRGB);

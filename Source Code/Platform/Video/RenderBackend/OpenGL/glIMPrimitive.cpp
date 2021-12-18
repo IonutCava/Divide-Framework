@@ -45,6 +45,14 @@ void glIMPrimitive::attribute1f(const U32 attribLocation, const F32 value) {
     _imInterface->Attribute1f(attribLocation, value);
 }
 
+void glIMPrimitive::attribute2f(const U32 attribLocation, const vec2<F32> value) {
+    _imInterface->Attribute2f(attribLocation, value.x, value.y);
+}
+
+void glIMPrimitive::attribute3f(const U32 attribLocation, const vec3<F32> value) {
+    _imInterface->Attribute3f(attribLocation, value.x, value.y, value.z);
+}
+
 void glIMPrimitive::attribute4ub(const U32 attribLocation, const U8 x, const U8 y, const U8 z, const U8 w) {
     _imInterface->Attribute4ub(attribLocation, x, y, z, w);
 }

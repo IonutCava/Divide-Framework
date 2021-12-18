@@ -195,6 +195,9 @@ template<typename T = GLint>
 void getGLValue(GLenum param, T& value, GLint index = -1);
 
 template<typename T = GLint>
+void getGLValue(GLenum param, T* value);
+
+template<typename T = GLint>
 T getGLValue(GLenum param);
 
 template<typename T = GLint>

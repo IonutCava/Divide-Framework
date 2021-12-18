@@ -9,6 +9,7 @@ namespace {
     static I32 g_lastComponentWidhtPushCount = 0;
     static bool g_isBoldButtonPushed = false;
     static bool g_isNarrowLabelWidthPushed = false;
+    static const char* g_pushedTooltip = "";
 }
 } //namespace Divide
 
@@ -73,8 +74,13 @@ namespace Divide {
             ImGui::PushFont(boldFont);
             ImGui::Text(label);
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                ImGui::SetTooltip(label);
+                if (Util::IsPushedTooltip()) {
+                    ImGui::SetTooltip(Util::PushedToolTip());
+                } else {
+                    ImGui::SetTooltip(label);
+                }
             }
+
             ImGui::PopFont();
             ImGui::NextColumn();
             ImGui::PushMultiItemsWidths(numComponents, ImGui::CalcItemWidth());
@@ -114,6 +120,22 @@ namespace Divide {
             if (g_isNarrowLabelWidthPushed) {
                 g_isNarrowLabelWidthPushed = false;
             }
+        }
+
+        void PushTooltip(const char* tooltip) {
+            g_pushedTooltip = tooltip;
+        }
+
+        void PopTooltip() {
+            g_pushedTooltip = "";
+        }
+
+        [[nodiscard]] bool IsPushedTooltip() {
+            return strlen(g_pushedTooltip) > 0;
+        }
+
+        const char* PushedToolTip() {
+            return g_pushedTooltip;
         }
 
         void PushButtonStyle(const bool bold,

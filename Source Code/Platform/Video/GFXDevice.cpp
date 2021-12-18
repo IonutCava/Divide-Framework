@@ -96,29 +96,6 @@ GFXDevice::GFXDevice(Kernel & parent)
 {
     _viewport.set(-1);
 
-    Line temp = {};
-    temp.widthStart(3.0f);
-    temp.widthEnd(3.0f);
-    temp.positionStart(VECTOR3_ZERO);
-
-    // Red X-axis
-    temp.positionEnd(WORLD_X_AXIS * 2);
-    temp.colourStart(UColour4(255, 0, 0, 255));
-    temp.colourEnd(UColour4(255, 0, 0, 255));
-    _axisLines[0] = temp;
-
-    // Green Y-axis
-    temp.positionEnd(WORLD_Y_AXIS * 2);
-    temp.colourStart(UColour4(0, 255, 0, 255));
-    temp.colourEnd(UColour4(0, 255, 0, 255));
-    _axisLines[1] = temp;
-
-    // Blue Z-axis
-    temp.positionEnd(WORLD_Z_AXIS * 2);
-    temp.colourStart(UColour4(0, 0, 255, 255));
-    temp.colourEnd(UColour4(0, 0, 255, 255));
-    _axisLines[2] = temp;
-
     AttribFlags flags{};
     flags.fill(true);
     VertexBuffer::setAttribMasks(to_size(to_base(RenderStage::COUNT) * to_base(RenderPassType::COUNT)), flags);
@@ -128,10 +105,10 @@ GFXDevice::GFXDevice(Kernel & parent)
     flags[to_base(AttribLocation::NORMAL)] = false;
     flags[to_base(AttribLocation::TANGENT)] = false;
 
-    for (U8 stage = 0; stage < to_base(RenderStage::COUNT); ++stage) {
+    for (U8 stage = 0u; stage < to_base(RenderStage::COUNT); ++stage) {
         VertexBuffer::setAttribMask(RenderStagePass::BaseIndex(static_cast<RenderStage>(stage), RenderPassType::PRE_PASS), flags);
     }
-    for (U8 pass = 0; pass < to_base(RenderPassType::COUNT); ++pass) {
+    for (U8 pass = 0u; pass < to_base(RenderPassType::COUNT); ++pass) {
         VertexBuffer::setAttribMask(RenderStagePass::BaseIndex(RenderStage::SHADOW, static_cast<RenderPassType>(pass)), flags);
     }
 }
@@ -816,9 +793,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     context().paramHandler().setParam<bool>(_ID("rendering.previewDebugViews"), false);
     {
         PipelineDescriptor pipelineDesc;
-        pipelineDesc._stateHash = getDefaultStateBlock(true);
         pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->getGUID();
-        _axisGizmoPipeline = newPipeline(pipelineDesc);
         pipelineDesc._stateHash = getDefaultStateBlock(false);
         _debugGizmoPipeline = newPipeline(pipelineDesc);
     }
@@ -847,10 +822,6 @@ void GFXDevice::closeRenderingAPI() {
     if (_api == nullptr) {
         //closeRenderingAPI called without init!
         return;
-    }
-
-    if (_axisGizmo) {
-        destroyIMP(_axisGizmo);
     }
 
     _debugLines.reset();
@@ -2241,7 +2212,6 @@ void GFXDevice::debugDrawLines(GFX::CommandBuffer& bufferInOut) {
             linePrimitive = newIMP();
             linePrimitive->name(Util::StringFormat("DebugLine_%d", f));
             linePrimitive->pipeline(*_debugGizmoPipeline);
-            linePrimitive->skipPostFX(true);
         }
 
         linePrimitive->fromLines(lines, count);
@@ -2255,7 +2225,7 @@ void GFXDevice::debugDrawBox(const I64 ID, const vec3<F32>& min, const vec3<F32>
 
 void GFXDevice::debugDrawBoxes(GFX::CommandBuffer& bufferInOut) {
     ScopedLock<Mutex> r_lock(_debugBoxes._dataLock);
-
+    IMPrimitive::BoxDescriptor descriptor;
     const size_t boxesCount = _debugBoxes.Size();
     for (U32 f = 0u; f < boxesCount; ++f) {
         auto& data = _debugBoxes._debugData[f];
@@ -2268,12 +2238,12 @@ void GFXDevice::debugDrawBoxes(GFX::CommandBuffer& bufferInOut) {
             boxPrimitive = newIMP();
             boxPrimitive->name(Util::StringFormat("DebugBox_%d", f));
             boxPrimitive->pipeline(*_debugGizmoPipeline);
-            boxPrimitive->skipPostFX(true);
         }
 
-        const auto&[min, max, colour3] = data._data;
-        const FColour4 colour = FColour4(colour3, 1.0f);
-        boxPrimitive->fromBox(min, max, Util::ToByteColour(colour));
+        descriptor.min = std::get<0>(data._data);
+        descriptor.max = std::get<1>(data._data);
+        descriptor.colour = Util::ToByteColour(FColour4(std::get<2>(data._data), 1.0f));
+        boxPrimitive->fromBox(descriptor);
         bufferInOut.add(boxPrimitive->toCommandBuffer());
     }
 }
@@ -2284,7 +2254,7 @@ void GFXDevice::debugDrawSphere(const I64 ID, const vec3<F32>& center, F32 radiu
 
 void GFXDevice::debugDrawSpheres(GFX::CommandBuffer& bufferInOut) {
     ScopedLock<Mutex> r_lock(_debugSpheres._dataLock);
-
+    IMPrimitive::SphereDescriptor descriptor;
     const size_t spheresCount = _debugSpheres.Size();
     for (size_t f = 0u; f < spheresCount; ++f) {
         auto& data = _debugSpheres._debugData[f];
@@ -2297,12 +2267,13 @@ void GFXDevice::debugDrawSpheres(GFX::CommandBuffer& bufferInOut) {
             spherePrimitive = newIMP();
             spherePrimitive->name(Util::StringFormat("DebugSphere_%d", f));
             spherePrimitive->pipeline(*_debugGizmoPipeline);
-            spherePrimitive->skipPostFX(true);
         }
 
         const auto&[center, radius, colour3] = data._data;
-        const FColour4 colour = FColour4(colour3, 1.0f);
-        spherePrimitive->fromSphere(center, radius, Util::ToByteColour(colour));
+        descriptor.center = center;
+        descriptor.radius = radius;
+        descriptor.colour = Util::ToByteColour(FColour4(colour3, 1.0f));
+        spherePrimitive->fromSphere(descriptor);
         bufferInOut.add(spherePrimitive->toCommandBuffer());
     }
 }
@@ -2314,6 +2285,7 @@ void GFXDevice::debugDrawCone(const I64 ID, const vec3<F32>& root, const vec3<F3
 void GFXDevice::debugDrawCones(GFX::CommandBuffer& bufferInOut) {
     ScopedLock<Mutex> r_lock(_debugCones._dataLock);
 
+    IMPrimitive::ConeDescriptor descriptor;
     const size_t conesCount = _debugCones.Size();
     for (size_t f = 0u; f < conesCount; ++f) {
         auto& data = _debugCones._debugData[f];
@@ -2326,12 +2298,15 @@ void GFXDevice::debugDrawCones(GFX::CommandBuffer& bufferInOut) {
             conePrimitive = newIMP();
             conePrimitive->name(Util::StringFormat("DebugCone_%d", f));
             conePrimitive->pipeline(*_debugGizmoPipeline);
-            conePrimitive->skipPostFX(true);
         }
 
         const auto&[root, dir, length, radius, colour3] = data._data;
-        const FColour4 colour = FColour4(colour3, 1.0f);
-        conePrimitive->fromCone(root, dir, length, radius, Util::ToByteColour(colour));
+        descriptor.root = root;
+        descriptor.direction = dir;
+        descriptor.length = length;
+        descriptor.radius = radius;
+        descriptor.colour = Util::ToByteColour(FColour4(colour3, 1.0f));
+        conePrimitive->fromCone(descriptor);
         bufferInOut.add(conePrimitive->toCommandBuffer());
     }
 }
@@ -2359,7 +2334,6 @@ void GFXDevice::debugDrawFrustums(GFX::CommandBuffer& bufferInOut) {
             frustumPrimitive = newIMP();
             frustumPrimitive->name(Util::StringFormat("DebugFrustum_%d", f));
             frustumPrimitive->pipeline(*_debugGizmoPipeline);
-            frustumPrimitive->skipPostFX(true);
         }
 
         data._data.first.getCornersWorldSpace(corners);
@@ -2457,37 +2431,6 @@ void GFXDevice::debugDraw(const SceneRenderState& sceneRenderState, const Camera
     debugDrawBoxes(bufferInOut);
     debugDrawSpheres(bufferInOut);
     debugDrawCones(bufferInOut);
-
-    if_constexpr(Config::Build::ENABLE_EDITOR)
-    {
-        // Debug axis form the axis arrow gizmo in the corner of the screen
-        // This is toggleable, so check if it's actually requested
-        if (sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::SCENE_GIZMO)) {
-            if (!_axisGizmo) {
-                _axisGizmo = newIMP();
-                _axisGizmo->name("GFXDeviceAxisGizmo");
-                _axisGizmo->pipeline(*_axisGizmoPipeline);
-                _axisGizmo->skipPostFX(true);
-                _axisGizmo->fromLines(_axisLines.data(), _axisLines.size());
-            }
-
-            // Apply the inverse view matrix so that it cancels out in the shader
-            // Submit the draw command, rendering it in a tiny viewport in the lower
-            // right corner
-            const U16 windowWidth = renderTargetPool().screenTarget().getWidth();
-            _axisGizmo->viewport(Rect<I32>(windowWidth - 120, 8, 128, 128));
-        
-            // We need to transform the gizmo so that it always remains axis aligned
-            // Create a world matrix using a look at function with the eye position
-            // backed up from the camera's view direction
-            _axisGizmo->worldMatrix(mat4<F32>(-activeCamera->getForwardDir() * 2,
-                                               VECTOR3_ZERO,
-                                               activeCamera->getUpDir()) * activeCamera->worldMatrix());
-            bufferInOut.add(_axisGizmo->toCommandBuffer());
-        } else if (_axisGizmo) {
-            destroyIMP(_axisGizmo);
-        }
-    }
 }
 #pragma endregion
 

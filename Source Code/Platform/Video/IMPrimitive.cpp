@@ -29,166 +29,225 @@ void IMPrimitive::reset() {
     clearBatch();
 }
 
-void IMPrimitive::fromOBB(const OBB& obb, const UColour4& colour) {
-    OBB::OOBBEdgeList edges = obb.edgeList();
-    std::array<Line, 12> lines = {};
-    for (U8 i = 0u; i < 12u; ++i)
-    {
-        lines[i].positionStart(edges[i]._start);
-        lines[i].positionEnd(edges[i]._end);
-        lines[i].colourStart(colour);
-        lines[i].colourEnd(colour);
-    }
-
-    fromLines(lines.data(), lines.size());
+void IMPrimitive::fromOBB(const OBBDescriptor& box) {
+    fromOBBs(&box, 1u);
 }
 
-void IMPrimitive::fromBox(const vec3<F32>& min, const vec3<F32>& max, const UColour4& colour) {
+void IMPrimitive::fromOBBs(const OBBDescriptor* boxes, const size_t count) {
+    if (count == 0u) {
+        return;
+    }
+    std::array<Line, 12> lines = {};
+
+    // Create the object containing all of the lines
+    beginBatch(true, 12 * to_U32(count) * 2 * 14, 2);
+        for (size_t i = 0u; i < count; ++i) {
+            const OBBDescriptor& descriptor = boxes[i];
+            OBB::OOBBEdgeList edges = descriptor.box.edgeList();
+            for (U8 j = 0u; j < 12u; ++j)
+            {
+                lines[j].positionStart(edges[j]._start);
+                lines[j].positionEnd(edges[j]._end);
+                lines[j].colourStart(descriptor.colour);
+                lines[j].colourEnd(descriptor.colour);
+            }
+
+            fromLinesInternal(lines.data(), lines.size());
+        }
+    endBatch();
+}
+
+void IMPrimitive::fromBox(const BoxDescriptor& box) {
+    fromBoxes(&box, 1u);
+}
+
+void IMPrimitive::fromBoxes(const BoxDescriptor* boxes, const size_t count) {
+    if (count == 0u) {
+        return;
+    }
+
     // Create the object
-    beginBatch(true, 16, 1);
-        // Set it's colour
-        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(colour));
-        // Draw the bottom loop
-        begin(PrimitiveType::LINE_LOOP);
-            vertex(min.x, min.y, min.z);
-            vertex(max.x, min.y, min.z);
-            vertex(max.x, min.y, max.z);
-            vertex(min.x, min.y, max.z);
-        end();
-        // Draw the top loop
-        begin(PrimitiveType::LINE_LOOP);
-            vertex(min.x, max.y, min.z);
-            vertex(max.x, max.y, min.z);
-            vertex(max.x, max.y, max.z);
-            vertex(min.x, max.y, max.z);
-        end();
-        // Connect the top to the bottom
-        begin(PrimitiveType::LINES);
-            vertex(min.x, min.y, min.z);
-            vertex(min.x, max.y, min.z);
-            vertex(max.x, min.y, min.z);
-            vertex(max.x, max.y, min.z);
-            vertex(max.x, min.y, max.z);
-            vertex(max.x, max.y, max.z);
-            vertex(min.x, min.y, max.z);
-            vertex(min.x, max.y, max.z);
-        end();
+    beginBatch(true, to_U32(count * 16u), 1);
+        for (size_t i = 0u; i < count; ++i) {
+            const BoxDescriptor& box = boxes[i];
+            const UColour4& colour = box.colour;
+            const vec3<F32>& min = box.min;
+            const vec3<F32>& max = box.max;
+
+            // Set it's colour
+            attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(colour));
+            // Draw the bottom loop
+            begin(PrimitiveType::LINE_LOOP);
+                vertex(min.x, min.y, min.z);
+                vertex(max.x, min.y, min.z);
+                vertex(max.x, min.y, max.z);
+                vertex(min.x, min.y, max.z);
+            end();
+            // Draw the top loop
+            begin(PrimitiveType::LINE_LOOP);
+                vertex(min.x, max.y, min.z);
+                vertex(max.x, max.y, min.z);
+                vertex(max.x, max.y, max.z);
+                vertex(min.x, max.y, max.z);
+            end();
+            // Connect the top to the bottom
+            begin(PrimitiveType::LINES);
+                vertex(min.x, min.y, min.z);
+                vertex(min.x, max.y, min.z);
+                vertex(max.x, min.y, min.z);
+                vertex(max.x, max.y, min.z);
+                vertex(max.x, min.y, max.z);
+                vertex(max.x, max.y, max.z);
+                vertex(min.x, min.y, max.z);
+                vertex(min.x, max.y, max.z);
+            end();
+        }
     // Finish our object
     endBatch();
 }
 
-void IMPrimitive::fromSphere(const vec3<F32>& center,
-                             const F32 radius,
-                             const UColour4& colour) {
-    constexpr U32 slices = 8, stacks = 8;
-    constexpr F32 drho = M_PI_f / stacks;
-    constexpr F32 dtheta = 2.0f * M_PI_f / slices;
-    constexpr F32 ds = 1.0f / slices;
-    constexpr F32 dt = 1.0f / stacks;
+void IMPrimitive::fromSphere(const SphereDescriptor& sphere) {
+    fromSpheres(&sphere, 1u);
+}
 
-    F32 t = 1.0f;
-    // Create the object
-    beginBatch(true, stacks * ((slices + 1) * 2), 1);
-        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(colour));
-        begin(PrimitiveType::LINE_LOOP);
-            for (U32 i = 0; i < stacks; i++) {
-                const F32 rho = i * drho;
-                const F32 srho = std::sin(rho);
-                const F32 crho = std::cos(rho);
-                const F32 srhodrho = std::sin(rho + drho);
-                const F32 crhodrho = std::cos(rho + drho);
+void IMPrimitive::fromSpheres(const SphereDescriptor* spheres, const size_t count) {
+    if (count == 0u) {
+        return;
+    }
 
-                F32 s = 0.0f;
-                for (U32 j = 0; j <= slices; j++) {
-                    const F32 theta = j == slices ? 0.0f : j * dtheta;
-                    const F32 stheta = -std::sin(theta);
-                    const F32 ctheta = std::cos(theta);
+    beginBatch(true, 32u * ((32u + 1) * 2), 1);
+    for (size_t c = 0u; c < count; ++c) {
+        const SphereDescriptor& sphere = spheres[c];
+        const F32 drho = M_PI_f / sphere.stacks;
+        const F32 dtheta = 2.f * M_PI_f / sphere.slices;
+        const F32 ds = 1.f / sphere.slices;
+        const F32 dt = 1.f / sphere.stacks;
 
-                    F32 x = stheta * srho;
-                    F32 y = ctheta * srho;
-                    F32 z = crho;
-                    vertex(x * radius + center.x,
-                        y * radius + center.y,
-                        z * radius + center.z);
-                    x = stheta * srhodrho;
-                    y = ctheta * srhodrho;
-                    z = crhodrho;
-                    s += ds;
-                    vertex(x * radius + center.x,
-                        y * radius + center.y,
-                        z * radius + center.z);
+        F32 t = 1.f;
+        // Create the object
+            attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(sphere.colour));
+            begin(PrimitiveType::LINE_LOOP);
+                for (U32 i = 0u; i < sphere.stacks; i++) {
+                    const F32 rho = i * drho;
+                    const F32 srho = std::sin(rho);
+                    const F32 crho = std::cos(rho);
+                    const F32 srhodrho = std::sin(rho + drho);
+                    const F32 crhodrho = std::cos(rho + drho);
+
+                    F32 s = 0.0f;
+                    for (U32 j = 0; j <= sphere.slices; j++) {
+                        const F32 theta = j == sphere.slices ? 0.0f : j * dtheta;
+                        const F32 stheta = -std::sin(theta);
+                        const F32 ctheta = std::cos(theta);
+
+                        F32 x = stheta * srho;
+                        F32 y = ctheta * srho;
+                        F32 z = crho;
+                        vertex(x * sphere.radius + sphere.center.x,
+                               y * sphere.radius + sphere.center.y,
+                               z * sphere.radius + sphere.center.z);
+                        x = stheta * srhodrho;
+                        y = ctheta * srhodrho;
+                        z = crhodrho;
+                        s += ds;
+                        vertex(x * sphere.radius + sphere.center.x,
+                               y * sphere.radius + sphere.center.y,
+                               z * sphere.radius + sphere.center.z);
+                    }
+                    t -= dt;
                 }
-                t -= dt;
-            }
-        end();
+            end();
+    }
     endBatch();
 }
 
 //ref: http://www.freemancw.com/2012/06/opengl-cone-function/
-void IMPrimitive::fromCone(const vec3<F32>& root,
-                           const vec3<F32>& direction,
-                           F32 length, F32 radius,
-                           const UColour4& colour) {
-    constexpr U8 slices = 16u;
-    const vec3<F32> invDirection = -direction;
-    const vec3<F32> c = root + -invDirection * length;
-    const vec3<F32> e0 = Perpendicular(invDirection);
-    const vec3<F32> e1 = Cross(e0, invDirection);
-    constexpr F32 angInc = 360.0f / slices * M_PIDIV180_f;
+void IMPrimitive::fromCone(const ConeDescriptor& cone) {
+    fromCones(&cone, 1u);
+}
 
-    // calculate points around directrix
-    std::array<vec3<F32>, slices> pts = {};
-    for (size_t i = 0; i < pts.size(); ++i) {
-        const F32 rad = angInc * i;
-        pts[i] = c + (e0 * std::cos(rad) + e1 * std::sin(rad)) * radius;
+void IMPrimitive::fromCones(const ConeDescriptor* cones, const size_t count) {
+    if (count == 0u) {
+        return;
     }
 
-    // draw cone top
-    beginBatch(true, slices + 1, 1);
-        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(colour));
+    constexpr U8 slices = 16u;
+    constexpr F32 angInc = 360.0f / slices * M_PIDIV180_f;
+
+    beginBatch(true, to_U32(count * (slices + 1)), 1u);
+
+    for (size_t i = 0u; i < count; ++i) {
+        const ConeDescriptor& cone = cones[i];
+
+        const vec3<F32> invDirection = -cone.direction;
+        const vec3<F32> c = cone.root + -invDirection * cone.length;
+        const vec3<F32> e0 = Perpendicular(invDirection);
+        const vec3<F32> e1 = Cross(e0, invDirection);
+
+        // calculate points around directrix
+        std::array<vec3<F32>, slices> pts = {};
+        for (size_t j = 0; j < pts.size(); ++j) {
+            const F32 rad = angInc * j;
+            pts[j] = c + (e0 * std::cos(rad) + e1 * std::sin(rad)) * cone.radius;
+        }
+
+        // draw cone top
+        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(cone.colour));
         // Top
         begin(PrimitiveType::TRIANGLE_FAN);
-            vertex(root);
-            for (U8 i = 0; i < slices; ++i) {
-                vertex(pts[i]);
+            vertex(cone.root);
+            for (U8 j = 0u; j < slices; ++j) {
+                vertex(pts[j]);
             }
         end();
 
         // Bottom
         begin(PrimitiveType::TRIANGLE_FAN);
             vertex(c);
-            for (I8 i = slices - 1; i >= 0; --i) {
-                vertex(pts[i]);
+            for (I8 j = slices - 1; j >= 0; --j) {
+                vertex(pts[j]);
             }
         end();
+    }
     endBatch();
 }
 
 void IMPrimitive::fromLines(const Line* lines, const size_t count) {
-    
+    if (count == 0u) {
+        return;
+    }
+
     // Check if we have a valid list. The list can be programmatically
     // generated, so this check is required
-    if (count > 0) {
-        // Create the object containing all of the lines
-        beginBatch(true, to_U32(count) * 2 * 14, 1);
-            attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(lines[0].colourStart()));
-            // Set the mode to line rendering
-            begin(PrimitiveType::LINES);
-                // Add every line in the list to the batch
-                for (size_t i = 0u; i < count; ++i) {
-                    const Line& line = lines[i];
-                    attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line.colourStart()));
-                    vertex(line.positionStart());
+    // Create the object containing all of the lines
+    beginBatch(true, to_U32(count) * 2 * 14, 2);
+        fromLinesInternal(lines, count);
+    // Finish our object
+    endBatch();
+}
 
-                    attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line.colourEnd()));
-
-                    vertex(line.positionEnd());
-
-                }
-            end();
-        // Finish our object
-        endBatch();
+void IMPrimitive::fromLinesInternal(const Line* lines, size_t count) {
+    if (count == 0u) {
+        return;
     }
+
+    attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(lines[0].colourStart()));
+    attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(1.f, 1.f));
+    // Set the mode to line rendering
+    begin(PrimitiveType::LINES);
+    // Add every line in the list to the batch
+    for (size_t i = 0u; i < count; ++i) {
+        const Line& line = lines[i];
+        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line.colourStart()));
+        attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(line.widthStart(), line.widthEnd()));
+        vertex(line.positionStart());
+
+        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line.colourEnd()));
+        attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(line.widthStart(), line.widthEnd()));
+        vertex(line.positionEnd());
+
+    }
+    end();
 }
 
 void IMPrimitive::setPushConstants(const PushConstants& constants) {

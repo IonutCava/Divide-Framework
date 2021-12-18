@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/BoundingSphere.h"
+#include "Headers/OBB.h"
 
 namespace Divide {
 BoundingSphere::BoundingSphere() noexcept
@@ -87,4 +88,7 @@ RayResult BoundingSphere::intersect(const Ray& r, const F32 tMin, const F32 tMax
     return ret;
 }
 
+void BoundingSphere::fromOBB(const OBB& box) noexcept {
+    *this = box.toEnclosingSphere();
+}
 }  // namespace Divide

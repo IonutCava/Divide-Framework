@@ -9,6 +9,7 @@
 #include "Editor/Headers/Editor.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Rendering/Camera/Headers/Camera.h"
+#include "Rendering/Camera/Headers/FreeFlyCamera.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 
@@ -130,15 +131,50 @@ namespace Divide {
                 sceneChanged = processField(camField) || sceneChanged;
             }
             {
+                constexpr char* CamRotateLabels[] = {
+                    "P", "Y", "R"
+                };
+
                 vec3<F32> euler = cam->getEuler();
                 EditorComponentField camField = {};
                 camField._name = "Euler";
+                camField._labels = CamRotateLabels;
+                camField._tooltip = "Change camera orientation using euler angles( degrees).\nP = Pitch, Y = Yaw, R = Roll";
                 camField._basicType = GFX::PushConstantType::VEC3;
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = euler._v;
                 camField._dataSetter = [cam](const void* e) noexcept {
                     cam->setEuler(*static_cast<const vec3<F32>*>(e));
+                };
+                sceneChanged = processField(camField) || sceneChanged;
+            }
+            if (cam->type() != Camera::CameraType::STATIC &&
+                cam->type() != Camera::CameraType::SCRIPTED)
+            {
+                constexpr char* CamSpeedLabels[] = {
+                    "T", "M", "Z"
+                };
+
+                FreeFlyCamera* flyCam = static_cast<FreeFlyCamera*>(cam);
+                vec3<F32> speed;
+                speed.move = flyCam->getMoveSpeedFactor();
+                speed.turn = flyCam->getTurnSpeedFactor();
+                speed.zoom = flyCam->getZoomSpeedFactor();
+                
+                EditorComponentField camField = {};
+                camField._name = "Speed";
+                camField._labels = CamSpeedLabels;
+                camField._basicType = GFX::PushConstantType::VEC3;
+                camField._type = EditorComponentFieldType::SLIDER_TYPE;
+                camField._readOnly = false;
+                camField._tooltip = "Change camera speed factor.\nT = Turn speed, M = Move speed, Z = Zoom speed";
+                camField._data = speed._v;
+                camField._dataSetter = [flyCam](const void* e) noexcept {
+                    const vec3<F32> speed = *static_cast<const vec3<F32>*>(e);
+                    flyCam->setMoveSpeedFactor(speed.move);
+                    flyCam->setTurnSpeedFactor(speed.turn);
+                    flyCam->setZoomSpeedFactor(speed.zoom);
                 };
                 sceneChanged = processField(camField) || sceneChanged;
             }
@@ -591,6 +627,10 @@ namespace Divide {
     }
 
     bool PropertyWindow::processField(EditorComponentField& field) {
+        if (field._labels == nullptr) {
+            field._labels = Util::FieldLabels;
+        }
+
         const auto printFieldName = [&field]() { ImGui::Text("[%s]", field._name.c_str()); };
         bool ret = false;
         switch (field._type) {
@@ -1813,7 +1853,7 @@ namespace Divide {
 
           const char* name = field._name.c_str();
           ImGui::PushID(name);
-
+          Util::PushTooltip(field._tooltip.c_str());
           const F32 step = field._step;
           bool ret = false;
           switch (field._basicType) {
@@ -1835,6 +1875,13 @@ namespace Divide {
                   ImGui::PushFont(boldFont);
                   ImGui::Text(name);
                   ImGui::PopFont();
+                  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                      if (Util::IsPushedTooltip()) {
+                          ImGui::SetTooltip(Util::PushedToolTip());
+                      } else {
+                          ImGui::SetTooltip(name);
+                      }
+                  }
 
                   if (ret && !field._readOnly) {
                       RegisterUndo<bool, false>(_parent, GFX::PushConstantType::BOOL, !val, val, name, [&field](const bool& oldVal) {
@@ -2026,7 +2073,7 @@ namespace Divide {
                   ImGui::Text(name);
               }break;
           }
-
+          Util::PopTooltip();
           ImGui::PopID();
 
           return ret;

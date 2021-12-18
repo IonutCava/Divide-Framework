@@ -430,6 +430,10 @@ class mat3 {
     [[nodiscard]] vec3<T> getScale() const noexcept;
     [[nodiscard]] vec3<T> getScaleSq() const noexcept;
 
+    [[nodiscard]] vec3<T> getUpVec() const noexcept;
+    [[nodiscard]] vec3<T> getRightVec() const noexcept;
+    [[nodiscard]] vec3<T> getForwardVec() const noexcept;
+
     void orthoNormalize();
 
     union {
@@ -633,6 +637,10 @@ class mat4 {
 
     [[nodiscard]] vec3<T> getScale() const noexcept;
     [[nodiscard]] vec3<T> getScaleSq() const noexcept;
+
+    [[nodiscard]] vec3<T> getUpVec() const noexcept;
+    [[nodiscard]] vec3<T> getRightVec() const noexcept;
+    [[nodiscard]] vec3<T> getForwardVec() const noexcept;
 
     template<typename U>
     [[nodiscard]] vec3<U> transform(const vec3<U> &v, bool homogeneous) const;

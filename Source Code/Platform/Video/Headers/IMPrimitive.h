@@ -35,6 +35,7 @@
 
 #include "DescriptorSets.h"
 #include "Core/Math/Headers/Line.h"
+#include "Core/Math/BoundingVolumes/Headers/OBB.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 #include "Platform/Video/Headers/Pipeline.h"
@@ -53,6 +54,30 @@ FWD_DECLARE_MANAGED_CLASS(IMPrimitive);
 
 /// IMPrimitive replaces immediate mode calls to VB based rendering
 class NOINITVTABLE IMPrimitive : public VertexDataInterface {
+    struct BaseDescriptor {
+        UColour4  colour = DefaultColours::WHITE;
+    };
+   public:
+       struct OBBDescriptor final : public BaseDescriptor {
+           OBB box;
+       };
+
+       struct BoxDescriptor final : public BaseDescriptor {
+           vec3<F32> min = VECTOR3_UNIT * -0.5f;
+           vec3<F32> max = VECTOR3_UNIT *  0.5f;
+       };
+       struct SphereDescriptor final : public BaseDescriptor {
+           vec3<F32> center = VECTOR3_ZERO;
+           F32 radius = 1.f;
+           U8 slices = 8u;
+           U8 stacks = 8u;
+       };
+       struct ConeDescriptor final : public BaseDescriptor {
+           vec3<F32> root = VECTOR3_ZERO;
+           vec3<F32> direction = WORLD_Y_AXIS;
+           F32 length = 1.f;
+           F32 radius = 2.f;
+       };
    public:
     const Pipeline* pipeline() const noexcept {
         return _pipeline;
@@ -75,6 +100,8 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
     }
     virtual void attribute1i(U32 attribLocation, I32 value) = 0;
     virtual void attribute1f(U32 attribLocation, F32 value) = 0;
+    virtual void attribute2f(U32 attribLocation, vec2<F32> value) = 0;
+    virtual void attribute3f(U32 attribLocation, vec3<F32> value) = 0;
     virtual void attribute4ub(U32 attribLocation, U8 x, U8 y, U8 z,  U8 w) = 0;
     virtual void attribute4f(U32 attribLocation, F32 x, F32 y, F32 z, F32 w) = 0;
     void attribute4ub(const U32 attribLocation, const vec4<U8>& value) {
@@ -125,25 +152,37 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
 
     GFX::CommandBuffer& toCommandBuffer() const;
 
-    void fromOBB(const OBB& obb,
-                 const UColour4& colour = DefaultColours::WHITE);
+    void fromOBB(const OBBDescriptor& box);
+    void fromOBBs(const OBBDescriptor* boxes, size_t count);
 
-    void fromBox(const vec3<F32>& min,
-                 const vec3<F32>& max,
-                 const UColour4& colour = DefaultColours::WHITE);
+    void fromBox(const BoxDescriptor& box);
+    void fromBoxes(const BoxDescriptor* boxes, size_t count);
+    void fromSphere(const SphereDescriptor& sphere);
+    void fromSpheres(const SphereDescriptor* spheres, size_t count);
+    void fromCone(const ConeDescriptor& cone);
+    void fromCones(const ConeDescriptor* cones, size_t count);
 
-    void fromSphere(const vec3<F32>& center,
-                    F32 radius,
-                    const UColour4& colour = DefaultColours::WHITE);
-
-    void fromCone(const vec3<F32>& root,
-                  const vec3<F32>& direction,
-                  F32 length, F32 radius,
-                  const UColour4& colour = DefaultColours::WHITE);
+    template<size_t N>
+    void fromOBBs(const std::array<OBBDescriptor, N>& obbs) {
+        fromOBBs(obbs.data(), obbs.size());
+    } 
+    template<size_t N>
+    void fromBoxes(const std::array<BoxDescriptor, N>& boxes) {
+        fromBoxes(boxes.data(), boxes.size());
+    }
+    template<size_t N>
+    void fromSpheres(const std::array<SphereDescriptor, N>& spheres) {
+        fromSpheres(spheres.data(), spheres.size());
+    }
+    template<size_t N>
+    void fromCones(const std::array<ConeDescriptor, N>& cones) {
+        fromCones(cones.data(), cones.size());
+    }
 
     void fromLines(const Line* lines, size_t count);
 
-    PROPERTY_RW(bool, skipPostFX, false);
+   protected:
+    void fromLinesInternal(const Line* lines, size_t count);
 
    protected:
     mutable bool _cmdBufferDirty = true;

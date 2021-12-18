@@ -53,9 +53,11 @@ void Quadtree::drawBBox(RenderPackage& packageOut) const {
  
     {
         ScopedLock<Mutex> w_lock(_bbPrimitiveLock);
-        _bbPrimitive->fromBox(_root->getBoundingBox().getMin(),
-                              _root->getBoundingBox().getMax(),
-                              UColour4(0, 64, 255, 255));
+        IMPrimitive::BoxDescriptor descriptor;
+        descriptor.min = _root->getBoundingBox().getMin();
+        descriptor.max = _root->getBoundingBox().getMax();
+        descriptor.colour = UColour4(0, 64, 255, 255);
+        _bbPrimitive->fromBox(descriptor);
 
         packageOut.appendCommandBuffer(_bbPrimitive->toCommandBuffer());
     }

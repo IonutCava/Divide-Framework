@@ -1488,9 +1488,13 @@ void Scene::debugDraw(const Camera* activeCamera, GFX::CommandBuffer& bufferInOu
 
             assert(_octreePrimitives.size() >= _octreeBoundingBoxes.size());
 
+            IMPrimitive::BoxDescriptor descriptor;
             for (size_t i = 0; i < regionCount; ++i) {
                 const BoundingBox& box = _octreeBoundingBoxes[i];
-                _octreePrimitives[i]->fromBox(box.getMin(), box.getMax(), UColour4(255, 0, 255, 255));
+                descriptor.min = box.getMin();
+                descriptor.max = box.getMax();
+                descriptor.colour = UColour4(255, 0, 255, 255);
+                _octreePrimitives[i]->fromBox(descriptor);
                 bufferInOut.add(_octreePrimitives[i]->toCommandBuffer());
             }
         }

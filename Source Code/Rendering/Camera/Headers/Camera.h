@@ -140,9 +140,10 @@ class Camera : public Resource {
     void setEye(const vec3<F32>& position) noexcept { setEye(position.x, position.y, position.z); }
 
     void setRotation(const Quaternion<F32>& q) noexcept { _data._orientation = q; _viewMatrixDirty = true; }
-    void setRotation(const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> roll = 0.0f) noexcept { setRotation(Quaternion<F32>(-pitch, -yaw, -roll)); }
+    void setRotation(const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> roll = 0.0f) noexcept;
 
     void setEuler(const vec3<Angle::DEGREES<F32>>& euler) noexcept { setRotation(euler.yaw, euler.pitch, euler.roll); }
+    void setEuler(const Angle::DEGREES<F32>& pitch, const Angle::DEGREES<F32>& yaw, const Angle::DEGREES<F32>& roll) noexcept { setRotation(yaw, pitch, roll); }
 
     void setAspectRatio(F32 ratio) noexcept;
     [[nodiscard]] F32 getAspectRatio() const noexcept { return _data._aspectRatio; }
@@ -156,28 +157,17 @@ class Camera : public Resource {
         return Angle::to_DEGREES(2.0f * std::atan(tan(halfFoV) * _data._aspectRatio));
     }
 
-    [[nodiscard]] const CameraType& type() const noexcept { return _type; }
-    [[nodiscard]] const vec3<F32>& getEye() const noexcept { return _data._eye; }
+    [[nodiscard]] const CameraType& type()                    const noexcept { return _type; }
+    [[nodiscard]] const vec3<F32>& getEye()                   const noexcept { return _data._eye; }
     [[nodiscard]] const vec3<Angle::DEGREES<F32>>& getEuler() const noexcept { return _euler; }
-    [[nodiscard]] const Quaternion<F32>& getOrientation() const noexcept { return _data._orientation; }
-    [[nodiscard]] const vec2<F32>& getZPlanes() const noexcept { return _data._zPlanes; }
-    [[nodiscard]] const vec4<F32>& orthoRect() const noexcept { return _orthoRect; }
-    [[nodiscard]] bool isOrthoProjected() const noexcept { return _data._isOrthoCamera; }
+    [[nodiscard]] const Quaternion<F32>& getOrientation()     const noexcept { return _data._orientation; }
+    [[nodiscard]] const vec2<F32>& getZPlanes()               const noexcept { return _data._zPlanes; }
+    [[nodiscard]] const vec4<F32>& orthoRect()                const noexcept { return _orthoRect; }
+    [[nodiscard]] bool isOrthoProjected()                     const noexcept { return _data._isOrthoCamera; }
 
-    [[nodiscard]] vec3<F32> getUpDir() const noexcept {
-        const mat4<F32>& viewMat = viewMatrix();
-        return vec3<F32>(viewMat.m[0][1], viewMat.m[1][1], viewMat.m[2][1]);
-    }
-
-    [[nodiscard]] vec3<F32> getRightDir() const noexcept {
-        const mat4<F32>& viewMat = viewMatrix();
-        return vec3<F32>(viewMat.m[0][0], viewMat.m[1][0], viewMat.m[2][0]);
-    }
-
-    [[nodiscard]] vec3<F32> getForwardDir() const noexcept {
-        const mat4<F32>& viewMat = viewMatrix();
-        return vec3<F32>(-viewMat.m[0][2], -viewMat.m[1][2], -viewMat.m[2][2]);
-    }
+    [[nodiscard]] FORCE_INLINE vec3<F32> getUpDir()      const noexcept { return viewMatrix().getUpVec(); }
+    [[nodiscard]] FORCE_INLINE vec3<F32> getRightDir()   const noexcept { return viewMatrix().getRightVec(); }
+    [[nodiscard]] FORCE_INLINE vec3<F32> getForwardDir() const noexcept { return viewMatrix().getForwardVec(); }
 
     [[nodiscard]] const mat4<F32>& viewMatrix() const noexcept { return _data._viewMatrix; }
     [[nodiscard]] const mat4<F32>& viewMatrix()       noexcept { updateViewMatrix(); return _data._viewMatrix; }
@@ -185,9 +175,9 @@ class Camera : public Resource {
     [[nodiscard]] const mat4<F32>& projectionMatrix() const noexcept { return _data._projectionMatrix; }
     [[nodiscard]] const mat4<F32>& projectionMatrix()       noexcept { updateProjection(); return _data._projectionMatrix; }
 
-    [[nodiscard]] mat4<F32> worldMatrix()                                      { return GetInverse(viewMatrix()); }
+    [[nodiscard]] mat4<F32> worldMatrix()                             noexcept { return GetInverse(viewMatrix()); }
     [[nodiscard]] mat4<F32> worldMatrix()                       const noexcept { return GetInverse(viewMatrix()); }
-    void      worldMatrix(mat4<F32>& worldMatOut)                { viewMatrix().getInverse(worldMatOut); }
+    void      worldMatrix(mat4<F32>& worldMatOut)       noexcept { viewMatrix().getInverse(worldMatOut); }
     void      worldMatrix(mat4<F32>& worldMatOut) const noexcept { viewMatrix().getInverse(worldMatOut); }
 
     /// Nothing really to unload

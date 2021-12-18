@@ -40,6 +40,7 @@ namespace Attorney {
     class BoundingSphereEditor;
 }
 
+class OBB;
 class PropertyWindow;
 class BoundingSphere {
     friend class Attorney::BoundingSphereEditor;
@@ -51,6 +52,7 @@ class BoundingSphere {
     explicit BoundingSphere(const std::array<vec3<F32>, 8>& points) noexcept;
 
     void fromBoundingBox(const BoundingBox& bBox) noexcept;
+    void fromOBB(const OBB& box) noexcept;
     void fromBoundingSphere(const BoundingSphere& bSphere) noexcept;
     [[nodiscard]] bool containsPoint(const vec3<F32>& point) const noexcept;
     [[nodiscard]] bool containsBoundingBox(const BoundingBox& AABB) const noexcept;

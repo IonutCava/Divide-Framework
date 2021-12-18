@@ -16,6 +16,8 @@ namespace Divide {
 
 
 ShaderProgram_ptr ShaderProgram::s_imShader = nullptr;
+ShaderProgram_ptr ShaderProgram::s_imWorldShader = nullptr;
+ShaderProgram_ptr ShaderProgram::s_imWorldOITShader = nullptr;
 ShaderProgram_ptr ShaderProgram::s_nullShader = nullptr;
 ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
 ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
@@ -159,12 +161,31 @@ void ShaderProgram::OnStartup(ResourceCache* parentCache) {
     shaderDescriptor._modules.push_back(fragModule);
 
     // Create an immediate mode rendering shader that simulates the fixed function pipeline
-    ResourceDescriptor immediateModeShader("ImmediateModeEmulation");
-    immediateModeShader.threaded(false);
-    immediateModeShader.propertyDescriptor(shaderDescriptor);
-    s_imShader = CreateResource<ShaderProgram>(parentCache, immediateModeShader);
-    assert(s_imShader != nullptr);
-
+    {
+        ResourceDescriptor immediateModeShader("ImmediateModeEmulation");
+        immediateModeShader.threaded(false);
+        immediateModeShader.propertyDescriptor(shaderDescriptor);
+        s_imShader = CreateResource<ShaderProgram>(parentCache, immediateModeShader);
+        assert(s_imShader != nullptr);
+    }
+    {
+        shaderDescriptor._modules.back()._defines.emplace_back("WORLD_PASS", true);
+        shaderDescriptor._modules.back()._defines.emplace_back("MAIN_DISPLAY_PASS", true);
+        ResourceDescriptor immediateModeShader("ImmediateModeEmulation-World");
+        immediateModeShader.threaded(false);
+        immediateModeShader.propertyDescriptor(shaderDescriptor);
+        s_imWorldShader = CreateResource<ShaderProgram>(parentCache, immediateModeShader);
+        assert(s_imWorldShader != nullptr);
+    } 
+    
+    {
+        shaderDescriptor._modules.back()._defines.emplace_back("OIT_PASS", true);
+        ResourceDescriptor immediateModeShader("ImmediateModeEmulation-OIT");
+        immediateModeShader.threaded(false);
+        immediateModeShader.propertyDescriptor(shaderDescriptor);
+        s_imWorldOITShader = CreateResource<ShaderProgram>(parentCache, immediateModeShader);
+        assert(s_imWorldOITShader != nullptr);
+    }
     shaderDescriptor._modules.clear();
     ResourceDescriptor shaderDesc("NULL");
     shaderDesc.threaded(false);
@@ -179,6 +200,8 @@ void ShaderProgram::OnShutdown() {
     // Make sure we unload all shaders
     s_nullShader.reset();
     s_imShader.reset();
+    s_imWorldShader.reset();
+    s_imWorldOITShader.reset();
     while (!s_recompileQueue.empty()) {
         s_recompileQueue.pop();
     }
@@ -262,6 +285,14 @@ ShaderProgram* ShaderProgram::FindShaderProgram(const size_t shaderHash) {
 
 const ShaderProgram_ptr& ShaderProgram::DefaultShader() noexcept {
     return s_imShader;
+}
+
+const ShaderProgram_ptr& ShaderProgram::DefaultShaderWorld() noexcept {
+    return s_imWorldShader;
+}
+
+const ShaderProgram_ptr& ShaderProgram::DefaultShaderOIT() noexcept {
+    return s_imWorldOITShader;
 }
 
 const ShaderProgram_ptr& ShaderProgram::NullShader() noexcept {

@@ -237,6 +237,7 @@ class Editor final : public PlatformContextComponent,
     PROPERTY_R(F32, infiniteGridAxisWidth, 2.f);
     PROPERTY_R(F32, infiniteGridScale, 1.f);
     PROPERTY_INTERNAL(bool, lockSolutionExplorer, false);
+    PROPERTY_INTERNAL(bool, sceneGizmoEnabled, true);
 
   protected: // attorney
     void renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, GFX::CommandBuffer& bufferInOut) const;
@@ -287,6 +288,8 @@ class Editor final : public PlatformContextComponent,
     IMPrimitive*  _infiniteGridPrimitive = nullptr;
     ShaderProgram_ptr _infiniteGridProgram;
     Pipeline*     _infiniteGridPipeline = nullptr;
+    Pipeline* _axisGizmoPipeline = nullptr;
+    IMPrimitive* _axisGizmo = nullptr;
 
     std::pair<bufferPtr, size_t> _memoryEditorData = { nullptr, 0 };
     std::array<ImGuiContext*, to_base(ImGuiContextType::COUNT)> _imguiContexts = {};
@@ -483,6 +486,14 @@ namespace Attorney {
       
         [[nodiscard]] static bool enableGizmo(const Editor& editor) noexcept {
             return editor._gizmo->enabled();
+        } 
+        
+        static void setSceneGizmoEnabled(Editor& editor, const bool state) noexcept {
+            return editor.sceneGizmoEnabled(state);
+        }
+      
+        [[nodiscard]] static bool getSceneGizmoEnabled(const Editor& editor) noexcept {
+            return editor.sceneGizmoEnabled();
         }
 
         [[nodiscard]] static U32 saveItemCount(const Editor& editor) noexcept {

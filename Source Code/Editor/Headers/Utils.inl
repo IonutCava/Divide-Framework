@@ -101,7 +101,7 @@
                                               ImGuiInputTextFlags_CharsNoBlank |
                                               (hexadecimal ? ImGuiInputTextFlags_CharsHexadecimal : ImGuiInputTextFlags_CharsDecimal) |
                                               (readOnly ? ImGuiInputTextFlags_ReadOnly : 0u);
-            ret = ImGui::InputScalar(Util::StringFormat("##_value_%s_", label).c_str(), data_type, &value, step_ptr, step_fast_ptr, format, flags);
+            ret = ImGui::InputScalar(Util::StringFormat("##_value_%s_", label).c_str(), data_type, &value, step_ptr, step_fast_ptr, format, flags) || ret;
         }
         if (ret && ImGui::IsItemDeactivated()) {
             wasDeactivated = true;
@@ -214,7 +214,7 @@
         const DrawReturnValue ret = 
             Util::DrawVec<ComponentType, num_comp, IsSlider>(data_type,
                                                              label,
-                                                             FieldLabels,
+                                                             field._labels == nullptr ? FieldLabels : field._labels,
                                                              (ComponentType*) & val,
                                                              field._readOnly,
                                                              field._hexadecimal,
@@ -256,7 +256,9 @@
     inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, const ImGuiDataType data_type, EditorComponentField& field, const ImGuiInputTextFlags flags, const char* format) {
         ImGui::Separator();
         ImGui::Text("[ %s ]", label);
-
+        if (Util::IsPushedTooltip() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip(Util::PushedToolTip());
+        }
         const T cStep = static_cast<T>(stepIn * 100);
         const void* step = IS_ZERO(stepIn) ? nullptr : (void*)&stepIn;
         const void* step_fast = step == nullptr ? nullptr : (void*)&cStep;

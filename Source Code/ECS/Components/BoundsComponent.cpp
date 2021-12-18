@@ -198,6 +198,7 @@ const OBB& BoundsComponent::getOBB() {
     if (_obbDirty.exchange(false)) {
         const TransformComponent* transform = _parentSGN->get<TransformComponent>();
         _obb.fromBoundingBox(_refBoundingBox, transform->getPosition(), transform->getOrientation(), transform->getScale());
+        _boundingSphere = _obb.toEnclosingSphere();
     }
 
     return _obb;

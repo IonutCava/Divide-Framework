@@ -47,8 +47,8 @@ namespace ImGui {
 namespace Divide {
 
 namespace Util {
-    constexpr F32 LabelColumnWidth = 130.f;
-    constexpr F32 LabelColumnWidthNarrow = 100.f;
+    constexpr F32 LabelColumnWidth = 200.f;
+    constexpr F32 LabelColumnWidthNarrow = 110.f;
 
     static const ImVec4 Colours[] = {
          {0.8f, 0.1f, 0.15f, 1.f},
@@ -144,6 +144,10 @@ namespace Util {
     void PopBoldFont();
     void PushNarrowLabelWidth();
     void PopNarrowLabelWidth();
+    void PushTooltip(const char* tooltip);
+    void PopTooltip();
+    [[nodiscard]] bool IsPushedTooltip();
+    const char* PushedToolTip();
 } //namespace Util
 } //namespace Divide
 

@@ -106,7 +106,7 @@ RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContex
     RenderStateBlock primitiveStateBlock = {};
     PipelineDescriptor pipelineDescriptor = {};
     pipelineDescriptor._stateHash = primitiveStateBlock.getHash();
-    pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShader()->getGUID();
+    pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
     _primitivePipeline[0] = _context.newPipeline(pipelineDescriptor);
 
     const SceneNode& node = _parentSGN->getNode();
@@ -376,7 +376,9 @@ void RenderingComponent::getMaterialTextures(NodeMaterialTextures& texturesOut, 
 
 /// Called after the current node was rendered
 void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, const RenderStagePass& renderStagePass, GFX::CommandBuffer& bufferInOut) {
-    if (renderStagePass._stage != RenderStage::DISPLAY || renderStagePass._passType == RenderPassType::PRE_PASS) {
+    if (renderStagePass._stage != RenderStage::DISPLAY ||
+        renderStagePass._passType != RenderPassType::MAIN_PASS) 
+    {
         return;
     }
 
@@ -616,7 +618,6 @@ void RenderingComponent::drawSelectionGizmo(GFX::CommandBuffer& bufferInOut) {
     if (!_selectionGizmo) {
         _selectionGizmo = _context.newIMP();
         _selectionGizmo->name("SelectionGizmo_" + _parentSGN->name());
-        _selectionGizmo->skipPostFX(true);
         _selectionGizmo->pipeline(*_primitivePipeline[0]);
         _selectionGizmoDirty = true;
     }
@@ -633,7 +634,10 @@ void RenderingComponent::drawSelectionGizmo(GFX::CommandBuffer& bufferInOut) {
         //draw something else (at some point ...)
         BoundsComponent* bComp = static_cast<BoundsComponent*>(_parentSGN->get<BoundsComponent>());
         DIVIDE_ASSERT(bComp != nullptr);
-        _selectionGizmo->fromOBB(bComp->getOBB(), colour);
+        IMPrimitive::OBBDescriptor descriptor;
+        descriptor.box = bComp->getOBB();
+        descriptor.colour = colour;
+        _selectionGizmo->fromOBB(descriptor);
     }
 
     bufferInOut.add(_selectionGizmo->toCommandBuffer());
@@ -668,7 +672,6 @@ void RenderingComponent::drawDebugAxis(GFX::CommandBuffer& bufferInOut) {
 
         _axisGizmo = _context.newIMP();
         _axisGizmo->name("AxisGizmo_" + _parentSGN->name());
-        _axisGizmo->skipPostFX(true);
         _axisGizmo->pipeline(*_primitivePipeline[2]);
         // Create the object containing all of the lines
         _axisGizmo->beginBatch(true, 3 * 2, 1);
@@ -703,7 +706,6 @@ void RenderingComponent::drawSkeleton(GFX::CommandBuffer& bufferInOut) {
     {
         if (_skeletonPrimitive == nullptr) {
             _skeletonPrimitive = _context.newIMP();
-            _skeletonPrimitive->skipPostFX(true);
             _skeletonPrimitive->name("Skeleton_" + _parentSGN->name());
             _skeletonPrimitive->pipeline(*_primitivePipeline[1]);
         }
@@ -744,12 +746,14 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
             _boundingBoxPrimitive = _context.newIMP();
             _boundingBoxPrimitive->name("BoundingBox_" + _parentSGN->name());
             _boundingBoxPrimitive->pipeline(*_primitivePipeline[0]);
-            _boundingBoxPrimitive->skipPostFX(true);
         }
 
-
         const BoundingBox& bb = _parentSGN->get<BoundsComponent>()->getBoundingBox();
-        _boundingBoxPrimitive->fromBox(bb.getMin(), bb.getMax(), isSubMesh ? UColour4(0, 0, 255, 255) : UColour4(255, 0, 255, 255));
+        IMPrimitive::BoxDescriptor descriptor;
+        descriptor.min = bb.getMin();
+        descriptor.max = bb.getMax();
+        descriptor.colour = isSubMesh ? UColour4(0, 0, 255, 255) : UColour4(255, 0, 255, 255);
+        _boundingBoxPrimitive->fromBox(descriptor);
         bufferInOut.add(_boundingBoxPrimitive->toCommandBuffer());
     } else if (_boundingBoxPrimitive != nullptr) {
         _context.destroyIMP(_boundingBoxPrimitive);
@@ -760,11 +764,14 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
             _orientedBoundingBoxPrimitive = _context.newIMP();
             _orientedBoundingBoxPrimitive->name("OrientedBoundingBox_" + _parentSGN->name());
             _orientedBoundingBoxPrimitive->pipeline(*_primitivePipeline[0]);
-            _orientedBoundingBoxPrimitive->skipPostFX(true);
         }
 
         const auto& obb = _parentSGN->get<BoundsComponent>()->getOBB();
-        _orientedBoundingBoxPrimitive->fromOBB(obb, isSubMesh ? UColour4(128, 0, 255, 255) : UColour4(255, 0, 128, 255));
+        IMPrimitive::OBBDescriptor descriptor;
+        descriptor.box = obb;
+        descriptor.colour = isSubMesh ? UColour4(128, 0, 255, 255) : UColour4(255, 0, 128, 255);
+
+        _orientedBoundingBoxPrimitive->fromOBB(descriptor);
         bufferInOut.add(_orientedBoundingBoxPrimitive->toCommandBuffer());
     } else if (_orientedBoundingBoxPrimitive != nullptr) {
         _context.destroyIMP(_orientedBoundingBoxPrimitive);
@@ -775,11 +782,16 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
             _boundingSpherePrimitive = _context.newIMP();
             _boundingSpherePrimitive->name("BoundingSphere_" + _parentSGN->name());
             _boundingSpherePrimitive->pipeline(*_primitivePipeline[0]);
-            _boundingSpherePrimitive->skipPostFX(true);
         }
 
         const BoundingSphere& bs = _parentSGN->get<BoundsComponent>()->getBoundingSphere();
-        _boundingSpherePrimitive->fromSphere(bs.getCenter(), bs.getRadius(), isSubMesh ? UColour4(0, 255, 0, 255) : UColour4(255, 255, 0, 255));
+        IMPrimitive::SphereDescriptor descriptor;
+        descriptor.center = bs.getCenter();
+        descriptor.radius = bs.getRadius();
+        descriptor.colour = isSubMesh ? UColour4(0, 255, 0, 255) : UColour4(255, 255, 0, 255);
+        descriptor.slices = 16u;
+        descriptor.stacks = 16u;
+        _boundingSpherePrimitive->fromSphere(descriptor);
         bufferInOut.add(_boundingSpherePrimitive->toCommandBuffer());
     } else if (_boundingSpherePrimitive != nullptr) {
         _context.destroyIMP(_boundingSpherePrimitive);

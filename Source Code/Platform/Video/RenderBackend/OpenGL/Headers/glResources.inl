@@ -45,6 +45,11 @@ void getGLValue(const GLenum param, T& value, const GLint index) {
     }
 }
 
+template<typename T>
+void getGLValue(const GLenum param, T* value) {
+    glGetIntegerv(param, value);
+}
+
 template<>
 inline void getGLValue(const GLenum param, U32& value, const GLint index) {
     value = static_cast<U32>(getGLValueIndexed<GLint>(param, index));

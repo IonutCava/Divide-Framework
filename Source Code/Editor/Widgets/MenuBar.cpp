@@ -313,6 +313,7 @@ void MenuBar::draw() {
                 const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
                 activeScene.sceneGraph()->getRoot()->addChildNode(g_nodeDescriptor);
                 Attorney::EditorGeneralWidget::registerUnsavedSceneChanges(_context.editor());
+                g_nodeDescriptor._node.reset();
             }
 
             _newPrimitiveType = ObjectType::COUNT;
@@ -900,10 +901,10 @@ void MenuBar::drawDebugMenu([[maybe_unused]] const bool modifierPressed) {
                 Console::d_printfn(Locale::Get(_ID("TOGGLE_SCENE_SKELETONS")), temp ? "On" : "Off");
                 renderState.toggleOption(SceneRenderState::RenderOptions::RENDER_SKELETONS, temp);
             }
-            temp = renderState.isEnabledOption(SceneRenderState::RenderOptions::SCENE_GIZMO);
+            temp = Attorney::EditorGeneralWidget::getSceneGizmoEnabled(_context.editor());
             if (ImGui::MenuItem("Show scene axis", "", &temp)) {
                 Console::d_printfn(Locale::Get(_ID("TOGGLE_SCENE_AXIS_GIZMO")));
-                renderState.toggleOption(SceneRenderState::RenderOptions::SCENE_GIZMO, temp);
+                Attorney::EditorGeneralWidget::setSceneGizmoEnabled(_context.editor(), temp);
             }
             temp = renderState.isEnabledOption(SceneRenderState::RenderOptions::SELECTION_GIZMO);
             if (ImGui::MenuItem("Show selection axis", "", &temp)) {

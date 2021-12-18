@@ -610,51 +610,54 @@ void mat2<T>::set(const mat4<U> &matrix) noexcept {
 
 template<typename T>
 template<typename U>
-void mat2<T>::setRow(I32 index, const U value) noexcept {
+void mat2<T>::setRow(const I32 index, const U value) noexcept {
     _vec[index].set(value);
 }
 
 template<typename T>
 template<typename U>
-void mat2<T>::setRow(I32 index, const vec2<U> &value) noexcept {
+void mat2<T>::setRow(const I32 index, const vec2<U> &value) noexcept {
     _vec[index].set(value);
 }
 
 template<typename T>
 template<typename U>
-void mat2<T>::setRow(I32 index, const U x, const U y) noexcept {
+void mat2<T>::setRow(const I32 index, const U x, const U y) noexcept {
     _vec[index].set(x, y);
 }
 
 template<typename T>
-const vec2<T>& mat2<T>::getRow(I32 index) const noexcept {
+const vec2<T>& mat2<T>::getRow(const I32 index) const noexcept {
     return _vec[index];
 }
 
 template<typename T>
 template<typename U>
-void mat2<T>::setCol(I32 index, const vec2<U> &value) noexcept {
+void mat2<T>::setCol(const I32 index, const vec2<U> &value) noexcept {
     m[0][index] = static_cast<T>(value.x);
     m[1][index] = static_cast<T>(value.y);
 }
 
 template<typename T>
 template<typename U>
-void mat2<T>::setCol(I32 index, const U value) noexcept {
+void mat2<T>::setCol(const I32 index, const U value) noexcept {
     m[0][index] = static_cast<T>(value);
     m[1][index] = static_cast<T>(value);
 }
 
 template<typename T>
 template<typename U>
-void mat2<T>::setCol(I32 index, const U x, const U y) noexcept {
+void mat2<T>::setCol(const I32 index, const U x, const U y) noexcept {
     m[0][index] = static_cast<T>(x);
     m[1][index] = static_cast<T>(y);
 }
 
 template<typename T>
-vec2<T> mat2<T>::getCol(I32 index) const noexcept {
-    return vec2<T>(m[0][index], m[1][index]);
+vec2<T> mat2<T>::getCol(const I32 index) const noexcept {
+    return {
+        m[0][index],
+        m[1][index]
+    };
 }
 
 template<typename T>
@@ -1135,30 +1138,30 @@ void mat3<T>::set(const mat4<U> &matrix) noexcept {
 
 template<typename T>
 template<typename U>
-void mat3<T>::setRow(I32 index, const U value) noexcept {
+void mat3<T>::setRow(const I32 index, const U value) noexcept {
     _vec[index].set(value);
 }
 
 template<typename T>
 template<typename U>
-void mat3<T>::setRow(I32 index, const vec3<U> &value) noexcept {
+void mat3<T>::setRow(const I32 index, const vec3<U> &value) noexcept {
     _vec[index].set(value);
 }
 
 template<typename T>
 template<typename U>
-void mat3<T>::setRow(I32 index, const U x, const U y, const U z) noexcept {
+void mat3<T>::setRow(const I32 index, const U x, const U y, const U z) noexcept {
     _vec[index].set(x, y, z);
 }
 
 template<typename T>
-const vec3<T>& mat3<T>::getRow(I32 index) const noexcept {
+const vec3<T>& mat3<T>::getRow(const I32 index) const noexcept {
     return _vec[index];
 }
 
 template<typename T>
 template<typename U>
-void mat3<T>::setCol(I32 index, const vec3<U> &value) noexcept {
+void mat3<T>::setCol(const I32 index, const vec3<U> &value) noexcept {
     m[0][index] = static_cast<T>(value.x);
     m[1][index] = static_cast<T>(value.y);
     m[2][index] = static_cast<T>(value.z);
@@ -1166,7 +1169,7 @@ void mat3<T>::setCol(I32 index, const vec3<U> &value) noexcept {
 
 template<typename T>
 template<typename U>
-void mat3<T>::setCol(I32 index, const U value) noexcept {
+void mat3<T>::setCol(const I32 index, const U value) noexcept {
     m[0][index] = static_cast<T>(value);
     m[1][index] = static_cast<T>(value);
     m[2][index] = static_cast<T>(value);
@@ -1174,15 +1177,19 @@ void mat3<T>::setCol(I32 index, const U value) noexcept {
 
 template<typename T>
 template<typename U>
-void mat3<T>::setCol(I32 index, const U x, const U y, const U z) noexcept {
+void mat3<T>::setCol(const I32 index, const U x, const U y, const U z) noexcept {
     m[0][index] = static_cast<T>(x);
     m[1][index] = static_cast<T>(y);
     m[2][index] = static_cast<T>(z);
 }
 
 template<typename T>
-FORCE_INLINE vec3<T> mat3<T>::getCol(I32 index) const noexcept {
-    return vec3<T>(m[0][index], m[1][index], m[2][index]);
+FORCE_INLINE vec3<T> mat3<T>::getCol(const I32 index) const noexcept {
+    return {
+        m[0][index],
+        m[1][index],
+        m[2][index]
+    };
 }
 
 template<typename T>
@@ -1240,11 +1247,11 @@ void mat3<T>::swap(mat3 &B) noexcept {
 template<typename T>
 T mat3<T>::det() const noexcept {
     return mat[0] * mat[4] * mat[8] +
-        mat[3] * mat[7] * mat[2] +
-        mat[6] * mat[1] * mat[5] -
-        mat[6] * mat[4] * mat[2] -
-        mat[3] * mat[1] * mat[8] -
-        mat[0] * mat[7] * mat[5];
+           mat[3] * mat[7] * mat[2] +
+           mat[6] * mat[1] * mat[5] -
+           mat[6] * mat[4] * mat[2] -
+           mat[3] * mat[1] * mat[8] -
+           mat[0] * mat[7] * mat[5];
 }
 
 template<typename T>
@@ -1335,8 +1342,8 @@ void mat3<T>::fromRotation(const vec3<U> &v, Angle::RADIANS<U> angle) {
 template<typename T>
 template<typename U>
 void mat3<T>::fromRotation(U x, U y, U z, Angle::RADIANS<U> angle) {
-    U c = std::cos(angle);
-    U s = std::sin(angle);
+    const U c = std::cos(angle);
+    const U s = std::sin(angle);
     U l = static_cast<U>(Sqrt(static_cast<D64>(x * x + y * y + z * z)));
 
     l = l < EPSILON_F32 ? 1 : 1 / l;
@@ -1344,13 +1351,13 @@ void mat3<T>::fromRotation(U x, U y, U z, Angle::RADIANS<U> angle) {
     y *= l;
     z *= l;
 
-    U xy = x * y;
-    U yz = y * z;
-    U zx = z * x;
-    U xs = x * s;
-    U ys = y * s;
-    U zs = z * s;
-    U c1 = 1 - c;
+    const U xy = x * y;
+    const U yz = y * z;
+    const U zx = z * x;
+    const U xs = x * s;
+    const U ys = y * s;
+    const U zs = z * s;
+    const U c1 = 1 - c;
 
     set(c1 * x * x + c, c1 * xy + zs,   c1 * zx - ys,
         c1 * xy - zs,   c1 * y * y + c, c1 * yz + xs,
@@ -1360,10 +1367,10 @@ void mat3<T>::fromRotation(U x, U y, U z, Angle::RADIANS<U> angle) {
 template<typename T>
 template<typename U>
 void mat3<T>::fromXRotation(Angle::RADIANS<U> angle) {
-    const U zero = static_cast<U>(0);
-    const U one = static_cast<U>(1);
-    U c = std::cos(angle);
-    U s = std::sin(angle);
+    constexpr U zero = static_cast<U>(0);
+    constexpr U one = static_cast<U>(1);
+    const U c = std::cos(angle);
+    const U s = std::sin(angle);
 
     set(one, zero, zero,
         zero, c,   s,
@@ -1373,11 +1380,11 @@ void mat3<T>::fromXRotation(Angle::RADIANS<U> angle) {
 template<typename T>
 template<typename U>
 void mat3<T>::fromYRotation(Angle::RADIANS<U> angle) {
-    const U zero = static_cast<U>(0);
-    const U one = static_cast<U>(1);
+    constexpr U zero = static_cast<U>(0);
+    constexpr U one = static_cast<U>(1);
 
-    U c = std::cos(angle);
-    U s = std::sin(angle);
+    const U c = std::cos(angle);
+    const U s = std::sin(angle);
 
     set(c,    zero, -s,
         zero, one,   zero,
@@ -1387,11 +1394,11 @@ void mat3<T>::fromYRotation(Angle::RADIANS<U> angle) {
 template<typename T>
 template<typename U>
 void mat3<T>::fromZRotation(Angle::RADIANS<U> angle) {
-    const U zero = static_cast<U>(0);
-    const U one = static_cast<U>(1);
+    constexpr U zero = static_cast<U>(0);
+    constexpr U one = static_cast<U>(1);
 
-    U c = std::cos(angle);
-    U s = std::sin(angle);
+    const U c = std::cos(angle);
+    const U s = std::sin(angle);
 
     set( c,    s,    zero,
         -s,    c,    zero,
@@ -1415,26 +1422,36 @@ void mat3<T>::setScale(const vec3<U> &v) noexcept {
 
 template<typename T>
 vec3<T> mat3<T>::getScale() const noexcept {
-    const vec3<F32>& right = _vec[0];
-    const vec3<F32>& up = _vec[1];
-    const vec3<F32>& dir = _vec[2];
     return {
-       right.length(),
-       up.length(),
-       dir.length()
+       getRow(0).length(),
+       getRow(1).length(),
+       getRow(2).length()
     };
 }
 
 template<typename T>
 vec3<T> mat3<T>::getScaleSq() const noexcept {
-    const vec3<F32>& right = _vec[0];
-    const vec3<F32>& up = _vec[1];
-    const vec3<F32>& dir = _vec[2];
     return {
-       right.lengthSquared(),
-       up.lengthSquared(),
-       dir.lengthSquared()
+       getRow(0).lengthSquared(),
+       getRow(1).lengthSquared(),
+       getRow(2).lengthSquared()
     };
+}
+
+template<typename T>
+FORCE_INLINE vec3<T> mat3<T>::getUpVec() const noexcept {
+    return Normalized(getCol(1));
+}
+
+template<typename T>
+FORCE_INLINE vec3<T> mat3<T>::getRightVec() const noexcept {
+    return Normalized(getCol(0));
+}
+
+template<typename T>
+FORCE_INLINE vec3<T> mat3<T>::getForwardVec() const noexcept {
+    // FWD = WORLD_NEG_Z_AXIS
+    return -Normalized(getCol(2));
 }
 
 template<typename T>
@@ -2264,28 +2281,36 @@ FORCE_INLINE void mat4<T>::setScale(const vec3<U> &v) noexcept {
 
 template<typename T>
 FORCE_INLINE vec3<T> mat4<T>::getScale() const noexcept {
-    const vec4<F32>& right = _vec[0];
-    const vec4<F32>& up = _vec[1];
-    const vec4<F32>& dir = _vec[2];
-    //const vec4<F32>& position = _vec[3];
     return {
-       right.length(),
-       up.length(),
-       dir.length()
+       getRow(0).length(),
+       getRow(1).length(),
+       getRow(2).length()
     };
 }
 
 template<typename T>
 FORCE_INLINE vec3<T> mat4<T>::getScaleSq() const noexcept {
-    const vec4<F32>& right = _vec[0];
-    const vec4<F32>& up = _vec[1];
-    const vec4<F32>& dir = _vec[2];
-    //const vec4<F32>& position = _vec[3];
     return {
-       right.lengthSquared(),
-       up.lengthSquared(),
-       dir.lengthSquared()
+       getRow(0).lengthSquared(),
+       getRow(1).lengthSquared(),
+       getRow(2).lengthSquared()
     };
+}
+
+template<typename T>
+FORCE_INLINE vec3<T> mat4<T>::getUpVec() const noexcept {
+    return Normalized(getCol(1).xyz);
+}
+
+template<typename T>
+FORCE_INLINE vec3<T> mat4<T>::getRightVec() const noexcept {
+    return Normalized(getCol(0).xyz);
+}
+
+template<typename T>
+FORCE_INLINE vec3<T> mat4<T>::getForwardVec() const noexcept {
+    // FWD = WORLD_NEG_Z_AXIS
+    return -Normalized(getCol(2).xyz);
 }
 
 template<typename T>
