@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<static>true</static>
+<SKY>
+    <Sun__Intensity>0.5</Sun__Intensity>
+    <Rayleigh__Coefficients x="5.5" y="13" z="22.3999996"/>
+    <Rayleigh__Scale>7994</Rayleigh__Scale>
+    <Mie__Coefficients>2.09999998e-05</Mie__Coefficients>
+    <Mie__Scale__Height>1200</Mie__Scale__Height>
+    <Sun__Penetration__Power>30</Sun__Penetration__Power>
+    <Planet__Radius____1m__20000m__>20000</Planet__Radius____1m__20000m__>
+    <Cloud__Radius____1m__400000m__>200000</Cloud__Radius____1m__400000m__>
+    <Atmosphere__Offset____1m__-__2000m__>60</Atmosphere__Offset____1m__-__2000m__>
+    <Cloud__layer__height__range__(m) x="1000" y="2300"/>
+    <Weather__Scale__(__x__1e-5)>6.69299841</Weather__Scale__(__x__1e-5)>
+    <Use__Day__Skybox>false</Use__Day__Skybox>
+    <Use__Night__Skybox>true</Use__Night__Skybox>
+    <Enable__Procedural__Clouds>true</Enable__Procedural__Clouds>
+    <Night__Colour r="0" g="0" b="0" a="1"/>
+    <Moon__Colour r="1.10000002" g="1" b="0.800000012" a="1"/>
+    <Moon__Scale>0.00999999978</Moon__Scale>
+</SKY>
+<TRANSFORM>
+    <Transform>
+        <position x="0" y="0" z="0"/>
+        <orientation x="-179.999985" y="3.68578744" z="-179.999985"/>
+        <scale x="1" y="1" z="1"/>
+    </Transform>
+</TRANSFORM>
+<BOUNDS/>
+<RENDERING/>
+<NETWORKING/>
+<SCRIPT/>

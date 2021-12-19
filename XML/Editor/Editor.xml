@@ -4,7 +4,7 @@
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor>C:/Program Files (x86)/Notepad++/notepad++.exe</textEditor>
-    <lastOpenSceneGUID>382</lastOpenSceneGUID>
+    <lastOpenSceneGUID>666</lastOpenSceneGUID>
     <grid enabled="true" axisWidth="10" scale="0.100000381"/>
     <camera>
         <Editor__Camera>
@@ -13,11 +13,11 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-1.43146276</accumPitchDegrees>
+            <accumPitchDegrees>-14.9972277</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-1.42500758" y="16.5686932" z="0.0226427428"/>
-            <eye x="-7.09723425" y="32.7288628" z="92.1886597"/>
-            <orientation x="-0.0123339174" y="0.144072369" z="0.00198725797" w="0.989487648"/>
+            <euler x="-14.999999" y="39.9882622" z="0"/>
+            <eye x="60" y="45" z="60"/>
+            <orientation x="-0.122639529" y="0.339052707" z="0.0446371362" w="0.931539714"/>
             <aspectRatio>1.76999998</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>58.9304428</FoV>
@@ -30,6 +30,6 @@
         </Editor__Camera>
     </camera>
     <recentScene>
-        <entry name="WarScene"/>
+        <entry>TestReflections</entry>
     </recentScene>
 </editor>

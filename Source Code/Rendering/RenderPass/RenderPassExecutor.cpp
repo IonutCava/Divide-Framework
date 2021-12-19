@@ -1268,6 +1268,9 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
     if (!BitCompare(params._drawMask, to_U8(1 << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES)))) {
         cullFlags |= to_base(CullOptions::CULL_STATIC_NODES);
     }
+    if (BitCompare(params._drawMask, to_U8(1 << to_base(RenderPassParams::Flags::DRAW_SKY_NODES)))) {
+        cullFlags |= to_base(CullOptions::KEEP_SKY_NODES);
+    }
 
     VisibleNodeList<>& visibleNodes = Attorney::SceneManagerRenderPass::cullScene(_parent.parent().sceneManager(), cullParams, cullFlags);
 
@@ -1275,7 +1278,7 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
     // PrePass requires a depth buffer
     const bool doPrePass = _stage != RenderStage::SHADOW &&
                            params._target._usage != RenderTargetUsage::COUNT &&
-                           target.getAttachment(RTAttachmentType::Depth, 0).used();
+                           target.usesAttachment(RTAttachmentType::Depth, 0);
     const bool doOITPass = params._targetOIT._usage != RenderTargetUsage::COUNT;
     const bool doOcclusionPass = doPrePass && params._targetHIZ._usage != RenderTargetUsage::COUNT;
 
@@ -1335,6 +1338,9 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
     set._buffers.add(materialBufferBinding);
     set._buffers.add(transformBufferBinding);
     set._buffers.add(indirectionBufferBinding);
+
+    const auto& skyLightAttachment = SceneEnvironmentProbePool::SkyLightTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
+    set._textureData.add(TextureEntry{ skyLightAttachment.texture()->data(), skyLightAttachment.samplerHash(), TextureUsage::IBL_SKY});
 
     if (g_useOrDebugBindlessTextures) {
         ShaderBufferBinding texturesBufferBinding{};

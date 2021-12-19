@@ -55,6 +55,7 @@ public:
     bool clear(RTAttachmentType type, U8 index);
 
     [[nodiscard]] bool exists(RTAttachmentType type, U8 index) const;
+    [[nodiscard]] bool uses(RTAttachmentType type, U8 index) const;
     RTAttachment_ptr& get(RTAttachmentType type, U8 index);
     [[nodiscard]] const RTAttachment_ptr& get(RTAttachmentType type, U8 index) const;
 

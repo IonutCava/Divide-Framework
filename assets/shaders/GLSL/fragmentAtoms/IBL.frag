@@ -3,14 +3,17 @@
 
 layout(binding = TEXTURE_REFLECTION_ENV) uniform samplerCubeArray texEnvironmentCube;
 layout(binding = TEXTURE_REFLECTION_SKY) uniform samplerCubeArray texEnvironmentSky;
+layout(binding = TEXTURE_IBL_ENV) uniform samplerCubeArray texIBLCube;
+layout(binding = TEXTURE_IBL_SKY) uniform samplerCubeArray texIBLSky;
 
 //x = screen, y = env, z = sky
-uniform uvec3 mipCounts;
+uniform uvec4 mipCounts;
 uniform uint skyLayer;
 
 #define MAX_SCREEN_MIPS (mipCounts.x - 1)
 #define MAX_ENV_MIPS (mipCounts.y - 1)
 #define MAX_SKY_MIPS (mipCounts.z - 1)
+#define MAX_IBL_MIPS (mipCounts.w - 1)
 
 struct ProbeData
 {

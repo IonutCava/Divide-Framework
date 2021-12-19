@@ -44,6 +44,7 @@ class CommandBuffer;
 }
 
 FWD_DECLARE_MANAGED_STRUCT(DebugView);
+FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 class Camera;
 class EnvironmentProbeComponent;
@@ -57,9 +58,12 @@ public:
     ~SceneEnvironmentProbePool();
 
     static void Prepare(GFX::CommandBuffer& bufferInOut);
+    static void UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut);
     static void OnStartup(GFXDevice& context);
     static void OnShutdown(GFXDevice& context);
     static RenderTargetHandle ReflectionTarget() noexcept;
+    static RenderTargetHandle IBLTarget() noexcept;
+    static RenderTargetHandle SkyLightTarget() noexcept;
 
     const EnvironmentProbeList& sortAndGetLocked(const vec3<F32>& position);
     const EnvironmentProbeList& getLocked() const noexcept;
@@ -70,7 +74,9 @@ public:
     void lockProbeList() const noexcept;
     void unlockProbeList() const noexcept;
 
+    void prepareDebugData();
     void debugProbe(EnvironmentProbeComponent* probe);
+    void debugSkyLight();
     POINTER_R(EnvironmentProbeComponent, debugProbe, nullptr);
 
     static vector<Camera*>& ProbeCameras() noexcept { return s_probeCameras; }
@@ -84,6 +90,11 @@ public:
     static void OnNodeUpdated(const SceneEnvironmentProbePool& probePool, const SceneGraphNode& node) noexcept;
     static void OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept;
 
+    static [[nodiscard]] bool DebuggingSkyLight();
+    static               void DebuggingSkyLight(bool state) noexcept; 
+    
+    static [[nodiscard]] bool SkyLightNeedsRefresh();
+    static               void SkyLightNeedsRefresh(bool state) noexcept;
 protected:
     mutable SharedMutex _probeLock;
     EnvironmentProbeList _envProbes;
@@ -91,10 +102,15 @@ protected:
     static vector<DebugView_ptr> s_debugViews;
     static vector<Camera*> s_probeCameras;
     static bool s_probesDirty;
+    static bool s_debuggingSkyLight;
+    static bool s_skyLightNeedsRefresh;
 
 private:
     static std::array<std::pair<bool/*available*/, bool/*locked*/>, Config::MAX_REFLECTIVE_PROBES_PER_PASS> s_availableSlices;
     static RenderTargetHandle s_reflection;
+    static RenderTargetHandle s_IBL;
+    static RenderTargetHandle s_skyLight;
+    static ShaderProgram_ptr s_previewShader;
 };
 
 } //namespace Divide

@@ -52,6 +52,9 @@ RenderPassManager::~RenderPassManager()
     }
     if (_postRenderBuffer != nullptr) {
         DeallocateCommandBuffer(_postRenderBuffer);
+    } 
+    if (_skyLightRenderBuffer != nullptr) {
+        DeallocateCommandBuffer(_skyLightRenderBuffer);
     }
     for (RenderPass* rPass : _renderPasses) {
         MemoryManager::SAFE_DELETE(rPass);
@@ -103,14 +106,13 @@ void RenderPassManager::postInit() {
 
     _renderPassCommandBuffer[0] = GFX::AllocateCommandBuffer();
     _postRenderBuffer = GFX::AllocateCommandBuffer();
+    _skyLightRenderBuffer = GFX::AllocateCommandBuffer();
 }
 
 void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& pool, const Camera* cam) {
     OPTICK_EVENT();
 
     const SceneRenderState& sceneRenderState = *params._sceneRenderState;
-
-    Time::ScopedTimer timeAll(*_renderPassTimer);
 
     for (U8 i = 0u; i < _renderPassCount; ++i)
     { //All of our render passes should run in parallel
@@ -177,8 +179,16 @@ void RenderPassManager::render(const RenderParams& params) {
 
     {
        Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
-       startRenderTasks(params, pool, cam);
-
+       {
+           
+           GFX::CommandBuffer& buf = *_skyLightRenderBuffer;
+           buf.clear(false);
+           SceneEnvironmentProbePool::UpdateSkyLight(gfx, buf);
+       }
+       {
+           Time::ScopedTimer timeAll(*_renderPassTimer);
+           startRenderTasks(params, pool, cam);
+       }
        GFX::CommandBuffer& buf = *_postRenderBuffer;
        buf.clear(false);
 
@@ -205,6 +215,7 @@ void RenderPassManager::render(const RenderParams& params) {
                context.editor().drawScreenOverlay(cam, targetViewport, buf);
            }
            context.gui().draw(gfx, targetViewport, buf);
+           sceneManager->getEnvProbes()->prepareDebugData();
            gfx.renderDebugUI(targetViewport, buf);
 
            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(buf);
@@ -217,6 +228,7 @@ void RenderPassManager::render(const RenderParams& params) {
         OPTICK_EVENT("RenderPassManager::FlushCommandBuffers");
         Time::ScopedTimer timeCommands(*_flushCommandBufferTimer);
 
+        gfx.flushCommandBuffer(*_skyLightRenderBuffer);
         static eastl::array<bool, MAX_RENDER_PASSES> s_completedPasses;
 
         s_completedPasses.fill(false);

@@ -29,22 +29,22 @@ namespace Divide {
             }
 
             switch (comp->_updateType) {
-            case EnvironmentProbeComponent::UpdateType::ALWAYS:
-                if (comp->_queueRefresh) {
-                    comp->dirty(true);
-                }
-                break;
-            case EnvironmentProbeComponent::UpdateType::ON_RATE:
-                if (comp->_queueRefresh) {
-                    comp->dirty(++comp->_currentUpdateCall % comp->_updateRate == 0);
-                }
-                break;
-            case EnvironmentProbeComponent::UpdateType::ONCE:
-            case EnvironmentProbeComponent::UpdateType::ON_DIRTY:
-                break;//Nothing needed
-            case EnvironmentProbeComponent::UpdateType::COUNT:
-                DIVIDE_UNEXPECTED_CALL();
-                break;
+                case EnvironmentProbeComponent::UpdateType::ALWAYS:
+                    if (comp->_queueRefresh) {
+                        comp->dirty(true);
+                    }
+                    break;
+                case EnvironmentProbeComponent::UpdateType::ON_RATE:
+                    if (comp->_queueRefresh) {
+                        comp->dirty(++comp->_currentUpdateCall % comp->_updateRate == 0);
+                    }
+                    break;
+                case EnvironmentProbeComponent::UpdateType::ONCE:
+                case EnvironmentProbeComponent::UpdateType::ON_DIRTY:
+                    break;//Nothing needed
+                case EnvironmentProbeComponent::UpdateType::COUNT:
+                    DIVIDE_UNEXPECTED_CALL();
+                    break;
             }
         }
     }

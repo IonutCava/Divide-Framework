@@ -1951,7 +1951,7 @@ bool Editor::saveToXML() const {
 
     _editorCamera->saveToXML(pt, "editor");
     for (size_t i = 0u; i < _recentSceneList.size(); ++i) {
-        pt.put("editor.recentScene.entry.<xmlattr>.name", _recentSceneList.get(i).c_str());
+        pt.add("editor.recentScene.entry", _recentSceneList.get(i).c_str());
     }
     if (createDirectory(editorPath.c_str())) {
         if (copyFile(editorPath.c_str(), g_editorSaveFile, editorPath.c_str(), g_editorSaveFileBak, true) == FileError::NONE) {
@@ -1990,8 +1990,7 @@ bool Editor::loadFromXML() {
             if (tag == "<xmlcomment>") {
                 continue;
             }
-            const boost::property_tree::ptree& attributes = data.get_child("<xmlattr>", g_emptyPtree);
-            const std::string name = attributes.get<std::string>("name", "");
+            const std::string name = data.get_value<std::string>();
             if (!name.empty()) {
                 _recentSceneList.put(name);
             }

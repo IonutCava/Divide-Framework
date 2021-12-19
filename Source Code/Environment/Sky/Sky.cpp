@@ -737,10 +737,10 @@ void Sky::setSkyShaderData(const U32 rayCount, PushConstants& constantsInOut) {
 }
 
 void Sky::prepareRender(SceneGraphNode* sgn,
-                RenderingComponent& rComp,
-                const RenderStagePass& renderStagePass,
-                const Camera& camera,
-                const bool refreshData)  {
+                        RenderingComponent& rComp,
+                        const RenderStagePass& renderStagePass,
+                        const Camera& camera,
+                        const bool refreshData)  {
 
     const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
     if (!pkg.empty()) {
@@ -797,6 +797,8 @@ void Sky::buildDrawCommands(SceneGraphNode* sgn,
     cmd._cmd.indexCount = to_U32(_sky->getGeometryVB()->getIndexCount());
 
     pkgInOut.add(GFX::DrawCommand{ cmd });
+
+    SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
 
     SceneNode::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
 }

@@ -262,7 +262,7 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
         GLuint prevWriteAtt = 0;
 
         const std::array<GLenum, MAX_RT_COLOUR_ATTACHMENTS> currentOutputBuffers = output->_activeColourBuffers;
-        for (const ColourBlitEntry& entry : params._blitColours) {
+        for (ColourBlitEntry entry : params._blitColours) {
             if (entry.input()._layer == INVALID_COLOUR_LAYER && entry.input()._index == INVALID_COLOUR_LAYER) {
                 continue;
             }
@@ -306,36 +306,51 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
                 prevWriteAtt = crtWriteAtt;
             }
 
-            BlitHelpers::prepareAttachments(input, inAtt.get(), entry, true);
-            BlitHelpers::prepareAttachments(output, outAtt.get(), entry, false);
+            
+            RTAttachment* inAttachment = inAtt.get();
+            const U8 loopCount = IsCubeTexture(inAttachment->texture(false)->data()._textureType) ? 6u : 1u;
+            RTAttachment* outAttachment = outAtt.get();
+            assert(loopCount == 1u || IsCubeTexture(outAttachment->texture(false)->data()._textureType));
+            for (U8 i = 0u ; i < loopCount; ++i) {
+                if (i > 0u) {
+                    BlitIndex crtInput = entry.input();
+                    BlitIndex crtOutput = entry.output();
+                    ++crtInput._layer;
+                    ++crtOutput._layer;
+                    entry.set(crtInput, crtOutput);
+                }
+                BlitHelpers::prepareAttachments(input, inAttachment, entry, true);
+                BlitHelpers::prepareAttachments(output, outAttachment, entry, false);
 
-            // If we change layers, then the depth buffer should match that ... I guess ... this sucks!
-            if (!depthMisMatch) {
-                if (input->hasDepth()) {
-                    BlitHelpers::prepareAttachments(input, entry, true);
+                // If we change layers, then the depth buffer should match that ... I guess ... this sucks!
+                if (!depthMisMatch && loopCount == 1u) {
+                    if (input->hasDepth()) {
+                        BlitHelpers::prepareAttachments(input, entry, true);
+                    }
+
+                    if (output->hasDepth()) {
+                        BlitHelpers::prepareAttachments(output, entry, false);
+                    }
                 }
 
-                if (output->hasDepth()) {
-                    BlitHelpers::prepareAttachments(output, entry, false);
-                }
+                blittedDepth = loopCount == 1 &&
+                               !blittedDepth &&
+                               !depthMisMatch &&
+                               params._blitDepth._inputLayer == inputLayer &&
+                               params._blitDepth._outputLayer == outputLayer;
+                checkStatus();
+
+                glBlitNamedFramebuffer(input->_framebufferHandle,
+                                       output->_framebufferHandle,
+                                       0, 0,
+                                       inputDim.width, inputDim.height,
+                                       0, 0,
+                                       outputDim.width, outputDim.height,
+                                       blittedDepth ? GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT 
+                                                    : GL_COLOR_BUFFER_BIT,
+                                       GL_NEAREST);
+                _context.registerDrawCall();
             }
-
-            blittedDepth = !blittedDepth &&
-                !depthMisMatch &&
-                params._blitDepth._inputLayer == inputLayer &&
-                params._blitDepth._outputLayer == outputLayer;
-            checkStatus();
-
-            glBlitNamedFramebuffer(input->_framebufferHandle,
-                                   output->_framebufferHandle,
-                                   0, 0,
-                                   inputDim.width, inputDim.height,
-                                   0, 0,
-                                   outputDim.width, outputDim.height,
-                                   blittedDepth ? GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT 
-                                                : GL_COLOR_BUFFER_BIT,
-                                   GL_NEAREST);
-            _context.registerDrawCall();
             QueueMipMapsRecomputation(*outAtt);
         }
 
@@ -348,7 +363,7 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
     }
 
     if (!depthMisMatch && !blittedDepth && IsValid(params._blitDepth)) {
-                               BlitHelpers::prepareAttachments(input, params._blitDepth, true);
+        BlitHelpers::prepareAttachments(input, params._blitDepth, true);
         const RTAttachment* outAtt = BlitHelpers::prepareAttachments(output,  params._blitDepth, false);
         checkStatus();
 

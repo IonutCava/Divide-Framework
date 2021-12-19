@@ -669,9 +669,10 @@ namespace Divide {
                 const U8 entryCount = to_U8(field._range.max);
                 static UndoEntry<I32> typeUndo = {};
                 if (entryCount > 0 && entryStart <= entryCount) {
+                    ImGui::PushID(field._name.c_str());
 
                     const U8 crtMode = field.get<U8>();
-                    ret = ImGui::BeginCombo(field._name.c_str(), field.getDisplayName(crtMode));
+                    ret = ImGui::BeginCombo("", field.getDisplayName(crtMode));
                     if (ret) {
                         for (U8 n = entryStart; n < entryCount; ++n) {
                             const bool isSelected = crtMode == n;
@@ -694,6 +695,7 @@ namespace Divide {
                         }
                         ImGui::EndCombo();
                     }
+                    ImGui::PopID();
                 }
                 if (field._readOnly) {
                     PopReadOnly();

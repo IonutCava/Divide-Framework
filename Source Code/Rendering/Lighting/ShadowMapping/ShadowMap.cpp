@@ -380,6 +380,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                     shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, i + light->getShadowOffset());
                     shadow->_name = Util::StringFormat("CSM_%d", i + light->getShadowOffset());
                     shadow->_groupID = Base + to_I16(light->shadowIndex());
+                    shadow->_enabled = true;
                     s_debugViews.push_back(shadow);
                 }
             } break;
@@ -400,6 +401,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                 shadow->_shader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
                 shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, light->getShadowOffset());
                 shadow->_name = Util::StringFormat("SM_%d", light->getShadowOffset());
+                shadow->_enabled = true;
                 s_debugViews.push_back(shadow);
             }break;
             case LightType::POINT: {
@@ -427,6 +429,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                     shadow->_shaderData.set(_ID("face"), GFX::PushConstantType::INT, i);
                     shadow->_groupID = Base + to_I16(light->shadowIndex());
                     shadow->_name = Util::StringFormat("CubeSM_%d_face_%d", light->getShadowOffset(), i);
+                    shadow->_enabled = true;
                     s_debugViews.push_back(shadow);
                 }
             } break;

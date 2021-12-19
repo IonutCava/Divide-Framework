@@ -47,6 +47,10 @@ bool RenderTarget::hasAttachment(const RTAttachmentType type, const U8 index) co
     return _attachmentPool->exists(type, index);
 }
 
+bool RenderTarget::usesAttachment(const RTAttachmentType type, const U8 index) const {
+    return _attachmentPool->uses(type, index);
+}
+
 const RTAttachment_ptr& RenderTarget::getAttachmentPtr(const RTAttachmentType type, const U8 index) const {
     return _attachmentPool->get(type, index);
 }

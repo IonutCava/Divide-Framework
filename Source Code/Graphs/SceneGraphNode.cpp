@@ -28,7 +28,7 @@ namespace Divide {
 namespace {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
-    bool PropagateFlagToChildren(const SceneGraphNode::Flags flag) noexcept {
+    FORCE_INLINE bool PropagateFlagToChildren(const SceneGraphNode::Flags flag) noexcept {
         return flag == SceneGraphNode::Flags::SELECTED || 
                flag == SceneGraphNode::Flags::HOVERED ||
                flag == SceneGraphNode::Flags::ACTIVE ||
@@ -618,6 +618,10 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
     // If the node is still loading, DO NOT RENDER IT. Bad things happen :D
     if (hasFlag(Flags::LOADING)) {
         return true;
+    }
+
+    if (BitCompare(cullFlags, CullOptions::KEEP_SKY_NODES) && _node->type() == SceneNodeType::TYPE_SKY) {
+        return false;
     }
 
     const SceneNodeRenderState& nodeRenderState = _node->renderState();

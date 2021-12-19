@@ -80,10 +80,23 @@ struct ColourBlitEntry {
     void set(const U16 indexIn, const U16 indexOut, const U16 layerIn = 0u, const U16 layerOut = 0u) noexcept {
         input(indexIn, layerIn);
         output(indexOut, layerOut);
+    } 
+    
+    void set(const BlitIndex in, const BlitIndex out) noexcept {
+        input(in);
+        output(out);
+    }
+
+    void input(const BlitIndex in) noexcept {
+        _input = in;
     }
 
     void input(const U16 index, const U16 layer = 0u) noexcept {
         _input = { to_I16(layer), to_I16(index) };
+    }
+
+    void output(const BlitIndex out) noexcept {
+        _output = out;
     }
 
     void output(const U16 index, const U16 layer = 0u) noexcept {
@@ -175,6 +188,7 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
                   void destroy() noexcept;
 
     [[nodiscard]] virtual bool hasAttachment(RTAttachmentType type, U8 index) const;
+    [[nodiscard]] virtual bool usesAttachment(RTAttachmentType type, U8 index) const;
     [[nodiscard]] virtual const RTAttachment_ptr& getAttachmentPtr(RTAttachmentType type, U8 index) const;
     [[nodiscard]] virtual const RTAttachment& getAttachment(RTAttachmentType type, U8 index) const;
     [[nodiscard]] virtual RTAttachment& getAttachment(RTAttachmentType type, U8 index);

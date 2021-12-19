@@ -88,6 +88,8 @@ layout(binding = TEXTURE_REFLECTION_CUBE)   uniform samplerCube    texReflectCub
 layout(binding = TEXTURE_REFRACTION_CUBE)   uniform samplerCube    texRefractCube;
 
 #endif //BINDLESS_TEXTURES_ENABLED && !DEBUG_BINDLESS_TEXTURES
+
+layout(binding = TEXTURE_IBL_SKY) uniform samplerCubeArray texSkyLight;
 #endif //NEED_TEXTURE_DATA
 
 #include "sceneData.cmn"

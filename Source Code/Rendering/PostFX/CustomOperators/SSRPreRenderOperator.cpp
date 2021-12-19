@@ -105,25 +105,28 @@ bool SSRPreRenderOperator::execute(const Camera* camera, const RenderTargetHandl
     // ToDo: Cache these textures and their mipcount somehow -Ionut
     const auto[skyTexture, skySampler] = Attorney::SceneManagerSSRAccessor::getSkyTexture(_context.parent().sceneManager());
     const auto& environmentProbeAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
+    const auto& environmentIBLAtt = SceneEnvironmentProbePool::IBLTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
     const Texture_ptr& reflectionTexture = environmentProbeAtt.texture();
-    if (!skyTexture && !reflectionTexture) {
+    const Texture_ptr& iblTexture = environmentIBLAtt.texture();
+    if (!skyTexture && !reflectionTexture && !iblTexture) {
         // We need some sort of environment mapping here (at least for now)
         return false;
     }
 
-    const vec3<U32> mipCounts {
+    const vec4<U32> mipCounts {
         screenAtt.texture()->mipCount(),
         reflectionTexture->mipCount(),
         skyTexture == nullptr
                     ? reflectionTexture->mipCount()
-                    : skyTexture->mipCount()
+                    : skyTexture->mipCount(),
+        iblTexture->mipCount()
     };
 
     _constantsCmd._constants.set(_ID("projToPixel"), GFX::PushConstantType::MAT4, camera->projectionMatrix() * _projToPixelBasis);
     _constantsCmd._constants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, camera->projectionMatrix());
     _constantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, GetInverse(camera->projectionMatrix()));
     _constantsCmd._constants.set(_ID("invViewMatrix"), GFX::PushConstantType::MAT4, camera->worldMatrix());
-    _constantsCmd._constants.set(_ID("mipCounts"), GFX::PushConstantType::UVEC3, mipCounts);
+    _constantsCmd._constants.set(_ID("mipCounts"), GFX::PushConstantType::UVEC4, mipCounts);
     _constantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
     _constantsCmd._constants.set(_ID("skyLayer"), GFX::PushConstantType::UINT, _context.getRenderer().postFX().isDayTime() ?  0u : 1u);
     _constantsCmd._constants.set(_ID("ssrEnabled"), GFX::PushConstantType::BOOL, _enabled);
@@ -149,6 +152,7 @@ bool SSRPreRenderOperator::execute(const Camera* camera, const RenderTargetHandl
         set._textureData.add(TextureEntry{ skyTexture->data(), skySampler, TextureUsage::REFLECTION_SKY });
     }
     set._textureData.add(TextureEntry{ reflectionTexture->data(), environmentProbeAtt.samplerHash(), TextureUsage::REFLECTION_ENV });
+    set._textureData.add(TextureEntry{ iblTexture->data(), environmentIBLAtt.samplerHash(), TextureUsage::IBL_ENV });
 
     GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     renderPassCmd->_target = { RenderTargetUsage::SSR_RESULT };

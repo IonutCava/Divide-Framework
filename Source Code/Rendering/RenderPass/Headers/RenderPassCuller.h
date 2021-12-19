@@ -57,6 +57,7 @@ enum class CullOptions : U16 {
     CULL_AGAINST_CLIPPING_PLANES = toBit(3),
     CULL_AGAINST_FRUSTUM = toBit(4),
     CULL_AGAINST_LOD = toBit(5),
+    KEEP_SKY_NODES = toBit(6), //Even if we cull agains frustum, lods, dynamic/static, etc, we always render at least the sky
     DEFAULT_CULL_OPTIONS = CULL_AGAINST_CLIPPING_PLANES | CULL_AGAINST_FRUSTUM | CULL_AGAINST_LOD
 };
 

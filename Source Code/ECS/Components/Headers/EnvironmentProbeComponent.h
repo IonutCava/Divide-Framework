@@ -52,13 +52,13 @@ namespace GFX {
 BEGIN_COMPONENT_EXT1(EnvironmentProbe, ComponentType::ENVIRONMENT_PROBE, GUIDWrapper)
 
 public:
-    enum class ProbeType {
+    enum class ProbeType : U8 {
         TYPE_INFINITE = 0,
         TYPE_LOCAL,
         COUNT
     };
 
-    enum class UpdateType {
+    enum class UpdateType : U8 {
         ALWAYS = 0,
         ON_DIRTY,
         ON_RATE,
@@ -114,6 +114,7 @@ protected:
     [[nodiscard]] SceneGraphNode* findNodeToIgnore() const noexcept;
 
     void updateProbeData() const noexcept;
+    [[nodiscard]] bool debugIBL() const noexcept { return _debugIBL; }
 protected:
     BoundingBox _aabb{ vec3<F32>(-1), vec3<F32>(1) };
     BoundingBox _refaabb{ vec3<F32>(-1), vec3<F32>(1) };
@@ -124,6 +125,8 @@ protected:
 private:
     bool _queueRefresh = true;
     bool _drawImpostor = false;
+    bool _debugIBL = false;
+
 END_COMPONENT(EnvironmentProbe);
 
 namespace TypeUtil {

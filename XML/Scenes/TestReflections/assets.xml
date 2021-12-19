@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<version>1</version>
+<entities>
+    <node name="ROOT" type="TRANSFORM">
+        <node name="DefaultSky" type="SKY"/>
+        <node name="DefaultLight" type="TRANSFORM"/>
+        <node name="Test_Probe" type="TRANSFORM"/>
+    </node>
+</entities>

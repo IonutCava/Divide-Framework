@@ -58,6 +58,7 @@ namespace {
         switch (usage) {
             case RenderTargetUsage::EDITOR: return "Editor";
             case RenderTargetUsage::ENVIRONMENT: return "Environment";
+            case RenderTargetUsage::IBL: return "IBL";
             case RenderTargetUsage::POSTFX_DATA: return "PostFX Data";
             case RenderTargetUsage::SSR_RESULT: return "SSR Result";
             case RenderTargetUsage::HI_Z: return "HI-Z";
@@ -771,13 +772,20 @@ void MenuBar::drawDebugMenu([[maybe_unused]] const bool modifierPressed) {
 
         if (ImGui::BeginMenu("Select Env Probe")) {
             constexpr U8 MaxProbesPerPage = 32;
-            const auto PrintProbeEntry = [&envProbPool](const EnvironmentProbeList& probes, const size_t j) {
+            bool debuggingSkyLight = SceneEnvironmentProbePool::DebuggingSkyLight();
+            const auto PrintProbeEntry = [&envProbPool, debuggingSkyLight](const EnvironmentProbeList& probes, const size_t j) {
                 EnvironmentProbeComponent* crtProbe = probes[j];
-                bool selected = envProbPool->debugProbe() == crtProbe;
+                bool selected = !debuggingSkyLight && envProbPool->debugProbe() == crtProbe;
                 if (ImGui::MenuItem(crtProbe->parentSGN()->name().c_str(), "", &selected)) {
-                    envProbPool->debugProbe(crtProbe);
+                    envProbPool->debugProbe(selected ? crtProbe : nullptr);
+                    SceneEnvironmentProbePool::DebuggingSkyLight(false);
                 }
             };
+            
+            if (ImGui::MenuItem("SkyLight", "", &debuggingSkyLight)) {
+                SceneEnvironmentProbePool::DebuggingSkyLight(debuggingSkyLight);
+            }
+
             envProbPool->lockProbeList();
             const EnvironmentProbeList& probes = envProbPool->getLocked();
             const size_t probeCount = probes.size();

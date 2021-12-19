@@ -70,6 +70,18 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     bbField._readOnly = false;
     editorComponent().registerField(MOV(bbField));
 
+    EditorComponentField updateRateField = {};
+    updateRateField._name = "Update Rate";
+    updateRateField._tooltip = "[0...TARGET_FPS]. Every Nth frame. 0 = disabled;";
+    updateRateField._data = &_updateRate;
+    updateRateField._type = EditorComponentFieldType::PUSH_TYPE;
+    updateRateField._readOnly = false;
+    updateRateField._range = { 0.f, Config::TARGET_FRAME_RATE };
+    updateRateField._basicType = GFX::PushConstantType::UINT;
+    updateRateField._basicTypeSize = GFX::PushConstantSize::BYTE;
+
+    editorComponent().registerField(MOV(updateRateField));
+
     EditorComponentField updateTypeField = {};
     updateTypeField._name = "Update Type";
     updateTypeField._type = EditorComponentFieldType::DROPDOWN_TYPE;
@@ -87,18 +99,6 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
 
     editorComponent().registerField(MOV(updateTypeField));
 
-    EditorComponentField updateRateField = {};
-    updateRateField._name = "Update Rate";
-    updateRateField._tooltip = "[0...TARGET_FPS]. Every Nth frame. 0 = disabled;";
-    updateRateField._data = &_updateRate;
-    updateRateField._type = EditorComponentFieldType::PUSH_TYPE;
-    updateRateField._readOnly = false;
-    updateRateField._range = { 0.f, Config::TARGET_FRAME_RATE };
-    updateRateField._basicType = GFX::PushConstantType::UINT;
-    updateRateField._basicTypeSize = GFX::PushConstantSize::BYTE;
-
-    editorComponent().registerField(MOV(updateRateField));
-
     EditorComponentField showBoxField = {};
     showBoxField._name = "Show parallax correction AABB";
     showBoxField._data = &_showParallaxAABB;
@@ -106,11 +106,32 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     showBoxField._readOnly = false;
     showBoxField._basicType = GFX::PushConstantType::BOOL;
 
-    editorComponent().registerField(MOV(showBoxField));
+    editorComponent().registerField(MOV(showBoxField)); 
+    
+    EditorComponentField debugIBLField = {};
+    debugIBLField._name = "Debug IBL";
+    debugIBLField._tooltip = "Unchecked: Debug reflection texture (unconvoluted).";
+    debugIBLField._data = &_debugIBL;
+    debugIBLField._type = EditorComponentFieldType::PUSH_TYPE;
+    debugIBLField._readOnly = false;
+    debugIBLField._basicType = GFX::PushConstantType::BOOL;
 
-    editorComponent().onChangedCbk([this](std::string_view) {
-        const vec3<F32> pos = _parentSGN->get<TransformComponent>()->getPosition();
-        setBounds(_refaabb.getMin() + pos, _refaabb.getMax() + pos);
+    editorComponent().registerField(MOV(debugIBLField));
+
+    EditorComponentField updateProbeNowButton = {};
+    updateProbeNowButton._name = "Update Now";
+    updateProbeNowButton._type = EditorComponentFieldType::BUTTON;
+    updateProbeNowButton._readOnly = false; //disabled/enabled
+    editorComponent().registerField(MOV(updateProbeNowButton));
+
+    editorComponent().onChangedCbk([this](std::string_view field) {
+        if (field == "Update Now") {
+            dirty(true);
+            queueRefresh();
+        } else {
+            const vec3<F32> pos = _parentSGN->get<TransformComponent>()->getPosition();
+            setBounds(_refaabb.getMin() + pos, _refaabb.getMax() + pos);
+        }
     });
 
     Attorney::SceneEnvironmentProbeComponent::registerProbe(parentScene, this);
@@ -196,6 +217,20 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut) {
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("ConvolutionPass Id: [ %d ]", rtLayerIndex()).c_str()));
+
+    //ToDo: Do proper IBL convolution here, preferably in a compute shader -Ionut
+    GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
+    blitRenderTargetCommand._source = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
+    blitRenderTargetCommand._destination = SceneEnvironmentProbePool::IBLTarget()._targetID;
+    blitRenderTargetCommand._blitColours[0].set(0u, 0u, rtLayerIndex(), rtLayerIndex());
+    EnqueueCommand(bufferInOut, blitRenderTargetCommand);
+
+    computeMipMapsCommand._texture = SceneEnvironmentProbePool::IBLTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
+    computeMipMapsCommand._layerRange = { rtLayerIndex(), 1 };
+    EnqueueCommand(bufferInOut, computeMipMapsCommand);
+
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     _currentUpdateCall = 0;
     return true;
 }

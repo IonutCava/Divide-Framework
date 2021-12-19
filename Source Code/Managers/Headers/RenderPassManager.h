@@ -60,6 +60,7 @@ struct RenderPassParams
     enum class Flags : U8 {
         DRAW_STATIC_NODES = 0,
         DRAW_DYNAMIC_NODES,
+        DRAW_SKY_NODES,
         COUNT
     };
 
@@ -146,6 +147,7 @@ private:
     std::array<I32, to_base(RenderStage::COUNT)> _drawCallCount = create_array<to_base(RenderStage::COUNT), I32>(0);
 
     GFX::CommandBuffer* _postRenderBuffer = nullptr;
+    GFX::CommandBuffer* _skyLightRenderBuffer = nullptr;
 
     Time::ProfileTimer* _renderPassTimer = nullptr;
     Time::ProfileTimer* _buildCommandBufferTimer = nullptr;

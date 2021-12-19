@@ -62,6 +62,7 @@ enum class RenderTargetUsage : U8 {
     REFRACTION_PLANAR,
     REFLECTION_CUBE,
     ENVIRONMENT,
+    IBL,
     SHADOW,
     EDITOR,
     OTHER,
@@ -69,7 +70,7 @@ enum class RenderTargetUsage : U8 {
 };
 /// A list of built-in sampler slots. Use these if possible and keep them sorted by how often they are used
 enum class TextureUsage : U8 {
-    UNIT0 = 0,
+    UNIT0 = 0u,
     NORMALMAP,
     HEIGHTMAP,
     SHADOW_LAYERED,
@@ -90,13 +91,17 @@ enum class TextureUsage : U8 {
     REFRACTION_CUBE,
     REFLECTION_ENV,
     REFLECTION_SKY,
+    IBL_ENV,
+    IBL_SKY,
     POST_FX_DATA,
     SCENE_NORMALS,
     COUNT
 };
 
+static_assert(to_base(TextureUsage::COUNT) <= 32);
+
 namespace Names {
-    static const char* textureUsage[] = {
+    static constexpr char* textureUsage[] = {
         "UNIT0",
         "NORMALMAP",
         "HEIGHTMAP",
@@ -118,6 +123,8 @@ namespace Names {
         "REFRACTION_CUBE",
         "REFLECTION_ENV",
         "REFLECTION_SKY",
+        "IBL_ENV",
+        "IBL_SKY",
         "POST_FX_DATA",
         "SCENE_NORMALS",
         "NONE"

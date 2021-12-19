@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<static>true</static>
+<TRANSFORM>
+    <Transform>
+        <position x="0" y="0.19078064" z="0"/>
+        <orientation x="0" y="-0" z="0"/>
+        <scale x="1" y="1" z="1"/>
+    </Transform>
+</TRANSFORM>
+<BOUNDS/>
+<ENVIRONMENT_PROBE>
+    <Is__Local>true</Is__Local>
+    <Bounding__Box>
+        <aabb>
+            <min x="-1" y="-1" z="-1"/>
+            <max x="1" y="1" z="1"/>
+        </aabb>
+    </Bounding__Box>
+    <Update__Rate>1</Update__Rate>
+    <Show__parallax__correction__AABB>true</Show__parallax__correction__AABB>
+</ENVIRONMENT_PROBE>
