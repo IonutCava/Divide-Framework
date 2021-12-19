@@ -171,22 +171,21 @@ void IMPrimitive::fromCones(const ConeDescriptor* cones, const size_t count) {
         return;
     }
 
-    constexpr U8 slices = 16u;
-    constexpr F32 angInc = 360.0f / slices * M_PIDIV180_f;
-
-    beginBatch(true, to_U32(count * (slices + 1)), 1u);
+    beginBatch(true, to_U32(count * (32u + 1)), 1u);
 
     for (size_t i = 0u; i < count; ++i) {
         const ConeDescriptor& cone = cones[i];
 
+        const U8 slices = std::min(cone.slices, to_U8(32u));
+        const F32 angInc = 360.0f / slices * M_PIDIV180_f;
         const vec3<F32> invDirection = -cone.direction;
         const vec3<F32> c = cone.root + -invDirection * cone.length;
         const vec3<F32> e0 = Perpendicular(invDirection);
         const vec3<F32> e1 = Cross(e0, invDirection);
 
         // calculate points around directrix
-        std::array<vec3<F32>, slices> pts = {};
-        for (size_t j = 0; j < pts.size(); ++j) {
+        std::array<vec3<F32>, 32u> pts = {};
+        for (size_t j = 0u; j < slices; ++j) {
             const F32 rad = angInc * j;
             pts[j] = c + (e0 * std::cos(rad) + e1 * std::sin(rad)) * cone.radius;
         }

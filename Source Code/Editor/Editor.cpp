@@ -882,6 +882,13 @@ void Editor::postRender(const Camera& camera, const RenderTargetID target, GFX::
                 const auto addValMinus20Percent = [](const F32 val) { return val - ((val + 20) / 100.f); };
 
                 std::array<IMPrimitive::ConeDescriptor, 6> descriptors;
+                descriptors[0].slices = 4u;
+                descriptors[1].slices = 4u;
+                descriptors[2].slices = 4u;
+                descriptors[3].slices = 4u;
+                descriptors[4].slices = 4u;
+                descriptors[5].slices = 4u;
+
                 // Shafts
                 descriptors[0].direction = WORLD_X_NEG_AXIS;
                 descriptors[1].direction = WORLD_Y_NEG_AXIS;
@@ -913,7 +920,7 @@ void Editor::postRender(const Camera& camera, const RenderTargetID target, GFX::
                 descriptors[5].length = 0.5f;
 
                 descriptors[3].root = VECTOR3_ZERO + vec3<F32>(addValMinus20Percent(descriptors[0].length) + 0.50f, 0.f, 0.f);
-                descriptors[4].root = VECTOR3_ZERO + vec3<F32>(0.f, addValMinus20Percent(descriptors[1].length) - 0.50f, 0.f);
+                descriptors[4].root = VECTOR3_ZERO + vec3<F32>(0.f, addValMinus20Percent(descriptors[1].length) - 0.35f, 0.f);
                 descriptors[5].root = VECTOR3_ZERO + vec3<F32>(0.f, 0.f, addValMinus20Percent(descriptors[2].length) + 0.50f);
 
                 descriptors[3].radius = 0.15f;

@@ -77,6 +77,7 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
            vec3<F32> direction = WORLD_Y_AXIS;
            F32 length = 1.f;
            F32 radius = 2.f;
+           U8 slices = 16u; //max 32u
        };
    public:
     const Pipeline* pipeline() const noexcept {
