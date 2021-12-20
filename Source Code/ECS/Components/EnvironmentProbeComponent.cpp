@@ -107,16 +107,6 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     showBoxField._basicType = GFX::PushConstantType::BOOL;
 
     editorComponent().registerField(MOV(showBoxField)); 
-    
-    EditorComponentField debugIBLField = {};
-    debugIBLField._name = "Debug IBL";
-    debugIBLField._tooltip = "Unchecked: Debug reflection texture (unconvoluted).";
-    debugIBLField._data = &_debugIBL;
-    debugIBLField._type = EditorComponentFieldType::PUSH_TYPE;
-    debugIBLField._readOnly = false;
-    debugIBLField._basicType = GFX::PushConstantType::BOOL;
-
-    editorComponent().registerField(MOV(debugIBLField));
 
     EditorComponentField updateProbeNowButton = {};
     updateProbeNowButton._name = "Update Now";
@@ -210,27 +200,10 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut) {
                                    bufferInOut,
                                    cameras);
  
-    GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-    computeMipMapsCommand._texture = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
-    computeMipMapsCommand._layerRange = { rtLayerIndex(), 1 };
-    EnqueueCommand(bufferInOut, computeMipMapsCommand);
+    SceneEnvironmentProbePool::ProcessEnvironmentMap(_context.gfx(), rtLayerIndex(), updateType() == UpdateType::ALWAYS, bufferInOut);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("ConvolutionPass Id: [ %d ]", rtLayerIndex()).c_str()));
-
-    //ToDo: Do proper IBL convolution here, preferably in a compute shader -Ionut
-    GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
-    blitRenderTargetCommand._source = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
-    blitRenderTargetCommand._destination = SceneEnvironmentProbePool::IBLTarget()._targetID;
-    blitRenderTargetCommand._blitColours[0].set(0u, 0u, rtLayerIndex(), rtLayerIndex());
-    EnqueueCommand(bufferInOut, blitRenderTargetCommand);
-
-    computeMipMapsCommand._texture = SceneEnvironmentProbePool::IBLTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
-    computeMipMapsCommand._layerRange = { rtLayerIndex(), 1 };
-    EnqueueCommand(bufferInOut, computeMipMapsCommand);
-
-    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     _currentUpdateCall = 0;
     return true;
 }

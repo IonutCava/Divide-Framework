@@ -67,6 +67,11 @@ void DebugCallback(const GLenum source,
             gl_severity = "Info";
         }
 
+        std::string fullScope = "GL";
+        for (U8 i = 0u; i < GL_API::getStateTracker()._debugScopeDepth; ++i) {
+            fullScope.append("::");
+            fullScope.append(GL_API::getStateTracker()._debugScope[i]);
+        }
         // Print the message and the details
         const string outputError = Util::StringFormat(
             "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Program : %d][Bound Pipeline : %d][DebugGroup: %s][Message: %s]",
@@ -77,7 +82,7 @@ void DebugCallback(const GLenum source,
             gl_severity, 
             GL_API::getStateTracker()._activeShaderProgram,
             GL_API::getStateTracker()._activeShaderPipeline,
-            GL_API::getStateTracker()._debugScope.c_str(),
+            fullScope.c_str(),
             message);
 
         const bool isConsoleIM = Console::immediateModeEnabled();

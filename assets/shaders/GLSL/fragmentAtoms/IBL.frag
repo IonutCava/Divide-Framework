@@ -1,19 +1,17 @@
 #ifndef _IMAGE_BASED_LIGHTING_FRAG_
 #define _IMAGE_BASED_LIGHTING_FRAG_
 
-layout(binding = TEXTURE_REFLECTION_ENV) uniform samplerCubeArray texEnvironmentCube;
-layout(binding = TEXTURE_REFLECTION_SKY) uniform samplerCubeArray texEnvironmentSky;
-layout(binding = TEXTURE_IBL_ENV) uniform samplerCubeArray texIBLCube;
-layout(binding = TEXTURE_IBL_SKY) uniform samplerCubeArray texIBLSky;
+// eg: vec4 skyIrradiance = texture(texEnvIrradiance, vec4(coords, SKY_LIGHT_LAYER_IDX);
+layout(binding = TEXTURE_REFLECTION_PREFILTERED) uniform samplerCubeArray texEnvPrefiltered;
+layout(binding = TEXTURE_IRRADIANCE) uniform sampler2D texEnvIrradiance;
+layout(binding = TEXTURE_BRDF_LUT) uniform sampler2D texBRDFLut;
 
-//x = screen, y = env, z = sky
 uniform uvec4 mipCounts;
-uniform uint skyLayer;
 
 #define MAX_SCREEN_MIPS (mipCounts.x - 1)
 #define MAX_ENV_MIPS (mipCounts.y - 1)
-#define MAX_SKY_MIPS (mipCounts.z - 1)
-#define MAX_IBL_MIPS (mipCounts.w - 1)
+#define MAX_IBL_MIPS (mipCounts.z - 1)
+#define MAX_LUT_MIPS (mipCounts.w - 1)
 
 struct ProbeData
 {
@@ -82,10 +80,10 @@ vec3 GetCubeReflection(in vec3 worldReflect, in vec3 worldNormal, in vec3 worldP
 #else
         const vec3 bpcemDir = GetAdjustedReflectionWS(worldReflect, worldPos, probeIDX);
 #endif
-        return textureLod(texEnvironmentCube, vec4(bpcemDir, float(probeIDX)), roughness * MAX_ENV_MIPS).rgb;
+        return textureLod(texEnvPrefiltered, vec4(bpcemDir, float(probeIDX)), roughness * MAX_ENV_MIPS).rgb;
     }
 
-    return textureLod(texEnvironmentSky, vec4(worldReflect, float(skyLayer)), roughness * MAX_SKY_MIPS).rgb;
+    return textureLod(texEnvPrefiltered, vec4(worldReflect, float(SKY_LIGHT_LAYER_IDX)), roughness * MAX_ENV_MIPS).rgb;
 }
 
 

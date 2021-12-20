@@ -53,8 +53,8 @@ GFXRTPool::GFXRTPool(GFXDevice& parent)
 
     _renderTargets[to_U32(RenderTargetUsage::REFLECTION_PLANAR_BLUR)].resize(1, nullptr);
 
-    _renderTargets[to_U32(RenderTargetUsage::IBL)].resize(1, nullptr);
-    _renderTargets[to_U32(RenderTargetUsage::ENVIRONMENT)].resize(2, nullptr);
+    _renderTargets[to_U32(RenderTargetUsage::IBL)].resize(3, nullptr);
+    _renderTargets[to_U32(RenderTargetUsage::ENVIRONMENT)].resize(1, nullptr);
 
     _renderTargets[to_U32(RenderTargetUsage::OTHER)].resize(g_maxAdditionalRenderTargets, nullptr);
 }

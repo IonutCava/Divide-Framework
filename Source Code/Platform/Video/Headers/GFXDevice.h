@@ -134,6 +134,7 @@ struct DebugView final : GUIDWrapper {
     I16 _sortIndex = -1;
     U8 _textureBindSlot = 0u;
     bool _enabled = false;
+    bool _cycleMips = false;
 };
 
 FWD_DECLARE_MANAGED_STRUCT(DebugView);
@@ -353,8 +354,8 @@ public:
     Pipeline*          newPipeline(const PipelineDescriptor& descriptor);
 
     // Shortcuts
-    void drawText(const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut) const;
-    void drawText(const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut) const;
+    void drawText(const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut, bool pushCamera = true) const;
+    void drawText(const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut, bool pushCamera = true) const;
 
     // Render the texture using a custom viewport
     void drawTextureInViewport(TextureData data, size_t samplerHash, const Rect<I32>& viewport, bool convertToSrgb, bool drawToDepthOnly, GFX::CommandBuffer& bufferInOut);
@@ -382,8 +383,6 @@ protected:
 
     /// Create and return a new framebuffer.
     RenderTarget* newRT(const RenderTargetDescriptor& descriptor);
-
-    void drawText(const TextElementBatch& batch);
 
     // returns true if the window and the viewport have different aspect ratios
     bool fitViewportInWindow(U16 w, U16 h);

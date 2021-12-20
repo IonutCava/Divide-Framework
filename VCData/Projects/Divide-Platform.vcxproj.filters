@@ -821,6 +821,9 @@
     <Filter Include="Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src">
       <UniqueIdentifier>{87167cda-8d11-400d-b2f4-db3d03a2307a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Video\ShaderSource\GLSL\computeAtoms">
+      <UniqueIdentifier>{8d3e72da-846d-4d38-ae70-fd9185511aef}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="../../Source Code/Platform\Video\Headers\GFXDevice.inl">
@@ -1068,6 +1071,12 @@
     </None>
     <None Include="..\..\assets\shaders\GLSL\InfiniteGrid.glsl">
       <Filter>Video\ShaderSource\GLSL</Filter>
+    </None>
+    <None Include="..\..\assets\shaders\GLSL\irradianceCalc.glsl">
+      <Filter>Video\ShaderSource\GLSL</Filter>
+    </None>
+    <None Include="..\..\assets\shaders\GLSL\computeAtoms\pbrHelpers.comp">
+      <Filter>Video\ShaderSource\GLSL\computeAtoms</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

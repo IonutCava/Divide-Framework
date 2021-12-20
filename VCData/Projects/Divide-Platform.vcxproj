@@ -303,6 +303,7 @@
     <None Include="..\..\assets\shaders\GLSL\common\sceneData.cmn" />
     <None Include="..\..\assets\shaders\GLSL\common\terrainUtils.cmn" />
     <None Include="..\..\assets\shaders\GLSL\common\velocityCheck.cmn" />
+    <None Include="..\..\assets\shaders\GLSL\computeAtoms\pbrHelpers.comp" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\environment.frag" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\IBL.frag" />
     <None Include="../../assets/shaders\GLSL\fragmentAtoms\prePass.frag" />
@@ -321,6 +322,7 @@
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\specGloss.frag" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\specialBRDFs.frag" />
     <None Include="..\..\assets\shaders\GLSL\InfiniteGrid.glsl" />
+    <None Include="..\..\assets\shaders\GLSL\irradianceCalc.glsl" />
     <None Include="..\..\assets\shaders\GLSL\ScreenSpaceReflections.glsl" />
     <None Include="..\..\Source Code\Platform\Threading\Headers\ThreadPool.inl" />
     <None Include="..\..\Source Code\Platform\Video\Buffers\RenderTarget\Headers\RTDrawDescriptor.inl" />

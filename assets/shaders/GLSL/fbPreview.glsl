@@ -119,6 +119,7 @@ layout(binding = TEXTURE_UNIT0) uniform samplerCubeArray texDiffuse0;
 
 uniform int layer;
 uniform int face;
+uniform float lodLevel;
 
 void main() {
     const vec2 uv_cube = 2.f * VAR._texCoord - 1.f;
@@ -133,8 +134,8 @@ void main() {
     };
     const vec4 coords = vec4(vertex, layer);
 #if defined(SPLAT_R_CHANNEL)
-    _colourOut = vec4(vec3(texture(texDiffuse0, coords).r), 1.f);
+    _colourOut = vec4(vec3(textureLod(texDiffuse0, coords, lodLevel).r), 1.f);
 #else //SPLAT_R_CHANNEL
-    _colourOut = texture(texDiffuse0, coords);
+    _colourOut = textureLod(texDiffuse0, coords, lodLevel);
 #endif //SPLAT_R_CHANNEL
 }

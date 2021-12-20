@@ -1796,32 +1796,20 @@ void GFXDevice::updateCullCount(const RenderPass::BufferData& bufferData, GFX::C
 #pragma endregion
 
 #pragma region Drawing functions
-void GFXDevice::drawText(const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut) const {
-    drawText(GFX::DrawTextCommand{ batch }, bufferInOut);
+void GFXDevice::drawText(const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut, const bool pushCamera) const {
+    drawText(GFX::DrawTextCommand{ batch }, bufferInOut, pushCamera);
 }
 
-void GFXDevice::drawText(const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut) const {
-    EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+void GFXDevice::drawText(const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut, const bool pushCamera) const {
+    if (pushCamera) {
+        EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    }
     EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _textRenderPipeline });
     EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _textRenderConstants });
     EnqueueCommand(bufferInOut, cmd);
-    EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
-}
-
-void GFXDevice::drawText(const TextElementBatch& batch) {
-    GFX::ScopedCommandBuffer sBuffer(GFX::AllocateScopedCommandBuffer());
-    GFX::CommandBuffer& buffer = sBuffer();
-
-    // Assume full game window viewport for text
-    GFX::SetViewportCommand viewportCommand;
-    const RenderTarget& screenRT = _rtPool->screenTarget();
-    const U16 width = screenRT.getWidth();
-    const U16 height = screenRT.getHeight();
-    viewportCommand._viewport.set(0, 0, width, height);
-    EnqueueCommand(buffer, viewportCommand);
-
-    drawText(batch, buffer);
-    flushCommandBuffer(sBuffer());
+    if (pushCamera) {
+        EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
+    }
 }
 
 void GFXDevice::drawTextureInViewport(const TextureData data, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, GFX::CommandBuffer& bufferInOut) {
@@ -1859,19 +1847,15 @@ void GFXDevice::renderDebugUI(const Rect<I32>& targetViewport, GFX::CommandBuffe
 
         renderDebugViews(
             Rect<I32>(targetViewport.x + padding,
-                targetViewport.y + padding,
-                targetViewport.z - padding * 2,
-                targetViewport.w - padding * 2),
+                      targetViewport.y + padding,
+                      targetViewport.z - padding,
+                      targetViewport.w - padding),
             padding,
             bufferInOut);
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
 }
-
-namespace {
-    DebugView* HiZView = nullptr;
-};
 
 void GFXDevice::initDebugViews() {
     // Lazy-load preview shader
@@ -1901,8 +1885,9 @@ void GFXDevice::initDebugViews() {
         HiZ->_texture = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::HI_Z)).getAttachment(RTAttachmentType::Depth, 0).texture();
         HiZ->_samplerHash = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::HI_Z)).getAttachment(RTAttachmentType::Depth, 0).samplerHash();
         HiZ->_name = "Hierarchical-Z";
-        HiZ->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, to_F32(HiZ->_texture->mipCount() - 1));
+        HiZ->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, 0.f);
         HiZ->_shaderData.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, vec2<F32>(Camera::s_minNearZ, _context.config().runtime.cameraViewDistance));
+        HiZ->_cycleMips = true;
 
         DebugView_ptr DepthPreview = std::make_shared<DebugView>();
         DepthPreview->_shader = _previewDepthMapShader;
@@ -1997,7 +1982,7 @@ void GFXDevice::initDebugViews() {
         Edges->_shaderData.set(_ID("channelCount"), GFX::PushConstantType::UINT, 4u);
         Edges->_shaderData.set(_ID("multiplier"), GFX::PushConstantType::FLOAT, 1.0f);
 
-        HiZView = addDebugView(HiZ);
+        addDebugView(HiZ);
         addDebugView(DepthPreview);
         addDebugView(NormalPreview);
         addDebugView(VelocityPreview);
@@ -2010,23 +1995,13 @@ void GFXDevice::initDebugViews() {
     }
 }
 
-void GFXDevice::renderDebugViews(Rect<I32> targetViewport, const I32 padding, GFX::CommandBuffer& bufferInOut) {
-    static size_t labelStyleHash = TextLabelStyle(Font::DROID_SERIF_BOLD, UColour4(128), 96).getHash();
-
-    GenericDrawCommand drawCmd = {};
-    drawCmd._primitiveType = PrimitiveType::TRIANGLES;
+void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 padding, GFX::CommandBuffer& bufferInOut) {
+    static vector_fast<std::tuple<string, I32, Rect<I32>>> labelStack;
+    static size_t labelStyleHash = TextLabelStyle(Font::DROID_SERIF_BOLD, UColour4(196), 96).getHash();
 
     initDebugViews();
 
-    if (HiZView) {
-        //HiZ preview
-        I32 LoDLevel = 0;
-        RenderTarget& HiZRT = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::HI_Z));
-        LoDLevel = to_I32(std::ceil(Time::Game::ElapsedMilliseconds() / 750.0f)) % (HiZRT.getAttachment(RTAttachmentType::Depth, 0).texture()->mipCount() - 1);
-        HiZView->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, to_F32(LoDLevel));
-    }
-
-    constexpr I32 maxViewportColumnCount = 10;
+    constexpr I32 columnCount = 6u;
     I32 viewCount = to_I32(_debugViews.size());
     for (const auto& view : _debugViews) {
         if (!view->_enabled) {
@@ -2038,9 +2013,10 @@ void GFXDevice::renderDebugViews(Rect<I32> targetViewport, const I32 padding, GF
         return;
     }
 
-    const I32 columnCount = viewCount < 4 ? 4 : std::min(viewCount, maxViewportColumnCount);
-    I32 rowCount = viewCount / maxViewportColumnCount;
-    if (viewCount % maxViewportColumnCount > 0) {
+    labelStack.resize(0);
+
+    I32 rowCount = viewCount / columnCount;
+    if (viewCount % columnCount > 0) {
         rowCount++;
     }
 
@@ -2048,81 +2024,87 @@ void GFXDevice::renderDebugViews(Rect<I32> targetViewport, const I32 padding, GF
     const I32 screenHeight = targetViewport.w - targetViewport.y;
     const F32 aspectRatio = to_F32(screenWidth) / screenHeight;
 
-    const I32 viewportWidth = screenWidth / columnCount - padding;
+    const I32 viewportWidth = (screenWidth / columnCount) - (padding * (columnCount - 1u));
     const I32 viewportHeight = to_I32(viewportWidth / aspectRatio) - padding;
-    Rect<I32> viewport(screenWidth - viewportWidth, targetViewport.y, viewportWidth, viewportHeight);
+    Rect<I32> viewport(targetViewport.z - viewportWidth, targetViewport.y, viewportWidth, viewportHeight);
 
-    PipelineDescriptor pipelineDesc = {};
+    const I32 initialOffsetX = viewport.x;
+
+    PipelineDescriptor pipelineDesc{};
     pipelineDesc._stateHash = _state2DRenderingHash;
-
-    vector_fast <std::pair<string, Rect<I32>>> labelStack;
-
-    GFX::SetViewportCommand setViewport = {};
-    GFX::SendPushConstantsCommand pushConstants = {};
-    GFX::BindPipelineCommand bindPipeline = {};
+    pipelineDesc._shaderProgramHandle = -1;
 
     const Rect<I32> previousViewport(_viewport);
 
-    I16 idx = 0;
-    for (I16 i = 0; i < to_I16(_debugViews.size()); ++i) {
-        DebugView& view = *_debugViews[i];
+    GenericDrawCommand drawCmd{};
+    drawCmd._primitiveType = PrimitiveType::TRIANGLES;
 
-        if (!view._enabled) {
+    Pipeline* crtPipeline = nullptr;
+    U16 idx = 0u;
+    for (U16 i = 0; i < to_U16(_debugViews.size()); ++i) {
+        if (!_debugViews[i]->_enabled) {
             continue;
         }
 
-        pipelineDesc._shaderProgramHandle = view._shader->getGUID();
+        const DebugView_ptr& view = _debugViews[i];
 
-        bindPipeline._pipeline = newPipeline(pipelineDesc);
-        EnqueueCommand(bufferInOut, bindPipeline);
-
-        pushConstants._constants = view._shaderData;
-        EnqueueCommand(bufferInOut, pushConstants);
-
-        setViewport._viewport.set(viewport);
-        EnqueueCommand(bufferInOut, setViewport);
-
-        GFX::BindDescriptorSetsCommand bindDescriptorSets = {};
-        bindDescriptorSets._set._textureData.add(TextureEntry{ view._texture->data(), view._samplerHash, view._textureBindSlot });
-        EnqueueCommand(bufferInOut, bindDescriptorSets);
-
-        EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
-
-        if (!view._name.empty()) {
-            labelStack.emplace_back(view._name, viewport);
+        if (view->_cycleMips) {
+            const F32 lodLevel = to_F32(to_I32(std::ceil(Time::Game::ElapsedMilliseconds() / 750.0f)) % view->_texture->mipCount());
+            view->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, lodLevel);
+            labelStack.emplace_back(Util::StringFormat("Mip level: %d", to_U8(lodLevel)), viewport.sizeY * 4, viewport);
+        }
+        const I64 crtShader = pipelineDesc._shaderProgramHandle;
+        const I64 newShader = view->_shader->getGUID();
+        if (crtShader != newShader) {
+            pipelineDesc._shaderProgramHandle = view->_shader->getGUID();
+            crtPipeline = newPipeline(pipelineDesc);
         }
 
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = crtPipeline;
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants = view->_shaderData;
+        GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut)->_viewport.set(viewport);
+        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry
+        {
+            view->_texture->data(),
+            view->_samplerHash,
+            view->_textureBindSlot
+        });
+
+        GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
+
+        if (!view->_name.empty()) {
+            labelStack.emplace_back(view->_name, viewport.sizeY, viewport);
+        }
         if (idx > 0 &&  idx % (columnCount - 1) == 0) {
             viewport.y += viewportHeight + targetViewport.y;
-            viewport.x += viewportWidth * columnCount + targetViewport.x * columnCount;
+            viewport.x = initialOffsetX;
+            idx = 0u;
+        } else {
+            viewport.x -= viewportWidth + targetViewport.x;
+            ++idx;
         }
-             
-        viewport.x -= viewportWidth + targetViewport.x;
-        ++idx;
     }
 
+    GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    // Draw labels at the end to reduce number of state changes
     TextElement text(labelStyleHash, RelativePosition2D(RelativeValue(0.1f, 0.0f), RelativeValue(0.1f, 0.0f)));
-    for (const auto& [labelText, targetViewRect] : labelStack) {
-        // Draw labels at the end to reduce number of state changes
-        setViewport._viewport.set(targetViewRect);
-        EnqueueCommand(bufferInOut, setViewport);
+    for (const auto& [labelText, viewportOffsetY, viewportIn] : labelStack) {
+        GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut)->_viewport.set(viewportIn);
 
-        text.position().d_y.d_offset = targetViewRect.sizeY - 10.0f;
+        text.position().d_y.d_offset = to_F32(viewportOffsetY);
         text.text(labelText.c_str(), false);
-
-        TextElementBatch batch{ text };
-        drawText(GFX::DrawTextCommand{ batch }, bufferInOut);
+        const TextElementBatch batch{ text };
+        drawText(GFX::DrawTextCommand{ batch }, bufferInOut, false);
     }
-
-    setViewport._viewport.set(previousViewport);
-    EnqueueCommand(bufferInOut, setViewport);
+    GFX::EnqueueCommand<GFX::PopCameraCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut)->_viewport.set(previousViewport);
 }
 
 DebugView* GFXDevice::addDebugView(const std::shared_ptr<DebugView>& view) {
     ScopedLock<Mutex> lock(_debugViewLock);
 
     _debugViews.push_back(view);
-    
+
     if (_debugViews.back()->_sortIndex == -1) {
         _debugViews.back()->_sortIndex = to_I16(_debugViews.size());
     }

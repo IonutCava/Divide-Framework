@@ -92,6 +92,7 @@ namespace Divide {
 
         Texture* _texture = nullptr;
         Flag _flag = Flag::READ;
+        bool _layered = false;
         U8 _layer = 0u;
         U8 _level = 0u;
         U8 _binding = 0u;

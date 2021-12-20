@@ -568,6 +568,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
             set._images.add(Image{
                 screenColour.get(),
                 Image::Flag::READ,
+                false,
                 0u,
                 0u,
                 to_base(TextureUsage::UNIT0)
@@ -601,6 +602,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
             set._images.add(Image{
                 _currentLuminance.get(),
                 Image::Flag::READ_WRITE,
+                false,
                 0u,
                 0u,
                 to_base(TextureUsage::UNIT0)

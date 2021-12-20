@@ -187,6 +187,7 @@ void CommandBuffer::batch() {
             } break;
             case CommandType::CLEAR_RT:
             case CommandType::READ_BUFFER_DATA:
+            case CommandType::COMPUTE_MIPMAPS:
             case CommandType::CLEAR_BUFFER_DATA:
             case CommandType::DISPATCH_COMPUTE:
             case CommandType::MEMORY_BARRIER:

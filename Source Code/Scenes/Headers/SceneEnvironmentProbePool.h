@@ -62,8 +62,9 @@ public:
     static void OnStartup(GFXDevice& context);
     static void OnShutdown(GFXDevice& context);
     static RenderTargetHandle ReflectionTarget() noexcept;
-    static RenderTargetHandle IBLTarget() noexcept;
-    static RenderTargetHandle SkyLightTarget() noexcept;
+    static RenderTargetHandle PrefilteredTarget() noexcept;
+    static RenderTargetHandle IrradianceTarget() noexcept;
+    static RenderTargetHandle BRDFLUTTarget() noexcept;
 
     const EnvironmentProbeList& sortAndGetLocked(const vec3<F32>& position);
     const EnvironmentProbeList& getLocked() const noexcept;
@@ -91,10 +92,30 @@ public:
     static void OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept;
 
     static [[nodiscard]] bool DebuggingSkyLight();
-    static               void DebuggingSkyLight(bool state) noexcept; 
-    
+    static               void DebuggingSkyLight(bool state) noexcept;
+
     static [[nodiscard]] bool SkyLightNeedsRefresh();
     static               void SkyLightNeedsRefresh(bool state) noexcept;
+
+    static [[nodiscard]] U16  SkyProbeLayerIndex() noexcept;
+
+protected:
+    friend class EnvironmentProbeComponent;
+    void createDebugView(U16 layerIndex);
+    static void ProcessEnvironmentMap(GFXDevice& context, U16 layerID, bool highPriority, GFX::CommandBuffer& bufferInOut) noexcept;
+
+private:
+    enum class ComputationStages : U8 {
+        MIP_MAP_SOURCE,
+        PREFILTER_MAP,
+        IRRADIANCE_CALC,
+        MIP_MAP_PREFILTER,
+        MIP_MAP_IRRADIANCE,
+        COUNT
+    };
+    static void ProcessEnvironmentMapInternal(GFXDevice& context, const U16 layerID, ComputationStages& stage, GFX::CommandBuffer& bufferInOut);
+    static void PrefilterEnvMap(GFXDevice& context, const U16 layerID, U8 faceIndex, GFX::CommandBuffer& bufferInOut);
+    static void ComputeIrradianceMap(GFXDevice& context, const U16 layerID, U8 faceIndex, GFX::CommandBuffer& bufferInOut);
 protected:
     mutable SharedMutex _probeLock;
     EnvironmentProbeList _envProbes;
@@ -107,10 +128,16 @@ protected:
 
 private:
     static std::array<std::pair<bool/*available*/, bool/*locked*/>, Config::MAX_REFLECTIVE_PROBES_PER_PASS> s_availableSlices;
+    static eastl::queue<std::pair<U8, bool>> s_queuedFaceRecomputation;
     static RenderTargetHandle s_reflection;
-    static RenderTargetHandle s_IBL;
-    static RenderTargetHandle s_skyLight;
+    static RenderTargetHandle s_prefiltered;
+    static RenderTargetHandle s_irradiance;
+    static RenderTargetHandle s_brdfLUT;
     static ShaderProgram_ptr s_previewShader;
+    static ShaderProgram_ptr s_irradianceComputeShader;
+    static ShaderProgram_ptr s_prefilterComputeShader;
+    static ShaderProgram_ptr s_lutComputeShader;
+    static bool s_lutTextureDirty;
 };
 
 } //namespace Divide

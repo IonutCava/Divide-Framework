@@ -23,6 +23,7 @@
 #include "GUI/Headers/GUIText.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Utility/Headers/Localization.h"
+#include "Scenes/Headers/SceneEnvironmentProbePool.h"
 
 #include <SDL_video.h>
 
@@ -415,6 +416,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_X "                      + Util::to_string(Renderer::CLUSTER_SIZE.x));
     AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_Y "                      + Util::to_string(Renderer::CLUSTER_SIZE.y));
     AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_Z "                      + Util::to_string(Renderer::CLUSTER_SIZE.z));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define SKY_LIGHT_LAYER_IDX "             + Util::to_string(SceneEnvironmentProbePool::SkyProbeLayerIndex()));
     AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_LIGHTS_PER_CLUSTER "          + Util::to_string(numLightsPerCluster));
     AppendToShaderHeader(ShaderType::COUNT,    "#define REFLECTION_PROBE_RESOLUTION "     + Util::to_string(reflectionProbeRes));
     for (U8 i = 0; i < to_base(TextureUsage::COUNT); ++i) {
@@ -789,14 +791,15 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
 void GL_API::PushDebugMessage(const char* message) {
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, static_cast<GLuint>(_ID(message)), -1, message);
-        getStateTracker()._debugScope = message;
+        assert(getStateTracker()._debugScopeDepth < getStateTracker()._debugScope.size());
+        getStateTracker()._debugScope[getStateTracker()._debugScopeDepth++] = message;
     }
 }
 
 void GL_API::PopDebugMessage() {
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glPopDebugGroup();
-        getStateTracker()._debugScope.clear();
+        getStateTracker()._debugScope[getStateTracker()._debugScopeDepth--] = "";
     }
 }
 
@@ -1285,7 +1288,7 @@ bool GL_API::makeImagesResident(const Images& images) const {
 
     for (const Image& image : images._entries) {
         if (image._texture != nullptr) {
-            image._texture->bindLayer(image._binding, image._level, image._layer, false, image._flag );
+            image._texture->bindLayer(image._binding, image._level, image._layer, image._layered, image._flag );
         }
     }
 

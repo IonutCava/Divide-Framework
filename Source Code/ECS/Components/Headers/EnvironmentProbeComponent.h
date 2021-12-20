@@ -114,7 +114,6 @@ protected:
     [[nodiscard]] SceneGraphNode* findNodeToIgnore() const noexcept;
 
     void updateProbeData() const noexcept;
-    [[nodiscard]] bool debugIBL() const noexcept { return _debugIBL; }
 protected:
     BoundingBox _aabb{ vec3<F32>(-1), vec3<F32>(1) };
     BoundingBox _refaabb{ vec3<F32>(-1), vec3<F32>(1) };
@@ -125,7 +124,6 @@ protected:
 private:
     bool _queueRefresh = true;
     bool _drawImpostor = false;
-    bool _debugIBL = false;
 
 END_COMPONENT(EnvironmentProbe);
 

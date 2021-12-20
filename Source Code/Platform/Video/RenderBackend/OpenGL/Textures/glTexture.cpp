@@ -497,7 +497,7 @@ void glTexture::bindLayer(const U8 slot, const U8 level, const U8 layer, const b
         case Image::Flag::READ_WRITE : access = GL_READ_WRITE; break;
         default: break;
     }
-
+    assert(layer == 0u || !layered);
     if (access != GL_NONE) {
         const GLenum glInternalFormat = GLUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
         GL_API::getStateTracker().bindTextureImage(slot, _data._textureHandle, level, layered, layer, access, glInternalFormat);

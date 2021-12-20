@@ -141,7 +141,9 @@ namespace Divide {
 
         RenderStateBlock _activeState{};
 
-        Str64 _debugScope;
+        std::array<Str64, 32> _debugScope;
+        U8 _debugScopeDepth = 0u;
+
         bool _flushingCommandBuffer = false;
         Pipeline const* _activePipeline = nullptr;
         glFramebuffer*  _activeRenderTarget = nullptr;

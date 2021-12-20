@@ -89,7 +89,12 @@ layout(binding = TEXTURE_REFRACTION_CUBE)   uniform samplerCube    texRefractCub
 
 #endif //BINDLESS_TEXTURES_ENABLED && !DEBUG_BINDLESS_TEXTURES
 
-layout(binding = TEXTURE_IBL_SKY) uniform samplerCubeArray texSkyLight;
+//Global sky light layer index: SKY_LIGHT_LAYER_IDX
+// eg: vec4 skyIrradiance = texture(texEnvIrradiance, vec4(coords, SKY_LIGHT_LAYER_IDX);
+layout(binding = TEXTURE_REFLECTION_PREFILTERED) uniform samplerCubeArray texEnvPrefiltered;
+layout(binding = TEXTURE_IRRADIANCE) uniform sampler2D texEnvIrradiance;
+layout(binding = TEXTURE_BRDF_LUT) uniform sampler2D texBRDFLut;
+
 #endif //NEED_TEXTURE_DATA
 
 #include "sceneData.cmn"

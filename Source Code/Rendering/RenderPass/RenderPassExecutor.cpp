@@ -1339,9 +1339,6 @@ void RenderPassExecutor::doCustomPass(RenderPassParams params, GFX::CommandBuffe
     set._buffers.add(transformBufferBinding);
     set._buffers.add(indirectionBufferBinding);
 
-    const auto& skyLightAttachment = SceneEnvironmentProbePool::SkyLightTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
-    set._textureData.add(TextureEntry{ skyLightAttachment.texture()->data(), skyLightAttachment.samplerHash(), TextureUsage::IBL_SKY});
-
     if (g_useOrDebugBindlessTextures) {
         ShaderBufferBinding texturesBufferBinding{};
         //texturesBufferBinding._elementRange = { 0u, s_indirectionBuffer._highWaterMark };
