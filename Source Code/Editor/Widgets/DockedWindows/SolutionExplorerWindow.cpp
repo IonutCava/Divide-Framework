@@ -236,7 +236,7 @@ namespace Divide {
         ImGui::Text(ICON_FK_SEARCH" Find node: ");
         ImGui::SameLine();
         ImGui::PushID("GraphSearchFilter");
-        _filter.Draw("", 170);
+        _filter.Draw("", 160);
         ImGui::PopID();
         ImGui::SameLine();
         ImGui::Checkbox(ICON_FK_EYE, &s_onlyVisibleNodes);

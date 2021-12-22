@@ -161,7 +161,9 @@
         if (readOnly) {
             PushReadOnly();
         }
-        const bool ret = ImGui::ColorEdit4(name, col._v, ImGuiColorEditFlags__OptionsDefault);
+        ImGui::PushID(name);
+        const bool ret = ImGui::ColorEdit4("", col._v, ImGuiColorEditFlags__OptionsDefault);
+        ImGui::PopID();
         if (readOnly) {
             PopReadOnly();
         }
@@ -180,7 +182,9 @@
         if (readOnly) {
             PushReadOnly();
         }
-        const bool ret = ImGui::ColorEdit3(name, col._v, ImGuiColorEditFlags__OptionsDefault);
+        ImGui::PushID(name);
+        const bool ret = ImGui::ColorEdit3("", col._v, ImGuiColorEditFlags__OptionsDefault);
+        ImGui::PopID();
         if (readOnly) {
             PopReadOnly();
         }

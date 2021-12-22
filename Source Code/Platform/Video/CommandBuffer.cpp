@@ -194,7 +194,7 @@ void CommandBuffer::batch() {
             case CommandType::DRAW_TEXT:
             case CommandType::DRAW_COMMANDS:
             case CommandType::DRAW_IMGUI:
-            //case CommandType::BIND_DESCRIPTOR_SETS:
+            case CommandType::BIND_DESCRIPTOR_SETS:
             case CommandType::BLIT_RT:
             case CommandType::RESET_RT:
             case CommandType::SEND_PUSH_CONSTANTS:
@@ -452,11 +452,6 @@ ErrorType CommandBuffer::validate() const {
                 }break;
                 case CommandType::BIND_DESCRIPTOR_SETS: {
                     hasDescriptorSets = true;
-                }break;
-                case CommandType::BLIT_RT: {
-                    if (!hasDescriptorSets) {
-                        return ErrorType::MISSING_BLIT_DESCRIPTOR_SET;
-                    }
                 }break;
                 default: {
                     // no requirements yet

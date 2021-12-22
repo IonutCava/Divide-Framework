@@ -331,7 +331,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
         const SceneNodeType nodeType = sgn->getNode().type();
         const char* resourceName = sgn->getNode().resourceName().c_str();
 
-        if (!BitCompare(allowedNodeType, to_U32(nodeType))) {
+        if (!BitCompare(allowedNodeType, nodeType)) {
             Console::printfn(Locale::Get(_ID("WARN_NAV_UNSUPPORTED")), resourceName);
             goto next;
         }
@@ -386,7 +386,9 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
             }
             assert(obj != nullptr);
             const U16 partitionID = obj->getGeometryPartitionID(0u);
-            obj->computeTriangleList(partitionID);
+            if (!obj->computeTriangleList(partitionID)) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
 
             geometry = obj->getGeometryVB();
             assert(geometry != nullptr);

@@ -580,8 +580,11 @@ void UNPACK_HALF2x16(U32 src, vec2<F32>& value);
 [[nodiscard]] U32 PACK_HALF2x16(F32 x, F32 y);
 void UNPACK_HALF2x16(U32 src, F32& x, F32& y);
 
+/// Only convert the range [-1024., 1024.] for accurate results
 [[nodiscard]] U16 PACK_HALF1x16(F32 value);
+/// Only convert the range [-1024., 1024.] for accurate results
 void UNPACK_HALF1x16(U16 src, F32& value);
+/// Only convert the range [-1024., 1024.] for accurate results
 [[nodiscard]] F32 UNPACK_HALF1x16(U16 src);
 
 [[nodiscard]] F32 UINT_TO_FLOAT(U32 src);

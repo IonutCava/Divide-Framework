@@ -82,6 +82,12 @@ namespace {
             bool sceneChanged = false;
             SceneManager* sceneManager = context().kernel().sceneManager();
             auto& activeSceneState = sceneManager->getActiveScene().state();
+            bool fogEnabled = context().config().rendering.enableFog;
+            if (ImGui::Checkbox("Enabled", &fogEnabled)) {
+                context().config().rendering.enableFog = fogEnabled;
+                context().config().changed(true);
+                sceneChanged = true;
+            }
             {
                 F32 fogDensityB = activeSceneState->renderState().fogDetails()._colourAndDensity.a;
                 if (ImGui::SliderFloat("Fog Density B", &fogDensityB, 0.0001f, 0.25f, "%.6f")) {

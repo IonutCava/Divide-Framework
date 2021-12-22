@@ -83,15 +83,15 @@ class Object3D : public SceneNode {
     ObjectType getObjectType() const noexcept { return _geometryType; }
 
     void setObjectFlag(const ObjectFlag flag) noexcept {
-        SetBit(_geometryFlagMask, to_U32(flag));
+        SetBit(_geometryFlagMask, flag);
     }
 
     void clearObjectFlag(const ObjectFlag flag) noexcept {
-        ClearBit(_geometryFlagMask, to_U32(flag));
+        ClearBit(_geometryFlagMask, flag);
     }
 
     bool getObjectFlag(const ObjectFlag flag) const noexcept {
-        return BitCompare(_geometryFlagMask, to_U32(flag));
+        return BitCompare(_geometryFlagMask, flag);
     }
 
     U32 getObjectFlagMask() const noexcept {
@@ -158,14 +158,14 @@ class Object3D : public SceneNode {
     }
 
     // Create a list of triangles from the vertices + indices lists based on primitive type
-    bool computeTriangleList(U16 partitionID, bool force = false);
+    [[nodiscard]] bool computeTriangleList(U16 partitionID, bool force = false);
 
-    static vector<SceneGraphNode*> filterByType(const vector<SceneGraphNode*>& nodes, ObjectType filter);
+    [[nodiscard]] static vector<SceneGraphNode*> filterByType(const vector<SceneGraphNode*>& nodes, ObjectType filter);
 
-    bool isPrimitive() const noexcept;
-
-    bool saveCache(ByteBuffer& outputBuffer) const override;
-    bool loadCache(ByteBuffer& inputBuffer) override;
+    [[nodiscard]] bool isPrimitive() const noexcept;
+    [[nodiscard]] PrimitiveType getGeometryBufferType() const noexcept;
+    [[nodiscard]] bool saveCache(ByteBuffer& outputBuffer) const override;
+    [[nodiscard]] bool loadCache(ByteBuffer& inputBuffer) override;
 
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;

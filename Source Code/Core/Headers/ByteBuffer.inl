@@ -303,7 +303,7 @@ inline size_t ByteBuffer::wpos(const size_t wpos_) noexcept {
 }
 
 inline size_t ByteBuffer::bufferSize() const noexcept {
-    return _wpos - _rpos;
+    return _wpos >= _rpos ? _wpos - _rpos : 0u;
 }
 
 inline bool ByteBuffer::bufferEmpty() const noexcept {

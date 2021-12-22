@@ -78,15 +78,19 @@ TEST(VecPackingTests)
     const vec3<F32_SNORM> input2{ 0.55f, -0.1f, 1.0f};
     const vec3<F32_SNORM> input3{ 0.25f, 0.67f, 0.123f};
     const vec4<U8>        input4{ 32, 64, 128, 255};
-
+    const F32             input5{ -1023.99f };
     const U32 result1U = Util::PACK_HALF2x16(input1);
     const F32 result2U = Util::PACK_VEC3(input2);
 
+    const U16 result1US = Util::PACK_HALF1x16(input5);
+    const F32 result1F = Util::UNPACK_HALF1x16(result1US);
+
     const vec2<F32_SNORM> result1V = Util::UNPACK_HALF2x16(result1U);
     const vec3<F32_SNORM> result2V = Util::UNPACK_VEC3(result2U);
-
+    
     CHECK_TRUE(result1V.compare(input1, tolerance));
     CHECK_TRUE(result2V.compare(input2, tolerance));
+    CHECK_TRUE(COMPARE_TOLERANCE(result1F, input5, tolerance));
 
     const U32 result3U = Util::PACK_11_11_10(input3);
     const vec3<F32_SNORM> result3V = Util::UNPACK_11_11_10(result3U);

@@ -485,17 +485,19 @@ void glShaderProgram::queueValidation() {
     }
 }
 
-ShaderResult glShaderProgram::validatePreBind() {
+ShaderResult glShaderProgram::validatePreBind(const bool rebind) {
     if (!isValid()) {
         OPTICK_EVENT();
         glBufferLockManager::DriverBusy(true);
         assert(getState() == ResourceState::RES_LOADED);
         glCreateProgramPipelines(1, &_handle);
         glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
-
-        const ShaderResult ret = rebindStages();
-        if (ret == ShaderResult::OK) {
-            _validationQueued = true;
+        ShaderResult ret = ShaderResult::OK;
+        if (rebind) {
+            ret = rebindStages();
+            if (ret == ShaderResult::OK) {
+                _validationQueued = true;
+            }
         }
         glBufferLockManager::DriverBusy(false);
 
@@ -743,6 +745,10 @@ bool glShaderProgram::recompile(bool& skipped) {
         return false;
     }
 
+    if (validatePreBind(false) != ShaderResult::OK) {
+        return false;
+    }
+
     if (!isValid()) {
         return false;
     }
@@ -778,7 +784,7 @@ ShaderResult glShaderProgram::bind() {
     OPTICK_EVENT()
 
     // If the shader isn't ready or failed to link, stop here
-    const ShaderResult ret = validatePreBind();
+    const ShaderResult ret = validatePreBind(true);
     if (ret != ShaderResult::OK) {
         return ret;
     }

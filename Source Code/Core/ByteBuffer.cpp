@@ -56,6 +56,7 @@ bool ByteBuffer::loadFromFile(const char* path, const char* fileName, const U8 v
     clear();
     _storage.reserve(DEFAULT_SIZE);
     if (readFile(path, fileName, _storage, FileType::BINARY) == FileError::NONE) {
+        _wpos = storageSize();
         return version == 0u || to_U8(_storage.back()) == version;
     }
 

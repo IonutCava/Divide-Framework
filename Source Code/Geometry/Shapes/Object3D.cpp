@@ -84,6 +84,16 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
     };
 }
 
+PrimitiveType Object3D::getGeometryBufferType() const noexcept {
+    switch (_geometryType) {
+        case ObjectType::BOX_3D:
+        case ObjectType::MESH:
+        case ObjectType::SUBMESH: return PrimitiveType::TRIANGLES;
+    }
+
+    return PrimitiveType::TRIANGLE_STRIP;
+}
+
 bool Object3D::isPrimitive() const noexcept {
     return _geometryType == ObjectType::BOX_3D ||
            _geometryType == ObjectType::QUAD_3D ||
@@ -112,7 +122,9 @@ VertexBuffer* Object3D::getGeometryVB() const noexcept {
 }
 
 void Object3D::rebuildInternal() {
-    computeTriangleList(0);
+    if (!computeTriangleList(0)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 void Object3D::prepareRender(SceneGraphNode* sgn,
@@ -139,7 +151,7 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn,
         if (pkgInOut.count<GFX::DrawCommand>() == 0) {
             const U16 partitionID = _geometryPartitionIDs[0];
             GenericDrawCommand cmd;
-            cmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
+            cmd._primitiveType = getGeometryBufferType();
             cmd._sourceBuffer = vb->handle();
             cmd._bufferIndex = renderStagePass.baseIndex();
             cmd._cmd.indexCount = to_U32(vb->getPartitionIndexCount(partitionID));
@@ -192,10 +204,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
 
     const size_t partitionOffset = geometry->getPartitionOffset(_geometryPartitionIDs[0]);
     const size_t partitionCount = geometry->getPartitionIndexCount(_geometryPartitionIDs[0]);
-    const PrimitiveType type = _geometryType == ObjectType::MESH ||
-                               _geometryType == ObjectType::SUBMESH
-                                   ? PrimitiveType::TRIANGLES
-                                   : PrimitiveType::TRIANGLE_STRIP;
+    const PrimitiveType type = getGeometryBufferType();
 
     if (geometry->getIndexCount() == 0) {
         return false;
@@ -289,7 +298,9 @@ bool Object3D::loadCache(ByteBuffer& inputBuffer) {
         if (isPrimitive()) {
             U8 index = 0u;
             inputBuffer >> index;
-            assert(index == to_U8(getObjectType()));
+            if (index != to_U8(getObjectType())) {
+                return false;
+            }
         } else {
             string tempName = {};
             inputBuffer >> tempName;

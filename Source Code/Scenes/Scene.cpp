@@ -438,7 +438,7 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
             if (ret != nullptr) {
                 ResourceDescriptor materialDescriptor(sceneNode.name + "_material");
                 Material_ptr tempMaterial = CreateResource<Material>(resourceCache(), materialDescriptor);
-                tempMaterial->shadingMode(ShadingMode::BLINN_PHONG);
+                tempMaterial->shadingMode(ShadingMode::COOK_TORRANCE);
                 ret->setMaterialTpl(tempMaterial);
                 ret->addStateCallback(ResourceState::RES_LOADED, loadModelComplete);
             }
@@ -1016,17 +1016,23 @@ bool Scene::load() {
     ParallelForDescriptor descriptor = {};
     descriptor._iterCount = to_U32(childCount);
     descriptor._partitionSize = 3u;
-    descriptor._priority = TaskPriority::DONT_CARE;
-    descriptor._useCurrentThread = true;
-    descriptor._allowPoolIdle = true;
-    descriptor._waitForFinish = true;
-    descriptor._cbk = [this, &rootNode, &rootChildren](const Task* parentTask, const U32 start, const U32 end) {
-                            for (U32 i = start; i < end; ++i) {
-                                loadAsset(parentTask, rootChildren[i], rootNode);
-                            }
-                        };
-    parallel_for(_context, descriptor);
 
+    if (descriptor._iterCount > descriptor._partitionSize * 3u) {
+        descriptor._priority = TaskPriority::DONT_CARE;
+        descriptor._useCurrentThread = true;
+        descriptor._allowPoolIdle = true;
+        descriptor._waitForFinish = true;
+        descriptor._cbk = [this, &rootNode, &rootChildren](const Task* parentTask, const U32 start, const U32 end) {
+                                for (U32 i = start; i < end; ++i) {
+                                    loadAsset(parentTask, rootChildren[i], rootNode);
+                                }
+                            };
+        parallel_for(_context, descriptor);
+    } else {
+        for (U32 i = 0u; i < descriptor._iterCount; ++i) {
+            loadAsset(nullptr, rootChildren[i], rootNode);
+        }
+    }
     WAIT_FOR_CONDITION(_loadingTasks.load() == 0u)
 
     // We always add a sky

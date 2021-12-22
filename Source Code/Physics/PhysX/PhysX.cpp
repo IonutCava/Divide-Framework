@@ -363,7 +363,9 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
                 Object3D& obj = node->getNode<Object3D>();
                 const U8 lodCount = obj.getGeometryPartitionCount();
                 const U16 partitionID = obj.getGeometryPartitionID(lodCount - 1);
-                obj.computeTriangleList(partitionID);
+                if (!obj.computeTriangleList(partitionID)) {
+                    return nullptr;
+                }
                 const vector<vec3<U32>>& triangles = obj.getTriangles(partitionID);
 
                 if (triangles.empty()) {

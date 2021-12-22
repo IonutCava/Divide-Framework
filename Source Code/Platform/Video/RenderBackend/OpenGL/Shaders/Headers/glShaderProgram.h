@@ -145,8 +145,8 @@ class glShaderProgram final : public ShaderProgram, public glObject {
                                   Str256& fileNameOut,
                                   eastl::string& sourceCodeOut) const;
 
-   ShaderResult rebindStages();
-    ShaderResult validatePreBind();
+    ShaderResult rebindStages();
+    ShaderResult validatePreBind(bool rebind = true);
     void queueValidation();
     
     bool recompile(bool& skipped) override;

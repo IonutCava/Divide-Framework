@@ -102,16 +102,17 @@ void ShaderProgram::Idle() {
     if (!s_recompileQueue.empty()) {
         // Else, recompile the top program from the queue
         bool skipped = false;
-        if (s_recompileQueue.top()->recompile(skipped)) {
+        ShaderProgram* program = s_recompileQueue.top();
+        if (program->recompile(skipped)) {
             if (!skipped) {
-                if (s_recompileQueue.top()->getGUID() == s_lastRequestedShaderProgram.first) {
+                if (program->getGUID() == s_lastRequestedShaderProgram.first) {
                     s_lastRequestedShaderProgram = { -1, {} };
                 }
             }
             //Re-register because the handle is probably different by now
-            RegisterShaderProgram(s_recompileQueue.top());
+            RegisterShaderProgram(program);
         } else {
-            Console::errorfn(Locale::Get(_ID("ERROR_SHADER_RECOMPILE_FAILED")), s_recompileQueue.top()->resourceName().c_str());
+            Console::errorfn(Locale::Get(_ID("ERROR_SHADER_RECOMPILE_FAILED")), program->resourceName().c_str());
         }
         s_recompileQueue.pop();
     }

@@ -4,68 +4,96 @@
 
 namespace Divide {
 
+namespace {
+    static const U16 indices[] = {
+         0,  1,  3,  0,  3,  2,
+         4,  5,  7,  4,  7,  6,
+         8,  9, 11,  8, 11, 10,
+        12, 13, 15, 12, 15, 14,
+        16, 17, 19, 16, 19, 18,
+        20, 21, 23, 20, 23, 22,
+    };
+
+    static const vec3<F32> vertices[4 * 6] = {
+        {-1.0f, -1.0f,  1.0f},
+        { 1.0f, -1.0f,  1.0f},
+        {-1.0f,  1.0f,  1.0f},
+        { 1.0f,  1.0f,  1.0f},
+
+        { 1.0f, -1.0f,  1.0f},
+        { 1.0f, -1.0f, -1.0f},
+        { 1.0f,  1.0f,  1.0f},
+        { 1.0f,  1.0f, -1.0f},
+
+        { 1.0f, -1.0f, -1.0f},
+        {-1.0f, -1.0f, -1.0f},
+        { 1.0f,  1.0f, -1.0f},
+        {-1.0f,  1.0f, -1.0f},
+
+        {-1.0f, -1.0f, -1.0f},
+        {-1.0f, -1.0f,  1.0f},
+        {-1.0f,  1.0f, -1.0f},
+        {-1.0f,  1.0f,  1.0f},
+
+        {-1.0f, -1.0f, -1.0f},
+        { 1.0f, -1.0f, -1.0f},
+        {-1.0f, -1.0f,  1.0f},
+        { 1.0f, -1.0f,  1.0f},
+
+        {-1.0f,  1.0f,  1.0f},
+        { 1.0f,  1.0f,  1.0f},
+        {-1.0f,  1.0f, -1.0f},
+        { 1.0f,  1.0f, -1.0f}
+    };
+};
 Box3D::Box3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name, const vec3<F32>& size)
     : Object3D(context, parentCache, descriptorHash, name, {}, {}, ObjectType::BOX_3D, 0u)
 {
+    static const vec2<F32> texCoords[4] = {
+        {0.0f, 0.0f},
+        {1.0f, 0.0f},
+        {0.0f, 1.0f},
+        {1.0f, 1.0f}
+    };
+
+    static const vec3<F32> normals[] = {
+        { 0.f,  0.f,  1.f},
+        { 1.f,  0.f,  0.f},
+        { 0.f,  0.f, -1.f},
+        {-1.f,  0.f,  0.f},
+        { 0.f,  1.f,  0.f},
+        { 0.f, -1.f,  0.f}
+    };
+
+
     _halfExtent.set(size / 2);
 
-    static const vec3<F32> vertices[] = {
-        vec3<F32>(-1.0f, -1.0f,  1.0f),
-        vec3<F32>(1.0f, -1.0f,  1.0f),
-        vec3<F32>(-1.0f,  1.0f,  1.0f),
-        vec3<F32>(1.0f,  1.0f,  1.0f),
-        vec3<F32>(-1.0f, -1.0f, -1.0f),
-        vec3<F32>(1.0f, -1.0f, -1.0f),
-        vec3<F32>(-1.0f,  1.0f, -1.0f),
-        vec3<F32>(1.0f,  1.0f, -1.0f)
-    };
-
-    constexpr U16 indices[] = {
-        0, 1, 2,
-        3, 7, 1,
-        5, 4, 7,
-        6, 2, 4,
-        0, 1
-    };
-
     VertexBuffer* vb = getGeometryVB();
-
-    vb->setVertexCount(8);
-
-    for (U8 i = 0; i < 8; i++) {
-        vb->modifyPositionValue(i, vertices[i] * _halfExtent);
-        vb->modifyNormalValue(i, vertices[i]);
-    }
+    vb->setVertexCount(std::size(vertices));
 
     for (const U16 idx : indices) {
         vb->addIndex(idx);
     }
 
+    for (U32 i = 0u; i < std::size(vertices); ++i) {
+        vb->modifyPositionValue(i, vertices[i] * _halfExtent);
+        vb->modifyTexCoordValue(i, texCoords[i % 4]);
+        vb->modifyNormalValue(i, normals[i / 4]);
+    }
     vb->create(false);
     setBounds(BoundingBox(-_halfExtent, _halfExtent));
 }
 
 void Box3D::setHalfExtent(const vec3<F32>& halfExtent) {
-    static const vec3<F32> vertices[] = {
-        vec3<F32>(-1.0f, -1.0f,  1.0f),
-        vec3<F32>(1.0f, -1.0f,  1.0f),
-        vec3<F32>(-1.0f,  1.0f,  1.0f),
-        vec3<F32>(1.0f,  1.0f,  1.0f),
-        vec3<F32>(-1.0f, -1.0f, -1.0f),
-        vec3<F32>(1.0f, -1.0f, -1.0f),
-        vec3<F32>(-1.0f,  1.0f, -1.0f),
-        vec3<F32>(1.0f,  1.0f, -1.0f)
-    };
-
     _halfExtent = halfExtent;
 
     VertexBuffer* vb = getGeometryVB();
-    for (U8 i = 0; i < 8; ++i) {
+    for (U32 i = 0u; i < std::size(vertices); ++i) {
         vb->modifyPositionValue(i, vertices[i] * _halfExtent);
     }
 
     vb->queueRefresh();
-    setBounds(BoundingBox(-_halfExtent * 0.5f, _halfExtent * 0.5f));
+    setBounds(BoundingBox(-_halfExtent, _halfExtent));
 }
 
 void Box3D::fromPoints(const std::initializer_list<vec3<F32>>& points,

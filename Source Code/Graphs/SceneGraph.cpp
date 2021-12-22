@@ -413,19 +413,23 @@ bool SceneGraph::loadCache(ByteBuffer& inputBuffer) {
         bool skipRoot = true;
         bool missingData = false;
         do {
-            inputBuffer >> nodeID;
-            if (nodeID == rootID && !skipRoot) {
+            if (!inputBuffer.bufferEmpty()) {
+                inputBuffer >> nodeID;
+                if (nodeID == rootID && !skipRoot) {
+                    break;
+                }
+
+                SceneGraphNode* node = findNode(nodeID, false);
+
+                if (node == nullptr || !Attorney::SceneGraphNodeSceneGraph::loadCache(node, inputBuffer)) {
+                    missingData = true;
+                }
+
+                inputBuffer.readSkipToMarker(g_cacheMarkerByteValue);
+            } else {
+                missingData = true;
                 break;
             }
-
-            SceneGraphNode* node = findNode(nodeID, false);
-
-            if (node == nullptr || !Attorney::SceneGraphNodeSceneGraph::loadCache(node, inputBuffer)) {
-                missingData = true;
-            }
-
-            inputBuffer.readSkipToMarker(g_cacheMarkerByteValue);
-
             if (nodeID == rootID && skipRoot) {
                 skipRoot = false;
                 nodeID = 0u;

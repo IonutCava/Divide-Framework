@@ -86,7 +86,7 @@ namespace Divide {
             if (ImGui::SmallButton("T")) {
                 ret = true;
             }
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            if (tex != nullptr && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                 ImGui::SetTooltip(Util::StringFormat("Preview texture : %s", tex->assetName().c_str()).c_str());
             }
             if (readOnly) {
@@ -1569,7 +1569,6 @@ namespace Divide {
                     ret = processBasicField(tempField) || ret;
                     ImGui::PopItemWidth();
                     ImGui::SameLine();
-                    ImGui::Text(tempField._name.c_str());
                     ApplyAllButton(id, tempField._readOnly, [&material, &specular]() {
                         if (material->baseMaterial() != nullptr) {
                             material->baseMaterial()->shininess(specular.a, true);
@@ -1619,7 +1618,6 @@ namespace Divide {
                     ImGui::PopItemWidth();
 
                     ImGui::SameLine();
-                    ImGui::Text(tempField._name.c_str());
                     ApplyAllButton(id, tempField._readOnly, [&material]() {
                         if (material->baseMaterial() != nullptr) {
                             material->baseMaterial()->metallic(material->metallic(), true);
@@ -1650,7 +1648,6 @@ namespace Divide {
                     ret = processBasicField(tempField) || ret;
                     ImGui::PopItemWidth();
                     ImGui::SameLine();
-                    ImGui::Text(tempField._name.c_str());
                     ApplyAllButton(id, tempField._readOnly, [&material]() {
                         if (material->baseMaterial() != nullptr) {
                             material->baseMaterial()->roughness(material->roughness(), true);
@@ -1684,7 +1681,6 @@ namespace Divide {
                     ImGui::PopItemWidth();
 
                     ImGui::SameLine();
-                    ImGui::Text(tempField._name.c_str());
                     ApplyAllButton(id, tempField._readOnly, [&material]() {
                         if (material->baseMaterial() != nullptr) {
                             material->baseMaterial()->occlusion(material->occlusion(), true);
@@ -1713,7 +1709,6 @@ namespace Divide {
                 ret = processBasicField(tempField) || ret;
                 ImGui::PopItemWidth();
                 ImGui::SameLine();
-                ImGui::Text(tempField._name.c_str());
                 ApplyAllButton(id, tempField._readOnly, [&material]() {
                     if (material->baseMaterial() != nullptr) {
                         material->baseMaterial()->parallaxFactor(material->parallaxFactor(), true);
