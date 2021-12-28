@@ -45,8 +45,18 @@ namespace Divide {
     }
 
     void OBB::fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix) {
+        assert(worldMatrix.isColOrthogonal()); // We cannot convert transform an AABB to OBB if it gets sheared in the process.
+
         fromBoundingBox(aabb);
-        transform(worldMatrix);
+        _position =            worldMatrix * _position;
+        _axis[0]  = Normalized(worldMatrix.transformNonHomogeneous(_axis[0]));
+        _axis[1]  = Normalized(worldMatrix.transformNonHomogeneous(_axis[1]));
+        _axis[2]  = Normalized(worldMatrix.transformNonHomogeneous(_axis[2]));
+
+        vec3<F32> position = VECTOR3_ZERO, scale = VECTOR3_UNIT;
+        Util::decomposeMatrix(worldMatrix, position, scale);
+        _halfExtents *= scale;
+        OrthoNormalize(_axis[0], _axis[1], _axis[2]);
     }
 
     void OBB::fromBoundingBox(const BoundingBox& aabb, const Quaternion<F32>& orientation) {
@@ -54,8 +64,7 @@ namespace Divide {
     }
 
     void OBB::fromBoundingBox(const BoundingBox& aabb, const vec3<F32>& position, const Quaternion<F32>& rotation, const vec3<F32>& scale) {
-        fromBoundingBox(aabb, mat4<F32>(VECTOR3_ZERO, scale, GetMatrix(rotation)));
-        translate(position);
+        fromBoundingBox(aabb, mat4<F32>(position, scale, GetMatrix(rotation)));
     }
 
     void OBB::fromBoundingSphere(const BoundingSphere& sphere)  noexcept {

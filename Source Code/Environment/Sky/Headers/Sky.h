@@ -111,13 +111,12 @@ class Sky final : public SceneNode {
 
     void buildDrawCommands(SceneGraphNode* sgn,
                            const RenderStagePass& renderStagePass,
-                           const Camera& crtCamera,
                            RenderPackage& pkgInOut) override;
 
     void prepareRender(SceneGraphNode* sgn,
                         RenderingComponent& rComp,
                         const RenderStagePass& renderStagePass,
-                        const Camera& camera,
+                        const CameraSnapshot& cameraSnapshot,
                         bool refreshData) override;
 
    protected:

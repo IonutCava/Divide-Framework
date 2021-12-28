@@ -93,8 +93,8 @@ void DoFPreRenderOperator::reshape(const U16 width, const U16 height) {
     _constantsDirty = true;
 }
 
-bool DoFPreRenderOperator::execute(const Camera* camera, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
-    const vec2<F32>& zPlanes = camera->getZPlanes();
+bool DoFPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+    const vec2<F32>& zPlanes = cameraSnapshot._zPlanes;
     if (_cachedZPlanes != zPlanes) {
         _constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, zPlanes);
 
@@ -102,19 +102,19 @@ bool DoFPreRenderOperator::execute(const Camera* camera, const RenderTargetHandl
         _constantsDirty = true;
     }
 
-    const RenderTarget& postFXTarget = _context.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::POSTFX_DATA));
+    const RenderTarget& postFXTarget = _context.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::LINEAR_DEPTH));
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
     const auto& extraAtt = postFXTarget.getAttachment(RTAttachmentType::Colour, 0u);
     const TextureData screenTex = screenAtt.texture()->data();
     const TextureData extraTex = extraAtt.texture()->data();
 
-    GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
+    GFX::BindDescriptorSetsCommand descriptorSetCmd{};
     descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
-    descriptorSetCmd._set._textureData.add(TextureEntry{ extraTex, extraAtt.samplerHash(), TextureUsage::POST_FX_DATA });
+    descriptorSetCmd._set._textureData.add(TextureEntry{ extraTex, extraAtt.samplerHash(), TextureUsage::DEPTH });
     EnqueueCommand(bufferInOut, descriptorSetCmd);
 
-    GFX::BeginRenderPassCommand beginRenderPassCmd = {};
+    GFX::BeginRenderPassCommand beginRenderPassCmd{};
     beginRenderPassCmd._target = output._targetID;
     beginRenderPassCmd._descriptor = _screenOnlyDraw;
     beginRenderPassCmd._name = "DO_DOF_PASS";

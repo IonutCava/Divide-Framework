@@ -9,7 +9,7 @@ namespace Divide {
       : BaseComponentType<TransformComponent, ComponentType::TRANSFORM>(parentSGN, context),
         _parentUsageContext(parentSGN->usageContext())
     {
-        _worldMatrix.fill(MAT4_INITIAL_TRANSFORM);
+        _localMatrix.fill(MAT4_INITIAL_TRANSFORM);
 
         setTransformDirty(TransformType::ALL);
 
@@ -22,7 +22,7 @@ namespace Divide {
         _editorComponent.registerField(MOV(transformField));
 
         EditorComponentField worldMatField = {};
-        worldMatField._name = "WorldMat";
+        worldMatField._name = "World Matrix";
         worldMatField._dataGetter = [this](void* dataOut) { getWorldMatrix(*static_cast<mat4<F32>*>(dataOut)); };
         worldMatField._type = EditorComponentFieldType::PUSH_TYPE;
         worldMatField._readOnly = true;
@@ -30,6 +30,17 @@ namespace Divide {
         worldMatField._basicType = GFX::PushConstantType::MAT4;
 
         _editorComponent.registerField(MOV(worldMatField));
+
+        
+        EditorComponentField localMatField = {};
+        localMatField._name = "Local Matrix";
+        localMatField._dataGetter = [this](void* dataOut) { getLocalMatrix(*static_cast<mat4<F32>*>(dataOut)); };
+        localMatField._type = EditorComponentFieldType::PUSH_TYPE;
+        localMatField._readOnly = true;
+        localMatField._serialise = false;
+        localMatField._basicType = GFX::PushConstantType::MAT4;
+
+        _editorComponent.registerField(MOV(localMatField));
 
         if (_transformOffset.first) {
             EditorComponentField transformOffsetField = {};
@@ -43,7 +54,7 @@ namespace Divide {
         }
 
         EditorComponentField recomputeMatrixField = {};
-        recomputeMatrixField._name = "Recompute WorldMatrix";
+        recomputeMatrixField._name = "Recompute World Matrix";
         recomputeMatrixField._range = { recomputeMatrixField._name.length() * 10.0f, 20.0f };//dimensions
         recomputeMatrixField._type = EditorComponentFieldType::BUTTON;
         recomputeMatrixField._readOnly = false; //disabled/enabled
@@ -54,7 +65,7 @@ namespace Divide {
                 setTransformDirty(TransformType::ALL);
             } else if (field == "Position Offset") {
                 // view offset stuff
-            } else if (field == "Recompute WorldMatrix") {
+            } else if (field == "Recompute World Matrix") {
                 setTransformDirty(TransformType::ALL);
             }
 
@@ -75,11 +86,11 @@ namespace Divide {
     void TransformComponent::resetCache() {
         _cacheDirty = true;
         SharedLock<SharedMutex> r_lock(_lock);
-        _prevTransformValues = _transformInterface.getValues();
+        _prevTransformValues = getLocalValues();
     }
 
     void TransformComponent::reset() {
-        _worldMatrix.fill(MAT4_INITIAL_TRANSFORM);
+        _localMatrix.fill(MAT4_INITIAL_TRANSFORM);
 
         while (!_transformStack.empty()) {
             _transformStack.pop();
@@ -119,8 +130,13 @@ namespace Divide {
     void TransformComponent::setScale(const vec3<F32>& amount) {
         {
             ScopedLock<SharedMutex> w_lock(_lock);
-            _transformInterface.setScale(amount);
-            _uniformScaled = amount.isUniform();
+            if (scalingMode() == ScalingMode::UNIFORM) {
+                _transformInterface.setScale(amount);
+                _uniformScaled = amount.isUniform();
+            } else {
+                _transformInterface.setScale(vec3<F32>(amount.x, amount.x, amount.x));
+                _uniformScaled = true;
+            }
         }
 
         setTransformDirty(TransformType::SCALE);
@@ -163,9 +179,11 @@ namespace Divide {
     }
 
     void TransformComponent::scale(const vec3<F32>& axisFactors) {
-        {
-            ScopedLock<SharedMutex> w_lock(_lock);
+        ScopedLock<SharedMutex> w_lock(_lock);
+        if (scalingMode() == ScalingMode::UNIFORM) {
             _transformInterface.scale(axisFactors);
+        } else {
+            _transformInterface.scale(vec3<F32>(axisFactors.x, axisFactors.x, axisFactors.x));
         }
 
         setTransformDirty(TransformType::SCALE);
@@ -208,61 +226,79 @@ namespace Divide {
     }
 
     void TransformComponent::setScaleX(const F32 amount) {
-        {
-            ScopedLock<SharedMutex> w_lock(_lock);
-            _transformInterface.setScaleX(amount);
-            _uniformScaled = _transformInterface.isUniformScale();
+        if (scalingMode() == ScalingMode::UNIFORM) {
+            setScale(amount);
+            return;
         }
+
+        ScopedLock<SharedMutex> w_lock(_lock);
+        _transformInterface.setScaleX(amount);
+        _uniformScaled = _transformInterface.isUniformScale();
 
         setTransformDirty(TransformType::SCALE);
     }
 
     void TransformComponent::setScaleY(const F32 amount) {
-        {
-            ScopedLock<SharedMutex> w_lock(_lock);
-            _transformInterface.setScaleY(amount);
-            _uniformScaled = _transformInterface.isUniformScale();
+        if (scalingMode() == ScalingMode::UNIFORM) {
+            setScale(amount);
+            return;
         }
+
+        ScopedLock<SharedMutex> w_lock(_lock);
+        _transformInterface.setScaleY(amount);
+        _uniformScaled = _transformInterface.isUniformScale();
 
         setTransformDirty(TransformType::SCALE);
     }
 
     void TransformComponent::setScaleZ(const F32 amount) {
-        {
-            ScopedLock<SharedMutex> w_lock(_lock);
-            _transformInterface.setScaleZ(amount);
-            _uniformScaled = _transformInterface.isUniformScale();
+        if (scalingMode() == ScalingMode::UNIFORM) {
+            setScale(amount);
+            return;
         }
+
+        ScopedLock<SharedMutex> w_lock(_lock);
+        _transformInterface.setScaleZ(amount);
+        _uniformScaled = _transformInterface.isUniformScale();
 
         setTransformDirty(TransformType::SCALE);
     }
 
     void TransformComponent::scaleX(const F32 amount) {
-        {
-            ScopedLock<SharedMutex> w_lock(_lock);
-            _transformInterface.scaleX(amount);
-            _uniformScaled = _transformInterface.isUniformScale();
+        if (scalingMode() == ScalingMode::UNIFORM) {
+            scale(amount);
+            return;
         }
+
+        ScopedLock<SharedMutex> w_lock(_lock);
+        _transformInterface.scaleX(amount);
+        _uniformScaled = _transformInterface.isUniformScale();
 
         setTransformDirty(TransformType::SCALE);
     }
 
     void TransformComponent::scaleY(const F32 amount) {
-        {
-            ScopedLock<SharedMutex> w_lock(_lock);
-            _transformInterface.scaleY(amount);
-            _uniformScaled = _transformInterface.isUniformScale();
+        if (scalingMode() == ScalingMode::UNIFORM) {
+            scale(amount);
+            return;
         }
+
+        ScopedLock<SharedMutex> w_lock(_lock);
+        _transformInterface.scaleY(amount);
+        _uniformScaled = _transformInterface.isUniformScale();
 
         setTransformDirty(TransformType::SCALE);
     }
 
     void TransformComponent::scaleZ(const F32 amount) {
-        {
-            ScopedLock<SharedMutex> w_lock(_lock);
-            _transformInterface.scaleZ(amount);
-            _uniformScaled = _transformInterface.isUniformScale();
+        if (scalingMode() == ScalingMode::UNIFORM) {
+            scale(amount);
+            return;
         }
+ 
+        ScopedLock<SharedMutex> w_lock(_lock);
+        _transformInterface.scaleZ(amount);
+        _uniformScaled = _transformInterface.isUniformScale();
 
         setTransformDirty(TransformType::SCALE);
     }
@@ -321,12 +357,16 @@ namespace Divide {
         setTransformDirty(TransformType::ROTATION);
     }
 
-    const vec3<F32> TransformComponent::getDirection(const vec3<F32>& worldForward, bool local) const {
-        return DirectionFromAxis(local ? getLocalOrientation() : getOrientation(), worldForward);
+    const vec3<F32> TransformComponent::getLocalDirection(const vec3<F32>& worldForward) const {
+        return DirectionFromAxis(getLocalOrientation(), worldForward);
+    } 
+    
+    const vec3<F32> TransformComponent::getWorldDirection(const vec3<F32>& worldForward) const {
+        return DirectionFromAxis(getWorldOrientation(), worldForward);
     }
 
     void TransformComponent::setDirection(const vec3<F32>& fwdDirection, const vec3<F32>& upDirection) {
-        setRotation(RotationFromVToU(getDirection(WORLD_Z_NEG_AXIS, true), fwdDirection, WORLD_Z_NEG_AXIS));
+        setRotation(RotationFromVToU(getLocalDirection(WORLD_Z_NEG_AXIS), fwdDirection, WORLD_Z_NEG_AXIS));
     }
 
     void TransformComponent::setPositionX(const F32 positionX) {
@@ -358,7 +398,7 @@ namespace Divide {
 
     void TransformComponent::pushTransforms() {
         SharedLock<SharedMutex> r_lock(_lock);
-        _transformStack.push(_transformInterface.getValues());
+        _transformStack.push(getLocalValues());
     }
 
     bool TransformComponent::popTransforms() {
@@ -374,12 +414,13 @@ namespace Divide {
             setTransformDirty(TransformType::ALL);
             return true;
         }
+
         return false;
     }
     
     void TransformComponent::setTransform(const TransformValues& values) {
         {
-            ScopedLock<SharedMutex> r_lock(_lock);
+            ScopedLock<SharedMutex> w_lock(_lock);
             _transformInterface.setValues(values);
         }
         setTransformDirty(TransformType::ALL);
@@ -393,81 +434,101 @@ namespace Divide {
         setTransformDirty(TransformType::ALL);
     }
 
-    TransformValues TransformComponent::getValues() const {
+    TransformValues TransformComponent::getLocalValues() const {
         SharedLock<SharedMutex> r_lock(_lock);
-        return _transformInterface.getValues();
-    }
 
-    void TransformComponent::getMatrix(mat4<F32>& matOut) {
-        SharedLock<SharedMutex> r_lock(_lock);
-        _transformInterface.getMatrix(matOut);
-
-        if (_transformOffset.first) {
-            matOut *= _transformOffset.second;
-        }
-    }
-
-    void TransformComponent::getMatrix(const D64 interpolationFactor, mat4<F32>& matOut) const {
-        {
-            SharedLock<SharedMutex> r_lock(_lock);
-            matOut.set(mat4<F32>
-                       {
-                            getLocalPositionLocked(interpolationFactor),
-                            getLocalScaleLocked(interpolationFactor),
-                            GetMatrix(getLocalOrientationLocked(interpolationFactor))
-                        });
-        }
-        if (_transformOffset.first) {
-            matOut *= _transformOffset.second;
-        }
-    }
-
-    vec3<F32> TransformComponent::getLocalPositionLocked(const D64 interpolationFactor) const {
-        return Lerp(_prevTransformValues._translation, _transformInterface.getValuesRef()._translation, to_F32(interpolationFactor));
-    }
-
-    vec3<F32> TransformComponent::getLocalScaleLocked(const D64 interpolationFactor) const {
-        return Lerp(_prevTransformValues._scale, _transformInterface.getValuesRef()._scale, to_F32(interpolationFactor));
-    }
-
-    Quaternion<F32> TransformComponent::getLocalOrientationLocked(D64 interpolationFactor) const {
-        return Slerp(_prevTransformValues._orientation, _transformInterface.getValuesRef()._orientation, to_F32(interpolationFactor));
-    }
-
-    void TransformComponent::updateWorldMatrix() {
-        ScopedLock<SharedMutex> w_lock(_worldMatrixLock);
-        getMatrix(_worldMatrix[to_base(WorldMatrixType::CURRENT)]);
-        _prevWorldMatrixDirty = true;
-    }
-
-    void TransformComponent::getPreviousWorldMatrix(mat4<F32>& matOut) const {
-        matOut.set(_worldMatrix[to_base(WorldMatrixType::PREVIOUS)]);
-
-        const SceneGraphNode* grandParentPtr = _parentSGN->parent();
-        if (grandParentPtr != nullptr) {
-            mat4<F32> parentMat;
-            grandParentPtr->get<TransformComponent>()->getPreviousWorldMatrix(parentMat);
-            matOut *= parentMat;
-        }
-    }
-
-    mat4<F32> TransformComponent::getPreviousWorldMatrix() const {
-        mat4<F32> ret;
-        getPreviousWorldMatrix(ret);
+        TransformValues ret{};
+        ret._translation = _transformInterface._translation;
+        ret._scale = _transformInterface._scale;
+        ret._orientation = _transformInterface._orientation;
         return ret;
     }
 
-    void TransformComponent::getWorldMatrix(mat4<F32>& matOut) const {
+    void TransformComponent::getLocalMatrix(mat4<F32>& matOut) {
         {
-            SharedLock<SharedMutex> r_lock(_worldMatrixLock);
-            matOut.set(_worldMatrix[to_base(WorldMatrixType::CURRENT)]);
+            SharedLock<SharedMutex> r_lock(_lock);
+            matOut.set(mat4<F32>
+            {
+                _transformInterface._translation,
+                _transformInterface._scale,
+                GetMatrix(_transformInterface._orientation)
+            });
         }
 
-        const SceneGraphNode* grandParentPtr = _parentSGN->parent();
-        if (grandParentPtr != nullptr) {
+        if (_transformOffset.first) {
+            matOut *= _transformOffset.second;
+        }
+    }
+
+    void TransformComponent::getLocalMatrix(const D64 interpolationFactor, mat4<F32>& matOut) const {
+        {
+            SharedLock<SharedMutex> r_lock(_lock);
+            matOut.set(mat4<F32>
+            {
+                Lerp(_prevTransformValues._translation, _transformInterface._translation, to_F32(interpolationFactor)),
+                Lerp(_prevTransformValues._scale, _transformInterface._scale, to_F32(interpolationFactor)),
+                GetMatrix(Slerp(_prevTransformValues._orientation, _transformInterface._orientation, to_F32(interpolationFactor)))
+            });
+        }
+
+        if (_transformOffset.first) {
+            matOut *= _transformOffset.second;
+        }
+    }
+
+    void TransformComponent::updateLocalMatrix() {
+        ScopedLock<SharedMutex> w_lock(_localMatrixLock);
+        getLocalMatrix(_localMatrix[to_base(WorldMatrixType::CURRENT)]);
+        _previousLocalMatrixDirty = true;
+    }
+
+    void TransformComponent::onParentChanged(const SceneGraphNode* oldParent, const SceneGraphNode* newParent) {
+        // This tries to keep the object's global transform intact when switching from one parent to another
+        mat4<F32> localTransform;
+        // Step 1: Embed parrent transform into ourselves
+        if (oldParent != nullptr && oldParent->get<TransformComponent>()) {
+            getLocalMatrix(localTransform);
+            const mat4<F32> parentTransform = oldParent->get<TransformComponent>()->getWorldMatrix();
+            setTransforms(parentTransform * localTransform);
+        }
+        // Step 2: Undo the new parent transform internally so we don't change transforms when we request the world matrix
+        if (newParent != nullptr && newParent->get<TransformComponent>()) {
+            getLocalMatrix(localTransform);
+            const mat4<F32> parentTransform = newParent->get<TransformComponent>()->getWorldMatrix();
+            setTransforms(GetInverse(parentTransform) * localTransform);
+        }
+    }
+
+    void TransformComponent::getPreviousWorldMatrix(mat4<F32>& matOut) const {
+        matOut.set(_localMatrix[to_base(WorldMatrixType::PREVIOUS)]);
+
+        if (_parentSGN->parent() != nullptr) {
             mat4<F32> parentMat;
-            grandParentPtr->get<TransformComponent>()->getWorldMatrix(parentMat);
+            _parentSGN->parent()->get<TransformComponent>()->getPreviousWorldMatrix(parentMat);
             matOut *= parentMat;
+        }
+    }
+
+    void TransformComponent::getWorldMatrix(mat4<F32>& matrixOut) const {
+        {
+            SharedLock<SharedMutex> r_lock(_localMatrixLock);
+            matrixOut.set(_localMatrix[to_base(WorldMatrixType::CURRENT)]);
+        }
+
+        if (_parentSGN->parent() != nullptr) {
+            matrixOut *= _parentSGN->parent()->get<TransformComponent>()->getWorldMatrix();
+        }
+    }
+
+    void TransformComponent::getWorldMatrix(const D64 interpolationFactor, mat4<F32>& matrixOut) const {
+        if (_parentUsageContext == NodeUsageContext::NODE_STATIC || interpolationFactor > 0.99) {
+            getWorldMatrix(matrixOut);
+        } else {
+            getLocalMatrix(interpolationFactor, matrixOut);
+
+            if (_parentSGN->parent() != nullptr) {
+                matrixOut *= _parentSGN->parent()->get<TransformComponent>()->getWorldMatrix(interpolationFactor);
+            }
         }
     }
 
@@ -477,153 +538,137 @@ namespace Divide {
         return ret;
     }
 
-    void TransformComponent::getWorldMatrix(D64 interpolationFactor, mat4<F32>& matrixOut) const {
-        OPTICK_EVENT();
-
-        if (_parentUsageContext == NodeUsageContext::NODE_STATIC || interpolationFactor > 0.99) {
-            getWorldMatrix(matrixOut);
-        } else {
-            getMatrix(interpolationFactor, matrixOut);
-
-            const SceneGraphNode* grandParentPtr = _parentSGN->parent();
-            if (grandParentPtr != nullptr) {
-                mat4<F32> parentMat;
-                grandParentPtr->get<TransformComponent>()->getWorldMatrix(interpolationFactor, parentMat);
-                matrixOut *= parentMat;
-            }
-        }
+    mat4<F32> TransformComponent::getWorldMatrix(const D64 interpolationFactor) const {
+        mat4<F32> ret;
+        getWorldMatrix(interpolationFactor, ret);
+        return ret;
     }
 
-    vec3<F32> TransformComponent::getPosition() const noexcept {
-        if (_cacheDirty) {
-            return getPositionInternal();
+    vec3<F32> TransformComponent::getWorldPosition() const {
+        if (!_cacheDirty) {
+            return _cachedDerivedTransform._translation;
         }
-        return _cachedTransform._translation;
+
+        return getDerivedPosition();
     }
 
-    vec3<F32> TransformComponent::getPositionInternal() const noexcept {
-        const SceneGraphNode* grandParent = _parentSGN->parent();
-        if (grandParent != nullptr) {
-            return getLocalPosition() + grandParent->get<TransformComponent>()->getPositionInternal();
+    vec3<F32> TransformComponent::getDerivedPosition() const {
+        if (_parentSGN->parent() != nullptr) {
+            return getLocalPosition() + _parentSGN->parent()->get<TransformComponent>()->getDerivedPosition();
         }
 
         return getLocalPosition();
     }
 
-    vec3<F32> TransformComponent::getPosition(const D64 interpolationFactor) const noexcept {
-        const SceneGraphNode* grandParent = _parentSGN->parent();
-        if (grandParent != nullptr) {
-            return getLocalPosition(interpolationFactor) + grandParent->get<TransformComponent>()->getPosition(interpolationFactor);
+    vec3<F32> TransformComponent::getWorldPosition(const D64 interpolationFactor) const {
+        if (_parentSGN->parent() != nullptr) {
+            return getLocalPosition(interpolationFactor) + _parentSGN->parent()->get<TransformComponent>()->getWorldPosition(interpolationFactor);
         }
 
         return getLocalPosition(interpolationFactor);
     }
 
-    vec3<F32> TransformComponent::getScale() const noexcept {
-        if (_cacheDirty) {
-            return getScaleInternal();
+    vec3<F32> TransformComponent::getWorldScale() const {
+        if (!_cacheDirty) {
+            return _cachedDerivedTransform._scale;
         }
 
-        return _cachedTransform._scale;
+        return getDerivedScale();
     }
 
-    vec3<F32> TransformComponent::getScaleInternal() const noexcept {
-        const SceneGraphNode* grandParent = _parentSGN->parent();
-        if (grandParent != nullptr) {
-            return getLocalScale() * grandParent->get<TransformComponent>()->getScaleInternal();
+    vec3<F32> TransformComponent::getDerivedScale() const {
+        if (_parentSGN->parent() != nullptr) {
+            return getLocalScale() * _parentSGN->parent()->get<TransformComponent>()->getDerivedScale();
         }
 
         return getLocalScale();
     }
 
-    vec3<F32> TransformComponent::getScale(const D64 interpolationFactor) const noexcept {
-        const SceneGraphNode* grandParent = _parentSGN->parent();
-        if (grandParent != nullptr) {
-            return getLocalScale(interpolationFactor) * grandParent->get<TransformComponent>()->getScale(interpolationFactor);
+    vec3<F32> TransformComponent::getWorldScale(const D64 interpolationFactor) const {
+        if (_parentSGN->parent() != nullptr) {
+            return getLocalScale(interpolationFactor) * _parentSGN->parent()->get<TransformComponent>()->getWorldScale(interpolationFactor);
         }
 
         return getLocalScale(interpolationFactor);
     }
 
-    Quaternion<F32> TransformComponent::getOrientation() const noexcept {
-        if (_cacheDirty) {
-            return getOrientationInternal();
+    Quaternion<F32> TransformComponent::getWorldOrientation() const {
+        if (!_cacheDirty) {
+            return _cachedDerivedTransform._orientation;
         }
 
-        return _cachedTransform._orientation;
+        return getDerivedOrientation();
     }
 
-    Quaternion<F32> TransformComponent::getOrientationInternal() const noexcept {
-        const SceneGraphNode* grandParent = _parentSGN->parent();
-        if (grandParent != nullptr) {
-            return grandParent->get<TransformComponent>()->getOrientationInternal() * getLocalOrientation();
+    Quaternion<F32> TransformComponent::getDerivedOrientation() const {
+        if (_parentSGN->parent() != nullptr) {
+            return _parentSGN->parent()->get<TransformComponent>()->getDerivedOrientation() * getLocalOrientation();
         }
 
         return getLocalOrientation();
     }
 
-    Quaternion<F32> TransformComponent::getOrientation(const D64 interpolationFactor) const noexcept {
-        const SceneGraphNode* grandParent = _parentSGN->parent();
-        if (grandParent != nullptr) {
-            return grandParent->get<TransformComponent>()->getOrientation(interpolationFactor) * getLocalOrientation(interpolationFactor);
+    Quaternion<F32> TransformComponent::getWorldOrientation(const D64 interpolationFactor) const {
+        if (_parentSGN->parent() != nullptr) {
+            return _parentSGN->parent()->get<TransformComponent>()->getWorldOrientation(interpolationFactor) * getLocalOrientation(interpolationFactor);
         }
 
         return getLocalOrientation(interpolationFactor);
     }
 
-    vec3<F32> TransformComponent::getLocalPosition() const noexcept {
+    vec3<F32> TransformComponent::getLocalPosition() const {
         SharedLock<SharedMutex> r_lock(_lock);
-        return _transformInterface.getValuesRef()._translation;
+        return _transformInterface._translation;
     }
 
-    vec3<F32> TransformComponent::getLocalScale() const noexcept {
+    vec3<F32> TransformComponent::getLocalScale() const {
         SharedLock<SharedMutex> r_lock(_lock);
-        return _transformInterface.getValuesRef()._scale;
+        return _transformInterface._scale;
     }
 
-    Quaternion<F32> TransformComponent::getLocalOrientation() const noexcept {
+    Quaternion<F32> TransformComponent::getLocalOrientation() const {
         SharedLock<SharedMutex> r_lock(_lock);
-        return _transformInterface.getValuesRef()._orientation;
+        return _transformInterface._orientation;
     }
 
-    vec3<F32> TransformComponent::getLocalPosition(const D64 interpolationFactor) const noexcept {
+    vec3<F32> TransformComponent::getLocalPosition(const D64 interpolationFactor) const {
         return Lerp(_prevTransformValues._translation, getLocalPosition(), to_F32(interpolationFactor));
     }
 
-    vec3<F32> TransformComponent::getLocalScale(const D64 interpolationFactor) const  noexcept {
+    vec3<F32> TransformComponent::getLocalScale(const D64 interpolationFactor) const  {
         return Lerp(_prevTransformValues._scale, getLocalScale(), to_F32(interpolationFactor));
     }
 
-    vec3<F32> TransformComponent::getFwdVector() const noexcept {
-        return Rotate(WORLD_Z_NEG_AXIS, getOrientation());
+    vec3<F32> TransformComponent::getFwdVector() const {
+        return Rotate(WORLD_Z_NEG_AXIS, getWorldOrientation());
     }
 
-    vec3<F32> TransformComponent::getUpVector() const noexcept {
-        return Rotate(WORLD_Y_AXIS, getOrientation());
+    vec3<F32> TransformComponent::getUpVector() const {
+        return Rotate(WORLD_Y_AXIS, getWorldOrientation());
     }
 
-    vec3<F32> TransformComponent::getRightVector() const noexcept {
-        return Rotate(WORLD_X_AXIS, getOrientation());
+    vec3<F32> TransformComponent::getRightVector() const {
+        return Rotate(WORLD_X_AXIS, getWorldOrientation());
     }
 
-    Quaternion<F32> TransformComponent::getLocalOrientation(const D64 interpolationFactor) const noexcept {
+    Quaternion<F32> TransformComponent::getLocalOrientation(const D64 interpolationFactor) const {
         return Slerp(_prevTransformValues._orientation, getLocalOrientation(), to_F32(interpolationFactor));
     }
 
     // Transform interface access
-    void TransformComponent::getScale(vec3<F32>& scaleOut) const noexcept {
+    void TransformComponent::getScale(vec3<F32>& scaleOut) const {
         SharedLock<SharedMutex> r_lock(_lock);
 
         _transformInterface.getScale(scaleOut);
     }
 
-    void TransformComponent::getPosition(vec3<F32>& posOut) const noexcept {
+    void TransformComponent::getPosition(vec3<F32>& posOut) const {
         SharedLock<SharedMutex> r_lock(_lock);
 
         _transformInterface.getPosition(posOut);
     }
 
-    void TransformComponent::getOrientation(Quaternion<F32>& quatOut) const noexcept {
+    void TransformComponent::getOrientation(Quaternion<F32>& quatOut) const {
         SharedLock<SharedMutex> r_lock(_lock);
 
         _transformInterface.getOrientation(quatOut);
@@ -635,9 +680,9 @@ namespace Divide {
 
     void TransformComponent::updateCachedValues() {
         if (_cacheDirty) {
-            _cachedTransform._translation = getPositionInternal();
-            _cachedTransform._scale = getScaleInternal();
-            _cachedTransform._orientation = getOrientationInternal();
+            _cachedDerivedTransform._translation = getDerivedPosition();
+            _cachedDerivedTransform._scale = getDerivedScale();
+            _cachedDerivedTransform._orientation = getDerivedOrientation();
             _cacheDirty = false;
         }
     }
@@ -646,12 +691,11 @@ namespace Divide {
         if (Parent::saveCache(outputBuffer)) {
             if (_hasChanged.exchange(false)) {
                 SharedLock<SharedMutex> r_lock(_lock);
-                const TransformValues values = _transformInterface.getValues();
 
                 outputBuffer << true;
-                outputBuffer << values._translation;
-                outputBuffer << values._scale;
-                outputBuffer << values._orientation;
+                outputBuffer << _transformInterface._translation;
+                outputBuffer << _transformInterface._scale;
+                outputBuffer << _transformInterface._orientation;
             } else {
                 outputBuffer << false;
             }
@@ -664,12 +708,11 @@ namespace Divide {
     bool TransformComponent::loadCache(ByteBuffer& inputBuffer) {
         if (Parent::loadCache(inputBuffer)) {
             if (inputBuffer.read<bool>()) {
-                TransformValues valuesIn = {};
-                inputBuffer >> valuesIn._translation;
-                inputBuffer >> valuesIn._scale;
-                inputBuffer >> valuesIn._orientation;
-
-                setTransform(valuesIn);
+                ScopedLock<SharedMutex> w_lock(_lock);
+                inputBuffer >> _transformInterface._translation;
+                inputBuffer >> _transformInterface._scale;
+                inputBuffer >> _transformInterface._orientation;
+                setTransformDirty(TransformType::ALL);
             }
             return true;
         }

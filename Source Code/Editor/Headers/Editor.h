@@ -63,6 +63,7 @@ namespace Attorney {
     class EditorSceneViewWindow;
     class EditorSolutionExplorerWindow;
     class EditorRenderPassExecutor;
+    class EditorEditorComponent;
 }
 
 class Gizmo;
@@ -117,6 +118,7 @@ class Editor final : public PlatformContextComponent,
     friend class Attorney::EditorSceneViewWindow;
     friend class Attorney::EditorSolutionExplorerWindow;
     friend class Attorney::EditorRenderPassExecutor;
+    friend class Attorney::EditorEditorComponent;
 
   public:
     static std::array<Input::MouseButton, 5> g_oisButtons;
@@ -224,7 +226,7 @@ class Editor final : public PlatformContextComponent,
 
     [[nodiscard]] bool isDefaultScene() const noexcept;
 
-    void postRender(const Camera& camera, RenderTargetID target, GFX::CommandBuffer& bufferInOut);
+    void postRender(const CameraSnapshot& cameraSnapshot, RenderTargetID target, GFX::CommandBuffer& bufferInOut);
 
     PROPERTY_R_IW(bool, running, false);
     PROPERTY_R_IW(bool, unsavedSceneChanges, false);
@@ -237,7 +239,7 @@ class Editor final : public PlatformContextComponent,
     PROPERTY_R(F32, infiniteGridAxisWidth, 2.f);
     PROPERTY_R(F32, infiniteGridScale, 1.f);
     PROPERTY_INTERNAL(bool, lockSolutionExplorer, false);
-    PROPERTY_INTERNAL(bool, sceneGizmoEnabled, true);
+    PROPERTY_INTERNAL(bool, sceneGizmoEnabled, false);
 
   protected: // attorney
     void renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, GFX::CommandBuffer& bufferInOut) const;
@@ -254,6 +256,8 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] bool modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const;
     // Return true if the model was spawned as a scene node
     [[nodiscard]] bool spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& rotation, const string& name) const;
+
+    void onRemoveComponent(const EditorComponent& comp) const ;
 
     [[nodiscard]] ECSManager& getECSManager() const;
     [[nodiscard]] LightPool& getActiveLightPool() const;
@@ -570,11 +574,20 @@ namespace Attorney {
     };
 
     class EditorRenderPassExecutor {
-        static void postRender(Editor& editor, const Camera& camera, const RenderTargetID target, GFX::CommandBuffer& bufferInOut) {
-            editor.postRender(camera, target, bufferInOut);
+        static void postRender(Editor& editor, const CameraSnapshot& cameraSnapshot, const RenderTargetID target, GFX::CommandBuffer& bufferInOut) {
+            editor.postRender(cameraSnapshot, target, bufferInOut);
         }
 
         friend class RenderPassExecutor;
+    };
+
+    class EditorEditorComponent {
+
+        static void onRemoveComponent(const Editor& editor, const EditorComponent& comp) {
+            editor.onRemoveComponent(comp);
+        }
+
+        friend class EditorComponent;
     };
 } //namespace Attorney
 

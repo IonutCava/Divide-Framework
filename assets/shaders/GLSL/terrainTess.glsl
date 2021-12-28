@@ -496,13 +496,16 @@ void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OM
     OMR = _private_OMR;
 }
 
+void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout float roughness) {
+    roughness = _private_OMR.z;
+}
+
 void main(void) {
 
     vec3 normalWV; float normalVariation;
     const vec4 albedo = BuildTerrainData(normalWV, normalVariation);
     _private_OMR.b = albedo.a;
-    
-    vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
+
     vec4 colourOut = vec4(0.f, 0.f, 0.f, 1.f);
 
 #if defined (TOGGLE_LODS)
@@ -529,8 +532,7 @@ void main(void) {
                                materialData,
                                normalWV,
                                normalVariation,
-                               VAR._texCoord,
-                               MetalnessRoughnessProbeID
+                               VAR._texCoord
                               );
 #endif //TOGGLE_BLEND_MAP
 #endif //TOGGLE_TESS_LEVEL
@@ -550,7 +552,7 @@ void main(void) {
 #endif //TOGGLE_DEBUG
 
 #endif //TOGGLE_LODS
-    writeScreenColour(colourOut, normalWV, MetalnessRoughnessProbeID);
+    writeScreenColour(colourOut);
 }
 
 --Fragment.Shadow.VSM

@@ -233,8 +233,8 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>branch.png</name>
-                <path>assets/textures</path>
+                <name>../textures/branch.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

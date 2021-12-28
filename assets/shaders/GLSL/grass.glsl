@@ -80,15 +80,11 @@ void main() {
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
 
-#if !defined(DEPTH_PASS)
     computeViewDirectionWV(nodeData);
 
     dvd_Normal = normalize(QUATERNION_ROTATE(dvd_Normal, data.orientationQuad));
     _tbnWV = computeTBN(dvd_NormalMatrixW(nodeData));
     VAR._normalWV = _tbnWV[2];
-#else
-    _tbnWV = mat3(1.f);
-#endif //!DEPTH_PASS
 
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
 }
@@ -144,11 +140,10 @@ void main (void){
     const vec3 normalWV = getNormalWV(data, vec3(VAR._texCoord, 0), normalVariation);
 
     vec4 colour = vec4(albedo.rgb, min(albedo.a, _alphaFactor));
-    vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
     if (albedo.a >= Z_TEST_SIGMA) {
-        colour = getPixelColour(albedo, data, normalWV, normalVariation, VAR._texCoord, MetalnessRoughnessProbeID);
+        colour = getPixelColour(albedo, data, normalWV, normalVariation, VAR._texCoord);
     }
-    writeScreenColour(colour, normalWV, MetalnessRoughnessProbeID);
+    writeScreenColour(colour);
 }
 
 --Fragment.PrePass
@@ -176,8 +171,6 @@ layout(location = 0) flat in uint  _layer;
 layout(location = 1) flat in uint  _instanceID;
 layout(location = 2)      in float _alphaFactor;
 layout(location = 3)      in mat3  _tbnWV;
-
-layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 #include "vsm.frag"
 #include "texturing.frag"

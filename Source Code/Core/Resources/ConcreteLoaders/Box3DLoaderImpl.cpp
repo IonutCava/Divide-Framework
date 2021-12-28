@@ -16,7 +16,7 @@ CachedResource_ptr ImplResourceLoader<Box3D>::operator()() {
         if (sizeTemp[i] == 0u) {
             targetSize[i] = 1.f;
         } else {
-            targetSize[i] = Util::UNPACK_HALF1x16(sizeTemp[i]);
+            targetSize[i] = Util::UNPACK_HALF1x16(sizeTemp[i]) * _descriptor.ID();;
         }
     }
 
@@ -31,7 +31,7 @@ CachedResource_ptr ImplResourceLoader<Box3D>::operator()() {
     if (!_descriptor.flag()) {
         const ResourceDescriptor matDesc("Material_" + _descriptor.resourceName());
         Material_ptr matTemp = CreateResource<Material>(_cache, matDesc);
-        matTemp->shadingMode(ShadingMode::BLINN_PHONG);
+        matTemp->shadingMode(ShadingMode::COOK_TORRANCE);
         ptr->setMaterialTpl(matTemp);
     }
 

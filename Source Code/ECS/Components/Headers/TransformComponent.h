@@ -60,16 +60,23 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
     };
 
     public:
+        enum class ScalingMode : U8 {
+            UNIFORM = 0u,
+            NON_UNIFORM
+            //PROPAGATE_TO_LEAFS_ALL,
+            //PROPAGATE_TO_LEAFS_NON_UNIFORM
+        };
+    public:
      TransformComponent(SceneGraphNode* parentSGN, PlatformContext& context);
 
      void reset();
 
      void getPreviousWorldMatrix(mat4<F32>& matOut) const;
-     void getWorldMatrix(mat4<F32>& matOut) const;
-     [[nodiscard]] mat4<F32> getPreviousWorldMatrix() const;
-     [[nodiscard]] mat4<F32> getWorldMatrix() const;
 
-     void getWorldMatrix(D64 interpolationFactor, mat4<F32>& matrixOut) const;
+                   void      getWorldMatrix(mat4<F32>& matOut) const;
+                   void      getWorldMatrix(D64 interpolationFactor, mat4<F32>& matrixOut) const;
+     [[nodiscard]] mat4<F32> getWorldMatrix() const;
+     [[nodiscard]] mat4<F32> getWorldMatrix(D64 interpolationFactor) const;
 
      /// Component <-> Transform interface
      void setPosition(const vec3<F32>& position) override;
@@ -107,48 +114,52 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void rotateZ(Angle::DEGREES<F32> angle) override;
      using ITransform::rotate;
 
-     [[nodiscard]] const vec3<F32> getDirection(const vec3<F32>& worldForward = WORLD_Z_NEG_AXIS, bool local = false) const;
+     [[nodiscard]] const vec3<F32> getLocalDirection(const vec3<F32>& worldForward = WORLD_Z_NEG_AXIS) const;
+     [[nodiscard]] const vec3<F32> getWorldDirection(const vec3<F32>& worldForward = WORLD_Z_NEG_AXIS) const;
+
      /// Sets a new, local only, direction for the current component based on the specified world forward direction
      void setDirection(const vec3<F32>& fwdDirection, const vec3<F32>& upDirection = WORLD_Y_AXIS);
-
      void setTransform(const TransformValues& values);
 
      [[nodiscard]] bool isUniformScaled() const noexcept;
 
      /// Return the position
-     [[nodiscard]] vec3<F32> getPosition() const noexcept;
+     [[nodiscard]] vec3<F32> getWorldPosition() const;
      /// Return the local position
-     [[nodiscard]] vec3<F32> getLocalPosition() const noexcept;
+     [[nodiscard]] vec3<F32> getLocalPosition() const;
      /// Return the position
-     [[nodiscard]] vec3<F32> getPosition(D64 interpolationFactor) const noexcept;
+     [[nodiscard]] vec3<F32> getWorldPosition(D64 interpolationFactor) const;
      /// Return the local position
-     [[nodiscard]] vec3<F32> getLocalPosition(D64 interpolationFactor) const noexcept;
+     [[nodiscard]] vec3<F32> getLocalPosition(D64 interpolationFactor) const;
 
-     [[nodiscard]] vec3<F32> getFwdVector() const noexcept;
-     [[nodiscard]] vec3<F32> getUpVector() const noexcept;
-     [[nodiscard]] vec3<F32> getRightVector() const noexcept;
+     /// Return the derived forward direction
+     [[nodiscard]] vec3<F32> getFwdVector() const;
+     /// Return the derived up direction
+     [[nodiscard]] vec3<F32> getUpVector() const;
+     /// Return the derived right direction
+     [[nodiscard]] vec3<F32> getRightVector() const;
 
      /// Return the scale factor
-     [[nodiscard]] vec3<F32> getScale() const noexcept;
+     [[nodiscard]] vec3<F32> getWorldScale() const;
      /// Return the local scale factor
-     [[nodiscard]] vec3<F32> getLocalScale() const noexcept;
+     [[nodiscard]] vec3<F32> getLocalScale() const;
      /// Return the scale factor
-     [[nodiscard]] vec3<F32> getScale(D64 interpolationFactor) const noexcept;
+     [[nodiscard]] vec3<F32> getWorldScale(D64 interpolationFactor) const;
      /// Return the local scale factor
-     [[nodiscard]] vec3<F32> getLocalScale(D64 interpolationFactor) const noexcept;
+     [[nodiscard]] vec3<F32> getLocalScale(D64 interpolationFactor) const;
 
      /// Return the orientation quaternion
-     [[nodiscard]] Quaternion<F32> getOrientation() const noexcept;
+     [[nodiscard]] Quaternion<F32> getWorldOrientation() const;
      /// Return the local orientation quaternion
-     [[nodiscard]] Quaternion<F32> getLocalOrientation() const noexcept;
+     [[nodiscard]] Quaternion<F32> getLocalOrientation() const;
      /// Return the orientation quaternion
-     [[nodiscard]] Quaternion<F32> getOrientation(D64 interpolationFactor) const noexcept;
+     [[nodiscard]] Quaternion<F32> getWorldOrientation(D64 interpolationFactor) const;
      /// Return the local orientation quaternion
-     [[nodiscard]] Quaternion<F32> getLocalOrientation(D64 interpolationFactor) const noexcept;
+     [[nodiscard]] Quaternion<F32> getLocalOrientation(D64 interpolationFactor) const;
 
      void setTransforms(const mat4<F32>& transform);
 
-     [[nodiscard]] TransformValues getValues() const override;
+     [[nodiscard]] TransformValues getLocalValues() const;
 
      void pushTransforms();
      bool popTransforms();
@@ -159,14 +170,12 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      [[nodiscard]] bool saveCache(ByteBuffer& outputBuffer) const override;
      [[nodiscard]] bool loadCache(ByteBuffer& inputBuffer) override;
 
-     void getLocalMatrix(mat4<F32>& matOut) { getMatrix(matOut); }
-     void getLocalMatrix(const D64 interpolationFactor, mat4<F32>& matOut) const { getMatrix(interpolationFactor, matOut); }
-
-     PROPERTY_R_IW(TransformValues, cachedTransform);
+     PROPERTY_R_IW(TransformValues, cachedDerivedTransform);
 
      PROPERTY_RW(bool, editorLockPosition, false);
      PROPERTY_RW(bool, editorLockRotation, false);
      PROPERTY_RW(bool, editorLockScale, false);
+     PROPERTY_RW(ScalingMode, scalingMode, ScalingMode::UNIFORM);
 
   protected:
      friend class TransformSystem;
@@ -181,25 +190,23 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void onParentTransformDirty(U32 transformMask) noexcept;
      void onParentUsageChanged(NodeUsageContext context) noexcept;
 
-     void getMatrix(mat4<F32>& matOut) override;
+     void getLocalMatrix(mat4<F32>& matOut);
+     void getLocalMatrix(D64 interpolationFactor, mat4<F32>& matOut) const;
 
-     void getMatrix(D64 interpolationFactor, mat4<F32>& matOut) const;
-
-     [[nodiscard]] vec3<F32> getLocalPositionLocked(D64 interpolationFactor) const;
-     [[nodiscard]] vec3<F32> getLocalScaleLocked(D64 interpolationFactor) const;
-     [[nodiscard]] Quaternion<F32> getLocalOrientationLocked(D64 interpolationFactor) const;
-
-     //Called only when transformed changed in the main update loop!
-     void updateWorldMatrix();
+     //Called only when then transform changed in the main update loop!
+     void updateLocalMatrix();
+     void onParentChanged(const SceneGraphNode* oldParent, const SceneGraphNode* newParent);
 
      // Local transform interface access (all are in local space)
-     void getScale(vec3<F32>& scaleOut) const noexcept override;
-     void getPosition(vec3<F32>& posOut) const noexcept override;
-     void getOrientation(Quaternion<F32>& quatOut) const noexcept override;
+     void getScale(vec3<F32>& scaleOut) const override;
+     void getPosition(vec3<F32>& posOut) const override;
+     void getOrientation(Quaternion<F32>& quatOut) const override;
 
-     [[nodiscard]] Quaternion<F32> getOrientationInternal() const noexcept;
-     [[nodiscard]] vec3<F32> getPositionInternal() const noexcept;
-     [[nodiscard]] vec3<F32> getScaleInternal() const noexcept;
+     //Derived = World
+     [[nodiscard]] Quaternion<F32> getDerivedOrientation() const;
+     [[nodiscard]] vec3<F32>       getDerivedPosition()    const;
+     [[nodiscard]] vec3<F32>       getDerivedScale()       const;
+
   private:
     std::pair<bool, mat4<F32>> _transformOffset;
 
@@ -214,12 +221,12 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
     bool _cacheDirty = true;
     bool _uniformScaled = true;
-    bool _prevWorldMatrixDirty = true;
+    bool _previousLocalMatrixDirty = true;
 
-    mutable SharedMutex _worldMatrixLock{};
+    mutable SharedMutex _localMatrixLock{};
     mutable SharedMutex _lock{};
 
-    eastl::array<mat4<F32>, to_base(WorldMatrixType::COUNT)> _worldMatrix;
+    eastl::array<mat4<F32>, to_base(WorldMatrixType::COUNT)> _localMatrix;
 END_COMPONENT(Transform);
 
 namespace Attorney {
@@ -230,6 +237,10 @@ namespace Attorney {
 
         static void onParentUsageChanged(TransformComponent& comp, const NodeUsageContext context) noexcept {
             comp.onParentUsageChanged(context);
+        }
+        
+        static void onParentChanged(TransformComponent& comp, const SceneGraphNode* oldParent, const SceneGraphNode* newParent) noexcept {
+            comp.onParentChanged(oldParent, newParent);
         }
         friend class Divide::SceneGraphNode;
     };

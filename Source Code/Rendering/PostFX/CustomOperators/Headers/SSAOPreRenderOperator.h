@@ -42,7 +42,7 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
     SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
     ~SSAOPreRenderOperator();
 
-    [[nodiscard]] bool execute(const Camera* camera, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
+    [[nodiscard]] bool execute(const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
 
     [[nodiscard]] F32 radius() const noexcept { return _radius[_genHalfRes ? 1 : 0]; }
@@ -79,6 +79,10 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
 
     [[nodiscard]] bool ready() const noexcept override;
 
+   protected:
+       void onToggle(const bool state) override { _stateChanged = true; }
+       void prepare(GFX::CommandBuffer& bufferInOut);
+
    private:
     GFX::SendPushConstantsCommand _ssaoGenerateConstantsCmd;
     GFX::SendPushConstantsCommand _ssaoBlurConstantsCmd;
@@ -105,7 +109,7 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
     I32 _kernelSize[2] = { 3, 3 };
     U8  _kernelSampleCount[2] = { 0u, 0u };
     bool _blur[2] = { false, false };
-
+    bool _stateChanged = false;
     bool _genHalfRes = false;
 };
 

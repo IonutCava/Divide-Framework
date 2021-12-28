@@ -121,11 +121,11 @@ void WarSceneAIProcessor::initInternal() {
     _initialFlagPositions[0].set(_globalWorkingMemory._flags[0]
                                      .value()
                                      ->get<TransformComponent>()
-                                     ->getPosition());
+                                     ->getWorldPosition());
     _initialFlagPositions[1].set(_globalWorkingMemory._flags[1]
                                      .value()
                                      ->get<TransformComponent>()
-                                     ->getPosition());
+                                     ->getWorldPosition());
 
     
     _globalWorkingMemory._teamAliveCount[g_myTeamContainer].value(to_U8(teamAgents.size()));
@@ -389,7 +389,7 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
 
                 if (_localWorkingMemory._isFlagRetriever.value() == false) {
                     SceneGraphNode* enemy = _visualSensor->findClosestNode(g_enemyTeamContainer);
-                    if (!_entity->updateDestination(enemy->get<TransformComponent>()->getPosition(), true)) {
+                    if (!_entity->updateDestination(enemy->get<TransformComponent>()->getWorldPosition(), true)) {
                         DIVIDE_UNEXPECTED_CALL();
                     }
                     _localWorkingMemory._currentTarget.value(enemy);
@@ -403,13 +403,13 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
                             .value()
                             ->getUnitRef()
                             ->getBoundNode();
-                    if (!_entity->updateDestination(enemy->get<TransformComponent>()->getPosition(), true)) {
+                    if (!_entity->updateDestination(enemy->get<TransformComponent>()->getWorldPosition(), true)) {
                         DIVIDE_UNEXPECTED_CALL();
                     }
                     _localWorkingMemory._currentTarget.value(enemy);
                 }
             } else {
-                if (!_entity->updateDestination(_localWorkingMemory._currentTarget.value()->get<TransformComponent>()->getPosition())) {
+                if (!_entity->updateDestination(_localWorkingMemory._currentTarget.value()->get<TransformComponent>()->getWorldPosition())) {
                     DIVIDE_UNEXPECTED_CALL();
                 }
             }

@@ -129,9 +129,12 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
 
     void toggleRenderOption(RenderOptions option, bool state, bool recursive = true);
+    /// Returns true if the specified render option is enabled
     [[nodiscard]] bool renderOptionEnabled(RenderOptions option) const noexcept;
-    [[nodiscard]] bool renderOptionsEnabled(U32 mask) const noexcept;
-
+    /// Returns true if ALL of the options in the mask are enabled
+    [[nodiscard]] bool renderOptionsEnabledALL(U32 mask) const noexcept;
+    /// Returns true if ANY of the options in the mask are enabled
+    [[nodiscard]] bool renderOptionsEnabledANY(U32 mask) const noexcept;
     void setMinRenderRange(F32 minRange) noexcept;
     void setMaxRenderRange(F32 maxRange) noexcept;
     void setRenderRange(const F32 minRange, const F32 maxRange) noexcept { setMinRenderRange(minRange); setMaxRenderRange(maxRange); }
@@ -189,9 +192,9 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
                     const RenderStagePass& renderStagePass,
                     GFX::CommandBuffer& bufferInOut);
 
-    void rebuildDrawCommands(const RenderStagePass& stagePass, const Camera& crtCamera, RenderPackage& pkg) const;
+    void rebuildDrawCommands(const RenderStagePass& stagePass, RenderPackage& pkg) const;
 
-    void prepareDrawPackage(const Camera& camera, const SceneRenderState& sceneRenderState, const RenderStagePass& renderStagePass, bool refreshData);
+    void prepareDrawPackage(const CameraSnapshot& cameraSnapshot, const SceneRenderState& sceneRenderState, const RenderStagePass& renderStagePass, bool refreshData);
 
     // This returns false if the node is not reflective, otherwise it generates a new reflection cube map
     // and saves it in the appropriate material slot
@@ -245,8 +248,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
         COUNT
     };
 
-
-    U16 _reflectionProbeIndex = 0u; //<Offset by 2 (and dec by 2 in shader) as 0 & 1 are the sky cubemaps (day & night respectively)
+    U16 _reflectionProbeIndex = 0u; 
   
     vector<EnvironmentProbeComponent*> _envProbes{};
     vector<ShaderBufferBinding> _externalBufferBindings{};
@@ -311,11 +313,11 @@ class RenderingCompRenderPass {
         }
 
         static void prepareDrawPackage(RenderingComponent& renderable,
-                                       const Camera& camera,
+                                       const CameraSnapshot& cameraSnapshot,
                                        const SceneRenderState& sceneRenderState,
                                        const RenderStagePass& renderStagePass,
                                        const bool refreshData) {
-            renderable.prepareDrawPackage(camera, sceneRenderState, renderStagePass, refreshData);
+            renderable.prepareDrawPackage(cameraSnapshot, sceneRenderState, renderStagePass, refreshData);
         }
 
         [[nodiscard]] static bool hasDrawCommands(RenderingComponent& renderable, const RenderStagePass& stagePass) {

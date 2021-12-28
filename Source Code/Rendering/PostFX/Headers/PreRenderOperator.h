@@ -56,9 +56,11 @@ class NOINITVTABLE PreRenderOperator {
     virtual ~PreRenderOperator() = default;
 
     /// Return true if we rendered into "output"
-    virtual bool execute(const Camera* camera, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut);
+    virtual bool execute(const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut);
 
     virtual void reshape(U16 width, U16 height);
+
+    virtual void prepare(GFX::CommandBuffer& bufferInOut);
 
     [[nodiscard]] FilterType operatorType() const noexcept { return _operatorType; }
 

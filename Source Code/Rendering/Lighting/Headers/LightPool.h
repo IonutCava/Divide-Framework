@@ -129,7 +129,7 @@ class LightPool : public SceneComponent,
 
     [[nodiscard]] Light* getLight(I64 lightGUID, LightType type) const;
 
-    void prepareLightData(RenderStage stage, const vec3<F32>& eyePos, const mat4<F32>& viewMatrix);
+    void prepareLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
 
     void uploadLightData(RenderStage stage, GFX::CommandBuffer& bufferInOut);
 

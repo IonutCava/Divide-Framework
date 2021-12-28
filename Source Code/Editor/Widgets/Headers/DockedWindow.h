@@ -37,6 +37,7 @@ namespace Divide {
 
 class Editor;
 class SceneGraphNode;
+class EditorComponent;
 class DockedWindow : NonCopyable, NonMovable {
     public:
         struct Descriptor {
@@ -64,6 +65,8 @@ class DockedWindow : NonCopyable, NonMovable {
         [[nodiscard]] virtual bool isHovered() const noexcept { return _isHovered; }
 
         [[nodiscard]] const Descriptor& descriptor() const noexcept { return _descriptor; }
+
+        virtual void onRemoveComponent([[maybe_unused]] const EditorComponent& comp) {};
 
         PROPERTY_RW(ImGuiWindowFlags, windowFlags, 0);
 

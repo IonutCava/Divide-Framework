@@ -60,7 +60,7 @@ BEGIN_SCENE(WarScene)
 
     void registerPoint(U16 teamID, const string& unitName);
     void printMessage(U8 eventId, const string& unitName) const;
-    void debugDraw(const Camera* activeCamera, GFX::CommandBuffer& bufferInOut) override;
+    void debugDraw(GFX::CommandBuffer& bufferInOut) override;
 
    private:
     void onSetActive() override;

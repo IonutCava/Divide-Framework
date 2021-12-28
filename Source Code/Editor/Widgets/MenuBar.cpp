@@ -59,7 +59,8 @@ namespace {
             case RenderTargetUsage::EDITOR: return "Editor";
             case RenderTargetUsage::ENVIRONMENT: return "Environment";
             case RenderTargetUsage::IBL: return "IBL";
-            case RenderTargetUsage::POSTFX_DATA: return "PostFX Data";
+            case RenderTargetUsage::SSAO_RESULT: return "SSAO Result";
+            case RenderTargetUsage::LINEAR_DEPTH: return "Linear Depth";
             case RenderTargetUsage::SSR_RESULT: return "SSR Result";
             case RenderTargetUsage::HI_Z: return "HI-Z";
             case RenderTargetUsage::HI_Z_REFLECT: return "HI-Z Reflect";
@@ -307,7 +308,7 @@ void MenuBar::draw() {
                     break;
             }
             if (g_nodeDescriptor._node != nullptr) {
-                g_nodeDescriptor._node->getMaterialTpl()->shadingMode(ShadingMode::BLINN_PHONG);
+                g_nodeDescriptor._node->getMaterialTpl()->shadingMode(ShadingMode::COOK_TORRANCE);
                 g_nodeDescriptor._node->getMaterialTpl()->baseColour(FColour4(0.4f, 0.4f, 0.4f, 1.0f));
                 g_nodeDescriptor._node->getMaterialTpl()->roughness(0.5f);
                 g_nodeDescriptor._node->getMaterialTpl()->metallic(0.5f);

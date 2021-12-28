@@ -16,6 +16,8 @@ CachedResource_ptr ImplResourceLoader<Quad3D>::operator()() {
     for (U8 i = 0u; i < 3u; ++i) {
         targetSize[i] = Util::UNPACK_HALF1x16(sizeTemp[i]);
     }
+    targetSize *= _descriptor.ID();
+
     if (targetSize.x == 0.f) {
         targetSize.x = 2.f;
     }
@@ -34,7 +36,7 @@ CachedResource_ptr ImplResourceLoader<Quad3D>::operator()() {
     if (!_descriptor.flag()) {
         const ResourceDescriptor matDesc("Material_" + _descriptor.resourceName());
         Material_ptr matTemp = CreateResource<Material>(_cache, matDesc);
-        matTemp->shadingMode(ShadingMode::BLINN_PHONG);
+        matTemp->shadingMode(ShadingMode::COOK_TORRANCE);
         ptr->setMaterialTpl(matTemp);
     }
 

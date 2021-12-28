@@ -53,7 +53,7 @@ bool decomposeMatrix(const mat4<F32>& transform,
     Row[1] = glm::detail::scale(Row[1], static_cast<T>(1));
     scaleOut.z = length(Row[2]);
     Row[2] = glm::detail::scale(Row[2], static_cast<T>(1));
-
+    isUniformScaleOut = scaleOut.isUniform();
       
     rotationOut.y = asin(-Row[0][2]);
     if (cos(rotationOut.y) != 0) {
@@ -64,7 +64,82 @@ bool decomposeMatrix(const mat4<F32>& transform,
         rotationOut.z = 0;
     }
 
-    isUniformScaleOut = scaleOut.isUniform();
+    return true;
+}
+bool decomposeMatrix(const mat4<F32>& transform,
+                     vec3<F32>& translationOut,
+                     vec3<F32>& scaleOut,
+                     vec3<Angle::RADIANS<F32>>& rotationOut) {
+    bool uniformScaleTemp = false;
+    return decomposeMatrix(transform, translationOut, scaleOut, rotationOut, uniformScaleTemp);
+}
+
+bool decomposeMatrix(const mat4<F32>& transform,
+                     vec3<F32>& translationOut,
+                     vec3<F32>& scaleOut) {
+    using T = F32;
+
+    glm::mat4 LocalMatrix = glm::make_mat4(transform.mat);
+
+    // Normalize the matrix.
+    if (glm::epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), glm::epsilon<T>()))
+        return false;
+
+    // First, isolate perspective.  This is the messiest.
+    if (glm::epsilonNotEqual(LocalMatrix[0][3], static_cast<T>(0), glm::epsilon<T>()) ||
+        glm::epsilonNotEqual(LocalMatrix[1][3], static_cast<T>(0), glm::epsilon<T>()) ||
+        glm::epsilonNotEqual(LocalMatrix[2][3], static_cast<T>(0), glm::epsilon<T>()))
+    {
+        LocalMatrix[0][3] = LocalMatrix[1][3] = LocalMatrix[2][3] = static_cast<T>(0);
+        LocalMatrix[3][3] = static_cast<T>(1);
+    }
+
+    // Next take care of translation (easy).
+    glm::vec3 translation(LocalMatrix[3]);
+    translationOut.set(translation.x, translation.y, translation.z);
+    LocalMatrix[3] = glm::vec4(0, 0, 0, LocalMatrix[3].w);
+
+    glm::vec3 Row[3];
+
+    // Now get scale and shear.
+    for (glm::length_t i = 0; i < 3; ++i)
+        for (glm::length_t j = 0; j < 3; ++j)
+            Row[i][j] = LocalMatrix[i][j];
+
+    // Compute X scale factor and normalize first row.
+    scaleOut.x = length(Row[0]);// v3Length(Row[0]);
+    Row[0] = glm::detail::scale(Row[0], static_cast<T>(1));
+    // Now, compute Y scale and normalize 2nd row.
+    scaleOut.y = length(Row[1]);
+    Row[1] = glm::detail::scale(Row[1], static_cast<T>(1));
+    scaleOut.z = length(Row[2]);
+    Row[2] = glm::detail::scale(Row[2], static_cast<T>(1));
+
+    return true;
+}
+
+bool decomposeMatrix(const mat4<F32>& transform,
+                     vec3<F32>& translationOut) {
+    using T = F32;
+
+    glm::mat4 LocalMatrix = glm::make_mat4(transform.mat);
+
+    // Normalize the matrix.
+    if (glm::epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), glm::epsilon<T>()))
+        return false;
+
+    // First, isolate perspective.  This is the messiest.
+    if (glm::epsilonNotEqual(LocalMatrix[0][3], static_cast<T>(0), glm::epsilon<T>()) ||
+        glm::epsilonNotEqual(LocalMatrix[1][3], static_cast<T>(0), glm::epsilon<T>()) ||
+        glm::epsilonNotEqual(LocalMatrix[2][3], static_cast<T>(0), glm::epsilon<T>()))
+    {
+        LocalMatrix[0][3] = LocalMatrix[1][3] = LocalMatrix[2][3] = static_cast<T>(0);
+        LocalMatrix[3][3] = static_cast<T>(1);
+    }
+
+    // Next take care of translation (easy).
+    glm::vec3 translation(LocalMatrix[3]);
+    translationOut.set(translation.x, translation.y, translation.z);
     return true;
 }
 

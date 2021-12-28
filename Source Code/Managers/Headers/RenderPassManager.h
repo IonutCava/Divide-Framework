@@ -71,7 +71,6 @@ struct RenderPassParams
     // safe to be set to null
     FeedBackContainer* _feedBackContainer = nullptr;
     const SceneGraphNode* _sourceNode = nullptr;
-    Camera* _camera = nullptr;
     Str64 _passName = "";
     I32 _maxLoD = -1; //-1 = all
     RenderTargetID _target = {};
@@ -121,11 +120,11 @@ public:
     [[nodiscard]] U32 getLastTotalBinSize(RenderStage renderStage) const noexcept;
     [[nodiscard]] I32 drawCallCount(const RenderStage stage) const noexcept { return _drawCallCount[to_base(stage)]; }
 
-    void doCustomPass(RenderPassParams params, GFX::CommandBuffer& bufferInOut);
+    void doCustomPass(Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut);
     void postInit();
 
 private:
-    void startRenderTasks(const RenderParams& params, TaskPool& pool, const Camera* cam);
+    void startRenderTasks(const RenderParams& params, TaskPool& pool, const CameraSnapshot& cameraSnapshot);
 private:
     friend class RenderPassExecutor;
     [[nodiscard]] const RenderPass& getPassForStage(RenderStage renderStage) const noexcept;
@@ -135,7 +134,7 @@ private:
 
     ShaderProgram_ptr _OITCompositionShader = nullptr;
     ShaderProgram_ptr _OITCompositionShaderMS = nullptr;
-    ShaderProgram_ptr _screenResolveShader = nullptr;
+    ShaderProgram_ptr _gbufferResolveShader = nullptr;
 
     U8 _renderPassCount = 0u;
     std::array<RenderPass*, MAX_RENDER_PASSES> _renderPasses = create_array<MAX_RENDER_PASSES, RenderPass*>(nullptr);

@@ -38,7 +38,7 @@
 namespace Divide {
 
 //Not thread safe!
-class Transform final : public ITransform, public GUIDWrapper, NonCopyable {
+class Transform final : public TransformValues, public ITransform, public GUIDWrapper, NonCopyable {
    public:
 
     Transform() noexcept = default;
@@ -82,17 +82,13 @@ class Transform final : public ITransform, public GUIDWrapper, NonCopyable {
 
     [[nodiscard]] bool isUniformScale(const F32 tolerance = EPSILON_F32) const noexcept;
 
-    void getMatrix(mat4<F32>& matrix) noexcept override;
-
     /// Sets the transform to match a certain transformation matrix.
     /// Scale, orientation and translation are extracted from the specified matrix
-    void setTransforms(const mat4<F32>& transform) noexcept;
+    void setTransforms(const mat4<F32>& transform);
 
     /// Set all of the internal values to match those of the specified transform
     void clone(const Transform* transform) noexcept;
 
-    /// Extract the 3 transform values (position, scale, rotation) from the current instance
-    [[nodiscard]] TransformValues getValues() const noexcept override;
     /// Set position, scale and rotation based on the specified transform values
     void setValues(const TransformValues& values) noexcept;
 
@@ -102,18 +98,6 @@ class Transform final : public ITransform, public GUIDWrapper, NonCopyable {
 
     /// Reset transform to identity
     void identity() noexcept;
-
-    /// Use with care!
-    [[nodiscard]] const TransformValues& getValuesRef() const noexcept;
-   private:
-    /// The actual scale, rotation and translation values
-    TransformValues _transformValues {};
-    /// This is the actual model matrix, but it will not convert to world space as it depends on it's parent in graph
-    mat4<F32> _worldMatrix {};
-    /// _dirty is set to true whenever a translation, rotation or scale is applied
-    bool _dirty = false;
-    /// _rebuild is true when a rotation or scale is applied to avoid rebuilding matrices on translation
-    bool _rebuild = false;
 };
 
 }  // namespace Divide

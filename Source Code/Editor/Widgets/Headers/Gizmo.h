@@ -108,14 +108,21 @@ namespace Divide {
         void onSceneFocus(bool state) noexcept;
 
     private:
+        struct SelectedNode {
+            TransformComponent* tComp = nullptr;
+            TransformValues _initialValues;
+        };
+
         Editor& _parent;
         bool _enabled = false;
         bool _wasUsed = false;
         bool _shouldRegisterUndo = false;
-        vector<SceneGraphNode*> _selectedNodes;
+        vector<SelectedNode> _selectedNodes;
         ImGuiContext* _imguiContext = nullptr;
         TransformSettings _transformSettings;
-        TransformValues _workValues;
+
+        mat4<F32> _workMatrix;
+        mat4<F32> _deltaMatrix;
     };
 
     namespace Attorney {

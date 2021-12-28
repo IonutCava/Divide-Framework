@@ -262,7 +262,7 @@ private:
     /// Returns true if the node SHOULD be culled (is not visible for the current stage). Calls "preCullNode" internally.
     bool cullNode(const NodeCullParams& params, const U16 cullFlags, FrustumCollision& collisionTypeOut, F32& distanceToClosestPointSQ) const;
     /// Called after preRender and after we rebuild our command buffers. Useful for modifying the command buffer that's going to be used for this RenderStagePass
-    void prepareRender(RenderingComponent& rComp, const RenderStagePass& renderStagePass, const Camera& camera, bool refreshData);
+    void prepareRender(RenderingComponent& rComp, const RenderStagePass& renderStagePass, const CameraSnapshot& cameraSnapshot, bool refreshData);
     /// Called whenever we send a networking packet from our NetworkingComponent (if any). FrameCount is the frame ID sent with the packet.
     void onNetworkSend(U32 frameCount) const;
     /// Returns a bottom-up list(leafs -> root) of all of the nodes parented under the current one.
@@ -286,7 +286,6 @@ private:
 
     void occlusionCull(const RenderStagePass& stagePass,
                        const Texture_ptr& depthBuffer,
-                       const Camera& camera,
                        GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
                        GFX::CommandBuffer& bufferInOut) const;
 
@@ -386,8 +385,8 @@ namespace Attorney {
     };
 
     class SceneGraphNodeComponent {
-        static void prepareRender(SceneGraphNode* node, RenderingComponent& rComp, const Camera& camera, const RenderStagePass& renderStagePass, const bool refreshData) {
-            node->prepareRender(rComp, renderStagePass, camera, refreshData);
+        static void prepareRender(SceneGraphNode* node, RenderingComponent& rComp, const CameraSnapshot& cameraSnapshot, const RenderStagePass& renderStagePass, const bool refreshData) {
+            node->prepareRender(rComp, renderStagePass, cameraSnapshot, refreshData);
         }
 
         friend class Divide::BoundsComponent;
@@ -410,8 +409,8 @@ namespace Attorney {
 
     class SceneGraphNodeRenderPassManager
     {
-        static void occlusionCullNode(const SceneGraphNode* node, const RenderStagePass& stagePass, const Texture_ptr& depthBuffer, const Camera& camera, GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut, GFX::CommandBuffer& bufferInOut) {
-            node->occlusionCull(stagePass, depthBuffer, camera, HIZPushConstantsCMDInOut, bufferInOut);
+        static void occlusionCullNode(const SceneGraphNode* node, const RenderStagePass& stagePass, const Texture_ptr& depthBuffer, GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut, GFX::CommandBuffer& bufferInOut) {
+            node->occlusionCull(stagePass, depthBuffer, HIZPushConstantsCMDInOut, bufferInOut);
         }
 
         static bool canDraw(const SceneGraphNode* node, const RenderStagePass& stagePass) {

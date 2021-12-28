@@ -55,7 +55,12 @@ class PropertyWindow final : public DockedWindow, public PlatformContextComponen
         void backgroundUpdateInternal() override;
 
         [[nodiscard]] const char* name() const override;
+
+        PROPERTY_INTERNAL(bool, skipAutoTooltip, false);
+
     protected:
+        void onRemoveComponent(const EditorComponent& comp) override;
+        [[nodiscard]] bool printComponent(SceneGraphNode* sgnNode, EditorComponent* comp, F32 xOffset, F32 smallButtonWidth);
 
         [[nodiscard]] bool drawCamera(Camera* cam);
 
@@ -64,12 +69,18 @@ class PropertyWindow final : public DockedWindow, public PlatformContextComponen
 
         //return true if the field has been modified
         [[nodiscard]] bool processField(EditorComponentField& field);
-        [[nodiscard]] bool processBasicField(EditorComponentField& field) const;
-        [[nodiscard]] bool processTransform(TransformComponent* transform, bool readOnly, bool hex) const;
+        [[nodiscard]] bool processBasicField(EditorComponentField& field);
+        [[nodiscard]] bool processTransform(TransformComponent* transform, bool readOnly, bool hex);
         [[nodiscard]] bool processMaterial(Material* material, bool readOnly, bool hex);
 
     private:
+        struct LockedComponent {
+            EditorComponent* _editorComp = nullptr;
+            SceneGraphNode* _parentSGN = nullptr;
+        } _lockedComponent;
+
         Texture* _previewTexture = nullptr;
+        
 };
 
 } //namespace Divide

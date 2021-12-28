@@ -18,7 +18,6 @@ void main (void) {
 
     float normalVariation = 0.f;
     const vec3 normalWV = getNormalWV(data, vec3(VAR._texCoord, 0), normalVariation);
-    vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
-    const vec4 rgba = getPixelColour(albedo, data, normalWV, normalVariation, VAR._texCoord, MetalnessRoughnessProbeID);
-    writeScreenColour(rgba, normalWV, MetalnessRoughnessProbeID);
+    const vec4 rgba = getPixelColour(albedo, data, normalWV, normalVariation, VAR._texCoord);
+    writeScreenColour(rgba);
 }

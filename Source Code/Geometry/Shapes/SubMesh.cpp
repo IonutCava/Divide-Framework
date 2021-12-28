@@ -21,7 +21,6 @@ SubMesh::SubMesh(GFXDevice& context, ResourceCache* parentCache, const size_t de
 
 void SubMesh::buildDrawCommands(SceneGraphNode* sgn,
                                 const RenderStagePass& renderStagePass,
-                                const Camera& crtCamera,
                                 RenderPackage& pkgInOut) {
 
     GenericDrawCommand cmd = {};
@@ -33,7 +32,7 @@ void SubMesh::buildDrawCommands(SceneGraphNode* sgn,
     cmd._bufferIndex = renderStagePass.baseIndex();
     pkgInOut.add(GFX::DrawCommand{ cmd });
 
-    Object3D::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
+    Object3D::buildDrawCommands(sgn, renderStagePass, pkgInOut);
 }
 
 void SubMesh::setParentMesh(Mesh* const parentMesh) {

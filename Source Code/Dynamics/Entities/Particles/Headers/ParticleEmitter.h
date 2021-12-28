@@ -53,7 +53,7 @@ class ParticleEmitter final : public SceneNode {
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
                        const RenderStagePass& renderStagePass,
-                       const Camera& camera,
+                       const CameraSnapshot& cameraSnapshot,
                        bool refreshData) override;
 
 
@@ -87,7 +87,6 @@ class ParticleEmitter final : public SceneNode {
 
     void buildDrawCommands(SceneGraphNode* sgn,
                            const RenderStagePass& renderStagePass,
-                           const Camera& crtCamera,
                            RenderPackage& pkgInOut) override;
 
     [[nodiscard]] GenericVertexData& getDataBuffer(RenderStage stage, PlayerIndex idx);

@@ -233,16 +233,16 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>vase_dif.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/vase_dif.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </UNIT0>
             <NORMALMAP>
-                <name>vase_ddn.tga</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/vase_ddn.tga</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

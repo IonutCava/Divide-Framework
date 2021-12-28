@@ -158,7 +158,7 @@ void WarScene::toggleTerrainMode() {
     _terrainMode = !_terrainMode;
 }
 
-void WarScene::debugDraw(const Camera* activeCamera, GFX::CommandBuffer& bufferInOut) {
+void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut) {
     if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_CUSTOM_PRIMITIVES)) {
         if (!_targetLines) {
             _targetLines = _context.gfx().newIMP();
@@ -176,7 +176,7 @@ void WarScene::debugDraw(const Camera* activeCamera, GFX::CommandBuffer& bufferI
     } else if (_targetLines) {
         _context.gfx().destroyIMP(_targetLines);
     }
-    Scene::debugDraw(activeCamera, bufferInOut);
+    Scene::debugDraw(bufferInOut);
 }
 
 void WarScene::processTasks(const U64 deltaTimeUS) {
@@ -208,7 +208,7 @@ void WarScene::processTasks(const U64 deltaTimeUS) {
     if (!initPosSetLight) {
         initPosLight.resize(lightCount);
         for (size_t i = 0u; i < lightCount; ++i) {
-            initPosLight[i].set(_lightNodeTransforms[i]->getPosition());
+            initPosLight[i].set(_lightNodeTransforms[i]->getWorldPosition());
         }
         initPosSetLight = true;
     }
@@ -277,7 +277,7 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
                 const Terrain& ter = g_terrain->getNode<Terrain>();
 
                 F32 headHeight = state()->playerState(state()->playerPass())._headHeight;
-                camPos -= g_terrain->get<TransformComponent>()->getPosition();
+                camPos -= g_terrain->get<TransformComponent>()->getWorldPosition();
                 playerCamera()->setEye(ter.getVertFromGlobal(camPos.x, camPos.z, true)._position + vec3<F32>(0.0f, headHeight, 0.0f));
             }
         }
@@ -300,17 +300,15 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
 
             TransformComponent* tComp = particles->get<TransformComponent>();
             if (!initPosSet) {
-                initPos.set(tComp->getPosition());
+                initPos.set(tComp->getWorldPosition());
                 initPosSet = true;
             }
 
             tComp->setPosition(radius * std::cos(phi) + initPos.x,
-                (radius * 0.5f) * std::sin(phi) + initPos.y,
-                radius * std::sin(phi) + initPos.z);
+                              (radius * 0.5f) * std::sin(phi) + initPos.y,
+                               radius * std::sin(phi) + initPos.z);
             tComp->rotateY(phi);
         }
-
-
 
         if (!_aiManager->getNavMesh(_armyNPCs[0][0]->get<UnitComponent>()->getUnit<NPC>()->getAIEntity()->getAgentRadiusCategory())) {
             return;

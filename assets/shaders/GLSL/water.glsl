@@ -69,10 +69,10 @@ void main()
 
     switch (dvd_materialDebugFlag) {
         case DEBUG_REFRACTIONS:
-            writeScreenColour(vec4(refractionColour, 1.f), normalWV);
+            writeScreenColour(vec4(refractionColour, 1.f));
             return;
         case DEBUG_REFLECTIONS:
-            writeScreenColour(getReflectionColour(waterUV), normalWV);
+            writeScreenColour(getReflectionColour(waterUV));
             return;
     }
 
@@ -83,8 +83,7 @@ void main()
                                                                       Fresnel(incident, normalW)));
     
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
-    vec3 MetalnessRoughnessProbeID = vec3(0.f, 1.f, 0.f);
-    vec4 outColour = getPixelColour(vec4(texColour, 1.f), data, normalWV, normalVariation, VAR._texCoord, MetalnessRoughnessProbeID);
+    vec4 outColour = getPixelColour(vec4(texColour, 1.f), data, normalWV, normalVariation, VAR._texCoord);
 
     // Add some distance based fog to the water to hide reflection/refraction artifacts where no geometry is rendered
     const float fogDensity = smoothstep(_fogStartEndDistances.x, _fogStartEndDistances.y, length(VAR._vertexWV));
@@ -102,5 +101,5 @@ void main()
     const float specular = dot(normalize(reflection), incident);
     // Increase the specular light by the shininess value and add the specular to the final color.
     // Check to make sure the specular was positive so we aren't adding black spots to the water.
-    writeScreenColour(outColour + (specular > 0.f ? pow(specular, _specularShininess) : 0.f), normalWV, MetalnessRoughnessProbeID);
+    writeScreenColour(outColour + (specular > 0.f ? pow(specular, _specularShininess) : 0.f));
 }

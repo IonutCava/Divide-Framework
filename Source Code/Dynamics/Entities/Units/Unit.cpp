@@ -35,7 +35,7 @@ Unit::Unit(const UnitType type)
 
 void Unit::setParentNode(SceneGraphNode* node) {
     _node = node;
-    _currentPosition = _node->get<TransformComponent>()->getPosition();
+    _currentPosition = _node->get<TransformComponent>()->getWorldPosition();
 }
 
 /// Pathfinding, collision detection, animation playback should all be
@@ -48,7 +48,7 @@ bool Unit::moveTo(const vec3<F32>& targetPosition) {
     ScopedLock<SharedMutex> w_lock(_unitUpdateMutex);
     // We receive move request every frame for now (or every task tick)
     // Start plotting a course from our current position
-    _currentPosition = _node->get<TransformComponent>()->getPosition();
+    _currentPosition = _node->get<TransformComponent>()->getWorldPosition();
     _currentTargetPosition = targetPosition;
 
     if (_prevTime <= 0) {
@@ -129,7 +129,7 @@ bool Unit::moveToX(const F32 targetPosition) {
     {
         /// Update current position
         ScopedLock<SharedMutex> w_lock(_unitUpdateMutex);
-        _currentPosition = _node->get<TransformComponent>()->getPosition();
+        _currentPosition = _node->get<TransformComponent>()->getWorldPosition();
     }
     return moveTo(vec3<F32>(targetPosition,
                             _currentPosition.y,
@@ -144,7 +144,7 @@ bool Unit::moveToY(const F32 targetPosition) {
     {
         /// Update current position
         ScopedLock<SharedMutex> w_lock(_unitUpdateMutex);
-        _currentPosition = _node->get<TransformComponent>()->getPosition();
+        _currentPosition = _node->get<TransformComponent>()->getWorldPosition();
     }
     return moveTo(vec3<F32>(_currentPosition.x,
                             targetPosition,
@@ -159,7 +159,7 @@ bool Unit::moveToZ(const F32 targetPosition) {
     {
         /// Update current position
         ScopedLock<SharedMutex> w_lock(_unitUpdateMutex);
-        _currentPosition = _node->get<TransformComponent>()->getPosition();
+        _currentPosition = _node->get<TransformComponent>()->getWorldPosition();
     }
     return moveTo(vec3<F32>(_currentPosition.x,
                             _currentPosition.y,
@@ -182,11 +182,11 @@ bool Unit::teleportTo(const vec3<F32>& targetPosition) {
     TransformComponent* nodeTransformComponent =
         _node->get<TransformComponent>();
     /// Start plotting a course from our current position
-    _currentPosition = nodeTransformComponent->getPosition();
+    _currentPosition = nodeTransformComponent->getWorldPosition();
     /// teleport to desired position
     nodeTransformComponent->setPosition(_currentTargetPosition);
     /// Update current position
-    _currentPosition = nodeTransformComponent->getPosition();
+    _currentPosition = nodeTransformComponent->getWorldPosition();
     /// And check if we arrived
     if (_currentTargetPosition.compare(_currentPosition, 0.0001f)) {
         return true;  ///< yes

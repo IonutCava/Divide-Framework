@@ -40,10 +40,9 @@ namespace Divide {
 
     inline void SceneGraphNode::occlusionCull(const RenderStagePass& stagePass,
                                               const Texture_ptr& depthBuffer,
-                                              const Camera& camera,
                                               GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
                                               GFX::CommandBuffer& bufferInOut) const {
-        Attorney::SceneNodeSceneGraph::occlusionCullNode(_node.get(), stagePass, depthBuffer, camera, HIZPushConstantsCMDInOut, bufferInOut);
+        Attorney::SceneNodeSceneGraph::occlusionCullNode(_node.get(), stagePass, depthBuffer, HIZPushConstantsCMDInOut, bufferInOut);
     }
 
     template<class Predicate>

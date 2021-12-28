@@ -105,6 +105,16 @@ namespace Divide {
     {
     }
 
+    void PropertyWindow::onRemoveComponent(const EditorComponent& comp) {
+        if (_lockedComponent._editorComp == nullptr) {
+            return;
+        }
+
+        if (comp.getGUID() == _lockedComponent._editorComp->getGUID()) {
+            _lockedComponent = { nullptr, nullptr };
+        }
+    }
+
     bool PropertyWindow::drawCamera(Camera* cam) {
         bool sceneChanged = false;
         if (cam == nullptr) {
@@ -307,8 +317,202 @@ namespace Divide {
         }
     }
 
-    void PropertyWindow::drawInternal() {
+    bool PropertyWindow::printComponent(SceneGraphNode* sgnNode, EditorComponent* comp, const F32 xOffset, const F32 smallButtonWidth) {
         bool sceneChanged = false;
+
+        bool isLockedField = false;
+        bool fieldWasOpen = false;
+
+        if (_lockedComponent._editorComp != nullptr && _lockedComponent._editorComp->getGUID() == comp->getGUID()) {
+            fieldWasOpen = true;
+            isLockedField = true;
+        }
+
+        const string fieldNameStr = fieldWasOpen ? Util::StringFormat("%s (%s)", comp->name().c_str(), _lockedComponent._parentSGN->name().c_str()) : comp->name().c_str();
+        const char* fieldName = fieldNameStr.c_str();
+        const U64 fieldHash = _ID(fieldName);
+        if (!isLockedField) {
+            for (const U64 p : s_openProperties) {
+                if (p == fieldHash) {
+                    fieldWasOpen = true;
+                    break;
+                }
+            }
+        }
+        if (comp->fields().empty()) {
+            PushReadOnly();
+            ImGui::CollapsingHeader(fieldName, ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet);
+            PopReadOnly();
+        } else {
+            if (ImGui::CollapsingHeader(fieldName, ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | (fieldWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u))) {
+                if (!fieldWasOpen) {
+                    for (U64& p : s_openProperties) {
+                        if (p == 0u) {
+                            p = fieldHash;
+                            break;
+                        }
+                    }
+                }
+
+                ImGui::NewLine();
+                ImGui::SameLine(xOffset);
+                if (ImGui::Button("INSPECT", ImVec2(smallButtonWidth, 20))) {
+                    Attorney::EditorGeneralWidget::inspectMemory(_context.editor(), std::make_pair(comp, sizeof(EditorComponent)));
+                }
+                if (!isLockedField && comp->parentComponentType() != ComponentType::COUNT && !IsRequiredComponentType(sgnNode, comp->parentComponentType())) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("REMOVE", ImVec2(smallButtonWidth, 20))) {
+                        Attorney::EditorGeneralWidget::inspectMemory(_context.editor(), std::make_pair(nullptr, 0));
+
+                        if (Attorney::EditorGeneralWidget::removeComponent(_context.editor(), sgnNode, comp->parentComponentType())) {
+                            sceneChanged = true;
+                            return true;
+                        }
+                    }
+                }
+                ImGui::SameLine(ImGui::GetWindowSize().x - 80.f);
+                bool fieldLocked = _lockedComponent._editorComp != nullptr && _lockedComponent._editorComp->getGUID() == comp->getGUID();
+                ImGui::PushID(to_I32(fieldHash));
+                if (ImGui::Checkbox(ICON_FK_LOCK"  ", &fieldLocked)) {
+                    if (!fieldLocked) {
+                        _lockedComponent = { nullptr, nullptr };
+                    } else {
+                        _lockedComponent = { comp, sgnNode };
+                    }
+                }
+                ImGui::PopID();
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Always keep this component visible in the editor regardless of the currently selected scene node");
+                    skipAutoTooltip(true);
+                }
+                ImGui::Separator();
+                vector<EditorComponentField>& fields = Attorney::EditorComponentEditor::fields(*comp);
+                for (EditorComponentField& field : fields) {
+                    if (processField(field) && !field._readOnly) {
+                        Attorney::EditorComponentEditor::onChanged(*comp, field);
+                        sceneChanged = true;
+                    }
+                    ImGui::Spacing();
+                }
+                const U32 componentMask = sgnNode->componentMask();
+                if (BitCompare(componentMask, ComponentType::ENVIRONMENT_PROBE)) {
+                    const EnvironmentProbeComponent* probe = sgnNode->get<EnvironmentProbeComponent>();
+                    if (probe != nullptr) {
+                        const auto& cameras = probe->probeCameras();
+
+                        for (U8 face = 0u; face < 6u; ++face) {
+                            Camera* probeCameras = cameras[face];
+                            if (drawCamera(probeCameras)) {
+                                sceneChanged = true;
+                            }
+                        }
+                    }
+                }
+                Light* light = nullptr;
+                if (BitCompare(componentMask, ComponentType::SPOT_LIGHT)) {
+                    light = sgnNode->get<SpotLightComponent>();
+                } else if (BitCompare(componentMask, ComponentType::POINT_LIGHT)) {
+                    light = sgnNode->get<PointLightComponent>();
+                } else if (BitCompare(componentMask, ComponentType::DIRECTIONAL_LIGHT)) {
+                    light = sgnNode->get<DirectionalLightComponent>();
+                }
+                if (light != nullptr) {
+                    if (light->castsShadows()) {
+                        if (ImGui::CollapsingHeader("Light Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                            ImGui::Text("Shadow Offset: %d", to_U32(light->getShadowOffset()));
+
+                            switch (light->getLightType()) {
+                                case LightType::POINT: {
+                                    for (U8 face = 0u; face < 6u; ++face) {
+                                        Camera* shadowCamera = ShadowMap::shadowCameras(ShadowType::CUBEMAP)[face];
+                                        if (drawCamera(shadowCamera)) {
+                                            sceneChanged = true;
+                                        }
+                                    }
+                                                
+                                } break;
+
+                                case LightType::SPOT: {
+                                    Camera* shadowCamera = ShadowMap::shadowCameras(ShadowType::SINGLE).front();
+                                    if (drawCamera(shadowCamera)) {
+                                        sceneChanged = true;
+                                    }
+                                } break;
+
+                                case LightType::DIRECTIONAL: {
+                                    DirectionalLightComponent* dirLight = static_cast<DirectionalLightComponent*>(light);
+                                    for (U8 split = 0u; split < dirLight->csmSplitCount(); ++split) {
+                                        Camera* shadowCamera = ShadowMap::shadowCameras(ShadowType::LAYERED)[split];
+                                        if (drawCamera(shadowCamera)) {
+                                            sceneChanged = true;
+                                        }
+                                    }
+                                } break;
+
+                                case LightType::COUNT: {
+                                    DIVIDE_UNEXPECTED_CALL();
+                                } break;
+                            }
+                        }
+                    }
+
+                    if (ImGui::CollapsingHeader("Scene Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                        SceneManager* sceneManager = context().kernel().sceneManager();
+                        auto& activeSceneState = sceneManager->getActiveScene().state();
+
+                        {
+                            F32 bleedBias = activeSceneState->lightBleedBias();
+                            EditorComponentField tempField = {};
+                            tempField._name = "Light bleed bias";
+                            tempField._basicType = GFX::PushConstantType::FLOAT;
+                            tempField._type = EditorComponentFieldType::PUSH_TYPE;
+                            tempField._readOnly = false;
+                            tempField._data = &bleedBias;
+                            tempField._format = "%.6f";
+                            tempField._range = { 0.0f, 1.0f };
+                            tempField._dataSetter = [&activeSceneState](const void* bias) noexcept {
+                                activeSceneState->lightBleedBias(*static_cast<const F32*>(bias));
+                            };
+                            sceneChanged = processField(tempField) || sceneChanged;
+                        }
+                        {
+                            F32 shadowVariance = activeSceneState->minShadowVariance();
+                            EditorComponentField tempField = {};
+                            tempField._name = "Minimum variance";
+                            tempField._basicType = GFX::PushConstantType::FLOAT;
+                            tempField._type = EditorComponentFieldType::PUSH_TYPE;
+                            tempField._readOnly = false;
+                            tempField._data = &shadowVariance;
+                            tempField._range = { 0.00001f, 0.99999f };
+                            tempField._format = "%.6f";
+                            tempField._dataSetter = [&activeSceneState](const void* variance) noexcept {
+                                activeSceneState->minShadowVariance(*static_cast<const F32*>(variance));
+                            };
+                            sceneChanged = processField(tempField) || sceneChanged;
+                        }
+                    }
+                }
+            } else {
+                for (U64& p : s_openProperties) {
+                    if (p == fieldHash) {
+                        p = 0u;
+                        break;
+                    }
+                }
+            }
+        }
+        return sceneChanged;
+    }
+
+    void PropertyWindow::drawInternal() {
+        skipAutoTooltip(false);
+
+        bool sceneChanged = false;
+        constexpr F32 smallButtonWidth = 60.0f;
+        F32 xOffset = ImGui::GetWindowSize().x * 0.5f - (smallButtonWidth * 2);
+        if (_lockedComponent._editorComp) {
+            sceneChanged = printComponent(_lockedComponent._parentSGN, _lockedComponent._editorComp, xOffset, smallButtonWidth);
+        }
 
         const Selections crtSelections = selections();
         const bool hasSelections = crtSelections._selectionCount > 0u;
@@ -318,9 +522,6 @@ namespace Divide {
         if (selectedCamera != nullptr) {
             sceneChanged = drawCamera(selectedCamera);
         } else if (hasSelections) {
-            constexpr F32 smallButtonWidth = 60.0f;
-            F32 xOffset = ImGui::GetWindowSize().x * 0.5f - smallButtonWidth;
-
             for (U8 i = 0u; i < crtSelections._selectionCount; ++i) {
                 SceneGraphNode* sgnNode = node(crtSelections._selections[i]);
                 if (sgnNode != nullptr) {
@@ -336,188 +537,35 @@ namespace Divide {
                         sceneChanged = true;
                     }
 
-                    ImGui::SameLine();
+                    ImGui::SameLine(ImGui::GetWindowSize().x - 80.f);
                     bool selectionLocked = sgnNode->hasFlag(SceneGraphNode::Flags::SELECTION_LOCKED);
-                    if (ImGui::Checkbox(ICON_FK_LOCK"Lock Selection", &selectionLocked)) {
+                    if (ImGui::Checkbox(ICON_FK_LOCK"  ", &selectionLocked)) {
                         if (selectionLocked) {
                             sgnNode->setFlag(SceneGraphNode::Flags::SELECTION_LOCKED);
                         } else {
                             sgnNode->clearFlag(SceneGraphNode::Flags::SELECTION_LOCKED);
                         }
                     }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("When ticked, prevents selection of a different node");
+                        skipAutoTooltip(true);
+                    }
                     if (selectionLocked) {
                         lockSolutionExplorer = true;
                     }
                     ImGui::Separator();
 
-                    SceneManager* sceneManager = context().kernel().sceneManager();
-                    auto& activeSceneState = sceneManager->getActiveScene().state();
                     // Root
                     if (sgnNode->parent() == nullptr) {
                         ImGui::Separator();
                     }
+
                     vector_fast<EditorComponent*>& editorComp = Attorney::SceneGraphNodeEditor::editorComponents(sgnNode);
                     for (EditorComponent* comp : editorComp) {
-                        const char* fieldName = comp->name().c_str();
-                        const U64 fieldHash = _ID(fieldName);
-
-                        bool fieldWasOpen = false;
-                        for (const U64 p : s_openProperties) {
-                            if (p == fieldHash) {
-                                fieldWasOpen = true;
-                                break;
-                            }
-                        }
-
-                        if (comp->fields().empty()) {
-                            PushReadOnly();
-                            ImGui::CollapsingHeader(fieldName, ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet);
-                            PopReadOnly();
+                        if (_lockedComponent._editorComp != nullptr && _lockedComponent._editorComp->getGUID() == comp->getGUID()) {
                             continue;
                         }
-
-                        if (ImGui::CollapsingHeader(fieldName, ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | (fieldWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u))) {
-                            if (!fieldWasOpen) {
-                                for (U64& p : s_openProperties) {
-                                    if (p == 0u) {
-                                        p = fieldHash;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            ImGui::NewLine();
-                            ImGui::SameLine(xOffset);
-                            if (ImGui::Button("INSPECT", ImVec2(smallButtonWidth, 20))) {
-                                Attorney::EditorGeneralWidget::inspectMemory(_context.editor(), std::make_pair(comp, sizeof(EditorComponent)));
-                            }
-
-                            if (comp->parentComponentType() != ComponentType::COUNT && !IsRequiredComponentType(sgnNode, comp->parentComponentType())) {
-                                ImGui::SameLine();
-                                if (ImGui::Button("REMOVE", ImVec2(smallButtonWidth, 20))) {
-                                    Attorney::EditorGeneralWidget::inspectMemory(_context.editor(), std::make_pair(nullptr, 0));
-
-                                    if (Attorney::EditorGeneralWidget::removeComponent(_context.editor(), sgnNode, comp->parentComponentType())) {
-                                        sceneChanged = true;
-                                        continue;
-                                    }
-                                }
-                            }
-
-                            ImGui::Separator();
-                            vector<EditorComponentField>& fields = Attorney::EditorComponentEditor::fields(*comp);
-                            for (EditorComponentField& field : fields) {
-                                if (processField(field) && !field._readOnly) {
-                                    Attorney::EditorComponentEditor::onChanged(*comp, field);
-                                    sceneChanged = true;
-                                }
-                                ImGui::Spacing();
-                            }
-                            const U32 componentMask = sgnNode->componentMask();
-                            // Environment probes
-                            if (BitCompare(componentMask, ComponentType::ENVIRONMENT_PROBE)) {
-                                const EnvironmentProbeComponent* probe = sgnNode->get<EnvironmentProbeComponent>();
-                                if (probe != nullptr) {
-                                    const auto& cameras = probe->probeCameras();
-
-                                    for (U8 face = 0u; face < 6u; ++face) {
-                                        Camera* probeCameras = cameras[face];
-                                        if (drawCamera(probeCameras)) {
-                                            sceneChanged = true;
-                                        }
-                                    }
-                                }
-                            }
-                            // Show light/shadow specific options (if any)
-                            Light* light = nullptr;
-                            if (BitCompare(componentMask, ComponentType::SPOT_LIGHT)) {
-                                light = sgnNode->get<SpotLightComponent>();
-                            } else if (BitCompare(componentMask, ComponentType::POINT_LIGHT)) {
-                                light = sgnNode->get<PointLightComponent>();
-                            } else if (BitCompare(componentMask, ComponentType::DIRECTIONAL_LIGHT)) {
-                                light = sgnNode->get<DirectionalLightComponent>();
-                            }
-                            if (light != nullptr) {
-                                if (light->castsShadows()) {
-                                    if (ImGui::CollapsingHeader("Light Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
-                                        ImGui::Text("Shadow Offset: %d", to_U32(light->getShadowOffset()));
-
-                                        switch (light->getLightType()) {
-                                            case LightType::POINT: {
-                                                for (U8 face = 0u; face < 6u; ++face) {
-                                                    Camera* shadowCamera = ShadowMap::shadowCameras(ShadowType::CUBEMAP)[face];
-                                                    if (drawCamera(shadowCamera)) {
-                                                        sceneChanged = true;
-                                                    }
-                                                }
-                                                
-                                            } break;
-
-                                            case LightType::SPOT: {
-                                                Camera* shadowCamera = ShadowMap::shadowCameras(ShadowType::SINGLE).front();
-                                                if (drawCamera(shadowCamera)) {
-                                                    sceneChanged = true;
-                                                }
-                                            } break;
-
-                                            case LightType::DIRECTIONAL: {
-                                                DirectionalLightComponent* dirLight = static_cast<DirectionalLightComponent*>(light);
-                                                for (U8 split = 0u; split < dirLight->csmSplitCount(); ++split) {
-                                                    Camera* shadowCamera = ShadowMap::shadowCameras(ShadowType::LAYERED)[split];
-                                                    if (drawCamera(shadowCamera)) {
-                                                        sceneChanged = true;
-                                                    }
-                                                }
-                                            } break;
-
-                                            case LightType::COUNT: {
-                                                DIVIDE_UNEXPECTED_CALL();
-                                            } break;
-                                        }
-                                    }
-                                }
-
-                                if (ImGui::CollapsingHeader("Scene Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
-                                    {
-                                        F32 bleedBias = activeSceneState->lightBleedBias();
-                                        EditorComponentField tempField = {};
-                                        tempField._name = "Light bleed bias";
-                                        tempField._basicType = GFX::PushConstantType::FLOAT;
-                                        tempField._type = EditorComponentFieldType::PUSH_TYPE;
-                                        tempField._readOnly = false;
-                                        tempField._data = &bleedBias;
-                                        tempField._format = "%.6f";
-                                        tempField._range = { 0.0f, 1.0f };
-                                        tempField._dataSetter = [&activeSceneState](const void* bias) noexcept {
-                                            activeSceneState->lightBleedBias(*static_cast<const F32*>(bias));
-                                        };
-                                        sceneChanged = processField(tempField) || sceneChanged;
-                                    }
-                                    {
-                                        F32 shadowVariance = activeSceneState->minShadowVariance();
-                                        EditorComponentField tempField = {};
-                                        tempField._name = "Minimum variance";
-                                        tempField._basicType = GFX::PushConstantType::FLOAT;
-                                        tempField._type = EditorComponentFieldType::PUSH_TYPE;
-                                        tempField._readOnly = false;
-                                        tempField._data = &shadowVariance;
-                                        tempField._range = { 0.00001f, 0.99999f };
-                                        tempField._format = "%.6f";
-                                        tempField._dataSetter = [&activeSceneState](const void* variance) noexcept {
-                                            activeSceneState->minShadowVariance(*static_cast<const F32*>(variance));
-                                        };
-                                        sceneChanged = processField(tempField) || sceneChanged;
-                                    }
-                                }
-                            }
-                        } else {
-                            for (U64& p : s_openProperties) {
-                                if (p == fieldHash) {
-                                    p = 0u;
-                                    break;
-                                }
-                            }
-                        }
+                        sceneChanged = printComponent(sgnNode, comp, xOffset, smallButtonWidth) || sceneChanged;
                     }
                 }
                 ImGui::PopID();
@@ -708,6 +756,8 @@ namespace Divide {
 
                 F32* bbMin = Attorney::BoundingBoxEditor::min(bb);
                 F32* bbMax = Attorney::BoundingBoxEditor::max(bb);
+                vec3<F32> halfExtent = bb.getHalfExtent();
+                vec3<F32> bbCenter = bb.getCenter();
                 {
                     EditorComponentField bbField = {};
                     bbField._name = "Min ";
@@ -738,6 +788,26 @@ namespace Divide {
                         aabb.setMax(*static_cast<const vec3<F32>*>(val));
                         field.set<BoundingBox>(aabb);
                     };
+                    ret = processField(bbField) || ret;
+                }
+                {
+                    EditorComponentField bbField = {};
+                    bbField._name = "Half Extents ";
+                    bbField._basicType = GFX::PushConstantType::VEC3;
+                    bbField._type = EditorComponentFieldType::PUSH_TYPE;
+                    bbField._readOnly = true;
+                    bbField._data = halfExtent;
+                    bbField._hexadecimal = field._hexadecimal;
+                    ret = processField(bbField) || ret;
+                }
+                {
+                    EditorComponentField bbField = {};
+                    bbField._name = "Center ";
+                    bbField._basicType = GFX::PushConstantType::VEC3;
+                    bbField._type = EditorComponentFieldType::PUSH_TYPE;
+                    bbField._readOnly = true;
+                    bbField._data = bbCenter;
+                    bbField._hexadecimal = field._hexadecimal;
                     ret = processField(bbField) || ret;
                 }
             }break;
@@ -831,14 +901,14 @@ namespace Divide {
             case EditorComponentFieldType::COUNT: break;
         }
 
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        if (!skipAutoTooltip() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip(field._tooltip.empty() ? field._name.c_str() : field._tooltip.c_str());
         }
 
         return ret;
     }
 
-    bool PropertyWindow::processTransform(TransformComponent* transform, bool readOnly, bool hex) const {
+    bool PropertyWindow::processTransform(TransformComponent* transform, bool readOnly, bool hex) {
         if (transform == nullptr) {
             return false;
         }
@@ -848,11 +918,11 @@ namespace Divide {
         const bool rotationReadOnly = readOnly || transform->editorLockRotation();
         const bool scaleReadOnly = readOnly || transform->editorLockScale();
 
-        const TransformValues transformValues = transform->getValues();
+        const TransformValues transformValues = transform->getLocalValues();
         vec3<F32> pos = transformValues._translation;
         vec3<F32> rot = Angle::to_DEGREES(transformValues._orientation.getEuler());
         vec3<F32> scale = transformValues._scale;
-
+        
         const vec3<F32> oldRot = rot;
         if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Position", pos._v, transformReadOnly).wasChanged) {
             ret = true;
@@ -878,21 +948,48 @@ namespace Divide {
                                            });
             transform->setRotationEuler(rot);
         }
-        if (Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Scale", scale._v, scaleReadOnly, 1.f).wasChanged) {
+        TransformComponent::ScalingMode scalingMode = transform->scalingMode();
+        bool nonUniformScalingEnabled = scalingMode != TransformComponent::ScalingMode::UNIFORM;
+
+        bool scaleChanged = false;
+        if (nonUniformScalingEnabled) {
+            scaleChanged = Util::DrawVec<F32, 3, true>(ImGuiDataType_Float, "Scale", scale._v, scaleReadOnly, 1.f).wasChanged;
+        } else {
+            if (Util::DrawVec<F32, 1, true>(ImGuiDataType_Float, "Scale", scale._v, scaleReadOnly, 1.f).wasChanged) {
+                scaleChanged = true;
+                scale.z = scale.y = scale.x;
+            }
+        }
+
+        if (scaleChanged) {
             ret = true;
             // Scale is tricky as it may invalidate everything if it's set wrong!
             for (U8 i = 0; i < 3; ++i) {
                 scale[i] = std::max(std::numeric_limits<F32>::epsilon(), scale[i]);
             }
             RegisterUndo<vec3<F32>, false>(_parent,
-                                           GFX::PushConstantType::VEC3,
-                                           transformValues._scale,
-                                           scale,
-                                           "Transform scale",
-                                           [transform](const vec3<F32>& val) {
-                                               transform->setScale(val);
-                                           });
+                                          GFX::PushConstantType::VEC3,
+                                          transformValues._scale,
+                                          scale,
+                                          "Transform scale",
+                                          [transform](const vec3<F32>& val) {
+                                              transform->setScale(val);
+                                          });
             transform->setScale(scale);
+        }
+
+        if (ImGui::Checkbox("Non-uniform scaling", &nonUniformScalingEnabled)) {
+            const TransformComponent::ScalingMode newMode = nonUniformScalingEnabled ? TransformComponent::ScalingMode::NON_UNIFORM : TransformComponent::ScalingMode::UNIFORM;
+            RegisterUndo<bool, false>(_parent, GFX::PushConstantType::UINT, to_U32(scalingMode), to_U32(newMode), "Non-uniform scaling", [transform](const bool& oldVal) noexcept {
+                transform->scalingMode(static_cast<TransformComponent::ScalingMode>(oldVal));
+            });
+
+            transform->scalingMode(newMode);
+            ret = true;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Toggle per-axis independent scale values.\nAllow shear/tear/squash/etc.\nBreaks the scene hierarchy in many ways but should be fine for leaf nodes");
+            skipAutoTooltip(true);
         }
         Util::PopNarrowLabelWidth();
         return ret;
@@ -1395,6 +1492,8 @@ namespace Divide {
         if (!ImGui::CollapsingHeader(Util::StringFormat("Shading Mode [ %s ]", crtModeName).c_str(), (shadingModeWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u) | ImGuiTreeNodeFlags_SpanAvailWidth)) {
             shadingModeWasOpen = false;
         } else {
+            skipAutoTooltip(true);
+
             shadingModeWasOpen = true;
             {
                 static UndoEntry<I32> modeUndo = {};
@@ -1444,6 +1543,7 @@ namespace Divide {
                 ImGui::PopItemWidth();
                 if (fromTexture && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     ImGui::SetTooltip("Albedo is sampled from a texture. Base colour possibly unused!");
+                    skipAutoTooltip(true);
                 }
                 ApplyAllButton(id, fromTexture || readOnly, [&material]() {
                     if (material->baseMaterial() != nullptr) {
@@ -1474,6 +1574,7 @@ namespace Divide {
                     } else {
                         ImGui::SetTooltip(Util::StringFormat("Preview texture : %s", detailTex->assetName().c_str()).c_str());
                     }
+                    skipAutoTooltip(true);
                 }
                 ImGui::PopID();
                 if (ret && !ro) {
@@ -1499,6 +1600,7 @@ namespace Divide {
                     } else {
                         ImGui::SetTooltip(Util::StringFormat("Preview texture : %s", normalTex->assetName().c_str()).c_str());
                     }
+                    skipAutoTooltip(true);
                 }
                 ImGui::PopID();
                 if (ret && !ro) {
@@ -1516,6 +1618,7 @@ namespace Divide {
                 ImGui::PopItemWidth();
                 if (fromTexture && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     ImGui::SetTooltip("Control managed by application (e.g. is overriden by a texture)");
+                    skipAutoTooltip(true);
                 }
                 ApplyAllButton(id, fromTexture || readOnly, [&material]() {
                     if (material->baseMaterial() != nullptr) {
@@ -1537,6 +1640,7 @@ namespace Divide {
                 ImGui::PopItemWidth();
                 if (fromTexture && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     ImGui::SetTooltip("Control managed by application (e.g. is overriden by a texture)");
+                    skipAutoTooltip(true);
                 }
                 ApplyAllButton(id, fromTexture || readOnly, [&material]() {
                     if (material->baseMaterial() != nullptr) {
@@ -1593,6 +1697,7 @@ namespace Divide {
                     if (PreviewTextureButton(id, texture, !fromTexture)) {
                         _previewTexture = texture;
                     }
+                    skipAutoTooltip(true);
                     ImGui::Separator();
                 }
             } else {
@@ -1771,6 +1876,7 @@ namespace Divide {
                         PopReadOnly();
                         if (ImGui::IsItemHovered()) {
                             ImGui::SetTooltip("Insuficient input textures for this operation!");
+                            skipAutoTooltip(true);
                         }
                     }
                     ImGui::PopID();
@@ -1838,7 +1944,7 @@ namespace Divide {
         return ret;
     }
 
-    bool PropertyWindow::processBasicField(EditorComponentField& field) const {
+    bool PropertyWindow::processBasicField(EditorComponentField& field) {
           const bool isSlider = field._type == EditorComponentFieldType::SLIDER_TYPE &&
                                 field._basicType != GFX::PushConstantType::BOOL &&
                                 !field.isMatrix();
@@ -1878,6 +1984,7 @@ namespace Divide {
                       } else {
                           ImGui::SetTooltip(name);
                       }
+                      skipAutoTooltip(true);
                   }
 
                   if (ret && !field._readOnly) {
@@ -2061,10 +2168,10 @@ namespace Divide {
                   ret = Util::inputMatrix<mat4<D64>, 4>(_parent, name, step, ImGuiDataType_Double, field, flags, field._format);
               }break;
               case GFX::PushConstantType::FCOLOUR3: {
-                  ret = Util::colourInput3(_parent, field, name);
+                  ret = Util::colourInput3(_parent, field);
               }break;
               case GFX::PushConstantType::FCOLOUR4: {
-                  ret = Util::colourInput4(_parent, field, name);
+                  ret = Util::colourInput4(_parent, field);
               }break;
               case GFX::PushConstantType::COUNT: {
                   ImGui::Text(name);

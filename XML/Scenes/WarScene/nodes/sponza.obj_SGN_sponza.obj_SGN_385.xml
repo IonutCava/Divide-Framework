@@ -233,16 +233,16 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>lion.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/lion.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </UNIT0>
             <NORMALMAP>
-                <name>lion_ddn.tga</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/lion_ddn.tga</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

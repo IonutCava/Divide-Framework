@@ -576,14 +576,14 @@ void SceneManager::drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuf
     Attorney::SceneManager::drawCustomUI(getActiveScene(), targetViewport, bufferInOut);
 }
 
-void SceneManager::debugDraw(const Camera* camera, GFX::CommandBuffer& bufferInOut) {
+void SceneManager::debugDraw(GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
 
     Scene& activeScene = getActiveScene();
 
-    Attorney::SceneManager::debugDraw(activeScene, camera, bufferInOut);
+    Attorney::SceneManager::debugDraw(activeScene, bufferInOut);
     // Draw bounding boxes, skeletons, axis gizmo, etc.
-    _platformContext->gfx().debugDraw(activeScene.state()->renderState(), camera, bufferInOut);
+    _platformContext->gfx().debugDraw(activeScene.state()->renderState(), bufferInOut);
 }
 
 Camera* SceneManager::playerCamera(const PlayerIndex idx, const bool skipOverride) const noexcept {
@@ -625,7 +625,7 @@ void SceneManager::moveCameraToNode(const SceneGraphNode* targetNode) const {
         } else {
             const TransformComponent* tComp = targetNode->get<TransformComponent>();
             if (tComp != nullptr) {
-                targetPos = tComp->getPosition();
+                targetPos = tComp->getWorldPosition();
                 targetPos -= playerCamera()->getForwardDir() * 3.0f;
             }
         }
@@ -658,7 +658,8 @@ void SceneManager::getSortedReflectiveNodes(const Camera* camera, const RenderSt
         NodeCullParams cullParams = {};
         cullParams._lodThresholds = getActiveScene().state()->renderState().lodThresholds();
         cullParams._stage = stage;
-        cullParams._currentCamera = camera;
+        cullParams._cameraEyePos = camera->getEye();
+        cullParams._frustum = &camera->getFrustum();
         cullParams._cullMaxDistanceSq = SQUARED(camera->getZPlanes().y);
 
         _renderPassCuller->frustumCull(cullParams, to_base(CullOptions::DEFAULT_CULL_OPTIONS), allNodes, nodesOut);
@@ -682,7 +683,8 @@ void SceneManager::getSortedRefractiveNodes(const Camera* camera, const RenderSt
         NodeCullParams cullParams = {};
         cullParams._lodThresholds = getActiveScene().state()->renderState().lodThresholds();
         cullParams._stage = stage;
-        cullParams._currentCamera = camera;
+        cullParams._cameraEyePos = camera->getEye();
+        cullParams._frustum = &camera->getFrustum();
         cullParams._cullMaxDistanceSq = SQUARED(camera->getZPlanes().y);
 
         _renderPassCuller->frustumCull(cullParams, to_base(CullOptions::DEFAULT_CULL_OPTIONS), allNodes, nodesOut);
@@ -712,9 +714,9 @@ VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params, co
     return _renderPassCuller->frustumCull(params, cullFlags, *activeScene.sceneGraph(), *activeScene.state(), _parent.platformContext());
 }
 
-void SceneManager::prepareLightData(const RenderStage stage, const vec3<F32>& cameraPos, const mat4<F32>& viewMatrix) {
+void SceneManager::prepareLightData(const RenderStage stage, const CameraSnapshot& cameraSnapshot) {
     if (stage != RenderStage::SHADOW) {
-        getActiveScene().lightPool()->prepareLightData(stage, cameraPos, viewMatrix);
+        getActiveScene().lightPool()->prepareLightData(stage, cameraSnapshot);
     }
 }
 

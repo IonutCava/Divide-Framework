@@ -23,18 +23,21 @@ uniform vec4 sampleKernel[SSAO_SAMPLE_COUNT];
 
 // Input screen texture
 layout(binding = TEXTURE_UNIT0) uniform sampler2D texNoise;
-layout(binding = TEXTURE_UNIT1) uniform sampler2D texNormalsAndMatData;
 layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepthMap;
 
-out float _ssaoOut;
-
-#define GetDepth(UV) texture(texDepthMap, UV).r
-
-#if defined(COMPUTE_HALF_RES)
+#if !defined(COMPUTE_HALF_RES)
+layout(binding = TEXTURE_UNIT1) uniform sampler2D texNormals;
+#define GetNormal(UV) texture(texNormals, UV).rg
+#else //!COMPUTE_HALF_RES
 #define GetNormal(UV) texture(texDepthMap, UV).gb
-#else
-#define GetNormal(UV) texture(texNormalsAndMatData, UV).rg
-#endif
+#endif //!COMPUTE_HALF_RES
+
+// This constant removes artifacts caused by neighbour fragments with minimal depth difference.
+#define CAP_MIN_DISTANCE 0.0001f
+// This constant avoids the influence of fragments, which are too far away.
+#define CAP_MAX_DISTANCE 0.005f
+
+out float _ssaoOut;
 
 //ref1: https://github.com/McNopper/OpenGL/blob/master/Example28/shader/ssao.frag.glsl
 //ref2: https://github.com/itoral/vkdf/blob/9622f6a9e6602e06c5a42507202ad5a7daf917a4/data/spirv/ssao.deferred.frag.input
@@ -44,63 +47,48 @@ void main(void) {
         return;
     }
 
-    {
-        const vec4 normalsAndMaterialData = texture(texNormalsAndMatData, VAR._texCoord);
-        const vec2 probeIDandFlags = unpackVec2(normalsAndMaterialData.a);
-        const uint materialFlags = floatBitsToUint(probeIDandFlags.y);
-
-        // Calculate out of the current fragment in screen space the view space position.
-        if (BitCompare(materialFlags, FLAG_NO_SSAO)) {
-            _ssaoOut = 1.f;
-            return;
-        }
-    }
-
-    const float sceneDepth = GetDepth(VAR._texCoord);
+    const float sceneDepth = texture(texDepthMap, VAR._texCoord).r;
     const float linDepth = ToLinearDepth(sceneDepth, zPlanes) / zPlanes.y;
-
-    if (linDepth <= maxRange) {
-        const vec3 posView = ViewSpacePos(VAR._texCoord, sceneDepth, invProjectionMatrix);
-
+    if (linDepth <= maxRange)
+    {
         // Normal gathering.
         const vec3 normalView = normalize(unpackNormal(GetNormal(VAR._texCoord)));
-
         // Calculate the rotation  for the kernel.
-        const vec3 randomVector = texture(texNoise, VAR._texCoord * SSAO_NOISE_SCALE).xyz;
-
+        const vec3 randomVector = texture(texNoise, VAR._texCoord * SSAO_NOISE_SCALE).rgb;
         // Using Gram-Schmidt process to get an orthogonal vector to the normal vector.
         // The resulting tangent is on the same plane as the random and normal vector. 
         // see http://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
         // Note: No division by <u,u> needed, as this is for normal vectors 1. 
-        const vec3 tangentView = normalize(randomVector - normalView * dot(randomVector, normalView));
-        const vec3 bitangentView = cross(normalView, tangentView);
-
+        vec3 tangentView = normalize(randomVector - normalView * dot(randomVector, normalView));
+        vec3 bitangentView = cross(normalView, tangentView);
         // Final matrix to reorient the kernel depending on the normal and the random vector.
         const mat3 kernelMatrix = mat3(tangentView, bitangentView, normalView);
 
+        const vec3 fragPos = ViewSpacePos(VAR._texCoord, sceneDepth, invProjectionMatrix);
+        float occlusion = 0.f;
         // Go through the kernel samples and create occlusion factor.
-        float occlusion = 0.0;
         for (int i = 0; i < SSAO_SAMPLE_COUNT; ++i) {
-            // Reorient sample vector in view space and calculate sample point.
-            const vec3 sampleVectorView = posView + (kernelMatrix * sampleKernel[i].xyz) * SSAO_RADIUS;
-
+            // Reorient sample vector in view space
+            const vec3 sampleVector = kernelMatrix * sampleKernel[i].xyz;
+            // Calculate sample point
+            const vec3 samplePos = fragPos + (sampleVector * SSAO_RADIUS);
             // Project point and calculate NDC.
             // Convert sample XY to texture coordinate space and sample from the
             // Position texture to obtain the scene depth at that XY coordinate
-            const vec3 samplePointNDC = homogenize(projectionMatrix * vec4(sampleVectorView, 1.0f));
-            const vec2 samplePointTexCoord = samplePointNDC.xy * 0.5f + 0.5f;
+            const vec3 samplePointNDC = homogenize(projectionMatrix * vec4(samplePos, 1.f));
+            const vec2 samplePointUv = samplePointNDC.xy * 0.5f + 0.5f;
 
-            const float zSceneNDC = ViewSpaceZ(GetDepth(samplePointTexCoord), invProjectionMatrix);
+            const float sampleDepth = ViewSpaceZ(texture(texDepthMap, samplePointUv).r, invProjectionMatrix);
 
             // If the depth for that XY position in the scene is larger than
             // the sample's, then the sample is occluded by scene's geometry and
             // contributes to the occlussion factor.
-            const float rangeCheck = smoothstep(0.f, 1.f, SSAO_RADIUS / abs(posView.z - zSceneNDC));
-            occlusion += (zSceneNDC >= sampleVectorView.z + SSAO_BIAS ? rangeCheck : 0.f);
+            const float rangeCheck = smoothstep(0.f, 1.f, SSAO_RADIUS / abs(fragPos.z - sampleDepth));
+            occlusion += (sampleDepth >= samplePos.z + SSAO_BIAS ? 1.f : 0.f) * rangeCheck;
         }
         // We output ambient intensity in the range [0,1]
         _ssaoOut = saturate(pow(1.f - (occlusion / SSAO_SAMPLE_COUNT), SSAO_INTENSITY) + smoothstep(fadeStart * maxRange, maxRange, linDepth));
-    } else {
+    }else {
         _ssaoOut = 1.f;
     }
 }

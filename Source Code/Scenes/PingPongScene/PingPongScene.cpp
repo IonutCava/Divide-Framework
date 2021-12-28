@@ -101,21 +101,17 @@ void PingPongScene::serveBall() {
 void PingPongScene::test(std::any a, GFX::PushConstantType type) {
     bool updated = false;
     string message;
-    TransformComponent* ballTransform =
-        _ballSGN->get<TransformComponent>();
-    vec3<F32> ballPosition = ballTransform->getPosition();
+    TransformComponent* ballTransform = _ballSGN->get<TransformComponent>();
+    vec3<F32> ballPosition = ballTransform->getWorldPosition();
 
     SceneGraphNode* table(_sceneGraph->findNode("table"));
     SceneGraphNode* net(_sceneGraph->findNode("net"));
     SceneGraphNode* opponent(_sceneGraph->findNode("opponent"));
     SceneGraphNode* paddle(_sceneGraph->findNode("paddle"));
 
-    vec3<F32> paddlePosition =
-        paddle->get<TransformComponent>()->getPosition();
-    vec3<F32> opponentPosition =
-        opponent->get<TransformComponent>()->getPosition();
-    vec3<F32> tablePosition =
-        table->get<TransformComponent>()->getPosition();
+    vec3<F32> paddlePosition = paddle->get<TransformComponent>()->getWorldPosition();
+    vec3<F32> opponentPosition = opponent->get<TransformComponent>()->getWorldPosition();
+    vec3<F32> tablePosition = table->get<TransformComponent>()->getWorldPosition();
 
     // Is the ball coming towards us or towards the opponent?
     _directionTowardsAdversary ? ballPosition.z -= 0.11f : ballPosition.z +=
@@ -129,11 +125,10 @@ void PingPongScene::test(std::any a, GFX::PushConstantType type) {
         opponent->get<TransformComponent>()->translateX(
             ballPosition.x - opponentPosition.x);
 
-    ballTransform->translate(ballPosition - ballTransform->getPosition());
+    ballTransform->translate(ballPosition - ballTransform->getWorldPosition());
 
     // Did we hit the table? Bounce then ...
-    if (table->get<BoundsComponent>()
-                ->getBoundingBox().collision(_ballSGN->get<BoundsComponent>()->getBoundingBox()))
+    if (table->get<BoundsComponent>()->getBoundingBox().collision(_ballSGN->get<BoundsComponent>()->getBoundingBox()))
     {
         if (ballPosition.z > tablePosition.z) {
             _touchedOwnTableHalf = true;
@@ -197,7 +192,7 @@ void PingPongScene::test(std::any a, GFX::PushConstantType type) {
                                                                 ->getBoundingBox())) {
             _sideDrift =
                 ballPosition.x -
-                opponent->get<TransformComponent>()->getPosition().x;
+                opponent->get<TransformComponent>()->getWorldPosition().x;
             _directionTowardsAdversary = false;
         }
     // Add a spin effect to the ball
@@ -252,7 +247,7 @@ void PingPongScene::processInput(const PlayerIndex idx, const U64 deltaTimeUS) {
 
     SceneGraphNode* paddle(_sceneGraph->findNode("paddle"));
 
-    const vec3<F32> pos = paddle->get<TransformComponent>()->getPosition();
+    const vec3<F32> pos = paddle->get<TransformComponent>()->getWorldPosition();
 
     // Paddle movement is limited to the [-3,3] range except for Y-descent
     if (state()->playerState(idx).moveFB() != MoveDirection::NONE) {

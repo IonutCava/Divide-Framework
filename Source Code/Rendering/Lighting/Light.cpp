@@ -142,11 +142,11 @@ void Light::updateCache(const ECS::CustomEvent& event) {
     assert(tComp != nullptr);
 
     if (_type != LightType::DIRECTIONAL && BitCompare(event._flag, to_U32(TransformType::TRANSLATION))) {
-        _positionCache = tComp->getPosition();
+        _positionCache = tComp->getWorldPosition();
     }
 
     if (_type != LightType::POINT && BitCompare(event._flag, to_U32(TransformType::ROTATION))) {
-        _directionCache = tComp->getDirection();
+        _directionCache = tComp->getWorldDirection();
     }
 }
 

@@ -233,32 +233,32 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>sponza_thorn_diff.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/sponza_thorn_diff.png</name>
+                <path>assets/textures/</path>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </UNIT0>
             <OPACITY>
-                <name>sponza_thorn_mask.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/sponza_thorn_mask.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </OPACITY>
             <NORMALMAP>
-                <name>sponza_thorn_ddn.tga</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/sponza_thorn_ddn.tga</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </NORMALMAP>
             <SPECULAR>
-                <name>sponza_thorn_spec.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/sponza_thorn_spec.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

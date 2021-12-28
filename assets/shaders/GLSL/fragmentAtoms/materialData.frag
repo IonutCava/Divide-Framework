@@ -31,10 +31,24 @@ vec3 GetBRDF(in vec3 L,
 
 #if defined(USE_CUSTOM_TEXTURE_OMR)
 void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR);
+void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout float roughness);
 #else //USE_CUSTOM_TEXTURE_OMR
 #if defined(NO_OMR_TEX)
 #define getTextureOMR(usePacked, uv, texOps, OMR)
+#define getTextureRoughness(usePacked, uv, texOps,roughness)
 #else //NO_OMR_TEX
+void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout float roughness) {
+    if (usePacked) {
+#if !defined(NO_METALNESS_TEX)
+        roughness = texture(texMetalness, uv).b;
+#endif //NO_METALNESS_TEX
+    } else if (texOps.z != TEX_NONE) {
+#if !defined(NO_ROUGHNESS_TEX)
+        roughness = texture(texRoughness, uv).r;
+#endif //NO_ROUGHNESS_TEX
+    }
+}
+
 void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR) {
     if (usePacked) {
 #if !defined(NO_METALNESS_TEX)
@@ -92,14 +106,7 @@ vec3 getEmissiveColour(in NodeMaterialData matData, in vec3 uv) {
 }
 #endif //USE_CUSTOM_EMISSIVE
 
-// A Fresnel term that dampens rough specular reflections.
-// https://seblagarde.wordpress.com/2011/08/17/hello-world/
-vec3 computeFresnelSchlickRoughness(in vec3 H, in vec3 V, in vec3 F0, in float roughness) {
-    const float cosTheta = saturate(dot(H, V));
-    return F0 + (max(vec3(1.f - roughness), F0) - F0) * pow(1.f - cosTheta, 5.f);
-}
-
-PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, in vec2 uv, in vec3 V, in vec3 N, in float normalVariation) {
+PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, in vec2 uv, in vec3 N, in float normalVariation) {
     PBRMaterial material;
 
     const vec4 unpackedData = (unpackUnorm4x8(matData._data.z) * 255);
@@ -113,8 +120,6 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
         getTextureOMR(usePacked, vec3(uv, 0), texOpsB.xyz, OMR_Selection.rgb);
 
         material._occlusion = OMR_Selection.r;
-        material._metallic = OMR_Selection.g;
-        material._roughness = OMR_Selection.b;
     }
 
     material._emissive = getEmissiveColour(matData, vec3(uv, 0));
@@ -124,18 +129,6 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
     }
 
     material._specular = getSpecular(matData, vec3(uv, 0));
-
-    // Deduce a roughness factor from specular colour and shininess
-    if (material._shadingMode != SHADING_OREN_NAYAR && material._shadingMode != SHADING_COOK_TORRANCE) {
-        const float specularIntensity = Luminance(material._specular.rgb);
-        const float specularPower = material._specular.a / 1000.f;
-        const float roughnessFactor = 1.f - sqrt(specularPower);
-        // Specular intensity directly impacts roughness regardless of shininess
-        material._roughness = (1.f - (saturate(pow(roughnessFactor, 2)) * specularIntensity));
-    }
-
-    // Try to reduce specular aliasing by increasing roughness when minified normal maps have high variation.
-    material._roughness = mix(material._roughness, 1.f, normalVariation);
 
     const vec3 albedoIn = albedo + Ambient(matData);
     const vec3 dielectricSpecular = vec3(0.04f);

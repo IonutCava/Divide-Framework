@@ -248,7 +248,7 @@ void MainScene::test() {
     SceneGraphNode* boxNode(_sceneGraph->findNode("box"));
 
     if (boxNode) {
-        pos = boxNode->get<TransformComponent>()->getPosition();
+        pos = boxNode->get<TransformComponent>()->getWorldPosition();
     }
 
     if (!switchAB) {

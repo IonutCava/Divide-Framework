@@ -56,7 +56,6 @@ enum class RenderStage : U8;
 class RenderPass final : NonCopyable {
    public:
        struct BufferData {
-           ShaderBuffer* _commandBuffer = nullptr;
            ShaderBuffer* _cullCounterBuffer = nullptr;
            U32* _lastCommandCount = nullptr;
            U32* _lastNodeCount = nullptr;
@@ -70,7 +69,6 @@ class RenderPass final : NonCopyable {
     explicit RenderPass(RenderPassManager& parent, GFXDevice& context, Str64 name, U8 sortKey, RenderStage passStageFlag, const vector<U8>& dependencies, bool performanceCounters = false);
 
     void render(const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut) const;
-    void postRender() const noexcept;
 
     [[nodiscard]] inline U8 sortKey() const noexcept { return _sortKey; }
     [[nodiscard]] inline const vector<U8>& dependencies() const noexcept { return _dependencies; }
@@ -98,7 +96,6 @@ class RenderPass final : NonCopyable {
     mutable U32 _lastNodeCount = 0u;
 
     ShaderBuffer* _cullCounter = nullptr;
-    ShaderBuffer* _cmdBuffer = nullptr;
     Str64 _name = "";
     vector<U8> _dependencies{};
 };

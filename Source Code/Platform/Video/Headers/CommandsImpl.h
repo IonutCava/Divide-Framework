@@ -161,7 +161,7 @@ DEFINE_COMMAND_END(BeginPixelBufferCommand);
 DEFINE_COMMAND(EndPixelBufferCommand, CommandType::END_PIXEL_BUFFER);
 
 DEFINE_COMMAND_BEGIN(BeginRenderSubPassCommand, CommandType::BEGIN_RENDER_SUB_PASS);
-    U16 _mipWriteLevel = U16_MAX;
+    U16 _mipWriteLevel = 0u;
     vector<RenderTarget::DrawLayerParams> _writeLayers;
 DEFINE_COMMAND_END(BeginRenderSubPassCommand);
 

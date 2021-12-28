@@ -90,10 +90,6 @@ public:
     void getPosition(vec3<F32>& posOut) const override;
     void getOrientation(Quaternion<F32>& quatOut) const override;
 
-    void getMatrix(mat4<F32>& matrixOut) override;
-
-    [[nodiscard]] TransformValues getValues() const override;
-
     void physicsCollisionGroup(PhysicsGroup group) override;
 
 protected:

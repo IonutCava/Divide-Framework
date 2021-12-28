@@ -383,7 +383,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_ACCUMULATION "             + Util::to_string(to_base(GFXDevice::ScreenTargets::ACCUMULATION)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_ALBEDO "                   + Util::to_string(to_base(GFXDevice::ScreenTargets::ALBEDO)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_VELOCITY "                 + Util::to_string(to_base(GFXDevice::ScreenTargets::VELOCITY)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_NORMALS_AND_MATERIAL_DATA "+ Util::to_string(to_base(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_NORMALS "                  + Util::to_string(to_base(GFXDevice::ScreenTargets::NORMALS)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_REVEALAGE "                + Util::to_string(to_base(GFXDevice::ScreenTargets::REVEALAGE)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_MODULATE "                 + Util::to_string(to_base(GFXDevice::ScreenTargets::MODULATE)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_GPU_BLOCK "                + Util::to_string(to_base(ShaderBufferLocation::GPU_BLOCK)));
@@ -419,6 +419,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT,    "#define SKY_LIGHT_LAYER_IDX "             + Util::to_string(SceneEnvironmentProbePool::SkyProbeLayerIndex()));
     AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_LIGHTS_PER_CLUSTER "          + Util::to_string(numLightsPerCluster));
     AppendToShaderHeader(ShaderType::COUNT,    "#define REFLECTION_PROBE_RESOLUTION "     + Util::to_string(reflectionProbeRes));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define REFLECTION_PROBE_MIP_COUNT "      + Util::to_string(to_U32(std::log2(reflectionProbeRes))));
     for (U8 i = 0; i < to_base(TextureUsage::COUNT); ++i) {
         AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define TEXTURE_%s %d", TypeUtil::TextureUsageToString(static_cast<TextureUsage>(i)), i).c_str());
     }

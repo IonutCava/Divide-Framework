@@ -39,7 +39,8 @@ namespace {
 RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContext& context)
     : BaseComponentType<RenderingComponent, ComponentType::RENDERING>(parentSGN, context),
       _context(context.gfx()),
-      _config(context.config())
+      _config(context.config()),
+      _reflectionProbeIndex(SceneEnvironmentProbePool::SkyProbeLayerIndex())
 {
     _lodLevels.fill(0u);
     _lodLockLevels.fill({ false, to_U8(0u) });
@@ -68,7 +69,7 @@ RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContex
     }
     {
         EditorComponentField vaxisField = {};
-        vaxisField._name = "Show Axis";
+        vaxisField._name = "Show Debug Axis";
         vaxisField._data = &_showAxis;
         vaxisField._type = EditorComponentFieldType::SWITCH_TYPE;
         vaxisField._basicType = GFX::PushConstantType::BOOL;
@@ -205,14 +206,6 @@ void RenderingComponent::instantiateMaterial(const Material_ptr& material) {
         lockLodField._serialise = false;
         _editorComponent.registerField(MOV(lockLodField));
 
-        EditorComponentField renderLodField = {};
-        renderLodField._name = "Lock LoD";
-        renderLodField._type = EditorComponentFieldType::SWITCH_TYPE;
-        renderLodField._basicType = GFX::PushConstantType::BOOL;
-        renderLodField._data = &_lodLockLevels[to_base(RenderStage::DISPLAY)].first;
-        renderLodField._readOnly = false;
-        _editorComponent.registerField(MOV(renderLodField));
-
         EditorComponentField lockLodLevelField = {};
         lockLodLevelField._name = "Lock LoD Level";
         lockLodLevelField._type = EditorComponentFieldType::PUSH_TYPE;
@@ -222,6 +215,14 @@ void RenderingComponent::instantiateMaterial(const Material_ptr& material) {
         lockLodLevelField._data = &_lodLockLevels[to_base(RenderStage::DISPLAY)].second;
         lockLodLevelField._readOnly = false;
         _editorComponent.registerField(MOV(lockLodLevelField));
+
+        EditorComponentField renderLodField = {};
+        renderLodField._name = "Lock LoD";
+        renderLodField._type = EditorComponentFieldType::SWITCH_TYPE;
+        renderLodField._basicType = GFX::PushConstantType::BOOL;
+        renderLodField._data = &_lodLockLevels[to_base(RenderStage::DISPLAY)].first;
+        renderLodField._readOnly = false;
+        _editorComponent.registerField(MOV(renderLodField));
 
         _materialInstance->isStatic(_parentSGN->usageContext() == NodeUsageContext::NODE_STATIC);
     }
@@ -235,7 +236,7 @@ void RenderingComponent::setMaxRenderRange(const F32 maxRange) noexcept {
     _renderRange.max = std::min(maxRange,  1.0f * g_renderRangeLimit);
 }
 
-void RenderingComponent::rebuildDrawCommands(const RenderStagePass& stagePass, const Camera& crtCamera, RenderPackage& pkg) const {
+void RenderingComponent::rebuildDrawCommands(const RenderStagePass& stagePass, RenderPackage& pkg) const {
     OPTICK_EVENT();
     pkg.clear();
 
@@ -255,7 +256,7 @@ void RenderingComponent::rebuildDrawCommands(const RenderStagePass& stagePass, c
         pkg.add(bindDescriptorSetsCommand);
     }
 
-    _parentSGN->getNode().buildDrawCommands(_parentSGN, stagePass, crtCamera, pkg);
+    _parentSGN->getNode().buildDrawCommands(_parentSGN, stagePass, pkg);
 }
 
 void RenderingComponent::onMaterialChanged() {
@@ -342,11 +343,8 @@ void RenderingComponent::retrieveDrawCommands(const RenderStagePass& stagePass, 
     const U16 pkgCount = RenderStagePass::PassCountForStagePass(stagePass);
 
     PackagesPerIndex& packages = _renderPackages[stageIdx][to_U8(stagePass._passType)];
-    U32 startCmdOffset = cmdOffset + to_U32(cmdsInOut.size());
-    for (U16 i = 0u; i < pkgCount; ++i) {
-        RenderPackage& pkg = packages[to_U32(i) + pkgIndex];
-        startCmdOffset += Attorney::RenderPackageRenderingComponent::updateAndRetrieveDrawCommands(pkg, indirectionBufferEntry(), startCmdOffset, lodLevel, cmdsInOut);
-    }
+    const U32 startCmdOffset = cmdOffset + to_U32(cmdsInOut.size());
+    Attorney::RenderPackageRenderingComponent::updateAndRetrieveDrawCommands(packages[pkgIndex], indirectionBufferEntry(), startCmdOffset, lodLevel, cmdsInOut);
 }
 
 bool RenderingComponent::hasDrawCommands(const RenderStagePass& stagePass) {
@@ -357,8 +355,7 @@ void RenderingComponent::getMaterialData(NodeMaterialData& dataOut) const {
     OPTICK_EVENT();
 
     if (_materialInstance != nullptr) {
-        //ProbeID: 0u = sky cubemap. Shader: (Probe - 1u) = environment cube array index and probe data lookup index
-        _materialInstance->getData(*this, _reflectionProbeIndex + 1u, dataOut);
+        _materialInstance->getData(*this, _reflectionProbeIndex, dataOut);
     }
 }
 
@@ -442,20 +439,20 @@ U8 RenderingComponent::getLoDLevelInternal(const F32 distSQtoCenter, const Rende
     return MAX_LOD_LEVEL;
 }
 
-void RenderingComponent::prepareDrawPackage(const Camera& camera, const SceneRenderState& sceneRenderState, const RenderStagePass& renderStagePass, const bool refreshData) {
+void RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot, const SceneRenderState& sceneRenderState, const RenderStagePass& renderStagePass, const bool refreshData) {
     OPTICK_EVENT();
 
     RenderPackage& pkg = getDrawPackage(renderStagePass);
     if (pkg.empty() || getRebuildFlag(renderStagePass)) {
-        rebuildDrawCommands(renderStagePass, camera, pkg);
+        rebuildDrawCommands(renderStagePass, pkg);
         setRebuildFlag(renderStagePass, false);
     }
 
-    Attorney::SceneGraphNodeComponent::prepareRender(_parentSGN, *this, camera, renderStagePass, refreshData);
+    Attorney::SceneGraphNodeComponent::prepareRender(_parentSGN, *this, cameraSnapshot, renderStagePass, refreshData);
 
     if (refreshData) {
         const BoundsComponent* bComp = static_cast<BoundsComponent*>(_parentSGN->get<BoundsComponent>());
-        const vec3<F32> cameraEye = camera.getEye();
+        const vec3<F32>& cameraEye = cameraSnapshot._eye;
         const SceneNodeRenderState& renderState = _parentSGN->getNode<>().renderState();
         if (renderState.lod0OnCollision() && bComp->getBoundingBox().containsPoint(cameraEye)) {
             _lodLevels[to_base(renderStagePass._stage)] = 0u;
@@ -582,7 +579,7 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
 
 void RenderingComponent::updateNearestProbes(const vec3<F32>& position) {
     _envProbes.resize(0);
-    _reflectionProbeIndex = 0u;
+    _reflectionProbeIndex = SceneEnvironmentProbePool::SkyProbeLayerIndex();
 
     const SceneEnvironmentProbePool* probePool = _context.context().kernel().sceneManager()->getEnvProbes();
     if (probePool != nullptr) {
@@ -804,17 +801,17 @@ void RenderingComponent::OnData(const ECS::CustomEvent& data) {
         {
             const TransformComponent* tComp = static_cast<TransformComponent*>(data._sourceCmp);
             assert(tComp != nullptr);
-            updateNearestProbes(tComp->getPosition());
+            updateNearestProbes(tComp->getWorldPosition());
 
             tComp->getWorldMatrix(_worldMatrixCache);
 
-            _worldOffsetMatrixCache = mat4<F32>(GetMatrix(tComp->getOrientation()), false);
-            _worldOffsetMatrixCache.setTranslation(tComp->getPosition());
+            _worldOffsetMatrixCache = mat4<F32>(GetMatrix(tComp->getWorldOrientation()), false);
+            _worldOffsetMatrixCache.setTranslation(tComp->getWorldPosition());
         } break;
         case ECS::CustomEvent::Type::DrawBoundsChanged:
         {
             const BoundsComponent* bComp = static_cast<BoundsComponent*>(data._sourceCmp);
-            toggleBoundsDraw(bComp->showAABB(), bComp->showBS(), bComp->showOBB(), true);
+            toggleBoundsDraw(bComp->showAABB(), bComp->showBS(), bComp->showOBB(), false);
         } break;
         case ECS::CustomEvent::Type::BoundsUpdated:
         {

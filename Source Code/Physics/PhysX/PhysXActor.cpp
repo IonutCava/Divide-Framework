@@ -187,18 +187,6 @@ namespace Util {
         quatOut.identity();
     }
 
-    void PhysXActor::getMatrix(mat4<F32>& matrixOut) {
-        matrixOut.set(_cachedLocalMatrix);
-    }
-
-    TransformValues PhysXActor::getValues() const {
-        TransformValues ret = {};
-        getPosition(ret._translation);
-        getScale(ret._scale);
-        getOrientation(ret._orientation);
-        return ret;
-    }
-
     void PhysXActor::physicsCollisionGroup(const PhysicsGroup group) {
         if (_parentComponent.physicsCollisionGroup() != group && _actor != nullptr) {
             _context.convertActor(this, group);

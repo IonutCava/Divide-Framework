@@ -228,8 +228,9 @@ void SceneGraphNode::setParentInternal() {
         }
     }
     // Set the parent pointer to the new parent
+    SceneGraphNode* oldParent = _parent;
     _parent = newParent;
-
+    
     {// Add ourselves in the new parent's children map
         {
             _parent->_childCount.fetch_add(1);
@@ -254,6 +255,10 @@ void SceneGraphNode::setParentInternal() {
         if (_parent->usageContext() == NodeUsageContext::NODE_DYNAMIC) {
             changeUsageContext(_parent->usageContext());
         }
+    }
+    {
+        //Update transforms to keep everything relative
+        Attorney::TransformComponentSGN::onParentChanged(*get<TransformComponent>(), oldParent, _parent);
     }
 }
 
@@ -559,7 +564,7 @@ void SceneGraphNode::processEvents() {
     }
 }
 
-void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStagePass& renderStagePass, const Camera& camera, const bool refreshData) {
+void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStagePass& renderStagePass, const CameraSnapshot& cameraSnapshot, const bool refreshData) {
     OPTICK_EVENT();
 
     const AnimationComponent* aComp = get<AnimationComponent>();
@@ -584,7 +589,7 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStageP
         }
     }
 
-    _node->prepareRender(this, rComp, renderStagePass, camera, refreshData);
+    _node->prepareRender(this, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void SceneGraphNode::onNetworkSend(U32 frameCount) const {
@@ -635,7 +640,7 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
     if (hasFlag(Flags::VISIBILITY_LOCKED)) {
         if (nodeRenderState.drawState(RenderStagePass{ params._stage, RenderPassType::COUNT })) {
             collisionTypeOut = FrustumCollision::FRUSTUM_IN;
-            const vec3<F32>& eye = params._currentCamera->getEye();
+            const vec3<F32>& eye = params._cameraEyePos;
             const BoundingSphere& boundingSphere = get<BoundsComponent>()->getBoundingSphere();
             distanceToClosestPointSQ = boundingSphere.getCenter().distanceSquared(eye) - SQUARED(boundingSphere.getRadius());
             return false;
@@ -663,7 +668,7 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
     I8 fakePlaneCache = -1;
 
     // Get camera info
-    const vec3<F32>& eye = params._currentCamera->getEye();
+    const vec3<F32>& eye = params._cameraEyePos;
     {
         OPTICK_EVENT("cullNode - Bounding Sphere Distance Test");
         distanceToClosestPointSQ = bSphereCenter.distanceSquared(eye) - SQUARED(radius);
@@ -707,12 +712,11 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
         OPTICK_EVENT("cullNode - Bounding Sphere & Box Frustum Test");
         // Sphere is in range, so check bounds primitives against the frustum
         if (!boundingBox.containsPoint(eye)) {
-            const Frustum& frustum = params._currentCamera->getFrustum();
             // Check if the bounding sphere is in the frustum, as Frustum <-> Sphere check is fast
-            collisionTypeOut = frustum.ContainsSphere(bSphereCenter, radius, fakePlaneCache);
+            collisionTypeOut = params._frustum->ContainsSphere(bSphereCenter, radius, fakePlaneCache);
             if (collisionTypeOut == FrustumCollision::FRUSTUM_INTERSECT) {
                 // If the sphere is not completely in the frustum, check the AABB
-                collisionTypeOut = frustum.ContainsBoundingBox(boundingBox, fakePlaneCache);
+                collisionTypeOut = params._frustum->ContainsBoundingBox(boundingBox, fakePlaneCache);
             }
         } else {
             // We are inside the AABB. So ... intersect?

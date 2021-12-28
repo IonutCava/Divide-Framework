@@ -319,7 +319,7 @@ U32 LightPool::uploadLightList(const RenderStage stage, const LightList& lights,
 }
 
 // This should be called in a separate thread for each RenderStage
-void LightPool::prepareLightData(const RenderStage stage, const vec3<F32>& eyePos, const mat4<F32>& viewMatrix) {
+void LightPool::prepareLightData(const RenderStage stage, const CameraSnapshot& cameraSnapshot) {
     OPTICK_EVENT();
 
     const U8 stageIndex = to_U8(stage);
@@ -339,6 +339,7 @@ void LightPool::prepareLightData(const RenderStage stage, const vec3<F32>& eyePo
         }
     }
     {
+        const vec3<F32>& eyePos = cameraSnapshot._eye;
         OPTICK_EVENT("LightPool::SortLights");
         eastl::sort(begin(sortedLights),
                     end(sortedLights),
@@ -358,7 +359,7 @@ void LightPool::prepareLightData(const RenderStage stage, const vec3<F32>& eyePo
     }
 
     U32& totalLightCount = _sortedLightPropertiesCount[stageIndex];
-    totalLightCount = uploadLightList(stage, sortedLights, viewMatrix);
+    totalLightCount = uploadLightList(stage, sortedLights, cameraSnapshot._viewMatrix);
 
     SceneData& crtData = _sortedSceneProperties[stageIndex];
     bool sceneDataDirty = false;

@@ -183,7 +183,7 @@ void BoundingBox::transform(const BoundingBox& initialBoundingBox, const mat4<F3
 }
 
 void BoundingBox::transform(vec3<F32> initialMin, vec3<F32> initialMax, const mat4<F32>& mat) noexcept {
-    _min = _max = mat.getTranslation<F32>();
+    _min = _max = mat.getTranslation();
 
     for (U8 i = 0u; i < 3u; ++i) {
         F32& min = _min[i];

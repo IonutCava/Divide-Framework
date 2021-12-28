@@ -65,7 +65,7 @@ layout(binding = BUFFER_GPU_BLOCK, std140) uniform dvd_GPUBlock
     vec4  dvd_renderProperties;
     //x - cluster size X, y - cluster size Y, z - scale, w - bias
     vec4  dvd_lightingProperties;
-    //x - material debug flag, y - reserved, z - camera flag, w - clip plane count
+    //x - material debug flag, y - fog enabled, z - camera flag, w - clip plane count
     vec4  dvd_otherProperties;
     vec4  dvd_frustumPlanes[6];
     vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
@@ -76,6 +76,7 @@ layout(binding = BUFFER_GPU_BLOCK, std140) uniform dvd_GPUBlock
 #define SHADOW_PASS_ORTHO 1
 #define SHADOW_PASS_CUBE 2
 
+#define dvd_fogEnabled() (int(dvd_otherProperties.y) == 1)
 #define SHADOW_PASS_TYPE int(dvd_otherProperties.z)
 #define CAMERA_FLAG SHADOW_PASS_TYPE
 
@@ -130,13 +131,6 @@ void setClipPlanes() {
 #define setClipPlanes()
 #endif //HAS_CLIPPING_OUT && MAX_CLIP_PLANES > 0
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
-
-const uint FLAG_NO_ENV_REFLECTIONS = 1 << 0;
-const uint FLAG_NO_SSR             = 1 << 1;
-const uint FLAG_NO_SSAO            = 1 << 2;
-const uint FLAG_NO_FOG             = 1 << 3;
-const uint FLAG_NO_REFLECTIONS = FLAG_NO_ENV_REFLECTIONS | FLAG_NO_SSR;
-const uint FLAG_NO_POST_FX = FLAG_NO_REFLECTIONS | FLAG_NO_SSAO | FLAG_NO_FOG;
 
 #define BitCompare(MASK, BIT) ((MASK & BIT) != 0)
 

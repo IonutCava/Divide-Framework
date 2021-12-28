@@ -1471,7 +1471,7 @@ void Scene::drawCustomUI([[maybe_unused]] const Rect<I32>& targetViewport, GFX::
     }
 }
 
-void Scene::debugDraw(const Camera* activeCamera, GFX::CommandBuffer& bufferInOut) {
+void Scene::debugDraw(GFX::CommandBuffer& bufferInOut) {
     if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {
         if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_OCTREE_REGIONS)) {
             _octreeBoundingBoxes.resize(0);

@@ -659,8 +659,7 @@ class mat4 {
     template<typename U>
     void scale(U x, U y, U z) noexcept;
 
-    template<typename U>
-    [[nodiscard]] vec3<U> getTranslation() const noexcept;
+    [[nodiscard]] vec3<T> getTranslation() const noexcept;
     [[nodiscard]] mat4 getRotation() const;
 
     template<typename U>

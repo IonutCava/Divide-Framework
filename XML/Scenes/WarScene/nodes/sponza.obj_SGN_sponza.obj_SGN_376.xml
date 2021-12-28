@@ -233,24 +233,24 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>vase_round.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/vase_round.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </UNIT0>
             <NORMALMAP>
-                <name>vase_round_ddn.tga</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/vase_round_ddn.tga</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </NORMALMAP>
             <SPECULAR>
-                <name>vase_round_spec.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/vase_round_spec.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

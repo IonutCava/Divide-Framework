@@ -82,11 +82,11 @@ RenderBin* RenderQueue::getBinForNode(const SceneGraphNode* node, const Material
     switch (node->getNode().type()) {
         case SceneNodeType::TYPE_TRANSFORM:
         {
-            if (BitCompare(node->componentMask(), ComponentType::SPOT_LIGHT) ||
-                BitCompare(node->componentMask(), ComponentType::POINT_LIGHT) ||
-                BitCompare(node->componentMask(), ComponentType::DIRECTIONAL_LIGHT) ||
-                BitCompare(node->componentMask(), ComponentType::ENVIRONMENT_PROBE))
-            {
+            constexpr U32 compareMask = to_U32(ComponentType::SPOT_LIGHT) |
+                                        to_U32(ComponentType::POINT_LIGHT) |
+                                        to_U32(ComponentType::DIRECTIONAL_LIGHT) |
+                                        to_U32(ComponentType::ENVIRONMENT_PROBE);
+            if (AnyCompare(node->componentMask(), compareMask)) {
                 return _renderBins[to_base(RenderBinType::IMPOSTOR)];
             }
             /*if (BitCompare(node->componentMask(), ComponentType::PARTICLE_EMITTER_COMPONENT) ||

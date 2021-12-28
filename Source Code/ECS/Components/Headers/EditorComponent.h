@@ -37,6 +37,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Video/Headers/PushConstant.h"
 
 namespace Divide {
+    class Editor;
     class SGNComponent;
     class ByteBuffer;
     class SceneNode;
@@ -229,9 +230,9 @@ namespace Divide {
 
       public:
 
-        explicit EditorComponent(SGNComponent& parentComp, ComponentType parentComponentType, const Str128& name);
-        explicit EditorComponent(const Str128& name);
-       
+        explicit EditorComponent(SGNComponent* parentComp, Editor* editor, ComponentType parentComponentType, const Str128& name);
+        ~EditorComponent();
+
         void addHeader(const Str32& name) {
             EditorComponentField field = {};
             field._name = name;
@@ -264,6 +265,7 @@ namespace Divide {
 
       protected:
         SGNComponent* _parentComp = nullptr;
+        Editor* _editor = nullptr;
         DELEGATE<void, std::string_view> _onChangedCbk;
         vector<EditorComponentField> _fields;
     };
@@ -278,9 +280,10 @@ namespace Divide {
                 return comp._fields;
             }
 
-            static void onChanged(const EditorComponent& comp, EditorComponentField& field) {
+            static void onChanged(const EditorComponent& comp, const EditorComponentField& field) {
                 comp.onChanged(field);
             }
+
             friend class Divide::PropertyWindow;
         };
 

@@ -84,7 +84,7 @@ void main(){
     }
     writeGBuffer();
 #else //PRE_PASS
-    writeScreenColour(colour, VAR._normalWV);
+    writeScreenColour(colour);
 #ensif //PRE_PASS
 
 }

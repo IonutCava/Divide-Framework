@@ -433,210 +433,219 @@ U8 SSAOPreRenderOperator::sampleCount() const noexcept {
     return _kernelSampleCount[_genHalfRes ? 1 : 0];
 }
 
-bool SSAOPreRenderOperator::execute(const Camera* camera, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
-    if (_enabled) {
-        static GFX::BindPipelineCommand s_downsamplePipelineCmd{};
-        static GFX::BindPipelineCommand s_generateHalfResPipelineCmd{};
-        static GFX::BindPipelineCommand s_upsamplePipelineCmd{};
-        static GFX::BindPipelineCommand s_generateFullResPipelineCmd{};
-        static GFX::BindPipelineCommand s_blurHorizontalPipelineCmd{};
-        static GFX::BindPipelineCommand s_blurVerticalPipelineCmd{};
-        static GFX::BindPipelineCommand s_passThroughPipelineCmd{};
+void SSAOPreRenderOperator::prepare(GFX::CommandBuffer& bufferInOut) {
+    if (_stateChanged && !_enabled) {
+        RTClearDescriptor clearDescriptor = {};
+        clearDescriptor.clearDepth(true);
+        clearDescriptor.clearColours(true);
+        clearDescriptor.resetToDefault(true);
 
-        static bool s_commandsInit = false;
-        if (!s_commandsInit) {
-            s_commandsInit = true;
+        GFX::ClearRenderTargetCommand clearMainTarget = {};
+        clearMainTarget._target = _ssaoOutput._targetID;
+        clearMainTarget._descriptor = clearDescriptor;
+        EnqueueCommand(bufferInOut, clearMainTarget);
+    }
 
-            PipelineDescriptor pipelineDescriptor = {};
-            pipelineDescriptor._stateHash = _context.get2DStateBlock();
-            pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader->getGUID();
+    _stateChanged = false;
+}
 
-            s_downsamplePipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+bool SSAOPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+    assert(_enabled);
 
-            pipelineDescriptor._shaderProgramHandle = _ssaoGenerateHalfResShader->getGUID();
-            s_generateHalfResPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+    static GFX::BindPipelineCommand s_downsamplePipelineCmd{};
+    static GFX::BindPipelineCommand s_generateHalfResPipelineCmd{};
+    static GFX::BindPipelineCommand s_upsamplePipelineCmd{};
+    static GFX::BindPipelineCommand s_generateFullResPipelineCmd{};
+    static GFX::BindPipelineCommand s_blurHorizontalPipelineCmd{};
+    static GFX::BindPipelineCommand s_blurVerticalPipelineCmd{};
+    static GFX::BindPipelineCommand s_passThroughPipelineCmd{};
 
-            pipelineDescriptor._shaderProgramHandle = _ssaoUpSampleShader->getGUID();
-            s_upsamplePipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+    static bool s_commandsInit = false;
+    if (!s_commandsInit) {
+        s_commandsInit = true;
 
-            pipelineDescriptor._shaderProgramHandle = _ssaoGenerateShader->getGUID();
-            s_generateFullResPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+        PipelineDescriptor pipelineDescriptor = {};
+        pipelineDescriptor._stateHash = _context.get2DStateBlock();
+        pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader->getGUID();
 
-            RenderStateBlock redChannelOnly = RenderStateBlock::get(_context.get2DStateBlock());
-            redChannelOnly.setColourWrites(true, false, false, false);
+        s_downsamplePipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-            pipelineDescriptor._stateHash = redChannelOnly.getHash();
-            pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderHorizontal->getGUID();
-            s_blurHorizontalPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+        pipelineDescriptor._shaderProgramHandle = _ssaoGenerateHalfResShader->getGUID();
+        s_generateHalfResPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-            pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderVertical->getGUID();
-            s_blurVerticalPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+        pipelineDescriptor._shaderProgramHandle = _ssaoUpSampleShader->getGUID();
+        s_upsamplePipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-            pipelineDescriptor._shaderProgramHandle = _ssaoPassThroughShader->getGUID();
-            s_passThroughPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+        pipelineDescriptor._shaderProgramHandle = _ssaoGenerateShader->getGUID();
+        s_generateFullResPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+
+        RenderStateBlock redChannelOnly = RenderStateBlock::get(_context.get2DStateBlock());
+        redChannelOnly.setColourWrites(true, false, false, false);
+
+        pipelineDescriptor._stateHash = redChannelOnly.getHash();
+        pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderHorizontal->getGUID();
+        s_blurHorizontalPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+
+        pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderVertical->getGUID();
+        s_blurVerticalPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+
+        pipelineDescriptor._shaderProgramHandle = _ssaoPassThroughShader->getGUID();
+        s_passThroughPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
+    }
+
+    _ssaoGenerateConstantsCmd._constants.set(_ID("zPlanes"),             GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+    _ssaoGenerateConstantsCmd._constants.set(_ID("projectionMatrix"),    GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
+    _ssaoGenerateConstantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
+
+    const auto& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
+    const auto& normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
+
+    GFX::ClearRenderTargetCommand clearSSAOTargetCmd{};
+    clearSSAOTargetCmd._target = _ssaoOutput._targetID;
+    clearSSAOTargetCmd._descriptor.clearDepth(false);
+    clearSSAOTargetCmd._descriptor.clearColours(true);
+    GFX::EnqueueCommand(bufferInOut, clearSSAOTargetCmd);
+
+    if(genHalfRes()) {
+        { // DownSample depth and normals
+            GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+            renderPassCmd->_name = "DO_SSAO_DOWNSAMPLE_NORMALS";
+            renderPassCmd->_target = _halfDepthAndNormals._targetID;
+
+            GFX::EnqueueCommand(bufferInOut, s_downsamplePipelineCmd);
+
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),   TextureUsage::DEPTH });
+            set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
+
+            GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
+        { // Generate Half Res AO
+            GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+            renderPassCmd->_name = "DO_SSAO_HALF_RES_CALC";
+            renderPassCmd->_target = _ssaoHalfResOutput._targetID;
 
+            GFX::EnqueueCommand(bufferInOut, s_generateHalfResPipelineCmd);
 
-        const mat4<F32>& projectionMatrix = camera->projectionMatrix();
-        const mat4<F32>  invProjectionMatrix = GetInverse(projectionMatrix);
+            GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
-        _ssaoGenerateConstantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
-        _ssaoGenerateConstantsCmd._constants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, projectionMatrix);
-        _ssaoGenerateConstantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, invProjectionMatrix);
+            const auto& halfDepthAtt  = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::Colour, 0);
 
-        if(genHalfRes()) {
-            { // DownSample depth and normals
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._textureData.add(TextureEntry{ _noiseTexture->data(),         _noiseSampler,              TextureUsage::UNIT0 });
+            set._textureData.add(TextureEntry{ halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash(),TextureUsage::DEPTH });
+
+            GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+
+            GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        }
+        { // UpSample AO
+            GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+            renderPassCmd->_name = "DO_SSAO_UPSAMPLE_AO";
+            renderPassCmd->_target = _ssaoOutput._targetID;
+
+            GFX::EnqueueCommand(bufferInOut, s_upsamplePipelineCmd);
+
+            SamplerDescriptor linearSampler = {};
+            linearSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
+            linearSampler.minFilter(TextureFilter::LINEAR);
+            linearSampler.magFilter(TextureFilter::LINEAR);
+            linearSampler.anisotropyLevel(0);
+
+            const auto& halfResAOAtt = _ssaoHalfResOutput._rt->getAttachment(RTAttachmentType::Colour, 0);
+            const auto& halfDepthAtt = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::Colour, 0);
+
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._textureData.add(TextureEntry{ halfResAOAtt.texture()->data(), linearSampler.getHash(),    TextureUsage::UNIT0 });
+            set._textureData.add(TextureEntry{ halfResAOAtt.texture()->data(), halfResAOAtt.samplerHash(), TextureUsage::UNIT1 });
+            set._textureData.add(TextureEntry{ halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash(), TextureUsage::NORMALMAP });
+            set._textureData.add(TextureEntry{ depthAtt.texture()->data(),     depthAtt.samplerHash(),     TextureUsage::DEPTH });
+
+            GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+
+            GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        }
+    } else {
+        { // Generate Full Res AO
+            GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+            renderPassCmd->_name = "DO_SSAO_CALC";
+            renderPassCmd->_target = _ssaoOutput._targetID;
+
+            GFX::EnqueueCommand(bufferInOut, s_generateFullResPipelineCmd);
+
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._textureData.add(TextureEntry{ _noiseTexture->data(),        _noiseSampler,            TextureUsage::UNIT0 });
+            set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::UNIT1 });
+            set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),   TextureUsage::DEPTH });
+
+            GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
+
+            GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+        }
+    }
+    {
+        const auto& ssaoAtt = _ssaoOutput._rt->getAttachment(RTAttachmentType::Colour, 0);
+
+        if (blurResults() && blurKernelSize() > 0) {
+            _ssaoBlurConstantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
+            _ssaoBlurConstantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+            _ssaoBlurConstantsCmd._constants.set(_ID("texelSize"), GFX::PushConstantType::VEC2, vec2<F32>{ 1.f / ssaoAtt.texture()->width(), 1.f / ssaoAtt.texture()->height() });
+
+            // Blur AO
+            { //Horizontal
                 GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-                renderPassCmd->_name = "DO_SSAO_DOWNSAMPLE_NORMALS";
-                renderPassCmd->_target = _halfDepthAndNormals._targetID;
+                renderPassCmd->_name = "DO_SSAO_BLUR_HORIZONTAL";
+                renderPassCmd->_target = _ssaoBlurBuffer._targetID;
 
-                GFX::EnqueueCommand(bufferInOut, s_downsamplePipelineCmd);
+                GFX::EnqueueCommand(bufferInOut, s_blurHorizontalPipelineCmd);
 
-                const auto& depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
-                const auto& screenAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
+                GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
 
                 DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-                set._textureData.add(TextureEntry{ depthAtt.texture()->data(),  depthAtt.samplerHash(),  TextureUsage::DEPTH });
-                set._textureData.add(TextureEntry{ screenAtt.texture()->data(), screenAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
+                set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),  TextureUsage::DEPTH });
+                set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
+                set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(),    ssaoAtt.samplerHash(),   TextureUsage::UNIT0 });
 
                 GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
 
                 GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
             }
-            { // Generate Half Res AO
+            { //Vertical
                 GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-                renderPassCmd->_name = "DO_SSAO_HALF_RES_CALC";
-                renderPassCmd->_target = _ssaoHalfResOutput._targetID;
+                renderPassCmd->_name = "DO_SSAO_BLUR_VERTICAL";
+                renderPassCmd->_target = { RenderTargetUsage::SSAO_RESULT };
 
-                GFX::EnqueueCommand(bufferInOut, s_generateHalfResPipelineCmd);
+                GFX::EnqueueCommand(bufferInOut, s_blurVerticalPipelineCmd);
 
-                GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
+                GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
 
-                const auto& depthAtt = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::Colour, 0);
-                const auto& materialAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
-
+                const auto& horizBlur = _ssaoBlurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
                 DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-                set._textureData.add(TextureEntry{ _noiseTexture->data(),         _noiseSampler,             TextureUsage::UNIT0 });
-                set._textureData.add(TextureEntry{ materialAtt.texture()->data(), materialAtt.samplerHash(), TextureUsage::UNIT1 });
-                set._textureData.add(TextureEntry{ depthAtt.texture()->data(),    depthAtt.samplerHash(),    TextureUsage::DEPTH });
-
-                GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
-
-                GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-            }
-            { // UpSample AO
-                GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-                renderPassCmd->_name = "DO_SSAO_UPSAMPLE_AO";
-                renderPassCmd->_target = _ssaoOutput._targetID;
-
-                GFX::EnqueueCommand(bufferInOut, s_upsamplePipelineCmd);
-
-                SamplerDescriptor linearSampler = {};
-                linearSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-                linearSampler.minFilter(TextureFilter::LINEAR);
-                linearSampler.magFilter(TextureFilter::LINEAR);
-                linearSampler.anisotropyLevel(0);
-
-                const auto& halfResAOAtt = _ssaoHalfResOutput._rt->getAttachment(RTAttachmentType::Colour, 0);
-                const auto& halfDepthAtt = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::Colour, 0);
-                const auto& depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
-
-                DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-                set._textureData.add(TextureEntry{ _noiseTexture->data(),          _noiseSampler,              TextureUsage::UNIT0 });
-                set._textureData.add(TextureEntry{ halfResAOAtt.texture()->data(), linearSampler.getHash(),    TextureUsage::UNIT0 });
-                set._textureData.add(TextureEntry{ halfResAOAtt.texture()->data(), halfResAOAtt.samplerHash(), TextureUsage::UNIT1 });
-                set._textureData.add(TextureEntry{ halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash(), TextureUsage::NORMALMAP });
-                set._textureData.add(TextureEntry{ depthAtt.texture()->data(),     depthAtt.samplerHash(),     TextureUsage::DEPTH });
+                set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),  TextureUsage::DEPTH });
+                set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
+                set._textureData.add(TextureEntry{ horizBlur.texture()->data(),  ssaoAtt.samplerHash(),   TextureUsage::UNIT0 });
 
                 GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
 
                 GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
             }
         } else {
-            { // Generate Full Res AO
-                GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-                renderPassCmd->_name = "DO_SSAO_CALC";
-                renderPassCmd->_target = _ssaoOutput._targetID;
+            GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+            renderPassCmd->_name = "DO_SSAO_PASS_THROUGH";
+            renderPassCmd->_target = { RenderTargetUsage::SSAO_RESULT };
 
-                GFX::EnqueueCommand(bufferInOut, s_generateFullResPipelineCmd);
+            GFX::EnqueueCommand(bufferInOut, s_passThroughPipelineCmd);
 
-                const auto& depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
-                const auto& materialAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(), ssaoAtt.samplerHash(), TextureUsage::UNIT0 });
 
-                DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-                set._textureData.add(TextureEntry{ _noiseTexture->data(), _noiseSampler, TextureUsage::UNIT0 });
-                set._textureData.add(TextureEntry{ materialAtt.texture()->data(), materialAtt.samplerHash(), TextureUsage::UNIT1 });
-                set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
+            GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
 
-                GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
-
-                GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
-
-                GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-            }
-        }
-        {
-            const auto& ssaoAtt = _ssaoOutput._rt->getAttachment(RTAttachmentType::Colour, 0);
-            const auto& depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
-            const auto& screenAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
-
-            if (blurResults() && blurKernelSize() > 0) {
-                _ssaoBlurConstantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, invProjectionMatrix);
-                _ssaoBlurConstantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
-                _ssaoBlurConstantsCmd._constants.set(_ID("texelSize"), GFX::PushConstantType::VEC2, vec2<F32>{ 1.f / ssaoAtt.texture()->width(), 1.f / ssaoAtt.texture()->height() });
-
-                // Blur AO
-                { //Horizontal
-                    GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-                    renderPassCmd->_name = "DO_SSAO_BLUR_HORIZONTAL";
-                    renderPassCmd->_target = _ssaoBlurBuffer._targetID;
-
-                    GFX::EnqueueCommand(bufferInOut, s_blurHorizontalPipelineCmd);
-
-                    GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
-
-                    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-                    set._textureData.add(TextureEntry{ depthAtt.texture()->data(),  depthAtt.samplerHash(),  TextureUsage::DEPTH });
-                    set._textureData.add(TextureEntry{ screenAtt.texture()->data(), screenAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
-                    set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(),   ssaoAtt.samplerHash(),   TextureUsage::UNIT0 });
-
-                    GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
-
-                    GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-                }
-                { //Vertical
-                    GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-                    renderPassCmd->_name = "DO_SSAO_BLUR_VERTICAL";
-                    renderPassCmd->_target = { RenderTargetUsage::POSTFX_DATA };
-
-                    GFX::EnqueueCommand(bufferInOut, s_blurVerticalPipelineCmd);
-
-                    GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
-
-                    const auto& horizBlur = _ssaoBlurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
-                    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-                    set._textureData.add(TextureEntry{ depthAtt.texture()->data(),  depthAtt.samplerHash(),  TextureUsage::DEPTH });
-                    set._textureData.add(TextureEntry{ screenAtt.texture()->data(), screenAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
-                    set._textureData.add(TextureEntry{ horizBlur.texture()->data(), ssaoAtt.samplerHash(),   TextureUsage::UNIT0 });
-
-                    GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
-
-                    GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-                }
-            } else {
-                GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-                renderPassCmd->_name = "DO_SSAO_PASS_THROUGH";
-                renderPassCmd->_target = { RenderTargetUsage::POSTFX_DATA };
-
-                GFX::EnqueueCommand(bufferInOut, s_passThroughPipelineCmd);
-
-                DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-                set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(), ssaoAtt.samplerHash(), TextureUsage::UNIT0 });
-
-                GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
-
-                GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-            }
+            GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
         }
     }
 

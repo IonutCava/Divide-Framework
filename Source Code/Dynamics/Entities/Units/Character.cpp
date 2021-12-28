@@ -23,7 +23,7 @@ void Character::setParentNode(SceneGraphNode* node) {
     Unit::setParentNode(node);
     const TransformComponent* const transform = node->get<TransformComponent>();
     if (transform) {
-        _newPosition.set(transform->getPosition());
+        _newPosition.set(transform->getWorldPosition());
         _oldPosition.set(_newPosition);
         _curPosition.set(_oldPosition);
         _positionDirty = true;
@@ -53,10 +53,10 @@ void Character::update(const U64 deltaTimeUS) {
     vec3<F32> sourceDirection(getLookingDirection());
     sourceDirection.y = 0.0f;
 
-    _oldPosition.set(nodeTransformComponent->getPosition());
+    _oldPosition.set(nodeTransformComponent->getWorldPosition());
     _oldPosition.lerp(_curPosition, to_F32(GFXDevice::FrameInterpolationFactor()));
     nodeTransformComponent->setPosition(_oldPosition);
-    nodeTransformComponent->rotateSlerp(nodeTransformComponent->getOrientation() * RotationFromVToU(sourceDirection, _curVelocity), to_F32(GFXDevice::FrameInterpolationFactor()));
+    nodeTransformComponent->rotateSlerp(nodeTransformComponent->getWorldOrientation() * RotationFromVToU(sourceDirection, _curVelocity), to_F32(GFXDevice::FrameInterpolationFactor()));
 }
 
 void Character::setPosition(const vec3<F32>& newPosition) {
@@ -77,7 +77,7 @@ vec3<F32> Character::getLookingDirection() {
     SceneGraphNode* node(getBoundNode());
 
     if (node) {
-        return node->get<TransformComponent>()->getOrientation() * getRelativeLookingDirection();
+        return node->get<TransformComponent>()->getWorldOrientation() * getRelativeLookingDirection();
     }
 
     return getRelativeLookingDirection();
@@ -90,9 +90,7 @@ void Character::lookAt(const vec3<F32>& targetPos) {
         return;
     }
 
-    _newVelocity.set(
-        node->get<TransformComponent>()->getPosition().direction(
-            targetPos));
+    _newVelocity.set(node->get<TransformComponent>()->getWorldPosition().direction(targetPos));
     _velocityDirty = true;
 }
 

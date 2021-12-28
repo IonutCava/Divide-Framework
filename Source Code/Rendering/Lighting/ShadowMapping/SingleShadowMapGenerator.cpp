@@ -168,7 +168,6 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 
     RenderPassParams params = {};
     params._sourceNode = light.getSGN();
-    params._camera = shadowCameras[0];
     params._stagePass = RenderStagePass(RenderStage::SHADOW, RenderPassType::COUNT, to_U8(light.getLightType()), lightIndex);
     params._target = _drawBufferDepth._targetID;
     params._passName = "SingleShadowMap";
@@ -186,7 +185,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     clearMainTarget._descriptor = clearDescriptor;
     EnqueueCommand(bufferInOut, clearMainTarget);
 
-    _context.parent().renderPassManager()->doCustomPass(params, bufferInOut);
+    _context.parent().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut);
 
     postRender(spotLight, bufferInOut);
 

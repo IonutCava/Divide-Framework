@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/SGNComponent.h"
+#include "Core/Headers/PlatformContext.h"
 #include "Graphs/Headers/SceneGraph.h"
 
 #include "ECS/Components/Headers/NetworkingComponent.h"
@@ -11,7 +12,7 @@ namespace Divide {
 
     SGNComponent::SGNComponent([[maybe_unused]] Key key, const ComponentType type, SceneGraphNode* parentSGN, PlatformContext& context)
         : PlatformContextComponent(context),
-          _editorComponent(*this, type, TypeUtil::ComponentTypeToString(type)),
+          _editorComponent(this, &context.editor(), type, TypeUtil::ComponentTypeToString(type)),
           _parentSGN(parentSGN),
           _type(type)
     {

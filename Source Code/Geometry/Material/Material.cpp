@@ -104,13 +104,8 @@ void Material::ApplyDefaultStateBlocks(Material& target) {
     stateDescriptor.setCullMode(target.doubleSided() ? CullMode::NONE : CullMode::BACK);
     stateDescriptor.setZFunc(ComparisonFunction::EQUAL);
 
-    RenderStateBlock oitDescriptor(stateDescriptor);
-    oitDescriptor.setZFunc(ComparisonFunction::LEQUAL);
-    oitDescriptor.depthTestEnabled(true);
-
     /// the z-pre-pass descriptor does not process colours
     RenderStateBlock zPrePassDescriptor(stateDescriptor);
-    zPrePassDescriptor.setColourWrites(true, true, true, true);
     zPrePassDescriptor.setZFunc(ComparisonFunction::LEQUAL);
 
     /// A descriptor used for rendering to depth map
@@ -120,7 +115,7 @@ void Material::ApplyDefaultStateBlocks(Material& target) {
 
     target.setRenderStateBlock(zPrePassDescriptor.getHash(), RenderStage::COUNT,  RenderPassType::PRE_PASS);
     target.setRenderStateBlock(stateDescriptor.getHash(),    RenderStage::COUNT,  RenderPassType::MAIN_PASS);
-    target.setRenderStateBlock(oitDescriptor.getHash(),      RenderStage::COUNT,  RenderPassType::OIT_PASS);
+    target.setRenderStateBlock(stateDescriptor.getHash(),    RenderStage::COUNT,  RenderPassType::OIT_PASS);
     target.setRenderStateBlock(shadowDescriptor.getHash(),   RenderStage::SHADOW, RenderPassType::COUNT);
 }
 
@@ -188,7 +183,6 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
     cloneMat->_usePlanarRefractions = base._usePlanarRefractions;
     cloneMat->_hardwareSkinning = base._hardwareSkinning;
     cloneMat->_isRefractive = base._isRefractive;
-    cloneMat->_textureUseForDepth = _textureUseForDepth;
     cloneMat->_extraShaderDefines = base._extraShaderDefines;
     cloneMat->_customShaderCBK = base._customShaderCBK;
 
@@ -627,22 +621,14 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
     vertModule._moduleType = ShaderType::VERTEX;
     vertModule._defines = vertDefines;
 
+    ShaderModuleDescriptor fragModule = {};
+    fragModule._variant = fragVariant;
+    fragModule._sourceFile = (fragSource + ".glsl").c_str();
+    fragModule._moduleType = ShaderType::FRAGMENT;
+    fragModule._defines = fragDefines;
+
     ShaderProgramDescriptor shaderDescriptor = {};
-    if (!isDepthPass ||       // Normal colour pass
-        hasTransparency() ||  // Has transparency and may need alpha_discard in the PrePass or ShadowPass
-        isShadowPass ||       // Is a shadow pass
-        !_isStatic ||         // Is a depth pass but with a dynamic node, so output velocity vector
-        _hardwareSkinning)    // Node is animated, so we need velocity output
-    {
-        ShaderModuleDescriptor fragModule = {};
-        fragModule._variant = fragVariant;
-        fragModule._sourceFile = (fragSource + ".glsl").c_str();
-        fragModule._moduleType = ShaderType::FRAGMENT;
-        fragModule._defines = fragDefines;
-
-        shaderDescriptor._modules.push_back(fragModule);
-    }
-
+    shaderDescriptor._modules.push_back(fragModule);
     shaderDescriptor._modules.push_back(vertModule);
 
     ResourceDescriptor shaderResDescriptor(shaderName);
@@ -780,16 +766,6 @@ void Material::hardwareSkinning(const bool state, const bool applyToInstances) {
     if (applyToInstances) {
         for (Material* instance : _instances) {
             instance->hardwareSkinning(state, true);
-        }
-    }
-}
-
-void Material::textureUseForDepth(const TextureUsage slot, const bool state, const bool applyToInstances) {
-    _textureUseForDepth[to_base(slot)] = state;
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->textureUseForDepth(slot, state, true);
         }
     }
 }
@@ -1002,11 +978,11 @@ void Material::updateTransparency() {
 
     // opacity map
     const Texture_ptr& opacity = _textures[to_base(TextureUsage::OPACITY)];
-    if (opacity && opacity->hasTransparency()) {
+    if (opacity) {
         const U8 channelCount = NumChannels(opacity->descriptor().baseFormat());
         DIVIDE_ASSERT(channelCount == 1 || channelCount == 4, "Material::updateTranslucency: Opacity textures must be either single-channel or RGBA!");
 
-        _translucencySource = channelCount == 4 ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
+        _translucencySource = (opacity->hasTransparency()) ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
     }
 
     _needsNewShader = oldSource != _translucencySource;
@@ -1157,34 +1133,59 @@ bool Material::getTextureData(const RenderStagePass& renderStagePass, TextureDat
         return true;
     }
 
-    const auto registerTexture = [this](const U8 slot, const bool condition, TextureDataContainer& textureData) {
-        if (condition) {
-            const Texture_ptr& crtTexture = _textures[slot];
-            if (crtTexture != nullptr) {
-                textureData.add(TextureEntry{ crtTexture->data(), _samplers[slot], slot });
-                return true;
-            }
+    const bool isPrePass = (renderStagePass._passType == RenderPassType::PRE_PASS);
+    const auto addTexture = [&](const U8 slot) {
+        const Texture_ptr& crtTexture = _textures[slot];
+        if (crtTexture != nullptr) {
+            textureData.add(TextureEntry{ crtTexture->data(), _samplers[slot], slot });
+            return true;
         }
-
         return false;
     };
 
-    bool ret = false;
-    const bool depthStage = renderStagePass.isDepthPass();
     SharedLock<SharedMutex> r_lock(_textureLock);
-    for (const U8 slot : g_ReflectRefractSlots) {
-        ret = registerTexture(slot, (!depthStage || _textureUseForDepth[slot]), textureData) || ret;
+    bool ret = false;
+    if (!isPrePass) {
+        for (const U8 slot : g_materialTextureSlots) {
+            if (addTexture(slot)) {
+                ret = true;
+            }
+        }
+    } else {
+        if (addTexture(to_base(TextureUsage::NORMALMAP))) {
+            ret = true;
+        }
+        if (addTexture(to_base(TextureUsage::HEIGHTMAP))) {
+            ret = true;
+        }
+        if (hasTransparency()) {
+            if (_translucencySource == TranslucencySource::ALBEDO_TEX) {
+                if (addTexture(to_base(TextureUsage::UNIT0))) {
+                    ret = true;
+                }
+            }
+            else if (_translucencySource == TranslucencySource::OPACITY_MAP_A ||
+                     _translucencySource == TranslucencySource::OPACITY_MAP_R) 
+            {
+                if (addTexture(to_base(TextureUsage::OPACITY))) {
+                    ret = true;
+                }
+            }
+        }
+        if (shadingMode() != ShadingMode::OREN_NAYAR && shadingMode() != ShadingMode::COOK_TORRANCE) {
+            if (addTexture(to_base(TextureUsage::SPECULAR))) {
+                ret = true;
+            }
+        } else if (_usePackedOMR) {
+            if (addTexture(to_base(TextureUsage::METALNESS))) {
+                ret = true;
+            }
+        } else {
+            if (addTexture(to_base(TextureUsage::ROUGHNESS))) {
+                ret = true;
+            }
+        }
     }
-
-    const bool transparencyState = hasTransparency() && _translucencySource != TranslucencySource::ALBEDO_COLOUR;
-    for (const U8 slot : g_TransparentSlots) {
-        ret = registerTexture(slot, (transparencyState || !depthStage || _textureUseForDepth[slot]), textureData) || ret;
-    }
-
-    for (const U8 slot : g_ExtraSlots) {
-        ret = registerTexture(slot, (!depthStage || _textureUseForDepth[slot]), textureData) || ret;
-    }
-
     return ret;
 }
 
@@ -1344,6 +1345,8 @@ void Material::saveRenderStatesToXML(const string& entryName, boost::property_tr
 
 void Material::loadRenderStatesFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     hashMap<U32, size_t> previousHashValues;
+
+    return;
 
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {

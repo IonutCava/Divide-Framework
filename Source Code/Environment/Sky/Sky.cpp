@@ -272,6 +272,8 @@ Sky::Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, 
             _atmosphere = initialAtmosphere();
         } else if (field == "Enable Procedural Clouds") {
             rebuildDrawCommands(true);
+        } else if (field == "Update Sky Light") {
+            SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
         }
 
         _atmosphereChanged = EditorDataState::QUEUED; 
@@ -407,6 +409,12 @@ Sky::Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, 
         resetGlobalField._tooltip = "Default = whatever value was encoded into the engine.";
         resetGlobalField._type = EditorComponentFieldType::BUTTON;
         getEditorComponent().registerField(MOV(resetGlobalField));
+
+        EditorComponentField rebuildSkyLightField = {};
+        rebuildSkyLightField._name = "Update Sky Light";
+        rebuildSkyLightField._tooltip = "Rebuild the sky light data (refresh sky probe)";
+        rebuildSkyLightField._type = EditorComponentFieldType::BUTTON;
+        getEditorComponent().registerField(MOV(rebuildSkyLightField));
     }
     {
         EditorComponentField separatorField = {};
@@ -611,6 +619,8 @@ bool Sky::load() {
     shaderDescriptor = {};
     vertModule._variant = "NoClouds";
     shaderDescriptor._modules.push_back(vertModule);
+    fragModule._variant = "PrePass";
+    shaderDescriptor._modules.push_back(fragModule);
 
     ResourceDescriptor skyShaderPrePassDescriptor("sky_PrePass");
     skyShaderPrePassDescriptor.waitForReady(false);
@@ -707,6 +717,7 @@ void Sky::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sc
             std::swap(_atmosphere._cloudLayerMinMaxHeight.min, _atmosphere._cloudLayerMinMaxHeight.max);
         }
     } else if (_atmosphereChanged == EditorDataState::PROCESSED) {
+        SceneEnvironmentProbePool::SkyLightNeedsRefresh();
         _atmosphereChanged = EditorDataState::IDLE;
     }
 
@@ -739,7 +750,7 @@ void Sky::setSkyShaderData(const U32 rayCount, PushConstants& constantsInOut) {
 void Sky::prepareRender(SceneGraphNode* sgn,
                         RenderingComponent& rComp,
                         const RenderStagePass& renderStagePass,
-                        const Camera& camera,
+                        const CameraSnapshot& cameraSnapshot,
                         const bool refreshData)  {
 
     const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
@@ -748,12 +759,11 @@ void Sky::prepareRender(SceneGraphNode* sgn,
                          pkg.get<GFX::SendPushConstantsCommand>(0)->_constants);
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, camera, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Sky::buildDrawCommands(SceneGraphNode* sgn,
                             const RenderStagePass& renderStagePass,
-                            const Camera& crtCamera,
                             RenderPackage& pkgInOut) {
     assert(renderStagePass._stage != RenderStage::SHADOW);
 
@@ -800,7 +810,7 @@ void Sky::buildDrawCommands(SceneGraphNode* sgn,
 
     SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
 }
 
 }

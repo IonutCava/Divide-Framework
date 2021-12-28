@@ -74,20 +74,6 @@ void RenderPass::initBufferData() {
         bufferDescriptor._name = Util::StringFormat("CULL_COUNTER_%s", TypeUtil::RenderStageToString(_stageFlag));
         _cullCounter = _context.newSB(bufferDescriptor);
     }
-
-    ShaderBufferDescriptor bufferDescriptor = {};
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-    bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-    bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
-    bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
-    bufferDescriptor._separateReadWrite = false;
-    bufferDescriptor._bufferParams._elementCount = RenderStagePass::TotalPassCountForStage(_stageFlag) * Config::MAX_VISIBLE_NODES;
-    bufferDescriptor._usage = ShaderBuffer::Usage::COMMAND_BUFFER;
-    bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
-    bufferDescriptor._bufferParams._elementSize = sizeof(IndirectDrawCommand);
-    bufferDescriptor._name = Util::StringFormat("CMD_DATA_%s", TypeUtil::RenderStageToString(_stageFlag));
-    _cmdBuffer = _context.newSB(bufferDescriptor);
-    
 }
 
 RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass& stagePass) const noexcept {
@@ -95,7 +81,6 @@ RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass& stagePas
 
     BufferData ret{};
     ret._cullCounterBuffer = _cullCounter;
-    ret._commandBuffer = _cmdBuffer;
     ret._lastCommandCount = &_lastCmdCount;
     ret._lastNodeCount = &_lastNodeCount;
     return ret;
@@ -118,26 +103,29 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
                 clearDescriptor.clearDepth(true);
                 // We don't need to clear colour targets as we always overwrite them!
                 clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::ALBEDO), false);
-                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::VELOCITY), true); //Not everything gets drawn during the depth PrePass (E.g. sky)
-                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES), false);
+
+                //Not everything gets drawn during the depth PrePass (E.g. sky)
+                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::VELOCITY), true); 
+                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::NORMALS), true);
                 clearMainTarget._descriptor = clearDescriptor;
 
-                RTDrawDescriptor velocityAndDepthPolicy = {};
-                velocityAndDepthPolicy.drawMask().disableAll();
-                velocityAndDepthPolicy.drawMask().setEnabled(RTAttachmentType::Depth, 0, true);
-                velocityAndDepthPolicy.drawMask().setEnabled(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY), true);
-                //velocityAndDepthPolicy.alphaToCoverage(true);
+                RTDrawDescriptor prePassPolicy = {};
+                prePassPolicy.drawMask().disableAll();
+                prePassPolicy.drawMask().setEnabled(RTAttachmentType::Depth, 0, true);
+                prePassPolicy.drawMask().setEnabled(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY), true);
+                prePassPolicy.drawMask().setEnabled(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS), true);
+                //prePassPolicy.alphaToCoverage(true);
 
                 RTDrawDescriptor mainPassPolicy = {};
                 mainPassPolicy.drawMask().setEnabled(RTAttachmentType::Depth, 0, false);
                 mainPassPolicy.drawMask().setEnabled(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY), false);
+                mainPassPolicy.drawMask().setEnabled(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS), false);
 
-                RTDrawDescriptor oitCompositionPassPolicy = mainPassPolicy;
-                oitCompositionPassPolicy.drawMask().setEnabled(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES), false);
+                const RTDrawDescriptor oitCompositionPassPolicy = mainPassPolicy;
 
                 params._passName = "MainRenderPass";
                 params._stagePass = RenderStagePass{ _stageFlag, RenderPassType::COUNT };
-                params._targetDescriptorPrePass = velocityAndDepthPolicy;
+                params._targetDescriptorPrePass = prePassPolicy;
                 params._targetDescriptorMainPass = mainPassPolicy;
                 params._targetDescriptorComposition = oitCompositionPassPolicy;
                 params._targetHIZ = RenderTargetID(RenderTargetUsage::HI_Z);
@@ -146,14 +134,13 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
             }
 
             params._targetOIT = params._target._usage == RenderTargetUsage::SCREEN_MS ? RenderTargetID(RenderTargetUsage::OIT_MS) : RenderTargetID(RenderTargetUsage::OIT);
-            params._camera = Attorney::SceneManagerCameraAccessor::playerCamera(_parent.parent().sceneManager());
             params._target = _context.renderTargetPool().screenTargetID();
             clearMainTarget._target = params._target;
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Main Display Pass" });
             GFX::EnqueueCommand(bufferInOut, clearMainTarget);
 
-            _parent.doCustomPass(params, bufferInOut);
+            _parent.doCustomPass(Attorney::SceneManagerCameraAccessor::playerCamera(_parent.parent().sceneManager()), params, bufferInOut);
 
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         } break;
@@ -269,10 +256,6 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
             DIVIDE_UNEXPECTED_CALL();
             break;
     };
-}
-
-void RenderPass::postRender() const noexcept {
-    _cmdBuffer->incQueue();
 }
 
 };

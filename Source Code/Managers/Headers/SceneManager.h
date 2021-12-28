@@ -249,8 +249,8 @@ protected:
     [[nodiscard]] bool frameEnded(const FrameEvent& evt) override;
 
     void drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
-    void debugDraw(const Camera* camera, GFX::CommandBuffer& bufferInOut);
-    void prepareLightData(RenderStage stage, const vec3<F32>& cameraPos, const mat4<F32>& viewMatrix);
+    void debugDraw(GFX::CommandBuffer& bufferInOut);
+    void prepareLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
 
     [[nodiscard]] Camera* playerCamera(bool skipOverride = false) const noexcept;
     [[nodiscard]] Camera* playerCamera(PlayerIndex idx, bool skipOverride = false) const noexcept;
@@ -416,12 +416,12 @@ class SceneManagerRenderPass {
         mgr->initDefaultCullValues(stage, cullParamsInOut);
     }
 
-    static void prepareLightData(Divide::SceneManager* mgr, const RenderStage stage, const vec3<F32>& camPosition, const mat4<F32>& viewMatrix) {
-        mgr->prepareLightData(stage, camPosition, viewMatrix);
+    static void prepareLightData(Divide::SceneManager* mgr, const RenderStage stage, const CameraSnapshot& cameraSnapshot) {
+        mgr->prepareLightData(stage, cameraSnapshot);
     }
 
-    static void debugDraw(Divide::SceneManager* mgr, const Camera* camera, GFX::CommandBuffer& bufferInOut) {
-        mgr->debugDraw(camera, bufferInOut);
+    static void debugDraw(Divide::SceneManager* mgr, GFX::CommandBuffer& bufferInOut) {
+        mgr->debugDraw(bufferInOut);
     }
 
     static void drawCustomUI(Divide::SceneManager* mgr, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {

@@ -27,8 +27,12 @@ PreRenderOperator::PreRenderOperator(GFXDevice& context, PreRenderBatch& parent,
     _triangleDrawCmd = { triangleCmd };
 }
 
-bool PreRenderOperator::execute([[maybe_unused]] const Camera* camera, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, [[maybe_unused]] GFX::CommandBuffer& bufferInOut) {
+bool PreRenderOperator::execute([[maybe_unused]] const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, [[maybe_unused]] GFX::CommandBuffer& bufferInOut) {
     return false;
+}
+
+void PreRenderOperator::prepare([[maybe_unused]] GFX::CommandBuffer& bufferInOut) {
+
 }
 
 void PreRenderOperator::reshape([[maybe_unused]] U16 width, [[maybe_unused]] U16 height) {

@@ -135,7 +135,7 @@ struct RenderStagePass {
             case RenderStage::DISPLAY:
                 return 1u;
             case RenderStage::REFLECTION:
-                return (Config::MAX_REFLECTIVE_NODES_IN_VIEW + Config::MAX_REFLECTIVE_PROBES_PER_PASS) * 6u;
+                return (Config::MAX_REFLECTIVE_NODES_IN_VIEW + Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u/*SkyLight*/) * 6u;
             case RenderStage::REFRACTION:
                 return Config::MAX_REFRACTIVE_NODES_IN_VIEW;
             case RenderStage::SHADOW:

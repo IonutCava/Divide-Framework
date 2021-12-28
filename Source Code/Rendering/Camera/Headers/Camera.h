@@ -175,10 +175,8 @@ class Camera : public Resource {
     [[nodiscard]] const mat4<F32>& projectionMatrix() const noexcept { return _data._projectionMatrix; }
     [[nodiscard]] const mat4<F32>& projectionMatrix()       noexcept { updateProjection(); return _data._projectionMatrix; }
 
-    [[nodiscard]] mat4<F32> worldMatrix()                             noexcept { return GetInverse(viewMatrix()); }
-    [[nodiscard]] mat4<F32> worldMatrix()                       const noexcept { return GetInverse(viewMatrix()); }
-    void      worldMatrix(mat4<F32>& worldMatOut)       noexcept { viewMatrix().getInverse(worldMatOut); }
-    void      worldMatrix(mat4<F32>& worldMatOut) const noexcept { viewMatrix().getInverse(worldMatOut); }
+    [[nodiscard]] const mat4<F32>& worldMatrix()            noexcept { return _data._invViewMatrix; }
+    [[nodiscard]] const mat4<F32>& worldMatrix()      const noexcept { return _data._invViewMatrix; }
 
     /// Nothing really to unload
     virtual bool unload() noexcept { return true; }

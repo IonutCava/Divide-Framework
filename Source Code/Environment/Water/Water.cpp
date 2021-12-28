@@ -31,7 +31,7 @@ WaterPlane::WaterPlane(ResourceCache* parentCache, size_t descriptorHash, const 
     _noiseFactor = { 0.1f, 0.1f };
     _refractionTint = {0.f, 0.567f, 0.845f};
     _waterDistanceFogColour = {0.9f, 0.9f, 1.f};
-
+    _dimensions = { 500u, 500u, 500u };
     // The water doesn't cast shadows, doesn't need ambient occlusion and doesn't have real "depth"
     renderState().addToDrawExclusionMask(RenderStage::SHADOW);
 
@@ -336,7 +336,7 @@ void WaterPlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneSt
             break;
     }
     WaterBodyData data;
-    data._positionW = sgn->get<TransformComponent>()->getPosition();
+    data._positionW = sgn->get<TransformComponent>()->getWorldPosition();
     data._extents.xyz = { to_F32(_dimensions.width),
                           to_F32(_dimensions.depth),
                           to_F32(_dimensions.height) };
@@ -348,7 +348,7 @@ void WaterPlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneSt
 void WaterPlane::prepareRender(SceneGraphNode* sgn,
                                RenderingComponent& rComp,
                                const RenderStagePass& renderStagePass,
-                               const Camera& camera,
+                               const CameraSnapshot& cameraSnapshot,
                                const bool refreshData) {
     if (_editorDataDirtyState == EditorDataState::CHANGED || _editorDataDirtyState == EditorDataState::PROCESSED) {
         const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
@@ -361,7 +361,7 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
         constants.set(_ID("_specularShininess"), GFX::PushConstantType::FLOAT, specularShininess());
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, camera, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 bool WaterPlane::PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point) noexcept {
@@ -370,7 +370,6 @@ bool WaterPlane::PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& poi
 
 void WaterPlane::buildDrawCommands(SceneGraphNode* sgn,
                                    const RenderStagePass& renderStagePass,
-                                   const Camera& crtCamera,
                                    RenderPackage& pkgInOut) {
 
     GFX::SendPushConstantsCommand pushConstantsCommand = {};
@@ -390,7 +389,7 @@ void WaterPlane::buildDrawCommands(SceneGraphNode* sgn,
 
     pkgInOut.add(GFX::DrawCommand{ cmd });
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
 }
 
 /// update water refraction
@@ -412,7 +411,6 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
     params._sourceNode = renderParams._sgn;
     params._targetHIZ = {}; // We don't need to HiZ cull refractions
     params._targetOIT = {}; // We don't need to draw refracted transparents using woit 
-    params._camera = renderParams._camera;
     params._minExtents.set(1.0f);
     params._stagePass = RenderStagePass(RenderStage::REFRACTION, RenderPassType::COUNT, to_U8(RefractorType::PLANAR), renderParams._passIndex);
     params._target = renderParams._renderTarget;
@@ -427,7 +425,7 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
     clearMainTarget._descriptor = clearDescriptor;
     EnqueueCommand(bufferInOut, clearMainTarget);
 
-    passManager->doCustomPass(params, bufferInOut);
+    passManager->doCustomPass(renderParams._camera, params, bufferInOut);
 
     const PlatformContext& context = passManager->parent().platformContext();
     const RenderTarget& rt = context.gfx().renderTargetPool().renderTarget(params._target);
@@ -468,7 +466,6 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
     params._sourceNode = renderParams._sgn;
     params._targetHIZ = RenderTargetID(RenderTargetUsage::HI_Z_REFLECT);
     params._targetOIT = RenderTargetID(RenderTargetUsage::OIT_REFLECT);
-    params._camera = _reflectionCam;
     params._minExtents.set(1.5f);
     params._stagePass = RenderStagePass(RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::PLANAR), renderParams._passIndex);
     params._target = renderParams._renderTarget;
@@ -481,7 +478,7 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
     clearMainTarget._descriptor = clearDescriptor;
     EnqueueCommand(bufferInOut, clearMainTarget);
 
-    passManager->doCustomPass(params, bufferInOut);
+    passManager->doCustomPass(_reflectionCam, params, bufferInOut);
 
     if (_blurReflections) {
         RenderTarget& reflectTarget = renderParams._context.renderTargetPool().renderTarget(renderParams._renderTarget);
@@ -510,8 +507,8 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
 }
 
 void WaterPlane::updatePlaneEquation(const SceneGraphNode* sgn, Plane<F32>& plane, const bool reflection, const F32 offset) const {
-    const F32 waterLevel = sgn->get<TransformComponent>()->getPosition().y * (reflection ? -1.f : 1.f);
-    const Quaternion<F32>& orientation = sgn->get<TransformComponent>()->getOrientation();
+    const F32 waterLevel = sgn->get<TransformComponent>()->getWorldPosition().y * (reflection ? -1.f : 1.f);
+    const Quaternion<F32>& orientation = sgn->get<TransformComponent>()->getWorldOrientation();
 
     plane.set(Normalized(vec3<F32>(orientation * (reflection ? WORLD_Y_AXIS : WORLD_Y_NEG_AXIS))),  offset + waterLevel);
 }
@@ -529,9 +526,9 @@ void WaterPlane::saveToXML(boost::property_tree::ptree& pt) const {
 }
 
 void WaterPlane::loadFromXML(const boost::property_tree::ptree& pt) {
-    _dimensions.width = pt.get<U16>("dimensions.<xmlattr>.width", 500u);
-    _dimensions.height = pt.get<U16>("dimensions.<xmlattr>.length", 500u);
-    _dimensions.depth = pt.get<U16>("dimensions.<xmlattr>.depth", 500u);
+    _dimensions.width = pt.get<U16>("dimensions.<xmlattr>.width", _dimensions.width);
+    _dimensions.height = pt.get<U16>("dimensions.<xmlattr>.length", _dimensions.height);
+    _dimensions.depth = pt.get<U16>("dimensions.<xmlattr>.depth", _dimensions.depth);
 
     SceneNode::loadFromXML(pt);
 }

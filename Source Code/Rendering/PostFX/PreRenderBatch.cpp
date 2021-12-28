@@ -232,17 +232,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         toneMapAdaptive.propertyDescriptor(toneMapAdaptiveDescriptor);
 
         _toneMapAdaptive = CreateResource<ShaderProgram>(_resCache, toneMapAdaptive, loadTasks);
-
-
-        ShaderProgramDescriptor applySSAOSSRDescriptor{};
-        fragModule._variant = "Apply.FOG.SSAO.SSR";
-        applySSAOSSRDescriptor._modules.push_back(vertModule);
-        applySSAOSSRDescriptor._modules.push_back(fragModule);
-
-        ResourceDescriptor applySSAOSSR("toneMap.Apply.FOG.SSAO.SSR");
-        applySSAOSSR.waitForReady(false);
-        applySSAOSSR.propertyDescriptor(applySSAOSSRDescriptor);
-        _applySSAOSSR = CreateResource<ShaderProgram>(_resCache, applySSAOSSR, loadTasks);
     }
     {
         ShaderModuleDescriptor computeModule = {};
@@ -451,95 +440,111 @@ void PreRenderBatch::onFilterToggle(const FilterType filter, const bool state) {
     }
 }
 
-void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::CommandBuffer& bufferInOut) {
-    static Pipeline* pipelineLumCalcHistogram = nullptr, * pipelineLumCalcAverage = nullptr, * pipelineToneMap = nullptr, * pipelineToneMapAdaptive = nullptr;
-    const auto& depthAtt = screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
-    static GFX::BindPipelineCommand s_applySSAOSSRbindPipelineCmd{};
-    static GFX::DrawCommand s_drawCmd{};
-
-    {
-        static GFX::BeginDebugScopeCommand s_beginDebugScope{ "PostFX: Linearise depth buffer" };
-        static GFX::ClearRenderTargetCommand s_clearFXDataCmd{};
-        static GFX::BeginRenderPassCommand s_beginRenderPassCmd{};
-        static GFX::BindPipelineCommand s_bindPipelineCmd{};
-        static GFX::BindDescriptorSetsCommand s_bindDescriptorSetCmd{};
-        static GFX::SendPushConstantsCommand s_pushConstantsCmd{};
-
-        static bool s_commandsInit = false;
-        if (!s_commandsInit) {
-            s_commandsInit = true;
-
-            s_clearFXDataCmd._target = { RenderTargetUsage::POSTFX_DATA };
-            s_clearFXDataCmd._descriptor.clearDepth(false);
-            s_clearFXDataCmd._descriptor.clearColours(true);
-            s_clearFXDataCmd._descriptor.resetToDefault(true);
-
-            s_beginRenderPassCmd._name = "LINEARISE_DEPTH_BUFFER";
-            s_beginRenderPassCmd._target = { RenderTargetUsage::POSTFX_DATA };
-
-            RenderStateBlock blueChannelOnly = RenderStateBlock::get(_context.get2DStateBlock());
-            blueChannelOnly.setColourWrites(false, true, false, false);
-            PipelineDescriptor pipelineDescriptor = {};
-            pipelineDescriptor._stateHash = blueChannelOnly.getHash();
-            pipelineDescriptor._shaderProgramHandle = _lineariseDepthBuffer->getGUID();
-            s_bindPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-
-            pipelineDescriptor._stateHash = _context.get2DStateBlock();
-            pipelineDescriptor._shaderProgramHandle = _applySSAOSSR->getGUID();
-            s_applySSAOSSRbindPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-
-            GenericDrawCommand triangleCmd = {};
-            triangleCmd._primitiveType = PrimitiveType::TRIANGLES;
-            triangleCmd._drawCount = 1;
-            s_drawCmd._drawCommands = { { triangleCmd }};
+void PreRenderBatch::prePass(const CameraSnapshot& cameraSnapshot, const U32 filterStack, GFX::CommandBuffer& bufferInOut) {
+    for (OperatorBatch& batch : _operators) {
+        for (auto& op : batch) {
+            op->prepare(bufferInOut);
         }
+    }
 
-        if (pipelineLumCalcHistogram == nullptr) {
-            const size_t stateHash = _context.get2DStateBlock();
-            pipelineLumCalcHistogram = _context.newPipeline({
-                stateHash,
-                _createHistogram->getGUID()
-            });
+    { //Linearise depth buffer
+        GFX::ClearRenderTargetCommand clearLinearDepthCmd{};
+        clearLinearDepthCmd._target = { RenderTargetUsage::LINEAR_DEPTH };
+        clearLinearDepthCmd._descriptor.clearDepth(false);
+        clearLinearDepthCmd._descriptor.clearColours(true);
+        clearLinearDepthCmd._descriptor.resetToDefault(true);
 
-            pipelineLumCalcAverage = _context.newPipeline({
-                    stateHash,
-                    _averageHistogram->getGUID()
-                });
+        GFX::BeginRenderPassCommand beginRenderPassCmd{};
+        beginRenderPassCmd._name = "LINEARISE_DEPTH_BUFFER";
+        beginRenderPassCmd._target = { RenderTargetUsage::LINEAR_DEPTH };
 
-            pipelineToneMapAdaptive = _context.newPipeline({
-                    stateHash,
-                    _toneMapAdaptive->getGUID()
-                });
+        PipelineDescriptor pipelineDescriptor = {};
+        pipelineDescriptor._stateHash = _context.get2DStateBlock();
+        pipelineDescriptor._shaderProgramHandle = _lineariseDepthBuffer->getGUID();
+        GFX::BindPipelineCommand bindPipelineCmd{};
+        bindPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-            pipelineToneMap = _context.newPipeline({
-                    stateHash,
-                    _toneMap->getGUID()
-                });
+        GenericDrawCommand triangleCmd = {};
+        triangleCmd._primitiveType = PrimitiveType::TRIANGLES;
+        triangleCmd._drawCount = 1;
 
-            for (U8 i = 0u; i < to_U8(EdgeDetectionMethod::COUNT); ++i) {
-                _edgeDetectionPipelines[i] = _context.newPipeline({
-                    stateHash,
-                    _edgeDetection[i]->getGUID()
-                });
-            }
-        }
+        GFX::DrawCommand drawCmd{};
+        drawCmd._drawCommands = { { triangleCmd } };
 
-        GFX::EnqueueCommand(bufferInOut, s_beginDebugScope);
-        GFX::EnqueueCommand(bufferInOut, s_clearFXDataCmd);
-        GFX::EnqueueCommand(bufferInOut, s_beginRenderPassCmd);
-        GFX::EnqueueCommand(bufferInOut, s_bindPipelineCmd);
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: Linearise depth buffer";
+        GFX::EnqueueCommand(bufferInOut, clearLinearDepthCmd);
+        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
+        GFX::EnqueueCommand(bufferInOut, bindPipelineCmd);
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
 
-        s_bindDescriptorSetCmd._set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
-        GFX::EnqueueCommand(bufferInOut, s_bindDescriptorSetCmd);
+        const RTAttachment& depthAtt = screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
+        set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
 
-        s_pushConstantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
-        GFX::EnqueueCommand(bufferInOut, s_pushConstantsCmd);
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
-        GFX::EnqueueCommand(bufferInOut, s_drawCmd);
-
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(bufferInOut, drawCmd);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
+
+    if (BitCompare(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS))) {
+        GFX::ComputeMipMapsCommand computeMipMapsCommand{};
+        computeMipMapsCommand._texture = _screenCopyPreToneMap._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
+        GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
+    }
+
+    for (auto& op : _operators[to_base(FilterSpace::FILTER_SPACE_HDR)]) {
+        if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
+            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
+            const bool swapTargets = op->execute(cameraSnapshot, _screenCopyPreToneMap, getOutput(true), bufferInOut);
+            DIVIDE_ASSERT(!swapTargets, "PreRenderBatch::prePass: Swap render target request detected during prePass!");
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+        }
+    }
+
+    // Always bind these even if we haven't ran the appropriate operatos!
+    const RTAttachment& ssrDataAtt = _context.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SSR_RESULT)).getAttachment(RTAttachmentType::Colour, 0);
+    const RTAttachment& ssaoDataAtt = _context.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SSAO_RESULT)).getAttachment(RTAttachmentType::Colour, 0u);
+
+    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+    set._textureData.add(TextureEntry{ ssrDataAtt.texture()->data(),  ssrDataAtt.samplerHash(),  TextureUsage::SSR_SAMPLE });
+    set._textureData.add(TextureEntry{ ssaoDataAtt.texture()->data(), ssaoDataAtt.samplerHash(), TextureUsage::SSAO_SAMPLE });
+}
+
+void PreRenderBatch::execute(const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut) {
+    static Pipeline* pipelineLumCalcHistogram = nullptr, * pipelineLumCalcAverage = nullptr, * pipelineToneMap = nullptr, * pipelineToneMapAdaptive = nullptr;
+
+    if (pipelineLumCalcHistogram == nullptr) {
+        const size_t stateHash = _context.get2DStateBlock();
+        pipelineLumCalcHistogram = _context.newPipeline({
+            stateHash,
+            _createHistogram->getGUID()
+        });
+
+        pipelineLumCalcAverage = _context.newPipeline({
+                stateHash,
+                _averageHistogram->getGUID()
+            });
+
+        pipelineToneMapAdaptive = _context.newPipeline({
+                stateHash,
+                _toneMapAdaptive->getGUID()
+            });
+
+        pipelineToneMap = _context.newPipeline({
+                stateHash,
+                _toneMap->getGUID()
+            });
+
+        for (U8 i = 0u; i < to_U8(EdgeDetectionMethod::COUNT); ++i) {
+            _edgeDetectionPipelines[i] = _context.newPipeline({
+                stateHash,
+                _edgeDetection[i]->getGUID()
+            });
+        }
+    }
+
+    
     _screenRTs._swappedHDR = _screenRTs._swappedLDR = false;
     _toneMapParams._width = screenRT()._rt->getWidth();
     _toneMapParams._height = screenRT()._rt->getHeight();
@@ -616,18 +621,13 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_IMAGE) | to_base(MemoryBarrierType::SHADER_STORAGE) });
     }
 
-    if (_needScreenCopy) {
-        GFX::ComputeMipMapsCommand computeMipMapsCommand{};
-        computeMipMapsCommand._texture = _screenCopyPreToneMap._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
-        GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
+    // We handle SSR between the Pre and Main render passes
+    if (BitCompare(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS))) {
+        ClearBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS));
     }
-
-    // Execute all HDR based operators that need to loop back to the screen target (SSAO, SSR, etc)
-    bool autoSSR = false;
-    if (!BitCompare(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS))) {
-        // We need at least environment mapped reflections if we decided to disable SSR
-        autoSSR = true;
-        SetBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS));
+    // We handle SSAO between the Pre and Main render passes
+    if (BitCompare(filterStack, 1u << to_U32(FilterType::FILTER_SS_AMBIENT_OCCLUSION))) {
+        ClearBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_AMBIENT_OCCLUSION));
     }
 
     OperatorBatch& hdrBatch       = _operators[to_base(FilterSpace::FILTER_SPACE_HDR)];
@@ -638,7 +638,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
     for (auto& op : hdrBatch) {
         if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
-            if (op->execute(camera, getInput(true), getOutput(true), bufferInOut)) {
+            if (op->execute(cameraSnapshot, getInput(true), getOutput(true), bufferInOut)) {
                 _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
             }
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -646,75 +646,31 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
     }
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
-    if (autoSSR) {
-        ClearBit(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS));
-    }
-
-    { // Apply HDR batch to main target ... somehow
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{"PostFX: Apply SSAO and SSR"});
-
-        GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-        renderPassCmd->_name = "APPLY_SSAO_SSR";
-        renderPassCmd->_target = getOutput(true)._targetID;
-
-        GFX::EnqueueCommand(bufferInOut, s_applySSAOSSRbindPipelineCmd);
-
-        const auto& screenAtt = getInput(true)._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-        const TextureData& screenData = screenAtt.texture()->data();
-
-        RenderTarget& fxDataRT = _context.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::POSTFX_DATA));
-        const auto& fxDataAtt = fxDataRT.getAttachment(RTAttachmentType::Colour, 0);
-        const TextureData& fxData = fxDataAtt.texture()->data();
-
-        RenderTarget& ssrDataRT = _context.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SSR_RESULT));
-        const auto& ssrDataAtt = ssrDataRT.getAttachment(RTAttachmentType::Colour, 0);
-        const TextureData& ssrData = ssrDataAtt.texture()->data();
-
-        const auto& materialAtt = screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
-        const TextureData& materialData = materialAtt.texture()->data();
-        
-        const TextureData& depthTexData = depthAtt.texture()->data();
-
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._textureData.add(TextureEntry{ screenData,   screenAtt.samplerHash(),   TextureUsage::UNIT0 });
-        set._textureData.add(TextureEntry{ fxData,       fxDataAtt.samplerHash(),   TextureUsage::OPACITY });
-        set._textureData.add(TextureEntry{ ssrData,      ssrDataAtt.samplerHash(),  TextureUsage::PROJECTION });
-        set._textureData.add(TextureEntry{ materialData, materialAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
-        set._textureData.add(TextureEntry{ depthTexData, depthAtt.samplerHash(),    TextureUsage::DEPTH });
-
-        PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants;
-        constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, GetInverse(camera->projectionMatrix()));
-        constants.set(_ID("invViewMatrix"), GFX::PushConstantType::MAT4, camera->worldMatrix());
-        constants.set(_ID("cameraPosition"), GFX::PushConstantType::VEC3, camera->getEye());
-        constants.set(_ID("enableFog"), GFX::PushConstantType::BOOL, _parent.context().config().rendering.enableFog);
-
-        GFX::EnqueueCommand(bufferInOut, s_drawCmd);
-
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-
-        _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
-    }
-
     // Execute all HDR based operators that DO NOT need to loop back to the screen target (Bloom, DoF, etc)
     for (auto& op : hdrBatchPostSS) {
         if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute HDR (2) operator [ %s ]", PostFX::FilterName(op->operatorType())).c_str() });
-            if (op->execute(camera, getInput(true), getOutput(true), bufferInOut)) {
+            if (op->execute(cameraSnapshot, getInput(true), getOutput(true), bufferInOut)) {
                 _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
             }
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
     }
 
-    if (_needScreenCopy) { // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
-        GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
-        blitScreenColourCmd._source = getInput(true)._targetID;
-        blitScreenColourCmd._destination = _screenCopyPreToneMap._targetID;
-        blitScreenColourCmd._blitColours[0].set(to_U16(GFXDevice::ScreenTargets::ALBEDO), 0u, 0u, 0u);
-        GFX::EnqueueCommand(bufferInOut, blitScreenColourCmd);
-    }
-    
+    // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
+    GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
+    blitScreenColourCmd._source = getInput(true)._targetID;
+    blitScreenColourCmd._destination = _screenCopyPreToneMap._targetID;
+    blitScreenColourCmd._blitColours[0].set(to_U16(GFXDevice::ScreenTargets::ALBEDO), 0u, 0u, 0u);
+    GFX::EnqueueCommand(bufferInOut, blitScreenColourCmd);
+
+    GenericDrawCommand triangleCmd = {};
+    triangleCmd._primitiveType = PrimitiveType::TRIANGLES;
+    triangleCmd._drawCount = 1;
+
+    GFX::DrawCommand drawCmd{};
+    drawCmd._drawCommands = { { triangleCmd } };
+
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
         static size_t lumaSamplerHash = 0u;
         if (lumaSamplerHash == 0u) {
@@ -749,8 +705,8 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         _toneMapConstantsCmd._constants.set(_ID("skipToneMapping"),      GFX::PushConstantType::BOOL, _context.materialDebugFlag() != MaterialDebugFlag::COUNT);
         GFX::EnqueueCommand(bufferInOut, _toneMapConstantsCmd);
 
-        GFX::EnqueueCommand(bufferInOut, s_drawCmd);
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(bufferInOut, drawCmd);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
         _screenRTs._swappedLDR = !_screenRTs._swappedLDR;
@@ -777,9 +733,9 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
         
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("dvd_edgeThreshold"), GFX::PushConstantType::FLOAT, edgeDetectionThreshold());
 
-        GFX::EnqueueCommand(bufferInOut, s_drawCmd);
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(bufferInOut, drawCmd);
 
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
     
@@ -787,7 +743,7 @@ void PreRenderBatch::execute(const Camera* camera, U32 filterStack, GFX::Command
     for (auto& op : ldrBatch) {
         if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute LDR operator [ %s ]", PostFX::FilterName(op->operatorType())).c_str() });
-            if (op->execute(camera, getInput(false), getOutput(false), bufferInOut)) {
+            if (op->execute(cameraSnapshot, getInput(false), getOutput(false), bufferInOut)) {
                 _screenRTs._swappedLDR = !_screenRTs._swappedLDR;
             }
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);

@@ -71,6 +71,7 @@ namespace {
         F32 edgeThreshold = batch.edgeDetectionThreshold();
         ImGui::AlignTextToFramePadding();
         ImGui::Text("Edge Threshold: "); ImGui::SameLine();
+
         ImGui::PushItemWidth(170);
         {
             if (ImGui::SliderFloat("##hidelabel", &edgeThreshold, 0.01f, 1.0f)) {
@@ -78,6 +79,7 @@ namespace {
             }
         }
         ImGui::PopItemWidth();
+
         if (ImGui::CollapsingHeader("Fog Settings")) {
             bool sceneChanged = false;
             SceneManager* sceneManager = context().kernel().sceneManager();
@@ -109,7 +111,7 @@ namespace {
             {
                 FColour3 fogColour = activeSceneState->renderState().fogDetails()._colourAndDensity.rgb;
                 EditorComponentField tempField = {};
-                tempField._name = "Fog Colour";
+                tempField._name = "[Fog Colour]";
                 tempField._basicType = GFX::PushConstantType::FCOLOUR3;
                 tempField._type = EditorComponentFieldType::PUSH_TYPE;
                 tempField._readOnly = false;
@@ -121,7 +123,9 @@ namespace {
                     details._colourAndDensity.rgb = *static_cast<const FColour3*>(colour);
                     activeSceneState->renderState().fogDetails(details);
                 };
+                Util::PushNarrowLabelWidth();
                 sceneChanged = Util::colourInput3(_parent, tempField) || sceneChanged;
+                Util::PopNarrowLabelWidth();
             }
 
             if (sceneChanged) {

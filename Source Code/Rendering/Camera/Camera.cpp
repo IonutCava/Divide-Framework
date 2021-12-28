@@ -29,7 +29,9 @@ Camera::Camera(const Str256& name, const CameraType& type, const vec3<F32>& eye)
     _data._FoV = 60.0f;
     _data._aspectRatio = 1.77f;
     _data._viewMatrix.identity();
+    _data._invViewMatrix.identity();
     _data._projectionMatrix.identity();
+    _data._invProjectionMatrix.identity();
     _data._zPlanes.set(0.1f, 1000.0f);
     _data._orientation.identity();
 }
@@ -203,7 +205,7 @@ bool Camera::updateProjection() noexcept {
                                                 _data._zPlanes.x,
                                                 _data._zPlanes.y);
         }
-
+        _data._projectionMatrix.getInverse(_data._invProjectionMatrix);
         _frustumDirty = true;
         _projectionDirty = false;
         return true;
@@ -244,6 +246,7 @@ const mat4<F32>& Camera::setProjection(const vec4<F32>& rect, const vec2<F32>& z
 
 const mat4<F32>& Camera::setProjection(const mat4<F32>& projection, const vec2<F32>& zPlanes, const bool isOrtho) noexcept {
     _data._projectionMatrix.set(projection);
+    _data._projectionMatrix.getInverse(_data._invProjectionMatrix);
     _data._zPlanes = zPlanes;
     _projectionDirty = false;
     _frustumDirty = true;
@@ -296,7 +299,7 @@ bool Camera::updateViewMatrix() noexcept {
         _data._viewMatrix.reflect(_reflectionPlane);
         _data._eye.set(mat4<F32>(_reflectionPlane).transformNonHomogeneous(_data._eye));
     }
-
+    _data._viewMatrix.getInverse(_data._invViewMatrix);
     _viewMatrixDirty = false;
     _frustumDirty = true;
 

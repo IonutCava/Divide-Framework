@@ -186,7 +186,7 @@ namespace Divide {
 
                     if (modifierPressed || sceneManager->resetSelection(0, false)) {
                         if (!wasSelected || parentSelected || childrenSelected) {
-                            sceneManager->setSelected(0, { sgn }, !wasSelected);
+                            sceneManager->setSelected(0, { sgn }, wasSelected);
                         }
                         Attorney::EditorSolutionExplorerWindow::setSelectedCamera(_parent, nullptr);
                     }
@@ -480,7 +480,7 @@ namespace Divide {
                 _childNode->setParent(_tempParent, true);
                 _childNode = nullptr;
                 _tempParent = nullptr;
-
+                Attorney::EditorGeneralWidget::registerUnsavedSceneChanges(_context.editor());
                 ImGui::CloseCurrentPopup();
                 _reparentConfirmRequested = false;
             }

@@ -677,7 +677,6 @@ void Vegetation::getStats(U32& maxGrassInstances, U32& maxTreeInstances) const {
 
 void Vegetation::occlusionCull(const RenderStagePass& stagePass,
                                const Texture_ptr& depthBuffer,
-                               const Camera& camera,
                                GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
                                GFX::CommandBuffer& bufferInOut) const {
     if (!s_buffersBound || !renderState().drawState(stagePass)) {
@@ -719,7 +718,7 @@ void Vegetation::occlusionCull(const RenderStagePass& stagePass,
     }
 
 
-    SceneNode::occlusionCull(stagePass, depthBuffer, camera, HIZPushConstantsCMDInOut, bufferInOut);
+    SceneNode::occlusionCull(stagePass, depthBuffer, HIZPushConstantsCMDInOut, bufferInOut);
 }
 
 void Vegetation::sceneUpdate(const U64 deltaTimeUS,
@@ -784,7 +783,6 @@ void Vegetation::sceneUpdate(const U64 deltaTimeUS,
 
 void Vegetation::buildDrawCommands(SceneGraphNode* sgn,
                                    const RenderStagePass& renderStagePass,
-                                   const Camera& crtCamera,
                                    RenderPackage& pkgInOut) {
 
     const U16 partitionID = s_lodPartitions[0];
@@ -808,7 +806,7 @@ void Vegetation::buildDrawCommands(SceneGraphNode* sgn,
         prevID = id;
     }
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
 }
 
 namespace {

@@ -72,27 +72,21 @@ constexpr F32 Specular_Milk = 0.277f;
 constexpr F32 Specular_Skin = 0.35f;
 
 
-constexpr U8 g_TransparentSlots[] = {
-   to_base(TextureUsage::UNIT0),
-   to_base(TextureUsage::OPACITY)
-};
-
-constexpr U8 g_ReflectRefractSlots[] = {
-    to_base(TextureUsage::REFLECTION_PLANAR),
-    to_base(TextureUsage::REFLECTION_CUBE),
-    to_base(TextureUsage::REFRACTION_PLANAR),
-    to_base(TextureUsage::REFRACTION_CUBE),
-};
-
-constexpr U8 g_ExtraSlots[] = {
+constexpr U8 g_materialTextureSlots[] = {
+    to_base(TextureUsage::UNIT0),
+    to_base(TextureUsage::UNIT1),
+    to_base(TextureUsage::OPACITY),
     to_base(TextureUsage::NORMALMAP),
-    to_base(TextureUsage::HEIGHTMAP),
-    to_base(TextureUsage::SPECULAR),
     to_base(TextureUsage::METALNESS),
     to_base(TextureUsage::ROUGHNESS),
     to_base(TextureUsage::OCCLUSION),
     to_base(TextureUsage::EMISSIVE),
-    to_base(TextureUsage::UNIT1),
+    to_base(TextureUsage::HEIGHTMAP),
+    to_base(TextureUsage::SPECULAR),
+    to_base(TextureUsage::REFLECTION_PLANAR),
+    to_base(TextureUsage::REFLECTION_CUBE),
+    to_base(TextureUsage::REFRACTION_PLANAR),
+    to_base(TextureUsage::REFRACTION_CUBE),
     to_base(TextureUsage::PROJECTION)
 };
 
@@ -165,7 +159,6 @@ class Material final : public CachedResource {
     void setTextureOperation(TextureUsage textureUsageSlot,
                              TextureOperation op,
                              bool applyToAllInstances = false);
-    void textureUseForDepth(TextureUsage slot, bool state, bool applyToInstances = false);
     void hardwareSkinning(bool state, bool applyToInstances = false);
     void shadingMode(ShadingMode mode, bool applyToInstances = false);
     void doubleSided(bool state, bool applyToInstances = false);
@@ -329,7 +322,6 @@ class Material final : public CachedResource {
     mutable SharedMutex _textureLock{};
     std::array<Texture_ptr, to_base(TextureUsage::COUNT)> _textures = {};
     std::array<size_t, to_base(TextureUsage::COUNT)> _samplers = {};
-    std::array<bool, to_base(TextureUsage::COUNT)> _textureUseForDepth = {};
 
     static SamplerAddress s_defaultTextureAddress;
     std::array<SamplerAddress, to_base(TextureUsage::COUNT)> _textureAddresses = {};

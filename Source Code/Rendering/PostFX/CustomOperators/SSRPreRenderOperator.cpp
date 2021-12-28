@@ -99,44 +99,41 @@ void SSRPreRenderOperator::reshape(const U16 width, const U16 height) {
     };
 }
 
-bool SSRPreRenderOperator::execute(const Camera* camera, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
-    const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+void SSRPreRenderOperator::prepare(GFX::CommandBuffer& bufferInOut) {
+    if (_stateChanged && !_enabled) {
+        RTClearDescriptor clearDescriptor = {};
+        clearDescriptor.clearDepth(true);
+        clearDescriptor.clearColours(true);
+        clearDescriptor.resetToDefault(true);
 
-    // ToDo: Cache these textures and their mipcount somehow -Ionut
-    const RTAttachment& prefiltered = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
-    const RTAttachment& irradiance = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
-    const RTAttachment& brdfLut = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
-
-    if (!prefiltered.texture() && !irradiance.texture()) {
-        // We need some sort of environment mapping here (at least for now)
-        return false;
+        GFX::ClearRenderTargetCommand clearMainTarget = {};
+        clearMainTarget._target = { RenderTargetUsage::SSR_RESULT };
+        clearMainTarget._descriptor = clearDescriptor;
+        EnqueueCommand(bufferInOut, clearMainTarget);
     }
 
-    const vec4<U32> mipCounts {
-        screenAtt.texture()->mipCount(),
-        prefiltered.texture()->mipCount(),
-        irradiance.texture()->mipCount(),
-        brdfLut.texture()->mipCount()
-    };
+    _stateChanged = false;
+}
 
-    _constantsCmd._constants.set(_ID("projToPixel"), GFX::PushConstantType::MAT4, camera->projectionMatrix() * _projToPixelBasis);
-    _constantsCmd._constants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, camera->projectionMatrix());
-    _constantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, GetInverse(camera->projectionMatrix()));
-    _constantsCmd._constants.set(_ID("invViewMatrix"), GFX::PushConstantType::MAT4, camera->worldMatrix());
-    _constantsCmd._constants.set(_ID("mipCounts"), GFX::PushConstantType::UVEC4, mipCounts);
-    _constantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
-    _constantsCmd._constants.set(_ID("ssrEnabled"), GFX::PushConstantType::BOOL, _enabled);
+bool SSRPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+    assert(_enabled);
 
-    const auto& normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
-    const auto& depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
+    const RTAttachment& screenAtt   = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+    const RTAttachment& normalsAtt  = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
+    const RTAttachment& depthAtt    = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
 
     const TextureData screenTex = screenAtt.texture()->data();
     const TextureData normalsTex = normalsAtt.texture()->data();
     const TextureData depthTex = depthAtt.texture()->data();
 
-    /// We need mipmaps for roughness based LoD lookup
-    GFX::ComputeMipMapsCommand* mipCmd = GFX::EnqueueCommand<GFX::ComputeMipMapsCommand>(bufferInOut);
-    mipCmd->_texture = screenAtt.texture().get();
+    _constantsCmd._constants.set(_ID("projToPixel"), GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix * _projToPixelBasis);
+    _constantsCmd._constants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
+    _constantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
+    _constantsCmd._constants.set(_ID("invViewMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invViewMatrix);
+    _constantsCmd._constants.set(_ID("prevViewProjectionMatrix"), GFX::PushConstantType::MAT4, _context.getPreviousViewProjection());
+    _constantsCmd._constants.set(_ID("maxScreenMips"), GFX::PushConstantType::UINT, screenAtt.texture()->mipCount());
+    _constantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+    _constantsCmd._constants.set(_ID("ssrEnabled"), GFX::PushConstantType::BOOL, _enabled);
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });

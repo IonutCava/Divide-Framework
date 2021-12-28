@@ -176,10 +176,10 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
     constexpr F32 iconSize = 16.f;
 
     if (!_fontTexture) {
-        TextureDescriptor texDescriptor(TextureType::TEXTURE_2D,
+        TextureDescriptor texDescriptor(TextureType::TEXTURE_2D_ARRAY,
                                         GFXImageFormat::RGBA,
                                         GFXDataFormat::UNSIGNED_BYTE);
-
+        texDescriptor.layerCount(1u);
         ResourceDescriptor resDescriptor("IMGUI_font_texture");
         resDescriptor.threaded(false);
         resDescriptor.propertyDescriptor(texDescriptor);
@@ -836,7 +836,7 @@ void Editor::infiniteGridScale(const F32 value) noexcept {
     _gridSettingsDirty = true;
 }
 
-void Editor::postRender(const Camera& camera, const RenderTargetID target, GFX::CommandBuffer& bufferInOut) {
+void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTargetID target, GFX::CommandBuffer& bufferInOut) {
     if (!sceneGizmoEnabled() && !infiniteGridEnabled()) {
         return;
     }
@@ -847,9 +847,9 @@ void Editor::postRender(const Camera& camera, const RenderTargetID target, GFX::
     beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 1, false);
     beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 2, false);
     beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, false);
-    GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ camera.snapshot() });
+    GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ cameraSnapshot });
 
-    if (infiniteGridEnabled() && _infiniteGridPrimitive && _isScenePaused) {
+    if (running() && infiniteGridEnabled() && _infiniteGridPrimitive && _isScenePaused) {
         _infiniteGridPrimitive->pipeline(*_infiniteGridPipeline);
         if (_gridSettingsDirty) {
             PushConstants constants{};
@@ -943,9 +943,11 @@ void Editor::postRender(const Camera& camera, const RenderTargetID target, GFX::
             // We need to transform the gizmo so that it always remains axis aligned
             // Create a world matrix using a look at function with the eye position
             // backed up from the camera's view direction
-            _axisGizmo->worldMatrix(mat4<F32>(-camera.getForwardDir() * 5,
+            const mat4<F32>& viewMatrix = cameraSnapshot._viewMatrix;
+
+            _axisGizmo->worldMatrix(mat4<F32>(-viewMatrix.getForwardVec() * 5,
                                                VECTOR3_ZERO,
-                                               camera.getUpDir()) * camera.worldMatrix());
+                                               viewMatrix.getUpVec()) * cameraSnapshot._invViewMatrix);
             bufferInOut.add(_axisGizmo->toCommandBuffer());
         } else if (_axisGizmo) {
             _context.gfx().destroyIMP(_axisGizmo);
@@ -1072,7 +1074,8 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, vec4<I32>(1, 1, 1, 1));
         pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::INT, 0);
         pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, vec2<F32>(0.0f, 1.0f));
-
+        pushConstants.set(_ID("flip"), GFX::PushConstantType::INT, 0);
+        pushConstants.set(_ID("layer"), GFX::PushConstantType::UINT, 0u);
         s_pushConstantsCommand._constants = pushConstants;
 
         s_blendCmd._blendProperties = BlendingProperties{
@@ -1620,6 +1623,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
         pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::INT, data._isDepthTexture ? 1 : 0);
         pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, data._depthRange);
         pushConstants.set(_ID("flip"), GFX::PushConstantType::INT, data._flip ? 1 : 0);
+        pushConstants.set(_ID("layer"), GFX::PushConstantType::UINT, data._arrayLayer);
 
         GFX::SendPushConstantsCommand pushConstantsCommand = {};
         pushConstantsCommand._constants = pushConstants;
@@ -1659,9 +1663,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
             if (IsArrayTexture(tex->descriptor().texType())) {
                 U16 arrayLayer = to_U16(data._arrayLayer > -1 ? data._arrayLayer : 0);
                 ImGui::Text("Layer: "); ImGui::SameLine(); ImGui::InputScalar("", ImGuiDataType_U16, &arrayLayer);
-                CLAMP(arrayLayer, to_U16(0), tex->descriptor().layerCount());
-                //ToDo: Implement array layer views
-                DIVIDE_UNEXPECTED_CALL();
+                data._arrayLayer = CLAMPED(arrayLayer, to_U16(0), tex->descriptor().layerCount());
             }
             ImGui::Text("R: ");  ImGui::SameLine(); ImGui::ToggleButton("R", &state[0]);
 
@@ -1853,6 +1855,12 @@ SceneEnvironmentProbePool* Editor::getActiveEnvProbePool() const noexcept {
 
 void Editor::teleportToNode(const SceneGraphNode* sgn) const {
     Attorney::SceneManagerCameraAccessor::moveCameraToNode(_context.kernel().sceneManager(), sgn);
+}
+
+void Editor::onRemoveComponent(const EditorComponent& comp) const {
+    for (DockedWindow* window : _dockedWindows) {
+        window->onRemoveComponent(comp);
+    }
 }
 
 void Editor::saveNode(const SceneGraphNode* sgn) const {

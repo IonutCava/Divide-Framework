@@ -50,7 +50,7 @@ class Renderer final : public PlatformContextComponent {
     Renderer(PlatformContext& context, ResourceCache* cache);
     ~Renderer();
 
-    void prepareLighting(RenderStage stage, const mat4<F32>& projectionMatrix, GFX::CommandBuffer& bufferInOut);
+    void prepareLighting(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);
 
     void idle() const;
 

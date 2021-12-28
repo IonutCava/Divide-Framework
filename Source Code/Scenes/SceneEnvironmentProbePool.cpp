@@ -19,6 +19,10 @@ namespace {
     SharedMutex s_queueLock;
     constexpr U16 s_IrradianceTextureSize = 64u;
     constexpr U16 s_LUTTextureSize = 128u;
+
+    eastl::queue<U16> s_computationQueue;
+    eastl::set<U16> s_computationSet;
+    U16 s_queuedLayer = 0u;
 }
 
 vector<DebugView_ptr> SceneEnvironmentProbePool::s_debugViews;
@@ -26,7 +30,6 @@ vector<Camera*> SceneEnvironmentProbePool::s_probeCameras;
 bool SceneEnvironmentProbePool::s_probesDirty = true;
 
 std::array<std::pair<bool, bool>, Config::MAX_REFLECTIVE_PROBES_PER_PASS> SceneEnvironmentProbePool::s_availableSlices;
-eastl::queue<std::pair<U8, bool>> SceneEnvironmentProbePool::s_queuedFaceRecomputation;
 RenderTargetHandle SceneEnvironmentProbePool::s_reflection;
 RenderTargetHandle SceneEnvironmentProbePool::s_prefiltered;
 RenderTargetHandle SceneEnvironmentProbePool::s_irradiance;
@@ -99,7 +102,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
         RTAttachmentDescriptors att = {
-            { environmentDescriptor, samplerHash, RTAttachmentType::Colour },
+            { environmentDescriptor, samplerHash, RTAttachmentType::Colour, 0u, DefaultColours::WHITE },
             { depthDescriptor, samplerHash, RTAttachmentType::Depth },
         };
 
@@ -115,7 +118,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         environmentDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
         RTAttachmentDescriptors att = {
-          { environmentDescriptor, samplerHash, RTAttachmentType::Colour },
+          { environmentDescriptor, samplerHash, RTAttachmentType::Colour, 0u, DefaultColours::WHITE },
         };
         RenderTargetDescriptor desc = {};
         desc._name = "PrefilteredEnvMap";
@@ -131,7 +134,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         TextureDescriptor environmentDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
         environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::AUTO);
         RTAttachmentDescriptors att = {
-          { environmentDescriptor, samplerHash, RTAttachmentType::Colour },
+          { environmentDescriptor, samplerHash, RTAttachmentType::Colour, 0u, DefaultColours::WHITE },
         };
         RenderTargetDescriptor desc = {};
         desc._name = "BrdfLUT";
@@ -261,20 +264,18 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
 
 void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut) {
     {
-        SharedLock<SharedMutex> r_lock(s_queueLock);
-        static U8 queuedLayer = 0u;
         static ComputationStages queuedStage = ComputationStages::COUNT;
 
-        if (queuedStage == ComputationStages::COUNT) {
-            if (!s_queuedFaceRecomputation.empty()) {
-                const auto [layer, highPriority] = s_queuedFaceRecomputation.front();
-                queuedLayer = layer;
-                queuedStage = ComputationStages::MIP_MAP_SOURCE;
-                s_queuedFaceRecomputation.pop();
-            }
+        SharedLock<SharedMutex> r_lock(s_queueLock);
+        if (queuedStage == ComputationStages::COUNT && !s_computationQueue.empty()) {
+            s_queuedLayer = s_computationQueue.front();
+            queuedStage = ComputationStages::MIP_MAP_SOURCE;
+            s_computationQueue.pop();
+            s_computationSet.erase(s_queuedLayer);
         }
+
         if (queuedStage != ComputationStages::COUNT) {
-            ProcessEnvironmentMapInternal(context, queuedLayer, queuedStage, bufferInOut);
+            ProcessEnvironmentMapInternal(context, s_queuedLayer, queuedStage, bufferInOut);
         }
     }
     if (s_lutTextureDirty) {
@@ -314,7 +315,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         set._textureData.add(TextureEntry{ brdfLut.texture()->data(), brdfLut.samplerHash(), TextureUsage::BRDF_LUT });
     }
 
-    if (!SkyLightNeedsRefresh()) {
+    if (!SkyLightNeedsRefresh() || s_queuedLayer == SkyProbeLayerIndex()) {
         return;
     }
 
@@ -326,7 +327,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
     RenderPassParams params = {};
     params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
-    params._stagePass = RenderStagePass(RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::CUBE), Config::MAX_REFLECTIVE_NODES_IN_VIEW + 0u);
+    params._stagePass = RenderStagePass(RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::CUBE), Config::MAX_REFLECTIVE_NODES_IN_VIEW + SkyProbeLayerIndex());
 
     ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
     ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES)));
@@ -346,9 +347,12 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
     SkyLightNeedsRefresh(false);
 }
 
-void SceneEnvironmentProbePool::ProcessEnvironmentMap(GFXDevice& context, const U16 layerID, const bool highPriority, GFX::CommandBuffer& bufferInOut) noexcept {
+void SceneEnvironmentProbePool::ProcessEnvironmentMap(GFXDevice& context, const U16 layerID, const bool highPriority, GFX::CommandBuffer& bufferInOut) {
     ScopedLock<SharedMutex> w_lock(s_queueLock);
-    s_queuedFaceRecomputation.push({ layerID, highPriority });
+    if (s_computationSet.insert(layerID).second) {
+        s_computationQueue.push(layerID);
+    }
+
 }
 
 void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context, const U16 layerID, ComputationStages& stage, GFX::CommandBuffer& bufferInOut) {
@@ -411,6 +415,7 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
             stage = ComputationStages::COUNT;
+            s_queuedLayer = 0u;
         }break;
     };
 }
@@ -494,18 +499,19 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     constants.set(_ID("layerIndex"), GFX::PushConstantType::UINT, to_U32(layerID));
     constants.set(_ID("cubeFace"), GFX::PushConstantType::UINT, to_U32(faceIndex));
 
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._textureData.add(TextureEntry{ sourceAtt.texture()->data(), sourceAtt.samplerHash(), 0u });
-    set._images.add(Image
+    Image destinationImage
     {
         destinationAtt.texture().get(),
         Image::Flag::WRITE,
-        false,
-        to_U8((layerID * 6) + faceIndex),
-        0u,
-        1u
-    });
+        false
+    };
+    destinationImage._layer = to_U8((layerID * 6) + faceIndex);
+    destinationImage._binding = 1u;
+    destinationImage._level = 0u;
 
+    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+    set._textureData.add(TextureEntry{ sourceAtt.texture()->data(), sourceAtt.samplerHash(), 0u });
+    set._images.add(destinationImage);
     const U32 groupsX = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     const U32 groupsY = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ groupsX, groupsY, 1 });
@@ -550,29 +556,42 @@ void SceneEnvironmentProbePool::unregisterProbe(const EnvironmentProbeComponent*
     }
 
     if (probe == _debugProbe) {
-        debugProbe(nullptr);
+        _debugProbe = nullptr;
     }
 }
 
+namespace {
+    constexpr I16 g_debugViewBase = 10;
+}
+
 void SceneEnvironmentProbePool::prepareDebugData() {
-    // Remove old views
-    if (!s_debugViews.empty()) {
-        for (const DebugView_ptr& view : s_debugViews) {
-            parentScene().context().gfx().removeDebugView(view.get());
+    const bool enableSkyLightDebug = DebuggingSkyLight();
+    const bool enableProbeDebugging = _debugProbe != nullptr;
+    const I16 skyLightGroupID = g_debugViewBase + SkyProbeLayerIndex();
+    const I16 probeID = enableProbeDebugging ? g_debugViewBase + _debugProbe->rtLayerIndex() : -1;
+
+    bool addSkyLightViews = true, addProbeViews = true;
+    for (const DebugView_ptr& view : s_debugViews) {
+        if (view->_groupID == skyLightGroupID) {
+            addSkyLightViews = false;
+            view->_enabled = enableSkyLightDebug;
+        } else if (enableProbeDebugging && view->_groupID == probeID) {
+            addProbeViews = false;
+            view->_enabled = true;
+        } else {
+            view->_enabled = false;
         }
-        s_debugViews.clear();
     }
 
-    debugSkyLight();
-    debugProbe(_debugProbe);
-
-    for (const DebugView_ptr& view : s_debugViews) {
-        parentScene().context().gfx().addDebugView(view);
+    if (enableSkyLightDebug && addSkyLightViews) {
+        createDebugView(SkyProbeLayerIndex());
+    }
+    if (enableProbeDebugging && addProbeViews) {
+        createDebugView(_debugProbe->rtLayerIndex());
     }
 }
 
 void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
-    constexpr I32 Base = 10;
     for (U32 i = 0u; i < 18u; ++i) {
         DebugView_ptr& probeView = s_debugViews.emplace_back(std::make_shared<DebugView>(to_I16(I16_MAX - layerIndex - i)));
         probeView->_cycleMips = true;
@@ -597,21 +616,9 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
         } else {
             probeView->_name = Util::StringFormat("Probe_%d_Reference_face_%d", layerIndex, i % 6u);
         }
-        probeView->_groupID = Base + layerIndex;
+        probeView->_groupID = g_debugViewBase + layerIndex;
         probeView->_enabled = true;
-    }
-}
-void SceneEnvironmentProbePool::debugProbe(EnvironmentProbeComponent* probe) {
-    _debugProbe = probe;
-    // Add new views if needed
-    if (probe != nullptr) {
-        createDebugView(probe->rtLayerIndex());
-    }
-}
-
-void SceneEnvironmentProbePool::debugSkyLight() {
-    if (DebuggingSkyLight()) {
-        createDebugView(SkyProbeLayerIndex());
+        parentScene().context().gfx().addDebugView(probeView);
     }
 }
 

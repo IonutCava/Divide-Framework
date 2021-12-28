@@ -1,12 +1,6 @@
 #ifndef _LIGHTING_DEFAULTS_VERT_
 #define _LIGHTING_DEFAULTS_VERT_
 
-#if defined(DEPTH_PASS)
-
-#define computeLightVectors(data)
-
-#else //DEPTH_PASS
-
 #if defined(COMPUTE_TBN) || defined(NEED_TANGENT)
 mat3 computeTBN(in mat3 normalMatrixW) {
     const vec3 N = normalize(normalMatrixW * dvd_Normal);
@@ -36,7 +30,5 @@ void computeLightVectors(in NodeTransformData data) {
                               dvd_Normal);
 #endif // COMPUTE_TBN
 }
-
-#endif  // DEPTH_PASS
 
 #endif //_LIGHTING_DEFAULTS_VERT_

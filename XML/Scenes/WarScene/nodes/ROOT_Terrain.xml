@@ -30,7 +30,7 @@
         <metallic>0</metallic>
         <roughness>0.800000012</roughness>
         <doubleSided>false</doubleSided>
-        <receivesShadows>true</receivesShadows>
+        <receivesShadows>false</receivesShadows>
         <ignoreTexDiffuseAlpha>false</ignoreTexDiffuseAlpha>
         <bumpMethod>NONE</bumpMethod>
         <parallaxFactor>0.300000012</parallaxFactor>
@@ -142,7 +142,7 @@
                 <colourWrite r="true" g="true" b="true" a="true"/>
                 <zBias>0</zBias>
                 <zUnits>0</zUnits>
-                <zFunc>LEQUAL</zFunc>
+                <zFunc>EQUAL</zFunc>
                 <tessControlPoints>3</tessControlPoints>
                 <cullMode>CW/BACK</cullMode>
                 <fillMode>Solid</fillMode>

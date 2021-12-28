@@ -116,7 +116,7 @@ public:
         std::array<NodeIndirectionData, MAX_INDIRECTION_ENTRIES> _gpuData;
         std::array<bool, MAX_INDIRECTION_ENTRIES> _freeList{};
     };
-
+    
     template<typename DataContainer>
     struct ExecutorBuffer {
         U32 _bufferIndex = 0u;
@@ -132,10 +132,10 @@ public:
 public:
     explicit RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, RenderStage stage);
 
-    void doCustomPass(RenderPassParams params, GFX::CommandBuffer& bufferInOut);
+    void doCustomPass(Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut);
     void postInit(const ShaderProgram_ptr& OITCompositionShader, 
                   const ShaderProgram_ptr& OITCompositionShaderMS,
-                  const ShaderProgram_ptr& ResolveScreenTargetsShaderMS) const;
+                  const ShaderProgram_ptr& ResolveGBufferShaderMS) const;
 
     static void OnStartup(const GFXDevice& gfx);
     static void OnShutdown();
@@ -143,20 +143,23 @@ public:
     static void PostRender();
 
 private:
+    ShaderBuffer* getCommandBufferForStagePass(const RenderStagePass& stagePass);
+
     // Returns false if we skipped the pre-pass step
     void prePass(const VisibleNodeList<>& nodes,
                  const RenderPassParams& params,
+                 const CameraSnapshot& cameraSnapshot,
                  GFX::CommandBuffer& bufferInOut);
 
     void occlusionPass(const VisibleNodeList<>& nodes,
                        U32 visibleNodeCount,
                        const RenderStagePass& stagePass,
-                       const Camera& camera,
                        const RenderTargetID& sourceDepthBuffer,
                        const RenderTargetID& targetDepthBuffer,
                        GFX::CommandBuffer& bufferInOut) const;
     void mainPass(const VisibleNodeList<>& nodes,
                   const RenderPassParams& params,
+                  const CameraSnapshot& cameraSnapshot,
                   RenderTarget& target,
                   bool prePassExecuted,
                   bool hasHiZ,
@@ -164,20 +167,22 @@ private:
 
     void transparencyPass(const VisibleNodeList<>& nodes,
                           const RenderPassParams& params,
+                          const CameraSnapshot& cameraSnapshot,
                           GFX::CommandBuffer& bufferInOut);
 
     void woitPass(const VisibleNodeList<>& nodes,
                   const RenderPassParams& params,
+                  const CameraSnapshot& cameraSnapshot,
                   GFX::CommandBuffer& bufferInOut);
 
 
     void postRender(const RenderStagePass& stagePass,
-                    const Camera& camera,
                     RenderQueue& renderQueue,
                     GFX::CommandBuffer& bufferInOut) const;
 
     void prepareRenderQueues(const RenderPassParams& params,
                              const VisibleNodeList<>& nodes,
+                             const CameraSnapshot& cameraSnapshot,
                              bool transparencyPass,
                              RenderingOrder renderOrder = RenderingOrder::COUNT);
 
@@ -185,7 +190,7 @@ private:
                             const RenderBinType targetBin,
                             const RenderStagePass& stagePass,
                             const SceneRenderState& sceneRenderState,
-                            const Camera& cam);
+                            const CameraSnapshot& cameraSnapshot);
 
     void processVisibleNodeTransform(RenderingComponent* rComp,
                                      D64 interpolationFactor);
@@ -194,13 +199,23 @@ private:
     [[nodiscard]] U16 processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit);
 
     U16 buildDrawCommands(const RenderPassParams& params, bool doPrePass, bool doOITPass, GFX::CommandBuffer& bufferInOut);
-    U16 prepareNodeData(VisibleNodeList<>& nodes, const RenderPassParams& params, bool hasInvalidNodes, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut);
+    U16 prepareNodeData(VisibleNodeList<>& nodes,
+                        const RenderPassParams& params,
+                        const CameraSnapshot& cameraSnapshot,
+                        bool hasInvalidNodes,
+                        const bool doPrePass,
+                        const bool doOITPass,
+                        GFX::CommandBuffer& bufferInOut);
     void renderQueueToSubPasses(GFX::CommandBuffer& commandsInOut,
                                 RenderPackage::MinQuality qualityRequirement = RenderPackage::MinQuality::COUNT) const;
 
     [[nodiscard]] U32 renderQueueSize(RenderPackage::MinQuality qualityRequirement = RenderPackage::MinQuality::COUNT) const;
 
-    void resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const;
+    void resolveMainScreenTarget(const RenderPassParams& params,
+                                 bool resolveDepth,
+                                 bool resolveGBuffer,
+                                 bool resolveColourBuffer,
+                                 GFX::CommandBuffer& bufferInOut) const;
 
     [[nodiscard]] bool validateNodesForStagePass(VisibleNodeList<>& nodes, const RenderStagePass& stagePass);
     void parseTextureRange(RenderBin::SortedQueue& queue, const U32 start, const U32 end);
@@ -221,7 +236,7 @@ private:
     DrawCommandContainer _drawCommands{};
     RenderQueuePackages _renderQueuePackages{};
 
-    ShaderBuffer* _cmdBuffer = nullptr;
+    vector<ShaderBuffer*> _cmdBuffers;
 
     eastl::set<SamplerAddress> _uniqueTextureAddresses{};
 
@@ -230,7 +245,7 @@ private:
     static SamplerAddress s_defaultTextureSamplerAddress;
     static Pipeline* s_OITCompositionPipeline;
     static Pipeline* s_OITCompositionMSPipeline;
-    static Pipeline* s_ResolveScreenTargetsPipeline;
+    static Pipeline* s_ResolveGBufferPipeline;
 
     static ExecutorBuffer<BufferMaterialData> s_materialBuffer;
     static ExecutorBuffer<BufferTexturesData> s_texturesBuffer;

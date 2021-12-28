@@ -274,7 +274,7 @@
         bool showTooltip = false, copyToClipboard = false;;
         const char* parsedFormat = GetFormat(data_type, format, field._hexadecimal);
         bool ret = false;
-
+        ImGui::PushItemWidth(250);
         ret = ImGui::InputScalarN(Util::StringFormat("##%s_0", label).c_str(), data_type, (void*)mat._vec[0]._v, num_rows, step, step_fast, parsedFormat, flags);
         showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
         copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
@@ -291,6 +291,7 @@
                 copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
             }
         }
+        ImGui::PopItemWidth();
         if (field._readOnly) {
             PopReadOnly();
         }

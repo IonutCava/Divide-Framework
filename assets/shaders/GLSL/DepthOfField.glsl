@@ -45,8 +45,7 @@ changelog:
 -- Fragment
 
 layout(binding = TEXTURE_UNIT0) uniform sampler2D texScreen;
-// texGBufferExtra.g = linear depth
-layout(binding = TEXTURE_POST_FX_DATA) uniform sampler2D texGBufferExtra;
+layout(binding = TEXTURE_DEPTH) uniform sampler2D texLinearDepth;
 
 uniform vec2 size;
 // autofocus point on screen (0.0,0.0 - left lower corner, 1.0,1.0 - upper right)
@@ -186,7 +185,7 @@ float bdepth(in vec2 coords) //blurring depth
     
     for( int i=0; i<9; i++ )
     {
-        const float tmp = texture(texGBufferExtra, coords + offset[i]).g;
+        const float tmp = texture(texLinearDepth, coords + offset[i]).r;
         d += tmp * kernel[i];
     }
     
@@ -247,11 +246,11 @@ void main()
 #if defined(USE_DEPTH_BLUR)
     const float depth = bdepth(VAR._texCoord);
 #else
-    const float depth = texture(texGBufferExtra, VAR._texCoord).g;
+    const float depth = texture(texLinearDepth, VAR._texCoord).r;
 #endif
 
     //focal plane calculation
-    const float fDepth = autofocus ? texture(texGBufferExtra, focus).g : focalDepth;
+    const float fDepth = autofocus ? texture(texLinearDepth, focus).r : focalDepth;
 
     //dof blur factor calculation
     float blur = 0.0;

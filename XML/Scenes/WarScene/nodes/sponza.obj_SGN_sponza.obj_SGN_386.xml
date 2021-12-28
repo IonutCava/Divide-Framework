@@ -233,16 +233,16 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>background.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/background.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </UNIT0>
             <NORMALMAP>
-                <name>background_ddn.tga</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/background_ddn.tga</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

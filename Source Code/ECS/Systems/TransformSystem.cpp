@@ -54,13 +54,13 @@ namespace Divide {
             descriptor._partitionSize = g_parallelPartitionSize;
             descriptor._cbk = [this](const Task*, const U32 start, const U32 end) {
                 for (U32 i = start; i < end; ++i) {
-                    events[i].first->updateWorldMatrix();
+                    events[i].first->updateLocalMatrix();
                 }
             };
             parallel_for(_context, descriptor);
         } else {
             for (U32 i = 0u; i < descriptor._iterCount; ++i) {
-                events[i].first->updateWorldMatrix();
+                events[i].first->updateLocalMatrix();
             }
         }
 
@@ -92,12 +92,12 @@ namespace Divide {
 
         Parent::OnFrameEnd();
         for (TransformComponent* comp : _componentCache) {
-            if (comp->_prevWorldMatrixDirty) {
+            if (comp->_previousLocalMatrixDirty) {
                 // Just memcpy the 2
-                mat4<F32>& dest = comp->_worldMatrix[to_base(TransformComponent::WorldMatrixType::PREVIOUS)];
-                const mat4<F32>& src = comp->_worldMatrix[to_base(TransformComponent::WorldMatrixType::CURRENT)];
+                mat4<F32>& dest = comp->_localMatrix[to_base(TransformComponent::WorldMatrixType::PREVIOUS)];
+                const mat4<F32>& src = comp->_localMatrix[to_base(TransformComponent::WorldMatrixType::CURRENT)];
                 dest.set(src);
-                comp->_prevWorldMatrixDirty = false;
+                comp->_previousLocalMatrixDirty = false;
             }
         }
     }

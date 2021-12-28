@@ -36,7 +36,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
     struct CameraSnapshot {
         mat4<F32> _viewMatrix;
+        mat4<F32> _invViewMatrix;
         mat4<F32> _projectionMatrix;
+        mat4<F32> _invProjectionMatrix;
         Quaternion<F32> _orientation;
         std::array<Plane<F32>, 6> _frustumPlanes;
         vec3<F32> _eye;

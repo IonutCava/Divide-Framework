@@ -5,10 +5,38 @@
 #error BRDF can only be used in coloured passes!
 #endif //DEPTH_PASS
 
+#if defined(NO_POST_FX)
+#if !defined(NO_FOG)
+#define NO_FOG
+#endif //!NO_FOG
+#endif //NO_POST_FX
+
+#if defined(NO_REFLECTIONS)
+#if !defined(NO_IBL)
+#define NO_IBL
+#endif //NO_IBL
+#if !defined(NO_SSR)
+#define NO_SSR
+#endif //NO_SSR
+#if !defined(NO_ENV_MAPPING)
+#define NO_ENV_MAPPING
+#endif //NO_ENV_MAPPING
+#endif //NO_REFLECTIONS
+
 #include "lightInput.cmn"
 
 #include "materialData.frag"
 #include "shadowMapping.frag"
+
+layout(binding = TEXTURE_SSAO_SAMPLE) uniform sampler2D texSSAO;
+
+#if defined(NO_SSAO)
+#define GetSSAO() 1.f
+#else //NO_SSAO
+float GetSSAO() {
+    return texture(texSSAO, dvd_screenPositionNormalised).r;
+}
+#endif //NO_SSAO
 
 #if 0
 #define GetNdotL(N, L) saturate(dot(N, L))
@@ -211,63 +239,105 @@ vec3 CSMSplitColour() {
 }
 #endif //DISABLE_SHADOW_MAPPING
 
+//https://iquilezles.org/www/articles/fog/fog.htm
+vec3 applyFog(in vec3  rgb,      // original color of the pixel
+              in float distance, // camera to point distance
+              in vec3  rayOri,   // camera position
+              in vec3  rayDir)   // camera to point vector
+{
+    const float c = dvd_fogDetails._colourSunScatter.a;
+    const float b = dvd_fogDetails._colourAndDensity.a;
+    const float fogAmount = c * exp(-rayOri.y * b) * (1.f - exp(-distance * rayDir.y * b)) / rayDir.y;
+    return mix(rgb, dvd_fogDetails._colourAndDensity.rgb, fogAmount);
+}
+
+vec3 getDebugNormal(in vec3 normalWV) {
+    const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
+    return abs(normalW);
+}
+
 /// returns RGB - pixel lit colour, A - reserved
-vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV, in float normalVariation, in vec2 uv, out vec3 MetalnessRoughnessProbeID) {
+vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV, in float normalVariation, in vec2 uv) {
+
+    const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, uv, normalWV, normalVariation);
+
+    vec3 radianceOut = dvd_AmbientColour.rgb;
+    vec3 iblRadiance = vec3(0.f);
 
     const vec3 viewVec = normalize(VAR._viewDirectionWV);
-
-    const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, uv, viewVec, normalWV, normalVariation);
-
-    MetalnessRoughnessProbeID = vec3(material._metallic, material._roughness, float(dvd_probeIndex(materialData)));
 
     switch (dvd_materialDebugFlag) {
         case DEBUG_ALBEDO:       
         {
-            return vec4(material._diffuseColour, 1.f);
+            return vec4(material._diffuseColour, albedo.a);
         }
         case DEBUG_LIGHTING:
         {
             PBRMaterial materialCopy = material;
             materialCopy._diffuseColour = vec3(1.f);
-            vec3 radianceOut = vec3(0.f);
+            radianceOut = dvd_AmbientColour.rgb;
             getLightContribution(materialCopy, normalWV, viewVec, radianceOut);
             radianceOut += dvd_AmbientColour.rgb * materialCopy._diffuseColour * materialCopy._occlusion;
-            return vec4(radianceOut, 1.f);
+            return vec4(radianceOut, albedo.a);
         }
         case DEBUG_SPECULAR: 
         {
-            return vec4(material._specular.rgb, 1.f);
+            return vec4(material._specular.rgb, albedo.a);
         }
         case DEBUG_KS:            
         {
             const vec3 H = normalize(normalWV + viewVec);
             const vec3 kS = computeFresnelSchlickRoughness(H, viewVec, material._F0, material._roughness);
-            return vec4(kS, 1.f);
+            return vec4(kS, albedo.a);
         }
-        case DEBUG_UV:             return vec4(fract(uv), 0.f, 1.f);
-        case DEBUG_EMISSIVE:       return vec4(material._emissive, 1.f);
-        case DEBUG_ROUGHNESS:      return vec4(vec3(material._roughness), 1.f);
-        case DEBUG_METALNESS:      return vec4(vec3(material._metallic), 1.f);
-        case DEBUG_NORMALS:        return vec4(normalize(mat3(dvd_InverseViewMatrix) * normalWV), 1.f);
-        case DEBUG_TANGENTS:       return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[0]), 1.f);
-        case DEBUG_BITANGENTS:     return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[1]), 1.f);
-        case DEBUG_SHADOW_MAPS:    return vec4(vec3(getShadowMultiplier(normalWV)), 1.f);
+        case DEBUG_IBL:
+        {
+#if !defined(NO_ENV_MAPPING) && !defined(NO_IBL)
+            PBRMaterial materialCopy = material;
+            materialCopy._diffuseColour = vec3(1.f);
+            iblRadiance = ApplyIBL(materialCopy, viewVec, normalWV, VAR._vertexW.xyz, dvd_probeIndex(materialData));
+#endif
+            return vec4(iblRadiance, albedo.a);
+        }
+        case DEBUG_SSAO:           return vec4(vec3(texture(texSSAO, dvd_screenPositionNormalised).r), albedo.a);
+        case DEBUG_UV:             return vec4(fract(uv), 0.f, albedo.a);
+        case DEBUG_EMISSIVE:       return vec4(material._emissive, albedo.a);
+        case DEBUG_ROUGHNESS:      return vec4(vec3(material._roughness), albedo.a);
+        case DEBUG_METALNESS:      return vec4(vec3(material._metallic), albedo.a);
+        case DEBUG_NORMALS:        return vec4(getDebugNormal(normalWV), albedo.a);
+        case DEBUG_TANGENTS:       return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[0]), albedo.a);
+        case DEBUG_BITANGENTS:     return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[1]), albedo.a);
+        case DEBUG_SHADOW_MAPS:    return vec4(vec3(getShadowMultiplier(normalWV)), albedo.a);
 #if defined(MAIN_DISPLAY_PASS)
-        case DEBUG_CSM_SPLITS:     return vec4(CSMSplitColour(), 1.f);
-        case DEBUG_LIGHT_HEATMAP:  return vec4(lightHeatMap(), 1.f);
-        case DEBUG_DEPTH_CLUSTERS: return vec4(lightClusters(), 1.f);
+        case DEBUG_CSM_SPLITS:     return vec4(CSMSplitColour(), albedo.a);
+        case DEBUG_LIGHT_HEATMAP:  return vec4(lightHeatMap(), albedo.a);
+        case DEBUG_DEPTH_CLUSTERS: return vec4(lightClusters(), albedo.a);
         case DEBUG_REFRACTIONS:
-        case DEBUG_REFLECTIONS:    return vec4(vec3(0.f), 1.f);
+        case DEBUG_REFLECTIONS:    return vec4(vec3(0.f), albedo.a);
 #endif //MAIN_DISPLAY_PASS
-        case DEBUG_MATERIAL_IDS:   return vec4(turboColormap(float(MATERIAL_IDX + 1) / MAX_CONCURRENT_MATERIALS), 1.f);
+        case DEBUG_MATERIAL_IDS:   return vec4(turboColormap(float(MATERIAL_IDX + 1) / MAX_CONCURRENT_MATERIALS), albedo.a);
     }
 
-    vec3 radianceOut = vec3(0.f);
-    getLightContribution(material, normalWV, viewVec, radianceOut);
-    radianceOut += dvd_AmbientColour.rgb * material._diffuseColour * material._occlusion;
-    radianceOut += material._emissive;
+#if !defined(NO_ENV_MAPPING) && !defined(NO_IBL)
+    iblRadiance = ApplyIBL(material, viewVec, normalWV, VAR._vertexW.xyz, dvd_probeIndex(materialData));
+#endif //!NO_ENV_MAPPING && !NO_IBL
+    radianceOut += iblRadiance;
 
-    return vec4(radianceOut, albedo.a);
+#if !defined(NO_IBL)
+    radianceOut = ApplySSR(radianceOut);
+#endif //!NO_IBL
+
+    getLightContribution(material, normalWV, viewVec, radianceOut);
+    radianceOut += material._emissive;
+#if !defined(NO_FOG)
+    if (dvd_fogEnabled()) {
+        radianceOut.rgb = applyFog(radianceOut.rgb,
+                                   distance(VAR._vertexW.xyz, dvd_cameraPosition.xyz),
+                                   dvd_cameraPosition.xyz,
+                                   normalize(VAR._vertexW.xyz - dvd_cameraPosition.xyz));
+    }
+#endif
+    return vec4(radianceOut * GetSSAO(), albedo.a);
 }
 
 #endif //_BRDF_FRAG_

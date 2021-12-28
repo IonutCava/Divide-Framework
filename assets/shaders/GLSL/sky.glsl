@@ -1,11 +1,13 @@
 -- Vertex.NoClouds
 
 #include "vbInputData.vert"
+#include "lightingDefaults.vert"
 
 void main(void){
     const NodeTransformData data = fetchInputData();
     VAR._vertexW = data._worldMatrix * dvd_Vertex;
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
+    computeLightVectors(data);
     setClipPlanes();
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
     gl_Position.z = gl_Position.w - Z_TEST_SIGMA;
@@ -16,6 +18,7 @@ void main(void){
 #define NEED_SCENE_DATA
 #include "sceneData.cmn"
 #include "vbInputData.vert"
+#include "lightingDefaults.vert"
 
 uniform vec3  dvd_nightSkyColour;
 uniform vec3  dvd_moonColour;
@@ -207,7 +210,7 @@ void main() {
     VAR._vertexW = data._worldMatrix * dvd_Vertex;
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     setClipPlanes();
-
+    computeLightVectors(data);
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
     gl_Position.z = gl_Position.w - Z_TEST_SIGMA;
 
@@ -245,7 +248,7 @@ layout(early_fragment_tests) in;
 #include "output.frag"
 
 void main() {
-    writeScreenColour(vec4(vec3(0.4f), 1.f), VAR._normalWV);
+    writeScreenColour(vec4(vec3(0.4f), 1.f));
 }
 
 --Fragment.Clouds
@@ -679,11 +682,14 @@ void main() {
         case DEBUG_ALBEDO:        ret = getRawAlbedo(rayDirection, lerpValue); break;
         case DEBUG_LIGHTING:      ret = getSkyColour(rayDirection, lerpValue); break;
         case DEBUG_SPECULAR:      
-        case DEBUG_KS:            ret = vec3(0.f);
+        case DEBUG_SSAO:
+        case DEBUG_SSR:
+        case DEBUG_IBL:
+        case DEBUG_KS:            ret = vec3(0.f); break;
         case DEBUG_UV:            ret = vec3(fract(rayDirection)); break;
         case DEBUG_EMISSIVE:      ret = getSkyColour(rayDirection, lerpValue); break;
-        case DEBUG_ROUGHNESS:
-        case DEBUG_METALNESS:
+        case DEBUG_ROUGHNESS:     ret = vec3(1.f); break;
+        case DEBUG_METALNESS:     ret = vec3(0.f); break;
         case DEBUG_NORMALS:       ret = normalize(mat3(dvd_InverseViewMatrix) * VAR._normalWV); break;
         case DEBUG_TANGENTS:
         case DEBUG_BITANGENTS:    ret = vec3(0.0f); break;
@@ -699,5 +705,14 @@ void main() {
         default:                  ret = atmosphereColour(rayDirection, lerpValue); break;
     }
 
-    writeScreenColour(vec4(ret, 1.f), VAR._normalWV);
+    writeScreenColour(vec4(ret, 1.f));
+}
+
+-- Fragment.PrePass
+
+#include "prePass.frag"
+
+void main() {
+
+    writeGBuffer(VAR._normalWV, 1.f);
 }

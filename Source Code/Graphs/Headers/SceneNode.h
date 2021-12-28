@@ -123,12 +123,11 @@ class SceneNode : public CachedResource {
     virtual void prepareRender(SceneGraphNode* sgn,
                                RenderingComponent& rComp,
                                const RenderStagePass& renderStagePass,
-                               const Camera& camera,
+                               const CameraSnapshot& cameraSnapshot,
                                bool refreshData);
 
     virtual void buildDrawCommands(SceneGraphNode* sgn,
                                    const RenderStagePass& renderStagePass,
-                                   const Camera& crtCamera,
                                    RenderPackage& pkgInOut);
 
     bool unload() override;
@@ -171,7 +170,6 @@ class SceneNode : public CachedResource {
 
     virtual void occlusionCull(const RenderStagePass& stagePass,
                                const Texture_ptr& depthBuffer,
-                               const Camera& camera,
                                GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
                                GFX::CommandBuffer& bufferInOut) const;
 
@@ -199,7 +197,7 @@ class SceneNode : public CachedResource {
 
     std::atomic_size_t _sgnParentCount = 0;
 
-    U32 _requiredComponentMask = 0u;
+    U32 _requiredComponentMask = to_U32(ComponentType::TRANSFORM);
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(SceneNode);
@@ -236,8 +234,8 @@ class SceneNodeSceneGraph {
         return node->_editorComponent;
     }
 
-    static void occlusionCullNode(const SceneNode* node, const RenderStagePass& stagePass, const Texture_ptr& depthBuffer, const Camera& camera, GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut, GFX::CommandBuffer& bufferInOut) {
-        node->occlusionCull(stagePass, depthBuffer, camera, HIZPushConstantsCMDInOut, bufferInOut);
+    static void occlusionCullNode(const SceneNode* node, const RenderStagePass& stagePass, const Texture_ptr& depthBuffer, GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut, GFX::CommandBuffer& bufferInOut) {
+        node->occlusionCull(stagePass, depthBuffer, HIZPushConstantsCMDInOut, bufferInOut);
     }
 
     friend class Divide::SceneGraph;

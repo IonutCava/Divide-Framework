@@ -234,7 +234,7 @@
         <texture>
             <UNIT0>
                 <name>diffuse.dds</name>
-                <path>assets/textures</path>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
@@ -242,7 +242,7 @@
             </UNIT0>
             <NORMALMAP>
                 <name>normal.tga</name>
-                <path>assets/textures</path>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

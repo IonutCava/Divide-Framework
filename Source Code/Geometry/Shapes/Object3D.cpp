@@ -130,7 +130,7 @@ void Object3D::rebuildInternal() {
 void Object3D::prepareRender(SceneGraphNode* sgn,
                              RenderingComponent& rComp,
                              const RenderStagePass& renderStagePass,
-                             const Camera& camera,
+                             const CameraSnapshot& cameraSnapshot,
                              const bool refreshData) {
     if (refreshData && geometryDirty()) {
         OPTICK_EVENT();
@@ -139,12 +139,11 @@ void Object3D::prepareRender(SceneGraphNode* sgn,
         geometryDirty(false);
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, camera, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Object3D::buildDrawCommands(SceneGraphNode* sgn,
                                  const RenderStagePass& renderStagePass,
-                                 const Camera& crtCamera,
                                  RenderPackage& pkgInOut) {
     VertexBuffer* vb = getGeometryVB();
     if (vb != nullptr) {
@@ -173,7 +172,7 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn,
         }
     }
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
 }
 
 // Create a list of triangles from the vertices + indices lists based on primitive type

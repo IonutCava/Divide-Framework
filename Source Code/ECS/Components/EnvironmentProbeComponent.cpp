@@ -119,7 +119,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
             dirty(true);
             queueRefresh();
         } else {
-            const vec3<F32> pos = _parentSGN->get<TransformComponent>()->getPosition();
+            const vec3<F32> pos = _parentSGN->get<TransformComponent>()->getWorldPosition();
             setBounds(_refaabb.getMin() + pos, _refaabb.getMax() + pos);
         }
     });
@@ -183,13 +183,12 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut) {
     std::array<Camera*, 6> cameras = {};
     std::copy_n(std::begin(probeCameras), std::min(cameras.size(), probeCameras.size()), std::begin(cameras));
 
-    // Probes come after reflective nodes in buffer positions and array layers for management reasons (rate of update and so on)
-    const U16 probeIndex = Config::MAX_REFLECTIVE_NODES_IN_VIEW + rtLayerIndex();
-
     RenderPassParams params = {};
     params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
     params._sourceNode = findNodeToIgnore();
-    params._stagePass = RenderStagePass(RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::CUBE), probeIndex);
+
+    // Probes come after reflective nodes in buffer positions and array layers for management reasons (rate of update and so on)
+    params._stagePass = RenderStagePass(RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::CUBE), Config::MAX_REFLECTIVE_NODES_IN_VIEW + rtLayerIndex());
 
     ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
 
@@ -267,7 +266,7 @@ F32 EnvironmentProbeComponent::distanceSqTo(const vec3<F32>& pos) const noexcept
 
 void EnvironmentProbeComponent::OnData(const ECS::CustomEvent& data) {
     if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
-        const vec3<F32> pos = _parentSGN->get<TransformComponent>()->getPosition();
+        const vec3<F32> pos = _parentSGN->get<TransformComponent>()->getWorldPosition();
         setBounds(_refaabb.getMin() + pos, _refaabb.getMax() + pos);
     } else if (data._type == ECS::CustomEvent::Type::EntityFlagChanged) {
         const SceneGraphNode::Flags flag = static_cast<SceneGraphNode::Flags>(data._flag);

@@ -112,8 +112,8 @@ namespace Util {
                                      const char* format = "%.2f");
 
     const char* GetFormat(ImGuiDataType dataType, const char* input, bool hex);
-    bool colourInput4(Editor& parent, EditorComponentField& field, const char* name = "");
-    bool colourInput3(Editor& parent, EditorComponentField& field, const char* name = "");
+    bool colourInput4(Editor& parent, EditorComponentField& field);
+    bool colourInput3(Editor& parent, EditorComponentField& field);
 
     template<typename Pred>
     bool colourInput4(Editor& parent, const char* name, FColour4& col, const bool readOnly, Pred&& dataSetter);

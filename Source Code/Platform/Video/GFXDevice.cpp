@@ -261,14 +261,17 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     //PrePass
     TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
     TextureDescriptor velocityDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
+    //RG - packed normal, B - roughness
+    TextureDescriptor normalsDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGB, GFXDataFormat::FLOAT_16);
     depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
     velocityDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+    normalsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     //MainPass
     TextureDescriptor screenDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
     screenDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
-    TextureDescriptor normalsAndMaterialDataDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_32);
-    normalsAndMaterialDataDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+    TextureDescriptor materialDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
+    materialDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     // Normal and MSAA
     for (U8 i = 0; i < 2; ++i) {
@@ -278,20 +281,21 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
         screenDescriptor.msaaSamples(sampleCount);
         depthDescriptor.msaaSamples(sampleCount);
-        normalsAndMaterialDataDescriptor.msaaSamples(sampleCount);
+        normalsDescriptor.msaaSamples(sampleCount);
+        materialDescriptor.msaaSamples(sampleCount);
         velocityDescriptor.msaaSamples(sampleCount);
 
         {
 
             RTAttachmentDescriptors attachments = {
-                { screenDescriptor,                 screenSampler, RTAttachmentType::Colour, to_U8(ScreenTargets::ALBEDO),   DefaultColours::DIVIDE_BLUE },
-                { velocityDescriptor,               samplerHash,   RTAttachmentType::Colour, to_U8(ScreenTargets::VELOCITY), VECTOR4_ZERO },
-                { normalsAndMaterialDataDescriptor, samplerHash,   RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES), VECTOR4_ZERO },
-                { depthDescriptor,                  samplerHash,   RTAttachmentType::Depth }
+                { screenDescriptor,   screenSampler, RTAttachmentType::Colour, to_U8(ScreenTargets::ALBEDO),   DefaultColours::DIVIDE_BLUE },
+                { velocityDescriptor, samplerHash,   RTAttachmentType::Colour, to_U8(ScreenTargets::VELOCITY), VECTOR4_ZERO },
+                { normalsDescriptor,  samplerHash,   RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS),  VECTOR4_ZERO },
+                { depthDescriptor,    samplerHash,   RTAttachmentType::Depth }
             };
 
             RenderTargetDescriptor screenDesc = {};
-            screenDesc._name = "Screen";
+            screenDesc._name = i == 0 ? "Screen" : "Screen MS";
             screenDesc._resolution = renderResolution;
             screenDesc._attachmentCount = to_U8(attachments.size());
             screenDesc._attachments = attachments.data();
@@ -303,28 +307,39 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     }
 
     {
-        //R = SSAO, G = Linear depth
-        TextureDescriptor postFXDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
-        postFXDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        TextureDescriptor ssaoDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
+        ssaoDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RTAttachmentDescriptors attachments = {
-            { postFXDescriptor, samplerHash, RTAttachmentType::Colour, 0u, vec4<F32>{1.f, 0.f, 0.f, 0.f} }
+            { ssaoDescriptor, samplerHash, RTAttachmentType::Colour, 0u, VECTOR4_UNIT }
         };
 
-        RenderTargetDescriptor postFXDesc = {};
-        postFXDesc._name = "PostFXData";
-        postFXDesc._resolution = renderResolution;
-        postFXDesc._attachmentCount = to_U8(attachments.size());
-        postFXDesc._attachments = attachments.data();
-        postFXDesc._msaaSamples = 0u;
-        _rtPool->allocateRT(RenderTargetUsage::POSTFX_DATA, postFXDesc);
+        RenderTargetDescriptor ssaoDesc = {};
+        ssaoDesc._name = "SSAO Result";
+        ssaoDesc._resolution = renderResolution;
+        ssaoDesc._attachmentCount = to_U8(attachments.size());
+        ssaoDesc._attachments = attachments.data();
+        ssaoDesc._msaaSamples = 0u;
+        _rtPool->allocateRT(RenderTargetUsage::SSAO_RESULT, ssaoDesc);
     }
-
     {
-        TextureDescriptor ssrDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::FLOAT_16);
-        ssrDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        TextureDescriptor linearDepthDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
+        linearDepthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        TextureDescriptor kDkSDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::UNSIGNED_BYTE);
+        RTAttachmentDescriptors attachments = {
+            { linearDepthDescriptor, samplerHash, RTAttachmentType::Colour, 0u, VECTOR4_ZERO }
+        };
+
+        RenderTargetDescriptor linearDepthDesc = {};
+        linearDepthDesc._name = "Linear Depth";
+        linearDepthDesc._resolution = renderResolution;
+        linearDepthDesc._attachmentCount = to_U8(attachments.size());
+        linearDepthDesc._attachments = attachments.data();
+        linearDepthDesc._msaaSamples = 0u;
+        _rtPool->allocateRT(RenderTargetUsage::LINEAR_DEPTH, linearDepthDesc);
+    }
+    {
+        TextureDescriptor ssrDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
         ssrDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         
         RTAttachmentDescriptors attachments = {
@@ -375,7 +390,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         editorSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
         editorSampler.anisotropyLevel(0);
 
-        TextureDescriptor editorDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
+        TextureDescriptor editorDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
+        editorDescriptor.layerCount(1u);
         editorDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         RTAttachmentDescriptors attachments = {
@@ -452,7 +468,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     accumulationDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     //R = revealage
-    TextureDescriptor revealageDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RED, GFXDataFormat::UNSIGNED_BYTE);
+    TextureDescriptor revealageDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
     revealageDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     RTAttachmentDescriptors oitAttachments = {
@@ -468,12 +484,12 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         oitAttachments[1]._texDescriptor.msaaSamples(sampleCount);
 
         const RenderTarget& screenTarget = _rtPool->renderTarget(i == 0 ? RenderTargetUsage::SCREEN : RenderTargetUsage::SCREEN_MS);
-        const RTAttachment_ptr& screenNormalsAttachment = screenTarget.getAttachmentPtr(RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES));
+        const RTAttachment_ptr& screenNormalsAttachment = screenTarget.getAttachmentPtr(RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS));
         const RTAttachment_ptr& screenDepthAttachment = screenTarget.getAttachmentPtr(RTAttachmentType::Depth, 0);
         
         vector<ExternalRTAttachmentDescriptor> externalAttachments = {
-            { screenNormalsAttachment, RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES) },
-            { screenDepthAttachment,   RTAttachmentType::Depth }
+            { screenNormalsAttachment,  RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS) },
+            { screenDepthAttachment,    RTAttachmentType::Depth }
         };
 
         if_constexpr(Config::USE_COLOURED_WOIT) {
@@ -1018,24 +1034,32 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
     params._layerParams._type = hasColour ? RTAttachmentType::Colour : RTAttachmentType::Depth;
     params._layerParams._includeDepth = hasColour && hasDepth;
     params._layerParams._index = 0;
+    params._layerParams._layer = arrayOffset * 6;
 
     const D64 aspect = to_D64(targetResolution.width) / targetResolution.height;
 
-    // Let's clear only our target layers
-    GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(commandsInOut);
-    beginRenderPassCmd->_name = "Clear Target Layers";
-    beginRenderPassCmd->_target = params._target;
-
-    GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(commandsInOut)->_mipWriteLevel = arrayOffset;
-    GFX::EnqueueCommand<GFX::ClearRenderTargetCommand>(commandsInOut)->_target = params._target;
-    // No need to reset back to zero. We will be drawing into it anyway.
-    GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(commandsInOut);
-    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(commandsInOut);
-
     RenderPassManager* passMgr = parent().renderPassManager();
+
+    GFX::BeginRenderPassCommand beginRenderPassCmd{};
+    beginRenderPassCmd._name = "Clear Target Layers";
+    beginRenderPassCmd._target = params._target;
+
+    GFX::ClearRenderTargetCommand clearRTCmd{};
+    clearRTCmd._target = params._target;
+    clearRTCmd._descriptor.resetToDefault(false);
+
     for (U8 i = 0u; i < 6u; ++i) {
         // Draw to the current cubemap face
         params._layerParams._layer = i + arrayOffset * 6;
+
+        // Let's clear only our target layers
+        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(commandsInOut, beginRenderPassCmd);
+        GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(commandsInOut)->_writeLayers.push_back(params._layerParams);
+        GFX::EnqueueCommand(commandsInOut, clearRTCmd);
+        // No need to reset back to zero. We will be drawing into it anyway.
+        GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(commandsInOut);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(commandsInOut);
+
 
         Camera* camera = cameras[i];
         if (camera == nullptr) {
@@ -1046,10 +1070,9 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
         camera->setProjection(to_F32(aspect), Angle::to_VerticalFoV(Angle::DEGREES<F32>(90.0f), aspect), zPlanes);
         // Point our camera to the correct face
         camera->lookAt(pos, pos + CameraDirections[i].first * zPlanes.max, -CameraDirections[i].second);
-        params._camera = camera;
         params._stagePass._pass = i;
         // Pass our render function to the renderer
-        passMgr->doCustomPass(params, commandsInOut);
+        passMgr->doCustomPass(camera, params, commandsInOut);
     }
 }
 
@@ -1095,18 +1118,16 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
 
     const D64 aspect = to_D64(targetResolution.width) / targetResolution.height;
 
-    // Let's clear only our target layers
-    GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-    beginRenderPassCmd->_name = "Clear Target Layers";
-    beginRenderPassCmd->_target = params._target;
-
-    GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_mipWriteLevel = arrayOffset;
-    GFX::EnqueueCommand<GFX::ClearRenderTargetCommand>(bufferInOut)->_target = params._target;
-    // No need to reset back to zero. We will be drawing into it anyway.
-    GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(bufferInOut);
-    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
-
     RenderPassManager* passMgr = parent().renderPassManager();
+
+    GFX::BeginRenderPassCommand beginRenderPassCmd{};
+    beginRenderPassCmd._name = "Clear Target Layers";
+    beginRenderPassCmd._target = params._target;
+
+    GFX::ClearRenderTargetCommand clearRTCmd{};
+    clearRTCmd._target = params._target;
+    clearRTCmd._descriptor.resetToDefault(false);
+
     for (U8 i = 0u; i < 2u; ++i) {
         Camera* camera = cameras[i];
         if (!camera) {
@@ -1115,16 +1136,23 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
 
         params._layerParams._layer = i + arrayOffset;
 
+        // Let's clear only our target layers
+        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut, beginRenderPassCmd);
+        GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
+        GFX::EnqueueCommand(bufferInOut, clearRTCmd);
+        // No need to reset back to zero. We will be drawing into it anyway.
+        GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+
         // Point our camera to the correct face
         camera->lookAt(pos, pos + (i == 0 ? WORLD_Z_NEG_AXIS : WORLD_Z_AXIS) * zPlanes.y);
         // Set a 180 degree vertical FoV perspective projection
         camera->setProjection(to_F32(aspect), Angle::to_VerticalFoV(Angle::DEGREES<F32>(180.0f), aspect), zPlanes);
         // And generated required matrices
         // Pass our render function to the renderer
-        params._camera = camera;
         params._stagePass._pass = i;
 
-        passMgr->doCustomPass(params, bufferInOut);
+        passMgr->doCustomPass(camera, params, bufferInOut);
     }
 }
 
@@ -1319,7 +1347,8 @@ bool GFXDevice::onSizeChange(const SizeChangeParams& params) {
         // Update render targets with the new resolution
         _rtPool->resizeTargets(RenderTargetUsage::SCREEN, w, h);
         _rtPool->resizeTargets(RenderTargetUsage::SCREEN_MS, w, h);
-        _rtPool->resizeTargets(RenderTargetUsage::POSTFX_DATA, w, h);
+        _rtPool->resizeTargets(RenderTargetUsage::SSAO_RESULT, w, h);
+        _rtPool->resizeTargets(RenderTargetUsage::LINEAR_DEPTH, w, h);
         _rtPool->resizeTargets(RenderTargetUsage::SSR_RESULT, w, h);
         _rtPool->resizeTargets(RenderTargetUsage::HI_Z, w, h);
         _rtPool->resizeTargets(RenderTargetUsage::OIT, w, h);
@@ -1375,8 +1404,11 @@ void GFXDevice::uploadGPUBlock() {
     OPTICK_EVENT();
 
     if (_gpuBlock._needsUpload) {
+        const Configuration& config = _parent.platformContext().config();
+
         _gpuBlock._needsUpload = false;
         _gpuBlock._data._otherProperties.x = to_F32(materialDebugFlag());
+        _gpuBlock._data._otherProperties.y = to_F32(config.rendering.enableFog ? 1 : 0);
         _gfxDataBuffer->writeData(&_gpuBlock._data);
         _gfxDataBuffer->bind(ShaderBufferLocation::GPU_BLOCK);
         _gfxDataBuffer->incQueue();
@@ -1415,13 +1447,13 @@ void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
     bool needsUpdate = false, projectionDirty = false, viewDirty = false;
     if (cameraSnapshot._projectionMatrix != data._ProjectionMatrix) {
         data._ProjectionMatrix.set(cameraSnapshot._projectionMatrix);
-        data._ProjectionMatrix.getInverse(data._InvProjectionMatrix);
+        data._InvProjectionMatrix.set(cameraSnapshot._invProjectionMatrix);
         projectionDirty = true;
     }
 
     if (cameraSnapshot._viewMatrix != data._ViewMatrix) {
         data._ViewMatrix.set(cameraSnapshot._viewMatrix);
-        data._ViewMatrix.getInverse(data._InvViewMatrix);
+        data._InvViewMatrix.set(cameraSnapshot._invViewMatrix);
         viewDirty = true;
     }
 
@@ -1755,14 +1787,8 @@ void GFXDevice::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
     // Not worth the overhead for a handful of items and the Pre-Z pass should handle overdraw just fine
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _HIZCullPipeline });
 
-    ShaderBufferBinding shaderBuffer = {};
-    shaderBuffer._binding = ShaderBufferLocation::GPU_COMMANDS;
-    shaderBuffer._buffer = bufferData._commandBuffer;
-    shaderBuffer._elementRange = { RenderStagePass::IndexForStage(stagePass) * Config::MAX_VISIBLE_NODES, cmdCount };
-
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._textureData.add(TextureEntry{ depthBuffer->data(), samplerHash, TextureUsage::UNIT0 });
-    set._buffers.add(shaderBuffer);
 
     if (bufferData._cullCounterBuffer != nullptr) {
         ShaderBufferBinding atomicCount = {};
@@ -1899,8 +1925,8 @@ void GFXDevice::initDebugViews() {
 
         DebugView_ptr NormalPreview = std::make_shared<DebugView>();
         NormalPreview->_shader = _renderTargetDraw;
-        NormalPreview->_texture = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SCREEN)).getAttachment(RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES)).texture();
-        NormalPreview->_samplerHash = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SCREEN)).getAttachment(RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS_AND_MATERIAL_PROPERTIES)).samplerHash();
+        NormalPreview->_texture = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SCREEN)).getAttachment(RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS)).texture();
+        NormalPreview->_samplerHash = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SCREEN)).getAttachment(RTAttachmentType::Colour, to_U8(ScreenTargets::NORMALS)).samplerHash();
         NormalPreview->_name = "Normals";
         NormalPreview->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, 0.0f);
         NormalPreview->_shaderData.set(_ID("channelsArePacked"), GFX::PushConstantType::BOOL, true);
@@ -1923,8 +1949,8 @@ void GFXDevice::initDebugViews() {
 
         DebugView_ptr SSAOPreview = std::make_shared<DebugView>();
         SSAOPreview->_shader = _renderTargetDraw;
-        SSAOPreview->_texture = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::POSTFX_DATA)).getAttachment(RTAttachmentType::Colour, 0u).texture();
-        SSAOPreview->_samplerHash = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::POSTFX_DATA)).getAttachment(RTAttachmentType::Colour, 0u).samplerHash();
+        SSAOPreview->_texture = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SSAO_RESULT)).getAttachment(RTAttachmentType::Colour, 0u).texture();
+        SSAOPreview->_samplerHash = renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SSAO_RESULT)).getAttachment(RTAttachmentType::Colour, 0u).samplerHash();
         SSAOPreview->_name = "SSAO Map";
         SSAOPreview->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, 0.0f);
         SSAOPreview->_shaderData.set(_ID("channelsArePacked"), GFX::PushConstantType::BOOL, false);
@@ -2041,6 +2067,7 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
 
     Pipeline* crtPipeline = nullptr;
     U16 idx = 0u;
+    const I32 mipTimer = to_I32(std::ceil(Time::Game::ElapsedMilliseconds() / 750.0f));
     for (U16 i = 0; i < to_U16(_debugViews.size()); ++i) {
         if (!_debugViews[i]->_enabled) {
             continue;
@@ -2049,7 +2076,7 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
         const DebugView_ptr& view = _debugViews[i];
 
         if (view->_cycleMips) {
-            const F32 lodLevel = to_F32(to_I32(std::ceil(Time::Game::ElapsedMilliseconds() / 750.0f)) % view->_texture->mipCount());
+            const F32 lodLevel = to_F32(mipTimer % view->_texture->mipCount());
             view->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, lodLevel);
             labelStack.emplace_back(Util::StringFormat("Mip level: %d", to_U8(lodLevel)), viewport.sizeY * 4, viewport);
         }
@@ -2407,7 +2434,7 @@ void GFXDevice::debugDrawFrustums(GFX::CommandBuffer& bufferInOut) {
 }
 
 /// Render all of our immediate mode primitives. This isn't very optimised and most are recreated per frame!
-void GFXDevice::debugDraw(const SceneRenderState& sceneRenderState, const Camera* activeCamera, GFX::CommandBuffer& bufferInOut) {
+void GFXDevice::debugDraw(const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut) {
     debugDrawFrustums(bufferInOut);
     debugDrawLines(bufferInOut);
     debugDrawBoxes(bufferInOut);

@@ -29,11 +29,15 @@ void RenderingComponent::toggleRenderOption(RenderOptions option, bool state, bo
 }
 
 bool RenderingComponent::renderOptionEnabled(const RenderOptions option) const noexcept {
-    return renderOptionsEnabled(to_U32(option));
+    return BitCompare(_renderMask, option);
 }
 
-bool RenderingComponent::renderOptionsEnabled(const U32 mask) const noexcept {
+bool RenderingComponent::renderOptionsEnabledALL(const U32 mask) const noexcept {
     return BitCompare(_renderMask, mask);
+}
+
+bool RenderingComponent::renderOptionsEnabledANY(const U32 mask) const noexcept {
+    return AnyCompare(_renderMask, mask);
 }
 
 void RenderingComponent::toggleBoundsDraw(const bool showAABB, const bool showBS, const bool showOBB, bool recursive) {

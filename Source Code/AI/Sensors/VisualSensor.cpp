@@ -45,7 +45,7 @@ void VisualSensor::followSceneGraphNode(const U32 containerID, SceneGraphNode* n
     NodePositions& positions = _nodePositionsMap[containerID];
     insert(positions,
            node->getGUID(),
-           node->get<TransformComponent>()->getPosition());
+           node->get<TransformComponent>()->getWorldPosition());
 }
 
 void VisualSensor::unfollowSceneGraphNode(const U32 containerID, const U64 nodeGUID) {
@@ -73,7 +73,7 @@ void VisualSensor::update(const U64 deltaTimeUS) {
         for (const NodeContainer::value_type& entry : container.second) {
             SceneGraphNode* sgn(entry.second);
             if (sgn) {
-                positions[entry.first] = sgn->get<TransformComponent>()->getPosition();
+                positions[entry.first] = sgn->get<TransformComponent>()->getWorldPosition();
             }
         }
     }

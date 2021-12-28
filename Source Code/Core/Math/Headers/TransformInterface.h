@@ -171,11 +171,6 @@ public:
     virtual void getPosition(vec3<F32>& posOut) const = 0;
     /// Return the orientation quaternion
     virtual void getOrientation(Quaternion<F32>& quatOut) const = 0;
-
-    virtual void getMatrix(mat4<F32>& matrix) = 0;
-
-    /// Get the current position, rotation and scale as a "TransformValues" package
-    [[nodiscard]] virtual TransformValues getValues() const = 0;
 };
 
 

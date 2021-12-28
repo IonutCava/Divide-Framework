@@ -257,7 +257,6 @@ bool ParticleEmitter::unload() {
 
 void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn,
                                         const RenderStagePass& renderStagePass,
-                                        const Camera& crtCamera,
                                         RenderPackage& pkgInOut) {
     if (_particleTexture) {
         SamplerDescriptor textureSampler = {};
@@ -282,13 +281,13 @@ void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn,
 
     pkgInOut.add(GFX::DrawCommand{ cmd });
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
 }
 
 void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                                     RenderingComponent& rComp,
                                     const RenderStagePass& renderStagePass,
-                                    const Camera& camera,
+                                    const CameraSnapshot& cameraSnapshot,
                                     const bool refreshData) {
 
     if ( _enabled &&  getAliveParticleCount() > 0) {
@@ -310,7 +309,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
         cmd._bufferIndex = renderStagePass.baseIndex();
 
         if (renderStagePass._passType == RenderPassType::PRE_PASS) {
-            const vec3<F32>& eyePos = camera.getEye();
+            const vec3<F32>& eyePos = cameraSnapshot._eye;
             const U32 aliveCount = getAliveParticleCount();
 
             vector<vec4<F32>>& misc = _particles->_misc;
@@ -339,7 +338,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
         }
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, camera, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 
@@ -356,8 +355,8 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
 
         const TransformComponent* transform = sgn->get<TransformComponent>();
 
-        const vec3<F32>& pos = transform->getPosition();
-        const Quaternion<F32>& rot = transform->getOrientation();
+        const vec3<F32>& pos = transform->getWorldPosition();
+        const Quaternion<F32>& rot = transform->getWorldOrientation();
 
         F32 averageEmitRate = 0;
         for (const std::shared_ptr<ParticleSource>& source : _sources) {

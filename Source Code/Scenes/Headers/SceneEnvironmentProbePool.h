@@ -76,9 +76,7 @@ public:
     void unlockProbeList() const noexcept;
 
     void prepareDebugData();
-    void debugProbe(EnvironmentProbeComponent* probe);
-    void debugSkyLight();
-    POINTER_R(EnvironmentProbeComponent, debugProbe, nullptr);
+    POINTER_RW(EnvironmentProbeComponent, debugProbe, nullptr);
 
     static vector<Camera*>& ProbeCameras() noexcept { return s_probeCameras; }
 
@@ -102,7 +100,7 @@ public:
 protected:
     friend class EnvironmentProbeComponent;
     void createDebugView(U16 layerIndex);
-    static void ProcessEnvironmentMap(GFXDevice& context, U16 layerID, bool highPriority, GFX::CommandBuffer& bufferInOut) noexcept;
+    static void ProcessEnvironmentMap(GFXDevice& context, U16 layerID, bool highPriority, GFX::CommandBuffer& bufferInOut);
 
 private:
     enum class ComputationStages : U8 {
@@ -128,7 +126,6 @@ protected:
 
 private:
     static std::array<std::pair<bool/*available*/, bool/*locked*/>, Config::MAX_REFLECTIVE_PROBES_PER_PASS> s_availableSlices;
-    static eastl::queue<std::pair<U8, bool>> s_queuedFaceRecomputation;
     static RenderTargetHandle s_reflection;
     static RenderTargetHandle s_prefiltered;
     static RenderTargetHandle s_irradiance;

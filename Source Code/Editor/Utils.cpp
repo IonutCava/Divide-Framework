@@ -83,7 +83,11 @@ namespace Divide {
 
             ImGui::PopFont();
             ImGui::NextColumn();
-            ImGui::PushMultiItemsWidths(numComponents, ImGui::CalcItemWidth());
+            if (numComponents == 1) {
+                ImGui::PushItemWidth(ImGui::CalcItemWidth());
+            } else {
+                ImGui::PushMultiItemsWidths(numComponents, ImGui::CalcItemWidth());
+            }
             g_lastComponentWidhtPushCount = numComponents;
         }
 
@@ -171,7 +175,7 @@ namespace Divide {
             return input;
         }
 
-        bool colourInput4(Editor& parent, EditorComponentField& field, const char* name) {
+        bool colourInput4(Editor& parent, EditorComponentField& field) {
             FColour4 val = field.get<FColour4>();
             const auto setter = [val/*by value*/, &field](const FColour4& col) {
                 if (col != val) {
@@ -181,10 +185,10 @@ namespace Divide {
                 return false;
             };
 
-            return colourInput4(parent, name, val, field._readOnly, setter);
+            return colourInput4(parent, field._name.c_str(), val, field._readOnly, setter);
         }
 
-        bool colourInput3(Editor& parent, EditorComponentField& field, const char* name) {
+        bool colourInput3(Editor& parent, EditorComponentField& field) {
             FColour3 val = field.get<FColour3>();
             const auto setter = [val/*by value*/, &field](const FColour3& col) {
                 if (col != val) {
@@ -194,7 +198,7 @@ namespace Divide {
                 return false;
             };
 
-            return colourInput3(parent, name, val, field._readOnly, setter);
+            return colourInput3(parent, field._name.c_str(), val, field._readOnly, setter);
         }
     } //namespace Util
 } //namespace Divide

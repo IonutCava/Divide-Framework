@@ -174,7 +174,7 @@ Renderer::~Renderer()
 }
 
 void Renderer::prepareLighting(const RenderStage stage,
-                               const mat4<F32>& projectionMatrix,
+                               const CameraSnapshot& cameraSnapshot,
                                GFX::CommandBuffer& bufferInOut)
 {
     if (stage == RenderStage::SHADOW) {
@@ -212,8 +212,8 @@ void Renderer::prepareLighting(const RenderStage stage,
 
         GFX::EnqueueCommand(bufferInOut, bindDescriptorSetsCommand);
 
-        if (data._previousProjMatrix != projectionMatrix) {
-            data._previousProjMatrix = projectionMatrix;
+        if (data._previousProjMatrix != cameraSnapshot._projectionMatrix) {
+            data._previousProjMatrix = cameraSnapshot._projectionMatrix;
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
             {

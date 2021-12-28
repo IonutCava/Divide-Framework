@@ -10,7 +10,7 @@ layout(binding = TEX_BIND_POINT_SCREEN)     uniform sampler2D texScreen;
 layout(binding = TEX_BIND_POINT_NOISE)      uniform sampler2D texNoise;
 layout(binding = TEX_BIND_POINT_BORDER)     uniform sampler2D texVignette;
 layout(binding = TEX_BIND_POINT_UNDERWATER) uniform sampler2D texWaterNoiseNM;
-layout(binding = TEX_BIND_POINT_POSTFXDATA) uniform sampler2D texPostFXData;
+layout(binding = TEX_BIND_POINT_LINDEPTH)   uniform sampler2D texLinearDepth;
 layout(binding = TEX_BIND_POINT_SSR)        uniform sampler2D texSSR;
 
 uniform vec4 _fadeColour;
@@ -58,10 +58,15 @@ vec4 Underwater() {
 }
 
 void main(void){
-    switch (dvd_materialDebugFlag) {
-        case DEBUG_DEPTH: _colourOut = vec4(vec3(texture(texPostFXData, VAR._texCoord).g / _zPlanes.y + _zPlanes.x), 1.0f); return;
-        case DEBUG_SSAO : _colourOut = vec4(vec3(texture(texPostFXData, VAR._texCoord).r), 1.0f); return;
-        case DEBUG_SSR  : _colourOut = vec4(texture(texSSR, VAR._texCoord).rgb, 1.0f); return;
+    if (dvd_materialDebugFlag == DEBUG_DEPTH) {
+        _colourOut = vec4(vec3(texture(texLinearDepth, VAR._texCoord).r / _zPlanes.y + _zPlanes.x), 1.0f);
+        return;
+    } else if (dvd_materialDebugFlag == DEBUG_SSR) {
+        _colourOut = texture(texSSR, VAR._texCoord);
+        return;
+    } else if (dvd_materialDebugFlag != DEBUG_NONE) {
+        _colourOut = texture(texScreen, VAR._texCoord);
+        return;
     }
 
     vec4 colour = underwaterEnabled ? Underwater() : texture(texScreen, VAR._texCoord);

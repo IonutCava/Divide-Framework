@@ -72,7 +72,7 @@ glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& d
         glObjectLabel(GL_FRAMEBUFFER,
                       _framebufferHandle,
                       -1,
-                      Util::StringFormat("DVD_FB_%d", _framebufferHandle).c_str());
+                      name().empty() ? Util::StringFormat("DVD_FB_%d", _framebufferHandle).c_str() : name().c_str());
     }
 
     // Everything disabled so that the initial "begin" will override this
@@ -632,6 +632,7 @@ void glFramebuffer::drawToLayer(const DrawLayerParams& params) {
     if (textureType != GL_TEXTURE_2D_ARRAY &&
         textureType != GL_TEXTURE_CUBE_MAP_ARRAY &&
         textureType != GL_TEXTURE_2D_MULTISAMPLE_ARRAY) {
+        DIVIDE_UNEXPECTED_CALL();
         return;
     }
 

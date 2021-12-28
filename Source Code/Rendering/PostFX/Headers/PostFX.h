@@ -67,7 +67,7 @@ private:
         TEX_BIND_POINT_BORDER = to_base(TextureUsage::UNIT1),
         TEX_BIND_POINT_NOISE = to_base(TextureUsage::SCENE_NORMALS),
         TEX_BIND_POINT_UNDERWATER = to_base(TextureUsage::OPACITY),
-        TEX_BIND_POINT_POSTFXDATA = to_base(TextureUsage::HEIGHTMAP),
+        TEX_BIND_POINT_LINDEPTH = to_base(TextureUsage::DEPTH),
         TEX_BIND_POINT_SSR = to_base(TextureUsage::NORMALMAP),
         COUNT
     };
@@ -75,7 +75,8 @@ private:
 public:
     explicit PostFX(PlatformContext& context, ResourceCache* cache);
 
-    void apply(const Camera* camera, const DELEGATE<void>& screenTargetCallback, GFX::CommandBuffer& bufferInOut);
+    void prePass(const CameraSnapshot& cameraSnapshot,GFX::CommandBuffer& bufferInOut);
+    void apply(const CameraSnapshot& cameraSnapshot, const DELEGATE<void>& screenTargetCallback, GFX::CommandBuffer& bufferInOut);
 
     void idle(const Configuration& config);
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);

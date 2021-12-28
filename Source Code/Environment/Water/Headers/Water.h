@@ -77,7 +77,6 @@ class WaterPlane : public SceneNode {
    protected:
     void buildDrawCommands(SceneGraphNode* sgn,
                            const RenderStagePass& renderStagePass,
-                           const Camera& crtCamera,
                            RenderPackage& pkgInOut) override;
 
     void postLoad(SceneGraphNode* sgn) override;
@@ -85,7 +84,7 @@ class WaterPlane : public SceneNode {
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
                        const RenderStagePass& renderStagePass,
-                       const Camera& camera,
+                       const CameraSnapshot& cameraSnapshot,
                        bool refreshData) override;
    protected:
     template <typename T>

@@ -14,13 +14,12 @@ NodeTransformData fetchInputData() {
     VAR._texCoord = inTexCoordData;
 
     dvd_Vertex = vec4(inVertexData, 1.f);
-
-#if !defined(DEPTH_PASS)
     dvd_Normal = UNPACK_VEC3(inNormalData);
-    dvd_Colour = inColourData;
 #if defined(COMPUTE_TBN) || defined(NEED_TANGENT)
     dvd_Tangent = UNPACK_VEC3(inTangentData);
 #endif //COMPUTE_TBN || NEED_TANGENT
+#if !defined(DEPTH_PASS)
+    dvd_Colour = inColourData;
 #endif //DEPTH_PASS
 
     const NodeTransformData nodeData = dvd_Transforms[TRANSFORM_IDX];

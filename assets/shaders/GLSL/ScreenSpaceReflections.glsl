@@ -1,7 +1,7 @@
 --Fragment
 
 #include "utility.frag"
-#include "IBL.frag"
+
 
 layout(binding = TEXTURE_UNIT0) uniform sampler2D texScreen;
 layout(binding = TEXTURE_UNIT1) uniform sampler2D texDepth;
@@ -11,7 +11,9 @@ uniform mat4 projToPixel; // A projection matrix that maps to pixel coordinates 
 uniform mat4 projectionMatrix;
 uniform mat4 invProjectionMatrix;
 uniform mat4 invViewMatrix;
+uniform mat4 prevViewProjectionMatrix;
 uniform vec2 zPlanes;
+uniform uint maxScreenMips;
 uniform float maxSteps;
 uniform float binarySearchIterations;
 uniform float jitterAmount;
@@ -160,67 +162,57 @@ float ComputeBlendFactorForIntersection(in float iterationCount,
         alpha *= 1.f - ((eyeDirection - eyeFadeStart) / (eyeFadeEnd - eyeFadeStart));
     }
     {// Fade ray hits based on distance from ray origin
-        //alpha *= 1.f - saturate(distance(vsRayOrigin, hitPoint) / maxDistance);
+        alpha *= 1.f - saturate(distance(vsRayOrigin, hitPoint) / maxDistance);
     }
 
     return alpha;
 }
 
-vec3 GetReflectionColour() {
+vec4 GetReflectionColour() {
+    float reflBlend = 0.f;
     vec3 ambientReflected = vec3(0.f);
 
     const float depth = texture(texDepth, VAR._texCoord).r;
     if (depth < INV_Z_TEST_SIGMA) {
-        const vec4 normalsAndMaterialData = texture(texNormal, VAR._texCoord);
-        const vec2 probeIDandFlags = unpackVec2(normalsAndMaterialData.a);
+        const vec3 dataIn = texture(texNormal, VAR._texCoord).rgb;
+        const vec2 normal = dataIn.rg;
+        const float roughness = dataIn.b;
 
-        const uint materialFlags = floatBitsToUint(probeIDandFlags.y);
-
-        if (!BitCompare(materialFlags, FLAG_NO_REFLECTIONS)) {
-            const vec2 MR = unpackVec2(normalsAndMaterialData.b);
-            const float roughness = saturate(MR.y);
-
-            if (roughness >= INV_Z_TEST_SIGMA) {
-                return ambientReflected;
-            }
-
-            const vec3 vsNormal = normalize(unpackNormal(normalsAndMaterialData.rg));
+        if (roughness < INV_Z_TEST_SIGMA && ssrEnabled) 
+        {
+            const vec3 vsNormal = normalize(unpackNormal(normal));
             const vec3 vsPos = ViewSpacePos(VAR._texCoord, depth, invProjectionMatrix);
             const vec3 vsReflect = reflect(normalize(vsPos), vsNormal);
 
-            if (!BitCompare(materialFlags, FLAG_NO_ENV_REFLECTIONS)) {
-                const vec3 worldReflect = (invViewMatrix * vec4(vsReflect.xyz, 0.f)).xyz;
-                const vec3 worldPos = (invViewMatrix * vec4(vsPos.xyz, 1.f)).xyz;
-                const vec3 worldNormal = (invViewMatrix * vec4(vsNormal.xyz, 0.f)).xyz;
-                const uint probeID = uint(probeIDandFlags.x) - 1u;
-                ambientReflected = GetCubeReflection(worldReflect, worldNormal, worldPos, probeID, roughness);
-            }
+            const vec2 uv2 = VAR._texCoord * dvd_screenDimensions;
+            const float jitter = mod((uv2.x + uv2.y) * 0.25f, 1.f) * jitterAmount;
 
-            if (ssrEnabled && !BitCompare(materialFlags, FLAG_NO_SSR)) {
-                const vec2 uv2 = VAR._texCoord * dvd_screenDimensions;
-                const float jitter = mod((uv2.x + uv2.y) * 0.25f, 1.f) * jitterAmount;
+            vec3 hitPointWV = vec3(0.f);
+            vec2 hitPixel = vec2(0.f);
+            float iterations = 0;
+            if (FindSSRHit(vsPos, vsReflect, jitter, hitPixel, hitPointWV, iterations)) {
+                const vec4 hitPointW = invViewMatrix * vec4(hitPointWV, 1.f);
+                const vec4 hitPoint = prevViewProjectionMatrix * hitPointW;
 
-                vec3 hitPoint = vec3(0.f);
-                vec2 hitPixel = vec2(0.f);
-                float iterations = 0;
-                if (FindSSRHit(vsPos, vsReflect, jitter, hitPixel, hitPoint, iterations)) {
-                    const float reflBlend = ComputeBlendFactorForIntersection(iterations, hitPixel, hitPoint, vsPos, vsReflect);
-                    ambientReflected = mix(ambientReflected,
-                                           textureLod(texScreen, hitPixel, roughness * MAX_SCREEN_MIPS).rgb,
-                                           reflBlend);
-                }
+                const vec3 ndc = homogenize(hitPoint);
+                const vec2 previousUV = vec2(ndc.xy) * 0.5f + 0.5f;
+                reflBlend = ComputeBlendFactorForIntersection(iterations, previousUV, hitPointW.xyz, vsPos, vsReflect);
+                ambientReflected = mix(ambientReflected,
+                                        textureLod(texScreen, previousUV, roughness * maxScreenMips).rgb,
+                                        reflBlend);
             }
         }
     }
 
-    return ambientReflected;
+    return vec4(ambientReflected, reflBlend);
 }
 
 void main() {
     if (dvd_materialDebugFlag == DEBUG_NONE || dvd_materialDebugFlag == DEBUG_SSR) {
-        _colourOut = vec4(GetReflectionColour(), 1.f);
+        //_colourOut.a = refBlend
+        _colourOut = GetReflectionColour();
         return;
     }
 
-    _colourOut = vec4(0.f, 0.f, 0.f, 1.f);
+    _colourOut = vec4(0.f, 0.f, 0.f, 0.f);
 }

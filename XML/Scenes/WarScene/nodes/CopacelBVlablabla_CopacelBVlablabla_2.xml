@@ -233,8 +233,8 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>elmleaf.png</name>
-                <path>assets/textures</path>
+                <name>../textures/elmleaf.png</name>
+                <path>assets/textures/</path>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>1</id>

@@ -137,7 +137,7 @@ vec3 ViewSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjection) {
 
     const vec4 viewPos = invProjection * clipSpacePos;
 
-    return(viewPos.xyz / viewPos.w);
+    return homogenize(viewPos);
 }
 
 

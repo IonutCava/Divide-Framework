@@ -233,24 +233,24 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>chain_texture.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/chain_texture.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </UNIT0>
             <OPACITY>
-                <name>chain_texture_mask.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/chain_texture_mask.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </OPACITY>
             <NORMALMAP>
-                <name>chain_texture_ddn.tga</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/chain_texture_ddn.tga</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

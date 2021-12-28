@@ -61,12 +61,14 @@ enum class CullOptions : U16 {
     DEFAULT_CULL_OPTIONS = CULL_AGAINST_CLIPPING_PLANES | CULL_AGAINST_FRUSTUM | CULL_AGAINST_LOD
 };
 
+class Frustum;
 struct NodeCullParams {
     FrustumClipPlanes _clippingPlanes;
     vec4<U16> _lodThresholds = {1000u};
     vec3<F32> _minExtents = { 0.0f };
     std::pair<I64*, size_t> _ignoredGUIDS;
-    const Camera* _currentCamera = nullptr;
+    vec3<F32> _cameraEyePos;
+    const Frustum* _frustum = nullptr;
     F32 _cullMaxDistanceSq = std::numeric_limits<F32>::max();
     I32 _maxLoD = -1;
     RenderStage _stage = RenderStage::COUNT;

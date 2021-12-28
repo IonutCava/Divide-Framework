@@ -19,7 +19,7 @@ void main()
 
 #include "utility.frag"
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D Texture;
+layout(binding = TEXTURE_UNIT0) uniform sampler2DArray Texture;
 
 layout(location = 0) in vec2 Frag_UV;
 layout(location = 1) in vec4 Frag_Color;
@@ -29,6 +29,7 @@ out vec4 Out_Color;
 uniform ivec4 toggleChannel;
 uniform vec2 depthRange;
 uniform int depthTexture;
+uniform uint layer = 0u;
 uniform int flip;
 
 void main()
@@ -41,7 +42,7 @@ void main()
 
     const vec2 zPlanes = dvd_zPlanes * depthRange;
 #if 0
-    vec4 texColor = texture( Texture, uv );
+    vec4 texColor = texture( Texture, vec3(uv, float(layer)) );
     if (depthTexture == 1) {
         texColor = vec4((ToLinearDepth(texColor.r, zPlanes) / zPlanes.y) * toggleChannel[0]);
         Out_Color *= texColor;
@@ -63,7 +64,7 @@ void main()
         }
     }
 #else 
-    vec4 texColor = texture(Texture, uv);
+    vec4 texColor = texture(Texture, vec3(uv,float(layer)));
     if (depthTexture == 1) {
         texColor = vec4((ToLinearDepth(texColor.r, zPlanes) / zPlanes.y) * toggleChannel[0]);
     } else {

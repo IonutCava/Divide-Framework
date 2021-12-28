@@ -60,7 +60,7 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_BORDER %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_BORDER)).c_str(), true);
     fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_UNDERWATER %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER)).c_str(), true);
     fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SSR %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SSR)).c_str(), true);
-    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_POSTFXDATA %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_POSTFXDATA)).c_str(), true);
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_LINDEPTH %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH)).c_str(), true);
 
     ShaderProgramDescriptor postFXShaderDescriptor = {};
     postFXShaderDescriptor._modules.push_back(vertModule);
@@ -126,7 +126,18 @@ void PostFX::updateResolution(const U16 newWidth, const U16 newHeight) {
     _setCameraCmd._cameraSnapshot = Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot();
 }
 
-void PostFX::apply(const Camera* camera, const DELEGATE<void>& screenTargetCallback, GFX::CommandBuffer& bufferInOut) {
+void PostFX::prePass(const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut) {
+    static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: PrePass" };
+    GFX::EnqueueCommand(bufferInOut, s_beginScopeCmd);
+    GFX::EnqueueCommand<GFX::PushCameraCommand>(bufferInOut)->_cameraSnapshot = _setCameraCmd._cameraSnapshot;
+
+    _preRenderBatch.prePass(cameraSnapshot, _filterStack | _overrideFilterStack, bufferInOut);
+
+    GFX::EnqueueCommand<GFX::PopCameraCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+}
+
+void PostFX::apply(const CameraSnapshot& cameraSnapshot, const DELEGATE<void>& screenTargetCallback, GFX::CommandBuffer& bufferInOut) {
     static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: Apply" };
     static GFX::BeginRenderPassCommand s_beginRenderPassCmd{};
     static GFX::BindDescriptorSetsCommand s_descriptorSetCmd{};
@@ -156,7 +167,7 @@ void PostFX::apply(const Camera* camera, const DELEGATE<void>& screenTargetCallb
     GFX::EnqueueCommand(bufferInOut, s_beginScopeCmd);
     GFX::EnqueueCommand(bufferInOut, _setCameraCmd);
 
-    _preRenderBatch.execute(camera, _filterStack | _overrideFilterStack, bufferInOut);
+    _preRenderBatch.execute(cameraSnapshot, _filterStack | _overrideFilterStack, bufferInOut);
 
     GFX::EnqueueCommand(bufferInOut, s_beginRenderPassCmd);
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _drawPipeline });
@@ -169,17 +180,17 @@ void PostFX::apply(const Camera* camera, const DELEGATE<void>& screenTargetCallb
         _filtersDirty = false;
     };
 
-    _drawConstantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, camera->getZPlanes());
+    _drawConstantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
     GFX::EnqueueCommand(bufferInOut, _drawConstantsCmd);
 
     const auto& prbAtt = _preRenderBatch.getOutput(false)._rt->getAttachment(RTAttachmentType::Colour, 0);
-    const auto& fxDataAtt = context().gfx().renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::POSTFX_DATA)).getAttachment(RTAttachmentType::Colour, 0);
+    const auto& linDepthDataAtt = context().gfx().renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::LINEAR_DEPTH)).getAttachment(RTAttachmentType::Colour, 0);
     const auto& ssrDataAtt = context().gfx().renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SSR_RESULT)).getAttachment(RTAttachmentType::Colour, 0);
 
     TextureDataContainer& textureContainer = s_descriptorSetCmd._set._textureData;
-    textureContainer.add(TextureEntry{ prbAtt.texture()->data(),     prbAtt.samplerHash(),to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN) });
-    textureContainer.add(TextureEntry{ fxDataAtt.texture()->data(),  s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_POSTFXDATA) });
-    textureContainer.add(TextureEntry{ ssrDataAtt.texture()->data(), s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR) });
+    textureContainer.add(TextureEntry{ prbAtt.texture()->data(),           prbAtt.samplerHash(),to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN) });
+    textureContainer.add(TextureEntry{ linDepthDataAtt.texture()->data(),  s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH) });
+    textureContainer.add(TextureEntry{ ssrDataAtt.texture()->data(),       s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR) });
     GFX::EnqueueCommand(bufferInOut, s_descriptorSetCmd);
 
     GFX::EnqueueCommand(bufferInOut, s_drawCommand);

@@ -376,7 +376,6 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
         params._layerParams._layer = i;
         params._passName = Util::StringFormat("CSM_PASS_%d", i).c_str();
         params._stagePass._pass = i;
-        params._camera = ShadowMap::shadowCameras(ShadowType::LAYERED)[i];
         params._minExtents.set(minExtentsFactors[i]);
         if (i > 0 && dirLight.csmUseSceneAABBFit()[i]) {
             STUBBED("CascadedShadowMapsGenerator::render: Validate AABBFit for first cascade!");
@@ -384,7 +383,7 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
             params._feedBackContainer->resize(0);
         }
 
-        rpm->doCustomPass(params, bufferInOut);
+        rpm->doCustomPass(ShadowMap::shadowCameras(ShadowType::LAYERED)[i], params, bufferInOut);
     }
 
     postRender(dirLight, bufferInOut);

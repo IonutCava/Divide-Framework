@@ -233,8 +233,8 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>sponza_roof_diff.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/sponza_roof_diff.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

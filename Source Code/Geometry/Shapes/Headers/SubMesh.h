@@ -85,7 +85,6 @@ class SubMesh : public Object3D {
 
     void buildDrawCommands(SceneGraphNode* sgn,
                            const RenderStagePass& renderStagePass,
-                           const Camera& crtCamera,
                            RenderPackage& pkgInOut) override;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "SubMesh"; }

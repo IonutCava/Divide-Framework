@@ -154,6 +154,7 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
                             aiProcess_FindInvalidData |
                             aiProcess_ValidateDataStructure |
                             aiProcess_OptimizeMeshes |
+                            aiProcess_OptimizeGraph |
                             aiProcess_TransformUVCoords;// Preprocess UV transformations (scaling, translation ...)
 
     const aiScene* aiScenePointer = importer.ReadFile((filePath.str() + "/" + fileName.str()).c_str(), ppSteps);

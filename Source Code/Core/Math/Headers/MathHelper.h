@@ -566,6 +566,18 @@ bool decomposeMatrix(const mat4<F32>& transform,
                      vec3<Angle::RADIANS<F32>>& rotationOut,
                      bool& isUniformScaleOut);
 
+bool decomposeMatrix(const mat4<F32>& transform,
+                     vec3<F32>& translationOut,
+                     vec3<F32>& scaleOut,
+                     vec3<Angle::RADIANS<F32>>& rotationOut);
+
+bool decomposeMatrix(const mat4<F32>& transform,
+                     vec3<F32>& translationOut,
+                     vec3<F32>& scaleOut);
+
+bool decomposeMatrix(const mat4<F32>& transform,
+                     vec3<F32>& translationOut);
+
 //ref: https://community.khronos.org/t/glsl-packing-a-normal-in-a-single-float/52039/3
 // Pack 3 values into 1 float
 [[nodiscard]] F32 PACK_VEC3(F32_SNORM x, F32_SNORM y, F32_SNORM z) noexcept;

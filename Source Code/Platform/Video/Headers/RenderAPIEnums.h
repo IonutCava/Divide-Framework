@@ -53,7 +53,8 @@ enum class RenderTargetUsage : U8 {
     OIT,
     OIT_MS,
     OIT_REFLECT,
-    POSTFX_DATA,
+    SSAO_RESULT,
+    LINEAR_DEPTH,
     SSR_RESULT,
     HI_Z,
     HI_Z_REFLECT,
@@ -91,8 +92,11 @@ enum class TextureUsage : U8 {
     REFRACTION_CUBE,
     REFLECTION_PREFILTERED,
     IRRADIANCE,
+    SSR_SAMPLE,
+    SSAO_SAMPLE,
     BRDF_LUT,
-    POST_FX_DATA,
+    SSAO,
+    TRANSMITANCE,
     SCENE_NORMALS,
     COUNT
 };
@@ -122,8 +126,11 @@ namespace Names {
         "REFRACTION_CUBE",
         "REFLECTION_PREFILTERED",
         "IRRADIANCE",
+        "SSR_SAMPLE",
+        "SSAO_SAMPLE",
         "BRDF_LUT",
-        "POST_FX_DATA",
+        "SSAO",
+        "TRANSMITANCE",
         "SCENE_NORMALS",
         "NONE"
     };

@@ -103,7 +103,7 @@ class Object3D : public SceneNode {
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
                        const RenderStagePass& renderStagePass,
-                       const Camera& camera,
+                       const CameraSnapshot& cameraSnapshot,
                        bool refreshData) override;
                         
     virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] I32 newIndex) {}
@@ -181,7 +181,6 @@ class Object3D : public SceneNode {
 
     void buildDrawCommands(SceneGraphNode* sgn,
                            const RenderStagePass& renderStagePass,
-                           const Camera& crtCamera,
                            RenderPackage& pkgInOut) override;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Object3D"; }

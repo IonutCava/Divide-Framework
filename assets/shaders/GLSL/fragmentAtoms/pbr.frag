@@ -1,6 +1,8 @@
 #ifndef _PBR_FRAG_
 #define _PBR_FRAG_
 
+#include "IBL.frag"
+
 // AMAZING RESOURCE : http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr.pdf
 // Reference: https://github.com/urho3d/Urho3D/blob/master/bin/CoreData/Shaders/GLSL/PBR.glsl
 // Following BRDF methods are based upon research Frostbite EA

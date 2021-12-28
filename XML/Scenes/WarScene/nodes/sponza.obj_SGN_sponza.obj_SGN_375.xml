@@ -233,24 +233,24 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>vase_plant.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/vase_plant.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </UNIT0>
             <OPACITY>
-                <name>vase_plant_mask.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/vase_plant_mask.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </OPACITY>
             <SPECULAR>
-                <name>vase_plant_spec.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/vase_plant_spec.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

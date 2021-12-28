@@ -64,7 +64,8 @@ class PreRenderBatch {
 
     void update(U64 deltaTimeUS) noexcept;
 
-    void execute(const Camera* camera, U32 filterStack, GFX::CommandBuffer& bufferInOut);
+    void prePass(const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut);
+    void execute(const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut);
     void reshape(U16 width, U16 height);
 
     void onFilterEnabled(FilterType filter);
@@ -161,8 +162,6 @@ class PreRenderBatch {
     ShaderBuffer*      _histogramBuffer = nullptr;
 
     RenderTargetHandle _sceneEdges;
-
-    bool _needScreenCopy = false;
     RenderTargetHandle _screenCopyPreToneMap;
 
     struct HDRTargets {
@@ -185,7 +184,6 @@ class PreRenderBatch {
 
     Texture_ptr _currentLuminance;
     ShaderProgram_ptr _toneMap = nullptr;
-    ShaderProgram_ptr _applySSAOSSR = nullptr;
     ShaderProgram_ptr _toneMapAdaptive = nullptr;
     ShaderProgram_ptr _createHistogram = nullptr;
     ShaderProgram_ptr _averageHistogram = nullptr;

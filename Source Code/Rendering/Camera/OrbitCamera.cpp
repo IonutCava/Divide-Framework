@@ -48,7 +48,7 @@ void OrbitCamera::update(const F32 deltaTimeMS) noexcept {
 
     vec3<F32> newTargetOrientation;
     if (/*trans->changedLastFrame() || */ _rotationDirty || true) {
-        newTargetOrientation = _targetTransform->getOrientation().getEuler();
+        newTargetOrientation = _targetTransform->getWorldOrientation().getEuler();
         newTargetOrientation.yaw = M_PI_f - newTargetOrientation.yaw;
         newTargetOrientation += _cameraRotation;
         Util::Normalize(newTargetOrientation, false);
@@ -56,7 +56,7 @@ void OrbitCamera::update(const F32 deltaTimeMS) noexcept {
     }
 
     _data._orientation.fromEuler(Angle::to_DEGREES(newTargetOrientation));
-    setEye(_targetTransform->getPosition() + _data._orientation * (_offsetDir * _curRadius));
+    setEye(_targetTransform->getWorldPosition() + _data._orientation * (_offsetDir * _curRadius));
     _viewMatrixDirty = true;
 }
 

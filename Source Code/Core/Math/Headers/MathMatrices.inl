@@ -1559,6 +1559,7 @@ mat4<T>::mat4(const vec3<U> &translation, const vec3<U> &scale, const mat3<U>& r
             static_cast<U>(0), static_cast<U>(0), scale.z,           static_cast<U>(0),
             static_cast<U>(0), static_cast<U>(0), static_cast<U>(0), static_cast<U>(1)})
 {
+    // Rotate around origin then move!
     set(*this * mat4<U>(rotation, false));
     setTranslation(translation);
 }
@@ -1915,6 +1916,7 @@ FORCE_INLINE void mat4<T>::set(const mat3<U> &matrix) noexcept {
     mat[0] = matrix[0]; mat[1] = matrix[1]; mat[2]  = matrix[2];
     mat[4] = matrix[3]; mat[5] = matrix[4]; mat[6]  = matrix[5];
     mat[8] = matrix[6]; mat[9] = matrix[7]; mat[10] = matrix[8];
+    mat[15] = 1.f;
 }
 
 template<typename T>
@@ -2376,8 +2378,7 @@ void mat4<T>::scale(U x, U y, U z) noexcept {
 }
 
 template<typename T>
-template<typename U>
-FORCE_INLINE vec3<U> mat4<T>::getTranslation() const noexcept {
+FORCE_INLINE vec3<T> mat4<T>::getTranslation() const noexcept {
     return {
         mat[12],
         mat[13],

@@ -100,7 +100,6 @@ class Vegetation final : public SceneNode {
 
     void buildDrawCommands(SceneGraphNode* sgn,
                            const RenderStagePass& renderStagePass,
-                           const Camera& crtCamera,
                            RenderPackage& pkgInOut) override;
 
     void getStats(U32& maxGrassInstances, U32& maxTreeInstances) const;
@@ -119,7 +118,6 @@ class Vegetation final : public SceneNode {
 
     void occlusionCull(const RenderStagePass& stagePass,
                        const Texture_ptr& depthBuffer,
-                       const Camera& camera,
                        GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
                        GFX::CommandBuffer& bufferInOut) const override;
    private:

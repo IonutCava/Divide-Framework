@@ -233,24 +233,24 @@
         </DISPLAY>
         <texture>
             <UNIT0>
-                <name>sponza_column_c_diff.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/sponza_column_c_diff.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </UNIT0>
             <NORMALMAP>
-                <name>sponza_column_c_ddn.tga</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/sponza_column_c_ddn.tga</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>
                 </Sampler>
             </NORMALMAP>
             <SPECULAR>
-                <name>sponza_column_c_spec.png</name>
-                <path>assets/textures/sponza</path>
+                <name>sponza/sponza_column_c_spec.png</name>
+                <path>assets/textures/</path>
                 <usage>MULTIPLY</usage>
                 <Sampler>
                     <id>1</id>

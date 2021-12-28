@@ -252,7 +252,7 @@
                 </Sampler>
             </NORMALMAP>
             <REFLECTION_PLANAR>
-                <name>FBO_Reflection_Planar_0_Att_Colour_0_65</name>
+                <name>FBO_Reflection_Planar_0_Att_Colour_0_72</name>
                 <path/>
                 <usage>REPLACE</usage>
                 <Sampler>
@@ -260,7 +260,7 @@
                 </Sampler>
             </REFLECTION_PLANAR>
             <REFRACTION_PLANAR>
-                <name>FBO_Refraction_Planar_0_Att_Colour_0_80</name>
+                <name>FBO_Refraction_Planar_0_Att_Colour_0_97</name>
                 <path/>
                 <usage>REPLACE</usage>
                 <Sampler>

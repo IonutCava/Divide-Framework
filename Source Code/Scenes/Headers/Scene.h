@@ -264,7 +264,7 @@ class Scene : public Resource, public PlatformContextComponent {
         void          loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, SceneGraphNode* parent);
 
         /// Draw debug entities
-        virtual void debugDraw(const Camera* activeCamera, GFX::CommandBuffer& bufferInOut);
+        virtual void debugDraw(GFX::CommandBuffer& bufferInOut);
         /// Draw custom ui elements
         virtual void drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
         /// Return true if input was consumed
@@ -361,8 +361,8 @@ class SceneManager {
         scene.currentPlayerPass(idx);
     }
 
-    static void debugDraw(Scene& scene, const Camera* activeCamera, GFX::CommandBuffer& bufferInOut) {
-        scene.debugDraw(activeCamera, bufferInOut);
+    static void debugDraw(Scene& scene, GFX::CommandBuffer& bufferInOut) {
+        scene.debugDraw(bufferInOut);
     }
 
     static void drawCustomUI(Scene& scene, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {

@@ -2,6 +2,8 @@
 
 #include "Headers/SceneNode.h"
 
+#include "Core/Resources/Headers/ResourceCache.h"
+#include "Core/Headers/PlatformContext.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Managers/Headers/SceneManager.h"
@@ -14,7 +16,7 @@ namespace Divide {
 SceneNode::SceneNode(ResourceCache* parentCache, const size_t descriptorHash, const Str256& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 requiredComponentMask)
     : CachedResource(ResourceType::DEFAULT, descriptorHash, name, resourceName, resourceLocation),
      _type(type),
-     _editorComponent(Names::sceneNodeType[to_base(type)]),
+     _editorComponent(nullptr, &parentCache->context().editor(), ComponentType::COUNT, Names::sceneNodeType[to_base(type)]),
      _parentCache(parentCache)
 {
     std::atomic_init(&_sgnParentCount, 0);
@@ -48,7 +50,7 @@ void SceneNode::sceneUpdate([[maybe_unused]] const U64 deltaTimeUS,
 void SceneNode::prepareRender([[maybe_unused]] SceneGraphNode* sgn,
                               [[maybe_unused]] RenderingComponent& rComp,
                               [[maybe_unused]] const RenderStagePass& renderStagePass,
-                              [[maybe_unused]] const Camera& camera,
+                              [[maybe_unused]] const CameraSnapshot& cameraSnapshot,
                               [[maybe_unused]] bool refreshData)
 {
     assert(getState() == ResourceState::RES_LOADED);
@@ -57,7 +59,6 @@ void SceneNode::prepareRender([[maybe_unused]] SceneGraphNode* sgn,
 
 void SceneNode::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
                               [[maybe_unused]] const Texture_ptr& depthBuffer,
-                              [[maybe_unused]] const Camera& camera,
                               [[maybe_unused]] GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
                               [[maybe_unused]] GFX::CommandBuffer& bufferInOut) const
 {
@@ -112,7 +113,6 @@ void SceneNode::editorFieldChanged([[maybe_unused]] std::string_view field) {
 
 void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn,
                                   [[maybe_unused]] const RenderStagePass& renderStagePass,
-                                  [[maybe_unused]] const Camera& crtCamera,
                                   [[maybe_unused]] RenderPackage& pkgInOut)
 {
 }

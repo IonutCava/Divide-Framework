@@ -173,14 +173,8 @@ const BoundingBox& BoundsComponent::updateAndGetBoundingBox() {
         return true;
     });
 
-    if (mask == to_U32(TransformType::TRANSLATION)) {
-        const vec3<F32>& pos = _parentSGN->get<TransformComponent>()->getPosition();
-        _boundingBox.set(_refBoundingBox.getMin() + pos, _refBoundingBox.getMax() + pos);
-    } else {
-        mat4<F32> mat;
-        _parentSGN->get<TransformComponent>()->getWorldMatrix(mat);
-        _boundingBox.transform(_refBoundingBox.getMin(), _refBoundingBox.getMax(), mat);
-    }
+    const mat4<F32> mat = _parentSGN->get<TransformComponent>()->getWorldMatrix();
+    _boundingBox.transform(_refBoundingBox.getMin(), _refBoundingBox.getMax(), mat);
 
     _boundingSphere.fromBoundingBox(_boundingBox);
     _obbDirty.store(true);
@@ -197,7 +191,8 @@ const BoundingBox& BoundsComponent::updateAndGetBoundingBox() {
 const OBB& BoundsComponent::getOBB() {
     if (_obbDirty.exchange(false)) {
         const TransformComponent* transform = _parentSGN->get<TransformComponent>();
-        _obb.fromBoundingBox(_refBoundingBox, transform->getPosition(), transform->getOrientation(), transform->getScale());
+        //_obb.fromBoundingBox(_refBoundingBox, transform->getWorldMatrix());
+        _obb.fromBoundingBox(_refBoundingBox, transform->getWorldPosition(), transform->getWorldOrientation(), transform->getWorldScale());
         _boundingSphere = _obb.toEnclosingSphere();
     }
 

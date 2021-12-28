@@ -203,7 +203,7 @@ public:
     enum class ScreenTargets : U8 {
         ALBEDO = 0,
         VELOCITY,
-        NORMALS_AND_MATERIAL_PROPERTIES,
+        NORMALS,
         MODULATE,
         COUNT,
         ACCUMULATION = ALBEDO,
@@ -227,7 +227,7 @@ public:  // GPU interface
     void beginFrame(DisplayWindow& window, bool global);
     void endFrame(DisplayWindow& window, bool global);
 
-    void debugDraw(const SceneRenderState& sceneRenderState, const Camera* activeCamera, GFX::CommandBuffer& bufferInOut);
+    void debugDraw(const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut);
     void debugDrawLines(const I64 ID, const Line* lines, size_t count) noexcept;
     void debugDrawBox(const I64 ID, const vec3<F32>& min, const vec3<F32>& max, const FColour3& colour) noexcept;
     void debugDrawSphere(const I64 ID, const vec3<F32>& center, F32 radius, const FColour3& colour) noexcept;

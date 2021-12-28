@@ -321,8 +321,8 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
     const TransformComponent* tComp = node->get<TransformComponent>();
     assert(tComp != nullptr);
 
-    const vec3<F32>& position = tComp->getPosition();
-    const vec4<F32>& orientation = tComp->getOrientation().asVec4();
+    const vec3<F32>& position = tComp->getWorldPosition();
+    const vec4<F32>& orientation = tComp->getWorldOrientation().asVec4();
     const physx::PxTransform posePxTransform(Util::toVec3(position), physx::PxQuat(orientation.x, orientation.y, orientation.z, orientation.w).getConjugate());
 
     newActor->_actor = createActorForGroup(parentComp.physicsCollisionGroup(), posePxTransform);
@@ -431,7 +431,7 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
             }
         }
         if (nodeGeometry != nullptr) {
-            const vec3<F32>& scale = tComp->getScale();
+            const vec3<F32>& scale = tComp->getWorldScale();
             const physx::PxTriangleMeshGeometry geometry = {
                 nodeGeometry,
                 physx::PxMeshScale(physx::PxVec3(scale.x, scale.y, scale.z),

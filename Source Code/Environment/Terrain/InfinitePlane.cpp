@@ -100,7 +100,10 @@ bool InfinitePlane::load() {
     ResourceDescriptor infinitePlane("infinitePlane");
     infinitePlane.flag(true);  // No default material
     infinitePlane.threaded(false);
-    infinitePlane.data().set(Util::PACK_HALF1x16(_dimensions.x * 1.5f) * 2u, 0u, Util::PACK_HALF1x16(_dimensions.y * 1.5f) * 2u);
+    infinitePlane.ID(150u);
+    const U32 packedX = _dimensions.x / infinitePlane.ID();
+    const U32 packedY = _dimensions.y / infinitePlane.ID();
+    infinitePlane.data().set(Util::PACK_HALF1x16(packedX * 2.f), 0u, Util::PACK_HALF1x16(packedY * 2.f));
 
     _plane = CreateResource<Quad3D>(_parentCache, infinitePlane);
     _boundingBox.set(vec3<F32>(-_dimensions.x * 1.5f, -0.5f, -_dimensions.y * 1.5f),
@@ -127,12 +130,11 @@ void InfinitePlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, Scen
 
     const vec3<F32>& newEye = sceneState.parentScene().playerCamera()->getEye();
 
-    tComp->setPosition(newEye.x, tComp->getPosition().y, newEye.z);
+    tComp->setPosition(newEye.x, tComp->getWorldPosition().y, newEye.z);
 }
 
 void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn,
                                       const RenderStagePass& renderStagePass,
-                                      const Camera& crtCamera,
                                       RenderPackage& pkgInOut) {
 
     //infinite plane
@@ -146,7 +148,7 @@ void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn,
         pkgInOut.add(GFX::DrawCommand{ planeCmd });
     }
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
 }
 
 } //namespace Divide

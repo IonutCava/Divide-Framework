@@ -277,7 +277,7 @@ void Terrain::toggleBoundingBoxes() {
 void Terrain::prepareRender(SceneGraphNode* sgn,
                             RenderingComponent& rComp,
                             const RenderStagePass& renderStagePass,
-                            const Camera& camera,
+                            const CameraSnapshot& cameraSnapshot,
                             const bool refreshData) {
 
     const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
@@ -293,7 +293,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
         }
 
         const vec2<F32>& SNAP_GRID_SIZE = tessParams().SnapGridSize();
-        vec3<F32> cullingEye = camera.getEye();
+        vec3<F32> cullingEye = cameraSnapshot._eye;
         const vec2<F32> eyeXZ = cullingEye.xz();
 
         vec2<F32> snappedXZ = eyeXZ;
@@ -323,12 +323,11 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
         constants.set(_ID("dvd_tessTriangleWidth"),  GFX::PushConstantType::FLOAT, triangleWidth);
     }
 
-    Object3D::prepareRender(sgn, rComp, renderStagePass, camera, refreshData);
+    Object3D::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Terrain::buildDrawCommands(SceneGraphNode* sgn,
                                 const RenderStagePass& renderStagePass,
-                                const Camera& crtCamera,
                                 RenderPackage& pkgInOut)
 {
     const F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
@@ -358,7 +357,7 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn,
         _terrainQuadtree.drawBBox(pkgInOut);
     }
 
-    Object3D::buildDrawCommands(sgn, renderStagePass, crtCamera, pkgInOut);
+    Object3D::buildDrawCommands(sgn, renderStagePass, pkgInOut);
 }
 
 const vector<VertexBuffer::Vertex>& Terrain::getVerts() const noexcept {

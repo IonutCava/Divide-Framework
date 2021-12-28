@@ -2,6 +2,8 @@
 
 #include "Headers/EditorComponent.h"
 
+#include "Core/Headers/PlatformContext.h"
+#include "Editor/Headers/Editor.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "ECS/Components/Headers/TransformComponent.h"
@@ -37,19 +39,22 @@ namespace Divide {
         }
     }
 
-    EditorComponent::EditorComponent(const Str128& name)
+    EditorComponent::EditorComponent(SGNComponent* parentComp, Editor* editor, const ComponentType parentComponentType, const Str128& name)
         : GUIDWrapper(),
-          _name(name)
+          _name(name),
+          _parentComponentType(parentComponentType),
+          _parentComp(parentComp),
+          _editor(editor)
     {
     }
 
-    EditorComponent::EditorComponent(SGNComponent& parentComp, const ComponentType parentComponentType, const Str128& name)
-        : EditorComponent(name)
+    EditorComponent::~EditorComponent()
     {
-        _parentComponentType = parentComponentType;
-        _parentComp = &parentComp;
+        if_constexpr(Config::Build::ENABLE_EDITOR) {
+            assert(_editor != nullptr);
+            Attorney::EditorEditorComponent::onRemoveComponent(*_editor, *this);
+        }
     }
-
 
     void EditorComponent::registerField(EditorComponentField&& field) {
         _fields.erase(
