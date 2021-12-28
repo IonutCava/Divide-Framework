@@ -11,7 +11,7 @@
 </TRANSFORM>
 <ANIMATION>
     <Animation__Speed>1</Animation__Speed>
-    <Animation__Frame__Index x="115" y="114" z="0"/>
+    <Animation__Frame__Index x="27" y="26" z="28"/>
 </ANIMATION>
 <INVERSE_KINEMATICS/>
 <RAGDOLL/>
@@ -157,13 +157,13 @@
             </MAIN_PASS>
             <OIT_PASS>
                 <0>
-                    <id>2</id>
+                    <id>3</id>
                 </0>
                 <1>
-                    <id>2</id>
+                    <id>3</id>
                 </1>
                 <2>
-                    <id>2</id>
+                    <id>3</id>
                 </2>
             </OIT_PASS>
         </REFLECTION>
@@ -192,13 +192,13 @@
             </MAIN_PASS>
             <OIT_PASS>
                 <0>
-                    <id>2</id>
+                    <id>3</id>
                 </0>
                 <1>
-                    <id>2</id>
+                    <id>3</id>
                 </1>
                 <2>
-                    <id>2</id>
+                    <id>3</id>
                 </2>
             </OIT_PASS>
         </REFRACTION>
@@ -227,13 +227,13 @@
             </MAIN_PASS>
             <OIT_PASS>
                 <0>
-                    <id>2</id>
+                    <id>3</id>
                 </0>
                 <1>
-                    <id>2</id>
+                    <id>3</id>
                 </1>
                 <2>
-                    <id>2</id>
+                    <id>3</id>
                 </2>
             </OIT_PASS>
         </DISPLAY>

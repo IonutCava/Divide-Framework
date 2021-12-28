@@ -429,12 +429,15 @@ void MenuBar::drawFileMenu([[maybe_unused]] const bool modifierPressed) {
             ImGui::EndMenu();
         }
 
-        if (ImGui::MenuItem("Save Scene", "", false, hasUnsavedElements || isDefaultScene)) {
-            if (isDefaultScene) {
+        if (ImGui::MenuItem(modifierPressed ? "Save Scene (Forced)" : "Save Scene", "", false, hasUnsavedElements || isDefaultScene || modifierPressed)) {
+            if (isDefaultScene && !modifierPressed) {
                 showSceneSaveDialog = true;
             } else {
                 saveSceneCbk();
             }
+        }
+        if (modifierPressed) {
+            Util::AddUnderLine();
         }
         if (ImGui::MenuItem("Save Scene As", "", false, !isDefaultScene)) {
             showSceneSaveDialog = true;

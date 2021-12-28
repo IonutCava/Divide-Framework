@@ -162,13 +162,13 @@
             </MAIN_PASS>
             <OIT_PASS>
                 <0>
-                    <id>2</id>
+                    <id>3</id>
                 </0>
                 <1>
-                    <id>2</id>
+                    <id>3</id>
                 </1>
                 <2>
-                    <id>2</id>
+                    <id>3</id>
                 </2>
             </OIT_PASS>
         </REFLECTION>
@@ -197,13 +197,13 @@
             </MAIN_PASS>
             <OIT_PASS>
                 <0>
-                    <id>2</id>
+                    <id>3</id>
                 </0>
                 <1>
-                    <id>2</id>
+                    <id>3</id>
                 </1>
                 <2>
-                    <id>2</id>
+                    <id>3</id>
                 </2>
             </OIT_PASS>
         </REFRACTION>
@@ -232,13 +232,13 @@
             </MAIN_PASS>
             <OIT_PASS>
                 <0>
-                    <id>2</id>
+                    <id>3</id>
                 </0>
                 <1>
-                    <id>2</id>
+                    <id>3</id>
                 </1>
                 <2>
-                    <id>2</id>
+                    <id>3</id>
                 </2>
             </OIT_PASS>
         </DISPLAY>
@@ -260,7 +260,7 @@
                 </Sampler>
             </REFLECTION_PLANAR>
             <REFRACTION_PLANAR>
-                <name>FBO_Refraction_Planar_0_Att_Colour_0_97</name>
+                <name>FBO_Refraction_Planar_0_Att_Colour_0_87</name>
                 <path/>
                 <usage>REPLACE</usage>
                 <Sampler>

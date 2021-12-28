@@ -3,7 +3,7 @@
 <INFINITE_PLANE/>
 <TRANSFORM>
     <Transform>
-        <position x="783.915649" y="-50" z="86.4808044"/>
+        <position x="60" y="-50" z="60"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
@@ -149,13 +149,13 @@
             </MAIN_PASS>
             <OIT_PASS>
                 <0>
-                    <id>2</id>
+                    <id>3</id>
                 </0>
                 <1>
-                    <id>2</id>
+                    <id>3</id>
                 </1>
                 <2>
-                    <id>2</id>
+                    <id>3</id>
                 </2>
             </OIT_PASS>
         </REFLECTION>
@@ -184,13 +184,13 @@
             </MAIN_PASS>
             <OIT_PASS>
                 <0>
-                    <id>2</id>
+                    <id>3</id>
                 </0>
                 <1>
-                    <id>2</id>
+                    <id>3</id>
                 </1>
                 <2>
-                    <id>2</id>
+                    <id>3</id>
                 </2>
             </OIT_PASS>
         </REFRACTION>
@@ -219,13 +219,13 @@
             </MAIN_PASS>
             <OIT_PASS>
                 <0>
-                    <id>2</id>
+                    <id>3</id>
                 </0>
                 <1>
-                    <id>2</id>
+                    <id>3</id>
                 </1>
                 <2>
-                    <id>2</id>
+                    <id>3</id>
                 </2>
             </OIT_PASS>
         </DISPLAY>
