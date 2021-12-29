@@ -168,7 +168,7 @@ struct ImageData final : NonCopyable {
 
     [[nodiscard]] bool loadFromMemory(Byte* data, size_t size, U16 width, U16 height, U16 depth, U8 numComponents);
     /// creates this image instance from the specified data
-    [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, bool loadFromDDSCache, bool autoCompressToDXT);
+    [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, bool useDDSCache);
 
   protected:
     friend class ImageDataInterface;

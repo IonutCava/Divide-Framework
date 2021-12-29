@@ -221,8 +221,7 @@ bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, Image
                                _height,
                                path,
                                name,
-                               _descriptor.loadFromDDSCache(),
-                               _descriptor.autoCompressToDXT())) 
+                               _descriptor.useDDSCache())) 
     {
         if (fileData.layerCount() > 0) {
             Console::errorfn(Locale::Get(_ID("ERROR_TEXTURE_LAYER_LOAD")), name.c_str());
@@ -230,7 +229,7 @@ bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, Image
         }
         Console::errorfn(Locale::Get(_ID("ERROR_TEXTURE_LOAD")), name.c_str());
         // missing_texture.jpg must be something that really stands out
-        if (!fileData.loadFromFile(_descriptor.srgb(), _width, _height, Paths::g_assetsLocation + Paths::g_texturesLocation, s_missingTextureFileName, false, false)) {
+        if (!fileData.loadFromFile(_descriptor.srgb(), _width, _height, Paths::g_assetsLocation + Paths::g_texturesLocation, s_missingTextureFileName, false)) {
             DIVIDE_UNEXPECTED_CALL();
         }
     } else {

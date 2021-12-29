@@ -366,12 +366,12 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     grassTexDescriptor.layerCount(vegDetails.billboardCount);
     grassTexDescriptor.srgb(true);
 
-    ResourceDescriptor textureDetailMaps("Vegetation Billboards");
-    textureDetailMaps.assetLocation(Paths::g_assetsLocation + terrain->descriptor()->getVariable("vegetationTextureLocation"));
-    textureDetailMaps.assetName(ResourcePath{ vegDetails.billboardTextureArray });
-    textureDetailMaps.propertyDescriptor(grassTexDescriptor);
-    textureDetailMaps.waitForReady(false);
-    Texture_ptr grassBillboardArray = CreateResource<Texture>(terrain->parentResourceCache(), textureDetailMaps, loadTasks);
+    ResourceDescriptor vegetationBillboards("Vegetation Billboards");
+    vegetationBillboards.assetLocation(Paths::g_assetsLocation + terrain->descriptor()->getVariable("vegetationTextureLocation"));
+    vegetationBillboards.assetName(ResourcePath{ vegDetails.billboardTextureArray });
+    vegetationBillboards.propertyDescriptor(grassTexDescriptor);
+    vegetationBillboards.waitForReady(false);
+    Texture_ptr grassBillboardArray = CreateResource<Texture>(terrain->parentResourceCache(), vegetationBillboards, loadTasks);
 
     ResourceDescriptor vegetationMaterial("grassMaterial");
     Material_ptr vegMaterial = CreateResource<Material>(terrain->parentResourceCache(), vegetationMaterial);

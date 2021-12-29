@@ -137,8 +137,7 @@ class TextureDescriptor final : public PropertyDescriptor {
     /// Use SRGB colour space
     PROPERTY_RW(bool, srgb, false);
     PROPERTY_RW(bool, normalized, true);
-    PROPERTY_RW(bool, loadFromDDSCache, true);
-    PROPERTY_RW(bool, autoCompressToDXT, true);
+    PROPERTY_RW(bool, useDDSCache, true);
     PROPERTY_RW(bool, compressed, false);
     PROPERTY_RW(MipMappingState, mipMappingState, MipMappingState::AUTO);
 };

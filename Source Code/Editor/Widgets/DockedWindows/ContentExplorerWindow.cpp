@@ -318,8 +318,7 @@ namespace Divide {
 
     Texture_ptr ContentExplorerWindow::getTextureForPath(const ResourcePath& texturePath, const ResourcePath& textureName) const {
         TextureDescriptor texturePreviewDescriptor(TextureType::TEXTURE_2D);
-        texturePreviewDescriptor.loadFromDDSCache(false);
-        texturePreviewDescriptor.autoCompressToDXT(false);
+        texturePreviewDescriptor.useDDSCache(false);
 
         ResourceDescriptor textureResource(textureName.str());
         textureResource.assetName(textureName);

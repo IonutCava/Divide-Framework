@@ -400,8 +400,7 @@ namespace Import {
                 textureSampler.wrapW(tex.wrapW());
 
                 textureDescriptor.srgb(tex.srgb());
-                textureDescriptor.loadFromDDSCache(tex.useDDSCache());
-                textureDescriptor.autoCompressToDXT(tex.useDDSCache());
+                textureDescriptor.useDDSCache(tex.useDDSCache());
                 ResourceDescriptor texture(tex.textureName().str());
                 texture.assetName(tex.textureName());
                 texture.assetLocation(tex.texturePath());

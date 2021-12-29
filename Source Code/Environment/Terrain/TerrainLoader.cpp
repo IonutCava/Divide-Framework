@@ -182,24 +182,25 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     albedoSampler.anisotropyLevel(16);
     const size_t albedoHash = albedoSampler.getHash();
 
-    TextureDescriptor blendMapDescriptor(TextureType::TEXTURE_2D_ARRAY);
-    blendMapDescriptor.layerCount(to_U16(splatTextures.size()));
-    blendMapDescriptor.srgb(false);
-
     TextureDescriptor albedoDescriptor(TextureType::TEXTURE_2D_ARRAY);
     albedoDescriptor.layerCount(to_U16(textures[to_base(TerrainTextureType::ALBEDO_ROUGHNESS)].size()));
     albedoDescriptor.srgb(false);
+
+    TextureDescriptor blendMapDescriptor(TextureType::TEXTURE_2D_ARRAY);
+    blendMapDescriptor.layerCount(to_U16(splatTextures.size()));
+    blendMapDescriptor.srgb(false);
+    blendMapDescriptor.useDDSCache(false);
 
     TextureDescriptor normalDescriptor(TextureType::TEXTURE_2D_ARRAY);
     normalDescriptor.layerCount(to_U16(textures[to_base(TerrainTextureType::NORMAL)].size()));
     normalDescriptor.srgb(false);
     STUBBED("Find a way to properly compress normal maps! -Ionut");
-    normalDescriptor.loadFromDDSCache(false);
-    normalDescriptor.autoCompressToDXT(false);
+    normalDescriptor.useDDSCache(false);
 
     TextureDescriptor extraDescriptor(TextureType::TEXTURE_2D_ARRAY);
     extraDescriptor.layerCount(extraMapCount);
     extraDescriptor.srgb(false);
+    extraDescriptor.useDDSCache(false);
 
     textureBlendMap.assetName(blendMapArray);
     textureBlendMap.propertyDescriptor(blendMapDescriptor);
@@ -844,10 +845,10 @@ VegetationDetails& TerrainLoader::initializeVegetationDetails(const Terrain_ptr&
 
     const ResourcePath grassMap{ terrainDescriptor->getVariable("grassMap")};
     const ResourcePath treeMap{ terrainDescriptor->getVariable("treeMap") };
-    if (!vegDetails.grassMap->loadFromFile(false, 0, 0, terrainLocation, grassMap, true, true)) {
+    if (!vegDetails.grassMap->loadFromFile(false, 0, 0, terrainLocation, grassMap, true)) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (!vegDetails.treeMap->loadFromFile(false, 0, 0, terrainLocation, treeMap, true, true)) {
+    if (!vegDetails.treeMap->loadFromFile(false, 0, 0, terrainLocation, treeMap, true)) {
         DIVIDE_UNEXPECTED_CALL();
     }
 

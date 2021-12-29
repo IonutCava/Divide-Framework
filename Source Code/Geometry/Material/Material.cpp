@@ -991,9 +991,14 @@ void Material::updateTransparency() {
     const Texture_ptr& opacity = _textures[to_base(TextureUsage::OPACITY)];
     if (opacity) {
         const U8 channelCount = NumChannels(opacity->descriptor().baseFormat());
-        DIVIDE_ASSERT(channelCount == 1 || channelCount == 4, "Material::updateTranslucency: Opacity textures must be either single-channel or RGBA!");
+        if (!opacity->descriptor().compressed()) {
+            DIVIDE_ASSERT(channelCount == 1 || channelCount == 4, "Material::updateTranslucency: Opacity textures must be either single-channel or RGBA!");
 
-        _translucencySource = (opacity->hasTransparency()) ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
+            _translucencySource = (opacity->hasTransparency()) ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
+        } else {
+            _translucencySource = channelCount == 4 ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
+
+        }
     }
 
     _needsNewShader = oldSource != _translucencySource;
