@@ -67,16 +67,9 @@ void OnStartup(const bool upperLeftOrigin) {
     ilSetInteger(IL_KEEP_DXTC_DATA, IL_TRUE);
     //ilutRenderer(ILUT_WIN32);
     iluImageParameter(ILU_FILTER, ILU_SCALE_MITCHELL);
-    ilEnable(IL_TYPE_SET);
-    ilTypeFunc(IL_UNSIGNED_BYTE);
-    ilEnable(IL_FORMAT_SET);
-    ilFormatFunc(IL_RGB);
 }
 
 void OnShutdown() {
-    // Restore IL state
-    ilDisable(IL_FORMAT_SET);
-    ilDisable(IL_TYPE_SET);
     ilShutDown();
 }
 
@@ -122,21 +115,11 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
     _16Bit = _isHDR ? false : (stbi_is_16_bit_from_file(f) == TRUE);
 
     if (!_isHDR && !_16Bit) {
-        // Sadly, we need to double load these files because DevIL is really bad at detecting the proper number of channels
-        // an image has. 32bit pngs sometimes show up as 24bit RGB.
-        dataLDR = stbi_load_from_file(f, &width, &height, &comp, 0);
-        _dataType = GFXDataFormat::UNSIGNED_BYTE;
-        if (dataLDR == nullptr) {
-            Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), fullPath.c_str());
-            return false;
-        }
-
-
-        if (Texture::UseTextureDDSCache() && !_isHDR && !_16Bit && comp < 4 /*disabled RGBA support as it doesn't seem to work properly with DevIL*/) {
+        if (Texture::UseTextureDDSCache() && !_isHDR && !_16Bit) {
             const ResourcePath cachePath = Texture::GetCachePath(_path);
             const ResourcePath cacheName = _name + ".DDS";
 
-            STUBBED("Get rid of DevIL completely! It is really really bad for DDS handling compared to the alternatives -Ionut");
+            STUBBED("Get rid of DevIL completely! It is really really bad for DDS handling (quality/performance) compared to the alternatives -Ionut");
 
             // Try and save regular images to DDS for better compression next time
             if (useDDSCache) {
@@ -150,7 +133,8 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
                         ilBindImage(imageID);
                         checkError();
                         if (ilLoadImage(fullPath.c_str()) == IL_TRUE) {
-                            ilSetInteger(IL_DXTC_FORMAT, comp == 4 ? IL_DXT5 : IL_DXT1);
+                            const ILint channelCount = ilGetInteger(IL_IMAGE_CHANNELS);
+                            ilSetInteger(IL_DXTC_FORMAT, channelCount == 4 ? IL_DXT5 : IL_DXT1);
                             iluBuildMipmaps();
                             ilSave(IL_DDS, cacheFilePath.c_str());
                             checkError();
@@ -159,19 +143,22 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
                         checkError();
                     }
                 }
-                assert(fileExists(cacheFilePath));
-
                 return loadDDS_IL(srgb, refWidth, refHeight, cachePath, cacheName);
             }
         }
     }
+
     if (_isHDR) {
         dataHDR = stbi_loadf_from_file(f, &width, &height, &comp, 0);
         _dataType = GFXDataFormat::FLOAT_32;
     } else if (_16Bit) {
         data16Bit = stbi_load_from_file_16(f, &width, &height, &comp, 0);
         _dataType = GFXDataFormat::UNSIGNED_SHORT;
+    } else {
+        dataLDR = stbi_load_from_file(f, &width, &height, &comp, 0);
+        _dataType = GFXDataFormat::UNSIGNED_BYTE;
     }
+
     if (dataHDR == nullptr && data16Bit == nullptr && dataLDR == nullptr) {
         Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), fullPath.c_str());
         return false;
@@ -233,7 +220,7 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
 
     if (refWidth != 0 && refHeight != 0 && (refWidth != width || refHeight != height)) {
         if (_16Bit) {
-            U16* resizedData16 = (U16*)STBI_MALLOC(to_size(refWidth)* refHeight * comp * 2);
+            U16* resizedData16 = (U16*)STBI_MALLOC(to_size(refWidth)* refHeight * (_bpp / 8));
             const I32 ret = stbir_resize_uint16_generic(data16Bit, width, height, 0,
                                                         resizedData16, refWidth, refHeight, 0,
                                                         comp, -1, 0,
@@ -246,7 +233,7 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
                 data16Bit = resizedData16;
             }
         } else if (_isHDR) {
-            F32* resizedDataHDR = (F32*)STBI_MALLOC(to_size(refWidth) * refHeight * comp * 4);
+            F32* resizedDataHDR = (F32*)STBI_MALLOC(to_size(refWidth) * refHeight * (_bpp / 8));
             const I32 ret = stbir_resize_float(dataHDR, width, height, 0, resizedDataHDR, refWidth, refHeight, 0, comp);
             if (ret == 1) {
                 width = refWidth;
@@ -255,7 +242,7 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
                 dataHDR = resizedDataHDR;
             }
         } else {
-            U8* resizedDataLDR = (U8*)STBI_MALLOC(to_size(refWidth) * refHeight * comp * 1);
+            U8* resizedDataLDR = (U8*)STBI_MALLOC(to_size(refWidth) * refHeight * (_bpp / 8));
             const I32 ret = srgb ? stbir_resize_uint8_srgb(dataLDR, width, height, 0, resizedDataLDR, refWidth, refHeight, 0, comp, -1, 0)
                                  : stbir_resize_uint8(dataLDR, width, height, 0, resizedDataLDR, refWidth, refHeight, 0, comp);
             if (ret == 1) {
