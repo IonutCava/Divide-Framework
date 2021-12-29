@@ -141,22 +141,18 @@ namespace Divide {
 
     static_assert(ArrayCount(Names::translucencySource) == to_base(TranslucencySource::COUNT) + 1, "TranslucencySource name array out of sync!");
 
-    /// Not used yet but implemented for shading model selection in shaders
-    /// This enum matches the ASSIMP one on a 1-to-1 basis
     enum class ShadingMode : U8 {
         FLAT = 0,
-        PHONG,
         BLINN_PHONG,
         TOON,
-        // Use PBR for the following
-        OREN_NAYAR,
-        COOK_TORRANCE,
+        PBR_MR, //Metallic/Roughness
+        PBR_SG, //Specular/Glossiness
         COUNT
     };
 
     namespace Names {
         static const char* shadingMode[] = {
-            "FLAT", "PHONG", "BLINN_PHONG", "TOON", "OREN_NAYAR", "COOK_TORRANCE", "NONE"
+            "FLAT", "BLINN_PHONG", "TOON", "PBR_MR", "PBR_SG", "NONE"
         };
     };
 

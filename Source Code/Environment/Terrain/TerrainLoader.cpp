@@ -223,7 +223,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     Console::d_printfn(Locale::Get(_ID("TERRAIN_INFO")), terrainDimensions.width, terrainDimensions.height);
 
     const F32 underwaterTileScale = terrainDescriptor->getVariablef("underwaterTileScale");
-    terrainMaterial->shadingMode(ShadingMode::COOK_TORRANCE);
+    terrainMaterial->shadingMode(ShadingMode::PBR_MR);
 
     const Terrain::ParallaxMode pMode = static_cast<Terrain::ParallaxMode>(CLAMPED(to_I32(to_U8(context.config().terrain.parallaxMode)), 0, 2));
     if (pMode == Terrain::ParallaxMode::NORMAL) {

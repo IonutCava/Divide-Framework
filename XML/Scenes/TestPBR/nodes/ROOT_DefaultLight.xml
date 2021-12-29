@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<static>true</static>
+<TRANSFORM>
+    <Transform>
+        <position x="0" y="0" z="0"/>
+        <orientation x="-169.156616" y="-31.533905" z="142.850372"/>
+        <scale x="0.99987042" y="0.99987042" z="0.99987042"/>
+    </Transform>
+</TRANSFORM>
+<BOUNDS/>
+<RENDERING/>
+<NETWORKING/>
+<DIRECTIONAL_LIGHT>
+    <Direction x="0.523237288" y="-0.16036272" z="0.8369627"/>
+    <Fit__CSM__To__AABB______0____>true</Fit__CSM__To__AABB______0____>
+    <Fit__CSM__To__AABB______1____>true</Fit__CSM__To__AABB______1____>
+    <Fit__CSM__To__AABB______2____>true</Fit__CSM__To__AABB______2____>
+    <Fit__CSM__To__AABB______3____>true</Fit__CSM__To__AABB______3____>
+    <CSM__Near__Clip__Offset>0</CSM__Near__Clip__Offset>
+    <Show__direction__cone>false</Show__direction__cone>
+    <Range>500</Range>
+    <Intensity>1</Intensity>
+    <Colour r="0.9921875" g="0.6015625" b="0.5703125"/>
+    <Is__Shadow__Caster>true</Is__Shadow__Caster>
+    <Shadow__Bias>0</Shadow__Bias>
+    <Shadow__Strength>1</Shadow__Strength>
+    <Light__Tag__Value>16773360</Light__Tag__Value>
+</DIRECTIONAL_LIGHT>

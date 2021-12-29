@@ -25,11 +25,13 @@
 <RENDERING>
     <Material>
         <version>1</version>
-        <shadingMode>COOK_TORRANCE</shadingMode>
+        <shadingMode>BLINN_PHONG</shadingMode>
         <colour r="1" g="1" b="1" a="1"/>
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>
         <specular r="0" g="0" b="0" a="1"/>
+        <specular_factor>0</specular_factor>
+        <glossiness_factor>0</glossiness_factor>
         <metallic>0</metallic>
         <roughness>0.00999999978</roughness>
         <doubleSided>false</doubleSided>

@@ -507,7 +507,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
 void Vegetation::createAndUploadGPUData(GFXDevice& gfxDevice, const Terrain_ptr& terrain, const VegetationDetails& vegDetails) {
     assert(s_grassData == nullptr);
     for (TerrainChunk* chunk : terrain->terrainChunks()) {
-        chunk->initializeVegetation(vegDetails);
+        chunk->initializeVegetation(gfxDevice, vegDetails);
     }
     terrain->getVegetationStats(s_maxGrassInstances, s_maxTreeInstances);
 
@@ -603,9 +603,6 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
                     meshPtr->setMaterialTpl(s_treeMaterial);
                     // CSM last split should probably avoid rendering trees since it would cover most of the scene :/
                     meshPtr->renderState().addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::MAIN_PASS, to_U8(LightType::DIRECTIONAL), 2u);
-                    for (const SubMesh_ptr& subMesh : meshPtr->subMeshList()) {
-                        subMesh->renderState().addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::MAIN_PASS, to_U8(LightType::DIRECTIONAL), 2u);
-                    }
                     s_treeMeshes.push_back(meshPtr);
                 }
             }

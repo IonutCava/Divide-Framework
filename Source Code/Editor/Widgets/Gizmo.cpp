@@ -144,12 +144,11 @@ namespace Divide {
             if (Util::decomposeMatrix(_deltaMatrix, position, scale, euler)) {
                 U32 selectionCounter = 0u;
                 for (const SelectedNode& node : _selectedNodes) {
-                    const vec3<F32>& nodeScale = node.tComp->getWorldScale();
                     switch (_transformSettings.currentGizmoOperation) {
-                        case ImGuizmo::TRANSLATE   : node.tComp->translate(position * nodeScale); break;
-                        case ImGuizmo::TRANSLATE_X : node.tComp->translateX(position.x * nodeScale.x); break;
-                        case ImGuizmo::TRANSLATE_Y : node.tComp->translateY(position.y * nodeScale.y); break;
-                        case ImGuizmo::TRANSLATE_Z : node.tComp->translateZ(position.z * nodeScale.z); break;
+                        case ImGuizmo::TRANSLATE   : node.tComp->translate(position); break;
+                        case ImGuizmo::TRANSLATE_X : node.tComp->translateX(position.x); break;
+                        case ImGuizmo::TRANSLATE_Y : node.tComp->translateY(position.y); break;
+                        case ImGuizmo::TRANSLATE_Z : node.tComp->translateZ(position.z); break;
                         case ImGuizmo::SCALE       : node.tComp->scale(Max(scale, vec3<F32>(EPSILON_F32))); break;
                         case ImGuizmo::SCALE_X     : node.tComp->scaleX(std::max(scale.x, EPSILON_F32)); break;
                         case ImGuizmo::SCALE_Y     : node.tComp->scaleY(std::max(scale.y, EPSILON_F32)); break;
@@ -159,7 +158,8 @@ namespace Divide {
                         case ImGuizmo::ROTATE_Y    : node.tComp->rotateY(-Angle::to_DEGREES(euler.y)); break;
                         case ImGuizmo::ROTATE_Z    : node.tComp->rotateZ(-Angle::to_DEGREES(euler.z)); break;
                     }
-
+                    Console::printfn("Delta: pos[%.2f - %.2f - %.2f] scale[%.2f - %.2f - %.2f] rot[%.2f - %.2f - %.2f]",
+                        position.x, position.y, position.z, scale.x, scale.y, scale.z, -Angle::to_DEGREES(euler.x), -Angle::to_DEGREES(euler.y), -Angle::to_DEGREES(euler.z));
                     g_transformCache[selectionCounter++] = node.tComp->getLocalValues();
                 }
                 _wasUsed = true;

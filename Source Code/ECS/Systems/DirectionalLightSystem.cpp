@@ -23,12 +23,13 @@ namespace Divide {
         Parent::PreUpdate(dt);
         for (DirectionalLightComponent* comp : _componentCache) {
             if (comp->drawImpostor() || comp->showDirectionCone()) {
-                context().gfx().debugDrawCone(comp->getGUID(),
-                                              -comp->directionCache() * comp->range(),
-                                               comp->directionCache(), 
-                                               comp->range(),
-                                               2.f,
-                                               comp->getDiffuseColour());
+                IMPrimitive::ConeDescriptor descriptor;
+                descriptor.root = -comp->directionCache() * comp->range();
+                descriptor.direction = comp->directionCache();
+                descriptor.length = comp->range();
+                descriptor.radius = 2.f;
+                descriptor.colour = Util::ToByteColour(comp->getDiffuseColour());
+                context().gfx().debugDrawCone(comp->getGUID() + 0, descriptor);
             }
         }
     }

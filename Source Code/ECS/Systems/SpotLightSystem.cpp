@@ -23,13 +23,14 @@ namespace Divide {
 
         for (SpotLightComponent* comp : _componentCache) {
             if (comp->_drawImpostor) {
-               context().gfx().debugDrawCone(
-                   comp->getGUID(),
-                   comp->positionCache(),
-                   comp->directionCache(),
-                   comp->range(),
-                   comp->outerConeRadius(),
-                   comp->getDiffuseColour());
+                IMPrimitive::ConeDescriptor descriptor;
+                descriptor.root = comp->positionCache();
+                descriptor.direction = comp->directionCache();
+                descriptor.length = comp->range();
+                descriptor.radius = comp->outerConeRadius();
+                descriptor.colour = Util::ToByteColour(comp->getDiffuseColour());
+
+               context().gfx().debugDrawCone(comp->getGUID() + 0, descriptor);
             }
         }
     }

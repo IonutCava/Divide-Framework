@@ -1,7 +1,0 @@
-<!-- Enter the folder name where all of the xml files are located -->
-<scriptLocation>XML</scriptLocation>
-<config>config.xml</config>
-<startupScene>WarScene</startupScene>
-<scenesLocation>Scenes</scenesLocation>
-<assetsLocation>assets</assetsLocation>
-<serverAddress>192.168.3.3</serverAddress>

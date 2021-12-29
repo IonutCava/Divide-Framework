@@ -3,7 +3,7 @@
 <INFINITE_PLANE/>
 <TRANSFORM>
     <Transform>
-        <position x="60" y="-50" z="60"/>
+        <position x="158.678055" y="-50" z="-5.80335236"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
@@ -17,6 +17,8 @@
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>
         <specular r="0" g="0" b="0" a="1"/>
+        <specular_factor>0</specular_factor>
+        <glossiness_factor>0</glossiness_factor>
         <metallic>0</metallic>
         <roughness>1</roughness>
         <doubleSided>false</doubleSided>

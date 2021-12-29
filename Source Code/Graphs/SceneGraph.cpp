@@ -463,7 +463,7 @@ namespace {
 
 void SceneGraph::saveToXML(const char* assetsFile, DELEGATE<void, std::string_view> msgCallback, const char* overridePath) const {
     const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
-    ResourcePath sceneLocation(scenePath + (strlen(overridePath) > 0 ? Str256(overridePath) : parentScene().resourceName()));
+    ResourcePath sceneLocation = (scenePath + (strlen(overridePath) > 0 ? Str256(overridePath) : parentScene().resourceName()));
 
     {
         boost::property_tree::ptree pt;
@@ -495,9 +495,10 @@ namespace {
 
 void SceneGraph::loadFromXML(const char* assetsFile, const char* overridePath) {
     using boost::property_tree::ptree;
-    static const auto& scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
+    static const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
+    ResourcePath sceneLocation = (scenePath + (strlen(overridePath) > 0 ? Str256(overridePath) : parentScene().resourceName()));
 
-    const ResourcePath file = scenePath + "/" + (strlen(overridePath) > 0 ? Str256(overridePath) : parentScene().resourceName()) + "/" + assetsFile;
+    const ResourcePath file = sceneLocation + "/" + assetsFile;
 
     if (!fileExists(file)) {
         return;

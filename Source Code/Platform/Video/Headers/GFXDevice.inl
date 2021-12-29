@@ -42,11 +42,11 @@ void DebugPrimitiveHandler<Data, N>::reset() {
         if (primitive != nullptr) {
             primitive->context().destroyIMP(primitive);
         }
+        primitive = nullptr;
     }
-    for (U32 i = 0u; i < N; ++i) {
-        _debugData[i] = {};
+    for (auto& data : _debugData) {
+        data = {};
     }
-    _debugPrimitives.fill(nullptr);
 }
 
 inline Renderer& 

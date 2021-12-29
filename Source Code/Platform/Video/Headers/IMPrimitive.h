@@ -36,6 +36,7 @@
 #include "DescriptorSets.h"
 #include "Core/Math/Headers/Line.h"
 #include "Core/Math/BoundingVolumes/Headers/OBB.h"
+#include "Rendering/Camera/Headers/Frustum.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 #include "Platform/Video/Headers/Pipeline.h"
@@ -56,22 +57,33 @@ FWD_DECLARE_MANAGED_CLASS(IMPrimitive);
 class NOINITVTABLE IMPrimitive : public VertexDataInterface {
     struct BaseDescriptor {
         UColour4  colour = DefaultColours::WHITE;
+        mat4<F32> worldMatrix;
     };
    public:
        struct OBBDescriptor final : public BaseDescriptor {
            OBB box;
        };
 
+       struct FrustumDescriptor final : public BaseDescriptor {
+           Frustum frustum;
+       };
+
        struct BoxDescriptor final : public BaseDescriptor {
            vec3<F32> min = VECTOR3_UNIT * -0.5f;
            vec3<F32> max = VECTOR3_UNIT *  0.5f;
+       }; 
+       
+       struct LineDescriptor final : public BaseDescriptor {
+           vector<Line> _lines;
        };
+
        struct SphereDescriptor final : public BaseDescriptor {
            vec3<F32> center = VECTOR3_ZERO;
            F32 radius = 1.f;
            U8 slices = 8u;
            U8 stacks = 8u;
        };
+
        struct ConeDescriptor final : public BaseDescriptor {
            vec3<F32> root = VECTOR3_ZERO;
            vec3<F32> direction = WORLD_Y_AXIS;
@@ -79,6 +91,7 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
            F32 radius = 2.f;
            U8 slices = 16u; //max 32u
        };
+
    public:
     const Pipeline* pipeline() const noexcept {
         return _pipeline;
@@ -153,6 +166,12 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
 
     GFX::CommandBuffer& toCommandBuffer() const;
 
+    void fromLines(const LineDescriptor& lines);
+    void fromLines(const LineDescriptor* lines, size_t count);
+    
+    void fromFrustum(const FrustumDescriptor& frustum);
+    void fromFrustums(const FrustumDescriptor* frustums, size_t count);
+    
     void fromOBB(const OBBDescriptor& box);
     void fromOBBs(const OBBDescriptor* boxes, size_t count);
 
@@ -163,6 +182,11 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
     void fromCone(const ConeDescriptor& cone);
     void fromCones(const ConeDescriptor* cones, size_t count);
 
+    template<size_t N>
+    void fromLines(const std::array<LineDescriptor, N>& lines) {
+        fromLines(lines.data(), lines.size());
+    } 
+    
     template<size_t N>
     void fromOBBs(const std::array<OBBDescriptor, N>& obbs) {
         fromOBBs(obbs.data(), obbs.size());

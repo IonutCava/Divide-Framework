@@ -308,7 +308,7 @@ void MenuBar::draw() {
                     break;
             }
             if (g_nodeDescriptor._node != nullptr) {
-                g_nodeDescriptor._node->getMaterialTpl()->shadingMode(ShadingMode::COOK_TORRANCE);
+                g_nodeDescriptor._node->getMaterialTpl()->shadingMode(ShadingMode::PBR_MR);
                 g_nodeDescriptor._node->getMaterialTpl()->baseColour(FColour4(0.4f, 0.4f, 0.4f, 1.0f));
                 g_nodeDescriptor._node->getMaterialTpl()->roughness(0.5f);
                 g_nodeDescriptor._node->getMaterialTpl()->metallic(0.5f);

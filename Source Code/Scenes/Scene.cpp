@@ -365,7 +365,15 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
 
     const ResourcePath scenePath = Paths::g_xmlDataLocation + Paths::g_scenesLocation;
     const ResourcePath sceneLocation(scenePath + "/" + resourceName().c_str());
-    const ResourcePath nodePath = sceneLocation + "/nodes/" + parent->name() + "_" + sceneNode.name + ".xml";
+    ResourcePath savePath{ sceneLocation.c_str() };
+    savePath.append("/nodes/");
+
+    ResourcePath targetFile{ parent->name().c_str() };
+    targetFile.append("_");
+    targetFile.append(sceneNode.name);
+
+
+    const ResourcePath nodePath = savePath + Util::MakeXMLSafe(targetFile) + ".xml";
 
     SceneGraphNode* crtNode = parent;
     if (fileExists(nodePath)) {
@@ -438,7 +446,7 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
             if (ret != nullptr) {
                 ResourceDescriptor materialDescriptor(sceneNode.name + "_material");
                 Material_ptr tempMaterial = CreateResource<Material>(resourceCache(), materialDescriptor);
-                tempMaterial->shadingMode(ShadingMode::COOK_TORRANCE);
+                tempMaterial->shadingMode(ShadingMode::PBR_MR);
                 ret->setMaterialTpl(tempMaterial);
                 ret->addStateCallback(ResourceState::RES_LOADED, loadModelComplete);
             }

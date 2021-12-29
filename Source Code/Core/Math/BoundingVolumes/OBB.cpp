@@ -92,7 +92,7 @@ namespace Divide {
 
     void OBB::transform(const mat4<F32>& transform) {
         assert(transform.isColOrthogonal());
-        _position = transform.transform(_position, true);
+        _position = transform * _position;
         for (U8 i = 0u; i < 3u; ++i) {
             _axis[i] = transform.transform((_halfExtents[i] * _axis[i]), false);
             _halfExtents[i] = _axis[i].length();

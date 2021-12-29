@@ -14,15 +14,17 @@
 <RENDERING>
     <Material>
         <version>1</version>
-        <shadingMode>COOK_TORRANCE</shadingMode>
+        <shadingMode>BLINN_PHONG</shadingMode>
         <colour r="0.588235021" g="0.588235021" b="0.588235021" a="1"/>
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>
         <specular r="0" g="0" b="0" a="1"/>
-        <metallic>0.30399999</metallic>
-        <roughness>0.00600000005</roughness>
+        <specular_factor>0</specular_factor>
+        <glossiness_factor>0</glossiness_factor>
+        <metallic>0</metallic>
+        <roughness>1</roughness>
         <doubleSided>true</doubleSided>
-        <receivesShadows>true</receivesShadows>
+        <receivesShadows>false</receivesShadows>
         <ignoreTexDiffuseAlpha>false</ignoreTexDiffuseAlpha>
         <bumpMethod>NONE</bumpMethod>
         <parallaxFactor>1</parallaxFactor>

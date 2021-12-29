@@ -26,7 +26,7 @@
 namespace Divide {
 
 namespace {
-    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+    constexpr U16 BYTE_BUFFER_VERSION = 2u;
 
     FORCE_INLINE bool PropagateFlagToChildren(const SceneGraphNode::Flags flag) noexcept {
         return flag == SceneGraphNode::Flags::SELECTED || 
@@ -51,9 +51,15 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
     for (auto& it : Events._eventsFreeList) {
         std::atomic_init(&it, true);
     }
-    _name = descriptor._name.empty() ? Util::StringFormat("%s_SGN", _node->resourceName().empty() ? "ERROR"   
-                                                                        : _node->resourceName().c_str()).c_str()
-                : descriptor._name;
+    _name = descriptor._name;
+    if (_name.empty()) {
+        if (_node == nullptr || _node->resourceName().empty()) {
+            _name = Util::StringFormat("%d_SGN", getGUID()).c_str();
+        } else {
+            _name = Util::StringFormat("%s_SGN", _node->resourceName().c_str()).c_str();
+        }
+    }
+   
 
     setFlag(Flags::ACTIVE);
     clearFlag(Flags::VISIBILITY_LOCKED);
@@ -515,7 +521,11 @@ void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) 
         const BoundsComponent* bComp = get<BoundsComponent>();
         if (bComp->showAABB()) {
             const BoundingBox& bb = bComp->getBoundingBox();
-            _context.gfx().debugDrawBox(bComp->getGUID(), bb.getMin(), bb.getMax(), DefaultColours::WHITE);
+            IMPrimitive::BoxDescriptor descriptor;
+            descriptor.min = bb.getMin();
+            descriptor.max = bb.getMax();
+            descriptor.colour = DefaultColours::WHITE_U8;
+            _context.gfx().debugDrawBox(bComp->getGUID() + 0, descriptor);
         }
     }
 }
@@ -806,12 +816,13 @@ void SceneGraphNode::saveToXML(const Str256& sceneLocation, DELEGATE<void, std::
         Attorney::EditorComponentSceneGraphNode::saveToXML(*editorComponent, pt);
     }
 
-    auto targetFile = sceneLocation + "/nodes/";
-    targetFile.append(parent()->name());
+    ResourcePath savePath{ sceneLocation.c_str() };
+    savePath.append("/nodes/");
+
+    ResourcePath targetFile{parent()->name().c_str()};
     targetFile.append("_");
     targetFile.append(name());
-    targetFile.append(".xml");
-    XML::writeXML(targetFile.c_str(), pt);
+    XML::writeXML((savePath + Util::MakeXMLSafe(targetFile) + ".xml").c_str(), pt);
 
     forEachChild([&sceneLocation, &msgCallback](const SceneGraphNode* child, I32 /*childIdx*/){
         child->saveToXML(sceneLocation, msgCallback);
@@ -821,12 +832,13 @@ void SceneGraphNode::saveToXML(const Str256& sceneLocation, DELEGATE<void, std::
 
 void SceneGraphNode::loadFromXML(const Str256& sceneLocation) {
     boost::property_tree::ptree pt;
-    auto targetFile = sceneLocation + "/nodes/";
-    targetFile.append(parent()->name());
+    ResourcePath savePath{ sceneLocation.c_str() };
+    savePath.append("/nodes/");
+
+    ResourcePath targetFile{ parent()->name().c_str() };
     targetFile.append("_");
     targetFile.append(name());
-    targetFile.append(".xml");
-    XML::readXML(targetFile.c_str(), pt);
+    XML::readXML((savePath + Util::MakeXMLSafe(targetFile) + ".xml").c_str(), pt);
 
     loadFromXML(pt);
 }

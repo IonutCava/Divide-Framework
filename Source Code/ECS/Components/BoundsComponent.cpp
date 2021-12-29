@@ -191,8 +191,8 @@ const BoundingBox& BoundsComponent::updateAndGetBoundingBox() {
 const OBB& BoundsComponent::getOBB() {
     if (_obbDirty.exchange(false)) {
         const TransformComponent* transform = _parentSGN->get<TransformComponent>();
-        //_obb.fromBoundingBox(_refBoundingBox, transform->getWorldMatrix());
-        _obb.fromBoundingBox(_refBoundingBox, transform->getWorldPosition(), transform->getWorldOrientation(), transform->getWorldScale());
+        _obb.fromBoundingBox(_refBoundingBox, transform->getWorldMatrix());
+        //_obb.fromBoundingBox(_refBoundingBox, transform->getWorldPosition(), transform->getWorldOrientation(), transform->getWorldScale());
         _boundingSphere = _obb.toEnclosingSphere();
     }
 

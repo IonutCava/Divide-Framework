@@ -283,7 +283,7 @@ bool PingPongScene::load() {
     ballDescriptor.ID(16u);
     ballDescriptor.enumValue(Util::FLOAT_TO_UINT(0.1f));
     _ball = CreateResource<Sphere3D>(resourceCache(), ballDescriptor);
-    _ball->getMaterialTpl()->shadingMode(ShadingMode::COOK_TORRANCE);
+    _ball->getMaterialTpl()->shadingMode(ShadingMode::PBR_MR);
     _ball->getMaterialTpl()->baseColour(FColour4(0.4f, 0.4f, 0.4f, 1.0f));
     _ball->getMaterialTpl()->roughness(0.6f);
     _ball->getMaterialTpl()->metallic(0.8f);

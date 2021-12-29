@@ -109,8 +109,9 @@ namespace TypeUtil {
 
 class Material final : public CachedResource {
     friend class Attorney::MaterialRenderBin;
-
    public:
+    using SpecularGlossiness = vec2<F32>;
+
     /// Since most variants come from different light sources, this seems like a good idea (famous last words ...)
     static constexpr size_t g_maxVariantsPerPass = 3;
     static constexpr size_t INVALID_MAT_HASH = std::numeric_limits<size_t>::max();
@@ -176,6 +177,7 @@ class Material final : public CachedResource {
     void emissiveColour(const FColour3& colour, bool applyToInstances = false);
     void ambientColour(const FColour3& colour, bool applyToInstances = false);
     void specularColour(const FColour3& colour, bool applyToInstances = false);
+    void specGloss(const SpecularGlossiness& specGloss, bool applyToInstances = false);
     void shininess(F32 value, bool applyToInstances = false);
     void metallic(F32 value, bool applyToInstances = false);
     void occlusion(F32 value, bool applyToInstances = false);
@@ -266,7 +268,9 @@ class Material final : public CachedResource {
     PROPERTY_R(FColour4, baseColour, DefaultColours::WHITE);
     PROPERTY_R(FColour3, emissive, DefaultColours::BLACK);
     PROPERTY_R(FColour3, ambient, DefaultColours::BLACK);
-    PROPERTY_R(FColour4, specular, DefaultColours::BLACK); //< Only used by WorkFlow::PHONG_SPECULAR. A = shininess
+    /// RGB = specular colour. A = shininess
+    PROPERTY_R(FColour4, specular, DefaultColours::BLACK); 
+    PROPERTY_R(SpecularGlossiness, specGloss);
     PROPERTY_R(F32, metallic, 0.0f);
     PROPERTY_R(F32, roughness, 0.5f);
     PROPERTY_R(F32, occlusion, 1.0f);

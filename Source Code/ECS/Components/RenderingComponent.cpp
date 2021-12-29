@@ -104,31 +104,12 @@ RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContex
         }
     });
 
-    RenderStateBlock primitiveStateBlock = {};
-    PipelineDescriptor pipelineDescriptor = {};
-    pipelineDescriptor._stateHash = primitiveStateBlock.getHash();
-    pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
-    _primitivePipeline[0] = _context.newPipeline(pipelineDescriptor);
-
     const SceneNode& node = _parentSGN->getNode();
     if (node.type() == SceneNodeType::TYPE_OBJECT3D) {
         // Do not cull the sky
         if (static_cast<const Object3D&>(node).type() == SceneNodeType::TYPE_SKY) {
             occlusionCull(false);
         }
-        // Prepare it for rendering lines
-        if (static_cast<const Object3D&>(node).getObjectFlag(Object3D::ObjectFlag::OBJECT_FLAG_SKINNED)) {
-            RenderStateBlock primitiveStateBlockNoZRead = {};
-            primitiveStateBlockNoZRead.depthTestEnabled(false);
-            pipelineDescriptor._stateHash = primitiveStateBlockNoZRead.getHash();
-            _primitivePipeline[1] = _context.newPipeline(pipelineDescriptor);
-        }
-    }
-
-    if_constexpr (Config::Build::ENABLE_EDITOR) {
-        // Prepare it for line rendering
-        pipelineDescriptor._stateHash = _context.getDefaultStateBlock(true);
-        _primitivePipeline[2] = _context.newPipeline(pipelineDescriptor);
     }
 
     for (U8 s = 0; s < to_U8(RenderStage::COUNT); ++s) {
@@ -152,28 +133,6 @@ RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContex
 RenderingComponent::~RenderingComponent()
 {
     RenderPassExecutor::OnRenderingComponentDestruction(this);
-
-    if (_boundingBoxPrimitive) {
-        _context.destroyIMP(_boundingBoxPrimitive);
-    }
-    if (_orientedBoundingBoxPrimitive) {
-        _context.destroyIMP(_orientedBoundingBoxPrimitive);
-    }
-    if (_boundingSpherePrimitive) {
-        _context.destroyIMP(_boundingSpherePrimitive);
-    }
-
-    if (_skeletonPrimitive) {
-        _context.destroyIMP(_skeletonPrimitive);
-    }
-
-    if (_axisGizmo) {
-        _context.destroyIMP(_axisGizmo);
-    }
-
-    if (_selectionGizmo) {
-        _context.destroyIMP(_selectionGizmo);
-    }
 }
 
 void RenderingComponent::instantiateMaterial(const Material_ptr& material) {
@@ -248,12 +207,7 @@ void RenderingComponent::rebuildDrawCommands(const RenderStagePass& stagePass, R
         pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramGUID(stagePass);
 
         pkg.add(GFX::BindPipelineCommand{ _context.newPipeline(pipelineDescriptor) });
-
-        GFX::BindDescriptorSetsCommand bindDescriptorSetsCommand{};
-        for (const ShaderBufferBinding& binding : getShaderBuffers()) {
-            bindDescriptorSetsCommand._set._buffers.add(binding);
-        }
-        pkg.add(bindDescriptorSetsCommand);
+        pkg.add(GFX::BindDescriptorSetsCommand{});
     }
 
     _parentSGN->getNode().buildDrawCommands(_parentSGN, stagePass, pkg);
@@ -380,28 +334,27 @@ void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, co
     }
 
     // Draw bounding box if needed and only in the final stage to prevent Shadow/PostFX artifacts
-    const bool renderBBox = _drawAABB || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_AABB);
-    const bool renderOBB = _drawOBB || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_OBB);
-    const bool renderBSphere = _drawBS || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_BSPHERES);
-    const bool renderSkeleton = renderOptionEnabled(RenderOptions::RENDER_SKELETON) || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_SKELETONS);
-    const bool renderSelection = renderOptionEnabled(RenderOptions::RENDER_SELECTION);
-    const bool renderSelectionGizmo = renderOptionEnabled(RenderOptions::RENDER_AXIS) || (sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::SELECTION_GIZMO) && _parentSGN->hasFlag(SceneGraphNode::Flags::SELECTED)) || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::ALL_GIZMOS);
+    drawBounds(_drawAABB || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_AABB),
+               _drawOBB || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_OBB),
+               _drawBS || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_BSPHERES));
 
-    if (renderSelectionGizmo) {
-        drawDebugAxis(bufferInOut);
-    } else if (_axisGizmo) {
-        _context.destroyIMP(_axisGizmo);
-    }
-    if (renderSelection) {
-        drawSelectionGizmo(bufferInOut);
-    } else if (_selectionGizmo) {
-        _context.destroyIMP(_selectionGizmo);
+    if (renderOptionEnabled(RenderOptions::RENDER_AXIS) ||
+        (sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::SELECTION_GIZMO) && _parentSGN->hasFlag(SceneGraphNode::Flags::SELECTED)) ||
+        sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::ALL_GIZMOS))
+    {
+        drawDebugAxis();
     }
 
-    drawBounds(renderBBox, renderOBB, renderBSphere, bufferInOut);
-    if (renderSkeleton) {
-        drawSkeleton(bufferInOut);
+    if (renderOptionEnabled(RenderOptions::RENDER_SKELETON) ||
+        sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_SKELETONS))
+    {
+        drawSkeleton();
     }
+
+    if (renderOptionEnabled(RenderOptions::RENDER_SELECTION)) {
+        drawSelectionGizmo();
+    }
+    
 
     SceneGraphNode* parent = _parentSGN->parent();
     if (parent != nullptr && !parent->hasFlag(SceneGraphNode::Flags::PARENT_POST_RENDERED)) {
@@ -611,14 +564,7 @@ void RenderingComponent::updateNearestProbes(const vec3<F32>& position) {
 }
 
 /// Draw some kind of selection doodad. May differ if editor is running or not
-void RenderingComponent::drawSelectionGizmo(GFX::CommandBuffer& bufferInOut) {
-    if (!_selectionGizmo) {
-        _selectionGizmo = _context.newIMP();
-        _selectionGizmo->name("SelectionGizmo_" + _parentSGN->name());
-        _selectionGizmo->pipeline(*_primitivePipeline[0]);
-        _selectionGizmoDirty = true;
-    }
-    
+void RenderingComponent::drawSelectionGizmo() {
     if (_selectionGizmoDirty) {
         _selectionGizmoDirty = false;
 
@@ -631,67 +577,48 @@ void RenderingComponent::drawSelectionGizmo(GFX::CommandBuffer& bufferInOut) {
         //draw something else (at some point ...)
         BoundsComponent* bComp = static_cast<BoundsComponent*>(_parentSGN->get<BoundsComponent>());
         DIVIDE_ASSERT(bComp != nullptr);
-        IMPrimitive::OBBDescriptor descriptor;
-        descriptor.box = bComp->getOBB();
-        descriptor.colour = colour;
-        _selectionGizmo->fromOBB(descriptor);
+        _selectionGizmoDescriptor.box = bComp->getOBB();
+        _selectionGizmoDescriptor.colour = colour;
     }
 
-    bufferInOut.add(_selectionGizmo->toCommandBuffer());
+    _context.debugDrawOBB(_parentSGN->getGUID() + 12345, _selectionGizmoDescriptor);
 }
 
 /// Draw the axis arrow gizmo
-void RenderingComponent::drawDebugAxis(GFX::CommandBuffer& bufferInOut) {
-    if (!_axisGizmo) {
+void RenderingComponent::drawDebugAxis() {
+    if (_axisGizmoLinesDescriptor._lines.empty()) {
         Line temp = {};
         temp.widthStart(10.0f);
         temp.widthEnd(10.0f);
         temp.positionStart(VECTOR3_ZERO);
 
-        Line axisLines[3];
         // Red X-axis
         temp.positionEnd(WORLD_X_AXIS * 4);
         temp.colourStart(UColour4(255, 0, 0, 255));
         temp.colourEnd(UColour4(255, 0, 0, 255));
-        axisLines[0] = temp;
+        _axisGizmoLinesDescriptor._lines.push_back(temp);
 
         // Green Y-axis
         temp.positionEnd(WORLD_Y_AXIS * 4);
         temp.colourStart(UColour4(0, 255, 0, 255));
         temp.colourEnd(UColour4(0, 255, 0, 255));
-        axisLines[1] = temp;
+        _axisGizmoLinesDescriptor._lines.push_back(temp);
 
         // Blue Z-axis
         temp.positionEnd(WORLD_Z_AXIS * 4);
         temp.colourStart(UColour4(0, 0, 255, 255));
         temp.colourEnd(UColour4(0, 0, 255, 255));
-        axisLines[2] = temp;
+        _axisGizmoLinesDescriptor._lines.push_back(temp);
 
-        _axisGizmo = _context.newIMP();
-        _axisGizmo->name("AxisGizmo_" + _parentSGN->name());
-        _axisGizmo->pipeline(*_primitivePipeline[2]);
-        // Create the object containing all of the lines
-        _axisGizmo->beginBatch(true, 3 * 2, 1);
-        _axisGizmo->attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(axisLines[0].colourStart()));
-        // Set the mode to line rendering
-        _axisGizmo->begin(PrimitiveType::LINES);
-        // Add every line in the list to the batch
-        for (const Line& line : axisLines) {
-            _axisGizmo->attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line.colourStart()));
-            _axisGizmo->vertex(line.positionStart());
-            _axisGizmo->vertex(line.positionEnd());
-        }
-        _axisGizmo->end();
-        // Finish our object
-        _axisGizmo->endBatch();
+        mat4<F32> worldOffsetMatrixCache(GetMatrix(_parentSGN->get<TransformComponent>()->getWorldOrientation()), false);
+        worldOffsetMatrixCache.setTranslation(_parentSGN->get<TransformComponent>()->getWorldPosition());
+        _axisGizmoLinesDescriptor.worldMatrix = worldOffsetMatrixCache;
     }
 
-    _axisGizmo->worldMatrix(_worldOffsetMatrixCache);
-
-    bufferInOut.add(_axisGizmo->toCommandBuffer());
+    _context.debugDrawLines(_parentSGN->getGUID() + 321, _axisGizmoLinesDescriptor);
 }
 
-void RenderingComponent::drawSkeleton(GFX::CommandBuffer& bufferInOut) {
+void RenderingComponent::drawSkeleton() {
     const SceneNode& node = _parentSGN->getNode();
     const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH;
     if (!isSubMesh) {
@@ -701,37 +628,21 @@ void RenderingComponent::drawSkeleton(GFX::CommandBuffer& bufferInOut) {
     // Continue only for skinned 3D objects
     if (static_cast<const Object3D&>(node).getObjectFlag(Object3D::ObjectFlag::OBJECT_FLAG_SKINNED))
     {
-        if (_skeletonPrimitive == nullptr) {
-            _skeletonPrimitive = _context.newIMP();
-            _skeletonPrimitive->name("Skeleton_" + _parentSGN->name());
-            _skeletonPrimitive->pipeline(*_primitivePipeline[1]);
-        }
         // Get the animation component of any submesh. They should be synced anyway.
         const AnimationComponent* animComp = _parentSGN->get<AnimationComponent>();
         if (animComp != nullptr) {
             // Get the skeleton lines from the submesh's animation component
-            const vector<Line>& skeletonLines = animComp->skeletonLines();
+            _skeletonLinesDescriptor._lines = animComp->skeletonLines();
+            _skeletonLinesDescriptor.worldMatrix.set(_parentSGN->get<TransformComponent>()->getWorldMatrix());
             // Submit the skeleton lines to the GPU for rendering
-            _skeletonPrimitive->fromLines(skeletonLines.data(), skeletonLines.size());
-            _skeletonPrimitive->worldMatrix(_worldMatrixCache);
-            bufferInOut.add(_skeletonPrimitive->toCommandBuffer());
+            _context.debugDrawLines(_parentSGN->getGUID() + 213, _skeletonLinesDescriptor);
         }
-    } else if (_skeletonPrimitive) {
-        _context.destroyIMP(_skeletonPrimitive);
-    }
+    } 
+    
 }
 
-void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool Sphere, GFX::CommandBuffer& bufferInOut) {
+void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool Sphere) {
     if (!AABB && !Sphere && !OBB) {
-        if (_boundingBoxPrimitive != nullptr) {
-            _context.destroyIMP(_boundingBoxPrimitive);
-        }
-        if (_orientedBoundingBoxPrimitive != nullptr) {
-            _context.destroyIMP(_orientedBoundingBoxPrimitive);
-        }
-        if (_boundingSpherePrimitive != nullptr) {
-            _context.destroyIMP(_boundingSpherePrimitive);
-        }
         return;
     }
 
@@ -739,48 +650,24 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
     const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH;
 
     if (AABB) {
-        if (_boundingBoxPrimitive == nullptr) {
-            _boundingBoxPrimitive = _context.newIMP();
-            _boundingBoxPrimitive->name("BoundingBox_" + _parentSGN->name());
-            _boundingBoxPrimitive->pipeline(*_primitivePipeline[0]);
-        }
-
         const BoundingBox& bb = _parentSGN->get<BoundsComponent>()->getBoundingBox();
         IMPrimitive::BoxDescriptor descriptor;
         descriptor.min = bb.getMin();
         descriptor.max = bb.getMax();
         descriptor.colour = isSubMesh ? UColour4(0, 0, 255, 255) : UColour4(255, 0, 255, 255);
-        _boundingBoxPrimitive->fromBox(descriptor);
-        bufferInOut.add(_boundingBoxPrimitive->toCommandBuffer());
-    } else if (_boundingBoxPrimitive != nullptr) {
-        _context.destroyIMP(_boundingBoxPrimitive);
+        _context.debugDrawBox(_parentSGN->getGUID() + 123, descriptor);
     }
 
     if (OBB) {
-        if (_orientedBoundingBoxPrimitive == nullptr) {
-            _orientedBoundingBoxPrimitive = _context.newIMP();
-            _orientedBoundingBoxPrimitive->name("OrientedBoundingBox_" + _parentSGN->name());
-            _orientedBoundingBoxPrimitive->pipeline(*_primitivePipeline[0]);
-        }
-
         const auto& obb = _parentSGN->get<BoundsComponent>()->getOBB();
         IMPrimitive::OBBDescriptor descriptor;
         descriptor.box = obb;
         descriptor.colour = isSubMesh ? UColour4(128, 0, 255, 255) : UColour4(255, 0, 128, 255);
 
-        _orientedBoundingBoxPrimitive->fromOBB(descriptor);
-        bufferInOut.add(_orientedBoundingBoxPrimitive->toCommandBuffer());
-    } else if (_orientedBoundingBoxPrimitive != nullptr) {
-        _context.destroyIMP(_orientedBoundingBoxPrimitive);
+        _context.debugDrawOBB(_parentSGN->getGUID() + 123, descriptor);
     }
 
     if (Sphere) {
-        if (_boundingSpherePrimitive == nullptr) {
-            _boundingSpherePrimitive = _context.newIMP();
-            _boundingSpherePrimitive->name("BoundingSphere_" + _parentSGN->name());
-            _boundingSpherePrimitive->pipeline(*_primitivePipeline[0]);
-        }
-
         const BoundingSphere& bs = _parentSGN->get<BoundsComponent>()->getBoundingSphere();
         IMPrimitive::SphereDescriptor descriptor;
         descriptor.center = bs.getCenter();
@@ -788,10 +675,7 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
         descriptor.colour = isSubMesh ? UColour4(0, 255, 0, 255) : UColour4(255, 255, 0, 255);
         descriptor.slices = 16u;
         descriptor.stacks = 16u;
-        _boundingSpherePrimitive->fromSphere(descriptor);
-        bufferInOut.add(_boundingSpherePrimitive->toCommandBuffer());
-    } else if (_boundingSpherePrimitive != nullptr) {
-        _context.destroyIMP(_boundingSpherePrimitive);
+        _context.debugDrawSphere(_parentSGN->getGUID() + 123, descriptor);
     }
 }
 
@@ -803,10 +687,8 @@ void RenderingComponent::OnData(const ECS::CustomEvent& data) {
             assert(tComp != nullptr);
             updateNearestProbes(tComp->getWorldPosition());
 
-            tComp->getWorldMatrix(_worldMatrixCache);
-
-            _worldOffsetMatrixCache = mat4<F32>(GetMatrix(tComp->getWorldOrientation()), false);
-            _worldOffsetMatrixCache.setTranslation(tComp->getWorldPosition());
+            _axisGizmoLinesDescriptor.worldMatrix.set(mat4<F32>(GetMatrix(tComp->getWorldOrientation()), false));
+            _axisGizmoLinesDescriptor.worldMatrix.setTranslation(tComp->getWorldPosition());
         } break;
         case ECS::CustomEvent::Type::DrawBoundsChanged:
         {

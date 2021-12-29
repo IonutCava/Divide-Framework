@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<static>true</static>
+<model>sponza.obj</model>
+<MESH/>
+<TRANSFORM>
+    <Transform>
+        <position x="784.863403" y="14.730073" z="79.9280167"/>
+        <orientation x="0" y="-52.4701157" z="0"/>
+        <scale x="0.0299999993" y="0.0299999993" z="0.0299999993"/>
+    </Transform>
+</TRANSFORM>
+<BOUNDS/>
+<RENDERING/>
+<NETWORKING/>

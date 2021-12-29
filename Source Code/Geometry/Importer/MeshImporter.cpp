@@ -78,6 +78,10 @@ namespace Import {
                     //handle error
                 }
             }
+            if (!_nodeData.serialize(tempBuffer)) {
+                //handle error
+            }
+
             tempBuffer << _hasAnimations;
             // Animations are handled by the SceneAnimator I/O
             return tempBuffer.dumpToFile(path.c_str(), (fileName.str() + "." + g_parsedAssetGeometryExt).c_str());
@@ -111,6 +115,11 @@ namespace Import {
                             DIVIDE_UNEXPECTED_CALL();
                         }
                     }
+                    if (!_nodeData.deserialize(tempBuffer)) {
+                        //handle error
+                        DIVIDE_UNEXPECTED_CALL();
+                    }
+
                     tempBuffer >> _hasAnimations;
                     _loadedFromFile = true;
                     return true;
@@ -156,6 +165,7 @@ namespace Import {
         dataOut << emissive();
         dataOut << ambient();
         dataOut << specular();
+        dataOut << specGloss();
         dataOut << CLAMPED_01(metallic());
         dataOut << CLAMPED_01(roughness());
         dataOut << CLAMPED_01(parallaxFactor());
@@ -172,6 +182,7 @@ namespace Import {
     bool MaterialData::deserialize(ByteBuffer& dataIn) {
         FColour3 tempColourRGB = {};
         FColour4 tempColourRGBA = {};
+        SpecularGlossiness tempSG = {};
         string tempStr = "";
         U32 temp = {};
         F32 temp2 = {};
@@ -185,6 +196,7 @@ namespace Import {
         dataIn >> tempColourRGB;  emissive(tempColourRGB);
         dataIn >> tempColourRGB;  ambient(tempColourRGB);
         dataIn >> tempColourRGBA; specular(tempColourRGBA);
+        dataIn >> tempSG; specGloss(tempSG);
         dataIn >> temp2; metallic(temp2);
         dataIn >> temp2; roughness(temp2);
         dataIn >> temp2; parallaxFactor(temp2);
@@ -297,6 +309,7 @@ namespace Import {
         std::atomic_uint taskCounter;
         std::atomic_init(&taskCounter, 0u);
 
+        mat4<F32> invGeometryTransform;
         for (const Import::SubMeshData& subMeshData : dataIn._subMeshData) {
             // Submesh is created as a resource when added to the scenegraph
             ResourceDescriptor subMeshDesc(subMeshData.name());
@@ -322,18 +335,20 @@ namespace Import {
                 Attorney::SubMeshMeshImporter::setGeometryLimits(*tempSubMesh,
                                                                  subMeshData.minPos(),
                                                                  subMeshData.maxPos());
+                //ToDo: Undo vert transform (verts should be in unit space) and use this matrix to get the correct positions/scales/etc back
+                invGeometryTransform.identity();
 
                 if (!tempSubMesh->getMaterialTpl()) {
                     tempSubMesh->setMaterialTpl(loadSubMeshMaterial(cache, subMeshData._material, loadedFromCache, subMeshData.boneCount() > 0, taskCounter));
                 }
             }
 
-            mesh->addSubMesh(tempSubMesh);
+            Attorney::MeshImporter::addSubMesh(*mesh, tempSubMesh, invGeometryTransform);
         }
 
         mesh->getGeometryVB()->create();
         mesh->getGeometryVB()->keepData(true); //< for physics and intersection tests
-        mesh->postImport();
+        Attorney::MeshImporter::setNodeData(*mesh, dataIn._nodeData);
 
         WAIT_FOR_CONDITION(taskCounter.load() == 0)
         importTimer.stop();
@@ -364,6 +379,7 @@ namespace Import {
         tempMaterial->emissiveColour(importData.emissive());
         tempMaterial->ambientColour(importData.ambient());
         tempMaterial->specularColour(importData.specular());
+        tempMaterial->specGloss(importData.specGloss());
         tempMaterial->metallic(importData.metallic());
         tempMaterial->roughness(importData.roughness());
         tempMaterial->parallaxFactor(importData.parallaxFactor());

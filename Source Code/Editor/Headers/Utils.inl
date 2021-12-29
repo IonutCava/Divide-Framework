@@ -173,7 +173,7 @@
             RegisterUndo<FColour4, true>(parent, GFX::PushConstantType::FCOLOUR4, col, col, name, dataSetter);
         }
         
-        return dataSetter(col);
+        return readOnly ? false : (ret ? dataSetter(col) : false);
     }
 
     template<typename Pred>
@@ -193,7 +193,7 @@
             RegisterUndo<FColour3, true>(parent, GFX::PushConstantType::FCOLOUR3, col, col, name, dataSetter);
         }
 
-        return dataSetter(col);
+        return readOnly ? false : (ret ? dataSetter(col) : false);
     }
 
 

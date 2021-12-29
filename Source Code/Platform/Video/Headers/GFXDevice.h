@@ -46,6 +46,7 @@
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Geometry/Material/Headers/MaterialEnums.h"
 
+#include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/PushConstants.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
@@ -139,22 +140,24 @@ struct DebugView final : GUIDWrapper {
 
 FWD_DECLARE_MANAGED_STRUCT(DebugView);
 
-template<typename Data, size_t N>
+template<typename Descriptor, size_t N>
 struct DebugPrimitiveHandler
 {
     static constexpr U8 g_maxFrameLifetime = 6u;
 
-    constexpr [[nodiscard]] size_t Size() noexcept { return N; }
+    [[nodiscard]] size_t size() const noexcept { return _debugPrimitives.size(); }
 
     struct DataEntry {
-        Data _data;
+        Descriptor _descriptor;
         I64 _Id = 0u;
         U8 _frameLifeTime = 0u;
     };
 
     DebugPrimitiveHandler()   noexcept
     {
-        _debugPrimitives.fill(nullptr);
+        for (auto& primitive : _debugPrimitives) {
+            primitive = nullptr;
+        }
     }
 
     ~DebugPrimitiveHandler()
@@ -164,31 +167,41 @@ struct DebugPrimitiveHandler
 
     void reset();
 
-    void add(const I64 ID, Data&& data) noexcept {
+    void add(const I64 ID, const Descriptor& data) noexcept {
         ScopedLock<Mutex> w_lock(_dataLock);
+        addLocked(ID, data);
+    }
 
-        for (U32 i = 0u; i < N; ++i) {
+    void addLocked(const I64 ID, const Descriptor& data) noexcept {
+        const size_t count = _debugData.size();
+
+        for (U32 i = 0u; i < count; ++i) {
             DataEntry& entry = _debugData[i];
             if (entry._Id == ID) {
-                entry._data = MOV(data);
+                entry._descriptor = data;
                 entry._frameLifeTime = g_maxFrameLifetime;
                 return;
             }
         }
-        for (U32 i = 0u; i < N; ++i) {
+        for (U32 i = 0u; i < count; ++i) {
             DataEntry& entry = _debugData[i];
             if (entry._frameLifeTime == 0u) {
                 entry._Id = ID;
-                entry._data = MOV(data);
+                entry._descriptor = data;
                 entry._frameLifeTime = g_maxFrameLifetime;
                 return;
             }
         }
+
+        //We need a new entry. Create one and try again
+        _debugPrimitives.emplace_back(nullptr);
+        _debugData.emplace_back();
+        addLocked(ID, data);
     }
 
     Mutex _dataLock;
-    std::array<IMPrimitive*, N>  _debugPrimitives;
-    std::array<DataEntry, N> _debugData;
+    eastl::fixed_vector<IMPrimitive*, N, true>  _debugPrimitives;
+    eastl::fixed_vector<DataEntry, N, true> _debugData;
 };
 
 /// Rough around the edges Adapter pattern abstracting the actual rendering API and access to the GPU
@@ -228,11 +241,12 @@ public:  // GPU interface
     void endFrame(DisplayWindow& window, bool global);
 
     void debugDraw(const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut);
-    void debugDrawLines(const I64 ID, const Line* lines, size_t count) noexcept;
-    void debugDrawBox(const I64 ID, const vec3<F32>& min, const vec3<F32>& max, const FColour3& colour) noexcept;
-    void debugDrawSphere(const I64 ID, const vec3<F32>& center, F32 radius, const FColour3& colour) noexcept;
-    void debugDrawCone(const I64 ID, const vec3<F32>& root, const vec3<F32>& direction, F32 length, F32 radius, const FColour3& colour) noexcept;
-    void debugDrawFrustum(const I64 ID, const Frustum& frustum, const FColour3& colour) noexcept;
+    void debugDrawLines(const I64 ID, IMPrimitive::LineDescriptor descriptor) noexcept;
+    void debugDrawBox(const I64 ID, IMPrimitive::BoxDescriptor descriptor) noexcept;
+    void debugDrawOBB(const I64 ID, IMPrimitive::OBBDescriptor descriptor) noexcept;
+    void debugDrawSphere(const I64 ID, IMPrimitive::SphereDescriptor descriptor) noexcept;
+    void debugDrawCone(const I64 ID, IMPrimitive::ConeDescriptor descriptor) noexcept;
+    void debugDrawFrustum(const I64 ID, IMPrimitive::FrustumDescriptor descriptor) noexcept;
     void flushCommandBuffer(GFX::CommandBuffer& commandBuffer, bool batch = true);
     
     /// Generate a cubemap from the given position
@@ -395,6 +409,7 @@ protected:
     void stepResolution(bool increment);
     void debugDrawLines(GFX::CommandBuffer& bufferInOut);
     void debugDrawBoxes(GFX::CommandBuffer& bufferInOut);
+    void debugDrawOBBs(GFX::CommandBuffer& bufferInOut);
     void debugDrawCones(GFX::CommandBuffer& bufferInOut);
     void debugDrawSpheres(GFX::CommandBuffer& bufferInOut);
     void debugDrawFrustums(GFX::CommandBuffer& bufferInOut);
@@ -437,11 +452,12 @@ private:
 
     ShaderComputeQueue* _shaderComputeQueue = nullptr;
 
-    DebugPrimitiveHandler<std::tuple<const Line* /*lines*/, size_t/*count*/>, 16u> _debugLines;
-    DebugPrimitiveHandler<std::tuple<vec3<F32> /*min*/, vec3<F32> /*max*/, FColour3>, 16u> _debugBoxes;
-    DebugPrimitiveHandler<std::tuple<vec3<F32> /*center*/, F32 /*radius*/, FColour3>, 16u> _debugSpheres;
-    DebugPrimitiveHandler<std::tuple<vec3<F32> /*root*/, vec3<F32> /*dir*/, F32 /*length*/, F32 /*radius*/, FColour3>, 16u> _debugCones;
-    DebugPrimitiveHandler<std::pair<Frustum, FColour3>, 8u> _debugFrustums;
+    DebugPrimitiveHandler<IMPrimitive::LineDescriptor, 16u> _debugLines;
+    DebugPrimitiveHandler<IMPrimitive::BoxDescriptor, 16u> _debugBoxes;
+    DebugPrimitiveHandler<IMPrimitive::OBBDescriptor, 16u> _debugOBBs;
+    DebugPrimitiveHandler<IMPrimitive::SphereDescriptor, 16u> _debugSpheres;
+    DebugPrimitiveHandler<IMPrimitive::ConeDescriptor, 16u> _debugCones;
+    DebugPrimitiveHandler<IMPrimitive::FrustumDescriptor, 8u> _debugFrustums;
 
     CameraSnapshot  _activeCameraSnapshot;
 

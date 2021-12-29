@@ -313,7 +313,10 @@ namespace Divide {
         I64 guid = 12344231;
         for (const auto& it : g_debugFrustums) {
             const auto& [frustum, colour, realtime] = it.second;
-            _context.gfx().debugDrawFrustum(guid++, frustum, colour);
+            IMPrimitive::FrustumDescriptor descriptor;
+            descriptor.frustum = frustum;
+            descriptor.colour = Util::ToByteColour(colour);
+            _context.gfx().debugDrawFrustum(guid++, descriptor);
         }
     }
 
@@ -1562,8 +1565,11 @@ namespace Divide {
                 if (ro || readOnly) {
                     PushReadOnly();
                 }
+
+                bool showTexture = false;
                 if (ImGui::Button("Detail Texture")) {
                     ret = true;
+                    showTexture = true;
                 }
                 if (ro || readOnly) {
                     PopReadOnly();
@@ -1577,7 +1583,7 @@ namespace Divide {
                     skipAutoTooltip(true);
                 }
                 ImGui::PopID();
-                if (ret && !ro) {
+                if (showTexture && !ro) {
                     _previewTexture = detailTex.get();
                 }
             }
@@ -1588,8 +1594,10 @@ namespace Divide {
                 if (ro || readOnly) {
                     PushReadOnly();
                 }
+                bool showTexture = false;
                 if (ImGui::Button("Normal Map")) {
                     ret = true;
+                    showTexture = true;
                 }
                 if (ro || readOnly) {
                     PopReadOnly();
@@ -1603,7 +1611,7 @@ namespace Divide {
                     skipAutoTooltip(true);
                 }
                 ImGui::PopID();
-                if (ret && !ro) {
+                if (showTexture && !ro) {
                     _previewTexture = normalTex.get();
                 }
             }
@@ -1652,8 +1660,8 @@ namespace Divide {
                 }
                 ImGui::Separator();
             }
-            if (material->shadingMode() != ShadingMode::OREN_NAYAR &&
-                material->shadingMode() != ShadingMode::COOK_TORRANCE) 
+            if (material->shadingMode() != ShadingMode::PBR_MR &&
+                material->shadingMode() != ShadingMode::PBR_SG)
             {
                 FColour4 specular = material->getSpecular(fromTexture, texture);
 

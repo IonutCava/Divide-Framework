@@ -66,7 +66,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Platform/Video/GLIM/Declarations.h"
+#include "Geometry/Shapes/Headers/Mesh.h"
+#include <assimp/matrix4x4.h>
 
+struct aiNode;
 struct aiMesh;
 struct aiScene;
 struct aiMaterial;
@@ -75,10 +78,11 @@ namespace Divide {
     enum class GeometryFormat : U8;
 
     namespace Import {
-    struct ImportData;
-    struct SubMeshData;
-    struct MaterialData;
-};
+        struct NodeData;
+        struct ImportData;
+        struct SubMeshData;
+        struct MaterialData;
+    };
 
 class SubMesh;
 class VertexBuffer;
@@ -88,6 +92,7 @@ namespace DVDConverter {
     void OnStartup(const PlatformContext& context);
     void OnShutdown();
 
+    [[nodiscard]] U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axisCorrectionBasis);
     [[nodiscard]] bool Load(PlatformContext& context, Import::ImportData& target);
 
     namespace detail{

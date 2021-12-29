@@ -76,7 +76,7 @@ std::regex Paths::g_usePattern;
 void Paths::initPaths(const SysInfo& info) {
     g_rootPath = ResourcePath(info._workingDirectory);
     g_logPath = ResourcePath("logs/");
-
+    g_xmlDataLocation = ResourcePath("XML/");
     g_assetsLocation = ResourcePath("assets/");
     g_shadersLocation = ResourcePath("shaders/");
     g_texturesLocation = ResourcePath("textures/");
@@ -85,7 +85,6 @@ void Paths::initPaths(const SysInfo& info) {
     g_climatesLowResLocation = ResourcePath("climates_05k/");
     g_climatesMedResLocation = ResourcePath("climates_1k/");
     g_climatesHighResLocation = ResourcePath("climates_4k/");
-    g_xmlDataLocation = ResourcePath("XML/");
     g_scenesLocation = ResourcePath("Scenes/");
 
     g_saveLocation = ResourcePath("SaveData/");
@@ -148,7 +147,6 @@ void Paths::updatePaths(const PlatformContext& context) {
     g_assetsLocation = ResourcePath(entryData.assetsLocation + "/");
     g_shadersLocation = ResourcePath(config.defaultAssetLocation.shaders + "/");
     g_texturesLocation = ResourcePath(config.defaultAssetLocation.textures + "/");
-    g_xmlDataLocation = ResourcePath(entryData.scriptLocation + "/");
     g_scenesLocation = ResourcePath(entryData.scenesLocation + "/");
     Scripts::g_scriptsLocation = g_assetsLocation + "scripts/";
     Scripts::g_scriptsAtomsLocation = Scripts::g_scriptsLocation + "atoms/";

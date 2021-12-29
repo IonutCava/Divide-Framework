@@ -22,11 +22,13 @@
 <RENDERING>
     <Material>
         <version>1</version>
-        <shadingMode>COOK_TORRANCE</shadingMode>
+        <shadingMode>PBR_MR</shadingMode>
         <colour r="0.5" g="0.5" b="0.5" a="1"/>
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>
         <specular r="0" g="0" b="0" a="1"/>
+        <specular_factor>0</specular_factor>
+        <glossiness_factor>0</glossiness_factor>
         <metallic>0</metallic>
         <roughness>0.800000012</roughness>
         <doubleSided>false</doubleSided>

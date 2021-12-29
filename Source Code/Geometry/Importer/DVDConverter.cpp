@@ -19,7 +19,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/Logger.hpp>
 #include <assimp/LogStream.hpp>
-#include <assimp/pbrmaterial.h>
+#include <assimp/GltfMaterial.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <assimp/types.h>
@@ -85,14 +85,16 @@ namespace detail {
 
     hashMap<U32, ShadingMode> fillShadingModeMap() {
         hashMap<U32, ShadingMode> shadingMap;
-        shadingMap[aiShadingMode_Fresnel] = ShadingMode::COOK_TORRANCE;
+        shadingMap[aiShadingMode_PBR_BRDF] = ShadingMode::PBR_MR;
+        shadingMap[aiShadingMode_Fresnel] = ShadingMode::BLINN_PHONG;
         shadingMap[aiShadingMode_NoShading] = ShadingMode::FLAT;
-        shadingMap[aiShadingMode_CookTorrance] = ShadingMode::COOK_TORRANCE;
-        shadingMap[aiShadingMode_Minnaert] = ShadingMode::OREN_NAYAR;
-        shadingMap[aiShadingMode_OrenNayar] = ShadingMode::OREN_NAYAR;
-        shadingMap[aiShadingMode_Toon] = ShadingMode::TOON;
+        //shadingMap[aiShadingMode_Unlit] = ShadingMode::FLAT; //Alias
+        shadingMap[aiShadingMode_CookTorrance] = ShadingMode::BLINN_PHONG;
+        shadingMap[aiShadingMode_Minnaert] = ShadingMode::BLINN_PHONG;
+        shadingMap[aiShadingMode_OrenNayar] = ShadingMode::BLINN_PHONG;
+        shadingMap[aiShadingMode_Toon] = ShadingMode::BLINN_PHONG;
         shadingMap[aiShadingMode_Blinn] = ShadingMode::BLINN_PHONG;
-        shadingMap[aiShadingMode_Phong] = ShadingMode::PHONG;
+        shadingMap[aiShadingMode_Phong] = ShadingMode::BLINN_PHONG;
         shadingMap[aiShadingMode_Gouraud] = ShadingMode::BLINN_PHONG;
         shadingMap[aiShadingMode_Flat] = ShadingMode::FLAT;
         return shadingMap;
@@ -123,7 +125,43 @@ void OnStartup([[maybe_unused]] const PlatformContext& context)
 
 void OnShutdown()
 {
-    NOP();
+    Assimp::DefaultLogger::kill();
+}
+
+U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axisCorrectionBasis) {
+    if (node == nullptr) {
+        return 0u;
+    }
+
+    AnimUtils::TransformMatrix(axisCorrectionBasis * node->mTransformation, target._transform);
+    if (target._transform.m[0][0] != target._transform.m[1][1] && target._transform.m[1][1] != target._transform.m[2][2]) {
+        // We have either:
+        // - Non-uniform scale
+        // - Different transform axis (e.g. Z-up)
+        // Need to determine which is which.
+        aiVector3D pScaling, pPosition;
+        aiQuaternion pRotation;
+        (axisCorrectionBasis * node->mTransformation).Decompose(pScaling, pRotation, pPosition);
+        target._transform = mat4<F32>{
+            vec3<F32>(pPosition.x, pPosition.y, pPosition.y),
+            vec3<F32>(pScaling.x, pScaling.y, pScaling.y),
+            GetMatrix(Quaternion<F32>{ pRotation.x, pRotation.y, pRotation.z, pRotation.w })
+        };
+    }
+
+    target._name = node->mName.C_Str();
+    target._meshIndices.resize(node->mNumMeshes);
+    for (U32 i = 0u; i < node->mNumMeshes; ++i) {
+        target._meshIndices[i] = node->mMeshes[i];
+    }
+
+    U32 numChildren = 0u;
+    target._children.resize(node->mNumChildren);
+    for (U32 i = 0u; i < node->mNumChildren; ++i) {
+        numChildren += PopulateNodeData(node->mChildren[i], target._children[i], axisCorrectionBasis);
+    }
+
+    return numChildren + node->mNumChildren;
 }
 
 bool Load(PlatformContext& context, Import::ImportData& target) {
@@ -134,11 +172,13 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
 
     importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, g_removeLinesAndPoints ? aiPrimitiveType_LINE | aiPrimitiveType_POINT : 0);
     //importer.SetPropertyInteger(AI_CONFIG_IMPORT_FBX_SEARCH_EMBEDDED_TEXTURES, 1);
+    importer.SetPropertyInteger(AI_CONFIG_PP_FD_REMOVE, 1);
     importer.SetPropertyInteger(AI_CONFIG_IMPORT_TER_MAKE_UVS, 1);
     importer.SetPropertyInteger(AI_CONFIG_GLOB_MEASURE_TIME, 1);
     importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, 80.0f);
 
-    constexpr U32 ppSteps = aiProcess_CalcTangentSpace |
+    constexpr U32 ppSteps = aiProcess_GlobalScale |
+                            aiProcess_CalcTangentSpace |
                             aiProcess_JoinIdenticalVertices |
                             aiProcess_ImproveCacheLocality |
                             aiProcess_GenSmoothNormals |
@@ -152,9 +192,8 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
                             aiProcess_SortByPType |
                             aiProcess_FindDegenerates |
                             aiProcess_FindInvalidData |
-                            aiProcess_ValidateDataStructure |
+                            (Config::Build::IS_DEBUG_BUILD ? aiProcess_ValidateDataStructure : 0u) |
                             aiProcess_OptimizeMeshes |
-                            aiProcess_OptimizeGraph |
                             aiProcess_TransformUVCoords;// Preprocess UV transformations (scaling, translation ...)
 
     const aiScene* aiScenePointer = importer.ReadFile((filePath.str() + "/" + fileName.str()).c_str(), ppSteps);
@@ -162,6 +201,29 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
     if (!aiScenePointer) {
         Console::errorfn(Locale::Get(_ID("ERROR_IMPORTER_FILE")), fileName.c_str(), importer.GetErrorString());
         return false;
+    }
+
+    aiMatrix4x4 axisCorrectionBasis;
+    if (aiScenePointer->mMetaData) {
+        I32 UpAxis = 1, UpAxisSign = 1, FrontAxis = 2, FrontAxisSign = 1, CoordAxis = 0, CoordAxisSign = 1;
+        D64 UnitScaleFactor = 1.0;
+        aiScenePointer->mMetaData->Get<int>("UpAxis", UpAxis);
+        aiScenePointer->mMetaData->Get<int>("UpAxisSign", UpAxisSign);
+        aiScenePointer->mMetaData->Get<int>("FrontAxis", FrontAxis);
+        aiScenePointer->mMetaData->Get<int>("FrontAxisSign", FrontAxisSign);
+        aiScenePointer->mMetaData->Get<int>("CoordAxis", CoordAxis);
+        aiScenePointer->mMetaData->Get<int>("CoordAxisSign", CoordAxisSign);
+        aiScenePointer->mMetaData->Get<D64>("UnitScaleFactor", UnitScaleFactor);
+
+        aiVector3D upVec, forwardVec, rightVec;
+        upVec[UpAxis]         = UpAxisSign    * to_F32(UnitScaleFactor);
+        forwardVec[FrontAxis] = FrontAxisSign * to_F32(UnitScaleFactor);
+        rightVec[CoordAxis]   = CoordAxisSign * to_F32(UnitScaleFactor);
+
+        axisCorrectionBasis = aiMatrix4x4(rightVec.x,   rightVec.y,   rightVec.z,   0.f,
+                                          upVec.x,      upVec.y,      upVec.z,      0.f,
+                                          forwardVec.x, forwardVec.y, forwardVec.z, 0.f,
+                                          0.f,          0.f,          0.f,          1.f);
     }
 
     const GeometryFormat format = GetGeometryFormatForExtension(getExtension(fileName).c_str());
@@ -203,6 +265,9 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
 
     const U32 numMeshes = aiScenePointer->mNumMeshes;
     target._subMeshData.reserve(numMeshes);
+
+    const U32 numChildren = PopulateNodeData(aiScenePointer->mRootNode, target._nodeData, axisCorrectionBasis);
+    DIVIDE_ASSERT(numChildren > 0u || !target._nodeData._meshIndices.empty(), "DVDConverter::Load: Error: Failed to find child nodes in specified file!");
 
     constexpr U8 maxModelNameLength = 16;
     constexpr U8 maxMeshNameLength = 64;
@@ -516,44 +581,41 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
     const aiMaterial* mat = source->mMaterials[materialIndex];
 
     // ------------------------------- Part 1: Material properties --------------------------------------------
-    material.name(materialName);
-    // Ignored properties: 
-    // - AI_MATKEY_ENABLE_WIREFRAME
-    // - AI_MATKEY_BLEND_FUNC
-    // - AI_MATKEY_REFLECTIVITY
-    // - AI_MATKEY_REFRACTI
-    // - AI_MATKEY_COLOR_TRANSPARENT
-    // - AI_MATKEY_COLOR_REFLECTIVE
-    // - AI_MATKEY_GLOBAL_BACKGROUND_IMAGE
-    // - AI_MATKEY_GLOBAL_SHADERLANG
-    // - AI_MATKEY_SHADER_VERTEX
-    // - AI_MATKEY_SHADER_FRAGMENT
-    // - AI_MATKEY_SHADER_GEO
-    // - AI_MATKEY_SHADER_TESSELATION
-    // - AI_MATKEY_SHADER_PRIMITIVE
-    // - AI_MATKEY_SHADER_COMPUTE
-    // - AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR
-    // - AI_MATKEY_GLTF_ALPHAMODE
-    // - AI_MATKEY_GLTF_ALPHACUTOFF
-    // - AI_MATKEY_GLTF_PBRSPECULARGLOSSINESS
-    // - AI_MATKEY_GLTF_PBRSPECULARGLOSSINESS_GLOSSINESS_FACTOR
-
     { // Load shading mode
         // The default shading model should be set to the classic SpecGloss Phong
-        I32 shadingModel = 0, unlit = 0, flags = 0;
-        if (format != GeometryFormat::GLTF) {
-            if (AI_SUCCESS == aiGetMaterialInteger(mat, AI_MATKEY_GLTF_UNLIT, &unlit) && unlit == 1) {
-                material.shadingMode(ShadingMode::FLAT);
-            } else if (AI_SUCCESS == aiGetMaterialInteger(mat, AI_MATKEY_SHADING_MODEL, &shadingModel)) {
-                material.shadingMode(detail::aiShadingModeInternalTable[shadingModel]);
-            } else {
-                material.shadingMode(ShadingMode::BLINN_PHONG);
-            }
+        aiString matName;
+        if (AI_SUCCESS == mat->Get(AI_MATKEY_NAME, matName)) {
+            material.name(matName.C_Str());
         } else {
-            // GLTF is a pure PBR material-based format
-            material.shadingMode(ShadingMode::COOK_TORRANCE);
+            material.name(materialName);
         }
 
+        I32 shadingModel = 0, flags = 0;
+        if (AI_SUCCESS == aiGetMaterialInteger(mat, AI_MATKEY_SHADING_MODEL, &shadingModel)) {
+            material.shadingMode(detail::aiShadingModeInternalTable[shadingModel]);
+        } else {
+            material.shadingMode(ShadingMode::BLINN_PHONG);
+        }
+        if (material.shadingMode() == ShadingMode::PBR_MR) {
+            //From Assimp:
+            /** Physically-Based Rendering (PBR) shading using
+            * Bidirectional scattering/reflectance distribution function (BSDF/BRDF)
+            * There are multiple methods under this banner, and model files may provide
+            * data for more than one PBR-BRDF method.
+            * Applications should use the set of provided properties to determine which
+            * of their preferred PBR rendering methods are likely to be available
+            * eg:
+            * - If AI_MATKEY_METALLIC_FACTOR is set, then a Metallic/Roughness is available
+            * - If AI_MATKEY_GLOSSINESS_FACTOR is set, then a Specular/Glossiness is available
+            * Note that some PBR methods allow layering of techniques
+            */
+            F32 temp = 0.f;
+            if (AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_GLOSSINESS_FACTOR, &temp)) {
+                material.shadingMode(ShadingMode::PBR_SG);
+            } else {
+                DIVIDE_ASSERT(AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_METALLIC_FACTOR, &temp));
+            }
+        }
         aiGetMaterialInteger(mat, AI_MATKEY_TEXFLAGS_DIFFUSE(0), &flags);
         const bool hasIgnoreAlphaFlag = (flags & aiTextureFlags_IgnoreAlpha) != 0;
         if (hasIgnoreAlphaFlag) {
@@ -639,12 +701,21 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
 
         F32 roughness = 0.f, metallic = 0.f;
         // Load metallic
-        if (AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, &metallic)) {
+        if (AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_METALLIC_FACTOR, &metallic)) {
             material.metallic(metallic);
         }
         // Load roughness
-        if (AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, &roughness)) {
+        if (AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_ROUGHNESS_FACTOR, &roughness)) {
             material.roughness(roughness);
+        }
+    }
+    { // Load specular & glossiness
+        if (material.shadingMode() == ShadingMode::PBR_SG) {
+            FColour4 specularTemp;
+            specularTemp.rg = {1.f, 1.f};
+            aiGetMaterialFloat(mat, AI_MATKEY_SPECULAR_FACTOR, &specularTemp.r);
+            aiGetMaterialFloat(mat, AI_MATKEY_GLOSSINESS_FACTOR, &specularTemp.g);
+            material.specular(specularTemp);
         }
     }
     { // Other material properties
@@ -766,7 +837,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
     bool hasNormalMap = false;
     { // Normal map
         if (AI_SUCCESS == mat->GetTexture(aiTextureType_NORMAL_CAMERA, 0, &tName, &mapping, &uvInd, &blend, &op, mode) ||
-            AI_SUCCESS == mat->GetTexture(aiTextureType_NORMALS, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) 
+            AI_SUCCESS == mat->GetTexture(aiTextureType_NORMALS, 0, &tName, &mapping, &uvInd, &blend, &op, mode))
         {
             if (tName.length > 0) {
                 loadTexture(TextureUsage::NORMALMAP, detail::aiTextureOperationTable[op], tName, mode);
@@ -859,6 +930,26 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
             } else {
                 Console::errorfn(Locale::Get(_ID("MATERIAL_NO_NAME_TEXTURE")), materialName.c_str(), "OCCLUSION");
             }
+        }
+    }
+    if (AI_SUCCESS == mat->GetTexture(aiTextureType_SHEEN, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
+        if (tName.length > 0) {
+            Console::warnfn(Locale::Get(_ID("MATERIAL_TEXTURE_NOT_SUPPORTED")), materialName.c_str(), "SHEEN");
+        }
+    }
+    if (AI_SUCCESS == mat->GetTexture(aiTextureType_CLEARCOAT, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
+        if (tName.length > 0) {
+            Console::warnfn(Locale::Get(_ID("MATERIAL_TEXTURE_NOT_SUPPORTED")), materialName.c_str(), "CLEARCOAT");
+        }
+    }
+    if (AI_SUCCESS == mat->GetTexture(aiTextureType_TRANSMISSION, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
+        if (tName.length > 0) {
+            Console::warnfn(Locale::Get(_ID("MATERIAL_TEXTURE_NOT_SUPPORTED")), materialName.c_str(), "TRANSMISSION");
+        }
+    }
+    if (AI_SUCCESS == mat->GetTexture(aiTextureType_UNKNOWN, 0, &tName, &mapping, &uvInd, &blend, &op, mode)) {
+        if (tName.length > 0) {
+            Console::warnfn(Locale::Get(_ID("MATERIAL_TEXTURE_NOT_SUPPORTED")), materialName.c_str(), "UNKNOWN");
         }
     }
 }

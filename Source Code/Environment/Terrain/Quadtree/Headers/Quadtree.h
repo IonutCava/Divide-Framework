@@ -50,7 +50,7 @@ class SceneRenderState;
 
 class Quadtree {
   public:
-    Quadtree(GFXDevice& context);
+    Quadtree();
     ~Quadtree();
 
     void build(const BoundingBox& terrainBBox,
@@ -61,22 +61,18 @@ class Quadtree {
 
     [[nodiscard]] U32 getChunkCount() const noexcept { return _chunkCount; }
 
-    void drawBBox(RenderPackage& packageOut) const;
+    void drawBBox(GFXDevice& context) const;
     void toggleBoundingBoxes();
 
     [[nodiscard]] QuadtreeNode* findLeaf(const vec2<F32>& pos) const noexcept;
 
     const eastl::unique_ptr<QuadtreeNode>& getRoot() const noexcept { return _root; }
 
-    POINTER_R(Pipeline, bbPipeline, nullptr);
     PROPERTY_R_IW(U32, targetChunkDimension, 0u);
 
    private:
     eastl::unique_ptr<QuadtreeNode> _root = nullptr;
-    GFXDevice&    _context;
     VertexBuffer* _parentVB = nullptr;
-    mutable Mutex _bbPrimitiveLock;
-    IMPrimitive*  _bbPrimitive = nullptr;
     U32 _chunkCount = 0u;
     bool _drawBBoxes = false;
 };

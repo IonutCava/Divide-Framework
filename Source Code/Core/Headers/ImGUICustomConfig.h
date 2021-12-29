@@ -40,6 +40,11 @@ namespace Divide {
 	};
 };
 
+namespace ImGui {
+	void SetScrollHereY(float center_y_ratio);
+
+	inline void SetScrollHere() { SetScrollHereY(0.5f); }
+};
 #define IM_ASSERT(_EXPR) Divide::Assert::DIVIDE_ASSERT_FUNC(_EXPR, __FILE__, __LINE__, "IMGUI_ASSERT")
 #define IM_DEBUG_BREAK() Divide::DebugBreak(true)
 

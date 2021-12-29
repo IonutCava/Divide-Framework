@@ -10,57 +10,32 @@
 
 namespace Divide {
 
-Quadtree::Quadtree(GFXDevice& context)
-    : _root(eastl::make_unique<QuadtreeNode>(context, this)),
-      _context(context)
+Quadtree::Quadtree()
+    : _root(eastl::make_unique<QuadtreeNode>(this))
 {
-    const RenderStateBlock primitiveRenderState;
-    PipelineDescriptor pipeDesc;
-    pipeDesc._stateHash = primitiveRenderState.getHash();
-    pipeDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->getGUID();
-    _bbPipeline = _context.newPipeline(pipeDesc);
 }
 
 Quadtree::~Quadtree()
 {
-    if (_bbPrimitive) {
-        _context.destroyIMP(_bbPrimitive);
-    }
 }
 
 void Quadtree::toggleBoundingBoxes() {
     _drawBBoxes = !_drawBBoxes;
-    {
-        ScopedLock<Mutex> w_lock(_bbPrimitiveLock);
-        if (_drawBBoxes) {
-            _bbPrimitive = _context.newIMP();
-            _bbPrimitive->name("QuadtreeBoundingBox");
-            _bbPrimitive->pipeline(*_bbPipeline);
-        } else {
-            _context.destroyIMP(_bbPrimitive);
-        }
-    }
     _root->toggleBoundingBoxes();
 }
 
-void Quadtree::drawBBox(RenderPackage& packageOut) const {
+void Quadtree::drawBBox(GFXDevice& context) const {
     if (!_drawBBoxes) {
         return;
     }
 
-    assert(_root && _bbPrimitive);
-    _root->drawBBox(packageOut);
+    _root->drawBBox(context);
  
-    {
-        ScopedLock<Mutex> w_lock(_bbPrimitiveLock);
-        IMPrimitive::BoxDescriptor descriptor;
-        descriptor.min = _root->getBoundingBox().getMin();
-        descriptor.max = _root->getBoundingBox().getMax();
-        descriptor.colour = UColour4(0, 64, 255, 255);
-        _bbPrimitive->fromBox(descriptor);
-
-        packageOut.appendCommandBuffer(_bbPrimitive->toCommandBuffer());
-    }
+    IMPrimitive::BoxDescriptor descriptor;
+    descriptor.min = _root->getBoundingBox().getMin();
+    descriptor.max = _root->getBoundingBox().getMax();
+    descriptor.colour = UColour4(0, 64, 255, 255);
+    context.debugDrawBox(-1, descriptor);
 }
 
 QuadtreeNode* Quadtree::findLeaf(const vec2<F32>& pos) const noexcept

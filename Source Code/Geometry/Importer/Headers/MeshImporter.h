@@ -36,6 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Geometry/Material/Headers/Material.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Geometry/Animations/Headers/SceneAnimator.h"
+#include "Geometry/Shapes/Headers/Mesh.h"
 
 namespace Divide {
     enum class GeometryFormat : U8
@@ -87,6 +88,8 @@ namespace Divide {
             bool serialize(ByteBuffer& dataOut) const;
             bool deserialize(ByteBuffer& dataIn);
 
+            using SpecularGlossiness = vec2<F32>;
+
             PROPERTY_RW(bool, ignoreTexDiffuseAlpha, false);
             PROPERTY_RW(bool, doubleSided, true);
             PROPERTY_RW(Str128, name);
@@ -96,7 +99,8 @@ namespace Divide {
             PROPERTY_RW(FColour4, baseColour, DefaultColours::WHITE);
             PROPERTY_RW(FColour3, emissive, DefaultColours::BLACK);
             PROPERTY_RW(FColour3, ambient, DefaultColours::BLACK);
-            PROPERTY_RW(FColour4, specular, DefaultColours::BLACK); //<For Phong
+            PROPERTY_RW(FColour4, specular, DefaultColours::BLACK);
+            PROPERTY_RW(SpecularGlossiness, specGloss);
             PROPERTY_RW(F32, metallic, 0.0f);
             PROPERTY_RW(F32, roughness, 1.0f);
             PROPERTY_RW(F32, parallaxFactor, 1.0f);
@@ -154,13 +158,12 @@ namespace Divide {
             PROPERTY_RW(ResourcePath, modelPath);
             PROPERTY_RW(bool, fromFile, false);
             vector<Bone*> _bones;
+            Divide::MeshNodeData _nodeData;
             vector<SubMeshData> _subMeshData;
             vector<AnimEvaluator*> _animations;
         };
     };
 
-
-    FWD_DECLARE_MANAGED_CLASS(Mesh);
     FWD_DECLARE_MANAGED_CLASS(Material);
 
     class MeshImporter

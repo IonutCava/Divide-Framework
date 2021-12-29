@@ -51,14 +51,6 @@ struct NodeMaterialData
     uvec4 _textureOperations;
 };
 
-#define SHADING_FLAT 0
-#define SHADING_PHONG 1
-#define SHADING_BLINN_PHONG 2
-#define SHADING_TOON 3
-#define SHADING_OREN_NAYAR 4
-#define SHADING_COOK_TORRANCE 5
-#define SHADING_COUNT 6
-
 struct PBRMaterial
 {
     vec4  _specular;

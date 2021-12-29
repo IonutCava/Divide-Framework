@@ -13,9 +13,8 @@
 
 namespace Divide {
 
-QuadtreeNode::QuadtreeNode(GFXDevice& context, Quadtree* parent) noexcept
-    : _parent(parent),
-      _context(context)
+QuadtreeNode::QuadtreeNode(Quadtree* parent) noexcept
+    : _parent(parent)
 {
 }
 
@@ -23,9 +22,6 @@ QuadtreeNode::~QuadtreeNode()
 {
     for (U8 i = 0; i < 4; ++i) {
         MemoryManager::SAFE_DELETE(_children[i]);
-    }
-    if (_bbPrimitive) {
-        _context.destroyIMP(_bbPrimitive);
     }
 }
 
@@ -49,7 +45,7 @@ void QuadtreeNode::build(const U8 depth,
     const vec2<U16> newsize = nodesize / 2;
 
     if (std::max(newsize.x, newsize.y) < _targetChunkDimension) {
-        _terrainChunk = eastl::make_unique<TerrainChunk>(_context, terrain, *this);
+        _terrainChunk = eastl::make_unique<TerrainChunk>(terrain, *this);
         _terrainChunk->load(depth, pos, _targetChunkDimension, HMsize, _boundingBox);
         chunkCount++;
     } else {
@@ -57,16 +53,16 @@ void QuadtreeNode::build(const U8 depth,
 
         // Compute children bounding boxes
         const vec3<F32>& center = _boundingBox.getCenter();
-        _children[to_base(ChildPosition::CHILD_NW)] = MemoryManager_NEW QuadtreeNode(_context, _parent);
+        _children[to_base(ChildPosition::CHILD_NW)] = MemoryManager_NEW QuadtreeNode(_parent);
         _children[to_base(ChildPosition::CHILD_NW)]->setBoundingBox(BoundingBox(_boundingBox.getMin(), center));
 
-        _children[to_base(ChildPosition::CHILD_NE)] = MemoryManager_NEW QuadtreeNode(_context, _parent);
+        _children[to_base(ChildPosition::CHILD_NE)] = MemoryManager_NEW QuadtreeNode(_parent);
         _children[to_base(ChildPosition::CHILD_NE)]->setBoundingBox(BoundingBox(vec3<F32>(center.x, 0.0f, _boundingBox.getMin().z), vec3<F32>(_boundingBox.getMax().x, 0.0f, center.z)));
 
-        _children[to_base(ChildPosition::CHILD_SW)] = MemoryManager_NEW QuadtreeNode(_context, _parent);
+        _children[to_base(ChildPosition::CHILD_SW)] = MemoryManager_NEW QuadtreeNode(_parent);
         _children[to_base(ChildPosition::CHILD_SW)]->setBoundingBox(BoundingBox(vec3<F32>(_boundingBox.getMin().x, 0.0f, center.z), vec3<F32>(center.x, 0.0f, _boundingBox.getMax().z)));
 
-        _children[to_base(ChildPosition::CHILD_SE)] = MemoryManager_NEW QuadtreeNode(_context, _parent);
+        _children[to_base(ChildPosition::CHILD_SE)] = MemoryManager_NEW QuadtreeNode(_parent);
         _children[to_base(ChildPosition::CHILD_SE)]->setBoundingBox(BoundingBox(center, _boundingBox.getMax()));
 
         // Compute children positions
@@ -100,36 +96,21 @@ bool QuadtreeNode::computeBoundingBox(BoundingBox& parentBB) {
 
 void QuadtreeNode::toggleBoundingBoxes() {
     _drawBBoxes = !_drawBBoxes;
-    if (!_drawBBoxes) {
-        ScopedLock<Mutex> w_lock(_bbPrimitiveLock);
-        _context.destroyIMP(_bbPrimitive);
-        _bbPrimitive = nullptr;
-    }
 }
 
-void QuadtreeNode::drawBBox(RenderPackage& packageOut) {
-    {
-        ScopedLock<Mutex> w_lock(_bbPrimitiveLock);
-        if (_bbPrimitive == nullptr) {
-            _bbPrimitive = _context.newIMP();
-            _bbPrimitive->name("QuadtreeBoundingBox");
-            _bbPrimitive->pipeline(*_parent->bbPipeline());
-        }
-        IMPrimitive::BoxDescriptor descriptor;
-        descriptor.min = _boundingBox.getMin();
-        descriptor.max = _boundingBox.getMax();
-        descriptor.colour = UColour4(0, 128, 255, 255);
+void QuadtreeNode::drawBBox(GFXDevice& context) {
+    IMPrimitive::BoxDescriptor descriptor;
+    descriptor.min = _boundingBox.getMin();
+    descriptor.max = _boundingBox.getMax();
+    descriptor.colour = UColour4(0, 128, 255, 255);
 
-        _bbPrimitive->fromBox(descriptor);
-
-        packageOut.appendCommandBuffer(_bbPrimitive->toCommandBuffer());
-    }
+    context.debugDrawBox(_terrainChunk != nullptr ? _terrainChunk->ID() : 121221, descriptor);
 
     if (!isALeaf()) {
-        getChild(ChildPosition::CHILD_NW).drawBBox(packageOut);
-        getChild(ChildPosition::CHILD_NE).drawBBox(packageOut);
-        getChild(ChildPosition::CHILD_SW).drawBBox(packageOut);
-        getChild(ChildPosition::CHILD_SE).drawBBox(packageOut);
+        getChild(ChildPosition::CHILD_NW).drawBBox(context);
+        getChild(ChildPosition::CHILD_NE).drawBBox(context);
+        getChild(ChildPosition::CHILD_SW).drawBBox(context);
+        getChild(ChildPosition::CHILD_SE).drawBBox(context);
     }
 }
 }

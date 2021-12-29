@@ -61,7 +61,7 @@ class QuadtreeChildren;
 
 class QuadtreeNode {
    public:
-     QuadtreeNode(GFXDevice& context, Quadtree* parent) noexcept;
+     QuadtreeNode(Quadtree* parent) noexcept;
      ~QuadtreeNode();
 
     /// recursive node building function
@@ -74,7 +74,7 @@ class QuadtreeNode {
 
     [[nodiscard]] bool computeBoundingBox(BoundingBox& parentBB);
     
-    void drawBBox(RenderPackage& packageOut);
+    void drawBBox(GFXDevice& context);
     void toggleBoundingBoxes();
 
     [[nodiscard]] bool isALeaf() const noexcept { return _children[0] == nullptr; }
@@ -95,9 +95,6 @@ class QuadtreeNode {
     Quadtree* _parent = nullptr;
     std::array<QuadtreeNode*, 4> _children = {}; ///< Node children
     eastl::unique_ptr<TerrainChunk> _terrainChunk = nullptr; ///< Terrain Chunk contained in node
-    GFXDevice&    _context;
-    mutable Mutex _bbPrimitiveLock;
-    IMPrimitive*  _bbPrimitive = nullptr;
     U8 _LoD = 0u;
     bool _drawBBoxes = false;
 };

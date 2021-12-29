@@ -166,6 +166,7 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
     cloneMat->_emissive = base._emissive;
     cloneMat->_ambient = base._ambient;
     cloneMat->_specular = base._specular;
+    cloneMat->_specGloss = base._specGloss;
     cloneMat->_metallic = base._metallic;
     cloneMat->_roughness = base._roughness;
     cloneMat->_parallaxFactor = base._parallaxFactor;
@@ -911,6 +912,16 @@ void Material::specularColour(const FColour3& value, const bool applyToInstances
     }
 }
 
+void Material::specGloss(const SpecularGlossiness& value, const bool applyToInstances) {
+    _specGloss = value;
+
+    if (applyToInstances) {
+        for (Material* instance : _instances) {
+            instance->specGloss(value, true);
+        }
+    }
+}
+
 void Material::shininess(const F32 value, const bool applyToInstances) {
     _specular.a = value;
 
@@ -1118,6 +1129,8 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
                                                        0u,
                                                        0u);
     dataOut._textureOperations.w = 0u;
+
+    //dataOut._specGloss = specGloss();
 }
 
 void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTextures& texturesOut) {
@@ -1172,7 +1185,7 @@ bool Material::getTextureData(const RenderStagePass& renderStagePass, TextureDat
                 }
             }
         }
-        if (shadingMode() != ShadingMode::OREN_NAYAR && shadingMode() != ShadingMode::COOK_TORRANCE) {
+        if (shadingMode() != ShadingMode::PBR_MR && shadingMode() != ShadingMode::PBR_SG) {
             if (addTexture(to_base(TextureUsage::SPECULAR))) {
                 ret = true;
             }
@@ -1228,6 +1241,9 @@ void Material::saveToXML(const string& entryName, boost::property_tree::ptree& p
     pt.put(entryName + ".specular.<xmlattr>.b", specular().b);
     pt.put(entryName + ".specular.<xmlattr>.a", specular().a);
 
+    pt.put(entryName + ".specular_factor", specGloss().x);
+    pt.put(entryName + ".glossiness_factor", specGloss().y);
+
     pt.put(entryName + ".metallic", metallic());
 
     pt.put(entryName + ".roughness", roughness());
@@ -1282,6 +1298,9 @@ void Material::loadFromXML(const string& entryName, const boost::property_tree::
                             pt.get<F32>(entryName + ".specular.<xmlattr>.g", specular().g),
                             pt.get<F32>(entryName + ".specular.<xmlattr>.b", specular().b),
                             pt.get<F32>(entryName + ".specular.<xmlattr>.a", specular().a)), false);
+
+    specGloss(SpecularGlossiness(pt.get<F32>(entryName + ".specular_factor", specGloss().x),
+                                 pt.get<F32>(entryName + ".glossiness_factor", specGloss().y)));
 
     metallic(pt.get<F32>(entryName + ".metallic", metallic()), false);
 
@@ -1345,8 +1364,6 @@ void Material::saveRenderStatesToXML(const string& entryName, boost::property_tr
 
 void Material::loadRenderStatesFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     hashMap<U32, size_t> previousHashValues;
-
-    return;
 
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {

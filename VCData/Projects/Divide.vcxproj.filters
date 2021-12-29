@@ -36,6 +36,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Xml Include="..\..\main.xml" />
+    <Xml Include="..\..\XML\main.xml" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<version>1</version>
+<entities>
+    <node name="ROOT" type="TRANSFORM">
+        <node name="DefaultSky" type="SKY"/>
+        <node name="DefaultLight" type="TRANSFORM"/>
+        <node name="Primitive_1" type="QUAD_3D"/>
+        <node name="Primitive_2" type="BOX_3D">
+            <node name="Primitive_0" type="SPHERE_3D"/>
+        </node>
+        <node name="Primitive_0" type="SPHERE_3D"/>
+    </node>
+</entities>

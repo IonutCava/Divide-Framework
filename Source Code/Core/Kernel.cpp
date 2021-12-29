@@ -585,8 +585,8 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     // Load info from XML files
     XMLEntryData& entryData = _platformContext.entryData();
     Configuration& config = _platformContext.config();
-    loadFromXML(entryData, (systemInfo._workingDirectory + entryPoint).c_str());
-    loadFromXML(config, (systemInfo._workingDirectory + entryData.scriptLocation + "/config.xml").c_str());
+    loadFromXML(entryData, (systemInfo._workingDirectory + Paths::g_xmlDataLocation.c_str() + entryPoint).c_str());
+    loadFromXML(config, (systemInfo._workingDirectory + Paths::g_xmlDataLocation.c_str() + "config.xml").c_str());
 
     if (Util::FindCommandLineArgument(_argc, _argv, "disableRenderAPIDebugging")) {
         config.debug.enableRenderAPIDebugging = false;

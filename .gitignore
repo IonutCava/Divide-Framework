@@ -1026,3 +1026,13 @@ Intermediate
 /VCData/Projects/Profile_Editor
 /VCData/Projects/Profile_Core
 /VCData/Projects/Debug_ThirdPartyLibs
+.vs
+CMakeFiles
+assimp.dir
+zlibstatic.dir
+/VCData/Outputs/x64/Debug/Divide-PCH.lib
+/VCData/Outputs/x64/Debug-Editor/Divide-PCH.lib
+/VCData/Outputs/x64/Profile/Divide-PCH.lib
+/VCData/Outputs/x64/Profile-Editor/Divide-PCH.lib
+/VCData/Outputs/x64/Release/Divide-PCH.lib
+/VCData/Outputs/x64/Release-Editor/Divide-PCH.lib

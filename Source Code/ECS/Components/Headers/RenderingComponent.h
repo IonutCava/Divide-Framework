@@ -165,16 +165,13 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void setReflectionCallback(const RenderCallback& cbk) { _reflectionCallback = cbk; }
     void setRefractionCallback(const RenderCallback& cbk) { _refractionCallback = cbk; }
 
-    void drawDebugAxis(GFX::CommandBuffer& bufferInOut);
-    void drawSelectionGizmo(GFX::CommandBuffer& bufferInOut);
-    void drawSkeleton(GFX::CommandBuffer& bufferInOut);
-    void drawBounds(bool AABB, bool OBB, bool Sphere, GFX::CommandBuffer& bufferInOut);
+    void drawDebugAxis();
+    void drawSelectionGizmo();
+    void drawSkeleton();
+    void drawBounds(bool AABB, bool OBB, bool Sphere);
 
     [[nodiscard]] U8 getLoDLevel(RenderStage renderStage) const noexcept;
     [[nodiscard]] U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
-
-    void addShaderBuffer(const ShaderBufferBinding& binding) { _externalBufferBindings.push_back(binding); }
-    [[nodiscard]] const auto& getShaderBuffers() const noexcept { return _externalBufferBindings; }
 
     [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
 
@@ -251,27 +248,19 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     U16 _reflectionProbeIndex = 0u; 
   
     vector<EnvironmentProbeComponent*> _envProbes{};
-    vector<ShaderBufferBinding> _externalBufferBindings{};
 
     Material_ptr _materialInstance = nullptr;
     GFXDevice& _context;
     const Configuration& _config;
 
-    mat4<F32> _worldMatrixCache;
-    mat4<F32> _worldOffsetMatrixCache;
     vec2<F32> _renderRange;
-    bool _selectionGizmoDirty = true;
 
-    Pipeline*    _primitivePipeline[3] = {nullptr, nullptr, nullptr};
-    IMPrimitive* _boundingBoxPrimitive = nullptr;
-    IMPrimitive* _orientedBoundingBoxPrimitive = nullptr;
-    IMPrimitive* _boundingSpherePrimitive = nullptr;
-    IMPrimitive* _skeletonPrimitive = nullptr;
-    IMPrimitive* _axisGizmo = nullptr;
-    IMPrimitive* _selectionGizmo = nullptr;
+    IMPrimitive::LineDescriptor _axisGizmoLinesDescriptor;
+    IMPrimitive::LineDescriptor _skeletonLinesDescriptor;
+    IMPrimitive::OBBDescriptor _selectionGizmoDescriptor;
 
     U32 _renderMask = 0u;
-
+    bool _selectionGizmoDirty = true;
     bool _drawAABB = false;
     bool _drawOBB = false;
     bool _drawBS = false;

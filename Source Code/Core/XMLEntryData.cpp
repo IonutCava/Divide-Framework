@@ -8,7 +8,6 @@ namespace Divide {
 
 XMLEntryData::XMLEntryData() noexcept : IXMLSerializable()
 {
-    scriptLocation = "XML";
     config = "config.xml";
     startupScene = Config::DEFAULT_SCENE_NAME;
     scenesLocation = "Scenes";
@@ -20,7 +19,6 @@ bool XMLEntryData::fromXML(const char* xmlFile) {
     Console::printfn(Locale::Get(_ID("XML_LOAD_SCRIPTS")));
 
     if (LoadSave.read(xmlFile, "")) {
-        GET_PARAM(scriptLocation);
         GET_PARAM(config);
         GET_PARAM(startupScene);
         GET_PARAM(scenesLocation);
@@ -34,7 +32,6 @@ bool XMLEntryData::fromXML(const char* xmlFile) {
 
 bool XMLEntryData::toXML(const char* xmlFile) const {
     if (LoadSave.prepareSaveFile(xmlFile)) {
-        PUT_PARAM(scriptLocation);
         PUT_PARAM(config);
         PUT_PARAM(startupScene);
         PUT_PARAM(scenesLocation);

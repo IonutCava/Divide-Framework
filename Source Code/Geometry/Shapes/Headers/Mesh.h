@@ -55,8 +55,36 @@ namespace Divide {
 
 FWD_DECLARE_MANAGED_CLASS(SubMesh);
 
+namespace Attorney {
+    class MeshImporter;
+}
+
+class MeshImporter;
 class SceneAnimator;
+
+struct MeshNodeData {
+    mat4<F32> _transform;
+    vector<U32> _meshIndices; //<Index into Mesh::MeshData
+    vector<MeshNodeData> _children;
+    string _name;
+
+    bool serialize(ByteBuffer& dataOut) const;
+    bool deserialize(ByteBuffer& dataIn);
+};
+
 class Mesh final : public Object3D {
+    friend class Attorney::MeshImporter;
+
+   public:
+    struct MeshData {
+        // The local transform matrix is usually set to identity unless the vertices where pre-transformed
+        // and we undid  that on load. The localTransform should be concatenated with the local transform of 
+        // every parent node that references this mesh
+        mat4<F32> _localTransform;
+        SubMesh_ptr _mesh;
+        U32 _index = 0u;
+};
+
    public:
     explicit Mesh(GFXDevice& context,
                   ResourceCache* parentCache,
@@ -70,9 +98,6 @@ class Mesh final : public Object3D {
     void postLoad(SceneGraphNode* sgn) override;
 
     void setMaterialTpl(const Material_ptr& material) override;
-
-    void addSubMesh(const SubMesh_ptr& subMesh);
-
     void sceneUpdate(U64 deltaTimeUS,
                      SceneGraphNode* sgn,
                      SceneState& sceneState) override;
@@ -87,27 +112,38 @@ class Mesh final : public Object3D {
         return _animator; 
     }
 
-    const vector<SubMesh_ptr>& subMeshList() const noexcept {
-        return _subMeshList;
-    }
-
     void queueRecomputeBB() noexcept { _recomputeBBQueued = true; }
 
    protected:
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Mesh"; }
+    void addSubMesh(const SubMesh_ptr& subMesh, const mat4<F32>& localTransform);
+    void processNode(SceneGraphNode* parentNode, const MeshNodeData& node);
+    SceneGraphNode* addSubMeshNode(SceneGraphNode* parentNode, const U32 meshIndex);
+    void setNodeData(const MeshNodeData& nodeStructure);
 
-    friend class MeshImporter;
-    void postImport();
-
-    void recomputeBB();
    protected:
     bool _visibleToNetwork = true;
     bool _recomputeBBQueued = true;
     U64 _lastTimeStamp = 0ull;
     /// Animation player to animate the mesh if necessary
     std::shared_ptr<SceneAnimator> _animator;
-    vector<SubMesh_ptr> _subMeshList;
+    vector<MeshData> _subMeshList;
+    MeshNodeData _nodeStructure;
 };
+
+namespace Attorney {
+    class MeshImporter {
+        static void setNodeData(Mesh& parentMesh, const MeshNodeData& nodeStructure) {
+            parentMesh.setNodeData(nodeStructure);
+        }
+
+        static void addSubMesh(Mesh& parentMesh, const SubMesh_ptr& subMesh, const mat4<F32>& localTransform) {
+            parentMesh.addSubMesh(subMesh, localTransform);
+        }
+
+        friend class Divide::MeshImporter;
+    };
+} //namespace Attorney
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Mesh);
 

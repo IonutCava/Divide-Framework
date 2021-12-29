@@ -194,14 +194,14 @@ vec3 GetBRDF_PBR(in vec3 L,
     float distTerm;
     float visTerm;
 
-    if (material._shadingMode == SHADING_OREN_NAYAR || material._shadingMode == SHADING_COOK_TORRANCE) {
+    if (material._shadingMode == SHADING_PBR_MR) {
         const float LdotH = clamp((dot(L, H)), M_EPSILON, 1.f);
 
         diffuseFactor = material._diffuseColour * BurleyDiffuse(material._roughness, NdotV, NdotL, VdotH, LdotH);
         fresnelTerm = SchlickGaussianFresnel(material._specular.rgb, VdotH);
         distTerm = GGXDistribution(material._a, NdotH);
         visTerm = NeumannVisibility(NdotV, NdotL);
-    } else {
+    } else /*material._shadingMode == SHADING_PBR_SG*/ {
         diffuseFactor = material._diffuseColour * LambertianDiffuse(NdotL);
         //diffuseFactor = material._diffuseColour * CustomLambertianDiffuse(material._roughness, NdotV, NdotL);
         fresnelTerm = SchlickFresnel(material._specular.rgb, VdotH);

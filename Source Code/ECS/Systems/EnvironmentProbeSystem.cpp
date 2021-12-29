@@ -24,8 +24,20 @@ namespace Divide {
         for (EnvironmentProbeComponent* comp : _componentCache) {
             if (comp->_drawImpostor || comp->showParallaxAABB()) {
                 const BoundingBox& aabb = comp->_aabb;
-                context().gfx().debugDrawSphere(comp->getGUID(), aabb.getCenter(), 0.5f, DefaultColours::BLUE);
-                context().gfx().debugDrawBox(comp->getGUID(), aabb.getMin(), aabb.getMax(), DefaultColours::BLUE);
+                {
+                    IMPrimitive::SphereDescriptor descriptor;
+                    descriptor.center = aabb.getCenter();
+                    descriptor.radius = 0.5f;
+                    descriptor.colour = DefaultColours::BLUE_U8;
+                    context().gfx().debugDrawSphere(comp->getGUID() + 0, descriptor);
+                }
+                {
+                    IMPrimitive::BoxDescriptor descriptor;
+                    descriptor.min = aabb.getMin();
+                    descriptor.max = aabb.getMax();
+                    descriptor.colour = DefaultColours::BLUE_U8;
+                    context().gfx().debugDrawBox(comp->getGUID() + 1, descriptor);
+                }
             }
 
             switch (comp->_updateType) {

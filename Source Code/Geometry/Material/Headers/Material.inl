@@ -49,7 +49,7 @@ inline bool Material::hasTransparency() const noexcept {
 }
 
 inline bool Material::isPBRMaterial() const noexcept {
-    return shadingMode() == ShadingMode::OREN_NAYAR || shadingMode() == ShadingMode::COOK_TORRANCE;
+    return shadingMode() == ShadingMode::PBR_MR || shadingMode() == ShadingMode::PBR_SG;
 }
 
 inline bool Material::reflective() const noexcept {

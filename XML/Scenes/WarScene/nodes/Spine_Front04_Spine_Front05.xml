@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<static>false</static>
+<TRANSFORM>
+    <Transform>
+        <position x="0.188448995" y="0" z="0"/>
+        <orientation x="-0.00131780363" y="-0.00429613655" z="15.5053902"/>
+        <scale x="0.999999642" y="0.999999642" z="1"/>
+    </Transform>
+</TRANSFORM>
+<BOUNDS/>
+<NETWORKING/>

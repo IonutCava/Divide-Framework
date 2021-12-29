@@ -842,6 +842,7 @@ void GFXDevice::closeRenderingAPI() {
 
     _debugLines.reset();
     _debugBoxes.reset();
+    _debugOBBs.reset();
     _debugFrustums.reset();
     _debugCones.reset();
     _debugSpheres.reset();
@@ -947,8 +948,7 @@ namespace {
     template<typename Data, size_t N>
     inline void DecrementPrimitiveLifetime(DebugPrimitiveHandler<Data, N>& container) {
         ScopedLock<Mutex> w_lock(container._dataLock);
-        for (size_t i = 0u; i < N; ++i) {
-            auto& entry = container._debugData[i];
+        for (auto& entry : container._debugData) {
             if (entry._frameLifeTime > 0u) {
                 entry._frameLifeTime -= 1u;
             }
@@ -966,6 +966,7 @@ void GFXDevice::endFrame(DisplayWindow& window, const bool global) {
 
         DecrementPrimitiveLifetime(_debugLines);
         DecrementPrimitiveLifetime(_debugBoxes);
+        DecrementPrimitiveLifetime(_debugOBBs);
         DecrementPrimitiveLifetime(_debugFrustums);
         DecrementPrimitiveLifetime(_debugCones);
         DecrementPrimitiveLifetime(_debugSpheres);
@@ -2200,21 +2201,19 @@ void GFXDevice::getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& na
     }
 }
 
-void GFXDevice::debugDrawLines(const I64 ID, const Line* lines, const size_t count) noexcept {
-    _debugLines.add(ID, { lines, count});
+void GFXDevice::debugDrawLines(const I64 ID, const IMPrimitive::LineDescriptor descriptor) noexcept {
+    _debugLines.add(ID, descriptor);
 }
 
 void GFXDevice::debugDrawLines(GFX::CommandBuffer& bufferInOut) {
     ScopedLock<Mutex> r_lock(_debugLines._dataLock);
 
-    const size_t lineCount = _debugLines.Size();
+    const size_t lineCount = _debugLines.size();
     for (size_t f = 0u; f < lineCount; ++f) {
         auto& data = _debugLines._debugData[f];
         if (data._frameLifeTime == 0u) {
             continue;
         }
-
-        const auto& [lines, count] = data._data;
 
         IMPrimitive*& linePrimitive = _debugLines._debugPrimitives[f];
         if (linePrimitive == nullptr) {
@@ -2223,19 +2222,19 @@ void GFXDevice::debugDrawLines(GFX::CommandBuffer& bufferInOut) {
             linePrimitive->pipeline(*_debugGizmoPipeline);
         }
 
-        linePrimitive->fromLines(lines, count);
+        linePrimitive->worldMatrix(data._descriptor.worldMatrix);
+        linePrimitive->fromLines(data._descriptor);
         bufferInOut.add(linePrimitive->toCommandBuffer());
     }
 }
 
-void GFXDevice::debugDrawBox(const I64 ID, const vec3<F32>& min, const vec3<F32>& max, const FColour3& colour) noexcept {
-    _debugBoxes.add(ID, { min, max, colour });
+void GFXDevice::debugDrawBox(const I64 ID, const IMPrimitive::BoxDescriptor descriptor) noexcept {
+    _debugBoxes.add(ID, descriptor);
 }
 
 void GFXDevice::debugDrawBoxes(GFX::CommandBuffer& bufferInOut) {
     ScopedLock<Mutex> r_lock(_debugBoxes._dataLock);
-    IMPrimitive::BoxDescriptor descriptor;
-    const size_t boxesCount = _debugBoxes.Size();
+    const size_t boxesCount = _debugBoxes.size();
     for (U32 f = 0u; f < boxesCount; ++f) {
         auto& data = _debugBoxes._debugData[f];
         if (data._frameLifeTime == 0u) {
@@ -2249,22 +2248,44 @@ void GFXDevice::debugDrawBoxes(GFX::CommandBuffer& bufferInOut) {
             boxPrimitive->pipeline(*_debugGizmoPipeline);
         }
 
-        descriptor.min = std::get<0>(data._data);
-        descriptor.max = std::get<1>(data._data);
-        descriptor.colour = Util::ToByteColour(FColour4(std::get<2>(data._data), 1.0f));
-        boxPrimitive->fromBox(descriptor);
+        boxPrimitive->worldMatrix(data._descriptor.worldMatrix);
+        boxPrimitive->fromBox(data._descriptor);
         bufferInOut.add(boxPrimitive->toCommandBuffer());
     }
 }
 
-void GFXDevice::debugDrawSphere(const I64 ID, const vec3<F32>& center, F32 radius, const FColour3& colour) noexcept {
-    _debugSpheres.add(ID, { center, radius, colour });
+void GFXDevice::debugDrawOBB(const I64 ID, const IMPrimitive::OBBDescriptor descriptor) noexcept {
+    _debugOBBs.add(ID, descriptor);
+}
+
+void GFXDevice::debugDrawOBBs(GFX::CommandBuffer& bufferInOut) {
+    ScopedLock<Mutex> r_lock(_debugOBBs._dataLock);
+    const size_t boxesCount = _debugOBBs.size();
+    for (U32 f = 0u; f < boxesCount; ++f) {
+        auto& data = _debugOBBs._debugData[f];
+        if (data._frameLifeTime == 0u) {
+            continue;
+        }
+
+        IMPrimitive*& boxPrimitive = _debugOBBs._debugPrimitives[f];
+        if (boxPrimitive == nullptr) {
+            boxPrimitive = newIMP();
+            boxPrimitive->name(Util::StringFormat("DebugOBB_%d", f));
+            boxPrimitive->pipeline(*_debugGizmoPipeline);
+        }
+
+        boxPrimitive->worldMatrix(data._descriptor.worldMatrix);
+        boxPrimitive->fromOBB(data._descriptor);
+        bufferInOut.add(boxPrimitive->toCommandBuffer());
+    }
+}
+void GFXDevice::debugDrawSphere(const I64 ID, const IMPrimitive::SphereDescriptor descriptor) noexcept {
+    _debugSpheres.add(ID, descriptor);
 }
 
 void GFXDevice::debugDrawSpheres(GFX::CommandBuffer& bufferInOut) {
     ScopedLock<Mutex> r_lock(_debugSpheres._dataLock);
-    IMPrimitive::SphereDescriptor descriptor;
-    const size_t spheresCount = _debugSpheres.Size();
+    const size_t spheresCount = _debugSpheres.size();
     for (size_t f = 0u; f < spheresCount; ++f) {
         auto& data = _debugSpheres._debugData[f];
         if (data._frameLifeTime == 0u) {
@@ -2278,24 +2299,20 @@ void GFXDevice::debugDrawSpheres(GFX::CommandBuffer& bufferInOut) {
             spherePrimitive->pipeline(*_debugGizmoPipeline);
         }
 
-        const auto&[center, radius, colour3] = data._data;
-        descriptor.center = center;
-        descriptor.radius = radius;
-        descriptor.colour = Util::ToByteColour(FColour4(colour3, 1.0f));
-        spherePrimitive->fromSphere(descriptor);
+        spherePrimitive->worldMatrix(data._descriptor.worldMatrix);
+        spherePrimitive->fromSphere(data._descriptor);
         bufferInOut.add(spherePrimitive->toCommandBuffer());
     }
 }
 
-void GFXDevice::debugDrawCone(const I64 ID, const vec3<F32>& root, const vec3<F32>& direction, F32 length, F32 radius, const FColour3& colour) noexcept {
-    _debugCones.add(ID, {root, direction, length, radius, colour});
+void GFXDevice::debugDrawCone(const I64 ID, const IMPrimitive::ConeDescriptor descriptor) noexcept {
+    _debugCones.add(ID, descriptor);
 }
 
 void GFXDevice::debugDrawCones(GFX::CommandBuffer& bufferInOut) {
     ScopedLock<Mutex> r_lock(_debugCones._dataLock);
 
-    IMPrimitive::ConeDescriptor descriptor;
-    const size_t conesCount = _debugCones.Size();
+    const size_t conesCount = _debugCones.size();
     for (size_t f = 0u; f < conesCount; ++f) {
         auto& data = _debugCones._debugData[f];
         if (data._frameLifeTime == 0u) {
@@ -2309,29 +2326,20 @@ void GFXDevice::debugDrawCones(GFX::CommandBuffer& bufferInOut) {
             conePrimitive->pipeline(*_debugGizmoPipeline);
         }
 
-        const auto&[root, dir, length, radius, colour3] = data._data;
-        descriptor.root = root;
-        descriptor.direction = dir;
-        descriptor.length = length;
-        descriptor.radius = radius;
-        descriptor.colour = Util::ToByteColour(FColour4(colour3, 1.0f));
-        conePrimitive->fromCone(descriptor);
+        conePrimitive->worldMatrix(data._descriptor.worldMatrix);
+        conePrimitive->fromCone(data._descriptor);
         bufferInOut.add(conePrimitive->toCommandBuffer());
     }
 }
 
-void GFXDevice::debugDrawFrustum(const I64 ID, const Frustum& frustum, const FColour3& colour) noexcept {
-    _debugFrustums.add(ID, { frustum, colour });
+void GFXDevice::debugDrawFrustum(const I64 ID, const IMPrimitive::FrustumDescriptor descriptor) noexcept {
+    _debugFrustums.add(ID, descriptor);
 }
 
 void GFXDevice::debugDrawFrustums(GFX::CommandBuffer& bufferInOut) {
     ScopedLock<Mutex> r_lock(_debugFrustums._dataLock);
 
-    const size_t frustumCount = _debugFrustums.Size();
-
-    Line temp = {};
-    std::array<Line, to_base(FrustumPlane::COUNT) * 2> lines = {};
-    std::array<vec3<F32>, to_base(FrustumPoints::COUNT)> corners = {};
+    const size_t frustumCount = _debugFrustums.size();
     for (size_t f = 0u; f < frustumCount; ++f) {
         auto& data = _debugFrustums._debugData[f];
         if (data._frameLifeTime == 0u) {
@@ -2345,90 +2353,8 @@ void GFXDevice::debugDrawFrustums(GFX::CommandBuffer& bufferInOut) {
             frustumPrimitive->pipeline(*_debugGizmoPipeline);
         }
 
-        data._data.first.getCornersWorldSpace(corners);
-        const FColour3& endColour = data._data.second;
-        const FColour3 startColour = endColour * 0.25f;
-
-        const UColour4 startColourU = Util::ToUIntColour(startColour);
-        const UColour4 endColourU = Util::ToUIntColour(endColour);
-
-        U8 lineCount = 0;
-        // Draw Near Plane
-        temp.positionStart(corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)]);
-        temp.colourStart(startColourU);
-        temp.colourEnd(startColourU);
-        lines[lineCount++] = temp;
-
-        temp.positionStart(corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)]);
-        temp.colourStart(startColourU);
-        temp.colourEnd(startColourU);
-        lines[lineCount++] = temp;
-
-        temp.positionStart(corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_TOP)]);
-        temp.colourStart(startColourU);
-        temp.colourEnd(startColourU);
-        lines[lineCount++] = temp;
-
-        temp.positionStart(corners[to_base(FrustumPoints::NEAR_LEFT_TOP)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)]);
-        temp.colourStart(startColourU);
-        temp.colourEnd(startColourU);
-        lines[lineCount++] = temp;
-
-        // Draw Far Plane
-        temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)]);
-        temp.colourStart(endColourU);
-        temp.colourEnd(endColourU);
-        lines[lineCount++] = temp;
-
-        temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::FAR_RIGHT_TOP)]);
-        temp.colourStart(endColourU);
-        temp.colourEnd(endColourU);
-        lines[lineCount++] = temp;
-
-        temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_TOP)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::FAR_LEFT_TOP)]);
-        temp.colourStart(endColourU);
-        temp.colourEnd(endColourU);
-        lines[lineCount++] = temp;
-
-        temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_TOP)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)]);
-        temp.colourStart(endColourU);
-        temp.colourEnd(endColourU);
-        lines[lineCount++] = temp;
-        
-        // Connect Planes
-        temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)]);
-        temp.colourStart(endColourU);
-        temp.colourEnd(startColourU);
-        lines[lineCount++] = temp;
-
-        temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_TOP)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)]);
-        temp.colourStart(endColourU);
-        temp.colourEnd(startColourU);
-        lines[lineCount++] = temp;
-
-        temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_TOP)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_TOP)]);
-        temp.colourStart(endColourU);
-        temp.colourEnd(startColourU);
-        lines[lineCount++] = temp;
-
-        temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)]);
-        temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)]);
-        temp.colourStart(endColourU);
-        temp.colourEnd(startColourU);
-        lines[lineCount++] = temp;
-
-        frustumPrimitive->fromLines(lines.data(), lineCount);
+        frustumPrimitive->worldMatrix(data._descriptor.worldMatrix);
+        frustumPrimitive->fromFrustum(data._descriptor);
         bufferInOut.add(frustumPrimitive->toCommandBuffer());
     }
 }
@@ -2438,6 +2364,7 @@ void GFXDevice::debugDraw(const SceneRenderState& sceneRenderState, GFX::Command
     debugDrawFrustums(bufferInOut);
     debugDrawLines(bufferInOut);
     debugDrawBoxes(bufferInOut);
+    debugDrawOBBs(bufferInOut);
     debugDrawSpheres(bufferInOut);
     debugDrawCones(bufferInOut);
 }

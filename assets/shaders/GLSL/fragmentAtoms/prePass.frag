@@ -27,7 +27,7 @@ float getRoughness(in NodeMaterialData matData, in vec2 uv, in float normalVaria
     roughness = OMR_Selection.b;
 
     // Deduce a roughness factor from specular colour and shininess
-    if (shadingMode != SHADING_OREN_NAYAR && shadingMode != SHADING_COOK_TORRANCE) {
+    if (shadingMode != SHADING_PBR_MR) {
         const vec4 specular = getSpecular(matData, vec3(uv, 0));
         const float specularIntensity = Luminance(specular.rgb);
         const float specularPower = specular.a / 1000.f;

@@ -23,8 +23,16 @@ namespace Divide {
         Parent::PreUpdate(dt);
         for (PointLightComponent* comp : _componentCache) {
             if (comp->_drawImpostor) {
-                context().gfx().debugDrawSphere(comp->getGUID(), comp->positionCache(), 0.5f, comp->getDiffuseColour());
-                context().gfx().debugDrawSphere(comp->getGUID(), comp->positionCache(), comp->range(), DefaultColours::GREEN);
+                IMPrimitive::SphereDescriptor descriptor;
+                descriptor.center = comp->positionCache();
+
+                descriptor.radius = 0.5f;
+                descriptor.colour = Util::ToByteColour(comp->getDiffuseColour());
+                context().gfx().debugDrawSphere(comp->getGUID() + 0, descriptor);
+
+                descriptor.radius = comp->range();
+                descriptor.colour = DefaultColours::GREEN_U8;
+                context().gfx().debugDrawSphere(comp->getGUID() + 1, descriptor);
             }
         }
     }

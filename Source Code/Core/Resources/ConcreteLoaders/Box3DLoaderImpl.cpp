@@ -31,7 +31,7 @@ CachedResource_ptr ImplResourceLoader<Box3D>::operator()() {
     if (!_descriptor.flag()) {
         const ResourceDescriptor matDesc("Material_" + _descriptor.resourceName());
         Material_ptr matTemp = CreateResource<Material>(_cache, matDesc);
-        matTemp->shadingMode(ShadingMode::COOK_TORRANCE);
+        matTemp->shadingMode(ShadingMode::PBR_MR);
         ptr->setMaterialTpl(matTemp);
     }
 

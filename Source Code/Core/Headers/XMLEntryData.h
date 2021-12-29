@@ -47,7 +47,6 @@ protected:
     bool toXML(const char* xmlFile) const override;
 
 public:
-    string scriptLocation;
     string config;
     string startupScene;
     string scenesLocation;

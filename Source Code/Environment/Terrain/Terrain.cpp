@@ -60,7 +60,7 @@ void TessellationParams::fromDescriptor(const std::shared_ptr<TerrainDescriptor>
 
 Terrain::Terrain(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name)
     : Object3D(context, parentCache, descriptorHash, name, ResourcePath{ name }, {}, ObjectType::TERRAIN, to_U32(ObjectFlag::OBJECT_FLAG_NO_VB)),
-      _terrainQuadtree(context)
+      _terrainQuadtree()
 {
     _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, to_U8(LightType::SPOT));
     _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, to_U8(LightType::POINT));
@@ -279,6 +279,9 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
                             const RenderStagePass& renderStagePass,
                             const CameraSnapshot& cameraSnapshot,
                             const bool refreshData) {
+    if (renderStagePass._stage == RenderStage::DISPLAY && renderStagePass._passType == RenderPassType::MAIN_PASS) {
+        _terrainQuadtree.drawBBox(sgn->context().gfx());
+    }
 
     const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
     if (!pkg.empty()) {
@@ -352,9 +355,6 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn,
         } else {
             ++cmd._bufferIndex;
         }
-    }
-    if (renderStagePass._stage == RenderStage::DISPLAY) {
-        _terrainQuadtree.drawBBox(pkgInOut);
     }
 
     Object3D::buildDrawCommands(sgn, renderStagePass, pkgInOut);

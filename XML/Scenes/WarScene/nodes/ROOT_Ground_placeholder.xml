@@ -5,7 +5,7 @@
 <TRANSFORM>
     <Transform>
         <position x="100" y="14.75" z="-50"/>
-        <orientation x="-89.8056564" y="4.7580513e-15" z="2.17136317e-18"/>
+        <orientation x="-89.8056564" y="4.75572747e-15" z="2.17136317e-18"/>
         <scale x="102.562851" y="102.06208" z="102.613083"/>
     </Transform>
 </TRANSFORM>
@@ -13,11 +13,13 @@
 <RENDERING>
     <Material>
         <version>1</version>
-        <shadingMode>COOK_TORRANCE</shadingMode>
+        <shadingMode>PBR_MR</shadingMode>
         <colour r="0.0549430847" g="1" b="0" a="1"/>
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>
         <specular r="0" g="0" b="0" a="1"/>
+        <specular_factor>0</specular_factor>
+        <glossiness_factor>0</glossiness_factor>
         <metallic>0.600000024</metallic>
         <roughness>0.300000012</roughness>
         <doubleSided>true</doubleSided>

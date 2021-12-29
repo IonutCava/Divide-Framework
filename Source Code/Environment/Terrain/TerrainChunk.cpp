@@ -12,11 +12,9 @@ namespace Divide {
 
 U32 TerrainChunk::_chunkID = 0;
 
-TerrainChunk::TerrainChunk(GFXDevice& context,
-                           Terrain* const parentTerrain,
+TerrainChunk::TerrainChunk(Terrain* const parentTerrain,
                            QuadtreeNode& parentNode) noexcept
-    : _context(context),
-      _quadtreeNode(parentNode),
+    : _quadtreeNode(parentNode),
       _ID(_chunkID++),
       _xOffset(0),
       _yOffset(0),
@@ -77,8 +75,8 @@ void TerrainChunk::load(const U8 depth, const vec2<U32>& pos, const U32 targetCh
     Attorney::TerrainChunk::registerTerrainChunk(*_parentTerrain, this);
 }
 
-void TerrainChunk::initializeVegetation(const VegetationDetails& vegDetails) {
-    _vegetation.reset(new Vegetation(_context, *this, vegDetails));
+void TerrainChunk::initializeVegetation(GFXDevice& context, const VegetationDetails& vegDetails) {
+    _vegetation.reset(new Vegetation(context, *this, vegDetails));
 }
 
 const BoundingBox& TerrainChunk::bounds() const noexcept {
@@ -89,7 +87,7 @@ U8 TerrainChunk::LoD() const noexcept {
     return _quadtreeNode.LoD();
 }
 
-void TerrainChunk::drawBBox(RenderPackage& packageOut) const {
-    _quadtreeNode.drawBBox(packageOut);
+void TerrainChunk::drawBBox(GFXDevice& context) const {
+    _quadtreeNode.drawBBox(context);
 }
 }

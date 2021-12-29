@@ -9,7 +9,7 @@ namespace Divide {
       : BaseComponentType<TransformComponent, ComponentType::TRANSFORM>(parentSGN, context),
         _parentUsageContext(parentSGN->usageContext())
     {
-        _localMatrix.fill(MAT4_INITIAL_TRANSFORM);
+        _localMatrix.fill(MAT4_IDENTITY);
 
         setTransformDirty(TransformType::ALL);
 
@@ -31,7 +31,6 @@ namespace Divide {
 
         _editorComponent.registerField(MOV(worldMatField));
 
-        
         EditorComponentField localMatField = {};
         localMatField._name = "Local Matrix";
         localMatField._dataGetter = [this](void* dataOut) { getLocalMatrix(*static_cast<mat4<F32>*>(dataOut)); };
@@ -90,7 +89,7 @@ namespace Divide {
     }
 
     void TransformComponent::reset() {
-        _localMatrix.fill(MAT4_INITIAL_TRANSFORM);
+        _localMatrix.fill(MAT4_IDENTITY);
 
         while (!_transformStack.empty()) {
             _transformStack.pop();
@@ -492,7 +491,8 @@ namespace Divide {
             setTransforms(parentTransform * localTransform);
         }
         // Step 2: Undo the new parent transform internally so we don't change transforms when we request the world matrix
-        if (newParent != nullptr && newParent->get<TransformComponent>()) {
+        // Ignore root node as that node's transform should be set to identity anyway
+        if (newParent != nullptr && newParent->parent() != nullptr && newParent->get<TransformComponent>()) {
             getLocalMatrix(localTransform);
             const mat4<F32> parentTransform = newParent->get<TransformComponent>()->getWorldMatrix();
             setTransforms(GetInverse(parentTransform) * localTransform);

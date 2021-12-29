@@ -17,9 +17,9 @@ vec3 GetBRDF(in vec3 L,
              in float NdotV,
              in PBRMaterial material) 
 {
-    if (material._shadingMode == SHADING_OREN_NAYAR || material._shadingMode == SHADING_COOK_TORRANCE) {
+    if (material._shadingMode == SHADING_PBR_MR || material._shadingMode == SHADING_PBR_SG) {
         return GetBRDF_PBR(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
-    } else if (material._shadingMode == SHADING_BLINN_PHONG || material._shadingMode == SHADING_PHONG) {
+    } else if (material._shadingMode == SHADING_BLINN_PHONG) {
         return GetBRDF_Phong(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
     }
 
