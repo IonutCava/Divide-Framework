@@ -108,15 +108,19 @@ void Material::ApplyDefaultStateBlocks(Material& target) {
     RenderStateBlock zPrePassDescriptor(stateDescriptor);
     zPrePassDescriptor.setZFunc(ComparisonFunction::LEQUAL);
 
+    RenderStateBlock depthPassDescriptor(zPrePassDescriptor);
+    depthPassDescriptor.setColourWrites(false, false, false, false);
+
     /// A descriptor used for rendering to depth map
     RenderStateBlock shadowDescriptor(stateDescriptor);
     shadowDescriptor.setColourWrites(true, true, false, false);
     shadowDescriptor.setZFunc(ComparisonFunction::LESS);
 
-    target.setRenderStateBlock(zPrePassDescriptor.getHash(), RenderStage::COUNT,  RenderPassType::PRE_PASS);
-    target.setRenderStateBlock(stateDescriptor.getHash(),    RenderStage::COUNT,  RenderPassType::MAIN_PASS);
-    target.setRenderStateBlock(stateDescriptor.getHash(),    RenderStage::COUNT,  RenderPassType::OIT_PASS);
-    target.setRenderStateBlock(shadowDescriptor.getHash(),   RenderStage::SHADOW, RenderPassType::COUNT);
+    target.setRenderStateBlock(depthPassDescriptor.getHash(), RenderStage::COUNT,  RenderPassType::PRE_PASS);
+    target.setRenderStateBlock(zPrePassDescriptor.getHash(),  RenderStage::DISPLAY,RenderPassType::PRE_PASS);
+    target.setRenderStateBlock(stateDescriptor.getHash(),     RenderStage::COUNT,  RenderPassType::MAIN_PASS);
+    target.setRenderStateBlock(stateDescriptor.getHash(),     RenderStage::COUNT,  RenderPassType::OIT_PASS);
+    target.setRenderStateBlock(shadowDescriptor.getHash(),    RenderStage::SHADOW, RenderPassType::COUNT);
 }
 
 void Material::OnStartup(const SamplerAddress defaultTexAddress) {
@@ -495,6 +499,7 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
     OPTICK_EVENT();
 
     const bool isDepthPass = renderStagePass.isDepthPass();
+    const bool isZPrePass = isDepthPass && renderStagePass._stage == RenderStage::DISPLAY;
     const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;
 
     // At this point, only computation requests are processed
@@ -547,9 +552,6 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
     if (renderStagePass._passType == RenderPassType::OIT_PASS) {
         shaderName += ".OIT";
         fragDefines.emplace_back("OIT_PASS", true);
-    } else if (renderStagePass._stage == RenderStage::DISPLAY) {
-        shaderName += ".MDP";
-        fragDefines.emplace_back("MAIN_DISPLAY_PASS", true);
     }
 
     // Display pre-pass caches normal maps in a GBuffer, so it's the only exception
@@ -589,16 +591,16 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
 
     if (usePlanarReflections()) {
         shaderName += ".PRefl";
-        globalDefines.emplace_back("USE_PLANAR_REFLECTION", true);
+        fragDefines.emplace_back("USE_PLANAR_REFLECTION", true);
     }
 
     if (usePlanarRefractions()) {
         shaderName += ".PRefr";
-        globalDefines.emplace_back("USE_PLANAR_REFRACTION", true);
+        fragDefines.emplace_back("USE_PLANAR_REFRACTION", true);
     }
 
     if (_hardwareSkinning) {
-        globalDefines.emplace_back("USE_GPU_SKINNING", true);
+        vertDefines.emplace_back("USE_GPU_SKINNING", true);
         shaderName += ".Sknd";
     }
 
@@ -629,7 +631,9 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
     fragModule._defines = fragDefines;
 
     ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(fragModule);
+    if (!isDepthPass || isZPrePass) {
+        shaderDescriptor._modules.push_back(fragModule);
+    }
     shaderDescriptor._modules.push_back(vertModule);
 
     ResourceDescriptor shaderResDescriptor(shaderName);
@@ -1170,12 +1174,30 @@ bool Material::getTextureData(const RenderStagePass& renderStagePass, TextureDat
             }
         }
     } else {
-        if (addTexture(to_base(TextureUsage::NORMALMAP))) {
-            ret = true;
+        if (renderStagePass._stage == RenderStage::DISPLAY) {
+            if (addTexture(to_base(TextureUsage::NORMALMAP))) {
+                ret = true;
+            }
+
+            if (shadingMode() != ShadingMode::PBR_MR && shadingMode() != ShadingMode::PBR_SG) {
+                if (addTexture(to_base(TextureUsage::SPECULAR))) {
+                    ret = true;
+                }
+            } else if (_usePackedOMR) {
+                if (addTexture(to_base(TextureUsage::METALNESS))) {
+                    ret = true;
+                }
+            } else {
+                if (addTexture(to_base(TextureUsage::ROUGHNESS))) {
+                    ret = true;
+                }
+            }
         }
+
         if (addTexture(to_base(TextureUsage::HEIGHTMAP))) {
             ret = true;
         }
+
         if (hasTransparency()) {
             if (_translucencySource == TranslucencySource::ALBEDO_TEX) {
                 if (addTexture(to_base(TextureUsage::UNIT0))) {
@@ -1190,19 +1212,7 @@ bool Material::getTextureData(const RenderStagePass& renderStagePass, TextureDat
                 }
             }
         }
-        if (shadingMode() != ShadingMode::PBR_MR && shadingMode() != ShadingMode::PBR_SG) {
-            if (addTexture(to_base(TextureUsage::SPECULAR))) {
-                ret = true;
-            }
-        } else if (_usePackedOMR) {
-            if (addTexture(to_base(TextureUsage::METALNESS))) {
-                ret = true;
-            }
-        } else {
-            if (addTexture(to_base(TextureUsage::ROUGHNESS))) {
-                ret = true;
-            }
-        }
+        
     }
     return ret;
 }
@@ -1369,6 +1379,7 @@ void Material::saveRenderStatesToXML(const string& entryName, boost::property_tr
 
 void Material::loadRenderStatesFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     hashMap<U32, size_t> previousHashValues;
+    return;
 
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {

@@ -272,6 +272,8 @@ private:
     /// visible in the current frame
     RenderPassCuller* _renderPassCuller = nullptr;
 
+    mutable Mutex s_searchNodesLock;
+
     Task* _saveTask = nullptr;
     PlayerIndex _currentPlayerPass = 0u;
     ScenePool* _scenePool = nullptr;

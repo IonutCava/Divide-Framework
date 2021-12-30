@@ -29,17 +29,11 @@ void RenderPackage::setLoDIndexOffset(const U8 lodIndex, size_t indexOffset, siz
 }
 
 void RenderPackage::addDrawCommand(const GFX::DrawCommand& cmd) {
-    const bool wasInstanced = _isInstanced;
-
-    if (!wasInstanced) {
+    if (!_isInstanced) {
         for (const GenericDrawCommand& drawCmd : cmd._drawCommands) {
-            _isInstanced = drawCmd._cmd.primCount > 1;
-            if (_isInstanced) {
-                if (!_commands->exists<GFX::SendPushConstantsCommand>(0)) {
-                    GFX::SendPushConstantsCommand constantsCmd = {};
-                    constantsCmd._constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, 0u);
-                    add(constantsCmd);
-                }
+            if (drawCmd._cmd.primCount > 1) {
+                _commands->get<GFX::SendPushConstantsCommand>(0)->_constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, 0u);
+                _isInstanced = true;
                 break;
             }
         }

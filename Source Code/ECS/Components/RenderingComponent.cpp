@@ -209,6 +209,7 @@ void RenderingComponent::rebuildDrawCommands(const RenderStagePass& stagePass, R
         pkg.add(GFX::BindPipelineCommand{ _context.newPipeline(pipelineDescriptor) });
         pkg.add(GFX::BindDescriptorSetsCommand{});
     }
+    pkg.add(GFX::SendPushConstantsCommand{});
 
     _parentSGN->getNode().buildDrawCommands(_parentSGN, stagePass, pkg);
 }

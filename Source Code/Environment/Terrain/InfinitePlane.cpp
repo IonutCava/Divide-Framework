@@ -77,23 +77,26 @@ bool InfinitePlane::load() {
     terrainShader.propertyDescriptor(shaderDescriptor);
     ShaderProgram_ptr terrainColourShader = CreateResource<ShaderProgram>(_parentCache, terrainShader);
 
-    planeMaterial->setShaderProgram(terrainColourShader, RenderStage::COUNT, RenderPassType::COUNT);
-
-    shaderDescriptor._modules.back()._defines.emplace_back("MAIN_DISPLAY_PASS", true);
-    ResourceDescriptor terrainShaderMain("terrainPlane_Colour_Main");
-    terrainShaderMain.propertyDescriptor(shaderDescriptor);
-    ShaderProgram_ptr terrainColourShaderMain = CreateResource<ShaderProgram>(_parentCache, terrainShaderMain);
-
-    planeMaterial->setShaderProgram(terrainColourShaderMain, RenderStage::DISPLAY, RenderPassType::MAIN_PASS);
+    planeMaterial->setShaderProgram(terrainColourShader, RenderStage::COUNT, RenderPassType::MAIN_PASS);
+    planeMaterial->setShaderProgram(terrainColourShader, RenderStage::COUNT, RenderPassType::OIT_PASS);
 
     vertModule._variant = "PrePass";
     shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
-
-    ResourceDescriptor terrainShaderPrePass("terrainPlane_PrePass");
-    terrainShaderPrePass.propertyDescriptor(shaderDescriptor);
-    ShaderProgram_ptr terrainPrePassShader = CreateResource<ShaderProgram>(_parentCache, terrainShaderPrePass);
-    planeMaterial->setShaderProgram(terrainPrePassShader, RenderStage::COUNT, RenderPassType::PRE_PASS);
+    {
+        ResourceDescriptor terrainShaderPrePass("terrainPlane_Depth");
+        terrainShaderPrePass.propertyDescriptor(shaderDescriptor);
+        ShaderProgram_ptr terrainPrePassShader = CreateResource<ShaderProgram>(_parentCache, terrainShaderPrePass);
+        planeMaterial->setShaderProgram(terrainPrePassShader, RenderStage::COUNT, RenderPassType::PRE_PASS);
+    }
+    {
+        fragModule._variant = "PrePass";
+        shaderDescriptor._modules.push_back(fragModule);
+        ResourceDescriptor terrainShaderPrePass("terrainPlane_PrePass");
+        terrainShaderPrePass.propertyDescriptor(shaderDescriptor);
+        ShaderProgram_ptr terrainPrePassShader = CreateResource<ShaderProgram>(_parentCache, terrainShaderPrePass);
+        planeMaterial->setShaderProgram(terrainPrePassShader, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
+    }
 
     setMaterialTpl(planeMaterial);
 
@@ -144,9 +147,7 @@ void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn,
     planeCmd._cmd.indexCount = to_U32(_plane->getGeometryVB()->getIndexCount());
     planeCmd._sourceBuffer = _plane->getGeometryVB()->handle();
     planeCmd._bufferIndex = renderStagePass.baseIndex();
-    {
-        pkgInOut.add(GFX::DrawCommand{ planeCmd });
-    }
+    pkgInOut.add(GFX::DrawCommand{ planeCmd });
 
     SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
 }

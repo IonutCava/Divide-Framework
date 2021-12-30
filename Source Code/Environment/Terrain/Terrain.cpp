@@ -333,14 +333,6 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn,
                                 const RenderStagePass& renderStagePass,
                                 RenderPackage& pkgInOut)
 {
-    const F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
-    GFX::SendPushConstantsCommand pushConstantsCommand = {};
-    pushConstantsCommand._constants.set(_ID("dvd_terrainWorld"), GFX::PushConstantType::MAT4, MAT4_IDENTITY);
-    pushConstantsCommand._constants.set(_ID("dvd_uvEyeOffset"), GFX::PushConstantType::VEC2, VECTOR2_ZERO);
-    pushConstantsCommand._constants.set(_ID("dvd_tessTriangleWidth"), GFX::PushConstantType::FLOAT, triangleWidth);
-        
-    pkgInOut.add(pushConstantsCommand);
-
     GenericDrawCommand cmd = {};
     cmd._primitiveType = PrimitiveType::PATCH;
     cmd._sourceBuffer = _terrainBuffer->handle();

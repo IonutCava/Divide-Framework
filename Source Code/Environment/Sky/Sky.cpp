@@ -246,37 +246,18 @@ Sky::Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, 
 
     _renderState.addToDrawExclusionMask(RenderStage::SHADOW);
 
-    // Generate a render state
-    RenderStateBlock skyboxRenderState = {};
-    skyboxRenderState.setCullMode(CullMode::FRONT);
-    skyboxRenderState.setZFunc(ComparisonFunction::EQUAL);
-    _skyboxRenderStateHash = skyboxRenderState.getHash();
-
-    skyboxRenderState.setZFunc(ComparisonFunction::LEQUAL);
-    skyboxRenderState.setColourWrites(false, false, false, false);
-    _skyboxRenderStateHashPrePass = skyboxRenderState.getHash();
-
-    RenderStateBlock skyboxRenderStateReflection = {};
-    skyboxRenderStateReflection.setCullMode(CullMode::BACK);
-    skyboxRenderStateReflection.setZFunc(ComparisonFunction::EQUAL);
-    _skyboxRenderStateReflectedHash = skyboxRenderStateReflection.getHash();
-
-    skyboxRenderStateReflection.setZFunc(ComparisonFunction::LEQUAL);
-    skyboxRenderStateReflection.setColourWrites(false, false, false, false);
-    _skyboxRenderStateReflectedHashPrePass = skyboxRenderStateReflection.getHash();
-
     getEditorComponent().onChangedCbk([this](const std::string_view field) {
         if (field == "Reset To Scene Default") {
             _atmosphere = defaultAtmosphere();
+            _atmosphereChanged = EditorDataState::QUEUED;
         } else if (field == "Reset To Global Default") {
             _atmosphere = initialAtmosphere();
+            _atmosphereChanged = EditorDataState::QUEUED;
         } else if (field == "Enable Procedural Clouds") {
             rebuildDrawCommands(true);
         } else if (field == "Update Sky Light") {
             SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
         }
-
-        _atmosphereChanged = EditorDataState::QUEUED; 
     });
 
     {
@@ -507,7 +488,7 @@ bool Sky::load() {
         DIVIDE_UNEXPECTED_CALL();
     }
     stbi_image_free(worlNoise);
-    {
+    
         SamplerDescriptor skyboxSampler = {};
         skyboxSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
         skyboxSampler.minFilter(TextureFilter::LINEAR);
@@ -516,12 +497,12 @@ bool Sky::load() {
         _skyboxSampler = skyboxSampler.getHash();
 
         skyboxSampler.wrapUVW(TextureWrap::REPEAT);
-        _noiseSamplerLinear = skyboxSampler.getHash();
+        const size_t noiseSamplerLinear = skyboxSampler.getHash();
 
         skyboxSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
         skyboxSampler.anisotropyLevel(8);
-        _noiseSamplerMipMap = skyboxSampler.getHash();
-    }
+        const size_t noiseSamplerMipMap = skyboxSampler.getHash();
+    
     {
         TextureDescriptor textureDescriptor(TextureType::TEXTURE_3D);
         textureDescriptor.srgb(false);
@@ -604,32 +585,74 @@ bool Sky::load() {
     shaderDescriptor._modules.push_back(fragModule);
     shaderDescriptor._modules.back()._variant = "Clouds";
     
-    ResourceDescriptor skyShaderDescriptorLQ("sky_Display_Clouds_LQ");
-    skyShaderDescriptorLQ.propertyDescriptor(shaderDescriptor);
-    skyShaderDescriptorLQ.waitForReady(false);
-    _skyShaderLQ = CreateResource<ShaderProgram>(_parentCache, skyShaderDescriptorLQ, loadTasks);
-
-    shaderDescriptor._modules.back()._defines.emplace_back("MAIN_DISPLAY_PASS", true);
-
-    ResourceDescriptor skyShaderDescriptor("sky_Display_Clouds");
-    skyShaderDescriptor.propertyDescriptor(shaderDescriptor);
-    skyShaderDescriptor.waitForReady(false);
-    _skyShader = CreateResource<ShaderProgram>(_parentCache, skyShaderDescriptor, loadTasks);
+    ShaderProgram_ptr skyShader = nullptr;
+    ShaderProgram_ptr skyShaderPrePass = nullptr;
+    ShaderProgram_ptr skyShaderDeptOnly = nullptr;
+    {
+        ResourceDescriptor skyShaderDescriptorLQ("sky_Display_Clouds");
+        skyShaderDescriptorLQ.propertyDescriptor(shaderDescriptor);
+        skyShaderDescriptorLQ.waitForReady(false);
+        skyShader = CreateResource<ShaderProgram>(_parentCache, skyShaderDescriptorLQ, loadTasks);
+    }
 
     shaderDescriptor = {};
     vertModule._variant = "NoClouds";
     shaderDescriptor._modules.push_back(vertModule);
     fragModule._variant = "PrePass";
     shaderDescriptor._modules.push_back(fragModule);
+    {
+        ResourceDescriptor skyShaderPrePassDescriptor("sky_PrePass");
+        skyShaderPrePassDescriptor.waitForReady(false);
+        skyShaderPrePassDescriptor.propertyDescriptor(shaderDescriptor);
+        skyShaderPrePass = CreateResource<ShaderProgram>(_parentCache, skyShaderPrePassDescriptor, loadTasks);
+    }
+    shaderDescriptor._modules.pop_back();
+    {
+        ResourceDescriptor skyShaderDepthDescriptor("sky_Depth");
+        skyShaderDepthDescriptor.waitForReady(false);
+        skyShaderDepthDescriptor.propertyDescriptor(shaderDescriptor);
+        skyShaderDeptOnly = CreateResource<ShaderProgram>(_parentCache, skyShaderDepthDescriptor, loadTasks);
+    }
 
-    ResourceDescriptor skyShaderPrePassDescriptor("sky_PrePass");
-    skyShaderPrePassDescriptor.waitForReady(false);
-    skyShaderPrePassDescriptor.propertyDescriptor(shaderDescriptor);
-    _skyShaderPrePass = CreateResource<ShaderProgram>(_parentCache, skyShaderPrePassDescriptor, loadTasks);
+    // Generate a render state
+    RenderStateBlock skyboxRenderState = {};
+    skyboxRenderState.setCullMode(CullMode::FRONT);
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
     
-    assert(_skyShader && _skyShaderPrePass);
+    assert(skyShader && skyShaderPrePass);
+
+    ResourceDescriptor skyMaterial("skyMaterial_" + resourceName());
+    Material_ptr skyMat = CreateResource<Material>(_parentCache, skyMaterial);
+    skyMat->shadingMode(ShadingMode::BLINN_PHONG);
+    skyMat->setShaderProgram(skyShaderDeptOnly, RenderStage::COUNT,   RenderPassType::PRE_PASS);
+    skyMat->setShaderProgram(skyShaderPrePass,  RenderStage::DISPLAY, RenderPassType::PRE_PASS);
+    skyMat->setShaderProgram(skyShader,         RenderStage::COUNT,   RenderPassType::MAIN_PASS);
+    skyMat->roughness(0.01f);
+
+    skyboxRenderState.setZFunc(ComparisonFunction::LEQUAL);
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::COUNT, RenderPassType::PRE_PASS);
+
+    skyboxRenderState.setZFunc(ComparisonFunction::EQUAL);
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::COUNT, RenderPassType::MAIN_PASS);
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::COUNT, RenderPassType::OIT_PASS);
+
+    skyboxRenderState.setZFunc(ComparisonFunction::LEQUAL);
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::CUBE));
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::CUBE));
+
+    skyboxRenderState.setCullMode(CullMode::BACK);
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::PLANAR));
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::PLANAR));
+
+    skyMat->setTexture(TextureUsage::UNIT0,     _skybox,          _skyboxSampler,     TextureOperation::NONE);
+    skyMat->setTexture(TextureUsage::HEIGHTMAP, _weatherTex,      noiseSamplerLinear, TextureOperation::NONE);
+    skyMat->setTexture(TextureUsage::OPACITY,   _curlNoiseTex,    noiseSamplerLinear, TextureOperation::NONE);
+    skyMat->setTexture(TextureUsage::SPECULAR,  _worlNoiseTex,    noiseSamplerMipMap, TextureOperation::NONE);
+    skyMat->setTexture(TextureUsage::NORMALMAP, _perWorlNoiseTex, noiseSamplerMipMap, TextureOperation::NONE);
+
+    setMaterialTpl(skyMat);
+
     setBounds(BoundingBox(vec3<F32>(-radius), vec3<F32>(radius)));
 
     Console::printfn(Locale::Get(_ID("CREATE_SKY_RES_OK")));
@@ -717,7 +740,7 @@ void Sky::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sc
             std::swap(_atmosphere._cloudLayerMinMaxHeight.min, _atmosphere._cloudLayerMinMaxHeight.max);
         }
     } else if (_atmosphereChanged == EditorDataState::PROCESSED) {
-        SceneEnvironmentProbePool::SkyLightNeedsRefresh();
+        SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
         _atmosphereChanged = EditorDataState::IDLE;
     }
 
@@ -755,8 +778,7 @@ void Sky::prepareRender(SceneGraphNode* sgn,
 
     const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
     if (!pkg.empty()) {
-        setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY ? 16 : 8,
-                         pkg.get<GFX::SendPushConstantsCommand>(0)->_constants);
+        setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY ? 16 : 8, pkg.get<GFX::SendPushConstantsCommand>(0)->_constants);
     }
 
     SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
@@ -767,39 +789,6 @@ void Sky::buildDrawCommands(SceneGraphNode* sgn,
                             RenderPackage& pkgInOut) {
     assert(renderStagePass._stage != RenderStage::SHADOW);
 
-    PipelineDescriptor pipelineDescriptor = {};
-    if (renderStagePass._passType == RenderPassType::PRE_PASS) {
-        WAIT_FOR_CONDITION(_skyShaderPrePass->getState() == ResourceState::RES_LOADED);
-        pipelineDescriptor._stateHash = renderStagePass._stage == RenderStage::REFLECTION && renderStagePass._variant != to_U8(ReflectorType::CUBE)
-                                            ? _skyboxRenderStateReflectedHashPrePass
-                                            : _skyboxRenderStateHashPrePass;
-        pipelineDescriptor._shaderProgramHandle = _skyShaderPrePass->getGUID();
-    } else {
-        WAIT_FOR_CONDITION(_skyShader->getState() == ResourceState::RES_LOADED);
-        pipelineDescriptor._stateHash = renderStagePass._stage == RenderStage::REFLECTION && renderStagePass._variant != to_U8(ReflectorType::CUBE)
-                                            ? _skyboxRenderStateReflectedHash
-                                            : _skyboxRenderStateHash;
-        pipelineDescriptor._shaderProgramHandle = renderStagePass._stage == RenderStage::DISPLAY ? _skyShader->getGUID() : _skyShaderLQ->getGUID();
-    }
-
-    GFX::BindPipelineCommand pipelineCommand = {};
-    pipelineCommand._pipeline = _context.newPipeline(pipelineDescriptor);
-    pkgInOut.add(pipelineCommand);
-
-    GFX::BindDescriptorSetsCommand bindDescriptorSetsCommand{};
-    bindDescriptorSetsCommand._set._textureData.add(TextureEntry{ _skybox->data(), _skyboxSampler, TextureUsage::UNIT0 });
-    bindDescriptorSetsCommand._set._textureData.add(TextureEntry{ _weatherTex->data(), _noiseSamplerLinear, TextureUsage::HEIGHTMAP });
-    bindDescriptorSetsCommand._set._textureData.add(TextureEntry{ _curlNoiseTex->data(), _noiseSamplerLinear, TextureUsage::OPACITY });
-    bindDescriptorSetsCommand._set._textureData.add(TextureEntry{ _worlNoiseTex->data(), _noiseSamplerMipMap, TextureUsage::SPECULAR });
-    bindDescriptorSetsCommand._set._textureData.add(TextureEntry{ _perWorlNoiseTex->data(), _noiseSamplerMipMap, TextureUsage::NORMALMAP });
-
-    pkgInOut.add(bindDescriptorSetsCommand);
-
-    _atmosphereChanged = EditorDataState::CHANGED;
-    GFX::SendPushConstantsCommand pushConstantsCommand = {};
-    setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY ? 16 : 8, pushConstantsCommand._constants);
-    pkgInOut.add(pushConstantsCommand);
-
     GenericDrawCommand cmd = {};
     cmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
     cmd._sourceBuffer = _sky->getGeometryVB()->handle();
@@ -808,7 +797,7 @@ void Sky::buildDrawCommands(SceneGraphNode* sgn,
 
     pkgInOut.add(GFX::DrawCommand{ cmd });
 
-    SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
+    _atmosphereChanged = EditorDataState::QUEUED;
 
     SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
 }

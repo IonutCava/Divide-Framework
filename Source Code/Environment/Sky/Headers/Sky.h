@@ -91,8 +91,6 @@ class Sky final : public SceneNode {
     PROPERTY_R(Atmosphere, initialAtmosphere);
 
     PROPERTY_R(size_t, skyboxSampler, 0);
-    PROPERTY_R(size_t, noiseSamplerLinear, 0);
-    PROPERTY_R(size_t, noiseSamplerMipMap, 0);
 
     PROPERTY_RW(bool, enableProceduralClouds, true);
     PROPERTY_RW(bool, useDaySkybox, true);
@@ -137,16 +135,8 @@ protected:
     Texture_ptr _worlNoiseTex = nullptr;
     Texture_ptr _perWorlNoiseTex = nullptr;
     Sphere3D_ptr _sky = nullptr;
-    ShaderProgram_ptr _skyShader = nullptr;
-    ShaderProgram_ptr _skyShaderLQ = nullptr;
-    ShaderProgram_ptr _skyShaderPrePass = nullptr;
-    size_t _skyboxRenderStateHash = 0;
-    size_t _skyboxRenderStateHashPrePass = 0;
-
-    size_t _skyboxRenderStateReflectedHash = 0;
-    size_t _skyboxRenderStateReflectedHashPrePass = 0;
     U32  _diameter = 1u;
-    EditorDataState _atmosphereChanged = EditorDataState::IDLE;
+    EditorDataState _atmosphereChanged = EditorDataState::CHANGED;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Sky);

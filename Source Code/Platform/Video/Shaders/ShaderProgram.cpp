@@ -171,7 +171,6 @@ void ShaderProgram::OnStartup(ResourceCache* parentCache) {
     }
     {
         shaderDescriptor._modules.back()._defines.emplace_back("WORLD_PASS", true);
-        shaderDescriptor._modules.back()._defines.emplace_back("MAIN_DISPLAY_PASS", true);
         ResourceDescriptor immediateModeShader("ImmediateModeEmulation-World");
         immediateModeShader.threaded(false);
         immediateModeShader.propertyDescriptor(shaderDescriptor);

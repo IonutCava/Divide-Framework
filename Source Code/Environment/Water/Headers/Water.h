@@ -105,7 +105,7 @@ class WaterPlane : public SceneNode {
     std::shared_ptr<Quad3D> _plane = nullptr;
 
     StaticCamera* _reflectionCam = nullptr;
-    EditorDataState _editorDataDirtyState = EditorDataState::IDLE;
+    EditorDataState _editorDataDirtyState = EditorDataState::CHANGED;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(WaterPlane);

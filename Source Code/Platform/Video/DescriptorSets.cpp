@@ -184,25 +184,16 @@ namespace Divide {
         return TextureUpdateState::NOTHING;
     }
 
-    bool operator==(const TextureDataContainer & lhs, const TextureDataContainer & rhs) {
-        const size_t lhsCount = lhs.count();
-        const size_t rhsCount = rhs.count();
-
-        if (lhsCount != rhsCount) {
-            // Easy: different texture count
+    bool operator==(const TextureDataContainer & lhs, const TextureDataContainer & rhs) noexcept {
+        // Easy: different texture count
+        if (lhs.count() != rhs.count()) {
             return false;
         }
 
         // Hard. See if texture data matches
-        const auto & lhsTextures = lhs._entries;
-        const auto & rhsTextures = rhs._entries;
-
-        for (size_t i = 0u; i < lhsCount; ++i) {
+        for (const TextureEntry& lhsEntry : lhs._entries) {
             bool found = false;
-            const TextureEntry& lhsEntry = lhsTextures[i];
-
-            for (size_t j = 0u; j < rhsCount; ++j) {
-                const TextureEntry& rhsEntry = rhsTextures[j];
+            for (const TextureEntry& rhsEntry : rhs._entries) {
                 if (lhsEntry == rhsEntry) {
                     found = true;
                     break;
@@ -217,19 +208,38 @@ namespace Divide {
         return true;
     }
 
-    bool operator!=(const TextureDataContainer & lhs, const TextureDataContainer & rhs) {
-        // I know ... This is bad. But the logic is complex enough as it is
-        return !(lhs == rhs);
+    bool operator!=(const TextureDataContainer & lhs, const TextureDataContainer & rhs) noexcept {
+        // Easy: different texture count
+        if (lhs.count() != rhs.count()) {
+            return true;
+        }
+
+        // Hard. See if texture data matches
+        for (const TextureEntry& lhsEntry : lhs._entries) {
+            bool found = false;
+            for (const TextureEntry& rhsEntry : rhs._entries) {
+                if (lhsEntry == rhsEntry) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    bool operator==(const DescriptorSet &lhs, const DescriptorSet &rhs) {
+    bool operator==(const DescriptorSet &lhs, const DescriptorSet &rhs) noexcept {
         return lhs._buffers == rhs._buffers &&
                lhs._textureViews == rhs._textureViews &&
                lhs._images == rhs._images &&
                lhs._textureData == rhs._textureData;
     }
 
-    bool operator!=(const DescriptorSet &lhs, const DescriptorSet &rhs) {
+    bool operator!=(const DescriptorSet &lhs, const DescriptorSet &rhs) noexcept {
         return lhs._buffers != rhs._buffers ||
                lhs._textureViews != rhs._textureViews ||
                lhs._images != rhs._images ||

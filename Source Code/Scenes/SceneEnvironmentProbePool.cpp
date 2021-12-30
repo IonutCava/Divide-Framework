@@ -274,7 +274,9 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
             s_computationSet.erase(s_queuedLayer);
         }
 
-        if (queuedStage != ComputationStages::COUNT) {
+        if (queuedStage != ComputationStages::COUNT)
+        //while (queuedStage != ComputationStages::COUNT) 
+        {
             ProcessEnvironmentMapInternal(context, s_queuedLayer, queuedStage, bufferInOut);
         }
     }

@@ -485,19 +485,22 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
         // MAIN PASS
         ShaderProgramDescriptor colourDescriptor = shaderDescriptor;
-        for (ShaderModuleDescriptor& shaderModule : colourDescriptor._modules) {
-            if (shaderModule._moduleType == ShaderType::FRAGMENT) {
-                shaderModule._variant = "MainPass";
-                shaderModule._defines.emplace_back("MAIN_DISPLAY_PASS", true);
-                if (hasParallax) {
-                    shaderModule._defines.emplace_back("HAS_PARALLAX", true);
+        if (hasParallax) {
+            for (ShaderModuleDescriptor& shaderModule : colourDescriptor._modules) {
+                if (shaderModule._moduleType == ShaderType::FRAGMENT) {
+                    if (hasParallax) {
+                        shaderModule._defines.emplace_back("HAS_PARALLAX", true);
+                    }
                 }
             }
+
+            ResourceDescriptor terrainShaderColour("Terrain_Colour-" + name + propName);
+            terrainShaderColour.propertyDescriptor(colourDescriptor);
+            ShaderProgram_ptr terrainColourShader = CreateResource<ShaderProgram>(resCache, terrainShaderColour);
         }
 
-        ResourceDescriptor terrainShaderColour("Terrain_Colour-" + name + propName + (hasParallax ? ".Parallax" : ""));
+        ResourceDescriptor terrainShaderColour("Terrain_Colour-" + name + propName + (hasParallax ? ".Parallax":""));
         terrainShaderColour.propertyDescriptor(colourDescriptor);
-
         ShaderProgram_ptr terrainColourShader = CreateResource<ShaderProgram>(resCache, terrainShaderColour);
 
         // PRE PASS

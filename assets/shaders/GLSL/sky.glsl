@@ -3,6 +3,12 @@
 #include "vbInputData.vert"
 #include "lightingDefaults.vert"
 
+layout(location = 10) out vec4 vSunDirection; // vSunDirection.a = sunFade
+layout(location = 11) out vec4 vSunColour;  // vSunColour.a = vSunE
+layout(location = 12) out vec3 vAmbient;
+layout(location = 13) out vec3 vBetaR;
+layout(location = 14) out vec3 vBetaM;
+
 void main(void){
     const NodeTransformData data = fetchInputData();
     VAR._vertexW = data._worldMatrix * dvd_Vertex;
@@ -235,20 +241,8 @@ void main() {
     ray = ray_t(vec3(0.f, dvd_planetRadius + 1.f, 0.f), normalize(vec3(0.4f, 0.1f, 0.f)));
     vAmbient = getIncidentLight(ray, vSunDirection.xyz);
 
-
     vSunDirection.a = vSunFade;
     vSunColour.a = vSunE;
-}
-
---Fragment.PassThrough
-
-layout(early_fragment_tests) in;
-
-#define NO_POST_FX
-#include "output.frag"
-
-void main() {
-    writeScreenColour(vec4(vec3(0.4f), 1.f));
 }
 
 --Fragment.Clouds
@@ -289,9 +283,6 @@ uniform bool  dvd_enableClouds;
 #define dvd_useNightSkybox (dvd_useSkyboxes.y == 1)
 
 #define NO_POST_FX
-#if !defined(MAIN_DISPLAY_PASS)
-#define LOW_QUALITY
-#endif //!MAIN_DISPLAY_PASS
 
 #define NEED_SCENE_DATA
 #include "sceneData.cmn"
@@ -697,10 +688,8 @@ void main() {
         case DEBUG_CSM_SPLITS:    ret = vec3(1.0f); break;
         case DEBUG_LIGHT_HEATMAP:
         case DEBUG_DEPTH_CLUSTERS:
-#if defined(MAIN_DISPLAY_PASS)
         case DEBUG_REFRACTIONS:
         case DEBUG_REFLECTIONS:
-#endif //MAIN_DISPLAY_PASS
         case DEBUG_MATERIAL_IDS:  ret = vec3(0.0f); break;
         default:                  ret = atmosphereColour(rayDirection, lerpValue); break;
     }

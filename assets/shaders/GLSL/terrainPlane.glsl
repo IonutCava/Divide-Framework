@@ -28,7 +28,7 @@ void main(void) {
     gl_Position = vertexWVP;
 }
 
---Fragment.Colour
+--Fragment
 
 layout(early_fragment_tests) in;
 

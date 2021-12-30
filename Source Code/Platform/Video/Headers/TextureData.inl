@@ -39,20 +39,16 @@ namespace Divide {
                entry._data._textureHandle > 0u;
     }
 
-    inline bool operator==(const TextureEntry & lhs, const TextureEntry & rhs) noexcept {
-        if (lhs._binding != rhs._binding) {
-            return false;
-        }
-
-        return (lhs._data == rhs._data && lhs._sampler == rhs._sampler);
+    FORCE_INLINE bool operator==(const TextureEntry & lhs, const TextureEntry & rhs) noexcept {
+        return lhs._binding == rhs._binding && 
+               lhs._sampler == rhs._sampler &&
+               lhs._data == rhs._data;
     }
 
-    inline bool operator!=(const TextureEntry & lhs, const TextureEntry & rhs) noexcept {
-        if (lhs._binding != rhs._binding) {
-            return true;
-        }
-
-        return (lhs._data != rhs._data || lhs._sampler != rhs._sampler);
+    FORCE_INLINE bool operator!=(const TextureEntry & lhs, const TextureEntry & rhs) noexcept {
+        return lhs._binding != rhs._binding || 
+               lhs._sampler != rhs._sampler ||
+               lhs._data != rhs._data ;
     }
 
 } //namespace Divide

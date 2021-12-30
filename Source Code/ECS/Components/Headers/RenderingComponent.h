@@ -191,7 +191,10 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     void rebuildDrawCommands(const RenderStagePass& stagePass, RenderPackage& pkg) const;
 
-    void prepareDrawPackage(const CameraSnapshot& cameraSnapshot, const SceneRenderState& sceneRenderState, const RenderStagePass& renderStagePass, bool refreshData);
+    void prepareDrawPackage(const CameraSnapshot& cameraSnapshot,
+                            const SceneRenderState& sceneRenderState,
+                            const RenderStagePass& renderStagePass,
+                            bool refreshData);
 
     // This returns false if the node is not reflective, otherwise it generates a new reflection cube map
     // and saves it in the appropriate material slot
@@ -270,6 +273,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     RefractorType _refractorType = RefractorType::COUNT;
 
     std::array<std::pair<bool, U8>, to_base(RenderStage::COUNT)> _lodLockLevels{};
+
+    vector_fast<GFX::DrawCommand> _drawCommands;
 
     static hashMap<U32, DebugView*> s_debugViews[2];
 END_COMPONENT(Rendering);

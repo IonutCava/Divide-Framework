@@ -644,6 +644,7 @@ bool SceneManager::loadNode(SceneGraphNode* targetNode) const {
 
 void SceneManager::getSortedReflectiveNodes(const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut) const {
     OPTICK_EVENT();
+    ScopedLock<Mutex> w_lock(s_searchNodesLock);
 
     static vector<SceneGraphNode*> allNodes = {};
     getActiveScene().sceneGraph()->getNodesByType({ SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_OBJECT3D }, allNodes);
@@ -670,6 +671,7 @@ void SceneManager::getSortedReflectiveNodes(const Camera* camera, const RenderSt
 
 void SceneManager::getSortedRefractiveNodes(const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut) const {
     OPTICK_EVENT();
+    ScopedLock<Mutex> w_lock(s_searchNodesLock);
 
     static vector<SceneGraphNode*> allNodes = {};
     getActiveScene().sceneGraph()->getNodesByType({ SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_OBJECT3D }, allNodes);

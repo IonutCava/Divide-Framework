@@ -5,7 +5,7 @@
 <TRANSFORM>
     <Transform>
         <position x="100" y="14.75" z="-50"/>
-        <orientation x="-89.8056564" y="4.75572747e-15" z="2.17136317e-18"/>
+        <orientation x="-89.8056564" y="4.75456661e-15" z="2.17136317e-18"/>
         <scale x="102.562851" y="102.06208" z="102.613083"/>
     </Transform>
 </TRANSFORM>
@@ -52,7 +52,7 @@
                 <stencilWriteMask>4294967295</stencilWriteMask>
             </1>
             <2>
-                <colourWrite r="true" g="true" b="true" a="true"/>
+                <colourWrite r="false" g="false" b="false" a="false"/>
                 <zBias>0</zBias>
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
@@ -91,6 +91,26 @@
                 <stencilMask>4294967295</stencilMask>
                 <stencilWriteMask>4294967295</stencilWriteMask>
             </3>
+            <4>
+                <colourWrite r="true" g="true" b="true" a="true"/>
+                <zBias>0</zBias>
+                <zUnits>0</zUnits>
+                <zFunc>LEQUAL</zFunc>
+                <tessControlPoints>3</tessControlPoints>
+                <cullMode>None</cullMode>
+                <fillMode>Solid</fillMode>
+                <frontFaceCCW>true</frontFaceCCW>
+                <scissorTestEnabled>false</scissorTestEnabled>
+                <depthTestEnabled>true</depthTestEnabled>
+                <stencilEnable>false</stencilEnable>
+                <stencilFailOp>KEEP</stencilFailOp>
+                <stencilPassOp>KEEP</stencilPassOp>
+                <stencilZFailOp>KEEP</stencilZFailOp>
+                <stencilFunc>NEVER</stencilFunc>
+                <stencilRef>0</stencilRef>
+                <stencilMask>4294967295</stencilMask>
+                <stencilWriteMask>4294967295</stencilWriteMask>
+            </4>
         </RenderStates>
         <SHADOW>
             <PRE_PASS>
@@ -200,13 +220,13 @@
         <DISPLAY>
             <PRE_PASS>
                 <0>
-                    <id>2</id>
+                    <id>4</id>
                 </0>
                 <1>
-                    <id>2</id>
+                    <id>4</id>
                 </1>
                 <2>
-                    <id>2</id>
+                    <id>4</id>
                 </2>
             </PRE_PASS>
             <MAIN_PASS>

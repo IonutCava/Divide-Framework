@@ -308,13 +308,11 @@ vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 no
         case DEBUG_TANGENTS:       return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[0]), albedo.a);
         case DEBUG_BITANGENTS:     return vec4(normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[1]), albedo.a);
         case DEBUG_SHADOW_MAPS:    return vec4(vec3(getShadowMultiplier(normalWV)), albedo.a);
-#if defined(MAIN_DISPLAY_PASS)
         case DEBUG_CSM_SPLITS:     return vec4(CSMSplitColour(), albedo.a);
         case DEBUG_LIGHT_HEATMAP:  return vec4(lightHeatMap(), albedo.a);
         case DEBUG_DEPTH_CLUSTERS: return vec4(lightClusters(), albedo.a);
         case DEBUG_REFRACTIONS:
         case DEBUG_REFLECTIONS:    return vec4(vec3(0.f), albedo.a);
-#endif //MAIN_DISPLAY_PASS
         case DEBUG_MATERIAL_IDS:   return vec4(turboColormap(float(MATERIAL_IDX + 1) / MAX_CONCURRENT_MATERIALS), albedo.a);
     }
 
