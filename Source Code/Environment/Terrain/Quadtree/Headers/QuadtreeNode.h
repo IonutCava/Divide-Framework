@@ -51,10 +51,11 @@ class TerrainChunk;
 class SceneState;
 class IMPrimitive;
 class VertexBuffer;
-class RenderPackage;
 class ShaderProgram;
 class SceneGraphNode;
 class SceneRenderState;
+
+struct RenderPackage;
 
 class Quadtree;
 class QuadtreeChildren;

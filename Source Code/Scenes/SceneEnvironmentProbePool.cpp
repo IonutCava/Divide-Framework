@@ -329,11 +329,11 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
     RenderPassParams params = {};
     params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
-    params._stagePass = RenderStagePass(RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::CUBE), Config::MAX_REFLECTIVE_NODES_IN_VIEW + SkyProbeLayerIndex());
+    params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, Config::MAX_REFLECTIVE_NODES_IN_VIEW + SkyProbeLayerIndex(), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
 
     ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
     ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES)));
-    SetBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_SKY_NODES)));
+    SetBit(params._drawMask,   to_U8(1u << to_base(RenderPassParams::Flags::DRAW_SKY_NODES)));
 
     context.generateCubeMap(params,
                             SkyProbeLayerIndex(),
@@ -651,7 +651,7 @@ void SceneEnvironmentProbePool::OnTimeOfDayChange(const SceneEnvironmentProbePoo
     SkyLightNeedsRefresh(true);
 }
 
-bool SceneEnvironmentProbePool::DebuggingSkyLight() {
+bool SceneEnvironmentProbePool::DebuggingSkyLight() noexcept {
     return s_debuggingSkyLight;
 }
 
@@ -659,7 +659,7 @@ void SceneEnvironmentProbePool::DebuggingSkyLight(const bool state) noexcept {
     s_debuggingSkyLight = state;
 }
 
-bool SceneEnvironmentProbePool::SkyLightNeedsRefresh() {
+bool SceneEnvironmentProbePool::SkyLightNeedsRefresh() noexcept {
     return s_skyLightNeedsRefresh;
 }
 

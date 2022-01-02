@@ -28,6 +28,31 @@
 #include "materialData.frag"
 #include "shadowMapping.frag"
 
+
+#include "pbr.frag"
+#include "specGloss.frag"
+#include "specialBRDFs.frag"
+
+vec3 GetBRDF(in vec3 L,
+             in vec3 V,
+             in vec3 N,
+             in vec3 lightColour,
+             in float lightAttenuation,
+             in float NdotL,
+             in float NdotV,
+             in PBRMaterial material)
+{
+    if (material._shadingMode == SHADING_PBR_MR || material._shadingMode == SHADING_PBR_SG) {
+        return GetBRDF_PBR(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
+    }
+    else if (material._shadingMode == SHADING_BLINN_PHONG) {
+        return GetBRDF_Phong(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
+    }
+
+    return GetBRDF_Special(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
+}
+
+
 layout(binding = TEXTURE_SSAO_SAMPLE) uniform sampler2D texSSAO;
 
 #if defined(NO_SSAO)
@@ -258,7 +283,6 @@ vec3 getDebugNormal(in vec3 normalWV) {
 
 /// returns RGB - pixel lit colour, A - reserved
 vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV, in float normalVariation, in vec2 uv) {
-
     const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, uv, normalWV, normalVariation);
 
     vec3 radianceOut = dvd_AmbientColour.rgb;
@@ -280,11 +304,11 @@ vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 no
             radianceOut += dvd_AmbientColour.rgb * materialCopy._diffuseColour * materialCopy._occlusion;
             return vec4(radianceOut, albedo.a);
         }
-        case DEBUG_SPECULAR: 
+        case DEBUG_SPECULAR:
         {
             return vec4(material._specular.rgb, albedo.a);
         }
-        case DEBUG_KS:            
+        case DEBUG_KS:
         {
             const vec3 H = normalize(normalWV + viewVec);
             const vec3 kS = computeFresnelSchlickRoughness(H, viewVec, material._F0, material._roughness);

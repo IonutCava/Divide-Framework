@@ -43,10 +43,11 @@ class BoundingBox;
 class IMPrimitive;
 class VertexBuffer;
 class QuadtreeNode;
-class RenderPackage;
 class ShaderProgram;
 class SceneGraphNode;
 class SceneRenderState;
+
+struct RenderPackage;
 
 class Quadtree {
   public:

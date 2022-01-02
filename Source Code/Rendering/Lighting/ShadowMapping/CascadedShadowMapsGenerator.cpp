@@ -344,7 +344,7 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
     
     RenderPassParams params = {};
     params._sourceNode = light.getSGN();
-    params._stagePass = RenderStagePass(RenderStage::SHADOW, RenderPassType::COUNT, to_U8(light.getLightType()), lightIndex);
+    params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
     params._target = _drawBufferDepth._targetID;
     params._maxLoD = -1;
     params._layerParams._type = RTAttachmentType::Colour;
@@ -371,11 +371,10 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
       125.0f
     };
 
-    I16 i = to_I16(numSplits) - 1;
-    for (; i >= 0; i--) {
+    for (U8 i = numSplits - 1; i < numSplits; i--) {
         params._layerParams._layer = i;
         params._passName = Util::StringFormat("CSM_PASS_%d", i).c_str();
-        params._stagePass._pass = i;
+        params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
         params._minExtents.set(minExtentsFactors[i]);
         if (i > 0 && dirLight.csmUseSceneAABBFit()[i]) {
             STUBBED("CascadedShadowMapsGenerator::render: Validate AABBFit for first cascade!");

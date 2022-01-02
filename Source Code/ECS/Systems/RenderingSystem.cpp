@@ -16,7 +16,16 @@ namespace Divide {
     }
 
     void RenderingSystem::PreUpdate(const F32 dt) {
+        OPTICK_EVENT();
+
         Parent::PreUpdate(dt);
+
+        for (RenderingComponent* comp : _componentCache) {
+            if (comp->parentSGN()->getNode().rebuildDrawCommands()) {
+                comp->rebuildRenderPackages(true);
+                comp->parentSGN()->getNode().rebuildDrawCommands(false);
+            }
+        }
     }
 
     void RenderingSystem::Update(const F32 dt) {
@@ -31,21 +40,19 @@ namespace Divide {
                 comp->onMaterialChanged();
             }
 
-            if (comp->parentSGN()->getNode().rebuildDrawCommands()) {
-                for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
-                    RenderingComponent::FlagsPerPassType& perPassFlags = comp->_rebuildDrawCommandsFlags[s];
-                    for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
-                        RenderingComponent::FlagsPerIndex& perIndexFlags = perPassFlags[p];
-                        perIndexFlags.fill(true);
-                    }
-                }
-                comp->parentSGN()->getNode().rebuildDrawCommands(false);
-            }
         }
     }
 
     void RenderingSystem::PostUpdate(const F32 dt) {
+        OPTICK_EVENT();
+
         Parent::PostUpdate(dt);
+
+        for (RenderingComponent* comp : _componentCache) {
+            if (comp->rebuildRenderPackages()) {
+                comp->rebuildRenderPackages(false);
+            }
+        }
     }
 
     void RenderingSystem::OnFrameStart() {

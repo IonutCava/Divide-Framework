@@ -142,14 +142,13 @@ class Terrain final : public Object3D {
 
     void postBuild();
 
-    void buildDrawCommands(SceneGraphNode* sgn,
-                           const RenderStagePass& renderStagePass,
-                           RenderPackage& pkgInOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
 
      void prepareRender(SceneGraphNode* sgn,
                         RenderingComponent& rComp,
-                        const RenderStagePass& renderStagePass,
+                        RenderStagePass renderStagePass,
                         const CameraSnapshot& cameraSnapshot,
+                        GFX::CommandBuffer& bufferInOut,
                         bool refreshData) override;
 
     void postLoad(SceneGraphNode* sgn) override;

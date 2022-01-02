@@ -188,7 +188,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut) {
     params._sourceNode = findNodeToIgnore();
 
     // Probes come after reflective nodes in buffer positions and array layers for management reasons (rate of update and so on)
-    params._stagePass = RenderStagePass(RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::CUBE), Config::MAX_REFLECTIVE_NODES_IN_VIEW + rtLayerIndex());
+    params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, Config::MAX_REFLECTIVE_NODES_IN_VIEW + rtLayerIndex(), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
 
     ClearBit(params._drawMask, to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES)));
 

@@ -529,8 +529,6 @@ string CommandBuffer::toString() const {
     return out;
 }
 
-
-
 bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept {
     // Instancing is not compatible with MDI. Well, it might be, but I can't be bothered a.t.m. to implement it -Ionut
     if (previousGDC._cmd.primCount != currentGDC._cmd.primCount && (previousGDC._cmd.primCount > 1 || currentGDC._cmd.primCount > 1)) {

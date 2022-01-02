@@ -126,11 +126,14 @@ bool SSRPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, const R
     const TextureData normalsTex = normalsAtt.texture()->data();
     const TextureData depthTex = depthAtt.texture()->data();
 
+    const CameraSnapshot& previousSnapshot = _context.getPreviousCameraSnapshot();
+    mat4<F32> previousViewProjection;
+    mat4<F32>::Multiply(previousSnapshot._viewMatrix, previousSnapshot._projectionMatrix, previousViewProjection);
     _constantsCmd._constants.set(_ID("projToPixel"), GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix * _projToPixelBasis);
     _constantsCmd._constants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
     _constantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
     _constantsCmd._constants.set(_ID("invViewMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invViewMatrix);
-    _constantsCmd._constants.set(_ID("prevViewProjectionMatrix"), GFX::PushConstantType::MAT4, _context.getPreviousViewProjection());
+    _constantsCmd._constants.set(_ID("prevViewProjectionMatrix"), GFX::PushConstantType::MAT4, previousViewProjection);
     _constantsCmd._constants.set(_ID("maxScreenMips"), GFX::PushConstantType::UINT, screenAtt.texture()->mipCount());
     _constantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
     _constantsCmd._constants.set(_ID("ssrEnabled"), GFX::PushConstantType::BOOL, _enabled);

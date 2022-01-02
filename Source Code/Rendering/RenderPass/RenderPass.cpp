@@ -55,7 +55,7 @@ RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, Str64 name
       _name(MOV(name))
 {
     for (U8 i = 0u; i < to_base(_stageFlag); ++i) {
-        const U8 passCountToSkip = RenderStagePass::TotalPassCountForStage(static_cast<RenderStage>(i));
+        const U8 passCountToSkip = TotalPassCountForStage(static_cast<RenderStage>(i));
         _transformIndexOffset += passCountToSkip * Config::MAX_VISIBLE_NODES;
     }
 }
@@ -76,7 +76,7 @@ void RenderPass::initBufferData() {
     }
 }
 
-RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass& stagePass) const noexcept {
+RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass stagePass) const noexcept {
     assert(_stageFlag == stagePass._stage);
 
     BufferData ret{};
@@ -101,8 +101,8 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
                 RTClearDescriptor clearDescriptor = {};
                 clearDescriptor.clearColours(true);
                 clearDescriptor.clearDepth(true);
-                // We don't need to clear colour targets as we always overwrite them!
-                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::ALBEDO), false);
+                //ToDo: Causing issues if disabled with WOIT (e.g. grass) if disabled. Investigate! -Ionut
+                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::ALBEDO), true);
 
                 //Not everything gets drawn during the depth PrePass (E.g. sky)
                 clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::VELOCITY), true); 

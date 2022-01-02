@@ -307,6 +307,7 @@ class Scene : public Resource, public PlatformContextComponent {
     private:
         /// Returns true if the camera was moved/rotated/etc
         bool updateCameraControls(PlayerIndex idx) const;
+        bool savePreviousCamera(PlayerIndex idx) const;
         void updateSelectionData(PlayerIndex idx, DragSelectData& data, bool remapped);
         [[nodiscard]] bool checkCameraUnderwater(PlayerIndex idx) const;
         [[nodiscard]] bool checkCameraUnderwater(const Camera& camera) const noexcept;
@@ -343,6 +344,10 @@ class SceneManager {
    private:
     static bool updateCameraControls(const Scene& scene, const PlayerIndex idx) {
         return scene.updateCameraControls(idx);
+    }
+
+    static bool savePreviousCamera(const Scene& scene, const PlayerIndex idx) {
+        return scene.savePreviousCamera(idx);
     }
 
     static bool loadComplete(const Scene& scene) noexcept {

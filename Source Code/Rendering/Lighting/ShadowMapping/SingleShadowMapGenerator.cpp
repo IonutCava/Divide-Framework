@@ -168,7 +168,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 
     RenderPassParams params = {};
     params._sourceNode = light.getSGN();
-    params._stagePass = RenderStagePass(RenderStage::SHADOW, RenderPassType::COUNT, to_U8(light.getLightType()), lightIndex);
+    params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
     params._target = _drawBufferDepth._targetID;
     params._passName = "SingleShadowMap";
     params._maxLoD = -1;

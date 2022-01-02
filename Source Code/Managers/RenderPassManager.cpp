@@ -163,7 +163,7 @@ void RenderPassManager::render(const RenderParams& params) {
 
     const Camera* cam = Attorney::SceneManagerRenderPass::playerCamera(sceneManager);
     const SceneStatePerPlayer& playerState = Attorney::SceneManagerRenderPass::playerState(sceneManager);
-    gfx.setPreviousViewProjection(playerState.previousViewMatrix(), playerState.previousProjectionMatrix());
+    gfx.setPreviousCameraSnapshot(playerState.previousCameraSnapshot());
 
     LightPool& activeLightPool = Attorney::SceneManagerRenderPass::lightPool(sceneManager);
 

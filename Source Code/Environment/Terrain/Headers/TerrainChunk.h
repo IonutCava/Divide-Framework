@@ -42,10 +42,10 @@ class Terrain;
 class BoundingBox;
 class QuadtreeNode;
 class ShaderProgram;
-class RenderPackage;
 class SceneGraphNode;
 class SceneRenderState;
 struct FileData;
+struct RenderPackage;
 struct VegetationDetails;
 
 FWD_DECLARE_MANAGED_CLASS(Vegetation);

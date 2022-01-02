@@ -112,8 +112,6 @@ class Material final : public CachedResource {
    public:
     using SpecularGlossiness = vec2<F32>;
 
-    /// Since most variants come from different light sources, this seems like a good idea (famous last words ...)
-    static constexpr size_t g_maxVariantsPerPass = 3;
     static constexpr size_t INVALID_MAT_HASH = std::numeric_limits<size_t>::max();
     static constexpr size_t INVALID_TEX_HASH = std::numeric_limits<size_t>::max();
 
@@ -193,23 +191,23 @@ class Material final : public CachedResource {
 
     /// Add the specified shader to specific RenderStagePass parameters. Use "COUNT" and/or g_AllVariantsID for global options
     /// e.g. a RenderPassType::COUNT will use the shader in the specified stage+variant combo but for all of the passes
-    void setShaderProgram(const ShaderProgram_ptr& shader, RenderStage stage, RenderPassType pass, U8 variant = g_AllVariantsID);
+    void setShaderProgram(const ShaderProgram_ptr& shader, RenderStage stage, RenderPassType pass, RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT);
     /// Add the specified renderStateBlockHash to specific RenderStagePass parameters. Use "COUNT" and/or "g_AllVariantsID" for global options
     /// e.g. a RenderPassType::COUNT will use the block in the specified stage+variant combo but for all of the passes
-    void setRenderStateBlock(size_t renderStateBlockHash, RenderStage stage, RenderPassType pass, U8 variant = g_AllVariantsID);
+    void setRenderStateBlock(size_t renderStateBlockHash, RenderStage stage, RenderPassType pass, RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT);
 
     // Returns the material's hash value (just for the uploadable data)
     void getData(const RenderingComponent& parentComp, U32 bestProbeID, NodeMaterialData& dataOut);
     void getTextures(const RenderingComponent& parentComp, NodeMaterialTextures& texturesOut);
 
-    size_t getRenderStateBlock(const RenderStagePass& renderStagePass) const;
+    size_t getRenderStateBlock(RenderStagePass renderStagePass) const;
     Texture_wptr getTexture(TextureUsage textureUsage) const;
     [[nodiscard]] bool hasTexture(TextureUsage textureUsage) const;
     size_t getSampler(const TextureUsage textureUsage) const noexcept { return _samplers[to_base(textureUsage)]; }
 
-    bool getTextureData(const RenderStagePass& renderStagePass, TextureDataContainer& textureData);
-    I64 getProgramGUID(const RenderStagePass& renderStagePass) const;
-    I64 computeAndGetProgramGUID(const RenderStagePass& renderStagePass);
+    bool getTextureData(RenderStagePass renderStagePass, TextureDataContainer& textureData);
+    I64 getProgramGUID(RenderStagePass renderStagePass) const;
+    I64 computeAndGetProgramGUID(RenderStagePass renderStagePass);
 
     void rebuild();
 
@@ -218,7 +216,7 @@ class Material final : public CachedResource {
     bool reflective() const noexcept;
     bool refractive() const noexcept;
 
-    bool canDraw(const RenderStagePass& renderStagePass, bool& shaderJustFinishedLoading);
+    bool canDraw(RenderStagePass renderStagePass, bool& shaderJustFinishedLoading);
 
     void saveToXML(const string& entryName, boost::property_tree::ptree& pt) const;
     void loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
@@ -228,11 +226,11 @@ class Material final : public CachedResource {
     const ModuleDefines& shaderDefines(ShaderType type) const;
 
    protected:
-    void getSortKeys(const RenderStagePass& renderStagePass, I64& shaderKey, I32& textureKey) const;
+    void getSortKeys(RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey) const;
 
    private:
     /// Constructs a shader for the specified renderStatePass
-    void computeShader(const RenderStagePass& renderStagePass);
+    void computeShader(RenderStagePass renderStagePass);
 
     void addShaderDefineInternal(ShaderType type, const Str128& define, bool addPrefix);
 
@@ -240,18 +238,18 @@ class Material final : public CachedResource {
 
     void recomputeShaders();
     void setShaderProgramInternal(const ResourceDescriptor& shaderDescriptor,
-                                  const RenderStagePass& stagePass,
+                                  RenderStagePass stagePass,
                                   bool computeOnAdd);
 
     void setShaderProgramInternal(const ShaderProgram_ptr& shader,
                                   ShaderProgramInfo& shaderInfo,
                                   RenderStage stage,
                                   RenderPassType pass,
-                                  U8 variant) const;
+                                  RenderStagePass::VariantType variant) const;
 
-    ShaderProgramInfo& shaderInfo(const RenderStagePass& renderStagePass);
+    ShaderProgramInfo& shaderInfo(RenderStagePass renderStagePass);
 
-    const ShaderProgramInfo& shaderInfo(const RenderStagePass& renderStagePass) const;
+    const ShaderProgramInfo& shaderInfo(RenderStagePass renderStagePass) const;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Material"; }
 
@@ -312,12 +310,12 @@ class Material final : public CachedResource {
 
     bool _needsNewShader = true;
 
-    using ShaderPerVariant = std::array<ShaderProgramInfo, g_maxVariantsPerPass>;
+    using ShaderPerVariant = std::array<ShaderProgramInfo, to_base(RenderStagePass::VariantType::COUNT)>;
     using ShaderVariantsPerPass = eastl::array<ShaderPerVariant, to_base(RenderPassType::COUNT)>;
     using ShaderPassesPerStage = eastl::array<ShaderVariantsPerPass, to_base(RenderStage::COUNT)>;
     ShaderPassesPerStage _shaderInfo{};
 
-    using StatesPerVariant = std::array<size_t, g_maxVariantsPerPass>;
+    using StatesPerVariant = std::array<size_t, to_base(RenderStagePass::VariantType::COUNT)>;
     using StateVariantsPerPass = eastl::array<StatesPerVariant, to_base(RenderPassType::COUNT)>;
     using StatePassesPerStage = eastl::array<StateVariantsPerPass, to_base(RenderStage::COUNT)>;
     StatePassesPerStage _defaultRenderStates{};
@@ -340,7 +338,7 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);
 
 namespace Attorney {
 class MaterialRenderBin {
-    static void getSortKeys(const Material& material, const RenderStagePass& renderStagePass, I64& shaderKey, I32& textureKey) {
+    static void getSortKeys(const Material& material, const RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey) {
         material.getSortKeys(renderStagePass, shaderKey, textureKey);
     }
 

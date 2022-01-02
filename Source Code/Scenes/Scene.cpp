@@ -1285,6 +1285,11 @@ bool Scene::mouseMoved(const Input::MouseMoveEvent& arg) {
     return false;
 }
 
+bool Scene::savePreviousCamera(const PlayerIndex idx) const {
+    state()->playerState(idx).previousCameraSnapshot(playerCamera(idx)->snapshot());
+    return true;
+}
+
 bool Scene::updateCameraControls(const PlayerIndex idx) const {
     Camera* camIn = playerCamera(idx);
     if (camIn->type() == Camera::CameraType::STATIC ||
@@ -1292,12 +1297,7 @@ bool Scene::updateCameraControls(const PlayerIndex idx) const {
         return false;
     }
     FreeFlyCamera* cam = static_cast<FreeFlyCamera*>(camIn);
-
     SceneStatePerPlayer& playerState = state()->playerState(idx);
-
-    playerState.previousViewMatrix(cam->viewMatrix());
-    playerState.previousProjectionMatrix(cam->projectionMatrix());
-
     bool updated = false;
     updated = cam->moveRelative(vec3<I32>(to_I32(playerState.moveFB()),
                                           to_I32(playerState.moveLR()),

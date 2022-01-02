@@ -4,27 +4,6 @@
 #include "utility.frag"
 #include "texturing.frag"
 
-#include "pbr.frag"
-#include "specGloss.frag"
-#include "specialBRDFs.frag"
-
-vec3 GetBRDF(in vec3 L,
-             in vec3 V,
-             in vec3 N,
-             in vec3 lightColour,
-             in float lightAttenuation,
-             in float NdotL,
-             in float NdotV,
-             in PBRMaterial material) 
-{
-    if (material._shadingMode == SHADING_PBR_MR || material._shadingMode == SHADING_PBR_SG) {
-        return GetBRDF_PBR(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
-    } else if (material._shadingMode == SHADING_BLINN_PHONG) {
-        return GetBRDF_Phong(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
-    }
-
-    return GetBRDF_Special(L, V, N, lightColour, lightAttenuation, NdotL, NdotV, material);
-}
 #if defined(COMPUTE_TBN)
 #include "bumpMapping.frag"
 #endif //COMPUTE_TBN

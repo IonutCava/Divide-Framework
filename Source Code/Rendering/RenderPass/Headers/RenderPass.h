@@ -77,7 +77,7 @@ class RenderPass final : NonCopyable {
 
     [[nodiscard]] inline RenderStage stageFlag() const noexcept { return _stageFlag; }
 
-    BufferData getBufferData(const RenderStagePass& stagePass) const noexcept;
+    BufferData getBufferData(RenderStagePass stagePass) const noexcept;
 
     void initBufferData();
 

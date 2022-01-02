@@ -102,8 +102,9 @@ class Object3D : public SceneNode {
 
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
-                       const RenderStagePass& renderStagePass,
+                       RenderStagePass renderStagePass,
                        const CameraSnapshot& cameraSnapshot,
+                       GFX::CommandBuffer& bufferInOut,
                        bool refreshData) override;
                         
     virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] I32 newIndex) {}
@@ -179,9 +180,7 @@ class Object3D : public SceneNode {
     /// Please manually delete the old VB if available before replacing!
     virtual void setGeometryVB(VertexBuffer* vb);
 
-    void buildDrawCommands(SceneGraphNode* sgn,
-                           const RenderStagePass& renderStagePass,
-                           RenderPackage& pkgInOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Object3D"; }
 

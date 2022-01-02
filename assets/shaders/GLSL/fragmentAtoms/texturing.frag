@@ -163,10 +163,14 @@ float calcMipLevel(in vec2 texture_coord) {
 }
 
 float getScaledAlpha(in float refAlpha, in vec2 uv, in ivec3 texSize) {
+#if 1
+    return refAlpha;
+#else
     refAlpha *= 1.f + max(0.f, calcMipLevel(uv * texSize.xy)) * MipScale;
     // rescale alpha by partial derivative
     refAlpha = (refAlpha - Z_TEST_SIGMA) / max(fwidth(refAlpha), 0.0001f) + 0.5f;
     return refAlpha;
+#endif
 }
 
 float getAlpha(in sampler2DArray tex, in vec3 uv) {

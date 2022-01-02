@@ -274,8 +274,9 @@ public:  // GPU interface
     inline bool setViewport(I32 x, I32 y, I32 width, I32 height);
     inline const Rect<I32>& getViewport() const noexcept;
 
-    void setPreviousViewProjection(const mat4<F32>& view, const mat4<F32>& projection) noexcept;
-    mat4<F32> getPreviousViewProjection() const noexcept;
+    void setPreviousCameraSnapshot(const CameraSnapshot& snapshot) noexcept;
+    CameraSnapshot& getPreviousCameraSnapshot() noexcept;
+    const CameraSnapshot& getPreviousCameraSnapshot() const noexcept;
 
     inline F32 renderingAspectRatio() const noexcept;
     inline const vec2<U16>& renderingResolution() const noexcept;
@@ -423,10 +424,10 @@ protected:
     friend class RenderPass;
     friend class RenderPassExecutor;
 
-    void occlusionCull(const RenderStagePass& stagePass,
-                       const RenderPass::BufferData& bufferData,
+    void occlusionCull(const RenderPass::BufferData& bufferData,
                        const Texture_ptr& depthBuffer,
                        size_t samplerHash,
+                       const CameraSnapshot& cameraSnapshot,
                        GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
                        GFX::CommandBuffer& bufferInOut) const;
 
@@ -507,6 +508,7 @@ private:
 
     Rect<I32> _viewport;
     vec2<U16> _renderingResolution;
+    CameraSnapshot _previousCameraSnapshot;
 
     GFXShaderData _gpuBlock;
 

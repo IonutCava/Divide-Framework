@@ -151,7 +151,9 @@ public:
         getActiveScene().processInput(idx, deltaTimeUS);
         Attorney::SceneManager::updateCameraControls(getActiveScene(), idx);
     }
-
+    void savePreviousCamera(const PlayerIndex idx) {
+        Attorney::SceneManager::savePreviousCamera(getActiveScene(), idx);
+    }
     void processTasks(const U64 deltaTimeUS) {
         OPTICK_EVENT();
 

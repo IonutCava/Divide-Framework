@@ -197,7 +197,7 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
     // Could just direct copy the arrays, but this looks cool
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
-            for (U8 v = 0u; v < g_maxVariantsPerPass; ++v) {
+            for (U8 v = 0u; v < to_U8(RenderStagePass::VariantType::COUNT); ++v) {
                 cloneMat->_shaderInfo[s][p][v] = _shaderInfo[s][p][v];
                 cloneMat->_defaultRenderStates[s][p][v] = _defaultRenderStates[s][p][v];
             }
@@ -317,7 +317,7 @@ void Material::setShaderProgramInternal(const ShaderProgram_ptr& shader,
                                         ShaderProgramInfo& shaderInfo,
                                         const RenderStage stage,
                                         const RenderPassType pass,
-                                        U8 variant) const
+                                        const RenderStagePass::VariantType variant) const
 {
     if (shader != nullptr) {
         const ShaderProgram* oldShader = shaderInfo._shaderRef.get();
@@ -348,7 +348,7 @@ void Material::setShaderProgramInternal(const ShaderProgram_ptr& shader,
 }
 
 void Material::setShaderProgramInternal(const ResourceDescriptor& shaderDescriptor,
-                                        const RenderStagePass& stagePass,
+                                        const RenderStagePass stagePass,
                                         const bool computeOnAdd) {
     OPTICK_EVENT();
 
@@ -385,13 +385,13 @@ void Material::recomputeShaders() {
             RenderStagePass stagePass{ static_cast<RenderStage>(s), static_cast<RenderPassType>(p) };
             ShaderPerVariant& variantMap = _shaderInfo[s][p];
 
-            for (U8 v = 0; v < g_maxVariantsPerPass; ++v) {
+            for (U8 v = 0u; v < to_U8(RenderStagePass::VariantType::COUNT); ++v) {
                 ShaderProgramInfo& shaderInfo = variantMap[v];
                 if (shaderInfo._shaderCompStage == ShaderBuildStage::COUNT) {
                     continue;
                 }
 
-                stagePass._variant = v;
+                stagePass._variant = static_cast<RenderStagePass::VariantType>(v);
                 if (!shaderInfo._customShader) {
                     shaderInfo._shaderCompStage = ShaderBuildStage::REQUESTED;
                     computeShader(stagePass);
@@ -411,7 +411,7 @@ void Material::recomputeShaders() {
     }
 }
 
-I64 Material::computeAndGetProgramGUID(const RenderStagePass& renderStagePass) {
+I64 Material::computeAndGetProgramGUID(const RenderStagePass renderStagePass) {
     constexpr U8 maxRetries = 250;
 
     bool justFinishedLoading = false;
@@ -428,7 +428,7 @@ I64 Material::computeAndGetProgramGUID(const RenderStagePass& renderStagePass) {
     return ShaderProgram::DefaultShader()->getGUID();
 }
 
-I64 Material::getProgramGUID(const RenderStagePass& renderStagePass) const {
+I64 Material::getProgramGUID(const RenderStagePass renderStagePass) const {
 
     const ShaderProgramInfo& info = shaderInfo(renderStagePass);
 
@@ -441,7 +441,7 @@ I64 Material::getProgramGUID(const RenderStagePass& renderStagePass) const {
     return ShaderProgram::DefaultShader()->getGUID();
 }
 
-bool Material::canDraw(const RenderStagePass& renderStagePass, bool& shaderJustFinishedLoading) {
+bool Material::canDraw(const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading) {
     OPTICK_EVENT();
 
     shaderJustFinishedLoading = false;
@@ -495,10 +495,10 @@ bool Material::canDraw(const RenderStagePass& renderStagePass, bool& shaderJustF
 }
 
 /// If the current material doesn't have a shader associated with it, then add the default ones.
-void Material::computeShader(const RenderStagePass& renderStagePass) {
+void Material::computeShader(const RenderStagePass renderStagePass) {
     OPTICK_EVENT();
 
-    const bool isDepthPass = renderStagePass.isDepthPass();
+    const bool isDepthPass = IsDepthPass(renderStagePass);
     const bool isZPrePass = isDepthPass && renderStagePass._stage == RenderStage::DISPLAY;
     const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;
 
@@ -538,7 +538,7 @@ void Material::computeShader(const RenderStagePass& renderStagePass) {
         vertVariant += "Shadow";
         fragVariant += "Shadow.VSM";
         globalDefines.emplace_back("SHADOW_PASS", true);
-        if (renderStagePass._variant == to_U8(LightType::DIRECTIONAL)) {
+        if (to_U8(renderStagePass._variant) == to_U8(LightType::DIRECTIONAL)) {
             fragVariant += ".ORTHO";
             fragDefines.emplace_back("ORTHO_PROJECTION", true);
         }
@@ -775,23 +775,21 @@ void Material::hardwareSkinning(const bool state, const bool applyToInstances) {
     }
 }
 
-void Material::setShaderProgram(const ShaderProgram_ptr& shader, const RenderStage stage, const RenderPassType pass, const U8 variant) {
-    assert(variant == g_AllVariantsID || variant < g_maxVariantsPerPass);
-
+void Material::setShaderProgram(const ShaderProgram_ptr& shader, const RenderStage stage, const RenderPassType pass, const RenderStagePass::VariantType variant) {
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
             const RenderStage crtStage = static_cast<RenderStage>(s);
             const RenderPassType crtPass = static_cast<RenderPassType>(p);
             if ((stage == RenderStage::COUNT || stage == crtStage) && (pass == RenderPassType::COUNT || pass == crtPass)) {
-                if (variant == g_AllVariantsID) {
-                    for (U8 i = 0u; i < g_maxVariantsPerPass; ++i) {
+                if (variant == RenderStagePass::VariantType::COUNT) {
+                    for (U8 i = 0u; i < to_base(RenderStagePass::VariantType::COUNT); ++i) {
                         ShaderProgramInfo& shaderInfo = _shaderInfo[s][p][i];
                         shaderInfo._customShader = true;
                         shaderInfo._shaderCompStage = ShaderBuildStage::COUNT;
                         setShaderProgramInternal(shader, shaderInfo, crtStage, crtPass, variant);
                     }
                 } else {
-                    ShaderProgramInfo& shaderInfo = _shaderInfo[s][p][variant];
+                    ShaderProgramInfo& shaderInfo = _shaderInfo[s][p][to_base(variant)];
                     shaderInfo._customShader = true;
                     shaderInfo._shaderCompStage = ShaderBuildStage::COUNT;
                     setShaderProgramInternal(shader, shaderInfo, crtStage, crtPass, variant);
@@ -801,18 +799,16 @@ void Material::setShaderProgram(const ShaderProgram_ptr& shader, const RenderSta
     }
 }
 
-void Material::setRenderStateBlock(const size_t renderStateBlockHash, const RenderStage stage, const RenderPassType pass, const U8 variant) {
-    assert(variant == g_AllVariantsID || variant < g_maxVariantsPerPass);
-
+void Material::setRenderStateBlock(const size_t renderStateBlockHash, const RenderStage stage, const RenderPassType pass, const RenderStagePass::VariantType variant) {
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
             const RenderStage crtStage = static_cast<RenderStage>(s);
             const RenderPassType crtPass = static_cast<RenderPassType>(p);
             if ((stage == RenderStage::COUNT || stage == crtStage) && (pass == RenderPassType::COUNT || pass == crtPass)) {
-                if (variant == g_AllVariantsID) {
+                if (variant == RenderStagePass::VariantType::COUNT) {
                     _defaultRenderStates[s][p].fill(renderStateBlockHash);
                 } else {
-                    _defaultRenderStates[s][p][variant] = renderStateBlockHash;
+                    _defaultRenderStates[s][p][to_base(variant)] = renderStateBlockHash;
                 }
             }
         }
@@ -995,25 +991,16 @@ void Material::updateTransparency() {
     const Texture_ptr& opacity = _textures[to_base(TextureUsage::OPACITY)];
     if (opacity) {
         const U8 channelCount = NumChannels(opacity->descriptor().baseFormat());
-        if (!opacity->descriptor().compressed()) {
-            DIVIDE_ASSERT(channelCount == 1 || channelCount == 4, "Material::updateTranslucency: Opacity textures must be either single-channel or RGBA!");
-
-            _translucencySource = (opacity->hasTransparency()) ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
-        } else {
-            _translucencySource = channelCount == 4 ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
-
-        }
+        _translucencySource = (channelCount == 4 && opacity->hasTransparency()) ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
     }
 
     _needsNewShader = oldSource != _translucencySource;
 }
 
-size_t Material::getRenderStateBlock(const RenderStagePass& renderStagePass) const {
+size_t Material::getRenderStateBlock(const RenderStagePass renderStagePass) const {
     const StatesPerVariant& variantMap = _defaultRenderStates[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)];
 
-    assert(renderStagePass._variant < g_maxVariantsPerPass);
-
-    size_t ret = variantMap[renderStagePass._variant];
+    size_t ret = variantMap[to_base(renderStagePass._variant)];
     // If we haven't defined a state for this variant, use the default one
     if (ret == g_invalidStateHash) {
         ret = variantMap[0u];
@@ -1032,7 +1019,7 @@ size_t Material::getRenderStateBlock(const RenderStagePass& renderStagePass) con
     return ret;
 }
 
-void Material::getSortKeys(const RenderStagePass& renderStagePass, I64& shaderKey, I32& textureKey) const {
+void Material::getSortKeys(const RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey) const {
     shaderKey = shaderInfo(renderStagePass)._shaderKeyCache;
     textureKey = _textureKeyCache;
 }
@@ -1148,7 +1135,7 @@ void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTex
     }
 }
 
-bool Material::getTextureData(const RenderStagePass& renderStagePass, TextureDataContainer& textureData) {
+bool Material::getTextureData(const RenderStagePass renderStagePass, TextureDataContainer& textureData) {
     OPTICK_EVENT();
     // We only need to actually bind NON-RESIDENT textures. 
     if (useBindlessTextures() && !debugBindlessTextures()) {
@@ -1347,13 +1334,14 @@ void Material::saveRenderStatesToXML(const string& entryName, boost::property_tr
     U32 blockIndex = 0u;
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
-            for (U8 v = 0u; v < g_maxVariantsPerPass; ++v) {
+            for (U8 v = 0u; v < to_U8(RenderStagePass::VariantType::COUNT); ++v) {
                 // we could just use _defaultRenderStates[s][p][v] for a direct lookup, but this handles the odd double-sided / no cull case
                 const size_t stateHash = getRenderStateBlock(
                     RenderStagePass{
                         static_cast<RenderStage>(s),
                         static_cast<RenderPassType>(p),
-                        v
+                        0u,
+                        static_cast<RenderStagePass::VariantType>(v)
                     }
                 );
                 if (stateHash != g_invalidStateHash && previousHashValues.find(stateHash) == std::cend(previousHashValues)) {
@@ -1379,11 +1367,10 @@ void Material::saveRenderStatesToXML(const string& entryName, boost::property_tr
 
 void Material::loadRenderStatesFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     hashMap<U32, size_t> previousHashValues;
-    return;
 
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
-            for (U8 v = 0u; v < g_maxVariantsPerPass; ++v) {
+            for (U8 v = 0u; v < to_U8(RenderStagePass::VariantType::COUNT); ++v) {
                 const U32 stateIndex = pt.get<U32>(
                     Util::StringFormat("%s.%s.%s.%d.id", 
                             entryName.c_str(),

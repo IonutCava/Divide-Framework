@@ -73,5 +73,9 @@ namespace Divide {
             disableOptions(cmd, optionsMask);
         }
     }
+
+    inline void resetOptions(GenericDrawCommand& cmd) noexcept {
+        cmd._renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY);
+    }
 }; //namespace Divide
 #endif //_GENERIC_DRAW_COMMAND_INL

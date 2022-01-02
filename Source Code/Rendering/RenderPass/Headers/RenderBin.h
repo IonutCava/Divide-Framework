@@ -89,7 +89,8 @@ namespace Names {
 
 static_assert(ArrayCount(Names::renderBinType) == to_base(RenderBinType::COUNT) + 1, "RenderBinType name array out of sync!");
 
-class RenderPackage;
+struct RenderPackage;
+
 class SceneRenderState;
 class RenderPassManager;
 
@@ -100,7 +101,7 @@ enum class RenderQueueListType : U8 {
 };
 
 class RenderBin;
-using RenderQueuePackages = vector_fast<RenderPackage*>;
+using RenderQueuePackages = vector_fast<std::pair<RenderingComponent*, RenderPackage*>>;
 
 /// This class contains a list of "RenderBinItem"'s and stores them sorted depending on designation
 class RenderBin {
@@ -117,7 +118,7 @@ class RenderBin {
     void populateRenderQueue(RenderStagePass stagePass, RenderQueuePackages& queueInOut) const;
     void postRender(const SceneRenderState& renderState, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
 
-    void addNodeToBin(const SceneGraphNode* sgn, const RenderStagePass& renderStagePass, F32 minDistToCameraSq);
+    void addNodeToBin(const SceneGraphNode* sgn, RenderStagePass renderStagePass, F32 minDistToCameraSq);
 
     [[nodiscard]] U16 getSortedNodes(SortedQueue& nodes) const;
 

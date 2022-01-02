@@ -574,12 +574,12 @@ void SceneGraphNode::processEvents() {
     }
 }
 
-void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStagePass& renderStagePass, const CameraSnapshot& cameraSnapshot, const bool refreshData) {
+void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStagePass renderStagePass, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut, const bool refreshData) {
     OPTICK_EVENT();
 
     const AnimationComponent* aComp = get<AnimationComponent>();
     if (aComp) {
-        const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
+        RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
         {
             const AnimationComponent::AnimData data = aComp->getAnimationData();
             if (data._boneBuffer != nullptr) {
@@ -587,19 +587,19 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStageP
                 bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS;
                 bufferBinding._buffer = data._boneBuffer;
                 bufferBinding._elementRange = data._boneBufferRange;
-                pkg.get<GFX::BindDescriptorSetsCommand>(0)->_set._buffers.add(bufferBinding);
+                pkg.descriptorSetCmd()._set._buffers.add(bufferBinding);
             }
             if (data._prevBoneBufferRange.max > 0) {
                 ShaderBufferBinding bufferBinding;
                 bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS_PREV;
                 bufferBinding._buffer = data._boneBuffer;
                 bufferBinding._elementRange = data._prevBoneBufferRange;
-                pkg.get<GFX::BindDescriptorSetsCommand>(0)->_set._buffers.add(bufferBinding);
+                pkg.descriptorSetCmd()._set._buffers.add(bufferBinding);
             }
         }
     }
 
-    _node->prepareRender(this, rComp, renderStagePass, cameraSnapshot, refreshData);
+    _node->prepareRender(this, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
 }
 
 void SceneGraphNode::onNetworkSend(U32 frameCount) const {
@@ -614,7 +614,7 @@ void SceneGraphNode::onNetworkSend(U32 frameCount) const {
     }
 }
 
-bool SceneGraphNode::canDraw(const RenderStagePass& stagePass) const {
+bool SceneGraphNode::canDraw(const RenderStagePass stagePass) const {
     RenderingComponent* rComp = get<RenderingComponent>();
 
     return rComp != nullptr && rComp->canDraw(stagePass);

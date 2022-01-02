@@ -62,8 +62,8 @@ Terrain::Terrain(GFXDevice& context, ResourceCache* parentCache, const size_t de
     : Object3D(context, parentCache, descriptorHash, name, ResourcePath{ name }, {}, ObjectType::TERRAIN, to_U32(ObjectFlag::OBJECT_FLAG_NO_VB)),
       _terrainQuadtree()
 {
-    _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, to_U8(LightType::SPOT));
-    _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, to_U8(LightType::POINT));
+    _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::SPOT));
+    _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::POINT));
 }
 
 void Terrain::postLoad(SceneGraphNode* sgn) {
@@ -276,62 +276,61 @@ void Terrain::toggleBoundingBoxes() {
 
 void Terrain::prepareRender(SceneGraphNode* sgn,
                             RenderingComponent& rComp,
-                            const RenderStagePass& renderStagePass,
+                            const RenderStagePass renderStagePass,
                             const CameraSnapshot& cameraSnapshot,
+                            GFX::CommandBuffer& bufferInOut,
                             const bool refreshData) {
     if (renderStagePass._stage == RenderStage::DISPLAY && renderStagePass._passType == RenderPassType::MAIN_PASS) {
         _terrainQuadtree.drawBBox(sgn->context().gfx());
     }
 
-    const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
-    if (!pkg.empty()) {
-        const F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
-        if (renderStagePass._stage == RenderStage::REFLECTION ||
-            renderStagePass._stage == RenderStage::REFRACTION)                 
-        {
-            // Lower the level of detail in reflections and refractions
-            //triangleWidth *= 1.5f;
-        } else if (renderStagePass._stage == RenderStage::SHADOW) {
-            //triangleWidth *= 2.0f;
-        }
-
-        const vec2<F32>& SNAP_GRID_SIZE = tessParams().SnapGridSize();
-        vec3<F32> cullingEye = cameraSnapshot._eye;
-        const vec2<F32> eyeXZ = cullingEye.xz();
-
-        vec2<F32> snappedXZ = eyeXZ;
-        for (U8 i = 0; i < 2; ++i) {
-            if (SNAP_GRID_SIZE[i] > 0.f) {
-                snappedXZ[i] = std::floorf(snappedXZ[i] / SNAP_GRID_SIZE[i]) * SNAP_GRID_SIZE[i];
-            }
-        }
-
-        vec2<F32> uvEye = snappedXZ;
-        uvEye /= tessParams().WorldScale();
-        uvEye *= -1;
-        uvEye /= (TessellationParams::PATCHES_PER_TILE_EDGE * 2);
-
-        const vec2<F32> dXZ = eyeXZ - snappedXZ;
-        snappedXZ = eyeXZ - dXZ; // Why the 2x?  I'm confused.  But it works.
-        
-        cullingEye.x += snappedXZ[0];
-        cullingEye.z += snappedXZ[1];
-
-        const mat4<F32> terrainWorldMat(vec3<F32>(snappedXZ[0], 0.f, snappedXZ[1]),
-                                        vec3<F32>(tessParams().WorldScale()[0], 1.f, tessParams().WorldScale()[1]),
-                                        mat3<F32>());
-        PushConstants& constants = pkg.get<GFX::SendPushConstantsCommand>(0)->_constants;
-        constants.set(_ID("dvd_terrainWorld"), GFX::PushConstantType::MAT4, terrainWorldMat);
-        constants.set(_ID("dvd_uvEyeOffset"), GFX::PushConstantType::VEC2, uvEye);
-        constants.set(_ID("dvd_tessTriangleWidth"),  GFX::PushConstantType::FLOAT, triangleWidth);
+    const F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
+    if (renderStagePass._stage == RenderStage::REFLECTION ||
+        renderStagePass._stage == RenderStage::REFRACTION)                 
+    {
+        // Lower the level of detail in reflections and refractions
+        //triangleWidth *= 1.5f;
+    } else if (renderStagePass._stage == RenderStage::SHADOW) {
+        //triangleWidth *= 2.0f;
     }
 
-    Object3D::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
+    const vec2<F32>& SNAP_GRID_SIZE = tessParams().SnapGridSize();
+    vec3<F32> cullingEye = cameraSnapshot._eye;
+    const vec2<F32> eyeXZ = cullingEye.xz();
+
+    vec2<F32> snappedXZ = eyeXZ;
+    for (U8 i = 0; i < 2; ++i) {
+        if (SNAP_GRID_SIZE[i] > 0.f) {
+            snappedXZ[i] = std::floorf(snappedXZ[i] / SNAP_GRID_SIZE[i]) * SNAP_GRID_SIZE[i];
+        }
+    }
+
+    vec2<F32> uvEye = snappedXZ;
+    uvEye /= tessParams().WorldScale();
+    uvEye *= -1;
+    uvEye /= (TessellationParams::PATCHES_PER_TILE_EDGE * 2);
+
+    const vec2<F32> dXZ = eyeXZ - snappedXZ;
+    snappedXZ = eyeXZ - dXZ; // Why the 2x?  I'm confused.  But it works.
+        
+    cullingEye.x += snappedXZ[0];
+    cullingEye.z += snappedXZ[1];
+
+    const mat4<F32> terrainWorldMat(vec3<F32>(snappedXZ[0], 0.f, snappedXZ[1]),
+                                    vec3<F32>(tessParams().WorldScale()[0], 1.f, tessParams().WorldScale()[1]),
+                                    mat3<F32>());
+
+    RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
+    PushConstants& constants = pkg.pushConstantsCmd()._constants;
+    constants.set(_ID("dvd_terrainWorld"), GFX::PushConstantType::MAT4, terrainWorldMat);
+    constants.set(_ID("dvd_uvEyeOffset"), GFX::PushConstantType::VEC2, uvEye);
+    constants.set(_ID("dvd_tessTriangleWidth"),  GFX::PushConstantType::FLOAT, triangleWidth);
+    
+
+    Object3D::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
 }
 
-void Terrain::buildDrawCommands(SceneGraphNode* sgn,
-                                const RenderStagePass& renderStagePass,
-                                RenderPackage& pkgInOut)
+void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut)
 {
     GenericDrawCommand cmd = {};
     cmd._primitiveType = PrimitiveType::PATCH;
@@ -341,7 +340,7 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn,
 
     for (const auto& tileRing : _tileRings) {
         cmd._cmd.primCount = tileRing->tileCount();
-        pkgInOut.add(GFX::DrawCommand{ cmd });
+        cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
         if_constexpr(USE_BASE_VERTEX_OFFSETS) {
             cmd._cmd.baseVertex += cmd._cmd.primCount;
         } else {
@@ -349,7 +348,7 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn,
         }
     }
 
-    Object3D::buildDrawCommands(sgn, renderStagePass, pkgInOut);
+    Object3D::buildDrawCommands(sgn, cmdsOut);
 }
 
 const vector<VertexBuffer::Vertex>& Terrain::getVerts() const noexcept {

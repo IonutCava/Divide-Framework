@@ -112,21 +112,6 @@ RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContex
         }
     }
 
-    for (U8 s = 0; s < to_U8(RenderStage::COUNT); ++s) {
-        const U8 count = RenderStagePass::TotalPassCountForStage(static_cast<RenderStage>(s));
-        if (s == to_U8(RenderStage::SHADOW)) {
-            _renderPackages[s][to_base(RenderPassType::MAIN_PASS)].resize(count);
-            _rebuildDrawCommandsFlags[s][to_base(RenderPassType::MAIN_PASS)].fill(true);
-        } else {
-            PackagesPerPassType & perPassPkgs = _renderPackages[s];
-            FlagsPerPassType & perPassFlags = _rebuildDrawCommandsFlags[s];
-            for (U8 p = 0; p < to_U8(RenderPassType::COUNT); ++p) {
-                perPassPkgs[p].resize(count);
-                perPassFlags[p].fill(true);
-            }
-        }
-    }
-
     RenderPassExecutor::OnRenderingComponentCreation(this);
 }
 
@@ -195,44 +180,12 @@ void RenderingComponent::setMaxRenderRange(const F32 maxRange) noexcept {
     _renderRange.max = std::min(maxRange,  1.0f * g_renderRangeLimit);
 }
 
-void RenderingComponent::rebuildDrawCommands(const RenderStagePass& stagePass, RenderPackage& pkg) const {
-    OPTICK_EVENT();
-    pkg.clear();
-
-    // The following commands are needed for material rendering
-    // In the absence of a material, use the SceneNode buildDrawCommands to add all of the needed commands
-    if (_materialInstance != nullptr) {
-        PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._stateHash = _materialInstance->getRenderStateBlock(stagePass);
-        pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramGUID(stagePass);
-
-        pkg.add(GFX::BindPipelineCommand{ _context.newPipeline(pipelineDescriptor) });
-        pkg.add(GFX::BindDescriptorSetsCommand{});
-    }
-    pkg.add(GFX::SendPushConstantsCommand{});
-
-    _parentSGN->getNode().buildDrawCommands(_parentSGN, stagePass, pkg);
-}
-
 void RenderingComponent::onMaterialChanged() {
     OPTICK_EVENT();
-
-    for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
-        if (s == to_U8(RenderStage::SHADOW)) {
-            continue;
-        }
-        PackagesPerPassType& perPassPkg = _renderPackages[s];
-        for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
-            PackagesPerIndex& perIndexPkg = perPassPkg[p];
-            for (RenderPackage& pkg : perIndexPkg) {
-                pkg.textureDataDirty(true);
-            }
-        }
-    }
     _parentSGN->getNode().rebuildDrawCommands(true);
 }
 
-bool RenderingComponent::canDraw(const RenderStagePass& renderStagePass) {
+bool RenderingComponent::canDraw(const RenderStagePass renderStagePass) {
     OPTICK_EVENT();
     OPTICK_TAG("Node", (_parentSGN->name().c_str()));
 
@@ -288,22 +241,14 @@ void RenderingComponent::setReflectionAndRefractionType(const ReflectorType refl
         }
     }
 }
-
-void RenderingComponent::retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
-    OPTICK_EVENT();
-
-    const U8 stageIdx = to_U8(stagePass._stage);
-    const U8 lodLevel = _lodLevels[stageIdx];
-    const U16 pkgIndex = RenderStagePass::IndexForStage(stagePass);
-    const U16 pkgCount = RenderStagePass::PassCountForStagePass(stagePass);
-
-    PackagesPerIndex& packages = _renderPackages[stageIdx][to_U8(stagePass._passType)];
-    const U32 startCmdOffset = cmdOffset + to_U32(cmdsInOut.size());
-    Attorney::RenderPackageRenderingComponent::updateAndRetrieveDrawCommands(packages[pkgIndex], indirectionBufferEntry(), startCmdOffset, lodLevel, cmdsInOut);
+void RenderingComponent::setLoDIndexOffset(const U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept {
+    if (lodIndex < _lodIndexOffsets.size()) {
+        _lodIndexOffsets[lodIndex] = { indexOffset, indexCount };
+    }
 }
 
-bool RenderingComponent::hasDrawCommands(const RenderStagePass& stagePass) {
-    return getDrawPackage(stagePass).count<GFX::DrawCommand>() > 0u;
+bool RenderingComponent::hasDrawCommands(const RenderStagePass stagePass) noexcept {
+    return !_drawCommands.empty();
 }
 
 void RenderingComponent::getMaterialData(NodeMaterialData& dataOut) const {
@@ -327,7 +272,7 @@ void RenderingComponent::getMaterialTextures(NodeMaterialTextures& texturesOut, 
 }
 
 /// Called after the current node was rendered
-void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, const RenderStagePass& renderStagePass, GFX::CommandBuffer& bufferInOut) {
+void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, const RenderStagePass renderStagePass, GFX::CommandBuffer& bufferInOut) {
     if (renderStagePass._stage != RenderStage::DISPLAY ||
         renderStagePass._passType != RenderPassType::MAIN_PASS) 
     {
@@ -393,18 +338,29 @@ U8 RenderingComponent::getLoDLevelInternal(const F32 distSQtoCenter, const Rende
     return MAX_LOD_LEVEL;
 }
 
-void RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot, const SceneRenderState& sceneRenderState, const RenderStagePass& renderStagePass, const bool refreshData) {
+void RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot,
+                                            const SceneRenderState& sceneRenderState,
+                                            const RenderStagePass renderStagePass,
+                                            GFX::CommandBuffer& bufferInOut,
+                                            const bool refreshData)
+{
     OPTICK_EVENT();
 
-    RenderPackage& pkg = getDrawPackage(renderStagePass);
-    if (pkg.empty() || getRebuildFlag(renderStagePass)) {
-        rebuildDrawCommands(renderStagePass, pkg);
-        setRebuildFlag(renderStagePass, false);
-    }
-
-    Attorney::SceneGraphNodeComponent::prepareRender(_parentSGN, *this, cameraSnapshot, renderStagePass, refreshData);
-
     if (refreshData) {
+        if (_drawCommands.empty()) {
+            _parentSGN->getNode().buildDrawCommands(_parentSGN, _drawCommands);
+            for (const GFX::DrawCommand& drawCmd : _drawCommands) {
+                if (!isInstanced()) {
+                    for (const GenericDrawCommand& cmd : drawCmd._drawCommands) {
+                        if (cmd._cmd.primCount > 1) {
+                            isInstanced(true);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         const BoundsComponent* bComp = static_cast<BoundsComponent*>(_parentSGN->get<BoundsComponent>());
         const vec3<F32>& cameraEye = cameraSnapshot._eye;
         const SceneNodeRenderState& renderState = _parentSGN->getNode<>().renderState();
@@ -416,53 +372,115 @@ void RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
             const F32 distanceSQToCenter = LoDtarget.distanceSquared(cameraEye);
             _lodLevels[to_base(renderStagePass._stage)] = getLoDLevelInternal(distanceSQToCenter, renderStagePass._stage, sceneRenderState.lodThresholds(renderStagePass._stage));
         }
+
+        U8 drawCmdOptions = 0u;
+        ToggleBit(drawCmdOptions, CmdRenderOptions::RENDER_GEOMETRY, (renderOptionEnabled(RenderOptions::RENDER_GEOMETRY) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY)));
+        ToggleBit(drawCmdOptions, CmdRenderOptions::RENDER_WIREFRAME, (renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME)));
+
+        for (GFX::DrawCommand& drawCmd : _drawCommands) {
+            for (GenericDrawCommand& genericCmd : drawCmd._drawCommands) {
+                genericCmd._renderOptions = drawCmdOptions;
+            }
+        }
     }
 
-    pkg.setDrawOption(CmdRenderOptions::RENDER_GEOMETRY, (renderOptionEnabled(RenderOptions::RENDER_GEOMETRY) &&
-                                                          sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY)));
-
-    pkg.setDrawOption(CmdRenderOptions::RENDER_WIREFRAME, (renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) ||
-                                                           sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME)));
-
-    if (pkg.textureDataDirty()) {
+    RenderPackage& pkg = getDrawPackage(renderStagePass);
+    if (rebuildRenderPackages()) {
+        Clear(pkg);
+    }
+    if (Empty(pkg)) {
+        if (isInstanced()) {
+            pkg.pushConstantsCmd()._constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, 0u);
+        }
+        PipelineDescriptor pipelineDescriptor = {};
         if (_materialInstance != nullptr) {
-            _materialInstance->getTextureData(renderStagePass, pkg.get<GFX::BindDescriptorSetsCommand>(0)->_set._textureData);
+            pipelineDescriptor._stateHash = _materialInstance->getRenderStateBlock(renderStagePass);
+            pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramGUID(renderStagePass);
+            _materialInstance->getTextureData(renderStagePass, pkg.descriptorSetCmd()._set._textureData);
+        } else {
+            pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
+            pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
+        }
+        pkg.pipelineCmd()._pipeline = _context.newPipeline(pipelineDescriptor);
+    }
+
+    Attorney::SceneGraphNodeComponent::prepareRender(_parentSGN, *this, cameraSnapshot, renderStagePass, bufferInOut, refreshData);
+}
+
+void RenderingComponent::retrieveDrawCommands(const RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
+    OPTICK_EVENT();
+
+    const U32 iBufferEntry = indirectionBufferEntry();
+
+    {
+        RenderPackage& pkg = getDrawPackage(stagePass);
+        if (isInstanced()) {
+            pkg.pushConstantsCmd()._constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, iBufferEntry);
         }
 
-        pkg.textureDataDirty(false);
+        pkg.drawCmdOffset(cmdOffset + to_U32(cmdsInOut.size()));
+        pkg.stagePassBaseIndex(BaseIndex(stagePass));
+    }
+
+    const auto& [offset, count] = _lodIndexOffsets[std::min(_lodLevels[to_U8(stagePass._stage)], to_U8(_lodIndexOffsets.size() - 1))];
+    const bool autoIndex = offset != 0u || count != 0u;
+
+    for (const GFX::DrawCommand& drawCmd : _drawCommands) {
+        for (const GenericDrawCommand& gCmd : drawCmd._drawCommands) {
+            cmdsInOut.push_back(gCmd._cmd);
+            IndirectDrawCommand& iCmd = cmdsInOut.back();
+            iCmd.baseInstance = isInstanced() ? 0u : (iBufferEntry + 1u); //Make sure to substract 1 in the shader!
+            if (autoIndex) {
+                iCmd.firstIndex = to_U32(offset);
+                iCmd.indexCount = to_U32(count);
+            }
+        }
     }
 }
 
-RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass& renderStagePass) {
-    const U8 s = to_U8(renderStagePass._stage);
-    const U8 p = to_U8(renderStagePass._stage == RenderStage::SHADOW ? RenderPassType::MAIN_PASS : renderStagePass._passType);
-    const U16 i = RenderStagePass::IndexForStage(renderStagePass);
+void RenderingComponent::getCommandBuffer(RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut) {
+    bufferInOut.add(pkg->pipelineCmd());
+    bufferInOut.add(pkg->descriptorSetCmd());
+    bufferInOut.add(pkg->pushConstantsCmd());
 
-    return _renderPackages[s][p][i];
+    U32 startOffset = pkg->drawCmdOffset();
+    for (const GFX::DrawCommand& drawCmd : _drawCommands) {
+        GFX::DrawCommand* cmd = bufferInOut.add(drawCmd);
+        for (GenericDrawCommand& gCmd : cmd->_drawCommands) {
+            gCmd._commandOffset = startOffset++;
+            if (gCmd._bufferIndex == GenericDrawCommand::INVALID_BUFFER_INDEX) {
+                gCmd._bufferIndex = pkg->stagePassBaseIndex();
+            }
+        }
+    }
 }
 
-const RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass& renderStagePass) const {
-    const U8 s = to_U8(renderStagePass._stage);
-    const U8 p = to_U8(renderStagePass._stage == RenderStage::SHADOW ? RenderPassType::MAIN_PASS : renderStagePass._passType);
-    const U16 i = RenderStagePass::IndexForStage(renderStagePass);
+RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass renderStagePass) {
+    PackagesPerPassType&  packagesPerPassType  = _renderPackages[to_base(renderStagePass._stage)];
+    PackagesPerVariant&   packagesPerVariant   = packagesPerPassType[to_base(renderStagePass._passType)];
+    PackagesPerPassIndex& packagesPerPassIndex = packagesPerVariant[to_base(renderStagePass._variant)];
+    PackagesPerIndex&     pacakgesPerIndex     = packagesPerPassIndex[to_base(renderStagePass._pass)];
 
-    return _renderPackages[s][p][i];
-}
+    {
+        SharedLock<SharedMutex> r_lock(_renderPackagesLock);
+        for (auto& [idx, pkg] : pacakgesPerIndex) {
+            if (idx == renderStagePass._index) {
+                return pkg;
+            }
+        }
+    }
 
-void RenderingComponent::setRebuildFlag(const RenderStagePass& renderStagePass, const bool state) {
-    const U8 s = to_U8(renderStagePass._stage);
-    const U8 p = to_U8(renderStagePass._stage == RenderStage::SHADOW ? RenderPassType::MAIN_PASS : renderStagePass._passType);
-    const U16 i = RenderStagePass::IndexForStage(renderStagePass);
+    ScopedLock<SharedMutex> w_lock(_renderPackagesLock);
+    // check again
+    for (auto& [idx, pkg] : pacakgesPerIndex) {
+        if (idx == renderStagePass._index) {
+            return pkg;
+        }
+    }
 
-    _rebuildDrawCommandsFlags[s][p][i] = state;
-}
-
-bool RenderingComponent::getRebuildFlag(const RenderStagePass& renderStagePass) const {
-    const U8 s = to_U8(renderStagePass._stage);
-    const U8 p = to_U8(renderStagePass._stage == RenderStage::SHADOW ? RenderPassType::MAIN_PASS : renderStagePass._passType);
-    const U16 i = RenderStagePass::IndexForStage(renderStagePass);
-
-    return _rebuildDrawCommandsFlags[s][p][i];
+    auto& [idx, pkg]  = pacakgesPerIndex.emplace_back();
+    idx = renderStagePass._index;
+    return pkg;
 }
 
 bool RenderingComponent::updateReflection(const U16 reflectionIndex,

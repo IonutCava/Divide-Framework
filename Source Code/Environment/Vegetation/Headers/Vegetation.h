@@ -98,9 +98,7 @@ class Vegetation final : public SceneNode {
     explicit Vegetation(GFXDevice& context, TerrainChunk& parentChunk, const VegetationDetails& details);
     ~Vegetation();
 
-    void buildDrawCommands(SceneGraphNode* sgn,
-                           const RenderStagePass& renderStagePass,
-                           RenderPackage& pkgInOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
 
     void getStats(U32& maxGrassInstances, U32& maxTreeInstances) const;
 
@@ -112,14 +110,16 @@ class Vegetation final : public SceneNode {
   protected:
     static void createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_ptr& terrain, const VegetationDetails& vegDetails);
 
+    void prepareRender(SceneGraphNode* sgn,
+                       RenderingComponent& rComp,
+                       RenderStagePass renderStagePass,
+                       const CameraSnapshot& cameraSnapshot,
+                       GFX::CommandBuffer& bufferInOut,
+                       bool refreshData) override;
+
     void sceneUpdate(U64 deltaTimeUS,
                      SceneGraphNode* sgn,
                      SceneState& sceneState) override;
-
-    void occlusionCull(const RenderStagePass& stagePass,
-                       const Texture_ptr& depthBuffer,
-                       GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
-                       GFX::CommandBuffer& bufferInOut) const override;
    private:
     void uploadVegetationData(SceneGraphNode* sgn);
     void computeVegetationTransforms(bool treeData);

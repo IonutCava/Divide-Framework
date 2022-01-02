@@ -11,7 +11,7 @@ layout(location = 14) out vec3 vBetaM;
 
 void main(void){
     const NodeTransformData data = fetchInputData();
-    VAR._vertexW = data._worldMatrix * dvd_Vertex;
+    VAR._vertexW = data._worldMatrix * dvd_Vertex + vec4(dvd_cameraPosition.xyz, 0.f);
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     computeLightVectors(data);
     setClipPlanes();
@@ -213,10 +213,10 @@ void main() {
     const float mieCoefficient = 0.005f;
 
     const NodeTransformData data = fetchInputData();
-    VAR._vertexW = data._worldMatrix * dvd_Vertex;
+    VAR._vertexW = data._worldMatrix * dvd_Vertex + vec4(dvd_cameraPosition.xyz, 0.f);
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
-    setClipPlanes();
     computeLightVectors(data);
+    setClipPlanes();
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
     gl_Position.z = gl_Position.w - Z_TEST_SIGMA;
 
@@ -257,7 +257,7 @@ layout(location = 14) in vec3 vBetaM;
 
 layout(binding = TEXTURE_UNIT0)     uniform samplerCubeArray texSky;
 layout(binding = TEXTURE_HEIGHTMAP) uniform sampler2DArray weather;
-layout(binding = TEXTURE_OPACITY)   uniform sampler2DArray curl;
+layout(binding = TEXTURE_UNIT1)     uniform sampler2DArray curl;
 layout(binding = TEXTURE_SPECULAR)  uniform sampler3D worl;
 layout(binding = TEXTURE_NORMALMAP) uniform sampler3D perlworl;
 

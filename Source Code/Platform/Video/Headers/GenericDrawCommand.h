@@ -95,6 +95,8 @@ void enableOptions(GenericDrawCommand& cmd, BaseType<CmdRenderOptions> optionsMa
 void disableOptions(GenericDrawCommand& cmd, BaseType<CmdRenderOptions> optionsMask) noexcept;
 void setOptions(GenericDrawCommand& cmd, BaseType<CmdRenderOptions> optionsMask, bool state) noexcept;
 
+void resetOptions(GenericDrawCommand& cmd) noexcept;
+
 bool Compatible(const GenericDrawCommand& lhs, const GenericDrawCommand& rhs) noexcept;
 
 }; //namespace Divide

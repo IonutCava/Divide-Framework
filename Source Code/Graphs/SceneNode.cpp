@@ -49,19 +49,12 @@ void SceneNode::sceneUpdate([[maybe_unused]] const U64 deltaTimeUS,
 
 void SceneNode::prepareRender([[maybe_unused]] SceneGraphNode* sgn,
                               [[maybe_unused]] RenderingComponent& rComp,
-                              [[maybe_unused]] const RenderStagePass& renderStagePass,
+                              [[maybe_unused]] const RenderStagePass renderStagePass,
                               [[maybe_unused]] const CameraSnapshot& cameraSnapshot,
+                              [[maybe_unused]] GFX::CommandBuffer& bufferInOut,
                               [[maybe_unused]] bool refreshData)
 {
     assert(getState() == ResourceState::RES_LOADED);
-}
-
-
-void SceneNode::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
-                              [[maybe_unused]] const Texture_ptr& depthBuffer,
-                              [[maybe_unused]] GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
-                              [[maybe_unused]] GFX::CommandBuffer& bufferInOut) const
-{
 }
 
 void SceneNode::postLoad(SceneGraphNode* sgn) {
@@ -111,9 +104,7 @@ bool SceneNode::unload() {
 void SceneNode::editorFieldChanged([[maybe_unused]] std::string_view field) {
 }
 
-void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn,
-                                  [[maybe_unused]] const RenderStagePass& renderStagePass,
-                                  [[maybe_unused]] RenderPackage& pkgInOut)
+void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] vector_fast<GFX::DrawCommand>& cmdsOut)
 {
 }
 

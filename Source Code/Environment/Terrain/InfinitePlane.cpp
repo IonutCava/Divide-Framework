@@ -136,9 +136,7 @@ void InfinitePlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, Scen
     tComp->setPosition(newEye.x, tComp->getWorldPosition().y, newEye.z);
 }
 
-void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn,
-                                      const RenderStagePass& renderStagePass,
-                                      RenderPackage& pkgInOut) {
+void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
 
     //infinite plane
     GenericDrawCommand planeCmd = {};
@@ -146,10 +144,9 @@ void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn,
     planeCmd._cmd.firstIndex = 0u;
     planeCmd._cmd.indexCount = to_U32(_plane->getGeometryVB()->getIndexCount());
     planeCmd._sourceBuffer = _plane->getGeometryVB()->handle();
-    planeCmd._bufferIndex = renderStagePass.baseIndex();
-    pkgInOut.add(GFX::DrawCommand{ planeCmd });
+    cmdsOut.emplace_back(GFX::DrawCommand{ planeCmd });
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 } //namespace Divide

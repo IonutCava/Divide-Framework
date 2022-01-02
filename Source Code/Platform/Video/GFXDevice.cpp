@@ -106,10 +106,10 @@ GFXDevice::GFXDevice(Kernel & parent)
     flags[to_base(AttribLocation::TANGENT)] = false;
 
     for (U8 stage = 0u; stage < to_base(RenderStage::COUNT); ++stage) {
-        VertexBuffer::setAttribMask(RenderStagePass::BaseIndex(static_cast<RenderStage>(stage), RenderPassType::PRE_PASS), flags);
+        VertexBuffer::setAttribMask(BaseIndex(static_cast<RenderStage>(stage), RenderPassType::PRE_PASS), flags);
     }
     for (U8 pass = 0u; pass < to_base(RenderPassType::COUNT); ++pass) {
-        VertexBuffer::setAttribMask(RenderStagePass::BaseIndex(RenderStage::SHADOW, static_cast<RenderPassType>(pass)), flags);
+        VertexBuffer::setAttribMask(BaseIndex(RenderStage::SHADOW, static_cast<RenderPassType>(pass)), flags);
     }
 }
 
@@ -1071,7 +1071,7 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
         camera->setProjection(to_F32(aspect), Angle::to_VerticalFoV(Angle::DEGREES<F32>(90.0f), aspect), zPlanes);
         // Point our camera to the correct face
         camera->lookAt(pos, pos + CameraDirections[i].first * zPlanes.max, -CameraDirections[i].second);
-        params._stagePass._pass = i;
+        params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
         // Pass our render function to the renderer
         passMgr->doCustomPass(camera, params, commandsInOut);
     }
@@ -1151,7 +1151,7 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
         camera->setProjection(to_F32(aspect), Angle::to_VerticalFoV(Angle::DEGREES<F32>(180.0f), aspect), zPlanes);
         // And generated required matrices
         // Pass our render function to the renderer
-        params._stagePass._pass = i;
+        params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
 
         passMgr->doCustomPass(camera, params, bufferInOut);
     }
@@ -1523,13 +1523,18 @@ bool GFXDevice::setViewport(const Rect<I32>& viewport) {
     return false;
 }
 
-void GFXDevice::setPreviousViewProjection(const mat4<F32>& view, const mat4<F32>& projection) noexcept {
-    mat4<F32>::Multiply(view, projection, _gpuBlock._data._PreviousViewProjectionMatrix);
+void GFXDevice::setPreviousCameraSnapshot(const CameraSnapshot& snapshot) noexcept {
+    mat4<F32>::Multiply(snapshot._viewMatrix, snapshot._projectionMatrix, _gpuBlock._data._PreviousViewProjectionMatrix);
     _gpuBlock._needsUpload = true;
+    _previousCameraSnapshot = snapshot;
 }
 
-mat4<F32> GFXDevice::getPreviousViewProjection() const noexcept {
-    return _gpuBlock._data._PreviousViewProjectionMatrix;
+CameraSnapshot& GFXDevice::getPreviousCameraSnapshot() noexcept {
+    return _previousCameraSnapshot;
+}
+
+const CameraSnapshot& GFXDevice::getPreviousCameraSnapshot() const noexcept {
+    return _previousCameraSnapshot;
 }
 
 const GFXShaderData::GPUData& GFXDevice::renderingData() const noexcept {
@@ -1772,10 +1777,10 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     return { hizDepthTex, att.samplerHash() };
 }
 
-void GFXDevice::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
-                              const RenderPass::BufferData& bufferData,
+void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
                               const Texture_ptr& depthBuffer,
                               const size_t samplerHash,
+                              const CameraSnapshot& cameraSnapshot,
                               GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
                               GFX::CommandBuffer& bufferInOut) const
 {
@@ -1799,9 +1804,15 @@ void GFXDevice::occlusionCull([[maybe_unused]] const RenderStagePass& stagePass,
         set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
     }
 
-    HIZPushConstantsCMDInOut._constants.set(_ID("dvd_countCulledItems"), GFX::PushConstantType::UINT, bufferData._cullCounterBuffer != nullptr ? 1u : 0u);
-    HIZPushConstantsCMDInOut._constants.set(_ID("dvd_numEntities"), GFX::PushConstantType::UINT, cmdCount);
-    HIZPushConstantsCMDInOut._constants.set(_ID("dvd_viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(depthBuffer->width(), depthBuffer->height()));
+    mat4<F32> viewProjectionMatrix;
+    mat4<F32>::Multiply(cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix);;
+    HIZPushConstantsCMDInOut._constants.set(_ID("countCulledItems"), GFX::PushConstantType::UINT, bufferData._cullCounterBuffer != nullptr ? 1u : 0u);
+    HIZPushConstantsCMDInOut._constants.set(_ID("numEntities"), GFX::PushConstantType::UINT, cmdCount);
+    HIZPushConstantsCMDInOut._constants.set(_ID("nearPlane"), GFX::PushConstantType::FLOAT, cameraSnapshot._zPlanes.x);
+    HIZPushConstantsCMDInOut._constants.set(_ID("viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(depthBuffer->width(), depthBuffer->height()));
+    HIZPushConstantsCMDInOut._constants.set(_ID("viewMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._viewMatrix);
+    HIZPushConstantsCMDInOut._constants.set(_ID("viewProjectionMatrix"), GFX::PushConstantType::MAT4, viewProjectionMatrix);
+    HIZPushConstantsCMDInOut._constants.set(_ID("frustumPlanes"), GFX::PushConstantType::VEC4, cameraSnapshot._frustumPlanes);
 
     GFX::EnqueueCommand(bufferInOut, HIZPushConstantsCMDInOut);
 

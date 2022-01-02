@@ -11,6 +11,7 @@
 #include "Platform/Video/Headers/RenderPackage.h"
 
 #include "ECS/Components/Headers/AnimationComponent.h"
+#include "ECS/Components/Headers/RenderingComponent.h"
 
 namespace Divide {
 
@@ -129,8 +130,9 @@ void Object3D::rebuildInternal() {
 
 void Object3D::prepareRender(SceneGraphNode* sgn,
                              RenderingComponent& rComp,
-                             const RenderStagePass& renderStagePass,
+                             const RenderStagePass renderStagePass,
                              const CameraSnapshot& cameraSnapshot,
+                             GFX::CommandBuffer& bufferInOut,
                              const bool refreshData) {
     if (refreshData && geometryDirty()) {
         OPTICK_EVENT();
@@ -139,40 +141,41 @@ void Object3D::prepareRender(SceneGraphNode* sgn,
         geometryDirty(false);
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
 }
 
-void Object3D::buildDrawCommands(SceneGraphNode* sgn,
-                                 const RenderStagePass& renderStagePass,
-                                 RenderPackage& pkgInOut) {
+void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
     VertexBuffer* vb = getGeometryVB();
     if (vb != nullptr) {
-        if (pkgInOut.count<GFX::DrawCommand>() == 0) {
+        if (cmdsOut.size() == 0u) {
             const U16 partitionID = _geometryPartitionIDs[0];
             GenericDrawCommand cmd;
             cmd._primitiveType = getGeometryBufferType();
             cmd._sourceBuffer = vb->handle();
-            cmd._bufferIndex = renderStagePass.baseIndex();
+            cmd._bufferIndex = GenericDrawCommand::INVALID_BUFFER_INDEX;
             cmd._cmd.indexCount = to_U32(vb->getPartitionIndexCount(partitionID));
             cmd._cmd.firstIndex = to_U32(vb->getPartitionOffset(partitionID));
             cmd._cmd.primCount = sgn->instanceCount();
-
-            pkgInOut.add(GFX::DrawCommand{ cmd });
+            
+            cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
         }
 
         U16 prevID = 0;
+        RenderingComponent* rComp = sgn->get<RenderingComponent>();
+        assert(rComp != nullptr);
+
         for (U8 i = 0; i < to_U8(_geometryPartitionIDs.size()); ++i) {
             U16 id = _geometryPartitionIDs[i];
             if (id == U16_MAX) {
                 assert(i > 0);
                 id = prevID;
             }
-            pkgInOut.setLoDIndexOffset(i, vb->getPartitionOffset(id), vb->getPartitionIndexCount(id));
+            rComp->setLoDIndexOffset(i, vb->getPartitionOffset(id), vb->getPartitionIndexCount(id));
             prevID = id;
         }
     }
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 // Create a list of triangles from the vertices + indices lists based on primitive type

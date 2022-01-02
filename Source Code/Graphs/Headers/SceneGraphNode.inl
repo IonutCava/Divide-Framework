@@ -38,13 +38,6 @@ namespace Divide {
         return BitCompare(_nodeFlags, flag); 
     }
 
-    inline void SceneGraphNode::occlusionCull(const RenderStagePass& stagePass,
-                                              const Texture_ptr& depthBuffer,
-                                              GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
-                                              GFX::CommandBuffer& bufferInOut) const {
-        Attorney::SceneNodeSceneGraph::occlusionCullNode(_node.get(), stagePass, depthBuffer, HIZPushConstantsCMDInOut, bufferInOut);
-    }
-
     template<class Predicate>
     bool SceneGraphNode::forEachChild(const U32 start, const U32 end, Predicate predicate) const {
         SharedLock<SharedMutex> r_lock(_childLock);

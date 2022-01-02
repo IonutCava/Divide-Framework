@@ -306,7 +306,6 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
         Time::ScopedTimer timer2(_sceneUpdateTimer);
 
         const U8 playerCount = _sceneManager->getActivePlayerCount();
-
         U8 loopCount = 0;
         while (_timingData.runUpdateLoop()) {
             // Everything inside here should use fixed timesteps, apart from GFX updates which should use both!
@@ -554,6 +553,10 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
     for (U32 i = playerCount; i < to_U32(_renderTimer.size()); ++i) {
         Time::ProfileTimer::removeTimer(*_renderTimer[i]);
         _renderTimer.erase(begin(_renderTimer) + i);
+    }
+
+    for (U8 i = 0; i < playerCount; ++i) {
+        _sceneManager->savePreviousCamera(i);
     }
 
     return true;

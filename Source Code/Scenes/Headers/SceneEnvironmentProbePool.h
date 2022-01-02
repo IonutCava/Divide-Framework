@@ -89,10 +89,10 @@ public:
     static void OnNodeUpdated(const SceneEnvironmentProbePool& probePool, const SceneGraphNode& node) noexcept;
     static void OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept;
 
-    static [[nodiscard]] bool DebuggingSkyLight();
+    static [[nodiscard]] bool DebuggingSkyLight() noexcept;
     static               void DebuggingSkyLight(bool state) noexcept;
 
-    static [[nodiscard]] bool SkyLightNeedsRefresh();
+    static [[nodiscard]] bool SkyLightNeedsRefresh() noexcept;
     static               void SkyLightNeedsRefresh(bool state) noexcept;
 
     static [[nodiscard]] U16  SkyProbeLayerIndex() noexcept;

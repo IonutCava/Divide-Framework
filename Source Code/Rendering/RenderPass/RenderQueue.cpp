@@ -50,8 +50,8 @@ RenderingOrder RenderQueue::getSortOrder(const RenderStagePass stagePass, const 
     switch (rbType) {
         case RenderBinType::OPAQUE: {
             // Opaque items should be rendered front to back in depth passes for early-Z reasons
-            sortOrder = stagePass.isDepthPass() ? RenderingOrder::FRONT_TO_BACK
-                                                : RenderingOrder::BY_STATE;
+            sortOrder = IsDepthPass(stagePass) ? RenderingOrder::FRONT_TO_BACK
+                                               : RenderingOrder::BY_STATE;
         } break;
         case RenderBinType::SKY: {
             sortOrder = RenderingOrder::NONE;
@@ -146,7 +146,7 @@ void RenderQueue::addNodeToQueue(const SceneGraphNode* sgn,
     RenderingComponent* const renderingCmp = sgn->get<RenderingComponent>();
     // We need a rendering component to render the node
     assert(renderingCmp != nullptr);
-    if (!renderingCmp->getDrawPackage(stagePass).empty()) {
+    if (Attorney::RenderingCompRenderPass::hasDrawCommands(*renderingCmp, stagePass)) {
         RenderBin* rb = getBinForNode(sgn, renderingCmp->getMaterialInstance());
         assert(rb != nullptr);
 
@@ -186,7 +186,7 @@ void RenderQueue::postRender(const SceneRenderState& renderState, const RenderSt
     }
 }
 
-void RenderQueue::sort(const RenderStagePass& stagePass, const RenderBinType targetBinType, const RenderingOrder renderOrder) {
+void RenderQueue::sort(const RenderStagePass stagePass, const RenderBinType targetBinType, const RenderingOrder renderOrder) {
     OPTICK_EVENT();
 
     // How many elements should a render bin contain before we decide that sorting should happen on a separate thread

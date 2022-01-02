@@ -565,12 +565,12 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         matInstance->setShaderProgram(terrainPrePassShader,         RenderStage::DISPLAY,    RenderPassType::PRE_PASS);
         matInstance->setShaderProgram(terrainColourShader,          RenderStage::DISPLAY,    RenderPassType::MAIN_PASS);
         matInstance->setShaderProgram(terrainShadowShaderVSM,       RenderStage::SHADOW,     RenderPassType::COUNT);
-        matInstance->setShaderProgram(terrainShadowShaderVSMOrtho,  RenderStage::SHADOW,     RenderPassType::COUNT, to_base(LightType::DIRECTIONAL));
+        matInstance->setShaderProgram(terrainShadowShaderVSMOrtho,  RenderStage::SHADOW,     RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL));
     };
 
     buildShaders(terrainMaterial.get());
 
-    terrainMaterial->customShaderCBK([=](Material& material, [[maybe_unused]] RenderStagePass stagePass) {
+    terrainMaterial->customShaderCBK([=](Material& material, [[maybe_unused]] const RenderStagePass stagePass) {
 
         buildShaders(&material);
         return true;
@@ -595,8 +595,8 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         RenderStateBlock terrainRenderStateReflectionPrePass = terrainRenderStatePrePass;
         terrainRenderStateReflectionPrePass.setCullMode(CullMode::FRONT);
 
-        terrainMaterial->setRenderStateBlock(terrainRenderStateReflectionPrePass.getHash(), RenderStage::REFLECTION, RenderPassType::PRE_PASS,  to_U8(ReflectorType::PLANAR));
-        terrainMaterial->setRenderStateBlock(terrainRenderStateReflection.getHash(),        RenderStage::REFLECTION, RenderPassType::MAIN_PASS, to_U8(ReflectorType::PLANAR));
+        terrainMaterial->setRenderStateBlock(terrainRenderStateReflectionPrePass.getHash(), RenderStage::REFLECTION, RenderPassType::PRE_PASS, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR));
+        terrainMaterial->setRenderStateBlock(terrainRenderStateReflection.getHash(),        RenderStage::REFLECTION, RenderPassType::MAIN_PASS, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR));
 
     }
     { //Shadow rendering

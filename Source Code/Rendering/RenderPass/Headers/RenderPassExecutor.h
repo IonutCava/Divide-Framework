@@ -143,7 +143,7 @@ public:
     static void PostRender();
 
 private:
-    ShaderBuffer* getCommandBufferForStagePass(const RenderStagePass& stagePass);
+    ShaderBuffer* getCommandBufferForStagePass(RenderStagePass stagePass);
 
     // Returns false if we skipped the pre-pass step
     void prePass(const VisibleNodeList<>& nodes,
@@ -152,8 +152,9 @@ private:
                  GFX::CommandBuffer& bufferInOut);
 
     void occlusionPass(const VisibleNodeList<>& nodes,
+                       const CameraSnapshot& cameraSnapshot,
                        U32 visibleNodeCount,
-                       const RenderStagePass& stagePass,
+                       RenderStagePass stagePass,
                        const RenderTargetID& sourceDepthBuffer,
                        const RenderTargetID& targetDepthBuffer,
                        GFX::CommandBuffer& bufferInOut) const;
@@ -175,22 +176,12 @@ private:
                   const CameraSnapshot& cameraSnapshot,
                   GFX::CommandBuffer& bufferInOut);
 
-
-    void postRender(const RenderStagePass& stagePass,
-                    RenderQueue& renderQueue,
-                    GFX::CommandBuffer& bufferInOut) const;
-
     void prepareRenderQueues(const RenderPassParams& params,
                              const VisibleNodeList<>& nodes,
                              const CameraSnapshot& cameraSnapshot,
                              bool transparencyPass,
-                             RenderingOrder renderOrder = RenderingOrder::COUNT);
-
-    void prepareVisibleNode(const VisibleNode& node,
-                            const RenderBinType targetBin,
-                            const RenderStagePass& stagePass,
-                            const SceneRenderState& sceneRenderState,
-                            const CameraSnapshot& cameraSnapshot);
+                             RenderingOrder renderOrder,
+                             GFX::CommandBuffer& bufferInOut);
 
     void processVisibleNodeTransform(RenderingComponent* rComp,
                                      D64 interpolationFactor);
@@ -206,10 +197,8 @@ private:
                         const bool doPrePass,
                         const bool doOITPass,
                         GFX::CommandBuffer& bufferInOut);
-    void renderQueueToSubPasses(GFX::CommandBuffer& commandsInOut,
-                                RenderPackage::MinQuality qualityRequirement = RenderPackage::MinQuality::COUNT) const;
 
-    [[nodiscard]] U32 renderQueueSize(RenderPackage::MinQuality qualityRequirement = RenderPackage::MinQuality::COUNT) const;
+    [[nodiscard]] U32 renderQueueSize() const;
 
     void resolveMainScreenTarget(const RenderPassParams& params,
                                  bool resolveDepth,
@@ -217,10 +206,9 @@ private:
                                  bool resolveColourBuffer,
                                  GFX::CommandBuffer& bufferInOut) const;
 
-    [[nodiscard]] bool validateNodesForStagePass(VisibleNodeList<>& nodes, const RenderStagePass& stagePass);
+    [[nodiscard]] bool validateNodesForStagePass(VisibleNodeList<>& nodes, RenderStagePass stagePass);
     void parseTextureRange(RenderBin::SortedQueue& queue, const U32 start, const U32 end);
     void parseMaterialRange(RenderBin::SortedQueue& queue, U32 start, U32 end);
-    static void RegisterIndirectionEntry(RenderingComponent* rComp);
 
 private:
     friend class RenderingComponent;

@@ -1018,14 +1018,19 @@ namespace Divide {
 
             I32 crtPass = to_I32(currentStagePass._passType);
             const char* crtPassName = TypeUtil::RenderPassTypeToString(currentStagePass._passType);
-            if (ImGui::SliderInt("Pass", &crtPass, 0, to_base(RenderPassType::COUNT), crtPassName)) {
+            if (ImGui::SliderInt("PassType", &crtPass, 0, to_base(RenderPassType::COUNT), crtPassName)) {
                 currentStagePass._passType = static_cast<RenderPassType>(crtPass);
             }
+            {
+                constexpr U8 min = 0u, max = to_U8(RenderStagePass::VariantType::COUNT);
+                ImGui::SliderScalar("Variant", ImGuiDataType_U8, &currentStagePass._variant, &min, &max);
+            }
+            {
+                constexpr U8 min = 0u, max = to_U8(RenderStagePass::PassIndex::COUNT);
+                ImGui::SliderScalar("Pass", ImGuiDataType_U16, &currentStagePass._pass, &min, &max);
+            }
 
-            constexpr U8 min = 0u, max = Material::g_maxVariantsPerPass;
-            ImGui::SliderScalar("Variant", ImGuiDataType_U8, &currentStagePass._variant, &min, &max);
             ImGui::InputScalar("Index", ImGuiDataType_U16, &currentStagePass._index, nullptr, nullptr, (hex ? "%08X" : nullptr), (hex ? ImGuiInputTextFlags_CharsHexadecimal : 0u));
-            ImGui::InputScalar("Pass", ImGuiDataType_U16, &currentStagePass._pass, nullptr, nullptr, (hex ? "%08X" : nullptr), (hex ? ImGuiInputTextFlags_CharsHexadecimal : 0u));
         }
 
         size_t stateHash = 0;

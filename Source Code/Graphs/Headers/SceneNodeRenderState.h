@@ -10,9 +10,12 @@ struct RenderStagePass;
 
 struct SceneNodeRenderState {
 
-    [[nodiscard]] bool drawState(const RenderStagePass& stagePass) const;
-    /// variant = -1 => all variants
-    void addToDrawExclusionMask(RenderStage stage, RenderPassType passType = RenderPassType::COUNT, U8 variant = g_AllVariantsID, U16 index = g_AllIndicesID, U16 pass = g_AllPassID);
+    [[nodiscard]] bool drawState(RenderStagePass stagePass) const;
+    void addToDrawExclusionMask(RenderStage stage,
+                                RenderPassType passType = RenderPassType::COUNT,
+                                RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT,
+                                U16 index = g_AllIndicesID,
+                                RenderStagePass::PassIndex pass = RenderStagePass::PassIndex::PASS_0);
 
     PROPERTY_RW(bool, drawState, true);
 

@@ -60,16 +60,12 @@ inline bool Material::refractive() const noexcept {
     return hasTransparency() && _isRefractive;
 }
 
-inline ShaderProgramInfo& Material::shaderInfo(const RenderStagePass& renderStagePass) {
-    assert(renderStagePass._variant < g_maxVariantsPerPass);
-
-    return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][renderStagePass._variant];
+inline ShaderProgramInfo& Material::shaderInfo(const RenderStagePass renderStagePass) {
+    return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][to_base(renderStagePass._variant)];
 }
 
-inline const ShaderProgramInfo& Material::shaderInfo(const RenderStagePass& renderStagePass) const {
-    assert(renderStagePass._variant < g_maxVariantsPerPass);
-
-    return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][renderStagePass._variant];
+inline const ShaderProgramInfo& Material::shaderInfo(const RenderStagePass renderStagePass) const {
+    return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][to_base(renderStagePass._variant)];
 }
 
 inline void Material::addShaderDefine(const ShaderType type, const Str128& define, const bool addPrefix) {

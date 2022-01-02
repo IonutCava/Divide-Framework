@@ -4,8 +4,8 @@
 
 #define INVS_SQRT_3 0.57735026919f
 
-uniform uint dvd_numEntities;
-uniform uint dvd_countCulledItems;
+uniform uint numEntities;
+uniform uint countCulledItems;
 
 layout(binding = BUFFER_ATOMIC_COUNTER_0, offset = 0) uniform atomic_uint culledCount;
 
@@ -35,7 +35,7 @@ layout(binding = BUFFER_GPU_COMMANDS, std430) coherent COMP_ONLY_RW buffer dvd_G
 };
 
 void CullItem(in uint idx) {
-    if (dvd_countCulledItems == 1u) {
+    if (countCulledItems == 1u) {
         atomicCounterIncrement(culledCount);
     }
     dvd_drawCommands[idx].instanceCount = 0u;
@@ -46,7 +46,7 @@ void main()
 {
     const uint ident = gl_GlobalInvocationID.x;
 
-    if (ident >= dvd_numEntities) {
+    if (ident >= numEntities) {
         CullItem(ident);
         return;
     }

@@ -330,13 +330,14 @@ void WaterPlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneSt
 
 void WaterPlane::prepareRender(SceneGraphNode* sgn,
                                RenderingComponent& rComp,
-                               const RenderStagePass& renderStagePass,
+                               const RenderStagePass renderStagePass,
                                const CameraSnapshot& cameraSnapshot,
+                               GFX::CommandBuffer& bufferInOut,
                                const bool refreshData) {
     if (_editorDataDirtyState == EditorDataState::CHANGED || _editorDataDirtyState == EditorDataState::PROCESSED) {
-        const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
+        RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
 
-        PushConstants& constants = pkg.get<GFX::SendPushConstantsCommand>(0)->_constants;
+        PushConstants& constants = pkg.pushConstantsCmd()._constants;
         constants.set(_ID("_noiseFactor"), GFX::PushConstantType::VEC2, noiseFactor());
         constants.set(_ID("_noiseTile"), GFX::PushConstantType::VEC2, noiseTile());
         constants.set(_ID("_fogStartEndDistances"), GFX::PushConstantType::VEC2, fogStartEnd());
@@ -346,27 +347,24 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
         _editorDataDirtyState = EditorDataState::PROCESSED;
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
 }
 
 bool WaterPlane::PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point) noexcept {
     return sgn->get<BoundsComponent>()->getBoundingBox().containsPoint(point);
 }
 
-void WaterPlane::buildDrawCommands(SceneGraphNode* sgn,
-                                   const RenderStagePass& renderStagePass,
-                                   RenderPackage& pkgInOut) {
+void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
 
     GenericDrawCommand cmd = {};
     cmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
     cmd._cmd.indexCount = to_U32(_plane->getGeometryVB()->getIndexCount());
     cmd._sourceBuffer = _plane->getGeometryVB()->handle();
-    cmd._bufferIndex = renderStagePass.baseIndex();
 
-    pkgInOut.add(GFX::DrawCommand{ cmd });
+    cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
     _editorDataDirtyState = EditorDataState::CHANGED;
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 /// update water refraction
@@ -389,7 +387,7 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
     params._targetHIZ = {}; // We don't need to HiZ cull refractions
     params._targetOIT = {}; // We don't need to draw refracted transparents using woit 
     params._minExtents.set(1.0f);
-    params._stagePass = RenderStagePass(RenderStage::REFRACTION, RenderPassType::COUNT, to_U8(RefractorType::PLANAR), renderParams._passIndex);
+    params._stagePass = { RenderStage::REFRACTION, RenderPassType::COUNT, renderParams._passIndex, static_cast<RenderStagePass::VariantType>(RefractorType::PLANAR) };
     params._target = renderParams._renderTarget;
     params._clippingPlanes.set(0, refractionPlane);
     params._passName = "Refraction";
@@ -444,7 +442,7 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
     params._targetHIZ = RenderTargetID(RenderTargetUsage::HI_Z_REFLECT);
     params._targetOIT = RenderTargetID(RenderTargetUsage::OIT_REFLECT);
     params._minExtents.set(1.5f);
-    params._stagePass = RenderStagePass(RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::PLANAR), renderParams._passIndex);
+    params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, renderParams._passIndex, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR) };
     params._target = renderParams._renderTarget;
     params._clippingPlanes.set(0, reflectionPlane);
     params._passName = "Reflection";

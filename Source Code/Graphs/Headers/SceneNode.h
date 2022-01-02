@@ -48,7 +48,6 @@ class Player;
 class SceneGraph;
 class SceneState;
 class WorldPacket;
-class RenderPackage;
 class SceneRenderState;
 class BoundsSystem;
 class BoundsComponent;
@@ -60,6 +59,7 @@ class SpotLightComponent;
 class PointLightComponent;
 class DirectionalLightComponent;
 
+struct RenderPackage;
 struct RenderStagePass;
 
 FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
@@ -122,13 +122,12 @@ class SceneNode : public CachedResource {
     /// If the node isn't ready for rendering and should be skipped this frame, the return value is false
     virtual void prepareRender(SceneGraphNode* sgn,
                                RenderingComponent& rComp,
-                               const RenderStagePass& renderStagePass,
+                               RenderStagePass renderStagePass,
                                const CameraSnapshot& cameraSnapshot,
+                               GFX::CommandBuffer& bufferInOut,
                                bool refreshData);
 
-    virtual void buildDrawCommands(SceneGraphNode* sgn,
-                                   const RenderStagePass& renderStagePass,
-                                   RenderPackage& pkgInOut);
+    virtual void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut);
 
     bool unload() override;
     virtual void setMaterialTpl(const Material_ptr& material);
@@ -167,11 +166,6 @@ class SceneNode : public CachedResource {
     virtual size_t maxReferenceCount() const noexcept { return 1; }
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "SceneNode"; }
-
-    virtual void occlusionCull(const RenderStagePass& stagePass,
-                               const Texture_ptr& depthBuffer,
-                               GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
-                               GFX::CommandBuffer& bufferInOut) const;
 
     PROPERTY_RW(SceneNodeType, type, SceneNodeType::COUNT);
     PROPERTY_RW(bool, rebuildDrawCommands, false);
@@ -232,10 +226,6 @@ class SceneNodeSceneGraph {
 
     static EditorComponent& getEditorComponent(SceneNode* node) noexcept {
         return node->_editorComponent;
-    }
-
-    static void occlusionCullNode(const SceneNode* node, const RenderStagePass& stagePass, const Texture_ptr& depthBuffer, GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut, GFX::CommandBuffer& bufferInOut) {
-        node->occlusionCull(stagePass, depthBuffer, HIZPushConstantsCMDInOut, bufferInOut);
     }
 
     friend class Divide::SceneGraph;

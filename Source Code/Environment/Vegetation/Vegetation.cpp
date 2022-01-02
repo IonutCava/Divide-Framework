@@ -94,10 +94,15 @@ Vegetation::Vegetation(GFXDevice& context,
     renderState().addToDrawExclusionMask(RenderStage::DISPLAY, RenderPassType::MAIN_PASS);
     renderState().addToDrawExclusionMask(RenderStage::REFLECTION);
     renderState().addToDrawExclusionMask(RenderStage::REFRACTION);
-    renderState().addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, to_U8(LightType::POINT));
-    renderState().addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, to_U8(LightType::SPOT));
-    for (U16 i = 1; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i) {
-        renderState().addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, to_U8(LightType::DIRECTIONAL), g_AllIndicesID, i);
+    renderState().addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::POINT));
+    renderState().addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::SPOT));
+    for (U8 i = 1u; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i) {
+        renderState().addToDrawExclusionMask(
+            RenderStage::SHADOW,
+            RenderPassType::COUNT,
+            static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL),
+            g_AllIndicesID,
+            static_cast<RenderStagePass::PassIndex>(i));
     }
     // Because we span an entire terrain chunk, LoD calculation will always be off unless we use the closest possible point to the camera
     renderState().useBoundsCenterForLoD(false);
@@ -497,7 +502,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     vegMaterial->setShaderProgram(grassColourOITLQ,      RenderStage::COUNT,   RenderPassType::OIT_PASS);
     vegMaterial->setShaderProgram(grassColourOIT,        RenderStage::DISPLAY, RenderPassType::OIT_PASS);
     vegMaterial->setShaderProgram(grassShadowVSM,        RenderStage::SHADOW,  RenderPassType::COUNT);
-    vegMaterial->setShaderProgram(grassShadowVSMOrtho,   RenderStage::SHADOW,  RenderPassType::COUNT, to_base(LightType::DIRECTIONAL));
+    vegMaterial->setShaderProgram(grassShadowVSMOrtho,   RenderStage::SHADOW,  RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL));
 
     vegMaterial->setTexture(TextureUsage::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE);
     s_vegetationMaterial = vegMaterial;
@@ -601,7 +606,12 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
                     Mesh_ptr meshPtr = CreateResource<Mesh>(_context.parent().resourceCache(), model);
                     meshPtr->setMaterialTpl(s_treeMaterial);
                     // CSM last split should probably avoid rendering trees since it would cover most of the scene :/
-                    meshPtr->renderState().addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::MAIN_PASS, to_U8(LightType::DIRECTIONAL), 2u);
+                    meshPtr->renderState().addToDrawExclusionMask(
+                        RenderStage::SHADOW,
+                        RenderPassType::MAIN_PASS,
+                        static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL),
+                        g_AllIndicesID,
+                        RenderStagePass::PassIndex::PASS_2);
                     s_treeMeshes.push_back(meshPtr);
                 }
             }
@@ -671,50 +681,71 @@ void Vegetation::getStats(U32& maxGrassInstances, U32& maxTreeInstances) const {
     maxTreeInstances = _instanceCountTrees;
 }
 
-void Vegetation::occlusionCull(const RenderStagePass& stagePass,
-                               const Texture_ptr& depthBuffer,
-                               GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
-                               GFX::CommandBuffer& bufferInOut) const {
-    if (!s_buffersBound || !renderState().drawState(stagePass)) {
+void Vegetation::prepareRender(SceneGraphNode* sgn,
+                               RenderingComponent& rComp,
+                               RenderStagePass renderStagePass,
+                               [[maybe_unused]] const CameraSnapshot& cameraSnapshot,
+                               GFX::CommandBuffer& bufferInOut,
+                               bool refreshData) 
+{
+    if (renderStagePass._passType != RenderPassType::PRE_PASS) {
         return;
     }
+
+    if (!s_buffersBound || !renderState().drawState(renderStagePass)) {
+        return;
+    }
+
     // Culling lags one full frame
     if (_instanceCountGrass > 0 || _instanceCountTrees > 0) {
-        // This will always lag one frame
+        const RenderTargetUsage hiZSourceTarget = renderStagePass._stage == RenderStage::REFLECTION
+                                                                         ? RenderTargetUsage::HI_Z_REFLECT
+                                                                         : RenderTargetUsage::HI_Z;
 
-        GFX::SendPushConstantsCommand cullConstants = { _cullPushConstants };
+        const RenderTarget& hizTarget = _context.renderTargetPool().renderTarget(RenderTargetID(hiZSourceTarget));
+        const RTAttachment& hizAttachment = hizTarget.getAttachment(RTAttachmentType::Depth, 0u);
+        const Texture_ptr& hizTexture = hizAttachment.texture();
+
+        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull Vegetation" });
+
+        const CameraSnapshot& prevSnapshot = _context.getPreviousCameraSnapshot();
+        mat4<F32> viewProjectionMatrix;
+        mat4<F32>::Multiply(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix, viewProjectionMatrix);
+
+        _cullPushConstants.set(_ID("nearPlane"), GFX::PushConstantType::FLOAT, prevSnapshot._zPlanes.x);
+        _cullPushConstants.set(_ID("viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(hizTexture->width(), hizTexture->height()));
+        _cullPushConstants.set(_ID("viewMatrix"), GFX::PushConstantType::MAT4, prevSnapshot._viewMatrix);
+        _cullPushConstants.set(_ID("viewProjectionMatrix"), GFX::PushConstantType::MAT4, viewProjectionMatrix);
+        _cullPushConstants.set(_ID("frustumPlanes"), GFX::PushConstantType::VEC4, prevSnapshot._frustumPlanes);
+        GFX::SendPushConstantsCommand cullConstantsCmd{ _cullPushConstants };
+
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._textureData.add(TextureEntry{ hizTexture->data(), hizAttachment.samplerHash(), TextureUsage::UNIT0 });
+
         GFX::DispatchComputeCommand computeCmd = {};
-        GFX::BindPipelineCommand bindPipelineCmd = {};
-
         if (_instanceCountGrass > 0) {
             computeCmd._computeGroupSize.set((_instanceCountGrass + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1);
 
             //Cull grass
-            bindPipelineCmd._pipeline = _cullPipelineGrass;
-            EnqueueCommand(bufferInOut, bindPipelineCmd);
-            EnqueueCommand(bufferInOut, HIZPushConstantsCMDInOut);
-            EnqueueCommand(bufferInOut, cullConstants);
-            EnqueueCommand(bufferInOut, computeCmd);
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _cullPipelineGrass;
+            GFX::EnqueueCommand(bufferInOut, cullConstantsCmd);
+            GFX::EnqueueCommand(bufferInOut, computeCmd);
         }
-
         if (_instanceCountTrees > 0) {
             computeCmd._computeGroupSize.set((_instanceCountTrees + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1);
-
             // Cull trees
-            bindPipelineCmd._pipeline = _cullPipelineTrees;
-            EnqueueCommand(bufferInOut, bindPipelineCmd);
-            EnqueueCommand(bufferInOut, HIZPushConstantsCMDInOut);
-            EnqueueCommand(bufferInOut, cullConstants);
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _cullPipelineTrees;
+            EnqueueCommand(bufferInOut, cullConstantsCmd);
             EnqueueCommand(bufferInOut, computeCmd);
         }
 
         GFX::MemoryBarrierCommand memCmd = {};
         memCmd._barrierMask = to_base(MemoryBarrierType::SHADER_STORAGE);
         EnqueueCommand(bufferInOut, memCmd);
+
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
 
-
-    SceneNode::occlusionCull(stagePass, depthBuffer, HIZPushConstantsCMDInOut, bufferInOut);
 }
 
 void Vegetation::sceneUpdate(const U64 deltaTimeUS,
@@ -725,21 +756,7 @@ void Vegetation::sceneUpdate(const U64 deltaTimeUS,
     if (!renderState().drawState()) {
         uploadVegetationData(sgn);
         sgn->get<RenderingComponent>()->dataFlag(to_F32(_terrainChunk.ID()));
-    }
-
-    if (!s_buffersBound) {
-        if (s_treeData != nullptr) {
-            s_treeData->bind(ShaderBufferLocation::TREE_DATA);
-        }
-        if (s_grassData != nullptr) {
-            s_grassData->bind(ShaderBufferLocation::GRASS_DATA);
-        }
-        s_treePositions.clear();
-        s_grassPositions.clear();
-        s_buffersBound = true;
-    }
-
-    if (renderState().drawState()) {
+    } else {
         assert(getState() == ResourceState::RES_LOADED);
         // Query shadow state every "_stateRefreshInterval" microseconds
         if (_stateRefreshIntervalBufferUS >= _stateRefreshIntervalUS) {
@@ -773,13 +790,23 @@ void Vegetation::sceneUpdate(const U64 deltaTimeUS,
         }
     }
 
+    if (!s_buffersBound) {
+        if (s_treeData != nullptr) {
+            s_treeData->bind(ShaderBufferLocation::TREE_DATA);
+        }
+        if (s_grassData != nullptr) {
+            s_grassData->bind(ShaderBufferLocation::GRASS_DATA);
+        }
+        s_treePositions.clear();
+        s_grassPositions.clear();
+        s_buffersBound = true;
+    }
+
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);
 }
 
 
-void Vegetation::buildDrawCommands(SceneGraphNode* sgn,
-                                   const RenderStagePass& renderStagePass,
-                                   RenderPackage& pkgInOut) {
+void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
 
     const U16 partitionID = s_lodPartitions[0];
 
@@ -789,8 +816,10 @@ void Vegetation::buildDrawCommands(SceneGraphNode* sgn,
     cmd._cmd.primCount = _instanceCountGrass;
     cmd._cmd.indexCount = to_U32(s_buffer->getPartitionIndexCount(partitionID));
     cmd._cmd.firstIndex = to_U32(s_buffer->getPartitionOffset(partitionID));
-    pkgInOut.add(GFX::DrawCommand{ cmd });
+    cmd._bufferIndex = 0u;
+    cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
+    RenderingComponent* rComp = sgn->get<RenderingComponent>();
     U16 prevID = 0;
     for (U8 i = 0; i < to_U8(s_lodPartitions.size()); ++i) {
         U16 id = s_lodPartitions[i];
@@ -798,11 +827,11 @@ void Vegetation::buildDrawCommands(SceneGraphNode* sgn,
             assert(i > 0);
             id = prevID;
         }
-        pkgInOut.setLoDIndexOffset(i, s_buffer->getPartitionOffset(id), s_buffer->getPartitionIndexCount(id));
+        rComp->setLoDIndexOffset(i, s_buffer->getPartitionOffset(id), s_buffer->getPartitionIndexCount(id));
         prevID = id;
     }
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 namespace {

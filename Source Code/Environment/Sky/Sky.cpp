@@ -638,16 +638,16 @@ bool Sky::load() {
     skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::COUNT, RenderPassType::OIT_PASS);
 
     skyboxRenderState.setZFunc(ComparisonFunction::LEQUAL);
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::CUBE));
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::CUBE));
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE));
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE));
 
     skyboxRenderState.setCullMode(CullMode::BACK);
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::PLANAR));
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, to_U8(ReflectorType::PLANAR));
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR));
+    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR));
 
     skyMat->setTexture(TextureUsage::UNIT0,     _skybox,          _skyboxSampler,     TextureOperation::NONE);
     skyMat->setTexture(TextureUsage::HEIGHTMAP, _weatherTex,      noiseSamplerLinear, TextureOperation::NONE);
-    skyMat->setTexture(TextureUsage::OPACITY,   _curlNoiseTex,    noiseSamplerLinear, TextureOperation::NONE);
+    skyMat->setTexture(TextureUsage::UNIT1,     _curlNoiseTex,    noiseSamplerLinear, TextureOperation::NONE);
     skyMat->setTexture(TextureUsage::SPECULAR,  _worlNoiseTex,    noiseSamplerMipMap, TextureOperation::NONE);
     skyMat->setTexture(TextureUsage::NORMALMAP, _perWorlNoiseTex, noiseSamplerMipMap, TextureOperation::NONE);
 
@@ -772,34 +772,28 @@ void Sky::setSkyShaderData(const U32 rayCount, PushConstants& constantsInOut) {
 
 void Sky::prepareRender(SceneGraphNode* sgn,
                         RenderingComponent& rComp,
-                        const RenderStagePass& renderStagePass,
+                        const RenderStagePass renderStagePass,
                         const CameraSnapshot& cameraSnapshot,
+                        GFX::CommandBuffer& bufferInOut,
                         const bool refreshData)  {
 
-    const RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
-    if (!pkg.empty()) {
-        setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY ? 16 : 8, pkg.get<GFX::SendPushConstantsCommand>(0)->_constants);
-    }
+    RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
+    setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY ? 16 : 8, pkg.pushConstantsCmd()._constants);
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
 }
 
-void Sky::buildDrawCommands(SceneGraphNode* sgn,
-                            const RenderStagePass& renderStagePass,
-                            RenderPackage& pkgInOut) {
-    assert(renderStagePass._stage != RenderStage::SHADOW);
-
+void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
     GenericDrawCommand cmd = {};
     cmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
     cmd._sourceBuffer = _sky->getGeometryVB()->handle();
-    cmd._bufferIndex = renderStagePass.baseIndex();
     cmd._cmd.indexCount = to_U32(_sky->getGeometryVB()->getIndexCount());
 
-    pkgInOut.add(GFX::DrawCommand{ cmd });
+    cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
     _atmosphereChanged = EditorDataState::QUEUED;
 
-    SceneNode::buildDrawCommands(sgn, renderStagePass, pkgInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 }

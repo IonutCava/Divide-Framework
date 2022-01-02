@@ -90,14 +90,18 @@ U16 RenderBin::getSortedNodes(SortedQueue& nodes) const {
     return binSize;
 }
 
-void RenderBin::addNodeToBin(const SceneGraphNode* sgn, const RenderStagePass& renderStagePass, const F32 minDistToCameraSq) {
+void RenderBin::addNodeToBin(const SceneGraphNode* sgn, const RenderStagePass renderStagePass, const F32 minDistToCameraSq) {
     RenderBinItem& item = _renderBinStack[_renderBinIndex.fetch_add(1)];
     item._distanceToCameraSq = minDistToCameraSq;
     item._renderable = sgn->get<RenderingComponent>();
 
     // Sort by state hash depending on the current rendering stage
     // Save the render state hash value for sorting
-    item._stateHash = item._renderable->getDrawPackage(renderStagePass).sortKeyHashCache();
+    RenderingComponent* rComp = item._renderable;
+    const RenderPackage& pkg = rComp->getDrawPackage(renderStagePass);
+    const GFX::BindPipelineCommand& pipelinecmd = pkg.pipelineCmd();
+
+    item._stateHash = pipelinecmd._pipeline->getHash();
 
     const Material_ptr& nodeMaterial = item._renderable->getMaterialInstance();
     if (nodeMaterial) {
@@ -110,14 +114,22 @@ void RenderBin::populateRenderQueue(const RenderStagePass stagePass, RenderQueue
 
     const U16 binSize = getBinSize();
     for (U16 i = 0u; i < binSize; ++i) {
-        queueInOut.push_back(&_renderBinStack[i]._renderable->getDrawPackage(stagePass));
+        RenderingComponent* rComp = _renderBinStack[i]._renderable;
+        queueInOut.push_back({
+            rComp,
+            &rComp->getDrawPackage(stagePass)
+        });
     }
 }
 
 void RenderBin::postRender(const SceneRenderState& renderState, const RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut) {
     const U16 binSize = getBinSize();
     for (U16 i = 0u; i < binSize; ++i) {
-        Attorney::RenderingCompRenderBin::postRender(_renderBinStack[i]._renderable, renderState, stagePass, bufferInOut);
+        Attorney::RenderingCompRenderBin::postRender(
+            _renderBinStack[i]._renderable,
+            renderState,
+            stagePass,
+            bufferInOut);
     }
 }
 

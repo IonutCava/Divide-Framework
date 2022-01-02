@@ -50,6 +50,7 @@ class Material;
 class GFXDevice;
 class RenderBin;
 class WaterPlane;
+class RenderQueue;
 class SceneGraphNode;
 class ParticleEmitter;
 class RenderPassExecutor;
@@ -123,6 +124,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
            IS_VISIBLE = toBit(8)
        };
 
+    using DrawCommands = vector_fast<GFX::DrawCommand>;
+
    public:
     explicit RenderingComponent(SceneGraphNode* parentSGN, PlatformContext& context);
     ~RenderingComponent();
@@ -151,11 +154,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void getMaterialData(NodeMaterialData& dataOut) const;
     void getMaterialTextures(NodeMaterialTextures& texturesOut, SamplerAddress defaultTexAddress) const;
 
-    [[nodiscard]] RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass);
-    [[nodiscard]] const RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass) const;
-
-                  void setRebuildFlag(const RenderStagePass& renderStagePass, bool state);
-    [[nodiscard]] bool getRebuildFlag(const RenderStagePass& renderStagePass) const;
+    [[nodiscard]] RenderPackage& getDrawPackage(RenderStagePass renderStagePass);
 
     [[nodiscard]] const Material_ptr& getMaterialInstance() const noexcept { return _materialInstance; }
 
@@ -173,27 +172,28 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     [[nodiscard]] U8 getLoDLevel(RenderStage renderStage) const noexcept;
     [[nodiscard]] U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
-    [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
+    [[nodiscard]] bool canDraw(RenderStagePass renderStagePass);
+
+    void setLoDIndexOffset(U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept;
 
   protected:
     [[nodiscard]] U8 getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
     void toggleBoundsDraw(bool showAABB, bool showBS, bool showOBB, bool recursive);
 
-    void retrieveDrawCommands(const RenderStagePass& stagePass, U32 cmdOffset, DrawCommandContainer& cmdsInOut);
-    [[nodiscard]] bool hasDrawCommands(const RenderStagePass& stagePass);
+    void retrieveDrawCommands(RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut);
+    [[nodiscard]] bool hasDrawCommands(RenderStagePass stagePass) noexcept;
                   void onRenderOptionChanged(RenderOptions option, bool state);
 
     /// Called after the parent node was rendered
     void postRender(const SceneRenderState& sceneRenderState,
-                    const RenderStagePass& renderStagePass,
+                    RenderStagePass renderStagePass,
                     GFX::CommandBuffer& bufferInOut);
-
-    void rebuildDrawCommands(const RenderStagePass& stagePass, RenderPackage& pkg) const;
 
     void prepareDrawPackage(const CameraSnapshot& cameraSnapshot,
                             const SceneRenderState& sceneRenderState,
-                            const RenderStagePass& renderStagePass,
+                            RenderStagePass renderStagePass,
+                            GFX::CommandBuffer& bufferInOut,
                             bool refreshData);
 
     // This returns false if the node is not reflective, otherwise it generates a new reflection cube map
@@ -212,13 +212,17 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     void updateNearestProbes(const vec3<F32>& position);
  
+    void getCommandBuffer(RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut);
+
     PROPERTY_R(bool, showAxis, false);
     PROPERTY_R(bool, receiveShadows, false);
     PROPERTY_R(bool, castsShadows, false);
     PROPERTY_RW(bool, occlusionCull, true);
     PROPERTY_RW(F32, dataFlag, 1.0f);
+    PROPERTY_RW(DrawCommands, drawCommands);
+    PROPERTY_R_IW(bool, isInstanced, false);
     PROPERTY_R_IW(U32, indirectionBufferEntry, U32_MAX);
-
+    PROPERTY_RW(bool, rebuildRenderPackages, false);
    protected:
 
     void onMaterialChanged();
@@ -227,17 +231,13 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void OnData(const ECS::CustomEvent& data) override;
 
    protected:
-    using PackagesPerIndex = vector_fast<RenderPackage>;
-    using PackagesPerPassType = std::array<PackagesPerIndex, to_base(RenderPassType::COUNT)>;
-    using PackagesPerStage = std::array<PackagesPerPassType, to_base(RenderStage::COUNT)>;
-    PackagesPerStage _renderPackages{};
-
-    using FlagsPerIndex = std::array<bool, 255>;
-    using FlagsPerPassType = std::array<FlagsPerIndex, to_base(RenderPassType::COUNT)>;
-    using FlagsPerStage = std::array<FlagsPerPassType, to_base(RenderStage::COUNT)>;
-    FlagsPerStage _rebuildDrawCommandsFlags{};
-
-    using OffsetsPerPassType = std::array<U32, to_base(RenderPassType::COUNT)>;
+    using PackageEntry = std::pair<U16, RenderPackage>;
+    using PackagesPerIndex = vector_fast<PackageEntry>;
+    using PackagesPerPassIndex = std::array<PackagesPerIndex, to_base(RenderStagePass::PassIndex::COUNT)>;
+    using PackagesPerVariant = std::array<PackagesPerPassIndex, to_base(RenderStagePass::VariantType::COUNT)>;
+    using PackagesPerPassType = std::array<PackagesPerVariant, to_base(RenderPassType::COUNT)>;
+    std::array<PackagesPerPassType, to_base(RenderStage::COUNT)> _renderPackages{};
+    SharedMutex _renderPackagesLock;
 
     RenderCallback _reflectionCallback{};
     RenderCallback _refractionCallback{};
@@ -274,7 +274,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     std::array<std::pair<bool, U8>, to_base(RenderStage::COUNT)> _lodLockLevels{};
 
-    vector_fast<GFX::DrawCommand> _drawCommands;
+    std::array<std::pair<size_t, size_t>, 4> _lodIndexOffsets{};
 
     static hashMap<U32, DebugView*> s_debugViews[2];
 END_COMPONENT(Rendering);
@@ -309,27 +309,29 @@ class RenderingCompRenderPass {
         static void prepareDrawPackage(RenderingComponent& renderable,
                                        const CameraSnapshot& cameraSnapshot,
                                        const SceneRenderState& sceneRenderState,
-                                       const RenderStagePass& renderStagePass,
+                                       RenderStagePass renderStagePass,
+                                       GFX::CommandBuffer& bufferInOut,
                                        const bool refreshData) {
-            renderable.prepareDrawPackage(cameraSnapshot, sceneRenderState, renderStagePass, refreshData);
+            renderable.prepareDrawPackage(cameraSnapshot, sceneRenderState, renderStagePass, bufferInOut, refreshData);
         }
 
-        [[nodiscard]] static bool hasDrawCommands(RenderingComponent& renderable, const RenderStagePass& stagePass) {
+        [[nodiscard]] static bool hasDrawCommands(RenderingComponent& renderable, const RenderStagePass stagePass) noexcept {
             return renderable.hasDrawCommands(stagePass);
         }
 
-        static void retrieveDrawCommands(RenderingComponent& renderable, const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
+        static void retrieveDrawCommands(RenderingComponent& renderable, const RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
             renderable.retrieveDrawCommands(stagePass, cmdOffset, cmdsInOut);
         }
 
-          friend class Divide::RenderPass;
+        friend class Divide::RenderPass;
+        friend class Divide::RenderQueue;
         friend class Divide::RenderPassExecutor;
 };
 
 class RenderingCompRenderBin {
     static void postRender(RenderingComponent* renderable,
                            const SceneRenderState& sceneRenderState,
-                           const RenderStagePass& renderStagePass,
+                           const RenderStagePass renderStagePass,
                            GFX::CommandBuffer& bufferInOut) {
         renderable->postRender(sceneRenderState, renderStagePass, bufferInOut);
     }
@@ -342,6 +344,10 @@ class RenderingCompRenderPassExecutor {
 
     static void setIndirectionBufferEntry(RenderingComponent* renderable, const U32 indirectionBufferEntry) noexcept {
         renderable->indirectionBufferEntry(indirectionBufferEntry);
+    }
+
+    static void getCommandBuffer(RenderingComponent* renderable, RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut) {
+        renderable->getCommandBuffer(pkg, bufferInOut);
     }
 
     friend class Divide::RenderPassExecutor;

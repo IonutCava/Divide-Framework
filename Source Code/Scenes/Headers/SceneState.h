@@ -37,6 +37,7 @@
 #include "Platform/Audio/Headers/AudioDescriptor.h"
 #include "Scenes/Headers/SceneComponent.h"
 #include "Utility/Headers/Localization.h"
+#include "Rendering/Camera/Headers/CameraSnapshot.h"
 
 /// This class contains all the variables that define each scene's
 /// "unique"-ness:
@@ -169,8 +170,7 @@ struct SceneStatePerPlayer {
     PROPERTY_RW(MoveDirection, angleLR, MoveDirection::NONE);  ///< left-right angle change detected
     PROPERTY_RW(MoveDirection, roll, MoveDirection::NONE);     ///< roll left or right change detected
     PROPERTY_RW(MoveDirection, zoom, MoveDirection::NONE);     ///< zoom in or out detected
-    PROPERTY_RW(mat4<F32>, previousViewMatrix);
-    PROPERTY_RW(mat4<F32>, previousProjectionMatrix);
+    PROPERTY_RW(CameraSnapshot, previousCameraSnapshot);
     POINTER_RW(Camera, overrideCamera, nullptr);
 
     const F32 _headHeight = DEFAULT_PLAYER_HEIGHT;
