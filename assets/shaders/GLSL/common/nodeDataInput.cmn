@@ -76,7 +76,7 @@ layout(binding = BUFFER_GPU_BLOCK, std140) uniform dvd_GPUBlock
 #define SHADOW_PASS_ORTHO 1
 #define SHADOW_PASS_CUBE 2
 
-#define dvd_fogEnabled() (int(dvd_otherProperties.y) == 1)
+#define dvd_fogEnabled (int(dvd_otherProperties.y) == 1)
 #define SHADOW_PASS_TYPE int(dvd_otherProperties.z)
 #define CAMERA_FLAG SHADOW_PASS_TYPE
 

@@ -90,6 +90,12 @@ constexpr U8 g_materialTextureSlots[] = {
     to_base(TextureUsage::PROJECTION)
 };
 
+enum class TexturePrePassUsage : U8 {
+    ALWAYS = 0u,
+    NEVER,
+    AUTO
+};
+
 namespace TypeUtil {
     const char* MaterialDebugFlagToString(const MaterialDebugFlag unitType) noexcept;
     MaterialDebugFlag StringToMaterialDebugFlag(const string& name);
@@ -154,6 +160,7 @@ class Material final : public CachedResource {
                     const Texture_ptr& texture,
                     size_t samplerHash,
                     TextureOperation op,
+                    TexturePrePassUsage prePassUsage = TexturePrePassUsage::AUTO,
                     bool applyToInstances = false);
     void setTextureOperation(TextureUsage textureUsageSlot,
                              TextureOperation op,
@@ -324,12 +331,15 @@ class Material final : public CachedResource {
     mutable SharedMutex _textureLock{};
     std::array<Texture_ptr, to_base(TextureUsage::COUNT)> _textures = {};
     std::array<size_t, to_base(TextureUsage::COUNT)> _samplers = {};
+    std::array<TexturePrePassUsage, to_base(TextureUsage::COUNT)> _useForPrePass = {};
 
     static SamplerAddress s_defaultTextureAddress;
     std::array<SamplerAddress, to_base(TextureUsage::COUNT)> _textureAddresses = {};
 
     I32 _textureKeyCache = std::numeric_limits<I32>::lowest();
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> _extraShaderDefines{};
+
+    std::array<bool, std::size(g_materialTextureSlots)> _useTextureForDepthPass;
 
     vector<Material*> _instances{};
 };

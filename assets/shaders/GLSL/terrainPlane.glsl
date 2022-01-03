@@ -30,7 +30,9 @@ void main(void) {
 
 --Fragment
 
+#if !defined(PRE_PASS)
 layout(early_fragment_tests) in;
+#endif //!PRE_PASS
 
 layout(location = 0) in vec4 _scrollingUV;
 

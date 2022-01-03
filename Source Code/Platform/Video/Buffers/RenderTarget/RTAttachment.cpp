@@ -46,8 +46,7 @@ bool RTAttachment::isExternal() const noexcept {
 }
 
 bool RTAttachment::mipWriteLevel(const U16 level) noexcept {
-    //ToDo: Investigate why this isn't working ... -Ionut
-    if (/*_descriptor._texDescriptor.mipLevels() > level && */_mipWriteLevel != level) {
+    if (_texture != nullptr && _texture->mipCount() > level && _mipWriteLevel != level) {
         _mipWriteLevel = level;
         return true;
     }

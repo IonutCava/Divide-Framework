@@ -91,12 +91,13 @@ void main() {
 
 -- Fragment.Colour
 
+#if !defined(PRE_PASS)
 layout(early_fragment_tests) in;
+#endif //!PRE_PASS
 
 #define NO_REFLECTIONS
 #define NO_VELOCITY
 #define USE_CUSTOM_TBN
-#define MAX_SHADOW_MAP_LOD 1
 //#define DEBUG_LODS
 
 #include "BRDF.frag"

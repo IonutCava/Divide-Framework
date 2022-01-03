@@ -669,21 +669,27 @@ void glFramebuffer::setMipLevel(const U16 writeLevel) {
 
     OPTICK_EVENT();
 
-    // This is needed because certain drivers need all attachments to use the same mip level
-    // This is also VERY SLOW so it might be worth optimising it per-driver version / IHV
+    bool changedMip = false;
+    bool needsAttachmentDisabled = false;
     for (U8 i = 0; i < to_base(RTAttachmentType::COUNT); ++i) {
         const RTAttachmentPool::PoolEntry& attachments = _attachmentPool->get(static_cast<RTAttachmentType>(i));
 
         for (const RTAttachment_ptr& attachment : attachments) {
-            const Texture_ptr& texture = attachment->texture(false);
-            if (texture->mipCount() > writeLevel && !IsMultisampledTexture(texture->descriptor().texType()))
-            {
+            if (attachment->mipWriteLevel(writeLevel)) {
                 const BindingState& state = getAttachmentState(static_cast<GLenum>(attachment->binding()));
-                attachment->mipWriteLevel(writeLevel);
+                changedMip = true;
                 toggleAttachment(*attachment, state._attState, state._layeredRendering);
-            } else {
-                //nVidia still has issues if attachments are not all at the same mip level -Ionut
-                if (GFXDevice::getGPUVendor() == GPUVendor::NVIDIA) {
+            } else if (attachment->mipWriteLevel() != writeLevel) {
+                needsAttachmentDisabled = true;
+            }
+        }
+    }
+
+    if (changedMip && needsAttachmentDisabled) {
+        for (U8 i = 0; i < to_base(RTAttachmentType::COUNT); ++i) {
+            const RTAttachmentPool::PoolEntry& attachments = _attachmentPool->get(static_cast<RTAttachmentType>(i));
+            for (const RTAttachment_ptr& attachment : attachments) {
+                if (attachment->mipWriteLevel() != writeLevel) {
                     toggleAttachment(*attachment, AttachmentState::STATE_DISABLED, false);
                 }
             }

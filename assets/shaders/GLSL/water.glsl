@@ -32,10 +32,14 @@ uniform vec2 _fogStartEndDistances;
 #define NO_OMR_TEX
 #define NO_ENV_MAPPING
 #define NO_SSAO
-#define SHADOW_INTENSITY_FACTOR 0.5f
+#define NO_VELOCITY
 
+#if defined(PRE_PASS)
+#include "prePass.frag"
+#else //PRE_PASS
 #include "BRDF.frag"
 #include "output.frag"
+#endif //PRE_PASS
 
 const float Eta = 0.15f; //water
 
@@ -58,8 +62,11 @@ void main()
     const float normalVariation = max(normalData0.w, normalData1.w);
 
     const vec3 normalWV = normalize(getTBNWV() * ((normal0 + normal1) * 0.5f));
-    const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
 
+    NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
+
+#if !defined(PRE_PASS)
+    const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
     //vec3 normal = normalPartialDerivativesBlend(normal0, normal1);
     //const vec3 normalWV = normalize(mat3(dvd_ViewMatrix) * normalW);
     const vec3 incident = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
@@ -82,7 +89,6 @@ void main()
                                                                       getReflectionColour(waterUV).rgb,
                                                                       Fresnel(incident, normalW)));
     
-    NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
     vec4 outColour = getPixelColour(vec4(texColour, 1.f), data, normalWV, normalVariation, VAR._texCoord);
 
     // Add some distance based fog to the water to hide reflection/refraction artifacts where no geometry is rendered
@@ -102,4 +108,8 @@ void main()
     // Increase the specular light by the shininess value and add the specular to the final color.
     // Check to make sure the specular was positive so we aren't adding black spots to the water.
     writeScreenColour(outColour + (specular > 0.f ? pow(specular, _specularShininess) : 0.f));
+#else //!PRE_PASS
+    const float roughness = getRoughness(data, VAR._texCoord, normalVariation);
+    writeGBuffer(normalWV, roughness);
+#endif //PRE_PASS
 }

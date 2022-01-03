@@ -1,10 +1,6 @@
 #ifndef _SHADOW_MAPPING_FRAG_
 #define _SHADOW_MAPPING_FRAG_
 
-#if !defined(SHADOW_INTENSITY_FACTOR)
-#define SHADOW_INTENSITY_FACTOR 1.f
-#endif
-
 #if !defined(DISABLE_SHADOW_MAPPING)
 
 #if !defined(DISABLE_SHADOW_MAPPING_SPOT)
@@ -21,7 +17,7 @@ layout(binding = TEXTURE_SHADOW_CUBE)    uniform samplerCubeArray  cubeDepthMaps
 
 #include "shadowUtils.frag"
 
-float detail_ChebyshevUpperBound(in vec2 moments, in float distance) {
+float chebyshevUpperBound(in vec2 moments, in float distance) {
     // Compute and clamp minimum variance to avoid numeric issues that may occur during filtering
     const float variance = max(moments.y - SQUARED(moments.x), dvd_MinVariance);
     // Compute probabilistic upper bound.
@@ -31,7 +27,6 @@ float detail_ChebyshevUpperBound(in vec2 moments, in float distance) {
     // Reduce light bleed
     const float p = LinStep(dvd_LightBleedBias, 1.f, p_max);
 
-    // No saturate() yet. We need to adjust using SHADOW_INTENSITY_FACTOR later and then clamp to 01
     return max(p, (distance <= moments.x ? 1.f : 0.f));
 }
 
@@ -50,8 +45,8 @@ float getShadowMultiplierDirectional(in uint shadowIndex, in float TanAcosNdotL)
             // now get current linear depth as the length between the fragment and light position
             const float currentDepth = shadowCoord.z - bias;
             const vec2 moments = texture(layeredDepthMaps, vec3(shadowCoord.xy, crtDetails.y + Split)).rg;
-            const float ret = detail_ChebyshevUpperBound(moments, currentDepth);
-            return saturate(ret * crtDetails.w + (1.f - SHADOW_INTENSITY_FACTOR));
+            const float ret = chebyshevUpperBound(moments, currentDepth);
+            return saturate(ret * crtDetails.w);
         }
     }
 #endif // !DISABLE_SHADOW_MAPPING_CSM
@@ -72,8 +67,8 @@ float getShadowMultiplierSpot(in uint shadowIndex, in float TanAcosNdotL) {
 
         const float bias = clamp(crtDetails.z * TanAcosNdotL, 0.f, 0.01f);
         const float farPlane = properties.dvd_shadowLightPosition.w;
-        const float ret = detail_ChebyshevUpperBound(moments, (fragToLight / farPlane) - bias);
-        return saturate(ret * crtDetails.w + (1.f - SHADOW_INTENSITY_FACTOR));
+        const float ret = chebyshevUpperBound(moments, (fragToLight / farPlane) - bias);
+        return saturate(ret * crtDetails.w);
     }
 #endif // !DISABLE_SHADOW_MAPPING_SPOT
     return 1.f;
@@ -92,8 +87,8 @@ float getShadowMultiplierPoint(in uint shadowIndex, in float TanAcosNdotL) {
 
         const float bias = clamp(crtDetails.z * TanAcosNdotL, 0.f, 0.01f);
         const float farPlane = properties.dvd_shadowLightPosition.w;
-        const float ret = detail_ChebyshevUpperBound(moments, (length(fragToLight) / farPlane) - bias);
-        return saturate(ret * crtDetails.w + (1.f - SHADOW_INTENSITY_FACTOR));
+        const float ret = chebyshevUpperBound(moments, (length(fragToLight) / farPlane) - bias);
+        return saturate(ret * crtDetails.w);
     }
 #endif // !DISABLE_SHADOW_MAPPING_POINT
     return 1.f;

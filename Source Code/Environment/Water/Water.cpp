@@ -230,8 +230,9 @@ bool WaterPlane::load() {
     }
     // PRE_PASS
     {
-        shaderDescriptor._modules[0]._defines.emplace_back("PRE_PASS", true);
         shaderDescriptor._modules.push_back(fragModule);
+        shaderDescriptor._modules[0]._defines.emplace_back("PRE_PASS", true);
+        shaderDescriptor._modules[1]._defines.emplace_back("PRE_PASS", true);
         ResourceDescriptor waterPrePassShader("waterPrePass");
         waterPrePassShader.propertyDescriptor(shaderDescriptor);
         waterPrePassShader.waitForReady(false);

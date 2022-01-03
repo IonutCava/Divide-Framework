@@ -305,12 +305,12 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     TextureDescriptor heightMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::COUNT);
     heightMapTexture.propertyDescriptor(heightMapDescriptor);
 
-    terrainMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE);
-    terrainMaterial->setTexture(TextureUsage::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE);
-    terrainMaterial->setTexture(TextureUsage::NORMALMAP, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash, TextureOperation::NONE);
-    terrainMaterial->setTexture(TextureUsage::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash, TextureOperation::NONE);
-    terrainMaterial->setTexture(TextureUsage::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE);
-    terrainMaterial->setTexture(TextureUsage::METALNESS, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureUsage::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureUsage::NORMALMAP, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureUsage::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureUsage::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureUsage::METALNESS, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
 
     const Configuration::Terrain terrainConfig = context.config().terrain;
     ResourceCache* resCache = terrain->parentResourceCache();
@@ -505,10 +505,11 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
         // PRE PASS
         ShaderProgramDescriptor prePassDescriptor = colourDescriptor;
-        prePassDescriptor._modules.pop_back();
 
         for (ShaderModuleDescriptor& shaderModule : prePassDescriptor._modules) {
-            assert(shaderModule._moduleType != ShaderType::FRAGMENT);
+            if (shaderModule._moduleType == ShaderType::FRAGMENT) {
+                shaderModule._variant = "PrePass";
+            }
             shaderModule._defines.emplace_back("PRE_PASS", true);
         }
 
@@ -518,16 +519,12 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         ShaderProgram_ptr terrainPrePassShader = CreateResource<ShaderProgram>(resCache, terrainShaderPrePass);
 
         // PRE PASS LQ
-        ShaderProgramDescriptor prePassDescriptorLQ = shaderDescriptor;
-        prePassDescriptorLQ._modules.pop_back();
+        ShaderProgramDescriptor prePassDescriptorLQ = prePassDescriptor;
         for (ShaderModuleDescriptor& shaderModule : prePassDescriptorLQ._modules) {
-            assert(shaderModule._moduleType != ShaderType::FRAGMENT);
-
-            shaderModule._defines.emplace_back("PRE_PASS", true);
             shaderModule._defines.emplace_back("LOW_QUALITY", true);
             shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
         }
-
+        
         ResourceDescriptor terrainShaderPrePassLQ("Terrain_PrePass_LowQuality-" + name + propName);
         terrainShaderPrePassLQ.propertyDescriptor(prePassDescriptorLQ);
 

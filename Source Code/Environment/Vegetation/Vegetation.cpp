@@ -504,7 +504,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     vegMaterial->setShaderProgram(grassShadowVSM,        RenderStage::SHADOW,  RenderPassType::COUNT);
     vegMaterial->setShaderProgram(grassShadowVSMOrtho,   RenderStage::SHADOW,  RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL));
 
-    vegMaterial->setTexture(TextureUsage::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE);
+    vegMaterial->setTexture(TextureUsage::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE, TexturePrePassUsage::ALWAYS);
     s_vegetationMaterial = vegMaterial;
 }
 

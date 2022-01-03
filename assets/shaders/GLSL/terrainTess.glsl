@@ -466,12 +466,8 @@ layout(early_fragment_tests) in;
 #define _normalW _normalWV
 
 #define USE_CUSTOM_TEXTURE_OMR
-#define SHADOW_INTENSITY_FACTOR 0.5f
 #define USE_CUSTOM_TBN
 #define NO_REFLECTIONS
-#if defined(LOW_QUALITY)
-#define DIRECTIONAL_LIGHT_ONLY
-#endif //LOW_QUALITY
 
 #if defined(TOGGLE_DEBUG)
 
@@ -553,6 +549,38 @@ void main(void) {
 
 #endif //TOGGLE_LODS
     writeScreenColour(colourOut);
+}
+
+--Fragment.PrePass
+
+// VAR._normalWV is in world-space!!!!
+#define _normalW _normalWV
+
+#define USE_CUSTOM_TEXTURE_OMR
+#define USE_CUSTOM_TBN
+#define NO_REFLECTIONS
+
+#include "terrainUtils.cmn" 
+#include "prePass.frag"
+#include "terrainSplatting.frag"
+
+vec3 _private_OMR = vec3(1.f, 0.f, 1.f);
+void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR) {
+    OMR = _private_OMR;
+}
+
+void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout float roughness) {
+    roughness = _private_OMR.b;
+}
+
+void main(void) {
+
+    vec3 normalWV; float normalVariation;
+    _private_OMR.b = BuildTerrainData(normalWV, normalVariation).a;
+
+    const NodeMaterialData materialData = dvd_Materials[MATERIAL_IDX];
+    const float roughness = getRoughness(materialData, VAR._texCoord, normalVariation);
+    writeGBuffer(normalWV, roughness);
 }
 
 --Fragment.Shadow.VSM

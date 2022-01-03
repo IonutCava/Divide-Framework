@@ -8,6 +8,10 @@
 #include "bumpMapping.frag"
 #endif //COMPUTE_TBN
 
+#if !defined(NO_SSAO)
+layout(binding = TEXTURE_SSAO_SAMPLE) uniform sampler2D texSSAO;
+#endif //NO_SSAO
+
 #if defined(USE_CUSTOM_TEXTURE_OMR)
 void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR);
 void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout float roughness);

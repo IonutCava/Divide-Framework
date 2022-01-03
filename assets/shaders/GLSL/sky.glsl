@@ -247,7 +247,9 @@ void main() {
 
 --Fragment.Clouds
 
+#if !defined(PRE_PASS)
 layout(early_fragment_tests) in;
+#endif //!PRE_PASS
 
 layout(location = 10) in vec4 vSunDirection; //vSunDirection.a = sun fade
 layout(location = 11) in vec4 vSunColour; // vSunColour.a = vSunE
@@ -690,7 +692,8 @@ void main() {
         case DEBUG_DEPTH_CLUSTERS:
         case DEBUG_REFRACTIONS:
         case DEBUG_REFLECTIONS:
-        case DEBUG_MATERIAL_IDS:  ret = vec3(0.0f); break;
+        case DEBUG_MATERIAL_IDS:
+        case DEBUG_SHADING_MODE:  ret = vec3(0.0f); break;
         default:                  ret = atmosphereColour(rayDirection, lerpValue); break;
     }
 

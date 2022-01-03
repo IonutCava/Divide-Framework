@@ -304,6 +304,7 @@
     <None Include="..\..\assets\shaders\GLSL\common\terrainUtils.cmn" />
     <None Include="..\..\assets\shaders\GLSL\common\velocityCheck.cmn" />
     <None Include="..\..\assets\shaders\GLSL\computeAtoms\pbrHelpers.comp" />
+    <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\debug.frag" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\environment.frag" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\IBL.frag" />
     <None Include="../../assets/shaders\GLSL\fragmentAtoms\prePass.frag" />

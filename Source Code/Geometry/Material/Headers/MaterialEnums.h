@@ -56,6 +56,7 @@ namespace Divide {
         REFLECTIONS,
         REFRACTIONS,
         MATERIAL_IDS,
+        SHADING_MODE,
         SSR,
         COUNT
     };
@@ -82,6 +83,7 @@ namespace Divide {
             "REFLECTIONS",
             "REFRACTIONS",
             "MATERIAL_IDS",
+            "SHADING_MODE",
             "SSR",
             "NONE",
         };

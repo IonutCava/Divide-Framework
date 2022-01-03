@@ -509,6 +509,7 @@ bool RenderingComponent::updateReflection(const U16 reflectionIndex,
             targetAtt.texture(),
             targetAtt.samplerHash(),
             TextureOperation::REPLACE,
+            TexturePrePassUsage::AUTO,
             true
         );
         return true;
@@ -541,6 +542,7 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
             targetAtt.texture(),
             targetAtt.samplerHash(),
             TextureOperation::REPLACE,
+            TexturePrePassUsage::AUTO,
             true
         );
         return true;
