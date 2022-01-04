@@ -174,8 +174,8 @@ bool PostAAPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, cons
     if (useSMAA()) {
         { //Step 1: Compute weights
             RTClearDescriptor clearTarget = {};
-            clearTarget.clearDepth(false);
-            clearTarget.clearColours(true);
+            clearTarget._clearDepth = false;
+            clearTarget._clearColours = true;
 
             GFX::ClearRenderTargetCommand clearRenderTargetCmd = {};
             clearRenderTargetCmd._target = _smaaWeights._targetID;

@@ -126,8 +126,6 @@ void RenderingComponent::instantiateMaterial(const Material_ptr& material) {
     }
 
     _materialInstance = material->clone(_parentSGN->name() + "_i");
-    _materialInstance->usePlanarReflections(_reflectorType == ReflectorType::PLANAR);
-    _materialInstance->usePlanarRefractions(_refractorType == RefractorType::PLANAR);
 
     if (_materialInstance != nullptr) {
         assert(!_materialInstance->resourceName().empty());
@@ -226,21 +224,6 @@ void RenderingComponent::rebuildMaterial() {
     });
 }
 
-void RenderingComponent::setReflectionAndRefractionType(const ReflectorType reflectType, const RefractorType refractType) noexcept { 
-    if (_reflectorType != reflectType) {
-        _reflectorType = reflectType;
-        if (_materialInstance != nullptr) {
-            _materialInstance->usePlanarReflections(_reflectorType == ReflectorType::PLANAR);
-        }
-    }
-
-    if (_refractorType != refractType) {
-        _refractorType = refractType;
-        if (_materialInstance != nullptr) {
-            _materialInstance->usePlanarRefractions(_refractorType == RefractorType::PLANAR);
-        }
-    }
-}
 void RenderingComponent::setLoDIndexOffset(const U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept {
     if (lodIndex < _lodIndexOffsets.size()) {
         _lodIndexOffsets[lodIndex] = { indexOffset, indexCount };
@@ -532,13 +515,16 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
     if (_refractorType != RefractorType::COUNT && _refractionCallback && inBudget) {
         const RenderTargetID refractRTID(RenderTargetUsage::REFRACTION_PLANAR, refractionIndex);
 
+        // Only planar for now
+        assert(_refractorType == RefractorType::PLANAR);
+
         RenderPassManager* passManager = _context.parent().renderPassManager();
-        RenderCbkParams params{ _context, _parentSGN, renderState, refractRTID, refractionIndex, to_U8(_refractorType), camera };
+        RenderCbkParams params{ _context, _parentSGN, renderState, refractRTID, refractionIndex, 0u, camera };
         _refractionCallback(passManager, params, bufferInOut);
 
         const RTAttachment& targetAtt = _context.renderTargetPool().renderTarget(refractRTID).getAttachment(RTAttachmentType::Colour, 0u);
         _materialInstance->setTexture(
-            _refractorType == RefractorType::PLANAR ? TextureUsage::REFRACTION_PLANAR : TextureUsage::REFRACTION_CUBE,
+            TextureUsage::REFRACTION_PLANAR,
             targetAtt.texture(),
             targetAtt.samplerHash(),
             TextureOperation::REPLACE,

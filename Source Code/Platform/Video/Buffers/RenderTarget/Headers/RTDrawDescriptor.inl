@@ -35,38 +35,38 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-inline bool RTDrawMask::operator==(const RTDrawMask& other) const {
-    return _disabledDepth == other._disabledDepth &&
-           _disabledStencil == other._disabledStencil &&
-           _disabledColours == other._disabledColours;
+inline bool operator==(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept {
+    return lhs._disabledDepth   == rhs._disabledDepth &&
+           lhs._disabledStencil == rhs._disabledStencil &&
+           lhs._disabledColours == rhs._disabledColours;
 }
 
-inline bool RTDrawMask::operator!=(const RTDrawMask& other) const {
-    return _disabledDepth != other._disabledDepth ||
-           _disabledStencil != other._disabledStencil ||
-           _disabledColours != other._disabledColours;
+inline bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept {
+    return lhs._disabledDepth   != rhs._disabledDepth ||
+           lhs._disabledStencil != rhs._disabledStencil ||
+           lhs._disabledColours != rhs._disabledColours;
 }
 
-inline bool RTBlendState::operator==(const RTBlendState& other) const noexcept {
-    return _blendProperties == other._blendProperties &&
-           _blendColour == other._blendColour;
+inline bool operator==(const RTBlendState& lhs, const RTBlendState& rhs) noexcept {
+    return lhs._blendProperties == rhs._blendProperties &&
+           lhs._blendColour == rhs._blendColour;
 }
 
-inline bool RTBlendState::operator!=(const RTBlendState& other) const noexcept {
-    return _blendProperties != other._blendProperties ||
-           _blendColour != other._blendColour;
+inline bool operator!=(const RTBlendState& lhs, const RTBlendState& rhs) noexcept {
+    return lhs._blendProperties != rhs._blendProperties ||
+           lhs._blendColour != rhs._blendColour;
 }
 
-inline bool RTDrawDescriptor::operator==(const RTDrawDescriptor& other) const {
-    return _drawMask == other._drawMask &&
-           _setViewport == other._setViewport &&
-           _setDefaultState == other._setDefaultState;
+inline bool operator==(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) noexcept {
+    return lhs._drawMask == rhs._drawMask &&
+           lhs._setViewport == rhs._setViewport &&
+           lhs._setDefaultState == rhs._setDefaultState;
 }
 
-inline bool RTDrawDescriptor::operator!=(const RTDrawDescriptor& other) const {
-    return _drawMask != other._drawMask ||
-           _setViewport != other._setViewport ||
-           _setDefaultState != other._setDefaultState;
+inline bool operator!=(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) noexcept {
+    return lhs._drawMask != rhs._drawMask ||
+           lhs._setViewport != rhs._setViewport ||
+           lhs._setDefaultState != rhs._setDefaultState;
 }
 }; //namespace Divide
 #endif// _RENDER_TARGET_DRAW_DESCRIPTOR_INL_

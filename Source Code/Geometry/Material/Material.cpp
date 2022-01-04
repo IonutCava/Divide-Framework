@@ -10,7 +10,7 @@
 
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
-
+#include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "Editor/Headers/Editor.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
@@ -186,8 +186,6 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
     cloneMat->_receivesShadows = base._receivesShadows;
     cloneMat->_isStatic = base._isStatic;
     cloneMat->_ignoreTexDiffuseAlpha = base._ignoreTexDiffuseAlpha;
-    cloneMat->_usePlanarReflections = base._usePlanarReflections;
-    cloneMat->_usePlanarRefractions = base._usePlanarRefractions;
     cloneMat->_hardwareSkinning = base._hardwareSkinning;
     cloneMat->_isRefractive = base._isRefractive;
     cloneMat->_extraShaderDefines = base._extraShaderDefines;
@@ -317,12 +315,20 @@ void Material::setTextureOperation(const TextureUsage textureUsageSlot,
     }
 }
 
-void Material::setShaderProgramInternal(const ShaderProgram_ptr& shader,
+void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,
                                         ShaderProgramInfo& shaderInfo,
-                                        const RenderStage stage,
-                                        const RenderPassType pass,
-                                        const RenderStagePass::VariantType variant) const
+                                        const RenderStagePass stagePass) const
 {
+    OPTICK_EVENT();
+
+    ShaderProgramDescriptor shaderDescriptorRef = shaderDescriptor;
+    computeAndAppendShaderDefines(shaderDescriptorRef, stagePass);
+
+    ResourceDescriptor shaderResDescriptor(shaderDescriptorRef._name);
+    shaderResDescriptor.propertyDescriptor(shaderDescriptorRef);
+    shaderResDescriptor.threaded(false);
+
+    ShaderProgram_ptr shader = CreateResource<ShaderProgram>(_context.parent().resourceCache(), shaderResDescriptor);
     if (shader != nullptr) {
         const ShaderProgram* oldShader = shaderInfo._shaderRef.get();
         if (oldShader != nullptr) {
@@ -334,9 +340,9 @@ void Material::setShaderProgramInternal(const ShaderProgram_ptr& shader,
                     Console::printfn(Locale::Get(_ID("REPLACE_SHADER")),
                         oldShader->resourceName().c_str(),
                         newShaderName != nullptr ? newShaderName : "NULL",
-                        TypeUtil::RenderStageToString(stage),
-                        TypeUtil::RenderPassTypeToString(pass),
-                        variant);
+                        TypeUtil::RenderStageToString(stagePass._stage),
+                        TypeUtil::RenderPassTypeToString(stagePass._passType),
+                        to_base(stagePass._variant));
             }
         }
     }
@@ -351,26 +357,34 @@ void Material::setShaderProgramInternal(const ShaderProgram_ptr& shader,
     }
 }
 
-void Material::setShaderProgramInternal(const ResourceDescriptor& shaderDescriptor,
+void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,
                                         const RenderStagePass stagePass,
-                                        const bool computeOnAdd) {
+                                        const bool computeOnAdd)
+{
     OPTICK_EVENT();
+
+    ShaderProgramDescriptor shaderDescriptorRef = shaderDescriptor;
+    computeAndAppendShaderDefines(shaderDescriptorRef, stagePass);
+
+    ResourceDescriptor shaderResDescriptor{ shaderDescriptorRef._name };
+    shaderResDescriptor.propertyDescriptor(shaderDescriptorRef);
+    shaderResDescriptor.threaded(false);
 
     ShaderProgramInfo& info = shaderInfo(stagePass);
     // if we already have a different shader assigned ...
-    if (info._shaderRef != nullptr && info._shaderRef->resourceName().compare(shaderDescriptor.resourceName()) != 0)
+    if (info._shaderRef != nullptr && info._shaderRef->resourceName().compare(shaderDescriptorRef._name) != 0)
     {
         // We cannot replace a shader that is still loading in the background
         WAIT_FOR_CONDITION(info._shaderRef->getState() == ResourceState::RES_LOADED);
         Console::printfn(Locale::Get(_ID("REPLACE_SHADER")),
             info._shaderRef->resourceName().c_str(),
-            shaderDescriptor.resourceName().c_str(),
+            shaderDescriptorRef._name.c_str(),
             TypeUtil::RenderStageToString(stagePass._stage),
             TypeUtil::RenderPassTypeToString(stagePass._passType),
             stagePass._variant);
     }
 
-    ShaderComputeQueue::ShaderQueueElement shaderElement{ info._shaderRef, shaderDescriptor };
+    ShaderComputeQueue::ShaderQueueElement shaderElement{ info._shaderRef, shaderDescriptorRef };
     if (computeOnAdd) {
         _context.shaderComputeQueue().process(shaderElement);
         info._shaderCompStage = ShaderBuildStage::COMPUTED;
@@ -497,65 +511,33 @@ bool Material::canDraw(const RenderStagePass renderStagePass, bool& shaderJustFi
     // Shader should be in the ready state
     return true;
 }
-
-/// If the current material doesn't have a shader associated with it, then add the default ones.
-void Material::computeShader(const RenderStagePass renderStagePass) {
+void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDescriptor, const RenderStagePass renderStagePass) const {
     OPTICK_EVENT();
 
     const bool isDepthPass = IsDepthPass(renderStagePass);
-    const bool isZPrePass = isDepthPass && renderStagePass._stage == RenderStage::DISPLAY;
-    const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;
-
-    // At this point, only computation requests are processed
-    constexpr U32 slot0 = to_base(TextureUsage::UNIT0);
-    constexpr U32 slot1 = to_base(TextureUsage::UNIT1);
 
     DIVIDE_ASSERT(_shadingMode != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!");
 
+    std::array<ModuleDefines, to_base(ShaderType::COUNT)> moduleDefines = {};
 
-    ModuleDefines vertDefines = {};
-    ModuleDefines fragDefines = {};
     ModuleDefines globalDefines = {};
 
-    vertDefines.insert(std::cend(vertDefines),
-                       std::cbegin(_extraShaderDefines[to_base(ShaderType::VERTEX)]),
-                       std::cend(_extraShaderDefines[to_base(ShaderType::VERTEX)]));
-
-    fragDefines.insert(std::cend(fragDefines),
-                       std::cbegin(_extraShaderDefines[to_base(ShaderType::FRAGMENT)]),
-                       std::cend(_extraShaderDefines[to_base(ShaderType::FRAGMENT)]));
-
-
-    const Str64 vertSource = isDepthPass ? baseShaderData()._depthShaderVertSource : baseShaderData()._colourShaderVertSource;
-    const Str64 fragSource = isDepthPass ? baseShaderData()._depthShaderFragSource : baseShaderData()._colourShaderFragSource;
-
-    Str32 vertVariant = isDepthPass 
-                            ? isShadowPass 
-                                ? baseShaderData()._shadowShaderVertVariant
-                                : baseShaderData()._depthShaderVertVariant
-                            : baseShaderData()._colourShaderVertVariant;
-    Str32 fragVariant = isDepthPass ? baseShaderData()._depthShaderFragVariant : baseShaderData()._colourShaderFragVariant;
-    Str256 shaderName = vertSource + "_" + fragSource;
-
-    if (isShadowPass) {
-        shaderName += ".SHDW";
-        vertVariant += "Shadow";
-        fragVariant += "Shadow.VSM";
+    if (renderStagePass._stage == RenderStage::SHADOW) {
         globalDefines.emplace_back("SHADOW_PASS", true);
         if (to_U8(renderStagePass._variant) == to_U8(LightType::DIRECTIONAL)) {
-            fragVariant += ".ORTHO";
-            fragDefines.emplace_back("ORTHO_PROJECTION", true);
+            moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("ORTHO_PROJECTION", true);
         }
     } else if (isDepthPass) {
-        shaderName += ".PP";
-        vertVariant += "PrePass";
-        fragVariant += "PrePass";
         globalDefines.emplace_back("PRE_PASS", true);
     }
-
+    if (renderStagePass._stage == RenderStage::REFLECTION && to_U8(renderStagePass._variant) != to_base(ReflectorType::CUBE)) {
+        globalDefines.emplace_back("REFLECTION_PASS", true);
+    }
+    if (renderStagePass._stage == RenderStage::DISPLAY) {
+        globalDefines.emplace_back("MAIN_DISPLAY_PASS", true);
+    }
     if (renderStagePass._passType == RenderPassType::OIT_PASS) {
-        shaderName += ".OIT";
-        fragDefines.emplace_back("OIT_PASS", true);
+        moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("OIT_PASS", true);
     }
 
     // Display pre-pass caches normal maps in a GBuffer, so it's the only exception
@@ -567,84 +549,92 @@ void Material::computeShader(const RenderStagePass renderStagePass) {
         globalDefines.emplace_back("COMPUTE_TBN", true);
     }
 
-    updateTransparency();
     if (hasTransparency()) {
-        shaderName += ".T";
-        fragDefines.emplace_back("HAS_TRANSPARENCY", true);
+        moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("HAS_TRANSPARENCY", true);
 
         if (useAlphaDiscard() && renderStagePass._passType != RenderPassType::OIT_PASS) {
-            shaderName += ".AD";
-            fragDefines.emplace_back("USE_ALPHA_DISCARD", true);
+            moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("USE_ALPHA_DISCARD", true);
         }
     }
 
-    if (!receivesShadows()) {
-        shaderName += ".NSHDW";
-        fragDefines.emplace_back("DISABLE_SHADOW_MAPPING", true);
+    const Configuration& config = _parentCache->context().config();
+    if (!config.rendering.shadowMapping.enabled) {
+        moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("DISABLE_SHADOW_MAPPING", true);
     } else {
-        ProcessShadowMappingDefines(_parentCache->context().config(), fragDefines);
+        if (!config.rendering.shadowMapping.csm.enabled) {
+            moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("DISABLE_SHADOW_MAPPING_CSM", true);
+        }
+        if (!config.rendering.shadowMapping.spot.enabled) {
+            moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("DISABLE_SHADOW_MAPPING_SPOT", true);
+        }
+        if (!config.rendering.shadowMapping.point.enabled) {
+            moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("DISABLE_SHADOW_MAPPING_POINT", true);
+        }
     }
 
-    if (!_isStatic) {
-        shaderName += ".D";
-        globalDefines.emplace_back("NODE_DYNAMIC", true);
-    } else {
-        shaderName += ".S";
-        globalDefines.emplace_back("NODE_STATIC", true);
-    }
-
-    if (usePlanarReflections()) {
-        shaderName += ".PRefl";
-        fragDefines.emplace_back("USE_PLANAR_REFLECTION", true);
-    }
-
-    if (usePlanarRefractions()) {
-        shaderName += ".PRefr";
-        fragDefines.emplace_back("USE_PLANAR_REFRACTION", true);
-    }
+    globalDefines.emplace_back(_isStatic ? "NODE_STATIC" : "NODE_DYNAMIC", true);
 
     if (_hardwareSkinning) {
-        vertDefines.emplace_back("USE_GPU_SKINNING", true);
-        shaderName += ".Sknd";
+        moduleDefines[to_base(ShaderType::VERTEX)].emplace_back("USE_GPU_SKINNING", true);
     }
 
-    vertDefines.emplace_back("HAS_CLIPPING_OUT", true);
+    for (ShaderModuleDescriptor& module : shaderDescriptor._modules) {
+        module._defines.insert(eastl::end(module._defines), eastl::begin(globalDefines), eastl::end(globalDefines));
+        module._defines.insert(eastl::end(module._defines), eastl::begin(moduleDefines[to_base(module._moduleType)]), eastl::end(moduleDefines[to_base(module._moduleType)]));
+        module._defines.insert(eastl::end(module._defines), eastl::begin(_extraShaderDefines[to_base(module._moduleType)]), eastl::end(_extraShaderDefines[to_base(module._moduleType)]));
+        module._defines.emplace_back("DEFINE_PLACEHOLDER", false);
+        shaderDescriptor._name.append(Util::StringFormat("_%zu", ShaderProgram::DefinesHash(module._defines)));
+    }
+}
 
-    globalDefines.emplace_back("DEFINE_PLACEHOLDER", false);
+/// If the current material doesn't have a shader associated with it, then add the default ones.
+void Material::computeShader(const RenderStagePass renderStagePass) {
+    OPTICK_EVENT();
 
-    vertDefines.insert(eastl::cend(vertDefines), eastl::cbegin(globalDefines), eastl::cend(globalDefines));
-    fragDefines.insert(eastl::cend(fragDefines), eastl::cbegin(globalDefines), eastl::cend(globalDefines));
+    const bool isDepthPass = IsDepthPass(renderStagePass);
+    const bool isZPrePass = isDepthPass && renderStagePass._stage == RenderStage::DISPLAY;
+    const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;
 
-    shaderName.append(
-        Util::StringFormat("_%zu_%zu",
-                           ShaderProgram::DefinesHash(vertDefines),
-                           ShaderProgram::DefinesHash(fragDefines))
-    );
+    const Str64 vertSource = isDepthPass ? baseShaderData()._depthShaderVertSource : baseShaderData()._colourShaderVertSource;
+    const Str64 fragSource = isDepthPass ? baseShaderData()._depthShaderFragSource : baseShaderData()._colourShaderFragSource;
+
+    Str32 vertVariant = isDepthPass 
+                            ? isShadowPass 
+                                ? baseShaderData()._shadowShaderVertVariant
+                                : baseShaderData()._depthShaderVertVariant
+                            : baseShaderData()._colourShaderVertVariant;
+    Str32 fragVariant = isDepthPass ? baseShaderData()._depthShaderFragVariant : baseShaderData()._colourShaderFragVariant;
+    ShaderProgramDescriptor shaderDescriptor{};
+    shaderDescriptor._name = vertSource + "_" + fragSource;
+
+    if (isShadowPass) {
+        vertVariant += "Shadow";
+        fragVariant += "Shadow.VSM";
+        if (to_U8(renderStagePass._variant) == to_U8(LightType::DIRECTIONAL)) {
+            fragVariant += ".ORTHO";
+        }
+    } else if (isDepthPass) {
+        vertVariant += "PrePass";
+        fragVariant += "PrePass";
+    }
 
     ShaderModuleDescriptor vertModule = {};
     vertModule._variant = vertVariant;
     vertModule._sourceFile = (vertSource + ".glsl").c_str();
     vertModule._batchSameFile = false;
     vertModule._moduleType = ShaderType::VERTEX;
-    vertModule._defines = vertDefines;
-
-    ShaderModuleDescriptor fragModule = {};
-    fragModule._variant = fragVariant;
-    fragModule._sourceFile = (fragSource + ".glsl").c_str();
-    fragModule._moduleType = ShaderType::FRAGMENT;
-    fragModule._defines = fragDefines;
-
-    ShaderProgramDescriptor shaderDescriptor = {};
-    if (!isDepthPass || isZPrePass) {
-        shaderDescriptor._modules.push_back(fragModule);
-    }
     shaderDescriptor._modules.push_back(vertModule);
 
-    ResourceDescriptor shaderResDescriptor(shaderName);
-    shaderResDescriptor.propertyDescriptor(shaderDescriptor);
-    shaderResDescriptor.flag(true);
+    if (!isDepthPass || isZPrePass) {
+        ShaderModuleDescriptor fragModule = {};
+        fragModule._variant = fragVariant;
+        fragModule._sourceFile = (fragSource + ".glsl").c_str();
+        fragModule._moduleType = ShaderType::FRAGMENT;
 
-    setShaderProgramInternal(shaderResDescriptor, renderStagePass, false);
+        shaderDescriptor._modules.push_back(fragModule);
+    }
+
+    setShaderProgramInternal(shaderDescriptor, renderStagePass, false);
 }
 
 bool Material::unload() {
@@ -740,32 +730,6 @@ void Material::ignoreTexDiffuseAlpha(const bool state, const bool applyToInstanc
     }
 }
 
-void Material::usePlanarReflections(const bool state, const bool applyToInstances) {
-    if (_usePlanarReflections != state) {
-        _usePlanarReflections = state;
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->usePlanarReflections(state, true);
-        }
-    }
-}
-
-void Material::usePlanarRefractions(const bool state, const bool applyToInstances) {
-    if (_usePlanarRefractions != state) {
-        _usePlanarRefractions = state;
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->usePlanarRefractions(state, true);
-        }
-    }
-}
-
 void Material::hardwareSkinning(const bool state, const bool applyToInstances) {
     if (_hardwareSkinning != state) {
         _hardwareSkinning = state;
@@ -779,24 +743,27 @@ void Material::hardwareSkinning(const bool state, const bool applyToInstances) {
     }
 }
 
-void Material::setShaderProgram(const ShaderProgram_ptr& shader, const RenderStage stage, const RenderPassType pass, const RenderStagePass::VariantType variant) {
+void Material::setShaderProgram(const ShaderProgramDescriptor& shaderDescriptor, const RenderStage stage, const RenderPassType pass, const RenderStagePass::VariantType variant) {
+    RenderStagePass stagePass;
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
-            const RenderStage crtStage = static_cast<RenderStage>(s);
-            const RenderPassType crtPass = static_cast<RenderPassType>(p);
-            if ((stage == RenderStage::COUNT || stage == crtStage) && (pass == RenderPassType::COUNT || pass == crtPass)) {
+            stagePass._stage = static_cast<RenderStage>(s);
+            stagePass._passType = static_cast<RenderPassType>(p);
+            if ((stage == RenderStage::COUNT || stage == stagePass._stage) && (pass == RenderPassType::COUNT || pass == stagePass._passType)) {
                 if (variant == RenderStagePass::VariantType::COUNT) {
                     for (U8 i = 0u; i < to_base(RenderStagePass::VariantType::COUNT); ++i) {
                         ShaderProgramInfo& shaderInfo = _shaderInfo[s][p][i];
                         shaderInfo._customShader = true;
                         shaderInfo._shaderCompStage = ShaderBuildStage::COUNT;
-                        setShaderProgramInternal(shader, shaderInfo, crtStage, crtPass, variant);
+                        stagePass._variant = static_cast<RenderStagePass::VariantType>(variant);
+                        setShaderProgramInternal(shaderDescriptor, shaderInfo, stagePass);
                     }
                 } else {
+                    stagePass._variant = variant;
                     ShaderProgramInfo& shaderInfo = _shaderInfo[s][p][to_base(variant)];
                     shaderInfo._customShader = true;
                     shaderInfo._shaderCompStage = ShaderBuildStage::COUNT;
-                    setShaderProgramInternal(shader, shaderInfo, crtStage, crtPass, variant);
+                    setShaderProgramInternal(shaderDescriptor, shaderInfo, stagePass);
                 }
             }
         }
@@ -1124,13 +1091,11 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
                                                        to_U8(_textureOperations[to_base(TextureUsage::METALNESS)]),
                                                        to_U8(_textureOperations[to_base(TextureUsage::ROUGHNESS)]),
                                                        to_U8(_textureOperations[to_base(TextureUsage::OPACITY)]));
-    dataOut._textureOperations.z = Util::PACK_UNORM4x8(to_U8(useAlbedoTexAlphachannel ? 1u : 0u), 
-                                                       to_U8(useOpacityAlphaChannel ? 1u : 0u),
-                                                       0u,
-                                                       0u);
-    dataOut._textureOperations.w = 0u;
-
-    //dataOut._specGloss = specGloss();
+    dataOut._textureOperations.z = Util::PACK_UNORM4x8(useAlbedoTexAlphachannel ? 1.f : 0.f, 
+                                                       useOpacityAlphaChannel ? 1.f : 0.f,
+                                                       specGloss().x,
+                                                       specGloss().y);
+    dataOut._textureOperations.w = Util::PACK_UNORM4x8(receivesShadows() ? 1.f : 0.f, 0.f, 0.f, 0.f);
 }
 
 void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTextures& texturesOut) {

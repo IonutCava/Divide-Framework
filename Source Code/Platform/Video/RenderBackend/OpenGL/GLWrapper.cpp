@@ -336,14 +336,12 @@ bool GL_API::InitGLSW(Configuration& config) {
 
     // Add some nVidia specific pragma directives
     if (GFXDevice::getGPUVendor() == GPUVendor::NVIDIA) {
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma option fastmath on");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma option fastprecision on");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma option inline all");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma option ifcvt none");
-        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-            AppendToShaderHeader(ShaderType::COUNT, "#pragma option strict on");
-        }
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma option unroll all");
+        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(fastmath on)");
+        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(fastprecision on)");
+        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(inline all)");
+        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(ifcvt none)");
+        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(strict on)");
+        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(unroll all)");
     }
 
     if_constexpr(Config::USE_COLOURED_WOIT) {

@@ -46,6 +46,13 @@ public:
         SIBLING,
         COUNT
     };
+
+    struct CacheEntry {
+        I64 _guid = -1;
+        U16 _level = 0u; // 0 - child, 1 - grandchild etc or 0 - parent, 1 - grandparent, etc
+    };
+
+    using Cache = vector_fast<CacheEntry>;
 public:
     SGNRelationshipCache(SceneGraphNode* parent) noexcept;
 
@@ -56,16 +63,19 @@ public:
     // this will issue a rebuild if the cache is invalid
     RelationshipType classifyNode(I64 GUID) const;
 protected:
-    void updateChildren(U8 level, vector<std::pair<I64, U8>>& cache) const;
-    void updateParents(U8 level, vector<std::pair<I64, U8>>& cache) const;
+    void updateChildren(U16 level, Cache& cache) const;
+    void updateParents(U16 level, Cache& cache) const;
+
+    void updateChildrenLocked(U16 level, Cache& cache) const;
+    void updateParentsLocked(U16 level, Cache& cache) const;
 
 protected:
     // We need a way to accelerate relationship testing
     // We can cache a full recursive list of children
     // pair: GUID ... child level (0 = child, 1 = grandchild, ...)
-    vector<std::pair<I64, U8>> _childrenRecursiveCache;
+    Cache _childrenRecursiveCache;
     // pair: GUID ... parent level (0 = parent, 1 = grandparent, ...)
-    vector<std::pair<I64, U8>> _parentRecursiveCache;
+    Cache _parentRecursiveCache;
     std::atomic_bool _isValid;
     SceneGraphNode* _parentNode = nullptr;
 

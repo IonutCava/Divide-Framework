@@ -135,8 +135,9 @@ WaterPlane::WaterPlane(ResourceCache* parentCache, size_t descriptorHash, const 
 
     getEditorComponent().registerField(MOV(specularShininessField));
 
-    
     getEditorComponent().onChangedCbk([this](const std::string_view field) noexcept {onEditorChange(field); });
+
+    _editorDataDirtyState.fill(EditorDataState::QUEUED);
 }
 
 WaterPlane::~WaterPlane()
@@ -145,7 +146,8 @@ WaterPlane::~WaterPlane()
 }
 
 void WaterPlane::onEditorChange(std::string_view) noexcept {
-    _editorDataDirtyState = EditorDataState::QUEUED;
+    _editorDataDirtyState.fill(EditorDataState::QUEUED);
+
     if (_fogStartEnd.y <= _fogStartEnd.y) {
         _fogStartEnd.y = _fogStartEnd.x + 0.1f;
     }
@@ -183,12 +185,8 @@ bool WaterPlane::load() {
     Material_ptr waterMat = CreateResource<Material>(_parentCache, waterMaterial);
 
     waterMat->shadingMode(ShadingMode::BLINN_PHONG);
-
-    ModuleDefines globalDefines = {};
-    globalDefines.emplace_back("COMPUTE_TBN", true);
-    globalDefines.emplace_back("NODE_STATIC", true);
-
-    ProcessShadowMappingDefines(_parentCache->context().config(), globalDefines);
+    waterMat->bumpMethod(BumpMethod::NORMAL);
+    waterMat->isStatic(true);
 
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
@@ -198,54 +196,31 @@ bool WaterPlane::load() {
     fragModule._moduleType = ShaderType::FRAGMENT;
     fragModule._sourceFile = "water.glsl";
 
-    ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
-
-    vertModule._defines.insert(std::cend(vertModule._defines), std::cbegin(globalDefines), std::cend(globalDefines));
-    fragModule._defines.insert(std::cend(fragModule._defines), std::cbegin(globalDefines), std::cend(globalDefines));
-    fragModule._defines.emplace_back("USE_PLANAR_REFLECTION", true);
-    fragModule._defines.emplace_back("USE_PLANAR_REFRACTION", true);
-
-    ShaderProgram_ptr waterColour = nullptr;
-    ShaderProgram_ptr waterPrePass = nullptr;
-    ShaderProgram_ptr waterDepthPass = nullptr;
-
     // MAIN_PASS
-    shaderDescriptor = {};
+    ShaderProgramDescriptor shaderDescriptor = {};
+    shaderDescriptor._name = "waterColour";
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
-    ResourceDescriptor waterColourShader("waterColour");
-    waterColourShader.propertyDescriptor(shaderDescriptor);
-    waterColourShader.waitForReady(false);
-    waterColour = CreateResource<ShaderProgram>(_parentCache, waterColourShader, loadTasks);
-    // DEPTH_PASS
-    {
-        shaderDescriptor._modules.pop_back();
 
-        ResourceDescriptor waterPrePassShader("waterDepthPass");
-        waterPrePassShader.propertyDescriptor(shaderDescriptor);
-        waterPrePassShader.waitForReady(false);
-        waterDepthPass = CreateResource<ShaderProgram>(_parentCache, waterPrePassShader, loadTasks);
-    }
-    // PRE_PASS
-    {
-        shaderDescriptor._modules.push_back(fragModule);
-        shaderDescriptor._modules[0]._defines.emplace_back("PRE_PASS", true);
-        shaderDescriptor._modules[1]._defines.emplace_back("PRE_PASS", true);
-        ResourceDescriptor waterPrePassShader("waterPrePass");
-        waterPrePassShader.propertyDescriptor(shaderDescriptor);
-        waterPrePassShader.waitForReady(false);
-        waterPrePass = CreateResource<ShaderProgram>(_parentCache, waterPrePassShader, loadTasks);
-    }
+    ShaderProgramDescriptor shaderDescriptorDepth = {};
+    shaderDescriptorDepth._name = "waterDepthPass";
+    shaderDescriptorDepth._modules.push_back(vertModule);
+
+    ShaderProgramDescriptor shaderDescriptorPrePass = {};
+    shaderDescriptorPrePass._name = "waterPrePass";
+    shaderDescriptorPrePass._modules.push_back(vertModule);
+    shaderDescriptorPrePass._modules.push_back(fragModule);
+    shaderDescriptorPrePass._modules[0]._defines.emplace_back("PRE_PASS", true);
+    shaderDescriptorPrePass._modules[1]._defines.emplace_back("PRE_PASS", true);
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
     waterMat->setTexture(TextureUsage::NORMALMAP, waterNM, defaultSampler.getHash(), TextureOperation::REPLACE);
 
-    waterMat->setShaderProgram(waterDepthPass, RenderStage::COUNT,   RenderPassType::PRE_PASS);
-    waterMat->setShaderProgram(waterPrePass,   RenderStage::DISPLAY, RenderPassType::PRE_PASS);
-    waterMat->setShaderProgram(waterColour,    RenderStage::COUNT,   RenderPassType::MAIN_PASS);
+    waterMat->setShaderProgram(shaderDescriptorDepth,   RenderStage::COUNT,   RenderPassType::PRE_PASS);
+    waterMat->setShaderProgram(shaderDescriptorPrePass, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
+    waterMat->setShaderProgram(shaderDescriptor,        RenderStage::COUNT,   RenderPassType::MAIN_PASS);
+    waterMat->setShaderProgram(shaderDescriptorDepth,   RenderStage::SHADOW,  RenderPassType::COUNT);
     waterMat->roughness(0.01f);
 
     setMaterialTpl(waterMat);
@@ -294,30 +269,30 @@ void WaterPlane::postLoad(SceneGraphNode* sgn) {
 
     renderable->setReflectionCallback([this](RenderPassManager* passManager, RenderCbkParams& params, GFX::CommandBuffer& commandsInOut) {
         updateReflection(passManager, params, commandsInOut);
-    });
+    }, ReflectorType::PLANAR);
 
     renderable->setRefractionCallback([this](RenderPassManager* passManager, RenderCbkParams& params, GFX::CommandBuffer& commandsInOut) {
         updateRefraction(passManager, params, commandsInOut);
-    });
+    }, RefractorType::PLANAR);
 
-    renderable->setReflectionAndRefractionType(ReflectorType::PLANAR, RefractorType::PLANAR);
     renderable->toggleRenderOption(RenderingComponent::RenderOptions::CAST_SHADOWS, false);
 
     SceneNode::postLoad(sgn);
 }
 
 void WaterPlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) {
-
-    switch (_editorDataDirtyState) {
-        case EditorDataState::QUEUED:
-            _editorDataDirtyState = EditorDataState::CHANGED;
-            break;
-        case EditorDataState::PROCESSED:
-            _editorDataDirtyState = EditorDataState::IDLE;
-            break;
-        case EditorDataState::CHANGED:
-        case EditorDataState::IDLE:
-            break;
+    for (EditorDataState& state : _editorDataDirtyState) {
+        switch (state) {
+            case EditorDataState::QUEUED:
+                state = EditorDataState::CHANGED;
+                break;
+            case EditorDataState::PROCESSED:
+                state = EditorDataState::IDLE;
+                break;
+            case EditorDataState::CHANGED:
+            case EditorDataState::IDLE:
+                break;
+        }
     }
     WaterBodyData data;
     data._positionW = sgn->get<TransformComponent>()->getWorldPosition();
@@ -325,7 +300,7 @@ void WaterPlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneSt
                           to_F32(_dimensions.depth),
                           to_F32(_dimensions.height) };
 
-    sceneState.waterBodies().push_back(data);
+    sceneState.waterBodies().registerData(data);
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);
 }
 
@@ -335,7 +310,9 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
                                const CameraSnapshot& cameraSnapshot,
                                GFX::CommandBuffer& bufferInOut,
                                const bool refreshData) {
-    if (_editorDataDirtyState == EditorDataState::CHANGED || _editorDataDirtyState == EditorDataState::PROCESSED) {
+
+    EditorDataState& state = _editorDataDirtyState[to_base(renderStagePass._stage)];
+    if (state == EditorDataState::CHANGED || state == EditorDataState::PROCESSED) {
         RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
 
         PushConstants& constants = pkg.pushConstantsCmd()._constants;
@@ -345,7 +322,9 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
         constants.set(_ID("_refractionTint"), GFX::PushConstantType::FCOLOUR3, refractionTint());
         constants.set(_ID("_waterDistanceFogColour"), GFX::PushConstantType::FCOLOUR3, waterDistanceFogColour());
         constants.set(_ID("_specularShininess"), GFX::PushConstantType::FLOAT, specularShininess());
-        _editorDataDirtyState = EditorDataState::PROCESSED;
+        if (refreshData) {
+            state = EditorDataState::PROCESSED;
+        }
     }
 
     SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
@@ -363,7 +342,7 @@ void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCom
     cmd._sourceBuffer = _plane->getGeometryVB()->handle();
 
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
-    _editorDataDirtyState = EditorDataState::CHANGED;
+    _editorDataDirtyState.fill(EditorDataState::CHANGED);
 
     SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
@@ -381,14 +360,14 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
     refractionPlane._distance += g_reflectionPlaneCorrectionHeight;
 
     RTClearDescriptor clearDescriptor = {};
-    clearDescriptor.customClearColour(&clearColourDescriptor);
+    clearDescriptor._customClearColour = &clearColourDescriptor;
 
     RenderPassParams params = {};
     params._sourceNode = renderParams._sgn;
     params._targetHIZ = {}; // We don't need to HiZ cull refractions
     params._targetOIT = {}; // We don't need to draw refracted transparents using woit 
     params._minExtents.set(1.0f);
-    params._stagePass = { RenderStage::REFRACTION, RenderPassType::COUNT, renderParams._passIndex, static_cast<RenderStagePass::VariantType>(RefractorType::PLANAR) };
+    params._stagePass = { RenderStage::REFRACTION, RenderPassType::COUNT, renderParams._passIndex, RenderStagePass::VariantType::VARIANT_0 };
     params._target = renderParams._renderTarget;
     params._clippingPlanes.set(0, refractionPlane);
     params._passName = "Refraction";
@@ -436,7 +415,7 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
 
     //Don't clear colour attachment because we'll always draw something for every texel, even if that something is just the sky
     RTClearDescriptor clearDescriptor = {};
-    clearDescriptor.customClearColour(&clearColourDescriptor);
+    clearDescriptor._customClearColour = &clearColourDescriptor;
 
     RenderPassParams params = {};
     params._sourceNode = renderParams._sgn;

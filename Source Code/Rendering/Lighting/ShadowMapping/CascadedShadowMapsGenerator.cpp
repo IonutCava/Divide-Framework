@@ -353,9 +353,9 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
     EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Cascaded Shadow Pass Light: [ %d ]", lightIndex).c_str()));
 
     RTClearDescriptor clearDescriptor = {}; 
-    clearDescriptor.clearDepth(true);
-    clearDescriptor.clearColours(true);
-    clearDescriptor.resetToDefault(true);
+    clearDescriptor._clearDepth = true;
+    clearDescriptor._clearColours = true;
+    clearDescriptor._resetToDefault = true;
 
     GFX::ClearRenderTargetCommand clearMainTarget = {};
     clearMainTarget._target = params._target;

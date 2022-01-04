@@ -89,7 +89,6 @@ enum class TextureUsage : U8 {
     REFLECTION_PLANAR,
     REFLECTION_CUBE,
     REFRACTION_PLANAR,
-    REFRACTION_CUBE,
     REFLECTION_PREFILTERED,
     IRRADIANCE,
     SSR_SAMPLE,
@@ -123,7 +122,6 @@ namespace Names {
         "REFLECTION_PLANAR",
         "REFLECTION_CUBE",
         "REFRACTION_PLANAR",
-        "REFRACTION_CUBE",
         "REFLECTION_PREFILTERED",
         "IRRADIANCE",
         "SSR_SAMPLE",
@@ -138,16 +136,16 @@ namespace Names {
 
 static_assert(std::size(Names::textureUsage) == to_base(TextureUsage::COUNT) + 1);
 
-enum class RefractorType : U8
-{
-    PLANAR = 0,
-    COUNT
-};
-
 enum class ReflectorType : U8
 {
     PLANAR = 0,
     CUBE,
+    COUNT
+};
+
+enum class RefractorType : U8
+{
+    PLANAR = 0,
     COUNT
 };
 

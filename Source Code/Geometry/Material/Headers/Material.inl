@@ -68,7 +68,7 @@ inline const ShaderProgramInfo& Material::shaderInfo(const RenderStagePass rende
     return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][to_base(renderStagePass._variant)];
 }
 
-inline void Material::addShaderDefine(const ShaderType type, const Str128& define, const bool addPrefix) {
+inline void Material::addShaderDefine(const ShaderType type, const string& define, const bool addPrefix) {
     if (type != ShaderType::COUNT) {
         addShaderDefineInternal(type, define, addPrefix);
     } else {
@@ -78,7 +78,7 @@ inline void Material::addShaderDefine(const ShaderType type, const Str128& defin
     }
 }
 
-inline void Material::addShaderDefineInternal(const ShaderType type, const Str128& define, bool addPrefix) {
+inline void Material::addShaderDefineInternal(const ShaderType type, const string& define, bool addPrefix) {
     ModuleDefines& defines = _extraShaderDefines[to_base(type)];
 
     if (!eastl::any_of(eastl::cbegin(defines),

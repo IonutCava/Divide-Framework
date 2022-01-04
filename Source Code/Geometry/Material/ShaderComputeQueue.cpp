@@ -3,7 +3,7 @@
 #include "Headers/ShaderComputeQueue.h"
 
 #include "Core/Time/Headers/ProfileTimer.h"
-#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 namespace Divide {
 
@@ -31,8 +31,10 @@ void ShaderComputeQueue::idle() {
 
 // Processes a queue element on the spot
 void ShaderComputeQueue::process(ShaderQueueElement& element) const {
-    element._shaderDescriptor.waitForReady(false);
-    element._shaderRef = CreateResource<ShaderProgram>(_cache, element._shaderDescriptor);
+    ResourceDescriptor resDescriptor(element._shaderDescriptor._name);
+    resDescriptor.propertyDescriptor(element._shaderDescriptor);
+    resDescriptor.waitForReady(false);
+    element._shaderRef = CreateResource<ShaderProgram>(_cache, resDescriptor);
 }
 
 bool ShaderComputeQueue::stepQueue() {

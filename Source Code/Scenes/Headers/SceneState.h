@@ -176,6 +176,17 @@ struct SceneStatePerPlayer {
     const F32 _headHeight = DEFAULT_PLAYER_HEIGHT;
 };
 
+struct WaterBodyDataContainer {
+    vector<WaterBodyData> _data;
+    void reset() {
+        _data.resize(0);
+    }
+
+    void registerData(const WaterBodyData& data) {
+        _data.push_back(data);
+    }
+};
+
 class SceneState : public SceneComponent {
    public:
     /// Background music map : trackName - track
@@ -218,8 +229,8 @@ class SceneState : public SceneComponent {
     [[nodiscard]] inline const SceneRenderState& renderState() const noexcept { return _renderState; }
     [[nodiscard]] inline const MusicPlaylist& music(const MusicType type) const noexcept { return _music[to_U32(type)]; }
 
-    [[nodiscard]] inline vector<WaterBodyData>& waterBodies() noexcept { return _waterBodies; }
-    [[nodiscard]] inline const vector<WaterBodyData>& waterBodies() const noexcept { return _waterBodies; }
+    [[nodiscard]] inline WaterBodyDataContainer& waterBodies() noexcept { return _waterBodies; }
+    [[nodiscard]] inline const WaterBodyDataContainer& waterBodies() const noexcept { return _waterBodies; }
 
     PROPERTY_RW(U8, playerPass, 0u);
     PROPERTY_RW(bool, saveLoadDisabled, false);
@@ -233,7 +244,7 @@ protected:
     SceneRenderState _renderState;
     std::array<MusicPlaylist, to_base(MusicType::COUNT)> _music;
     std::array<SceneStatePerPlayer, Config::MAX_LOCAL_PLAYER_COUNT> _playerState;
-    vector<WaterBodyData> _waterBodies;
+    WaterBodyDataContainer _waterBodies;
 };
 
 }  // namespace Divide

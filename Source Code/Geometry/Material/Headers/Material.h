@@ -86,7 +86,6 @@ constexpr U8 g_materialTextureSlots[] = {
     to_base(TextureUsage::REFLECTION_PLANAR),
     to_base(TextureUsage::REFLECTION_CUBE),
     to_base(TextureUsage::REFRACTION_PLANAR),
-    to_base(TextureUsage::REFRACTION_CUBE),
     to_base(TextureUsage::PROJECTION)
 };
 
@@ -172,8 +171,6 @@ class Material final : public CachedResource {
     void refractive(bool state, bool applyToInstances = false);
     void isStatic(bool state, bool applyToInstances = false);
     void ignoreTexDiffuseAlpha(bool state, bool applyToInstances = false);
-    void usePlanarReflections(bool state, bool applyToInstances = false);
-    void usePlanarRefractions(bool state, bool applyToInstances = false);
     void parallaxFactor(F32 factor, bool applyToInstances = false);
     void bumpMethod(BumpMethod newBumpMethod, bool applyToInstances = false);
     void toggleTransparency(bool state, bool applyToInstances = false);
@@ -198,7 +195,7 @@ class Material final : public CachedResource {
 
     /// Add the specified shader to specific RenderStagePass parameters. Use "COUNT" and/or g_AllVariantsID for global options
     /// e.g. a RenderPassType::COUNT will use the shader in the specified stage+variant combo but for all of the passes
-    void setShaderProgram(const ShaderProgram_ptr& shader, RenderStage stage, RenderPassType pass, RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT);
+    void setShaderProgram(const ShaderProgramDescriptor& shaderDescriptor, RenderStage stage, RenderPassType pass, RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT);
     /// Add the specified renderStateBlockHash to specific RenderStagePass parameters. Use "COUNT" and/or "g_AllVariantsID" for global options
     /// e.g. a RenderPassType::COUNT will use the block in the specified stage+variant combo but for all of the passes
     void setRenderStateBlock(size_t renderStateBlockHash, RenderStage stage, RenderPassType pass, RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT);
@@ -229,7 +226,7 @@ class Material final : public CachedResource {
     void loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
 
     // type == ShaderType::Count = add to all stages
-    void addShaderDefine(ShaderType type, const Str128& define, bool addPrefix);
+    void addShaderDefine(ShaderType type, const string& define, bool addPrefix);
     const ModuleDefines& shaderDefines(ShaderType type) const;
 
    protected:
@@ -239,20 +236,20 @@ class Material final : public CachedResource {
     /// Constructs a shader for the specified renderStatePass
     void computeShader(RenderStagePass renderStagePass);
 
-    void addShaderDefineInternal(ShaderType type, const Str128& define, bool addPrefix);
+    void addShaderDefineInternal(ShaderType type, const string& define, bool addPrefix);
 
     void updateTransparency();
 
     void recomputeShaders();
-    void setShaderProgramInternal(const ResourceDescriptor& shaderDescriptor,
+    void setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,
                                   RenderStagePass stagePass,
                                   bool computeOnAdd);
 
-    void setShaderProgramInternal(const ShaderProgram_ptr& shader,
+    void setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,
                                   ShaderProgramInfo& shaderInfo,
-                                  RenderStage stage,
-                                  RenderPassType pass,
-                                  RenderStagePass::VariantType variant) const;
+                                  RenderStagePass stagePass) const;
+
+    void computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDescriptor, RenderStagePass renderStagePass) const;
 
     ShaderProgramInfo& shaderInfo(RenderStagePass renderStagePass);
 
@@ -297,13 +294,6 @@ class Material final : public CachedResource {
     /// If the metalness textures has 3 (or 4) channels, those channels are interpreted automatically as R: Occlusion, G: Metalness, B: Roughness
     PROPERTY_R(bool, usePackedOMR, false);
     PROPERTY_RW(CustomShaderUpdateCBK, customShaderCBK);
-    /// These settings don't affect Environment and SSR reflections! Just custom reflection/refraction textures 
-    /// E.g. water and it's custom reflection and refraction render-to-texture passes
-    
-    /// Mirrors might use planar reflections, but complex objects might need cube maps
-    PROPERTY_R(bool, usePlanarReflections, true);
-    PROPERTY_R(bool, usePlanarRefractions, true);
-
     PROPERTY_R(bool, useBindlessTextures, false);
     PROPERTY_R(bool, debugBindlessTextures, false);
 

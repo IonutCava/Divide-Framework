@@ -42,8 +42,8 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
 
     context.paramHandler().setParam<bool>(_ID("postProcessing.enableVignette"), false);
 
-    _postFXTarget.drawMask().disableAll();
-    _postFXTarget.drawMask().setEnabled(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO), true);
+    DisableAll(_postFXTarget._drawMask);
+    SetEnabled(_postFXTarget._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO), true);
 
     Console::printfn(Locale::Get(_ID("START_POST_FX")));
 

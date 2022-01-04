@@ -34,7 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _SHADER_COMPUTE_QUEUE_H_
 
 #include "ShaderProgramInfo.h"
-#include "Core/Resources/Headers/ResourceCache.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
 
@@ -44,12 +44,13 @@ namespace Time {
 
 class ResourceCache;
 class PlatformContext;
+class ShaderProgramDescriptor;
 
 class ShaderComputeQueue {
 public:
     struct ShaderQueueElement {
         ShaderProgram_ptr& _shaderRef;
-        ResourceDescriptor _shaderDescriptor;
+        ShaderProgramDescriptor _shaderDescriptor;
     };
 
 public:

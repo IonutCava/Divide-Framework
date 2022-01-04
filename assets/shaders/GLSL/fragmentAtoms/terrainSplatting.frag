@@ -57,10 +57,14 @@ mat3 cotangentFrame() {
     const vec3 dp2  = dFdy(-V);
     const vec2 duv1 = dFdx(VAR._texCoord);
     const vec2 duv2 = dFdy(VAR._texCoord);
-
+#if defined(REFLECTION_PASS)
+    vec3 normalW = -VAR._normalW;
+#else //REFLECTION_PASS
+    vec3 normalW = VAR._normalW;
+#endif //REFLECTION_PASS
     // solve the linear system
     const vec3 dp2perp = cross(dp2, VAR._normalW);
-    const vec3 dp1perp = cross(VAR._normalW, dp1);
+    const vec3 dp1perp = cross(normalW, dp1);
     const vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
     const vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
 
@@ -202,13 +206,13 @@ vec4 getUnderwaterAlbedo(in vec2 uv, in float waterDepth) {
 }
 
 vec4 BuildTerrainData(out vec3 normalWV, out float normalVariation) {
-    const vec2 waterData = GetWaterDetails(VAR._vertexW.xyz, TERRAIN_HEIGHT_OFFSET);
     const BlendMapDataType blendAmnt = getBlendFactor(VAR._texCoord);
     const vec2 uv = getScaledCoords(VAR._texCoord, blendAmnt);
-#if defined(LOW_QUALITY)
+/*#if defined(LOW_QUALITY)
     normalWV = normalize(mat3(dvd_ViewMatrix) * VAR._normalW);
+    normalVariation = 0.f;
     return getTerrainAlbedo(blendAmnt, uv);
-#else //LOW_QUALITY
+#else //LOW_QUALITY*/
     if (VAR._LoDLevel > 1) {
         const vec4 normalMap = getTerrainNormal(blendAmnt, uv);
         normalVariation = normalMap.w;
@@ -216,11 +220,12 @@ vec4 BuildTerrainData(out vec3 normalWV, out float normalVariation) {
         return getTerrainAlbedo(blendAmnt, uv);
     }
 
+    const vec2 waterData = GetWaterDetails(VAR._vertexW.xyz, TERRAIN_HEIGHT_OFFSET);
     const vec4 normalMap = mix(getTerrainNormal(blendAmnt, uv), getUnderwaterNormal(), saturate(waterData.x));
     normalVariation = normalMap.w;
     normalWV = normalize(mat3(dvd_ViewMatrix) * cotangentFrame() * normalMap.xyz);
     return mix(getTerrainAlbedo(blendAmnt, uv), getUnderwaterAlbedo(VAR._texCoord * UNDERWATER_TILE_SCALE, waterData.y), saturate(waterData.x));
-#endif //LOW_QUALITY
+//#endif //LOW_QUALITY
 }
 
 #endif //_TERRAIN_SPLATTING_FRAG_

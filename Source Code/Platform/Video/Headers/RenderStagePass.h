@@ -108,7 +108,6 @@ struct RenderStagePass {
             case RenderStage::REFRACTION:
             {
                 // Refraction targets are only planar for now
-                assert(to_base(renderStagePass._variant) == to_base(RefractorType::PLANAR));
                 return renderStagePass._index;
             }
             case RenderStage::SHADOW:

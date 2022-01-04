@@ -102,9 +102,9 @@ void SSRPreRenderOperator::reshape(const U16 width, const U16 height) {
 void SSRPreRenderOperator::prepare(GFX::CommandBuffer& bufferInOut) {
     if (_stateChanged && !_enabled) {
         RTClearDescriptor clearDescriptor = {};
-        clearDescriptor.clearDepth(true);
-        clearDescriptor.clearColours(true);
-        clearDescriptor.resetToDefault(true);
+        clearDescriptor._clearDepth = true;
+        clearDescriptor._clearColours = true;
+        clearDescriptor._resetToDefault = true;
 
         GFX::ClearRenderTargetCommand clearMainTarget = {};
         clearMainTarget._target = { RenderTargetUsage::SSR_RESULT };

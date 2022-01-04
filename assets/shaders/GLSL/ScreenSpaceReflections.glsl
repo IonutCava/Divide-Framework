@@ -169,18 +169,22 @@ float ComputeBlendFactorForIntersection(in float iterationCount,
 }
 
 vec4 GetReflectionColour() {
+    if (!ssrEnabled) {
+        return vec4(0.f);
+    }
+
     float reflBlend = 0.f;
     vec3 ambientReflected = vec3(0.f);
 
     const float depth = texture(texDepth, VAR._texCoord).r;
     if (depth < INV_Z_TEST_SIGMA) {
         const vec3 dataIn = texture(texNormal, VAR._texCoord).rgb;
-        const vec2 normal = dataIn.rg;
+        const vec3 normal = unpackNormal(dataIn.rg);
         const float roughness = dataIn.b;
 
-        if (roughness < INV_Z_TEST_SIGMA && ssrEnabled) 
+        if (roughness < INV_Z_TEST_SIGMA) 
         {
-            const vec3 vsNormal = normalize(unpackNormal(normal));
+            const vec3 vsNormal = normalize(normal);
             const vec3 vsPos = ViewSpacePos(VAR._texCoord, depth, invProjectionMatrix);
             const vec3 vsReflect = reflect(normalize(vsPos), vsNormal);
 
@@ -214,5 +218,5 @@ void main() {
         return;
     }
 
-    _colourOut = vec4(0.f, 0.f, 0.f, 0.f);
+    _colourOut = vec4(0.f);
 }

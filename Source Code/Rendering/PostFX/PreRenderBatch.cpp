@@ -450,9 +450,9 @@ void PreRenderBatch::prePass(const CameraSnapshot& cameraSnapshot, const U32 fil
     { //Linearise depth buffer
         GFX::ClearRenderTargetCommand clearLinearDepthCmd{};
         clearLinearDepthCmd._target = { RenderTargetUsage::LINEAR_DEPTH };
-        clearLinearDepthCmd._descriptor.clearDepth(false);
-        clearLinearDepthCmd._descriptor.clearColours(true);
-        clearLinearDepthCmd._descriptor.resetToDefault(true);
+        clearLinearDepthCmd._descriptor._clearDepth = false;
+        clearLinearDepthCmd._descriptor._clearColours = true;
+        clearLinearDepthCmd._descriptor._resetToDefault = true;
 
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         beginRenderPassCmd._name = "LINEARISE_DEPTH_BUFFER";
@@ -721,7 +721,7 @@ void PreRenderBatch::execute(const CameraSnapshot& cameraSnapshot, U32 filterSta
         GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ screenAtt.texture()->data(), screenAtt.samplerHash(),TextureUsage::UNIT0 });
 
         RTClearDescriptor clearTarget = {};
-        clearTarget.clearColours(true);
+        clearTarget._clearColours = true;
         
         GFX::EnqueueCommand(bufferInOut, GFX::ClearRenderTargetCommand{ _sceneEdges._targetID, clearTarget });
 

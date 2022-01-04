@@ -551,7 +551,7 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
 
     U8 index = 0u;
 
-    const vector<WaterBodyData>& waterBodies = activeSceneState->waterBodies();
+    const auto& waterBodies = activeSceneState->waterBodies()._data;
     for (const auto& body : waterBodies) {
         _sceneData->waterDetails(index++, body);
     }

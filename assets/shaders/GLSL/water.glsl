@@ -72,21 +72,21 @@ void main()
     const vec3 incident = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
 
     const vec2 waterUV = clamp(0.5f * homogenize(_vertexWVP).xy + 0.5f, vec2(0.001f), vec2(0.999f));
-    const vec3 refractionColour = overlayVec(getRefractionColour(waterUV).rgb, _refractionTint);
+    const vec3 refractionColour = overlayVec(texture(texRefractPlanar, waterUV).rgb, _refractionTint);
 
     switch (dvd_materialDebugFlag) {
         case DEBUG_REFRACTIONS:
             writeScreenColour(vec4(refractionColour, 1.f));
             return;
         case DEBUG_REFLECTIONS:
-            writeScreenColour(getReflectionColour(waterUV));
+            writeScreenColour(texture(texReflectPlanar, waterUV));
             return;
     }
 
     // Get a modified viewing direction of the camera that only takes into account height.
     // ref: https://www.rastertek.com/terdx10tut16.html
-    const vec3 texColour = (_underwater == 1 ? refractionColour : mix(refractionColour, 
-                                                                      getReflectionColour(waterUV).rgb,
+    const vec3 texColour = (_underwater == 1 ? refractionColour : mix(refractionColour,
+                                                                      texture(texReflectPlanar, waterUV).rgb,
                                                                       Fresnel(incident, normalW)));
     
     vec4 outColour = getPixelColour(vec4(texColour, 1.f), data, normalWV, normalVariation, VAR._texCoord);
@@ -107,7 +107,8 @@ void main()
     const float specular = dot(normalize(reflection), incident);
     // Increase the specular light by the shininess value and add the specular to the final color.
     // Check to make sure the specular was positive so we aren't adding black spots to the water.
-    writeScreenColour(outColour + (specular > 0.f ? pow(specular, _specularShininess) : 0.f));
+
+    writeScreenColour(outColour  + (specular > 0.f ? pow(specular, _specularShininess) : 0.f));
 #else //!PRE_PASS
     const float roughness = getRoughness(data, VAR._texCoord, normalVariation);
     writeGBuffer(normalWV, roughness);

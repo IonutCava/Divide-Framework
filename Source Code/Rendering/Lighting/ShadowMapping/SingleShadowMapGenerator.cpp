@@ -174,9 +174,9 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._maxLoD = -1;
 
     RTClearDescriptor clearDescriptor = {};
-    clearDescriptor.clearDepth(true);
-    clearDescriptor.clearColours(true);
-    clearDescriptor.resetToDefault(true);
+    clearDescriptor._clearDepth = true;
+    clearDescriptor._clearColours = true;
+    clearDescriptor._resetToDefault = true;
 
     EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str()));
 

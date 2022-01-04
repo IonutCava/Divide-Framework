@@ -159,8 +159,8 @@ bool BloomPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, const
 
     // Step 1: generate bloom - render all of the "bright spots"
     RTClearDescriptor clearTarget = {};
-    clearTarget.clearDepth(false);
-    clearTarget.clearColours(true);
+    clearTarget._clearDepth = false;
+    clearTarget._clearColours = true;
 
     GFX::ClearRenderTargetCommand clearRenderTargetCmd = {};
     clearRenderTargetCmd._target = _bloomOutput._targetID;

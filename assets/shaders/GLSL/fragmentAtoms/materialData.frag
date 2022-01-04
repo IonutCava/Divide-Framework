@@ -1,6 +1,18 @@
 #ifndef _MATERIAL_DATA_FRAG_
 #define _MATERIAL_DATA_FRAG_
 
+#if !defined(MAIN_DISPLAY_PASS)
+
+#if !defined(NO_SSAO)
+#define NO_SSAO
+#endif //!NO_SSAO
+
+#if !defined(NO_FOG)
+#define NO_FOG
+#endif //!NO_FOG
+
+#endif //!MAIN_DISPLAY_PASS
+
 #include "utility.frag"
 #include "texturing.frag"
 
@@ -155,20 +167,6 @@ float specularAntiAliasing(in vec3 N, in float a) {
     const float kernelRoughness2 = min(2.f * variance, KAPPA);
     return saturate(a + kernelRoughness2);
 }
-#endif //!PRE_PASS
-
-#if !defined(PRE_PASS)
-#if defined(USE_PLANAR_REFLECTION)
-#define getReflectionColour(UV) texture(texReflectPlanar, UV)
-#else //USE_PLANAR_REFLECTION
-#define getReflectionColour(UV) texture(texReflectCube, UV)
-#endif //USE_PLANAR_REFLECTION
-
-#if defined(USE_PLANAR_REFRACTION)
-#define getRefractionColour(UV) texture(texRefractPlanar, UV)
-#else //USE_PLANAR_REFLECTION
-#define getRefractionColour(UV) texture(texRefractCube, UV)
-#endif //USE_PLANAR_REFLECTION
 #endif //!PRE_PASS
 
 vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {

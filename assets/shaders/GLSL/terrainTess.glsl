@@ -498,7 +498,8 @@ void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout f
 
 void main(void) {
 
-    vec3 normalWV; float normalVariation;
+    vec3 normalWV; 
+    float normalVariation;
     const vec4 albedo = BuildTerrainData(normalWV, normalVariation);
     _private_OMR.b = albedo.a;
 
@@ -538,7 +539,7 @@ void main(void) {
 #if defined(TOGGLE_NORMALS)
     colourOut.rgb = gs_wireColor;
 #else //TOGGLE_NORMALS
-    colourOut.rgb *= (0.5f * gs_edgeDist.w);// vec4(vec3(0.5f * gs_edgeDist.w), 1.0f);
+    colourOut.rgb *= (0.5f * gs_edgeDist.w);
 
     #define LineWidth 0.75f
     #define D min(min(gs_edgeDist.x, gs_edgeDist.y), gs_edgeDist.z)

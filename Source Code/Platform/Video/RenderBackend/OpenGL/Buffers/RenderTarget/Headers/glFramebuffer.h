@@ -132,7 +132,6 @@ protected:
     static bool _zWriteEnabled;
 };
 
-
 bool operator==(const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs) noexcept;
 bool operator!=(const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs) noexcept;
 

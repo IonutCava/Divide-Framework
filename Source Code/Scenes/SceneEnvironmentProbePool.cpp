@@ -253,9 +253,9 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
     if (ProbesDirty()) {
         GFX::ClearRenderTargetCommand clearMainTarget = {};
         clearMainTarget._target = s_reflection._targetID;
-        clearMainTarget._descriptor.clearDepth(true);
-        clearMainTarget._descriptor.clearColours(false);
-        clearMainTarget._descriptor.resetToDefault(true);
+        clearMainTarget._descriptor._clearDepth = true;
+        clearMainTarget._descriptor._clearColours = false;
+        clearMainTarget._descriptor._resetToDefault = true;
         EnqueueCommand(bufferInOut, clearMainTarget);
 
         ProbesDirty(false);

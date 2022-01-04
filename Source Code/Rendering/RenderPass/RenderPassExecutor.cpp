@@ -1005,18 +1005,18 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     clearRTCmd._target = params._targetOIT;
     if_constexpr(Config::USE_COLOURED_WOIT) {
         // Don't clear our screen target. That would be BAD.
-        clearRTCmd._descriptor.clearColour(to_U8(GFXDevice::ScreenTargets::MODULATE), false);
+        clearRTCmd._descriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::MODULATE)] = false;
     }
     // Don't clear and don't write to depth buffer
-    clearRTCmd._descriptor.clearDepth(false);
+    clearRTCmd._descriptor._clearDepth = false;
     GFX::EnqueueCommand(bufferInOut, clearRTCmd);
 
     // Step1: Draw translucent items into the accumulation and revealage buffers
     GFX::BeginRenderPassCommand* beginRenderPassOitCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     beginRenderPassOitCmd->_name = "DO_OIT_PASS_1";
     beginRenderPassOitCmd->_target = params._targetOIT;
-    beginRenderPassOitCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, false);
-    //beginRenderPassOitCmd->_descriptor.alphaToCoverage(true);
+    SetEnabled(beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
+    //beginRenderPassOitCmd->_descriptor._alphaToCoverage = true;
 
     {
         GFX::SetBlendStateCommand* setBlendStateCmd = GFX::EnqueueCommand<GFX::SetBlendStateCommand>(bufferInOut);
@@ -1131,8 +1131,7 @@ void RenderPassExecutor::transparencyPass(const VisibleNodeList<>& nodes, const 
         GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         beginRenderPassTransparentCmd->_name = "DO_TRANSPARENCY_PASS";
         beginRenderPassTransparentCmd->_target = params._target;
-        beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, false);
-            
+        SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
 
         if (layeredRendering) {
             GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
@@ -1191,7 +1190,7 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
         if (resolveGBuffer) {
             GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             beginRenderPassCommand->_target = { RenderTargetUsage::SCREEN, 0u };
-            beginRenderPassCommand->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, false);
+            SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
             beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_ResolveGBufferPipeline });

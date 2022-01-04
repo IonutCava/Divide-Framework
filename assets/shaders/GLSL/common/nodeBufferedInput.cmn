@@ -85,7 +85,6 @@ layout(binding = TEXTURE_PROJECTION)        uniform sampler2DArray texProjected;
 layout(binding = TEXTURE_REFLECTION_PLANAR) uniform sampler2D      texReflectPlanar;
 layout(binding = TEXTURE_REFRACTION_PLANAR) uniform sampler2D      texRefractPlanar;
 layout(binding = TEXTURE_REFLECTION_CUBE)   uniform samplerCube    texReflectCube;
-layout(binding = TEXTURE_REFRACTION_CUBE)   uniform samplerCube    texRefractCube;
 
 #endif //BINDLESS_TEXTURES_ENABLED && !DEBUG_BINDLESS_TEXTURES
 

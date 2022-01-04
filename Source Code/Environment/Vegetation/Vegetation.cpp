@@ -359,7 +359,6 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     s_treeMaterial = CreateResource<Material>(gfxDevice.parent().resourceCache(), matDesc);
     s_treeMaterial->shadingMode(ShadingMode::BLINN_PHONG);
     s_treeMaterial->baseShaderData(treeShaderData);
-    s_treeMaterial->addShaderDefine(ShaderType::VERTEX, "HAS_CULLING_OUT", true);
     s_treeMaterial->addShaderDefine(ShaderType::COUNT, "OVERRIDE_DATA_IDX", true);
     s_treeMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("MAX_TREE_INSTANCES %d", s_maxTreeInstances).c_str(), true);
 
@@ -396,80 +395,44 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
 
     vertModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
     vertModule._defines.emplace_back("OVERRIDE_DATA_IDX", true);
-    vertModule._defines.emplace_back("NODE_DYNAMIC", true);
-    vertModule._defines.emplace_back("HAS_CLIPPING_OUT", true);
-    vertModule._defines.emplace_back("HAS_CULLING_OUT", true);
+    vertModule._defines.emplace_back("COMPUTE_TBN", true);
 
     ShaderModuleDescriptor fragModule = {};
     fragModule._moduleType = ShaderType::FRAGMENT;
     fragModule._sourceFile = "grass.glsl";
     fragModule._defines.emplace_back("OVERRIDE_DATA_IDX", true);
-    fragModule._defines.emplace_back("NODE_DYNAMIC", true);
     fragModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
-    
-    ProcessShadowMappingDefines(gfxDevice.context().config(), fragModule._defines);
+
     fragModule._variant = "Colour";
 
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
-
-    ResourceDescriptor grassColourShader("GrassColour");
-    grassColourShader.propertyDescriptor(shaderDescriptor);
-    grassColourShader.waitForReady(true);
-    ShaderProgram_ptr grassColour = CreateResource<ShaderProgram>(terrain->parentResourceCache(), grassColourShader, loadTasks);
+    shaderDescriptor._name = "GrassColour";
 
     ShaderProgramDescriptor shaderOitDescriptor = shaderDescriptor;
-    shaderOitDescriptor._modules.back()._defines.emplace_back("OIT_PASS", true);
     shaderOitDescriptor._modules.back()._variant = "Colour.OIT";
+    shaderOitDescriptor._name = "grassColourOIT";
 
-    ResourceDescriptor grassColourOITShader("grassColourOIT");
-    grassColourOITShader.propertyDescriptor(shaderOitDescriptor);
-    grassColourOITShader.waitForReady(false);
-    ShaderProgram_ptr grassColourOIT = CreateResource<ShaderProgram>(terrain->parentResourceCache(), grassColourOITShader, loadTasks);
+    ShaderProgramDescriptor shaderDescriptorDepth = {};
+    shaderDescriptorDepth._modules.push_back(vertModule);
+    shaderDescriptorDepth._name = "grassDepth";
 
-    ShaderProgramDescriptor shaderOitDescriptorLQ = shaderDescriptor;
-    shaderOitDescriptorLQ._modules.back()._defines.emplace_back("OIT_PASS", true);
-    shaderOitDescriptorLQ._modules.back()._variant = "Colour.OIT";
-
-    ResourceDescriptor grassColourOITLQShader("grassColourOITLQ");
-    grassColourOITLQShader.propertyDescriptor(shaderOitDescriptor);
-    grassColourOITLQShader.waitForReady(false);
-    ShaderProgram_ptr grassColourOITLQ = CreateResource<ShaderProgram>(terrain->parentResourceCache(), grassColourOITLQShader, loadTasks);
-
-    shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-
-    ResourceDescriptor grassPrePassLQShader("grassPrePassLQ");
-    grassPrePassLQShader.propertyDescriptor(shaderDescriptor);
-    grassPrePassLQShader.waitForReady(false);
-    ShaderProgram_ptr grassPrePassLQ = CreateResource<ShaderProgram>(terrain->parentResourceCache(), grassPrePassLQShader, loadTasks);
-
+    ShaderProgramDescriptor shaderDescriptorPrePass = shaderDescriptorDepth;
     fragModule._variant = "PrePass";
-    shaderDescriptor._modules.push_back(fragModule);
+    shaderDescriptorPrePass._modules.push_back(fragModule);
+    shaderDescriptorPrePass._name = "grassPrePass";
 
-    ResourceDescriptor grassPrePassShader("grassPrePass");
-    grassPrePassShader.propertyDescriptor(shaderDescriptor);
-    grassPrePassShader.waitForReady(false);
-    ShaderProgram_ptr grassPrePass = CreateResource<ShaderProgram>(terrain->parentResourceCache(), grassPrePassShader, loadTasks);
-
+    ShaderProgramDescriptor shaderDescriptorShadow{};
     fragModule._variant = "Shadow.VSM";
-    shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
-
-    ResourceDescriptor grassShadowShader("grassShadow");
-    grassShadowShader.propertyDescriptor(shaderDescriptor);
-    grassShadowShader.waitForReady(false);
-    ShaderProgram_ptr grassShadowVSM = CreateResource<ShaderProgram>(terrain->parentResourceCache(), grassShadowShader, loadTasks);
-
-    shaderDescriptor._modules.back()._variant += ".ORTHO";
-    shaderDescriptor._modules.back()._defines.emplace_back("ORTHO_PROJECTION", true);
-
-    ResourceDescriptor grassShadowShaderOrtho("grassShadowOrtho");
-    grassShadowShaderOrtho.propertyDescriptor(shaderDescriptor);
-    grassShadowShaderOrtho.waitForReady(false);
-    ShaderProgram_ptr grassShadowVSMOrtho = CreateResource<ShaderProgram>(terrain->parentResourceCache(), grassShadowShaderOrtho, loadTasks);
+    shaderDescriptorShadow._modules.push_back(vertModule);
+    shaderDescriptorShadow._modules.push_back(fragModule);
+    shaderDescriptorShadow._name = "grassShadow";
+    
+    ShaderProgramDescriptor shaderDescriptorShadowOrtho = shaderDescriptorShadow;
+    shaderDescriptorShadowOrtho._modules.back()._variant += ".ORTHO";
+    shaderDescriptorShadowOrtho._modules.back()._defines.emplace_back("ORTHO_PROJECTION", true);
+    shaderDescriptorShadowOrtho._name = "grassShadowOrtho";
 
     ShaderModuleDescriptor compModule = {};
     compModule._moduleType = ShaderType::COMPUTE;
@@ -496,13 +459,12 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
-    vegMaterial->setShaderProgram(grassColour,           RenderStage::COUNT,   RenderPassType::COUNT);
-    vegMaterial->setShaderProgram(grassPrePassLQ,        RenderStage::COUNT,   RenderPassType::PRE_PASS);
-    vegMaterial->setShaderProgram(grassPrePass,          RenderStage::DISPLAY, RenderPassType::PRE_PASS);
-    vegMaterial->setShaderProgram(grassColourOITLQ,      RenderStage::COUNT,   RenderPassType::OIT_PASS);
-    vegMaterial->setShaderProgram(grassColourOIT,        RenderStage::DISPLAY, RenderPassType::OIT_PASS);
-    vegMaterial->setShaderProgram(grassShadowVSM,        RenderStage::SHADOW,  RenderPassType::COUNT);
-    vegMaterial->setShaderProgram(grassShadowVSMOrtho,   RenderStage::SHADOW,  RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL));
+    vegMaterial->setShaderProgram(shaderDescriptor,              RenderStage::COUNT,   RenderPassType::COUNT);
+    vegMaterial->setShaderProgram(shaderDescriptorDepth,         RenderStage::COUNT,   RenderPassType::PRE_PASS);
+    vegMaterial->setShaderProgram(shaderDescriptorPrePass,       RenderStage::DISPLAY, RenderPassType::PRE_PASS);
+    vegMaterial->setShaderProgram(shaderOitDescriptor,           RenderStage::COUNT,   RenderPassType::OIT_PASS);
+    vegMaterial->setShaderProgram(shaderDescriptorShadow,        RenderStage::SHADOW,  RenderPassType::COUNT);
+    vegMaterial->setShaderProgram(shaderDescriptorShadowOrtho,   RenderStage::SHADOW,  RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL));
 
     vegMaterial->setTexture(TextureUsage::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE, TexturePrePassUsage::ALWAYS);
     s_vegetationMaterial = vegMaterial;

@@ -1,10 +1,6 @@
 #ifndef _BRDF_FRAG_
 #define _BRDF_FRAG_
 
-#if defined(DEPTH_PASS)
-#error BRDF can only be used in coloured passes!
-#endif //DEPTH_PASS
-
 #if defined(NO_POST_FX)
 #if !defined(NO_FOG)
 #define NO_FOG
@@ -96,10 +92,10 @@ float getShadowMultiplier(in vec3 normalWV) {
     return ret;
 }
 
-void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, inout vec3 radianceOut)
+void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool receivesShadows, inout vec3 radianceOut)
 {
     if (material._shadingMode == SHADING_FLAT) {
-        radianceOut += material._diffuseColour * material._occlusion* getShadowMultiplier(N);
+        radianceOut += material._diffuseColour * material._occlusion * (receivesShadows ? getShadowMultiplier(N) : 1.f);
         return;
     }
 
@@ -114,7 +110,7 @@ void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, inout v
         const Light light = dvd_LightSource[lightIdx];
         const vec3 lightVec = normalize(-light._directionWV.xyz);
         const float ndl = GetNdotL(N, lightVec);
-        const float shadowMultiplier = getShadowMultiplierDirectional(light._options.y, TanAcosNdL(ndl));
+        const float shadowMultiplier = receivesShadows ? getShadowMultiplierDirectional(light._options.y, TanAcosNdL(ndl)) : 1.f;
         if (shadowMultiplier > M_EPSILON) {
             radianceOut += GetBRDF(lightVec, V, N, light._colour.rgb, shadowMultiplier, ndl, ndv, material);
         }
@@ -128,7 +124,7 @@ void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, inout v
         const vec3 lightVec = normalize(lightDir);
 
         const float ndl = GetNdotL(N, lightVec);
-        const float shadowMultiplier = getShadowMultiplierPoint(light._options.y, TanAcosNdL(ndl));
+        const float shadowMultiplier = receivesShadows ? getShadowMultiplierPoint(light._options.y, TanAcosNdL(ndl)) : 1.f;
 
         if (shadowMultiplier > M_EPSILON) {
             const float att = saturate(1.f - (SQUARED(length(lightDir)) / SQUARED(light._positionWV.w)));
@@ -144,7 +140,7 @@ void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, inout v
         const vec3 lightVec = normalize(lightDir);
 
         const float ndl = GetNdotL(N, lightVec);
-        const float shadowMultiplier = getShadowMultiplierSpot(light._options.y, TanAcosNdL(ndl));
+        const float shadowMultiplier = receivesShadows ? getShadowMultiplierSpot(light._options.y, TanAcosNdL(ndl)) : 1.f;
 
         if (shadowMultiplier > M_EPSILON) {
             const vec3  spotDirectionWV = normalize(light._directionWV.xyz);
@@ -178,8 +174,10 @@ vec3 applyFog(in vec3  rgb,      // original color of the pixel
 vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV, in float normalVariation, in vec2 uv) {
     const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, uv, normalWV, normalVariation);
 
+    const bool receivesShadows = dvd_receivesShadows(materialData);
+
     if (dvd_materialDebugFlag != DEBUG_NONE) {
-        return vec4(getDebugColour(material, uv, normalWV, dvd_probeIndex(materialData)), albedo.a);
+        return vec4(getDebugColour(material, uv, normalWV, dvd_probeIndex(materialData), receivesShadows), albedo.a);
     }
 
     const vec3 viewVec = normalize(VAR._viewDirectionWV);
@@ -192,7 +190,7 @@ vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 no
 
     vec3 radianceOut = ApplySSR(dvd_AmbientColour.rgb + iblRadiance);
 
-    getLightContribution(material, normalWV, viewVec, radianceOut);
+    getLightContribution(material, normalWV, viewVec, receivesShadows, radianceOut);
     radianceOut += material._emissive;
 
 #if !defined(NO_FOG)

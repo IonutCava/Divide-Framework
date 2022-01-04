@@ -76,7 +76,7 @@ glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& d
     }
 
     // Everything disabled so that the initial "begin" will override this
-    _previousPolicy.drawMask().disableAll();
+    DisableAll(_previousPolicy._drawMask);
     _activeColourBuffers.fill(GL_NONE);
     _attachmentState.resize(GL_API::s_maxFBOAttachments + 2u); //colours + depth + stencil
 }
@@ -401,16 +401,14 @@ void glFramebuffer::setBlendState(const RTBlendStates& blendStates, const RTAtta
 void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy, const RTAttachmentPool::PoolEntry& activeAttachments) {
     OPTICK_EVENT();
 
-    const RTDrawMask& mask = drawPolicy.drawMask();
-
-    if (_previousPolicy.drawMask() != mask) {
+    if (_previousPolicy._drawMask != drawPolicy._drawMask) {
         bool set = false;
         // handle colour buffers first
         const U8 count = to_U8(std::min(to_size(MAX_RT_COLOUR_ATTACHMENTS), activeAttachments.size()));
         for (U8 j = 0; j < MAX_RT_COLOUR_ATTACHMENTS; ++j) {
             GLenum temp = GL_NONE;
             if (j < count) {
-                temp = mask.isEnabled(RTAttachmentType::Colour, j) ? static_cast<GLenum>(activeAttachments[j]->binding()) : GL_NONE;
+                temp = IsEnabled(drawPolicy._drawMask, RTAttachmentType::Colour, j) ? static_cast<GLenum>(activeAttachments[j]->binding()) : GL_NONE;
             }
             if (_activeColourBuffers[j] != temp) {
                 _activeColourBuffers[j] = temp;
@@ -430,7 +428,7 @@ void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy, const RTA
         _activeDepthBuffer = depthAtt && depthAtt->used();
      }
     
-    if (mask.isEnabled(RTAttachmentType::Depth) != _zWriteEnabled) {
+    if (IsEnabled(drawPolicy._drawMask, RTAttachmentType::Depth) != _zWriteEnabled) {
         _zWriteEnabled = !_zWriteEnabled;
         glDepthMask(_zWriteEnabled ? GL_TRUE : GL_FALSE);
     }
@@ -459,14 +457,11 @@ void glFramebuffer::clear(const RTClearDescriptor& descriptor) {
     OPTICK_EVENT();
 
     const bool validationEnabled = enableAttachmentChangeValidation();
-    if (descriptor.resetToDefault()) {
-        enableAttachmentChangeValidation(false);
-        toggleAttachments();
-    }
-
     const RTAttachmentPool::PoolEntry& colourAttachments = _attachmentPool->get(RTAttachmentType::Colour);
 
-    if (descriptor.resetToDefault()) {
+    if (descriptor._resetToDefault) {
+        enableAttachmentChangeValidation(false);
+        toggleAttachments();
         prepareBuffers({}, colourAttachments);
         enableAttachmentChangeValidation(validationEnabled);
     }
@@ -500,19 +495,19 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy) {
     GL_API::getStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, _framebufferHandle);
 
     // Set the viewport
-    if (drawPolicy.setViewport()) {
+    if (drawPolicy._setViewport) {
         _prevViewport.set(_context.getViewport());
         _context.setViewport(0, 0, to_I32(getWidth()), to_I32(getHeight()));
     }
 
-    if (drawPolicy.setDefaultState()) {
+    if (drawPolicy._setDefaultState) {
         const bool validationEnabled = enableAttachmentChangeValidation();
         enableAttachmentChangeValidation(false);
         setDefaultState(drawPolicy);
         enableAttachmentChangeValidation(validationEnabled);
     }
 
-    if (_descriptor._msaaSamples > 0u && drawPolicy.alphaToCoverage()) {
+    if (_descriptor._msaaSamples > 0u && drawPolicy._alphaToCoverage) {
         glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
 
     }
@@ -528,11 +523,11 @@ void glFramebuffer::end(const bool needsUnbind) const {
         GL_API::getStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, 0);
     }
 
-    if (_previousPolicy.setViewport()) {
+    if (_previousPolicy._setViewport) {
         _context.setViewport(_prevViewport);
     }
 
-    if (_descriptor._msaaSamples > 0u && _previousPolicy.alphaToCoverage()) {
+    if (_descriptor._msaaSamples > 0u && _previousPolicy._alphaToCoverage) {
         glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
     }
 
@@ -565,19 +560,19 @@ void glFramebuffer::QueueMipMapsRecomputation(const RTAttachment& attachment) {
 void glFramebuffer::clear(const RTClearDescriptor& drawPolicy, const RTAttachmentPool::PoolEntry& activeAttachments) const {
     OPTICK_EVENT();
 
-    if (drawPolicy.clearColours() && hasColour()) {
+    if (drawPolicy._clearColours && hasColour()) {
         for (const RTAttachment_ptr& att : activeAttachments) {
             const U32 binding = att->binding();
             if (static_cast<GLenum>(binding) != GL_NONE) {
 
-                if (!drawPolicy.clearExternalColour() && att->isExternal()) {
+                if (!drawPolicy._clearExternalColour && att->isExternal()) {
                     continue;
                 }
 
                 const GLint buffer = static_cast<GLint>(binding - static_cast<GLint>(GL_COLOR_ATTACHMENT0));
 
-                if (drawPolicy.clearColour(to_U8(buffer))) {
-                    const RTClearColourDescriptor* clearColour = drawPolicy.customClearColour();
+                if (drawPolicy._clearColourAttachment[to_U8(buffer)]) {
+                    const RTClearColourDescriptor* clearColour = drawPolicy._customClearColour;
 
                     const FColour4& colour = clearColour != nullptr ? clearColour->_customClearColour[buffer] : att->clearColour();
                     if (att->texture(false)->descriptor().normalized()) {
@@ -606,11 +601,11 @@ void glFramebuffer::clear(const RTClearDescriptor& drawPolicy, const RTAttachmen
         }
     }
 
-    if (drawPolicy.clearDepth() && hasDepth()) {
-        if (drawPolicy.clearExternalDepth() && _attachmentPool->get(RTAttachmentType::Depth, 0)->isExternal()) {
+    if (drawPolicy._clearDepth && hasDepth()) {
+        if (drawPolicy._clearExternalDepth && _attachmentPool->get(RTAttachmentType::Depth, 0)->isExternal()) {
             return;
         }
-        const RTClearColourDescriptor* clearColour = drawPolicy.customClearColour();
+        const RTClearColourDescriptor* clearColour = drawPolicy._customClearColour;
         const F32 depthValue = clearColour != nullptr ? clearColour->_customClearDepth : _descriptor._depthValue;
 
         glClearNamedFramebufferfv(_framebufferHandle, GL_DEPTH, 0, &depthValue);

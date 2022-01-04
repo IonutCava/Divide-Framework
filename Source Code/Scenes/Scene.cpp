@@ -1286,6 +1286,7 @@ bool Scene::mouseMoved(const Input::MouseMoveEvent& arg) {
 }
 
 bool Scene::savePreviousCamera(const PlayerIndex idx) const {
+    playerCamera(idx)->updateLookAt();
     state()->playerState(idx).previousCameraSnapshot(playerCamera(idx)->snapshot());
     return true;
 }
@@ -1323,7 +1324,7 @@ void Scene::updateSceneState(const U64 deltaTimeUS) {
     sceneRuntimeUS(sceneRuntimeUS() + deltaTimeUS);
 
     updateSceneStateInternal(deltaTimeUS);
-    _state->waterBodies().clear();
+    _state->waterBodies().reset();
     _sceneGraph->sceneUpdate(deltaTimeUS, *_state);
     _aiManager->update(deltaTimeUS);
 }
@@ -1527,7 +1528,7 @@ bool Scene::checkCameraUnderwater(const PlayerIndex idx) const {
 bool Scene::checkCameraUnderwater(const Camera& camera) const noexcept {
     const vec3<F32>& eyePos = camera.getEye();
     {
-        const auto& waterBodies = state()->waterBodies();
+        const auto& waterBodies = state()->waterBodies()._data;
         for (const WaterBodyData& water : waterBodies) {
             const vec3<F32>& extents = water._extents;
             const vec3<F32>& position = water._positionW;

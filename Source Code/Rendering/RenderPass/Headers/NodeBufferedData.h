@@ -52,8 +52,7 @@ constexpr TextureUsage g_materialTextures[] = {
     TextureUsage::PROJECTION,
     TextureUsage::REFLECTION_PLANAR,
     TextureUsage::REFRACTION_PLANAR,
-    TextureUsage::REFLECTION_CUBE,
-    TextureUsage::REFRACTION_CUBE
+    TextureUsage::REFLECTION_CUBE
 };
 
 constexpr size_t MATERIAL_TEXTURE_COUNT = std::size(g_materialTextures);
@@ -111,8 +110,8 @@ FORCE_INLINE [[nodiscard]] SamplerAddress Uvec2ToTexture(const vec2<U32> address
         vec4<U32> _data;
         //x = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, Emissive
         //y = 4x8U: tex op Occlusion, tex op Metalness, tex op Roughness, tex op Opcaity
-        //z = 4x8U: use albedo texture alpha channel, use opacity map alpha channel, reserved, reserved
-        //w = reserved
+        //z = 4x8U: use albedo texture alpha channel, use opacity map alpha channel, specular Factor, gloss Factor
+        //w = 4x8u: receives shadows, reserved, reserved, reserved
         vec4<U32> _textureOperations;
     };
 

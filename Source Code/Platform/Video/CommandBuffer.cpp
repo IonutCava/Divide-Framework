@@ -180,7 +180,7 @@ void CommandBuffer::batch() {
         switch (static_cast<CommandType>(cmd._typeIndex)) {
             case CommandType::BEGIN_RENDER_PASS: {
                 // We may just wish to clear some state
-                if (get<BeginRenderPassCommand>(cmd)->_descriptor.setViewport()) {
+                if (get<BeginRenderPassCommand>(cmd)->_descriptor._setViewport) {
                     hasWork = true;
                     break;
                 }

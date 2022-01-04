@@ -135,7 +135,7 @@ protected:
     Texture_ptr _perWorlNoiseTex = nullptr;
     Sphere3D_ptr _sky = nullptr;
     U32  _diameter = 1u;
-    EditorDataState _atmosphereChanged = EditorDataState::CHANGED;
+    std::array<EditorDataState, to_base(RenderStage::COUNT)> _atmosphereChanged;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Sky);

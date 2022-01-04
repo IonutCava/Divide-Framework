@@ -245,14 +245,15 @@ Sky::Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, 
     _sun.SetDate(*localtime(&t));
 
     _renderState.addToDrawExclusionMask(RenderStage::SHADOW);
+    _atmosphereChanged.fill(EditorDataState::QUEUED);
 
     getEditorComponent().onChangedCbk([this](const std::string_view field) {
         if (field == "Reset To Scene Default") {
             _atmosphere = defaultAtmosphere();
-            _atmosphereChanged = EditorDataState::QUEUED;
+            _atmosphereChanged.fill(EditorDataState::QUEUED);
         } else if (field == "Reset To Global Default") {
             _atmosphere = initialAtmosphere();
-            _atmosphereChanged = EditorDataState::QUEUED;
+            _atmosphereChanged.fill(EditorDataState::QUEUED);
         } else if (field == "Enable Procedural Clouds") {
             rebuildDrawCommands(true);
         } else if (field == "Update Sky Light") {
@@ -572,62 +573,42 @@ bool Sky::load() {
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
     vertModule._sourceFile = "sky.glsl";
-    vertModule._defines.emplace_back("HAS_CLIPPING_OUT", true);
 
     ShaderModuleDescriptor fragModule = {};
     fragModule._moduleType = ShaderType::FRAGMENT;
     fragModule._sourceFile = "sky.glsl";
 
     ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor = {};
+    shaderDescriptor._name = "sky_Display_Clouds";
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.back()._variant = "Clouds";
     shaderDescriptor._modules.push_back(fragModule);
     shaderDescriptor._modules.back()._variant = "Clouds";
     
-    ShaderProgram_ptr skyShader = nullptr;
-    ShaderProgram_ptr skyShaderPrePass = nullptr;
-    ShaderProgram_ptr skyShaderDeptOnly = nullptr;
-    {
-        ResourceDescriptor skyShaderDescriptorLQ("sky_Display_Clouds");
-        skyShaderDescriptorLQ.propertyDescriptor(shaderDescriptor);
-        skyShaderDescriptorLQ.waitForReady(false);
-        skyShader = CreateResource<ShaderProgram>(_parentCache, skyShaderDescriptorLQ, loadTasks);
-    }
-
-    shaderDescriptor = {};
+    ShaderProgramDescriptor shaderDescriptorDepth = {};
+    shaderDescriptorDepth._name = "sky_Depth";
     vertModule._variant = "NoClouds";
-    shaderDescriptor._modules.push_back(vertModule);
+    shaderDescriptorDepth._modules.push_back(vertModule);
+
+    ShaderProgramDescriptor shaderDescriptorPrePass = {};
+    shaderDescriptorPrePass._name = "sky_PrePass";
+    vertModule._variant = "NoClouds";
+    shaderDescriptorPrePass._modules.push_back(vertModule);
     fragModule._variant = "PrePass";
-    shaderDescriptor._modules.push_back(fragModule);
-    {
-        ResourceDescriptor skyShaderPrePassDescriptor("sky_PrePass");
-        skyShaderPrePassDescriptor.waitForReady(false);
-        skyShaderPrePassDescriptor.propertyDescriptor(shaderDescriptor);
-        skyShaderPrePass = CreateResource<ShaderProgram>(_parentCache, skyShaderPrePassDescriptor, loadTasks);
-    }
-    shaderDescriptor._modules.pop_back();
-    {
-        ResourceDescriptor skyShaderDepthDescriptor("sky_Depth");
-        skyShaderDepthDescriptor.waitForReady(false);
-        skyShaderDepthDescriptor.propertyDescriptor(shaderDescriptor);
-        skyShaderDeptOnly = CreateResource<ShaderProgram>(_parentCache, skyShaderDepthDescriptor, loadTasks);
-    }
+    shaderDescriptorPrePass._modules.push_back(fragModule);
 
     // Generate a render state
     RenderStateBlock skyboxRenderState = {};
     skyboxRenderState.setCullMode(CullMode::FRONT);
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
-    
-    assert(skyShader && skyShaderPrePass);
 
     ResourceDescriptor skyMaterial("skyMaterial_" + resourceName());
     Material_ptr skyMat = CreateResource<Material>(_parentCache, skyMaterial);
     skyMat->shadingMode(ShadingMode::BLINN_PHONG);
-    skyMat->setShaderProgram(skyShaderDeptOnly, RenderStage::COUNT,   RenderPassType::PRE_PASS);
-    skyMat->setShaderProgram(skyShaderPrePass,  RenderStage::DISPLAY, RenderPassType::PRE_PASS);
-    skyMat->setShaderProgram(skyShader,         RenderStage::COUNT,   RenderPassType::MAIN_PASS);
+    skyMat->setShaderProgram(shaderDescriptorDepth,   RenderStage::COUNT,   RenderPassType::PRE_PASS);
+    skyMat->setShaderProgram(shaderDescriptorPrePass, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
+    skyMat->setShaderProgram(shaderDescriptor,        RenderStage::COUNT,   RenderPassType::MAIN_PASS);
     skyMat->roughness(0.01f);
 
     skyboxRenderState.setZFunc(ComparisonFunction::LEQUAL);
@@ -723,7 +704,7 @@ SimpleLocation Sky::GetGeographicLocation() const noexcept{
 
 void Sky::setAtmosphere(const Atmosphere& atmosphere) noexcept {
     _atmosphere = atmosphere;
-    _atmosphereChanged = EditorDataState::QUEUED;
+    _atmosphereChanged.fill(EditorDataState::QUEUED);
 }
 
 const Texture_ptr& Sky::activeSkyBox() const noexcept {
@@ -731,17 +712,29 @@ const Texture_ptr& Sky::activeSkyBox() const noexcept {
 }
 
 void Sky::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) {
-    if (_atmosphereChanged == EditorDataState::QUEUED) {
-        _atmosphereChanged = EditorDataState::CHANGED;
+    bool changed = false;
+    bool processed = false;
+    for (EditorDataState& state : _atmosphereChanged) {
+        if (state == EditorDataState::QUEUED) {
+            state = EditorDataState::CHANGED;
+            changed = true;
+        } else if (state == EditorDataState::PROCESSED) {
+            processed = true;
+            state = EditorDataState::IDLE;
+        }
+    }
+
+    if (changed) {
         if (_atmosphere._cloudLayerMinMaxHeight < 1.f) {
             _atmosphere._cloudLayerMinMaxHeight = 1.f;
         }
         if (_atmosphere._cloudLayerMinMaxHeight.min > _atmosphere._cloudLayerMinMaxHeight.max) {
             std::swap(_atmosphere._cloudLayerMinMaxHeight.min, _atmosphere._cloudLayerMinMaxHeight.max);
         }
-    } else if (_atmosphereChanged == EditorDataState::PROCESSED) {
+    }
+
+    if (processed) {
         SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
-        _atmosphereChanged = EditorDataState::IDLE;
     }
 
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);
@@ -750,24 +743,21 @@ void Sky::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sc
 void Sky::setSkyShaderData(const U32 rayCount, PushConstants& constantsInOut) {
     constantsInOut.set(_ID("dvd_nightSkyColour"), GFX::PushConstantType::FCOLOUR3, nightSkyColour().rgb);
     constantsInOut.set(_ID("dvd_moonColour"), GFX::PushConstantType::FCOLOUR3, moonColour().rgb);
-    if (_atmosphereChanged == EditorDataState::CHANGED || _atmosphereChanged == EditorDataState::PROCESSED) {
-        constantsInOut.set(_ID("dvd_useSkyboxes"), GFX::PushConstantType::IVEC2, vec2<I32>(useDaySkybox() ? 1 : 0, useNightSkybox() ? 1 : 0));
-        constantsInOut.set(_ID("dvd_raySteps"), GFX::PushConstantType::UINT, rayCount);
-        constantsInOut.set(_ID("dvd_RayleighCoeff"), GFX::PushConstantType::VEC3, _atmosphere._RayleighCoeff * 1e-6f);
-        constantsInOut.set(_ID("dvd_moonScale"), GFX::PushConstantType::FLOAT, moonScale());
-        constantsInOut.set(_ID("dvd_weatherScale"), GFX::PushConstantType::FLOAT, weatherScale() * 1e-5f);
-        constantsInOut.set(_ID("dvd_sunIntensity"), GFX::PushConstantType::FLOAT, _atmosphere._sunIntensity);
-        constantsInOut.set(_ID("dvd_sunPenetrationPower"), GFX::PushConstantType::FLOAT, _atmosphere._sunPenetrationPower);
-        constantsInOut.set(_ID("dvd_planetRadius"), GFX::PushConstantType::FLOAT, _atmosphere._planetRadius);
-        constantsInOut.set(_ID("dvd_cloudSphereRadius"), GFX::PushConstantType::FLOAT, _atmosphere._cloudSphereRadius);
-        constantsInOut.set(_ID("dvd_atmosphereOffset"), GFX::PushConstantType::FLOAT, _atmosphere._atmosphereOffset);
-        constantsInOut.set(_ID("dvd_cloudLayerMinMaxHeight"), GFX::PushConstantType::VEC2, _atmosphere._cloudLayerMinMaxHeight);
-        constantsInOut.set(_ID("dvd_MieCoeff"), GFX::PushConstantType::FLOAT, _atmosphere._MieCoeff);
-        constantsInOut.set(_ID("dvd_RayleighScale"), GFX::PushConstantType::FLOAT, _atmosphere._RayleighScale);
-        constantsInOut.set(_ID("dvd_MieScaleHeight"), GFX::PushConstantType::FLOAT, _atmosphere._MieScaleHeight);
-        constantsInOut.set(_ID("dvd_enableClouds"), GFX::PushConstantType::BOOL, enableProceduralClouds());
-        _atmosphereChanged = EditorDataState::PROCESSED;
-    }
+    constantsInOut.set(_ID("dvd_useSkyboxes"), GFX::PushConstantType::IVEC2, vec2<I32>(useDaySkybox() ? 1 : 0, useNightSkybox() ? 1 : 0));
+    constantsInOut.set(_ID("dvd_raySteps"), GFX::PushConstantType::UINT, rayCount);
+    constantsInOut.set(_ID("dvd_RayleighCoeff"), GFX::PushConstantType::VEC3, _atmosphere._RayleighCoeff * 1e-6f);
+    constantsInOut.set(_ID("dvd_moonScale"), GFX::PushConstantType::FLOAT, moonScale());
+    constantsInOut.set(_ID("dvd_weatherScale"), GFX::PushConstantType::FLOAT, weatherScale() * 1e-5f);
+    constantsInOut.set(_ID("dvd_sunIntensity"), GFX::PushConstantType::FLOAT, _atmosphere._sunIntensity);
+    constantsInOut.set(_ID("dvd_sunPenetrationPower"), GFX::PushConstantType::FLOAT, _atmosphere._sunPenetrationPower);
+    constantsInOut.set(_ID("dvd_planetRadius"), GFX::PushConstantType::FLOAT, _atmosphere._planetRadius);
+    constantsInOut.set(_ID("dvd_cloudSphereRadius"), GFX::PushConstantType::FLOAT, _atmosphere._cloudSphereRadius);
+    constantsInOut.set(_ID("dvd_atmosphereOffset"), GFX::PushConstantType::FLOAT, _atmosphere._atmosphereOffset);
+    constantsInOut.set(_ID("dvd_cloudLayerMinMaxHeight"), GFX::PushConstantType::VEC2, _atmosphere._cloudLayerMinMaxHeight);
+    constantsInOut.set(_ID("dvd_MieCoeff"), GFX::PushConstantType::FLOAT, _atmosphere._MieCoeff);
+    constantsInOut.set(_ID("dvd_RayleighScale"), GFX::PushConstantType::FLOAT, _atmosphere._RayleighScale);
+    constantsInOut.set(_ID("dvd_MieScaleHeight"), GFX::PushConstantType::FLOAT, _atmosphere._MieScaleHeight);
+    constantsInOut.set(_ID("dvd_enableClouds"), GFX::PushConstantType::BOOL, enableProceduralClouds());
 }
 
 void Sky::prepareRender(SceneGraphNode* sgn,
@@ -778,7 +768,14 @@ void Sky::prepareRender(SceneGraphNode* sgn,
                         const bool refreshData)  {
 
     RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
-    setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY ? 16 : 8, pkg.pushConstantsCmd()._constants);
+
+    EditorDataState& state = _atmosphereChanged[to_base(renderStagePass._stage)];
+    if (state == EditorDataState::CHANGED || state == EditorDataState::PROCESSED) {
+        setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY ? 16 : 8, pkg.pushConstantsCmd()._constants);
+        if (refreshData) {
+            state = EditorDataState::PROCESSED;
+        }
+    }
 
     SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
 }
@@ -791,7 +788,7 @@ void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& 
 
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
-    _atmosphereChanged = EditorDataState::QUEUED;
+    _atmosphereChanged.fill(EditorDataState::QUEUED);
 
     SceneNode::buildDrawCommands(sgn, cmdsOut);
 }

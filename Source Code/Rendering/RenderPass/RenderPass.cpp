@@ -99,27 +99,27 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
             static bool initDrawCommands = false;
             if (!initDrawCommands) {
                 RTClearDescriptor clearDescriptor = {};
-                clearDescriptor.clearColours(true);
-                clearDescriptor.clearDepth(true);
+                clearDescriptor._clearColours = true;
+                clearDescriptor._clearDepth = true;
                 //ToDo: Causing issues if disabled with WOIT (e.g. grass) if disabled. Investigate! -Ionut
-                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::ALBEDO), true);
+                clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::ALBEDO)] = true;
 
                 //Not everything gets drawn during the depth PrePass (E.g. sky)
-                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::VELOCITY), true); 
-                clearDescriptor.clearColour(to_U8(GFXDevice::ScreenTargets::NORMALS), true);
+                clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::VELOCITY)] = true;
+                clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::NORMALS)] =  true;
                 clearMainTarget._descriptor = clearDescriptor;
 
                 RTDrawDescriptor prePassPolicy = {};
-                prePassPolicy.drawMask().disableAll();
-                prePassPolicy.drawMask().setEnabled(RTAttachmentType::Depth, 0, true);
-                prePassPolicy.drawMask().setEnabled(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY), true);
-                prePassPolicy.drawMask().setEnabled(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS), true);
-                //prePassPolicy.alphaToCoverage(true);
+                DisableAll(prePassPolicy._drawMask);
+                SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Depth, 0, true);
+                SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY), true);
+                SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS), true);
+                //prePassPolicy._alphaToCoverage = true;
 
                 RTDrawDescriptor mainPassPolicy = {};
-                mainPassPolicy.drawMask().setEnabled(RTAttachmentType::Depth, 0, false);
-                mainPassPolicy.drawMask().setEnabled(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY), false);
-                mainPassPolicy.drawMask().setEnabled(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS), false);
+                SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Depth, 0, false);
+                SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY), false);
+                SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS), false);
 
                 const RTDrawDescriptor oitCompositionPassPolicy = mainPassPolicy;
 

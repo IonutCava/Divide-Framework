@@ -22,9 +22,9 @@ void SGNRelationshipCache::invalidate() noexcept {
 bool SGNRelationshipCache::rebuild() {
     OPTICK_EVENT();
 
-    ScopedLock<SharedMutex> w_lock(_updateMutex);
-    updateChildren(0, _childrenRecursiveCache);
-    updateParents(0, _parentRecursiveCache);
+    updateChildren(0u, _childrenRecursiveCache);
+    updateParents(0u, _parentRecursiveCache);
+
     _isValid = true;
     return true;
 }
@@ -34,20 +34,22 @@ SGNRelationshipCache::RelationshipType SGNRelationshipCache::classifyNode(const 
 
     if (GUID != _parentNode->getGUID()) {
         SharedLock<SharedMutex> r_lock(_updateMutex);
-        for (const auto& [childGUID, childDepth] : _childrenRecursiveCache) {
-            if (childGUID == GUID) {
-                return childDepth > 0 
+        for (const CacheEntry& it : _childrenRecursiveCache) {
+            if (it._guid == GUID) {
+                return it._level > 0u
                                     ? RelationshipType::GRANDCHILD
                                     : RelationshipType::CHILD;
             }
         }
-        for (const auto& [parentGUID, parentDepth] : _parentRecursiveCache) {
-            if (parentGUID == GUID) {
-                return parentDepth > 0
+
+        for (const CacheEntry& it : _parentRecursiveCache) {
+            if (it._guid == GUID) {
+                return it._level > 0u
                                    ? RelationshipType::GRANDPARENT
                                    : RelationshipType::PARENT;
             }
         }
+
         const SceneGraphNode* parent = _parentNode->parent();
         if (parent != nullptr && parent->findChild(GUID) != nullptr) {
             return RelationshipType::SIBLING;
@@ -57,21 +59,30 @@ SGNRelationshipCache::RelationshipType SGNRelationshipCache::classifyNode(const 
     return RelationshipType::COUNT;
 }
 
+void SGNRelationshipCache::updateChildren(U16 level, Cache& cache) const {
+    ScopedLock<SharedMutex> w_lock(_updateMutex);
+    updateChildrenLocked(level, cache);
+}
 
-void SGNRelationshipCache::updateChildren(U8 level, vector<std::pair<I64, U8>>& cache) const {
+void SGNRelationshipCache::updateParents(U16 level, Cache& cache) const {
+    ScopedLock<SharedMutex> w_lock(_updateMutex);
+    updateParentsLocked(level, cache);
+}
+
+void SGNRelationshipCache::updateChildrenLocked(const U16 level, Cache& cache) const {
     _parentNode->forEachChild([level, &cache](const SceneGraphNode* child, I32 /*childIdx*/) {
-        cache.emplace_back(child->getGUID(), level);
-        Attorney::SceneGraphNodeRelationshipCache::relationshipCache(child).updateChildren(level + 1, cache);
+        cache.emplace_back(CacheEntry{ child->getGUID(), level });
+        Attorney::SceneGraphNodeRelationshipCache::relationshipCache(child).updateChildrenLocked(level + 1u, cache);
         return true;
     });
 }
 
-void SGNRelationshipCache::updateParents(U8 level, vector<std::pair<I64, U8>>& cache) const {
+void SGNRelationshipCache::updateParentsLocked(const U16 level, Cache& cache) const {
     const SceneGraphNode* parent = _parentNode->parent();
     // We ignore the root note when considering grandparent status
     if (parent && parent->parent()) {
-        cache.emplace_back(parent->getGUID(), level);
-        Attorney::SceneGraphNodeRelationshipCache::relationshipCache(parent).updateParents(level + 1, cache);
+        cache.emplace_back(CacheEntry{ parent->getGUID(), level });
+        Attorney::SceneGraphNodeRelationshipCache::relationshipCache(parent).updateParentsLocked(level + 1u, cache);
     }
 }
 

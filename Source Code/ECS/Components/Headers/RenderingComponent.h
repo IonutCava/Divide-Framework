@@ -160,9 +160,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     void rebuildMaterial();
 
-    void setReflectionAndRefractionType(const ReflectorType reflectType, const RefractorType refractType) noexcept;
-    void setReflectionCallback(const RenderCallback& cbk) { _reflectionCallback = cbk; }
-    void setRefractionCallback(const RenderCallback& cbk) { _refractionCallback = cbk; }
+    void setReflectionCallback(const RenderCallback& cbk, const ReflectorType reflectType) { _reflectionCallback = cbk; _reflectorType = reflectType; }
+    void setRefractionCallback(const RenderCallback& cbk, const RefractorType refractType) { _refractionCallback = cbk; _refractorType = refractType; }
 
     void drawDebugAxis();
     void drawSelectionGizmo();
@@ -270,7 +269,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     std::array<U8, to_base(RenderStage::COUNT)> _lodLevels{};
     ReflectorType _reflectorType = ReflectorType::CUBE;
-    RefractorType _refractorType = RefractorType::COUNT;
+    RefractorType _refractorType = RefractorType::PLANAR;
+
 
     std::array<std::pair<bool, U8>, to_base(RenderStage::COUNT)> _lodLockLevels{};
 

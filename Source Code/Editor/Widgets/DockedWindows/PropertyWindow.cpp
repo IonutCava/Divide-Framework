@@ -1941,12 +1941,6 @@ namespace Divide {
                     material->baseMaterial()->refractive(material->refractive(), true);
                 }
             });
-            if (refractive){
-                ImGui::Text(Util::StringFormat("[ Uses %s Refraction Texture ]", material->usePlanarRefractions() ? "Planar" : "Cube").c_str());
-            }
-            if (reflective) {
-                ImGui::Text(Util::StringFormat("[ Uses %s Reflection Texture ]", material->usePlanarReflections() ? "Planar" : "Cube").c_str());
-            }
         }
         ImGui::Separator();
 

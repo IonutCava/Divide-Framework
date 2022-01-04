@@ -104,6 +104,9 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
         return false;
     }
 
+    const bool useTexture = _particleTexture != nullptr;
+    Material_ptr mat = CreateResource<Material>(_parentCache, ResourceDescriptor(useTexture ? "Material_particles_Texture" : "Material_particles"));
+
     // Generate a render state
     RenderStateBlock particleRenderState;
     particleRenderState.setCullMode(CullMode::NONE);
@@ -113,7 +116,9 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     particleRenderState.setZFunc(ComparisonFunction::LEQUAL);
     _particleStateBlockHashDepth = particleRenderState.getHash();
 
-    const bool useTexture = _particleTexture != nullptr;
+    mat->setRenderStateBlock(_particleStateBlockHashDepth, RenderStage::COUNT, RenderPassType::PRE_PASS);
+    mat->setRenderStateBlock(_particleStateBlockHash, RenderStage::COUNT, RenderPassType::MAIN_PASS);
+    mat->setRenderStateBlock(_particleStateBlockHash, RenderStage::COUNT, RenderPassType::OIT_PASS);
 
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
@@ -129,69 +134,44 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
         fragModule._defines.emplace_back("HAS_TEXTURE", true);
     }
 
-    ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
+    ShaderProgramDescriptor particleShaderDescriptor = {};
+    particleShaderDescriptor._name = useTexture ? "particles_WithTexture" : "particles_NoTexture";
+    particleShaderDescriptor._modules.push_back(vertModule);
+    particleShaderDescriptor._modules.push_back(fragModule);
 
-    ResourceDescriptor particleShaderDescriptor(useTexture ? "particles_WithTexture" : "particles_NoTexture");
-    particleShaderDescriptor.propertyDescriptor(shaderDescriptor);
-    ShaderProgram_ptr particleShader = CreateResource<ShaderProgram>(_parentCache, particleShaderDescriptor);
+    ShaderProgramDescriptor particleShaderPrePassDescriptor = particleShaderDescriptor;
+    particleShaderPrePassDescriptor._name = useTexture ? "particles_prePass_WithTexture" : "particles_prePass_NoTexture";
+    particleShaderPrePassDescriptor._modules.back()._variant = "PrePass";
+    particleShaderPrePassDescriptor._modules.back()._defines.emplace_back("PRE_PASS", true);
 
-    shaderDescriptor._modules.back()._variant = "PrePass";
-    shaderDescriptor._modules.back()._defines.emplace_back("PRE_PASS", true);
-    ShaderProgram_ptr particlePrePassShader;
-    ShaderProgram_ptr particleDepthPassShader;
-    {
-        ResourceDescriptor particleDepthShaderDescriptor(useTexture ? "particles_WithTexture" : "particles_NoTexture");
-        particleDepthShaderDescriptor.propertyDescriptor(shaderDescriptor);
-        particlePrePassShader = CreateResource<ShaderProgram>(_parentCache, particleDepthShaderDescriptor);
-    }
-    {
-        shaderDescriptor._modules.pop_back();
-        ResourceDescriptor particleDepthShaderDescriptor("particles_DepthPass");
-        particleDepthShaderDescriptor.propertyDescriptor(shaderDescriptor);
-        particleDepthPassShader = CreateResource<ShaderProgram>(_parentCache, particleDepthShaderDescriptor);
-    }
+    ShaderProgramDescriptor particleShaderDepthDescriptor = particleShaderDescriptor;
+    particleShaderDepthDescriptor._name = "particles_DepthPass";
+    particleShaderDepthDescriptor._modules.pop_back();
 
-    shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
 
-    shaderDescriptor._modules.back()._variant = "Shadow.VSM";
-    ResourceDescriptor particleDepthVSMShaderDescriptor(useTexture ? "particles_ShadowVSM_Texture" : "particles_ShadowVSM");
-    particleDepthVSMShaderDescriptor.propertyDescriptor(shaderDescriptor);
-    ShaderProgram_ptr particleShadowShader = CreateResource<ShaderProgram>(_parentCache, particleDepthVSMShaderDescriptor);
+    ShaderProgramDescriptor particleShaderShadowDescriptor = particleShaderDescriptor;
+    particleShaderShadowDescriptor._name = "particles_VSM";
+    particleShaderShadowDescriptor._modules.back()._variant = "Shadow.VSM";
 
-    shaderDescriptor._modules.back()._variant += ".ORTHO";
-    shaderDescriptor._modules.back()._defines.emplace_back("ORTHO_PROJECTION", true);
-    ResourceDescriptor particleDepthVSMShaderDescriptorOrtho(useTexture ? "particles_ShadowVSM_Ortho_Texture" : "particles_ShadowVSM_Ortho");
-    particleDepthVSMShaderDescriptorOrtho.propertyDescriptor(shaderDescriptor);
-    ShaderProgram_ptr particleShadowShaderOrtho = CreateResource<ShaderProgram>(_parentCache, particleDepthVSMShaderDescriptorOrtho);
+    ShaderProgramDescriptor particleShaderShadowVSMDescriptor = particleShaderShadowDescriptor;
+    particleShaderShadowVSMDescriptor._name = "particles_VSM_ORTHO";
+    particleShaderShadowVSMDescriptor._modules.back()._variant += ".ORTHO";
+    particleShaderShadowVSMDescriptor._modules.back()._defines.emplace_back("ORTHO_PROJECTION", true);
 
-    if (particleShader != nullptr) {
-        Material_ptr mat = CreateResource<Material>(_parentCache, ResourceDescriptor(useTexture ? "Material_particles_Texture" : "Material_particles"));
+    mat->setShaderProgram(particleShaderDepthDescriptor,     RenderStage::COUNT,   RenderPassType::PRE_PASS);
+    mat->setShaderProgram(particleShaderPrePassDescriptor,   RenderStage::DISPLAY, RenderPassType::PRE_PASS);
+    mat->setShaderProgram(particleShaderDescriptor,          RenderStage::COUNT,   RenderPassType::MAIN_PASS);
+    mat->setShaderProgram(particleShaderShadowDescriptor,    RenderStage::SHADOW,  RenderPassType::COUNT);
+    mat->setShaderProgram(particleShaderShadowVSMDescriptor, RenderStage::SHADOW,  RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL));
 
-        mat->setRenderStateBlock(_particleStateBlockHashDepth, RenderStage::COUNT, RenderPassType::PRE_PASS);
-        mat->setRenderStateBlock(_particleStateBlockHash,      RenderStage::COUNT, RenderPassType::MAIN_PASS);
-        mat->setRenderStateBlock(_particleStateBlockHash,      RenderStage::COUNT, RenderPassType::OIT_PASS);
-
-        mat->setShaderProgram(particleDepthPassShader,   RenderStage::COUNT,   RenderPassType::PRE_PASS);
-        mat->setShaderProgram(particlePrePassShader,     RenderStage::DISPLAY, RenderPassType::PRE_PASS);
-        mat->setShaderProgram(particleShader,            RenderStage::COUNT,   RenderPassType::MAIN_PASS);
-        mat->setShaderProgram(particleShadowShader,      RenderStage::SHADOW,  RenderPassType::COUNT);
-        mat->setShaderProgram(particleShadowShaderOrtho, RenderStage::SHADOW,  RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL));
-
-        if (_particleTexture) {
-            SamplerDescriptor textureSampler = {};
-            mat->setTexture(TextureUsage::UNIT0, _particleTexture, textureSampler.getHash(),  TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
-        }
-
-        setMaterialTpl(mat);
-
-        return true;
+    if (_particleTexture) {
+        SamplerDescriptor textureSampler = {};
+        mat->setTexture(TextureUsage::UNIT0, _particleTexture, textureSampler.getHash(),  TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
     }
 
-    return false;
+    setMaterialTpl(mat);
+
+    return true;
 }
 
 bool ParticleEmitter::updateData() {

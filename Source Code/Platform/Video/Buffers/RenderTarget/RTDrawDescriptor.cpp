@@ -4,20 +4,12 @@
 
 namespace Divide {
 
-RTDrawMask::RTDrawMask() noexcept
-    : _disabledColours{},
-      _disabledDepth(false),
-      _disabledStencil(false)
-{
-    _disabledColours.fill(false);
-}
-
-bool RTDrawMask::isEnabled(const RTAttachmentType type) const noexcept {
+bool IsEnabled(const RTDrawMask& mask, const RTAttachmentType type) noexcept {
     switch (type) {
-        case RTAttachmentType::Depth: return !_disabledDepth;
-        case RTAttachmentType::Stencil: return !_disabledStencil;
+        case RTAttachmentType::Depth:   return !mask._disabledDepth;
+        case RTAttachmentType::Stencil: return !mask._disabledStencil;
         case RTAttachmentType::Colour: {
-            for (const bool state : _disabledColours) {
+            for (const bool state : mask._disabledColours) {
                 if (!state) {
                     return true;
                 }
@@ -30,53 +22,35 @@ bool RTDrawMask::isEnabled(const RTAttachmentType type) const noexcept {
     return true;
 }
 
-bool RTDrawMask::isEnabled(const RTAttachmentType type, const U8 index) const noexcept {
+bool IsEnabled(const RTDrawMask& mask, const RTAttachmentType type, const U8 index) noexcept {
     assert(index < MAX_RT_COLOUR_ATTACHMENTS);
 
     if (type == RTAttachmentType::Colour) {
-        return !_disabledColours[index];
+        return !mask._disabledColours[index];
     }
      
-    return isEnabled(type);
+    return IsEnabled(mask, type);
 }
 
-void RTDrawMask::setEnabled(const RTAttachmentType type, const U8 index, const bool state) noexcept {
+void SetEnabled(RTDrawMask& mask, const RTAttachmentType type, const U8 index, const bool state) noexcept {
     assert(index < MAX_RT_COLOUR_ATTACHMENTS);
 
     switch (type) {
-        case RTAttachmentType::Depth   : _disabledDepth   = !state; break;
-        case RTAttachmentType::Stencil : _disabledStencil = !state; break;
-        case RTAttachmentType::Colour  : _disabledColours[index] = !state; break;
+        case RTAttachmentType::Depth   : mask._disabledDepth   = !state; break;
+        case RTAttachmentType::Stencil : mask._disabledStencil = !state; break;
+        case RTAttachmentType::Colour  : mask._disabledColours[index] = !state; break;
         default : break;
     }
 }
 
-void RTDrawMask::enableAll() {
-    _disabledDepth = _disabledStencil = false;
-    _disabledColours.fill(false);
+void EnableAll(RTDrawMask& mask) {
+    mask._disabledDepth = mask._disabledStencil = false;
+    mask._disabledColours.fill(false);
 }
 
-void RTDrawMask::disableAll() {
-    _disabledDepth = _disabledStencil = true;
-    _disabledColours.fill(true);
-}
-
-RTClearDescriptor::RTClearDescriptor() noexcept
-    : _clearColourAttachment{}
-{
-    _clearColourAttachment.fill(true);
-    _clearExternalColour = false;
-    _clearExternalDepth = false;
-}
-
-RTClearColourDescriptor::RTClearColourDescriptor() noexcept
-{
-    _customClearColour.fill(DefaultColours::BLACK);
-}
-
-RTDrawDescriptor::RTDrawDescriptor() noexcept
-{
-    _drawMask.enableAll();
+void DisableAll(RTDrawMask& mask) {
+    mask._disabledDepth = mask._disabledStencil = true;
+    mask._disabledColours.fill(true);
 }
 
 }; //namespace Divide

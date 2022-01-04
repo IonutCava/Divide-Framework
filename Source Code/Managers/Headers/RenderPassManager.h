@@ -46,11 +46,11 @@ namespace Divide {
 struct NodeTransformData;
 struct NodeMaterialData;
 struct PerPassData;
+struct RTDrawDescriptor;
 
 class Camera;
 class SceneGraph;
 class RenderTarget;
-class RTDrawDescriptor;
 class SceneEnvironmentProbePool;
 
 enum class RenderStage : U8;

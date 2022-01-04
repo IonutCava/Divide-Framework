@@ -844,9 +844,9 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
     GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     beginRenderPassTransparentCmd->_name = "DO_EDITOR_POST_RENDER_PASS";
     beginRenderPassTransparentCmd->_target = target;
-    beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 1, false);
-    beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Colour, 2, false);
-    beginRenderPassTransparentCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, false);
+    SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 1, false);
+    SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 2, false);
+    SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
     GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ cameraSnapshot });
 
     if (running() && infiniteGridEnabled() && _infiniteGridPrimitive && _isScenePaused) {

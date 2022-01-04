@@ -26,12 +26,8 @@ in gl_PerVertex
 {
   vec4  gl_Position;
   float gl_PointSize;
-#if defined(HAS_CLIPPING_IN)
   float gl_ClipDistance[MAX_CLIP_PLANES];
-#endif
-#if defined(HAS_CULLING_IN)
   float gl_CullDistance[MAX_CULL_DISTANCES];
-#endif
 } InBlock
 #endif //GEOM_SHADER || TESS_CTRL_SHADER || TESS_EVAL_SHADER
 
@@ -39,12 +35,8 @@ out gl_PerVertex
 {
   invariant vec4 gl_Position;
   float gl_PointSize;
-#if defined(HAS_CLIPPING_OUT)
   float gl_ClipDistance[MAX_CLIP_PLANES];
-#endif
-#if defined(HAS_CULLING_OUT)
   float gl_CullDistance[MAX_CULL_DISTANCES];
-#endif
 } OutBlock
 
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
@@ -102,34 +94,32 @@ layout(binding = BUFFER_GPU_BLOCK, std140) uniform dvd_GPUBlock
 
 #if defined(TESS_CTRL_SHADER)
 #define CLIP_OUTPUT(X) gl_out[gl_InvocationID].gl_ClipDistance[X]
+#define OUT _out[gl_InvocationID]
 #else
 #define CLIP_OUTPUT(X) gl_ClipDistance[X]
+#define OUT _out
 #endif
 
-#define CLIP_INDEX(X) CLIP_OUTPUT(X) = (dvd_ClipPlaneCount > X) ? dot(_out._vertexW, dvd_clipPlanes[X]) : 0.f
+#define CLIP_INDEX(X) CLIP_OUTPUT(X) = (dvd_ClipPlaneCount > X) ? dot(OUT._vertexW, dvd_clipPlanes[X]) : 0.f
 
-#if defined(HAS_CLIPPING_OUT) && MAX_CLIP_PLANES > 0
 void setClipPlanes() {
     CLIP_INDEX(0);
 #if MAX_CLIP_PLANES > 1
     CLIP_INDEX(1);
-#if MAX_CLIP_PLANES > 2
-    CLIP_INDEX(2);
-#if MAX_CLIP_PLANES > 3
-    CLIP_INDEX(3);
-#if MAX_CLIP_PLANES > 4
-    CLIP_INDEX(4);
-#if MAX_CLIP_PLANES > 5
-    CLIP_INDEX(5);
-#endif 
-#endif
-#endif
-#endif
+    #if MAX_CLIP_PLANES > 2
+        CLIP_INDEX(2);
+        #if MAX_CLIP_PLANES > 3
+            CLIP_INDEX(3);
+            #if MAX_CLIP_PLANES > 4
+            CLIP_INDEX(4);
+                #if MAX_CLIP_PLANES > 5
+                CLIP_INDEX(5);
+                #endif 
+            #endif
+        #endif
+    #endif
 #endif
 }
-#else //HAS_CLIPPING_OUT && MAX_CLIP_PLANES > 0
-#define setClipPlanes()
-#endif //HAS_CLIPPING_OUT && MAX_CLIP_PLANES > 0
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
 
 #define BitCompare(MASK, BIT) ((MASK & BIT) != 0)

@@ -11,6 +11,7 @@
 #include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/SceneManager.h"
@@ -1047,7 +1048,7 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
 
     GFX::ClearRenderTargetCommand clearRTCmd{};
     clearRTCmd._target = params._target;
-    clearRTCmd._descriptor.resetToDefault(false);
+    clearRTCmd._descriptor._resetToDefault = false;
 
     for (U8 i = 0u; i < 6u; ++i) {
         // Draw to the current cubemap face
@@ -1127,7 +1128,7 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
 
     GFX::ClearRenderTargetCommand clearRTCmd{};
     clearRTCmd._target = params._target;
-    clearRTCmd._descriptor.resetToDefault(false);
+    clearRTCmd._descriptor._resetToDefault = false;
 
     for (U8 i = 0u; i < 2u; ++i) {
         Camera* camera = cameras[i];
@@ -1721,9 +1722,9 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(cmdBufferInOut);
     beginRenderPassCmd->_name = "CONSTRUCT_HI_Z";
     beginRenderPassCmd->_target = HiZTarget;
-    beginRenderPassCmd->_descriptor.setViewport(false);
-    beginRenderPassCmd->_descriptor.drawMask().disableAll();
-    beginRenderPassCmd->_descriptor.drawMask().setEnabled(RTAttachmentType::Depth, 0, true);
+    beginRenderPassCmd->_descriptor._setViewport = false;
+    DisableAll(beginRenderPassCmd->_descriptor._drawMask);
+    SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, true);
 
     GFX::EnqueueCommand(cmdBufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
 

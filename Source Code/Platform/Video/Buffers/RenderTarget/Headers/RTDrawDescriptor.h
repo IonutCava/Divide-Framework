@@ -41,78 +41,71 @@ namespace Divide {
 // 4 should be more than enough even for batching multiple render targets together
 constexpr U8 MAX_RT_COLOUR_ATTACHMENTS = 4;
 
-class RTDrawMask {
-  public:
-    RTDrawMask() noexcept;
+struct RTDrawMask {
+    std::array<bool, MAX_RT_COLOUR_ATTACHMENTS> _disabledColours = {
+        false,
+        false,
+        false,
+        false
+    };
 
-    [[nodiscard]] bool isEnabled(RTAttachmentType type) const noexcept;
-    [[nodiscard]] bool isEnabled(RTAttachmentType type, U8 index) const noexcept;
-    void setEnabled(RTAttachmentType type, U8 index, bool state) noexcept;
-
-    void enableAll();
-    void disableAll();
-
-    inline bool operator==(const RTDrawMask& other) const;
-    inline bool operator!=(const RTDrawMask& other) const;
-
-  private:
-    std::array<bool, MAX_RT_COLOUR_ATTACHMENTS> _disabledColours;
-    bool _disabledDepth;
-    bool _disabledStencil;
+    bool _disabledDepth = false;
+    bool _disabledStencil = false;
 };
 
 struct RTBlendState {
     UColour4 _blendColour = {0u, 0u, 0u, 0u};
     BlendingProperties _blendProperties;
-
-    inline bool operator==(const RTBlendState& other) const noexcept;
-    inline bool operator!=(const RTBlendState& other) const noexcept;
 };
 
 using RTBlendStates = std::array<RTBlendState, MAX_RT_COLOUR_ATTACHMENTS>;
 
 struct RTClearColourDescriptor
 {
-    RTClearColourDescriptor() noexcept;
+    std::array<FColour4, MAX_RT_COLOUR_ATTACHMENTS> _customClearColour = {
+        DefaultColours::BLACK,
+        DefaultColours::BLACK,
+        DefaultColours::BLACK,
+        DefaultColours::BLACK
+    };
 
     F32 _customClearDepth = 1.0f;
-    std::array<FColour4, MAX_RT_COLOUR_ATTACHMENTS> _customClearColour;
 };
 
 struct RTClearDescriptor {
-    RTClearDescriptor()  noexcept;
-
-    void clearColour(const U8 index, const bool state) noexcept { _clearColourAttachment[index] = state; }
-    [[nodiscard]] bool clearColour(const U8 index) const noexcept { return _clearColourAttachment[index]; }
-
-    PROPERTY_RW(bool, clearDepth, true);
-    PROPERTY_RW(bool, clearColours, true);
-    PROPERTY_RW(bool, clearExternalColour, false);
-    PROPERTY_RW(bool, clearExternalDepth, false);
-    PROPERTY_RW(bool, resetToDefault, true);
-
-    POINTER_RW(RTClearColourDescriptor, customClearColour, nullptr);
-protected:
-    std::array<bool, MAX_RT_COLOUR_ATTACHMENTS> _clearColourAttachment;
+    RTClearColourDescriptor* _customClearColour = nullptr;
+    std::array<bool, MAX_RT_COLOUR_ATTACHMENTS> _clearColourAttachment = {
+        true,
+        true,
+        true,
+        true
+    };
+    bool _clearDepth = true;
+    bool _clearColours = true;
+    bool _clearExternalColour = false;
+    bool _clearExternalDepth = false;
+    bool _resetToDefault = true;
 };
 
-class RTDrawDescriptor {
-  public:
-    RTDrawDescriptor() noexcept;
-
-    RTDrawMask& drawMask() noexcept { return _drawMask; }
-    [[nodiscard]] const RTDrawMask& drawMask() const noexcept { return _drawMask; }
-
-    inline bool operator==(const RTDrawDescriptor& other) const;
-    inline bool operator!=(const RTDrawDescriptor& other) const;
-
-    PROPERTY_RW(bool, setViewport, true);
-    PROPERTY_RW(bool, setDefaultState, true);
-    PROPERTY_RW(bool, alphaToCoverage, false);
-
-  protected:
-    RTDrawMask _drawMask;
+struct RTDrawDescriptor {
+    bool _setViewport = true;
+    bool _setDefaultState = true;
+    bool _alphaToCoverage = false;
+    RTDrawMask _drawMask{};
 };
+
+[[nodiscard]] bool IsEnabled(const RTDrawMask& mask, RTAttachmentType type) noexcept;
+[[nodiscard]] bool IsEnabled(const RTDrawMask& mask, RTAttachmentType type, U8 index) noexcept;
+void SetEnabled(RTDrawMask& mask, RTAttachmentType type, U8 index, bool state) noexcept;
+void EnableAll(RTDrawMask& mask);
+void DisableAll(RTDrawMask& mask);
+
+bool operator==(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept;
+bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept;
+bool operator==(const RTBlendState& lhs, const RTBlendState& rhs) noexcept;
+bool operator!=(const RTBlendState& lhs, const RTBlendState& rhs) noexcept;
+bool operator==(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) noexcept;
+bool operator!=(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) noexcept;
 
 }; //namespace Divide
 

@@ -2,12 +2,12 @@
 #define _DEBUG_FRAG_
 
 vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in vec3 positionW, in uint probeID);
-void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, inout vec3 radianceOut);
+void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool receivesShadows, inout vec3 radianceOut);
 vec3 computeFresnelSchlickRoughness(in vec3 H, in vec3 V, in vec3 F0, in float roughness);
 float getShadowMultiplier(in vec3 normalWV);
 vec3 ApplySSR(in vec3 radianceIn);
 
-vec3 getDebugColour(in PBRMaterial material, in vec2 uv, in vec3 normalWV, in uint probeID) {
+vec3 getDebugColour(in PBRMaterial material, in vec2 uv, in vec3 normalWV, in uint probeID, in bool receivesShadows) {
     const vec3 viewVec = normalize(VAR._viewDirectionWV);
     vec3 radianceOut = vec3(0.f);
 
@@ -21,7 +21,7 @@ vec3 getDebugColour(in PBRMaterial material, in vec2 uv, in vec3 normalWV, in ui
             PBRMaterial materialCopy = material;
             materialCopy._diffuseColour = vec3(1.f);
             radianceOut = dvd_AmbientColour.rgb;
-            getLightContribution(materialCopy, normalWV, viewVec, radianceOut);
+            getLightContribution(materialCopy, normalWV, viewVec, receivesShadows, radianceOut);
             radianceOut += dvd_AmbientColour.rgb * materialCopy._diffuseColour * materialCopy._occlusion;
             return radianceOut;
         }
@@ -63,7 +63,10 @@ vec3 getDebugColour(in PBRMaterial material, in vec2 uv, in vec3 normalWV, in ui
         }
         case DEBUG_TANGENTS:       return normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[0]);
         case DEBUG_BITANGENTS:     return normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[1]);
-        case DEBUG_SHADOW_MAPS:    return vec3(getShadowMultiplier(normalWV));
+        case DEBUG_SHADOW_MAPS:
+        {
+            return receivesShadows ? vec3(getShadowMultiplier(normalWV)) : vec3(1.f);
+        }
         case DEBUG_CSM_SPLITS:
         {
             #if defined(DISABLE_SHADOW_MAPPING)

@@ -46,8 +46,8 @@ struct NodeMaterialData
     uvec4 _data;
     //x = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, Emissive
     //y = 4x8U: tex op Occlusion, tex op Metalness, tex op Roughness, tex op Opcaity
-    //z = 4x8U: use albedo texture alpha channel, use opacity map alpha channel, reserved, reserved
-    //w = reserved
+    //z = 4x8U: use albedo texture alpha channel, use opacity map alpha channel, specular Factor, gloss Factor
+    //w = 4x8u: receives shadows, reserved, reserved, reserved
     uvec4 _textureOperations;
 };
 
@@ -80,9 +80,13 @@ struct PBRMaterial
 
 #define dvd_bumpMethod(X) uint(unpackUnorm4x8(dvd_Materials[X]._data.z).w * 255)
 
-#define dvd_useAlbedoTextureAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).x * 255) == 1u)
+#define dvd_useAlbedoTextureAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).x) == 1u)
 
-#define dvd_useOpacityAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).y * 255) == 1u)
+#define dvd_useOpacityAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).y) == 1u)
+
+#define dvd_receivesShadows(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.w).x) == 1u)
+
+#define dvd_specularGloss(materialData) unpackUnorm4x8(materialData._textureOperations.z).zw
 
 #define dvd_parallaxFactor(X) dvd_Materials[X]._emissiveAndParallax.a
 

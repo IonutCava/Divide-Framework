@@ -64,7 +64,6 @@ namespace Attorney {
 
 using ModuleDefines = vector<std::pair<string, bool>>;
 
-
 struct ShaderModuleDescriptor {
     ModuleDefines _defines;
     Str64 _sourceFile;
@@ -72,8 +71,6 @@ struct ShaderModuleDescriptor {
     ShaderType _moduleType = ShaderType::COUNT;
     bool _batchSameFile = true;
 };
-
-void ProcessShadowMappingDefines(const Configuration& config, ModuleDefines& defines);
 
 class ShaderProgramDescriptor final : public PropertyDescriptor {
 public:
@@ -83,7 +80,7 @@ public:
     }
 
     size_t getHash() const override;
-
+    Str256 _name;
     vector<ShaderModuleDescriptor> _modules;
 };
 

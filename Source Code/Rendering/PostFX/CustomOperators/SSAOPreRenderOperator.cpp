@@ -436,9 +436,9 @@ U8 SSAOPreRenderOperator::sampleCount() const noexcept {
 void SSAOPreRenderOperator::prepare(GFX::CommandBuffer& bufferInOut) {
     if (_stateChanged && !_enabled) {
         RTClearDescriptor clearDescriptor = {};
-        clearDescriptor.clearDepth(true);
-        clearDescriptor.clearColours(true);
-        clearDescriptor.resetToDefault(true);
+        clearDescriptor._clearDepth = true;
+        clearDescriptor._clearColours = true;
+        clearDescriptor._resetToDefault = true;
 
         GFX::ClearRenderTargetCommand clearMainTarget = {};
         clearMainTarget._target = _ssaoOutput._targetID;
@@ -502,8 +502,8 @@ bool SSAOPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, [[mayb
 
     GFX::ClearRenderTargetCommand clearSSAOTargetCmd{};
     clearSSAOTargetCmd._target = _ssaoOutput._targetID;
-    clearSSAOTargetCmd._descriptor.clearDepth(false);
-    clearSSAOTargetCmd._descriptor.clearColours(true);
+    clearSSAOTargetCmd._descriptor._clearDepth = false;
+    clearSSAOTargetCmd._descriptor._clearColours = true;
     GFX::EnqueueCommand(bufferInOut, clearSSAOTargetCmd);
 
     if(genHalfRes()) {

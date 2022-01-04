@@ -36,7 +36,7 @@ layout(early_fragment_tests) in;
 
 layout(location = 0) in vec4 _scrollingUV;
 
-#include "BRDF.frag"
+#include "nodeBufferedInput.cmn"
 #include "output.frag"
 
 void main(void) {
