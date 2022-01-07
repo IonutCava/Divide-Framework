@@ -18,7 +18,7 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context,
         _name(descriptor._name)
 {
     if (_params._sync) {
-        _params._sync = !(BitCompare(_flags, Flags::NO_SYNC) || descriptor._bufferParams._updateFrequency == BufferUpdateFrequency::ONCE);
+        _params._sync = !(BitCompare(_flags, Flags::NO_SYNC) || descriptor._bufferParams._updateFrequency == BufferUpdateFrequency::RARELY);
     }
 
     assert(descriptor._usage != Usage::COUNT);

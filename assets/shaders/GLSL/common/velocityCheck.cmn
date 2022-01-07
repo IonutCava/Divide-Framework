@@ -1,5 +1,8 @@
 #ifndef _VELOCITY_CHECK_CMN_
 #define _VELOCITY_CHECK_CMN_
+#if !defined(NO_VELOCITY) && !defined(MAIN_DISPLAY_PASS)
+#define NO_VELOCITY
+#endif //!NO_VELOCITY && !MAIN_DISPLAY_PASS
 
 #if !defined(NO_VELOCITY) && !defined(HAS_VELOCITY)
 

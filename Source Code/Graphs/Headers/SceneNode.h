@@ -104,7 +104,8 @@ enum class EditorDataState : U8
     CHANGED = 0,
     QUEUED,
     PROCESSED,
-    IDLE
+    IDLE,
+    COUNT
 };
 
 class SceneNode : public CachedResource {

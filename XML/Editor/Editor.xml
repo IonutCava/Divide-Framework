@@ -4,7 +4,7 @@
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor>C:/Program Files (x86)/Notepad++/notepad++.exe</textEditor>
-    <lastOpenSceneGUID>692</lastOpenSceneGUID>
+    <lastOpenSceneGUID>695</lastOpenSceneGUID>
     <grid enabled="true" axisWidth="2" scale="1"/>
     <camera>
         <Editor__Camera>
@@ -29,4 +29,7 @@
             <movementLocked>false</movementLocked>
         </Editor__Camera>
     </camera>
+    <recentScene>
+        <entry>TestPBR</entry>
+    </recentScene>
 </editor>

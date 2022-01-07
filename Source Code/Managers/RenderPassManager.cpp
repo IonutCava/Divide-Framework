@@ -162,8 +162,6 @@ void RenderPassManager::render(const RenderParams& params) {
     SceneManager* sceneManager = parent().sceneManager();
 
     const Camera* cam = Attorney::SceneManagerRenderPass::playerCamera(sceneManager);
-    const SceneStatePerPlayer& playerState = Attorney::SceneManagerRenderPass::playerState(sceneManager);
-    gfx.setPreviousCameraSnapshot(playerState.previousCameraSnapshot());
 
     LightPool& activeLightPool = Attorney::SceneManagerRenderPass::lightPool(sceneManager);
 
@@ -190,14 +188,14 @@ void RenderPassManager::render(const RenderParams& params) {
 
        if (params._editorRunning) {
            GFX::BeginRenderPassCommand beginRenderPassCmd{};
-           beginRenderPassCmd._target = RenderTargetID(RenderTargetUsage::EDITOR);
+           beginRenderPassCmd._target = RenderTargetUsage::EDITOR;
            beginRenderPassCmd._name = "BLIT_TO_RENDER_TARGET";
            EnqueueCommand(buf, beginRenderPassCmd);
        }
 
        GFX::EnqueueCommand(buf, GFX::BeginDebugScopeCommand{ "Flush Display" });
 
-       RenderTarget& resolvedScreenTarget = gfx.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SCREEN));
+       RenderTarget& resolvedScreenTarget = gfx.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN);
        const auto& screenAtt = resolvedScreenTarget.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
        const TextureData texData = screenAtt.texture()->data();
        const Rect<I32>& targetViewport = params._targetViewport;

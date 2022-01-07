@@ -1,6 +1,29 @@
 #ifndef _MATERIAL_DATA_FRAG_
 #define _MATERIAL_DATA_FRAG_
 
+#if defined(SHADING_MODE_PBR_MR) || defined(SHADING_MODE_PBR_SG)
+#define SHADING_MODE_PBR
+#endif //SHADING_MODE_PBR_MR || SHADING_MODE_PBR_SG
+#if defined(NO_POST_FX)
+#if !defined(NO_FOG)
+#define NO_FOG
+#endif //!NO_FOG
+#endif //NO_POST_FX
+
+struct PBRMaterial
+{
+    vec4  _specular;
+    vec3  _diffuseColour;
+    vec3 _F0;
+    vec3  _emissive;
+    float _occlusion;
+    float _metallic;
+    float _roughness;
+#if defined(SHADING_MODE_PBR)
+    float _a;
+#endif //SHADING_MODE_PBR
+};
+
 #if !defined(MAIN_DISPLAY_PASS)
 
 #if !defined(NO_SSAO)
@@ -101,37 +124,38 @@ vec3 getEmissiveColour(in NodeMaterialData matData, in vec3 uv) {
 }
 #endif //USE_CUSTOM_EMISSIVE
 
-PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, in vec2 uv, in vec3 N, in float normalVariation) {
+PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, in vec2 uv, in vec3 N, in float normalVariation, in float nDotV) {
     PBRMaterial material;
 
     const vec4 unpackedData = (unpackUnorm4x8(matData._data.z) * 255);
 
-    material._shadingMode = uint(unpackedData.y);
-
-    vec4 OMR_Selection = unpackUnorm4x8(matData._data.x);
+    vec4 OMR = unpackUnorm4x8(matData._data.x);
     {
         const bool usePacked = uint(unpackedData.z) == 1u;
         const uvec4 texOpsB = dvd_texOperationsB(matData);
-        getTextureOMR(usePacked, vec3(uv, 0), texOpsB.xyz, OMR_Selection.rgb);
+        getTextureOMR(usePacked, vec3(uv, 0), texOpsB.xyz, OMR.rgb);
 
-        material._occlusion = OMR_Selection.r;
+        material._occlusion = OMR.r;
+        material._roughness = OMR.b;
     }
 
     material._emissive = getEmissiveColour(matData, vec3(uv, 0));
-    { //selection
-        const uint selection = uint(OMR_Selection.a * 2);
-        material._emissive += vec3(0.f, selection == 1u ? 2.f : 0.f, selection == 2u ? 2.f : 0.f);
-    }
 
     material._specular = getSpecular(matData, vec3(uv, 0));
+
+#if defined(SHADING_MODE_BLINN_PHONG)
+    material._roughness = SpecularToRoughness(material._specular.rgb, material._specular.a);
+#endif //SHADING_MODE_BLINN_PHONG
 
     const vec3 albedoIn = albedo + Ambient(matData);
     const vec3 dielectricSpecular = vec3(0.04f);
     const vec3 black = vec3(0.f);
     material._diffuseColour = mix(albedoIn * (vec3(1.f) - dielectricSpecular), black, material._metallic);
     material._F0 = mix(dielectricSpecular, albedoIn, material._metallic);
-    material._a = max(SQUARED(material._roughness), 0.01f);
 
+#if defined(SHADING_MODE_PBR)
+    material._a = max(SQUARED(material._roughness), 0.01f);
+#endif //SHADING_MODE_PBR
     return material;
 }
 

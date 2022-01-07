@@ -26,10 +26,6 @@ namespace {
 };
 
 void DIVIDE_ASSERT_MSG_BOX(const char* failMessage) noexcept {
-    if_constexpr(Config::Assert::LOG_ASSERTS) {
-        Console::errorfn(failMessage);
-    }
-
     if_constexpr(Config::Assert::SHOW_MESSAGE_BOX) {
         if (g_assertMsgBox) {
             g_assertMsgBox->setTitle("Assertion Failed!");
@@ -38,8 +34,6 @@ void DIVIDE_ASSERT_MSG_BOX(const char* failMessage) noexcept {
             g_assertMsgBox->show();
         }
     }
-
-    Console::flush();
 }
 
 GUI::GUI(Kernel& parent)
@@ -77,6 +71,7 @@ void GUI::onChangeScene(Scene* newScene) {
     }
 
     _activeScene = newScene;
+    recreateDefaultMessageBox();
 }
 
 void GUI::onUnloadScene(Scene* const scene) {
@@ -240,12 +235,6 @@ bool GUI::init(PlatformContext& context, ResourceCache* cache) {
     assert(_console);
     _console->createCEGUIWindow();
 
-    _defaultMsgBox = addMsgBox("AssertMsgBox",
-                               "Assertion failure",
-                               "Assertion failed with message: ");
-
-    g_assertMsgBox = _defaultMsgBox;
-
     GUIButton::soundCallback([&context](const AudioDescriptor_ptr& sound) { context.sfx().playSound(sound); });
 
     if (parent().platformContext().config().gui.cegui.enabled) {
@@ -257,14 +246,34 @@ bool GUI::init(PlatformContext& context, ResourceCache* cache) {
     pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->getGUID();
     _postCEGUIPipeline = context.gfx().newPipeline(pipelineDesc);
 
+    recreateDefaultMessageBox();
+
     _init = true;
     return true;
+}
+
+void GUI::recreateDefaultMessageBox() {
+    g_assertMsgBox = nullptr;
+    if (_defaultMsgBox != nullptr) {
+        MemoryManager::DELETE(_defaultMsgBox);
+    }
+    const U64 guiID = _ID("AssertMsgBox");
+
+    _defaultMsgBox = MemoryManager_NEW GUIMessageBox("AssertMsgBox",
+                                                     "Assertion failure",
+                                                     "Assertion failed with message: ",
+                                                     vec2<I32>(0),
+                                                     _context->rootSheet());
+
+    g_assertMsgBox = _defaultMsgBox;
 }
 
 void GUI::destroy() {
     if (_init) {
         Console::printfn(Locale::Get(_ID("STOP_GUI")));
         MemoryManager::DELETE(_console);
+        MemoryManager::DELETE(_defaultMsgBox);
+        g_assertMsgBox = nullptr;
 
         {
             ScopedLock<SharedMutex> w_lock(_guiStackLock);
@@ -277,8 +286,6 @@ void GUI::destroy() {
             }
         }
 
-        _defaultMsgBox = nullptr;
-        g_assertMsgBox = nullptr;
         // Close CEGUI
         try {
             CEGUI::System::destroy();

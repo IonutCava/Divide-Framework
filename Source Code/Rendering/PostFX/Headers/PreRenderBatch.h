@@ -75,7 +75,6 @@ class PreRenderBatch {
     [[nodiscard]] RenderTargetHandle getOutput(bool hdr) const;
 
     [[nodiscard]] RenderTargetHandle screenRT() const noexcept;
-    [[nodiscard]] RenderTargetHandle prevScreenRT() const noexcept;
     [[nodiscard]] RenderTargetHandle edgesRT() const noexcept;
     [[nodiscard]] Texture_ptr luminanceTex() const noexcept;
 
@@ -162,7 +161,6 @@ class PreRenderBatch {
     ShaderBuffer*      _histogramBuffer = nullptr;
 
     RenderTargetHandle _sceneEdges;
-    RenderTargetHandle _screenCopyPreToneMap;
 
     struct HDRTargets {
         RenderTargetHandle _screenRef;

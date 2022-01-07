@@ -117,6 +117,7 @@ class Material final : public CachedResource {
    public:
     using SpecularGlossiness = vec2<F32>;
 
+    static constexpr F32 MAX_SHININESS = 128.f;
     static constexpr size_t INVALID_MAT_HASH = std::numeric_limits<size_t>::max();
     static constexpr size_t INVALID_TEX_HASH = std::numeric_limits<size_t>::max();
 

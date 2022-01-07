@@ -42,39 +42,47 @@ enum class RenderStage : U8;
 
 struct GFXShaderData {
 #pragma pack(push, 1)
-      struct GPUData {
+      struct RenderData {
+          mat4<F32> _PreviousViewProjectionMatrix = MAT4_IDENTITY;
+          //x - elapsed time (ms)
+          vec4<F32> _renderProperties = VECTOR4_ZERO;
+          //x - cluster size X, y - cluster size Y
+          vec4<F32> _lightingProperties = { 120.0f, 100.0f, 1.0f, 1.0f };
+          //x - material debug flag, y - fog enabled, z - clip plane count, w - reserved
+          vec4<F32> _otherProperties;
+          vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
+          vec4<F32> _padding[6];
+      };
+      struct CamData {
           mat4<F32> _ProjectionMatrix = MAT4_IDENTITY;
           mat4<F32> _InvProjectionMatrix = MAT4_IDENTITY;
           mat4<F32> _ViewMatrix = MAT4_IDENTITY;
           mat4<F32> _InvViewMatrix = MAT4_IDENTITY;
           mat4<F32> _ViewProjectionMatrix = MAT4_IDENTITY;
-          mat4<F32> _PreviousViewProjectionMatrix = MAT4_IDENTITY;
           // xyz - position, w - aspect ratio
           vec4<F32> _cameraPosition = VECTOR4_ZERO;
           vec4<F32> _ViewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
-          //x - near plane, y - far plane, z - FoV, w - elapsed time (ms)
-          vec4<F32> _renderProperties = { 0.01f, 1.0f, 40.0f, 0.0f };
-          //x - cluster size X, y - cluster size Y, z - scale, w - bias
-          vec4<F32> _lightingProperties = { 120.0f, 100.0f, 1.0f, 1.0f };
-          //x - material debug flag, y - reserved, z - camera flag, w - active clip plane count
-          vec4<F32> _otherProperties;
+          // x - scale, y - bias
+          vec4<F32> _lightingTweakValues = { 1.f, 1.f, 0.f, 0.f};
+          //x - nearPlane, y - farPlane, z - FoV, w - camera flag
+          vec4<F32> _cameraProperties = { 0.01f, 1.0f, 40.f, 0.f };
           vec4<F32> _frustumPlanes[to_base(FrustumPlane::COUNT)];
-          vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
-          vec4<F32> _padding0[10];
+          vec4<F32> _padding[2];
       };
 #pragma pack(pop)
 
-    GPUData _data{};
+    CamData _camData{};
+    RenderData _renderData{};
 
-    bool _needsUpload = true;
+    bool _camNeedsUpload = true;
+    bool _renderNeedsUpload = true;
 };
 
-[[nodiscard]] F32 AspectRatio(const GFXShaderData::GPUData& dataIn) noexcept;
-[[nodiscard]] vec2<F32> CameraZPlanes(const GFXShaderData::GPUData& dataIn) noexcept;
-[[nodiscard]] F32 FoV(const GFXShaderData::GPUData& dataIn) noexcept;
+[[nodiscard]] F32 AspectRatio(const GFXShaderData::CamData& dataIn) noexcept;
+[[nodiscard]] vec2<F32> CameraZPlanes(const GFXShaderData::CamData& dataIn) noexcept;
+[[nodiscard]] F32 FoV(const GFXShaderData::CamData& dataIn) noexcept;
 
 [[nodiscard]] bool ValidateGPUDataStructure() noexcept;
-//RenderDoc: mat4 projection; mat4 invprojection; mat4 view; mat4 viewproj; vec4 cam; vec4 renderProp; vec4 frustum[6]; vec4 clip[6];
 }; //namespace Divide
 
 #endif //_HARDWARE_VIDEO_GFX_SHADER_DATA_H_

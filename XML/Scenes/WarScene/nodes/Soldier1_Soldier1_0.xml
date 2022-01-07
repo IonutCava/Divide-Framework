@@ -11,7 +11,7 @@
 </TRANSFORM>
 <ANIMATION>
     <Animation__Speed>1</Animation__Speed>
-    <Animation__Frame__Index x="36" y="35" z="37"/>
+    <Animation__Frame__Index x="25" y="24" z="26"/>
 </ANIMATION>
 <INVERSE_KINEMATICS/>
 <RAGDOLL/>
@@ -24,13 +24,13 @@
         <colour r="0.800000012" g="0.800000012" b="0.800000012" a="1"/>
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>
-        <specular r="0" g="0" b="0" a="1"/>
+        <specular r="0" g="0" b="0" a="128"/>
         <specular_factor>0</specular_factor>
         <glossiness_factor>0</glossiness_factor>
         <metallic>0</metallic>
         <roughness>1</roughness>
         <doubleSided>false</doubleSided>
-        <receivesShadows>false</receivesShadows>
+        <receivesShadows>true</receivesShadows>
         <ignoreTexDiffuseAlpha>false</ignoreTexDiffuseAlpha>
         <bumpMethod>NONE</bumpMethod>
         <parallaxFactor>1</parallaxFactor>
@@ -267,6 +267,7 @@
                 <Sampler>
                     <id>1</id>
                 </Sampler>
+                <UseForPrePass>2</UseForPrePass>
             </UNIT0>
         </texture>
         <SamplerDescriptors>

@@ -67,8 +67,9 @@ private:
         TEX_BIND_POINT_BORDER = to_base(TextureUsage::UNIT1),
         TEX_BIND_POINT_NOISE = to_base(TextureUsage::SCENE_NORMALS),
         TEX_BIND_POINT_UNDERWATER = to_base(TextureUsage::OPACITY),
-        TEX_BIND_POINT_LINDEPTH = to_base(TextureUsage::DEPTH),
+        TEX_BIND_POINT_LINDEPTH = to_base(TextureUsage::OCCLUSION),
         TEX_BIND_POINT_SSR = to_base(TextureUsage::NORMALMAP),
+        TEX_BIND_POINT_SCENE_DATA = to_base(TextureUsage::ROUGHNESS),
         COUNT
     };
 

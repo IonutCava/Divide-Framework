@@ -564,8 +564,13 @@ void RenderingComponent::updateNearestProbes(const vec3<F32>& position) {
                         });
 
             // We need to update this probe because we are going to use it. This will always lag one frame, but at least we keep updates separate from renders.
-            _envProbes.front()->queueRefresh();
-            _reflectionProbeIndex = _envProbes.front()->poolIndex();
+            for (EnvironmentProbeComponent* probe : _envProbes) {
+                if (probe->getBounds().containsPoint(position)) {
+                    _reflectionProbeIndex = probe->poolIndex();
+                    probe->queueRefresh();
+                    break;
+                }
+            }
         }
     }
 }

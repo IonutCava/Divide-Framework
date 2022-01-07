@@ -61,14 +61,16 @@ namespace {
 
 
     struct TextureCallbackData {
+        const Texture* _texture = nullptr;
         vec4<I32> _colourData = { 1, 1, 1, 1 };
         vec2<F32> _depthRange = { 0.002f, 1.f };
-        I32 _arrayLayer = -1;
+        U32 _arrayLayer = 0u;
+        U32 _mip = 0u;
         bool _isDepthTexture = false;
         bool _flip = false;
     };
 
-    hashMap<I64, TextureCallbackData> g_modalTextureData;
+    TextureCallbackData g_modalTextureData;
 }
 
 namespace ImGuiCustom {
@@ -176,7 +178,7 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
     constexpr F32 iconSize = 16.f;
 
     if (!_fontTexture) {
-        TextureDescriptor texDescriptor(TextureType::TEXTURE_2D_ARRAY,
+        TextureDescriptor texDescriptor(TextureType::TEXTURE_2D,
                                         GFXImageFormat::RGBA,
                                         GFXDataFormat::UNSIGNED_BYTE);
         texDescriptor.layerCount(1u);
@@ -1613,17 +1615,55 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
     static GFXDevice& gfxDevice = _context.gfx();
 
     const ImDrawCallback toggleColours { []([[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* cmd) -> void {
+        static SamplerDescriptor defaultSampler{};
+        static size_t texSampler = defaultSampler.getHash();
+
         const TextureCallbackData data = *static_cast<TextureCallbackData*>(cmd->UserCallbackData);
 
         GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
         GFX::CommandBuffer& buffer = sBuffer();
 
+        U32 textureType = 0u;
+        if (data._texture != nullptr) {
+            const TextureType texType = data._texture->data()._textureType;
+
+            const bool isTextureArray = IsArrayTexture(texType);
+            const bool isTextureCube = IsCubeTexture(texType);
+        
+            if (isTextureArray || isTextureCube) {
+                textureType = 1u;
+
+                DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(buffer)->_set;
+                if (isTextureCube) {
+
+                    TextureViewEntry entry = {};
+                    entry._binding = to_U8(TextureUsage::UNIT1);
+                    entry._view._textureData = data._texture->data();
+                    entry._descriptor = data._texture->descriptor();
+                    entry._view._targetType = TextureType::TEXTURE_2D_ARRAY;
+                    entry._view._samplerHash = texSampler;
+                    entry._view._mipLevels.set(0u, data._texture->mipCount());
+                    entry._view._layerRange.set(0u, data._texture->numLayers() * 6u);
+
+                    set._textureViews.add(entry);
+                } else {
+                    TextureEntry entry = {};
+                    entry._binding = to_U8(TextureUsage::UNIT1);
+                    entry._data = data._texture->data(),
+                    entry._sampler = texSampler;
+                    set._textureData.add(entry);
+                
+                }
+            }
+        }
         PushConstants pushConstants = {};
         pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, data._colourData);
-        pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::INT, data._isDepthTexture ? 1 : 0);
+        pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::BOOL, data._isDepthTexture);
         pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, data._depthRange);
-        pushConstants.set(_ID("flip"), GFX::PushConstantType::INT, data._flip ? 1 : 0);
+        pushConstants.set(_ID("flip"), GFX::PushConstantType::BOOL, data._flip);
         pushConstants.set(_ID("layer"), GFX::PushConstantType::UINT, data._arrayLayer);
+        pushConstants.set(_ID("mip"), GFX::PushConstantType::UINT, data._mip);
+        pushConstants.set(_ID("textureType"), GFX::PushConstantType::UINT, textureType);
 
         GFX::SendPushConstantsCommand pushConstantsCommand = {};
         pushConstantsCommand._constants = pushConstants;
@@ -1644,27 +1684,24 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
         assert(tex != nullptr);
         assert(modalName != nullptr);
 
-        static TextureCallbackData defaultData = {};
+        static TextureCallbackData defaultData{};
+
         defaultData._isDepthTexture = false;
         defaultData._flip = false;
 
-        TextureCallbackData& data = g_modalTextureData[tex->getGUID()];
-        data._isDepthTexture = tex->descriptor().baseFormat() == GFXImageFormat::DEPTH_COMPONENT;
+        g_modalTextureData._texture = tex;
+        g_modalTextureData._isDepthTexture = tex->descriptor().baseFormat() == GFXImageFormat::DEPTH_COMPONENT;
         const U8 numChannels = NumChannels(tex->descriptor().baseFormat());
 
         assert(numChannels > 0);
 
-        if (data._isDepthTexture) {
+        bool isArray = false;
+        if (g_modalTextureData._isDepthTexture) {
             ImGui::Text("Depth: ");  ImGui::SameLine(); ImGui::ToggleButton("Depth", &state[0]);
             ImGui::SameLine();
             ImGui::Text("Range: "); ImGui::SameLine();
-            ImGui::DragFloatRange2("", &data._depthRange[0], &data._depthRange[1], 0.005f, 0.f, 1.f);
+            ImGui::DragFloatRange2("", &g_modalTextureData._depthRange[0], &g_modalTextureData._depthRange[1], 0.005f, 0.f, 1.f);
         } else {
-            if (IsArrayTexture(tex->descriptor().texType())) {
-                U16 arrayLayer = to_U16(data._arrayLayer > -1 ? data._arrayLayer : 0);
-                ImGui::Text("Layer: "); ImGui::SameLine(); ImGui::InputScalar("", ImGuiDataType_U16, &arrayLayer);
-                data._arrayLayer = CLAMPED(arrayLayer, to_U16(0), tex->descriptor().layerCount());
-            }
             ImGui::Text("R: ");  ImGui::SameLine(); ImGui::ToggleButton("R", &state[0]);
 
             if (numChannels > 1) {
@@ -1683,12 +1720,29 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
             }
         }
         ImGui::SameLine();
-        ImGui::Text("Flip: ");  ImGui::SameLine(); ImGui::ToggleButton("Flip", &data._flip);
-        const bool nonDefaultColours = data._isDepthTexture || !state[0] || !state[1] || !state[2] || !state[3] || data._flip;
-        data._colourData.set(state[0] ? 1 : 0, state[1] ? 1 : 0, state[2] ? 1 : 0, state[3] ? 1 : 0);
+        ImGui::Text("Flip: ");  ImGui::SameLine(); ImGui::ToggleButton("Flip", &g_modalTextureData._flip);
+        if (IsArrayTexture(tex->descriptor().texType())) {
+            isArray = true;
+            U16 maxLayers = tex->descriptor().layerCount();
+            if (IsCubeTexture(tex->descriptor().texType())) {
+                maxLayers *= 6u;
+            }
+            maxLayers -= 1u;
+            U16 minLayers = 0u;
+            ImGui::Text("Layer: "); ImGui::SameLine(); ImGui::SliderScalar("##modalTextureLayerSelect", ImGuiDataType_U16, &g_modalTextureData._arrayLayer, &minLayers, &maxLayers);
+        }
+        U16 maxMip = tex->mipCount();
+        if (maxMip > 1u) {
+            maxMip -= 1u;
+            U16 minMip = 0u;
+            ImGui::Text("Mip: "); ImGui::SameLine(); ImGui::SliderScalar("##modalTextureMipSelect", ImGuiDataType_U16, &g_modalTextureData._mip, &minMip, &maxMip);
+        }
+
+        const bool nonDefaultColours = g_modalTextureData._isDepthTexture || !state[0] || !state[1] || !state[2] || !state[3] || g_modalTextureData._flip || isArray;
+        g_modalTextureData._colourData.set(state[0] ? 1 : 0, state[1] ? 1 : 0, state[2] ? 1 : 0, state[3] ? 1 : 0);
 
         if (nonDefaultColours) {
-            ImGui::GetWindowDrawList()->AddCallback(toggleColours, &data);
+            ImGui::GetWindowDrawList()->AddCallback(toggleColours, &g_modalTextureData);
         }
 
         F32 aspect = 1.0f;
@@ -1715,7 +1769,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
             if (useModal) {
                 ImGui::CloseCurrentPopup();
             }
-            g_modalTextureData.erase(tex->getGUID());
+            g_modalTextureData._texture = nullptr;
             closed = true;
         }
 

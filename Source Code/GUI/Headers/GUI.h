@@ -159,6 +159,8 @@ protected:
     [[nodiscard]] GUIElement* getGUIElementImpl(I64 sceneID, I64 elementID, GUIType type) const;
     [[nodiscard]] TextureData getCEGUIRenderTextureData() const;
 
+    void recreateDefaultMessageBox();
+
 protected:
     friend class SceneGUIElements;
     CEGUI::Window* _rootSheet = nullptr;  ///< gui root Window

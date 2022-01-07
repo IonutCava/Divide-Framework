@@ -1,16 +1,30 @@
 --Compute
 
-#define dvd_dataFlag 0
 #define INVS_SQRT_3 0.57735026919f
+
 #if defined(CULL_TREES)
 uniform vec4 treeExtents;
 uniform float dvd_treeVisibilityDistance;
+
+#   define MAX_INSTANCES MAX_TREE_INSTANCES
+#   define Data treeData
+#   define Extents treeExtents
+#   define dvd_visibilityDistance dvd_treeVisibilityDistance
 #else
 uniform vec4 grassExtents;
+
+#   define MAX_INSTANCES MAX_GRASS_INSTANCES
+#   define Data grassData
+#   define Extents grassExtents
+#   define dvd_visibilityDistance dvd_grassVisibilityDistance
 uniform float dvd_grassVisibilityDistance;
 #endif
 
-uniform uint dvd_terrainChunkOffset;
+#define USE_CUSTOM_EXTENTS
+vec3 _private_h_extents;
+#define getHalfExtents(P, R) _private_h_extents
+
+uniform vec3 cameraPosition;
 
 #define NEED_SCENE_DATA
 #include "HiZCullingAlgorithm.cmn";
@@ -21,18 +35,6 @@ vec3 rotate_vertex_position(vec3 position, vec4 q) {
     vec3 v = position.xyz;
     return v + 2.0f * cross(q.xyz, cross(q.xyz, v) + q.w * v);
 }
-
-#if defined(CULL_TREES)
-#   define MAX_INSTANCES MAX_TREE_INSTANCES
-#   define Data treeData
-#   define Extents treeExtents
-#   define dvd_visibilityDistance dvd_treeVisibilityDistance
-#else //CULL_TREES
-#   define MAX_INSTANCES MAX_GRASS_INSTANCES
-#   define Data grassData
-#   define Extents grassExtents
-#   define dvd_visibilityDistance dvd_grassVisibilityDistance
-#endif //CULL_TREES
 
 void CullItem(in uint idx) {
     Data[idx].data.z = 3.0f;
@@ -64,20 +66,22 @@ void main(void) {
 
     const float scale    = instance.positionAndScale.w;
     const vec4 extents   = Extents * scale;
+    _private_h_extents = extents.xyz;
 
     vec3 vert = vec3(0.0f, extents.y * 0.5f, 0.0f);
     vert = rotate_vertex_position(vert * scale, instance.orientationQuad);
     const vec3 positionW = vert + instance.positionAndScale.xyz;
 
-    const float dist = distance(positionW.xz, dvd_cameraPosition.xz);
+    const float dist = distance(positionW.xz, cameraPosition.xz);
     // Too far away
     if (dist > dvd_visibilityDistance) {
         CullItem(nodeIndex);
         return;
     }
+
     Data[nodeIndex].data.z = 1.0f;
 
-    if (HiZCull(positionW, extents.xyz, extents.w) || IsUnderWater(positionW.xyz)) {
+    if (HiZCull(positionW, extents.w) || IsUnderWater(positionW.xyz)) {
         CullItem(nodeIndex);
     } else {
 #       if defined(CULL_TREES)

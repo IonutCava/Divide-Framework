@@ -46,6 +46,12 @@ namespace Assert {
                     return DIVIDE_ASSERT_FUNC(expression, file, line, "Message truncated");
                 }
 
+                if_constexpr(Config::Assert::LOG_ASSERTS) {
+                    Console::errorfn(failMessage);
+                }
+
+                Console::flush();
+
                 DIVIDE_ASSERT_MSG_BOX(msgOut);
 
                 if_constexpr(!Config::Assert::CONTINUE_ON_ASSERT) {

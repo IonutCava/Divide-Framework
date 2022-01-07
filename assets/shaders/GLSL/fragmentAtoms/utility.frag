@@ -122,7 +122,10 @@ float ToLinearDepth(in float D, in vec2 Z) {
     return eye;
 }
 
+#if !defined(NO_CAM_BLOCK)
 float ToLinearDepth(in float D)                     { return ToLinearDepth(D, dvd_zPlanes); }
+#endif //!NO_CAM_BLOCK
+
 float ToLinearDepth(in float D, in mat4 projMatrix) { return projMatrix[3][2] / (D - projMatrix[2][2]); }
 
 float ViewSpaceZ(in float depthIn, in mat4 invProjectionMatrix) {
@@ -158,6 +161,14 @@ float maxComponent(in vec4 v) { return max(max(max(v.x, v.y), v.z), v.w); }
 
 vec2 Pow(in vec2 v, in float exp) { return vec2(pow(v.x, exp), pow(v.y, exp)); }
 vec3 Pow(in vec3 v, in float exp) { return vec3(pow(v.x, exp), pow(v.y, exp), pow(v.z, exp)); }
+
+float SpecularToRoughness(in vec3 specular, in float power) {
+    const float specularIntensity = Luminance(specular);
+    const float specularPower = power / MAX_SHININESS;
+    const float roughnessFactor = /*1.f - */sqrt(specularPower);
+    // Specular intensity directly impacts roughness regardless of shininess
+    return 1.f - ((saturate(pow(roughnessFactor, 2)) * specularIntensity));
+}
 
 // ----------------- LINEAR <-> SRGB -------------------------
 // Accurate variants from Frostbite notes: https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
@@ -214,26 +225,30 @@ vec4 ToSRGBAccurate(in vec4 linearCol) {
                 linearCol.a);
 }
 
-// ---------------------------------------------------------------------
-
-#define dvd_screenPositionNormalised (gl_FragCoord.xy / dvd_ViewPort.zw)
-
-float computeDepth(in vec4 posWV, in vec2 zPlanes) {
+float computeDepth(in vec4 posWV, in mat4 projectionMatrix, in vec2 zPlanes) {
     const float near = zPlanes.x;
     const float far = zPlanes.y;
 
-    const vec4 clip_space_pos = dvd_ProjectionMatrix * posWV;
+    const vec4 clip_space_pos = projectionMatrix * posWV;
 
     const float ndc_depth = clip_space_pos.z / clip_space_pos.w;
 
     return (((far - near) * ndc_depth) + near + far) * 0.5f;
 }
 
+#if !defined(NO_CAM_BLOCK)
+#define dvd_screenPositionNormalised (gl_FragCoord.xy / dvd_ViewPort.zw)
+
+float computeDepth(in vec4 posWV, in vec2 zPlanes) {
+    return computeDepth(posWV, dvd_ProjectionMatrix, zPlanes);
+}
+
 float computeDepth(in vec4 posWV) {
     const float near = gl_DepthRange.near;
     const float far = gl_DepthRange.far;
-    return computeDepth(posWV, vec2(near, far));
+    return computeDepth(posWV, dvd_ProjectionMatrix, vec2(near, far));
 }
+#endif //!NO_CAM_BLOCK
 
 vec3 viewPositionFromDepth(in float depth,
                            in mat4 invProjectionMatrix,

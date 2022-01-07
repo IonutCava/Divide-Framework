@@ -144,7 +144,6 @@ class Vegetation final : public SceneNode {
     std::shared_ptr<ImageTools::ImageData> _treeMap = nullptr;  ///< Dispersion map for tree placement
 
     SceneGraphNode* _treeParentNode = nullptr;
-    PushConstants _cullPushConstants;
 
     U32 _instanceCountGrass = 0u;
     U32 _instanceCountTrees = 0u;

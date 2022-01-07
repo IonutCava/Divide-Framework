@@ -15,7 +15,7 @@
 <RENDERING>
     <Material>
         <version>1</version>
-        <shadingMode>COOK_TORRANCE</shadingMode>
+        <shadingMode>PBR_MR</shadingMode>
         <colour r="0.400000006" g="0.400000006" b="0.400000006" a="1"/>
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>

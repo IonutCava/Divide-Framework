@@ -183,8 +183,7 @@ struct Configuration final : XML::IXMLSerializable {
             } motionBlur;
             struct Bloom {
                 bool enabled = true;
-                F32 factor = 0.8f;
-                F32 threshold = 0.85f;
+                F32 threshold = 0.99f;
             } bloom;
             struct SSAO
             {

@@ -11,6 +11,10 @@
 #include "sceneData.cmn"
 #include "lightingDefaults.vert"
 
+VegetationData GrassData(in uint instanceID) {
+    return grassData[dvd_terrainChunkOffset * MAX_GRASS_INSTANCES + instanceID];
+}
+
 layout(location = 0) flat out uint  _layer;
 layout(location = 1) flat out uint  _instanceID;
 layout(location = 2)      out float _alphaFactor;
@@ -83,7 +87,7 @@ void main() {
     computeViewDirectionWV(nodeData);
 
     dvd_Normal = normalize(QUATERNION_ROTATE(dvd_Normal, data.orientationQuad));
-    _tbnWV = computeTBN(dvd_NormalMatrixW(nodeData));
+    _tbnWV = computeTBN(dvd_normalMatrixW(nodeData));
     VAR._normalWV = _tbnWV[2];
 
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;

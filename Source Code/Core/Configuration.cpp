@@ -110,7 +110,6 @@ bool Configuration::fromXML(const char* xmlFile) {
         GET_PARAM(rendering.postFX.motionBlur.enablePerObject);
         GET_PARAM(rendering.postFX.motionBlur.velocityScale);
         GET_PARAM(rendering.postFX.bloom.enabled);
-        GET_PARAM(rendering.postFX.bloom.factor);
         GET_PARAM(rendering.postFX.bloom.threshold);
         GET_PARAM(rendering.postFX.ssao.enable);
         GET_PARAM(rendering.postFX.ssao.UseHalfResolution);
@@ -269,7 +268,6 @@ bool Configuration::toXML(const char* xmlFile) const {
         PUT_PARAM(rendering.postFX.motionBlur.enablePerObject);
         PUT_PARAM(rendering.postFX.motionBlur.velocityScale);
         PUT_PARAM(rendering.postFX.bloom.enabled);
-        PUT_PARAM(rendering.postFX.bloom.factor);
         PUT_PARAM(rendering.postFX.bloom.threshold);
         PUT_PARAM(rendering.postFX.ssao.enable);
         PUT_PARAM(rendering.postFX.ssao.UseHalfResolution);

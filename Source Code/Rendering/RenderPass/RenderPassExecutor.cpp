@@ -214,7 +214,7 @@ RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& con
 
     _cmdBuffers.resize(passCount, nullptr);
     ShaderBufferDescriptor bufferDescriptor = {};
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
     bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
@@ -340,19 +340,19 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, 
     bool expected = false;
     if (!s_transformBuffer._data._processedThisFrame[indirectionIDX].compare_exchange_strong(expected, true)) {
         return;
-    }
-
+    }   
+    
     NodeTransformData transformOut;
 
     const SceneGraphNode* node = rComp->parentSGN();
+
     { // Transform
         const TransformComponent* const transform = node->get<TransformComponent>();
 
         // Get the node's world matrix properly interpolated
         transform->getPreviousWorldMatrix(transformOut._prevWorldMatrix);
         transform->getWorldMatrix(interpolationFactor, transformOut._worldMatrix);
-        transformOut._normalMatrixW.set(transformOut._worldMatrix);
-        transformOut._normalMatrixW.setRow(3, 0.f, 0.f, 0.f, 1.f);
+        transformOut._normalMatrixW.set(mat3<F32>(transformOut._worldMatrix));
 
         if (!transform->isUniformScaled()) {
             // Non-uniform scaling requires an inverseTranspose to negatescaling contribution but preserve rotation
@@ -372,19 +372,25 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, 
         }
     }
     { //Misc
-        const F32 nodeFlagValue = rComp->dataFlag();
-        const U8 occlusionCull = rComp->occlusionCull() ? 1u : 0u;
-        const U8 lodLevel = rComp->getLoDLevel(_stage);
-        // Since the normal matrix is 3x3, we can use the extra row and column to store additional data
-        const BoundsComponent* const bounds = node->get<BoundsComponent>();
-        const BoundingSphere& bSphere = bounds->getBoundingSphere();
-        const vec3<F32>& bSphereCenter = bSphere.getCenter();
-        const vec3<F32> bBoxHalfExtents = bounds->getBoundingBox().getHalfExtent();
+        transformOut._normalMatrixW.setRow(3, node->get<BoundsComponent>()->getBoundingSphere().asVec4());
 
-        transformOut._normalMatrixW.setRow(3, bSphereCenter.x, bSphereCenter.y, bSphereCenter.z, nodeFlagValue);
-        transformOut._normalMatrixW.element(0, 3) = to_F32(Util::PACK_UNORM4x8(boneCount, lodLevel, frameTicked, occlusionCull));
-        transformOut._normalMatrixW.element(1, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.xy));
-        transformOut._normalMatrixW.element(2, 3) = to_F32(Util::PACK_HALF2x16(bBoxHalfExtents.z, bSphere.getRadius()));
+        transformOut._normalMatrixW.element(0,3) = to_F32(Util::PACK_UNORM4x8(
+            0u,
+            frameTicked,
+            rComp->getLoDLevel(_stage),
+            rComp->occlusionCull() ? 1u : 0u
+        ));
+
+        F32 selectionFlag = 0.0f;
+        // We don't propagate selection flags to children outside of the editor, so check for that
+        if (node->hasFlag(SceneGraphNode::Flags::SELECTED) ||
+            node->parent() && node->parent()->hasFlag(SceneGraphNode::Flags::SELECTED)) {
+            selectionFlag = 1.0f;
+        } else if (node->hasFlag(SceneGraphNode::Flags::HOVERED)) {
+            selectionFlag = 0.5f;
+        }
+        transformOut._normalMatrixW.element(1, 3) = selectionFlag;
+        transformOut._normalMatrixW.element(2, 3) = to_F32(boneCount);
     }
 
     const U32 transformIDX = s_indirectionBuffer._data._gpuData[indirectionIDX][TRANSFORM_IDX];
@@ -909,6 +915,9 @@ void RenderPassExecutor::occlusionPass(const VisibleNodeList<>& nodes,
 
     // Update HiZ Target
     const auto [hizTexture, hizSampler] = _context.constructHIZ(sourceDepthBuffer, targetDepthBuffer, bufferInOut);
+    if (stagePass._stage == RenderStage::DISPLAY) {
+        _context.setCameraSnapshot(GFXDevice::CameraHistoryType::HI_Z_MAIN_BUFFER, cameraSnapshot);
+    }
 
     // ToDo: This should not be needed as we unbind the render target before we dispatch the compute task anyway. See if we can remove this -Ionut
     GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{
@@ -995,8 +1004,6 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
 void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPassParams& params, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
 
-    const bool isMSAATarget = params._targetOIT._usage == RenderTargetUsage::OIT_MS;
-
     assert(params._stagePass._passType == RenderPassType::OIT_PASS);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - W-OIT Pass" });
@@ -1052,7 +1059,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     GFX::EnqueueCommand(bufferInOut, GFX::SetBlendStateCommand{});
 
     // We're gonna do a new bind soon enough
-    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut)->_setDefaultRTState = isMSAATarget;
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut)->_setDefaultRTState = params._targetOIT._usage == RenderTargetUsage::OIT_MS;
 
     const bool useMSAA = params._target == RenderTargetUsage::SCREEN_MS;
 
@@ -1190,6 +1197,7 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
         if (resolveGBuffer) {
             GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             beginRenderPassCommand->_target = { RenderTargetUsage::SCREEN, 0u };
+            SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO), false);
             SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
             beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
 
@@ -1230,6 +1238,11 @@ void RenderPassExecutor::doCustomPass(Camera* camera, RenderPassParams params, G
 
     if (!camera->updateLookAt()) {
         NOP();
+    }
+
+    if (_stage == RenderStage::DISPLAY) {
+        const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(GFXDevice::CameraHistoryType::WORLD);
+        _context.setPreviousViewProjectionMatrix(mat4<F32>::Multiply(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix));
     }
 
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName =
@@ -1416,6 +1429,10 @@ void RenderPassExecutor::doCustomPass(Camera* camera, RenderPassParams params, G
     resolveMainScreenTarget(params, false, false, true, bufferInOut);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+
+    if (_stage == RenderStage::DISPLAY) {
+        _context.setCameraSnapshot(GFXDevice::CameraHistoryType::WORLD, camSnapshot);
+    }
 }
 
 U32 RenderPassExecutor::renderQueueSize() const {

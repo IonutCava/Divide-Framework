@@ -90,7 +90,7 @@ void main(void) {
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     VAR._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
     NodeTransformData nodeData = dvd_Transforms[DVD_GL_BASE_INSTANCE];
-    mat3 normalMatrixWV = mat3(dvd_ViewMatrix) * dvd_NormalMatrixW(nodeData);
+    mat3 normalMatrixWV = mat3(dvd_ViewMatrix) * dvd_normalMatrixW(nodeData);
     VAR._normalWV = normalize(normalMatrixWV * dvd_Normal);
     //Compute the final vert position
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;

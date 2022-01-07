@@ -8,13 +8,11 @@
 struct NodeTransformData {
     mat4 _worldMatrix;
     mat4 _prevWorldMatrix;
-
-    // [0...2][0...2] = normal matrix
-    // [3][0...2]     = bounds center
-    // [3][3]         = Data Flag
-    // [0][3]         = 4x8U: bone count, LoDLevel, animation ticked this frame (for motion blur), occlusion cull
-    // [1][3]         = 2x16F: BBox HalfExtent (X, Y) 
-    // [2][3]         = 2x16F: BBox HalfExtent (Z), BSphere Radius
+    //[0][0]...[2][2] - normalMatrix
+    //[0][3] = 4x8U: reserverd, animation ticked this frame (for motion blur), LoDLevel, occlusion cull
+    //[1][3] = selectionFlag
+    //[2][3] = boneCount
+    //[3][0..3] = boundingSphere
     mat4 _normalMatrixW;
 };
 
@@ -39,7 +37,7 @@ struct NodeMaterialData
     //rgb - ambientColour (Don't really need this. To remove eventually, but since we have the space, might as well)
     //a - specular strength [0...1000]. Used mainly by Phong shading
     vec4 _colourData;
-    //x = 4x8U: occlusion, metallic, roughness, selection flag (1 == hovered, 2 == selected)
+    //x = 4x8U: occlusion, metallic, roughness, reserved
     //y = 4x8U: specularR, specularG, specularB, isDoubleSided
     //z = 4x8U: reserved, shadingMode, use packed OMR, bump method
     //w = Probe lookup index + 1 (0 = sky cubemap)
@@ -49,19 +47,6 @@ struct NodeMaterialData
     //z = 4x8U: use albedo texture alpha channel, use opacity map alpha channel, specular Factor, gloss Factor
     //w = 4x8u: receives shadows, reserved, reserved, reserved
     uvec4 _textureOperations;
-};
-
-struct PBRMaterial
-{
-    vec4  _specular;
-    vec3  _diffuseColour;
-    vec3 _F0;
-    vec3  _emissive;
-    float _a;
-    float _occlusion;
-    float _metallic;
-    float _roughness;
-    uint _shadingMode;
 };
 
 #define BaseColour(materialData) materialData._albedo
@@ -94,18 +79,21 @@ struct PBRMaterial
 
 #endif //FRAG_SHADER || NEED_MATERIAL_DATA
 
-#define dvd_WorldMatrix dvd_Transforms[TRANSFORM_IDX]._worldMatrix
+#define dvd_WorldMatrix(transformData) transformData._worldMatrix
 
-#define dvd_NormalMatrixW(transformData) mat3(transformData._normalMatrixW)
+#define dvd_normalMatrixW(transformData) mat3(transformData._normalMatrixW)
 
-#define dvd_boneCount(transformData) uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).x * 255)
+#define dvd_nodeData(transformData) unpackUnorm4x8(uint(transformData._normalMatrixW[0][3]))
 
-#define dvd_LoDLevel(transformData) uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).y * 255)
+#define dvd_frameTicked(transformData) (uint(dvd_nodeData(transformData).y  * 255) == 1u)
 
-#define dvd_frameTicked(transformData) (uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).z  * 255) == 1u)
+#define dvd_LoDLevel(transformData) uint(dvd_nodeData(transformData).z * 255)
 
-#define dvd_cullNode(transformData) (uint(unpackUnorm4x8(uint(transformData._normalMatrixW[0][3])).w * 255) == 1u)
+#define dvd_cullNode(transformData) (uint(dvd_nodeData(transformData).w * 255) == 1u)
 
-#define dvd_dataFlag dvd_Transforms[TRANSFORM_IDX]._normalMatrixW[3][3]
+#define dvd_selectionFlag(transformData) (transformData._normalMatrixW[1][3])
 
+#define dvd_boneCount(transformData) uint(transformData._normalMatrixW[2][3])
+
+#define dvd_boundingSphere(transformData) transformData._normalMatrixW[3]
 #endif //_NODE_DATA_DEFINITION_CMN_

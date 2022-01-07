@@ -62,7 +62,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
     
     // We only work with the resolved screen target
-    _screenRTs._hdr._screenRef._targetID = RenderTargetID(RenderTargetUsage::SCREEN);
+    _screenRTs._hdr._screenRef._targetID = RenderTargetUsage::SCREEN;
     _screenRTs._hdr._screenRef._rt = &context.renderTargetPool().renderTarget(_screenRTs._hdr._screenRef._targetID);
 
     SamplerDescriptor screenSampler = {};
@@ -106,16 +106,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         desc._name = "SceneEdges";
         desc._attachments = att.data();
         _sceneEdges = _context.renderTargetPool().allocateRT(desc);
-    }
-    {
-        TextureDescriptor screenCopyDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
-        screenCopyDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
-
-        RTAttachmentDescriptors att = { { screenCopyDescriptor, screenSampler.getHash(), RTAttachmentType::Colour } };
-
-        desc._name = "Previous Screen Pre-ToneMap";
-        desc._attachments = att.data();
-        _screenCopyPreToneMap = _context.renderTargetPool().allocateRT(desc);
     }
     {
         TextureDescriptor lumaDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
@@ -328,7 +318,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     bufferDescriptor._separateReadWrite = false;
     bufferDescriptor._bufferParams._elementCount = 256;
     bufferDescriptor._bufferParams._elementSize = sizeof(U32);
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
 
     _histogramBuffer = _context.newSB(bufferDescriptor);
@@ -342,7 +332,6 @@ PreRenderBatch::~PreRenderBatch()
     _context.renderTargetPool().deallocateRT(_screenRTs._hdr._screenCopy);
     _context.renderTargetPool().deallocateRT(_screenRTs._ldr._temp[0]);
     _context.renderTargetPool().deallocateRT(_screenRTs._ldr._temp[1]);
-    _context.renderTargetPool().deallocateRT(_screenCopyPreToneMap);
     _context.renderTargetPool().deallocateRT(_sceneEdges);
 }
 
@@ -408,10 +397,6 @@ void PreRenderBatch::update(const U64 deltaTimeUS) noexcept {
 
 RenderTargetHandle PreRenderBatch::screenRT() const noexcept {
     return _screenRTs._hdr._screenRef;
-}
-
-RenderTargetHandle PreRenderBatch::prevScreenRT() const noexcept {
-    return _screenCopyPreToneMap;
 }
 
 RenderTargetHandle PreRenderBatch::edgesRT() const noexcept {
@@ -487,24 +472,23 @@ void PreRenderBatch::prePass(const CameraSnapshot& cameraSnapshot, const U32 fil
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
 
-    if (BitCompare(filterStack, 1u << to_U32(FilterType::FILTER_SS_REFLECTIONS))) {
-        GFX::ComputeMipMapsCommand computeMipMapsCommand{};
-        computeMipMapsCommand._texture = _screenCopyPreToneMap._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
-        GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
-    }
+    RenderTargetHandle prevScreenHandle{
+        RenderTargetUsage::SCREEN_PREV,
+        & _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN_PREV)
+    };
 
     for (auto& op : _operators[to_base(FilterSpace::FILTER_SPACE_HDR)]) {
         if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
-            const bool swapTargets = op->execute(cameraSnapshot, _screenCopyPreToneMap, getOutput(true), bufferInOut);
+            const bool swapTargets = op->execute(cameraSnapshot, prevScreenHandle, getOutput(true), bufferInOut);
             DIVIDE_ASSERT(!swapTargets, "PreRenderBatch::prePass: Swap render target request detected during prePass!");
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
     }
 
     // Always bind these even if we haven't ran the appropriate operatos!
-    const RTAttachment& ssrDataAtt = _context.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SSR_RESULT)).getAttachment(RTAttachmentType::Colour, 0);
-    const RTAttachment& ssaoDataAtt = _context.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::SSAO_RESULT)).getAttachment(RTAttachmentType::Colour, 0u);
+    const RTAttachment& ssrDataAtt = _context.renderTargetPool().renderTarget(RenderTargetUsage::SSR_RESULT).getAttachment(RTAttachmentType::Colour, 0);
+    const RTAttachment& ssaoDataAtt = _context.renderTargetPool().renderTarget(RenderTargetUsage::SSAO_RESULT).getAttachment(RTAttachmentType::Colour, 0u);
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._textureData.add(TextureEntry{ ssrDataAtt.texture()->data(),  ssrDataAtt.samplerHash(),  TextureUsage::SSR_SAMPLE });
@@ -660,9 +644,14 @@ void PreRenderBatch::execute(const CameraSnapshot& cameraSnapshot, U32 filterSta
     // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;
-    blitScreenColourCmd._destination = _screenCopyPreToneMap._targetID;
+    blitScreenColourCmd._destination = RenderTargetUsage::SCREEN_PREV;
     blitScreenColourCmd._blitColours[0].set(to_U16(GFXDevice::ScreenTargets::ALBEDO), 0u, 0u, 0u);
     GFX::EnqueueCommand(bufferInOut, blitScreenColourCmd);
+
+    RenderTarget& prevScreenRT = _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN_PREV);
+    GFX::ComputeMipMapsCommand computeMipMapsCommand{};
+    computeMipMapsCommand._texture = prevScreenRT.getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO)).texture().get();
+    GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     GenericDrawCommand triangleCmd = {};
     triangleCmd._primitiveType = PrimitiveType::TRIANGLES;

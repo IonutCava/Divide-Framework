@@ -225,7 +225,7 @@ void Terrain::postBuild() {
 
             GenericVertexData::SetBufferParams params = {};
             params._bufferParams._elementSize = sizeof(TileRing::InstanceData);
-            params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+            params._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;
             params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
             params._bufferParams._sync = false;
             params._instanceDivisor = 1u;
@@ -238,7 +238,7 @@ void Terrain::postBuild() {
             } else {
                 _terrainBuffer->create(ringCount);
             }
-            _terrainBuffer->setIndexBuffer(idxBuff, BufferUpdateFrequency::ONCE);
+            _terrainBuffer->setIndexBuffer(idxBuff, BufferUpdateFrequency::RARELY);
             if_constexpr(USE_BASE_VERTEX_OFFSETS) {
                 vector<TileRing::InstanceData> vbData;
                 vbData.reserve(TessellationParams::QUAD_LIST_INDEX_COUNT * ringCount);

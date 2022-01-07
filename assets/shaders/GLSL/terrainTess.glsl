@@ -145,7 +145,7 @@ void main(void)
                                  gl_in[2].gl_Position.xyz +
                                  gl_in[3].gl_Position.xyz);
 
-    const mat4 worldMat = dvd_WorldMatrix * dvd_terrainWorld;
+    const mat4 worldMat = dvd_WorldMatrix(dvd_Transforms[TRANSFORM_IDX]) * dvd_terrainWorld;
 
     const vec4 pos0 = worldMat * gl_in[0].gl_Position;
     const vec4 pos1 = worldMat * gl_in[2].gl_Position;
@@ -302,10 +302,10 @@ void main()
                             gl_in[3].gl_Position.xyz,
                             gl_TessCoord.xy);
     _out._texCoord = WorldXZtoHeightUV(pos.xz);
-    _out._vertexW = dvd_WorldMatrix * dvd_terrainWorld * vec4(pos.x, GetHeight(_out._texCoord), pos.z, 1.0f);
+    _out._vertexW = dvd_WorldMatrix(dvd_Transforms[TRANSFORM_IDX]) * dvd_terrainWorld * vec4(pos.x, GetHeight(_out._texCoord), pos.z, 1.0f);
     _out._vertexWV = dvd_ViewMatrix * _out._vertexW;
     setClipPlanes(); //Only need world vertex position for clipping
-    _out._normalW = dvd_NormalMatrixW(dvd_Transforms[TRANSFORM_IDX]) * getNormal(_out._texCoord);
+    _out._normalW = dvd_normalMatrixW(dvd_Transforms[TRANSFORM_IDX]) * getNormal(_out._texCoord);
     _out._indirectionIDs = _in[0]._indirectionIDs;
 #if !defined(PRE_PASS) && !defined(SHADOW_PASS)
     _out._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_cameraPosition.xyz - _out._vertexW.xyz);

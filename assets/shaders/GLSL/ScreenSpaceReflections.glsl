@@ -1,7 +1,8 @@
 --Fragment
 
-#include "utility.frag"
+//#define DEBUG_NAN_VALUES
 
+#include "utility.frag"
 
 layout(binding = TEXTURE_UNIT0) uniform sampler2D texScreen;
 layout(binding = TEXTURE_UNIT1) uniform sampler2D texDepth;
@@ -11,25 +12,31 @@ uniform mat4 projToPixel; // A projection matrix that maps to pixel coordinates 
 uniform mat4 projectionMatrix;
 uniform mat4 invProjectionMatrix;
 uniform mat4 invViewMatrix;
-uniform mat4 prevViewProjectionMatrix;
 uniform vec2 zPlanes;
-uniform uint maxScreenMips;
-uniform float maxSteps;
-uniform float binarySearchIterations;
-uniform float jitterAmount;
-uniform float maxDistance;
-uniform float stride;
-uniform float zThickness;
-uniform float strideZCutoff;
-uniform float screenEdgeFadeStart;
-uniform float eyeFadeStart;
-uniform float eyeFadeEnd;
-uniform bool ssrEnabled;
+uniform vec2 screenDimensions;
+uniform uint maxScreenMips = 5u;
+uniform float maxSteps = 256;
+uniform float binarySearchIterations = 4;
+uniform float jitterAmount = 1.f;
+uniform float maxDistance = 200.f;
+uniform float stride = 8.f;
+uniform float zThickness = 1.5f;
+uniform float strideZCutoff = 100.f;
+uniform float screenEdgeFadeStart = 0.75f;
+uniform float eyeFadeStart = 0.5f;
+uniform float eyeFadeEnd = 1.f;
 
 out vec4 _colourOut;
 
 #define DistanceSquared(A, B) dot((A-B),(A-B))
 
+float Linear01Depth(in float z) {
+    const float temp = zPlanes.y / zPlanes.x;
+    return 1.f / ((1.f - temp) * z + temp);
+}
+
+//ref: http://casual-effects.blogspot.com/2014/08/screen-space-ray-tracing.html
+//ref: https://github.com/theFrenchDutch/synthese_image/blob/5fb8264447f555a4b498a125f931060302345839/Shaders/deferred_SSR.glsl
 bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be within the view volume
                 in vec3 csDir,        // Unit length camera-space ray direction
                 in float jitter,      // Number between 0 and 1 for how far to bump the ray in stride units to conceal banding artifacts
@@ -43,6 +50,8 @@ bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be 
                                      : maxDistance;
 
     const vec3 csEndPoint = csOrig + csDir * rayLength;
+    //if(csEndPoint.z > csOrig.z)
+    // return false;
 
     // Project into homogeneous clip space
     const vec4 H0 = projToPixel * vec4(csOrig, 1.f);
@@ -88,7 +97,7 @@ bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be 
     P0 += dP * jitter; Q0 += dQ * jitter; k0 += dk * jitter;
 
     // Adjust end condition for iteration direction
-    const float  end = P1.x * stepDir;
+    const float end = P1.x * stepDir;
 
     float i, zA = csOrig.z, zB = csOrig.z;
     vec4 pqk = vec4(P0, Q0.z, k0);
@@ -101,8 +110,8 @@ bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be 
         zB = (dPQK.z * 0.5f + pqk.z) / (dPQK.w * 0.5f + pqk.w);
 
         hitPixel = permute ? pqk.yx : pqk.xy;
-        hitPixel = hitPixel / dvd_screenDimensions;
-        const float currentZ = ViewSpaceZ(texture(texDepth, hitPixel).r, invProjectionMatrix);
+        hitPixel = hitPixel / screenDimensions;
+        const float currentZ = Linear01Depth(texture(texDepth, hitPixel).r) * -zPlanes.y;
         intersect = zA >= currentZ - zThickness && zB <= currentZ;
     }
 
@@ -123,8 +132,8 @@ bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be 
             zB = (dPQK.z * 0.5f + pqk.z) / (dPQK.w * 0.5f + pqk.w);
 
             hitPixel = permute ? pqk.yx : pqk.xy;
-            hitPixel = hitPixel / dvd_screenDimensions;
-            const float currentZ = ViewSpaceZ(texture(texDepth, hitPixel).r, invProjectionMatrix);
+            hitPixel = hitPixel / screenDimensions;
+            const float currentZ = Linear01Depth(texture(texDepth, hitPixel).r) * -zPlanes.y;
             bool intersect2 = zA >= currentZ - zThickness && zB <= currentZ;
 
             originalStride *= 0.5f;
@@ -138,7 +147,7 @@ bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be 
     hitPoint = Q0 / pqk.w;
     iterations = i;
     
-    return intersect && isInScreenRect(hitPixel);
+    return intersect;
 }
 
 float ComputeBlendFactorForIntersection(in float iterationCount,
@@ -149,12 +158,13 @@ float ComputeBlendFactorForIntersection(in float iterationCount,
 {
     float alpha = 1.f;
     {// Fade ray hits that approach the maximum iterations
-        alpha -= pow(iterationCount / maxSteps, 8.f);
+        alpha *= 1.f - pow(iterationCount / maxSteps, 8.f);
     }
     {// Fade ray hits that approach the screen edge
+        const float screenFade = screenEdgeFadeStart;
+
         const vec2 hitPixelNDC = 2.f * hitPixel - 1.f;
         const float maxDimension = min(1.f, max(abs(hitPixelNDC.x), abs(hitPixelNDC.y)));
-        const float screenFade = screenEdgeFadeStart;
         alpha *= 1.f - (max(0.f, maxDimension - screenFade) / (1.f - screenFade));
     }
     {// Fade ray hits base on how much they face the camera
@@ -165,58 +175,56 @@ float ComputeBlendFactorForIntersection(in float iterationCount,
         alpha *= 1.f - saturate(distance(vsRayOrigin, hitPoint) / maxDistance);
     }
 
+    //return saturate(alpha);
     return alpha;
 }
 
-vec4 GetReflectionColour() {
-    if (!ssrEnabled) {
-        return vec4(0.f);
-    }
-
+void main() {
     float reflBlend = 0.f;
     vec3 ambientReflected = vec3(0.f);
 
-    const float depth = texture(texDepth, VAR._texCoord).r;
-    if (depth < INV_Z_TEST_SIGMA) {
-        const vec3 dataIn = texture(texNormal, VAR._texCoord).rgb;
-        const vec3 normal = unpackNormal(dataIn.rg);
-        const float roughness = dataIn.b;
+    if (dvd_materialDebugFlag == DEBUG_NONE || 
+        dvd_materialDebugFlag == DEBUG_SSR ||
+        dvd_materialDebugFlag == DEBUG_SSR_BLEND) 
+    {
+        const float depth = texture(texDepth, VAR._texCoord).r;
+        if (depth < INV_Z_TEST_SIGMA) {
+            const vec3 dataIn = texture(texNormal, VAR._texCoord).rgb;
+            const vec2 extraData = unpackVec2(dataIn.b);
+            const float roughness = saturate(extraData.x);
+            if (roughness < INV_Z_TEST_SIGMA) {
+                const vec3 vsNormal = normalize(unpackNormal(dataIn.rg));
+                const vec3 vsPos = ViewSpacePos(VAR._texCoord, depth, invProjectionMatrix);
+                const vec3 vsRayDir = normalize(vsPos);
+                const vec3 vsReflect = reflect(vsRayDir, vsNormal);
+                const vec3 worldReflect = (invViewMatrix * vec4(vsReflect.xyz, 0)).xyz;
 
-        if (roughness < INV_Z_TEST_SIGMA) 
-        {
-            const vec3 vsNormal = normalize(normal);
-            const vec3 vsPos = ViewSpacePos(VAR._texCoord, depth, invProjectionMatrix);
-            const vec3 vsReflect = reflect(normalize(vsPos), vsNormal);
+                const vec2 uv2 = VAR._texCoord * screenDimensions;
+                const float jitter = mod((uv2.x + uv2.y) * 0.25f, 1.f);
 
-            const vec2 uv2 = VAR._texCoord * dvd_screenDimensions;
-            const float jitter = mod((uv2.x + uv2.y) * 0.25f, 1.f) * jitterAmount;
-
-            vec3 hitPointWV = vec3(0.f);
-            vec2 hitPixel = vec2(0.f);
-            float iterations = 0;
-            if (FindSSRHit(vsPos, vsReflect, jitter, hitPixel, hitPointWV, iterations)) {
-                const vec4 hitPointW = invViewMatrix * vec4(hitPointWV, 1.f);
-                const vec4 hitPoint = prevViewProjectionMatrix * hitPointW;
-
-                const vec3 ndc = homogenize(hitPoint);
-                const vec2 previousUV = vec2(ndc.xy) * 0.5f + 0.5f;
-                reflBlend = ComputeBlendFactorForIntersection(iterations, previousUV, hitPointW.xyz, vsPos, vsReflect);
-                ambientReflected = mix(ambientReflected,
-                                        textureLod(texScreen, previousUV, roughness * maxScreenMips).rgb,
-                                        reflBlend);
+                vec2 hitPixel = vec2(0.f);
+                vec3 hitPoint = vec3(0.f);
+                float iterations = 0;
+                if (FindSSRHit(vsPos, vsReflect, jitter * jitterAmount, hitPixel, hitPoint, iterations)) {
+                    // Sample reflection in previous frame with temporal reprojection
+                    const vec3 prevHit = homogenize(dvd_PreviousViewProjectionMatrix * (invViewMatrix * vec4(hitPoint, 1.f)));
+                    // Blend between reprojected SSR sample and IBL
+                    reflBlend = ComputeBlendFactorForIntersection(iterations, hitPixel, hitPoint, vsPos, vsReflect);
+                    const vec3 ssr = textureLod(texScreen, 0.5f * prevHit.xy + 0.5f, roughness * maxScreenMips).rgb;
+                    ambientReflected = mix(ambientReflected, ssr, reflBlend);
+#if defined(DEBUG_NAN_VALUES)
+                    if (dvd_materialDebugFlag == DEBUG_SSR)
+                    {
+                        if (isnan(reflBlend) || isnan(ssr.r) || isnan(ssr.g) || isnan(ssr.b)) {
+                            ambientReflected = vec3(1.f, 0.f, 0.f);
+                            reflBlend = 0.f;
+                        }
+                    }
+#endif //DEBUG_NAN_VALUES
+                }
             }
         }
     }
 
-    return vec4(ambientReflected, reflBlend);
-}
-
-void main() {
-    if (dvd_materialDebugFlag == DEBUG_NONE || dvd_materialDebugFlag == DEBUG_SSR) {
-        //_colourOut.a = refBlend
-        _colourOut = GetReflectionColour();
-        return;
-    }
-
-    _colourOut = vec4(0.f);
+    _colourOut = vec4(ambientReflected, reflBlend);
 }

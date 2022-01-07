@@ -34,8 +34,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _GL_BUFFER_IMPL_H_
 
 #include "glMemoryManager.h"
+#include "glBufferLockManager.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
-#include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 
 namespace Divide {
 
@@ -53,7 +53,6 @@ struct BufferMapRange
     size_t _range = 0;
 };
 
-class glBufferLockManager;
 class glBufferImpl final : public glObject, public GUIDWrapper {
 public:
     explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params);
@@ -62,11 +61,11 @@ public:
     [[nodiscard]] bool bindByteRange(GLuint bindIndex, size_t offsetInBytes, size_t rangeInBytes);
 
     // Returns false if we encounter an error
-    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, U32 frameID) const;
-    [[nodiscard]] bool waitByteRange(size_t offsetInBytes, size_t rangeInBytes, bool blockClient) const;
+    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, U32 frameID);
+    [[nodiscard]] bool waitByteRange(size_t offsetInBytes, size_t rangeInBytes, bool blockClient);
 
     void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool zeroMem);
-    void readBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data) const;
+    void readBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data);
 
 public:
     static GLenum GetBufferUsage(BufferUpdateFrequency frequency, BufferUpdateUsage usage) noexcept;
@@ -79,7 +78,7 @@ public:
 protected:
     GFXDevice& _context;
 
-    eastl::unique_ptr<glBufferLockManager> _lockManager = nullptr;
+    glBufferLockManager _lockManager;
 
     SharedMutex _flushQueueLock;
     eastl::deque<BufferMapRange> _flushQueue;

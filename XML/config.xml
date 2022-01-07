@@ -140,7 +140,7 @@
 			<ssr>
 				<enabled>true</enabled>
 				<!-- Maximum camera-space distance to trace before returning a miss -->
-				<maxDistance>100</maxDistance>
+				<maxDistance>200</maxDistance>
 				<jitterAmount>1</jitterAmount>
 				<stride>8</stride>
 				<!-- Camera space thickness to ascribe to each pixel in the depth buffer -->
@@ -160,7 +160,7 @@
 			<bloom>
 				<enabled>true</enabled>
 				<factor>0.800000012</factor>
-				<threshold>0.850000024</threshold>
+				<threshold>0.999000013</threshold>
 			</bloom>
 			<ssao>
 				<enable>true</enable>

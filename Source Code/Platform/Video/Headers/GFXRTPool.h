@@ -83,7 +83,9 @@ public:
 
     // Bit of a hack, but cleans up a lot of code
     [[nodiscard]] const RenderTarget& screenTarget() const;
-    [[nodiscard]] RenderTargetID screenTargetID() const noexcept;
+    [[nodiscard]] RenderTargetID screenTargetID() const noexcept; 
+    [[nodiscard]] const RenderTarget& oitTarget() const;
+    [[nodiscard]] RenderTargetID oitTargetID() const noexcept;
 
     vector<std::shared_ptr<RenderTarget>>& renderTargets(const RenderTargetUsage target) noexcept {
         return _renderTargets[to_U32(target)];

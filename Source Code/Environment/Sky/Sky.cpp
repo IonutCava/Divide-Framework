@@ -245,7 +245,7 @@ Sky::Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, 
     _sun.SetDate(*localtime(&t));
 
     _renderState.addToDrawExclusionMask(RenderStage::SHADOW);
-    _atmosphereChanged.fill(EditorDataState::QUEUED);
+    _atmosphereChanged.fill(EditorDataState::COUNT);
 
     getEditorComponent().onChangedCbk([this](const std::string_view field) {
         if (field == "Reset To Scene Default") {
@@ -597,10 +597,6 @@ bool Sky::load() {
     fragModule._variant = "PrePass";
     shaderDescriptorPrePass._modules.push_back(fragModule);
 
-    // Generate a render state
-    RenderStateBlock skyboxRenderState = {};
-    skyboxRenderState.setCullMode(CullMode::FRONT);
-
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
     ResourceDescriptor skyMaterial("skyMaterial_" + resourceName());
@@ -611,20 +607,25 @@ bool Sky::load() {
     skyMat->setShaderProgram(shaderDescriptor,        RenderStage::COUNT,   RenderPassType::MAIN_PASS);
     skyMat->roughness(0.01f);
 
+    // Generate a render state
+    RenderStateBlock skyboxRenderState = {};
+    skyboxRenderState.setCullMode(CullMode::FRONT);
     skyboxRenderState.setZFunc(ComparisonFunction::LEQUAL);
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::COUNT, RenderPassType::PRE_PASS);
+    const size_t hashA = skyboxRenderState.getHash();
+    skyMat->setRenderStateBlock(hashA, RenderStage::COUNT, RenderPassType::PRE_PASS);
 
     skyboxRenderState.setZFunc(ComparisonFunction::EQUAL);
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::COUNT, RenderPassType::MAIN_PASS);
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::COUNT, RenderPassType::OIT_PASS);
+    const size_t hashB = skyboxRenderState.getHash();
+    skyMat->setRenderStateBlock(hashB, RenderStage::COUNT, RenderPassType::MAIN_PASS);
+    skyMat->setRenderStateBlock(hashB, RenderStage::COUNT, RenderPassType::OIT_PASS);
 
     skyboxRenderState.setZFunc(ComparisonFunction::LEQUAL);
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE));
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE));
+    const size_t hashC = skyboxRenderState.getHash();
+    skyMat->setRenderStateBlock(hashC, RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE));
 
     skyboxRenderState.setCullMode(CullMode::BACK);
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR));
-    skyMat->setRenderStateBlock(skyboxRenderState.getHash(), RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR));
+    const size_t hashD = skyboxRenderState.getHash();
+    skyMat->setRenderStateBlock(hashD, RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR));
 
     skyMat->setTexture(TextureUsage::UNIT0,     _skybox,          _skyboxSampler,     TextureOperation::NONE);
     skyMat->setTexture(TextureUsage::HEIGHTMAP, _weatherTex,      noiseSamplerLinear, TextureOperation::NONE);
@@ -713,13 +714,20 @@ const Texture_ptr& Sky::activeSkyBox() const noexcept {
 
 void Sky::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) {
     bool changed = false;
-    bool processed = false;
+    {
+        EditorDataState& mainState = _atmosphereChanged[to_base(RenderStage::DISPLAY)];
+        if (mainState == EditorDataState::PROCESSED || mainState == EditorDataState::COUNT) {
+            SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
+        }
+    }
+
     for (EditorDataState& state : _atmosphereChanged) {
         if (state == EditorDataState::QUEUED) {
             state = EditorDataState::CHANGED;
             changed = true;
         } else if (state == EditorDataState::PROCESSED) {
-            processed = true;
+            state = EditorDataState::IDLE;
+        } else if (state == EditorDataState::COUNT) {
             state = EditorDataState::IDLE;
         }
     }
@@ -733,9 +741,7 @@ void Sky::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sc
         }
     }
 
-    if (processed) {
-        SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
-    }
+
 
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);
 }
@@ -787,6 +793,8 @@ void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& 
     cmd._cmd.indexCount = to_U32(_sky->getGeometryVB()->getIndexCount());
 
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
+
+    SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
 
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 

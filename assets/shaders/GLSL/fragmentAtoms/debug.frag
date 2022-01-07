@@ -1,76 +1,93 @@
 #ifndef _DEBUG_FRAG_
 #define _DEBUG_FRAG_
 
-vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in vec3 positionW, in uint probeID);
-void getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool receivesShadows, inout vec3 radianceOut);
-vec3 computeFresnelSchlickRoughness(in vec3 H, in vec3 V, in vec3 F0, in float roughness);
-float getShadowMultiplier(in vec3 normalWV);
-vec3 ApplySSR(in vec3 radianceIn);
+#include "lightingCalc.frag"
 
-vec3 getDebugColour(in PBRMaterial material, in vec2 uv, in vec3 normalWV, in uint probeID, in bool receivesShadows) {
+bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, in vec2 uv, in vec3 normalWV, out vec3 debugColour) {
+
     const vec3 viewVec = normalize(VAR._viewDirectionWV);
-    vec3 radianceOut = vec3(0.f);
 
+    debugColour = vec3(0.f);
+
+    bool returnFlag = true;
     switch (dvd_materialDebugFlag) {
+        case DEBUG_NONE:
+        case DEBUG_SSR:
+        case DEBUG_SSR_BLEND:
+        case DEBUG_DEPTH: {
+            returnFlag = false;
+        } break;
         case DEBUG_ALBEDO:
         {
-            return material._diffuseColour;
-        }
+            debugColour = material._diffuseColour;
+        } break;
         case DEBUG_LIGHTING:
         {
             PBRMaterial materialCopy = material;
             materialCopy._diffuseColour = vec3(1.f);
-            radianceOut = dvd_AmbientColour.rgb;
-            getLightContribution(materialCopy, normalWV, viewVec, receivesShadows, radianceOut);
-            radianceOut += dvd_AmbientColour.rgb * materialCopy._diffuseColour * materialCopy._occlusion;
-            return radianceOut;
-        }
+            materialCopy._emissive = vec3(0.f);
+            debugColour = dvd_AmbientColour.rgb * materialCopy._diffuseColour * materialCopy._occlusion;
+            debugColour = getLightContribution(materialCopy, normalWV, viewVec, dvd_receivesShadows(materialData), debugColour);
+        } break;
         case DEBUG_SPECULAR:
         {
-            return material._specular.rgb;
-        }
+            debugColour = material._specular.rgb;
+        } break;
         case DEBUG_KS:
         {
             const vec3 H = normalize(normalWV + viewVec);
             const vec3 kS = computeFresnelSchlickRoughness(H, viewVec, material._F0, material._roughness);
-            return kS;
-        }
+            debugColour = kS;
+        } break;
         case DEBUG_IBL:
         {
+            const float NdotV = max(dot(normalWV, viewVec), 0.f);
             vec3 iblRadiance = vec3(0.f);
     #if !defined(NO_ENV_MAPPING) && !defined(NO_IBL)
             PBRMaterial materialCopy = material;
             materialCopy._diffuseColour = vec3(1.f);
-            iblRadiance = ApplyIBL(materialCopy, viewVec, normalWV, VAR._vertexW.xyz, probeID);
+            iblRadiance = ApplyIBL(materialCopy, viewVec, normalWV, NdotV, VAR._vertexW.xyz, dvd_probeIndex(materialData));
     #endif
-            return iblRadiance;
-        }
+            debugColour = iblRadiance;
+        } break;
         case DEBUG_SSAO: {
             #if !defined(NO_SSAO)
-                return vec3(texture(texSSAO, dvd_screenPositionNormalised).r);
+                debugColour = vec3(texture(texSSAO, dvd_screenPositionNormalised).r);
             #else //!NO_SSAO
-                return vec3(1.f);
+                debugColour = vec3(1.f);
             #endif //!NO_SSAO
-        }
-        case DEBUG_UV:             return vec3(fract(uv), 0.f);
-        case DEBUG_EMISSIVE:       return material._emissive;
-        case DEBUG_ROUGHNESS:      return vec3(material._roughness);
-        case DEBUG_METALNESS:      return vec3(material._metallic);
+        } break;
+        case DEBUG_UV: {
+            debugColour = vec3(fract(uv), 0.f);
+        } break;
+        case DEBUG_EMISSIVE: {
+            debugColour = material._emissive;
+        } break;
+        case DEBUG_ROUGHNESS: {
+            debugColour = vec3(material._roughness);
+        } break;
+        case DEBUG_METALNESS: {
+            debugColour = vec3(material._metallic);
+        } break;
         case DEBUG_NORMALS:
         {
             const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
-            return abs(normalW);
-        }
-        case DEBUG_TANGENTS:       return normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[0]);
-        case DEBUG_BITANGENTS:     return normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[1]);
+            debugColour = abs(normalW);
+        } break;
+        case DEBUG_TANGENTS: {
+            debugColour = normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[0]);
+        } break;
+        case DEBUG_BITANGENTS: {
+            debugColour = normalize(mat3(dvd_InverseViewMatrix) * getTBNWV()[1]);
+        } break;
         case DEBUG_SHADOW_MAPS:
         {
-            return receivesShadows ? vec3(getShadowMultiplier(normalWV)) : vec3(1.f);
-        }
+            debugColour = dvd_receivesShadows(materialData) ? vec3(getShadowMultiplier(normalWV)) : vec3(1.f);
+        } break;
         case DEBUG_CSM_SPLITS:
         {
             #if defined(DISABLE_SHADOW_MAPPING)
-                return vec3(0.f);
+                debugColour =  vec3(0.f);
             #else //DISABLE_SHADOW_MAPPING
                 vec3 colour = vec3(0.f);
 
@@ -91,9 +108,9 @@ vec3 getDebugColour(in PBRMaterial material, in vec2 uv, in vec3 normalWV, in ui
                     }
                 }
 
-                return colour;
+                debugColour = colour;
             #endif //DISABLE_SHADOW_MAPPING
-        }
+        } break;
         case DEBUG_LIGHT_HEATMAP:
         {
             uint lights = lightGrid[GetClusterIndex(gl_FragCoord)]._countTotal;
@@ -106,30 +123,36 @@ vec3 getDebugColour(in PBRMaterial material, in vec2 uv, in vec3 normalWV, in ui
                 ++lights;
             }
 
-            return turboColormap(float(lights) / MAX_LIGHTS_PER_CLUSTER);
-        }
+            debugColour = turboColormap(float(lights) / MAX_LIGHTS_PER_CLUSTER);
+        } break;
         case DEBUG_DEPTH_CLUSTERS:
         {
+            debugColour = vec3(0.5f, 0.25f, 0.75f);
             switch (GetClusterZIndex(gl_FragCoord.z) % 8) {
-                case 0:  return vec3(1.0f, 0.0f, 0.0f);
-                case 1:  return vec3(0.0f, 1.0f, 0.0f);
-                case 2:  return vec3(0.0f, 0.0f, 1.0f);
-                case 3:  return vec3(1.0f, 1.0f, 0.0f);
-                case 4:  return vec3(1.0f, 0.0f, 1.0f);
-                case 5:  return vec3(1.0f, 1.0f, 1.0f);
-                case 6:  return vec3(1.0f, 0.5f, 0.5f);
-                case 7:  return vec3(0.0f, 0.0f, 0.0f);
+                case 0:  debugColour = vec3(1.0f, 0.0f, 0.0f); break;
+                case 1:  debugColour = vec3(0.0f, 1.0f, 0.0f); break;
+                case 2:  debugColour = vec3(0.0f, 0.0f, 1.0f); break;
+                case 3:  debugColour = vec3(1.0f, 1.0f, 0.0f); break;
+                case 4:  debugColour = vec3(1.0f, 0.0f, 1.0f); break;
+                case 5:  debugColour = vec3(1.0f, 1.0f, 1.0f); break;
+                case 6:  debugColour = vec3(1.0f, 0.5f, 0.5f); break;
+                case 7:  debugColour = vec3(0.0f, 0.0f, 0.0f); break;
             }
-
-            return vec3(0.5f, 0.25f, 0.75f);
-        }
+        } break;
         case DEBUG_REFRACTIONS:
-        case DEBUG_REFLECTIONS:    return ApplySSR(vec3(0.f));
-        case DEBUG_MATERIAL_IDS:   return turboColormap(float(MATERIAL_IDX + 1) / dvd_Materials.length());
-        case DEBUG_SHADING_MODE:   return turboColormap(float(material._shadingMode + 1) / SHADING_COUNT);
+        case DEBUG_REFLECTIONS: {
+            debugColour = ApplySSR(material, vec3(0.f));
+        } break;
+        case DEBUG_MATERIAL_IDS: {
+            debugColour = turboColormap(float(MATERIAL_IDX + 1) / dvd_Materials.length());
+        } break;
+        case DEBUG_SHADING_MODE: {
+            const vec4 unpackedData = (unpackUnorm4x8(materialData._data.z) * 255);
+            debugColour = turboColormap(float(uint(unpackedData.y) + 1) / SHADING_COUNT); break;
+        } break;
     }
 
-    return vec3(0.f);
+    return returnFlag;
 }
 
 #endif //_DEBUG_FRAG_

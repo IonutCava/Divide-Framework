@@ -41,11 +41,11 @@ namespace Divide {
 class GFXRTPool;
 
 struct RenderTargetID {
-    RenderTargetID() noexcept : RenderTargetID(RenderTargetUsage::COUNT)
+    RenderTargetID() noexcept : RenderTargetID(RenderTargetUsage::COUNT , 0u)
     {
     }
 
-    RenderTargetID(const RenderTargetUsage usage) noexcept : RenderTargetID(usage, 0)
+    RenderTargetID(const RenderTargetUsage usage) noexcept : RenderTargetID(usage, 0u)
     {
     }
 
@@ -55,7 +55,7 @@ struct RenderTargetID {
     {
     }
 
-    U16 _index = 0;
+    U16 _index = 0u;
     RenderTargetUsage _usage = RenderTargetUsage::COUNT;
 
     bool operator==(const RenderTargetID& other) const noexcept {

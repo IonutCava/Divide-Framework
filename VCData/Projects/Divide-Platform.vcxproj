@@ -320,6 +320,7 @@
     <None Include="..\..\assets\shaders\GLSL\common\utility.cmn" />
     <None Include="..\..\assets\shaders\GLSL\computeVSM.glsl" />
     <None Include="..\..\assets\shaders\GLSL\EdgeDetection.glsl" />
+    <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\lightingCalc.frag" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\specGloss.frag" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\specialBRDFs.frag" />
     <None Include="..\..\assets\shaders\GLSL\InfiniteGrid.glsl" />

@@ -18,13 +18,13 @@
         <colour r="0.639999986" g="0.639999986" b="0.639999986" a="1"/>
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>
-        <specular r="0.5" g="0.5" b="0.5" a="1"/>
+        <specular r="0.5" g="0.5" b="0.5" a="12.2980394"/>
         <specular_factor>0</specular_factor>
         <glossiness_factor>0</glossiness_factor>
         <metallic>0</metallic>
         <roughness>1</roughness>
         <doubleSided>true</doubleSided>
-        <receivesShadows>false</receivesShadows>
+        <receivesShadows>true</receivesShadows>
         <ignoreTexDiffuseAlpha>false</ignoreTexDiffuseAlpha>
         <bumpMethod>NORMAL</bumpMethod>
         <parallaxFactor>1</parallaxFactor>
@@ -261,6 +261,7 @@
                 <Sampler>
                     <id>1</id>
                 </Sampler>
+                <UseForPrePass>2</UseForPrePass>
             </UNIT0>
             <NORMALMAP>
                 <name>normal.tga</name>
@@ -269,6 +270,7 @@
                 <Sampler>
                     <id>1</id>
                 </Sampler>
+                <UseForPrePass>2</UseForPrePass>
             </NORMALMAP>
         </texture>
         <SamplerDescriptors>

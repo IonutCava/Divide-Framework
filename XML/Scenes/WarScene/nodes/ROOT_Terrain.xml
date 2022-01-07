@@ -32,7 +32,7 @@
         <metallic>0</metallic>
         <roughness>0.800000012</roughness>
         <doubleSided>false</doubleSided>
-        <receivesShadows>false</receivesShadows>
+        <receivesShadows>true</receivesShadows>
         <ignoreTexDiffuseAlpha>false</ignoreTexDiffuseAlpha>
         <bumpMethod>NONE</bumpMethod>
         <parallaxFactor>0.300000012</parallaxFactor>
@@ -309,6 +309,7 @@
                 <Sampler>
                     <id>1</id>
                 </Sampler>
+                <UseForPrePass>0</UseForPrePass>
             </UNIT0>
             <OPACITY>
                 <name>alpha_maps_Alpha1.png,alpha_maps_Alpha2.png</name>
@@ -317,6 +318,7 @@
                 <Sampler>
                     <id>2</id>
                 </Sampler>
+                <UseForPrePass>0</UseForPrePass>
             </OPACITY>
             <NORMALMAP>
                 <name>std_grass_steep/Normal.jpg,std_grass/Normal.jpg,std_cliffs/Normal.jpg,std_cliffs_steep/Normal.jpg,std_pebbles/Normal.jpg,std_cliffs_grey/Normal.jpg,std_sand_yellow/Normal.jpg,std_grass_lush/Normal.jpg</name>
@@ -325,6 +327,7 @@
                 <Sampler>
                     <id>1</id>
                 </Sampler>
+                <UseForPrePass>0</UseForPrePass>
             </NORMALMAP>
             <HEIGHTMAP>
                 <name>heightfield.png</name>
@@ -333,6 +336,7 @@
                 <Sampler>
                     <id>3</id>
                 </Sampler>
+                <UseForPrePass>0</UseForPrePass>
             </HEIGHTMAP>
             <SPECULAR>
                 <name>terrain_water_caustics.jpg,sandfloor009a.jpg,terrain_detail_NM.png,bruit_gaussien_2.jpg</name>
@@ -341,6 +345,7 @@
                 <Sampler>
                     <id>1</id>
                 </Sampler>
+                <UseForPrePass>0</UseForPrePass>
             </SPECULAR>
             <METALNESS>
                 <name>std_grass_steep/Displacement.jpg,std_grass/Displacement.jpg,std_cliffs/Displacement.jpg,std_cliffs_steep/Displacement.jpg,std_pebbles/Displacement.jpg,std_cliffs_grey/Displacement.jpg,std_sand_yellow/Displacement.jpg,std_grass_lush/Displacement.jpg</name>
@@ -349,6 +354,7 @@
                 <Sampler>
                     <id>1</id>
                 </Sampler>
+                <UseForPrePass>0</UseForPrePass>
             </METALNESS>
         </texture>
         <SamplerDescriptors>

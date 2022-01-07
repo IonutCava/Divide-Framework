@@ -1677,7 +1677,7 @@ namespace Divide {
                     tempField._type = EditorComponentFieldType::SLIDER_TYPE;
                     tempField._readOnly = readOnly;
                     tempField._data = &specular.a;
-                    tempField._range = { 0.0f, 1000.f };
+                    tempField._range = { 0.0f, Material::MAX_SHININESS };
                     tempField._dataSetter = [&material](const void* s) {
                         material->shininess(*static_cast<const F32*>(s));
                     };

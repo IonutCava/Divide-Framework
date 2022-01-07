@@ -378,7 +378,8 @@ namespace Import {
         tempMaterial->baseColour(importData.baseColour());
         tempMaterial->emissiveColour(importData.emissive());
         tempMaterial->ambientColour(importData.ambient());
-        tempMaterial->specularColour(importData.specular());
+        tempMaterial->specularColour(importData.specular().rgb);
+        tempMaterial->shininess(importData.specular().a);
         tempMaterial->specGloss(importData.specGloss());
         tempMaterial->metallic(importData.metallic());
         tempMaterial->roughness(importData.roughness());

@@ -81,7 +81,7 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
 
    protected:
        void onToggle(const bool state) override { _stateChanged = true; }
-       void prepare(GFX::CommandBuffer& bufferInOut);
+       void prepare(GFX::CommandBuffer& bufferInOut) override;
 
    private:
     GFX::SendPushConstantsCommand _ssaoGenerateConstantsCmd;

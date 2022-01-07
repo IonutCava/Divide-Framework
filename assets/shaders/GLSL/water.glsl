@@ -74,6 +74,7 @@ void main()
     const vec2 waterUV = clamp(0.5f * homogenize(_vertexWVP).xy + 0.5f, vec2(0.001f), vec2(0.999f));
     const vec3 refractionColour = overlayVec(texture(texRefractPlanar, waterUV).rgb, _refractionTint);
 
+#if defined(MAIN_DISPLAY_PASS)
     switch (dvd_materialDebugFlag) {
         case DEBUG_REFRACTIONS:
             writeScreenColour(vec4(refractionColour, 1.f));
@@ -82,6 +83,7 @@ void main()
             writeScreenColour(texture(texReflectPlanar, waterUV));
             return;
     }
+#endif //MAIN_DISPLAY_PASS
 
     // Get a modified viewing direction of the camera that only takes into account height.
     // ref: https://www.rastertek.com/terdx10tut16.html

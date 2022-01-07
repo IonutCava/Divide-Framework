@@ -12,6 +12,18 @@
 
 #endif //NO_POST_FX
 
+#if defined(NO_REFLECTIONS)
+#if !defined(NO_IBL)
+#define NO_IBL
+#endif //NO_IBL
+#if !defined(NO_SSR)
+#define NO_SSR
+#endif //NO_SSR
+#if !defined(NO_ENV_MAPPING)
+#define NO_ENV_MAPPING
+#endif //NO_ENV_MAPPING
+#endif //NO_REFLECTIONS
+
 //Global sky light layer index: SKY_LIGHT_LAYER_IDX
 // eg: vec4 skyIrradiance = texture(texEnvIrradiance, vec4(coords, SKY_LIGHT_LAYER_IDX);
 layout(binding = TEXTURE_REFLECTION_PREFILTERED) uniform samplerCubeArray texEnvPrefiltered;
@@ -67,54 +79,37 @@ vec3 FixCubeLookup(in vec3 v) {
     return v;
 }
 
-//Box Projected Cube Environment Mapping by Bartosz Czuba
-vec3 GetAdjustedReflectionWS(in vec3 reflectionWS, in vec3 posWS, in uint probeIdx) {
-    const ProbeData probe = dvd_Probes[probeIdx];
-    const vec3 EnvBoxHalfSize = probe._halfExtents.xyz;
-    const vec3 EnvBoxSize = EnvBoxHalfSize * 2;
-    const vec3 EnvBoxStart = probe._positionW.xyz - EnvBoxHalfSize;
-        
-    const vec3 nrdir = normalize(reflectionWS);
-    const vec3 rbmax = (EnvBoxStart + EnvBoxSize - posWS) / nrdir;
-    const vec3 rbmin = (EnvBoxStart - posWS) / nrdir;
-
-    const vec3 rbminmax = vec3(
-        (nrdir.x > 0.f) ? rbmax.x : rbmin.x,
-        (nrdir.y > 0.f) ? rbmax.y : rbmin.y,
-        (nrdir.z > 0.f) ? rbmax.z : rbmin.z
-    );
-
-    const float fa = min(min(rbminmax.x, rbminmax.y), rbminmax.z);
-    return (posWS + nrdir * fa) - (EnvBoxStart + EnvBoxHalfSize);
-}
-
 vec3 GetCubeReflectionDirection(in vec3 viewDirectionWV, in vec3 normalWV, in vec3 positionW, in uint probeID, in float roughness) {
     const vec3 reflectionWV = reflect(-viewDirectionWV, normalWV);
 
-    if (probeID == SKY_LIGHT_LAYER_IDX) {
-        return reflectionWV;
+    if (probeID != SKY_LIGHT_LAYER_IDX) {
+        const ProbeData probe = dvd_Probes[probeID];
+
+        //Box Projected Cube Environment Mapping by Bartosz Czuba
+        const vec3 dominantDirW = normalize(mat3(dvd_InverseViewMatrix) * GetSpecularDominantDir(normalWV, reflectionWV, roughness));
+        const vec3 nrdir = normalize(FixCubeLookup(dominantDirW));
+
+        const vec3 EnvBoxHalfSize = probe._halfExtents.xyz;
+        const vec3 EnvBoxSize = EnvBoxHalfSize * 2;
+        const vec3 EnvBoxStart = probe._positionW.xyz - EnvBoxHalfSize;
+        const vec3 rbmax = (EnvBoxStart + EnvBoxSize - positionW) / nrdir;
+        const vec3 rbmin = (EnvBoxStart - positionW) / nrdir;
+
+        const vec3 rbminmax = vec3(
+            (nrdir.x > 0.f) ? rbmax.x : rbmin.x,
+            (nrdir.y > 0.f) ? rbmax.y : rbmin.y,
+            (nrdir.z > 0.f) ? rbmax.z : rbmin.z
+        );
+
+        const float fa = min(min(rbminmax.x, rbminmax.y), rbminmax.z);
+        return (positionW + nrdir * fa) - (EnvBoxStart + EnvBoxHalfSize);
     }
-#if 1
-    const vec3 dominantDirW = normalize(mat3(dvd_InverseViewMatrix) * GetSpecularDominantDir(normalWV, reflectionWV, roughness));
-    const vec3 fixedCubeDirW = FixCubeLookup(dominantDirW);
-    return GetAdjustedReflectionWS(fixedCubeDirW, positionW, probeID);
-#else
-    const vec3 reflectW = normalize(mat3(dvd_InverseViewMatrix)* reflectionWV);
-    return GetAdjustedReflectionWS(reflectW, positionW, probeID);
-#endif
+
+    return reflectionWV;
 }
 
-#if defined(NO_SSR) || defined(NO_IBL)
-#define GetSSR() vec4(0.f)
-#else //NO_SSR || NO_IBL
-vec4 GetSSR() {
-    return texture(texSSR, dvd_screenPositionNormalised);
-}
-#endif //NO_SSR || NO_IBL
-
-vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in vec3 positionW, in uint probeID) {
-    const float NdotV = max(dot(normalWV, viewDirectionWV), 0.f);
-
+#if !defined(NO_ENV_MAPPING) && !defined(NO_IBL)
+vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in float NdotV, in vec3 positionW, in uint probeID) {
     const vec3 adjustedReflection = GetCubeReflectionDirection(viewDirectionWV, normalWV, positionW, probeID, material._roughness);
     const vec4 reflectionLookup = vec4(adjustedReflection, float(probeID));
 
@@ -130,11 +125,29 @@ vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV
     const vec3 diffuse = irradiance * material._diffuseColour;
     const vec3 specular = prefiltered * (F * envBRDF.x + envBRDF.y);
 
-    return (kD * diffuse + specular) * material._occlusion;
+    return (kD * diffuse + specular) * material._occlusion + 
+           (dvd_AmbientColour.rgb * material._diffuseColour * material._occlusion);
 }
+#else //!NO_ENV_MAPPING && !NO_IBL
+#define ApplyIBL(M,V,N,nDv,P,ID) (dvd_AmbientColour.rgb * M._diffuseColour * M._occlusion)
+#endif //!NO_ENV_MAPPING && !NO_IBL
 
-vec3 ApplySSR(in vec3 radianceIn) {
-    const vec4 ssr = GetSSR();
-    return mix(radianceIn, ssr.rgb, ssr.a);
+#if defined(NO_SSR) || defined(NO_IBL)
+#define ApplySSR(M,R) (R)
+#else  //NO_SSR || NO_IBL
+vec3 ApplySSR(in PBRMaterial material, in vec3 radianceIn) {
+    const vec4 ssr = texture(texSSR, dvd_screenPositionNormalised);
+    /*return mix(mix(radianceIn, ssr.rgb, ssr.a),
+               radianceIn,
+               material._roughness);*/
+    return radianceIn;
 }
+#endif  //NO_SSR || NO_IBL
+
+#if defined(NO_SSAO)
+#define ApplySSAO(R) (R)
+#else  //NO_SSAO
+#define ApplySSAO(R) (R * texture(texSSAO, dvd_screenPositionNormalised).r)
+#endif  //NO_SSAO
+
 #endif //_IMAGE_BASED_LIGHTING_FRAG_

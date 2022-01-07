@@ -78,7 +78,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
             params._buffer = g_particleGeometryBuffer;
             params._bufferParams._elementCount = to_U32(geometry.size());
             params._bufferParams._elementSize = sizeof(vec3<F32>);
-            params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+            params._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;
             params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
             params._bufferParams._sync = false;
             params._bufferParams._initialData = { (Byte*)geometry.data(), geometry.size() * params._bufferParams._elementSize};
@@ -92,7 +92,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
                 idxBuff.count = to_U32(indices.size());
                 idxBuff.data = (Byte*)indices.data();
 
-                buffer.setIndexBuffer(idxBuff, BufferUpdateFrequency::ONCE);
+                buffer.setIndexBuffer(idxBuff, BufferUpdateFrequency::RARELY);
             }
 
             AttributeDescriptor& desc = buffer.attribDescriptor(to_base(AttribLocation::POSITION));
@@ -191,7 +191,7 @@ bool ParticleEmitter::updateData() {
 
             params._bufferParams._elementCount = particleCount;
             params._bufferParams._elementSize = sizeof(vec4<F32>);
-            params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+            params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
             params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
             params._bufferParams._sync = true;
             params._bufferParams._initialData = { nullptr, 0 };

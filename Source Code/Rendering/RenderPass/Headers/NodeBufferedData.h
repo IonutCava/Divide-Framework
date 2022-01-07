@@ -83,13 +83,11 @@ FORCE_INLINE [[nodiscard]] SamplerAddress Uvec2ToTexture(const vec2<U32> address
     {
         mat4<F32> _worldMatrix = MAT4_INITIAL_TRANSFORM;
         mat4<F32> _prevWorldMatrix = MAT4_INITIAL_TRANSFORM;
-
-        // [0...2][0...2] = normal matrix
-        // [3][0...2]     = bounds center
-        // [0][3]         = 4x8U: bone count, lod level, animation ticked this frame (for motion blur), occlusion cull
-        // [1][3]         = 2x16F: BBox HalfExtent (X, Y) 
-        // [2][3]         = 2x16F: BBox HalfExtent (Z), BSphere Radius
-        // [3][3]         = 2x16F: (Data Flag, reserved)
+        //[0][0]...[2][2] - normalMatrix
+        //[0][3] = 4x8U: reserverd, animation ticked this frame (for motion blur), LoDLevel, occlusion cull
+        //[1][3] = selectionFlag
+        //[2][3] = boneCount
+        //[3][0..3] = boundingSphere
         mat4<F32> _normalMatrixW = MAT4_IDENTITY;
     };
 

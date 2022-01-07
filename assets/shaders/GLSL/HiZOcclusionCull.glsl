@@ -66,13 +66,8 @@ void main()
         return;
     }
 
-    const vec3 boundsCenter = transformData._normalMatrixW[3].xyz;
-    const vec2 bboxHalfExtentsXY = unpackHalf2x16(uint(transformData._normalMatrixW[1][3]));
-    const vec2 bboxHalfExtentsZRadius = unpackHalf2x16(uint(transformData._normalMatrixW[2][3]));
-
-    const vec3 bBoxHExtents = vec3(bboxHalfExtentsXY, bboxHalfExtentsZRadius.x);
-
-    if (HiZCull(boundsCenter, bBoxHExtents, bboxHalfExtentsZRadius.y)) {
+    const vec4 boundingSphere = dvd_boundingSphere(transformData);
+    if (HiZCull(boundingSphere.xyz, boundingSphere.w)) {
         CullItem(ident);
     }
 }

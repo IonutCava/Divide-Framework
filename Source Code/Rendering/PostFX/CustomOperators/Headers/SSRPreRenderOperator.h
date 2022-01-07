@@ -51,7 +51,7 @@ class SSRPreRenderOperator final : public PreRenderOperator {
 
    protected:
        void onToggle(const bool state) override { _stateChanged = true; }
-       void prepare(GFX::CommandBuffer& bufferInOut);
+       void prepare(GFX::CommandBuffer& bufferInOut) override;
 
    private:
      ShaderProgram_ptr _ssrShader = nullptr;

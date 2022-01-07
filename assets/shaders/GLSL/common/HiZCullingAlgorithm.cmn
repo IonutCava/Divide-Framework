@@ -1,6 +1,15 @@
 #ifndef _HIZ_CULL_CMN_
 #define _HIZ_CULL_CMN_
 
+#if !defined(USE_CUSTOM_EXTENTS) 
+vec3 getHalfExtents(const in vec3 P, const in float R) {
+    const vec3 radiusOffset = vec3(R);
+    const vec3 bbMin = P - radiusOffset;
+    const vec3 bbMax = P + radiusOffset;
+    return (bbMax - bbMin) * 0.5f;
+}
+#endif //!USE_CUSTOM_EXTENTS
+
 layout(binding = TEXTURE_UNIT0) uniform sampler2D HiZBuffer;
 
 uniform float nearPlane;
@@ -54,11 +63,13 @@ bool pixelCull(vec3 clipmin, vec3 clipmax) {
 }
 
 
-bool HiZCull(const in vec3 position, const in vec3 hextents, const in float bSphereRadius) {
+bool HiZCull(const in vec3 position, const in float bSphereRadius) {
     // Basic frustum culling
     if (!SphereInFrustum(position, bSphereRadius)) {
         return true;
     }
+
+    const vec3 hextents = getHalfExtents(position, bSphereRadius);
 
     const vec3 viewCenter = (viewMatrix * vec4(position, 1.0)).xyz;
     const float nearestZ = viewCenter.z + bSphereRadius;

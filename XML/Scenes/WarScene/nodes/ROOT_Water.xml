@@ -11,7 +11,7 @@
     <Noise__tile__factor x="100" y="100"/>
     <Noise__factor x="0.200000003" y="0.200000003"/>
     <Refraction__tint r="0.260355055" g="0.757363498" b="0.967032969"/>
-    <Specular__Shininess>200</Specular__Shininess>
+    <Specular__Shininess>128</Specular__Shininess>
 </WATER>
 <TRANSFORM>
     <Transform>
@@ -272,22 +272,25 @@
                 <Sampler>
                     <id>1</id>
                 </Sampler>
+                <UseForPrePass>2</UseForPrePass>
             </NORMALMAP>
             <REFLECTION_PLANAR>
-                <name>FBO_Reflection_Planar_0_Att_Colour_0_72</name>
+                <name>FBO_Reflection_Planar_0_Att_Colour_0_78</name>
                 <path/>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>2</id>
                 </Sampler>
+                <UseForPrePass>2</UseForPrePass>
             </REFLECTION_PLANAR>
             <REFRACTION_PLANAR>
-                <name>FBO_Refraction_Planar_0_Att_Colour_0_87</name>
+                <name>FBO_Refraction_Planar_0_Att_Colour_0_93</name>
                 <path/>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>2</id>
                 </Sampler>
+                <UseForPrePass>2</UseForPrePass>
             </REFRACTION_PLANAR>
         </texture>
         <SamplerDescriptors>

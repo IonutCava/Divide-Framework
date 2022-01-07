@@ -102,7 +102,7 @@ bool DoFPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, const R
         _constantsDirty = true;
     }
 
-    const RenderTarget& postFXTarget = _context.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::LINEAR_DEPTH));
+    const RenderTarget& postFXTarget = _context.renderTargetPool().renderTarget(RenderTargetUsage::LINEAR_DEPTH);
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
     const auto& extraAtt = postFXTarget.getAttachment(RTAttachmentType::Colour, 0u);

@@ -653,29 +653,40 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
         }
     }
 
-    F32 specStrength = 1.f;
+    F32 specStrength = 0.f;
     { // Load specular colour
         F32 specShininess = 0.f;
-        aiGetMaterialFloat(mat, AI_MATKEY_SHININESS_STRENGTH, &specStrength);
-
-
         if (AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_SHININESS, &specShininess)) {
             // Adjust shininess range here so that it always maps to the range [0,1000]
             switch (format) {
                 case GeometryFormat::_3DS:
                 case GeometryFormat::ASE:
                 case GeometryFormat::FBX:  specShininess *= 10.f;                         break; // percentage (0-100%)
-                case GeometryFormat::OBJ:  specShininess /= 4.f;                          break; // 4000.f
+                case GeometryFormat::OBJ:  specShininess *= 1.f;                          break; // 0...1000.f
                 case GeometryFormat::DAE:  REMAP(specShininess, 0.f, 511.f, 0.f, 1000.f); break; // 511.f
                 case GeometryFormat::X:    specShininess = 1000.f;                        break; //no supported. 0 = gouraud shading
             };
             CLAMP(specShininess, 0.f, 1000.f);
+        }
+        // Once the value has been remaped to 0...1000, remap it what we can handle in the engine;
+#if 0
+        specShininess = CLAMPED(specShininess, 0.f, Material::MAX_SHININESS);
+#else
+        specShininess = MAP(specShininess, 0.f, 1000.f, 0.f, Material::MAX_SHININESS);
+#endif
+        bool hasSpecStrength = false;
+        if (AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_SHININESS_STRENGTH, &specStrength)) {
+            hasSpecStrength = true;
         }
 
         material.specular({ specStrength, specStrength, specStrength, specShininess });
 
         aiColor4D specular;
         if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_SPECULAR, &specular)) {
+            if (!hasSpecStrength) {
+                specStrength = 1.f;
+            }
+
             material.specular({ specular.r * specStrength, specular.g * specStrength, specular.b * specStrength, specShininess });
         }
     }

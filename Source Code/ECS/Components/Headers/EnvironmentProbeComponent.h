@@ -105,6 +105,8 @@ public:
     PROPERTY_R(UpdateType, updateType, UpdateType::ON_DIRTY);
 
     PROPERTY_R(U16, poolIndex, 0u);
+
+    inline const BoundingBox& getBounds() const noexcept { return _aabb; }
 protected:
     friend class SceneEnvironmentProbePool; //for poolIndex(U16)
     void poolIndex(U16 index) noexcept;

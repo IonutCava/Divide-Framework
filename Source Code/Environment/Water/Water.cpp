@@ -130,7 +130,7 @@ WaterPlane::WaterPlane(ResourceCache* parentCache, size_t descriptorHash, const 
     specularShininessField._data = &_specularShininess;
     specularShininessField._type = EditorComponentFieldType::PUSH_TYPE;
     specularShininessField._readOnly = false;
-    specularShininessField._range = { 0.01f, 1000.0f };
+    specularShininessField._range = { 0.01f, Material::MAX_SHININESS };
     specularShininessField._basicType = GFX::PushConstantType::FLOAT;
 
     getEditorComponent().registerField(MOV(specularShininessField));
@@ -419,8 +419,8 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
 
     RenderPassParams params = {};
     params._sourceNode = renderParams._sgn;
-    params._targetHIZ = RenderTargetID(RenderTargetUsage::HI_Z_REFLECT);
-    params._targetOIT = RenderTargetID(RenderTargetUsage::OIT_REFLECT);
+    params._targetHIZ = RenderTargetUsage::HI_Z_REFLECT;
+    params._targetOIT = RenderTargetUsage::OIT_REFLECT;
     params._minExtents.set(1.5f);
     params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, renderParams._passIndex, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR) };
     params._target = renderParams._renderTarget;
@@ -439,8 +439,8 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
         RenderTarget& reflectTarget = renderParams._context.renderTargetPool().renderTarget(renderParams._renderTarget);
         RenderTargetHandle reflectionTargetHandle(renderParams._renderTarget, &reflectTarget);
 
-        RenderTarget& reflectBlurTarget = renderParams._context.renderTargetPool().renderTarget(RenderTargetID(RenderTargetUsage::REFLECTION_PLANAR_BLUR));
-        RenderTargetHandle reflectionBlurBuffer(RenderTargetID(RenderTargetUsage::REFLECTION_PLANAR_BLUR), &reflectBlurTarget);
+        RenderTarget& reflectBlurTarget = renderParams._context.renderTargetPool().renderTarget(RenderTargetUsage::REFLECTION_PLANAR_BLUR);
+        RenderTargetHandle reflectionBlurBuffer(RenderTargetUsage::REFLECTION_PLANAR_BLUR, &reflectBlurTarget);
 
         renderParams._context.blurTarget(reflectionTargetHandle,
                                          reflectionBlurBuffer,

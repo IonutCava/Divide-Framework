@@ -50,6 +50,7 @@ enum class RenderAPI : U8 {
 enum class RenderTargetUsage : U8 {
     SCREEN = 0,
     SCREEN_MS,
+    SCREEN_PREV,
     OIT,
     OIT_MS,
     OIT_REFLECT,
@@ -209,7 +210,8 @@ enum class AttribLocation : U8 {
 };
 
 enum class ShaderBufferLocation : U8 {
-    GPU_BLOCK = 0,
+    CAM_BLOCK = 0,
+    RENDER_BLOCK,
     GPU_COMMANDS,
     LIGHT_NORMAL,
     LIGHT_SCENE,
@@ -570,7 +572,7 @@ enum class BufferUpdateUsage : U8 {
 };
 
 enum class BufferUpdateFrequency : U8 {
-    ONCE = 0,       //STATIC
+    RARELY = 0,     //STATIC
     OCASSIONAL = 1, //DYNAMIC
     OFTEN = 2,      //STREAM
     COUNT

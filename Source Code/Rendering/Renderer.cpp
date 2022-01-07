@@ -103,7 +103,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
     bufferDescriptor._ringBufferLength = 1;
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
     bufferDescriptor._bufferParams._initialData = { nullptr, 0 };
 

@@ -5,6 +5,10 @@
 #include "vegetationData.cmn"
 #include "lightingDefaults.vert"
 
+VegetationData TreeData(in uint instanceID) {
+    return treeData[dvd_terrainChunkOffset * MAX_TREE_INSTANCES + instanceID];
+}
+
 vec3 rotate_vertex_position(vec3 position, vec4 q) {
     const vec3 v = position.xyz;
     return v + 2.0f * cross(q.xyz, cross(q.xyz, v) + q.w * v);

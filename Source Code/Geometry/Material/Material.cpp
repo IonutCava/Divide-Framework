@@ -517,7 +517,6 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     const bool isDepthPass = IsDepthPass(renderStagePass);
 
     DIVIDE_ASSERT(_shadingMode != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!");
-
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> moduleDefines = {};
 
     ModuleDefines globalDefines = {};
@@ -539,7 +538,24 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     if (renderStagePass._passType == RenderPassType::OIT_PASS) {
         moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("OIT_PASS", true);
     }
-
+    switch (_shadingMode) {
+        case ShadingMode::FLAT: {
+            globalDefines.emplace_back("SHADING_MODE_FLAT", true);
+        } break;
+        case ShadingMode::TOON: {
+            globalDefines.emplace_back("SHADING_MODE_TOON", true);
+        } break;
+        case ShadingMode::BLINN_PHONG: {
+            globalDefines.emplace_back("SHADING_MODE_BLINN_PHONG", true);
+        } break;
+        case ShadingMode::PBR_MR: {
+            globalDefines.emplace_back("SHADING_MODE_PBR_MR", true);
+        } break; 
+        case ShadingMode::PBR_SG: {
+            globalDefines.emplace_back("SHADING_MODE_PBR_SG", true);
+        } break;
+        default: DIVIDE_UNEXPECTED_CALL(); break;
+    }
     // Display pre-pass caches normal maps in a GBuffer, so it's the only exception
     if ((!isDepthPass || renderStagePass._stage == RenderStage::DISPLAY) &&
         _textures[to_base(TextureUsage::NORMALMAP)] != nullptr &&
@@ -894,7 +910,7 @@ void Material::specGloss(const SpecularGlossiness& value, const bool applyToInst
 }
 
 void Material::shininess(const F32 value, const bool applyToInstances) {
-    _specular.a = value;
+    _specular.a = CLAMPED(value, 0.f, MAX_SHININESS);
 
     if (applyToInstances) {
         for (Material* instance : _instances) {
@@ -1058,17 +1074,6 @@ F32 Material::getOcclusion(bool& hasTextureOverride, Texture*& textureOut) const
 }
 
 void Material::getData(const RenderingComponent& parentComp, const U32 bestProbeID, NodeMaterialData& dataOut) {
-    const SceneGraphNode* parentSGN = parentComp.parentSGN();
-
-    F32 selectionFlag = 0.0f;
-    // We don't propagate selection flags to children outside of the editor, so check for that
-    if (parentSGN->hasFlag(SceneGraphNode::Flags::SELECTED) ||
-        parentSGN->parent() && parentSGN->parent()->hasFlag(SceneGraphNode::Flags::SELECTED)) {
-        selectionFlag = 1.0f;
-    } else if (parentSGN->hasFlag(SceneGraphNode::Flags::HOVERED)) {
-        selectionFlag = 0.5f;
-    }
-
     const FColour4& specColour = specular(); //< For PHONG_SPECULAR
 
     const bool useOpacityAlphaChannel = _translucencySource == TranslucencySource::OPACITY_MAP_A;
@@ -1078,7 +1083,7 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
     dataOut._albedo.set(baseColour());
     dataOut._colourData.set(ambient(), specColour.a);
     dataOut._emissiveAndParallax.set(emissive(), parallaxFactor());
-    dataOut._data.x = Util::PACK_UNORM4x8(occlusion(), metallic(), roughness(), selectionFlag);
+    dataOut._data.x = Util::PACK_UNORM4x8(occlusion(), metallic(), roughness(), 0.f);
     dataOut._data.y = Util::PACK_UNORM4x8(specColour.r, specColour.g, specColour.b, (doubleSided() ? 1.f : 0.f));
     dataOut._data.z = Util::PACK_UNORM4x8(0u, to_U8(shadingMode()), usePackedOMR() ? 1u : 0u, to_U8(bumpMethod()));
     dataOut._data.w = bestProbeID;
@@ -1259,7 +1264,13 @@ void Material::loadFromXML(const string& entryName, const boost::property_tree::
         return;
     }
 
-    shadingMode(TypeUtil::StringToShadingMode(pt.get<string>(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingMode()))), false);
+    const ShadingMode shadingModeCrt = shadingMode();
+    ShadingMode shadingModeFile = TypeUtil::StringToShadingMode(pt.get<string>(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingModeCrt)));
+    if (shadingModeFile == ShadingMode::COUNT) {
+        shadingModeFile = shadingModeCrt;
+    }
+
+    shadingMode(shadingModeFile, false);
 
     baseColour(FColour4(pt.get<F32>(entryName + ".colour.<xmlattr>.r", baseColour().r),
                         pt.get<F32>(entryName + ".colour.<xmlattr>.g", baseColour().g),
@@ -1302,7 +1313,7 @@ void Material::loadFromXML(const string& entryName, const boost::property_tree::
 
     refractive(pt.get<bool>(entryName + ".isRefractive", refractive()), false);
 
-    loadRenderStatesFromXML(entryName, pt);
+    //loadRenderStatesFromXML(entryName, pt);
     loadTextureDataFromXML(entryName, pt);
 }
 

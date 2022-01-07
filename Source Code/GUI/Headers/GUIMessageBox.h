@@ -45,6 +45,7 @@ class EventArgs;
 namespace Divide {
 
 class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
+    friend class GUI;
     friend class GUIInterface;
     friend class SceneGUIElements;
 

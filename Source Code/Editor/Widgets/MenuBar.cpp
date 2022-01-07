@@ -73,6 +73,7 @@ namespace {
             case RenderTargetUsage::REFLECTION_PLANAR_BLUR: return "Planar Reflection Blur";
             case RenderTargetUsage::REFRACTION_PLANAR: return "Planar Refraction";
             case RenderTargetUsage::SCREEN: return "Screen";
+            case RenderTargetUsage::SCREEN_PREV: return "Screen_Prev";
             case RenderTargetUsage::SCREEN_MS: return "Screen_MS";
             case RenderTargetUsage::SHADOW: return "Shadow";
             case RenderTargetUsage::COUNT: break;

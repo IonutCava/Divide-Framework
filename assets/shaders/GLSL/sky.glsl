@@ -673,14 +673,13 @@ void main() {
     // Guess work based on what "look right"
     const float lerpValue = saturate(2.95f * (GetSunDirection().y + 0.15f));
     const vec3 rayDirection = normalize(VAR._vertexW.xyz - dvd_cameraPosition.xyz);
-
+#if defined(MAIN_DISPLAY_PASS)
     vec3 ret = vec3(0.f);
     switch (dvd_materialDebugFlag) {
         case DEBUG_ALBEDO:        ret = getRawAlbedo(rayDirection, lerpValue); break;
         case DEBUG_LIGHTING:      ret = getSkyColour(rayDirection, lerpValue); break;
         case DEBUG_SPECULAR:      
         case DEBUG_SSAO:
-        case DEBUG_SSR:
         case DEBUG_IBL:
         case DEBUG_KS:            ret = vec3(0.f); break;
         case DEBUG_UV:            ret = vec3(fract(rayDirection)); break;
@@ -700,7 +699,9 @@ void main() {
         case DEBUG_SHADING_MODE:  ret = vec3(0.0f); break;
         default:                  ret = atmosphereColour(rayDirection, lerpValue); break;
     }
-
+#else //MAIN_DISPLAY_PASS
+    const vec3 ret = atmosphereColour(rayDirection, lerpValue);
+#endif //MAIN_DISPLAY_PASS
     writeScreenColour(vec4(ret, 1.f));
 }
 

@@ -1,8 +1,6 @@
 #ifndef _PBR_FRAG_
 #define _PBR_FRAG_
 
-#include "IBL.frag"
-
 // AMAZING RESOURCE : http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr.pdf
 // Reference: https://github.com/urho3d/Urho3D/blob/master/bin/CoreData/Shaders/GLSL/PBR.glsl
 // Following BRDF methods are based upon research Frostbite EA
@@ -174,40 +172,35 @@ vec3 SchlickFresnelCustom(in vec3 specular, in float LdotH) {
 //   lightAttenuation = attenuation factor to multiply the light's colour by (includes shadow, distance fade, etc)
 //   ndl       = dot(normal,lightVec) [M_EPSILON,1.0f]
 //   material = material value for the target pixel (base colour, OMR, spec value, etc)
-vec3 GetBRDF_PBR(in vec3 L,
-                 in vec3 V,
-                 in vec3 N,
-                 in vec3 lightColour,
-                 in float lightAttenuation,
-                 in float NdotL,
-                 in float NdotV,
-                 in PBRMaterial material)
+vec3 GetBRDF(in vec3 L,
+             in vec3 V,
+             in vec3 N,
+             in vec3 lightColour,
+             in float lightAttenuation,
+             in float NdotL,
+             in float NdotV,
+             in PBRMaterial material)
 {
     const vec3 H = normalize(V + L);
 
     const float VdotH = clamp((dot(V, H)), M_EPSILON, 1.f);
     const float NdotH = clamp((dot(N, H)), M_EPSILON, 1.f);
 
-    // Material data
-    vec3 diffuseFactor;
-    vec3 fresnelTerm;
-    float distTerm;
-    float visTerm;
+#if defined(SHADING_MODE_PBR_MR)
+    const float LdotH = clamp((dot(L, H)), M_EPSILON, 1.f);
 
-    if (material._shadingMode == SHADING_PBR_MR) {
-        const float LdotH = clamp((dot(L, H)), M_EPSILON, 1.f);
-
-        diffuseFactor = material._diffuseColour * BurleyDiffuse(material._roughness, NdotV, NdotL, VdotH, LdotH);
-        fresnelTerm = SchlickGaussianFresnel(material._specular.rgb, VdotH);
-        distTerm = GGXDistribution(material._a, NdotH);
-        visTerm = NeumannVisibility(NdotV, NdotL);
-    } else /*material._shadingMode == SHADING_PBR_SG*/ {
-        diffuseFactor = material._diffuseColour * LambertianDiffuse(NdotL);
-        //diffuseFactor = material._diffuseColour * CustomLambertianDiffuse(material._roughness, NdotV, NdotL);
-        fresnelTerm = SchlickFresnel(material._specular.rgb, VdotH);
-        distTerm = BlinnPhongDistribution(material._a, NdotH);
-        visTerm = SmithGGXSchlickVisibility(material._roughness, NdotV, NdotL);
-    }
+    const vec3 diffuseFactor = material._diffuseColour * BurleyDiffuse(material._roughness, NdotV, NdotL, VdotH, LdotH);
+    const vec3 fresnelTerm = SchlickGaussianFresnel(material._specular.rgb, VdotH);
+    const float distTerm = GGXDistribution(material._a, NdotH);
+    const float visTerm = NeumannVisibility(NdotV, NdotL);
+#else //SHADING_MODE_PBR_SG
+    //WRONG / TEMP / WHATEVER!
+    const vec3 diffuseFactor = material._diffuseColour * LambertianDiffuse(NdotL);
+    //diffuseFactor = material._diffuseColour * CustomLambertianDiffuse(material._roughness, NdotV, NdotL);
+    const vec3 fresnelTerm = SchlickFresnel(material._specular.rgb, VdotH);
+    const float distTerm = BlinnPhongDistribution(material._a, NdotH);
+    const float visTerm = SmithGGXSchlickVisibility(material._roughness, NdotV, NdotL);
+#endif //SHADING_MODE_PBR_MR
 
     const vec3 specularFactor = distTerm * visTerm * fresnelTerm * NdotL * INV_M_PI;
 

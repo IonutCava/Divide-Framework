@@ -9,26 +9,19 @@
 //   lightAttenuation = attenuation factor to multiply the light's colour by (includes shadow, distance fade, etc)
 //   ndl       = dot(normal,lightVec) [M_EPSILON,1.0f]
 //   material = material value for the target pixel (base colour, OMR, spec value, etc)
-vec3 GetBRDF_Phong(in vec3 L,
-                   in vec3 V,
-                   in vec3 N,
-                   in vec3 lightColour,
-                   in float lightAttenuation,
-                   in float ndl,
-                   in float ndv,
-                   in PBRMaterial material)
+vec3 GetBRDF(in vec3 L,
+             in vec3 V,
+             in vec3 N,
+             in vec3 lightColour,
+             in float lightAttenuation,
+             in float ndl,
+             in float ndv,
+             in PBRMaterial material)
 {
     if (ndl > M_EPSILON) {
-        const vec3 diffColour = material._diffuseColour;
-        const float occlusion = material._occlusion;
-        const vec4 specColour = material._specular;
-
-        const vec3 H = normalize(V + L);
-
-        const float ndh = clamp((dot(N, H)), M_EPSILON, 1.f);
-
-        const vec3 specular = specColour.rgb * pow(ndh, specColour.a);
-        const vec3 brdf = (diffColour + specular) * occlusion * ndl;
+        const float ndh = clamp((dot(N, normalize(V + L))), M_EPSILON, 1.f);
+        const vec3 specular = material._specular.rgb * pow(ndh, material._specular.a);
+        const vec3 brdf = (material._diffuseColour + specular) * material._occlusion * ndl;
 
         return brdf * lightColour * lightAttenuation;
     }

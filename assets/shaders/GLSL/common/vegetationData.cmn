@@ -1,6 +1,8 @@
 #ifndef _VEGETATION_DATA_CMN_
 #define _VEGETATION_DATA_CMN_
 
+uniform uint dvd_terrainChunkOffset = 0u;
+
 struct VegetationData {
     vec4 positionAndScale;
     vec4 orientationQuad;
@@ -13,10 +15,6 @@ layout(std430, binding = BUFFER_TREE_DATA) coherent COMP_ONLY_RW buffer dvd_tree
     VegetationData treeData[];
 };
 
-VegetationData TreeData(in uint instanceID) {
-    return treeData[uint(dvd_dataFlag) * MAX_TREE_INSTANCES + instanceID];
-}
-
 #endif //MAX_TREE_INSTANCES
 
 #if defined(MAX_GRASS_INSTANCES)
@@ -24,9 +22,6 @@ layout(std430, binding = BUFFER_GRASS_DATA) coherent COMP_ONLY_RW buffer dvd_gra
     VegetationData grassData[];
 };
 
-VegetationData GrassData(in uint instanceID) {
-    return grassData[uint(dvd_dataFlag) * MAX_GRASS_INSTANCES + instanceID];
-}
 #endif //MAX_GRASS_INSTANCES
 
 #endif //_VEGETATION_DATA_CMN_

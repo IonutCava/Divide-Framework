@@ -12,6 +12,7 @@ layout(binding = TEX_BIND_POINT_BORDER)     uniform sampler2D texVignette;
 layout(binding = TEX_BIND_POINT_UNDERWATER) uniform sampler2D texWaterNoiseNM;
 layout(binding = TEX_BIND_POINT_LINDEPTH)   uniform sampler2D texLinearDepth;
 layout(binding = TEX_BIND_POINT_SSR)        uniform sampler2D texSSR;
+layout(binding = TEX_BIND_POINT_SCENE_DATA) uniform sampler2D texSceneData;
 
 uniform vec4 _fadeColour;
 uniform vec2 _zPlanes;
@@ -62,7 +63,18 @@ void main(void){
         _colourOut = vec4(vec3(texture(texLinearDepth, VAR._texCoord).r / _zPlanes.y + _zPlanes.x), 1.0f);
         return;
     } else if (dvd_materialDebugFlag == DEBUG_SSR) {
-        _colourOut = texture(texSSR, VAR._texCoord);
+        const vec3 ssr = texture(texSSR, VAR._texCoord).rgb;
+        _colourOut = vec4(ssr, 1.f);
+        return;
+    } else if (dvd_materialDebugFlag == DEBUG_SSR_BLEND) {
+        const float blend = texture(texSSR, VAR._texCoord).a;
+        if (isnan(blend)) {
+            _colourOut = vec4(vec3(1.f, 0.f, 0.f), 1.f);
+        } else if (isinf(blend)) {
+            _colourOut = vec4(vec3(0.f, 1.f, 0.f), 1.f);
+        } else {
+            _colourOut = vec4(vec3(blend), 1.f);
+        }
         return;
     } else if (dvd_materialDebugFlag != DEBUG_NONE) {
         _colourOut = texture(texScreen, VAR._texCoord);
@@ -83,6 +95,11 @@ void main(void){
 
     if (_fadeActive) {
         colour = mix(colour, _fadeColour, _fadeStrength);
+    }
+
+    const float selection = unpackVec2(texture(texSceneData, VAR._texCoord).b).y;
+    if (selection > 0.f && selection < 1.0f) {
+        colour.rgb = colour.rgb + vec3(0.5f, 0.5f, 0.f);
     }
 
     _colourOut = colour;

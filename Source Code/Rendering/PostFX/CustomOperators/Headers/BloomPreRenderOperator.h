@@ -48,9 +48,6 @@ class BloomPreRenderOperator final : public PreRenderOperator {
     [[nodiscard]] bool execute(const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
 
-    [[nodiscard]] F32 factor() const noexcept { return _bloomFactor; }
-    void factor(F32 val);
-
     [[nodiscard]] F32 luminanceThreshold() const noexcept { return _bloomThreshold; }
     void luminanceThreshold(F32 val);
 
@@ -68,8 +65,7 @@ class BloomPreRenderOperator final : public PreRenderOperator {
     PushConstants _bloomApplyConstants;
     PushConstants _bloomCalcConstants;
 
-    F32 _bloomFactor;
-    F32 _bloomThreshold;
+    F32 _bloomThreshold = 0.99f;
 };
 
 }  // namespace Divide

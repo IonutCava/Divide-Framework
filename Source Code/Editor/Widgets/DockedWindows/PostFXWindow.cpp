@@ -391,11 +391,7 @@ namespace {
             checkBox(FilterType::FILTER_BLOOM);
             PreRenderOperator* op = batch.getOperator(FilterType::FILTER_BLOOM);
             BloomPreRenderOperator& bloomOp = static_cast<BloomPreRenderOperator&>(*op);
-            F32 factor = bloomOp.factor();
             F32 threshold = bloomOp.luminanceThreshold();
-            if (ImGui::SliderFloat("Factor", &factor, 0.01f, 3.0f)) {
-                bloomOp.factor(factor);
-            }
             if (ImGui::SliderFloat("Luminance Threshold", &threshold, 0.0f, 1.0f)) {
                 bloomOp.luminanceThreshold(threshold);
             }

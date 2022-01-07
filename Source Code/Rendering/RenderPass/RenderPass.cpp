@@ -128,12 +128,12 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
                 params._targetDescriptorPrePass = prePassPolicy;
                 params._targetDescriptorMainPass = mainPassPolicy;
                 params._targetDescriptorComposition = oitCompositionPassPolicy;
-                params._targetHIZ = RenderTargetID(RenderTargetUsage::HI_Z);
+                params._targetHIZ = RenderTargetUsage::HI_Z;
 
                 initDrawCommands = true;
             }
 
-            params._targetOIT = params._target._usage == RenderTargetUsage::SCREEN_MS ? RenderTargetID(RenderTargetUsage::OIT_MS) : RenderTargetID(RenderTargetUsage::OIT);
+            params._targetOIT = _context.renderTargetPool().oitTargetID();
             params._target = _context.renderTargetPool().screenTargetID();
             clearMainTarget._target = params._target;
 

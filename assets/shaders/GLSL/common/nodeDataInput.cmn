@@ -41,54 +41,66 @@ out gl_PerVertex
 
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
 
-// This could be split up in the future into frequent-infrequent blocks depending on update rate
-layout(binding = BUFFER_GPU_BLOCK, std140) uniform dvd_GPUBlock
+#define SHADOW_PASS_NORMAL 0
+#define SHADOW_PASS_ORTHO 1
+#define SHADOW_PASS_CUBE 2
+
+layout(binding = BUFFER_RENDER_BLOCK, std140) uniform dvd_RenderBlock
+{
+    mat4  dvd_PreviousViewProjectionMatrix;
+    //x - elapsed time (ms)
+    vec4  dvd_renderProperties;
+    //x - cluster size X, y - cluster size Y, 
+    vec4  dvd_lightingProperties;
+    //x - material debug flag, y - fog enabled, z - clip plane count, w - reserved
+    vec4  dvd_otherProperties;
+
+    vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
+    vec4 _render_padding[6];
+};
+
+#define dvd_time int(dvd_renderProperties.x)
+#define dvd_materialDebugFlag int(dvd_otherProperties.x)
+#define dvd_ClipPlaneCount int(dvd_otherProperties.z)
+#define dvd_ClusterSizes dvd_lightingProperties.xy
+
+#if !defined(NO_CAM_BLOCK)
+layout(binding = BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
 {
     mat4  dvd_ProjectionMatrix;
     mat4  dvd_InverseProjectionMatrix;
     mat4  dvd_ViewMatrix;
     mat4  dvd_InverseViewMatrix;
     mat4  dvd_ViewProjectionMatrix;
-    mat4  dvd_PreviousViewProjectionMatrix;
-    ///xyz - position, w - aspect ratio
+    //xyz - position, w - aspect ratio
     vec4  dvd_cameraPosition; 
     vec4  dvd_ViewPort;
-    //x - nearPlane, y - farPlane, z - FoV, w - elapsed time (ms)
-    vec4  dvd_renderProperties;
-    //x - cluster size X, y - cluster size Y, z - scale, w - bias
-    vec4  dvd_lightingProperties;
-    //x - material debug flag, y - fog enabled, z - camera flag, w - clip plane count
-    vec4  dvd_otherProperties;
+    //x - scale, y - bias
+    vec4 dvd_lightingTweakValues;
+    //x - nearPlane, y - farPlane, z - FoV, w - camera flag
+    vec4  dvd_camProperties;
     vec4  dvd_frustumPlanes[6];
-    vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
-    vec4  _gpu_padding0[10];
+    vec4 _cam_padding[2];
 };
 
-#define SHADOW_PASS_NORMAL 0
-#define SHADOW_PASS_ORTHO 1
-#define SHADOW_PASS_CUBE 2
-
 #define dvd_fogEnabled (int(dvd_otherProperties.y) == 1)
-#define SHADOW_PASS_TYPE int(dvd_otherProperties.z)
+#define SHADOW_PASS_TYPE int(dvd_camProperties.w)
 #define CAMERA_FLAG SHADOW_PASS_TYPE
 
-#define dvd_LightScale dvd_lightingProperties.z
-#define dvd_LightBias dvd_lightingProperties.w
 #define dvd_cameraForward vec3(dvd_ViewMatrix[3].xyz)
 #define windowWidth int(dvd_ViewPort.z)
 #define windowHeight int(dvd_ViewPort.w)
 
-#define dvd_ClusterSizes dvd_lightingProperties.xy
-
 #define dvd_screenDimensions dvd_ViewPort.zw
 #define dvd_invScreenDimensions (1.f / dvd_screenDimensions)
 #define dvd_aspectRatio dvd_cameraPosition.w
-#define dvd_zPlanes dvd_renderProperties.xy
-#define dvd_fieldOfView dvd_renderProperties.z
-#define dvd_time int(dvd_renderProperties.w)
+#define dvd_zPlanes dvd_camProperties.xy
+#define dvd_fieldOfView dvd_camProperties.z
 
-#define dvd_materialDebugFlag int(dvd_otherProperties.x)
-#define dvd_ClipPlaneCount int(dvd_otherProperties.w)
+#define dvd_LightScale dvd_lightingTweakValues.x
+#define dvd_LightBias dvd_lightingTweakValues.y
+
+#endif //!NO_CAM_BLOCK
 
 #if !defined(COMPUTE_SHADER) && !defined(FRAG_SHADER)
 

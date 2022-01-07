@@ -58,6 +58,7 @@ namespace Divide {
         MATERIAL_IDS,
         SHADING_MODE,
         SSR,
+        SSR_BLEND,
         COUNT
     };
     namespace Names {
@@ -85,7 +86,8 @@ namespace Divide {
             "MATERIAL_IDS",
             "SHADING_MODE",
             "SSR",
-            "NONE",
+            "SSR_BLEND",
+            "NONE"
         };
     };
 

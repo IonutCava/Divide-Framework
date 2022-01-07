@@ -384,7 +384,8 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_NORMALS "                  + Util::to_string(to_base(GFXDevice::ScreenTargets::NORMALS)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_REVEALAGE "                + Util::to_string(to_base(GFXDevice::ScreenTargets::REVEALAGE)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_MODULATE "                 + Util::to_string(to_base(GFXDevice::ScreenTargets::MODULATE)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_GPU_BLOCK "                + Util::to_string(to_base(ShaderBufferLocation::GPU_BLOCK)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_CAM_BLOCK "                + Util::to_string(to_base(ShaderBufferLocation::CAM_BLOCK)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_RENDER_BLOCK "             + Util::to_string(to_base(ShaderBufferLocation::RENDER_BLOCK)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_0 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_0)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_1 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_1)));
     AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_2 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_2)));
@@ -444,6 +445,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_BONE_INDICE "              + Util::to_string(to_base(AttribLocation::BONE_INDICE)));
     AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_WIDTH "                    + Util::to_string(to_base(AttribLocation::WIDTH)));
     AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_GENERIC "                  + Util::to_string(to_base(AttribLocation::GENERIC)));
+    AppendToShaderHeader(ShaderType::FRAGMENT, "#define MAX_SHININESS "                   + Util::to_string(Material::MAX_SHININESS));
 
     for (U8 i = 0u; i < to_U8(ShadingMode::COUNT) + 1u; ++i) {
         const ShadingMode mode = static_cast<ShadingMode>(i);
@@ -716,7 +718,7 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
                         clip_rect.y  = viewport.w - tempW;
 
                         stateTracker.setScissor(clip_rect);
-                        stateTracker.bindTexture(0, TextureType::TEXTURE_2D, static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd->TextureId)));
+                        stateTracker.bindTexture(to_U8(TextureUsage::UNIT0), TextureType::TEXTURE_2D, static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd->TextureId)));
                         cmd._cmd.indexCount = to_U32(pcmd->ElemCount);
                         buffer->draw(cmd);
                      }

@@ -437,6 +437,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     ShaderModuleDescriptor compModule = {};
     compModule._moduleType = ShaderType::COMPUTE;
     compModule._sourceFile = "instanceCullVegetation.glsl";
+    compModule._defines.emplace_back("NO_CAM_BLOCK", true);
     compModule._defines.emplace_back(Util::StringFormat("WORK_GROUP_SIZE %d", WORK_GROUP_SIZE), true);
     compModule._defines.emplace_back(Util::StringFormat("MAX_TREE_INSTANCES %d", s_maxTreeInstances).c_str(), true);
     compModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
@@ -484,8 +485,8 @@ void Vegetation::createAndUploadGPUData(GFXDevice& gfxDevice, const Terrain_ptr&
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
         bufferDescriptor._bufferParams._elementSize = sizeof(VegetationData);
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;
+        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
         bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::NO_SYNC);
 
         if (s_maxTreeInstances > 0) {
@@ -626,12 +627,9 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
         const vec3<F32>& extents = aabb.getExtent();
         _treeExtents.set(extents, bs.getRadius());
         _grassExtents.w = _grassExtents.xyz.length();
-        _cullPushConstants.set(_ID("treeExtents"), GFX::PushConstantType::VEC4, _treeExtents);
     }
 
     _grassExtents.w = _grassExtents.xyz.length();
-    _cullPushConstants.set(_ID("dvd_terrainChunkOffset"), GFX::PushConstantType::UINT, ID);
-    _cullPushConstants.set(_ID("grassExtents"), GFX::PushConstantType::VEC4, _grassExtents);
 
     setState(ResourceState::RES_LOADED);
 }
@@ -650,6 +648,12 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
                                GFX::CommandBuffer& bufferInOut,
                                bool refreshData) 
 {
+    {
+        RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
+        PushConstants& constants = pkg.pushConstantsCmd()._constants;
+        constants.set(_ID("dvd_terrainChunkOffset"), GFX::PushConstantType::UINT, _terrainChunk.ID());
+    }
+
     if (renderStagePass._passType != RenderPassType::PRE_PASS) {
         return;
     }
@@ -670,16 +674,23 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
 
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull Vegetation" });
 
-        const CameraSnapshot& prevSnapshot = _context.getPreviousCameraSnapshot();
+        const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(GFXDevice::CameraHistoryType::HI_Z_MAIN_BUFFER);
         mat4<F32> viewProjectionMatrix;
         mat4<F32>::Multiply(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix, viewProjectionMatrix);
 
-        _cullPushConstants.set(_ID("nearPlane"), GFX::PushConstantType::FLOAT, prevSnapshot._zPlanes.x);
-        _cullPushConstants.set(_ID("viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(hizTexture->width(), hizTexture->height()));
-        _cullPushConstants.set(_ID("viewMatrix"), GFX::PushConstantType::MAT4, prevSnapshot._viewMatrix);
-        _cullPushConstants.set(_ID("viewProjectionMatrix"), GFX::PushConstantType::MAT4, viewProjectionMatrix);
-        _cullPushConstants.set(_ID("frustumPlanes"), GFX::PushConstantType::VEC4, prevSnapshot._frustumPlanes);
-        GFX::SendPushConstantsCommand cullConstantsCmd{ _cullPushConstants };
+        GFX::SendPushConstantsCommand cullConstantsCmd{};
+        PushConstants& constants = cullConstantsCmd._constants;
+        constants.set(_ID("nearPlane"), GFX::PushConstantType::FLOAT, prevSnapshot._zPlanes.x);
+        constants.set(_ID("viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(hizTexture->width(), hizTexture->height()));
+        constants.set(_ID("viewMatrix"), GFX::PushConstantType::MAT4, prevSnapshot._viewMatrix);
+        constants.set(_ID("viewProjectionMatrix"), GFX::PushConstantType::MAT4, viewProjectionMatrix);
+        constants.set(_ID("frustumPlanes"), GFX::PushConstantType::VEC4, prevSnapshot._frustumPlanes);
+        constants.set(_ID("cameraPosition"), GFX::PushConstantType::VEC3, prevSnapshot._eye);
+        constants.set(_ID("dvd_grassVisibilityDistance"), GFX::PushConstantType::FLOAT, _grassDistance);
+        constants.set(_ID("dvd_treeVisibilityDistance"), GFX::PushConstantType::FLOAT, _treeDistance);
+        constants.set(_ID("treeExtents"), GFX::PushConstantType::VEC4, _treeExtents);
+        constants.set(_ID("grassExtents"), GFX::PushConstantType::VEC4, _grassExtents);
+        constants.set(_ID("dvd_terrainChunkOffset"), GFX::PushConstantType::UINT, _terrainChunk.ID());
 
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._textureData.add(TextureEntry{ hizTexture->data(), hizAttachment.samplerHash(), TextureUsage::UNIT0 });
@@ -707,7 +718,6 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
-
 }
 
 void Vegetation::sceneUpdate(const U64 deltaTimeUS,
@@ -736,12 +746,10 @@ void Vegetation::sceneUpdate(const U64 deltaTimeUS,
         const F32 sceneTreeDistance = std::min(renderState.treeVisibility(), sceneRenderRange);
         if (!COMPARE(sceneGrassDistance, _grassDistance)) {
             _grassDistance = sceneGrassDistance;
-            _cullPushConstants.set(_ID("dvd_grassVisibilityDistance"), GFX::PushConstantType::FLOAT, _grassDistance);
             sgn->get<RenderingComponent>()->setMaxRenderRange(_grassDistance);
         }
         if (!COMPARE(sceneTreeDistance, _treeDistance)) {
             _treeDistance = sceneTreeDistance;
-            _cullPushConstants.set(_ID("dvd_treeVisibilityDistance"), GFX::PushConstantType::FLOAT, _treeDistance);
             if (_treeParentNode != nullptr) {
                 _treeParentNode->forEachChild([sceneTreeDistance](SceneGraphNode* child, I32 /*childIdx*/) {
                     RenderingComponent* rComp = child->get<RenderingComponent>();

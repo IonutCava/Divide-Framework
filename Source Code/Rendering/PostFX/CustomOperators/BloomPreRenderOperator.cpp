@@ -22,8 +22,7 @@ namespace {
 
 BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache)
     : PreRenderOperator(context, parent, FilterType::FILTER_BLOOM),
-      _bloomFactor(0.8f),
-      _bloomThreshold(0.75f)
+      _bloomThreshold(0.99f)
 {
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
@@ -101,7 +100,6 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     desc._resolution = vec2<U16>(res / resolutionDownscaleFactor);
     _bloomOutput = _context.renderTargetPool().allocateRT(desc);
 
-    factor(_context.context().config().rendering.postFX.bloom.factor);
     luminanceThreshold(_context.context().config().rendering.postFX.bloom.threshold);
 }
 
@@ -127,13 +125,6 @@ void BloomPreRenderOperator::reshape(const U16 width, const U16 height) {
     _bloomOutput._rt->resize(w, h);
     _bloomBlurBuffer[0]._rt->resize(width, height);
     _bloomBlurBuffer[1]._rt->resize(width, height);
-}
-
-void BloomPreRenderOperator::factor(const F32 val) {
-    _bloomFactor = val;
-    _bloomApplyConstants.set(_ID("bloomFactor"), GFX::PushConstantType::FLOAT, _bloomFactor);
-    _context.context().config().rendering.postFX.bloom.factor = val;
-    _context.context().config().changed(true);
 }
 
 void BloomPreRenderOperator::luminanceThreshold(const F32 val) {
@@ -167,7 +158,7 @@ bool BloomPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, const
     clearRenderTargetCmd._descriptor = clearTarget;
     EnqueueCommand(bufferInOut, clearRenderTargetCmd);
 
-    GFX::BeginRenderPassCommand beginRenderPassCmd = {};
+    GFX::BeginRenderPassCommand beginRenderPassCmd{};
     beginRenderPassCmd._target = _bloomOutput._targetID;
     beginRenderPassCmd._name = "DO_BLOOM_PASS";
     EnqueueCommand(bufferInOut, beginRenderPassCmd);

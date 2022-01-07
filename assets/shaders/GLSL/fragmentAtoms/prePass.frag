@@ -21,20 +21,17 @@ float getRoughness(in NodeMaterialData matData, in vec2 uv, in float normalVaria
     const uint shadingMode = uint(unpackedData.y);
     const bool usePacked = uint(unpackedData.z) == 1u;
 
-    vec4 OMR_Selection = unpackUnorm4x8(matData._data.x);
+    vec4 OMR = unpackUnorm4x8(matData._data.x);
     const uvec4 texOpsB = dvd_texOperationsB(matData);
-    getTextureRoughness(usePacked, vec3(uv, 0), texOpsB.xyz, OMR_Selection.b);
-    roughness = OMR_Selection.b;
+    getTextureRoughness(usePacked, vec3(uv, 0), texOpsB.xyz, OMR.b);
+    roughness = OMR.b;
 
+#if defined(SHADING_MODE_BLINN_PHONG)
     // Deduce a roughness factor from specular colour and shininess
-    if (shadingMode != SHADING_PBR_MR) {
-        const vec4 specular = getSpecular(matData, vec3(uv, 0));
-        const float specularIntensity = Luminance(specular.rgb);
-        const float specularPower = specular.a / 1000.f;
-        const float roughnessFactor = 1.f - sqrt(specularPower);
-        // Specular intensity directly impacts roughness regardless of shininess
-        roughness = (1.f - (saturate(pow(roughnessFactor, 2)) * specularIntensity));
-    }
+    const vec4 specular = getSpecular(matData, vec3(uv, 0));
+    roughness = SpecularToRoughness(specular.rgb, specular.a);
+#endif //SHADING_MODE_BLINN_PHONG
+
     // Try to reduce specular aliasing by increasing roughness when minified normal maps have high variation.
     roughness = mix(roughness, 1.f, normalVariation);
 
@@ -42,9 +39,10 @@ float getRoughness(in NodeMaterialData matData, in vec2 uv, in float normalVaria
 }
 
 void writeGBuffer(in vec3 normalWV, in float roughness) {
+    const float selectionFlag = dvd_selectionFlag(dvd_Transforms[TRANSFORM_IDX]);
     _velocityOut = velocityCalc();
     _normalsOut.rg = packNormal(normalWV);
-    _normalsOut.b = roughness;
+    _normalsOut.b = packVec2(roughness, selectionFlag);
 }
 
 void writeGBuffer(in NodeMaterialData data) {

@@ -18,22 +18,21 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
     : glObject(glObjectType::TYPE_BUFFER, context),
       GUIDWrapper(),
       _params(params),
-      _context(context),
-      _lockManager(eastl::make_unique<glBufferLockManager>())
+      _context(context)
 {
     if (_params._target == GL_ATOMIC_COUNTER_BUFFER) {
         _params._explicitFlush = false;
     }
 
-    assert(_params._bufferParams._updateFrequency != BufferUpdateFrequency::ONCE ||
-           (_params._bufferParams._initialData.second > 0 && _params._bufferParams._initialData.first != nullptr) ||
-            _params._bufferParams._updateUsage == BufferUpdateUsage::GPU_R_GPU_W);
+    assert(_params._bufferParams._updateFrequency != BufferUpdateFrequency::RARELY ||
+           _params._bufferParams._updateUsage == BufferUpdateUsage::GPU_R_GPU_W ||
+           (_params._bufferParams._initialData.second > 0 && _params._bufferParams._initialData.first != nullptr));
 
     // We can't use persistent mapping with ONCE usage because we use block allocator for memory and it may have been mapped using write bits and we wouldn't know.
     // Since we don't need to keep writing to the buffer, we can just use a regular glBufferData call once and be done with it.
     const bool usePersistentMapping = _params._bufferParams._usePersistentMapping &&
                                       _params._bufferParams._updateUsage != BufferUpdateUsage::GPU_R_GPU_W &&
-                                      _params._bufferParams._updateFrequency != BufferUpdateFrequency::ONCE;
+                                      _params._bufferParams._updateFrequency != BufferUpdateFrequency::RARELY;
 
     // Initial data may not fill the entire buffer
     const bool needsAdditionalData = IS_IN_RANGE_EXCLUSIVE(_params._bufferParams._initialData.second, to_size(0), _params._dataSize);
@@ -56,7 +55,8 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
         BufferStorageMask storageMask = GL_MAP_PERSISTENT_BIT;
         MapBufferAccessMask accessMask = GL_MAP_PERSISTENT_BIT;
 
-        assert(_params._bufferParams._updateFrequency != BufferUpdateFrequency::COUNT && _params._bufferParams._updateFrequency != BufferUpdateFrequency::ONCE);
+        assert(_params._bufferParams._updateFrequency != BufferUpdateFrequency::COUNT &&
+               _params._bufferParams._updateFrequency != BufferUpdateFrequency::RARELY);
 
         storageMask |= GL_MAP_WRITE_BIT;
         accessMask |= GL_MAP_WRITE_BIT;
@@ -67,8 +67,11 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
             accessMask |= GL_MAP_COHERENT_BIT;
         }
   
-        const size_t alignment = params._target == GL_UNIFORM_BUFFER ? GL_API::s_UBOffsetAlignment :
-            _params._target == GL_SHADER_STORAGE_BUFFER ? GL_API::s_SSBOffsetAlignment : sizeof(U32);
+        const size_t alignment = params._target == GL_UNIFORM_BUFFER 
+                                                ? GL_API::s_UBOffsetAlignment
+                                                : _params._target == GL_SHADER_STORAGE_BUFFER
+                                                                  ? GL_API::s_SSBOffsetAlignment
+                                                                  : sizeof(U32);
 
         _memoryBlock = GL_API::getMemoryAllocator().allocate(_params._dataSize,
                                                              alignment,
@@ -98,17 +101,17 @@ glBufferImpl::~glBufferImpl()
 }
 
 
-bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, const U32 frameID) const {
+bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, const U32 frameID) {
     if (_params._bufferParams._sync) {
-        return _lockManager->lockRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, frameID);
+        return _lockManager.lockRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, frameID);
     }
 
     return true;
 }
 
-bool glBufferImpl::waitByteRange(const size_t offsetInBytes, const size_t rangeInBytes, const bool blockClient) const {
+bool glBufferImpl::waitByteRange(const size_t offsetInBytes, const size_t rangeInBytes, const bool blockClient) {
     if (_params._bufferParams._sync) {
-        return _lockManager->waitForLockedRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, blockClient);
+        return _lockManager.waitForLockedRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, blockClient);
     }
 
     return true;
@@ -170,7 +173,6 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
     OPTICK_TAG("Range", to_U32(rangeInBytes));
     assert(rangeInBytes > 0);
     assert(offsetInBytes + rangeInBytes <= _memoryBlock._size);
-    assert(_params._bufferParams._updateFrequency != BufferUpdateFrequency::ONCE);
 
     if (!waitByteRange(offsetInBytes, rangeInBytes, true)) {
         Console::errorfn(Locale::Get(_ID("ERROR_BUFFER_LOCK_MANAGER_WAIT")));
@@ -217,7 +219,7 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
     }
 }
 
-void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInBytes, bufferPtr data) const {
+void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInBytes, bufferPtr data) {
 
     if (_params._target == GL_ATOMIC_COUNTER_BUFFER) {
         glMemoryBarrier(MemoryBarrierMask::GL_ATOMIC_COUNTER_BARRIER_BIT);
@@ -243,7 +245,7 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
 
 GLenum glBufferImpl::GetBufferUsage(const BufferUpdateFrequency frequency, const BufferUpdateUsage usage) noexcept {
     switch (frequency) {
-        case BufferUpdateFrequency::ONCE:
+        case BufferUpdateFrequency::RARELY:
             switch (usage) {
                 case BufferUpdateUsage::CPU_W_GPU_R: return GL_STATIC_DRAW;
                 case BufferUpdateUsage::CPU_R_GPU_W: return GL_STATIC_READ;
@@ -271,7 +273,7 @@ GLenum glBufferImpl::GetBufferUsage(const BufferUpdateFrequency frequency, const
     }
 
     DIVIDE_UNEXPECTED_CALL();
-    return GL_NONE;
+    return GL_DYNAMIC_DRAW;
 }
 
 }; //namespace Divide

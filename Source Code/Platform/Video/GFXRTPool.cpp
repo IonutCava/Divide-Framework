@@ -32,6 +32,7 @@ GFXRTPool::GFXRTPool(GFXDevice& parent)
     }
 
     _renderTargets[to_U32(RenderTargetUsage::SCREEN)].resize(1, nullptr);
+    _renderTargets[to_U32(RenderTargetUsage::SCREEN_PREV)].resize(1, nullptr);
     _renderTargets[to_U32(RenderTargetUsage::SCREEN_MS)].resize(1, nullptr);
 
     _renderTargets[to_U32(RenderTargetUsage::OIT)].resize(1, nullptr);
@@ -138,4 +139,13 @@ const RenderTarget& GFXRTPool::screenTarget() const {
     return renderTarget(screenTargetID());
 }
 
+RenderTargetID GFXRTPool::oitTargetID() const noexcept
+{
+    const RenderTargetUsage oitRT = _parent.context().config().rendering.MSAASamples > 0 ? RenderTargetUsage::OIT_MS : RenderTargetUsage::OIT;
+    return RenderTargetID(oitRT);
+}
+
+const RenderTarget& GFXRTPool::oitTarget() const {
+    return renderTarget(oitTargetID());
+}
 }; //namespace Divide
