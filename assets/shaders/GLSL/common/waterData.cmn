@@ -55,7 +55,7 @@ vec2 GetWaterDetails(in vec3 vertexW, in float maxDepth) {
         }
     }
 
-    return vec2(maxDistance, minDepth);
+    return saturate(vec2(maxDistance, minDepth));
 }
 #endif //FRAG_SHADER || NEED_SCENE_DATA
 #endif //_WATER_DATA_CMN_

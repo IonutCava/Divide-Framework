@@ -114,7 +114,6 @@ class Vegetation final : public SceneNode {
                        RenderingComponent& rComp,
                        RenderStagePass renderStagePass,
                        const CameraSnapshot& cameraSnapshot,
-                       GFX::CommandBuffer& bufferInOut,
                        bool refreshData) override;
 
     void sceneUpdate(U64 deltaTimeUS,
@@ -157,6 +156,7 @@ class Vegetation final : public SceneNode {
     vector<VegetationData> _tempGrassData;
     vector<VegetationData> _tempTreeData;
 
+    GFX::CommandBuffer* _cullVegetationCmds = nullptr;
     static std::array<U16, 3> s_lodPartitions;
     static U32 s_maxGrassInstances;
     static U32 s_maxTreeInstances;

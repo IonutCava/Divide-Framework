@@ -7,16 +7,13 @@
 
 namespace Divide {
 
-void Clear(RenderPackage& pkg) {
+void Clear(RenderPackage& pkg) noexcept {
     pkg.drawCmdOffset(RenderPackage::INVALID_CMD_OFFSET);
     pkg.stagePassBaseIndex(RenderPackage::INVALID_STAGE_INDEX);
-    pkg.pipelineCmd({});
-    pkg.descriptorSetCmd({});
-    pkg.pushConstantsCmd({});
-}
-
-bool Empty(const RenderPackage& pkg) noexcept {
-    return pkg.pipelineCmd()._pipeline == nullptr;
+    pkg.pipelineCmd(GFX::BindPipelineCommand{});
+    pkg.descriptorSetCmd(GFX::BindDescriptorSetsCommand{});
+    pkg.pushConstantsCmd(GFX::SendPushConstantsCommand{});
+    pkg.additionalCommands(nullptr);
 }
 
 }; //namespace Divide

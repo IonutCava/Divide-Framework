@@ -260,7 +260,6 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                                     RenderingComponent& rComp,
                                     const RenderStagePass renderStagePass,
                                     const CameraSnapshot& cameraSnapshot,
-                                    GFX::CommandBuffer& bufferInOut,
                                     const bool refreshData) {
 
     if ( _enabled &&  getAliveParticleCount() > 0) {
@@ -274,11 +273,14 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
             _buffersDirty[to_U32(renderStagePass._stage)] = false;
         }
 
-        GenericDrawCommand& cmd = rComp.drawCommands().front()._drawCommands.front();
-        cmd._cmd.primCount = to_U32(_particles->_renderingPositions.size());
-        cmd._sourceBuffer = getDataBuffer(renderStagePass._stage, 0).handle();
-        cmd._bufferIndex = 0u;
-
+        RenderingComponent::DrawCommands& cmds = rComp.drawCommands();
+        {
+            ScopedLock<SharedMutex> w_lock(cmds._dataLock);
+            GenericDrawCommand& cmd = cmds._data.front()._drawCommands.front();
+            cmd._cmd.primCount = to_U32(_particles->_renderingPositions.size());
+            cmd._sourceBuffer = getDataBuffer(renderStagePass._stage, 0).handle();
+            cmd._bufferIndex = 0u;
+        }
         if (renderStagePass._passType == RenderPassType::PRE_PASS) {
             const vec3<F32>& eyePos = cameraSnapshot._eye;
             const U32 aliveCount = getAliveParticleCount();
@@ -309,7 +311,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
         }
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 

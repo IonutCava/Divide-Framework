@@ -1424,12 +1424,12 @@ void Scene::processTasks(const U64 deltaTimeUS) {
         _dayNightData._timeAccumulatorSec += addTime;
         _dayNightData._timeAccumulatorHour += addTime;
         const F32 weatherScale = _dayNightData._skyInstance->weatherScale();
-        if (weatherScale > 16.0f && increaseWeatherScale) {
+        if (weatherScale > 8.0f && increaseWeatherScale) {
             increaseWeatherScale = false;
-        } else if (weatherScale < 0.01f && !increaseWeatherScale) {
+        } else if (weatherScale < 1.0f && !increaseWeatherScale) {
             increaseWeatherScale = true;
         }
-        _dayNightData._skyInstance->weatherScale(weatherScale + (deltaSeconds * (increaseWeatherScale ? 1 : -1)));
+        _dayNightData._skyInstance->weatherScale(weatherScale + (deltaSeconds * (increaseWeatherScale ? 0.01f : -0.01f)));
         if (std::abs(_dayNightData._timeAccumulatorSec) > Time::Seconds(1.f)) {
             timeOfDay.tm_sec += to_I32(_dayNightData._timeAccumulatorSec);
             const time_t now = mktime(&timeOfDay); // normalize it

@@ -230,8 +230,9 @@ void RenderingComponent::setLoDIndexOffset(const U8 lodIndex, size_t indexOffset
     }
 }
 
-bool RenderingComponent::hasDrawCommands(const RenderStagePass stagePass) noexcept {
-    return !_drawCommands.empty();
+bool RenderingComponent::hasDrawCommands() noexcept {
+    SharedLock<SharedMutex> r_lock(_drawCommands._dataLock);
+    return !_drawCommands._data.empty();
 }
 
 void RenderingComponent::getMaterialData(NodeMaterialData& dataOut) const {
@@ -321,73 +322,81 @@ U8 RenderingComponent::getLoDLevelInternal(const F32 distSQtoCenter, const Rende
     return MAX_LOD_LEVEL;
 }
 
-void RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot,
+bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot,
                                             const SceneRenderState& sceneRenderState,
                                             const RenderStagePass renderStagePass,
-                                            GFX::CommandBuffer& bufferInOut,
                                             const bool refreshData)
 {
     OPTICK_EVENT();
 
+    bool hasCommands = hasDrawCommands();
+
     if (refreshData) {
-        if (_drawCommands.empty()) {
-            _parentSGN->getNode().buildDrawCommands(_parentSGN, _drawCommands);
-            for (const GFX::DrawCommand& drawCmd : _drawCommands) {
-                if (!isInstanced()) {
-                    for (const GenericDrawCommand& cmd : drawCmd._drawCommands) {
-                        if (cmd._cmd.primCount > 1) {
-                            isInstanced(true);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        const BoundsComponent* bComp = static_cast<BoundsComponent*>(_parentSGN->get<BoundsComponent>());
-        const vec3<F32>& cameraEye = cameraSnapshot._eye;
-        const SceneNodeRenderState& renderState = _parentSGN->getNode<>().renderState();
-        if (renderState.lod0OnCollision() && bComp->getBoundingBox().containsPoint(cameraEye)) {
-            _lodLevels[to_base(renderStagePass._stage)] = 0u;
-        } else {
-            const BoundingBox& aabb = bComp->getBoundingBox();
-            const vec3<F32> LoDtarget = renderState.useBoundsCenterForLoD() ? aabb.getCenter() : aabb.nearestPoint(cameraEye);
-            const F32 distanceSQToCenter = LoDtarget.distanceSquared(cameraEye);
-            _lodLevels[to_base(renderStagePass._stage)] = getLoDLevelInternal(distanceSQToCenter, renderStagePass._stage, sceneRenderState.lodThresholds(renderStagePass._stage));
-        }
-
         U8 drawCmdOptions = 0u;
         ToggleBit(drawCmdOptions, CmdRenderOptions::RENDER_GEOMETRY, (renderOptionEnabled(RenderOptions::RENDER_GEOMETRY) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY)));
         ToggleBit(drawCmdOptions, CmdRenderOptions::RENDER_WIREFRAME, (renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME)));
 
-        for (GFX::DrawCommand& drawCmd : _drawCommands) {
-            for (GenericDrawCommand& genericCmd : drawCmd._drawCommands) {
-                genericCmd._renderOptions = drawCmdOptions;
+        if (!hasCommands) {
+            ScopedLock<SharedMutex> w_lock(_drawCommands._dataLock);
+            _parentSGN->getNode().buildDrawCommands(_parentSGN, _drawCommands._data);
+            for (GFX::DrawCommand& drawCmd : _drawCommands._data) {
+                for (GenericDrawCommand& cmd : drawCmd._drawCommands) {
+                    hasCommands = true;
+                    cmd._renderOptions = drawCmdOptions;
+                    if (cmd._cmd.primCount > 1) {
+                        isInstanced(true);
+                    }
+                }
+            }
+        } else {
+            ScopedLock<SharedMutex> w_lock(_drawCommands._dataLock);
+            for (GFX::DrawCommand& drawCmd : _drawCommands._data) {
+                for (GenericDrawCommand& cmd : drawCmd._drawCommands) {
+                    cmd._renderOptions = drawCmdOptions;
+                }
+            }
+        }
+
+        if (hasCommands) {
+            const BoundsComponent* bComp = static_cast<BoundsComponent*>(_parentSGN->get<BoundsComponent>());
+            const vec3<F32>& cameraEye = cameraSnapshot._eye;
+            const SceneNodeRenderState& renderState = _parentSGN->getNode<>().renderState();
+            if (renderState.lod0OnCollision() && bComp->getBoundingBox().containsPoint(cameraEye)) {
+                _lodLevels[to_base(renderStagePass._stage)] = 0u;
+            } else {
+                const BoundingBox& aabb = bComp->getBoundingBox();
+                const vec3<F32> LoDtarget = renderState.useBoundsCenterForLoD() ? aabb.getCenter() : aabb.nearestPoint(cameraEye);
+                const F32 distanceSQToCenter = LoDtarget.distanceSquared(cameraEye);
+                _lodLevels[to_base(renderStagePass._stage)] = getLoDLevelInternal(distanceSQToCenter, renderStagePass._stage, sceneRenderState.lodThresholds(renderStagePass._stage));
             }
         }
     }
 
-    RenderPackage& pkg = getDrawPackage(renderStagePass);
-    if (rebuildRenderPackages()) {
-        Clear(pkg);
-    }
-    if (Empty(pkg)) {
-        if (isInstanced()) {
-            pkg.pushConstantsCmd()._constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, 0u);
+    if (hasCommands) {
+        RenderPackage& pkg = getDrawPackage(renderStagePass);
+        if (rebuildRenderPackages()) {
+            Clear(pkg);
         }
-        PipelineDescriptor pipelineDescriptor = {};
-        if (_materialInstance != nullptr) {
-            pipelineDescriptor._stateHash = _materialInstance->getRenderStateBlock(renderStagePass);
-            pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramGUID(renderStagePass);
-            _materialInstance->getTextureData(renderStagePass, pkg.descriptorSetCmd()._set._textureData);
-        } else {
-            pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
-            pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
+        if (pkg.pipelineCmd()._pipeline == nullptr) {
+            if (isInstanced()) {
+                pkg.pushConstantsCmd()._constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, 0u);
+            }
+            PipelineDescriptor pipelineDescriptor = {};
+            if (_materialInstance != nullptr) {
+                pipelineDescriptor._stateHash = _materialInstance->getRenderStateBlock(renderStagePass);
+                pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramGUID(renderStagePass);
+                _materialInstance->getTextureData(renderStagePass, pkg.descriptorSetCmd()._set._textureData);
+            } else {
+                pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
+                pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
+            }
+            pkg.pipelineCmd()._pipeline = _context.newPipeline(pipelineDescriptor);
         }
-        pkg.pipelineCmd()._pipeline = _context.newPipeline(pipelineDescriptor);
+
+        Attorney::SceneGraphNodeComponent::prepareRender(_parentSGN, *this, cameraSnapshot, renderStagePass, refreshData);
     }
 
-    Attorney::SceneGraphNodeComponent::prepareRender(_parentSGN, *this, cameraSnapshot, renderStagePass, bufferInOut, refreshData);
+    return hasCommands;
 }
 
 void RenderingComponent::retrieveDrawCommands(const RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
@@ -400,39 +409,49 @@ void RenderingComponent::retrieveDrawCommands(const RenderStagePass stagePass, c
         if (isInstanced()) {
             pkg.pushConstantsCmd()._constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, iBufferEntry);
         }
+        pkg.stagePassBaseIndex(BaseIndex(stagePass));
 
         pkg.drawCmdOffset(cmdOffset + to_U32(cmdsInOut.size()));
-        pkg.stagePassBaseIndex(BaseIndex(stagePass));
+        
     }
 
     const auto& [offset, count] = _lodIndexOffsets[std::min(_lodLevels[to_U8(stagePass._stage)], to_U8(_lodIndexOffsets.size() - 1))];
     const bool autoIndex = offset != 0u || count != 0u;
-
-    for (const GFX::DrawCommand& drawCmd : _drawCommands) {
-        for (const GenericDrawCommand& gCmd : drawCmd._drawCommands) {
-            cmdsInOut.push_back(gCmd._cmd);
-            IndirectDrawCommand& iCmd = cmdsInOut.back();
-            iCmd.baseInstance = isInstanced() ? 0u : (iBufferEntry + 1u); //Make sure to substract 1 in the shader!
-            if (autoIndex) {
-                iCmd.firstIndex = to_U32(offset);
-                iCmd.indexCount = to_U32(count);
+    {
+        SharedLock<SharedMutex> r_lock(_drawCommands._dataLock);
+        for (const GFX::DrawCommand& drawCmd : _drawCommands._data) {
+            for (const GenericDrawCommand& gCmd : drawCmd._drawCommands) {
+                cmdsInOut.push_back(gCmd._cmd);
+                IndirectDrawCommand& iCmd = cmdsInOut.back();
+                iCmd.baseInstance = isInstanced() ? 0u : (iBufferEntry + 1u); //Make sure to substract 1 in the shader!
+                if (autoIndex) {
+                    iCmd.firstIndex = to_U32(offset);
+                    iCmd.indexCount = to_U32(count);
+                }
             }
         }
     }
 }
 
 void RenderingComponent::getCommandBuffer(RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut) {
+    if (pkg->additionalCommands() != nullptr) {
+        bufferInOut.add(*pkg->additionalCommands());
+    }
+
     bufferInOut.add(pkg->pipelineCmd());
     bufferInOut.add(pkg->descriptorSetCmd());
     bufferInOut.add(pkg->pushConstantsCmd());
+    {
+        U32 startOffset = pkg->drawCmdOffset();
 
-    U32 startOffset = pkg->drawCmdOffset();
-    for (const GFX::DrawCommand& drawCmd : _drawCommands) {
-        GFX::DrawCommand* cmd = bufferInOut.add(drawCmd);
-        for (GenericDrawCommand& gCmd : cmd->_drawCommands) {
-            gCmd._commandOffset = startOffset++;
-            if (gCmd._bufferIndex == GenericDrawCommand::INVALID_BUFFER_INDEX) {
-                gCmd._bufferIndex = pkg->stagePassBaseIndex();
+        SharedLock<SharedMutex> r_lock(_drawCommands._dataLock);
+        for (const GFX::DrawCommand& drawCmd : _drawCommands._data) {
+            GFX::DrawCommand* cmd = bufferInOut.add(drawCmd);
+            for (GenericDrawCommand& gCmd : cmd->_drawCommands) {
+                gCmd._commandOffset = startOffset++;
+                if (gCmd._bufferIndex == GenericDrawCommand::INVALID_BUFFER_INDEX) {
+                    gCmd._bufferIndex = pkg->stagePassBaseIndex();
+                }
             }
         }
     }

@@ -366,64 +366,65 @@ void CommandBuffer::clean() {
 }
 
 // New use cases that emerge from production work should be checked here.
-ErrorType CommandBuffer::validate() const {
+std::pair<ErrorType, size_t> CommandBuffer::validate() const {
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         OPTICK_EVENT();
 
+        size_t cmdIndex = 0u;
         bool pushedPass = false, pushedSubPass = false, pushedPixelBuffer = false;
         bool hasPipeline = false, hasDescriptorSets = false;
         I32 pushedDebugScope = 0, pushedCamera = 0, pushedViewport = 0;
 
         for (const CommandEntry& cmd : _commandOrder) {
+            cmdIndex++;
             switch (static_cast<CommandType>(cmd._typeIndex)) {
                 case CommandType::BEGIN_RENDER_PASS: {
                     if (pushedPass) {
-                        return ErrorType::MISSING_END_RENDER_PASS;
+                        return { ErrorType::MISSING_END_RENDER_PASS, cmdIndex };
                     }
                     pushedPass = true;
                 } break;
                 case CommandType::END_RENDER_PASS: {
                     if (!pushedPass) {
-                        return ErrorType::MISSING_BEGIN_RENDER_PASS;
+                        return { ErrorType::MISSING_BEGIN_RENDER_PASS, cmdIndex };
                     }
                     pushedPass = false;
                 } break;
                 case CommandType::BEGIN_RENDER_SUB_PASS: {
                     if (pushedSubPass) {
-                        return ErrorType::MISSING_END_RENDER_SUB_PASS;
+                        return { ErrorType::MISSING_END_RENDER_SUB_PASS, cmdIndex };
                     }
                     pushedSubPass = true;
                 } break;
                 case CommandType::END_RENDER_SUB_PASS: {
                     if (!pushedSubPass) {
-                        return ErrorType::MISSING_BEGIN_RENDER_SUB_PASS;
+                        return { ErrorType::MISSING_BEGIN_RENDER_SUB_PASS, cmdIndex };
                     }
                     pushedSubPass = false;
                 } break;
                 case CommandType::SET_BLEND_STATE: {
                     if (!pushedPass) {
-                        return ErrorType::MISSING_BEGIN_RENDER_PASS_FOR_BLEND;
+                        return { ErrorType::MISSING_BEGIN_RENDER_PASS_FOR_BLEND, cmdIndex };
                     }
-
                 }break;
                 case CommandType::BEGIN_DEBUG_SCOPE: {
                     ++pushedDebugScope;
                 } break;
                 case CommandType::END_DEBUG_SCOPE: {
                     if (pushedDebugScope == 0) {
-                        return ErrorType::MISSING_POP_DEBUG_SCOPE;
+                        return { ErrorType::MISSING_PUSH_DEBUG_SCOPE, cmdIndex };
                     }
                     --pushedDebugScope;
                 } break;
                 case CommandType::BEGIN_PIXEL_BUFFER: {
                     if (pushedPixelBuffer) {
-                        return ErrorType::MISSING_END_PIXEL_BUFFER;
+                        return { ErrorType::MISSING_END_PIXEL_BUFFER, cmdIndex };
                     }
                     pushedPixelBuffer = true;
                 }break;
                 case CommandType::END_PIXEL_BUFFER: {
                     if (!pushedPixelBuffer) {
-                        return ErrorType::MISSING_BEGIN_PIXEL_BUFFER;
+                        return { ErrorType::MISSING_BEGIN_PIXEL_BUFFER, cmdIndex };
                     }
                     pushedPixelBuffer = false;
                 }break;
@@ -447,7 +448,7 @@ ErrorType CommandBuffer::validate() const {
                 case CommandType::DRAW_IMGUI:
                 case CommandType::DRAW_COMMANDS: {
                     if (!hasPipeline) {
-                        return ErrorType::MISSING_VALID_PIPELINE;
+                        return { ErrorType::MISSING_VALID_PIPELINE, cmdIndex };
                     }
                 }break;
                 case CommandType::BIND_DESCRIPTOR_SETS: {
@@ -460,28 +461,28 @@ ErrorType CommandBuffer::validate() const {
         }
 
         if (pushedPass) {
-            return ErrorType::MISSING_END_RENDER_PASS;
+            return { ErrorType::MISSING_END_RENDER_PASS, cmdIndex };
         }
         if (pushedSubPass) {
-            return ErrorType::MISSING_END_RENDER_SUB_PASS;
+            return { ErrorType::MISSING_END_RENDER_SUB_PASS, cmdIndex };
         }
         if (pushedPixelBuffer) {
-            return ErrorType::MISSING_END_PIXEL_BUFFER;
+            return { ErrorType::MISSING_END_PIXEL_BUFFER, cmdIndex };
         }
         if (pushedDebugScope != 0) {
-            return ErrorType::MISSING_POP_DEBUG_SCOPE;
+            return { ErrorType::MISSING_POP_DEBUG_SCOPE, cmdIndex };
         }
         if (pushedCamera != 0) {
-            return ErrorType::MISSING_POP_CAMERA;
+            return { ErrorType::MISSING_POP_CAMERA, cmdIndex };
         }
         if (pushedViewport != 0) {
-            return ErrorType::MISSING_POP_VIEWPORT;
+            return { ErrorType::MISSING_POP_VIEWPORT, cmdIndex };
         }
 
-        return ErrorType::NONE;
+        return { ErrorType::NONE, cmdIndex };
 
     } else/*_constexpr*/ { 
-        return ErrorType::NONE;
+        return { ErrorType::NONE, 0u };
     }
 }
 
@@ -518,7 +519,9 @@ void CommandBuffer::ToString(const CommandBase& cmd, const CommandType type, I32
 string CommandBuffer::toString() const {
     I32 crtIndent = 0;
     string out = "\n\n\n\n";
+    size_t idx = 0u;
     for (const CommandEntry& cmd : _commandOrder) {
+        out.append("[ " + std::to_string(idx++) +" ]: ");
         ToString(*get<CommandBase>(cmd), static_cast<CommandType>(cmd._typeIndex), crtIndent, out);
         out.append("\n");
     }

@@ -32,6 +32,8 @@
 
 #include <imgui_internal.h>
 
+#include <IconFontCppHeaders/IconsForkAwesome.h>
+
 namespace Divide {
 namespace {
     I64 DefaultObjectIndex = 0u;
@@ -430,7 +432,7 @@ void MenuBar::drawFileMenu([[maybe_unused]] const bool modifierPressed) {
             ImGui::EndMenu();
         }
 
-        if (ImGui::MenuItem(modifierPressed ? "Save Scene (Forced)" : "Save Scene", "", false, hasUnsavedElements || isDefaultScene || modifierPressed)) {
+        if (ImGui::MenuItem(modifierPressed ? (ICON_FK_FLOPPY_O" Save Scene (Forced)") : (ICON_FK_FLOPPY_O" Save Scene"), "", false, hasUnsavedElements || isDefaultScene || modifierPressed)) {
             if (isDefaultScene && !modifierPressed) {
                 showSceneSaveDialog = true;
             } else {
@@ -440,7 +442,7 @@ void MenuBar::drawFileMenu([[maybe_unused]] const bool modifierPressed) {
         if (modifierPressed) {
             Util::AddUnderLine();
         }
-        if (ImGui::MenuItem("Save Scene As", "", false, !isDefaultScene)) {
+        if (ImGui::MenuItem(ICON_FK_FLOPPY_O" Save Scene As", "", false, !isDefaultScene)) {
             showSceneSaveDialog = true;
         }
         ImGui::Separator();

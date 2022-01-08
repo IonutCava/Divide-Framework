@@ -83,7 +83,6 @@ class WaterPlane : public SceneNode {
                        RenderingComponent& rComp,
                        RenderStagePass renderStagePass,
                        const CameraSnapshot& cameraSnapshot,
-                       GFX::CommandBuffer& bufferInOut,
                        bool refreshData) override;
    protected:
     template <typename T>

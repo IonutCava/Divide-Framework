@@ -415,6 +415,10 @@ namespace Attorney {
             editor.lockSolutionExplorer(state);
         }
 
+        static void saveNode(const Editor& editor, const SceneGraphNode* targetNode) {
+            editor.saveNode(targetNode);
+        }
+
         friend class Divide::PropertyWindow;
     };
 

@@ -308,7 +308,6 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
                                RenderingComponent& rComp,
                                const RenderStagePass renderStagePass,
                                const CameraSnapshot& cameraSnapshot,
-                               GFX::CommandBuffer& bufferInOut,
                                const bool refreshData) {
 
     EditorDataState& state = _editorDataDirtyState[to_base(renderStagePass._stage)];
@@ -327,7 +326,7 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
         }
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 bool WaterPlane::PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point) noexcept {

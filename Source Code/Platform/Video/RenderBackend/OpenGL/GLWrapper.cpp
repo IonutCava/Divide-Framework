@@ -787,9 +787,10 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
         if (lastID != cmd._sourceBuffer) {
             lastID = cmd._sourceBuffer;
             lastBuffer = VertexDataInterface::s_VDIPool.find(lastID);
+            DIVIDE_ASSERT(lastBuffer != nullptr);
         }
 
-        assert(lastBuffer != nullptr);
+        DIVIDE_ASSERT(lastBuffer != nullptr);
         lastBuffer->draw(cmd);
     }
 

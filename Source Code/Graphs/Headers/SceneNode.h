@@ -125,7 +125,6 @@ class SceneNode : public CachedResource {
                                RenderingComponent& rComp,
                                RenderStagePass renderStagePass,
                                const CameraSnapshot& cameraSnapshot,
-                               GFX::CommandBuffer& bufferInOut,
                                bool refreshData);
 
     virtual void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut);

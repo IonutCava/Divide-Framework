@@ -208,24 +208,11 @@ vec4 getUnderwaterAlbedo(in vec2 uv, in float waterDepth) {
 vec4 BuildTerrainData(out vec3 normalWV, out float normalVariation) {
     const BlendMapDataType blendAmnt = getBlendFactor(VAR._texCoord);
     const vec2 uv = getScaledCoords(VAR._texCoord, blendAmnt);
-/*#if defined(LOW_QUALITY)
-    normalWV = normalize(mat3(dvd_ViewMatrix) * VAR._normalW);
-    normalVariation = 0.f;
-    return getTerrainAlbedo(blendAmnt, uv);
-#else //LOW_QUALITY*/
-    if (VAR._LoDLevel > 1) {
-        const vec4 normalMap = getTerrainNormal(blendAmnt, uv);
-        normalVariation = normalMap.w;
-        normalWV = normalize(mat3(dvd_ViewMatrix) * cotangentFrame() * normalMap.xyz);
-        return getTerrainAlbedo(blendAmnt, uv);
-    }
-
     const vec2 waterData = GetWaterDetails(VAR._vertexW.xyz, TERRAIN_HEIGHT_OFFSET);
-    const vec4 normalMap = mix(getTerrainNormal(blendAmnt, uv), getUnderwaterNormal(), saturate(waterData.x));
+    const vec4 normalMap = mix(getTerrainNormal(blendAmnt, uv), getUnderwaterNormal(), waterData.x);
     normalVariation = normalMap.w;
     normalWV = normalize(mat3(dvd_ViewMatrix) * cotangentFrame() * normalMap.xyz);
-    return mix(getTerrainAlbedo(blendAmnt, uv), getUnderwaterAlbedo(VAR._texCoord * UNDERWATER_TILE_SCALE, waterData.y), saturate(waterData.x));
-//#endif //LOW_QUALITY
+    return mix(getTerrainAlbedo(blendAmnt, uv), getUnderwaterAlbedo(VAR._texCoord * UNDERWATER_TILE_SCALE, waterData.y), waterData.x);
 }
 
 #endif //_TERRAIN_SPLATTING_FRAG_

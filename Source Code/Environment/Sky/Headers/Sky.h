@@ -85,20 +85,25 @@ class Sky final : public SceneNode {
     [[nodiscard]] bool isDay() const;
 
     PROPERTY_R(Atmosphere, atmosphere);
-    void setAtmosphere(const Atmosphere& atmosphere) noexcept;
-
     PROPERTY_R(Atmosphere, defaultAtmosphere);
     PROPERTY_R(Atmosphere, initialAtmosphere);
-
     PROPERTY_R(size_t, skyboxSampler, 0);
+    PROPERTY_R(bool, enableProceduralClouds, true);
+    PROPERTY_R(bool, useDaySkybox, true);
+    PROPERTY_R(bool, useNightSkybox, true);
+    PROPERTY_R(F32,  moonScale, 0.5f);
+    PROPERTY_R(F32,  weatherScale, 8.f);
+    PROPERTY_R(FColour4, moonColour, DefaultColours::WHITE);
+    PROPERTY_R(FColour4, nightSkyColour, DefaultColours::BLACK);
 
-    PROPERTY_RW(bool, enableProceduralClouds, true);
-    PROPERTY_RW(bool, useDaySkybox, true);
-    PROPERTY_RW(bool, useNightSkybox, true);
-    PROPERTY_RW(F32,  moonScale, 0.5f);
-    PROPERTY_RW(F32,  weatherScale, 8.f);
-    PROPERTY_RW(FColour4, moonColour, DefaultColours::WHITE);
-    PROPERTY_RW(FColour4, nightSkyColour, DefaultColours::BLACK);
+    void setAtmosphere(const Atmosphere& atmosphere) noexcept;
+    void enableProceduralClouds(bool val) noexcept;
+    void useDaySkybox(bool val) noexcept;
+    void useNightSkybox(bool val) noexcept;
+    void moonScale(F32 val) noexcept;
+    void weatherScale(F32 val) noexcept;
+    void moonColour(FColour4 val) noexcept;
+    void nightSkyColour(FColour4 val) noexcept;
 
     [[nodiscard]] const Texture_ptr& activeSkyBox() const noexcept;
 
@@ -113,7 +118,6 @@ class Sky final : public SceneNode {
                         RenderingComponent& rComp,
                         RenderStagePass renderStagePass,
                         const CameraSnapshot& cameraSnapshot,
-                        GFX::CommandBuffer& bufferInOut,
                         bool refreshData) override;
 
    protected:

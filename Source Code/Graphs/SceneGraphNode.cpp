@@ -574,7 +574,7 @@ void SceneGraphNode::processEvents() {
     }
 }
 
-void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStagePass renderStagePass, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut, const bool refreshData) {
+void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStagePass renderStagePass, const CameraSnapshot& cameraSnapshot, const bool refreshData) {
     OPTICK_EVENT();
 
     const AnimationComponent* aComp = get<AnimationComponent>();
@@ -599,7 +599,7 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStageP
         }
     }
 
-    _node->prepareRender(this, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
+    _node->prepareRender(this, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void SceneGraphNode::onNetworkSend(U32 frameCount) const {

@@ -203,16 +203,16 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
-        bufferDescriptor._separateReadWrite = false;
-        bufferDescriptor._flags = to_base(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
+        //bufferDescriptor._separateReadWrite = false;
+        //bufferDescriptor._flags = to_base(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
         bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = false;
+        //bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = false;
         bufferDescriptor._bufferParams._usePersistentMapping = false;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
 
         {
-            bufferDescriptor._ringBufferLength = TargetBufferSizeCam;
+            //bufferDescriptor._ringBufferLength = TargetBufferSizeCam;
             bufferDescriptor._name = "DVD_GPU_CAM_DATA";
             bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::CamData);
             bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
@@ -221,7 +221,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             _camDataBuffer->bind(ShaderBufferLocation::CAM_BLOCK);
         }
         {
-            bufferDescriptor._ringBufferLength = TargetBufferSizeRender;
+            //bufferDescriptor._ringBufferLength = TargetBufferSizeRender;
             bufferDescriptor._name = "DVD_GPU_RENDER_DATA";
             bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::RenderData);
             bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._renderData, bufferDescriptor._bufferParams._elementSize };
@@ -1617,9 +1617,9 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
         commandBuffer.batch();
     }
 
-    const GFX::ErrorType error = commandBuffer.validate();
+    const auto[error, lastCmdIndex] = commandBuffer.validate();
     if (error != GFX::ErrorType::NONE) {
-        Console::errorfn(Locale::Get(_ID("ERROR_GFX_INVALID_COMMAND_BUFFER")), commandBuffer.toString().c_str());
+        Console::errorfn(Locale::Get(_ID("ERROR_GFX_INVALID_COMMAND_BUFFER")), lastCmdIndex, commandBuffer.toString().c_str());
         Console::flush();
         DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("GFXDevice::flushCommandBuffer error [ %s ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base(error)]).c_str());
         return;

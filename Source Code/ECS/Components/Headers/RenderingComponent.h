@@ -124,7 +124,10 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
            IS_VISIBLE = toBit(8)
        };
 
-    using DrawCommands = vector_fast<GFX::DrawCommand>;
+       struct DrawCommands {
+           vector_fast<GFX::DrawCommand> _data;
+           SharedMutex _dataLock;
+       };
 
    public:
     explicit RenderingComponent(SceneGraphNode* parentSGN, PlatformContext& context);
@@ -158,6 +161,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     [[nodiscard]] const Material_ptr& getMaterialInstance() const noexcept { return _materialInstance; }
 
+    [[nodiscard]] DrawCommands& drawCommands() noexcept { return _drawCommands; }
+
     void rebuildMaterial();
 
     void setReflectionCallback(const RenderCallback& cbk, const ReflectorType reflectType) { _reflectionCallback = cbk; _reflectorType = reflectType; }
@@ -181,7 +186,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void toggleBoundsDraw(bool showAABB, bool showBS, bool showOBB, bool recursive);
 
     void retrieveDrawCommands(RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut);
-    [[nodiscard]] bool hasDrawCommands(RenderStagePass stagePass) noexcept;
+    [[nodiscard]] bool hasDrawCommands() noexcept;
                   void onRenderOptionChanged(RenderOptions option, bool state);
 
     /// Called after the parent node was rendered
@@ -189,10 +194,9 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
                     RenderStagePass renderStagePass,
                     GFX::CommandBuffer& bufferInOut);
 
-    void prepareDrawPackage(const CameraSnapshot& cameraSnapshot,
+    bool prepareDrawPackage(const CameraSnapshot& cameraSnapshot,
                             const SceneRenderState& sceneRenderState,
                             RenderStagePass renderStagePass,
-                            GFX::CommandBuffer& bufferInOut,
                             bool refreshData);
 
     // This returns false if the node is not reflective, otherwise it generates a new reflection cube map
@@ -218,7 +222,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     PROPERTY_R(bool, castsShadows, false);
     PROPERTY_RW(bool, occlusionCull, true);
     PROPERTY_RW(F32, dataFlag, 1.0f);
-    PROPERTY_RW(DrawCommands, drawCommands);
     PROPERTY_R_IW(bool, isInstanced, false);
     PROPERTY_R_IW(U32, indirectionBufferEntry, U32_MAX);
     PROPERTY_RW(bool, rebuildRenderPackages, false);
@@ -276,6 +279,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     std::array<std::pair<size_t, size_t>, 4> _lodIndexOffsets{};
 
+    DrawCommands _drawCommands;
+
     static hashMap<U32, DebugView*> s_debugViews[2];
 END_COMPONENT(Rendering);
 
@@ -306,17 +311,16 @@ class RenderingCompRenderPass {
             return renderable.updateRefraction(refractionIndex, inBudget, camera, renderState, bufferInOut);
         }
 
-        static void prepareDrawPackage(RenderingComponent& renderable,
+        static bool prepareDrawPackage(RenderingComponent& renderable,
                                        const CameraSnapshot& cameraSnapshot,
                                        const SceneRenderState& sceneRenderState,
                                        RenderStagePass renderStagePass,
-                                       GFX::CommandBuffer& bufferInOut,
                                        const bool refreshData) {
-            renderable.prepareDrawPackage(cameraSnapshot, sceneRenderState, renderStagePass, bufferInOut, refreshData);
+            return renderable.prepareDrawPackage(cameraSnapshot, sceneRenderState, renderStagePass, refreshData);
         }
 
-        [[nodiscard]] static bool hasDrawCommands(RenderingComponent& renderable, const RenderStagePass stagePass) noexcept {
-            return renderable.hasDrawCommands(stagePass);
+        [[nodiscard]] static bool hasDrawCommands(RenderingComponent& renderable) noexcept {
+            return renderable.hasDrawCommands();
         }
 
         static void retrieveDrawCommands(RenderingComponent& renderable, const RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {

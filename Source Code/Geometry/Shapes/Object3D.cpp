@@ -132,7 +132,6 @@ void Object3D::prepareRender(SceneGraphNode* sgn,
                              RenderingComponent& rComp,
                              const RenderStagePass renderStagePass,
                              const CameraSnapshot& cameraSnapshot,
-                             GFX::CommandBuffer& bufferInOut,
                              const bool refreshData) {
     if (refreshData && geometryDirty()) {
         OPTICK_EVENT();
@@ -141,7 +140,7 @@ void Object3D::prepareRender(SceneGraphNode* sgn,
         geometryDirty(false);
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {

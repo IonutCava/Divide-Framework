@@ -20,6 +20,7 @@
 #include "Environment/Terrain/Headers/TerrainChunk.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
+#include "Platform/Video/Headers/CommandBufferPool.h"
 
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
@@ -180,6 +181,7 @@ Vegetation::~Vegetation()
         destroyStaticData();
     }
 
+    GFX::DeallocateCommandBuffer(_cullVegetationCmds);
     Console::printfn(Locale::Get(_ID("UNLOAD_VEGETATION_END")));
 }
 
@@ -631,6 +633,7 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
 
     _grassExtents.w = _grassExtents.xyz.length();
 
+    _cullVegetationCmds = GFX::AllocateCommandBuffer();
     setState(ResourceState::RES_LOADED);
 }
 
@@ -644,12 +647,12 @@ void Vegetation::getStats(U32& maxGrassInstances, U32& maxTreeInstances) const {
 void Vegetation::prepareRender(SceneGraphNode* sgn,
                                RenderingComponent& rComp,
                                RenderStagePass renderStagePass,
-                               [[maybe_unused]] const CameraSnapshot& cameraSnapshot,
-                               GFX::CommandBuffer& bufferInOut,
+                               const CameraSnapshot& cameraSnapshot,
                                bool refreshData) 
 {
+    RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
     {
-        RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
+        pkg.additionalCommands(nullptr);
         PushConstants& constants = pkg.pushConstantsCmd()._constants;
         constants.set(_ID("dvd_terrainChunkOffset"), GFX::PushConstantType::UINT, _terrainChunk.ID());
     }
@@ -672,8 +675,6 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         const RTAttachment& hizAttachment = hizTarget.getAttachment(RTAttachmentType::Depth, 0u);
         const Texture_ptr& hizTexture = hizAttachment.texture();
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull Vegetation" });
-
         const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(GFXDevice::CameraHistoryType::HI_Z_MAIN_BUFFER);
         mat4<F32> viewProjectionMatrix;
         mat4<F32>::Multiply(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix, viewProjectionMatrix);
@@ -692,6 +693,8 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         constants.set(_ID("grassExtents"), GFX::PushConstantType::VEC4, _grassExtents);
         constants.set(_ID("dvd_terrainChunkOffset"), GFX::PushConstantType::UINT, _terrainChunk.ID());
 
+        GFX::CommandBuffer& bufferInOut = *_cullVegetationCmds;
+        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull Vegetation" });
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._textureData.add(TextureEntry{ hizTexture->data(), hizAttachment.samplerHash(), TextureUsage::UNIT0 });
 
@@ -717,7 +720,10 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         EnqueueCommand(bufferInOut, memCmd);
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+        pkg.additionalCommands(_cullVegetationCmds);
     }
+
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Vegetation::sceneUpdate(const U64 deltaTimeUS,

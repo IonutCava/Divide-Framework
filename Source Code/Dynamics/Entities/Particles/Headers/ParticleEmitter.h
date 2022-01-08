@@ -54,7 +54,6 @@ class ParticleEmitter final : public SceneNode {
                        RenderingComponent& rComp,
                        RenderStagePass renderStagePass,
                        const CameraSnapshot& cameraSnapshot,
-                       GFX::CommandBuffer& bufferInOut,
                        bool refreshData) override;
 
 

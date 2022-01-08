@@ -51,7 +51,6 @@ void SceneNode::prepareRender([[maybe_unused]] SceneGraphNode* sgn,
                               [[maybe_unused]] RenderingComponent& rComp,
                               [[maybe_unused]] const RenderStagePass renderStagePass,
                               [[maybe_unused]] const CameraSnapshot& cameraSnapshot,
-                              [[maybe_unused]] GFX::CommandBuffer& bufferInOut,
                               [[maybe_unused]] bool refreshData)
 {
     assert(getState() == ResourceState::RES_LOADED);

@@ -102,7 +102,7 @@ namespace Divide {
         }
         ImGui::SetItemDefaultFocus();
         ImGui::SameLine();
-        if (ImGui::Button("Save", ImVec2(120, 0))) {
+        if (ImGui::Button(ICON_FK_FLOPPY_O" Save", ImVec2(120, 0))) {
             open = false;
             _changeCount = 0u;
             if (!_context.editor().saveToXML()) {

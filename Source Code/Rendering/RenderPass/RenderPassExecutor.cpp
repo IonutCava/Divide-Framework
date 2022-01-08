@@ -608,14 +608,11 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
 
     const U16 queueTotalSize = _renderQueue.getSortedQueues({}, _sortedQueues);
 
-    { //Erase nodes with no draw commands
-        const auto erasePredicate = [&stagePass](RenderingComponent* item) {
-            return !Attorney::RenderingCompRenderPass::hasDrawCommands(*item, stagePass);
-        };
-
-        for (RenderBin::SortedQueue& queue : _sortedQueues) {
-            erase_if(queue, erasePredicate);
-        }
+    //Erase nodes with no draw commands
+    for (RenderBin::SortedQueue& queue : _sortedQueues) {
+        erase_if(queue, [](RenderingComponent* item) noexcept {
+            return !Attorney::RenderingCompRenderPass::hasDrawCommands(*item);
+        });
     }
 
     TaskPool& pool = _context.context().taskPool(TaskPoolType::HIGH_PRIORITY);
@@ -780,8 +777,9 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes,
                 const VisibleNode& node = nodes.node(i);
                 assert(node._materialReady);
                 RenderingComponent * rComp = node._node->get<RenderingComponent>();
-                Attorney::RenderingCompRenderPass::prepareDrawPackage(*rComp, cameraSnapshot, sceneRenderState, stagePass, bufferInOut, true);
-                _renderQueue.addNodeToQueue(node._node, stagePass, node._distanceToCameraSq);
+                if (Attorney::RenderingCompRenderPass::prepareDrawPackage(*rComp, cameraSnapshot, sceneRenderState, stagePass, true)) {
+                    _renderQueue.addNodeToQueue(node._node, stagePass, node._distanceToCameraSq);
+                }
             }
         };
 
@@ -824,8 +822,9 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params,
             const VisibleNode& node = nodes.node(i);
             SceneGraphNode* sgn = node._node;
             if (sgn->getNode().renderState().drawState(stagePass)) {
-                Attorney::RenderingCompRenderPass::prepareDrawPackage(*sgn->get<RenderingComponent>(), cameraSnapshot, sceneRenderState, stagePass, bufferInOut, false);
-                _renderQueue.addNodeToQueue(sgn, stagePass, node._distanceToCameraSq, targetBin);
+                if (Attorney::RenderingCompRenderPass::prepareDrawPackage(*sgn->get<RenderingComponent>(), cameraSnapshot, sceneRenderState, stagePass, false)) {
+                    _renderQueue.addNodeToQueue(sgn, stagePass, node._distanceToCameraSq, targetBin);
+                }
             }
         }
     };

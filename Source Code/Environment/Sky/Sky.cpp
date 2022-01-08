@@ -250,15 +250,15 @@ Sky::Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, 
     getEditorComponent().onChangedCbk([this](const std::string_view field) {
         if (field == "Reset To Scene Default") {
             _atmosphere = defaultAtmosphere();
-            _atmosphereChanged.fill(EditorDataState::QUEUED);
         } else if (field == "Reset To Global Default") {
             _atmosphere = initialAtmosphere();
-            _atmosphereChanged.fill(EditorDataState::QUEUED);
         } else if (field == "Enable Procedural Clouds") {
             rebuildDrawCommands(true);
         } else if (field == "Update Sky Light") {
             SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
         }
+
+        _atmosphereChanged.fill(EditorDataState::QUEUED);
     });
 
     {
@@ -342,7 +342,7 @@ Sky::Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, 
         planetRadiusField._range = { 1.f, 20000.f };
         planetRadiusField._basicType = GFX::PushConstantType::FLOAT;
         getEditorComponent().registerField(MOV(planetRadiusField)); 
-        
+
         EditorComponentField cloudRadiusField = {};
         cloudRadiusField._name = "Cloud Radius [1m...400000m]";
         cloudRadiusField._tooltip = "Radius of the cloud layer (default: 200e3f m)";
@@ -362,7 +362,6 @@ Sky::Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, 
         atmosphereOffsetField._range = { 1.f, 2000.f };
         atmosphereOffsetField._basicType = GFX::PushConstantType::FLOAT;
         getEditorComponent().registerField(MOV(atmosphereOffsetField));
-
 
         EditorComponentField cloudHeightOffsetField = {};
         cloudHeightOffsetField._name = "Cloud layer height range (m)";
@@ -746,6 +745,41 @@ void Sky::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sc
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);
 }
 
+void Sky::enableProceduralClouds(const bool val) noexcept {
+    _enableProceduralClouds = val;
+    _atmosphereChanged.fill(EditorDataState::QUEUED);
+}
+
+void Sky::useDaySkybox(const bool val) noexcept {
+    _useDaySkybox = val;
+    _atmosphereChanged.fill(EditorDataState::QUEUED);
+}
+
+void Sky::useNightSkybox(const bool val) noexcept {
+    _useNightSkybox = val;
+    _atmosphereChanged.fill(EditorDataState::QUEUED);
+}
+
+void Sky::moonScale(const F32 val) noexcept {
+    _moonScale = val;
+    _atmosphereChanged.fill(EditorDataState::QUEUED);
+}
+
+void Sky::weatherScale(const F32 val) noexcept {
+    _weatherScale = val;
+    _atmosphereChanged.fill(EditorDataState::QUEUED);
+}
+
+void Sky::moonColour(const FColour4 val) noexcept {
+    _moonColour = val;
+    _atmosphereChanged.fill(EditorDataState::QUEUED);
+}
+
+void Sky::nightSkyColour(const FColour4 val) noexcept {
+    _nightSkyColour = val;
+    _atmosphereChanged.fill(EditorDataState::QUEUED);
+}
+
 void Sky::setSkyShaderData(const U32 rayCount, PushConstants& constantsInOut) {
     constantsInOut.set(_ID("dvd_nightSkyColour"), GFX::PushConstantType::FCOLOUR3, nightSkyColour().rgb);
     constantsInOut.set(_ID("dvd_moonColour"), GFX::PushConstantType::FCOLOUR3, moonColour().rgb);
@@ -770,7 +804,6 @@ void Sky::prepareRender(SceneGraphNode* sgn,
                         RenderingComponent& rComp,
                         const RenderStagePass renderStagePass,
                         const CameraSnapshot& cameraSnapshot,
-                        GFX::CommandBuffer& bufferInOut,
                         const bool refreshData)  {
 
     RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
@@ -783,7 +816,7 @@ void Sky::prepareRender(SceneGraphNode* sgn,
         }
     }
 
-    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
+    SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {

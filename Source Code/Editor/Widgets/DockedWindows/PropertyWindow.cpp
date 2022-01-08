@@ -364,7 +364,7 @@ namespace Divide {
                 }
                 if (!isLockedField && comp->parentComponentType() != ComponentType::COUNT && !IsRequiredComponentType(sgnNode, comp->parentComponentType())) {
                     ImGui::SameLine();
-                    if (ImGui::Button("REMOVE", ImVec2(smallButtonWidth, 20))) {
+                    if (ImGui::Button(ICON_FK_MINUS" REMOVE", ImVec2(smallButtonWidth, 20))) {
                         Attorney::EditorGeneralWidget::inspectMemory(_context.editor(), std::make_pair(nullptr, 0));
 
                         if (Attorney::EditorGeneralWidget::removeComponent(_context.editor(), sgnNode, comp->parentComponentType())) {
@@ -508,10 +508,12 @@ namespace Divide {
     }
 
     void PropertyWindow::drawInternal() {
+        constexpr F32 buttonWidth = 80.0f;
+        constexpr F32 smallButtonWidth = 60.0f;
+
         skipAutoTooltip(false);
 
         bool sceneChanged = false;
-        constexpr F32 smallButtonWidth = 60.0f;
         F32 xOffset = ImGui::GetWindowSize().x * 0.5f - (smallButtonWidth * 2);
         if (_lockedComponent._editorComp) {
             sceneChanged = printComponent(_lockedComponent._parentSGN, _lockedComponent._editorComp, xOffset, smallButtonWidth);
@@ -570,6 +572,13 @@ namespace Divide {
                         }
                         sceneChanged = printComponent(sgnNode, comp, xOffset, smallButtonWidth) || sceneChanged;
                     }
+                    ImGui::Separator();
+                    ImGui::NewLine();
+                    ImGui::NewLine();
+                    ImGui::SameLine(ImGui::GetWindowSize().x * 0.5f - (buttonWidth * 0.5f));
+                    if (ImGui::Button(ICON_FK_FLOPPY_O" Save Node", ImVec2(buttonWidth, 15))) {
+                        Attorney::EditorPropertyWindow::saveNode(_parent, sgnNode);
+                    }
                 }
                 ImGui::PopID();
             }
@@ -596,17 +605,14 @@ namespace Divide {
                 return missing;
             };
 
-            constexpr F32 buttonWidth = 80.0f;
-
             xOffset = ImGui::GetWindowSize().x - buttonWidth - 20.0f;
             ImGui::NewLine();
             ImGui::Separator();
             ImGui::NewLine();
             ImGui::SameLine(xOffset);
-            if (ImGui::Button("ADD NEW", ImVec2(buttonWidth, 15))) {
+            if (ImGui::Button(ICON_FK_PLUS" ADD NEW", ImVec2(buttonWidth, 15))) {
                 ImGui::OpenPopup("COMP_SELECTION_GROUP");
             }
-
             static ComponentType selectedType = ComponentType::COUNT;
 
             if (ImGui::BeginPopup("COMP_SELECTION_GROUP")) {

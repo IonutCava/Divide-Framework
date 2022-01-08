@@ -85,12 +85,12 @@ namespace Divide {
             const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH;
             const bool isRoot = sgn->parent() == nullptr;
 
-            ImGui::Text(sgn->name().c_str());
+            ImGui::Text(Util::StringFormat("%s [%s]", getIconForNode(sgn), sgn->name().c_str()).c_str());
             ImGui::Separator();
             if (isSubMesh) {
                 PushReadOnly();
             }
-            if (ImGui::Selectable("Change Parent")) {
+            if (ImGui::Selectable(ICON_FK_USERS" Change Parent")) {
                 _childNode = sgn;
                 _reparentSelectRequested = true;
             }
@@ -100,7 +100,7 @@ namespace Divide {
                     ImGui::SetTooltip("Can't re-parent sub-meshes!");
                 }
             }
-            if (ImGui::Selectable("Add Child")) {
+            if (ImGui::Selectable(ICON_FK_CHILD"  Add Child")) {
                 g_particleEmitterData.reset();
                 g_particleSource.reset();
 
@@ -111,10 +111,24 @@ namespace Divide {
                 _parentNode = sgn;
             }
             ImGui::Separator();
+
+            if (ImGui::Selectable(ICON_FK_LOCATION_ARROW"  Go To")) {
+                goToNode(sgn);
+            }
+            ImGui::Separator();
+
+            if (ImGui::Selectable(ICON_FK_FLOPPY_O"  Save Changes")) {
+                saveNode(sgn);
+            }
+            if (ImGui::Selectable(ICON_FK_FILE"  Load from file")) {
+                loadNode(sgn);
+            }
+            ImGui::NewLine();
+            ImGui::Separator();
             if (isRoot) {
                 PushReadOnly();
             }
-            if (ImGui::Selectable("Remove")) {
+            if (ImGui::Selectable(ICON_FK_TRASH"  Remove")) {
                 _nodeToRemove = sgn->getGUID();
             }
             if (isRoot) {
@@ -122,17 +136,6 @@ namespace Divide {
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Can't remove the root node!");
                 }
-            }
-            ImGui::Separator();
-
-            if (ImGui::Selectable("Go To")) {
-                goToNode(sgn);
-            }
-            if (ImGui::Selectable("Save Changes")) {
-                saveNode(sgn);
-            }
-            if (ImGui::Selectable("Load from file")) {
-                loadNode(sgn);
             }
             ImGui::EndPopup();
         }

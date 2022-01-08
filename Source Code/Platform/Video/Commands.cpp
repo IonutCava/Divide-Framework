@@ -180,13 +180,7 @@ string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
 }
 
 string ToString(const BeginDebugScopeCommand& cmd, const U16 indent) {
-    string ret = "\n";
-    for (U16 j = 0; j < indent; ++j) {
-        ret.append("    ");
-    }
-
-    ret.append( " [ " + string(cmd._scopeName.c_str()) + " ]");
-    return ret;
+    return " [ " + string(cmd._scopeName.c_str()) + " ]";
 }
 
 string ToString(const AddDebugMessageCommand& cmd, const U16 indent) {
@@ -241,8 +235,9 @@ string ToString(const SetClippingStateCommand& cmd, U16 indent) {
     return Util::StringFormat(" [ Origin: %s ] [ Depth: %s ]", cmd._lowerLeftOrigin ? "LOWER_LEFT" : "UPPER_LEFT", cmd._negativeOneToOneDepth ? "-1 to 1 " : "0 to 1");
 }
 
-string ToString(const CommandBase& cmd, const U16 indent) {
+string ToString(const CommandBase& cmd, U16 indent) {
     string ret(indent, ' ');
+    indent *= 2;
     ret.append(Names::commandType[to_base(cmd.Type())]);
 
     switch (cmd.Type()) {

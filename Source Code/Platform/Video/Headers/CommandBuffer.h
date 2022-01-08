@@ -54,6 +54,7 @@ enum class ErrorType : U8
     MISSING_END_RENDER_SUB_PASS,
     MISSING_BEGIN_PIXEL_BUFFER,
     MISSING_END_PIXEL_BUFFER,
+    MISSING_PUSH_DEBUG_SCOPE,
     MISSING_POP_DEBUG_SCOPE,
     MISSING_POP_CAMERA,
     MISSING_POP_VIEWPORT,
@@ -68,7 +69,7 @@ namespace Names {
         "MISSING_BEGIN_RENDER_PASS", "MISSING_BEGIN_RENDER_PASS_FOR_BLEND",
         "MISSING_END_RENDER_PASS", "MISSING_BEGIN_RENDER_SUB_PASS",
         "MISSING_END_RENDER_SUB_PASS", "MISSING_BEGIN_PIXEL_BUFFER", 
-        "MISSING_END_PIXEL_BUFFER", "MISSING_POP_DEBUG_SCOPE",
+        "MISSING_END_PIXEL_BUFFER", "MISSING_PUSH_DEBUG_SCOPE", "MISSING_POP_DEBUG_SCOPE",
         "MISSING_POP_CAMERA", "MISSING_POP_VIEWPORT", "MISSING_VALID_PIPELINE",
         "MISSING_BLIT_DESCRIPTOR_SET", "UNKNOW"
     };
@@ -92,7 +93,7 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
     typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
     add(const T&& command);
 
-    [[nodiscard]] ErrorType validate() const;
+    [[nodiscard]] std::pair<ErrorType, size_t> validate() const;
 
     void add(const CommandBuffer& other);
     void add(const CommandBuffer** buffers, size_t count);

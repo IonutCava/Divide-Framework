@@ -1088,13 +1088,13 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         s_initDrawCmds = true;
     }
 
-    EnqueueCommand(bufferInOut, s_beginDebugScope);
+    GFX::EnqueueCommand(bufferInOut, s_beginDebugScope);
 
     s_blendCmd._blendProperties._enabled = true;
-    EnqueueCommand(bufferInOut, s_blendCmd);
-    EnqueueCommand(bufferInOut, s_pipelineCmd);
-    EnqueueCommand(bufferInOut, s_pushConstantsCommand);
-    EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
+    GFX::EnqueueCommand(bufferInOut, s_blendCmd);
+    GFX::EnqueueCommand(bufferInOut, s_pipelineCmd);
+    GFX::EnqueueCommand(bufferInOut, s_pushConstantsCommand);
+    GFX::EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
 
     const F32 L = pDrawData->DisplayPos.x;
     const F32 R = pDrawData->DisplayPos.x + pDrawData->DisplaySize.x;
@@ -1111,15 +1111,15 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     GFX::SetCameraCommand cameraCmd{};
     cameraCmd._cameraSnapshot = Camera::utilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->snapshot();
     memcpy(cameraCmd._cameraSnapshot._projectionMatrix.m, ortho_projection, sizeof(F32) * 16);
-    EnqueueCommand(bufferInOut, cameraCmd);
+    GFX::EnqueueCommand(bufferInOut, cameraCmd);
 
     GFX::DrawIMGUICommand drawIMGUI = {};
     drawIMGUI._data = pDrawData;
     drawIMGUI._windowGUID = windowGUID;
-    EnqueueCommand(bufferInOut, drawIMGUI);
+    GFX::EnqueueCommand(bufferInOut, drawIMGUI);
 
     s_blendCmd._blendProperties._enabled = false;
-    EnqueueCommand(bufferInOut, s_blendCmd);
+    GFX::EnqueueCommand(bufferInOut, s_blendCmd);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }

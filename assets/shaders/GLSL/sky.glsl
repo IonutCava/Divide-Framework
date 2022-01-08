@@ -672,7 +672,7 @@ void main() {
 
     // Guess work based on what "look right"
     const float lerpValue = saturate(2.95f * (GetSunDirection().y + 0.15f));
-    const vec3 rayDirection = normalize(VAR._vertexW.xyz - dvd_cameraPosition.xyz);
+    const vec3 rayDirection = normalize(VAR._vertexW.xyz);
 #if defined(MAIN_DISPLAY_PASS)
     vec3 ret = vec3(0.f);
     switch (dvd_materialDebugFlag) {

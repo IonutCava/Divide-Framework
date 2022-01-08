@@ -278,7 +278,6 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
                             RenderingComponent& rComp,
                             const RenderStagePass renderStagePass,
                             const CameraSnapshot& cameraSnapshot,
-                            GFX::CommandBuffer& bufferInOut,
                             const bool refreshData) {
     if (renderStagePass._stage == RenderStage::DISPLAY && renderStagePass._passType == RenderPassType::MAIN_PASS) {
         _terrainQuadtree.drawBBox(sgn->context().gfx());
@@ -327,7 +326,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     constants.set(_ID("dvd_tessTriangleWidth"),  GFX::PushConstantType::FLOAT, triangleWidth);
     
 
-    Object3D::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, bufferInOut, refreshData);
+    Object3D::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut)

@@ -104,7 +104,6 @@ class Object3D : public SceneNode {
                        RenderingComponent& rComp,
                        RenderStagePass renderStagePass,
                        const CameraSnapshot& cameraSnapshot,
-                       GFX::CommandBuffer& bufferInOut,
                        bool refreshData) override;
                         
     virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] I32 newIndex) {}

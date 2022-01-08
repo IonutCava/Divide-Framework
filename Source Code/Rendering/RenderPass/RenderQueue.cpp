@@ -89,11 +89,6 @@ RenderBin* RenderQueue::getBinForNode(const SceneGraphNode* node, const Material
             if (AnyCompare(node->componentMask(), compareMask)) {
                 return _renderBins[to_base(RenderBinType::IMPOSTOR)];
             }
-            /*if (BitCompare(node->componentMask(), ComponentType::PARTICLE_EMITTER_COMPONENT) ||
-                BitCompare(node->componentMask(), ComponentType::GRASS_COMPONENT))
-            {
-                return _renderBins[to_base(RenderBinType::TRANSLUCENT)];
-            }*/
             return nullptr;
         }
 
@@ -146,13 +141,11 @@ void RenderQueue::addNodeToQueue(const SceneGraphNode* sgn,
     RenderingComponent* const renderingCmp = sgn->get<RenderingComponent>();
     // We need a rendering component to render the node
     assert(renderingCmp != nullptr);
-    if (Attorney::RenderingCompRenderPass::hasDrawCommands(*renderingCmp, stagePass)) {
-        RenderBin* rb = getBinForNode(sgn, renderingCmp->getMaterialInstance());
-        assert(rb != nullptr);
+    RenderBin* rb = getBinForNode(sgn, renderingCmp->getMaterialInstance());
+    assert(rb != nullptr);
 
-        if (targetBinType == RenderBinType::COUNT || rb->getType() == targetBinType) {
-            rb->addNodeToBin(sgn, stagePass, minDistToCameraSq);
-        }
+    if (targetBinType == RenderBinType::COUNT || rb->getType() == targetBinType) {
+        rb->addNodeToBin(sgn, stagePass, minDistToCameraSq);
     }
 }
 

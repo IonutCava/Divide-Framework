@@ -4,7 +4,7 @@
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor>C:/Program Files (x86)/Notepad++/notepad++.exe</textEditor>
-    <lastOpenSceneGUID>695</lastOpenSceneGUID>
+    <lastOpenSceneGUID>766</lastOpenSceneGUID>
     <grid enabled="true" axisWidth="2" scale="1"/>
     <camera>
         <Editor__Camera>
@@ -17,7 +17,7 @@
             <frustumLocked>false</frustumLocked>
             <euler x="0" y="88.733902" z="180"/>
             <eye x="60" y="45" z="60"/>
-            <orientation x="-0.122654505" y="0.339094102" z="0.0446425863" w="0.93165344"/>
+            <orientation x="-0.122654505" y="0.339094073" z="0.0446425863" w="0.93165338"/>
             <aspectRatio>1.76999998</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
             <FoV>77.7975693</FoV>

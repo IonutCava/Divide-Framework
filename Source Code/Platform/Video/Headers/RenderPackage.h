@@ -46,10 +46,10 @@ struct RenderPackage {
     PROPERTY_RW(GFX::SendPushConstantsCommand,  pushConstantsCmd);
     PROPERTY_RW(U32, drawCmdOffset, INVALID_CMD_OFFSET);
     PROPERTY_RW(U8,  stagePassBaseIndex, INVALID_STAGE_INDEX);
+    POINTER_RW(GFX::CommandBuffer, additionalCommands, nullptr);
 };
 
-void Clear(RenderPackage& pkg);
-[[nodiscard]] bool Empty(const RenderPackage& pkg) noexcept;
+void Clear(RenderPackage& pkg) noexcept;
 
 }; // namespace Divide
 
