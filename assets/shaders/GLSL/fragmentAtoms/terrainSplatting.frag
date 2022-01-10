@@ -3,13 +3,13 @@
 
 #include "waterData.cmn"
 
-#if defined(LOW_QUALITY) || !defined(REDUCE_TEXTURE_TILE_ARTIFACT)
+vec4 textureNoTileInternal(in sampler2DArray tex, in vec3 texUV) {
+#if !defined(REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS)
+    if (VAR._LoDLevel >= 2) {
+        return texture(tex, texUV);
+    }
+#endif //!REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS
 
-#define SampleTextureNoTile texture
-
-#else //LOW_QUALITY || !REDUCE_TEXTURE_TILE_ARTIFACT
-
-vec4 TextureNoTile(in sampler2DArray tex, in vec3 texUV) {
 #if defined(HIGH_QUALITY_TILE_ARTIFACT_REDUCTION)
     return textureNoTile(tex, texSpecular, 3, texUV, 0.5f);
 #else //HIGH_QUALITY_TILE_ARTIFACT_REDUCTION
@@ -17,17 +17,10 @@ vec4 TextureNoTile(in sampler2DArray tex, in vec3 texUV) {
 #endif //HIGH_QUALITY_TILE_ARTIFACT_REDUCTION
 }
 
-vec4 SampleTextureNoTile(in sampler2DArray tex, in vec3 texUV)
-{
-#if !defined(REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS)
-    if (VAR._LoDLevel >= 2) {
-        return texture(tex, texUV);
-    }
-#endif //!REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS
-
-    return TextureNoTile(tex, texUV);
-}
-
+#if defined(LOW_QUALITY) || !defined(REDUCE_TEXTURE_TILE_ARTIFACT)
+#define SampleTextureNoTile texture
+#else //LOW_QUALITY || !REDUCE_TEXTURE_TILE_ARTIFACT
+#define SampleTextureNoTile textureNoTileInternal
 #endif //LOW_QUALITY || !REDUCE_TEXTURE_TILE_ARTIFACT
 
 #define BlendMapDataType float[TOTAL_LAYER_COUNT]
@@ -35,8 +28,8 @@ vec4 SampleTextureNoTile(in sampler2DArray tex, in vec3 texUV)
 BlendMapDataType getBlendFactor(in vec2 uv) {
     INSERT_BLEND_AMNT_ARRAY
 
-    uint offset = 0;
-    for (uint i = 0; i < MAX_TEXTURE_LAYERS; ++i) {
+    uint offset = 0u;
+    for (uint i = 0u; i < MAX_TEXTURE_LAYERS; ++i) {
         const vec4 blendColour = GetBlend(vec3(uv, i));
         for (uint j = 0; j < CURRENT_LAYER_COUNT[i]; ++j) {
             blendAmount[offset + j] = blendColour[j];

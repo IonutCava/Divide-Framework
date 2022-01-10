@@ -15,7 +15,7 @@ void main(){
   VAR._texCoord = inTexCoordData;
   _colour = inColourData;
   _lineWidth = inLineWidth;
-  gl_Position = dvd_ViewProjectionMatrix * dvd_WorldMatrix * vec4(inVertexData,1.0);
+  gl_Position = dvd_ViewProjectionMatrix * dvd_WorldMatrix * vec4(inVertexData, 1.f);
 } 
 
 -- Fragment

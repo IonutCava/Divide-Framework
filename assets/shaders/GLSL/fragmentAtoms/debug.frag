@@ -139,6 +139,11 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
                 case 7:  debugColour = vec3(0.0f, 0.0f, 0.0f); break;
             }
         } break;
+        case DEBUG_DEPTH_CLUSTER_AABBS :
+        {
+            const uint clusterIdx = GetClusterIndex(gl_FragCoord);
+            debugColour = turboColormap(float(clusterIdx) / (32));
+        }break;
         case DEBUG_REFRACTIONS:
         case DEBUG_REFLECTIONS: {
             debugColour = ApplySSR(material, vec3(0.f));

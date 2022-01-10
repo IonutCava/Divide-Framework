@@ -77,7 +77,7 @@ layout(binding = BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
     vec4  dvd_ViewPort;
     //x - scale, y - bias
     vec4 dvd_lightingTweakValues;
-    //x - nearPlane, y - farPlane, z - FoV, w - camera flag
+    //x - nearPlane, y - farPlane, z - FoV, w - ortho camera
     vec4  dvd_camProperties;
     vec4  dvd_frustumPlanes[6];
     vec4 _cam_padding[2];
@@ -99,6 +99,7 @@ layout(binding = BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
 
 #define dvd_LightScale dvd_lightingTweakValues.x
 #define dvd_LightBias dvd_lightingTweakValues.y
+#define dvd_IsOrthoCamera  (uint(dvd_camProperties.w) == 1u)
 
 #endif //!NO_CAM_BLOCK
 

@@ -1419,10 +1419,25 @@ void RenderPassExecutor::doCustomPass(Camera* camera, RenderPassParams params, G
     transparencyPass(visibleNodes, params, camSnapshot, bufferInOut);
 #   pragma endregion
 
-    if_constexpr(Config::Build::ENABLE_EDITOR) {
-        if (_stage == RenderStage::DISPLAY) {
+    if (_stage == RenderStage::DISPLAY) {
+        GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ camSnapshot });
+
+        GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+        beginRenderPassTransparentCmd->_name = "DO_EDITOR_POST_RENDER_PASS";
+        beginRenderPassTransparentCmd->_target = params._target;
+        SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 1, false);
+        SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 2, false);
+        SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
+
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Debug Draw Pass";
+        Attorney::SceneManagerRenderPass::debugDraw(_parent.parent().sceneManager(), bufferInOut);
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+
+        if_constexpr(Config::Build::ENABLE_EDITOR) {
             Attorney::EditorRenderPassExecutor::postRender(_context.context().editor(), camSnapshot, params._target, bufferInOut);
         }
+        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
     }
 
     resolveMainScreenTarget(params, false, false, true, bufferInOut);

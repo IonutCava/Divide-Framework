@@ -186,19 +186,20 @@ vec3 GetBRDF(in vec3 L,
     const float VdotH = clamp((dot(V, H)), M_EPSILON, 1.f);
     const float NdotH = clamp((dot(N, H)), M_EPSILON, 1.f);
 
+#define Mat_A max(SQUARED(material._roughness), 0.01f)
 #if defined(SHADING_MODE_PBR_MR)
     const float LdotH = clamp((dot(L, H)), M_EPSILON, 1.f);
 
     const vec3 diffuseFactor = material._diffuseColour * BurleyDiffuse(material._roughness, NdotV, NdotL, VdotH, LdotH);
     const vec3 fresnelTerm = SchlickGaussianFresnel(material._specular.rgb, VdotH);
-    const float distTerm = GGXDistribution(material._a, NdotH);
+    const float distTerm = GGXDistribution(Mat_A, NdotH);
     const float visTerm = NeumannVisibility(NdotV, NdotL);
 #else //SHADING_MODE_PBR_SG
     //WRONG / TEMP / WHATEVER!
     const vec3 diffuseFactor = material._diffuseColour * LambertianDiffuse(NdotL);
     //diffuseFactor = material._diffuseColour * CustomLambertianDiffuse(material._roughness, NdotV, NdotL);
     const vec3 fresnelTerm = SchlickFresnel(material._specular.rgb, VdotH);
-    const float distTerm = BlinnPhongDistribution(material._a, NdotH);
+    const float distTerm = BlinnPhongDistribution(Mat_A, NdotH);
     const float visTerm = SmithGGXSchlickVisibility(material._roughness, NdotV, NdotL);
 #endif //SHADING_MODE_PBR_MR
 

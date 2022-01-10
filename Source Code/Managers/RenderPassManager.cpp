@@ -133,7 +133,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                 const auto screenTargetCallback = [&sceneManager, &cameraSnapshot, buf]() {
                     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(*buf)->_scopeName = "Debug Draw Pass";
                     GFX::EnqueueCommand(*buf, GFX::PushCameraCommand{ cameraSnapshot });
-                    Attorney::SceneManagerRenderPass::debugDraw(sceneManager, *buf);
+                    //Attorney::SceneManagerRenderPass::debugDraw(sceneManager, *buf);
                     GFX::EnqueueCommand(*buf, GFX::PopCameraCommand{});
                     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(*buf);
                 };

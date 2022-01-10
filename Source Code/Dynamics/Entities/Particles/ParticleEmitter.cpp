@@ -153,16 +153,10 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     particleShaderShadowDescriptor._name = "particles_VSM";
     particleShaderShadowDescriptor._modules.back()._variant = "Shadow.VSM";
 
-    ShaderProgramDescriptor particleShaderShadowVSMDescriptor = particleShaderShadowDescriptor;
-    particleShaderShadowVSMDescriptor._name = "particles_VSM_ORTHO";
-    particleShaderShadowVSMDescriptor._modules.back()._variant += ".ORTHO";
-    particleShaderShadowVSMDescriptor._modules.back()._defines.emplace_back("ORTHO_PROJECTION", true);
-
     mat->setShaderProgram(particleShaderDepthDescriptor,     RenderStage::COUNT,   RenderPassType::PRE_PASS);
     mat->setShaderProgram(particleShaderPrePassDescriptor,   RenderStage::DISPLAY, RenderPassType::PRE_PASS);
     mat->setShaderProgram(particleShaderDescriptor,          RenderStage::COUNT,   RenderPassType::MAIN_PASS);
     mat->setShaderProgram(particleShaderShadowDescriptor,    RenderStage::SHADOW,  RenderPassType::COUNT);
-    mat->setShaderProgram(particleShaderShadowVSMDescriptor, RenderStage::SHADOW,  RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL));
 
     if (_particleTexture) {
         SamplerDescriptor textureSampler = {};

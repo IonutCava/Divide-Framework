@@ -168,11 +168,14 @@ const BoundingBox& BoundsComponent::updateAndGetBoundingBox() {
         // already clean
         return _boundingBox;
     }
-    _parentSGN->forEachChild([](const SceneGraphNode* child, I32 /*childIdx*/) {
-        child->get<BoundsComponent>()->updateAndGetBoundingBox();
-        return true;
-    });
-
+    {
+        const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
+        SharedLock<SharedMutex> w_lock(children._lock);
+        const U32 childCount = children._count;
+        for (U32 i = 0u; i < childCount; ++i) {
+            children._data[i]->get<BoundsComponent>()->updateAndGetBoundingBox();
+        }
+    }
     const mat4<F32> mat = _parentSGN->get<TransformComponent>()->getWorldMatrix();
     _boundingBox.transform(_refBoundingBox.getMin(), _refBoundingBox.getMax(), mat);
 

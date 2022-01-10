@@ -138,10 +138,13 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
             clearMainTarget._target = params._target;
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Main Display Pass" });
+
             GFX::EnqueueCommand(bufferInOut, clearMainTarget);
+            GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
             _parent.doCustomPass(Attorney::SceneManagerCameraAccessor::playerCamera(_parent.parent().sceneManager()), params, bufferInOut);
 
+            GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true;
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         } break;
 
@@ -156,20 +159,9 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
 
                 GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Shadow Render Stage" });
 
-                if_constexpr(useNegOneToOneDepth) {
-                    //ToDo: remove this and change lookup code
-                    GFX::SetClippingStateCommand clipStateCmd;
-                    clipStateCmd._negativeOneToOneDepth = true;
-                    GFX::EnqueueCommand(bufferInOut, clipStateCmd);
-                }
-               lightPool.generateShadowMaps(*camera, bufferInOut);
-
-               if_constexpr(useNegOneToOneDepth) {
-                   GFX::SetClippingStateCommand clipStateCmd;
-                   clipStateCmd._negativeOneToOneDepth = false;
-                   GFX::EnqueueCommand(bufferInOut, clipStateCmd);
-               }
-               GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+                lightPool.generateShadowMaps(*camera, bufferInOut);
+                
+                GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
             }
         } break;
 
@@ -178,6 +170,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
             Camera* camera = Attorney::SceneManagerCameraAccessor::playerCamera(mgr);
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Reflection Pass" });
+            GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
             {
                 OPTICK_EVENT("RenderPass - Probes");
                 SceneEnvironmentProbePool::Prepare(bufferInOut);
@@ -216,6 +209,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
                     }
                 }
             }
+            GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true;
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
         } break;
@@ -224,6 +218,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
             static VisibleNodeList s_Nodes;
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Refraction Pass" });
+            GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
             OPTICK_EVENT("RenderPass - Refraction");
             // Get list of refractive nodes from the scene manager
@@ -247,7 +242,7 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
                     }
                 }
             }
-
+            GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true;
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
         } break;

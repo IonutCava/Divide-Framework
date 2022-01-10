@@ -115,6 +115,8 @@ void Material::ApplyDefaultStateBlocks(Material& target) {
     RenderStateBlock shadowDescriptor(stateDescriptor);
     shadowDescriptor.setColourWrites(true, true, false, false);
     shadowDescriptor.setZFunc(ComparisonFunction::LESS);
+    //shadowDescriptor.setZBias(1.1f, 4.f);
+    shadowDescriptor.setCullMode(CullMode::BACK);
 
     target.setRenderStateBlock(depthPassDescriptor.getHash(), RenderStage::COUNT,  RenderPassType::PRE_PASS);
     target.setRenderStateBlock(zPrePassDescriptor.getHash(),  RenderStage::DISPLAY,RenderPassType::PRE_PASS);
@@ -523,9 +525,6 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
 
     if (renderStagePass._stage == RenderStage::SHADOW) {
         globalDefines.emplace_back("SHADOW_PASS", true);
-        if (to_U8(renderStagePass._variant) == to_U8(LightType::DIRECTIONAL)) {
-            moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("ORTHO_PROJECTION", true);
-        }
     } else if (isDepthPass) {
         globalDefines.emplace_back("PRE_PASS", true);
     }
@@ -641,7 +640,7 @@ void Material::computeShader(const RenderStagePass renderStagePass) {
     vertModule._moduleType = ShaderType::VERTEX;
     shaderDescriptor._modules.push_back(vertModule);
 
-    if (!isDepthPass || isZPrePass) {
+    if (!isDepthPass || isZPrePass || isShadowPass || hasTransparency()) {
         ShaderModuleDescriptor fragModule = {};
         fragModule._variant = fragVariant;
         fragModule._sourceFile = (fragSource + ".glsl").c_str();
@@ -697,6 +696,23 @@ void Material::refractive(const bool state, const bool applyToInstances) {
 void Material::doubleSided(const bool state, const bool applyToInstances) {
     if (_doubleSided != state) {
         _doubleSided = state;
+
+        for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
+            if (s == to_U8(RenderStage::SHADOW)) {
+                continue;
+            }
+            StateVariantsPerPass& perPassStates = _defaultRenderStates[s];
+            for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
+                for (size_t& hash : perPassStates[p]) {
+                    if (hash != g_invalidStateHash) {
+                        RenderStateBlock tempBlock = RenderStateBlock::get(hash);
+                        tempBlock.setCullMode(_doubleSided ? CullMode::NONE : CullMode::BACK);
+                        hash = tempBlock.getHash();
+                    }
+                }
+            }
+        }
+
         _needsNewShader = true;
     }
 
@@ -987,20 +1003,10 @@ void Material::updateTransparency() {
 size_t Material::getRenderStateBlock(const RenderStagePass renderStagePass) const {
     const StatesPerVariant& variantMap = _defaultRenderStates[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)];
 
-    size_t ret = variantMap[to_base(renderStagePass._variant)];
+    const size_t ret = variantMap[to_base(renderStagePass._variant)];
     // If we haven't defined a state for this variant, use the default one
     if (ret == g_invalidStateHash) {
-        ret = variantMap[0u];
-    }
-
-    if (ret != g_invalidStateHash) {
-        // We don't need to update cull params for shadow mapping unless this is a directional light
-        // since CSM splits cause all sorts of errors
-        if (_doubleSided) {
-            RenderStateBlock tempBlock = RenderStateBlock::get(ret);
-            tempBlock.setCullMode(CullMode::NONE);
-            ret = tempBlock.getHash();
-        }
+        return variantMap[0u];
     }
 
     return ret;

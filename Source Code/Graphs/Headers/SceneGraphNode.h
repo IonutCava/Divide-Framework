@@ -71,7 +71,6 @@ namespace Attorney {
     class SceneGraphNodeRenderPassCuller;
     class SceneGraphNodeRenderPassManager;
     class SceneGraphNodeRelationshipCache;
-    class SceneGraphNodeScene;
 };
 
 struct SGNRayResult {
@@ -100,7 +99,6 @@ class SceneGraphNode final : public ECS::Entity<SceneGraphNode>,
     friend class Attorney::SceneGraphNodeRenderPassCuller;
     friend class Attorney::SceneGraphNodeRenderPassManager;
     friend class Attorney::SceneGraphNodeRelationshipCache;
-    friend class Attorney::SceneGraphNodeScene;
 
 public:
 
@@ -115,6 +113,19 @@ public:
         COUNT = 8
     };
 
+    struct ChildContainer {
+        mutable SharedMutex _lock;
+        eastl::fixed_vector<SceneGraphNode*, 32, true, eastl::dvd_allocator> _data;
+        std::atomic_uint _count;
+
+        /// Return a specific child by index. Does not recurse.
+        SceneGraphNode* getChild(const U32 idx) {
+            assert(idx < _count.load());
+
+            SharedLock<SharedMutex> r_lock(_lock);
+            return _data[idx];
+        }
+    };
 public:
     /// Avoid creating SGNs directly. Use the "addChildNode" on an existing node (even root) or "addNode" on the existing SceneGraph
     explicit SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor);
@@ -151,38 +162,8 @@ public:
     /// Returns true if the specified target node is a parent or grandparent(if recursive == true) of the current node
     bool isChild(const SceneGraphNode* target, bool recursive) const;
 
-    /// Recursively call the delegate function on all children. Returns false if the loop was interrupted. Use start and end to only affect a range (useful for parallel algorithms)
-    template<class Predicate>
-    bool forEachChild(U32 start, U32 end, Predicate predicate) const;
-
-    template<class Predicate>
-    bool forEachChild(Predicate predicate) const;
-
-    /// A "locked" call assumes that either access is guaranteed thread-safe or that the child lock is already acquired
-    const vector<SceneGraphNode*>& getChildrenLocked() const noexcept { return _children; }
-
-    /// Return the current number of children that the current node has
-    U32 getChildCount() const noexcept { return _childCount.load(); }
-
-    void lockChildrenForWrite() const noexcept { _childLock.lock(); }
-
-    void unlockChildrenForWrite() const noexcept { _childLock.unlock(); }
-
-    void lockChildrenForRead() const noexcept { _childLock.lock_shared(); }
-
-    void unlockChildrenForRead() const noexcept { _childLock.unlock_shared(); }
-
-    /// Return a specific child by index. Does not recurse.
-    SceneGraphNode* getChild(const U32 idx) {
-        SharedLock<SharedMutex> r_lock(_childLock);
-        return _children[idx];
-    }
-
-    /// Return a specific child by index. Does not recurse.
-    const SceneGraphNode* getChild(const U32 idx) const {
-        SharedLock<SharedMutex> r_lock(_childLock);
-        return _children[idx];
-    }
+    ChildContainer& getChildren() noexcept { return _children; }
+    const ChildContainer& getChildren() const noexcept { return _children; }
 
     /// Called from parent SceneGraph
     void sceneUpdate(U64 deltaTimeUS, SceneState& sceneState);
@@ -290,8 +271,7 @@ private:
     void RemoveSGNComponentInternal(SGNComponent* comp);
 private:
     SGNRelationshipCache _relationshipCache;
-    vector<SceneGraphNode*> _children;
-    std::atomic_uint _childCount;
+    ChildContainer _children;
 
     // ToDo: Remove this HORRIBLE hack -Ionut
     struct hacks {
@@ -308,8 +288,6 @@ private:
         std::array<std::atomic_bool, EVENT_QUEUE_SIZE> _eventsFreeList;
         std::atomic_size_t _eventsCount = 0u;
     } Events;
-
-    mutable SharedMutex _childLock;
 
     POINTER_R(SceneGraph, sceneGraph, nullptr);
     PROPERTY_R(SceneNode_ptr, node, nullptr);
@@ -421,16 +399,6 @@ namespace Attorney {
         friend class Divide::SGNRelationshipCache;
     };
     
-    class SceneGraphNodeScene {
-        static void reserveChildCount(SceneGraphNode* node, const size_t count) {
-            node->lockChildrenForWrite();
-            node->_children.reserve(count);
-            node->unlockChildrenForWrite();
-        }
-
-        friend class Divide::Scene;
-
-    };
 };  // namespace Attorney
 
 

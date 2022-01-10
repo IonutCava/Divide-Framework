@@ -87,28 +87,28 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, c
     if (sceneState.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY) ||
         sceneState.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME))
     {
-        sceneGraph.getRoot()->lockChildrenForRead();
-        const vector<SceneGraphNode*>& rootChildren = sceneGraph.getRoot()->getChildrenLocked();
+        const SceneGraphNode::ChildContainer& rootChildren = sceneGraph.getRoot()->getChildren();
 
-        const U32 childCount = sceneGraph.getRoot()->getChildCount();
-        if (childCount > g_nodesPerCullingPartition * 2) {
-            ParallelForDescriptor descriptor = {};
-            descriptor._iterCount = childCount;
+        SharedLock<SharedMutex> r_lock(rootChildren._lock);
+        ParallelForDescriptor descriptor = {};
+        descriptor._iterCount = rootChildren._count.load();
+
+        if (descriptor._iterCount > g_nodesPerCullingPartition * 2) {
+
             descriptor._partitionSize = g_nodesPerCullingPartition;
             descriptor._priority = TaskPriority::DONT_CARE;
             descriptor._useCurrentThread = true;
             descriptor._cbk = [&](const Task*, const U32 start, const U32 end) {
                                 for (U32 i = start; i < end; ++i) {
-                                    frustumCullNode(rootChildren[i], params, cullFlags, 0u, nodeCache);
+                                    frustumCullNode(rootChildren._data[i], params, cullFlags, 0u, nodeCache);
                                 }
                             };
             parallel_for(context, descriptor);
         } else {
-            for (SceneGraphNode* node : rootChildren) {
-                frustumCullNode(node, params, cullFlags, 0u, nodeCache);
-            }
+            for (U32 i = 0u; i < descriptor._iterCount; ++i){
+                frustumCullNode(rootChildren._data[i], params, cullFlags, 0u, nodeCache);
+            };
         }
-        sceneGraph.getRoot()->unlockChildrenForRead();
     }
 
     const auto removeNodeOfType = [](VisibleNodeList<>& nodes, const SceneNodeType snType, ObjectType objType = ObjectType::COUNT) {
@@ -204,30 +204,29 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
             }
             // Parent node intersects the view, so check children
             if (collisionResult == FrustumCollision::FRUSTUM_INTERSECT) {
+                SceneGraphNode::ChildContainer& children = currentNode->getChildren();
 
-                const U32 childCount = currentNode->getChildCount();
-                if (childCount > 0u) {
-                    currentNode->lockChildrenForRead();
-                    const vector<SceneGraphNode*>& children = currentNode->getChildrenLocked();
+                ParallelForDescriptor descriptor = {};
+                descriptor._iterCount = children._count.load();
 
-                    if (childCount > g_nodesPerCullingPartition * 2) {
-                        ParallelForDescriptor descriptor = {};
-                        descriptor._iterCount = childCount;
+                if (descriptor._iterCount > 0u) {
+                    SharedLock<SharedMutex> r_lock(children._lock);
+
+                    if (descriptor._iterCount > g_nodesPerCullingPartition * 2) {
                         descriptor._partitionSize = g_nodesPerCullingPartition;
                         descriptor._priority = recursionLevel < 2 ? TaskPriority::DONT_CARE : TaskPriority::REALTIME;
                         descriptor._useCurrentThread = true;
                         descriptor._cbk = [&](const Task*, const U32 start, const U32 end) {
                             for (U32 i = start; i < end; ++i) {
-                                frustumCullNode(children[i], params, cullFlags, recursionLevel + 1, nodes);
+                                frustumCullNode(children._data[i], params, cullFlags, recursionLevel + 1, nodes);
                             }
                         };
                         parallel_for(currentNode->context(), descriptor);
                     } else {
-                        for (SceneGraphNode* child : children) {
-                            frustumCullNode(child, params, cullFlags, recursionLevel + 1, nodes);
+                        for (U32 i = 0u; i < descriptor._iterCount; ++i) {
+                            frustumCullNode(children._data[i], params, cullFlags, recursionLevel + 1, nodes);
                         };
                     }
-                    currentNode->unlockChildrenForRead();
                 }
             } else {
                 // All nodes are in view entirely
@@ -240,9 +239,12 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
 void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, VisibleNodeList<>& nodes) const {
     OPTICK_EVENT();
 
-    currentNode->lockChildrenForRead();
-    const vector<SceneGraphNode*>& children = currentNode->getChildrenLocked();
-    for (SceneGraphNode* child : children) {
+    const SceneGraphNode::ChildContainer& children = currentNode->getChildren();
+    SharedLock<SharedMutex> r_lock(children._lock);
+
+    const U32 childCount = children._count.load();
+    for (U32 i = 0u; i < childCount; ++i) {
+        SceneGraphNode* child = children._data[i];
         if (params._stage == RenderStage::DISPLAY) {
             Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(child, false);
         }
@@ -274,7 +276,6 @@ void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const N
             addAllChildren(child, params, cullFlags, nodes);
         }
     }
-    currentNode->unlockChildrenForRead();
 }
 
 void RenderPassCuller::frustumCull(const NodeCullParams& params, const U16 cullFlags, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut) const {

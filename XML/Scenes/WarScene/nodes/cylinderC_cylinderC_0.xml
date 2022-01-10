@@ -34,8 +34,8 @@
         <RenderStates>
             <1>
                 <colourWrite r="true" g="true" b="false" a="false"/>
-                <zBias>0</zBias>
-                <zUnits>0</zUnits>
+                <zBias>1.10000002</zBias>
+                <zUnits>4</zUnits>
                 <zFunc>LESS</zFunc>
                 <tessControlPoints>3</tessControlPoints>
                 <cullMode>None</cullMode>

@@ -70,11 +70,14 @@ void SGNRelationshipCache::updateParents(U16 level, Cache& cache) const {
 }
 
 void SGNRelationshipCache::updateChildrenLocked(const U16 level, Cache& cache) const {
-    _parentNode->forEachChild([level, &cache](const SceneGraphNode* child, I32 /*childIdx*/) {
+    const SceneGraphNode::ChildContainer& children = _parentNode->getChildren();
+    SharedLock<SharedMutex> w_lock(children._lock);
+    const U32 childCount = children._count;
+    for (U32 i = 0u; i < childCount; ++i) {
+        SceneGraphNode* child = children._data[i];
         cache.emplace_back(CacheEntry{ child->getGUID(), level });
         Attorney::SceneGraphNodeRelationshipCache::relationshipCache(child).updateChildrenLocked(level + 1u, cache);
-        return true;
-    });
+    }
 }
 
 void SGNRelationshipCache::updateParentsLocked(const U16 level, Cache& cache) const {

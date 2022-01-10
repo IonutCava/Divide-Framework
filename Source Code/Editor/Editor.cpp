@@ -843,14 +843,6 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
         return;
     }
 
-    GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-    beginRenderPassTransparentCmd->_name = "DO_EDITOR_POST_RENDER_PASS";
-    beginRenderPassTransparentCmd->_target = target;
-    SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 1, false);
-    SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 2, false);
-    SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
-    GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ cameraSnapshot });
-
     if (running() && infiniteGridEnabled() && _infiniteGridPrimitive && _isScenePaused) {
         _infiniteGridPrimitive->pipeline(*_infiniteGridPipeline);
         if (_gridSettingsDirty) {
@@ -871,92 +863,87 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
         // Reset blend states
         GFX::EnqueueCommand(bufferInOut, GFX::SetBlendStateCommand{});
     }
-    {
-        // Debug axis form the axis arrow gizmo in the corner of the screen
-        // This is toggleable, so check if it's actually requested
-        if (sceneGizmoEnabled()) {
-            if (!_axisGizmo) {
-                _axisGizmo = _context.gfx().newIMP();
-                _axisGizmo->name("EditorDeviceAxisGizmo");
-                _axisGizmo->pipeline(*_axisGizmoPipeline);
 
-                const auto addValAnd10Percent = [](const F32 val) { return val + ((val + 10) / 100.f); };
-                const auto addValMinus20Percent = [](const F32 val) { return val - ((val + 20) / 100.f); };
+    // Debug axis form the axis arrow gizmo in the corner of the screen
+    // This is toggleable, so check if it's actually requested
+    if (sceneGizmoEnabled()) {
+        if (!_axisGizmo) {
+            _axisGizmo = _context.gfx().newIMP();
+            _axisGizmo->name("EditorDeviceAxisGizmo");
+            _axisGizmo->pipeline(*_axisGizmoPipeline);
 
-                std::array<IMPrimitive::ConeDescriptor, 6> descriptors;
-                descriptors[0].slices = 4u;
-                descriptors[1].slices = 4u;
-                descriptors[2].slices = 4u;
-                descriptors[3].slices = 4u;
-                descriptors[4].slices = 4u;
-                descriptors[5].slices = 4u;
+            const auto addValAnd10Percent = [](const F32 val) { return val + ((val + 10) / 100.f); };
+            const auto addValMinus20Percent = [](const F32 val) { return val - ((val + 20) / 100.f); };
 
-                // Shafts
-                descriptors[0].direction = WORLD_X_NEG_AXIS;
-                descriptors[1].direction = WORLD_Y_NEG_AXIS;
-                descriptors[2].direction = WORLD_Z_NEG_AXIS;
-
-                descriptors[0].length = 2.0f;
-                descriptors[1].length = 2.5f;
-                descriptors[2].length = 2.0f;
-
-                descriptors[0].root = VECTOR3_ZERO + vec3<F32>(addValAnd10Percent(descriptors[0].length), 0.f, 0.f);
-                descriptors[1].root = VECTOR3_ZERO + vec3<F32>(0.f, addValAnd10Percent(descriptors[1].length), 0.f);
-                descriptors[2].root = VECTOR3_ZERO + vec3<F32>(0.f, 0.f, addValAnd10Percent(descriptors[2].length));
-
-                descriptors[0].radius = 0.05f;
-                descriptors[1].radius = 0.05f;
-                descriptors[2].radius = 0.05f;
-
-                descriptors[0].colour = UColour4(255, 0,   0,   255);
-                descriptors[1].colour = UColour4(0,   255, 0,   255);
-                descriptors[2].colour = UColour4(0,   0,   255, 255);
-
-                // Arrow heads
-                descriptors[3].direction = WORLD_X_NEG_AXIS;
-                descriptors[4].direction = WORLD_Y_NEG_AXIS;
-                descriptors[5].direction = WORLD_Z_NEG_AXIS;
-
-                descriptors[3].length = 0.5f;
-                descriptors[4].length = 0.5f;
-                descriptors[5].length = 0.5f;
-
-                descriptors[3].root = VECTOR3_ZERO + vec3<F32>(addValMinus20Percent(descriptors[0].length) + 0.50f, 0.f, 0.f);
-                descriptors[4].root = VECTOR3_ZERO + vec3<F32>(0.f, addValMinus20Percent(descriptors[1].length) - 0.35f, 0.f);
-                descriptors[5].root = VECTOR3_ZERO + vec3<F32>(0.f, 0.f, addValMinus20Percent(descriptors[2].length) + 0.50f);
-
-                descriptors[3].radius = 0.15f;
-                descriptors[4].radius = 0.15f;
-                descriptors[5].radius = 0.15f; 
-
-                descriptors[3].colour = UColour4(255, 0,   0,   255);
-                descriptors[4].colour = UColour4(0,   255, 0,   255);
-                descriptors[5].colour = UColour4(0,   0,   255, 255);
-
-                _axisGizmo->fromCones(descriptors);
+            std::array<IMPrimitive::ConeDescriptor, 6> descriptors;
+            for (IMPrimitive::ConeDescriptor& descriptor : descriptors) {
+                descriptor.slices = 4u;
+                descriptor.noCull = true;
             }
 
-            // Apply the inverse view matrix so that it cancels out in the shader
-            // Submit the draw command, rendering it in a tiny viewport in the lower
-            // right corner
-            const U16 windowWidth = _context.gfx().renderTargetPool().renderTarget(target).getWidth();
-            _axisGizmo->viewport(Rect<I32>(windowWidth - 250, 6, 256, 256));
+            // Shafts
+            descriptors[0].direction = WORLD_X_NEG_AXIS;
+            descriptors[1].direction = WORLD_Y_NEG_AXIS;
+            descriptors[2].direction = WORLD_Z_NEG_AXIS;
 
-            // We need to transform the gizmo so that it always remains axis aligned
-            // Create a world matrix using a look at function with the eye position
-            // backed up from the camera's view direction
-            const mat4<F32>& viewMatrix = cameraSnapshot._viewMatrix;
+            descriptors[0].length = 2.0f;
+            descriptors[1].length = 2.5f;
+            descriptors[2].length = 2.0f;
 
-            _axisGizmo->worldMatrix(mat4<F32>(-viewMatrix.getForwardVec() * 5,
-                                               VECTOR3_ZERO,
-                                               viewMatrix.getUpVec()) * cameraSnapshot._invViewMatrix);
-            bufferInOut.add(_axisGizmo->toCommandBuffer());
-        } else if (_axisGizmo) {
-            _context.gfx().destroyIMP(_axisGizmo);
+            descriptors[0].root = VECTOR3_ZERO + vec3<F32>(addValAnd10Percent(descriptors[0].length), 0.f, 0.f);
+            descriptors[1].root = VECTOR3_ZERO + vec3<F32>(0.f, addValAnd10Percent(descriptors[1].length), 0.f);
+            descriptors[2].root = VECTOR3_ZERO + vec3<F32>(0.f, 0.f, addValAnd10Percent(descriptors[2].length));
+
+            descriptors[0].radius = 0.05f;
+            descriptors[1].radius = 0.05f;
+            descriptors[2].radius = 0.05f;
+
+            descriptors[0].colour = UColour4(255, 0,   0,   255);
+            descriptors[1].colour = UColour4(0,   255, 0,   255);
+            descriptors[2].colour = UColour4(0,   0,   255, 255);
+
+            // Arrow heads
+            descriptors[3].direction = WORLD_X_NEG_AXIS;
+            descriptors[4].direction = WORLD_Y_NEG_AXIS;
+            descriptors[5].direction = WORLD_Z_NEG_AXIS;
+
+            descriptors[3].length = 0.5f;
+            descriptors[4].length = 0.5f;
+            descriptors[5].length = 0.5f;
+
+            descriptors[3].root = VECTOR3_ZERO + vec3<F32>(addValMinus20Percent(descriptors[0].length) + 0.50f, 0.f, 0.f);
+            descriptors[4].root = VECTOR3_ZERO + vec3<F32>(0.f, addValMinus20Percent(descriptors[1].length) - 0.35f, 0.f);
+            descriptors[5].root = VECTOR3_ZERO + vec3<F32>(0.f, 0.f, addValMinus20Percent(descriptors[2].length) + 0.50f);
+
+            descriptors[3].radius = 0.15f;
+            descriptors[4].radius = 0.15f;
+            descriptors[5].radius = 0.15f; 
+
+            descriptors[3].colour = UColour4(255, 0,   0,   255);
+            descriptors[4].colour = UColour4(0,   255, 0,   255);
+            descriptors[5].colour = UColour4(0,   0,   255, 255);
+
+            _axisGizmo->fromCones(descriptors);
         }
+
+        // Apply the inverse view matrix so that it cancels out in the shader
+        // Submit the draw command, rendering it in a tiny viewport in the lower
+        // right corner
+        const U16 windowWidth = _context.gfx().renderTargetPool().renderTarget(target).getWidth();
+        _axisGizmo->viewport(Rect<I32>(windowWidth - 250, 6, 256, 256));
+
+        // We need to transform the gizmo so that it always remains axis aligned
+        // Create a world matrix using a look at function with the eye position
+        // backed up from the camera's view direction
+        const mat4<F32>& viewMatrix = cameraSnapshot._viewMatrix;
+
+        _axisGizmo->worldMatrix(mat4<F32>(-viewMatrix.getForwardVec() * 5,
+                                            VECTOR3_ZERO,
+                                            viewMatrix.getUpVec()) * cameraSnapshot._invViewMatrix);
+        bufferInOut.add(_axisGizmo->toCommandBuffer());
+    } else if (_axisGizmo) {
+        _context.gfx().destroyIMP(_axisGizmo);
     }
-    GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
-    GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 }
 
 void Editor::drawScreenOverlay(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) const {

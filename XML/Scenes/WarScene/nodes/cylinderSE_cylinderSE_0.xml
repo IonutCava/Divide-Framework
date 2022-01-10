@@ -18,7 +18,7 @@
         <colour r="0.639999986" g="0.639999986" b="0.639999986" a="1"/>
         <emissive r="0" g="0" b="0"/>
         <ambient r="0" g="0" b="0"/>
-        <specular r="0.5" g="0.5" b="0.5" a="6.30000019"/>
+        <specular r="0.5" g="0.5" b="0.5" a="12.2980394"/>
         <specular_factor>0</specular_factor>
         <glossiness_factor>0</glossiness_factor>
         <metallic>0</metallic>
@@ -34,8 +34,8 @@
         <RenderStates>
             <1>
                 <colourWrite r="true" g="true" b="false" a="false"/>
-                <zBias>0</zBias>
-                <zUnits>0</zUnits>
+                <zBias>1.10000002</zBias>
+                <zUnits>4</zUnits>
                 <zFunc>LESS</zFunc>
                 <tessControlPoints>3</tessControlPoints>
                 <cullMode>None</cullMode>

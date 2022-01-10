@@ -384,7 +384,8 @@ void IMPrimitive::texture(const Texture& texture, const size_t samplerHash) {
 }
 
 GFX::CommandBuffer& IMPrimitive::toCommandBuffer() const {
-    if (_cmdBufferDirty) {
+    if (_cmdBufferDirty)
+    {
         _cmdBuffer->clear();
 
         DIVIDE_ASSERT(_pipeline->shaderProgramHandle() != 0, "IMPrimitive error: Draw call received without a valid shader defined!");

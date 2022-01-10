@@ -56,6 +56,10 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     _power[1] = config.HalfRes.Power;
     _bias[0] = config.FullRes.Bias;
     _bias[1] = config.HalfRes.Bias;
+    _maxRange[0] = config.FullRes.MaxRange;
+    _maxRange[1] = config.HalfRes.MaxRange;
+    _fadeStart[0] = config.FullRes.FadeDistance;
+    _fadeStart[1] = config.HalfRes.FadeDistance;
 
     std::array<vec3<F32>, SQUARED(SSAO_NOISE_SIZE)> noiseData;
 

@@ -33,8 +33,8 @@ void main() {
     const vec3 minPoint_vS = screen2View(minPoint_sS);
 
     //Near and far values of the cluster in view space
-    const float tileNear = -zNear * pow(zFar / zNear,  gl_GlobalInvocationID.z      / float(CLUSTERS_Z));
-    const float tileFar  = -zNear * pow(zFar / zNear, (gl_GlobalInvocationID.z + 1) / float(CLUSTERS_Z));
+    const float tileNear = 2.f * (-zNear * pow(zFar / zNear,  gl_GlobalInvocationID.z      / float(CLUSTERS_Z))) - 1.f;
+    const float tileFar  = 2.f * (-zNear * pow(zFar / zNear, (gl_GlobalInvocationID.z + 1) / float(CLUSTERS_Z))) - 1.f;
 
     //Finding the 4 intersection points made from the maxPoint to the cluster near/far plane
     const vec3 minPointNear = lineIntersectionToZPlane(eyePos, minPoint_vS, tileNear);
@@ -42,8 +42,8 @@ void main() {
     const vec3 maxPointNear = lineIntersectionToZPlane(eyePos, maxPoint_vS, tileNear);
     const vec3 maxPointFar  = lineIntersectionToZPlane(eyePos, maxPoint_vS, tileFar);
 
-    const vec3 minPointAABB = min(min(minPointNear, minPointFar), min(maxPointNear, maxPointFar));
-    const vec3 maxPointAABB = max(max(minPointNear, minPointFar), max(maxPointNear, maxPointFar));
+    vec3 minPointAABB = min(min(minPointNear, minPointFar), min(maxPointNear, maxPointFar));
+    vec3 maxPointAABB = max(max(minPointNear, minPointFar), max(maxPointNear, maxPointFar));
 
     lightClusterAABBs[clusterIndex].minPoint = vec4(minPointAABB, 0.f);
     lightClusterAABBs[clusterIndex].maxPoint = vec4(maxPointAABB, 0.f);
@@ -65,12 +65,11 @@ vec3 lineIntersectionToZPlane(vec3 A, vec3 B, float zDistance) {
 }
 
 vec3 screen2View(in vec4 coord) {
-    const vec3 ndc = vec3
+    vec3 ndc = vec3
     (
         2.f * (coord.x - dvd_ViewPort.x) / dvd_ViewPort.z - 1.f,
         2.f * (coord.y - dvd_ViewPort.y) / dvd_ViewPort.w - 1.f,
         2.f * coord.z - 1.f // -> [-1, 1]
     );
-
     return homogenize(dvd_InverseProjectionMatrix * vec4(ndc, 1.f));
 }

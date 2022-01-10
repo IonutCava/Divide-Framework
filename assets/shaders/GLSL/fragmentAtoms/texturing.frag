@@ -61,9 +61,12 @@ vec4 textureNoTile(sampler2D samp, in vec2 uv) {
     vec2 b = smoothstep(0.25f, 0.75f, fuv);
 
     return mix(mix(textureGrad(samp, uva, ddxa, ddya),
-        textureGrad(samp, uvb, ddxb, ddyb), b.x),
-        mix(textureGrad(samp, uvc, ddxc, ddyc),
-            textureGrad(samp, uvd, ddxd, ddyd), b.x), b.y);
+                   textureGrad(samp, uvb, ddxb, ddyb),
+                   b.x),
+               mix(textureGrad(samp, uvc, ddxc, ddyc),
+                   textureGrad(samp, uvd, ddxd, ddyd),
+                   b.x),
+               b.y);
 }
 
 vec4 textureNoTile(sampler2DArray samp, in vec3 uvIn) {
@@ -97,9 +100,12 @@ vec4 textureNoTile(sampler2DArray samp, in vec3 uvIn) {
     vec2 b = smoothstep(0.25f, 0.75f, fuv);
 
     return mix(mix(textureGrad(samp, vec3(uva, uvIn.z), ddxa, ddya),
-        textureGrad(samp, vec3(uvb, uvIn.z), ddxb, ddyb), b.x),
-        mix(textureGrad(samp, vec3(uvc, uvIn.z), ddxc, ddyc),
-            textureGrad(samp, vec3(uvd, uvIn.z), ddxd, ddyd), b.x), b.y);
+                   textureGrad(samp, vec3(uvb, uvIn.z), ddxb, ddyb),
+                   b.x),
+               mix(textureGrad(samp, vec3(uvc, uvIn.z), ddxc, ddyc),
+                   textureGrad(samp, vec3(uvd, uvIn.z), ddxd, ddyd),
+                   b.x),
+               b.y);
 }
 
 vec4 textureNoTile(sampler2D samp, sampler2DArray noiseSampler, in int noiseSamplerIdx, in vec2 uv, in float v) {

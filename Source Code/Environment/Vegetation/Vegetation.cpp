@@ -430,11 +430,6 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     shaderDescriptorShadow._modules.push_back(vertModule);
     shaderDescriptorShadow._modules.push_back(fragModule);
     shaderDescriptorShadow._name = "grassShadow";
-    
-    ShaderProgramDescriptor shaderDescriptorShadowOrtho = shaderDescriptorShadow;
-    shaderDescriptorShadowOrtho._modules.back()._variant += ".ORTHO";
-    shaderDescriptorShadowOrtho._modules.back()._defines.emplace_back("ORTHO_PROJECTION", true);
-    shaderDescriptorShadowOrtho._name = "grassShadowOrtho";
 
     ShaderModuleDescriptor compModule = {};
     compModule._moduleType = ShaderType::COMPUTE;
@@ -467,7 +462,6 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     vegMaterial->setShaderProgram(shaderDescriptorPrePass,       RenderStage::DISPLAY, RenderPassType::PRE_PASS);
     vegMaterial->setShaderProgram(shaderOitDescriptor,           RenderStage::COUNT,   RenderPassType::OIT_PASS);
     vegMaterial->setShaderProgram(shaderDescriptorShadow,        RenderStage::SHADOW,  RenderPassType::COUNT);
-    vegMaterial->setShaderProgram(shaderDescriptorShadowOrtho,   RenderStage::SHADOW,  RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL));
 
     vegMaterial->setTexture(TextureUsage::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE, TexturePrePassUsage::ALWAYS);
     s_vegetationMaterial = vegMaterial;
@@ -615,12 +609,13 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
         tComp->setPositionZ(offset.y + offset.w * 0.5f);
         tComp->setScale(_treeScales[meshID]);
 
-        _treeParentNode->forEachChild([ID](SceneGraphNode* child, I32 /*childIdx*/) {
-            RenderingComponent* rComp = child->get<RenderingComponent>();
+        const SceneGraphNode::ChildContainer& children = _treeParentNode->getChildren();
+        const U32 childCount = children._count;
+        for (U32 i = 0u; i < childCount; ++i) {
+            RenderingComponent* rComp = children._data[i]->get<RenderingComponent>();
             rComp->dataFlag(to_F32(ID));
             rComp->occlusionCull(false);
-            return true;
-        });
+        }
 
         const BoundingBox aabb = _treeParentNode->get<BoundsComponent>()->updateAndGetBoundingBox();
         BoundingSphere bs;
@@ -759,11 +754,12 @@ void Vegetation::sceneUpdate(const U64 deltaTimeUS,
         if (!COMPARE(sceneTreeDistance, _treeDistance)) {
             _treeDistance = sceneTreeDistance;
             if (_treeParentNode != nullptr) {
-                _treeParentNode->forEachChild([sceneTreeDistance](SceneGraphNode* child, I32 /*childIdx*/) {
-                    RenderingComponent* rComp = child->get<RenderingComponent>();
+                const SceneGraphNode::ChildContainer& children = _treeParentNode->getChildren();
+                const U32 childCount = children._count;
+                for (U32 i = 0u; i < childCount; ++i) {
+                    RenderingComponent* rComp = children._data[i]->get<RenderingComponent>();
                     rComp->setMaxRenderRange(sceneTreeDistance);
-                    return true;
-                });
+                }
             }
         }
     }

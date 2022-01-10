@@ -101,7 +101,7 @@ class Camera : public Resource {
    public:
      virtual ~Camera() = default;
 
-    virtual void fromCamera(const Camera& camera, bool flag = false);
+    virtual void fromCamera(const Camera& camera);
     virtual void fromSnapshot(const CameraSnapshot& snapshot);
     [[nodiscard]] const CameraSnapshot& snapshot() const noexcept;
 
@@ -202,9 +202,6 @@ class Camera : public Resource {
 
     [[nodiscard]] bool removeUpdateListener(U32 id);
     [[nodiscard]] U32 addUpdateListener(const CameraListener& f);
-
-                  void flag(const U8 flag)       noexcept { _data._flag = flag; }
-    [[nodiscard]] U8   flag()              const noexcept { return _data._flag; }
 
     virtual void saveToXML(boost::property_tree::ptree& pt, string prefix = "") const;
     virtual void loadFromXML(const boost::property_tree::ptree& pt, string prefix = "");

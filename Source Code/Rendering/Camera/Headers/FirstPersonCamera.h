@@ -46,8 +46,6 @@ class FirstPersonCamera final : public FreeFlyCamera {
 
     static constexpr CameraType Type() noexcept { return CameraType::FIRST_PERSON; }
 
-    void fromCamera(const Camera& camera, bool flag = false) override;
-
     void saveToXML(boost::property_tree::ptree& pt, string prefix = "") const override;
     void loadFromXML(const boost::property_tree::ptree& pt, string prefix = "") override;
 };

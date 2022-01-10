@@ -111,6 +111,7 @@ void Light::registerFields(EditorComponent& comp) {
     shadowBiasField._data = &_shadowProperties._lightDetails.z;
     shadowBiasField._type = EditorComponentFieldType::SLIDER_TYPE;
     shadowBiasField._readOnly = false;
+    shadowBiasField._format = "%.5f";
     shadowBiasField._range = { std::numeric_limits<F32>::epsilon(), 1.0f };
     shadowBiasField._basicType = GFX::PushConstantType::FLOAT;
     comp.registerField(MOV(shadowBiasField));

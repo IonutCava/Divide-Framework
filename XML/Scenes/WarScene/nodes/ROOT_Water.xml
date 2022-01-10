@@ -45,8 +45,8 @@
         <RenderStates>
             <1>
                 <colourWrite r="true" g="true" b="false" a="false"/>
-                <zBias>0</zBias>
-                <zUnits>0</zUnits>
+                <zBias>1.10000002</zBias>
+                <zUnits>4</zUnits>
                 <zFunc>LESS</zFunc>
                 <tessControlPoints>3</tessControlPoints>
                 <cullMode>CW/BACK</cullMode>
@@ -284,7 +284,7 @@
                 <UseForPrePass>2</UseForPrePass>
             </REFLECTION_PLANAR>
             <REFRACTION_PLANAR>
-                <name>FBO_Refraction_Planar_0_Att_Colour_0_93</name>
+                <name>FBO_Refraction_Planar_0_Att_Colour_0_103</name>
                 <path/>
                 <usage>REPLACE</usage>
                 <Sampler>

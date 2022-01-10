@@ -10,13 +10,15 @@ namespace Divide {
 void RenderingComponent::toggleRenderOption(RenderOptions option, bool state, bool recursive) {
     if (renderOptionEnabled(option) != state) {
         if (recursive) {
-            _parentSGN->forEachChild([option, state, recursive](const SceneGraphNode* child, I32 /*childIdx*/) {
-                RenderingComponent* const renderable = child->get<RenderingComponent>();
+            const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
+            SharedLock<SharedMutex> w_lock(children._lock);
+            const U32 childCount = children._count;
+            for (U32 i = 0u; i < childCount; ++i) {
+                RenderingComponent* const renderable = children._data[i]->get<RenderingComponent>();
                 if (renderable) {
                     renderable->toggleRenderOption(option, state, recursive);
                 }
-                return true;
-            });
+            }
         }
 
         if (state) {
@@ -42,13 +44,15 @@ bool RenderingComponent::renderOptionsEnabledANY(const U32 mask) const noexcept 
 
 void RenderingComponent::toggleBoundsDraw(const bool showAABB, const bool showBS, const bool showOBB, bool recursive) {
     if (recursive) {
-        _parentSGN->forEachChild([showAABB, showBS, showOBB, recursive](const SceneGraphNode* child, I32 /*childIdx*/) {
-            RenderingComponent* const renderable = child->get<RenderingComponent>();
+        const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
+        SharedLock<SharedMutex> w_lock(children._lock);
+        const U32 childCount = children._count;
+        for (U32 i = 0u; i < childCount; ++i) {
+            RenderingComponent* const renderable = children._data[i]->get<RenderingComponent>();
             if (renderable) {
                 renderable->toggleBoundsDraw(showAABB, showBS, showOBB, recursive);
             }
-            return true;
-        });
+        }
     }
     _drawAABB = showAABB;
     _drawBS = showBS;

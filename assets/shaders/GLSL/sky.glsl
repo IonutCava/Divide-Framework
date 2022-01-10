@@ -693,6 +693,7 @@ void main() {
         case DEBUG_CSM_SPLITS:    ret = vec3(1.0f); break;
         case DEBUG_LIGHT_HEATMAP:
         case DEBUG_DEPTH_CLUSTERS:
+        case DEBUG_DEPTH_CLUSTER_AABBS:
         case DEBUG_REFRACTIONS:
         case DEBUG_REFLECTIONS:
         case DEBUG_MATERIAL_IDS:

@@ -359,7 +359,7 @@ namespace Divide {
 
                 ImGui::NewLine();
                 ImGui::SameLine(xOffset);
-                if (ImGui::Button("INSPECT", ImVec2(smallButtonWidth, 20))) {
+                if (ImGui::Button(ICON_FK_SEARCH" INSPECT", ImVec2(smallButtonWidth, 20))) {
                     Attorney::EditorGeneralWidget::inspectMemory(_context.editor(), std::make_pair(comp, sizeof(EditorComponent)));
                 }
                 if (!isLockedField && comp->parentComponentType() != ComponentType::COUNT && !IsRequiredComponentType(sgnNode, comp->parentComponentType())) {
@@ -508,8 +508,8 @@ namespace Divide {
     }
 
     void PropertyWindow::drawInternal() {
-        constexpr F32 buttonWidth = 80.0f;
-        constexpr F32 smallButtonWidth = 60.0f;
+        constexpr F32 buttonWidth = 90.0f;
+        constexpr F32 smallButtonWidth = 70.0f;
 
         skipAutoTooltip(false);
 
@@ -1014,19 +1014,39 @@ namespace Divide {
         }
 
         bool ret = false;
-        static RenderStagePass currentStagePass = {};
+        static RenderStagePass currentStagePass{RenderStage::DISPLAY, RenderPassType::MAIN_PASS};
         {
-            I32 crtStage = to_I32(currentStagePass._stage);
             const char* crtStageName = TypeUtil::RenderStageToString(currentStagePass._stage);
-            if (ImGui::SliderInt("Stage", &crtStage, 0, to_base(RenderStage::COUNT), crtStageName)) {
-                currentStagePass._stage = static_cast<RenderStage>(crtStage);
+            const char* crtPassName = TypeUtil::RenderPassTypeToString(currentStagePass._passType);
+            if (ImGui::BeginCombo("Stage", crtStageName, ImGuiComboFlags_PopupAlignLeft)) {
+                for (U8 n = 0; n < to_U8(RenderStage::COUNT); ++n) {
+                    const RenderStage mode = static_cast<RenderStage>(n);
+                    const bool isSelected = currentStagePass._stage == mode;
+
+                    if (ImGui::Selectable(TypeUtil::RenderStageToString(mode), isSelected)) {
+                        currentStagePass._stage = mode;
+                    }
+                    if (isSelected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            if (ImGui::BeginCombo("PassType", crtPassName, ImGuiComboFlags_PopupAlignLeft)) {
+                for (U8 n = 0; n < to_U8(RenderPassType::COUNT); ++n) {
+                    const RenderPassType pass = static_cast<RenderPassType>(n);
+                    const bool isSelected = currentStagePass._passType == pass;
+
+                    if (ImGui::Selectable(TypeUtil::RenderPassTypeToString(pass), isSelected)) {
+                        currentStagePass._passType = pass;
+                    }
+                    if (isSelected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
             }
 
-            I32 crtPass = to_I32(currentStagePass._passType);
-            const char* crtPassName = TypeUtil::RenderPassTypeToString(currentStagePass._passType);
-            if (ImGui::SliderInt("PassType", &crtPass, 0, to_base(RenderPassType::COUNT), crtPassName)) {
-                currentStagePass._passType = static_cast<RenderPassType>(crtPass);
-            }
             {
                 constexpr U8 min = 0u, max = to_U8(RenderStagePass::VariantType::COUNT);
                 ImGui::SliderScalar("Variant", ImGuiDataType_U8, &currentStagePass._variant, &min, &max);
@@ -1103,7 +1123,7 @@ namespace Divide {
             bool changed = false;
             {
                 P32 colourWrite = block.colourWrite();
-                constexpr char* const names[] = { "R", "G", "B", "A" };
+                constexpr const char* const names[] = { "R", "G", "B", "A" };
 
                 for (U8 i = 0; i < 4; ++i) {
                     if (i > 0) {

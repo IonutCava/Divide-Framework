@@ -439,14 +439,17 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
         Console::printfn(Locale::Get(_ID("NAV_MESH_ADD_NODE")), resourceName);
     }
 
-
 next: // although labels are bad, skipping here using them is the easiest solution to follow -Ionut
-    return !sgn->forEachChild([&outData](SceneGraphNode* child, I32 /*childIdx*/) {
-                if (!Parse(child->get<BoundsComponent>()->getBoundingBox(), outData, child)) {
-                    return false;
-                }
-                return true;
-            });
+    const SceneGraphNode::ChildContainer& children = sgn->getChildren();
+    const U32 childCount = children._count;
+    for (U32 i = 0u; i < childCount; ++i) {
+        SceneGraphNode* child = children._data[i];
+        if (!Parse(child->get<BoundsComponent>()->getBoundingBox(), outData, child)) {
+            return false;
+        }
+    }
 
+    return true;
 }
+
 }  // namespace Divide::AI::Navigation::NavigationMeshLoader

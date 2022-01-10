@@ -28,6 +28,7 @@ namespace Divide {
                 descriptor.direction = comp->directionCache();
                 descriptor.length = comp->range();
                 descriptor.radius = 2.f;
+                descriptor.noCull = true;
                 descriptor.colour = Util::ToByteColour(comp->getDiffuseColour());
                 context().gfx().debugDrawCone(comp->getGUID() + 0, descriptor);
             }

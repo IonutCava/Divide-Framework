@@ -37,8 +37,6 @@ vec4 LUTCorrect(in vec4 colourIn) {
     return colourIn;
 }
 
-#define LevelOfGrey(C) vec4(C.rgb * _kLum, C.a)
-
 vec4 Noise(in vec4 colourIn){
     return mix(texture(texNoise, VAR._texCoord + vec2(randomCoeffNoise, randomCoeffNoise)),
                vec4(1.0), randomCoeffFlash) / 3.f + 2.f * LevelOfGrey(colourIn) / 3.f;
@@ -46,7 +44,7 @@ vec4 Noise(in vec4 colourIn){
 
 vec4 Underwater() {
     //ToDo: Move this code, and the one in water.glsl, to a common header (like utility.frag) in a function that both shaders can use
-    const float time2 = MSToSeconds(dvd_time) * 0.05f;
+    const float time2 = MSToSeconds(dvd_time) * 0.015f;
     const vec2 uvNormal0 = (VAR._texCoord * _noiseTile) + vec2( time2, time2);
     const vec2 uvNormal1 = (VAR._texCoord * _noiseTile) + vec2(-time2, time2);
 
@@ -55,7 +53,7 @@ vec4 Underwater() {
     const vec3 normal = normalize((normal0 + normal1) * 0.5f);
 
     const vec2 coords = VAR._texCoord + (normal.xy * _noiseFactor);
-    return clamp(texture(texScreen, coords) * vec4(0.35f), vec4(0.f), vec4(1.f));
+    return saturate(texture(texScreen, coords) * vec4(0.35f));
 }
 
 void main(void){

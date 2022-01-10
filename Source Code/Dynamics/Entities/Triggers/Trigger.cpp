@@ -20,13 +20,13 @@ Trigger::Trigger(ResourceCache* parentCache, const size_t descriptorHash, const 
 void Trigger::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) {
     if (_drawImpostor) {
         /// update dummy position if it is so
-        sgn->getChild(0)->get<TransformComponent>()->setPosition(_triggerPosition);
         IMPrimitive::SphereDescriptor descriptor;
         descriptor.center = _triggerPosition;
         descriptor.radius = _radius;
         descriptor.colour = DefaultColours::RED_U8;
         sgn->context().gfx().debugDrawSphere(getGUID() + 0, descriptor);
-        sgn->getChild(0)->setFlag(SceneGraphNode::Flags::ACTIVE);
+        sgn->getChildren().getChild(0)->get<TransformComponent>()->setPosition(_triggerPosition);
+        sgn->getChildren().getChild(0)->setFlag(SceneGraphNode::Flags::ACTIVE);
     }
 }
 

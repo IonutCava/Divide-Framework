@@ -446,15 +446,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
         shadowDescriptorVSM._name = "Terrain_ShadowVSM-" + name + propName;
 
-        ShaderProgramDescriptor shadowDescriptorVSMOrtho = shadowDescriptorVSM;
-        for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
-            if (shaderModule._moduleType == ShaderType::FRAGMENT) {
-                shaderModule._variant += ".ORTHO";
-                shaderModule._defines.emplace_back("ORTHO_PROJECTION", true);
-            }
-        }
-        shadowDescriptorVSMOrtho._name = "Terrain_ShadowVSM_ORTHO-" + name + propName;
-
         // MAIN PASS
         ShaderProgramDescriptor colourDescriptor = shaderDescriptor;
         if (hasParallax) {
@@ -515,7 +506,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         matInstance->setShaderProgram(lowQualityDescriptorReflect, RenderStage::REFLECTION, RenderPassType::MAIN_PASS);
         matInstance->setShaderProgram(colourDescriptor,            RenderStage::DISPLAY,    RenderPassType::MAIN_PASS);
         matInstance->setShaderProgram(shadowDescriptorVSM,         RenderStage::SHADOW,     RenderPassType::COUNT);
-        matInstance->setShaderProgram(shadowDescriptorVSMOrtho,    RenderStage::SHADOW,     RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::DIRECTIONAL));
     };
 
     buildShaders(terrainMaterial.get());

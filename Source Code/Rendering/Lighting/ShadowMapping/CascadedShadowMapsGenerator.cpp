@@ -370,7 +370,7 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
       75.0f,
       125.0f
     };
-
+    GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true; //Ortho camera
     for (U8 i = numSplits - 1; i < numSplits; i--) {
         params._layerParams._layer = i;
         params._passName = Util::StringFormat("CSM_PASS_%d", i).c_str();

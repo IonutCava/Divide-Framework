@@ -46,15 +46,9 @@ void main() {
         for (int i = 0; i < 9; i++) {
             vec2 pos = coord + offsets[i] * texel;
             depth = max(depth,
-    #if 1
                 texelFetch(depthTex,
                            clamp(ivec2(pos * lodSize), ivec2(0), lodSize - ivec2(1)),
                            depthLoD).r
-    #else
-                textureLod(depthTex,
-                           pos,
-                           depthLoD).r
-    #endif
             );
         }
     }

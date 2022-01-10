@@ -100,6 +100,10 @@ bool HiZCull(const in vec3 position, const in float bSphereRadius) {
     if (isVisible) {
         clipmin = clipmin * 0.5f + 0.5f;
         clipmax = clipmax * 0.5f + 0.5f;
+
+        // Correct clipmin.z [using 0 to 1 depth range intead of the OGL default -1 to 1]
+        clipmin.z = 2.f * clipmin.z - 1.f;
+
         vec2 size = (clipmax.xy - clipmin.xy);
         ivec2 texsize = textureSize(HiZBuffer, 0);
         float maxsize = max(size.x, size.y) * float(max(texsize.x, texsize.y));

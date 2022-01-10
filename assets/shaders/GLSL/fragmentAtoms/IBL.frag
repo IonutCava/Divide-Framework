@@ -110,18 +110,23 @@ vec3 GetCubeReflectionDirection(in vec3 viewDirectionWV, in vec3 normalWV, in ve
 
 #if !defined(NO_ENV_MAPPING) && !defined(NO_IBL)
 vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in float NdotV, in vec3 positionW, in uint probeID) {
-    const vec3 adjustedReflection = GetCubeReflectionDirection(viewDirectionWV, normalWV, positionW, probeID, material._roughness);
-    const vec4 reflectionLookup = vec4(adjustedReflection, float(probeID));
-
-    const float LoD = material._roughness * REFLECTION_PROBE_MIP_COUNT;
+    const vec4 reflectionLookup = vec4(
+        GetCubeReflectionDirection(viewDirectionWV, 
+                                   normalWV,
+                                   positionW,
+                                   probeID,
+                                   material._roughness),
+        float(probeID));
 
     const vec3 irradiance = texture(texEnvIrradiance, reflectionLookup).rgb;
-    const vec3 prefiltered = textureLod(texEnvPrefiltered, reflectionLookup, LoD).rgb;
+    const vec3 prefiltered = textureLod(texEnvPrefiltered, reflectionLookup, (material._roughness * REFLECTION_PROBE_MIP_COUNT)).rgb;
     const vec2 envBRDF = texture(texBRDFLut, vec2(NdotV, material._roughness)).rg;
 
     const vec3 F = computeFresnelSchlickRoughness(NdotV, material._F0, material._roughness);
+
     const vec3 kS = F;
     const vec3 kD = (1.f - kS) * (1.f - material._metallic);
+
     const vec3 diffuse = irradiance * material._diffuseColour;
     const vec3 specular = prefiltered * (F * envBRDF.x + envBRDF.y);
 

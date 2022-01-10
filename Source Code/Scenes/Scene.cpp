@@ -539,7 +539,6 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
             }
 
             crtNode = parent->addChildNode(nodeDescriptor);
-            Attorney::SceneGraphNodeScene::reserveChildCount(crtNode, sceneNode.children.size());
 
             crtNode->loadFromXML(nodeTree);
         }
@@ -1019,7 +1018,6 @@ bool Scene::load() {
     SceneGraphNode* rootNode = _sceneGraph->getRoot();
     vector<XML::SceneNode>& rootChildren = _xmlSceneGraphRootNode.children;
     const size_t childCount = rootChildren.size();
-    Attorney::SceneGraphNodeScene::reserveChildCount(rootNode, childCount);
 
     ParallelForDescriptor descriptor = {};
     descriptor._iterCount = to_U32(childCount);
@@ -1943,8 +1941,8 @@ bool Scene::load(ByteBuffer& inputBuffer) {
             vec3<F32> camPos;
             Quaternion<F32> camOrientation;
 
-            U8 currentPlayerIndex = 0;
-            U8 previousPlayerCount = 0;
+            U8 currentPlayerIndex = 0u;
+            U8 previousPlayerCount = 0u;
             inputBuffer >> previousPlayerCount;
             for (U8 i = 0; i < previousPlayerCount; ++i) {
                 inputBuffer >> currentPlayerIndex >> camPos >> camOrientation;
@@ -1952,6 +1950,7 @@ bool Scene::load(ByteBuffer& inputBuffer) {
                     Camera* cam = _scenePlayers[currentPlayerIndex]->camera();
                     cam->setEye(camPos);
                     cam->setRotation(camOrientation);
+                    state()->playerState(currentPlayerIndex).cameraUnderwater(checkCameraUnderwater(*cam));
                 }
             }
         } else {

@@ -101,13 +101,14 @@ void Character::playAnimation(I32 index) const {
         if (anim) {
             anim->playAnimation(index);
         } else {
-            node->forEachChild([index](const SceneGraphNode* child, I32 /*childIdx*/) {
-                AnimationComponent* childAnim = child->get<AnimationComponent>();
+            const SceneGraphNode::ChildContainer& children = node->getChildren();
+            const U32 childCount =  children._count;
+            for (U32 i = 0u; i < childCount; ++i) {
+                AnimationComponent* childAnim = children._data[i]->get<AnimationComponent>();
                 if (childAnim) {
                     childAnim->playAnimation(index);
                 }
-                return true;
-            });
+            }
         }
     }
 }
@@ -119,13 +120,14 @@ void Character::playNextAnimation() const {
         if (anim) {
             anim->playNextAnimation();
         } else {
-            node->forEachChild([](const SceneGraphNode* child, I32 /*childIdx*/) {
-                AnimationComponent* childAnim = child->get<AnimationComponent>();
+            const SceneGraphNode::ChildContainer& children = node->getChildren();
+            const U32 childCount = children._count;
+            for (U32 i = 0u; i < childCount; ++i) {
+                AnimationComponent* childAnim = children._data[i]->get<AnimationComponent>();
                 if (childAnim) {
                     childAnim->playNextAnimation();
                 }
-                return true;
-            });
+            }
         }
     }
 }
@@ -137,13 +139,14 @@ void Character::playPreviousAnimation() const {
         if (anim) {
             anim->playPreviousAnimation();
         } else {
-            node->forEachChild([](const SceneGraphNode* child, I32 /*childIdx*/) {
-                AnimationComponent* childAnim = child->get<AnimationComponent>();
+            const SceneGraphNode::ChildContainer& children = node->getChildren();
+            const U32 childCount = children._count;
+            for (U32 i = 0u; i < childCount; ++i) {
+                AnimationComponent* childAnim = children._data[i]->get<AnimationComponent>();
                 if (childAnim) {
                     childAnim->playPreviousAnimation();
                 }
-                return true;
-            });
+            }
         }
     }
 }
@@ -155,13 +158,14 @@ void Character::pauseAnimation(bool state) const {
         if (anim) {
             anim->playAnimations(state);
         } else {
-            node->forEachChild([state](const SceneGraphNode* child, I32 /*childIdx*/) {
-                AnimationComponent* childAnim = child->get<AnimationComponent>();
+            const SceneGraphNode::ChildContainer& children = node->getChildren();
+            const U32 childCount = children._count;
+            for (U32 i = 0u; i < childCount; ++i) {
+                AnimationComponent* childAnim = children._data[i]->get<AnimationComponent>();
                 if (childAnim) {
                     childAnim->playAnimations(state);
                 }
-                return true;
-            });
+            }
         }
     }
 }

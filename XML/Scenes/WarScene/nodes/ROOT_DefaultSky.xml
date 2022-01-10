@@ -11,7 +11,7 @@
     <Cloud__Radius____1m__400000m__>200000</Cloud__Radius____1m__400000m__>
     <Atmosphere__Offset____1m__-__2000m__>218.283005</Atmosphere__Offset____1m__-__2000m__>
     <Cloud__layer__height__range__(m) x="2000" y="3400"/>
-    <Weather__Scale__(__x__1e-5)>6.76168633</Weather__Scale__(__x__1e-5)>
+    <Weather__Scale__(__x__1e-5)>6.8190155</Weather__Scale__(__x__1e-5)>
     <Use__Day__Skybox>false</Use__Day__Skybox>
     <Use__Night__Skybox>true</Use__Night__Skybox>
     <Enable__Procedural__Clouds>true</Enable__Procedural__Clouds>
@@ -22,7 +22,7 @@
 <TRANSFORM>
     <Transform>
         <position x="0" y="0" z="0"/>
-        <orientation x="-179.999985" y="3.68578696" z="-179.999985"/>
+        <orientation x="-179.999985" y="3.68578601" z="-179.999985"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
 </TRANSFORM>
@@ -150,10 +150,10 @@
                     <id>3</id>
                 </0>
                 <1>
-                    <id>3</id>
+                    <id>1</id>
                 </1>
                 <2>
-                    <id>3</id>
+                    <id>1</id>
                 </2>
             </PRE_PASS>
             <MAIN_PASS>
@@ -161,10 +161,10 @@
                     <id>3</id>
                 </0>
                 <1>
-                    <id>3</id>
+                    <id>1</id>
                 </1>
                 <2>
-                    <id>3</id>
+                    <id>2</id>
                 </2>
             </MAIN_PASS>
             <OIT_PASS>
@@ -172,10 +172,10 @@
                     <id>3</id>
                 </0>
                 <1>
-                    <id>3</id>
+                    <id>1</id>
                 </1>
                 <2>
-                    <id>3</id>
+                    <id>2</id>
                 </2>
             </OIT_PASS>
         </REFLECTION>

@@ -110,7 +110,7 @@ class Object3D : public SceneNode {
 
     /// Use playAnimations() to toggle animation playback for the current object
     /// (and all subobjects) on or off
-    virtual void playAnimations(const SceneGraphNode* sgn, bool state);
+    virtual void playAnimations(SceneGraphNode* sgn, bool state);
 
     [[nodiscard]] U8 getGeometryPartitionCount() const noexcept {
         U8 ret = 0;

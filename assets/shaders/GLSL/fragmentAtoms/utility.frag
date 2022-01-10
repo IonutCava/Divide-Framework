@@ -138,13 +138,8 @@ vec3 ViewSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjection) {
                                    depthIn     * 2.f - 1.f,
                                    1.f);
 
-    const vec4 viewPos = invProjection * clipSpacePos;
-
-    return homogenize(viewPos);
+    return homogenize(invProjection * clipSpacePos);
 }
-
-
-#define _kLum vec3(0.299f, 0.587f, 0.114f)
 
 // Utility function that maps a value from one range to another. 
 float ReMap(const float V, const float Min0, const float Max0, const float Min1, const float Max1) {
@@ -153,7 +148,8 @@ float ReMap(const float V, const float Min0, const float Max0, const float Min1,
 
 #define InRangeExclusive(V, MIN, MAX) (VS > MIN && V < MAX)
 #define LinStep(LOW, HIGH, V) saturate((V - LOW) / (HIGH - LOW))
-#define Luminance(RGB) max(dot(RGB, _kLum), 0.0001f)
+#define Luminance(RGB) max(dot(RGB, vec3(0.299f, 0.587f, 0.114f)), 0.0001f)
+#define LevelOfGrey(C) vec4(C.rgb * vec3(0.299f, 0.587f, 0.114f), C.a)
 
 float maxComponent(in vec2 v) { return max(v.x, v.y); }
 float maxComponent(in vec3 v) { return max(max(v.x, v.y), v.z); }

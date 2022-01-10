@@ -13,8 +13,8 @@ OrbitCamera::OrbitCamera(const Str256& name, const CameraType& type, const vec3<
     setMouseSensitivity(0.5f);
 }
 
-void OrbitCamera::fromCamera(const Camera& camera, bool flag) {
-    if (camera.type() == Type() || flag) {
+void OrbitCamera::fromCamera(const Camera& camera) {
+    if (camera.type() == Type()) {
         const OrbitCamera& orbitCam = static_cast<const OrbitCamera&>(camera);
         _maxRadius = orbitCam._maxRadius;
         _minRadius = orbitCam._minRadius;
@@ -25,11 +25,11 @@ void OrbitCamera::fromCamera(const Camera& camera, bool flag) {
         _offsetDir.set(orbitCam._offsetDir);
         _cameraRotation.set(orbitCam._cameraRotation);
         _targetTransform = orbitCam._targetTransform;
-        flag = true;
     }
 
-    FreeFlyCamera::fromCamera(camera, flag);
+    FreeFlyCamera::fromCamera(camera);
 }
+
 void OrbitCamera::setTarget(TransformComponent* tComp) noexcept {
     _targetTransform = tComp;
 }

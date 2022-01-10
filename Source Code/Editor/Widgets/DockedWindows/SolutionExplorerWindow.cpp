@@ -160,7 +160,7 @@ namespace Divide {
             node_flags |= ImGuiTreeNodeFlags_Selected;
         }
 
-        if (sgn->getChildCount() == 0u) {
+        if (sgn->getChildren()._count.load() == 0u) {
             node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet;
         }
 
@@ -185,7 +185,7 @@ namespace Divide {
                     _tempParent = sgn;
                 } else {
                     const bool parentSelected = !isRoot && sgn->parent()->hasFlag(SceneGraphNode::Flags::SELECTED);
-                    const bool childrenSelected = sgn->getChildCount() > 0 && sgn->getChild(0u)->hasFlag(SceneGraphNode::Flags::SELECTED);
+                    const bool childrenSelected = sgn->getChildren()._count.load() > 0u && sgn->getChildren().getChild(0u)->hasFlag(SceneGraphNode::Flags::SELECTED);
 
                     if (modifierPressed || sceneManager->resetSelection(0, false)) {
                         if (!wasSelected || parentSelected || childrenSelected) {
@@ -203,10 +203,12 @@ namespace Divide {
 
         if (_filter.Filters.empty()) {
             if (printNode(getIconForNode(sgn))) {
-                sgn->forEachChild([this, &sceneManager, secondaryView, modifierPressed](SceneGraphNode* child, const I32 childIdx) {
-                    printSceneGraphNode(sceneManager, child, childIdx, false, secondaryView, modifierPressed);
-                    return true;
-                });
+                const SceneGraphNode::ChildContainer& children = sgn->getChildren();
+                SharedLock<SharedMutex> r_lock(children._lock);
+                const U32 childCount = children._count;
+                for (U32 i = 0u; i < childCount; ++i) {
+                    printSceneGraphNode(sceneManager, children._data[i], i, false, secondaryView, modifierPressed);
+                }
                 ImGui::TreePop();
             }
         } else {
@@ -214,10 +216,12 @@ namespace Divide {
             if (_filter.PassFilter(sgn->name().c_str())) {
                 nodeOpen = printNode(getIconForNode(sgn));
             }
-            sgn->forEachChild([this, &sceneManager, secondaryView, modifierPressed](SceneGraphNode* child, const I32 childIdx) {
-                printSceneGraphNode(sceneManager, child, childIdx, false, secondaryView, modifierPressed);
-                return true;
-            });
+            const SceneGraphNode::ChildContainer& children = sgn->getChildren();
+            SharedLock<SharedMutex> r_lock(children._lock);
+            const U32 childCount = children._count;
+            for (U32 i = 0u; i < childCount; ++i) {
+                printSceneGraphNode(sceneManager, children._data[i], i, false, secondaryView, modifierPressed);
+            }
             if (nodeOpen) {
                 ImGui::TreePop();
             }

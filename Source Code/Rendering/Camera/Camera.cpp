@@ -41,7 +41,7 @@ const CameraSnapshot& Camera::snapshot() const noexcept {
     return _data;
 }
 
-void Camera::fromCamera(const Camera& camera, [[maybe_unused]] const bool flag) {
+void Camera::fromCamera(const Camera& camera) {
     _reflectionPlane = camera._reflectionPlane;
     _reflectionActive = camera._reflectionActive;
     _accumPitchDegrees = camera._accumPitchDegrees;
@@ -406,7 +406,6 @@ void Camera::saveToXML(boost::property_tree::ptree& pt, const string prefix) con
     pt.put(savePath + ".zPlanes.<xmlattr>.min", _data._zPlanes.min);
     pt.put(savePath + ".zPlanes.<xmlattr>.max", _data._zPlanes.max);
     pt.put(savePath + ".FoV", _data._FoV);
-    pt.put(savePath + ".flag", _data._flag);
 }
 
 void Camera::loadFromXML(const boost::property_tree::ptree& pt, const string prefix) {
@@ -446,7 +445,6 @@ void Camera::loadFromXML(const boost::property_tree::ptree& pt, const string pre
     );
     _data._aspectRatio = pt.get(savePath + ".aspectRatio", _data._aspectRatio);
     _data._FoV = pt.get(savePath + ".FoV", _data._FoV);
-    _data._flag = pt.get(savePath + ".flag", _data._flag);
 
     _viewMatrixDirty = _projectionDirty = _frustumDirty = true;
 }

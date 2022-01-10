@@ -415,6 +415,8 @@ protected:
     void renderDebugViews(Rect<I32> targetViewport, I32 padding, GFX::CommandBuffer& bufferInOut);
     
     void stepResolution(bool increment);
+
+    [[nodiscard]] Pipeline* getDebugPipeline(const IMPrimitive::BaseDescriptor& descriptor) const noexcept;
     void debugDrawLines(GFX::CommandBuffer& bufferInOut);
     void debugDrawBoxes(GFX::CommandBuffer& bufferInOut);
     void debugDrawOBBs(GFX::CommandBuffer& bufferInOut);
@@ -500,6 +502,9 @@ private:
     Pipeline* _HIZPipeline = nullptr;
     Pipeline* _HIZCullPipeline = nullptr;
     Pipeline* _debugGizmoPipeline = nullptr;
+    Pipeline* _debugGizmoPipelineNoDepth = nullptr;
+    Pipeline* _debugGizmoPipelineNoCull = nullptr;
+    Pipeline* _debugGizmoPipelineNoCullNoDepth = nullptr;
     GFX::BindPipelineCommand _drawFSTexturePipelineCmd;
     GFX::BindPipelineCommand _drawFSDepthPipelineCmd;
     GFX::BindPipelineCommand _blurBoxPipelineSingleCmd;

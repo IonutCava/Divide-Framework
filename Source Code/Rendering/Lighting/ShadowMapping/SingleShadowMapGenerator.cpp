@@ -179,6 +179,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     clearDescriptor._resetToDefault = true;
 
     EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str()));
+    GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
     GFX::ClearRenderTargetCommand clearMainTarget = {};
     clearMainTarget._target = params._target;
@@ -189,6 +190,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 
     postRender(spotLight, bufferInOut);
 
+    GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true;
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 

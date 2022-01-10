@@ -38,24 +38,6 @@ namespace Divide {
         return BitCompare(_nodeFlags, flag); 
     }
 
-    template<class Predicate>
-    bool SceneGraphNode::forEachChild(const U32 start, const U32 end, Predicate predicate) const {
-        SharedLock<SharedMutex> r_lock(_childLock);
-        for (U32 i = start; i < end; ++i) {
-            //SharedLock<SharedMutex> r_lock(_childLock);
-            if (!predicate(_children[i], i)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    template<class Predicate>
-    bool SceneGraphNode::forEachChild(Predicate predicate) const {
-        return forEachChild(0u, getChildCount(), predicate);
-    }
-
     template <>
     inline TransformComponent* SceneGraphNode::get<TransformComponent>() const noexcept {
         return Hacks._transformComponentCache;

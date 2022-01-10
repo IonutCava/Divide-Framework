@@ -29,8 +29,9 @@ namespace Divide {
                 descriptor.length = comp->range();
                 descriptor.radius = comp->outerConeRadius();
                 descriptor.colour = Util::ToByteColour(comp->getDiffuseColour());
+                descriptor.noCull = true;
 
-               context().gfx().debugDrawCone(comp->getGUID() + 0, descriptor);
+                context().gfx().debugDrawCone(comp->getGUID() + 0, descriptor);
             }
         }
     }

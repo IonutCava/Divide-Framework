@@ -273,7 +273,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     const size_t samplerHashMips = defaultSamplerMips.getHash();
 
     //PrePass
-    TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
+    TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::FLOAT_32);
     TextureDescriptor velocityDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
     //RG - packed normal, B - roughness
     TextureDescriptor normalsDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGB, GFXDataFormat::FLOAT_16);
@@ -850,10 +850,27 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
     context().paramHandler().setParam<bool>(_ID("rendering.previewDebugViews"), false);
     {
+        // Create general purpose render state blocks
+        RenderStateBlock primitiveStateBlock{};
+
         PipelineDescriptor pipelineDesc;
-        pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->getGUID();
-        pipelineDesc._stateHash = getDefaultStateBlock(false);
+        pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
+
+        pipelineDesc._stateHash = primitiveStateBlock.getHash();
         _debugGizmoPipeline = newPipeline(pipelineDesc);
+
+        primitiveStateBlock.depthTestEnabled(false);
+        pipelineDesc._stateHash = primitiveStateBlock.getHash();
+        _debugGizmoPipelineNoDepth = newPipeline(pipelineDesc);
+
+        primitiveStateBlock.setCullMode(CullMode::NONE);
+        pipelineDesc._stateHash = primitiveStateBlock.getHash();
+        _debugGizmoPipelineNoCullNoDepth = newPipeline(pipelineDesc);
+
+        primitiveStateBlock.depthTestEnabled(true);
+        pipelineDesc._stateHash = primitiveStateBlock.getHash();
+        _debugGizmoPipelineNoCull = newPipeline(pipelineDesc);
+
     }
     _renderer = eastl::make_unique<Renderer>(context(), cache);
 
@@ -1544,8 +1561,9 @@ void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
         needsUpdate = true;
     }
 
-    if (to_U8(data._cameraProperties.w) != cameraSnapshot._flag) {
-        data._cameraProperties.w = to_F32(cameraSnapshot._flag);
+    const U8 orthoFlag = (cameraSnapshot._isOrthoCamera ? 1u : 0u);
+    if (to_U8(data._cameraProperties.w) != orthoFlag) {
+        data._cameraProperties.w = to_F32(orthoFlag);
         needsUpdate = true;
     }
 
@@ -2275,6 +2293,16 @@ void GFXDevice::getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& na
     }
 }
 
+Pipeline* GFXDevice::getDebugPipeline(const IMPrimitive::BaseDescriptor& descriptor) const noexcept {
+    if (descriptor.noDepth) {
+        return (descriptor.noCull ? _debugGizmoPipelineNoCullNoDepth : _debugGizmoPipelineNoDepth);
+    } else if (descriptor.noCull) {
+        return _debugGizmoPipelineNoCull;
+    }
+
+    return _debugGizmoPipeline;
+}
+
 void GFXDevice::debugDrawLines(const I64 ID, const IMPrimitive::LineDescriptor descriptor) noexcept {
     _debugLines.add(ID, descriptor);
 }
@@ -2293,9 +2321,10 @@ void GFXDevice::debugDrawLines(GFX::CommandBuffer& bufferInOut) {
         if (linePrimitive == nullptr) {
             linePrimitive = newIMP();
             linePrimitive->name(Util::StringFormat("DebugLine_%d", f));
-            linePrimitive->pipeline(*_debugGizmoPipeline);
         }
 
+        linePrimitive->forceWireframe(data._descriptor.wireframe); //? Uhm, not gonna do much -Ionut
+        linePrimitive->pipeline(*getDebugPipeline(data._descriptor));
         linePrimitive->worldMatrix(data._descriptor.worldMatrix);
         linePrimitive->fromLines(data._descriptor);
         bufferInOut.add(linePrimitive->toCommandBuffer());
@@ -2319,9 +2348,10 @@ void GFXDevice::debugDrawBoxes(GFX::CommandBuffer& bufferInOut) {
         if (boxPrimitive == nullptr) {
             boxPrimitive = newIMP();
             boxPrimitive->name(Util::StringFormat("DebugBox_%d", f));
-            boxPrimitive->pipeline(*_debugGizmoPipeline);
         }
 
+        boxPrimitive->forceWireframe(data._descriptor.wireframe);
+        boxPrimitive->pipeline(*getDebugPipeline(data._descriptor));
         boxPrimitive->worldMatrix(data._descriptor.worldMatrix);
         boxPrimitive->fromBox(data._descriptor);
         bufferInOut.add(boxPrimitive->toCommandBuffer());
@@ -2345,9 +2375,10 @@ void GFXDevice::debugDrawOBBs(GFX::CommandBuffer& bufferInOut) {
         if (boxPrimitive == nullptr) {
             boxPrimitive = newIMP();
             boxPrimitive->name(Util::StringFormat("DebugOBB_%d", f));
-            boxPrimitive->pipeline(*_debugGizmoPipeline);
         }
 
+        boxPrimitive->forceWireframe(data._descriptor.wireframe);
+        boxPrimitive->pipeline(*getDebugPipeline(data._descriptor));
         boxPrimitive->worldMatrix(data._descriptor.worldMatrix);
         boxPrimitive->fromOBB(data._descriptor);
         bufferInOut.add(boxPrimitive->toCommandBuffer());
@@ -2370,9 +2401,10 @@ void GFXDevice::debugDrawSpheres(GFX::CommandBuffer& bufferInOut) {
         if (spherePrimitive == nullptr) {
             spherePrimitive = newIMP();
             spherePrimitive->name(Util::StringFormat("DebugSphere_%d", f));
-            spherePrimitive->pipeline(*_debugGizmoPipeline);
         }
 
+        spherePrimitive->forceWireframe(data._descriptor.wireframe);
+        spherePrimitive->pipeline(*getDebugPipeline(data._descriptor));
         spherePrimitive->worldMatrix(data._descriptor.worldMatrix);
         spherePrimitive->fromSphere(data._descriptor);
         bufferInOut.add(spherePrimitive->toCommandBuffer());
@@ -2397,9 +2429,10 @@ void GFXDevice::debugDrawCones(GFX::CommandBuffer& bufferInOut) {
         if (conePrimitive == nullptr) {
             conePrimitive = newIMP();
             conePrimitive->name(Util::StringFormat("DebugCone_%d", f));
-            conePrimitive->pipeline(*_debugGizmoPipeline);
         }
 
+        conePrimitive->forceWireframe(data._descriptor.wireframe);
+        conePrimitive->pipeline(*getDebugPipeline(data._descriptor));
         conePrimitive->worldMatrix(data._descriptor.worldMatrix);
         conePrimitive->fromCone(data._descriptor);
         bufferInOut.add(conePrimitive->toCommandBuffer());
@@ -2424,9 +2457,10 @@ void GFXDevice::debugDrawFrustums(GFX::CommandBuffer& bufferInOut) {
         if (frustumPrimitive == nullptr) {
             frustumPrimitive = newIMP();
             frustumPrimitive->name(Util::StringFormat("DebugFrustum_%d", f));
-            frustumPrimitive->pipeline(*_debugGizmoPipeline);
         }
 
+        frustumPrimitive->forceWireframe(data._descriptor.wireframe);
+        frustumPrimitive->pipeline(*getDebugPipeline(data._descriptor));
         frustumPrimitive->worldMatrix(data._descriptor.worldMatrix);
         frustumPrimitive->fromFrustum(data._descriptor);
         bufferInOut.add(frustumPrimitive->toCommandBuffer());

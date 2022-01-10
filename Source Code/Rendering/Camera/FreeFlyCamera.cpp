@@ -11,8 +11,8 @@ FreeFlyCamera::FreeFlyCamera(const Str256& name, const CameraType type, const ve
     _speed.set(35.0f);
 }
 
-void FreeFlyCamera::fromCamera(const Camera& camera, bool flag) {
-    if (camera.type() == Type() || flag) {
+void FreeFlyCamera::fromCamera(const Camera& camera) {
+    if (camera.type() == Type()) {
         const FreeFlyCamera& cam = static_cast<const FreeFlyCamera&>(camera);
         _speedFactor = cam._speedFactor;
         _speed = cam._speed;
@@ -20,10 +20,9 @@ void FreeFlyCamera::fromCamera(const Camera& camera, bool flag) {
         _mouseSensitivity = cam._mouseSensitivity;
         lockRotation(cam._rotationLocked);
         lockMovement(cam._movementLocked);
-        flag = true;
     }
 
-    Camera::fromCamera(camera, flag);
+    Camera::fromCamera(camera);
 }
 
 void FreeFlyCamera::update(const F32 deltaTimeMS) noexcept {

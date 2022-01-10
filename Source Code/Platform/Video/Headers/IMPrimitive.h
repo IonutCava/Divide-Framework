@@ -55,11 +55,15 @@ FWD_DECLARE_MANAGED_CLASS(IMPrimitive);
 
 /// IMPrimitive replaces immediate mode calls to VB based rendering
 class NOINITVTABLE IMPrimitive : public VertexDataInterface {
-    struct BaseDescriptor {
-        UColour4  colour = DefaultColours::WHITE;
-        mat4<F32> worldMatrix;
-    };
    public:
+       struct BaseDescriptor {
+           UColour4  colour = DefaultColours::WHITE;
+           mat4<F32> worldMatrix;
+           bool noDepth = false;
+           bool noCull = false;
+           bool wireframe = false;
+       };
+
        struct OBBDescriptor final : public BaseDescriptor {
            OBB box;
        };

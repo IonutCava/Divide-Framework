@@ -52,9 +52,6 @@ class OrbitCamera : public FreeFlyCamera {
 
     void setTarget(TransformComponent* tComp, const vec3<F32>& offsetDirection) noexcept;
 
-    void fromCamera(const Camera& camera, bool flag = false) override;
-
-
     void curRadius(const F32 radius) noexcept {
         _curRadius = radius;
         CLAMP<F32>(_curRadius, _minRadius, _maxRadius);
@@ -62,6 +59,8 @@ class OrbitCamera : public FreeFlyCamera {
 
     void update(F32 deltaTimeMS) noexcept override;
     bool zoom(I32 zoomFactor) noexcept override;
+
+    void fromCamera(const Camera& camera) override;
 
     static constexpr CameraType Type() noexcept { return CameraType::ORBIT; }
 

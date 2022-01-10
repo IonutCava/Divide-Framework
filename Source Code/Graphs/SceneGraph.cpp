@@ -385,9 +385,17 @@ bool SceneGraph::saveCache(ByteBuffer& outputBuffer) const {
         // Data may be bad, so add markers to be able to just jump over the entire node data instead of attempting partial loads
         outputBuffer.addMarker(g_cacheMarkerByteValue);
 
-        sgn->forEachChild([this, &saveNodes, &outputBuffer](SceneGraphNode* child, I32 /*idx*/) {
-            return saveNodes(child, outputBuffer);
-        });
+        bool failedNode = false;
+        {
+            const SceneGraphNode::ChildContainer& children = sgn->getChildren();
+            SharedLock<SharedMutex> w_lock(children._lock);
+            const U32 childCount = children._count;
+            for (U32 i = 0u; i < childCount; ++i) {
+                if (!saveNodes(children._data[i], outputBuffer)) {
+                    failedNode = true;
+                }
+            }
+        }
 
         return true;
     };
@@ -445,17 +453,19 @@ bool SceneGraph::loadCache(ByteBuffer& inputBuffer) {
 namespace {
     constexpr size_t g_sceneGraphVersion = 1;
 
-    boost::property_tree::ptree dumpSGNtoAssets(const SceneGraphNode* node) {
+    boost::property_tree::ptree dumpSGNtoAssets(SceneGraphNode* node) {
         boost::property_tree::ptree entry;
         entry.put("<xmlattr>.name", node->name().c_str());
         entry.put("<xmlattr>.type", node->getNode().getTypeName().c_str());
 
-        node->forEachChild([&entry](const SceneGraphNode* child, I32 /*childIdx*/) {
-            if (child->serialize()) {
-                entry.add_child("node", dumpSGNtoAssets(child));
+        const SceneGraphNode::ChildContainer& children = node->getChildren();
+        SharedLock<SharedMutex> w_lock(children._lock);
+        const U32 childCount = children._count;
+        for (U32 i = 0u; i < childCount; ++i) {
+            if (children._data[i]->serialize()) {
+                entry.add_child("node", dumpSGNtoAssets(children._data[i]));
             }
-            return true;
-        });
+        }
 
         return entry;
     }
@@ -468,7 +478,7 @@ void SceneGraph::saveToXML(const char* assetsFile, DELEGATE<void, std::string_vi
     {
         boost::property_tree::ptree pt;
         pt.put("version", g_sceneGraphVersion);
-        pt.add_child("entities.node", dumpSGNtoAssets(getRoot()));
+        pt.add_child("entities.node", dumpSGNtoAssets(_root));
 
         const FileError backupReturnCode = copyFile(sceneLocation + "/", ResourcePath(assetsFile), sceneLocation + "/", ResourcePath("assets.xml.bak"), true);
         if (backupReturnCode != FileError::NONE &&
@@ -483,10 +493,12 @@ void SceneGraph::saveToXML(const char* assetsFile, DELEGATE<void, std::string_vi
         }
     }
 
-    getRoot()->forEachChild([&sceneLocation, &msgCallback](const SceneGraphNode* child, I32 /*childIdx*/) {
-        child->saveToXML(sceneLocation.str(), msgCallback);
-        return true;
-    });
+    const SceneGraphNode::ChildContainer& children = _root->getChildren();
+    SharedLock<SharedMutex> w_lock(children._lock);
+    const U32 childCount = children._count;
+    for (U32 i = 0u; i < childCount; ++i) {
+        children._data[i]->saveToXML(sceneLocation.str(), msgCallback);
+    }
 }
 
 namespace {

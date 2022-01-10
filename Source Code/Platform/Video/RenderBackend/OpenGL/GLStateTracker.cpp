@@ -462,7 +462,7 @@ void GLStateTracker::setDepthRange(F32 nearVal, F32 farVal) {
 }
 
 void GLStateTracker::setClippingPlaneState(const bool lowerLeftOrigin, const bool negativeOneToOneDepth) {
-    if (lowerLeftOrigin != _lowerLeftOrigin || negativeOneToOneDepth != _negativeOneToOneDepth) {
+    if (_lowerLeftOrigin != lowerLeftOrigin || _negativeOneToOneDepth != negativeOneToOneDepth) {
 
         glClipControl(
             lowerLeftOrigin ? GL_LOWER_LEFT : GL_UPPER_LEFT,
@@ -575,10 +575,10 @@ void GLStateTracker::setBlending(const GLuint drawBufferIdx,const BlendingProper
                 blendingProperties._blendOpAlpha != crtProperties._blendOpAlpha)
             {
                 glBlendEquationSeparatei(drawBufferIdx, 
-                                            GLUtil::glBlendOpTable[blendingProperties._blendOp != BlendOperation::COUNT
-                                                                                                ? to_base(blendingProperties._blendOp)
-                                                                                                : to_base(BlendOperation::ADD)],
-                                            GLUtil::glBlendOpTable[to_base(blendingProperties._blendOpAlpha)]);
+                                         GLUtil::glBlendOpTable[blendingProperties._blendOp != BlendOperation::COUNT
+                                                                                             ? to_base(blendingProperties._blendOp)
+                                                                                             : to_base(BlendOperation::ADD)],
+                                         GLUtil::glBlendOpTable[to_base(blendingProperties._blendOpAlpha)]);
 
                 _blendPropertiesGlobal._blendOp = blendingProperties._blendOp;
                 _blendPropertiesGlobal._blendOpAlpha = blendingProperties._blendOpAlpha;
@@ -588,8 +588,8 @@ void GLStateTracker::setBlending(const GLuint drawBufferIdx,const BlendingProper
                 blendingProperties._blendDest != crtProperties._blendDest)
             {
                     glBlendFunci(drawBufferIdx,
-                                    GLUtil::glBlendTable[to_base(blendingProperties._blendSrc)],
-                                    GLUtil::glBlendTable[to_base(blendingProperties._blendDest)]);
+                                 GLUtil::glBlendTable[to_base(blendingProperties._blendSrc)],
+                                 GLUtil::glBlendTable[to_base(blendingProperties._blendDest)]);
 
                     _blendPropertiesGlobal._blendSrc = blendingProperties._blendSrc;
                     _blendPropertiesGlobal._blendDest = blendingProperties._blendDest;
@@ -598,9 +598,9 @@ void GLStateTracker::setBlending(const GLuint drawBufferIdx,const BlendingProper
             if (blendingProperties._blendOp != crtProperties._blendOp)
             {
                 glBlendEquationi(drawBufferIdx,
-                                    GLUtil::glBlendOpTable[blendingProperties._blendOp != BlendOperation::COUNT
-                                                                                        ? to_base(blendingProperties._blendOp)
-                                                                                        : to_base(BlendOperation::ADD)]);
+                                 GLUtil::glBlendOpTable[blendingProperties._blendOp != BlendOperation::COUNT
+                                                                                     ? to_base(blendingProperties._blendOp)
+                                                                                     : to_base(BlendOperation::ADD)]);
                 _blendPropertiesGlobal._blendOp = blendingProperties._blendOp;
             }
         }

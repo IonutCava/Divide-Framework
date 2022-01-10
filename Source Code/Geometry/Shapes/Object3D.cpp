@@ -264,20 +264,23 @@ vector<SceneGraphNode*> Object3D::filterByType(const vector<SceneGraphNode*>& no
     return result;
 }
 
-void Object3D::playAnimations(const SceneGraphNode* sgn, const bool state) {
+void Object3D::playAnimations(SceneGraphNode* sgn, const bool state) {
     if (getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED)) {
         AnimationComponent* animComp = sgn->get<AnimationComponent>();
         if (animComp != nullptr) {
             animComp->playAnimations(state);
         }
-        sgn->forEachChild([state](const SceneGraphNode* child, I32 /*childIdx*/) {
+        const SceneGraphNode::ChildContainer& children = sgn->getChildren();
+        SharedLock<SharedMutex> w_lock(children._lock);
+        const U32 childCount = children._count;
+        for (U32 i = 0u; i < childCount; ++i) {
+            SceneGraphNode* child = children._data[i];
             AnimationComponent* animCompInner = child->get<AnimationComponent>();
             // Not all submeshes are necessarily animated. (e.g. flag on the back of a character)
             if (animCompInner != nullptr) {
                 animCompInner->playAnimations(state && animCompInner->playAnimations());
             }
-            return true;
-        });
+        }
     }
 }
 

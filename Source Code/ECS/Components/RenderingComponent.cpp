@@ -215,13 +215,15 @@ void RenderingComponent::rebuildMaterial() {
         onMaterialChanged();
     }
 
-    _parentSGN->forEachChild([](const SceneGraphNode* child, I32 /*childIdx*/) {
-        RenderingComponent* const renderable = child->get<RenderingComponent>();
+    const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
+    SharedLock<SharedMutex> r_lock(children._lock);
+    const U32 childCount = children._count;
+    for (U32 i = 0u; i < childCount; ++i) {
+        RenderingComponent* const renderable = children._data[i]->get<RenderingComponent>();
         if (renderable) {
             renderable->rebuildMaterial();
         }
-        return true;
-    });
+    }
 }
 
 void RenderingComponent::setLoDIndexOffset(const U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept {

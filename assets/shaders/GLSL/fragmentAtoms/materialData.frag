@@ -127,14 +127,14 @@ vec3 getEmissiveColour(in NodeMaterialData matData, in vec3 uv) {
 PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, in vec2 uv, in vec3 N, in float normalVariation, in float nDotV) {
     PBRMaterial material;
 
-    const vec4 unpackedData = (unpackUnorm4x8(matData._data.z) * 255);
-
     vec4 OMR = unpackUnorm4x8(matData._data.x);
     {
-        const bool usePacked = uint(unpackedData.z) == 1u;
         const uvec4 texOpsB = dvd_texOperationsB(matData);
-        getTextureOMR(usePacked, vec3(uv, 0), texOpsB.xyz, OMR.rgb);
-
+        {
+            const vec4 unpackedData = (unpackUnorm4x8(matData._data.z) * 255);
+            const bool usePacked = uint(unpackedData.z) == 1u;
+            getTextureOMR(usePacked, vec3(uv, 0), texOpsB.xyz, OMR.rgb);
+        }
         material._occlusion = OMR.r;
         material._roughness = OMR.b;
     }
@@ -148,14 +148,13 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
 #endif //SHADING_MODE_BLINN_PHONG
 
     const vec3 albedoIn = albedo + Ambient(matData);
-    const vec3 dielectricSpecular = vec3(0.04f);
-    const vec3 black = vec3(0.f);
-    material._diffuseColour = mix(albedoIn * (vec3(1.f) - dielectricSpecular), black, material._metallic);
-    material._F0 = mix(dielectricSpecular, albedoIn, material._metallic);
 
-#if defined(SHADING_MODE_PBR)
-    material._a = max(SQUARED(material._roughness), 0.01f);
-#endif //SHADING_MODE_PBR
+#define DielectricSpecular vec3(0.04f)
+#define Black vec3(0.f)
+
+    material._diffuseColour = mix(albedoIn * (vec3(1.f) - DielectricSpecular), Black, material._metallic);
+    material._F0 = mix(DielectricSpecular, albedoIn, material._metallic);
+
     return material;
 }
 
