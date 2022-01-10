@@ -694,6 +694,8 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         constants.set(_ID("dvd_terrainChunkOffset"), GFX::PushConstantType::UINT, _terrainChunk.ID());
 
         GFX::CommandBuffer& bufferInOut = *_cullVegetationCmds;
+        bufferInOut.clear(false);
+
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull Vegetation" });
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._textureData.add(TextureEntry{ hizTexture->data(), hizAttachment.samplerHash(), TextureUsage::UNIT0 });
