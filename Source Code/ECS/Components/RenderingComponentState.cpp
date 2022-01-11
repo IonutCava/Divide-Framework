@@ -68,7 +68,7 @@ void RenderingComponent::onRenderOptionChanged(const RenderOptions option, const
               return;
           }
           if (_materialInstance != nullptr) {
-              _materialInstance->receivesShadows(state);
+              _materialInstance->properties().receivesShadows(state);
           }
       } break;
       default: break;

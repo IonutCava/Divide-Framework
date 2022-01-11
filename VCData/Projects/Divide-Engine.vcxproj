@@ -741,6 +741,7 @@
     <ClCompile Include="..\..\3rdParty\EntityComponentSystem\src\SystemManager.cpp" />
     <ClCompile Include="..\..\3rdParty\EntityComponentSystem\src\util\FamilyTypeID.cpp" />
     <ClCompile Include="..\..\3rdParty\EntityComponentSystem\src\util\Timer.cpp" />
+    <ClCompile Include="..\..\Source Code\Geometry\Material\MaterialProperties.cpp" />
     <ClCompile Include="..\..\Source Code\Rendering\FrameListener.cpp" />
     <ClCompile Include="..\..\Source Code\Rendering\PostFX\CustomOperators\MotionBlurPreRenderOperator.cpp" />
     <ClCompile Include="..\..\Source Code\Rendering\PostFX\CustomOperators\SSRPreRenderOperator.cpp" />

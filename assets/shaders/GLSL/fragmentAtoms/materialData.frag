@@ -47,6 +47,8 @@ struct PBRMaterial
 layout(binding = TEXTURE_SSAO_SAMPLE) uniform sampler2D texSSAO;
 #endif //NO_SSAO
 
+layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texSceneNormals;
+
 #if defined(USE_CUSTOM_TEXTURE_OMR)
 void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR);
 void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout float roughness);
@@ -261,13 +263,13 @@ vec3 getNormalWV(in NodeMaterialData data, in vec3 uv, out float normalVariation
     normalVariation = 0.f;
 
     vec3 normalWV = VAR._normalWV;
-#if defined(COMPUTE_TBN) && !defined(USE_CUSTOM_NORMAL_MAP)
+#if defined(COMPUTE_TBN)
     if (dvd_bumpMethod(MATERIAL_IDX) != BUMP_NONE) {
         const vec4 normalData = getNormalMapAndVariation(texNormalMap, uv);
         normalWV = getTBNWV() * normalData.xyz;
         normalVariation = normalData.w;
     }
-#endif //COMPUTE_TBN && !USE_CUSTOM_NORMAL_MAP
+#endif //COMPUTE_TBN
 
     return normalize(normalWV) * 
         (dvd_isDoubleSided(data) ? (2.f * float(gl_FrontFacing) - 1.f)

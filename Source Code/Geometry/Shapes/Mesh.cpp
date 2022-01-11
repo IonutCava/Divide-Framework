@@ -54,17 +54,9 @@ void Mesh::setNodeData(const MeshNodeData& nodeStructure) {
 void Mesh::setMaterialTpl(const Material_ptr& material) {
     Object3D::setMaterialTpl(material);
 
-    for (const auto& submesh : _subMeshList) {
+    for (const Mesh::MeshData& subMesh : _subMeshList) {
         if (material != nullptr) {
-            const Material_ptr& submeshMaterial = submesh._mesh->getMaterialTpl();
-            if (submeshMaterial != nullptr) {
-                submeshMaterial->baseShaderData(material->baseShaderData());
-                for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i) {
-                    for (const auto [define, appendPrefix] : material->shaderDefines(static_cast<ShaderType>(i))) {
-                        submeshMaterial->addShaderDefine(static_cast<ShaderType>(i), define, appendPrefix);
-                    }
-                }
-            }
+            subMesh._mesh->setMaterialTpl(material->clone(subMesh._mesh->getMaterialTpl()->resourceName()));
         }
     }
 }

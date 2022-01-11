@@ -611,6 +611,9 @@
     <ClCompile Include="..\..\Source Code\ECS\Systems\EnvironmentProbeSystem.cpp">
       <Filter>ECS\Systems</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source Code\Geometry\Material\MaterialProperties.cpp">
+      <Filter>Geometry\Material</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../../Source Code/Rendering\Camera\Headers\Camera.h">

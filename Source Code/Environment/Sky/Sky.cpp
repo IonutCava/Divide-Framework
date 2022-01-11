@@ -600,11 +600,11 @@ bool Sky::load() {
 
     ResourceDescriptor skyMaterial("skyMaterial_" + resourceName());
     Material_ptr skyMat = CreateResource<Material>(_parentCache, skyMaterial);
-    skyMat->shadingMode(ShadingMode::BLINN_PHONG);
+    skyMat->properties().shadingMode(ShadingMode::BLINN_PHONG);
+    skyMat->properties().roughness(0.01f);
     skyMat->setShaderProgram(shaderDescriptorDepth,   RenderStage::COUNT,   RenderPassType::PRE_PASS);
     skyMat->setShaderProgram(shaderDescriptorPrePass, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
     skyMat->setShaderProgram(shaderDescriptor,        RenderStage::COUNT,   RenderPassType::MAIN_PASS);
-    skyMat->roughness(0.01f);
 
     // Generate a render state
     RenderStateBlock skyboxRenderState = {};

@@ -101,7 +101,7 @@ SamplerAddress Material::s_defaultTextureAddress = 0u;
 void Material::ApplyDefaultStateBlocks(Material& target) {
     /// Normal state for final rendering
     RenderStateBlock stateDescriptor = {};
-    stateDescriptor.setCullMode(target.doubleSided() ? CullMode::NONE : CullMode::BACK);
+    stateDescriptor.setCullMode(target.properties().doubleSided() ? CullMode::NONE : CullMode::BACK);
     stateDescriptor.setZFunc(ComparisonFunction::EQUAL);
 
     /// the z-pre-pass descriptor does not process colours
@@ -131,23 +131,22 @@ void Material::OnStartup(const SamplerAddress defaultTexAddress) {
 
 Material::Material(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name)
     : CachedResource(ResourceType::DEFAULT, descriptorHash, name),
-      _useBindlessTextures(context.context().config().rendering.useBindlessTextures),
-      _debugBindlessTextures(context.context().config().rendering.debugBindlessTextures),
       _context(context),
       _parentCache(parentCache)
 {
-    _useForPrePass.fill(TexturePrePassUsage::AUTO);
+    properties().useBindlessTextures(context.context().config().rendering.useBindlessTextures);
+    properties().debugBindlessTextures(context.context().config().rendering.debugBindlessTextures);
+    properties().receivesShadows(_context.context().config().rendering.shadowMapping.enabled);
 
-    receivesShadows(_context.context().config().rendering.shadowMapping.enabled);
-
-    _textureAddresses.fill(s_defaultTextureAddress);
-    _textureOperations.fill(TextureOperation::NONE);
+    for (TextureInfo& tex : _textures) {
+        tex._address = s_defaultTextureAddress;
+    }
 
     const ShaderProgramInfo defaultShaderInfo = {};
     // Could just direct copy the arrays, but this looks cool
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
-        ShaderVariantsPerPass& perPassInfo = _shaderInfo[s];
-        StateVariantsPerPass& perPassStates = _defaultRenderStates[s];
+        auto& perPassInfo = _shaderInfo[s];
+        auto& perPassStates = _defaultRenderStates[s];
 
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
             perPassInfo[p].fill(defaultShaderInfo);
@@ -159,161 +158,126 @@ Material::Material(GFXDevice& context, ResourceCache* parentCache, const size_t 
 }
 
 Material_ptr Material::clone(const Str256& nameSuffix) {
-    DIVIDE_ASSERT(!nameSuffix.empty(),
-                  "Material error: clone called without a valid name suffix!");
+    DIVIDE_ASSERT(!nameSuffix.empty(), "Material error: clone called without a valid name suffix!");
 
-    const Material& base = *this;
     Material_ptr cloneMat = CreateResource<Material>(_parentCache, ResourceDescriptor(resourceName() + nameSuffix.c_str()));
+    cloneMat->_baseMaterial = this;
+    cloneMat->_properties = this->_properties;
+    cloneMat->_extraShaderDefines = this->_extraShaderDefines;
+    cloneMat->_customShaderCBK = this->_customShaderCBK;
+    cloneMat->_shaderInfo = this->_shaderInfo;
+    cloneMat->_defaultRenderStates = this->_defaultRenderStates;
+    cloneMat->ignoreXMLData(this->ignoreXMLData());
 
-    {
-        cloneMat->_baseMaterial = this;
-        _instances.emplace_back(cloneMat.get());
-    }
-
-    cloneMat->_baseColour = base._baseColour;
-    cloneMat->_emissive = base._emissive;
-    cloneMat->_ambient = base._ambient;
-    cloneMat->_specular = base._specular;
-    cloneMat->_specGloss = base._specGloss;
-    cloneMat->_metallic = base._metallic;
-    cloneMat->_roughness = base._roughness;
-    cloneMat->_parallaxFactor = base._parallaxFactor;
-    cloneMat->_shadingMode = base._shadingMode;
-    cloneMat->_translucencySource = base._translucencySource;
-    cloneMat->_textureOperations = base._textureOperations;
-    cloneMat->_bumpMethod = base._bumpMethod;
-    cloneMat->_doubleSided = base._doubleSided;
-    cloneMat->_transparencyEnabled = base._transparencyEnabled;
-    cloneMat->_useAlphaDiscard = base._useAlphaDiscard;
-    cloneMat->_receivesShadows = base._receivesShadows;
-    cloneMat->_isStatic = base._isStatic;
-    cloneMat->_ignoreTexDiffuseAlpha = base._ignoreTexDiffuseAlpha;
-    cloneMat->_hardwareSkinning = base._hardwareSkinning;
-    cloneMat->_isRefractive = base._isRefractive;
-    cloneMat->_extraShaderDefines = base._extraShaderDefines;
-    cloneMat->_customShaderCBK = base._customShaderCBK;
-    cloneMat->_useForPrePass = base._useForPrePass;
-    cloneMat->baseShaderData(base.baseShaderData());
-    cloneMat->ignoreXMLData(base.ignoreXMLData());
-
-    // Could just direct copy the arrays, but this looks cool
-    for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
-        for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
-            for (U8 v = 0u; v < to_U8(RenderStagePass::VariantType::COUNT); ++v) {
-                cloneMat->_shaderInfo[s][p][v] = _shaderInfo[s][p][v];
-                cloneMat->_defaultRenderStates[s][p][v] = _defaultRenderStates[s][p][v];
-            }
+    for (U8 i = 0u; i < to_U8(this->_textures.size()); ++i) {
+        const TextureInfo& texInfo = this->_textures[i];
+        if (texInfo._ptr != nullptr) {
+            cloneMat->setTexture(
+                static_cast<TextureUsage>(i),
+                texInfo._ptr,
+                texInfo._sampler,
+                texInfo._operation,
+                texInfo._useForPrePass);
         }
     }
 
-    for (U8 i = 0; i < to_U8(base._textures.size()); ++i) {
-        const Texture_ptr& tex = base._textures[i];
-        if (tex) {
-            cloneMat->setTexture(static_cast<TextureUsage>(i), tex, base._samplers[i], base._textureOperations[i], base._useForPrePass[i]);
-        }
-    }
-    cloneMat->_needsNewShader = true;
-
+    _instances.emplace_back(cloneMat.get());
     return cloneMat;
 }
 
 bool Material::update([[maybe_unused]] const U64 deltaTimeUS) {
-
-    if (_needsNewShader) {
+    if (properties()._transparencyUpdated) {
+        updateTransparency();
+        properties()._transparencyUpdated = false;
+    }
+    if (properties()._cullUpdated) {
+        for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
+            if (s == to_U8(RenderStage::SHADOW)) {
+                continue;
+            }
+            auto& perPassStates = _defaultRenderStates[s];
+            for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
+                for (size_t& hash : perPassStates[p]) {
+                    if (hash != g_invalidStateHash) {
+                        RenderStateBlock tempBlock = RenderStateBlock::get(hash);
+                        tempBlock.setCullMode(properties().doubleSided() ? CullMode::NONE : CullMode::BACK);
+                        hash = tempBlock.getHash();
+                    }
+                }
+            }
+        }
+        properties()._cullUpdated = false;
+    }
+    if (properties()._needsNewShader) {
         recomputeShaders();
-        _needsNewShader = false;
+        properties()._needsNewShader = false;
         return true;
     }
 
     return false;
 }
 
-bool Material::setSampler(const TextureUsage textureUsageSlot, const size_t samplerHash, const bool applyToInstances)
+bool Material::setSampler(const TextureUsage textureUsageSlot, const size_t samplerHash)
 {
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->setSampler(textureUsageSlot, samplerHash, true);
-        }
-    }
 
-    const U32 slot = to_U32(textureUsageSlot);
-    if (_textureAddresses[slot] != s_defaultTextureAddress &&  _samplers[slot] != samplerHash) {
-        assert(_textures[slot] != nullptr);
-        assert(_textures[slot]->getState() == ResourceState::RES_LOADED);
-        _textureAddresses[slot] = _textures[slot]->getGPUAddress(samplerHash);
+    TextureInfo& tex = _textures[to_U32(textureUsageSlot)];
+    if (tex._address != s_defaultTextureAddress &&  tex._sampler != samplerHash) {
+        assert(tex._ptr != nullptr && tex._ptr->getState() == ResourceState::RES_LOADED);
+        tex._address = tex._ptr->getGPUAddress(samplerHash);
     }
-
-    _samplers[slot] = samplerHash;
+    tex._sampler = samplerHash;
 
     return true;
 }
 
-bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr& texture, const size_t samplerHash, const TextureOperation op, const TexturePrePassUsage prePassUsage, const bool applyToInstances)
+bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr& texture, const size_t samplerHash, const TextureOperation op, const TexturePrePassUsage prePassUsage)
 {
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->setTexture(textureUsageSlot, texture, samplerHash, op, prePassUsage, applyToInstances);
-        }
-    }
     const U32 slot = to_U32(textureUsageSlot);
 
-    if (samplerHash != _samplers[slot]) {
-        setSampler(textureUsageSlot, samplerHash, applyToInstances);
+    TextureInfo& texInfo = _textures[slot];
+
+    if (samplerHash != _textures[slot]._sampler) {
+        setSampler(textureUsageSlot, samplerHash);
     }
 
-    setTextureOperation(textureUsageSlot, texture ? op : TextureOperation::NONE, false);
+    setTextureOperation(textureUsageSlot, texture ? op : TextureOperation::NONE);
 
     {
         ScopedLock<SharedMutex> w_lock(_textureLock);
-        if (_textures[slot]) {
+        if (texInfo._ptr != nullptr) {
             // Skip adding same texture
-            if (texture != nullptr && _textures[slot]->getGUID() == texture->getGUID()) {
+            if (texture != nullptr && texInfo._ptr->getGUID() == texture->getGUID()) {
                 return true;
             }
         }
 
-        _useForPrePass[slot] = texture ? prePassUsage : TexturePrePassUsage::AUTO;
-
-        _textures[slot] = texture;
-        _textureAddresses[slot] = texture ? texture->getGPUAddress(samplerHash) : s_defaultTextureAddress;
+        texInfo._useForPrePass = texture ? prePassUsage : TexturePrePassUsage::AUTO;
+        texInfo._ptr = texture;
+        texInfo._address = texture ? texture->getGPUAddress(samplerHash) : s_defaultTextureAddress;
 
         if (textureUsageSlot == TextureUsage::METALNESS) {
-            _usePackedOMR = (texture != nullptr && texture->numChannels() > 2u);
+            properties()._usePackedOMR = (texture != nullptr && texture->numChannels() > 2u);
         }
         
         if (textureUsageSlot == TextureUsage::UNIT0 ||
             textureUsageSlot == TextureUsage::OPACITY)
         {
-            bool isOpacity = true;
-            if (textureUsageSlot == TextureUsage::UNIT0) {
-                _textureKeyCache = texture == nullptr ? std::numeric_limits<I32>::lowest() : (useBindlessTextures() ? 0u : texture->data()._textureHandle);
-                isOpacity = false;
-            }
-
             updateTransparency();
         }
     }
 
-    _needsNewShader = true;
+    properties()._needsNewShader = true;
 
     return true;
 }
 
-void Material::setTextureOperation(const TextureUsage textureUsageSlot, 
-                                   const TextureOperation op, 
-                                   const bool applyToAllInstances) {
+void Material::setTextureOperation(const TextureUsage textureUsageSlot, const TextureOperation op) {
 
-    TextureOperation& crtOp = _textureOperations[to_base(textureUsageSlot)];
+    TextureOperation& crtOp = _textures[to_base(textureUsageSlot)]._operation;
 
     if (crtOp != op) {
         crtOp = op;
-        _needsNewShader = true;
-    }
-
-    if (applyToAllInstances) {
-        for (Material* instance : _instances) {
-            instance->setTextureOperation(textureUsageSlot, op, true);
-        }
+        properties()._needsNewShader = true;
     }
 }
 
@@ -403,7 +367,7 @@ void Material::recomputeShaders() {
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
             RenderStagePass stagePass{ static_cast<RenderStage>(s), static_cast<RenderPassType>(p) };
-            ShaderPerVariant& variantMap = _shaderInfo[s][p];
+            auto& variantMap = _shaderInfo[s][p];
 
             for (U8 v = 0u; v < to_U8(RenderStagePass::VariantType::COUNT); ++v) {
                 ShaderProgramInfo& shaderInfo = variantMap[v];
@@ -513,12 +477,13 @@ bool Material::canDraw(const RenderStagePass renderStagePass, bool& shaderJustFi
     // Shader should be in the ready state
     return true;
 }
+
 void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDescriptor, const RenderStagePass renderStagePass) const {
     OPTICK_EVENT();
 
     const bool isDepthPass = IsDepthPass(renderStagePass);
 
-    DIVIDE_ASSERT(_shadingMode != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!");
+    DIVIDE_ASSERT(properties().shadingMode() != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!");
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> moduleDefines = {};
 
     ModuleDefines globalDefines = {};
@@ -537,7 +502,7 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     if (renderStagePass._passType == RenderPassType::OIT_PASS) {
         moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("OIT_PASS", true);
     }
-    switch (_shadingMode) {
+    switch (properties().shadingMode()) {
         case ShadingMode::FLAT: {
             globalDefines.emplace_back("SHADING_MODE_FLAT", true);
         } break;
@@ -557,8 +522,8 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     }
     // Display pre-pass caches normal maps in a GBuffer, so it's the only exception
     if ((!isDepthPass || renderStagePass._stage == RenderStage::DISPLAY) &&
-        _textures[to_base(TextureUsage::NORMALMAP)] != nullptr &&
-        _bumpMethod != BumpMethod::NONE) 
+        _textures[to_base(TextureUsage::NORMALMAP)]._ptr != nullptr &&
+        properties().bumpMethod() != BumpMethod::NONE) 
     {
         // Bump mapping?
         globalDefines.emplace_back("COMPUTE_TBN", true);
@@ -567,7 +532,9 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     if (hasTransparency()) {
         moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("HAS_TRANSPARENCY", true);
 
-        if (useAlphaDiscard() && renderStagePass._passType != RenderPassType::OIT_PASS) {
+        if (properties().overrides().useAlphaDiscard() && 
+            renderStagePass._passType != RenderPassType::OIT_PASS)
+        {
             moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("USE_ALPHA_DISCARD", true);
         }
     }
@@ -587,9 +554,13 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
         }
     }
 
-    globalDefines.emplace_back(_isStatic ? "NODE_STATIC" : "NODE_DYNAMIC", true);
+    globalDefines.emplace_back(properties().isStatic() ? "NODE_STATIC" : "NODE_DYNAMIC", true);
 
-    if (_hardwareSkinning) {
+    if (properties().isInstanced()) {
+        globalDefines.emplace_back("OVERRIDE_DATA_IDX", true);
+    }
+
+    if (properties().hardwareSkinning()) {
         moduleDefines[to_base(ShaderType::VERTEX)].emplace_back("USE_GPU_SKINNING", true);
     }
 
@@ -653,13 +624,15 @@ void Material::computeShader(const RenderStagePass renderStagePass) {
 }
 
 bool Material::unload() {
-    _textures.fill(nullptr);
+    for (TextureInfo& tex : _textures) {
+        tex._ptr.reset();
+    }
 
     static ShaderProgramInfo defaultShaderInfo = {};
 
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
-        ShaderVariantsPerPass& passMapShaders = _shaderInfo[s];
-        StateVariantsPerPass& passMapStates = _defaultRenderStates[s];
+        auto& passMapShaders = _shaderInfo[s];
+        auto& passMapStates = _defaultRenderStates[s];
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
             passMapShaders[p].fill(defaultShaderInfo);
             passMapStates[p].fill(g_invalidStateHash);
@@ -680,100 +653,6 @@ bool Material::unload() {
     return true;
 }
 
-void Material::refractive(const bool state, const bool applyToInstances) {
-    if (_isRefractive != state) {
-        _isRefractive = state;
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->refractive(state, true);
-        }
-    }
-}
-
-void Material::doubleSided(const bool state, const bool applyToInstances) {
-    if (_doubleSided != state) {
-        _doubleSided = state;
-
-        for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
-            if (s == to_U8(RenderStage::SHADOW)) {
-                continue;
-            }
-            StateVariantsPerPass& perPassStates = _defaultRenderStates[s];
-            for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
-                for (size_t& hash : perPassStates[p]) {
-                    if (hash != g_invalidStateHash) {
-                        RenderStateBlock tempBlock = RenderStateBlock::get(hash);
-                        tempBlock.setCullMode(_doubleSided ? CullMode::NONE : CullMode::BACK);
-                        hash = tempBlock.getHash();
-                    }
-                }
-            }
-        }
-
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->doubleSided(state, true);
-        }
-    }
-}
-
-void Material::receivesShadows(const bool state, const bool applyToInstances) {
-    if (_receivesShadows != state) {
-        _receivesShadows = state;
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->receivesShadows(state, true);
-        }
-    }
-}
-
-void Material::isStatic(const bool state, const bool applyToInstances) {
-    if (_isStatic != state) {
-        _isStatic = state;
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->isStatic(state, true);
-        }
-    }
-}
-
-void Material::ignoreTexDiffuseAlpha(const bool state, const bool applyToInstances) {
-    if (_ignoreTexDiffuseAlpha != state) {
-        _ignoreTexDiffuseAlpha = state;
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->ignoreTexDiffuseAlpha(state, true);
-        }
-    }
-}
-
-void Material::hardwareSkinning(const bool state, const bool applyToInstances) {
-    if (_hardwareSkinning != state) {
-        _hardwareSkinning = state;
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->hardwareSkinning(state, true);
-        }
-    }
-}
 
 void Material::setShaderProgram(const ShaderProgramDescriptor& shaderDescriptor, const RenderStage stage, const RenderPassType pass, const RenderStagePass::VariantType variant) {
     RenderStagePass stagePass;
@@ -818,190 +697,38 @@ void Material::setRenderStateBlock(const size_t renderStateBlockHash, const Rend
     }
 }
 
-void Material::toggleTransparency(const bool state, const bool applyToInstances) {
-    if (_transparencyEnabled != state) {
-        _transparencyEnabled = state;
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->toggleTransparency(state, true);
-        }
-    }
-}
-
-void Material::useAlphaDiscard(const bool state, const bool applyToInstances) {
-    if (_useAlphaDiscard != state) {
-        _useAlphaDiscard = state;
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->useAlphaDiscard(state, true);
-        }
-    }
-}
-
-void Material::baseColour(const FColour4& colour, const bool applyToInstances) {
-    _baseColour = colour;
-    updateTransparency();
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->baseColour(colour, true);
-        }
-    }
-}
-
-void Material::emissiveColour(const FColour3& colour, const bool applyToInstances) {
-    _emissive = colour;
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->emissiveColour(colour, true);
-        }
-    }
-}
-
-void Material::ambientColour(const FColour3& colour, const bool applyToInstances) {
-    _ambient = colour;
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->ambientColour(colour, true);
-        }
-    }
-}
-
-void Material::metallic(const F32 value, const bool applyToInstances) {
-    _metallic = CLAMPED_01(value);
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->metallic(value, true);
-        }
-    }
-}
-
-void Material::roughness(const F32 value, const bool applyToInstances) {
-    _roughness = CLAMPED_01(value);
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->roughness(value, true);
-        }
-    }
-}
-
-void Material::occlusion(const F32 value, const bool applyToInstances) {
-    _occlusion = CLAMPED_01(value);
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->occlusion(value, true);
-        }
-    }
-}
-
-void Material::specularColour(const FColour3& value, const bool applyToInstances) {
-    _specular.rgb = value;
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->specularColour(value, true);
-        }
-    }
-}
-
-void Material::specGloss(const SpecularGlossiness& value, const bool applyToInstances) {
-    _specGloss = value;
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->specGloss(value, true);
-        }
-    }
-}
-
-void Material::shininess(const F32 value, const bool applyToInstances) {
-    _specular.a = CLAMPED(value, 0.f, MAX_SHININESS);
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->shininess(value, true);
-        }
-    }
-}
-
-void Material::parallaxFactor(const F32 factor, const bool applyToInstances) {
-    _parallaxFactor = CLAMPED_01(factor);
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->parallaxFactor(factor, true);
-        }
-    }
-}
-
-void Material::bumpMethod(const BumpMethod newBumpMethod, const bool applyToInstances) {
-    if (_bumpMethod != newBumpMethod) {
-        _bumpMethod = newBumpMethod;
-        _needsNewShader = true;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->bumpMethod(newBumpMethod, true);
-        }
-    }
-}
-
-void Material::shadingMode(const ShadingMode mode, const bool applyToInstances) {
-    if (_shadingMode != mode) {
-        _shadingMode = mode;
-    }
-
-    if (applyToInstances) {
-        for (Material* instance : _instances) {
-            instance->shadingMode(mode, true);
-        }
-    }
-}
 
 void Material::updateTransparency() {
-    if (!_transparencyEnabled) {
-        return;
+    const TranslucencySource oldSource = properties()._translucencySource;
+    properties()._translucencySource = TranslucencySource::COUNT;
+    if (properties().overrides().transparencyEnabled()) {
+        // In order of importance (less to more)!
+        // diffuse channel alpha
+        if (properties().baseColour().a < 0.95f && _textures[to_base(TextureUsage::UNIT0)]._operation != TextureOperation::REPLACE) {
+            properties()._translucencySource = TranslucencySource::ALBEDO_COLOUR;
+        }
+
+        // base texture is translucent
+        const Texture_ptr& albedo = _textures[to_base(TextureUsage::UNIT0)]._ptr;
+        if (albedo && albedo->hasTransparency() && !properties().overrides().ignoreTexDiffuseAlpha()) {
+            properties()._translucencySource = TranslucencySource::ALBEDO_TEX;
+        }
+
+        // opacity map
+        const Texture_ptr& opacity = _textures[to_base(TextureUsage::OPACITY)]._ptr;
+        if (opacity) {
+            const U8 channelCount = NumChannels(opacity->descriptor().baseFormat());
+            properties()._translucencySource = (channelCount == 4 && opacity->hasTransparency())
+                                                                   ? TranslucencySource::OPACITY_MAP_A
+                                                                   : TranslucencySource::OPACITY_MAP_R;
+        }
     }
 
-    const TranslucencySource oldSource = _translucencySource;
-    _translucencySource = TranslucencySource::COUNT;
-
-    // In order of importance (less to more)!
-    // diffuse channel alpha
-    if (baseColour().a < 0.95f && _textureOperations[to_base(TextureUsage::UNIT0)] != TextureOperation::REPLACE) {
-        _translucencySource = TranslucencySource::ALBEDO_COLOUR;
-    }
-
-    // base texture is translucent
-    const Texture_ptr& albedo = _textures[to_base(TextureUsage::UNIT0)];
-    if (albedo && albedo->hasTransparency() && !_ignoreTexDiffuseAlpha) {
-        _translucencySource = TranslucencySource::ALBEDO_TEX;
-    }
-
-    // opacity map
-    const Texture_ptr& opacity = _textures[to_base(TextureUsage::OPACITY)];
-    if (opacity) {
-        const U8 channelCount = NumChannels(opacity->descriptor().baseFormat());
-        _translucencySource = (channelCount == 4 && opacity->hasTransparency()) ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
-    }
-
-    _needsNewShader = oldSource != _translucencySource;
+    properties()._needsNewShader = oldSource != properties().translucencySource();
 }
 
 size_t Material::getRenderStateBlock(const RenderStagePass renderStagePass) const {
-    const StatesPerVariant& variantMap = _defaultRenderStates[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)];
+    const auto& variantMap = _defaultRenderStates[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)];
 
     const size_t ret = variantMap[to_base(renderStagePass._variant)];
     // If we haven't defined a state for this variant, use the default one
@@ -1014,119 +741,132 @@ size_t Material::getRenderStateBlock(const RenderStagePass renderStagePass) cons
 
 void Material::getSortKeys(const RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey) const {
     shaderKey = shaderInfo(renderStagePass)._shaderKeyCache;
-    textureKey = _textureKeyCache;
+    if (properties().useBindlessTextures()) {
+        textureKey = 0u;
+    } else {
+        SharedLock<SharedMutex> r_lock(_textureLock);
+        if (_textures[to_base(TextureUsage::UNIT0)]._ptr != nullptr) {
+            textureKey = _textures[to_base(TextureUsage::UNIT0)]._ptr->data()._textureHandle;
+        } else {
+            textureKey = std::numeric_limits<I32>::lowest();
+        }
+    }
 }
 
 FColour4 Material::getBaseColour(bool& hasTextureOverride, Texture*& textureOut) const noexcept {
     textureOut = nullptr;
-    hasTextureOverride = _textures[to_base(TextureUsage::UNIT0)] != nullptr;
+    hasTextureOverride = _textures[to_base(TextureUsage::UNIT0)]._ptr != nullptr;
     if (hasTextureOverride) {
-        textureOut = _textures[to_base(TextureUsage::UNIT0)].get();
+        textureOut = _textures[to_base(TextureUsage::UNIT0)]._ptr.get();
     }
-    return baseColour();
+    return properties().baseColour();
 }
 
 FColour3 Material::getEmissive(bool& hasTextureOverride, Texture*& textureOut) const noexcept {
     textureOut = nullptr;
-    hasTextureOverride = _textures[to_base(TextureUsage::EMISSIVE)] != nullptr;
+    hasTextureOverride = _textures[to_base(TextureUsage::EMISSIVE)]._ptr != nullptr;
     if (hasTextureOverride) {
-        textureOut = _textures[to_base(TextureUsage::EMISSIVE)].get();
+        textureOut = _textures[to_base(TextureUsage::EMISSIVE)]._ptr.get();
     }
 
-    return emissive();
+    return properties().emissive();
 }
 
 FColour3 Material::getAmbient(bool& hasTextureOverride, Texture*& textureOut) const noexcept {
     textureOut = nullptr;
     hasTextureOverride = false;
 
-    return ambient();
+    return properties().ambient();
 }
 
-FColour4 Material::getSpecular(bool& hasTextureOverride, Texture*& textureOut) const noexcept {
+FColour3 Material::getSpecular(bool& hasTextureOverride, Texture*& textureOut) const noexcept {
     textureOut = nullptr;
-    hasTextureOverride = _textures[to_base(TextureUsage::SPECULAR)] != nullptr;
+    hasTextureOverride = _textures[to_base(TextureUsage::SPECULAR)]._ptr != nullptr;
     if (hasTextureOverride) {
-        textureOut = _textures[to_base(TextureUsage::SPECULAR)].get();
+        textureOut = _textures[to_base(TextureUsage::SPECULAR)]._ptr.get();
     }
-    return specular();
+    return properties().specular();
 }
 
 F32 Material::getMetallic(bool& hasTextureOverride, Texture*& textureOut) const noexcept {
     textureOut = nullptr;
-    hasTextureOverride = _textures[to_base(TextureUsage::METALNESS)] != nullptr;
+    hasTextureOverride = _textures[to_base(TextureUsage::METALNESS)]._ptr != nullptr;
     if (hasTextureOverride) {
-        textureOut = _textures[to_base(TextureUsage::METALNESS)].get();
+        textureOut = _textures[to_base(TextureUsage::METALNESS)]._ptr.get();
     }
-    return metallic();
+    return properties().metallic();
 }
 
 F32 Material::getRoughness(bool& hasTextureOverride, Texture*& textureOut) const noexcept {
     textureOut = nullptr;
-    hasTextureOverride = _textures[to_base(TextureUsage::ROUGHNESS)] != nullptr;
+    hasTextureOverride = _textures[to_base(TextureUsage::ROUGHNESS)]._ptr != nullptr;
     if (hasTextureOverride) {
-        textureOut = _textures[to_base(TextureUsage::ROUGHNESS)].get();
+        textureOut = _textures[to_base(TextureUsage::ROUGHNESS)]._ptr.get();
     }
-    return roughness();
+    return properties().roughness();
 }
 
 F32 Material::getOcclusion(bool& hasTextureOverride, Texture*& textureOut) const noexcept {
     textureOut = nullptr;
-    hasTextureOverride = _textures[to_base(TextureUsage::OCCLUSION)] != nullptr;
+    hasTextureOverride = _textures[to_base(TextureUsage::OCCLUSION)]._ptr != nullptr;
     if (hasTextureOverride) {
-        textureOut = _textures[to_base(TextureUsage::OCCLUSION)].get();
+        textureOut = _textures[to_base(TextureUsage::OCCLUSION)]._ptr.get();
     }
-    return occlusion();
+    return properties().occlusion();
 }
 
 void Material::getData(const RenderingComponent& parentComp, const U32 bestProbeID, NodeMaterialData& dataOut) {
-    const FColour4& specColour = specular(); //< For PHONG_SPECULAR
+    const FColour3& specColour = properties().specular(); //< For PHONG_SPECULAR
+    const F32 shininess = CLAMPED(properties().shininess(), 0.f, MAX_SHININESS);
 
-    const bool useOpacityAlphaChannel = _translucencySource == TranslucencySource::OPACITY_MAP_A;
-    const bool useAlbedoTexAlphachannel = _translucencySource == TranslucencySource::ALBEDO_TEX;
+    const bool useOpacityAlphaChannel = properties().translucencySource() == TranslucencySource::OPACITY_MAP_A;
+    const bool useAlbedoTexAlphachannel = properties().translucencySource() == TranslucencySource::ALBEDO_TEX;
 
     //ToDo: Maybe store all of these material properties in an internal, cached, NodeMaterialData structure? -Ionut
-    dataOut._albedo.set(baseColour());
-    dataOut._colourData.set(ambient(), specColour.a);
-    dataOut._emissiveAndParallax.set(emissive(), parallaxFactor());
-    dataOut._data.x = Util::PACK_UNORM4x8(occlusion(), metallic(), roughness(), 0.f);
-    dataOut._data.y = Util::PACK_UNORM4x8(specColour.r, specColour.g, specColour.b, (doubleSided() ? 1.f : 0.f));
-    dataOut._data.z = Util::PACK_UNORM4x8(0u, to_U8(shadingMode()), usePackedOMR() ? 1u : 0u, to_U8(bumpMethod()));
+    dataOut._albedo.set(properties().baseColour());
+    dataOut._colourData.set(properties().ambient(), shininess);
+    dataOut._emissiveAndParallax.set(properties().emissive(), properties().parallaxFactor());
+    dataOut._data.x = Util::PACK_UNORM4x8(CLAMPED_01(properties().occlusion()),
+                                          CLAMPED_01(properties().metallic()),
+                                          CLAMPED_01(properties().roughness()),
+                                          0.f);
+    dataOut._data.y = Util::PACK_UNORM4x8(specColour.r, specColour.g, specColour.b, (properties().doubleSided() ? 1.f : 0.f));
+    dataOut._data.z = Util::PACK_UNORM4x8(0u, to_U8(properties().shadingMode()), properties().usePackedOMR() ? 1u : 0u, to_U8(properties().bumpMethod()));
     dataOut._data.w = bestProbeID;
 
-    dataOut._textureOperations.x = Util::PACK_UNORM4x8(to_U8(_textureOperations[to_base(TextureUsage::UNIT0)]),
-                                                       to_U8(_textureOperations[to_base(TextureUsage::UNIT1)]),
-                                                       to_U8(_textureOperations[to_base(TextureUsage::SPECULAR)]),
-                                                       to_U8(_textureOperations[to_base(TextureUsage::EMISSIVE)]));
-    dataOut._textureOperations.y = Util::PACK_UNORM4x8(to_U8(_textureOperations[to_base(TextureUsage::OCCLUSION)]),
-                                                       to_U8(_textureOperations[to_base(TextureUsage::METALNESS)]),
-                                                       to_U8(_textureOperations[to_base(TextureUsage::ROUGHNESS)]),
-                                                       to_U8(_textureOperations[to_base(TextureUsage::OPACITY)]));
+    dataOut._textureOperations.x = Util::PACK_UNORM4x8(to_U8(_textures[to_base(TextureUsage::UNIT0)]._operation),
+                                                       to_U8(_textures[to_base(TextureUsage::UNIT1)]._operation),
+                                                       to_U8(_textures[to_base(TextureUsage::SPECULAR)]._operation),
+                                                       to_U8(_textures[to_base(TextureUsage::EMISSIVE)]._operation));
+    dataOut._textureOperations.y = Util::PACK_UNORM4x8(to_U8(_textures[to_base(TextureUsage::OCCLUSION)]._operation),
+                                                       to_U8(_textures[to_base(TextureUsage::METALNESS)]._operation),
+                                                       to_U8(_textures[to_base(TextureUsage::ROUGHNESS)]._operation),
+                                                       to_U8(_textures[to_base(TextureUsage::OPACITY)]._operation));
     dataOut._textureOperations.z = Util::PACK_UNORM4x8(useAlbedoTexAlphachannel ? 1.f : 0.f, 
                                                        useOpacityAlphaChannel ? 1.f : 0.f,
-                                                       specGloss().x,
-                                                       specGloss().y);
-    dataOut._textureOperations.w = Util::PACK_UNORM4x8(receivesShadows() ? 1.f : 0.f, 0.f, 0.f, 0.f);
+                                                       properties().specGloss().x,
+                                                       properties().specGloss().y);
+    dataOut._textureOperations.w = Util::PACK_UNORM4x8(properties().receivesShadows() ? 1.f : 0.f, 0.f, 0.f, 0.f);
 }
 
 void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTextures& texturesOut) {
     for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
-        texturesOut[i] = TextureToUVec2(_textureAddresses[to_base(g_materialTextures[i])]);
+        texturesOut[i] = TextureToUVec2(_textures[to_base(g_materialTextures[i])]._address);
     }
 }
 
 bool Material::getTextureData(const RenderStagePass renderStagePass, TextureDataContainer& textureData) {
     OPTICK_EVENT();
     // We only need to actually bind NON-RESIDENT textures. 
-    if (useBindlessTextures() && !debugBindlessTextures()) {
+    if (properties().useBindlessTextures() && !properties().debugBindlessTextures()) {
         return true;
     }
 
     const bool isPrePass = (renderStagePass._passType == RenderPassType::PRE_PASS);
     const auto addTexture = [&](const U8 slot) {
-        const Texture_ptr& crtTexture = _textures[slot];
+        const Texture_ptr& crtTexture = _textures[slot]._ptr;
         if (crtTexture != nullptr) {
-            textureData.add(TextureEntry{ crtTexture->data(), _samplers[slot], slot });
+            textureData.add(TextureEntry{ crtTexture->data(), _textures[slot]._sampler, slot });
             return true;
         }
         return false;
@@ -1143,7 +883,7 @@ bool Material::getTextureData(const RenderStagePass renderStagePass, TextureData
     } else {
         for (U8 i = 0u; i < to_U8(TextureUsage::COUNT); ++i) {
             bool add = false;
-            switch (_useForPrePass[i]) {
+            switch (_textures[i]._useForPrePass) {
                 case TexturePrePassUsage::ALWAYS: {
                     // Always add
                     add = true;
@@ -1156,27 +896,28 @@ bool Material::getTextureData(const RenderStagePass renderStagePass, TextureData
                     // Some best-fit heuristics that will surely break at one point
                     switch (static_cast<TextureUsage>(i)) {
                         case TextureUsage::UNIT0: {
-                            add = hasTransparency() && _translucencySource == TranslucencySource::ALBEDO_TEX;
+                            add = hasTransparency() && properties().translucencySource() == TranslucencySource::ALBEDO_TEX;
                         } break;
                         case TextureUsage::NORMALMAP: {
                             add = renderStagePass._stage == RenderStage::DISPLAY;
                         } break;
                         case TextureUsage::SPECULAR: {
                             add = renderStagePass._stage == RenderStage::DISPLAY && 
-                                  (shadingMode() != ShadingMode::PBR_MR && shadingMode() != ShadingMode::PBR_SG);
+                                  (properties().shadingMode() != ShadingMode::PBR_MR && properties().shadingMode() != ShadingMode::PBR_SG);
                         } break;
                         case TextureUsage::METALNESS: {
-                            add = renderStagePass._stage == RenderStage::DISPLAY && _usePackedOMR;
+                            add = renderStagePass._stage == RenderStage::DISPLAY && properties().usePackedOMR();
                         } break;
                         case TextureUsage::ROUGHNESS: {
-                            add = renderStagePass._stage == RenderStage::DISPLAY && !_usePackedOMR;
+                            add = renderStagePass._stage == RenderStage::DISPLAY && !properties().usePackedOMR();
                         } break;
                         case TextureUsage::HEIGHTMAP: {
                             add = true;
                         } break;
                         case TextureUsage::OPACITY: {
                             add = hasTransparency() &&
-                                (_translucencySource == TranslucencySource::OPACITY_MAP_A || _translucencySource == TranslucencySource::OPACITY_MAP_R);
+                                (properties().translucencySource() == TranslucencySource::OPACITY_MAP_A ||
+                                 properties().translucencySource() == TranslucencySource::OPACITY_MAP_R);
                         } break;
                     };
                 } break;
@@ -1199,7 +940,7 @@ void Material::rebuild() {
     // Alternatively we could just copy the maps directly
     for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
-            ShaderPerVariant& shaders = _shaderInfo[s][p];
+            auto& shaders = _shaderInfo[s][p];
             for (const ShaderProgramInfo& info : shaders) {
                 if (info._shaderRef != nullptr && info._shaderRef->getState() == ResourceState::RES_LOADED) {
                     info._shaderRef->recompile();
@@ -1212,49 +953,7 @@ void Material::rebuild() {
 void Material::saveToXML(const string& entryName, boost::property_tree::ptree& pt) const {
     pt.put(entryName + ".version", g_materialXMLVersion);
 
-    pt.put(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingMode()));
-
-    pt.put(entryName + ".colour.<xmlattr>.r", baseColour().r);
-    pt.put(entryName + ".colour.<xmlattr>.g", baseColour().g);
-    pt.put(entryName + ".colour.<xmlattr>.b", baseColour().b);
-    pt.put(entryName + ".colour.<xmlattr>.a", baseColour().a);
-
-    pt.put(entryName + ".emissive.<xmlattr>.r", emissive().r);
-    pt.put(entryName + ".emissive.<xmlattr>.g", emissive().g);
-    pt.put(entryName + ".emissive.<xmlattr>.b", emissive().b);
-
-    pt.put(entryName + ".ambient.<xmlattr>.r", ambient().r);
-    pt.put(entryName + ".ambient.<xmlattr>.g", ambient().g);
-    pt.put(entryName + ".ambient.<xmlattr>.b", ambient().b);
-
-    pt.put(entryName + ".specular.<xmlattr>.r", specular().r);
-    pt.put(entryName + ".specular.<xmlattr>.g", specular().g);
-    pt.put(entryName + ".specular.<xmlattr>.b", specular().b);
-    pt.put(entryName + ".specular.<xmlattr>.a", specular().a);
-
-    pt.put(entryName + ".specular_factor", specGloss().x);
-    pt.put(entryName + ".glossiness_factor", specGloss().y);
-
-    pt.put(entryName + ".metallic", metallic());
-
-    pt.put(entryName + ".roughness", roughness());
-
-    pt.put(entryName + ".doubleSided", doubleSided());
-
-    pt.put(entryName + ".receivesShadows", receivesShadows());
-
-    pt.put(entryName + ".ignoreTexDiffuseAlpha", ignoreTexDiffuseAlpha());
-
-    pt.put(entryName + ".bumpMethod", TypeUtil::BumpMethodToString(bumpMethod()));
-
-    pt.put(entryName + ".parallaxFactor", parallaxFactor());
-
-    pt.put(entryName + ".transparencyEnabled", transparencyEnabled());
-
-    pt.put(entryName + ".useAlphaDiscard", useAlphaDiscard());
-
-    pt.put(entryName + ".isRefractive", _isRefractive);
-
+    properties().saveToXML(entryName, pt);
     saveRenderStatesToXML(entryName, pt);
     saveTextureDataToXML(entryName, pt);
 }
@@ -1270,56 +969,8 @@ void Material::loadFromXML(const string& entryName, const boost::property_tree::
         return;
     }
 
-    const ShadingMode shadingModeCrt = shadingMode();
-    ShadingMode shadingModeFile = TypeUtil::StringToShadingMode(pt.get<string>(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingModeCrt)));
-    if (shadingModeFile == ShadingMode::COUNT) {
-        shadingModeFile = shadingModeCrt;
-    }
-
-    shadingMode(shadingModeFile, false);
-
-    baseColour(FColour4(pt.get<F32>(entryName + ".colour.<xmlattr>.r", baseColour().r),
-                        pt.get<F32>(entryName + ".colour.<xmlattr>.g", baseColour().g),
-                        pt.get<F32>(entryName + ".colour.<xmlattr>.b", baseColour().b),
-                        pt.get<F32>(entryName + ".colour.<xmlattr>.a", baseColour().a)), false);
-                          
-    emissiveColour(FColour3(pt.get<F32>(entryName + ".emissive.<xmlattr>.r", emissive().r),
-                            pt.get<F32>(entryName + ".emissive.<xmlattr>.g", emissive().g),
-                            pt.get<F32>(entryName + ".emissive.<xmlattr>.b", emissive().b)), false);  
-    
-    ambientColour(FColour3(pt.get<F32>(entryName + ".ambient.<xmlattr>.r", ambient().r),
-                           pt.get<F32>(entryName + ".ambient.<xmlattr>.g", ambient().g),
-                           pt.get<F32>(entryName + ".ambient.<xmlattr>.b", ambient().b)), false);
-
-    specularColour(FColour4(pt.get<F32>(entryName + ".specular.<xmlattr>.r", specular().r),
-                            pt.get<F32>(entryName + ".specular.<xmlattr>.g", specular().g),
-                            pt.get<F32>(entryName + ".specular.<xmlattr>.b", specular().b),
-                            pt.get<F32>(entryName + ".specular.<xmlattr>.a", specular().a)), false);
-
-    specGloss(SpecularGlossiness(pt.get<F32>(entryName + ".specular_factor", specGloss().x),
-                                 pt.get<F32>(entryName + ".glossiness_factor", specGloss().y)));
-
-    metallic(pt.get<F32>(entryName + ".metallic", metallic()), false);
-
-    roughness(pt.get<F32>(entryName + ".roughness", roughness()), false);
-
-    doubleSided(pt.get<bool>(entryName + ".doubleSided", doubleSided()), false);
-
-    receivesShadows(pt.get<bool>(entryName + ".receivesShadows", receivesShadows()), false);
-
-    ignoreTexDiffuseAlpha(pt.get<bool>(entryName + ".ignoreTexDiffuseAlpha", ignoreTexDiffuseAlpha()), false);
-
-    bumpMethod(TypeUtil::StringToBumpMethod(pt.get<string>(entryName + ".bumpMethod", TypeUtil::BumpMethodToString(bumpMethod()))), false);
-
-    parallaxFactor(pt.get<F32>(entryName + ".parallaxFactor", parallaxFactor()), false);
-
-    toggleTransparency(pt.get<bool>(entryName + ".transparencyEnabled", transparencyEnabled()), true);
-    
-    useAlphaDiscard(pt.get<bool>(entryName + ".useAlphaDiscard", useAlphaDiscard()), true);
-
-    refractive(pt.get<bool>(entryName + ".isRefractive", refractive()), false);
-
-    //loadRenderStatesFromXML(entryName, pt);
+    properties().loadFromXML(entryName, pt);
+    loadRenderStatesFromXML(entryName, pt);
     loadTextureDataFromXML(entryName, pt);
 }
 
@@ -1404,9 +1055,9 @@ void Material::saveTextureDataToXML(const string& entryName, boost::property_tre
 
             pt.put(textureNode + ".name", texture->assetName().str());
             pt.put(textureNode + ".path", texture->assetLocation().str());
-            pt.put(textureNode + ".usage", TypeUtil::TextureOperationToString(_textureOperations[to_base(usage)]));
+            pt.put(textureNode + ".usage", TypeUtil::TextureOperationToString(_textures[to_base(usage)]._operation));
 
-            const size_t samplerHash = _samplers[to_base(usage)];
+            const size_t samplerHash = _textures[to_base(usage)]._sampler;
 
             if (previousHashValues.find(samplerHash) == std::cend(previousHashValues)) {
                 samplerCount++;
@@ -1414,7 +1065,7 @@ void Material::saveTextureDataToXML(const string& entryName, boost::property_tre
                 previousHashValues[samplerHash] = samplerCount;
             }
             pt.put(textureNode + ".Sampler.id", previousHashValues[samplerHash]);
-            pt.put(textureNode + ".UseForPrePass", to_U32(_useForPrePass[to_base(usage)]));
+            pt.put(textureNode + ".UseForPrePass", to_U32(_textures[to_base(usage)]._useForPrePass));
         }
     }
 }
@@ -1434,7 +1085,7 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
             }
 
             if (!texName.empty()) {
-                _useForPrePass[to_base(usage)] = static_cast<TexturePrePassUsage>(pt.get<U32>(textureNode + ".UseForPrePass", to_U32(_useForPrePass[to_base(usage)])));
+                _textures[to_base(usage)]._useForPrePass = static_cast<TexturePrePassUsage>(pt.get<U32>(textureNode + ".UseForPrePass", to_U32(_textures[to_base(usage)]._useForPrePass)));
                 const U32 index = pt.get<U32>(textureNode + ".Sampler.id", 0);
                 const auto& it = previousHashValues.find(index);
 
@@ -1446,16 +1097,16 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
                      previousHashValues[index] = hash;
                 }
 
-                if (_samplers[to_base(usage)] != hash) {
+                if (_textures[to_base(usage)]._sampler != hash) {
                     setSampler(usage, hash);
                 }
 
-                TextureOperation& op = _textureOperations[to_base(usage)];
-                op = TypeUtil::StringToTextureOperation(pt.get<string>(textureNode + ".usage", TypeUtil::TextureOperationToString(_textureOperations[to_base(usage)])));
+                TextureOperation& op = _textures[to_base(usage)]._operation;
+                op = TypeUtil::StringToTextureOperation(pt.get<string>(textureNode + ".usage", TypeUtil::TextureOperationToString(op)));
 
                 {
                     ScopedLock<SharedMutex> w_lock(_textureLock);
-                    const Texture_ptr& crtTex = _textures[to_base(usage)];
+                    const Texture_ptr& crtTex = _textures[to_base(usage)]._ptr;
                     if (crtTex == nullptr) {
                         op = TextureOperation::NONE;
                     } else if (crtTex->assetLocation() + crtTex->assetName() == texPath + texName) {

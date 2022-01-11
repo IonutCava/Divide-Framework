@@ -166,7 +166,8 @@ void RenderingComponent::instantiateMaterial(const Material_ptr& material) {
         renderLodField._readOnly = false;
         _editorComponent.registerField(MOV(renderLodField));
 
-        _materialInstance->isStatic(_parentSGN->usageContext() == NodeUsageContext::NODE_STATIC);
+        _materialInstance->properties().isStatic(_parentSGN->usageContext() == NodeUsageContext::NODE_STATIC);
+        _materialInstance->properties().isInstanced(_materialInstance->properties().isInstanced() || isInstanced());
     }
 }
 
@@ -205,7 +206,7 @@ bool RenderingComponent::canDraw(const RenderStagePass renderStagePass) {
 
 void RenderingComponent::onParentUsageChanged(const NodeUsageContext context) const {
     if (_materialInstance != nullptr) {
-        _materialInstance->isStatic(context == NodeUsageContext::NODE_STATIC);
+        _materialInstance->properties().isStatic(context == NodeUsageContext::NODE_STATIC);
     }
 }
 
@@ -382,12 +383,17 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
         if (pkg.pipelineCmd()._pipeline == nullptr) {
             if (isInstanced()) {
                 pkg.pushConstantsCmd()._constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, 0u);
+                if (_materialInstance != nullptr) {
+                    _materialInstance->properties().isInstanced(true);
+                }
             }
             PipelineDescriptor pipelineDescriptor = {};
             if (_materialInstance != nullptr) {
                 pipelineDescriptor._stateHash = _materialInstance->getRenderStateBlock(renderStagePass);
                 pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramGUID(renderStagePass);
-                _materialInstance->getTextureData(renderStagePass, pkg.descriptorSetCmd()._set._textureData);
+                if (!_materialInstance->getTextureData(renderStagePass, pkg.descriptorSetCmd()._set._textureData)) {
+                    NOP();
+                }
             } else {
                 pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
                 pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
@@ -513,8 +519,7 @@ bool RenderingComponent::updateReflection(const U16 reflectionIndex,
             targetAtt.texture(),
             targetAtt.samplerHash(),
             TextureOperation::REPLACE,
-            TexturePrePassUsage::AUTO,
-            true
+            TexturePrePassUsage::AUTO
         );
         return true;
     }
@@ -549,8 +554,7 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
             targetAtt.texture(),
             targetAtt.samplerHash(),
             TextureOperation::REPLACE,
-            TexturePrePassUsage::AUTO,
-            true
+            TexturePrePassUsage::AUTO
         );
         return true;
     }

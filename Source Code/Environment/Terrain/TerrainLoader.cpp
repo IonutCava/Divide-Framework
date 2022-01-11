@@ -224,22 +224,22 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     Console::d_printfn(Locale::Get(_ID("TERRAIN_INFO")), terrainDimensions.width, terrainDimensions.height);
 
     const F32 underwaterTileScale = terrainDescriptor->getVariablef("underwaterTileScale");
-    terrainMaterial->shadingMode(ShadingMode::PBR_MR);
+    terrainMaterial->properties().shadingMode(ShadingMode::PBR_MR);
 
     const Terrain::ParallaxMode pMode = static_cast<Terrain::ParallaxMode>(CLAMPED(to_I32(to_U8(context.config().terrain.parallaxMode)), 0, 2));
     if (pMode == Terrain::ParallaxMode::NORMAL) {
-        terrainMaterial->bumpMethod(BumpMethod::PARALLAX);
+        terrainMaterial->properties().bumpMethod(BumpMethod::PARALLAX);
     } else if (pMode == Terrain::ParallaxMode::OCCLUSION) {
-        terrainMaterial->bumpMethod(BumpMethod::PARALLAX_OCCLUSION);
+        terrainMaterial->properties().bumpMethod(BumpMethod::PARALLAX_OCCLUSION);
     } else {
-        terrainMaterial->bumpMethod(BumpMethod::NONE);
+        terrainMaterial->properties().bumpMethod(BumpMethod::NONE);
     }
 
-    terrainMaterial->baseColour(FColour4(DefaultColours::WHITE.rgb * 0.5f, 1.0f));
-    terrainMaterial->metallic(0.0f);
-    terrainMaterial->roughness(0.8f);
-    terrainMaterial->parallaxFactor(0.3f);
-    terrainMaterial->toggleTransparency(false);
+    terrainMaterial->properties().baseColour(FColour4(DefaultColours::WHITE.rgb * 0.5f, 1.0f));
+    terrainMaterial->properties().metallic(0.0f);
+    terrainMaterial->properties().roughness(0.8f);
+    terrainMaterial->properties().parallaxFactor(0.3f);
+    terrainMaterial->properties().toggleTransparency(false);
 
     U8 totalLayerCount = 0;
     string layerCountDataStr = Util::StringFormat("const uint CURRENT_LAYER_COUNT[ %d ] = {", layerCount);
@@ -304,7 +304,8 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     TextureDescriptor heightMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::COUNT);
     heightMapTexture.propertyDescriptor(heightMapDescriptor);
-    terrainMaterial->isStatic(true);
+    terrainMaterial->properties().isStatic(true);
+    terrainMaterial->properties().isInstanced(true);
     terrainMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
     terrainMaterial->setTexture(TextureUsage::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
     terrainMaterial->setTexture(TextureUsage::NORMALMAP, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
@@ -318,8 +319,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     WAIT_FOR_CONDITION(albedoTile->getState() == ResourceState::RES_LOADED);
     const U16 tileMapSize = albedoTile->width();
 
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "OVERRIDE_DATA_IDX", true);
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "USE_CUSTOM_NORMAL_MAP", true);
     terrainMaterial->addShaderDefine(ShaderType::COUNT, "TEXTURE_TILE_SIZE " + Util::to_string(tileMapSize), true);
     terrainMaterial->addShaderDefine(ShaderType::COUNT, "TERRAIN_HEIGHT_OFFSET " + Util::to_string(altitudeRange.x), true);
     terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_X " + Util::to_string(WorldScale.width), true);
@@ -347,7 +346,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     }
     terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, blendAmntStr, true);
 
-    if (!terrainMaterial->receivesShadows()) {
+    if (!terrainMaterial->properties().receivesShadows()) {
         terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, "DISABLE_SHADOW_MAPPING", true);
     }
 

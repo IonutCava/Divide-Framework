@@ -56,16 +56,27 @@ namespace Divide {
 
             return false;
         }
+        template<typename Pred>
+        void ApplyToMaterials(const Material& baseMaterial, Material* instanceRoot, Pred&& predicate) {
+            if (instanceRoot != nullptr) {
+                predicate(baseMaterial, instanceRoot);
+
+                const auto& instances = instanceRoot->getInstances();
+                for (Material* mat : instances) {
+                    ApplyToMaterials(baseMaterial, mat, predicate);
+                }
+            }
+        }
 
         template<typename Pred>
-        void ApplyAllButton(I32 &id, const bool readOnly, Pred&& predicate) {
+        void ApplyAllButton(I32 &id, const bool readOnly, const Material& material, Pred&& predicate) {
             ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 40);
             ImGui::PushID(4321234 + id++);
             if (readOnly) {
                 PushReadOnly();
             }
             if (ImGui::SmallButton("A")) {
-                predicate();
+                ApplyToMaterials(material, material.baseMaterial(), MOV(predicate));
             }
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                 ImGui::SetTooltip("Apply to all instances");
@@ -95,8 +106,6 @@ namespace Divide {
             ImGui::PopID();
             return ret;
         }
-
-      
     }
 
     PropertyWindow::PropertyWindow(Editor& parent, PlatformContext& context, const Descriptor& descriptor)
@@ -1521,7 +1530,7 @@ namespace Divide {
         }
 
         static bool shadingModeWasOpen = false;
-        const ShadingMode crtMode = material->shadingMode();
+        const ShadingMode crtMode = material->properties().shadingMode();
         const char* crtModeName = TypeUtil::ShadingModeToString(crtMode);
         if (!ImGui::CollapsingHeader(Util::StringFormat("Shading Mode [ %s ]", crtModeName).c_str(), (shadingModeWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u) | ImGuiTreeNodeFlags_SpanAvailWidth)) {
             shadingModeWasOpen = false;
@@ -1544,11 +1553,11 @@ namespace Divide {
                             modeUndo._oldVal = to_I32(crtMode);
                             modeUndo._newVal = to_I32(mode);
                             modeUndo._dataSetter = [material, mode]([[maybe_unused]] const I32& data) {
-                                material->shadingMode(mode);
+                                material->properties().shadingMode(mode);
                             };
                             _context.editor().registerUndoEntry(modeUndo);
 
-                            material->shadingMode(mode);
+                            material->properties().shadingMode(mode);
                         }
                         if (isSelected) {
                             ImGui::SetItemDefaultFocus();
@@ -1559,10 +1568,9 @@ namespace Divide {
                 ImGui::PopItemWidth();
             }
             I32 id = 0;
-            ApplyAllButton(id, false, [&material]() {
-                if (material->baseMaterial() != nullptr) {
-                    material->baseMaterial()->shadingMode(material->shadingMode(), true);
-                }
+
+            ApplyAllButton(id, false, *material, [](const Material& baseMaterial, Material* matInstance) {
+                matInstance->properties().shadingMode(baseMaterial.properties().shadingMode());
             });
 
             bool fromTexture = false;
@@ -1571,7 +1579,7 @@ namespace Divide {
                 ImGui::Separator();
                 ImGui::PushItemWidth(250);
                 FColour4 diffuse = material->getBaseColour(fromTexture, texture);
-                if (Util::colourInput4(_parent, "[Albedo]", diffuse, readOnly, [material](const FColour4& col) { material->baseColour(col); return true; })) {
+                if (Util::colourInput4(_parent, "[Albedo]", diffuse, readOnly, [material](const FColour4& col) { material->properties().baseColour(col); return true; })) {
                     ret = true;
                 }
                 ImGui::PopItemWidth();
@@ -1579,10 +1587,8 @@ namespace Divide {
                     ImGui::SetTooltip("Albedo is sampled from a texture. Base colour possibly unused!");
                     skipAutoTooltip(true);
                 }
-                ApplyAllButton(id, fromTexture || readOnly, [&material]() {
-                    if (material->baseMaterial() != nullptr) {
-                        material->baseMaterial()->baseColour(material->baseColour(), true);
-                    }
+                ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                    matInstance->properties().baseColour(baseMaterial.properties().baseColour());
                 });
                 if (PreviewTextureButton(id, texture, !fromTexture)) {
                     _previewTexture = texture;
@@ -1651,7 +1657,7 @@ namespace Divide {
 
                 ImGui::PushItemWidth(250);
                 FColour3 emissive = material->getEmissive(fromTexture, texture);
-                if (Util::colourInput3(_parent, "[Emissive]", emissive, fromTexture || readOnly, [&material](const FColour3& col) { material->emissiveColour(col); return true; })) {
+                if (Util::colourInput3(_parent, "[Emissive]", emissive, fromTexture || readOnly, [&material](const FColour3& col) { material->properties().emissive(col); return true; })) {
                     ret = true;
                 }
                 ImGui::PopItemWidth();
@@ -1659,10 +1665,8 @@ namespace Divide {
                     ImGui::SetTooltip("Control managed by application (e.g. is overriden by a texture)");
                     skipAutoTooltip(true);
                 }
-                ApplyAllButton(id, fromTexture || readOnly, [&material]() {
-                    if (material->baseMaterial() != nullptr) {
-                        material->baseMaterial()->emissiveColour(material->emissive(), true);
-                    }
+                ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                    matInstance->properties().emissive(baseMaterial.properties().emissive());
                 });
                 if (PreviewTextureButton(id, texture, !fromTexture)) {
                     _previewTexture = texture;
@@ -1673,7 +1677,7 @@ namespace Divide {
                 ImGui::Separator();
                 ImGui::PushItemWidth(250);
                 FColour3 ambient = material->getAmbient(fromTexture, texture);
-                if (Util::colourInput3(_parent, "[Ambient]", ambient, fromTexture || readOnly, [material](const FColour3& colour) { material->ambientColour(colour); return true; })) {
+                if (Util::colourInput3(_parent, "[Ambient]", ambient, fromTexture || readOnly, [material](const FColour3& colour) { material->properties().ambient(colour); return true; })) {
                     ret = true;
                 }
                 ImGui::PopItemWidth();
@@ -1681,57 +1685,52 @@ namespace Divide {
                     ImGui::SetTooltip("Control managed by application (e.g. is overriden by a texture)");
                     skipAutoTooltip(true);
                 }
-                ApplyAllButton(id, fromTexture || readOnly, [&material]() {
-                    if (material->baseMaterial() != nullptr) {
-                        material->baseMaterial()->ambientColour(material->ambient(), true);
-                    }
+                ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                    matInstance->properties().ambient(baseMaterial.properties().ambient());
                 });
                 if (PreviewTextureButton(id, texture, !fromTexture)) {
                     _previewTexture = texture;
                 }
                 ImGui::Separator();
             }
-            if (material->shadingMode() != ShadingMode::PBR_MR &&
-                material->shadingMode() != ShadingMode::PBR_SG)
+            if (material->properties().shadingMode() != ShadingMode::PBR_MR &&
+                material->properties().shadingMode() != ShadingMode::PBR_SG)
             {
-                FColour4 specular = material->getSpecular(fromTexture, texture);
+                FColour3 specular = material->getSpecular(fromTexture, texture);
+                F32 shininess = material->properties().shininess();
 
                 { //Specular power
                     EditorComponentField tempField = {};
-                    tempField._name = "Specular Power";
+                    tempField._name = "Shininess";
                     tempField._basicType = GFX::PushConstantType::FLOAT;
                     tempField._type = EditorComponentFieldType::SLIDER_TYPE;
                     tempField._readOnly = readOnly;
-                    tempField._data = &specular.a;
+                    tempField._data = &shininess;
                     tempField._range = { 0.0f, Material::MAX_SHININESS };
                     tempField._dataSetter = [&material](const void* s) {
-                        material->shininess(*static_cast<const F32*>(s));
+                        material->properties().shininess(*static_cast<const F32*>(s));
                     };
 
                     ImGui::PushItemWidth(175);
                     ret = processBasicField(tempField) || ret;
                     ImGui::PopItemWidth();
                     ImGui::SameLine();
-                    ApplyAllButton(id, tempField._readOnly, [&material, &specular]() {
-                        if (material->baseMaterial() != nullptr) {
-                            material->baseMaterial()->shininess(specular.a, true);
-                        }
+                    ApplyAllButton(id, fromTexture || readOnly, *material, [&specular](const Material& baseMaterial, Material* matInstance) {
+                        matInstance->properties().shininess(baseMaterial.properties().shininess());
                     });
                 }
                 { //Specular colour
                     ImGui::Separator();
                     ImGui::PushItemWidth(250);
-                    if (Util::colourInput3(_parent, "[Specular]", specular.rgb, fromTexture || readOnly, [material](const FColour4& col) { material->specularColour(col); return true; })) {
+                    if (Util::colourInput3(_parent, "[Specular]", specular, fromTexture || readOnly, [material](const FColour3& col) { material->properties().specular(col); return true; })) {
                         ret = true;
                     }
                     ImGui::PopItemWidth();
                     if (fromTexture && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                         ImGui::SetTooltip("Control managed by application (e.g. is overriden by a texture)");
                     }
-                    ApplyAllButton(id, fromTexture || readOnly, [&material]() {
-                        if (material->baseMaterial() != nullptr) {
-                            material->baseMaterial()->specularColour(material->specular(), true);
-                        }
+                    ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                        matInstance->properties().specular(baseMaterial.properties().specular());
                     });
                     if (PreviewTextureButton(id, texture, !fromTexture)) {
                         _previewTexture = texture;
@@ -1754,7 +1753,7 @@ namespace Divide {
                     tempField._data = &metallic;
                     tempField._range = { 0.0f, 1.0f };
                     tempField._dataSetter = [material](const void* m) {
-                        material->metallic(*static_cast<const F32*>(m));
+                        material->properties().metallic(*static_cast<const F32*>(m));
                     };
 
                     ImGui::PushItemWidth(175);
@@ -1762,10 +1761,8 @@ namespace Divide {
                     ImGui::PopItemWidth();
 
                     ImGui::SameLine();
-                    ApplyAllButton(id, tempField._readOnly, [&material]() {
-                        if (material->baseMaterial() != nullptr) {
-                            material->baseMaterial()->metallic(material->metallic(), true);
-                        }
+                    ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                        matInstance->properties().metallic(baseMaterial.properties().metallic());
                     });
                     if (PreviewTextureButton(id, texture, !fromTexture)) {
                         _previewTexture = texture;
@@ -1786,16 +1783,14 @@ namespace Divide {
                     tempField._data = &roughness;
                     tempField._range = { 0.0f, 1.0f };
                     tempField._dataSetter = [material](const void* r) {
-                        material->roughness(*static_cast<const F32*>(r));
+                        material->properties().roughness(*static_cast<const F32*>(r));
                     };
                     ImGui::PushItemWidth(175);
                     ret = processBasicField(tempField) || ret;
                     ImGui::PopItemWidth();
                     ImGui::SameLine();
-                    ApplyAllButton(id, tempField._readOnly, [&material]() {
-                        if (material->baseMaterial() != nullptr) {
-                            material->baseMaterial()->roughness(material->roughness(), true);
-                        }
+                    ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                        matInstance->properties().roughness(baseMaterial.properties().roughness());
                     });
                     if (PreviewTextureButton(id, texture, !fromTexture)) {
                         _previewTexture = texture;
@@ -1817,7 +1812,7 @@ namespace Divide {
                     tempField._data = &occlusion;
                     tempField._range = { 0.0f, 1.0f };
                     tempField._dataSetter = [material](const void* m) {
-                        material->occlusion(*static_cast<const F32*>(m));
+                        material->properties().occlusion(*static_cast<const F32*>(m));
                     };
 
                     ImGui::PushItemWidth(175);
@@ -1825,10 +1820,8 @@ namespace Divide {
                     ImGui::PopItemWidth();
 
                     ImGui::SameLine();
-                    ApplyAllButton(id, tempField._readOnly, [&material]() {
-                        if (material->baseMaterial() != nullptr) {
-                            material->baseMaterial()->occlusion(material->occlusion(), true);
-                        }
+                    ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                        matInstance->properties().occlusion(baseMaterial.properties().occlusion());
                     });
                     if (PreviewTextureButton(id, texture, !fromTexture)) {
                         _previewTexture = texture;
@@ -1838,7 +1831,7 @@ namespace Divide {
             }
             { // Parallax
                 ImGui::Separator();
-                F32 parallax = material->parallaxFactor();
+                F32 parallax = material->properties().parallaxFactor();
                 EditorComponentField tempField = {};
                 tempField._name = "Parallax";
                 tempField._basicType = GFX::PushConstantType::FLOAT;
@@ -1847,21 +1840,18 @@ namespace Divide {
                 tempField._data = &parallax;
                 tempField._range = { 0.0f, 1.0f };
                 tempField._dataSetter = [material](const void* p) {
-                    material->parallaxFactor(*static_cast<const F32*>(p));
+                    material->properties().parallaxFactor(*static_cast<const F32*>(p));
                 };
                 ImGui::PushItemWidth(175);
                 ret = processBasicField(tempField) || ret;
                 ImGui::PopItemWidth();
                 ImGui::SameLine();
-                ApplyAllButton(id, tempField._readOnly, [&material]() {
-                    if (material->baseMaterial() != nullptr) {
-                        material->baseMaterial()->parallaxFactor(material->parallaxFactor(), true);
-                    }
+                ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                    matInstance->properties().parallaxFactor(baseMaterial.properties().parallaxFactor());
                 });
                 ImGui::Separator();
             }
             { // Texture operations
-                const Material::TexOpArray& operations = material->textureOperations();
                 constexpr char* const names[] = {
                     "Tex operation [Albedo - Tex0]",
                     "Tex operation [(Albedo*Tex0) - Tex1]",
@@ -1880,7 +1870,7 @@ namespace Divide {
                     if (!hasTexture) {
                         PushReadOnly();
                     }
-                    const TextureOperation crtOp = operations[to_base(targetTex)];
+                    const TextureOperation crtOp = material->getTextureInfo(targetTex)._operation;
                     ImGui::Text(names[i]);
                     if (ImGui::BeginCombo("", TypeUtil::TextureOperationToString(crtOp), ImGuiComboFlags_PopupAlignLeft)) {
                         for (U8 n = 0; n < to_U8(TextureOperation::COUNT); ++n) {
@@ -1905,11 +1895,8 @@ namespace Divide {
                         }
                         ImGui::EndCombo();
                     }
-
-                    ApplyAllButton(id, readOnly, [&material, targetTex, i]() {
-                        if (material->baseMaterial() != nullptr) {
-                            material->baseMaterial()->setTextureOperation(targetTex, material->textureOperations()[to_base(targetTex)], true);
-                        }
+                    ApplyAllButton(id, fromTexture || readOnly, *material, [targetTex](const Material& baseMaterial, Material* matInstance) {
+                        matInstance->setTextureOperation(targetTex, baseMaterial.getTextureInfo(targetTex)._operation);
                     });
                     if (!hasTexture) {
                         PopReadOnly();
@@ -1923,49 +1910,43 @@ namespace Divide {
 
                 ImGui::Separator();
             }
-            bool ignoreTexAlpha = material->ignoreTexDiffuseAlpha();
-            bool doubleSided = material->doubleSided();
-            bool refractive = material->refractive();
+            bool ignoreTexAlpha = material->properties().overrides().ignoreTexDiffuseAlpha();
+            bool doubleSided = material->properties().doubleSided();
+            bool refractive = material->properties().isRefractive();
             const bool reflective = material->reflective();
 
             ImGui::Text("[Double Sided]"); ImGui::SameLine();
             if (ImGui::ToggleButton("[Double Sided]", &doubleSided) && !readOnly) {
                 RegisterUndo<bool, false>(_parent, GFX::PushConstantType::BOOL, !doubleSided, doubleSided, "DoubleSided", [material](const bool& oldVal) {
-                    material->doubleSided(oldVal);
+                    material->properties().doubleSided(oldVal);
                 });
-                material->doubleSided(doubleSided);
+                material->properties().doubleSided(doubleSided);
                 ret = true;
             }
-            ApplyAllButton(id, false, [&material]() {
-                if (material->baseMaterial() != nullptr) {
-                    material->baseMaterial()->doubleSided(material->doubleSided(), true);
-                }
+            ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                matInstance->properties().doubleSided(baseMaterial.properties().doubleSided());
             });
             ImGui::Text("[Ignore texture Alpha]"); ImGui::SameLine();
             if (ImGui::ToggleButton("[Ignore texture Alpha]", &ignoreTexAlpha) && !readOnly) {
                 RegisterUndo<bool, false>(_parent, GFX::PushConstantType::BOOL, !ignoreTexAlpha, ignoreTexAlpha, "IgnoretextureAlpha", [material](const bool& oldVal) {
-                    material->ignoreTexDiffuseAlpha(oldVal);
+                    material->properties().ignoreTexDiffuseAlpha(oldVal);
                 });
-                material->ignoreTexDiffuseAlpha(ignoreTexAlpha);
+                material->properties().ignoreTexDiffuseAlpha(ignoreTexAlpha);
                 ret = true;
             }
-            ApplyAllButton(id, false, [&material]() {
-                if (material->baseMaterial() != nullptr) {
-                    material->baseMaterial()->ignoreTexDiffuseAlpha(material->ignoreTexDiffuseAlpha(), true);
-                }
+            ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                matInstance->properties().ignoreTexDiffuseAlpha(baseMaterial.properties().overrides().ignoreTexDiffuseAlpha());
             });
             ImGui::Text("[Refractive]"); ImGui::SameLine();
             if (ImGui::ToggleButton("[Refractive]", &refractive) && !readOnly) {
                 RegisterUndo<bool, false>(_parent, GFX::PushConstantType::BOOL, !refractive, refractive, "Refractive", [material](const bool& oldVal) {
-                    material->refractive(oldVal);
+                    material->properties().isRefractive(oldVal);
                 });
-                material->refractive(refractive);
+                material->properties().isRefractive(refractive);
                 ret = true;
             }
-            ApplyAllButton(id, false, [&material]() {
-                if (material->baseMaterial() != nullptr) {
-                    material->baseMaterial()->refractive(material->refractive(), true);
-                }
+            ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance) {
+                matInstance->properties().isRefractive(baseMaterial.properties().isRefractive());
             });
         }
         ImGui::Separator();

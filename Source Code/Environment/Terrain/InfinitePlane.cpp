@@ -36,9 +36,10 @@ bool InfinitePlane::load() {
 
     ResourceDescriptor planeMaterialDescriptor("infinitePlaneMaterial");
     Material_ptr planeMaterial = CreateResource<Material>(_parentCache, planeMaterialDescriptor);
-    planeMaterial->shadingMode(ShadingMode::BLINN_PHONG);
-    planeMaterial->baseColour(FColour4(DefaultColours::WHITE.rgb * 0.5f, 1.0f));
-    planeMaterial->roughness(1.0f);
+    planeMaterial->properties().shadingMode(ShadingMode::BLINN_PHONG);
+    planeMaterial->properties().baseColour(FColour4(DefaultColours::WHITE.rgb * 0.5f, 1.0f));
+    planeMaterial->properties().roughness(1.0f);
+    planeMaterial->properties().isStatic(true);
 
     SamplerDescriptor albedoSampler = {};
     albedoSampler.wrapUVW(TextureWrap::REPEAT);
@@ -55,7 +56,6 @@ bool InfinitePlane::load() {
     textureWaterCaustics.propertyDescriptor(miscTexDescriptor);
 
     planeMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(_parentCache, textureWaterCaustics), albedoSampler.getHash(), TextureOperation::REPLACE);
-    planeMaterial->isStatic(true, true);
 
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;

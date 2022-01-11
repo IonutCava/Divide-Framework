@@ -446,7 +446,7 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
             if (ret != nullptr) {
                 ResourceDescriptor materialDescriptor(sceneNode.name + "_material");
                 Material_ptr tempMaterial = CreateResource<Material>(resourceCache(), materialDescriptor);
-                tempMaterial->shadingMode(ShadingMode::PBR_MR);
+                tempMaterial->properties().shadingMode(ShadingMode::PBR_MR);
                 ret->setMaterialTpl(tempMaterial);
                 ret->addStateCallback(ResourceState::RES_LOADED, loadModelComplete);
             }

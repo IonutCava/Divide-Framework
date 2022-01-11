@@ -184,9 +184,9 @@ bool WaterPlane::load() {
     ResourceDescriptor waterMaterial("waterMaterial_" + name);
     Material_ptr waterMat = CreateResource<Material>(_parentCache, waterMaterial);
 
-    waterMat->shadingMode(ShadingMode::BLINN_PHONG);
-    waterMat->bumpMethod(BumpMethod::NORMAL);
-    waterMat->isStatic(true);
+    waterMat->properties().shadingMode(ShadingMode::BLINN_PHONG);
+    waterMat->properties().bumpMethod(BumpMethod::NORMAL);
+    waterMat->properties().isStatic(true);
 
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
@@ -221,7 +221,7 @@ bool WaterPlane::load() {
     waterMat->setShaderProgram(shaderDescriptorPrePass, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
     waterMat->setShaderProgram(shaderDescriptor,        RenderStage::COUNT,   RenderPassType::MAIN_PASS);
     waterMat->setShaderProgram(shaderDescriptorDepth,   RenderStage::SHADOW,  RenderPassType::COUNT);
-    waterMat->roughness(0.01f);
+    waterMat->properties().roughness(0.01f);
 
     setMaterialTpl(waterMat);
     

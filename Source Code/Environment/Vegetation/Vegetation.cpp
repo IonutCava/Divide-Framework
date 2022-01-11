@@ -359,9 +359,9 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
 
     ResourceDescriptor matDesc("Tree_material");
     s_treeMaterial = CreateResource<Material>(gfxDevice.parent().resourceCache(), matDesc);
-    s_treeMaterial->shadingMode(ShadingMode::BLINN_PHONG);
     s_treeMaterial->baseShaderData(treeShaderData);
-    s_treeMaterial->addShaderDefine(ShaderType::COUNT, "OVERRIDE_DATA_IDX", true);
+    s_treeMaterial->properties().shadingMode(ShadingMode::BLINN_PHONG);
+    s_treeMaterial->properties().isInstanced(true);
     s_treeMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("MAX_TREE_INSTANCES %d", s_maxTreeInstances).c_str(), true);
 
     SamplerDescriptor grassSampler = {};
@@ -381,12 +381,13 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
 
     ResourceDescriptor vegetationMaterial("grassMaterial");
     Material_ptr vegMaterial = CreateResource<Material>(terrain->parentResourceCache(), vegetationMaterial);
-    vegMaterial->shadingMode(ShadingMode::BLINN_PHONG);
-    vegMaterial->baseColour(DefaultColours::WHITE);
-    vegMaterial->roughness(0.9f);
-    vegMaterial->metallic(0.02f);
-    vegMaterial->doubleSided(true);
-    vegMaterial->isStatic(false);
+    vegMaterial->properties().shadingMode(ShadingMode::BLINN_PHONG);
+    vegMaterial->properties().baseColour(DefaultColours::WHITE);
+    vegMaterial->properties().roughness(0.9f);
+    vegMaterial->properties().metallic(0.02f);
+    vegMaterial->properties().doubleSided(true);
+    vegMaterial->properties().isStatic(false);
+    vegMaterial->properties().isInstanced(true);
 
     Material::ApplyDefaultStateBlocks(*vegMaterial);
 
@@ -396,13 +397,11 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     vertModule._sourceFile = "grass.glsl";
 
     vertModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
-    vertModule._defines.emplace_back("OVERRIDE_DATA_IDX", true);
     vertModule._defines.emplace_back("COMPUTE_TBN", true);
 
     ShaderModuleDescriptor fragModule = {};
     fragModule._moduleType = ShaderType::FRAGMENT;
     fragModule._sourceFile = "grass.glsl";
-    fragModule._defines.emplace_back("OVERRIDE_DATA_IDX", true);
     fragModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
 
     fragModule._variant = "Colour";

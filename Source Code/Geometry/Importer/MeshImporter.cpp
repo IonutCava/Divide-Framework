@@ -375,19 +375,20 @@ namespace Import {
             tempMaterial->ignoreXMLData(true);
         }
 
-        tempMaterial->baseColour(importData.baseColour());
-        tempMaterial->emissiveColour(importData.emissive());
-        tempMaterial->ambientColour(importData.ambient());
-        tempMaterial->specularColour(importData.specular().rgb);
-        tempMaterial->shininess(importData.specular().a);
-        tempMaterial->specGloss(importData.specGloss());
-        tempMaterial->metallic(importData.metallic());
-        tempMaterial->roughness(importData.roughness());
-        tempMaterial->parallaxFactor(importData.parallaxFactor());
-        tempMaterial->ignoreTexDiffuseAlpha(importData.ignoreTexDiffuseAlpha());
-        tempMaterial->shadingMode(importData.shadingMode());
-        tempMaterial->bumpMethod(importData.bumpMethod());
-        tempMaterial->doubleSided(importData.doubleSided());
+        tempMaterial->properties().emissive(importData.emissive());
+        tempMaterial->properties().ambient(importData.ambient());
+        tempMaterial->properties().specular(importData.specular().rgb);
+        tempMaterial->properties().shininess(importData.specular().a);
+        tempMaterial->properties().specGloss(importData.specGloss());
+        tempMaterial->properties().metallic(importData.metallic());
+        tempMaterial->properties().roughness(importData.roughness());
+        tempMaterial->properties().parallaxFactor(importData.parallaxFactor());
+
+        tempMaterial->properties().baseColour(importData.baseColour());
+        tempMaterial->properties().ignoreTexDiffuseAlpha(importData.ignoreTexDiffuseAlpha());
+        tempMaterial->properties().shadingMode(importData.shadingMode());
+        tempMaterial->properties().bumpMethod(importData.bumpMethod());
+        tempMaterial->properties().doubleSided(importData.doubleSided());
 
         SamplerDescriptor textureSampler = {};
 

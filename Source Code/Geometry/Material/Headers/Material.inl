@@ -34,30 +34,26 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-inline Texture_wptr Material::getTexture(const TextureUsage textureUsage) const {
-    SharedLock<SharedMutex> r_lock(_textureLock);
-    return _textures[to_U32(textureUsage)];
+inline const vector<Material*>& Material::getInstances() const noexcept {
+    return _instances;
 }
 
-inline bool Material::hasTexture(const TextureUsage textureUsage) const {
+inline Texture_wptr Material::getTexture(const TextureUsage textureUsage) const {
     SharedLock<SharedMutex> r_lock(_textureLock);
-    return _textures[to_U32(textureUsage)] != nullptr;
+    return _textures[to_U32(textureUsage)]._ptr;
 }
 
 inline bool Material::hasTransparency() const noexcept {
-    return _translucencySource != TranslucencySource::COUNT && _transparencyEnabled;
-}
-
-inline bool Material::isPBRMaterial() const noexcept {
-    return shadingMode() == ShadingMode::PBR_MR || shadingMode() == ShadingMode::PBR_SG;
+    return properties().translucencySource() != TranslucencySource::COUNT &&
+           properties().overrides().transparencyEnabled();
 }
 
 inline bool Material::reflective() const noexcept {
-    return metallic() > 0.05f && roughness() < 0.99f;
+    return properties().metallic() > 0.05f && properties().roughness() < 0.99f;
 }
 
 inline bool Material::refractive() const noexcept {
-    return hasTransparency() && _isRefractive;
+    return hasTransparency() && properties().isRefractive();
 }
 
 inline ShaderProgramInfo& Material::shaderInfo(const RenderStagePass renderStagePass) {
@@ -76,6 +72,10 @@ inline void Material::addShaderDefine(const ShaderType type, const string& defin
             addShaderDefine(static_cast<ShaderType>(i), define, addPrefix);
         }
     }
+}
+
+inline const Material::TextureInfo& Material::getTextureInfo(const TextureUsage usage) const {
+    return _textures[to_base(usage)];
 }
 
 inline void Material::addShaderDefineInternal(const ShaderType type, const string& define, bool addPrefix) {

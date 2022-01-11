@@ -961,21 +961,20 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - MainPass" });
 
     if (params._target._usage != RenderTargetUsage::COUNT) {
+        const RenderTarget& nonMSTarget = _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN);
+        const RTAttachment& normalsAtt = nonMSTarget.getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
+        
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         Texture_ptr hizTex = nullptr;
         if (hasHiZ) {
             const RenderTarget& hizTarget = _context.renderTargetPool().renderTarget(params._targetHIZ);
-            const auto& hizAtt = hizTarget.getAttachment(RTAttachmentType::Depth, 0);
-            GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ hizAtt.texture()->data(), hizAtt.samplerHash(), TextureUsage::DEPTH });
+            const RTAttachment& hizAtt = hizTarget.getAttachment(RTAttachmentType::Depth, 0);
+            set._textureData.add(TextureEntry{ hizAtt.texture()->data(), hizAtt.samplerHash(), TextureUsage::DEPTH });
         } else if (prePassExecuted) {
-            if (params._target._usage == RenderTargetUsage::SCREEN_MS) {
-                const RenderTarget& nonMSTarget = _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN);
-                const auto& depthAtt = nonMSTarget.getAttachment(RTAttachmentType::Depth, 0);
-                GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
-            } else {
-                const auto& depthAtt = target.getAttachment(RTAttachmentType::Depth, 0);
-                GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
-            }
+            const RTAttachment& depthAtt = target.getAttachment(RTAttachmentType::Depth, 0);
+            set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
         }
+        set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
 
         const bool layeredRendering = params._layerParams._layer > 0;
 
