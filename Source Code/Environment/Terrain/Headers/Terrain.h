@@ -76,7 +76,7 @@ struct TessellationParams
 {
     PROPERTY_RW(vec2<F32>, WorldScale);
     PROPERTY_RW(vec2<F32>, SnapGridSize);
-    PROPERTY_RW(U32, tessellatedTriangleWidth, 24u);
+    PROPERTY_RW(U32, tessellatedTriangleWidth, 32u);
 
     static constexpr U8 VTX_PER_TILE_EDGE = 9; // overlap => -2
     static constexpr U8 PATCHES_PER_TILE_EDGE = VTX_PER_TILE_EDGE - 1;

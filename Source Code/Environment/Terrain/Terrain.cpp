@@ -25,23 +25,22 @@
 namespace Divide {
 
 namespace {
-    // This doesn't seem to work for whatever reason, so using multiple buffers for now as I have
-    // more important things to pull my hair over :/
-    constexpr bool USE_BASE_VERTEX_OFFSETS = false;
+    // If true, terrain will be rendered in a single drawcall.
+    constexpr bool USE_BASE_VERTEX_OFFSETS = true;
 
     vector_fast<U16> CreateTileQuadListIB()
     {
         vector_fast<U16> indices(TessellationParams::QUAD_LIST_INDEX_COUNT, 0u);
 
-        U16 index = 0;
+        U16 index = 0u;
 
         // The IB describes one tile of NxN patches.
         // Four vertices per quad, with VTX_PER_TILE_EDGE-1 quads per tile edge.
-        for (U8 y = 0; y < TessellationParams::VTX_PER_TILE_EDGE - 1; ++y)
+        for (U8 y = 0u; y < TessellationParams::VTX_PER_TILE_EDGE - 1; ++y)
         {
             const U16 rowStart = y * TessellationParams::VTX_PER_TILE_EDGE;
 
-            for (U8 x = 0; x < TessellationParams::VTX_PER_TILE_EDGE - 1; ++x) {
+            for (U8 x = 0u; x < TessellationParams::VTX_PER_TILE_EDGE - 1; ++x) {
                 indices[index++] = rowStart + x;
                 indices[index++] = rowStart + x + TessellationParams::VTX_PER_TILE_EDGE;
                 indices[index++] = rowStart + x + TessellationParams::VTX_PER_TILE_EDGE + 1;
@@ -229,7 +228,6 @@ void Terrain::postBuild() {
             params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
             params._bufferParams._sync = false;
             params._instanceDivisor = 1u;
-            
 
             _terrainBuffer = _context.newGVD(1);
             _terrainBuffer->renderIndirect(true);
@@ -243,12 +241,12 @@ void Terrain::postBuild() {
                 vector<TileRing::InstanceData> vbData;
                 vbData.reserve(TessellationParams::QUAD_LIST_INDEX_COUNT * ringCount);
 
-                for (size_t i = 0; i < ringCount; ++i) {
+                for (size_t i = 0u; i < ringCount; ++i) {
                     vector<TileRing::InstanceData> ringData = _tileRings[i]->createInstanceDataVB(to_I32(i));
                     vbData.insert(cend(vbData), cbegin(ringData), cend(ringData));
                     params._bufferParams._elementCount += to_U32(ringData.size());
                 }
-                params._buffer = 0;
+                params._buffer = 0u;
                 params._bufferParams._initialData = { (Byte*)vbData.data(), vbData.size() * sizeof(TileRing::InstanceData) };
                 _terrainBuffer->setBuffer(params);
             } else {
@@ -336,16 +334,19 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawComman
     cmd._sourceBuffer = _terrainBuffer->handle();
     cmd._cmd.indexCount = to_U32(TessellationParams::QUAD_LIST_INDEX_COUNT);
     cmd._bufferIndex = 0u;
-
-    for (const auto& tileRing : _tileRings) {
-        cmd._cmd.primCount = tileRing->tileCount();
+    if_constexpr(USE_BASE_VERTEX_OFFSETS) {
+        for (const auto& tileRing : _tileRings) {
+            cmd._cmd.primCount += tileRing->tileCount();
+        }
         cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
-        if_constexpr(USE_BASE_VERTEX_OFFSETS) {
-            cmd._cmd.baseVertex += cmd._cmd.primCount;
-        } else {
+    } else {
+        for (const auto& tileRing : _tileRings) {
+            cmd._cmd.primCount = tileRing->tileCount();
+            cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
             ++cmd._bufferIndex;
         }
     }
+    
 
     Object3D::buildDrawCommands(sgn, cmdsOut);
 }

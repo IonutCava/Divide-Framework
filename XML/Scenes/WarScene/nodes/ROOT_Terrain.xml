@@ -8,7 +8,7 @@
 <tileNoiseTexture>bruit_gaussien_2.jpg</tileNoiseTexture>
 <model>Terrain</model>
 <TERRAIN>
-    <Tessellated__Triangle__Width>16</Tessellated__Triangle__Width>
+    <Tessellated__Triangle__Width>32</Tessellated__Triangle__Width>
 </TERRAIN>
 <TRANSFORM>
     <Transform>

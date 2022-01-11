@@ -3,7 +3,7 @@
 <INFINITE_PLANE/>
 <TRANSFORM>
     <Transform>
-        <position x="122.383514" y="-50" z="32.6128845"/>
+        <position x="17.4740429" y="-50" z="171.078857"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
@@ -32,8 +32,8 @@
         <RenderStates>
             <1>
                 <colourWrite r="true" g="true" b="false" a="false"/>
-                <zBias>1.10000002</zBias>
-                <zUnits>4</zUnits>
+                <zBias>0</zBias>
+                <zUnits>0</zUnits>
                 <zFunc>LESS</zFunc>
                 <tessControlPoints>3</tessControlPoints>
                 <cullMode>CW/BACK</cullMode>
