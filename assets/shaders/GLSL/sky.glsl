@@ -12,7 +12,10 @@ layout(location = 14) out vec3 vBetaM;
 
 void main(void){
     const NodeTransformData data = fetchInputData();
-    VAR._vertexW = data._worldMatrix * dvd_Vertex + vec4(dvd_cameraPosition.xyz, 0.f);
+    VAR._vertexW = data._worldMatrix * dvd_Vertex;
+#if defined(MAIN_DISPLAY_PASS)
+    VAR._vertexW.xyz += dvd_cameraPosition.xyz;
+#endif //MAIN_DISPLAY_PASS
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     computeLightVectors(data);
     setClipPlanes();
@@ -215,7 +218,10 @@ void main() {
     const float mieCoefficient = 0.005f;
 
     const NodeTransformData data = fetchInputData();
-    VAR._vertexW = data._worldMatrix * dvd_Vertex + vec4(dvd_cameraPosition.xyz, 0.f);
+    VAR._vertexW = data._worldMatrix * dvd_Vertex;
+#if defined(MAIN_DISPLAY_PASS)
+    VAR._vertexW.xyz += dvd_cameraPosition.xyz;
+#endif //MAIN_DISPLAY_PASS
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     computeLightVectors(data);
     setClipPlanes();
@@ -226,7 +232,7 @@ void main() {
 
     const float vSunE = sunIntensity(dot(vSunDirection.xyz, UP_DIR));
 
-    const float vSunFade = 1.f - saturate(1.f - exp((dvd_sunPosition.y / 450000.0f)));
+    const float vSunFade = 1.f - Saturate(1.f - exp((dvd_sunPosition.y / 450000.0f)));
 
     const float rayleighCoefficient = rayleigh - (1.f * (1.f - vSunFade));
 
@@ -432,7 +438,7 @@ vec3 preetham(in vec3 rayDirection) {
     const vec3 betaMTheta = vBetaM * mPhase;
 
     vec3 Lin = pow(vSunE * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * (1.f - Fex), vec3(1.5f));
-    Lin *= mix(vec3(1.f), pow(vSunE * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * Fex, vec3(0.5f)), saturate(pow(1.f - dot(UP_DIR, vSunDirection.xyz), 5.f)));
+    Lin *= mix(vec3(1.f), pow(vSunE * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * Fex, vec3(0.5f)), Saturate(pow(1.f - dot(UP_DIR, vSunDirection.xyz), 5.f)));
 
     vec3 L0 = vec3(0.5f) * Fex;
 
@@ -460,16 +466,16 @@ const vec3 RANDOM_VECTORS[6] = vec3[6]
 // fractional value for sample position in the cloud layer
 float GetHeightFractionForPoint(in float inPosition) {
     // get global fractional position in cloud zone
-    return saturate((inPosition - sky_b_radius) / (sky_t_radius - sky_b_radius));
+    return Saturate((inPosition - sky_b_radius) / (sky_t_radius - sky_b_radius));
 }
 
 vec4 mixGradients(in float cloudType) {
     const vec4 STRATUS_GRADIENT = vec4(0.02f, 0.05f, 0.09f, 0.11f);
     const vec4 STRATOCUMULUS_GRADIENT = vec4(0.02f, 0.2f, 0.48f, 0.625f);
     const vec4 CUMULUS_GRADIENT = vec4(0.01f, 0.0625f, 0.78f, 1.0f); // these fractions would need to be altered if cumulonimbus are added to the same pass
-    const float stratus = 1.0f - saturate(cloudType * 2.0f);
+    const float stratus = 1.0f - Saturate(cloudType * 2.0f);
     const float stratocumulus = 1.0f - abs(cloudType - 0.5f) * 2.0f;
-    const float cumulus = saturate(cloudType - 0.5f) * 2.0f;
+    const float cumulus = Saturate(cloudType - 0.5f) * 2.0f;
 
     return STRATUS_GRADIENT * stratus + STRATOCUMULUS_GRADIENT * stratocumulus + CUMULUS_GRADIENT * cumulus;
 }
@@ -513,10 +519,10 @@ float density(vec3 p, in vec3 weather, in bool hq, in float LOD) {
         p.xy += whisp * 400.f * (1.f - height_fraction);
         const vec3 hn = texture(worl, p * 0.004f, LOD - 2.f).xyz;
         float hfbm = hn.r * 0.625f + hn.g * 0.25f + hn.b * 0.125f;
-        hfbm = mix(hfbm, 1.f - hfbm, saturate(height_fraction * 3.f));
+        hfbm = mix(hfbm, 1.f - hfbm, Saturate(height_fraction * 3.f));
         base_cloud = ReMap(base_cloud, hfbm * 0.2f, 1.f, 0.f, 1.f);
     }
-    return saturate(base_cloud);
+    return Saturate(base_cloud);
 }
 
 vec4 march(in vec3 colourIn, in vec3 ambientIn, in vec3 pos, in vec3 end, in vec3 dir, in int depth) {
@@ -671,9 +677,10 @@ void main() {
     sky_t_radius = dvd_cloudSphereRadius + dvd_cloudLayerMinMaxHeight.y;//top of cloud layer
 
     // Guess work based on what "look right"
-    const float lerpValue = saturate(2.95f * (GetSunDirection().y + 0.15f));
-    const vec3 rayDirection = normalize(VAR._vertexW.xyz);
+    const float lerpValue = Saturate(2.95f * (GetSunDirection().y + 0.15f));
+    
 #if defined(MAIN_DISPLAY_PASS)
+    const vec3 rayDirection = normalize(VAR._vertexW.xyz - dvd_cameraPosition.xyz);
     vec3 ret = vec3(0.f);
     switch (dvd_materialDebugFlag) {
         case DEBUG_ALBEDO:        ret = getRawAlbedo(rayDirection, lerpValue); break;
@@ -701,6 +708,7 @@ void main() {
         default:                  ret = atmosphereColour(rayDirection, lerpValue); break;
     }
 #else //MAIN_DISPLAY_PASS
+    const vec3 rayDirection = normalize(VAR._vertexW.xyz);
     const vec3 ret = atmosphereColour(rayDirection, lerpValue);
 #endif //MAIN_DISPLAY_PASS
     writeScreenColour(vec4(ret, 1.f));

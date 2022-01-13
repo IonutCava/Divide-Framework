@@ -96,14 +96,14 @@ class Sky final : public SceneNode {
     PROPERTY_R(FColour4, moonColour, DefaultColours::WHITE);
     PROPERTY_R(FColour4, nightSkyColour, DefaultColours::BLACK);
 
-    void setAtmosphere(const Atmosphere& atmosphere) noexcept;
-    void enableProceduralClouds(bool val) noexcept;
-    void useDaySkybox(bool val) noexcept;
-    void useNightSkybox(bool val) noexcept;
-    void moonScale(F32 val) noexcept;
-    void weatherScale(F32 val) noexcept;
-    void moonColour(FColour4 val) noexcept;
-    void nightSkyColour(FColour4 val) noexcept;
+    void setAtmosphere(const Atmosphere& atmosphere);
+    void enableProceduralClouds(bool val);
+    void useDaySkybox(bool val);
+    void useNightSkybox(bool val);
+    void moonScale(F32 val);
+    void weatherScale(F32 val);
+    void moonColour(FColour4 val);
+    void nightSkyColour(FColour4 val);
 
     [[nodiscard]] const Texture_ptr& activeSkyBox() const noexcept;
 

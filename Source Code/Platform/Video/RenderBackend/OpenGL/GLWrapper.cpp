@@ -462,10 +462,10 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT, "#define OR(a, b) min(a + b, 1.f)");
     AppendToShaderHeader(ShaderType::COUNT, "#define XOR(a, b) ((a + b) % 2)");
     AppendToShaderHeader(ShaderType::COUNT, "#define NOT(X) (1.f - X)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define SQUARED(X) (X * X)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define ROUND(X) floor((X) + .5f)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define saturate(X) clamp(X, 0, 1)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define mad(a, b, c) (a * b + c)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define Squared(X) (X * X)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define Round(X) floor((X) + .5f)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define Saturate(X) clamp(X, 0, 1)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define Mad(a, b, c) (a * b + c)");
 
     AppendToShaderHeader(ShaderType::COUNT,    "#define GLOBAL_WATER_BODIES_COUNT "       + Util::to_string(GLOBAL_WATER_BODIES_COUNT));
     AppendToShaderHeader(ShaderType::COUNT,    "#define GLOBAL_PROBE_COUNT "              + Util::to_string(GLOBAL_PROBE_COUNT));

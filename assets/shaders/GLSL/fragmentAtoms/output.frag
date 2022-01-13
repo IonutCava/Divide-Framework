@@ -5,6 +5,9 @@
 
 #include "utility.frag"
 
+layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepth;
+float sampleDepth(in vec2 uv) { return texture(texDepth, uv).r; }
+
 #if !defined(OIT_PASS)
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 #else //OIT_PASS
@@ -16,7 +19,7 @@ layout(location = TARGET_MODULATE) out vec4  _modulate;
 #endif
 
 //layout(binding = TEXTURE_TRANSMITANCE) uniform sampler2D texTransmitance;
-layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepthMap;
+//layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepthMap;
 
 // Shameless copy-paste from http://casual-effects.blogspot.co.uk/2015/03/colored-blended-order-independent.html
 void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpaceZ) {
@@ -33,7 +36,7 @@ void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpa
     //http://graphics.cs.williams.edu/papers/CSSM/
 
     //for a full explanation and derivation.
-    //premultipliedReflect.a *= 1.0f - saturate((transmit.r + transmit.g + transmit.b) * 0.33f);
+    //premultipliedReflect.a *= 1.0f - Saturate((transmit.r + transmit.g + transmit.b) * 0.33f);
 
     // You may need to adjust the w function if you have a very large or very small view volume; see the paper and
     // presentation slides at http://jcgt.org/published/0002/02/09/ 
@@ -42,7 +45,7 @@ void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpa
     float b = -gl_FragCoord.z * 0.95f + 1.f;
 
     // If your scene has a lot of content very close to the far plane, then include this line (one rsqrt instruction):
-    //b /= sqrt(1e4 * abs(viewSpaceZ));
+    b /= sqrt(1e4 * abs(viewSpaceZ));
 
     const float w = clamp(a * a * a * 1e3 * b * b * b, 1e-2, 3e2);
 
@@ -54,7 +57,7 @@ void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpa
 void writeScreenColour(in vec4 colour) {
 #if defined(OIT_PASS)
     const vec3 transmit = vec3(0.f);//texture(texTransmitance, dvd_screenPositionNormalised).rgb;
-    const float viewSpaceZ = 1.f;// ViewSpaceZ(texture(texDepthMap, dvd_screenPositionNormalised).r, dvd_InverseProjectionMatrix);
+    const float viewSpaceZ = ViewSpaceZ(sampleDepth(dvd_screenPositionNormalised).r);
     writePixel(vec4(colour.rgb * colour.a, colour.a), transmit, viewSpaceZ);
 #else //OIT_PASS
     _colourOut = colour;

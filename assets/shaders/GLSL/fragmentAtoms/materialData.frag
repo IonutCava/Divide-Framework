@@ -61,7 +61,6 @@ layout(binding = TEXTURE_SSAO_SAMPLE) uniform sampler2D texSSAO;
 #else  //MSAA_SCREEN_TARGET
 #define sampleTexSceneNormals() texture(texSceneNormals, dvd_screenPositionNormalised)
 #endif //MSAA_SCREEN_TARGET
-
 #endif //!PRE_PASS
 
 #if defined(USE_CUSTOM_TEXTURE_OMR)
@@ -132,7 +131,7 @@ float SpecularToMetalness(in vec3 specular, in float power) {
 float SpecularToRoughness(in vec3 specular, in float power) {
     const float roughnessFactor = 1.f - sqrt(power / MAX_SHININESS);
     // Specular intensity directly impacts roughness regardless of shininess
-    return 1.f - ((saturate(pow(roughnessFactor, 2)) * Luminance(specular)));
+    return 1.f - ((Saturate(pow(roughnessFactor, 2)) * Luminance(specular)));
 }
 
 float getRoughness(in NodeMaterialData matData, in vec2 uv, in float normalVariation) {
@@ -184,7 +183,6 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
 #if defined(SHADING_MODE_BLINN_PHONG)
     material._metallic = SpecularToMetalness(material._specular.rgb, material._specular.a);
 #endif //SHADING_MODE_BLINN_PHONG
-
     const vec3 albedoIn = albedo + Ambient(matData);
 
 #define DielectricSpecular vec3(0.04f)
@@ -229,7 +227,7 @@ float specularAntiAliasing(in vec3 N, in float a) {
     const vec3 dndv = dFdy(N);
     const float variance = SIGMA2 * (dot(dndu, dndu) + dot(dndv, dndv));
     const float kernelRoughness2 = min(2.f * variance, KAPPA);
-    return saturate(a + kernelRoughness2);
+    return Saturate(a + kernelRoughness2);
 }
 #endif //!PRE_PASS
 
@@ -291,7 +289,7 @@ vec3 getNormalMap(in sampler2DArray tex, in vec3 uv, out float normalVariation) 
     const float normalMap_Mip = textureQueryLod(tex, uv.xy).x;
     const float normalMap_Length = length(normalMap);
     const float variation = 1.f - pow(normalMap_Length, 8.f);
-    const float minification = saturate(normalMap_Mip - 2.f);
+    const float minification = Saturate(normalMap_Mip - 2.f);
 
     normalVariation = variation * minification;
     const vec3 normalW = (normalMap / normalMap_Length);

@@ -183,6 +183,7 @@ namespace Divide {
                 
                 EditorComponentField camField = {};
                 camField._name = "Speed";
+                camField._range = { 0.001f, 100.f };
                 camField._labels = CamSpeedLabels;
                 camField._basicType = GFX::PushConstantType::VEC3;
                 camField._type = EditorComponentFieldType::SLIDER_TYPE;

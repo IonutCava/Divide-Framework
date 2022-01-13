@@ -18,9 +18,9 @@ void main(void)
 
     VAR._texCoord = uv * 2;
 
-    vOffset[0] = mad(RT_METRICS.xyxy, vec4(-1.0, 0.0, 0.0, -1.0), VAR._texCoord.xyxy);
-    vOffset[1] = mad(RT_METRICS.xyxy, vec4(1.0, 0.0, 0.0, 1.0), VAR._texCoord.xyxy);
-    vOffset[2] = mad(RT_METRICS.xyxy, vec4(-2.0, 0.0, 0.0, -2.0), VAR._texCoord.xyxy);
+    vOffset[0] = Mad(RT_METRICS.xyxy, vec4(-1.0, 0.0, 0.0, -1.0), VAR._texCoord.xyxy);
+    vOffset[1] = Mad(RT_METRICS.xyxy, vec4(1.0, 0.0, 0.0, 1.0), VAR._texCoord.xyxy);
+    vOffset[2] = Mad(RT_METRICS.xyxy, vec4(-2.0, 0.0, 0.0, -2.0), VAR._texCoord.xyxy);
 
     gl_Position.xy = uv * 4 - 1;
     gl_Position.zw = vec2(0, 1);

@@ -4,6 +4,11 @@
 //Ref: https://github.com/urho3d/Urho3D/blob/master/bin/CoreData/Shaders/GLSL/PBRLitSolid.glsl
 #include "nodeDataDefinition.cmn"
 
+layout(binding = BUFFER_NODE_TRANSFORM_DATA, std430) coherent ACCESS_R buffer dvd_TransformBlock
+{
+    NodeTransformData dvd_Transforms[];
+};
+
 #if defined(VERT_SHADER)
 #if defined(OVERRIDE_DATA_IDX)
 uniform uint INDIRECT_DATA_IDX;
@@ -21,14 +26,10 @@ void ComputeIndirectionData() {
     TRANSFORM_IDX = indirectionData._transformIdx;
     MATERIAL_IDX = indirectionData._materialIdx;
     TEXTURE_IDX = indirectionData._texturesIdx * (MATERIAL_TEXTURE_COUNT + 1);
+    SELECTION_FLAG = dvd_selectionFlag(dvd_Transforms[TRANSFORM_IDX]);
 }
 
 #endif //VERT_SHADER
-
-layout(binding = BUFFER_NODE_TRANSFORM_DATA, std430) coherent ACCESS_R buffer dvd_TransformBlock
-{
-    NodeTransformData dvd_Transforms[];
-};
 
 #if !defined(NEED_TEXTURE_DATA) && (defined(FRAG_SHADER) || defined(NEED_MATERIAL_DATA))
 #define NEED_TEXTURE_DATA

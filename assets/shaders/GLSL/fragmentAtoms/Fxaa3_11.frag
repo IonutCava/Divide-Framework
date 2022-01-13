@@ -595,7 +595,7 @@ FXAA QUALITY - EXTREME QUALITY
 #define FxaaHalf2 half2
 #define FxaaHalf3 half3
 #define FxaaHalf4 half4
-#define FxaaSat(x) saturate(x)
+#define FxaaSat(x) Saturate(x)
 #endif
 /*--------------------------------------------------------------------------*/
 #if (FXAA_GLSL_120 == 1)
@@ -1367,7 +1367,7 @@ float4 FxaaPixelShader(
     /*--------------------------------------------------------------------------*/
     float4 dir2;
     float dirAbsMinTimesC = min(abs(dir.x), abs(dir.y)) * fxaaConsoleEdgeSharpness;
-    dir2 = saturate(fxaaConsole360ConstDir.zzww * dir.xyxy / dirAbsMinTimesC + 0.5);
+    dir2 = Saturate(fxaaConsole360ConstDir.zzww * dir.xyxy / dirAbsMinTimesC + 0.5);
     dir2 = dir2 * fxaaConsole360RcpFrameOpt2.xyxy + fxaaConsole360RcpFrameOpt2.zwzw;
     /*--------------------------------------------------------------------------*/
     float4 rgbyN1 = tex2Dlod(fxaaConsole360TexExpBiasNegOne, float4(pos.xy + dir1.xy, 0.0, 0.0));

@@ -19,10 +19,10 @@ layout(binding = TEXTURE_SHADOW_CUBE)    uniform samplerCubeArray  cubeDepthMaps
 
 float chebyshevUpperBound(in vec2 moments, in float distance) {
     // Compute and clamp minimum variance to avoid numeric issues that may occur during filtering
-    const float variance = max(moments.y - SQUARED(moments.x), dvd_MinVariance);
+    const float variance = max(moments.y - Squared(moments.x), dvd_MinVariance);
     // Compute probabilistic upper bound.
     const float mD = moments.x - distance;
-    const float p_max = variance / (variance + SQUARED(mD));
+    const float p_max = variance / (variance + Squared(mD));
 
     // Reduce light bleed
     const float p = LinStep(dvd_LightBleedBias, 1.f, p_max);
@@ -45,7 +45,7 @@ float getShadowMultiplierDirectional(in int shadowIndex, in float TanAcosNdotL) 
         const float currentDepth = shadowCoord.z - bias;
         const vec2 moments = texture(layeredDepthMaps, vec3(shadowCoord.xy, crtDetails.y + Split)).rg;
         const float ret = chebyshevUpperBound(moments, currentDepth);
-        return saturate(ret * crtDetails.w);
+        return Saturate(ret * crtDetails.w);
     }
 #endif // !DISABLE_SHADOW_MAPPING_CSM
 
@@ -67,7 +67,7 @@ float getShadowMultiplierSpot(in int shadowIndex, in float TanAcosNdotL) {
     const float farPlane = properties.dvd_shadowLightPosition.w;
     const float currentDepth = (fragToLight / farPlane) - bias;
     const float ret = chebyshevUpperBound(moments, currentDepth);
-    return saturate(ret * crtDetails.w);
+    return Saturate(ret * crtDetails.w);
 #else // !DISABLE_SHADOW_MAPPING_SPOT
     return 1.f;
 #endif // !DISABLE_SHADOW_MAPPING_SPOT
@@ -87,7 +87,7 @@ float getShadowMultiplierPoint(in int shadowIndex, in float TanAcosNdotL) {
     const float farPlane = properties.dvd_shadowLightPosition.w;
     const float currentDepth = (length(fragToLight) / farPlane) - bias;
     const float ret = chebyshevUpperBound(moments, currentDepth);
-    return saturate(ret * crtDetails.w);
+    return Saturate(ret * crtDetails.w);
 #else // !DISABLE_SHADOW_MAPPING_POINT
     return 1.f;
 #endif // !DISABLE_SHADOW_MAPPING_POINT

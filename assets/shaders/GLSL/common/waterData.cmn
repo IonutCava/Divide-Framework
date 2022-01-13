@@ -51,11 +51,11 @@ vec2 GetWaterDetails(in vec3 vertexW, in float maxDepth) {
 
 
             // Current water depth in relation to the minimum possible depth
-            minDepth = min(minDepth, saturate(1.0f - (position.y - vertexW.y) / (position.y - maxDepth)));
+            minDepth = min(minDepth, Saturate(1.0f - (position.y - vertexW.y) / (position.y - maxDepth)));
         }
     }
 
-    return saturate(vec2(maxDistance, minDepth));
+    return Saturate(vec2(maxDistance, minDepth));
 }
 #endif //FRAG_SHADER || NEED_SCENE_DATA
 #endif //_WATER_DATA_CMN_

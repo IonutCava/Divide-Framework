@@ -10,7 +10,7 @@ layout(location = 11) out vec3 farPoint;
 
 vec3 UnprojectPoint(in float x, in  float y, in  float z) {
     const vec4 transformedPoint = dvd_InverseViewMatrix * dvd_InverseProjectionMatrix * vec4(x, y, z, 1.f);
-    return homogenize(transformedPoint);
+    return Homogenize(transformedPoint);
 }
 
 void main()
@@ -69,7 +69,7 @@ void main()
     const float t = -nearPoint.y / (farPoint.y - nearPoint.y);
     const vec3 fragPos3D = nearPoint + t * (farPoint - nearPoint);
     float fade_factor = length(dvd_cameraPosition.xz - fragPos3D.xz);
-    fade_factor = saturate(1.f - (fade_factor / dvd_zPlanes.y));
+    fade_factor = Saturate(1.f - (fade_factor / dvd_zPlanes.y));
 
     vec4 outColour = grid(fragPos3D, gridScale) * float(t > 0);
     outColour.a *= fade_factor;

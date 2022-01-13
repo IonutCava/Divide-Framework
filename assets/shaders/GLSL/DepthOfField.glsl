@@ -214,8 +214,8 @@ vec2 rand(in vec2 coord) //generating noise/pattern texture for dithering
     float noiseY = ((fract(1.0f - coord.s * (width * 0.5f)) * 0.75f) + (fract(coord.t * (height * 0.5f)) * 0.25f)) * 2.0f - 1.0f;
 
 #if defined(USE_NOISE)
-        noiseX = saturate(fract(sin(dot(coord ,vec2(12.9898f,78.233f)))        * 43758.5453f)) * 2.0f - 1.0f;
-        noiseY = saturate(fract(sin(dot(coord ,vec2(12.9898f,78.233f) * 2.0f)) * 43758.5453f)) * 2.0f - 1.0f;
+        noiseX = Saturate(fract(sin(dot(coord ,vec2(12.9898f,78.233f)))        * 43758.5453f)) * 2.0f - 1.0f;
+        noiseY = Saturate(fract(sin(dot(coord ,vec2(12.9898f,78.233f) * 2.0f)) * 43758.5453f)) * 2.0f - 1.0f;
 #endif
 
     return vec2(noiseX,noiseY);
@@ -223,8 +223,8 @@ vec2 rand(in vec2 coord) //generating noise/pattern texture for dithering
 
 vec3 debugFocus(in vec3 col, in float blur, in float depth) {
     const float edge = 0.002f * depth; //distance based edge smoothing
-    const float m = saturate(smoothstep(0.0f,        edge, blur));
-    const float e = saturate(smoothstep(1.0f - edge, 1.0f, blur));
+    const float m = Saturate(smoothstep(0.0f,        edge, blur));
+    const float e = Saturate(smoothstep(1.0f - edge, 1.0f, blur));
 
     col = mix(col, vec3(1.0f, 0.5f, 0.0f) , (1.0f - m) * 0.6f);
     col = mix(col, vec3(0.0f, 0.5f, 1.0f), ((1.0f - e) - (1.0f - m)) * 0.2f);
@@ -237,7 +237,7 @@ float vignette(in vec2 coord) {
 
     dist = smoothstep(vignout + (fstop / vignfade), vignin + (fstop / vignfade), dist);
 
-    return saturate(dist);
+    return Saturate(dist);
 }
 
 void main() 
@@ -271,7 +271,7 @@ void main()
 
         blur = abs(a - b) * c;
     }
-    blur = saturate(blur);
+    blur = Saturate(blur);
 
     // calculation of pattern for ditering
     const vec2 noise = rand(VAR._texCoord) * namount * blur;

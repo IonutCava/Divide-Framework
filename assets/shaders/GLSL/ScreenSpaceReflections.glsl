@@ -173,10 +173,10 @@ float ComputeBlendFactorForIntersection(in float iterationCount,
         alpha *= 1.f - ((eyeDirection - eyeFadeStart) / (eyeFadeEnd - eyeFadeStart));
     }
     {// Fade ray hits based on distance from ray origin
-        alpha *= 1.f - saturate(distance(vsRayOrigin, hitPoint) / maxDistance);
+        alpha *= 1.f - Saturate(distance(vsRayOrigin, hitPoint) / maxDistance);
     }
 
-    //return saturate(alpha);
+    //return Saturate(alpha);
     return alpha;
 }
 
@@ -214,9 +214,9 @@ void main() {
                     prevHit.xyz /= prevHit.w;
 #else
 #if 0
-                    const vec3 prevHit = homogenize(previousViewProjection * (invViewMatrix * vec4(hitPoint, 1.f)));
+                    const vec3 prevHit = Homogenize(previousViewProjection * (invViewMatrix * vec4(hitPoint, 1.f)));
 #else
-                    const vec3 prevHit = homogenize((dvd_PreviousProjectionMatrix * dvd_PreviousViewMatrix) * (invViewMatrix * vec4(hitPoint, 1.f)));
+                    const vec3 prevHit = Homogenize((dvd_PreviousProjectionMatrix * dvd_PreviousViewMatrix) * (invViewMatrix * vec4(hitPoint, 1.f)));
 #endif
 #endif
                     // Blend between reprojected SSR sample and IBL

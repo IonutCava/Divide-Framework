@@ -28,7 +28,7 @@ void main(void){
 layout(binding = TEXTURE_UNIT0) uniform sampler2DMS velocityTex;
 layout(binding = TEXTURE_UNIT1) uniform sampler2DMS normalsDataTex;
 
-layout(location = TARGET_VELOCITY) out vec2 _velocityOut;
+layout(location = TARGET_VELOCITY) out vec3 _velocityOut;
 layout(location = TARGET_NORMALS)  out vec3 _normalDataOut;
 
 //ToDo: Move this to a compute shader! -Ionut
@@ -38,10 +38,14 @@ void main() {
 
     { // Average colour and velocity
         vec2 avgVelocity = vec2(0.f);
+        uint avgSelection = 0u;
         for (int s = 0; s < sampleCount; ++s) {
-            avgVelocity += texelFetch(velocityTex, C, s).rg;
+            const vec3 velocityIn = texelFetch(velocityTex, C, s).rgb;
+            avgVelocity += velocityIn.rg;
+            avgSelection = max(avgSelection, uint(velocityIn.b));
         }
-        _velocityOut = avgVelocity / sampleCount;
+        _velocityOut.rg = avgVelocity / sampleCount;
+        _velocityOut.b = float(avgSelection);
     }
     { // Average material data with special consideration for packing and clamping
         vec3 avgNormalData = vec3(0.f);
@@ -52,6 +56,6 @@ void main() {
             avgRoughness += normalsIn.b;
         }
         _normalDataOut.rg = packNormal(avgNormalData / sampleCount);
-        _normalDataOut.b = saturate(avgRoughness / sampleCount);
+        _normalDataOut.b = Saturate(avgRoughness / sampleCount);
     }
 }

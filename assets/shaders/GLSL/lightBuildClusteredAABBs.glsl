@@ -71,5 +71,5 @@ vec3 screen2View(in vec4 coord) {
         2.f * (coord.y - dvd_ViewPort.y) / dvd_ViewPort.w - 1.f,
         2.f * coord.z - 1.f // -> [-1, 1]
     );
-    return homogenize(dvd_InverseProjectionMatrix * vec4(ndc, 1.f));
+    return Homogenize(dvd_InverseProjectionMatrix * vec4(ndc, 1.f));
 }

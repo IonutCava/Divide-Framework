@@ -77,9 +77,14 @@ void SceneGraph::addToDeleteQueue(SceneGraphNode* node, const size_t childIdx) {
 void SceneGraph::onNodeUpdated(const SceneGraphNode& node) {
 
     //ToDo: Maybe add particles too? -Ionut
-    if (node.getNode<>().type() == SceneNodeType::TYPE_OBJECT3D) {
-        const SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes(parentScene());
-        SceneEnvironmentProbePool::OnNodeUpdated(*probes, node);
+    switch (node.getNode<>().type()) {
+        case SceneNodeType::TYPE_OBJECT3D : {
+            const SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes(parentScene());
+            SceneEnvironmentProbePool::OnNodeUpdated(*probes, node);
+        } break;
+        case SceneNodeType::TYPE_SKY: {
+            SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
+        } break;
     }
 }
 

@@ -12,7 +12,7 @@ vec2 computeMoments() {
 
     // First moment is the depth itself.
     // Compute second moment over the pixel extents.
-    return vec2(Depth, SQUARED(Depth) + 0.25f * (SQUARED(dx) + SQUARED(dy)));
+    return vec2(Depth, Squared(Depth) + 0.25f * (Squared(dx) + Squared(dy)));
 }
 
 #endif //_VSM_FRAG_

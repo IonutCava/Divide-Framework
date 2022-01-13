@@ -135,7 +135,7 @@ vec3 aerialPerspective(vec3 albedo, float dist, vec3 rayOrigin, vec3 rayDirectio
     float vFalloff = 20.0;
     vec3 fogColor = dvd_fogDetails._colourAndDensity.rgb;
     float fog = exp((-rayOrigin.y * vFalloff) * fogDensity) * (1.0 - exp(-dist * rayDirection.y * vFalloff * fogDensity)) / (rayDirection.y * vFalloff);
-    return mix(color, fogColor, saturate(fog));
+    return mix(color, fogColor, Saturate(fog));
 }
 
 #endif //_ENVIRONMENT_FRAG_

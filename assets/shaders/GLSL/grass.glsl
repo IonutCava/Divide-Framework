@@ -48,10 +48,10 @@ void main() {
     }
     float scale = data.positionAndScale.w;
 #else //USE_CULL_DISTANCE
-    float scale = data.data.z > 2.5f ? 0.0f : data.positionAndScale.w * saturate(data.data.z);
+    float scale = data.data.z > 2.5f ? 0.0f : data.positionAndScale.w * Saturate(data.data.z);
 #endif //USE_CULL_DISTANCE
 
-    _alphaFactor = saturate(data.data.z);
+    _alphaFactor = Saturate(data.data.z);
 
     _layer = uint(data.data.x);
     VAR._LoDLevel = uint(data.data.y);
@@ -62,7 +62,7 @@ void main() {
     const float height = dvd_Vertex.y;
     dvd_Vertex.xyz *= scale;
     dvd_Vertex.y -= (1.f - scale) * 0.25f;
-    dvd_Vertex.xyz = QUATERNION_ROTATE(dvd_Vertex.xyz, data.orientationQuad);
+    dvd_Vertex.xyz = QuaternionRotate(dvd_Vertex.xyz, data.orientationQuad);
     VAR._vertexW = dvd_Vertex + vec4(data.positionAndScale.xyz, 0.0f);
 
     if (animate) {
@@ -86,7 +86,7 @@ void main() {
 
     computeViewDirectionWV(nodeData);
 
-    dvd_Normal = normalize(QUATERNION_ROTATE(dvd_Normal, data.orientationQuad));
+    dvd_Normal = normalize(QuaternionRotate(dvd_Normal, data.orientationQuad));
     _tbnWV = computeTBN(dvd_normalMatrixW(nodeData));
     VAR._normalWV = _tbnWV[2];
 

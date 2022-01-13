@@ -47,11 +47,11 @@ layout(binding = BUFFER_PROBE_DATA, std140) uniform dvd_ProbeBlock {
 // https://seblagarde.wordpress.com/2011/08/17/hello-world/
 
 vec3 computeFresnelSchlickRoughness(in float cosTheta, in vec3 F0, in float roughness) {
-    return F0 + (max(vec3(1.f - roughness), F0) - F0) * pow(saturate(1.f - cosTheta), 5.f);
+    return F0 + (max(vec3(1.f - roughness), F0) - F0) * pow(Saturate(1.f - cosTheta), 5.f);
 }
 
 vec3 computeFresnelSchlickRoughness(in vec3 H, in vec3 V, in vec3 F0, in float roughness) {
-    const float cosTheta = saturate(dot(H, V));
+    const float cosTheta = Saturate(dot(H, V));
     return computeFresnelSchlickRoughness(cosTheta, F0, roughness);
 }
 
@@ -109,35 +109,42 @@ vec3 GetCubeReflectionDirection(in vec3 viewDirectionWV, in vec3 normalWV, in ve
 }
 
 #if !defined(NO_ENV_MAPPING) && !defined(NO_IBL)
+vec4 getReflectionLookup(in float roughness, in vec3 viewDirectionWV, in vec3 normalWV, in vec3 positionW, in uint probeID) {
+    const vec4 reflectionLookup = vec4(GetCubeReflectionDirection(viewDirectionWV, normalWV, positionW, probeID, roughness), float(probeID));
+    return reflectionLookup;
+}
+
+vec3 getIBLAmbient(in PBRMaterial material) {
+    return (dvd_AmbientColour.rgb * material._diffuseColour * material._occlusion);
+}
+#if defined(SHADING_MODE_PBR)
 vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in float NdotV, in vec3 positionW, in uint probeID) {
-    const vec4 reflectionLookup = vec4(
-        GetCubeReflectionDirection(viewDirectionWV, 
-                                   normalWV,
-                                   positionW,
-                                   probeID,
-                                   material._roughness),
-        float(probeID));
+    const vec4 reflectionLookup = getReflectionLookup(material._roughness, viewDirectionWV, normalWV, positionW, probeID);
 
     const vec3 irradiance = texture(texEnvIrradiance, reflectionLookup).rgb;
     const vec3 prefiltered = textureLod(texEnvPrefiltered, reflectionLookup, (material._roughness * REFLECTION_PROBE_MIP_COUNT)).rgb;
     const vec2 envBRDF = texture(texBRDFLut, vec2(NdotV, material._roughness)).rg;
     const vec3 diffuse = irradiance * material._diffuseColour;
-    const vec3 ambient = (dvd_AmbientColour.rgb * material._diffuseColour * material._occlusion);
+    const vec3 ambient = getIBLAmbient(material);
 
     const vec3 F = computeFresnelSchlickRoughness(NdotV, material._F0, material._roughness);
-#if defined(SHADING_MODE_BLINN_PHONG)
-#define DielectricSpecular vec3(0.04f)
-    const vec3 kS = saturate(F - DielectricSpecular);
-    const vec3 kD = (1.f - kS) * (sqrt(Luminance(material._specular.rgb)));
-#undef DielectricSpecular
-#else //SHADING_MODE_BLINN_PHONG
     const vec3 kS = F;
     const vec3 kD = (1.f - kS) * (1.f - material._metallic);
-#endif //SHADING_MODE_BLINN_PHONG
 
     const vec3 specular = prefiltered * (F * envBRDF.x + envBRDF.y);
     return (kD * diffuse + specular) * material._occlusion + ambient;
 }
+#else //SHADING_MODE_PBR
+vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in float NdotV, in vec3 positionW, in uint probeID) {
+    const vec4 reflectionLookup = getReflectionLookup(material._roughness, viewDirectionWV, normalWV, positionW, probeID);
+    const vec3 prefiltered = textureLod(texEnvPrefiltered, reflectionLookup, (material._roughness * REFLECTION_PROBE_MIP_COUNT)).rgb;
+    const vec3 ambient = getIBLAmbient(material);
+
+    // Don't know. Shinnier => more reflective?
+    const float kD = material._specular.a / MAX_SHININESS;
+    return (easeInQuint(kD) * prefiltered) * material._occlusion + ambient;
+}
+#endif //SHADING_MODE_PBR
 #else //!NO_ENV_MAPPING && !NO_IBL
 #define ApplyIBL(M,V,N,nDv,P,ID) (dvd_AmbientColour.rgb * M._diffuseColour * M._occlusion)
 #endif //!NO_ENV_MAPPING && !NO_IBL

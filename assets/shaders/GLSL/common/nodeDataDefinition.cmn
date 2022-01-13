@@ -6,6 +6,7 @@
 #define TRANSFORM_IDX VAR._indirectionIDs.x
 #define MATERIAL_IDX VAR._indirectionIDs.y
 #define TEXTURE_IDX VAR._indirectionIDs.z
+#define SELECTION_FLAG VAR._indirectionIDs.w
 
 struct NodeTransformData {
     mat4 _worldMatrix;
@@ -93,7 +94,7 @@ struct NodeMaterialData
 
 #define dvd_cullNode(transformData) (uint(dvd_nodeData(transformData).w * 255) == 1u)
 
-#define dvd_selectionFlag(transformData) (transformData._normalMatrixW[1][3])
+#define dvd_selectionFlag(transformData) (uint(transformData._normalMatrixW[1][3]))
 
 #define dvd_boneCount(transformData) uint(transformData._normalMatrixW[2][3])
 

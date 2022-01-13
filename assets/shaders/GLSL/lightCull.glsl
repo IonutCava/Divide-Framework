@@ -42,7 +42,7 @@ bool lightIntersectsCluster(in vec3 clusterMin, in vec3 clusterMax, in vec4 ligh
     // get closest point to sphere center
     const vec3 dist = max(clusterMin, min(light.xyz, clusterMax)) - light.xyz;
     // check if point is inside the sphere
-    return dot(dist, dist) <= SQUARED(light.w);
+    return dot(dist, dist) <= Squared(light.w);
 }
 
 // light cache for the current workgroup

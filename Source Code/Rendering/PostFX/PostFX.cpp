@@ -61,7 +61,9 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_UNDERWATER %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER)).c_str(), true);
     fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SSR %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SSR)).c_str(), true);
     fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SCENE_DATA %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA)).c_str(), true);
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SCENE_VELOCITY %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY)).c_str(), true);
     fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_LINDEPTH %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH)).c_str(), true);
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_DEPTH %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH)).c_str(), true);
 
     ShaderProgramDescriptor postFXShaderDescriptor = {};
     postFXShaderDescriptor._modules.push_back(vertModule);
@@ -182,6 +184,7 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     };
 
     _drawConstantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+    _drawConstantsCmd._constants.set(_ID("_invProjectionMatrix"), GFX::PushConstantType::VEC2, cameraSnapshot._invProjectionMatrix);
 
     GFX::EnqueueCommand(bufferInOut, _drawConstantsCmd);
     const auto& rtPool = context().gfx().renderTargetPool();
@@ -189,12 +192,16 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     const auto& linDepthDataAtt = rtPool.renderTarget(RenderTargetUsage::LINEAR_DEPTH).getAttachment(RTAttachmentType::Colour, 0);
     const auto& ssrDataAtt = rtPool.renderTarget(RenderTargetUsage::SSR_RESULT).getAttachment(RTAttachmentType::Colour, 0);
     const auto& sceneDataAtt = rtPool.renderTarget(RenderTargetUsage::SCREEN).getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
+    const auto& velocityAtt = rtPool.renderTarget(RenderTargetUsage::SCREEN).getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY));
+    const auto& depthAtt = rtPool.renderTarget(RenderTargetUsage::SCREEN).getAttachment(RTAttachmentType::Depth, 0);
 
     TextureDataContainer& textureContainer = s_descriptorSetCmd._set._textureData;
     textureContainer.add(TextureEntry{ prbAtt.texture()->data(),           prbAtt.samplerHash(),to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN) });
     textureContainer.add(TextureEntry{ linDepthDataAtt.texture()->data(),  s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH) });
+    textureContainer.add(TextureEntry{ depthAtt.texture()->data(),         s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH) });
     textureContainer.add(TextureEntry{ ssrDataAtt.texture()->data(),       s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR) });
     textureContainer.add(TextureEntry{ sceneDataAtt.texture()->data(),     s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA) });
+    textureContainer.add(TextureEntry{ velocityAtt.texture()->data(),      s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY) });
     GFX::EnqueueCommand(bufferInOut, s_descriptorSetCmd);
 
     GFX::EnqueueCommand(bufferInOut, s_drawCommand);

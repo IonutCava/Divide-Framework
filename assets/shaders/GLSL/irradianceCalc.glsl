@@ -70,9 +70,9 @@ vec2 integrateBRDF(float roughness, float NoV)
         // Get the light direction
         vec3 L = 2.0 * dot(V, H) * H - V;
 
-        float NoL = saturate(dot(N, L));
-        float NoH = saturate(dot(N, H));
-        float VoH = saturate(dot(V, H));
+        float NoL = Saturate(dot(N, L));
+        float NoH = Saturate(dot(N, H));
+        float VoH = Saturate(dot(V, H));
 
         if (NoL > 0.0) {
             // Terms besides V are from the GGX PDF we're dividing by
@@ -136,9 +136,9 @@ vec3 prefilterEnvMap(float roughness, vec3 R, float imgSize)
         float NoH = VoH; // Since N = V in our approximation
         // Use microfacet normal H to find L
         vec3 L = 2.0 * VoH * H - V;
-        float NoL = saturate(dot(N, L));
+        float NoL = Saturate(dot(N, L));
         // Clamp 0 <= NoH <= 1
-        NoH = saturate(NoH);
+        NoH = Saturate(NoH);
 
         if (NoL > 0.0) {
             // Based off https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch20.html

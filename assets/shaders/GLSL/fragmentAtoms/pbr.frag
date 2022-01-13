@@ -9,8 +9,8 @@ vec3 SchlickFresnel(in vec3 specular, in float VdotH);
 
 float SchlickFresnel(in float u) {
     const float m = 1.f - u;
-    const float m2 = SQUARED(m);
-    return SQUARED(m2) * m; // pow(m,5)
+    const float m2 = Squared(m);
+    return Squared(m2) * m; // pow(m,5)
 }
 
 //-------------------- VISIBILITY ---------------------------------------------------
@@ -20,7 +20,7 @@ float SchlickFresnel(in float u) {
 //   NdotL        = the dot product of the normal and direction to the light
 float SmithGGXSchlickVisibility(in float roughness, in float NdotV, in float NdotL)
 {
-    const float rough2 = SQUARED(roughness);
+    const float rough2 = Squared(roughness);
     const float lambdaV = NdotL  * sqrt((-NdotV * rough2 + NdotV) * NdotV + rough2);
     const float lambdaL = NdotV  * sqrt((-NdotL * rough2 + NdotL) * NdotL + rough2);
 
@@ -44,7 +44,7 @@ float BlinnPhongDistribution(in float roughnessSq, in float NdotH)
 {
     // Calculate specular power from roughness
     const float specPower = max((2.f / roughnessSq) - 2.f, 1e-4);
-    return pow(saturate(NdotH), specPower);
+    return pow(Saturate(NdotH), specPower);
 }
 
 // Beckmann Distribution
@@ -52,7 +52,7 @@ float BlinnPhongDistribution(in float roughnessSq, in float NdotH)
 //   NdotH        = the dot product of the normal and the half vector
 float BeckmannDistribution(in float roughnessSq, in float NdotH)
 {
-    const float NdotH2 = SQUARED(NdotH);
+    const float NdotH2 = Squared(NdotH);
 
     const float roughnessA = 1.f / (4.f * roughnessSq * pow(NdotH, 4.f));
     const float roughnessB = NdotH2 - 1.f;
@@ -66,7 +66,7 @@ float BeckmannDistribution(in float roughnessSq, in float NdotH)
 float GGXDistribution(in float roughnessSq, in float NdotH)
 {
     const float tmp = (NdotH * roughnessSq - NdotH) * NdotH + 1.f;
-    return roughnessSq / SQUARED(tmp);
+    return roughnessSq / Squared(tmp);
 }
 //----------------------------------------------------------------------------------
 
@@ -99,13 +99,13 @@ float BurleyDiffuse(in float roughness, in float NdotV, in float NdotL, in float
 #if 0
     const float energyBias = mix(roughness, 0.0f, 0.5f);
     const float energyFactor = mix(roughness, 1.f, 1.f / 1.51f);
-    const float fd90 = energyBias + 2.f * SQUARED(VdotH) * roughness;
+    const float fd90 = energyBias + 2.f * Squared(VdotH) * roughness;
     const float f0 = 1.f;
     const float lightScatter = f0 + (fd90 - f0) * pow(1.f - NdotL, 5.f);
     const float viewScatter = f0 + (fd90 - f0) * pow(1.f - NdotV, 5.f);
     return lightScatter * viewScatter * energyFactor;
 #else
-    const float INV_FD90 = 2.f * SQUARED(LdotH) * roughness - 0.5f;
+    const float INV_FD90 = 2.f * Squared(LdotH) * roughness - 0.5f;
     const float FdV = 1.f + INV_FD90 * SchlickFresnel(NdotV);
     const float FdL = 1.f + INV_FD90 * SchlickFresnel(NdotL);
     return INV_M_PI * FdV * FdL * NdotL;
@@ -138,7 +138,7 @@ vec3 SchlickFresnelCustom(in vec3 specular, in float LdotH) {
     const float airIor = 1.000277f;
     float f0 = (ior - airIor) / (ior + airIor);
     const float max_ior = 2.5f;
-    f0 = clamp(SQUARED(f0), 0.f, (max_ior - airIor) / (max_ior + airIor));
+    f0 = clamp(Squared(f0), 0.f, (max_ior - airIor) / (max_ior + airIor));
     return specular * (f0 + (1 - f0) * pow(2, (-5.55473 * LdotH - 6.98316) * LdotH));
 }
 
@@ -186,7 +186,7 @@ vec3 GetBRDF(in vec3 L,
     const float VdotH = clamp((dot(V, H)), M_EPSILON, 1.f);
     const float NdotH = clamp((dot(N, H)), M_EPSILON, 1.f);
 
-#define Mat_A max(SQUARED(material._roughness), 0.01f)
+#define Mat_A max(Squared(material._roughness), 0.01f)
 #if defined(SHADING_MODE_PBR_MR)
     const float LdotH = clamp((dot(L, H)), M_EPSILON, 1.f);
 

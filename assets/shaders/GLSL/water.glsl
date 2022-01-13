@@ -45,7 +45,7 @@ const float Eta = 0.15f; //water
 
 float Fresnel(in vec3 viewDir, in vec3 normal) {
     const float fresnel = Eta + (1.f - Eta) * pow(max(0.f, 1.f - dot(viewDir, normal)), 5.f);
-    return saturate(fresnel);
+    return Saturate(fresnel);
 }
 
 void main()
@@ -74,7 +74,7 @@ void main()
     const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
     const vec3 incident = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
 
-    const vec2 waterUV = clamp(0.5f * homogenize(_vertexWVP).xy + 0.5f, vec2(0.001f), vec2(0.999f));
+    const vec2 waterUV = clamp(0.5f * Homogenize(_vertexWVP).xy + 0.5f, vec2(0.001f), vec2(0.999f));
     const vec3 refractionColour = overlayVec(texture(texRefractPlanar, waterUV).rgb, _refractionTint);
 
 #if defined(MAIN_DISPLAY_PASS)
@@ -103,7 +103,7 @@ void main()
 
     // Guess work based on what "look right"
     const vec3 sunDirection = GetSunDirection();
-    const float lerpValue = saturate(2.95f * (sunDirection.y + 0.15f));
+    const float lerpValue = Saturate(2.95f * (sunDirection.y + 0.15f));
     const vec3 lightDirection = mix(-sunDirection.xyz, sunDirection.xyz, lerpValue);
 
     // Calculate the reflection vector using the normal and the direction of the light.

@@ -3,9 +3,9 @@
 
 #include "nodeDataInput.cmn"
 
-// Maps the depth buffer value "depthIn" to a linear [0, 1] range using dvd_zPlanes
+// Maps the depth buffer value "depthIn" to a linear [0, dvd_zPlanes.y] range using dvd_zPlanes
 float ToLinearDepth(in float depthIn);
-// Maps the depth buffer value "depthIn" to a linear [0, 1] range using depthRange
+// Maps the depth buffer value "depthIn" to a linear [0, depthRange.y] range using depthRange
 float ToLinearDepth(in float depthIn, in vec2 depthRange);
 
 #define overlay(X, Y) ((X < 0.5f) ? (2.f * X * Y) : (1.f - 2.f * (1.f - X) * (1.f - Y)))
@@ -107,22 +107,47 @@ float ViewSpaceZ(in float depthIn, in mat4 invProjectionMatrix) {
     return -1.0f / (invProjectionMatrix[2][3] * (depthIn * 2.f - 1.f) + invProjectionMatrix[3][3]);
 }
 
-vec3 ViewSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjection) {
-    const vec4 clipSpacePos = vec4(texCoords.s * 2.f - 1.f,
-                                   texCoords.t * 2.f - 1.f,
-                                   depthIn     * 2.f - 1.f,
-                                   1.f);
+#if !defined(NO_CAM_BLOCK)
+float ViewSpaceZ(in float depthIn) {
+    return ViewSpaceZ(depthIn, dvd_InverseProjectionMatrix);
+}
+#endif //NO_CAM_BLOCK
 
-    return homogenize(invProjection * clipSpacePos);
+vec3 ClipSpacePos(in vec2 texCoords, in float depthIn) {
+    const vec3 clipSpacePos = vec3(texCoords.s  * 2.f - 1.f,
+                                   texCoords.t * 2.f - 1.f,
+                                   depthIn     * 2.f - 1.f);
+    return clipSpacePos;
 }
 
+vec3 ViewSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjection) {
+    const vec4 clipSpacePos = vec4(ClipSpacePos(texCoords, depthIn), 1.f);
+
+    return Homogenize(invProjection * clipSpacePos);
+}
+
+#if !defined(NO_CAM_BLOCK)
+vec3 ViewSpacePos(in vec2 texCoords, in float depthIn) {
+    return ViewSpacePos(texCoords, depthIn, dvd_InverseProjectionMatrix);
+}
+#endif //NO_CAM_BLOCK
+
+vec3 WorldSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjection, in mat4 invView) {
+    const vec3 viewSpacePos = ViewSpacePos(texCoords, depthIn, invProjection);
+    return (invView * vec4(viewSpacePos, 1.f)).xyz;
+}
+#if !defined(NO_CAM_BLOCK)
+vec3 WorldSpacePos(in vec2 texCoords, in float depthIn) {
+    return WorldSpacePos(texCoords, depthIn, dvd_InverseProjectionMatrix, dvd_InverseViewMatrix);
+}
+#endif //NO_CAM_BLOCK
 // Utility function that maps a value from one range to another. 
 float ReMap(const float V, const float Min0, const float Max0, const float Min1, const float Max1) {
     return (Min1 + (((V - Min0) / (Max0 - Min0)) * (Max1 - Min1)));
 }
 
 #define InRangeExclusive(V, MIN, MAX) (VS > MIN && V < MAX)
-#define LinStep(LOW, HIGH, V) saturate((V - LOW) / (HIGH - LOW))
+#define LinStep(LOW, HIGH, V) Saturate((V - LOW) / (HIGH - LOW))
 #define Luminance(RGB) max(dot(RGB, vec3(0.299f, 0.587f, 0.114f)), 0.0001f)
 #define LevelOfGrey(C) vec4(C.rgb * vec3(0.299f, 0.587f, 0.114f), C.a)
 
@@ -223,7 +248,7 @@ vec3 viewPositionFromDepth(in float depth,
     const vec4 ndc = vec4(x, y, z, 1.f);
 
     // to view space
-    return homogenize(invProjectionMatrix * ndc);
+    return Homogenize(invProjectionMatrix * ndc);
 }
 
 bool isInScreenRect(in vec2 coords) {
@@ -266,7 +291,7 @@ vec3 turboColormap(in float x) {
     const vec2 kGreenVec2 = vec2(4.27729857f, 2.82956604f);
     const vec2 kBlueVec2 = vec2(-89.90310912f, 27.34824973f);
 
-    x = saturate(x);
+    x = Saturate(x);
     const vec4 v4 = vec4(1.0, x, x * x, x * x * x);
     const vec2 v2 = v4.zw * v4.z;
     return vec3(

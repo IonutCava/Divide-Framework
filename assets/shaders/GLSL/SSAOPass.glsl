@@ -75,7 +75,7 @@ void main(void) {
             // Project point and calculate NDC.
             // Convert sample XY to texture coordinate space and sample from the
             // Position texture to obtain the scene depth at that XY coordinate
-            const vec3 samplePointNDC = homogenize(projectionMatrix * vec4(samplePos, 1.f));
+            const vec3 samplePointNDC = Homogenize(projectionMatrix * vec4(samplePos, 1.f));
             const vec2 samplePointUv = samplePointNDC.xy * 0.5f + 0.5f;
 
             const float sampleDepth = ViewSpaceZ(texture(texDepthMap, samplePointUv).r, invProjectionMatrix);
@@ -87,7 +87,7 @@ void main(void) {
             occlusion += (sampleDepth >= samplePos.z + SSAO_BIAS ? 1.f : 0.f) * rangeCheck;
         }
         // We output ambient intensity in the range [0,1]
-        _ssaoOut = saturate(pow(1.f - (occlusion / SSAO_SAMPLE_COUNT), SSAO_INTENSITY) + smoothstep(fadeStart * maxRange, maxRange, linDepth));
+        _ssaoOut = Saturate(pow(1.f - (occlusion / SSAO_SAMPLE_COUNT), SSAO_INTENSITY) + smoothstep(fadeStart * maxRange, maxRange, linDepth));
     }else {
         _ssaoOut = 1.f;
     }
@@ -144,7 +144,7 @@ void main() {
         }
     }
 
-    _colourOut = saturate(result / float(sample_count));
+    _colourOut = Saturate(result / float(sample_count));
 }
 
 

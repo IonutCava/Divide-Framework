@@ -323,13 +323,7 @@ void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDes
     }
 
     shaderInfo._shaderRef = shader;
-    shaderInfo._shaderCompStage = shader == nullptr || shader->getState() == ResourceState::RES_LOADED
-                                                     ? (shaderInfo._customShader ? ShaderBuildStage::COMPUTED : ShaderBuildStage::READY)
-                                                     : ShaderBuildStage::COMPUTED;
-
-    if (shader != nullptr && shaderInfo._shaderCompStage == ShaderBuildStage::READY) {
-        shaderInfo._shaderKeyCache = shaderInfo._shaderRef->getGUID();
-    }
+    shaderInfo._shaderCompStage = ShaderBuildStage::COMPUTED;
 }
 
 void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,

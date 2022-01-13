@@ -381,15 +381,15 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, 
             rComp->occlusionCull() ? 1u : 0u
         ));
 
-        F32 selectionFlag = 0.0f;
+        U8 selectionFlag = 0u;
         // We don't propagate selection flags to children outside of the editor, so check for that
         if (node->hasFlag(SceneGraphNode::Flags::SELECTED) ||
             node->parent() && node->parent()->hasFlag(SceneGraphNode::Flags::SELECTED)) {
-            selectionFlag = 1.0f;
+            selectionFlag = 2u;
         } else if (node->hasFlag(SceneGraphNode::Flags::HOVERED)) {
-            selectionFlag = 0.5f;
+            selectionFlag = 1u;
         }
-        transformOut._normalMatrixW.element(1, 3) = selectionFlag;
+        transformOut._normalMatrixW.element(1, 3) = to_F32(selectionFlag);
         transformOut._normalMatrixW.element(2, 3) = to_F32(boneCount);
     }
 

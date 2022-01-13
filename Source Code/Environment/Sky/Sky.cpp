@@ -702,7 +702,7 @@ SimpleLocation Sky::GetGeographicLocation() const noexcept{
     return _sun.GetGeographicLocation();
 }
 
-void Sky::setAtmosphere(const Atmosphere& atmosphere) noexcept {
+void Sky::setAtmosphere(const Atmosphere& atmosphere) {
     _atmosphere = atmosphere;
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 }
@@ -713,13 +713,6 @@ const Texture_ptr& Sky::activeSkyBox() const noexcept {
 
 void Sky::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) {
     bool changed = false;
-    {
-        EditorDataState& mainState = _atmosphereChanged[to_base(RenderStage::DISPLAY)];
-        if (mainState == EditorDataState::PROCESSED || mainState == EditorDataState::COUNT) {
-            SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
-        }
-    }
-
     for (EditorDataState& state : _atmosphereChanged) {
         if (state == EditorDataState::QUEUED) {
             state = EditorDataState::CHANGED;
@@ -740,42 +733,40 @@ void Sky::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sc
         }
     }
 
-
-
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);
 }
 
-void Sky::enableProceduralClouds(const bool val) noexcept {
+void Sky::enableProceduralClouds(const bool val) {
     _enableProceduralClouds = val;
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 }
 
-void Sky::useDaySkybox(const bool val) noexcept {
+void Sky::useDaySkybox(const bool val) {
     _useDaySkybox = val;
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 }
 
-void Sky::useNightSkybox(const bool val) noexcept {
+void Sky::useNightSkybox(const bool val) {
     _useNightSkybox = val;
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 }
 
-void Sky::moonScale(const F32 val) noexcept {
+void Sky::moonScale(const F32 val) {
     _moonScale = val;
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 }
 
-void Sky::weatherScale(const F32 val) noexcept {
+void Sky::weatherScale(const F32 val) {
     _weatherScale = val;
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 }
 
-void Sky::moonColour(const FColour4 val) noexcept {
+void Sky::moonColour(const FColour4 val) {
     _moonColour = val;
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 }
 
-void Sky::nightSkyColour(const FColour4 val) noexcept {
+void Sky::nightSkyColour(const FColour4 val) {
     _nightSkyColour = val;
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 }
@@ -811,9 +802,7 @@ void Sky::prepareRender(SceneGraphNode* sgn,
     EditorDataState& state = _atmosphereChanged[to_base(renderStagePass._stage)];
     if (state == EditorDataState::CHANGED || state == EditorDataState::PROCESSED) {
         setSkyShaderData(renderStagePass._stage == RenderStage::DISPLAY ? 16 : 8, pkg.pushConstantsCmd()._constants);
-        if (refreshData) {
-            state = EditorDataState::PROCESSED;
-        }
+        state = EditorDataState::PROCESSED;
     }
 
     SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);

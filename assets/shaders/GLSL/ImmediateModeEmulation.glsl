@@ -89,7 +89,7 @@ uniform mat4 dvd_WorldMatrixOverride;
 uniform uint dvd_LayerIndex;
 
 void main(void) {
-    vec3 dvd_Normal = UNPACK_VEC3(inNormalData);
+    vec3 dvd_Normal = UnpackVec3(inNormalData);
     VAR._vertexW = dvd_WorldMatrixOverride * vec4(inVertexData, 1.0);
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     VAR._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);

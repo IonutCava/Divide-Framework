@@ -1291,7 +1291,7 @@ bool Scene::updateCameraControls(const U64 deltaTimeUS, const PlayerIndex idx) c
         return false;
     }
 
-    const F32 timeFactor = Time::MicrosecondsToSeconds<F32>(deltaTimeUS) * 0.1f;
+    const F32 timeFactor = Time::MicrosecondsToSeconds<F32>(deltaTimeUS) * 0.01f;
 
     FreeFlyCamera* cam = static_cast<FreeFlyCamera*>(camIn);
     SceneStatePerPlayer& playerState = state()->playerState(idx);

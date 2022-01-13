@@ -15,8 +15,8 @@
 
 #include "shadowMapping.frag"
 
-// Same as "saturate(tan(acos(ndl)))" but maybe faster?
-#define TanAcosNdL(NdL) (saturate(sqrt(1.f - SQUARED(NdL)) / NdL))
+// Same as "Saturate(tan(acos(ndl)))" but maybe faster?
+#define TanAcosNdL(NdL) (Saturate(sqrt(1.f - Squared(NdL)) / NdL))
 #define GetNdotL(N, L) clamp(dot(N, L), M_EPSILON, 1.f)
 
 float getShadowMultiplier(in vec3 normalWV) {
@@ -93,8 +93,8 @@ vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool
         const int shadowIndex = light._options.y;
         const float shadowMultiplier = (shadowIndex >= 0 && receivesShadows) ? getShadowMultiplierPoint(shadowIndex, TanAcosNdL(ndl)) : 1.f;
 
-        const float att = saturate(1.f - (SQUARED(length(lightDir)) / SQUARED(light._positionWV.w)));
-        radianceIn += GetBRDF(lightVec, V, N, light._colour.rgb, SQUARED(att) * shadowMultiplier, ndl, ndv, material);
+        const float att = Saturate(1.f - (Squared(length(lightDir)) / Squared(light._positionWV.w)));
+        radianceIn += GetBRDF(lightVec, V, N, light._colour.rgb, Squared(att) * shadowMultiplier, ndl, ndv, material);
     }
 
     for (uint i = 0u; i < spotLightCount; ++i) {
@@ -111,10 +111,10 @@ vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool
         const float cosInnerConeAngle = light._directionWV.w;
 
         const float theta = dot(lightVec, normalize(-spotDirectionWV));
-        const float intensity = saturate((theta - cosOuterConeAngle) / (cosInnerConeAngle - cosOuterConeAngle));
+        const float intensity = Saturate((theta - cosOuterConeAngle) / (cosInnerConeAngle - cosOuterConeAngle));
 
         const float radius = mix(float(light._SPOT_CONE_SLANT_HEIGHT), light._positionWV.w, 1.f - intensity);
-        const float att = saturate(1.0f - (SQUARED(length(lightDir)) / SQUARED(radius))) * intensity;
+        const float att = Saturate(1.0f - (Squared(length(lightDir)) / Squared(radius))) * intensity;
 
         radianceIn += GetBRDF(lightVec, V, N, light._colour.rgb, att * shadowMultiplier, ndl, ndv, material);
     }
