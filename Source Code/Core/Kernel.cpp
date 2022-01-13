@@ -523,14 +523,18 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
     renderParams._editorRunning = editorRunning;
     renderParams._sceneRenderState = &_sceneManager->getActiveScene().state()->renderState();
 
-    for (U8 i = 0; i < playerCount; ++i) {
-        if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_SCENERENDER_START, evt)) {
+    for (U8 i = 0u; i < playerCount; ++i) {
+        const U64 deltaTimeUS = Time::App::ElapsedMicroseconds();
+
+        Attorney::SceneManagerKernel::currentPlayerPass(_sceneManager, deltaTimeUS, i);
+        renderParams._playerPass = i;
+
+        if (!frameListenerMgr().createAndProcessEvent(deltaTimeUS, FrameEventType::FRAME_SCENERENDER_START, evt)) {
             return false;
         }
 
         renderParams._targetViewport = editorRunning ? _editorViewports[i] : _targetViewports[i];
 
-        Attorney::SceneManagerKernel::currentPlayerPass(_sceneManager, i);
         {
             Time::ProfileTimer& timer = getTimer(_flushToScreenTimer, _renderTimer, i, "Render Timer");
             renderParams._parentTimer = &timer;
@@ -538,7 +542,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
             _renderPassManager->render(renderParams);
         }
 
-        if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_SCENERENDER_END, evt)) {
+        if (!frameListenerMgr().createAndProcessEvent(deltaTimeUS, FrameEventType::FRAME_SCENERENDER_END, evt)) {
             return false;
         }
     }
@@ -553,10 +557,6 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
     for (U32 i = playerCount; i < to_U32(_renderTimer.size()); ++i) {
         Time::ProfileTimer::removeTimer(*_renderTimer[i]);
         _renderTimer.erase(begin(_renderTimer) + i);
-    }
-
-    for (U8 i = 0; i < playerCount; ++i) {
-        _sceneManager->savePreviousCamera(i);
     }
 
     return true;

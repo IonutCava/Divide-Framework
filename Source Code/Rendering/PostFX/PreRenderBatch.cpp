@@ -425,10 +425,10 @@ void PreRenderBatch::onFilterToggle(const FilterType filter, const bool state) {
     }
 }
 
-void PreRenderBatch::prePass(const CameraSnapshot& cameraSnapshot, const U32 filterStack, GFX::CommandBuffer& bufferInOut) {
+void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const U32 filterStack, GFX::CommandBuffer& bufferInOut) {
     for (OperatorBatch& batch : _operators) {
         for (auto& op : batch) {
-            op->prepare(bufferInOut);
+            op->prepare(idx, bufferInOut);
         }
     }
 
@@ -472,7 +472,7 @@ void PreRenderBatch::prePass(const CameraSnapshot& cameraSnapshot, const U32 fil
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
 
-    RenderTargetHandle prevScreenHandle{
+    const RenderTargetHandle prevScreenHandle{
         RenderTargetUsage::SCREEN_PREV,
         & _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN_PREV)
     };
@@ -480,7 +480,7 @@ void PreRenderBatch::prePass(const CameraSnapshot& cameraSnapshot, const U32 fil
     for (auto& op : _operators[to_base(FilterSpace::FILTER_SPACE_HDR)]) {
         if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
-            const bool swapTargets = op->execute(cameraSnapshot, prevScreenHandle, getOutput(true), bufferInOut);
+            const bool swapTargets = op->execute(idx, cameraSnapshot, prevScreenHandle, getOutput(true), bufferInOut);
             DIVIDE_ASSERT(!swapTargets, "PreRenderBatch::prePass: Swap render target request detected during prePass!");
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
@@ -495,7 +495,7 @@ void PreRenderBatch::prePass(const CameraSnapshot& cameraSnapshot, const U32 fil
     set._textureData.add(TextureEntry{ ssaoDataAtt.texture()->data(), ssaoDataAtt.samplerHash(), TextureUsage::SSAO_SAMPLE });
 }
 
-void PreRenderBatch::execute(const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut) {
+void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut) {
     static Pipeline* pipelineLumCalcHistogram = nullptr, * pipelineLumCalcAverage = nullptr, * pipelineToneMap = nullptr, * pipelineToneMapAdaptive = nullptr;
 
     if (pipelineLumCalcHistogram == nullptr) {
@@ -622,7 +622,7 @@ void PreRenderBatch::execute(const CameraSnapshot& cameraSnapshot, U32 filterSta
     for (auto& op : hdrBatch) {
         if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
-            if (op->execute(cameraSnapshot, getInput(true), getOutput(true), bufferInOut)) {
+            if (op->execute(idx, cameraSnapshot, getInput(true), getOutput(true), bufferInOut)) {
                 _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
             }
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -634,7 +634,7 @@ void PreRenderBatch::execute(const CameraSnapshot& cameraSnapshot, U32 filterSta
     for (auto& op : hdrBatchPostSS) {
         if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute HDR (2) operator [ %s ]", PostFX::FilterName(op->operatorType())).c_str() });
-            if (op->execute(cameraSnapshot, getInput(true), getOutput(true), bufferInOut)) {
+            if (op->execute(idx, cameraSnapshot, getInput(true), getOutput(true), bufferInOut)) {
                 _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
             }
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -732,7 +732,7 @@ void PreRenderBatch::execute(const CameraSnapshot& cameraSnapshot, U32 filterSta
     for (auto& op : ldrBatch) {
         if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute LDR operator [ %s ]", PostFX::FilterName(op->operatorType())).c_str() });
-            if (op->execute(cameraSnapshot, getInput(false), getOutput(false), bufferInOut)) {
+            if (op->execute(idx, cameraSnapshot, getInput(false), getOutput(false), bufferInOut)) {
                 _screenRTs._swappedLDR = !_screenRTs._swappedLDR;
             }
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);

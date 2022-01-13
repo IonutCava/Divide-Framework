@@ -11,6 +11,7 @@ layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
 uniform mat4 projToPixel; // A projection matrix that maps to pixel coordinates (not [-1, +1] normalized device coordinates)
 uniform mat4 projectionMatrix;
 uniform mat4 invProjectionMatrix;
+uniform mat4 previousViewProjection;
 uniform mat4 invViewMatrix;
 uniform vec2 zPlanes;
 uniform vec2 screenDimensions;
@@ -190,8 +191,7 @@ void main() {
         const float depth = texture(texDepth, VAR._texCoord).r;
         if (depth < INV_Z_TEST_SIGMA) {
             const vec3 dataIn = texture(texNormal, VAR._texCoord).rgb;
-            const vec2 extraData = unpackVec2(dataIn.b);
-            const float roughness = saturate(extraData.x);
+            const float roughness = dataIn.b;
             if (roughness < INV_Z_TEST_SIGMA) {
                 const vec3 vsNormal = normalize(unpackNormal(dataIn.rg));
                 const vec3 vsPos = ViewSpacePos(VAR._texCoord, depth, invProjectionMatrix);
@@ -207,7 +207,18 @@ void main() {
                 float iterations = 0;
                 if (FindSSRHit(vsPos, vsReflect, jitter * jitterAmount, hitPixel, hitPoint, iterations)) {
                     // Sample reflection in previous frame with temporal reprojection
-                    const vec3 prevHit = homogenize(dvd_PreviousViewProjectionMatrix * (invViewMatrix * vec4(hitPoint, 1.f)));
+#if 0
+                    vec4 prevHit = invViewMatrix * vec4(hitPoint.xyz, 1);
+                    prevHit = dvd_PreviousViewMatrix * prevHit;
+                    prevHit = dvd_PreviousProjectionMatrix * prevHit;
+                    prevHit.xyz /= prevHit.w;
+#else
+#if 0
+                    const vec3 prevHit = homogenize(previousViewProjection * (invViewMatrix * vec4(hitPoint, 1.f)));
+#else
+                    const vec3 prevHit = homogenize((dvd_PreviousProjectionMatrix * dvd_PreviousViewMatrix) * (invViewMatrix * vec4(hitPoint, 1.f)));
+#endif
+#endif
                     // Blend between reprojected SSR sample and IBL
                     reflBlend = ComputeBlendFactorForIntersection(iterations, hitPixel, hitPoint, vsPos, vsReflect);
                     const vec3 ssr = textureLod(texScreen, 0.5f * prevHit.xy + 0.5f, roughness * maxScreenMips).rgb;

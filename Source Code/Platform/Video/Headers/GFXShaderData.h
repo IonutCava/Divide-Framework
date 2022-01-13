@@ -43,7 +43,8 @@ enum class RenderStage : U8;
 struct GFXShaderData {
 #pragma pack(push, 1)
       struct RenderData {
-          mat4<F32> _PreviousViewProjectionMatrix = MAT4_IDENTITY;
+          mat4<F32> _PreviousViewMatrix = MAT4_IDENTITY;
+          mat4<F32> _PreviousProjectionMatrix = MAT4_IDENTITY;
           //x - elapsed time (ms)
           vec4<F32> _renderProperties = VECTOR4_ZERO;
           //x - cluster size X, y - cluster size Y
@@ -51,7 +52,7 @@ struct GFXShaderData {
           //x - material debug flag, y - fog enabled, z - clip plane count, w - reserved
           vec4<F32> _otherProperties;
           vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
-          vec4<F32> _padding[6];
+          vec4<F32> _padding[2];
       };
       struct CamData {
           mat4<F32> _ProjectionMatrix = MAT4_IDENTITY;

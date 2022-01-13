@@ -28,10 +28,11 @@ vec3 ApplyFog(in vec3 rgb) // original color of the pixel
 }
 #endif //NO_FOG
 
-vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV, in float normalVariation, in vec2 uv) {
+vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 normalWV) {
+    const vec2 uv = VAR._texCoord;
     const vec3 viewVec = normalize(VAR._viewDirectionWV);
     const float NdotV = max(dot(normalWV, viewVec), 0.f);
-    const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, uv, normalWV, normalVariation, NdotV);
+    const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, uv, normalWV, NdotV);
 
     vec3 radianceOut = vec3(0.f);
 #if defined(MAIN_DISPLAY_PASS)
@@ -40,7 +41,7 @@ vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 no
     }
 #endif //MAIN_DISPLAY_PASS
     radianceOut = ApplyIBL(material, viewVec, normalWV, NdotV, VAR._vertexW.xyz, dvd_probeIndex(materialData));
-    radianceOut = ApplySSR(material, radianceOut);
+    radianceOut = ApplySSR(material._roughness, radianceOut);
     radianceOut = getLightContribution(material, normalWV, viewVec, dvd_receivesShadows(materialData), radianceOut);
     radianceOut = ApplyFog(radianceOut);
     radianceOut = ApplySSAO(radianceOut);

@@ -212,6 +212,8 @@ class Material final : public CachedResource {
 
     static void OnStartup(SamplerAddress defaultTexAddress);
     static void ApplyDefaultStateBlocks(Material& target);
+    static void RecomputeShaders();
+    static void Update(U64 deltaTimeUS);
 
     /// Return a new instance of this material with the name composed of the
     /// base material's name and the give name suffix.
@@ -332,6 +334,7 @@ class Material final : public CachedResource {
     vector<Material*> _instances{};
 
     static SamplerAddress s_defaultTextureAddress;
+    static bool s_shadersDirty;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);

@@ -86,7 +86,7 @@ RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass stagePass
     return ret;
 }
 
-void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut) const {
+void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut) const {
     OPTICK_EVENT();
 
     switch(_stageFlag) {
@@ -142,7 +142,8 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
             GFX::EnqueueCommand(bufferInOut, clearMainTarget);
             GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
-            _parent.doCustomPass(Attorney::SceneManagerCameraAccessor::playerCamera(_parent.parent().sceneManager()), params, bufferInOut);
+            Camera* playerCamera = Attorney::SceneManagerCameraAccessor::playerCamera(_parent.parent().sceneManager());
+            _parent.doCustomPass(playerCamera, params, bufferInOut);
 
             GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true;
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -178,9 +179,9 @@ void RenderPass::render([[maybe_unused]] const Task& parentTask, const SceneRend
                 SceneEnvironmentProbePool* envProbPool = Attorney::SceneRenderPass::getEnvProbes(mgr->getActiveScene());
                 envProbPool->lockProbeList();
                 const EnvironmentProbeList& probes = envProbPool->sortAndGetLocked(camera->getEye());
-                U32 idx = 0u;
+                U32 probeIdx = 0u;
                 for (const auto& probe : probes) {
-                    if (probe->refresh(bufferInOut) && ++idx == Config::MAX_REFLECTIVE_PROBES_PER_PASS) {
+                    if (probe->refresh(bufferInOut) && ++probeIdx == Config::MAX_REFLECTIVE_PROBES_PER_PASS) {
                         break;
                     }
                 }

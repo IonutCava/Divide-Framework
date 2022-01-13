@@ -26,8 +26,10 @@ in gl_PerVertex
 {
   vec4  gl_Position;
   float gl_PointSize;
+#if !defined(NO_CLIP_CULL_IN)
   float gl_ClipDistance[MAX_CLIP_PLANES];
   float gl_CullDistance[MAX_CULL_DISTANCES];
+#endif //!NO_CLIP_CULL_IN
 } InBlock
 #endif //GEOM_SHADER || TESS_CTRL_SHADER || TESS_EVAL_SHADER
 
@@ -35,8 +37,10 @@ out gl_PerVertex
 {
   invariant vec4 gl_Position;
   float gl_PointSize;
+#if !defined(NO_CLIP_CULL_OUT)
   float gl_ClipDistance[MAX_CLIP_PLANES];
   float gl_CullDistance[MAX_CULL_DISTANCES];
+#endif //!NO_CLIP_CULL_OUT
 } OutBlock
 
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
@@ -47,16 +51,17 @@ out gl_PerVertex
 
 layout(binding = BUFFER_RENDER_BLOCK, std140) uniform dvd_RenderBlock
 {
-    mat4  dvd_PreviousViewProjectionMatrix;
+    mat4  dvd_PreviousViewMatrix;
+    mat4  dvd_PreviousProjectionMatrix;
     //x - elapsed time (ms)
     vec4  dvd_renderProperties;
-    //x - cluster size X, y - cluster size Y, 
+    //x - cluster size X, y - cluster size Y
     vec4  dvd_lightingProperties;
     //x - material debug flag, y - fog enabled, z - clip plane count, w - reserved
     vec4  dvd_otherProperties;
 
     vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
-    vec4 _render_padding[6];
+    vec4 _render_padding[2];
 };
 
 #define dvd_time int(dvd_renderProperties.x)
@@ -106,33 +111,55 @@ layout(binding = BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
 #if !defined(COMPUTE_SHADER) && !defined(FRAG_SHADER)
 
 #if defined(TESS_CTRL_SHADER)
+#if !defined(NO_CLIP_CULL_OUT)
 #define CLIP_OUTPUT(X) gl_out[gl_InvocationID].gl_ClipDistance[X]
+#endif //!NO_CLIP_CULL_OUT
 #define OUT _out[gl_InvocationID]
 #else
+#if !defined(NO_CLIP_CULL_OUT)
 #define CLIP_OUTPUT(X) gl_ClipDistance[X]
+#endif //!NO_CLIP_CULL_OUT
 #define OUT _out
 #endif
 
+#if !defined(NO_CLIP_CULL_OUT)
 #define CLIP_INDEX(X) CLIP_OUTPUT(X) = (dvd_ClipPlaneCount > X) ? dot(OUT._vertexW, dvd_clipPlanes[X]) : 0.f
 
-void setClipPlanes() {
+#if MAX_CLIP_PLANES == 1
+#define setClipPlanes() \
     CLIP_INDEX(0);
-#if MAX_CLIP_PLANES > 1
+#elif MAX_CLIP_PLANES == 2
+#define setClipPlanes() \
+    CLIP_INDEX(0);      \
     CLIP_INDEX(1);
-    #if MAX_CLIP_PLANES > 2
-        CLIP_INDEX(2);
-        #if MAX_CLIP_PLANES > 3
-            CLIP_INDEX(3);
-            #if MAX_CLIP_PLANES > 4
-            CLIP_INDEX(4);
-                #if MAX_CLIP_PLANES > 5
-                CLIP_INDEX(5);
-                #endif 
-            #endif
-        #endif
-    #endif
-#endif
-}
+#elif MAX_CLIP_PLANES == 3
+#define setClipPlanes() \
+    CLIP_INDEX(0);      \
+    CLIP_INDEX(1);      \
+    CLIP_INDEX(2);
+#elif MAX_CLIP_PLANES == 4
+#define setClipPlanes() \
+    CLIP_INDEX(0);      \
+    CLIP_INDEX(1);      \
+    CLIP_INDEX(2);      \
+    CLIP_INDEX(3);
+#elif MAX_CLIP_PLANES == 5
+#define setClipPlanes() \
+    CLIP_INDEX(0);      \
+    CLIP_INDEX(1);      \
+    CLIP_INDEX(2);      \
+    CLIP_INDEX(3);      \
+    CLIP_INDEX(4);
+#else 
+#define setClipPlanes() \
+    CLIP_INDEX(0);      \
+    CLIP_INDEX(1);      \
+    CLIP_INDEX(2);      \
+    CLIP_INDEX(3);      \
+    CLIP_INDEX(4);      \
+    CLIP_INDEX(5);
+#endif //MAX_CLIP_PLANES
+#endif //!NO_CLIP_CULL_OUT
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
 
 #define BitCompare(MASK, BIT) ((MASK & BIT) != 0)

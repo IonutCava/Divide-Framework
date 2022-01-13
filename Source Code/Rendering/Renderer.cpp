@@ -89,6 +89,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
     }
     {
         computeDescriptor._sourceFile = "lightBuildClusteredAABBs.glsl";
+        computeDescriptor._variant = "";
         ShaderProgramDescriptor buildDescritpor = {};
         buildDescritpor._modules.push_back(computeDescriptor);
         ResourceDescriptor buildShaderDesc("lightBuildClusteredAABBs");

@@ -149,11 +149,8 @@ public:
         OPTICK_EVENT();
 
         getActiveScene().processInput(idx, deltaTimeUS);
-        Attorney::SceneManager::updateCameraControls(getActiveScene(), idx);
     }
-    void savePreviousCamera(const PlayerIndex idx) {
-        Attorney::SceneManager::savePreviousCamera(getActiveScene(), idx);
-    }
+
     void processTasks(const U64 deltaTimeUS) {
         OPTICK_EVENT();
 
@@ -256,7 +253,7 @@ protected:
 
     [[nodiscard]] Camera* playerCamera(bool skipOverride = false) const noexcept;
     [[nodiscard]] Camera* playerCamera(PlayerIndex idx, bool skipOverride = false) const noexcept;
-    void currentPlayerPass(PlayerIndex idx);
+    void currentPlayerPass(U64 deltaTimeUS, PlayerIndex idx);
     void moveCameraToNode(const SceneGraphNode* targetNode) const;
     bool saveNode(const SceneGraphNode* targetNode) const;
     bool loadNode(SceneGraphNode* targetNode) const;
@@ -325,8 +322,8 @@ class SceneManagerKernel {
         manager->initPostLoadState();
     }
 
-    static void currentPlayerPass(Divide::SceneManager* manager, const PlayerIndex idx) {
-        manager->currentPlayerPass(idx);
+    static void currentPlayerPass(Divide::SceneManager* manager, const U64 deltaTimeUS, const PlayerIndex idx) {
+        manager->currentPlayerPass(deltaTimeUS, idx);
     }
 
     static bool networkUpdate(Divide::SceneManager* manager, const U32 frameCount) {

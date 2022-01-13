@@ -43,7 +43,7 @@ vec4 computeData(in NodeTransformData data) {
         inputVertex = applyPrevBoneTransforms(inputVertex);
     }
 #endif //USE_GPU_SKINNING
-    VAR._prevVertexWVP = dvd_PreviousViewProjectionMatrix * data._prevWorldMatrix * inputVertex;
+    VAR._prevVertexWVP = dvd_PreviousProjectionMatrix * dvd_PreviousViewMatrix * data._prevWorldMatrix * inputVertex;
 #endif //HAS_VELOCITY
 
     return dvd_ProjectionMatrix * VAR._vertexWV;

@@ -212,7 +212,7 @@ bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const D
 
         const U8 activePlayerCount = _parent.getActivePlayerCount();
         for (U8 i = 0u; i < activePlayerCount; ++i) {
-            playerCamera(i)->saveToXML(pt);
+            playerCamera(i, true)->saveToXML(pt);
         }
 
         pt.put("fog.fogDensityB", state()->renderState().fogDetails()._colourAndDensity.a);
@@ -1136,8 +1136,9 @@ string Scene::GetPlayerSGNName(const PlayerIndex idx) {
     return Util::StringFormat(g_defaultPlayerName, idx + 1);
 }
 
-void Scene::currentPlayerPass(const PlayerIndex idx) {
+void Scene::currentPlayerPass(const U64 deltaTimeUS, const PlayerIndex idx) {
     //ToDo: These don't necessarily need to match -Ionut
+    updateCameraControls(deltaTimeUS, idx);
     state()->renderState().renderPass(idx);
     state()->playerPass(idx);
 
@@ -1283,29 +1284,26 @@ bool Scene::mouseMoved(const Input::MouseMoveEvent& arg) {
     return false;
 }
 
-bool Scene::savePreviousCamera(const PlayerIndex idx) const {
-    playerCamera(idx)->updateLookAt();
-    state()->playerState(idx).previousCameraSnapshot(playerCamera(idx)->snapshot());
-    return true;
-}
-
-bool Scene::updateCameraControls(const PlayerIndex idx) const {
+bool Scene::updateCameraControls(const U64 deltaTimeUS, const PlayerIndex idx) const {
     Camera* camIn = playerCamera(idx);
     if (camIn->type() == Camera::CameraType::STATIC ||
         camIn->type() == Camera::CameraType::SCRIPTED) {
         return false;
     }
+
+    const F32 timeFactor = Time::MicrosecondsToSeconds<F32>(deltaTimeUS) * 0.1f;
+
     FreeFlyCamera* cam = static_cast<FreeFlyCamera*>(camIn);
     SceneStatePerPlayer& playerState = state()->playerState(idx);
     bool updated = false;
-    updated = cam->moveRelative(vec3<I32>(to_I32(playerState.moveFB()),
-                                          to_I32(playerState.moveLR()),
-                                          to_I32(playerState.moveUD()))) || updated;
+    updated = cam->moveRelative(vec3<F32>(to_base(playerState.moveFB()),
+                                          to_base(playerState.moveLR()),
+                                          to_base(playerState.moveUD())) * timeFactor) || updated;
 
-    updated = cam->rotateRelative(vec3<I32>(to_I32(playerState.angleUD()), //pitch
-                                            to_I32(playerState.angleLR()), //yaw
-                                            to_I32(playerState.roll()))) || updated; //roll
-    updated = cam->zoom(to_I32(playerState.zoom())) || updated;
+    updated = cam->rotateRelative(vec3<F32>(to_base(playerState.angleUD()), //pitch
+                                            to_base(playerState.angleLR()), //yaw
+                                            to_base(playerState.roll())) * timeFactor) || updated; //roll
+    updated = cam->zoom(to_base(playerState.zoom()) * timeFactor) || updated;
 
     playerState.cameraUpdated(updated);
     if (updated) {
@@ -1961,12 +1959,12 @@ bool Scene::load(ByteBuffer& inputBuffer) {
     return _sceneGraph->loadCache(inputBuffer);
 }
 
-Camera* Scene::playerCamera() const {
-    return Attorney::SceneManagerCameraAccessor::playerCamera(_parent);
+Camera* Scene::playerCamera(const bool skipOverride) const {
+    return Attorney::SceneManagerCameraAccessor::playerCamera(_parent, skipOverride);
 }
 
-Camera* Scene::playerCamera(const U8 index) const {
-    return Attorney::SceneManagerCameraAccessor::playerCamera(_parent, index);
+Camera* Scene::playerCamera(const U8 index, const bool skipOverride) const {
+    return Attorney::SceneManagerCameraAccessor::playerCamera(_parent, index, skipOverride);
 }
 
 }

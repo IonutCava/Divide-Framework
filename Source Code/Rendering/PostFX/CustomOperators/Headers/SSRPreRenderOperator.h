@@ -42,7 +42,7 @@ class SSRPreRenderOperator final : public PreRenderOperator {
    public:
     explicit SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
 
-    [[nodiscard]] bool execute(const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
+    [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
 
     void parametersChanged();
@@ -51,7 +51,7 @@ class SSRPreRenderOperator final : public PreRenderOperator {
 
    protected:
        void onToggle(const bool state) override { _stateChanged = true; }
-       void prepare(GFX::CommandBuffer& bufferInOut) override;
+       void prepare(PlayerIndex idx, GFX::CommandBuffer& bufferInOut) override;
 
    private:
      ShaderProgram_ptr _ssrShader = nullptr;

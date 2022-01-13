@@ -337,8 +337,8 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     // Culling is enabled by default, but RenderStateBlocks can toggle it on a per-draw call basis
     glEnable(GL_CULL_FACE);
 
-    // Enable all 6 clip planes, I guess
-    for (U8 i = 0; i < to_U8(FrustumPlane::COUNT); ++i) {
+    // Enable all clip planes, I guess
+    for (U8 i = 0u; i < Config::MAX_CLIP_DISTANCES; ++i) {
         glEnable(static_cast<GLenum>(static_cast<U32>(GL_CLIP_DISTANCE0) + i));
     }
 

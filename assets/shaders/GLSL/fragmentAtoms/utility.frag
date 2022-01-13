@@ -1,37 +1,12 @@
 #ifndef _UTILITY_FRAG_
 #define _UTILITY_FRAG_
 
+#include "nodeDataInput.cmn"
+
 // Maps the depth buffer value "depthIn" to a linear [0, 1] range using dvd_zPlanes
 float ToLinearDepth(in float depthIn);
 // Maps the depth buffer value "depthIn" to a linear [0, 1] range using depthRange
 float ToLinearDepth(in float depthIn, in vec2 depthRange);
-
-vec3 rayDirFromUV(in vec2 uv) {
-    const float x = sin(M_PI * uv.y);
-    const float f = 2.f * M_PI * (0.5f - uv.x);
-
-    return vec3(x * sin(f), cos(M_PI * uv.y), x * cos(f));
-}
-
-vec2 UVDromRayDir(in vec3 dir) {
-    const float y = acos(dir.y) / M_PI;
-
-    dir = normalize(vec3(dir.x, 0.f, dir.z));
-
-    float x = acos(dir.z) / (2.f * M_PI);
-
-    if (x < 0.f) {
-        x = 1.f - x;
-    }
-
-    x  = 0.5f - x;
-
-    if (x < 0.f) {
-        x += 1.f;
-    }
-
-    return vec2(x, y);
-}
 
 #define overlay(X, Y) ((X < 0.5f) ? (2.f * X * Y) : (1.f - 2.f * (1.f - X) * (1.f - Y)))
 
@@ -157,14 +132,6 @@ float maxComponent(in vec4 v) { return max(max(max(v.x, v.y), v.z), v.w); }
 
 vec2 Pow(in vec2 v, in float exp) { return vec2(pow(v.x, exp), pow(v.y, exp)); }
 vec3 Pow(in vec3 v, in float exp) { return vec3(pow(v.x, exp), pow(v.y, exp), pow(v.z, exp)); }
-
-float SpecularToRoughness(in vec3 specular, in float power) {
-    const float specularIntensity = Luminance(specular);
-    const float specularPower = power / MAX_SHININESS;
-    const float roughnessFactor = /*1.f - */sqrt(specularPower);
-    // Specular intensity directly impacts roughness regardless of shininess
-    return 1.f - ((saturate(pow(roughnessFactor, 2)) * specularIntensity));
-}
 
 // ----------------- LINEAR <-> SRGB -------------------------
 // Accurate variants from Frostbite notes: https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf

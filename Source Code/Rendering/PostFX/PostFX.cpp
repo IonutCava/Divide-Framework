@@ -127,18 +127,18 @@ void PostFX::updateResolution(const U16 newWidth, const U16 newHeight) {
     _setCameraCmd._cameraSnapshot = Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot();
 }
 
-void PostFX::prePass(const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut) {
+void PostFX::prePass(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut) {
     static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: PrePass" };
     GFX::EnqueueCommand(bufferInOut, s_beginScopeCmd);
     GFX::EnqueueCommand<GFX::PushCameraCommand>(bufferInOut)->_cameraSnapshot = _setCameraCmd._cameraSnapshot;
 
-    _preRenderBatch.prePass(cameraSnapshot, _filterStack | _overrideFilterStack, bufferInOut);
+    _preRenderBatch.prePass(idx, cameraSnapshot, _filterStack | _overrideFilterStack, bufferInOut);
 
     GFX::EnqueueCommand<GFX::PopCameraCommand>(bufferInOut);
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
-void PostFX::apply(const CameraSnapshot& cameraSnapshot, const DELEGATE<void>& screenTargetCallback, GFX::CommandBuffer& bufferInOut) {
+void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut) {
     static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: Apply" };
     static GFX::BeginRenderPassCommand s_beginRenderPassCmd{};
     static GFX::BindDescriptorSetsCommand s_descriptorSetCmd{};
@@ -168,7 +168,7 @@ void PostFX::apply(const CameraSnapshot& cameraSnapshot, const DELEGATE<void>& s
     GFX::EnqueueCommand(bufferInOut, s_beginScopeCmd);
     GFX::EnqueueCommand(bufferInOut, _setCameraCmd);
 
-    _preRenderBatch.execute(cameraSnapshot, _filterStack | _overrideFilterStack, bufferInOut);
+    _preRenderBatch.execute(idx, cameraSnapshot, _filterStack | _overrideFilterStack, bufferInOut);
 
     GFX::EnqueueCommand(bufferInOut, s_beginRenderPassCmd);
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _drawPipeline });
@@ -198,8 +198,6 @@ void PostFX::apply(const CameraSnapshot& cameraSnapshot, const DELEGATE<void>& s
     GFX::EnqueueCommand(bufferInOut, s_descriptorSetCmd);
 
     GFX::EnqueueCommand(bufferInOut, s_drawCommand);
-
-    screenTargetCallback();
 
     GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 

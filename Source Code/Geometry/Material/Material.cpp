@@ -97,6 +97,7 @@ namespace TypeUtil {
 }; //namespace TypeUtil
 
 SamplerAddress Material::s_defaultTextureAddress = 0u;
+bool Material::s_shadersDirty = false;
 
 void Material::ApplyDefaultStateBlocks(Material& target) {
     /// Normal state for final rendering
@@ -127,6 +128,14 @@ void Material::ApplyDefaultStateBlocks(Material& target) {
 
 void Material::OnStartup(const SamplerAddress defaultTexAddress) {
     s_defaultTextureAddress = defaultTexAddress;
+}
+
+void Material::RecomputeShaders() {
+    s_shadersDirty = true;
+}
+
+void Material::Update([[maybe_unused]] const U64 deltaTimeUS) {
+    s_shadersDirty = false;
 }
 
 Material::Material(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name)
@@ -208,7 +217,7 @@ bool Material::update([[maybe_unused]] const U64 deltaTimeUS) {
         }
         properties()._cullUpdated = false;
     }
-    if (properties()._needsNewShader) {
+    if (properties()._needsNewShader || s_shadersDirty) {
         recomputeShaders();
         properties()._needsNewShader = false;
         return true;
@@ -487,6 +496,11 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> moduleDefines = {};
 
     ModuleDefines globalDefines = {};
+
+    const bool msaaScreenTarget = _context.renderTargetPool().screenTargetID()._usage == RenderTargetUsage::SCREEN_MS;
+    if (msaaScreenTarget) {
+        globalDefines.emplace_back("MSAA_SCREEN_TARGET", true);
+    }
 
     if (renderStagePass._stage == RenderStage::SHADOW) {
         globalDefines.emplace_back("SHADOW_PASS", true);

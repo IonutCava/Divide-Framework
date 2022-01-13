@@ -1,6 +1,8 @@
 #ifndef _NODE_DATA_DEFINITION_CMN_
 #define _NODE_DATA_DEFINITION_CMN_
 
+#include "nodeDataInput.cmn"
+
 #define TRANSFORM_IDX VAR._indirectionIDs.x
 #define MATERIAL_IDX VAR._indirectionIDs.y
 #define TEXTURE_IDX VAR._indirectionIDs.z
@@ -35,7 +37,7 @@ struct NodeMaterialData
     //a   - parallax factor
     vec4 _emissiveAndParallax;
     //rgb - ambientColour (Don't really need this. To remove eventually, but since we have the space, might as well)
-    //a - specular strength [0...1000]. Used mainly by Phong shading
+    //a - specular strength [0...Material::MAX_SHININESS]. Used mainly by Phong shading
     vec4 _colourData;
     //x = 4x8U: occlusion, metallic, roughness, reserved
     //y = 4x8U: specularR, specularG, specularB, isDoubleSided

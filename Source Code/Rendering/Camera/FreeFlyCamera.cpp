@@ -137,28 +137,28 @@ void FreeFlyCamera::move(F32 dx, F32 dy, F32 dz) noexcept {
     _viewMatrixDirty = true;
 }
 
-bool FreeFlyCamera::moveRelative(const vec3<I32>& relMovement) {
+bool FreeFlyCamera::moveRelative(const vec3<F32>& relMovement) {
     if (relMovement.lengthSquared() > 0) {
-        move(to_F32(relMovement.y), to_F32(relMovement.z), to_F32(relMovement.x));
+        move(relMovement.y, relMovement.z, relMovement.x);
         return true;
     }
 
     return false;
 }
 
-bool FreeFlyCamera::rotateRelative(const vec3<I32>& relRotation) {
+bool FreeFlyCamera::rotateRelative(const vec3<F32>& relRotation) {
     if (relRotation.lengthSquared() > 0) {
         const F32 turnSpeed = _speed.turn;
         rotate(Quaternion<F32>(_yawFixed ? _fixedYawAxis : _data._orientation * WORLD_Y_AXIS, -relRotation.yaw * turnSpeed) *
-            Quaternion<F32>(_data._orientation * WORLD_X_AXIS, -relRotation.pitch * turnSpeed) *
-            Quaternion<F32>(_data._orientation * WORLD_Z_AXIS, -relRotation.roll * turnSpeed));
+               Quaternion<F32>(_data._orientation * WORLD_X_AXIS, -relRotation.pitch * turnSpeed) *
+               Quaternion<F32>(_data._orientation * WORLD_Z_AXIS, -relRotation.roll * turnSpeed));
         return true;
     }
     return false;
 }
 
-bool FreeFlyCamera::zoom(const I32 zoomFactor) noexcept {
-    return zoomFactor != 0;
+bool FreeFlyCamera::zoom(const F32 zoomFactor) noexcept {
+    return !IS_ZERO(zoomFactor);
 }
 
 void FreeFlyCamera::saveToXML(boost::property_tree::ptree& pt, const string prefix) const {

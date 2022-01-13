@@ -398,7 +398,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         shaderDescriptor._modules.push_back(fragModule);
 
         string propName;
-        bool hasParallax = false;
         for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
             string shaderPropName;
 
@@ -447,6 +446,9 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
         // MAIN PASS
         ShaderProgramDescriptor colourDescriptor = shaderDescriptor;
+
+        //ToDo: Implement this! -Ionut
+        constexpr bool hasParallax = false;
         if (hasParallax) {
             for (ShaderModuleDescriptor& shaderModule : colourDescriptor._modules) {
                 if (shaderModule._moduleType == ShaderType::FRAGMENT) {
@@ -472,6 +474,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
         // PRE PASS LQ
         ShaderProgramDescriptor prePassDescriptorLQ = prePassDescriptor;
+        prePassDescriptorLQ._modules.pop_back(); //no fragment
         for (ShaderModuleDescriptor& shaderModule : prePassDescriptorLQ._modules) {
             shaderModule._defines.emplace_back("LOW_QUALITY", true);
             shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);

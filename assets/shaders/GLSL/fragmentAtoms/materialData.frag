@@ -33,7 +33,14 @@ struct PBRMaterial
 #if !defined(NO_FOG)
 #define NO_FOG
 #endif //!NO_FOG
-
+#else//!MAIN_DISPLAY_PASS
+#if !defined(PRE_PASS)
+#if defined(MSAA_SCREEN_TARGET)
+layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2DMS texSceneNormals;
+#else//MSAA_SCREEN_TARGET
+layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texSceneNormals;
+#endif //MSAA_SCREEN_TARGET
+#endif //PRE_PASS
 #endif //!MAIN_DISPLAY_PASS
 
 #include "utility.frag"
@@ -47,49 +54,41 @@ struct PBRMaterial
 layout(binding = TEXTURE_SSAO_SAMPLE) uniform sampler2D texSSAO;
 #endif //NO_SSAO
 
-layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texSceneNormals;
+#if !defined(PRE_PASS)
+
+#if defined(MSAA_SCREEN_TARGET)
+#define sampleTexSceneNormals() texelFetch(texSceneNormals, ivec2(gl_FragCoord.xy), gl_SampleID)
+#else  //MSAA_SCREEN_TARGET
+#define sampleTexSceneNormals() texture(texSceneNormals, dvd_screenPositionNormalised)
+#endif //MSAA_SCREEN_TARGET
+
+#endif //!PRE_PASS
 
 #if defined(USE_CUSTOM_TEXTURE_OMR)
 void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR);
-void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout float roughness);
 #else //USE_CUSTOM_TEXTURE_OMR
 #if defined(NO_OMR_TEX)
 #define getTextureOMR(usePacked, uv, texOps, OMR)
-#define getTextureRoughness(usePacked, uv, texOps,roughness)
 #else //NO_OMR_TEX
-void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout float roughness) {
-    if (usePacked) {
-#if !defined(NO_METALNESS_TEX)
-        roughness = texture(texMetalness, uv).b;
-#endif //NO_METALNESS_TEX
-    } else if (texOps.z != TEX_NONE) {
-#if !defined(NO_ROUGHNESS_TEX)
-        roughness = texture(texRoughness, uv).r;
-#endif //NO_ROUGHNESS_TEX
-    }
-}
-
 void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR) {
     if (usePacked) {
-#if !defined(NO_METALNESS_TEX)
         OMR = texture(texMetalness, uv).rgb;
-#endif //NO_METALNESS_TEX
     } else {
-        if (texOps.x != TEX_NONE) {
 #if !defined(NO_OCCLUSION_TEX)
+        if (texOps.x != TEX_NONE) {
             OMR.r = texture(texOcclusion, uv).r;
-#endif //NO_METALNESS_TEX
         }
-        if (texOps.y != TEX_NONE) {
+#endif //NO_METALNESS_TEX
 #if !defined(NO_METALNESS_TEX)
+        if (texOps.y != TEX_NONE) {
             OMR.g = texture(texMetalness, uv).r;
+        }
 #endif //NO_METALNESS_TEX
-        }
-        if (texOps.z != TEX_NONE) {
 #if !defined(NO_ROUGHNESS_TEX)
+        if (texOps.z != TEX_NONE) {
             OMR.b = texture(texRoughness, uv).r;
-#endif //NO_ROUGHNESS_TEX
         }
+#endif //NO_ROUGHNESS_TEX
     }
 }
 #endif //NO_OMR_TEX
@@ -126,27 +125,64 @@ vec3 getEmissiveColour(in NodeMaterialData matData, in vec3 uv) {
 }
 #endif //USE_CUSTOM_EMISSIVE
 
-PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, in vec2 uv, in vec3 N, in float normalVariation, in float nDotV) {
-    PBRMaterial material;
+float SpecularToMetalness(in vec3 specular, in float power) {
+    return 0.f; //sqrt(power / MAX_SHININESS);
+}
+
+float SpecularToRoughness(in vec3 specular, in float power) {
+    const float roughnessFactor = 1.f - sqrt(power / MAX_SHININESS);
+    // Specular intensity directly impacts roughness regardless of shininess
+    return 1.f - ((saturate(pow(roughnessFactor, 2)) * Luminance(specular)));
+}
+
+float getRoughness(in NodeMaterialData matData, in vec2 uv, in float normalVariation) {
+    float roughness = 0.f;
+
+    const vec4 unpackedData = (unpackUnorm4x8(matData._data.z) * 255);
+    const bool usePacked = uint(unpackedData.z) == 1u;
 
     vec4 OMR = unpackUnorm4x8(matData._data.x);
-    {
-        const uvec4 texOpsB = dvd_texOperationsB(matData);
-        {
-            const vec4 unpackedData = (unpackUnorm4x8(matData._data.z) * 255);
-            const bool usePacked = uint(unpackedData.z) == 1u;
-            getTextureOMR(usePacked, vec3(uv, 0), texOpsB.xyz, OMR.rgb);
-        }
-        material._occlusion = OMR.r;
-        material._roughness = OMR.b;
-    }
-
-    material._emissive = getEmissiveColour(matData, vec3(uv, 0));
-
-    material._specular = getSpecular(matData, vec3(uv, 0));
+    const uvec4 texOpsB = dvd_texOperationsB(matData);
+    getTextureOMR(usePacked, vec3(uv, 0), texOpsB.xyz, OMR.rgb);
+    roughness = OMR.b;
 
 #if defined(SHADING_MODE_BLINN_PHONG)
+    // Deduce a roughness factor from specular colour and shininess
+    const vec4 specular = getSpecular(matData, vec3(uv, 0));
+    roughness = SpecularToRoughness(specular.rgb, specular.a);
+#endif //SHADING_MODE_BLINN_PHONG
+
+    // Try to reduce specular aliasing by increasing roughness when minified normal maps have high variation.
+    roughness = mix(roughness, 1.f, normalVariation);
+
+    return roughness;
+}
+
+PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, in vec2 uv, in vec3 N, in float nDotV) {
+    PBRMaterial material;
+    material._emissive = getEmissiveColour(matData, vec3(uv, 0));
+    material._specular = getSpecular(matData, vec3(uv, 0));
+
+    vec4 OMR = unpackUnorm4x8(matData._data.x);
+
+    #define UnpackedData (unpackUnorm4x8(matData._data.z) * 255)
+    #define UsePacked (uint(UnpackedData.z) == 1u)
+
+    getTextureOMR(UsePacked, vec3(uv, 0), dvd_texOperationsB(matData).xyz, OMR.rgb);
+    material._occlusion = OMR.r;
+    material._metallic = OMR.g;
+
+#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS)
+    material._roughness = sampleTexSceneNormals().b;
+#else //MAIN_DISPLAY_PASS && !PRE_PASS
+    material._roughness = OMR.b;
+#if defined(SHADING_MODE_BLINN_PHONG)
     material._roughness = SpecularToRoughness(material._specular.rgb, material._specular.a);
+#endif //SHADING_MODE_BLINN_PHONG
+#endif //MAIN_DISPLAY_PASS && !PRE_PASS
+
+#if defined(SHADING_MODE_BLINN_PHONG)
+    material._metallic = SpecularToMetalness(material._specular.rgb, material._specular.a);
 #endif //SHADING_MODE_BLINN_PHONG
 
     const vec3 albedoIn = albedo + Ambient(matData);
@@ -156,6 +192,9 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
 
     material._diffuseColour = mix(albedoIn * (vec3(1.f) - DielectricSpecular), Black, material._metallic);
     material._F0 = mix(DielectricSpecular, albedoIn, material._metallic);
+
+#undef Black
+#undef DielectricSpecular
 
     return material;
 }
@@ -246,34 +285,47 @@ vec4 getAlbedo(in NodeMaterialData data, in vec3 uv) {
 #define getAlbedo getTextureColour
 #endif //HAS_TRANSPARENCY
 
-vec4 getNormalMapAndVariation(in sampler2DArray tex, in vec3 uv) {
+#if defined(MAIN_DISPLAY_PASS)
+vec3 getNormalMap(in sampler2DArray tex, in vec3 uv, out float normalVariation) {
     const vec3 normalMap = 2.f * texture(tex, uv).rgb - 1.f;
     const float normalMap_Mip = textureQueryLod(tex, uv.xy).x;
     const float normalMap_Length = length(normalMap);
     const float variation = 1.f - pow(normalMap_Length, 8.f);
     const float minification = saturate(normalMap_Mip - 2.f);
 
-    const float normalVariation = variation * minification;
+    normalVariation = variation * minification;
     const vec3 normalW = (normalMap / normalMap_Length);
 
-    return vec4(normalW, normalVariation);
+    return normalW;
 }
+#else //MAIN_DISPLAY_PASS
+vec3 getNormalMap(in sampler2DArray tex, in vec3 uv) {
+    return normalize(2.f * texture(tex, uv).rgb - 1.f);
+}
+vec3 getNormalMap(in sampler2DArray tex, in vec3 uv, out float normalVariation) {
+    normalVariation = 0.f;
+    return normalize(2.f * texture(tex, uv).rgb - 1.f);
+}
+#endif //MAIN_DISPLAY_PASS
 
 vec3 getNormalWV(in NodeMaterialData data, in vec3 uv, out float normalVariation) {
     normalVariation = 0.f;
-
+#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS)
+    return normalize(unpackNormal(sampleTexSceneNormals().rg));
+#else //MAIN_DISPLAY_PASS && !PRE_PASS
     vec3 normalWV = VAR._normalWV;
 #if defined(COMPUTE_TBN)
     if (dvd_bumpMethod(MATERIAL_IDX) != BUMP_NONE) {
-        const vec4 normalData = getNormalMapAndVariation(texNormalMap, uv);
-        normalWV = getTBNWV() * normalData.xyz;
-        normalVariation = normalData.w;
+        const vec3 normalData = getNormalMap(texNormalMap, uv, normalVariation);
+        normalWV = getTBNWV() * normalData;
     }
 #endif //COMPUTE_TBN
-
-    return normalize(normalWV) * 
-        (dvd_isDoubleSided(data) ? (2.f * float(gl_FrontFacing) - 1.f)
-                                 : 1.f);
+    return normalize(normalWV) * (dvd_isDoubleSided(data) ? (2.f * float(gl_FrontFacing) - 1.f) : 1.f);
+#endif  //MAIN_DISPLAY_PASS && !PRE_PASS
 }
 
+vec3 getNormalWV(in NodeMaterialData data, in vec3 uv) {
+    float variation = 0.f;
+    return getNormalWV(data, uv, variation);
+}
 #endif //_MATERIAL_DATA_FRAG_

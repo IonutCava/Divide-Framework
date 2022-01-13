@@ -121,31 +121,35 @@ vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV
     const vec3 irradiance = texture(texEnvIrradiance, reflectionLookup).rgb;
     const vec3 prefiltered = textureLod(texEnvPrefiltered, reflectionLookup, (material._roughness * REFLECTION_PROBE_MIP_COUNT)).rgb;
     const vec2 envBRDF = texture(texBRDFLut, vec2(NdotV, material._roughness)).rg;
+    const vec3 diffuse = irradiance * material._diffuseColour;
+    const vec3 ambient = (dvd_AmbientColour.rgb * material._diffuseColour * material._occlusion);
 
     const vec3 F = computeFresnelSchlickRoughness(NdotV, material._F0, material._roughness);
-
+#if defined(SHADING_MODE_BLINN_PHONG)
+#define DielectricSpecular vec3(0.04f)
+    const vec3 kS = saturate(F - DielectricSpecular);
+    const vec3 kD = (1.f - kS) * (sqrt(Luminance(material._specular.rgb)));
+#undef DielectricSpecular
+#else //SHADING_MODE_BLINN_PHONG
     const vec3 kS = F;
     const vec3 kD = (1.f - kS) * (1.f - material._metallic);
+#endif //SHADING_MODE_BLINN_PHONG
 
-    const vec3 diffuse = irradiance * material._diffuseColour;
     const vec3 specular = prefiltered * (F * envBRDF.x + envBRDF.y);
-
-    return (kD * diffuse + specular) * material._occlusion + 
-           (dvd_AmbientColour.rgb * material._diffuseColour * material._occlusion);
+    return (kD * diffuse + specular) * material._occlusion + ambient;
 }
 #else //!NO_ENV_MAPPING && !NO_IBL
 #define ApplyIBL(M,V,N,nDv,P,ID) (dvd_AmbientColour.rgb * M._diffuseColour * M._occlusion)
 #endif //!NO_ENV_MAPPING && !NO_IBL
 
 #if defined(NO_SSR) || defined(NO_IBL)
-#define ApplySSR(M,R) (R)
+#define ApplySSR(Mr,R) (R)
 #else  //NO_SSR || NO_IBL
-vec3 ApplySSR(in PBRMaterial material, in vec3 radianceIn) {
+vec3 ApplySSR(in float roughness, in vec3 radianceIn) {
     const vec4 ssr = texture(texSSR, dvd_screenPositionNormalised);
-    /*return mix(mix(radianceIn, ssr.rgb, ssr.a),
+    return mix(mix(radianceIn, ssr.rgb, ssr.a),
                radianceIn,
-               material._roughness);*/
-    return radianceIn;
+               roughness);
 }
 #endif  //NO_SSR || NO_IBL
 

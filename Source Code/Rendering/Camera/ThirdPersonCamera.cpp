@@ -9,7 +9,7 @@ ThirdPersonCamera::ThirdPersonCamera(const Str256& name, const vec3<F32>& eye)
 {
 }
 
-bool ThirdPersonCamera::rotateRelative(const vec3<I32>& relRotation) {
+bool ThirdPersonCamera::rotateRelative(const vec3<F32>& relRotation) {
     constexpr F32 rotationLimitRollLower = M_PI_f * 0.30f - Angle::to_RADIANS(1);
     constexpr F32 rotationLimitRollUpper = M_PI_f * 0.175f - Angle::to_RADIANS(1);
     constexpr F32 rotationLimitPitch = M_PI_f - Angle::to_RADIANS(1);

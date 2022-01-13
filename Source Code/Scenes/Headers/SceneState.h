@@ -170,7 +170,7 @@ struct SceneStatePerPlayer {
     PROPERTY_RW(MoveDirection, angleLR, MoveDirection::NONE);  ///< left-right angle change detected
     PROPERTY_RW(MoveDirection, roll, MoveDirection::NONE);     ///< roll left or right change detected
     PROPERTY_RW(MoveDirection, zoom, MoveDirection::NONE);     ///< zoom in or out detected
-    PROPERTY_RW(CameraSnapshot, previousCameraSnapshot);
+
     POINTER_RW(Camera, overrideCamera, nullptr);
 
     const F32 _headHeight = DEFAULT_PLAYER_HEIGHT;

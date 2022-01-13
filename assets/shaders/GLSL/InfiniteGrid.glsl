@@ -1,5 +1,7 @@
 -- Vertex
 
+#include "nodeDataInput.cmn"
+
 //ref: http://asliceofrendering.com/scene%20helper/2020/01/05/InfiniteGrid/
 layout(location = ATTRIB_POSITION) in vec3 inVertexData;
 

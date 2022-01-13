@@ -99,7 +99,7 @@ FORCE_INLINE [[nodiscard]] SamplerAddress Uvec2ToTexture(const vec2<U32> address
         //a   - parallax factor
         vec4<F32> _emissiveAndParallax;
         //rgb - ambientColour (Don't really need this. To remove eventually, but since we have the space, might as well)
-        //a - specular strength [0...1000]. Used mainly by Phong shading
+        //a - specular strength [0...Material::MAX_SHININESS]. Used mainly by Phong shading
         vec4<F32> _colourData;
         //x = 4x8U: occlusion, metallic, roughness, selection flag (1 == hovered, 2 == selected)
         //y = 4x8U: reserved, reserved, reserved, isDoubleSided

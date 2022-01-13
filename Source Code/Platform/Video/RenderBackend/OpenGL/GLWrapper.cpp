@@ -429,6 +429,44 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define WORLD_Y_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_Y_AXIS.x, WORLD_Y_AXIS.y, WORLD_Y_AXIS.z));
     AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define WORLD_Z_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_Z_AXIS.x, WORLD_Z_AXIS.y, WORLD_Z_AXIS.z));
 
+
+    AppendToShaderHeader(ShaderType::COUNT, "#define M_EPSILON 1e-5f");
+    AppendToShaderHeader(ShaderType::COUNT, "#define M_PI 3.14159265358979323846");
+    AppendToShaderHeader(ShaderType::COUNT, "#define M_PI_2 (3.14159265358979323846 / 2)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define INV_M_PI 0.31830988618");
+
+    AppendToShaderHeader(ShaderType::COUNT, "#define ACCESS_RW");
+    AppendToShaderHeader(ShaderType::COUNT, "#define ACCESS_R readonly");
+    AppendToShaderHeader(ShaderType::COUNT, "#define ACCESS_W writeonly");
+
+    AppendToShaderHeader(ShaderType::VERTEX, "#define COMP_ONLY_W readonly");
+    AppendToShaderHeader(ShaderType::VERTEX, "#define COMP_ONLY_R");
+    AppendToShaderHeader(ShaderType::VERTEX, "#define COMP_ONLY_RW readonly");
+    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#define COMP_ONLY_W readonly");
+    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#define COMP_ONLY_R");
+    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#define COMP_ONLY_RW readonly");
+    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#define COMP_ONLY_W readonly");
+    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#define COMP_ONLY_R");
+    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#define COMP_ONLY_RW readonly");
+    AppendToShaderHeader(ShaderType::GEOMETRY, "#define COMP_ONLY_W readonly");
+    AppendToShaderHeader(ShaderType::GEOMETRY, "#define COMP_ONLY_R");
+    AppendToShaderHeader(ShaderType::GEOMETRY, "#define COMP_ONLY_RW readonly");
+    AppendToShaderHeader(ShaderType::FRAGMENT, "#define COMP_ONLY_W readonly");
+    AppendToShaderHeader(ShaderType::FRAGMENT, "#define COMP_ONLY_R");
+    AppendToShaderHeader(ShaderType::FRAGMENT, "#define COMP_ONLY_RW readonly");
+    AppendToShaderHeader(ShaderType::COMPUTE, "#define COMP_ONLY_W ACCESS_W");
+    AppendToShaderHeader(ShaderType::COMPUTE, "#define COMP_ONLY_R ACCESS_R");
+    AppendToShaderHeader(ShaderType::COMPUTE, "#define COMP_ONLY_RW ACCESS_RW");
+
+    AppendToShaderHeader(ShaderType::COUNT, "#define AND(a, b) (a * b)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define OR(a, b) min(a + b, 1.f)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define XOR(a, b) ((a + b) % 2)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define NOT(X) (1.f - X)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define SQUARED(X) (X * X)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define ROUND(X) floor((X) + .5f)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define saturate(X) clamp(X, 0, 1)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define mad(a, b, c) (a * b + c)");
+
     AppendToShaderHeader(ShaderType::COUNT,    "#define GLOBAL_WATER_BODIES_COUNT "       + Util::to_string(GLOBAL_WATER_BODIES_COUNT));
     AppendToShaderHeader(ShaderType::COUNT,    "#define GLOBAL_PROBE_COUNT "              + Util::to_string(GLOBAL_PROBE_COUNT));
     AppendToShaderHeader(ShaderType::COUNT,    "#define MATERIAL_TEXTURE_COUNT "          + Util::to_string(MATERIAL_TEXTURE_COUNT));
@@ -547,9 +585,6 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::GEOMETRY, "#define VAR _in");
     AppendToShaderHeader(ShaderType::FRAGMENT, "#define VAR _in");
 
-    // GPU specific data, such as GFXDevice's main uniform block and clipping
-    // planes are defined in an external file included in every shader
-    AppendToShaderHeader(ShaderType::COUNT, "#include \"nodeDataInput.cmn\"");
     AppendToShaderHeader(ShaderType::COUNT, "_CUSTOM_UNIFORMS__");
 
     // Check initialization status for GLSL and glsl-optimizer

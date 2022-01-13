@@ -2,7 +2,7 @@
 
 -- Vertex
 
-#define mad(a, b, c) (a * b + c)
+#include "nodeDataInput.cmn"
 
 layout(location = 0) out vec4 vOffset[3];
 

@@ -230,8 +230,8 @@ class Scene : public Resource, public PlatformContextComponent {
 #pragma endregion
 
 #pragma region Player Camera
-        [[nodiscard]] Camera* playerCamera() const;
-        [[nodiscard]] Camera* playerCamera(U8 index) const;
+        [[nodiscard]] Camera* playerCamera(const bool skipOverride = false) const;
+        [[nodiscard]] Camera* playerCamera(U8 index, const bool skipOverride = false) const;
         bool lockCameraToPlayerMouse(PlayerIndex index, bool lockState) const noexcept;
 #pragma endregion
 
@@ -297,7 +297,7 @@ class Scene : public Resource, public PlatformContextComponent {
         void removePlayerInternal(PlayerIndex idx);
         void onPlayerAdd(const Player_ptr& player);
         void onPlayerRemove(const Player_ptr& player);
-        void currentPlayerPass(PlayerIndex idx);
+        void currentPlayerPass(U64 deltaTimeUS, PlayerIndex idx);
 
         [[nodiscard]] U8      getSceneIndexForPlayer(PlayerIndex idx) const;
         [[nodiscard]] Player* getPlayerForIndex(PlayerIndex idx) const;
@@ -306,8 +306,7 @@ class Scene : public Resource, public PlatformContextComponent {
 
     private:
         /// Returns true if the camera was moved/rotated/etc
-        bool updateCameraControls(PlayerIndex idx) const;
-        bool savePreviousCamera(PlayerIndex idx) const;
+        bool updateCameraControls(U64 deltaTimeUS, PlayerIndex idx) const;
         void updateSelectionData(PlayerIndex idx, DragSelectData& data, bool remapped);
         [[nodiscard]] bool checkCameraUnderwater(PlayerIndex idx) const;
         [[nodiscard]] bool checkCameraUnderwater(const Camera& camera) const noexcept;
@@ -342,14 +341,6 @@ class Scene : public Resource, public PlatformContextComponent {
 namespace Attorney {
 class SceneManager {
    private:
-    static bool updateCameraControls(const Scene& scene, const PlayerIndex idx) {
-        return scene.updateCameraControls(idx);
-    }
-
-    static bool savePreviousCamera(const Scene& scene, const PlayerIndex idx) {
-        return scene.savePreviousCamera(idx);
-    }
-
     static bool loadComplete(const Scene& scene) noexcept {
         return scene.loadComplete();
     }
@@ -362,8 +353,8 @@ class SceneManager {
         scene.onPlayerRemove(player);
     }
 
-    static void currentPlayerPass(Scene& scene, const PlayerIndex idx) {
-        scene.currentPlayerPass(idx);
+    static void currentPlayerPass(Scene& scene, const U64 deltaTimeUS, const PlayerIndex idx) {
+        scene.currentPlayerPass(deltaTimeUS, idx);
     }
 
     static void debugDraw(Scene& scene, GFX::CommandBuffer& bufferInOut) {

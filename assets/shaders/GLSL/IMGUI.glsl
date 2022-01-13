@@ -1,5 +1,7 @@
 -- Vertex
 
+#include "nodeDataInput.cmn"
+
 layout(location = ATTRIB_POSITION) in vec3 inVertexData;
 layout(location = ATTRIB_TEXCOORD) in vec2 inTexCoordData;
 layout(location = ATTRIB_COLOR)    in vec4 inColourData;
@@ -57,7 +59,8 @@ void main()
     } else {
         Out_Color.xyz *= toggleChannel.xyz;
         if (toggleChannel.w == 0) {
-            Out_Color.w = 1.0f;
+            Out_Color.a = 1.f;
+            texColor.a = 1.f;
         }
     }
 

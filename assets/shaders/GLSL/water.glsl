@@ -50,25 +50,28 @@ float Fresnel(in vec3 viewDir, in vec3 normal) {
 
 void main()
 {
+
+#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS)
+    const vec3 normalWV = normalize(unpackNormal(sampleTexSceneNormals().rg));
+#else //MAIN_DISPLAY_PASS && !PRE_PASS
     const float time2 = MSToSeconds(dvd_time) * 0.05f;
-    const vec2 uvNormal0 = (VAR._texCoord * _noiseTile) + vec2( time2, time2);
+    const vec2 uvNormal0 = (VAR._texCoord * _noiseTile) + vec2(time2, time2);
     const vec2 uvNormal1 = (VAR._texCoord * _noiseTile) + vec2(-time2, time2);
 
-    const vec4 normalData0 = getNormalMapAndVariation(texNormalMap, vec3(uvNormal0, 0));
-    const vec4 normalData1 = getNormalMapAndVariation(texNormalMap, vec3(uvNormal1, 0));
-
-    const vec3 normal0 = normalData0.xyz;
-    const vec3 normal1 = normalData1.xyz;
-    const float normalVariation = max(normalData0.w, normalData1.w);
+    float variation0 = 0.f, variation1 = 0.f;
+    const vec3 normal0 = getNormalMap(texNormalMap, vec3(uvNormal0, 0), variation0);
+    const vec3 normal1 = getNormalMap(texNormalMap, vec3(uvNormal1, 0), variation1);
+    const float normalVariation = max(variation0, variation1);
 
     const vec3 normalWV = normalize(getTBNWV() * ((normal0 + normal1) * 0.5f));
+    //vec3 normal = normalPartialDerivativesBlend(normal0, normal1);
+    //const vec3 normalWV = normalize(mat3(dvd_ViewMatrix) * normalW);
+#endif
 
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 
 #if !defined(PRE_PASS)
     const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
-    //vec3 normal = normalPartialDerivativesBlend(normal0, normal1);
-    //const vec3 normalWV = normalize(mat3(dvd_ViewMatrix) * normalW);
     const vec3 incident = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
 
     const vec2 waterUV = clamp(0.5f * homogenize(_vertexWVP).xy + 0.5f, vec2(0.001f), vec2(0.999f));
@@ -91,7 +94,7 @@ void main()
                                                                       texture(texReflectPlanar, waterUV).rgb,
                                                                       Fresnel(incident, normalW)));
     
-    vec4 outColour = getPixelColour(vec4(texColour, 1.f), data, normalWV, normalVariation, VAR._texCoord);
+    vec4 outColour = getPixelColour(vec4(texColour, 1.f), data, normalWV);
 
     // Add some distance based fog to the water to hide reflection/refraction artifacts where no geometry is rendered
     const float fogDensity = smoothstep(_fogStartEndDistances.x, _fogStartEndDistances.y, length(VAR._vertexWV));

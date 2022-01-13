@@ -223,11 +223,6 @@ public:
         REVEALAGE = VELOCITY,
     };
 
-    enum class CameraHistoryType : U8 {
-        HI_Z_MAIN_BUFFER = 0u,
-        WORLD,
-        COUNT
-    };
     using ObjectArena = MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 4>;
 
 public:  // GPU interface
@@ -279,11 +274,11 @@ public:  // GPU interface
     inline bool setViewport(I32 x, I32 y, I32 width, I32 height);
     inline const Rect<I32>& getViewport() const noexcept;
 
-    void setPreviousViewProjectionMatrix(const mat4<F32>& prevVPmatrix);
+    void setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix);
 
-    void setCameraSnapshot(CameraHistoryType snapshotType, const CameraSnapshot& snapshot) noexcept;
-    CameraSnapshot& getCameraSnapshot(CameraHistoryType snapshotType) noexcept;
-    const CameraSnapshot& getCameraSnapshot(CameraHistoryType snapshotType) const noexcept;
+    void setCameraSnapshot(PlayerIndex index, const CameraSnapshot& snapshot) noexcept;
+    CameraSnapshot& getCameraSnapshot(PlayerIndex index) noexcept;
+    const CameraSnapshot& getCameraSnapshot(PlayerIndex index) const noexcept;
 
     inline F32 renderingAspectRatio() const noexcept;
     inline const vec2<U16>& renderingResolution() const noexcept;
@@ -532,7 +527,8 @@ private:
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;
 
     std::stack<CameraSnapshot, eastl::fixed_vector<CameraSnapshot, 32, false>> _cameraSnapshots;
-    std::array<CameraSnapshot, to_base(CameraHistoryType::COUNT)> _cameraSnapshotHistory;
+
+    std::array<CameraSnapshot, Config::MAX_LOCAL_PLAYER_COUNT> _cameraSnapshotHistory;
 
     std::stack<Rect<I32>> _viewportStack;
     Mutex _gpuObjectArenaMutex;

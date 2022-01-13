@@ -1,6 +1,14 @@
 #ifndef _TERRAIN_UTILS_CMN_
 #define _TERRAIN_UTILS_CMN_
 
+#if defined(FRAG_SHADER) || defined(TESS_EVAL_SHADER) || defined(GEOM_SHADER)
+// VAR._normalWV is in world-space!!!!
+#define _normalW _normalWV
+#define USE_CUSTOM_TEXTURE_OMR
+#define USE_CUSTOM_TBN
+#define NO_REFLECTIONS
+#endif //FRAG_SHADER || TESS_EVAL_SHADER || GEOM_SHADER
+
 #define NEED_TEXTURE_DATA
 #include "nodeBufferedInput.cmn"
 

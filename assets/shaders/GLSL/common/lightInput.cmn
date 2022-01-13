@@ -1,6 +1,8 @@
 #ifndef _LIGHT_INPUT_CMN_
 #define _LIGHT_INPUT_CMN_
 
+#include "nodeDataInput.cmn"
+
 const int LIGHT_DIRECTIONAL = 0;
 const int LIGHT_OMNIDIRECTIONAL = 1;
 const int LIGHT_SPOT = 2;

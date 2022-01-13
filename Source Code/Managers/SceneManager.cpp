@@ -591,9 +591,11 @@ Camera* SceneManager::playerCamera(const PlayerIndex idx, const bool skipOverrid
         return nullptr;
     }
 
-    Camera* overrideCamera = skipOverride ? nullptr : getActiveScene().state()->playerState(idx).overrideCamera();
-    if (overrideCamera != nullptr) {
-        return overrideCamera;
+    if (!skipOverride) {
+        Camera* overrideCamera = getActiveScene().state()->playerState(idx).overrideCamera();
+        if (overrideCamera != nullptr) {
+            return overrideCamera;
+        }
     }
 
     return _players[idx]->getUnit<Player>()->camera();
@@ -603,11 +605,11 @@ Camera* SceneManager::playerCamera(const bool skipOverride) const noexcept {
     return playerCamera(_currentPlayerPass, skipOverride);
 }
 
-void SceneManager::currentPlayerPass(const PlayerIndex idx) {
+void SceneManager::currentPlayerPass(const U64 deltaTimeUS, const PlayerIndex idx) {
     OPTICK_EVENT();
 
     _currentPlayerPass = idx;
-    Attorney::SceneManager::currentPlayerPass(getActiveScene(), _currentPlayerPass);
+    Attorney::SceneManager::currentPlayerPass(getActiveScene(), deltaTimeUS, _currentPlayerPass);
     playerCamera()->updateLookAt();
 }
 

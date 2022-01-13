@@ -146,7 +146,7 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
         }break;
         case DEBUG_REFRACTIONS:
         case DEBUG_REFLECTIONS: {
-            debugColour = ApplySSR(material, vec3(0.f));
+            debugColour = ApplySSR(material._roughness, vec3(0.f));
         } break;
         case DEBUG_MATERIAL_IDS: {
             debugColour = turboColormap(float(MATERIAL_IDX + 1) / dvd_Materials.length());

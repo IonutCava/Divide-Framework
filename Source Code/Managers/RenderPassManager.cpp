@@ -109,14 +109,15 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
     OPTICK_EVENT();
 
     const SceneRenderState& sceneRenderState = *params._sceneRenderState;
+    const PlayerIndex player = params._playerPass;
 
     for (U8 i = 0u; i < _renderPassCount; ++i)
     { //All of our render passes should run in parallel
         _renderTasks[i] = CreateTask(nullptr,
-            [pass = _renderPasses[i], buf = _renderPassCommandBuffer[i], &sceneRenderState](const Task& parentTask) {
+            [player, pass = _renderPasses[i], buf = _renderPassCommandBuffer[i], &sceneRenderState](const Task& parentTask) {
             OPTICK_EVENT("RenderPass: BuildCommandBuffer");
             buf->clear(false);
-            pass->render(parentTask, sceneRenderState, *buf);
+            pass->render(player, parentTask, sceneRenderState, *buf);
             buf->batch();
         },
             false);
@@ -125,21 +126,13 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
     { //PostFX should be pretty fast
         PostFX& postFX = _context.getRenderer().postFX();
         _renderTasks[_renderPassCount] = CreateTask(nullptr,
-            [buf = _renderPassCommandBuffer[_renderPassCount], sceneManager = parent().sceneManager(), &postFX, cameraSnapshot, timer = _postFxRenderTimer](const Task& /*parentTask*/) {
+            [player, buf = _renderPassCommandBuffer[_renderPassCount], sceneManager = parent().sceneManager(), &postFX, cameraSnapshot, timer = _postFxRenderTimer](const Task& /*parentTask*/) {
                 OPTICK_EVENT("PostFX: BuildCommandBuffer");
 
                 buf->clear(false);
 
-                const auto screenTargetCallback = [&sceneManager, &cameraSnapshot, buf]() {
-                    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(*buf)->_scopeName = "Debug Draw Pass";
-                    GFX::EnqueueCommand(*buf, GFX::PushCameraCommand{ cameraSnapshot });
-                    //Attorney::SceneManagerRenderPass::debugDraw(sceneManager, *buf);
-                    GFX::EnqueueCommand(*buf, GFX::PopCameraCommand{});
-                    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(*buf);
-                };
-
                 Time::ScopedTimer time(*timer);
-                postFX.apply(cameraSnapshot, screenTargetCallback, *buf);
+                postFX.apply(player, cameraSnapshot, *buf);
 
                 buf->batch();
             },
@@ -164,6 +157,9 @@ void RenderPassManager::render(const RenderParams& params) {
     const Camera* cam = Attorney::SceneManagerRenderPass::playerCamera(sceneManager);
 
     LightPool& activeLightPool = Attorney::SceneManagerRenderPass::lightPool(sceneManager);
+
+    const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(params._playerPass);
+    _context.setPreviousViewProjectionMatrix(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix);
 
     activeLightPool.preRenderAllPasses(cam);
 
@@ -301,11 +297,12 @@ void RenderPassManager::render(const RenderParams& params) {
     _context.flushCommandBuffer(*_renderPassCommandBuffer[_renderPassCount], false);
 
     RenderPassExecutor::PostRender();
-
     activeLightPool.postRenderAllPasses();
 
     Time::ScopedTimer time(*_blitToDisplayTimer);
     gfx.flushCommandBuffer(*_postRenderBuffer);
+
+    _context.setCameraSnapshot(params._playerPass, cam->snapshot());
 }
 
 RenderPass& RenderPassManager::addRenderPass(const Str64& renderPassName,
@@ -375,6 +372,7 @@ const RenderPass& RenderPassManager::getPassForStage(const RenderStage renderSta
 }
 
 void RenderPassManager::doCustomPass(Camera* camera, const RenderPassParams params, GFX::CommandBuffer& bufferInOut) {
-    _executors[to_base(params._stagePass._stage)]->doCustomPass(camera, params, bufferInOut);
+    const PlayerIndex playerPass = _parent.sceneManager()->playerPass();
+    _executors[to_base(params._stagePass._stage)]->doCustomPass(playerPass, camera, params, bufferInOut);
 }
 }

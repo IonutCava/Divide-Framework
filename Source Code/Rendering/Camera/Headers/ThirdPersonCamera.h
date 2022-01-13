@@ -50,7 +50,7 @@ class ThirdPersonCamera final : public OrbitCamera {
     void loadFromXML(const boost::property_tree::ptree& pt, string prefix = "") override;
 
   public:
-    bool rotateRelative(const vec3<I32>& relRotation) override;
+    bool rotateRelative(const vec3<F32>& relRotation) override;
 };
 
 }  // namespace Divide

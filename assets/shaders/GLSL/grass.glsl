@@ -141,12 +141,11 @@ void main (void){
     }
 #endif //DEBUG_LODS
 
-    float normalVariation = 0.f;
-    const vec3 normalWV = getNormalWV(data, vec3(VAR._texCoord, 0), normalVariation);
+    const vec3 normalWV = getNormalWV(data, vec3(VAR._texCoord, 0));
 
     vec4 colour = vec4(albedo.rgb, min(albedo.a, _alphaFactor));
     if (albedo.a >= Z_TEST_SIGMA) {
-        colour = getPixelColour(albedo, data, normalWV, normalVariation, VAR._texCoord);
+        colour = getPixelColour(albedo, data, normalWV);
     }
     writeScreenColour(colour);
 }
@@ -166,8 +165,8 @@ void main() {
     if (getAlpha(texDiffuse0, vec3(VAR._texCoord, _layer)) * _alphaFactor < INV_Z_TEST_SIGMA) {
         discard;
     }
-
-    writeGBuffer();
+    const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
+    writeGBuffer(data);
 }
 
 --Fragment.Shadow.VSM
@@ -177,8 +176,8 @@ layout(location = 1) flat in uint  _instanceID;
 layout(location = 2)      in float _alphaFactor;
 layout(location = 3)      in mat3  _tbnWV;
 
-#include "vsm.frag"
 #include "texturing.frag"
+#include "vsm.frag"
 
 out vec2 _colourOut;
 

@@ -39,8 +39,8 @@ namespace Divide {
             if (comp->_materialInstance != nullptr && comp->_materialInstance->update(microSec)) {
                 comp->onMaterialChanged();
             }
-
         }
+        Material::Update(microSec);
     }
 
     void RenderingSystem::PostUpdate(const F32 dt) {

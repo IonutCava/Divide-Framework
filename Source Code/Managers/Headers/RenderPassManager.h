@@ -99,6 +99,7 @@ public:
         SceneRenderState* _sceneRenderState = nullptr;
         Rect<I32> _targetViewport = {};
         Time::ProfileTimer* _parentTimer = nullptr;
+        PlayerIndex _playerPass = 0u;
         bool _editorRunning = false;
     };
 

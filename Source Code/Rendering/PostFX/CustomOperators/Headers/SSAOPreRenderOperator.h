@@ -42,7 +42,7 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
     SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
     ~SSAOPreRenderOperator();
 
-    [[nodiscard]] bool execute(const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
+    [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
 
     [[nodiscard]] F32 radius() const noexcept { return _radius[_genHalfRes ? 1 : 0]; }
@@ -81,7 +81,7 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
 
    protected:
        void onToggle(const bool state) override { _stateChanged = true; }
-       void prepare(GFX::CommandBuffer& bufferInOut) override;
+       void prepare(PlayerIndex idx, GFX::CommandBuffer& bufferInOut) override;
 
    private:
     GFX::SendPushConstantsCommand _ssaoGenerateConstantsCmd;

@@ -76,8 +76,8 @@ private:
 public:
     explicit PostFX(PlatformContext& context, ResourceCache* cache);
 
-    void prePass(const CameraSnapshot& cameraSnapshot,GFX::CommandBuffer& bufferInOut);
-    void apply(const CameraSnapshot& cameraSnapshot, const DELEGATE<void>& screenTargetCallback, GFX::CommandBuffer& bufferInOut);
+    void prePass(PlayerIndex idx, const CameraSnapshot& cameraSnapshot,GFX::CommandBuffer& bufferInOut);
+    void apply(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);
 
     void idle(const Configuration& config);
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);

@@ -437,7 +437,7 @@ U8 SSAOPreRenderOperator::sampleCount() const noexcept {
     return _kernelSampleCount[_genHalfRes ? 1 : 0];
 }
 
-void SSAOPreRenderOperator::prepare(GFX::CommandBuffer& bufferInOut) {
+void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::CommandBuffer& bufferInOut) {
     if (_stateChanged && !_enabled) {
         RTClearDescriptor clearDescriptor = {};
         clearDescriptor._clearDepth = true;
@@ -453,7 +453,7 @@ void SSAOPreRenderOperator::prepare(GFX::CommandBuffer& bufferInOut) {
     _stateChanged = false;
 }
 
-bool SSAOPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
     assert(_enabled);
 
     static GFX::BindPipelineCommand s_downsamplePipelineCmd{};

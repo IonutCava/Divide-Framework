@@ -30,6 +30,7 @@ void main()
 
 --Fragment.Shadow.VSM
 
+#include "nodeDataInput.cmn"
 #ifdef HAS_TEXTURE
 #include "vsm.frag"
 out vec2 _colourOut;
@@ -82,7 +83,8 @@ void main(){
     if (colour.a <= INV_Z_TEST_SIGMA) {
         discard;
     }
-    writeGBuffer();
+    const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
+    writeGBuffer(data);
 #else //PRE_PASS
     writeScreenColour(colour);
 #ensif //PRE_PASS

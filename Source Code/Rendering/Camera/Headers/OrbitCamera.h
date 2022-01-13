@@ -58,7 +58,7 @@ class OrbitCamera : public FreeFlyCamera {
     }
 
     void update(F32 deltaTimeMS) noexcept override;
-    bool zoom(I32 zoomFactor) noexcept override;
+    bool zoom(F32 zoomFactor) noexcept override;
 
     void fromCamera(const Camera& camera) override;
 

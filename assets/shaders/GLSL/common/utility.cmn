@@ -1,30 +1,6 @@
 #ifndef _UTILITY_CMN_
 #define _UTILITY_CMN_
 
-#define ACCESS_RW
-#define ACCESS_R readonly
-#define ACCESS_W writeonly
-
-#if defined(COMPUTE_SHADER)
-#define COMP_ONLY_W ACCESS_W
-#define COMP_ONLY_R ACCESS_R
-#define COMP_ONLY_RW ACCESS_RW
-#else //COMPUTE_SHADER
-#define COMP_ONLY_W readonly
-#define COMP_ONLY_R 
-#define COMP_ONLY_RW readonly
-#endif //COMPUTE_SHADER
-
-#ifndef M_EPSILON
-#define M_EPSILON 1e-5f
-#endif //M_EPSILON
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#define M_PI_2 3.14159265358979323846 / 2
-#define INV_M_PI 0.31830988618
-#endif //M_PI
-
 //ref: http://theorangeduck.com/page/avoiding-shader-conditionals
 #define when_eq(x, y) (1.f - abs(sign(x - y)))
 #define when_neq(x, y) abs(sign(x - y))
@@ -32,21 +8,9 @@
 #define when_lt(x, y)  max(sign(y - x), 0.f)
 #define when_ge(x, y) (1.f - when_lt(x, y))
 #define when_le(x, y) (1.f - when_gt(x, y))
-#define AND(a, b) (a * b)
-#define OR(a, b) min(a + b, 1.0f)
-#define XOR(a, b) ((a + b) % 2.0f)
-#define NOT(a) (1.0f - a)
-#define SQUARED(X) (X * X)
-#define ROUND(v) floor((v) + .5)
-
-#define saturate(X) clamp(X, 0.f, 1.f)
-
 #define MSToSeconds(ms) (ms * 0.001f)
-
 #define UNPACK_VEC3(VAL) (2.f * fract(vec3(1.f, 256.f, 65536.f) * VAL) - 1.f)
-
 #define QUATERNION_ROTATE(V, Q) (V + 2.f * cross(Q.xyz, cross(Q.xyz, V) + Q.w * V))
-
-vec3 homogenize(in vec4 v) { return (v / v.w).xyz; }
+vec3 homogenize(in vec4 v) { return (v.xyz / v.w); }
 
 #endif //_UTILITY_CMN_

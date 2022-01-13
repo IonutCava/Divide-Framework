@@ -1,5 +1,7 @@
 --Geometry.GaussBlur
 
+#include "nodeDataInput.cmn"
+
 #if !defined(GS_MAX_INVOCATIONS)
 #define GS_MAX_INVOCATIONS 1
 #endif //!GS_MAX_INVOCATIONS
@@ -145,6 +147,8 @@ void main() {
 
 --Fragment.GaussBlur
 
+#include "nodeDataInput.cmn"
+
 layout(location = 0) in flat int _blurred;
 
 #if defined(LAYERED)
@@ -173,6 +177,8 @@ void main(void)
 }
 
 --Fragment.Generic
+
+#include "nodeDataInput.cmn"
 
 out vec4 _colourOut;
 

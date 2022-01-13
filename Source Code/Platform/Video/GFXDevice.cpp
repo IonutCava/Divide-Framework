@@ -20,6 +20,7 @@
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 
+#include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Material/Headers/ShaderComputeQueue.h"
 
 #include "Platform/Headers/PlatformRuntime.h"
@@ -1369,6 +1370,7 @@ void GFXDevice::setScreenMSAASampleCount(U8 sampleCount) {
         _context.config().rendering.MSAASamples = sampleCount;
         _rtPool->updateSampleCount(RenderTargetUsage::SCREEN_MS, sampleCount);
         _rtPool->updateSampleCount(RenderTargetUsage::OIT_MS, sampleCount);
+        Material::RecomputeShaders();
     }
 }
 
@@ -1573,11 +1575,10 @@ void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
     }
 }
 
-void GFXDevice::setPreviousViewProjectionMatrix(const mat4<F32>& prevVPmatrix) {
-    if (prevVPmatrix != _gpuBlock._renderData._PreviousViewProjectionMatrix) {
-        _gpuBlock._renderData._PreviousViewProjectionMatrix = prevVPmatrix;
-        _gpuBlock._renderNeedsUpload = true;
-    }
+void GFXDevice::setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix) {
+    _gpuBlock._renderData._PreviousViewMatrix = prevViewMatrix;
+    _gpuBlock._renderData._PreviousProjectionMatrix = prevProjectionMatrix;
+    _gpuBlock._renderNeedsUpload = true;
 }
 
 /// Update the rendering viewport
@@ -1602,16 +1603,16 @@ bool GFXDevice::setViewport(const Rect<I32>& viewport) {
     return false;
 }
 
-void GFXDevice::setCameraSnapshot(const CameraHistoryType snapshotType, const CameraSnapshot& snapshot) noexcept {
-    _cameraSnapshotHistory[to_base(snapshotType)] = snapshot;
+void GFXDevice::setCameraSnapshot(const PlayerIndex index, const CameraSnapshot& snapshot) noexcept {
+    _cameraSnapshotHistory[index] = snapshot;
 }
 
-CameraSnapshot& GFXDevice::getCameraSnapshot(const CameraHistoryType snapshotType) noexcept {
-    return _cameraSnapshotHistory[to_base(snapshotType)];
+CameraSnapshot& GFXDevice::getCameraSnapshot(const PlayerIndex index) noexcept {
+    return _cameraSnapshotHistory[index];
 }
 
-const CameraSnapshot& GFXDevice::getCameraSnapshot(const CameraHistoryType snapshotType) const noexcept {
-    return _cameraSnapshotHistory[to_base(snapshotType)];
+const CameraSnapshot& GFXDevice::getCameraSnapshot(const PlayerIndex index) const noexcept {
+    return _cameraSnapshotHistory[index];
 }
 
 const GFXShaderData::RenderData& GFXDevice::renderingData() const noexcept {

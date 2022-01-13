@@ -1,5 +1,7 @@
 -- Vertex.FullScreenQuad
 
+#include "nodeDataInput.cmn"
+
 void main(void)
 {
     vec2 uv = vec2(0, 0);

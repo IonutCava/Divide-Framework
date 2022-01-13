@@ -16,8 +16,7 @@ void main (void) {
     }
 #endif //USE_ALPHA_DISCARD
 
-    float normalVariation = 0.f;
-    const vec3 normalWV = getNormalWV(data, vec3(VAR._texCoord, 0), normalVariation);
-    const vec4 rgba = getPixelColour(albedo, data, normalWV, normalVariation, VAR._texCoord);
+    const vec3 normalWV = getNormalWV(data, vec3(VAR._texCoord, 0));
+    const vec4 rgba = getPixelColour(albedo, data, normalWV);
     writeScreenColour(rgba);
 }

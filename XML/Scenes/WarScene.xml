@@ -14,17 +14,17 @@
     <visibility>1000</visibility>
 </options>
 <camera>
-    <Editor__Camera>
+    <Player_Cam_0>
         <reflectionPlane>
             <normal x="0" y="0" z="0"/>
             <distance>0</distance>
             <active>false</active>
         </reflectionPlane>
-        <accumPitchDegrees>-14.9999857</accumPitchDegrees>
+        <accumPitchDegrees>-23.0231514</accumPitchDegrees>
         <frustumLocked>false</frustumLocked>
-        <euler x="-15.0000086" y="-17.5188503" z="1.56677675e-06"/>
-        <eye x="17.4740429" y="38.4630356" z="171.078857"/>
-        <orientation x="-0.129003763" y="-0.150983259" z="-0.0198773202" w="0.979880333"/>
+        <euler x="-21.5624294" y="-41.1022453" z="-2.24304104"/>
+        <eye x="166.436676" y="5.32411957" z="-93.6964798"/>
+        <orientation x="0.181844294" y="0.341407061" z="0.0836645961" w="-0.918224871"/>
         <aspectRatio>1.76999998</aspectRatio>
         <zPlanes min="0.100000001" max="1000"/>
         <FoV>77.7975693</FoV>
@@ -33,7 +33,7 @@
         <yawFixed>true</yawFixed>
         <rotationLocked>false</rotationLocked>
         <movementLocked>false</movementLocked>
-    </Editor__Camera>
+    </Player_Cam_0>
 </camera>
 <fog>
     <fogDensityB>0.0700000003</fogDensityB>

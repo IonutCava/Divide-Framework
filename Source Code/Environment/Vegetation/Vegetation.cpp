@@ -669,7 +669,8 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         const RTAttachment& hizAttachment = hizTarget.getAttachment(RTAttachmentType::Depth, 0u);
         const Texture_ptr& hizTexture = hizAttachment.texture();
 
-        const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(GFXDevice::CameraHistoryType::HI_Z_MAIN_BUFFER);
+        const PlayerIndex currentPlayerPass = _context.context().kernel().sceneManager()->playerPass();
+        const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(currentPlayerPass);
         mat4<F32> viewProjectionMatrix;
         mat4<F32>::Multiply(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix, viewProjectionMatrix);
 

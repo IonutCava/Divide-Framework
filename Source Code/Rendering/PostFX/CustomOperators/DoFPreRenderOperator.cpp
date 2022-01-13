@@ -93,7 +93,7 @@ void DoFPreRenderOperator::reshape(const U16 width, const U16 height) {
     _constantsDirty = true;
 }
 
-bool DoFPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
     const vec2<F32>& zPlanes = cameraSnapshot._zPlanes;
     if (_cachedZPlanes != zPlanes) {
         _constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, zPlanes);

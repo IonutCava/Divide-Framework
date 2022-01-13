@@ -132,7 +132,7 @@ public:
 public:
     explicit RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, RenderStage stage);
 
-    void doCustomPass(Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut);
+    void doCustomPass(PlayerIndex idx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut);
     void postInit(const ShaderProgram_ptr& OITCompositionShader, 
                   const ShaderProgram_ptr& OITCompositionShaderMS,
                   const ShaderProgram_ptr& ResolveGBufferShaderMS) const;
@@ -151,7 +151,8 @@ private:
                  const CameraSnapshot& cameraSnapshot,
                  GFX::CommandBuffer& bufferInOut);
 
-    void occlusionPass(const VisibleNodeList<>& nodes,
+    void occlusionPass(PlayerIndex idx, 
+                       const VisibleNodeList<>& nodes,
                        const CameraSnapshot& cameraSnapshot,
                        U32 visibleNodeCount,
                        RenderStagePass stagePass,

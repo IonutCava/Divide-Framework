@@ -7,13 +7,11 @@
 
 void main() {
     const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
-
 #if defined(USE_ALPHA_DISCARD)
     if (getAlpha(data, vec3(VAR._texCoord, 0)) < INV_Z_TEST_SIGMA) {
         discard;
     }
 #endif //USE_ALPHA_DISCARD
-
     writeGBuffer(data);
 }
 
@@ -34,12 +32,11 @@ void main() {
 
 --Fragment.Shadow.VSM
 
-#include "vsm.frag"
-out vec2 _colourOut;
-
 #if defined(USE_ALPHA_DISCARD)
 #include "materialData.frag"
 #endif //USE_ALPHA_DISCARD
+#include "vsm.frag"
+out vec2 _colourOut;
 
 void main() {
 #if defined(USE_ALPHA_DISCARD)

@@ -1,5 +1,8 @@
 --Vertex
 
+#define NO_CLIP_CULL_IN
+#define NO_CLIP_CULL_OUT
+
 #include "terrainUtils.cmn"
 
 layout(location = ATTRIB_POSITION) in vec4 inVertexData;
@@ -29,6 +32,9 @@ void main(void)
 }
 
 --TessellationC
+
+#define NO_CLIP_CULL_IN
+#define NO_CLIP_CULL_OUT
 
 #include "terrainUtils.cmn"
 
@@ -253,10 +259,8 @@ void main(void)
 
 --TessellationE
 
+#define NO_CLIP_CULL_IN
 layout(quads, fractional_even_spacing, cw) in;
-
-// VAR._normalWV is in world-space!!!!
-#define _normalW _normalWV
 
 #include "terrainUtils.cmn"
 
@@ -334,6 +338,7 @@ void main()
 
 --Geometry
 
+#define NO_CLIP_CULL_IN
 #define NEED_TEXTURE_DATA
 #include "terrainUtils.cmn"
 
@@ -365,7 +370,6 @@ void PerVertex(in int i, in vec3 edge_dist) {
                        i == 1 ? edge_dist.y : 0.0,
                        i >= 2 ? edge_dist.z : 0.0,
                        tes_PatternValue[i]);
-    setClipPlanes();
 }
 
 void main(void)
@@ -462,13 +466,6 @@ void main(void)
 
 layout(early_fragment_tests) in;
 
-// VAR._normalWV is in world-space!!!!
-#define _normalW _normalWV
-
-#define USE_CUSTOM_TEXTURE_OMR
-#define USE_CUSTOM_TBN
-#define NO_REFLECTIONS
-
 #if defined(TOGGLE_DEBUG)
 
 layout(location = 10) in vec3 gs_wireColor;
@@ -482,26 +479,19 @@ layout(location = 12) in vec3 tes_debugColour;
 
 #endif //TOGGLE_DEBUG
 
+#define NO_OCCLUSION_TEX
+#define NO_METALNESS_TEX
+#define NO_ROUGHNESS_TEX
+
 #include "terrainUtils.cmn" 
 #include "output.frag"
 #include "BRDF.frag"
 #include "terrainSplatting.frag"
 
-vec3 _private_OMR = vec3(1.f, 0.f, 1.f);
-void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR) {
-    OMR = _private_OMR;
-}
-
-void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout float roughness) {
-    roughness = _private_OMR.z;
-}
-
 void main(void) {
 
     vec3 normalWV; 
-    float normalVariation;
-    const vec4 albedo = BuildTerrainData(normalWV, normalVariation);
-    _private_OMR.b = albedo.a;
+    const vec4 albedo = BuildTerrainData(normalWV);
 
     vec4 colourOut = vec4(0.f, 0.f, 0.f, 1.f);
 
@@ -524,13 +514,7 @@ void main(void) {
     }
 #else //TOGGLE_BLEND_MAP
     const NodeMaterialData materialData = dvd_Materials[MATERIAL_IDX];
-    colourOut = getPixelColour(
-                               vec4(albedo.rgb, 1.f),
-                               materialData,
-                               normalWV,
-                               normalVariation,
-                               VAR._texCoord
-                              );
+    colourOut = getPixelColour(vec4(albedo.rgb, 1.f), materialData, normalWV);
 #endif //TOGGLE_BLEND_MAP
 #endif //TOGGLE_TESS_LEVEL
 
@@ -554,34 +538,14 @@ void main(void) {
 
 --Fragment.PrePass
 
-// VAR._normalWV is in world-space!!!!
-#define _normalW _normalWV
-
-#define USE_CUSTOM_TEXTURE_OMR
-#define USE_CUSTOM_TBN
-#define NO_REFLECTIONS
-
 #include "terrainUtils.cmn" 
 #include "prePass.frag"
 #include "terrainSplatting.frag"
 
-vec3 _private_OMR = vec3(1.f, 0.f, 1.f);
-void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR) {
-    OMR = _private_OMR;
-}
-
-void getTextureRoughness(in bool usePacked, in vec3 uv, in uvec3 texOps, inout float roughness) {
-    roughness = _private_OMR.b;
-}
-
 void main(void) {
 
-    vec3 normalWV; float normalVariation;
-    _private_OMR.b = BuildTerrainData(normalWV, normalVariation).a;
-
-    const NodeMaterialData materialData = dvd_Materials[MATERIAL_IDX];
-    const float roughness = getRoughness(materialData, VAR._texCoord, normalVariation);
-    writeGBuffer(normalWV, roughness);
+    const vec4 normalWVAndRoughness = GetTerrainNormalWVAndRoughness();
+    writeGBuffer(normalWVAndRoughness.xyz, normalWVAndRoughness.w);
 }
 
 --Fragment.Shadow.VSM

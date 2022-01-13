@@ -100,7 +100,7 @@ void SSRPreRenderOperator::reshape(const U16 width, const U16 height) {
     };
 }
 
-void SSRPreRenderOperator::prepare(GFX::CommandBuffer& bufferInOut) {
+void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::CommandBuffer& bufferInOut) {
     if (_stateChanged && !_enabled) {
         RTClearDescriptor clearDescriptor = {};
         clearDescriptor._clearDepth = true;
@@ -116,12 +116,12 @@ void SSRPreRenderOperator::prepare(GFX::CommandBuffer& bufferInOut) {
     _stateChanged = false;
 }
 
-bool SSRPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
     assert(_enabled);
 
-    const RTAttachment& screenAtt   = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const RTAttachment& normalsAtt  = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
-    const RTAttachment& depthAtt    = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
+    const RTAttachment& screenAtt  = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+    const RTAttachment& normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
+    const RTAttachment& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
 
     const TextureData screenTex = screenAtt.texture()->data();
     const TextureData normalsTex = normalsAtt.texture()->data();
@@ -130,6 +130,10 @@ bool SSRPreRenderOperator::execute(const CameraSnapshot& cameraSnapshot, const R
     if (screenMipCount > 2u) {
         screenMipCount -= 2u;
     }
+
+    //const CameraSnapshot& prevSnapshot = _parent.getCameraSnapshot(idx);
+    const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(idx);
+    _constantsCmd._constants.set(_ID("previousViewProjection"), GFX::PushConstantType::MAT4, mat4<F32>::Multiply(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix));
     _constantsCmd._constants.set(_ID("projToPixel"), GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix * _projToPixelBasis);
     _constantsCmd._constants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
     _constantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);

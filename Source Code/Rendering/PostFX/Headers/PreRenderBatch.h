@@ -64,8 +64,8 @@ class PreRenderBatch {
 
     void update(U64 deltaTimeUS) noexcept;
 
-    void prePass(const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut);
-    void execute(const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut);
+    void prePass(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut);
+    void execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut);
     void reshape(U16 width, U16 height);
 
     void onFilterEnabled(FilterType filter);

@@ -46,15 +46,12 @@ void main() {
     { // Average material data with special consideration for packing and clamping
         vec3 avgNormalData = vec3(0.f);
         float avgRoughness = 0.f;
-        float selectionFlag = 0.f;
         for (int s = 0; s < sampleCount; ++s) {
             const vec3 normalsIn = texelFetch(normalsDataTex, C, s).rgb;
             avgNormalData += unpackNormal(normalsIn.rg);
-            const vec2 extraData = unpackVec2(normalsIn.b);
-            avgRoughness += extraData.x;
-            selectionFlag = max(selectionFlag, extraData.y);
+            avgRoughness += normalsIn.b;
         }
         _normalDataOut.rg = packNormal(avgNormalData / sampleCount);
-        _normalDataOut.b = packVec2(saturate(avgRoughness / sampleCount), selectionFlag);
+        _normalDataOut.b = saturate(avgRoughness / sampleCount);
     }
 }

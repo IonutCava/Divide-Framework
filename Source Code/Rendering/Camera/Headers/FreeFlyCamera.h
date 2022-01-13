@@ -124,9 +124,9 @@ class FreeFlyCamera : public Camera {
 
     void lockRotation(const bool state) noexcept { _rotationLocked = state; }
 
-    virtual bool moveRelative(const vec3<I32>& relMovement);
-    virtual bool rotateRelative(const vec3<I32>& relRotation);
-    virtual bool zoom(I32 zoomFactor) noexcept;
+    virtual bool moveRelative(const vec3<F32>& relMovement);
+    virtual bool rotateRelative(const vec3<F32>& relRotation);
+    virtual bool zoom(F32 zoomFactor) noexcept;
 
     static constexpr CameraType Type() noexcept { return CameraType::FREE_FLY; }
 

@@ -95,10 +95,10 @@ void main(void){
         colour = mix(colour, _fadeColour, _fadeStrength);
     }
 
-    const float selection = unpackVec2(texture(texSceneData, VAR._texCoord).b).y;
+    /*const float selection = unpackVec2(texture(texSceneData, VAR._texCoord).b).y;
     if (selection > 0.f && selection < 1.0f) {
         colour.rgb = colour.rgb + vec3(0.5f, 0.5f, 0.f);
-    }
+    }*/
 
     _colourOut = colour;
 }
