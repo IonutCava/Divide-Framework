@@ -8,8 +8,6 @@ namespace Divide {
 SceneShaderData::SceneShaderData(GFXDevice& context)
     : _context(context)
 {
-    shadowingSettings(0.25f, 0.00002f);
-
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
     bufferDescriptor._ringBufferLength = 1;

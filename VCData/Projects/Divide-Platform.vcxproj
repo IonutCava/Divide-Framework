@@ -323,6 +323,7 @@
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\lightingCalc.frag" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\specGloss.frag" />
     <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\specialBRDFs.frag" />
+    <None Include="..\..\assets\shaders\GLSL\fragmentAtoms\turboColormap.frag" />
     <None Include="..\..\assets\shaders\GLSL\InfiniteGrid.glsl" />
     <None Include="..\..\assets\shaders\GLSL\irradianceCalc.glsl" />
     <None Include="..\..\assets\shaders\GLSL\ScreenSpaceReflections.glsl" />

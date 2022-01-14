@@ -47,7 +47,7 @@ vec4 Noise(in vec4 colourIn){
 
 vec4 Underwater() {
     //ToDo: Move this code, and the one in water.glsl, to a common header (like utility.frag) in a function that both shaders can use
-    const float time2 = MSToSeconds(dvd_time) * 0.015f;
+    const float time2 = MSToSeconds(dvd_TimeMS) * 0.015f;
     const vec2 uvNormal0 = (VAR._texCoord * _noiseTile) + vec2( time2, time2);
     const vec2 uvNormal1 = (VAR._texCoord * _noiseTile) + vec2(-time2, time2);
 
@@ -60,14 +60,14 @@ vec4 Underwater() {
 }
 
 void main(void){
-    if (dvd_materialDebugFlag == DEBUG_DEPTH) {
+    if (dvd_MaterialDebugFlag == DEBUG_DEPTH) {
         _colourOut = vec4(vec3(texture(texLinearDepth, VAR._texCoord).r / _zPlanes.y + _zPlanes.x), 1.0f);
         return;
-    } else if (dvd_materialDebugFlag == DEBUG_SSR) {
+    } else if (dvd_MaterialDebugFlag == DEBUG_SSR) {
         const vec3 ssr = texture(texSSR, VAR._texCoord).rgb;
         _colourOut = vec4(ssr, 1.f);
         return;
-    } else if (dvd_materialDebugFlag == DEBUG_SSR_BLEND) {
+    } else if (dvd_MaterialDebugFlag == DEBUG_SSR_BLEND) {
         const float blend = texture(texSSR, VAR._texCoord).a;
         if (isnan(blend)) {
             _colourOut = vec4(vec3(1.f, 0.f, 0.f), 1.f);
@@ -77,7 +77,7 @@ void main(void){
             _colourOut = vec4(vec3(blend), 1.f);
         }
         return;
-    } else if (dvd_materialDebugFlag != DEBUG_NONE) {
+    } else if (dvd_MaterialDebugFlag != DEBUG_NONE) {
         _colourOut = texture(texScreen, VAR._texCoord);
         return;
     }

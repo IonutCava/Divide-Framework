@@ -1477,9 +1477,8 @@ void GFXDevice::uploadGPUBlock() {
     if (_gpuBlock._renderNeedsUpload) {
         _gpuBlock._renderNeedsUpload = false;
 
-        const Configuration& config = _parent.platformContext().config();
-        _gpuBlock._renderData._otherProperties.x = to_F32(materialDebugFlag());
-        _gpuBlock._renderData._otherProperties.y = to_F32(config.rendering.enableFog ? 1 : 0);
+        _gpuBlock._renderData._renderProperties.z = to_F32(materialDebugFlag());
+
         _renderDataBuffer->writeData(&_gpuBlock._renderData);
         _renderDataBuffer->bind(ShaderBufferLocation::RENDER_BLOCK);
         _renderDataBuffer->incQueue();
@@ -1504,7 +1503,7 @@ void GFXDevice::setClipPlanes(const FrustumClipPlanes& clipPlanes) {
             }
         }
 
-        _gpuBlock._renderData._otherProperties.w = to_F32(count);
+        _gpuBlock._renderData._renderProperties.w = to_F32(count);
         _gpuBlock._renderNeedsUpload = true;
     }
 }
@@ -1575,10 +1574,32 @@ void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
     }
 }
 
+void GFXDevice::shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept {
+    GFXShaderData::CamData& data = _gpuBlock._camData;
+
+    if (!COMPARE(data._lightingTweakValues.z, lightBleedBias) ||
+        !COMPARE(data._lightingTweakValues.w, minShadowVariance))
+    {
+        data._lightingTweakValues.zw = { lightBleedBias, minShadowVariance };
+        _gpuBlock._camNeedsUpload = true;
+    }
+}
+
 void GFXDevice::setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix) {
-    _gpuBlock._renderData._PreviousViewMatrix = prevViewMatrix;
-    _gpuBlock._renderData._PreviousProjectionMatrix = prevProjectionMatrix;
-    _gpuBlock._renderNeedsUpload = true;
+    bool projectionDirty = false, viewDirty = false;
+    if (_gpuBlock._renderData._PreviousViewMatrix != prevViewMatrix) {
+        _gpuBlock._renderData._PreviousViewMatrix = prevViewMatrix;
+        viewDirty = true;
+    }
+    if (_gpuBlock._renderData._PreviousProjectionMatrix != prevProjectionMatrix) {
+        _gpuBlock._renderData._PreviousProjectionMatrix = prevProjectionMatrix;
+        projectionDirty = true;
+    }
+
+    if (projectionDirty || viewDirty) {
+        mat4<F32>::Multiply(_gpuBlock._renderData._PreviousViewMatrix, _gpuBlock._renderData._PreviousProjectionMatrix, _gpuBlock._renderData._PreviousViewProjectionMatrix);
+        _gpuBlock._renderNeedsUpload = true;
+    }
 }
 
 /// Update the rendering viewport
@@ -1591,8 +1612,10 @@ bool GFXDevice::setViewport(const Rect<I32>& viewport) {
         _gpuBlock._camData._ViewPort.set(viewport.x, viewport.y, viewport.z, viewport.w);
         _gpuBlock._camNeedsUpload = true;
 
-        _gpuBlock._renderData._lightingProperties.x = std::ceil(to_F32(viewport.z) / Renderer::CLUSTER_SIZE.x);
-        _gpuBlock._renderData._lightingProperties.y = std::ceil(to_F32(viewport.w) / Renderer::CLUSTER_SIZE.y);
+        const F32 clustersX = std::ceil(to_F32(viewport.z) / Renderer::CLUSTER_SIZE.x);
+        const F32 clustersY = std::ceil(to_F32(viewport.w) / Renderer::CLUSTER_SIZE.y);
+        const U32 clustersPacked = Util::PACK_HALF2x16(clustersX, clustersY);
+        _gpuBlock._renderData._renderProperties.y = to_F32(clustersPacked);
         _gpuBlock._renderNeedsUpload = true;
 
         _viewport.set(viewport);

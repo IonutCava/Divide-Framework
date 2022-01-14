@@ -101,6 +101,7 @@ namespace Attorney {
     class GFXDeviceKernel;
     class GFXDeviceGraphicsResource;
     class GFXDeviceGFXRTPool;
+    class GFXDeviceSceneManager;
     class KernelApplication;
 };
 
@@ -211,6 +212,7 @@ class GFXDevice final : public KernelComponent, public PlatformContextComponent 
     friend class Attorney::GFXDeviceKernel;
     friend class Attorney::GFXDeviceGraphicsResource;
     friend class Attorney::GFXDeviceGFXRTPool;
+    friend class Attorney::GFXDeviceSceneManager;
 
 public:
     enum class ScreenTargets : U8 {
@@ -448,6 +450,7 @@ private:
     void uploadGPUBlock();
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
+    void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
 
     ErrorCode createAPIInstance(RenderAPI api);
 
@@ -596,6 +599,14 @@ namespace Attorney {
         };
 
         friend class GFXRTPool;
+    }; 
+    
+    class GFXDeviceSceneManager {
+        static void shadowingSettings(GFXDevice& device, const F32 lightBleedBias, const F32 minShadowVariance) noexcept {
+            device.shadowingSettings(lightBleedBias, minShadowVariance);
+        }
+
+        friend class SceneManager;
     };
 };  // namespace Attorney
 };  // namespace Divide

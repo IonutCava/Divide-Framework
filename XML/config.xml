@@ -87,7 +87,8 @@
 		<reflectionPlaneResolution>512</reflectionPlaneResolution>
 		<numLightsPerCluster>100</numLightsPerCluster>
 		<enableFog>true</enableFog>
-		<fogDensity x="0.0700000003" y="0.00700000022"/>
+		<fogDensity>0.0700000003</fogDensity>
+		<fogScatter>0.00700000022</fogScatter>
 		<fogColour r="0.5" g="0.5" b="0.550000012"/>
 		<lodThresholds x="25" y="45" z="85" w="165"/>
 		<postFX>

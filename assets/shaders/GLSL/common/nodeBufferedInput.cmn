@@ -26,21 +26,21 @@ void ComputeIndirectionData() {
     TRANSFORM_IDX = indirectionData._transformIdx;
     MATERIAL_IDX = indirectionData._materialIdx;
     TEXTURE_IDX = indirectionData._texturesIdx * (MATERIAL_TEXTURE_COUNT + 1);
-    SELECTION_FLAG = dvd_selectionFlag(dvd_Transforms[TRANSFORM_IDX]);
+    SELECTION_FLAG = dvd_SelectionFlag(dvd_Transforms[TRANSFORM_IDX]);
 }
 
 #endif //VERT_SHADER
 
-#if !defined(NEED_TEXTURE_DATA) && (defined(FRAG_SHADER) || defined(NEED_MATERIAL_DATA))
+#if !defined(NEED_TEXTURE_DATA) && defined(FRAG_SHADER)
 #define NEED_TEXTURE_DATA
-#endif //!NEED_TEXTURE_DATA && (FRAG_SHADER || NEED_MATERIAL_DATA)
+#endif //!NEED_TEXTURE_DATA && FRAG_SHADER
 
-#if defined(FRAG_SHADER) || defined(NEED_MATERIAL_DATA)
+#if defined(FRAG_SHADER)
 layout(binding = BUFFER_NODE_MATERIAL_DATA, std430) coherent ACCESS_R buffer dvd_MaterialBlock 
 {
     NodeMaterialData dvd_Materials[];
 };
-#endif //FRAG_SHADER || NEED_MATERIAL_DATA
+#endif //FRAG_SHADER
 
 #if defined(NEED_TEXTURE_DATA)
 #if defined(BINDLESS_TEXTURES_ENABLED) || defined(DEBUG_BINDLESS_TEXTURES)

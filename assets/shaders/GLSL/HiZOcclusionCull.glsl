@@ -62,11 +62,11 @@ void main()
     uint transformIdx = dvd_IndirectionData[BASE_INSTANCE - 1u]._transformIdx;
     const NodeTransformData transformData = dvd_Transforms[transformIdx];
     // Skip occlusion cull if the flag is set
-    if (!dvd_cullNode(transformData)) {
+    if (!dvd_CullNode(transformData)) {
         return;
     }
 
-    const vec4 boundingSphere = dvd_boundingSphere(transformData);
+    const vec4 boundingSphere = dvd_BoundingSphere(transformData);
     if (HiZCull(boundingSphere.xyz, boundingSphere.w)) {
         CullItem(ident);
     }

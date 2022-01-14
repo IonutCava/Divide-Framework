@@ -63,8 +63,8 @@ bool Configuration::fromXML(const char* xmlFile) {
         GET_PARAM(rendering.reflectionPlaneResolution);
         GET_PARAM(rendering.numLightsPerCluster);
         GET_PARAM(rendering.enableFog);
-        GET_PARAM_ATTRIB(rendering.fogDensity, x);
-        GET_PARAM_ATTRIB(rendering.fogDensity, y);
+        GET_PARAM(rendering.fogDensity);
+        GET_PARAM(rendering.fogScatter);
         GET_PARAM_ATTRIB(rendering.fogColour, r);
         GET_PARAM_ATTRIB(rendering.fogColour, g);
         GET_PARAM_ATTRIB(rendering.fogColour, b);
@@ -221,8 +221,8 @@ bool Configuration::toXML(const char* xmlFile) const {
         PUT_PARAM(rendering.reflectionPlaneResolution);
         PUT_PARAM(rendering.numLightsPerCluster);
         PUT_PARAM(rendering.enableFog);
-        PUT_PARAM_ATTRIB(rendering.fogDensity, x);
-        PUT_PARAM_ATTRIB(rendering.fogDensity, y);
+        PUT_PARAM(rendering.fogDensity);
+        PUT_PARAM(rendering.fogScatter);
         PUT_PARAM_ATTRIB(rendering.fogColour, r);
         PUT_PARAM_ATTRIB(rendering.fogColour, g);
         PUT_PARAM_ATTRIB(rendering.fogColour, b);

@@ -538,6 +538,10 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
 
     FogDetails fog = activeScene.state()->renderState().fogDetails();
     fog._colourSunScatter.rgb = sunColour;
+
+    if (!_platformContext->config().rendering.enableFog) {
+        fog._colourAndDensity.a = 0.f;
+    }
     _sceneData->fogDetails(fog);
 
     const auto& activeSceneState = activeScene.state();
@@ -546,7 +550,8 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
                             activeSceneState->windDirZ(),
                             activeSceneState->windSpeed());
 
-    _sceneData->shadowingSettings(activeSceneState->lightBleedBias(), activeSceneState->minShadowVariance());
+    Attorney::GFXDeviceSceneManager::shadowingSettings(_parent.platformContext().gfx(), activeSceneState->lightBleedBias(), activeSceneState->minShadowVariance());
+
     activeScene.updateSceneState(deltaTimeUS);
 
     U8 index = 0u;

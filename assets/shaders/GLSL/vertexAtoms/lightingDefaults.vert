@@ -21,11 +21,11 @@ void computeLightVectors(in NodeTransformData data) {
     computeViewDirectionWV(data);
 
 #if defined(COMPUTE_TBN)
-    VAR._tbnWV = computeTBN(dvd_normalMatrixW(data));
+    VAR._tbnWV = computeTBN(dvd_NormalMatrixW(data));
     VAR._normalWV = VAR._tbnWV[2];
 #else // COMPUTE_TBN
     VAR._normalWV = normalize(mat3(dvd_ViewMatrix) * 
-                              dvd_normalMatrixW(data) *
+                              dvd_NormalMatrixW(data) *
                               dvd_Normal);
 #endif // COMPUTE_TBN
 }

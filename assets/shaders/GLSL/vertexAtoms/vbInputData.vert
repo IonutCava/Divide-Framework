@@ -24,7 +24,7 @@ NodeTransformData fetchInputData() {
 
     const NodeTransformData nodeData = dvd_Transforms[TRANSFORM_IDX];
 #if defined(USE_GPU_SKINNING)
-    if (dvd_boneCount(nodeData) > 0) {
+    if (dvd_BoneCount(nodeData) > 0) {
         dvd_Vertex = applyBoneTransforms(dvd_Vertex);
     }
 #endif //USE_GPU_SKINNING
@@ -34,16 +34,21 @@ NodeTransformData fetchInputData() {
 vec4 computeData(in NodeTransformData data) {
     VAR._LoDLevel  = dvd_LoDLevel(data);
     VAR._vertexW   = data._worldMatrix * dvd_Vertex;
+#if 0
     VAR._vertexWV  = dvd_ViewMatrix * VAR._vertexW;
+#else
+    // Higher precision
+    VAR._vertexWV = (dvd_ViewMatrix * data._worldMatrix) * dvd_Vertex;
+#endif
 
 #if defined(HAS_VELOCITY)
     vec4 inputVertex = vec4(inVertexData, 1.f);
 #if defined(USE_GPU_SKINNING)
-    if (dvd_frameTicked(data) && dvd_boneCount(data) > 0u) {
+    if (dvd_BoneCount(data) > 0u && dvd_FrameTicked(data)) {
         inputVertex = applyPrevBoneTransforms(inputVertex);
     }
 #endif //USE_GPU_SKINNING
-    VAR._prevVertexWVP = dvd_PreviousProjectionMatrix * dvd_PreviousViewMatrix * data._prevWorldMatrix * inputVertex;
+    VAR._prevVertexWVP = (dvd_PreviousViewProjectionMatrix * data._prevWorldMatrix) * inputVertex;
 #endif //HAS_VELOCITY
 
     return dvd_ProjectionMatrix * VAR._vertexWV;

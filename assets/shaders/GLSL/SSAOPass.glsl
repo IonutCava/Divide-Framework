@@ -42,7 +42,9 @@ out float _ssaoOut;
 //ref1: https://github.com/McNopper/OpenGL/blob/master/Example28/shader/ssao.frag.glsl
 //ref2: https://github.com/itoral/vkdf/blob/9622f6a9e6602e06c5a42507202ad5a7daf917a4/data/spirv/ssao.deferred.frag.input
 void main(void) {
-    if (dvd_materialDebugFlag != DEBUG_NONE && dvd_materialDebugFlag != DEBUG_SSAO) {
+    if (dvd_MaterialDebugFlag != DEBUG_NONE && 
+        dvd_MaterialDebugFlag != DEBUG_SSAO)
+    {
         _ssaoOut = 1.f;
         return;
     }

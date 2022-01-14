@@ -20,22 +20,14 @@ layout(binding = BUFFER_SCENE_DATA, std140) uniform dvd_SceneData {
     vec4 dvd_sunPosition;
     // w - reserved
     vec4 dvd_sunColour;
-    // w - reserved
-    vec4 dvd_zenithColour;
-    // w - reserved
-    vec4 dvd_horizonColour;
     // x,y,z - direction, w - speed
     vec4   dvd_windDetails;
-    //x - light bleed bias, y - min shadow variance, z - reserved, w - reserved
-    vec4   dvd_shadowingSettings;
     FogDetails dvd_fogDetails;
     WaterBodyData dvd_waterEntities[GLOBAL_WATER_BODIES_COUNT];
-    mat4 _padding;
+    vec4 _padding[7];
 };
 
 #define GetSunDirection() normalize(-dvd_sunPosition.xyz)
-#define dvd_LightBleedBias dvd_shadowingSettings.x
-#define dvd_MinVariance dvd_shadowingSettings.y
 
 #endif //FRAG_SHADER || NEED_SCENE_DATA
 

@@ -47,21 +47,14 @@ constexpr U16 GLOBAL_PROBE_COUNT = 512u;
 class SceneShaderData {
     struct SceneShaderBufferData {
         // w - reserved
-        vec4<F32> _sunPosition = { 0.0f };
+        vec4<F32> _sunPosition = VECTOR4_ZERO;
         // w - reserved
         FColour4 _sunColour = DefaultColours::WHITE;
-        // w - reserved
-        FColour4 _zenithColour = { 0.025f, 0.1f, 0.5f, 1.0f};
-        // w - reserved
-        FColour4 _horizonColour = { 0.6f, 0.7f, 1.0f, 0.0f};
         // x,y,z - direction, w - speed
-        vec4<F32> _windDetails = {0.0f};
-        //x - light bleed bias, y - min shadow variance, z - reserved, w - reserved
-        vec4<F32> _shadowingSettings = {0.2f, 0.001f, 1.0f, 1.0f};
+        vec4<F32> _windDetails = VECTOR4_ZERO;
         FogDetails _fogDetails{};
         WaterBodyData _waterEntities[GLOBAL_WATER_BODIES_COUNT] = {};
-        mat4<F32> _padding;
-        //RenderDoc: vec4 fogDetails; vec4 windDetails; vec4 shadowSettings; vec4 otherData;
+        vec4<F32> _padding[7];
     };
 
   public:
@@ -77,16 +70,6 @@ class SceneShaderData {
         }
     }
 
-    void skyColour(const FColour4& horizon, const FColour4& zenith) noexcept {
-        if (_sceneBufferData._horizonColour != horizon ||
-            _sceneBufferData._zenithColour != zenith)
-        {
-            _sceneBufferData._horizonColour = horizon;
-            _sceneBufferData._zenithColour = zenith;
-            _sceneDataDirty = true;
-        }
-    }
-
     void fogDetails(const FogDetails& details) noexcept {
         if (_sceneBufferData._fogDetails != details) {
             _sceneBufferData._fogDetails = details;
@@ -94,23 +77,14 @@ class SceneShaderData {
         }
     }
 
-    void fogDensity(F32 densityB, F32 densityC) noexcept {
-        CLAMP_01(densityB);
-        CLAMP_01(densityC);
-        if (!COMPARE(_sceneBufferData._fogDetails._colourAndDensity.a, densityB) ||
-            !COMPARE(_sceneBufferData._fogDetails._colourSunScatter.a, densityC)) 
+    void fogDensity(F32 density, F32 scatter) noexcept {
+        CLAMP_01(density);
+        CLAMP_01(scatter);
+        if (!COMPARE(_sceneBufferData._fogDetails._colourAndDensity.a, density) ||
+            !COMPARE(_sceneBufferData._fogDetails._colourSunScatter.a, scatter))
         {
-            _sceneBufferData._fogDetails._colourAndDensity.a = densityB;
-            _sceneBufferData._fogDetails._colourSunScatter.a = densityC;
-            _sceneDataDirty = true;
-        }
-    }
-
-    void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept {
-        if (!COMPARE(_sceneBufferData._shadowingSettings.x, lightBleedBias) ||
-            !COMPARE(_sceneBufferData._shadowingSettings.y, minShadowVariance))
-        {
-            _sceneBufferData._shadowingSettings.xy = { lightBleedBias, minShadowVariance };
+            _sceneBufferData._fogDetails._colourAndDensity.a = density;
+            _sceneBufferData._fogDetails._colourSunScatter.a = scatter;
             _sceneDataDirty = true;
         }
     }

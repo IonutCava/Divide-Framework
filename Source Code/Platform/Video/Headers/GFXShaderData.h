@@ -45,14 +45,10 @@ struct GFXShaderData {
       struct RenderData {
           mat4<F32> _PreviousViewMatrix = MAT4_IDENTITY;
           mat4<F32> _PreviousProjectionMatrix = MAT4_IDENTITY;
-          //x - elapsed time (ms)
-          vec4<F32> _renderProperties = VECTOR4_ZERO;
-          //x - cluster size X, y - cluster size Y
-          vec4<F32> _lightingProperties = { 120.0f, 100.0f, 1.0f, 1.0f };
-          //x - material debug flag, y - fog enabled, z - clip plane count, w - reserved
-          vec4<F32> _otherProperties;
+          mat4<F32> _PreviousViewProjectionMatrix = MAT4_IDENTITY;
+          //x - elapsed time (ms), y - light cluster size XY packed, z = material debug flag, w - clip plane count
+          vec4<F32> _renderProperties = {0.f, 120.f, 100.f, 0.f};
           vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
-          vec4<F32> _padding[2];
       };
       struct CamData {
           mat4<F32> _ProjectionMatrix = MAT4_IDENTITY;
@@ -63,8 +59,8 @@ struct GFXShaderData {
           // xyz - position, w - aspect ratio
           vec4<F32> _cameraPosition = VECTOR4_ZERO;
           vec4<F32> _ViewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
-          // x - scale, y - bias
-          vec4<F32> _lightingTweakValues = { 1.f, 1.f, 0.f, 0.f};
+          // x - scale, y - bias, z - light bleed bias, w - min shadow variance
+          vec4<F32> _lightingTweakValues = { 1.f, 1.f, 0.2f, 0.001f};
           //x - nearPlane, y - farPlane, z - FoV, w - camera flag
           vec4<F32> _cameraProperties = { 0.01f, 1.0f, 40.f, 0.f };
           vec4<F32> _frustumPlanes[to_base(FrustumPlane::COUNT)];

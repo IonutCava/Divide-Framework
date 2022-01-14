@@ -13,8 +13,8 @@ vec3 lineIntersectionToZPlane(vec3 A, vec3 B, float zDistance);
 layout(local_size_x = CLUSTERS_X_THREADS, local_size_y = CLUSTERS_Y_THREADS, local_size_z = CLUSTERS_Z_THREADS) in;
 void main() {
     //Shared between all clusters
-    const float zNear = dvd_zPlanes.x;
-    const float zFar = dvd_zPlanes.y;
+    const float zNear = dvd_ZPlanes.x;
+    const float zFar = dvd_ZPlanes.y;
 
     //Eye position is zero in view space
     const vec3 eyePos = vec3(0.f);

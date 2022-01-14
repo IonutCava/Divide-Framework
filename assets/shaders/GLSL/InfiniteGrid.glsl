@@ -52,27 +52,16 @@ vec4 grid(vec3 fragPos3D, float scale) {
     return color;
 }
 
-float computeDepth(vec3 pos) {
-    vec4 clip_space_pos = dvd_ViewProjectionMatrix * vec4(pos.xyz, 1.0);
-    float clip_space_depth = clip_space_pos.z / clip_space_pos.w;
-
-    float far = gl_DepthRange.far;
-    float near = gl_DepthRange.near;
-
-    float depth = (((far - near) * clip_space_depth) + near + far) / 2.0;
-
-    return depth;
-}
 
 void main()
 {
     const float t = -nearPoint.y / (farPoint.y - nearPoint.y);
     const vec3 fragPos3D = nearPoint + t * (farPoint - nearPoint);
     float fade_factor = length(dvd_cameraPosition.xz - fragPos3D.xz);
-    fade_factor = Saturate(1.f - (fade_factor / dvd_zPlanes.y));
+    fade_factor = Saturate(1.f - (fade_factor / dvd_ZPlanes.y));
 
     vec4 outColour = grid(fragPos3D, gridScale) * float(t > 0);
     outColour.a *= fade_factor;
-    gl_FragDepth = computeDepth(fragPos3D);
+    gl_FragDepth = computeDepth(dvd_ViewMatrix * vec4(fragPos3D, 1.f));
     writeScreenColour(outColour);
 };

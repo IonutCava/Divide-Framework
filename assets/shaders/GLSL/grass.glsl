@@ -56,7 +56,7 @@ void main() {
     _layer = uint(data.data.x);
     VAR._LoDLevel = uint(data.data.y);
 
-    const float timeGrass = dvd_windDetails.w * MSToSeconds(dvd_time) * 0.5f;
+    const float timeGrass = dvd_windDetails.w * MSToSeconds(dvd_TimeMS) * 0.5f;
     const bool animate = VAR._LoDLevel < 2u && dvd_Vertex.y > 0.5f;
 
     const float height = dvd_Vertex.y;
@@ -87,7 +87,7 @@ void main() {
     computeViewDirectionWV(nodeData);
 
     dvd_Normal = normalize(QuaternionRotate(dvd_Normal, data.orientationQuad));
-    _tbnWV = computeTBN(dvd_normalMatrixW(nodeData));
+    _tbnWV = computeTBN(dvd_NormalMatrixW(nodeData));
     VAR._normalWV = _tbnWV[2];
 
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;

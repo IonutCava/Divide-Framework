@@ -184,9 +184,9 @@ void main() {
     float reflBlend = 0.f;
     vec3 ambientReflected = vec3(0.f);
 
-    if (dvd_materialDebugFlag == DEBUG_NONE || 
-        dvd_materialDebugFlag == DEBUG_SSR ||
-        dvd_materialDebugFlag == DEBUG_SSR_BLEND) 
+    if (dvd_MaterialDebugFlag == DEBUG_NONE ||
+        dvd_MaterialDebugFlag == DEBUG_SSR ||
+        dvd_MaterialDebugFlag == DEBUG_SSR_BLEND)
     {
         const float depth = texture(texDepth, VAR._texCoord).r;
         if (depth < INV_Z_TEST_SIGMA) {
@@ -216,7 +216,7 @@ void main() {
 #if 0
                     const vec3 prevHit = Homogenize(previousViewProjection * (invViewMatrix * vec4(hitPoint, 1.f)));
 #else
-                    const vec3 prevHit = Homogenize((dvd_PreviousProjectionMatrix * dvd_PreviousViewMatrix) * (invViewMatrix * vec4(hitPoint, 1.f)));
+                    const vec3 prevHit = Homogenize(dvd_PreviousViewProjectionMatrix * (invViewMatrix * vec4(hitPoint, 1.f)));
 #endif
 #endif
                     // Blend between reprojected SSR sample and IBL
@@ -224,7 +224,7 @@ void main() {
                     const vec3 ssr = textureLod(texScreen, 0.5f * prevHit.xy + 0.5f, roughness * maxScreenMips).rgb;
                     ambientReflected = mix(ambientReflected, ssr, reflBlend);
 #if defined(DEBUG_NAN_VALUES)
-                    if (dvd_materialDebugFlag == DEBUG_SSR)
+                    if (dvd_MaterialDebugFlag == DEBUG_SSR)
                     {
                         if (isnan(reflBlend) || isnan(ssr.r) || isnan(ssr.g) || isnan(ssr.b)) {
                             ambientReflected = vec3(1.f, 0.f, 0.f);

@@ -74,8 +74,8 @@ float SphereToScreenSpaceTessellation(in vec3 w0, in vec3 w1, in float diameter,
     clip1 /= clip1.w;                          // project
     //clip0.xy = clip0.xy * 0.5f + 0.5f;       // to NDC (DX11 sample skipped this)
     //clip1.xy = clip1.xy * 0.5f + 0.5f;       // to NDC (DX11 sample skipped this)
-    clip0.xy *= dvd_screenDimensions;          // to pixels
-    clip1.xy *= dvd_screenDimensions;          // to pixels
+    clip0.xy *= dvd_ScreenDimensions;          // to pixels
+    clip1.xy *= dvd_ScreenDimensions;          // to pixels
 
     return clamp(distance(clip0, clip1) / dvd_tessTriangleWidth, 1.f, float(MAX_TESS_LEVEL));
 }
@@ -309,7 +309,7 @@ void main()
     _out._vertexW = dvd_WorldMatrix(dvd_Transforms[TRANSFORM_IDX]) * dvd_terrainWorld * vec4(pos.x, GetHeight(_out._texCoord), pos.z, 1.0f);
     _out._vertexWV = dvd_ViewMatrix * _out._vertexW;
     setClipPlanes(); //Only need world vertex position for clipping
-    _out._normalW = dvd_normalMatrixW(dvd_Transforms[TRANSFORM_IDX]) * getNormal(_out._texCoord);
+    _out._normalW = dvd_NormalMatrixW(dvd_Transforms[TRANSFORM_IDX]) * getNormal(_out._texCoord);
     _out._indirectionIDs = _in[0]._indirectionIDs;
 #if !defined(PRE_PASS) && !defined(SHADOW_PASS)
     _out._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_cameraPosition.xyz - _out._vertexW.xyz);
@@ -487,6 +487,10 @@ layout(location = 12) in vec3 tes_debugColour;
 #include "output.frag"
 #include "BRDF.frag"
 #include "terrainSplatting.frag"
+
+#if defined (TOGGLE_LODS)
+#include "turboColormap.frag"
+#endif //TOGGLE_LODS
 
 void main(void) {
 

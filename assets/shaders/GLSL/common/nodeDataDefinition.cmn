@@ -3,10 +3,15 @@
 
 #include "nodeDataInput.cmn"
 
-#define TRANSFORM_IDX VAR._indirectionIDs.x
-#define MATERIAL_IDX VAR._indirectionIDs.y
-#define TEXTURE_IDX VAR._indirectionIDs.z
-#define SELECTION_FLAG VAR._indirectionIDs.w
+#define _transformIdx x
+#define _materialIdx y
+#define _texturesIdx z
+#define _selectionIdx w
+
+#define TRANSFORM_IDX VAR._indirectionIDs._transformIdx
+#define MATERIAL_IDX VAR._indirectionIDs._materialIdx
+#define TEXTURE_IDX VAR._indirectionIDs._texturesIdx
+#define SELECTION_FLAG VAR._indirectionIDs._selectionIdx
 
 struct NodeTransformData {
     mat4 _worldMatrix;
@@ -20,15 +25,13 @@ struct NodeTransformData {
 };
 
 #define NodeIndirectionData uvec4
-#define _transformIdx x
-#define _materialIdx y
-#define _texturesIdx z
+
 
 #if defined(PROJECTED_TEXTURE)
 uniform float projectedTextureMixWeight;
 #endif //PROJECTED_TEXTURE
 
-#if defined(FRAG_SHADER) || defined(NEED_MATERIAL_DATA)
+#if defined(FRAG_SHADER)
 
 struct NodeMaterialData
 {
@@ -52,51 +55,36 @@ struct NodeMaterialData
     uvec4 _textureOperations;
 };
 
-#define BaseColour(materialData) materialData._albedo
-#define EmissiveColour(materialData) materialData._emissiveAndParallax.rgb
-#define Specular(materialData) unpackUnorm4x8(materialData._data.y).rgb
-#define Ambient(materialData) materialData._colourData.rgb
-#define SpecularStrength(materialData) materialData._colourData.a
+#define dvd_BaseColour(materialData) materialData._albedo
+#define dvd_EmissiveColour(materialData) materialData._emissiveAndParallax.rgb
+#define dvd_Specular(materialData) unpackUnorm4x8(materialData._data.y).rgb
+#define dvd_Ambient(materialData) materialData._colourData.rgb
+#define dvd_SpecularStrength(materialData) materialData._colourData.a
+#define dvd_ProbeIndex(materialData) materialData._data.w
+#define dvd_TexOperationsA(materialData) uvec4(unpackUnorm4x8(materialData._textureOperations.x) * 255)
+#define dvd_TexOperationsB(materialData) uvec4(unpackUnorm4x8(materialData._textureOperations.y) * 255)
+#define dvd_TexOpUnit0(materialData) dvd_TexOperationsA(materialData).x
+#define dvd_TexOpSpecular(materialData) dvd_TexOperationsA(materialData).z
+#define dvd_TexOpEmissive(materialData) dvd_TexOperationsA(materialData).w
+#define dvd_TexOpOpacity(materialData)  dvd_TexOperationsB(materialData).w
+#define dvd_BumpMethod(X) uint(unpackUnorm4x8(dvd_Materials[X]._data.z).w * 255)
+#define dvd_UseAlbedoTextureAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).x) == 1u)
+#define dvd_UseOpacityAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).y) == 1u)
+#define dvd_ReceivesShadows(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.w).x) == 1u)
+#define dvd_SpecularGloss(materialData) unpackUnorm4x8(materialData._textureOperations.z).zw
+#define dvd_ParallaxFactor(X) dvd_Materials[X]._emissiveAndParallax.a
+#define dvd_IsDoubleSided(materialData) (uint(unpackUnorm4x8(materialData._data.y).a * 255) == 1u)
 
-#define dvd_probeIndex(materialData) materialData._data.w
-#define dvd_texOperationsA(materialData) uvec4(unpackUnorm4x8(materialData._textureOperations.x) * 255)
-#define dvd_texOperationsB(materialData) uvec4(unpackUnorm4x8(materialData._textureOperations.y) * 255)
-#define dvd_TexOpUnit0(materialData) dvd_texOperationsA(materialData).x
-#define dvd_TexOpSpecular(materialData) dvd_texOperationsA(materialData).z
-#define dvd_TexOpEmissive(materialData) dvd_texOperationsA(materialData).w
-#define dvd_TexOpOpacity(materialData)  dvd_texOperationsB(materialData).w
-
-#define dvd_bumpMethod(X) uint(unpackUnorm4x8(dvd_Materials[X]._data.z).w * 255)
-
-#define dvd_useAlbedoTextureAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).x) == 1u)
-
-#define dvd_useOpacityAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).y) == 1u)
-
-#define dvd_receivesShadows(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.w).x) == 1u)
-
-#define dvd_specularGloss(materialData) unpackUnorm4x8(materialData._textureOperations.z).zw
-
-#define dvd_parallaxFactor(X) dvd_Materials[X]._emissiveAndParallax.a
-
-#define dvd_isDoubleSided(materialData) (uint(unpackUnorm4x8(materialData._data.y).a * 255) == 1u)
-
-#endif //FRAG_SHADER || NEED_MATERIAL_DATA
+#endif //FRAG_SHADER
 
 #define dvd_WorldMatrix(transformData) transformData._worldMatrix
+#define dvd_NormalMatrixW(transformData) mat3(transformData._normalMatrixW)
+#define dvd_NodeData(transformData) unpackUnorm4x8(uint(transformData._normalMatrixW[0][3]))
+#define dvd_FrameTicked(transformData) (uint(dvd_NodeData(transformData).y  * 255) == 1u)
+#define dvd_LoDLevel(transformData) uint(dvd_NodeData(transformData).z * 255)
+#define dvd_CullNode(transformData) (uint(dvd_NodeData(transformData).w * 255) == 1u)
+#define dvd_SelectionFlag(transformData) (uint(transformData._normalMatrixW[1][3]))
+#define dvd_BoneCount(transformData) uint(transformData._normalMatrixW[2][3])
+#define dvd_BoundingSphere(transformData) transformData._normalMatrixW[3]
 
-#define dvd_normalMatrixW(transformData) mat3(transformData._normalMatrixW)
-
-#define dvd_nodeData(transformData) unpackUnorm4x8(uint(transformData._normalMatrixW[0][3]))
-
-#define dvd_frameTicked(transformData) (uint(dvd_nodeData(transformData).y  * 255) == 1u)
-
-#define dvd_LoDLevel(transformData) uint(dvd_nodeData(transformData).z * 255)
-
-#define dvd_cullNode(transformData) (uint(dvd_nodeData(transformData).w * 255) == 1u)
-
-#define dvd_selectionFlag(transformData) (uint(transformData._normalMatrixW[1][3]))
-
-#define dvd_boneCount(transformData) uint(transformData._normalMatrixW[2][3])
-
-#define dvd_boundingSphere(transformData) transformData._normalMatrixW[3]
 #endif //_NODE_DATA_DEFINITION_CMN_

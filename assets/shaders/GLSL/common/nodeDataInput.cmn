@@ -45,29 +45,20 @@ out gl_PerVertex
 
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
 
-#define SHADOW_PASS_NORMAL 0
-#define SHADOW_PASS_ORTHO 1
-#define SHADOW_PASS_CUBE 2
-
 layout(binding = BUFFER_RENDER_BLOCK, std140) uniform dvd_RenderBlock
 {
     mat4  dvd_PreviousViewMatrix;
     mat4  dvd_PreviousProjectionMatrix;
-    //x - elapsed time (ms)
+    mat4  dvd_PreviousViewProjectionMatrix;
+    //x - elapsed time (ms), y - light cluster size XY packed, z = material debug flag, w - clip plane count
     vec4  dvd_renderProperties;
-    //x - cluster size X, y - cluster size Y
-    vec4  dvd_lightingProperties;
-    //x - material debug flag, y - fog enabled, z - clip plane count, w - reserved
-    vec4  dvd_otherProperties;
-
     vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
-    vec4 _render_padding[2];
 };
 
-#define dvd_time int(dvd_renderProperties.x)
-#define dvd_materialDebugFlag int(dvd_otherProperties.x)
-#define dvd_ClipPlaneCount int(dvd_otherProperties.z)
-#define dvd_ClusterSizes dvd_lightingProperties.xy
+#define dvd_TimeMS int(dvd_renderProperties.x)
+#define dvd_ClusterSizes unpackHalf2x16(uint(dvd_renderProperties.y))
+#define dvd_MaterialDebugFlag int(dvd_renderProperties.z)
+#define dvd_ClipPlaneCount uint(dvd_renderProperties.w)
 
 #if !defined(NO_CAM_BLOCK)
 layout(binding = BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
@@ -80,7 +71,7 @@ layout(binding = BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
     //xyz - position, w - aspect ratio
     vec4  dvd_cameraPosition; 
     vec4  dvd_ViewPort;
-    //x - scale, y - bias
+    //x - scale, y - bias, z - light bleed bias, w - min shadow variance
     vec4 dvd_lightingTweakValues;
     //x - nearPlane, y - farPlane, z - FoV, w - ortho camera
     vec4  dvd_camProperties;
@@ -88,22 +79,19 @@ layout(binding = BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
     vec4 _cam_padding[2];
 };
 
-#define dvd_fogEnabled (int(dvd_otherProperties.y) == 1)
 #define SHADOW_PASS_TYPE int(dvd_camProperties.w)
 #define CAMERA_FLAG SHADOW_PASS_TYPE
 
-#define dvd_cameraForward vec3(dvd_ViewMatrix[3].xyz)
-#define windowWidth int(dvd_ViewPort.z)
-#define windowHeight int(dvd_ViewPort.w)
-
-#define dvd_screenDimensions dvd_ViewPort.zw
-#define dvd_invScreenDimensions (1.f / dvd_screenDimensions)
-#define dvd_aspectRatio dvd_cameraPosition.w
-#define dvd_zPlanes dvd_camProperties.xy
-#define dvd_fieldOfView dvd_camProperties.z
+#define dvd_ScreenDimensions dvd_ViewPort.zw
+#define dvd_InvScreenDimensions (1.f / dvd_ScreenDimensions)
+#define dvd_AspectRatio dvd_cameraPosition.w
+#define dvd_ZPlanes dvd_camProperties.xy
+#define dvd_FieldOfView dvd_camProperties.z
 
 #define dvd_LightScale dvd_lightingTweakValues.x
 #define dvd_LightBias dvd_lightingTweakValues.y
+#define dvd_LightBleedBias dvd_lightingTweakValues.z
+#define dvd_MinVariance dvd_lightingTweakValues.w
 #define dvd_IsOrthoCamera  (uint(dvd_camProperties.w) == 1u)
 
 #endif //!NO_CAM_BLOCK
@@ -161,7 +149,5 @@ layout(binding = BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
 #endif //MAX_CLIP_PLANES
 #endif //!NO_CLIP_CULL_OUT
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
-
-#define BitCompare(MASK, BIT) ((MASK & BIT) != 0)
 
 #endif //_NODE_DATA_INPUT_CMN_

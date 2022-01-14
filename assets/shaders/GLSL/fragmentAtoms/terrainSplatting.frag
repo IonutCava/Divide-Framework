@@ -40,8 +40,6 @@ BlendMapDataType getBlendFactor(in vec2 uv) {
     return blendAmount;
 }
 
-#define scaledTextureCoords(UV) scaledTextureCoords(UV, TEXTURE_TILE_SIZE)
-
 mat3 cotangentFrame() {
     const vec3 V = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
 
@@ -134,26 +132,26 @@ vec2 ParallaxOcclusionMapping(in vec2 scaledCoords, in vec3 viewDirT, float curr
 #endif //HAS_PARALLAX
 
 #if defined(LOW_QUALITY) || !defined(HAS_PARALLAX)
-#define getScaledCoords(UV, AMNT) scaledTextureCoords(UV)
+#define getScaledCoords(UV, AMNT) scaledTextureCoords(UV, TEXTURE_TILE_SIZE)
 #else //LOW_QUALITY || !HAS_PARALLAX
 vec2 getScaledCoords(vec2 uv, in BlendMapDataType amnt) {
-    vec2 scaledCoords = scaledTextureCoords(uv);
+    vec2 scaledCoords = scaledTextureCoords(uv, TEXTURE_TILE_SIZE);
 #if 0
     //ToDo: Maybe bump this 1 unit? -Ionut
     if (VAR._LoDLevel == 0u) {
-        const uint bumpMethod = dvd_bumpMethod(MATERIAL_IDX);
+        const uint bumpMethod = dvd_BumpMethod(MATERIAL_IDX);
         if (bumpMethod == BUMP_PARALLAX || bumpMethod == BUMP_PARALLAX_OCCLUSION) {
             const vec3 viewDirT = transpose(getTBNW()) * normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
             const float currentHeight = getDisplacementValueFromCoords(scaledCoords, amnt);
             if (bumpMethod == BUMP_PARALLAX) {
                 //ref: https://learnopengl.com/Advanced-Lighting/Parallax-Mapping
-                const vec2 p = (viewDirT.xy / viewDirT.z) * currentHeight * dvd_parallaxFactor(MATERIAL_IDX);
+                const vec2 p = (viewDirT.xy / viewDirT.z) * currentHeight * dvd_ParallaxFactor(MATERIAL_IDX);
                 const vec2 texCoords = uv - p;
                 const vec2 clippedTexCoord = vec2(texCoords.x - floor(texCoords.x),
                                                   texCoords.y - floor(texCoords.y));
-                scaledCoords = scaledTextureCoords(clippedTexCoord);
+                scaledCoords = scaledTextureCoords(clippedTexCoord, TEXTURE_TILE_SIZE);
             } else {
-                scaledCoords = ParallaxOcclusionMapping(uv, viewDirT, currentHeight, dvd_parallaxFactor(MATERIAL_IDX), amnt);
+                scaledCoords = ParallaxOcclusionMapping(uv, viewDirT, currentHeight, dvd_ParallaxFactor(MATERIAL_IDX), amnt);
             }
         }
     }
@@ -219,7 +217,7 @@ vec4 getTerrainAlbedo(in BlendMapDataType amnt, in vec2 uv) {
 }
 
 vec4 getUnderwaterAlbedo(in vec2 uv, in float waterDepth) {
-    const float time2 = MSToSeconds(dvd_time) * 0.1f;
+    const float time2 = MSToSeconds(dvd_TimeMS) * 0.1f;
     const vec4 uvNormal = vec4(uv + time2.xx, uv + vec2(-time2, time2));
 
     return vec4(mix(0.5f * (GetCaustics(vec3(uvNormal.xy, 0)).rgb + texture(texSpecular, vec3(uvNormal.zw, 0)).rgb),

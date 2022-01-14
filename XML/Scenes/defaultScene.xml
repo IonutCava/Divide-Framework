@@ -14,6 +14,7 @@
     <visibility>1000</visibility>
 </options>
 <fog>
-    <fogDensity>0.001</fogDensity>
-    <fogColour r="0.5" g="0.5" b="0.550000012"/>
+    <fogDensity>0.0700000003</fogDensity>
+    <fogScatter>0.00700000022</fogScatter>
+    <fogColour r="0.699999988" g="0.699999988" b="0.800000012"/>
 </fog>

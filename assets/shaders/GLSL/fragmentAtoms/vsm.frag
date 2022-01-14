@@ -5,7 +5,7 @@
 
 vec2 computeMoments() {
     const float Depth = dvd_IsOrthoCamera ? gl_FragCoord.z
-                                          : length(VAR._vertexW.xyz - dvd_cameraPosition.xyz) / dvd_zPlanes.y;
+                                          : length(VAR._vertexW.xyz - dvd_cameraPosition.xyz) / dvd_ZPlanes.y;
     // Compute partial derivatives of depth. 
     const float dx = dFdx(Depth);
     const float dy = dFdy(Depth);

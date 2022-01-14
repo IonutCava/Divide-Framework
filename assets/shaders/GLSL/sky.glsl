@@ -298,6 +298,7 @@ uniform bool  dvd_enableClouds;
 
 #define NEED_SCENE_DATA
 #include "sceneData.cmn"
+#include "utility.frag"
 #include "output.frag"
 
 #define UP_DIR WORLD_Y_AXIS
@@ -497,7 +498,7 @@ float intersectSphere(in vec3 pos, in vec3 dir, in float r) {
 }
 
 float density(vec3 p, in vec3 weather, in bool hq, in float LOD) {
-    const float time = MSToSeconds(dvd_time);
+    const float time = MSToSeconds(dvd_TimeMS);
 
     p.x += time * 20.f;
     //p.z -= time * 5.f;
@@ -682,7 +683,7 @@ void main() {
 #if defined(MAIN_DISPLAY_PASS)
     const vec3 rayDirection = normalize(VAR._vertexW.xyz - dvd_cameraPosition.xyz);
     vec3 ret = vec3(0.f);
-    switch (dvd_materialDebugFlag) {
+    switch (dvd_MaterialDebugFlag) {
         case DEBUG_ALBEDO:        ret = getRawAlbedo(rayDirection, lerpValue); break;
         case DEBUG_LIGHTING:      ret = getSkyColour(rayDirection, lerpValue); break;
         case DEBUG_SPECULAR:      

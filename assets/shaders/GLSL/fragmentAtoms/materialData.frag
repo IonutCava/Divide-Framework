@@ -93,11 +93,33 @@ void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OM
 #endif //NO_OMR_TEX
 #endif //USE_CUSTOM_TEXTURE_OMR
 
+vec4 ApplyTexOperation(in vec4 a, in vec4 b, in uint texOperation) {
+    //hot pink to easily spot it in a crowd
+    vec4 retColour = a;
+
+    // Read from the second texture (if any)
+    switch (texOperation) {
+        
+        default             : retColour = vec4(0.7743f, 0.3188f, 0.5465f, 1.f);               break;
+        case TEX_NONE       : /*NOP*/                                                         break;
+        case TEX_MULTIPLY   : retColour *= b;                                                 break;
+        case TEX_ADD        : retColour.rgb += b.rgb; retColour.a *= b.a;                     break;
+        case TEX_SUBTRACT   : retColour -= b;                                                 break;
+        case TEX_DIVIDE     : retColour /= b;                                                 break;
+        case TEX_SMOOTH_ADD : retColour = (retColour + b) - (retColour * b);                  break;
+        case TEX_SIGNED_ADD : retColour += b - 0.5f;                                          break;
+        case TEX_DECAL      : retColour  = vec4(mix(retColour.rgb, b.rgb, b.a), retColour.a); break;
+        case TEX_REPLACE    : retColour  = b;                                                 break;
+    }
+
+    return retColour;
+}
+
 #if defined(USE_CUSTOM_SPECULAR)
 vec4 getSpecular(in NodeMaterialData matData, in vec3 uv);
 #else //USE_CUSTOM_SPECULAR
 vec4 getSpecular(in NodeMaterialData matData, in vec3 uv) {
-    vec4 specData = vec4(Specular(matData), SpecularStrength(matData));
+    vec4 specData = vec4(dvd_Specular(matData), dvd_SpecularStrength(matData));
 
     // Specular strength is baked into the specular colour, so even if we use a texture, we still need to multiply the strength in
     const uint texOp = dvd_TexOpSpecular(matData);
@@ -120,7 +142,7 @@ vec3 getEmissiveColour(in NodeMaterialData matData, in vec3 uv) {
         return texture(texEmissive, uv).rgb;
     }
 
-    return EmissiveColour(matData);
+    return dvd_EmissiveColour(matData);
 }
 #endif //USE_CUSTOM_EMISSIVE
 
@@ -141,7 +163,7 @@ float getRoughness(in NodeMaterialData matData, in vec2 uv, in float normalVaria
     const bool usePacked = uint(unpackedData.z) == 1u;
 
     vec4 OMR = unpackUnorm4x8(matData._data.x);
-    const uvec4 texOpsB = dvd_texOperationsB(matData);
+    const uvec4 texOpsB = dvd_TexOperationsB(matData);
     getTextureOMR(usePacked, vec3(uv, 0), texOpsB.xyz, OMR.rgb);
     roughness = OMR.b;
 
@@ -167,7 +189,7 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
     #define UnpackedData (unpackUnorm4x8(matData._data.z) * 255)
     #define UsePacked (uint(UnpackedData.z) == 1u)
 
-    getTextureOMR(UsePacked, vec3(uv, 0), dvd_texOperationsB(matData).xyz, OMR.rgb);
+    getTextureOMR(UsePacked, vec3(uv, 0), dvd_TexOperationsB(matData).xyz, OMR.rgb);
     material._occlusion = OMR.r;
     material._metallic = OMR.g;
 
@@ -183,7 +205,7 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
 #if defined(SHADING_MODE_BLINN_PHONG)
     material._metallic = SpecularToMetalness(material._specular.rgb, material._specular.a);
 #endif //SHADING_MODE_BLINN_PHONG
-    const vec3 albedoIn = albedo + Ambient(matData);
+    const vec3 albedoIn = albedo + dvd_Ambient(matData);
 
 #define DielectricSpecular vec3(0.04f)
 #define Black vec3(0.f)
@@ -232,9 +254,9 @@ float specularAntiAliasing(in vec3 N, in float a) {
 #endif //!PRE_PASS
 
 vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {
-    vec4 colour = BaseColour(data);
+    vec4 colour = dvd_BaseColour(data);
 
-    const uvec2 texOps = dvd_texOperationsA(data).xy;
+    const uvec2 texOps = dvd_TexOperationsA(data).xy;
 
     if (texOps.x != TEX_NONE) {
         colour = ApplyTexOperation(colour, texture(texDiffuse0, uv), texOps.x);
@@ -251,15 +273,15 @@ vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {
 #if defined(USE_ALPHA_DISCARD)
 float getAlpha(in NodeMaterialData data, in vec3 uv) {
     if (dvd_TexOpOpacity(data) != TEX_NONE) {
-        const float refAlpha = dvd_useOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
+        const float refAlpha = dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
         return getScaledAlpha(refAlpha, uv.xy, textureSize(texOpacityMap, 0));
     }
 
-    if (dvd_useAlbedoTextureAlphaChannel(data) && dvd_TexOpUnit0(data) != TEX_NONE) {
+    if (dvd_UseAlbedoTextureAlphaChannel(data) && dvd_TexOpUnit0(data) != TEX_NONE) {
         return getAlpha(texDiffuse0, uv);
     }
 
-    return BaseColour(data).a;
+    return dvd_BaseColour(data).a;
 }
 #endif //USE_ALPHA_DISCARD
 
@@ -267,12 +289,12 @@ vec4 getAlbedo(in NodeMaterialData data, in vec3 uv) {
     vec4 albedo = getTextureColour(data, uv);
 
     if (dvd_TexOpOpacity(data) != TEX_NONE) {
-        const float refAlpha = dvd_useOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
+        const float refAlpha = dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
         albedo.a = getScaledAlpha(refAlpha, uv.xy, textureSize(texOpacityMap, 0));
     }
 
-    if (!dvd_useAlbedoTextureAlphaChannel(data)) {
-        albedo.a = BaseColour(data).a;
+    if (!dvd_UseAlbedoTextureAlphaChannel(data)) {
+        albedo.a = dvd_BaseColour(data).a;
     } else if (dvd_TexOpUnit0(data) != TEX_NONE) {
         albedo.a = getScaledAlpha(albedo.a, uv.xy, textureSize(texDiffuse0, 0));
     }
@@ -313,12 +335,12 @@ vec3 getNormalWV(in NodeMaterialData data, in vec3 uv, out float normalVariation
 #else //MAIN_DISPLAY_PASS && !PRE_PASS
     vec3 normalWV = VAR._normalWV;
 #if defined(COMPUTE_TBN)
-    if (dvd_bumpMethod(MATERIAL_IDX) != BUMP_NONE) {
+    if (dvd_BumpMethod(MATERIAL_IDX) != BUMP_NONE) {
         const vec3 normalData = getNormalMap(texNormalMap, uv, normalVariation);
         normalWV = getTBNWV() * normalData;
     }
 #endif //COMPUTE_TBN
-    return normalize(normalWV) * (dvd_isDoubleSided(data) ? (2.f * float(gl_FrontFacing) - 1.f) : 1.f);
+    return normalize(normalWV) * (dvd_IsDoubleSided(data) ? (2.f * float(gl_FrontFacing) - 1.f) : 1.f);
 #endif  //MAIN_DISPLAY_PASS && !PRE_PASS
 }
 

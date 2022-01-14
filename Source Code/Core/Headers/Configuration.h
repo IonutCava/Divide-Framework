@@ -129,7 +129,8 @@ struct Configuration final : XML::IXMLSerializable {
         U16 reflectionPlaneResolution = 512;
         I32 numLightsPerCluster = -1;
         bool enableFog = true;
-        vec2<F32> fogDensity = { 0.01f, 0.01f };
+        F32 fogDensity = 0.01f;
+        F32 fogScatter = 0.01f;
         vec3<F32> fogColour = { 0.2f, 0.2f, 0.2f };
         vec4<U16> lodThresholds = { 25u, 45u, 85u, 165u };
         struct PostFX {

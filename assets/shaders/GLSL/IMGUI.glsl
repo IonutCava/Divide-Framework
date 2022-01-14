@@ -45,7 +45,7 @@ void main()
         uv.t = 1.f - uv.t;
     }
 
-    const vec2 zPlanes = dvd_zPlanes * depthRange;
+    const vec2 zPlanes = dvd_ZPlanes * depthRange;
 
     vec4 texColor = vec4(0.f);
     if (textureType == 0u) {

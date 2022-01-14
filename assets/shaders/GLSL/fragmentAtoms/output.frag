@@ -1,25 +1,27 @@
 #ifndef _OUTPUT_FRAG_
 #define _OUTPUT_FRAG_
 
-#define MIN_FLOAT_OUTPUT -65504.f
+#if !defined(OIT_PASS)
+
+layout(location = TARGET_ALBEDO) out vec4 _colourOut;
+
+#define writeScreenColour(COL) _colourOut = COL
+
+#else //OIT_PASS
 
 #include "utility.frag"
 
-layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepth;
-float sampleDepth(in vec2 uv) { return texture(texDepth, uv).r; }
-
-#if !defined(OIT_PASS)
-layout(location = TARGET_ALBEDO) out vec4 _colourOut;
-#else //OIT_PASS
 layout(location = TARGET_ACCUMULATION) out vec4  _accum;
 layout(location = TARGET_REVEALAGE) out float _revealage;
+
+layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepth;
+#define SampleDepth(UV) texture(texDepth, UV).r
 
 #if defined(USE_COLOURED_WOIT)
 layout(location = TARGET_MODULATE) out vec4  _modulate;
 #endif
 
 //layout(binding = TEXTURE_TRANSMITANCE) uniform sampler2D texTransmitance;
-//layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepthMap;
 
 // Shameless copy-paste from http://casual-effects.blogspot.co.uk/2015/03/colored-blended-order-independent.html
 void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpaceZ) {
@@ -52,16 +54,12 @@ void writePixel(in vec4 premultipliedReflect, in vec3 transmit, in float viewSpa
     _accum = premultipliedReflect * w;
     _revealage = premultipliedReflect.a;
 }
-#endif //OIT_PASS
 
 void writeScreenColour(in vec4 colour) {
-#if defined(OIT_PASS)
     const vec3 transmit = vec3(0.f);//texture(texTransmitance, dvd_screenPositionNormalised).rgb;
-    const float viewSpaceZ = ViewSpaceZ(sampleDepth(dvd_screenPositionNormalised).r);
+    const float viewSpaceZ = ViewSpaceZ(SampleDepth(dvd_screenPositionNormalised), dvd_InverseProjectionMatrix);
     writePixel(vec4(colour.rgb * colour.a, colour.a), transmit, viewSpaceZ);
-#else //OIT_PASS
-    _colourOut = colour;
-#endif //OIT_PASS
 }
+#endif //OIT_PASS
 
 #endif //_OUTPUT_FRAG_

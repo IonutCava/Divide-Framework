@@ -21,7 +21,7 @@ void main(void) {
     const vec4 vertexWVP = computeData(fetchInputData());
     setClipPlanes();
 
-    const float time2 = MSToSeconds(dvd_time) * 0.01f;
+    const float time2 = MSToSeconds(dvd_TimeMS) * 0.01f;
     _scrollingUV = vec4(VAR._texCoord + time2.xx, 
                         VAR._texCoord + vec2(-time2, time2)) * 25.f;
 
@@ -37,6 +37,7 @@ layout(early_fragment_tests) in;
 layout(location = 0) in vec4 _scrollingUV;
 
 #include "nodeBufferedInput.cmn"
+#include "utility.frag"
 #include "output.frag"
 
 void main(void) {

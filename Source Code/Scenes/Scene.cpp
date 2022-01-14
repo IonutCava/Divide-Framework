@@ -215,8 +215,8 @@ bool Scene::saveXML(const DELEGATE<void, std::string_view>& msgCallback, const D
             playerCamera(i, true)->saveToXML(pt);
         }
 
-        pt.put("fog.fogDensityB", state()->renderState().fogDetails()._colourAndDensity.a);
-        pt.put("fog.fogDensityC", state()->renderState().fogDetails()._colourSunScatter.a);
+        pt.put("fog.fogDensity", state()->renderState().fogDetails()._colourAndDensity.a);
+        pt.put("fog.fogScatter", state()->renderState().fogDetails()._colourSunScatter.a);
         pt.put("fog.fogColour.<xmlattr>.r", state()->renderState().fogDetails()._colourAndDensity.r);
         pt.put("fog.fogColour.<xmlattr>.g", state()->renderState().fogDetails()._colourAndDensity.g);
         pt.put("fog.fogColour.<xmlattr>.b", state()->renderState().fogDetails()._colourAndDensity.b);
@@ -316,17 +316,17 @@ bool Scene::loadXML() {
     _dayNightData._resetTime = true;
 
     FogDetails details = {};
-    details._colourAndDensity.set(config.rendering.fogColour, config.rendering.fogDensity.x);
-    details._colourSunScatter.a = config.rendering.fogDensity.y;
+    details._colourAndDensity.set(config.rendering.fogColour, config.rendering.fogDensity);
+    details._colourSunScatter.a = config.rendering.fogScatter;
 
     if (pt.get_child_optional("fog")) {
         details._colourAndDensity = { 
             pt.get<F32>("fog.fogColour.<xmlattr>.r", details._colourAndDensity.r),
             pt.get<F32>("fog.fogColour.<xmlattr>.g", details._colourAndDensity.g),
             pt.get<F32>("fog.fogColour.<xmlattr>.b", details._colourAndDensity.b),
-            pt.get("fog.fogDensityB", details._colourAndDensity.a)
+            pt.get("fog.fogDensity", details._colourAndDensity.a)
         };
-        details._colourSunScatter.a = pt.get("fog.fogDensityC", details._colourSunScatter.a);
+        details._colourSunScatter.a = pt.get("fog.fogScatter", details._colourSunScatter.a);
     }
 
     state()->renderState().fogDetails(details);

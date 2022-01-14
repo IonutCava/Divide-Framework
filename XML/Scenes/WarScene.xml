@@ -36,8 +36,8 @@
     </Player_Cam_0>
 </camera>
 <fog>
-    <fogDensityB>0.0700000003</fogDensityB>
-    <fogDensityC>0.00700000022</fogDensityC>
+    <fogDensity>0.0700000003</fogDensity>
+    <fogScatter>0.00700000022</fogScatter>
     <fogColour r="0.699999988" g="0.699999988" b="0.800000012"/>
 </fog>
 <lod>

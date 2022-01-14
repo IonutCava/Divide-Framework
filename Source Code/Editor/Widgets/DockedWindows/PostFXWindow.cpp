@@ -91,19 +91,19 @@ namespace {
                 sceneChanged = true;
             }
             {
-                F32 fogDensityB = activeSceneState->renderState().fogDetails()._colourAndDensity.a;
-                if (ImGui::SliderFloat("Fog Density B", &fogDensityB, 0.0001f, 0.25f, "%.6f")) {
+                F32 fogDensity = activeSceneState->renderState().fogDetails()._colourAndDensity.a;
+                if (ImGui::SliderFloat("Fog Density B", &fogDensity, 0.0001f, 0.25f, "%.6f")) {
                     FogDetails details = activeSceneState->renderState().fogDetails();
-                    details._colourAndDensity.a = fogDensityB;
+                    details._colourAndDensity.a = fogDensity;
                     activeSceneState->renderState().fogDetails(details);
                     sceneChanged = true;
                 }
             }
             {
-                F32 fogDensityC = activeSceneState->renderState().fogDetails()._colourSunScatter.a;
-                if (ImGui::SliderFloat("Fog Density C", &fogDensityC, 0.0001f, 0.25f, "%.6f")) {
+                F32 fogScatter = activeSceneState->renderState().fogDetails()._colourSunScatter.a;
+                if (ImGui::SliderFloat("Fog Density C", &fogScatter, 0.0001f, 0.25f, "%.6f")) {
                     FogDetails details = activeSceneState->renderState().fogDetails();
-                    details._colourSunScatter.a = fogDensityC;
+                    details._colourSunScatter.a = fogScatter;
                     activeSceneState->renderState().fogDetails(details);
                     sceneChanged = true;
                 }
