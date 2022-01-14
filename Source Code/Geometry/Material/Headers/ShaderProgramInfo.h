@@ -50,7 +50,6 @@ struct ShaderProgramInfo {
 
     ShaderProgram_ptr _shaderRef = nullptr;
     ShaderBuildStage _shaderCompStage = ShaderBuildStage::COUNT;
-    bool _customShader = false;
 };
 
 }; //namespace Divide

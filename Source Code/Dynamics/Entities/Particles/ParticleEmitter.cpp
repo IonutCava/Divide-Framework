@@ -120,43 +120,45 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     mat->setRenderStateBlock(_particleStateBlockHash, RenderStage::COUNT, RenderPassType::MAIN_PASS);
     mat->setRenderStateBlock(_particleStateBlockHash, RenderStage::COUNT, RenderPassType::OIT_PASS);
 
-    ShaderModuleDescriptor vertModule = {};
-    vertModule._moduleType = ShaderType::VERTEX;
-    vertModule._sourceFile = "particles.glsl";
-    vertModule._variant = useTexture ? "WithTexture" : "NoTexture";
+    mat->customShaderCBK([&](const RenderStagePass stagePass) {
+        ShaderModuleDescriptor vertModule = {};
+        vertModule._moduleType = ShaderType::VERTEX;
+        vertModule._sourceFile = "particles.glsl";
+        vertModule._variant = useTexture ? "WithTexture" : "NoTexture";
 
-    ShaderModuleDescriptor fragModule = {};
-    fragModule._moduleType = ShaderType::FRAGMENT;
-    fragModule._sourceFile = "particles.glsl";
-    fragModule._variant = useTexture ? "WithTexture" : "NoTexture";
+        ShaderModuleDescriptor fragModule = {};
+        fragModule._moduleType = ShaderType::FRAGMENT;
+        fragModule._sourceFile = "particles.glsl";
+        fragModule._variant = useTexture ? "WithTexture" : "NoTexture";
 
-    if (useTexture){
-        fragModule._defines.emplace_back("HAS_TEXTURE", true);
-    }
+        if (useTexture) {
+            fragModule._defines.emplace_back("HAS_TEXTURE", true);
+        }
 
-    ShaderProgramDescriptor particleShaderDescriptor = {};
-    particleShaderDescriptor._name = useTexture ? "particles_WithTexture" : "particles_NoTexture";
-    particleShaderDescriptor._modules.push_back(vertModule);
-    particleShaderDescriptor._modules.push_back(fragModule);
+        ShaderProgramDescriptor particleShaderDescriptor = {};
+        particleShaderDescriptor._name = useTexture ? "particles_WithTexture" : "particles_NoTexture";
 
-    ShaderProgramDescriptor particleShaderPrePassDescriptor = particleShaderDescriptor;
-    particleShaderPrePassDescriptor._name = useTexture ? "particles_prePass_WithTexture" : "particles_prePass_NoTexture";
-    particleShaderPrePassDescriptor._modules.back()._variant = "PrePass";
-    particleShaderPrePassDescriptor._modules.back()._defines.emplace_back("PRE_PASS", true);
+        if (stagePass._stage == RenderStage::DISPLAY) {
+            if (IsDepthPass(stagePass)) {
+                fragModule._variant = "PrePass";
+                fragModule._defines.emplace_back("PRE_PASS", true);
+                particleShaderDescriptor._name = useTexture ? "particles_prePass_WithTexture" : "particles_prePass_NoTexture";
+            }
+            particleShaderDescriptor._modules.push_back(vertModule);
+            particleShaderDescriptor._modules.push_back(fragModule);
+        } else if (IsDepthPass(stagePass)) {
+            particleShaderDescriptor._modules.push_back(vertModule);
+            if (stagePass._stage == RenderStage::SHADOW) {
+                fragModule._variant = "Shadow.VSM";
+                particleShaderDescriptor._modules.push_back(fragModule);
+                particleShaderDescriptor._name = "particles_VSM";
+            } else {
+                particleShaderDescriptor._name = "particles_DepthPass";
+            }
+        }
 
-    ShaderProgramDescriptor particleShaderDepthDescriptor = particleShaderDescriptor;
-    particleShaderDepthDescriptor._name = "particles_DepthPass";
-    particleShaderDepthDescriptor._modules.pop_back();
-
-
-    ShaderProgramDescriptor particleShaderShadowDescriptor = particleShaderDescriptor;
-    particleShaderShadowDescriptor._name = "particles_VSM";
-    particleShaderShadowDescriptor._modules.back()._variant = "Shadow.VSM";
-
-    mat->setShaderProgram(particleShaderDepthDescriptor,     RenderStage::COUNT,   RenderPassType::PRE_PASS);
-    mat->setShaderProgram(particleShaderPrePassDescriptor,   RenderStage::DISPLAY, RenderPassType::PRE_PASS);
-    mat->setShaderProgram(particleShaderDescriptor,          RenderStage::COUNT,   RenderPassType::MAIN_PASS);
-    mat->setShaderProgram(particleShaderShadowDescriptor,    RenderStage::SHADOW,  RenderPassType::COUNT);
+        return particleShaderDescriptor;
+    });
 
     if (_particleTexture) {
         SamplerDescriptor textureSampler = {};

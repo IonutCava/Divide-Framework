@@ -120,7 +120,7 @@ class Material final : public CachedResource {
     static constexpr size_t INVALID_TEX_HASH = std::numeric_limits<size_t>::max();
 
     using SpecularGlossiness = vec2<F32>;
-    using CustomShaderUpdateCBK = DELEGATE_STD<bool, Material&, RenderStagePass>;
+    using CustomShaderUpdateCBK = DELEGATE_STD<ShaderProgramDescriptor, RenderStagePass>;
 
     struct ShaderData {
         Str64 _depthShaderVertSource = "baseVertexShaders";
@@ -241,9 +241,6 @@ class Material final : public CachedResource {
     [[nodiscard]] F32 getRoughness(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
     [[nodiscard]] F32 getOcclusion(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
 
-    /// Add the specified shader to specific RenderStagePass parameters. Use "COUNT" and/or g_AllVariantsID for global options
-    /// e.g. a RenderPassType::COUNT will use the shader in the specified stage+variant combo but for all of the passes
-    void setShaderProgram(const ShaderProgramDescriptor& shaderDescriptor, RenderStage stage, RenderPassType pass, RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT);
     /// Add the specified renderStateBlockHash to specific RenderStagePass parameters. Use "COUNT" and/or "g_AllVariantsID" for global options
     /// e.g. a RenderPassType::COUNT will use the block in the specified stage+variant combo but for all of the passes
     void setRenderStateBlock(size_t renderStateBlockHash, RenderStage stage, RenderPassType pass, RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT);

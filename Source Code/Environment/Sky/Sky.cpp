@@ -569,42 +569,44 @@ bool Sky::load() {
     _sky = CreateResource<Sphere3D>(_parentCache, skybox);
     _sky->renderState().drawState(false);
 
-    ShaderModuleDescriptor vertModule = {};
-    vertModule._moduleType = ShaderType::VERTEX;
-    vertModule._sourceFile = "sky.glsl";
-
-    ShaderModuleDescriptor fragModule = {};
-    fragModule._moduleType = ShaderType::FRAGMENT;
-    fragModule._sourceFile = "sky.glsl";
-
-    ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._name = "sky_Display_Clouds";
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.back()._variant = "Clouds";
-    shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._modules.back()._variant = "Clouds";
-    
-    ShaderProgramDescriptor shaderDescriptorDepth = {};
-    shaderDescriptorDepth._name = "sky_Depth";
-    vertModule._variant = "NoClouds";
-    shaderDescriptorDepth._modules.push_back(vertModule);
-
-    ShaderProgramDescriptor shaderDescriptorPrePass = {};
-    shaderDescriptorPrePass._name = "sky_PrePass";
-    vertModule._variant = "NoClouds";
-    shaderDescriptorPrePass._modules.push_back(vertModule);
-    fragModule._variant = "PrePass";
-    shaderDescriptorPrePass._modules.push_back(fragModule);
-
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
     ResourceDescriptor skyMaterial("skyMaterial_" + resourceName());
     Material_ptr skyMat = CreateResource<Material>(_parentCache, skyMaterial);
     skyMat->properties().shadingMode(ShadingMode::BLINN_PHONG);
     skyMat->properties().roughness(0.01f);
-    skyMat->setShaderProgram(shaderDescriptorDepth,   RenderStage::COUNT,   RenderPassType::PRE_PASS);
-    skyMat->setShaderProgram(shaderDescriptorPrePass, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
-    skyMat->setShaderProgram(shaderDescriptor,        RenderStage::COUNT,   RenderPassType::MAIN_PASS);
+
+    skyMat->customShaderCBK([](const RenderStagePass stagePass) {
+        ShaderModuleDescriptor vertModule = {};
+        vertModule._moduleType = ShaderType::VERTEX;
+        vertModule._sourceFile = "sky.glsl";
+
+        ShaderModuleDescriptor fragModule = {};
+        fragModule._moduleType = ShaderType::FRAGMENT;
+        fragModule._sourceFile = "sky.glsl";
+
+        ShaderProgramDescriptor shaderDescriptor = {};
+        if (IsDepthPass(stagePass)) {
+            vertModule._variant = "NoClouds";
+            shaderDescriptor._modules.push_back(vertModule);
+
+            if (stagePass._stage == RenderStage::DISPLAY) {
+                fragModule._variant = "PrePass";
+                shaderDescriptor._modules.push_back(fragModule);
+                shaderDescriptor._name = "sky_PrePass";
+            } else {
+                shaderDescriptor._name = "sky_Depth";
+            }
+        } else {
+            shaderDescriptor._name = "sky_Display";
+            vertModule._variant = "Clouds";
+            fragModule._variant = "Clouds";
+            shaderDescriptor._modules.push_back(vertModule);
+            shaderDescriptor._modules.push_back(fragModule);
+        }
+
+        return shaderDescriptor;
+    });
 
     // Generate a render state
     RenderStateBlock skyboxRenderState = {};

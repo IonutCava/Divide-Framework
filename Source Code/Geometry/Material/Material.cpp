@@ -379,18 +379,7 @@ void Material::recomputeShaders() {
                 }
 
                 stagePass._variant = static_cast<RenderStagePass::VariantType>(v);
-                if (!shaderInfo._customShader || _customShaderCBK) {
-                    shaderInfo._shaderCompStage = ShaderBuildStage::REQUESTED;
-                    computeShader(stagePass);
-                } else {
-                    if (shaderInfo._shaderCompStage == ShaderBuildStage::COMPUTED) {
-                        shaderInfo._shaderCompStage = ShaderBuildStage::READY;
-                    }
-
-                    if (shaderInfo._shaderRef != nullptr && shaderInfo._shaderCompStage == ShaderBuildStage::READY) {
-                        shaderInfo._shaderKeyCache = shaderInfo._shaderRef->getGUID();
-                    }
-                }
+                shaderInfo._shaderCompStage = ShaderBuildStage::REQUESTED;
             }
         }
     }
@@ -431,21 +420,23 @@ bool Material::canDraw(const RenderStagePass renderStagePass, bool& shaderJustFi
 
     shaderJustFinishedLoading = false;
     ShaderProgramInfo& info = shaderInfo(renderStagePass);
+    if (info._shaderCompStage == ShaderBuildStage::REQUESTED) {
+        computeShader(renderStagePass);
+    }
+
     // If we have a shader queued (with a valid ref) ...
     if (info._shaderCompStage == ShaderBuildStage::QUEUED) {
         // ... we are now passed the "compute" stage. We just need to wait for it to load
-        if (info._shaderRef != nullptr) {
-            info._shaderCompStage = ShaderBuildStage::COMPUTED;
-        } else {
+        if (info._shaderRef == nullptr) {
             // Shader is still in the queue
             return false;
         }
+        info._shaderCompStage = ShaderBuildStage::COMPUTED;
     }
 
     // If the shader is computed ...
     if (info._shaderCompStage == ShaderBuildStage::COMPUTED) {
         assert(info._shaderRef != nullptr);
-
         // ... wait for the shader to finish loading
         if (info._shaderRef->getState() != ResourceState::RES_LOADED) {
             return false;
@@ -458,18 +449,10 @@ bool Material::canDraw(const RenderStagePass renderStagePass, bool& shaderJustFi
 
     // If the shader isn't ready it may have not passed through the computational stage yet (e.g. the first time this method is called)
     if (info._shaderCompStage != ShaderBuildStage::READY) {
-        // If it's a custom shader, not much we can do as custom shaders are either already computed or ready
-        if (info._customShader) {
-            // Just wait for it to load
-            DIVIDE_ASSERT(info._shaderCompStage == ShaderBuildStage::COMPUTED);
-            return false;
-        }
-
         // This is usually the first step in generating a shader: No shader available but we need to render in this stagePass
         if (info._shaderCompStage == ShaderBuildStage::COUNT) {
             // So request a new shader
             info._shaderCompStage = ShaderBuildStage::REQUESTED;
-            computeShader(renderStagePass);
         }
 
         return false;
@@ -584,7 +567,8 @@ void Material::computeShader(const RenderStagePass renderStagePass) {
     OPTICK_EVENT();
 
     if (_customShaderCBK) {
-        _customShaderCBK(*this, renderStagePass);
+        const ShaderProgramDescriptor descriptor = _customShaderCBK(renderStagePass);
+        setShaderProgramInternal(descriptor, renderStagePass, false);
         return;
     }
 
@@ -662,34 +646,6 @@ bool Material::unload() {
     }
 
     return true;
-}
-
-
-void Material::setShaderProgram(const ShaderProgramDescriptor& shaderDescriptor, const RenderStage stage, const RenderPassType pass, const RenderStagePass::VariantType variant) {
-    RenderStagePass stagePass;
-    for (U8 s = 0u; s < to_U8(RenderStage::COUNT); ++s) {
-        for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
-            stagePass._stage = static_cast<RenderStage>(s);
-            stagePass._passType = static_cast<RenderPassType>(p);
-            if ((stage == RenderStage::COUNT || stage == stagePass._stage) && (pass == RenderPassType::COUNT || pass == stagePass._passType)) {
-                if (variant == RenderStagePass::VariantType::COUNT) {
-                    for (U8 i = 0u; i < to_base(RenderStagePass::VariantType::COUNT); ++i) {
-                        ShaderProgramInfo& shaderInfo = _shaderInfo[s][p][i];
-                        shaderInfo._customShader = true;
-                        shaderInfo._shaderCompStage = ShaderBuildStage::COUNT;
-                        stagePass._variant = static_cast<RenderStagePass::VariantType>(variant);
-                        setShaderProgramInternal(shaderDescriptor, shaderInfo, stagePass);
-                    }
-                } else {
-                    stagePass._variant = variant;
-                    ShaderProgramInfo& shaderInfo = _shaderInfo[s][p][to_base(variant)];
-                    shaderInfo._customShader = true;
-                    shaderInfo._shaderCompStage = ShaderBuildStage::COUNT;
-                    setShaderProgramInternal(shaderDescriptor, shaderInfo, stagePass);
-                }
-            }
-        }
-    }
 }
 
 void Material::setRenderStateBlock(const size_t renderStateBlockHash, const RenderStage stage, const RenderPassType pass, const RenderStagePass::VariantType variant) {

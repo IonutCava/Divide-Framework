@@ -54,28 +54,28 @@ bool InfinitePlane::load() {
 
     planeMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(_parentCache, textureWaterCaustics), albedoSampler.getHash(), TextureOperation::REPLACE);
 
-    ShaderModuleDescriptor vertModule = {};
-    vertModule._moduleType = ShaderType::VERTEX;
-    vertModule._sourceFile = "terrainPlane.glsl";
-    vertModule._defines.emplace_back("UNDERWATER_TILE_SCALE 100", true);
+    planeMaterial->customShaderCBK([](const RenderStagePass stagePass) {
+        ShaderModuleDescriptor vertModule = {};
+        vertModule._moduleType = ShaderType::VERTEX;
+        vertModule._sourceFile = "terrainPlane.glsl";
+        vertModule._defines.emplace_back("UNDERWATER_TILE_SCALE 100", true);
 
-    ShaderModuleDescriptor fragModule = {};
-    fragModule._moduleType = ShaderType::FRAGMENT;
-    fragModule._sourceFile = "terrainPlane.glsl";
+        ShaderModuleDescriptor fragModule = {};
+        fragModule._moduleType = ShaderType::FRAGMENT;
+        fragModule._sourceFile = "terrainPlane.glsl";
 
-    ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._name = "terrainPlane_Colour";
+        ShaderProgramDescriptor shaderDescriptor = {};
+        if (IsDepthPass(stagePass) && stagePass._stage != RenderStage::DISPLAY) {
+            shaderDescriptor._modules.push_back(vertModule);
+            shaderDescriptor._name = "terrainPlane_Depth";
+        } else {
+            shaderDescriptor._modules.push_back(vertModule);
+            shaderDescriptor._modules.push_back(fragModule);
+            shaderDescriptor._name = "terrainPlane_Colour";
+        }
 
-    ShaderProgramDescriptor shaderDescriptorDepth = {};
-    shaderDescriptorDepth._modules.push_back(vertModule);
-    shaderDescriptorDepth._name = "terrainPlane_Depth";
-
-    planeMaterial->setShaderProgram(shaderDescriptorDepth, RenderStage::COUNT, RenderPassType::PRE_PASS);
-    planeMaterial->setShaderProgram(shaderDescriptor, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
-    planeMaterial->setShaderProgram(shaderDescriptor, RenderStage::COUNT, RenderPassType::MAIN_PASS);
-    planeMaterial->setShaderProgram(shaderDescriptor, RenderStage::COUNT, RenderPassType::OIT_PASS);
+        return shaderDescriptor;
+    });
 
     setMaterialTpl(planeMaterial);
 

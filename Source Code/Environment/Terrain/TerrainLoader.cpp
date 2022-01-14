@@ -350,21 +350,20 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, "DISABLE_SHADOW_MAPPING", true);
     }
 
-    const Terrain::WireframeMode wMode = terrainConfig.wireframe 
-                                                ? Terrain::WireframeMode::EDGES 
-                                                : terrainConfig.showNormals
-                                                        ? Terrain::WireframeMode::NORMALS
-                                                        : terrainConfig.showLoDs 
-                                                            ? Terrain::WireframeMode::LODS
-                                                            : terrainConfig.showTessLevels 
-                                                                ? Terrain::WireframeMode::TESS_LEVELS
-                                                                : terrainConfig.showBlendMap 
-                                                                    ? Terrain::WireframeMode::BLEND_MAP
-                                                                    : Terrain::WireframeMode::NONE;
-
-    const auto buildShaders = [=](Material* matInstance, const RenderStagePass stagePass) {
-        assert(matInstance != nullptr);
+    terrainMaterial->customShaderCBK([=](const RenderStagePass stagePass) {
         
+        const Terrain::WireframeMode wMode = terrainConfig.wireframe 
+                                                    ? Terrain::WireframeMode::EDGES 
+                                                    : terrainConfig.showNormals
+                                                            ? Terrain::WireframeMode::NORMALS
+                                                            : terrainConfig.showLoDs 
+                                                                ? Terrain::WireframeMode::LODS
+                                                                : terrainConfig.showTessLevels 
+                                                                    ? Terrain::WireframeMode::TESS_LEVELS
+                                                                    : terrainConfig.showBlendMap 
+                                                                        ? Terrain::WireframeMode::BLEND_MAP
+                                                                        : Terrain::WireframeMode::NONE;
+
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
         vertModule._sourceFile = "terrainTess.glsl";
@@ -495,12 +494,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
             }
         }
 
-        matInstance->setShaderProgram(shaderDescriptor, stagePass._stage, stagePass._passType, stagePass._variant);
-    };
-
-    terrainMaterial->customShaderCBK([=](Material& material, const RenderStagePass stagePass) {
-        buildShaders(&material, stagePass);
-        return true;
+        return shaderDescriptor;
     });
 
     RenderStateBlock terrainRenderState = {};

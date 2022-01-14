@@ -1,6 +1,6 @@
 --Fragment
 
-//#define DEBUG_NAN_VALUES
+#define DEBUG_NAN_VALUES
 
 #include "utility.frag"
 

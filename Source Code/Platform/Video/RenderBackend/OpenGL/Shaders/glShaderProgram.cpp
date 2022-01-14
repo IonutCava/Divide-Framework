@@ -26,6 +26,8 @@ extern "C" {
 #include "fcpp/fpp.h"
 }
 
+#define USE_BOOST_REGEX
+
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable:4458)
@@ -34,6 +36,11 @@ extern "C" {
 #include <boost/wave.hpp>
 #include <boost/wave/cpplexer/cpp_lex_iterator.hpp> // lexer class
 #include <boost/wave/cpplexer/cpp_lex_token.hpp>    // token class
+
+#if defined(USE_BOOST_REGEX)
+#include <boost/regex.hpp>
+#endif //USE_BOOST_REGEX
+
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
@@ -813,16 +820,22 @@ void glShaderProgram::uploadPushConstants(const PushConstants& constants) {
 }
 
 eastl::string glShaderProgram::GatherUniformDeclarations(const eastl::string & source, vector<UniformDeclaration>& foundUniforms) {
-    static const std::regex uniformPattern { R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
+#if defined(USE_BOOST_REGEX)
+    namespace regexNamespace = boost;
+#else //USE_BOOST_REGEX
+    namespace regexNamespace = std;
+#endif //USE_BOOST_REGEX
+
+    static const regexNamespace::regex uniformPattern { R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
 
     eastl::string ret;
     ret.reserve(source.size());
 
     string line;
-    std::smatch matches;
+    regexNamespace::smatch matches;
     istringstream input(source.c_str());
     while (std::getline(input, line)) {
-        if (std::regex_search(line, matches, uniformPattern)) {
+        if (regexNamespace::regex_search(line, matches, uniformPattern)) {
             foundUniforms.push_back(UniformDeclaration{
                 Util::Trim(matches[1].str()), //type
                 Util::Trim(matches[2].str())  //name

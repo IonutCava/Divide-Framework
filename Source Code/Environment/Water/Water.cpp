@@ -188,39 +188,40 @@ bool WaterPlane::load() {
     waterMat->properties().bumpMethod(BumpMethod::NORMAL);
     waterMat->properties().isStatic(true);
 
-    ShaderModuleDescriptor vertModule = {};
-    vertModule._moduleType = ShaderType::VERTEX;
-    vertModule._sourceFile = "water.glsl";
-
-    ShaderModuleDescriptor fragModule = {};
-    fragModule._moduleType = ShaderType::FRAGMENT;
-    fragModule._sourceFile = "water.glsl";
-
-    // MAIN_PASS
-    ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._name = "waterColour";
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
-
-    ShaderProgramDescriptor shaderDescriptorDepth = {};
-    shaderDescriptorDepth._name = "waterDepthPass";
-    shaderDescriptorDepth._modules.push_back(vertModule);
-
-    ShaderProgramDescriptor shaderDescriptorPrePass = {};
-    shaderDescriptorPrePass._name = "waterPrePass";
-    shaderDescriptorPrePass._modules.push_back(vertModule);
-    shaderDescriptorPrePass._modules.push_back(fragModule);
-    shaderDescriptorPrePass._modules[0]._defines.emplace_back("PRE_PASS", true);
-    shaderDescriptorPrePass._modules[1]._defines.emplace_back("PRE_PASS", true);
-
-    WAIT_FOR_CONDITION(loadTasks.load() == 0u);
+     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
     waterMat->setTexture(TextureUsage::NORMALMAP, waterNM, defaultSampler.getHash(), TextureOperation::REPLACE);
+    waterMat->customShaderCBK([](const RenderStagePass stagePass) {
+        ShaderModuleDescriptor vertModule = {};
+        vertModule._moduleType = ShaderType::VERTEX;
+        vertModule._sourceFile = "water.glsl";
 
-    waterMat->setShaderProgram(shaderDescriptorDepth,   RenderStage::COUNT,   RenderPassType::PRE_PASS);
-    waterMat->setShaderProgram(shaderDescriptorPrePass, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
-    waterMat->setShaderProgram(shaderDescriptor,        RenderStage::COUNT,   RenderPassType::MAIN_PASS);
-    waterMat->setShaderProgram(shaderDescriptorDepth,   RenderStage::SHADOW,  RenderPassType::COUNT);
+        ShaderModuleDescriptor fragModule = {};
+        fragModule._moduleType = ShaderType::FRAGMENT;
+        fragModule._sourceFile = "water.glsl";
+
+        ShaderProgramDescriptor shaderDescriptor = {};
+        shaderDescriptor._name = "waterColour";
+        if (IsDepthPass(stagePass)) {
+            if (stagePass._stage == RenderStage::DISPLAY) {
+                shaderDescriptor._name = "waterPrePass";
+                vertModule._defines.emplace_back("PRE_PASS", true);
+                fragModule._defines.emplace_back("PRE_PASS", true);
+                shaderDescriptor._modules.push_back(vertModule);
+                shaderDescriptor._modules.push_back(fragModule);
+            } else {
+                shaderDescriptor._name = "waterDepthPass";
+                shaderDescriptor._modules.push_back(vertModule);
+            }
+        } else {
+            shaderDescriptor._modules.push_back(vertModule);
+            shaderDescriptor._modules.push_back(fragModule);
+        }
+
+        return shaderDescriptor;
+    });
+
+
     waterMat->properties().roughness(0.01f);
 
     setMaterialTpl(waterMat);

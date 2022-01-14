@@ -391,45 +391,6 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
 
     Material::ApplyDefaultStateBlocks(*vegMaterial);
 
-    ShaderModuleDescriptor vertModule = {};
-    vertModule._batchSameFile = false;
-    vertModule._moduleType = ShaderType::VERTEX;
-    vertModule._sourceFile = "grass.glsl";
-
-    vertModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
-    vertModule._defines.emplace_back("COMPUTE_TBN", true);
-
-    ShaderModuleDescriptor fragModule = {};
-    fragModule._moduleType = ShaderType::FRAGMENT;
-    fragModule._sourceFile = "grass.glsl";
-    fragModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
-
-    fragModule._variant = "Colour";
-
-    ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._name = "GrassColour";
-
-    ShaderProgramDescriptor shaderOitDescriptor = shaderDescriptor;
-    shaderOitDescriptor._modules.back()._variant = "Colour.OIT";
-    shaderOitDescriptor._name = "grassColourOIT";
-
-    ShaderProgramDescriptor shaderDescriptorDepth = {};
-    shaderDescriptorDepth._modules.push_back(vertModule);
-    shaderDescriptorDepth._name = "grassDepth";
-
-    ShaderProgramDescriptor shaderDescriptorPrePass = shaderDescriptorDepth;
-    fragModule._variant = "PrePass";
-    shaderDescriptorPrePass._modules.push_back(fragModule);
-    shaderDescriptorPrePass._name = "grassPrePass";
-
-    ShaderProgramDescriptor shaderDescriptorShadow{};
-    fragModule._variant = "Shadow.VSM";
-    shaderDescriptorShadow._modules.push_back(vertModule);
-    shaderDescriptorShadow._modules.push_back(fragModule);
-    shaderDescriptorShadow._name = "grassShadow";
-
     ShaderModuleDescriptor compModule = {};
     compModule._moduleType = ShaderType::COMPUTE;
     compModule._sourceFile = "instanceCullVegetation.glsl";
@@ -456,11 +417,50 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
-    vegMaterial->setShaderProgram(shaderDescriptor,              RenderStage::COUNT,   RenderPassType::COUNT);
-    vegMaterial->setShaderProgram(shaderDescriptorDepth,         RenderStage::COUNT,   RenderPassType::PRE_PASS);
-    vegMaterial->setShaderProgram(shaderDescriptorPrePass,       RenderStage::DISPLAY, RenderPassType::PRE_PASS);
-    vegMaterial->setShaderProgram(shaderOitDescriptor,           RenderStage::COUNT,   RenderPassType::OIT_PASS);
-    vegMaterial->setShaderProgram(shaderDescriptorShadow,        RenderStage::SHADOW,  RenderPassType::COUNT);
+    vegMaterial->customShaderCBK([](const RenderStagePass stagePass) {
+        ShaderModuleDescriptor vertModule = {};
+        vertModule._batchSameFile = false;
+        vertModule._moduleType = ShaderType::VERTEX;
+        vertModule._sourceFile = "grass.glsl";
+
+        vertModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
+        vertModule._defines.emplace_back("COMPUTE_TBN", true);
+
+        ShaderModuleDescriptor fragModule = {};
+        fragModule._moduleType = ShaderType::FRAGMENT;
+        fragModule._sourceFile = "grass.glsl";
+        fragModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
+
+        ShaderProgramDescriptor shaderDescriptor = {};
+        shaderDescriptor._modules.push_back(vertModule);
+
+        if (IsDepthPass(stagePass)) {
+            if (stagePass._stage == RenderStage::DISPLAY) {
+                fragModule._variant = "PrePass";
+
+                shaderDescriptor._modules.push_back(fragModule);
+                shaderDescriptor._name = "grassPrePass";
+            } else if (stagePass._stage == RenderStage::SHADOW) {
+                fragModule._variant = "Shadow.VSM";
+
+                shaderDescriptor._modules.push_back(fragModule);
+                shaderDescriptor._name = "grassShadow";
+            } else {
+                shaderDescriptor._name = "grassDepth";
+            }
+        } else {
+            if (stagePass._passType == RenderPassType::OIT_PASS) {
+                fragModule._variant = "Colour.OIT";
+                shaderDescriptor._name = "grassColourOIT";
+            } else {
+                fragModule._variant = "Colour";
+                shaderDescriptor._name = "GrassColour";
+            }
+            shaderDescriptor._modules.push_back(fragModule);
+        }
+
+        return shaderDescriptor;
+    });
 
     vegMaterial->setTexture(TextureUsage::UNIT0, grassBillboardArray, grassSampler.getHash(), TextureOperation::REPLACE, TexturePrePassUsage::ALWAYS);
     s_vegetationMaterial = vegMaterial;
