@@ -4,7 +4,7 @@
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor>C:/Program Files (x86)/Notepad++/notepad++.exe</textEditor>
-    <lastOpenSceneGUID>771</lastOpenSceneGUID>
+    <lastOpenSceneGUID>772</lastOpenSceneGUID>
     <grid enabled="true" axisWidth="2" scale="1"/>
     <camera>
         <Editor__Camera>
@@ -13,9 +13,9 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-59.2099953</accumPitchDegrees>
+            <accumPitchDegrees>-15.000001</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="0" y="88.733902" z="180"/>
+            <euler x="-15.0000019" y="39.9999924" z="0"/>
             <eye x="60" y="45" z="60"/>
             <orientation x="-0.122654505" y="0.339094073" z="0.0446425863" w="0.93165338"/>
             <aspectRatio>1.76999998</aspectRatio>

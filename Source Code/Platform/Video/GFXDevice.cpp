@@ -99,6 +99,8 @@ GFXDevice::GFXDevice(Kernel & parent)
 {
     _viewport.set(-1);
 
+    _queuedShadowSampleChange.fill(s_invalidQueueSampleCount);
+
     AttribFlags flags{};
     flags.fill(true);
     VertexBuffer::setAttribMasks(to_size(to_base(RenderStage::COUNT) * to_base(RenderPassType::COUNT)), flags);
@@ -984,6 +986,18 @@ void GFXDevice::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
 void GFXDevice::beginFrame(DisplayWindow& window, const bool global) {
     OPTICK_EVENT();
 
+    if (global) {
+        if (_queuedScreenSampleChange != s_invalidQueueSampleCount) {
+            setScreenMSAASampleCountInternal(_queuedScreenSampleChange);
+            _queuedScreenSampleChange = s_invalidQueueSampleCount;
+        }
+        for (U8 i = 0u; i < to_base(ShadowType::COUNT); ++i) {
+            if (_queuedShadowSampleChange[i] != s_invalidQueueSampleCount) {
+                setShadowMSAASampleCountInternal(static_cast<ShadowType>(i), _queuedShadowSampleChange[i]);
+                _queuedShadowSampleChange[i] = s_invalidQueueSampleCount;
+            }
+        }
+    }
     if (global && _resolutionChangeQueued.second) {
         SizeChangeParams params;
         params.isWindowResize = false;
@@ -1364,7 +1378,15 @@ void GFXDevice::toggleFullScreen() const
     };
 }
 
-void GFXDevice::setScreenMSAASampleCount(U8 sampleCount) {
+void GFXDevice::setScreenMSAASampleCount(const U8 sampleCount) {
+    _queuedScreenSampleChange = sampleCount;
+}
+
+void GFXDevice::setShadowMSAASampleCount(const ShadowType type, const U8 sampleCount) {
+    _queuedShadowSampleChange[to_base(type)] = sampleCount;
+}
+
+void GFXDevice::setScreenMSAASampleCountInternal(U8 sampleCount) {
     CLAMP(sampleCount, to_U8(0u), gpuState().maxMSAASampleCount());
     if (_context.config().rendering.MSAASamples != sampleCount) {
         _context.config().rendering.MSAASamples = sampleCount;
@@ -1374,7 +1396,7 @@ void GFXDevice::setScreenMSAASampleCount(U8 sampleCount) {
     }
 }
 
-void GFXDevice::setShadowMSAASampleCount(const ShadowType type, U8 sampleCount) {
+void GFXDevice::setShadowMSAASampleCountInternal(const ShadowType type, U8 sampleCount) {
     CLAMP(sampleCount, to_U8(0u), gpuState().maxMSAASampleCount());
     ShadowMap::setMSAASampleCount(type, sampleCount);
 }

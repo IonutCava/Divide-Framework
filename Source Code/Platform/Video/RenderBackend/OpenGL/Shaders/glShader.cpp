@@ -84,7 +84,7 @@ glShader::~glShader() {
     }
 }
 
-ShaderResult glShader::uploadToGPU() {
+ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
     if (!_valid) {
         const auto getTimerAndReset = [](Time::ProfileTimer& timer) {
             timer.stop();
@@ -309,12 +309,14 @@ ShaderResult glShader::uploadToGPU() {
             if (isSeparable) {
                 Console::printfn(Locale::Get(_ID("SHADER_COMPILE_TIME_SEPARABLE")),
                                  name().c_str(),
+                                 parentProgramHandle,
                                  Time::MicrosecondsToMilliseconds<F32>(totalCompileTime),
                                  Time::MicrosecondsToMilliseconds<F32>(GPUcompileTime),
                                  Time::MicrosecondsToMilliseconds<F32>(driverCompileTime));
             } else {
                 Console::printfn(Locale::Get(_ID("SHADER_COMPILE_TIME_NON_SEPARABLE")),
                                  name().c_str(),
+                                 parentProgramHandle,
                                  driverCompileTime > driverLinkTime ? "Compilation" : "Linking",
                                  Time::MicrosecondsToMilliseconds<F32>(totalCompileTime),
                                  Time::MicrosecondsToMilliseconds<F32>(GPUcompileTime),

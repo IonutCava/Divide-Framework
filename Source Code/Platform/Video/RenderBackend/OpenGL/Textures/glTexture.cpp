@@ -3,7 +3,6 @@
 #include "config.h"
 
 #include "Platform/Headers/PlatformRuntime.h"
-#include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 
 #include "Headers/glTexture.h"
@@ -64,8 +63,7 @@ glTexture::glTexture(GFXDevice& context,
     : Texture(context, descriptorHash, name, resourceName, resourceLocation, asyncLoad, texDescriptor),
       glObject(glObjectType::TYPE_TEXTURE, context),
      _type(GL_NONE),
-     _loadingData(_data),
-     _lockManager(eastl::make_unique<glLockManager>())
+     _loadingData(_data)
 {
 }
 
@@ -77,7 +75,6 @@ SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
         ScopedLock<Mutex> w_lock(_gpuAddressesLock);
         if (_cachedAddressForSampler.second != sampler) {
             if (sampler != 0u) {
-                _lockManager->wait(true);
                 assert(!GL_API::ComputeMipMapsQueued(_data._textureHandle));
                 _cachedAddressForSampler.first = glGetTextureSamplerHandleARB(_data._textureHandle, sampler);
                 _cachedAddressForSampler.second = sampler;
@@ -95,7 +92,6 @@ bool glTexture::unload() {
     assert(_data._textureType != TextureType::COUNT);
 
     if (_data._textureHandle > 0u) {
-        _lockManager->wait(true);
         GL_API::DequeueComputeMipMaps(_data._textureHandle);
         glDeleteTextures(1, &_data._textureHandle);
         _data._textureHandle = 0u;
@@ -245,8 +241,6 @@ void glTexture::submitTextureData() {
     }
 
     ScopedLock<Mutex> w_lock(_gpuAddressesLock);
-    _lockManager->lock();
-    glFlush();
     _data = _loadingData;
 
     if (GL_API::s_UseBindlessTextures) {
@@ -261,7 +255,7 @@ void glTexture::submitTextureData() {
 void glTexture::loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& dimensions) {
     prepareTextureData(dimensions.width, dimensions.height);
 
-    // This should never be called for compressed textures                            
+    // This should never be called for compressed textures
     assert(!_descriptor.compressed());
 
     reserveStorage(false);

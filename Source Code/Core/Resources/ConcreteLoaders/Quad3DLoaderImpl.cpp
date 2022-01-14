@@ -10,21 +10,23 @@ namespace Divide {
 
 template<>
 CachedResource_ptr ImplResourceLoader<Quad3D>::operator()() {
-    const vec3<U16> sizeTemp = _descriptor.data();
-    vec3<F32> targetSize{ VECTOR3_ZERO};
-    
-    for (U8 i = 0u; i < 3u; ++i) {
-        targetSize[i] = Util::UNPACK_HALF1x16(sizeTemp[i]);
-    }
-    targetSize *= _descriptor.ID();
+    constexpr F32 s_minSideLength = 0.0001f;
 
-    if (targetSize.x == 0.f) {
-        targetSize.x = 2.f;
+    const vec3<U32> sizeIn = _descriptor.data();
+
+    vec3<F32> targetSize{
+        Util::UINT_TO_FLOAT(sizeIn.x),
+        Util::UINT_TO_FLOAT(sizeIn.y),
+        Util::UINT_TO_FLOAT(sizeIn.z)
+    };
+    if (sizeIn.x == 0u && sizeIn.y == 0u && sizeIn.z == 0u) {
+        targetSize.xy = { s_minSideLength, s_minSideLength };
+    } else if (sizeIn.x == 0u && sizeIn.y == 0u ||
+               sizeIn.x == 0u && sizeIn.z == 0u) {
+        targetSize.x = s_minSideLength;
+    } else if (sizeIn.y == 0u && sizeIn.z == 0u) {
+        targetSize.y = s_minSideLength;
     }
-    if (targetSize.y == 0.f) {
-        targetSize.y = 2.f;
-    }
-    //targetSize.z can be zero. That's by desing
 
     std::shared_ptr<Quad3D> ptr(MemoryManager_NEW Quad3D(_context.gfx(),
                                                           _cache,

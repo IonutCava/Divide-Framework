@@ -726,7 +726,8 @@ SceneGraphNode* Scene::addInfPlane(SceneGraphNode* parentNode, const boost::prop
 
     const Camera* baseCamera = Camera::utilityCamera(Camera::UtilityCamera::DEFAULT);
 
-    planeDescriptor.ID(to_U32(baseCamera->getZPlanes().max));
+    const U32 cameraFarPlane = to_U32(baseCamera->getZPlanes().max);
+    planeDescriptor.data().set(cameraFarPlane, cameraFarPlane, 0u);
 
     auto planeItem = CreateResource<InfinitePlane>(resourceCache(), planeDescriptor);
 

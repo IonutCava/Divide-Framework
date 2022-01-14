@@ -106,7 +106,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
     friend class glShaderProgram;
     [[nodiscard]] bool loadFromBinary();
-    [[nodiscard]] ShaderResult uploadToGPU();
+    [[nodiscard]] ShaderResult uploadToGPU(GLuint parentProgramHandle);
 
     void prepare() const;
     [[nodiscard]] UseProgramStageMask stageMask() const noexcept { return _stageMask;  }

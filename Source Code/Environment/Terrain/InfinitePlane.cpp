@@ -14,13 +14,10 @@
 
 namespace Divide {
 
-InfinitePlane::InfinitePlane(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name, vec2<U16> dimensions)
+InfinitePlane::InfinitePlane(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name, vec2<U32> dimensions)
     : SceneNode(parentCache, descriptorHash, name, ResourcePath{ name }, {}, SceneNodeType::TYPE_INFINITEPLANE, to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS)),
       _context(context),
-      _dimensions(MOV(dimensions)),
-      _plane(nullptr),
-      _planeRenderStateHash(0),
-      _planeRenderStateHashPrePass(0)
+      _dimensions(dimensions)
 {
     _renderState.addToDrawExclusionMask(RenderStage::SHADOW);
     _renderState.addToDrawExclusionMask(RenderStage::REFLECTION);
@@ -60,36 +57,25 @@ bool InfinitePlane::load() {
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
     vertModule._sourceFile = "terrainPlane.glsl";
-    vertModule._variant = "Colour";
     vertModule._defines.emplace_back("UNDERWATER_TILE_SCALE 100", true);
 
     ShaderModuleDescriptor fragModule = {};
     fragModule._moduleType = ShaderType::FRAGMENT;
     fragModule._sourceFile = "terrainPlane.glsl";
-    fragModule._variant = "Colour";
 
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
     shaderDescriptor._name = "terrainPlane_Colour";
 
-    planeMaterial->setShaderProgram(shaderDescriptor, RenderStage::COUNT, RenderPassType::MAIN_PASS);
-    planeMaterial->setShaderProgram(shaderDescriptor, RenderStage::COUNT, RenderPassType::OIT_PASS);
-
-    vertModule._variant = "PrePass";
     ShaderProgramDescriptor shaderDescriptorDepth = {};
-    shaderDescriptorDepth._name = "terrainPlane_Depth";
     shaderDescriptorDepth._modules.push_back(vertModule);
+    shaderDescriptorDepth._name = "terrainPlane_Depth";
 
     planeMaterial->setShaderProgram(shaderDescriptorDepth, RenderStage::COUNT, RenderPassType::PRE_PASS);
-
-    ShaderProgramDescriptor shaderDescriptorPrePass = {};
-    fragModule._variant = "PrePass";
-    shaderDescriptorPrePass._name = "terrainPlane_PrePass";
-    shaderDescriptorPrePass._modules.push_back(vertModule);
-    shaderDescriptorPrePass._modules.push_back(fragModule);
-
-    planeMaterial->setShaderProgram(shaderDescriptorPrePass, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
+    planeMaterial->setShaderProgram(shaderDescriptor, RenderStage::DISPLAY, RenderPassType::PRE_PASS);
+    planeMaterial->setShaderProgram(shaderDescriptor, RenderStage::COUNT, RenderPassType::MAIN_PASS);
+    planeMaterial->setShaderProgram(shaderDescriptor, RenderStage::COUNT, RenderPassType::OIT_PASS);
 
     setMaterialTpl(planeMaterial);
 
@@ -97,13 +83,13 @@ bool InfinitePlane::load() {
     infinitePlane.flag(true);  // No default material
     infinitePlane.threaded(false);
     infinitePlane.ID(150u);
-    const U32 packedX = _dimensions.x / infinitePlane.ID();
-    const U32 packedY = _dimensions.y / infinitePlane.ID();
-    infinitePlane.data().set(Util::PACK_HALF1x16(packedX * 2.f), 0u, Util::PACK_HALF1x16(packedY * 2.f));
+    infinitePlane.data().set(Util::FLOAT_TO_UINT(_dimensions.x * 2.f),
+                            0u,
+                            Util::FLOAT_TO_UINT(_dimensions.y * 2.f));
 
     _plane = CreateResource<Quad3D>(_parentCache, infinitePlane);
-    _boundingBox.set(vec3<F32>(-_dimensions.x * 1.5f, -0.5f, -_dimensions.y * 1.5f),
-                     vec3<F32>( _dimensions.x * 1.5f,  0.5f,  _dimensions.y * 1.5f));
+    _boundingBox.set(vec3<F32>(-(_dimensions.x * 1.5f), -0.5f, -(_dimensions.y * 1.5f)),
+                     vec3<F32>(  _dimensions.x * 1.5f,   0.5f,   _dimensions.y * 1.5f));
 
     return SceneNode::load();
 }

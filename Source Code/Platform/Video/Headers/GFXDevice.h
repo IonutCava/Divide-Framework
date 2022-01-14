@@ -53,6 +53,7 @@
 
 #include "Rendering/Camera/Headers/Frustum.h"
 #include "Rendering/PostFX/CustomOperators/Headers/BloomPreRenderOperator.h"
+#include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/RenderPass/Headers/RenderPass.h"
 
 namespace Divide {
@@ -400,6 +401,9 @@ public:
 protected:
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
 
+    void setScreenMSAASampleCountInternal(U8 sampleCount);
+    void setShadowMSAASampleCountInternal(ShadowType type, U8 sampleCount);
+
     /// Create and return a new framebuffer.
     RenderTarget* newRT(const RenderTargetDescriptor& descriptor);
 
@@ -474,11 +478,14 @@ private:
 
     std::pair<vec2<U16>, bool> _resolutionChangeQueued;
 
+    static constexpr U8 s_invalidQueueSampleCount = 255u;
+    U8 _queuedScreenSampleChange = s_invalidQueueSampleCount;
+    std::array<U8, to_base(ShadowType::COUNT)> _queuedShadowSampleChange;
     /// The default render state but with depth testing disabled
-    size_t _defaultStateNoDepthHash = 0;
+    size_t _defaultStateNoDepthHash = 0u;
     /// Special render state for 2D rendering
-    size_t _state2DRenderingHash = 0;
-    size_t _stateDepthOnlyRenderingHash = 0;
+    size_t _state2DRenderingHash = 0u;
+    size_t _stateDepthOnlyRenderingHash = 0u;
     /// The interpolation factor between the current and the last frame
     FrustumClipPlanes _clippingPlanes{};
 

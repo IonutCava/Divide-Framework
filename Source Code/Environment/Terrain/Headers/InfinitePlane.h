@@ -40,7 +40,7 @@ namespace Divide {
 FWD_DECLARE_MANAGED_CLASS(Quad3D);
 class InfinitePlane final : public SceneNode {
 public:
-    explicit InfinitePlane(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, vec2<U16> dimensions);
+    explicit InfinitePlane(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, vec2<U32> dimensions);
 
 protected:
     void postLoad(SceneGraphNode* sgn) override;
@@ -58,10 +58,10 @@ protected:
 
 private:
     GFXDevice& _context;
-    vec2<U16> _dimensions;
-    Quad3D_ptr _plane;
-    size_t _planeRenderStateHash;
-    size_t _planeRenderStateHashPrePass;
+    vec2<U32> _dimensions;
+    Quad3D_ptr _plane = nullptr;
+    size_t _planeRenderStateHash = 0u;
+    size_t _planeRenderStateHashPrePass = 0u;
 }; //InfinitePlane
 } //namespace Divide
 #endif

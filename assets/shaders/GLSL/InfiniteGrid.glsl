@@ -25,8 +25,9 @@ void main()
 //ref: http://asliceofrendering.com/scene%20helper/2020/01/05/InfiniteGrid/
 //ref: https://github.com/martin-pr/possumwood/wiki/Infinite-ground-plane-using-GLSL-shaders
 //ref: https://github.com/ToniPlays/Hazard/blob/db44cf26bcb128231f8ff3189594ba4a25f25eca/HazardEditor/res/Shaders/Grid.glsl
-#include "output.frag"
 
+#include "utility.frag"
+#include "output.frag"
 layout(location = 10) in vec3 nearPoint;
 layout(location = 11) in vec3 farPoint;
 

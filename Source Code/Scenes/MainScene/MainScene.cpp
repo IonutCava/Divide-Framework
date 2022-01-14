@@ -134,7 +134,7 @@ bool MainScene::load() {
     baseCamera->setMoveSpeedFactor(10.0f);
 
     ResourceDescriptor infiniteWater("waterEntity");
-    infiniteWater.data(vec3<U16>(baseCamera->getZPlanes().y));
+    infiniteWater.data(vec3<U32>(baseCamera->getZPlanes().y));
     const WaterPlane_ptr water = CreateResource<WaterPlane>(resourceCache(), infiniteWater);
 
     SceneGraphNodeDescriptor waterNodeDescriptor;

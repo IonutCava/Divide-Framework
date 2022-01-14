@@ -10,17 +10,14 @@ namespace Divide {
 
 template <>
 CachedResource_ptr ImplResourceLoader<Box3D>::operator()() {
-    const vec3<U16> sizeTemp = _descriptor.data();
-    vec3<F32> targetSize{ VECTOR3_UNIT };
-    for (U8 i = 0u; i < 3u; ++i) {
-        if (sizeTemp[i] == 0u) {
-            targetSize[i] = 1.f;
-        } else {
-            targetSize[i] = Util::UNPACK_HALF1x16(sizeTemp[i]) * _descriptor.ID();;
-        }
-    }
+    constexpr F32 s_minSideLength = 0.0001f;
 
-   
+    const vec3<F32> targetSize{
+        std::max(Util::UINT_TO_FLOAT(_descriptor.data().x), s_minSideLength),
+        std::max(Util::UINT_TO_FLOAT(_descriptor.data().y), s_minSideLength),
+        std::max(Util::UINT_TO_FLOAT(_descriptor.data().z), s_minSideLength)
+    };
+
     std::shared_ptr<Box3D> ptr(MemoryManager_NEW Box3D(_context.gfx(),
                                                          _cache,
                                                          _loadingDescriptorHash,

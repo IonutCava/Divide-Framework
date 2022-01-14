@@ -284,9 +284,9 @@ void MenuBar::draw() {
                 {
                     nodeDescriptor.data(
                         {
-                            Util::PACK_HALF1x16(sides.x),
-                            Util::PACK_HALF1x16(sides.y),
-                            Util::PACK_HALF1x16(sides.z)
+                            Util::FLOAT_TO_UINT(sides.x),
+                            Util::FLOAT_TO_UINT(sides.y),
+                            Util::FLOAT_TO_UINT(sides.z)
                         }
                     );
                     g_nodeDescriptor._node = CreateResource<Box3D>(parentCache, nodeDescriptor);
@@ -297,7 +297,7 @@ void MenuBar::draw() {
                     quadMask.i = 0;
                     quadMask.b[0] = doubleSided ? 0 : 1;
                     nodeDescriptor.mask(quadMask);
-                    vec3<F32> halfSides = sides * 0.5f;
+                    const vec3<F32> halfSides = sides * 0.5f;
                     Quad3D_ptr node = CreateResource<Quad3D>(parentCache, nodeDescriptor);
                     node->setCorner(Quad3D::CornerLocation::TOP_LEFT,     vec3<F32>(-halfSides.x, halfSides.y, 0));
                     node->setCorner(Quad3D::CornerLocation::TOP_RIGHT,    vec3<F32>( halfSides.x, halfSides.y, 0));

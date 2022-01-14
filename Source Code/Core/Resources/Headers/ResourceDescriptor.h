@@ -84,13 +84,13 @@ class ResourceDescriptor final : public Hashable {
     PROPERTY_RW(ResourcePath, assetLocation); ///< Can't be fixed size due to the need to handle array textures, cube maps, etc
     PROPERTY_RW(ResourcePath, assetName); ///< Resource instance name (for lookup)
     PROPERTY_RW(Str256, resourceName);
-    PROPERTY_RW(bool, flag, false);
-    PROPERTY_RW(bool, threaded, true);
-    PROPERTY_RW(bool, waitForReady, true);
+    PROPERTY_RW(vec3<U32>, data, VECTOR3_ZERO); ///< general data
     PROPERTY_RW(U32, enumValue, 0u);
     PROPERTY_RW(U32, ID, 0u);
     PROPERTY_RW(P32, mask); ///< 4 bool values representing  ... anything ...
-    PROPERTY_RW(vec3<U16>, data, VECTOR3_ZERO); ///< general data
+    PROPERTY_RW(bool, flag, false);
+    PROPERTY_RW(bool, threaded, true);
+    PROPERTY_RW(bool, waitForReady, true);
 
    private:
     /// Use for extra resource properties: textures, samplers, terrain etc.

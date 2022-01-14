@@ -419,7 +419,7 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
         Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), static_cast<SDL_GLContext>(mainWindow()->userData())));
     } else {
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, _context->config().rendering.MSAASamples));
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4));
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1));
     }
 

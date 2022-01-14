@@ -446,7 +446,7 @@ ShaderResult glShaderProgram::rebindStages() {
     assert(isValid());
 
     for (glShader* shader : _shaderStage) {
-        const ShaderResult ret = shader->uploadToGPU();
+        const ShaderResult ret = shader->uploadToGPU(_handle);
         if (ret != ShaderResult::OK) {
             return ret;
         }

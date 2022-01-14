@@ -83,7 +83,6 @@ class glTexture final : public Texture,
     std::pair<SamplerAddress, GLuint> _cachedAddressForSampler = {0u, 0u};
     SamplerAddress _baseTexAddress = 0u;
     TextureData _loadingData;
-    eastl::unique_ptr<glLockManager> _lockManager = nullptr;
     Mutex _gpuAddressesLock;
 };
 
