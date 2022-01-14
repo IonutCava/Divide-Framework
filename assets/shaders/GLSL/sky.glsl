@@ -13,9 +13,8 @@ layout(location = 14) out vec3 vBetaM;
 void main(void){
     const NodeTransformData data = fetchInputData();
     VAR._vertexW = data._worldMatrix * dvd_Vertex;
-#if defined(MAIN_DISPLAY_PASS)
     VAR._vertexW.xyz += dvd_cameraPosition.xyz;
-#endif //MAIN_DISPLAY_PASS
+
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     computeLightVectors(data);
     setClipPlanes();
@@ -219,9 +218,8 @@ void main() {
 
     const NodeTransformData data = fetchInputData();
     VAR._vertexW = data._worldMatrix * dvd_Vertex;
-#if defined(MAIN_DISPLAY_PASS)
     VAR._vertexW.xyz += dvd_cameraPosition.xyz;
-#endif //MAIN_DISPLAY_PASS
+
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     computeLightVectors(data);
     setClipPlanes();
@@ -679,9 +677,8 @@ void main() {
 
     // Guess work based on what "look right"
     const float lerpValue = Saturate(2.95f * (GetSunDirection().y + 0.15f));
-    
-#if defined(MAIN_DISPLAY_PASS)
     const vec3 rayDirection = normalize(VAR._vertexW.xyz - dvd_cameraPosition.xyz);
+#if defined(MAIN_DISPLAY_PASS)
     vec3 ret = vec3(0.f);
     switch (dvd_MaterialDebugFlag) {
         case DEBUG_ALBEDO:        ret = getRawAlbedo(rayDirection, lerpValue); break;
@@ -709,7 +706,6 @@ void main() {
         default:                  ret = atmosphereColour(rayDirection, lerpValue); break;
     }
 #else //MAIN_DISPLAY_PASS
-    const vec3 rayDirection = normalize(VAR._vertexW.xyz);
     const vec3 ret = atmosphereColour(rayDirection, lerpValue);
 #endif //MAIN_DISPLAY_PASS
     writeScreenColour(vec4(ret, 1.f));

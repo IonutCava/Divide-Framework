@@ -379,14 +379,12 @@ void Material::recomputeShaders() {
                 }
 
                 stagePass._variant = static_cast<RenderStagePass::VariantType>(v);
-                if (!shaderInfo._customShader) {
+                if (!shaderInfo._customShader || _customShaderCBK) {
                     shaderInfo._shaderCompStage = ShaderBuildStage::REQUESTED;
                     computeShader(stagePass);
                 } else {
                     if (shaderInfo._shaderCompStage == ShaderBuildStage::COMPUTED) {
                         shaderInfo._shaderCompStage = ShaderBuildStage::READY;
-                    } else if (shaderInfo._shaderCompStage == ShaderBuildStage::READY && _customShaderCBK) {
-                        _customShaderCBK(*this, stagePass);
                     }
 
                     if (shaderInfo._shaderRef != nullptr && shaderInfo._shaderCompStage == ShaderBuildStage::READY) {
@@ -584,6 +582,11 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
 /// If the current material doesn't have a shader associated with it, then add the default ones.
 void Material::computeShader(const RenderStagePass renderStagePass) {
     OPTICK_EVENT();
+
+    if (_customShaderCBK) {
+        _customShaderCBK(*this, renderStagePass);
+        return;
+    }
 
     const bool isDepthPass = IsDepthPass(renderStagePass);
     const bool isZPrePass = isDepthPass && renderStagePass._stage == RenderStage::DISPLAY;

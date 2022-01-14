@@ -361,7 +361,8 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                                                                 : terrainConfig.showBlendMap 
                                                                     ? Terrain::WireframeMode::BLEND_MAP
                                                                     : Terrain::WireframeMode::NONE;
-    const auto buildShaders = [=](Material* matInstance) {
+
+    const auto buildShaders = [=](Material* matInstance, const RenderStagePass stagePass) {
         assert(matInstance != nullptr);
         
         ShaderModuleDescriptor vertModule = {};
@@ -394,8 +395,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         if (hasGeometryPass) {
             shaderDescriptor._modules.push_back(geomModule);
         }
-
-        shaderDescriptor._modules.push_back(fragModule);
 
         string propName;
         for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
@@ -430,91 +429,77 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
             }
         }
 
-        // SHADOW
-        ShaderProgramDescriptor shadowDescriptorVSM = {};
-        for (const ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
-            shadowDescriptorVSM._modules.push_back(shaderModule);
-            ShaderModuleDescriptor& tempModule = shadowDescriptorVSM._modules.back();
+        if (stagePass._stage == RenderStage::SHADOW) {
+            shaderDescriptor._modules.push_back(fragModule);
 
-            if (tempModule._moduleType == ShaderType::FRAGMENT) {
-                tempModule._variant = "Shadow.VSM";
-            }
-            tempModule._defines.emplace_back("MAX_TESS_LEVEL 32", true);
-        }
-
-        shadowDescriptorVSM._name = "Terrain_ShadowVSM-" + name + propName;
-
-        // MAIN PASS
-        ShaderProgramDescriptor colourDescriptor = shaderDescriptor;
-
-        //ToDo: Implement this! -Ionut
-        constexpr bool hasParallax = false;
-        if (hasParallax) {
-            for (ShaderModuleDescriptor& shaderModule : colourDescriptor._modules) {
+            for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
                 if (shaderModule._moduleType == ShaderType::FRAGMENT) {
-                    shaderModule._defines.emplace_back("HAS_PARALLAX", true);
-                    break;
+                    shaderModule._variant = "Shadow.VSM";
+                }
+                shaderModule._defines.emplace_back("MAX_TESS_LEVEL 32", true);
+            }
+            shaderDescriptor._name = "Terrain_ShadowVSM-" + name + propName;
+        } else { // Not RenderStage::SHADOW
+            if (stagePass._stage == RenderStage::DISPLAY) {
+                shaderDescriptor._modules.push_back(fragModule);
+
+                //ToDo: Implement this! -Ionut
+                constexpr bool hasParallax = false;
+                if (hasParallax) {
+                    for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
+                        if (shaderModule._moduleType == ShaderType::FRAGMENT) {
+                            shaderModule._defines.emplace_back("HAS_PARALLAX", true);
+                            break;
+                        }
+                    }
+                }
+                if (stagePass._passType == RenderPassType::PRE_PASS) {
+                    for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
+                        if (shaderModule._moduleType == ShaderType::FRAGMENT) {
+                            shaderModule._variant = "PrePass";
+                        }
+                        shaderModule._defines.emplace_back("PRE_PASS", true);
+                    }
+                    shaderDescriptor._name = "Terrain_PrePass-" + name + propName + (hasParallax ? ".Parallax" : "");
+                } else {
+                    shaderDescriptor._name = "Terrain_Colour-" + name + propName + (hasParallax ? ".Parallax" : "");
+                }
+            } else { // Not RenderStage::DISPLAY
+                if (IsDepthPass(stagePass)) {
+                    for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
+                        shaderModule._defines.emplace_back("LOW_QUALITY", true);
+                        shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
+                    }
+
+                    shaderDescriptor._name = "Terrain_PrePass_LowQuality-" + name + propName;
+                } else {
+                    shaderDescriptor._modules.push_back(fragModule);
+
+                    for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
+                        if (shaderModule._moduleType == ShaderType::FRAGMENT) {
+                            shaderModule._variant = "LQPass";
+                        }
+
+                        shaderModule._defines.emplace_back("LOW_QUALITY", true);
+                        shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
+                        if (stagePass._stage == RenderStage::REFLECTION) {
+                            shaderModule._defines.emplace_back("REFLECTION_PASS", true);
+                        }
+                    }
+                    if (stagePass._stage == RenderStage::REFLECTION) {
+                        shaderDescriptor._name = "Terrain_Colour_LowQuality_Reflect-" + name + propName;
+                    } else {
+                        shaderDescriptor._name = "Terrain_Colour_LowQuality-" + name + propName;
+                    }
                 }
             }
         }
 
-        colourDescriptor._name = "Terrain_Colour-" + name + propName + (hasParallax ? ".Parallax":"");
-
-        // PRE PASS
-        ShaderProgramDescriptor prePassDescriptor = colourDescriptor;
-
-        for (ShaderModuleDescriptor& shaderModule : prePassDescriptor._modules) {
-            if (shaderModule._moduleType == ShaderType::FRAGMENT) {
-                shaderModule._variant = "PrePass";
-            }
-            shaderModule._defines.emplace_back("PRE_PASS", true);
-        }
-
-        prePassDescriptor._name = "Terrain_PrePass-" + name + propName + (hasParallax ? ".Parallax" : "");
-
-        // PRE PASS LQ
-        ShaderProgramDescriptor prePassDescriptorLQ = prePassDescriptor;
-        prePassDescriptorLQ._modules.pop_back(); //no fragment
-        for (ShaderModuleDescriptor& shaderModule : prePassDescriptorLQ._modules) {
-            shaderModule._defines.emplace_back("LOW_QUALITY", true);
-            shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
-        }
-        
-        prePassDescriptorLQ._name = "Terrain_PrePass_LowQuality-" + name + propName;
-
-        // MAIN PASS LQ
-        ShaderProgramDescriptor lowQualityDescriptor = shaderDescriptor;
-        for (ShaderModuleDescriptor& shaderModule : lowQualityDescriptor._modules) {
-            if (shaderModule._moduleType == ShaderType::FRAGMENT) {
-                shaderModule._variant = "LQPass";
-            }
-
-            shaderModule._defines.emplace_back("LOW_QUALITY", true);
-            shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
-        }
-
-        lowQualityDescriptor._name = "Terrain_Colour_LowQuality-" + name + propName;
-
-        // Reflect Pass LQ
-        ShaderProgramDescriptor lowQualityDescriptorReflect = lowQualityDescriptor;
-        for (ShaderModuleDescriptor& shaderModule : lowQualityDescriptorReflect._modules) {
-            shaderModule._defines.emplace_back("REFLECTION_PASS", true);
-        }
-        lowQualityDescriptorReflect._name = "Terrain_Colour_LowQuality_Reflect-" + name + propName;
-
-        matInstance->setShaderProgram(prePassDescriptorLQ,         RenderStage::COUNT,      RenderPassType::PRE_PASS);
-        matInstance->setShaderProgram(prePassDescriptor,           RenderStage::DISPLAY,    RenderPassType::PRE_PASS);
-        matInstance->setShaderProgram(lowQualityDescriptor,        RenderStage::REFRACTION, RenderPassType::MAIN_PASS);
-        matInstance->setShaderProgram(lowQualityDescriptorReflect, RenderStage::REFLECTION, RenderPassType::MAIN_PASS);
-        matInstance->setShaderProgram(colourDescriptor,            RenderStage::DISPLAY,    RenderPassType::MAIN_PASS);
-        matInstance->setShaderProgram(shadowDescriptorVSM,         RenderStage::SHADOW,     RenderPassType::COUNT);
+        matInstance->setShaderProgram(shaderDescriptor, stagePass._stage, stagePass._passType, stagePass._variant);
     };
 
-    buildShaders(terrainMaterial.get());
-
-    terrainMaterial->customShaderCBK([=](Material& material, [[maybe_unused]] const RenderStagePass stagePass) {
-
-        buildShaders(&material);
+    terrainMaterial->customShaderCBK([=](Material& material, const RenderStagePass stagePass) {
+        buildShaders(&material, stagePass);
         return true;
     });
 
