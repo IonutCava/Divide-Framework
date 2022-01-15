@@ -12,13 +12,13 @@ namespace Divide {
 // We are using third party string libraries (STL, Boost, EASTL) that went through proper testing
 // This list of tests only verifies utility functions
 
-vector<string> getFiles(const string& input, const std::regex& pattern) {
-    std::smatch matches;
+vector<string> getFiles(const string& input, const regexNamespace::regex& pattern) {
+    regexNamespace::smatch matches;
     istringstream inputStream(input);
     string line;
     vector<string> include_file;
     while (std::getline(inputStream, line)) {
-        if (std::regex_search(line, matches, pattern)) {
+        if (regexNamespace::regex_search(line, matches, pattern)) {
             include_file.emplace_back(Util::Trim(matches[1].str()));
         }
     }
@@ -124,6 +124,17 @@ TEST(RegexFailTest)
         const vector<string> temp3 = getFiles(inputUse3, Paths::g_usePattern);
         CHECK_FALSE(temp3.size() == 1);
     }
+}
+
+TEST(TestBeginsWith)
+{
+    const string input1("STRING TO BE TESTED");
+    const string input2("    STRING TO BE TESTED");
+
+    CHECK_TRUE(Util::BeginsWith(input1, "STRING", true));
+    CHECK_TRUE(Util::BeginsWith(input2, "STRING", true));
+    CHECK_TRUE(Util::BeginsWith(input2, "    STRING", false));
+    CHECK_FALSE(Util::BeginsWith(input2, "STRING", false));
 }
 
 TEST(TestReplaceInPlace)

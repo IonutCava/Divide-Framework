@@ -71,7 +71,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     explicit glShader(GFXDevice& context, const Str256& name);
     ~glShader();
 
-    [[nodiscard]] bool load(const ShaderLoadData& data);
+    [[nodiscard]] bool load(ShaderLoadData&& data);
 
     [[nodiscard]] U32 getProgramHandle() const noexcept { return _programHandle; }
 
@@ -94,11 +94,11 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     /// Add or refresh a shader from the cache
     static glShader* loadShader(GFXDevice& context,
                                 const Str256& name,
-                                const ShaderLoadData& data);
+                                ShaderLoadData&& data);
 
     static glShader* loadShader(glShader* shader,
                                 bool isNew,
-                                const ShaderLoadData& data);
+                                ShaderLoadData&& data);
 
 
    private:
@@ -109,6 +109,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     [[nodiscard]] ShaderResult uploadToGPU(GLuint parentProgramHandle);
 
     void prepare() const;
+    void onParentValidation();
     [[nodiscard]] UseProgramStageMask stageMask() const noexcept { return _stageMask;  }
 
     PROPERTY_R(bool, valid, false);
@@ -127,7 +128,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     std::atomic_size_t _refCount;
     UseProgramStageMask _stageMask;
     GLuint _programHandle = GLUtil::k_invalidObjectID;
-
+    std::array<GLuint, to_base(ShaderType::COUNT)> _shaderIDs;
    private:
     /// Shader cache
     static ShaderMap _shaderNameMap;

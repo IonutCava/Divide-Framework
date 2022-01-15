@@ -217,6 +217,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     ResourceDescriptor terrainMaterialDescriptor("terrainMaterial_" + name);
     Material_ptr terrainMaterial = CreateResource<Material>(terrain->parentResourceCache(), terrainMaterialDescriptor);
     terrainMaterial->ignoreXMLData(true);
+    terrainMaterial->updatePriorirty(Material::UpdatePriority::Medium);
 
     const vec2<U16> & terrainDimensions = terrainDescriptor->dimensions();
     const vec2<F32> & altitudeRange = terrainDescriptor->altitudeRange();

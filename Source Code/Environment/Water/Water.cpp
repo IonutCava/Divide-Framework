@@ -183,7 +183,7 @@ bool WaterPlane::load() {
 
     ResourceDescriptor waterMaterial("waterMaterial_" + name);
     Material_ptr waterMat = CreateResource<Material>(_parentCache, waterMaterial);
-
+    waterMat->updatePriorirty(Material::UpdatePriority::Medium);
     waterMat->properties().shadingMode(ShadingMode::BLINN_PHONG);
     waterMat->properties().bumpMethod(BumpMethod::NORMAL);
     waterMat->properties().isStatic(true);

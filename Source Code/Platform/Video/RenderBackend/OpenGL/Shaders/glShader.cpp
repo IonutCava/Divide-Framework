@@ -19,6 +19,15 @@ namespace {
     constexpr const char* g_binaryBinExtension = ".bin";
     constexpr const char* g_binaryFmtExtension = ".fmt";
 
+    struct MetricsShaderTimer {
+        eastl::string _hotspotShader = "";
+        U64 _hotspotShaderTimer = 0u;
+    };
+
+    SharedMutex s_hotspotShaderLock;
+    static MetricsShaderTimer s_hotspotShaderGPU;
+    static MetricsShaderTimer s_hotspotShaderDriver;
+
     size_t g_validationBufferMaxSize = 4096 * 16;
 
     FORCE_INLINE ShaderType GetShaderType(const UseProgramStageMask mask) noexcept {
@@ -75,6 +84,7 @@ glShader::glShader(GFXDevice& context, const Str256& name)
       _stageMask(UseProgramStageMask::GL_NONE_BIT)
 {
     std::atomic_init(&_refCount, 0);
+    _shaderIDs.fill(GLUtil::k_invalidObjectID);
 }
 
 glShader::~glShader() {
@@ -94,6 +104,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
         };
 
         Time::ProfileTimer shaderCompileTimer;
+
         Time::ProfileTimer shaderCompileTimerGPU;
         Time::ProfileTimer shaderCompileDriveSide;
         Time::ProfileTimer shaderLinkTimer;
@@ -103,7 +114,14 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
         }
         Console::d_printfn(Locale::Get(_ID("GLSL_LOAD_PROGRAM")), _name.c_str(), getGUID());
 
-        U64 totalCompileTime = 0u, GPUcompileTime = 0u, driverCompileTime = 0u, driverLinkTime = 0u;
+        U64 totalCompileTime = 0u;
+        U64 programCompileTimeGPU = 0u;
+        U64 programCompileTimeGPUMisc = 0u;
+        U64 programLogRetrieval = 0u;
+        U64 driverLinkTime = 0u;
+        U64 uniformCaching = 0u;
+        std::array<U64, to_base(ShaderType::COUNT)> programCompileTimeDriver{};
+        std::array<U64, to_base(ShaderType::COUNT)> stageCompileTimeGPU{};
 
         bool isSeparable = false;
         const GLuint blockIndex = to_U32(ShaderBufferLocation::UNIFORM_BLOCK) + _loadData._uniformIndex;
@@ -142,8 +160,8 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                 }
                 _programHandle = glCreateShaderProgramv(GLUtil::glShaderStageTable[shaderIdx], static_cast<GLsizei>(sourceCodeCstr.size()), sourceCodeCstr.data());
                 if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                    GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
-                    driverCompileTime += getTimerAndReset(shaderCompileDriveSide);
+                    programCompileTimeGPU = getTimerAndReset(shaderCompileTimerGPU);
+                    programCompileTimeDriver[0u] = getTimerAndReset(shaderCompileDriveSide);
                 }
                 if (_programHandle == 0 || _programHandle == GLUtil::k_invalidObjectID) {
                     Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
@@ -160,7 +178,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                     glProgramParameteri(_programHandle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
                     glProgramParameteri(_programHandle, GL_PROGRAM_SEPARABLE, GL_TRUE);
                     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                        GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+                        programCompileTimeGPU += getTimerAndReset(shaderCompileTimerGPU);
                     }
                 }
                 if (_programHandle == 0 || _programHandle == GLUtil::k_invalidObjectID) {
@@ -170,7 +188,6 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                 }
 
                 bool shouldLink = false;
-                std::array<GLuint, to_base(ShaderType::COUNT)> shaders = {};
 
                 for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i) {
                     const LoadData& data = _loadData._data[i];
@@ -190,7 +207,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                             glShaderSource(shader, static_cast<GLsizei>(sourceCodeCstr.size()), sourceCodeCstr.data(), nullptr);
                             glCompileShader(shader);
                             if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                                 driverCompileTime += getTimerAndReset(shaderCompileDriveSide);
+                                programCompileTimeDriver[i] = getTimerAndReset(shaderCompileDriveSide);
                             }
                             GLboolean compiled = 0;
                             glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
@@ -213,37 +230,32 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
 
                                 glDeleteShader(shader);
                             } else {
-                                shaders[i] = shader;
+                                _shaderIDs[i] = shader;
                                 glAttachShader(_programHandle, shader);
                                 shouldLink = true;
                             }
                         }
                         if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                            GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+                            stageCompileTimeGPU[i] = getTimerAndReset(shaderCompileTimerGPU);
+                            programCompileTimeGPU += stageCompileTimeGPU[i];
                         }
                     }
                 }
 
                 if (shouldLink) {
                     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                        shaderCompileTimerGPU.start();
                         shaderLinkTimer.start();
                     }
+
                     glLinkProgram(_programHandle);
+
                     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                         driverLinkTime += getTimerAndReset(shaderLinkTimer);
-                    }
-                    for (const GLuint shader : shaders) {
-                        if (shader != 0u) {
-                            glDetachShader(_programHandle, shader);
-                            glDeleteShader(shader);
-                        }
-                    }
-                    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                        GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+                        driverLinkTime = getTimerAndReset(shaderLinkTimer);
+                        programCompileTimeGPU += driverLinkTime;
                     }
                 }
             }
+
             if_constexpr(Config::ENABLE_GPU_VALIDATION) {
                 shaderCompileTimerGPU.start();
             }
@@ -276,7 +288,9 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                 _valid = true;
             }
             if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+                programLogRetrieval = getTimerAndReset(shaderCompileTimerGPU);
+                programCompileTimeGPU += programLogRetrieval;
+                programCompileTimeGPUMisc += programLogRetrieval;
             }
         }
 
@@ -299,29 +313,88 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
             _constantUploader->cacheUniforms();
 
             if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                GPUcompileTime += getTimerAndReset(shaderCompileTimerGPU);
+                uniformCaching = getTimerAndReset(shaderCompileTimerGPU);
+                programCompileTimeGPU += uniformCaching;
+                programCompileTimeGPUMisc += uniformCaching;
             }
         }
 
         if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-            totalCompileTime += getTimerAndReset(shaderCompileTimer);
+            totalCompileTime = getTimerAndReset(shaderCompileTimer);
 
             if (isSeparable) {
                 Console::printfn(Locale::Get(_ID("SHADER_COMPILE_TIME_SEPARABLE")),
                                  name().c_str(),
                                  parentProgramHandle,
                                  Time::MicrosecondsToMilliseconds<F32>(totalCompileTime),
-                                 Time::MicrosecondsToMilliseconds<F32>(GPUcompileTime),
-                                 Time::MicrosecondsToMilliseconds<F32>(driverCompileTime));
+                                 Time::MicrosecondsToMilliseconds<F32>(programCompileTimeGPU),
+                                 Time::MicrosecondsToMilliseconds<F32>(programCompileTimeDriver[0u]),
+                                 Time::MicrosecondsToMilliseconds<F32>(uniformCaching),
+                                 Time::MicrosecondsToMilliseconds<F32>(programLogRetrieval));
             } else {
+                U8 maxStageGPU = 0u; U64 maxTimeGPU = 0u;
+                U8 maxStageDriver = 0u; U64 maxTimeDriver = 0u;
+                U64 totalTimeDriver = 0u;
+
+                string perStageTiming = "";
+                for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i) {
+                    if (_loadData._data[i]._type == ShaderType::COUNT) {
+                        continue;
+                    }
+
+                    const U64 gpu = stageCompileTimeGPU[i];
+                    const U64 driver = programCompileTimeDriver[i];
+
+                    if (gpu > maxTimeGPU) {
+                        maxStageGPU = i;
+                        maxTimeGPU = gpu;
+                    }
+                    if (driver > maxTimeDriver) {
+                        maxStageDriver = i;
+                        maxTimeDriver = driver;
+                    }
+                    totalTimeDriver += driver;
+
+                    perStageTiming.append(Util::StringFormat("---- [ %s ] - [%5.2f] - [%5.2f]\n", 
+                                          Names::shaderTypes[i],
+                                          Time::MicrosecondsToMilliseconds<F32>(gpu),
+                                          Time::MicrosecondsToMilliseconds<F32>(driver)));
+
+                    ScopedLock<SharedMutex> w_lock(s_hotspotShaderLock);
+                    if (maxTimeGPU > s_hotspotShaderGPU._hotspotShaderTimer) {
+                        s_hotspotShaderGPU._hotspotShaderTimer = maxTimeGPU;
+                        s_hotspotShaderGPU._hotspotShader = _loadData._data[i]._name.c_str();
+                    }
+                    if (maxTimeDriver > s_hotspotShaderDriver._hotspotShaderTimer) {
+                        s_hotspotShaderDriver._hotspotShaderTimer = maxTimeDriver;
+                        s_hotspotShaderDriver._hotspotShader = _loadData._data[i]._name.c_str();
+                    }
+                }
+                const U64 maxPerStage = std::max(maxTimeGPU, maxTimeDriver);
+
+                const bool isLogHotspot = programLogRetrieval > std::max(maxPerStage, driverLinkTime);
+                const char* bottleneckGlobal = isLogHotspot ? "Log Retrieval / First use" : (maxPerStage > driverLinkTime ? "Compilation" : "Linking");
+                const char* bottleneckPerStage = maxTimeGPU > maxTimeDriver ? "GPU" : "Driver";
+
+                SharedLock<SharedMutex> w_lock(s_hotspotShaderLock);
                 Console::printfn(Locale::Get(_ID("SHADER_COMPILE_TIME_NON_SEPARABLE")),
-                                 name().c_str(),
-                                 parentProgramHandle,
-                                 driverCompileTime > driverLinkTime ? "Compilation" : "Linking",
-                                 Time::MicrosecondsToMilliseconds<F32>(totalCompileTime),
-                                 Time::MicrosecondsToMilliseconds<F32>(GPUcompileTime),
-                                 Time::MicrosecondsToMilliseconds<F32>(driverCompileTime),
-                                 Time::MicrosecondsToMilliseconds<F32>(driverLinkTime));
+                                 name().c_str(),                                                                                                    //Shader name
+                                 parentProgramHandle,                                                                                               //Pipeline handle
+                                 bottleneckGlobal,                                                                                                  //Global hotspot
+                                 bottleneckPerStage,                                                                                                //Stage hotspot
+                                 Time::MicrosecondsToMilliseconds<F32>(totalCompileTime),                                                           //Total time
+                                 Time::MicrosecondsToMilliseconds<F32>(programCompileTimeGPU),                                                      //Total driver time
+                                 Time::MicrosecondsToMilliseconds<F32>(programCompileTimeGPU - programCompileTimeGPUMisc),                          //Total driver GPU
+                                 Time::MicrosecondsToMilliseconds<F32>(programCompileTimeGPUMisc),                                                  //Total driver MISC
+                                 Time::MicrosecondsToMilliseconds<F32>(totalTimeDriver),                                                            //Driver compile time
+                                 Time::MicrosecondsToMilliseconds<F32>(maxTimeDriver),                                                              //Max compile time per stage
+                                 Time::MicrosecondsToMilliseconds<F32>(driverLinkTime),                                                             //Driver link time
+                                 Time::MicrosecondsToMilliseconds<F32>(uniformCaching),
+                                 Time::MicrosecondsToMilliseconds<F32>(programLogRetrieval),
+                                 perStageTiming.c_str(),
+                                 s_hotspotShaderGPU._hotspotShader.c_str(), Time::MicrosecondsToMilliseconds<F32>(s_hotspotShaderGPU._hotspotShaderTimer),
+                                 s_hotspotShaderDriver._hotspotShader.c_str(), Time::MicrosecondsToMilliseconds<F32>(s_hotspotShaderDriver._hotspotShaderTimer)
+                                );
             }
         }
     }
@@ -329,12 +402,12 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
     return _valid ? ShaderResult::OK : ShaderResult::Failed;
 }
 
-bool glShader::load(const ShaderLoadData& data) {
+bool glShader::load(ShaderLoadData&& data) {
     bool hasSourceCode = false;
 
     _valid = false;
     _stageMask = UseProgramStageMask::GL_NONE_BIT;
-    _loadData = data;
+    _loadData = MOV(data);
 
     const GLuint blockIndex = to_U32(ShaderBufferLocation::UNIFORM_BLOCK) + _loadData._uniformIndex;
     const string uniformBlock = Util::StringFormat(_loadData._uniformBlock, blockIndex, GetUniformBufferName(this));
@@ -405,7 +478,7 @@ glShader* glShader::getShader(const Str256& name) {
 /// Load a shader by name, source code and stage
 glShader* glShader::loadShader(GFXDevice& context,
                                const Str256& name,
-                               const ShaderLoadData& data) {
+                               ShaderLoadData&& data) {
     // See if we have the shader already loaded
     glShader* shader = getShader(name);
 
@@ -419,16 +492,16 @@ glShader* glShader::loadShader(GFXDevice& context,
         newShader = true;
     }
 
-    return loadShader(shader, newShader, data);
+    return loadShader(shader, newShader, MOV(data));
 }
 
 
 glShader* glShader::loadShader(glShader * shader,
                                const bool isNew,
-                               const ShaderLoadData & data) {
+                               ShaderLoadData&& data) {
 
     // At this stage, we have a valid Shader object, so load the source code
-    if (shader->load(data)) {
+    if (shader->load(MOV(data))) {
         if (isNew) {
             // If we loaded the source code successfully,  register it
             ScopedLock<SharedMutex> w_lock(_shaderNameLock);
@@ -535,6 +608,16 @@ void glShader::prepare() const {
     if (valid()) {
         _constantUploader->prepare();
     }
+}
+
+void glShader::onParentValidation() {
+    for (const GLuint shader : _shaderIDs) {
+        if (shader != GLUtil::k_invalidObjectID) {
+            glDetachShader(_programHandle, shader);
+            glDeleteShader(shader);
+        }
+    }
+    _shaderIDs.fill(GLUtil::k_invalidObjectID);
 }
 
 } // namespace Divide

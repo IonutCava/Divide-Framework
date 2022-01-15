@@ -291,7 +291,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     // Add our engine specific defines and various code pieces to every GLSL shader
     // Add version as the first shader statement, followed by copyright notice
     AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#version 4%d0 core", GLUtil::getGLValue(GL_MINOR_VERSION)));
-    AppendToShaderHeader(ShaderType::COUNT, "/*Copyright 2009-2020 DIVIDE-Studio*/");
+    AppendToShaderHeader(ShaderType::COUNT, "/*Copyright 2009-2022 DIVIDE-Studio*/");
 
     if (s_UseBindlessTextures || s_DebugBindlessTextures) {
         AppendToShaderHeader(ShaderType::COUNT, "#extension  GL_ARB_bindless_texture : require");

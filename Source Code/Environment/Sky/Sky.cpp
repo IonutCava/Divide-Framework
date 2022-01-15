@@ -573,6 +573,7 @@ bool Sky::load() {
 
     ResourceDescriptor skyMaterial("skyMaterial_" + resourceName());
     Material_ptr skyMat = CreateResource<Material>(_parentCache, skyMaterial);
+    skyMat->updatePriorirty(Material::UpdatePriority::High);
     skyMat->properties().shadingMode(ShadingMode::BLINN_PHONG);
     skyMat->properties().roughness(0.01f);
 

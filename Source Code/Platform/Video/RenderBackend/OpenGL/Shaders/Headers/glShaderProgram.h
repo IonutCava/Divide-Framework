@@ -147,7 +147,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
 
     ShaderResult rebindStages();
     ShaderResult validatePreBind(bool rebind = true);
-    void queueValidation();
+    void processValidation();
     
     bool recompile(bool& skipped) override;
     /// Creation of a new shader program. Pass in a shader token and use glsw to

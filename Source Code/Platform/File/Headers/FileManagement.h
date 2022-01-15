@@ -33,6 +33,14 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _PLATFORM_FILE_FILE_MANAGEMENT_H_
 #define _PLATFORM_FILE_FILE_MANAGEMENT_H_
 
+#define USE_BOOST_REGEX
+
+#if defined(USE_BOOST_REGEX)
+namespace regexNamespace = boost;
+#else //USE_BOOST_REGEX
+namespace regexNamespace = std;
+#endif //USE_BOOST_REGEX
+
 namespace Divide {
 
 enum class CacheType : U8 {
@@ -132,11 +140,11 @@ struct Paths {
     }; //class Shaders
 
     // include command regex pattern
-    static std::regex g_includePattern;
+    static regexNamespace::regex g_includePattern;
     // define regex pattern
-    static std::regex g_definePattern;
+    static regexNamespace::regex g_definePattern;
     // use command regex pattern
-    static std::regex g_usePattern;
+    static regexNamespace::regex g_usePattern;
 
     
     static void initPaths(const SysInfo& info);

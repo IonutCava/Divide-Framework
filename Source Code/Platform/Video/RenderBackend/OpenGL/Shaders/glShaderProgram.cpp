@@ -26,8 +26,6 @@ extern "C" {
 #include "fcpp/fpp.h"
 }
 
-#define USE_BOOST_REGEX
-
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable:4458)
@@ -36,16 +34,13 @@ extern "C" {
 #include <boost/wave.hpp>
 #include <boost/wave/cpplexer/cpp_lex_iterator.hpp> // lexer class
 #include <boost/wave/cpplexer/cpp_lex_token.hpp>    // token class
-
-#if defined(USE_BOOST_REGEX)
-#include <boost/regex.hpp>
-#endif //USE_BOOST_REGEX
-
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
 
 namespace Divide {
+    constexpr GLint s_maxHeaderRecursionLevel = 64;
+
 namespace Preprocessor{
      //ref: https://stackoverflow.com/questions/14858017/using-boost-wave
     class custom_directives_hooks final : public boost::wave::context_policies::default_preprocessing_hooks
@@ -465,7 +460,7 @@ ShaderResult glShaderProgram::rebindStages() {
     return ShaderResult::OK;
 }
 
-void glShaderProgram::queueValidation() {
+void glShaderProgram::processValidation() {
     if (!_validationQueued) {
         return;
     }
@@ -473,7 +468,7 @@ void glShaderProgram::queueValidation() {
     _validationQueued = false;
 
     UseProgramStageMask stageMask = UseProgramStageMask::GL_NONE_BIT;
-    for (const glShader* shader : _shaderStage) {
+    for (glShader* shader : _shaderStage) {
 
         if (!shader->valid()) {
             continue;
@@ -483,6 +478,8 @@ void glShaderProgram::queueValidation() {
             g_sShaderBinaryDumpQueue.enqueue(BinaryDumpEntry{ shader->name(), shader->getProgramHandle() });
         }
 
+        shader->onParentValidation();
+
         stageMask |= shader->stageMask();
     }
 
@@ -490,6 +487,8 @@ void glShaderProgram::queueValidation() {
         g_sValidationQueue.enqueue({ resourceName(), _handle, stageMask });
         g_newValidationQueueEntry.store(true);
     }
+
+    
 }
 
 ShaderResult glShaderProgram::validatePreBind(const bool rebind) {
@@ -722,7 +721,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
             const U64 targetNameHash = _ID(programName.c_str());
             for (glShader* tempShader : _shaderStage) {
                 if (tempShader->nameHash() == targetNameHash) {
-                    glShader::loadShader(tempShader, false, loadData);
+                    glShader::loadShader(tempShader, false, MOV(loadData));
                     _validationQueued = rebindStages() == ShaderResult::OK;
                     break;
                 }
@@ -730,7 +729,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
         } else {
             glShader* shader = glShader::getShader(programName);
             if (shader == nullptr) {
-                shader = glShader::loadShader(_context, programName, loadData);
+                shader = glShader::loadShader(_context, programName, MOV(loadData));
                 assert(shader != nullptr);
             } else {
                 shader->AddRef();
@@ -799,7 +798,7 @@ ShaderResult glShaderProgram::bind() {
     // Set this program as the currently active one
     if (GL_API::getStateTracker().setActiveShaderPipeline(_handle)) {
         // All of this needs to be run on an actual bind operation. If we are already bound, we assume we did all this
-        queueValidation();
+        processValidation();
         for (const glShader* shader : _shaderStage) {
             shader->prepare();
         }
@@ -820,12 +819,6 @@ void glShaderProgram::uploadPushConstants(const PushConstants& constants) {
 }
 
 eastl::string glShaderProgram::GatherUniformDeclarations(const eastl::string & source, vector<UniformDeclaration>& foundUniforms) {
-#if defined(USE_BOOST_REGEX)
-    namespace regexNamespace = boost;
-#else //USE_BOOST_REGEX
-    namespace regexNamespace = std;
-#endif //USE_BOOST_REGEX
-
     static const regexNamespace::regex uniformPattern { R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
 
     eastl::string ret;
@@ -835,7 +828,9 @@ eastl::string glShaderProgram::GatherUniformDeclarations(const eastl::string & s
     regexNamespace::smatch matches;
     istringstream input(source.c_str());
     while (std::getline(input, line)) {
-        if (regexNamespace::regex_search(line, matches, uniformPattern)) {
+        if (Util::BeginsWith(line, "uniform", true) &&
+            regexNamespace::regex_search(line, matches, uniformPattern))
+        {
             foundUniforms.push_back(UniformDeclaration{
                 Util::Trim(matches[1].str()), //type
                 Util::Trim(matches[2].str())  //name
@@ -854,19 +849,31 @@ eastl::string glShaderProgram::PreprocessIncludes(const ResourcePath& name,
                                                   const GLint level,
                                                   vector<ResourcePath>& foundAtoms,
                                                   const bool lock) {
-    if (level > 32) {
+    if (level > s_maxHeaderRecursionLevel) {
         Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INCLUD_LIMIT")));
     }
 
     size_t lineNumber = 1;
-    std::smatch matches;
+    regexNamespace::smatch matches;
 
     string line;
     eastl::string output, includeString;
     istringstream input(source.c_str());
 
     while (std::getline(input, line)) {
-        if (!std::regex_search(line, matches, Paths::g_includePattern)) {
+        const std::string_view directive = !line.empty() ? std::string_view{line}.substr(1) : "";
+
+        const bool isInclude = Util::BeginsWith(line, "#", true) && 
+                               !Util::BeginsWith(directive, "version", true) &&
+                               !Util::BeginsWith(directive, "extension", true) &&
+                               !Util::BeginsWith(directive, "define", true) &&
+                               !Util::BeginsWith(directive, "if", true) &&
+                               !Util::BeginsWith(directive, "else", true) &&
+                               !Util::BeginsWith(directive, "elif", true) &&
+                               !Util::BeginsWith(directive, "endif", true) &&
+                               !Util::BeginsWith(directive, "pragma", true) &&
+                               regexNamespace::regex_search(line, matches, Paths::g_includePattern);
+        if (!isInclude) {
             output.append(line.c_str());
         } else {
             const ResourcePath includeFile = ResourcePath(Util::Trim(matches[1].str()));

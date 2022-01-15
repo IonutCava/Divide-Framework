@@ -177,6 +177,7 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
     cloneMat->_shaderInfo = this->_shaderInfo;
     cloneMat->_defaultRenderStates = this->_defaultRenderStates;
     cloneMat->ignoreXMLData(this->ignoreXMLData());
+    cloneMat->updatePriorirty(this->updatePriorirty());
 
     for (U8 i = 0u; i < to_U8(this->_textures.size()); ++i) {
         const TextureInfo& texInfo = this->_textures[i];
@@ -327,8 +328,7 @@ void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDes
 }
 
 void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,
-                                        const RenderStagePass stagePass,
-                                        const bool computeOnAdd)
+                                        const RenderStagePass stagePass)
 {
     OPTICK_EVENT();
 
@@ -354,12 +354,16 @@ void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDes
     }
 
     ShaderComputeQueue::ShaderQueueElement shaderElement{ info._shaderRef, shaderDescriptorRef };
-    if (computeOnAdd) {
+    if (updatePriorirty() == UpdatePriority::High) {
         _context.shaderComputeQueue().process(shaderElement);
         info._shaderCompStage = ShaderBuildStage::COMPUTED;
         assert(info._shaderRef != nullptr);
     } else {
-        _context.shaderComputeQueue().addToQueueBack(shaderElement);
+        if (updatePriorirty() == UpdatePriority::Medium) {
+            _context.shaderComputeQueue().addToQueueFront(shaderElement);
+        } else {
+            _context.shaderComputeQueue().addToQueueBack(shaderElement);
+        }
         info._shaderCompStage = ShaderBuildStage::QUEUED;
     }
 }
@@ -568,7 +572,7 @@ void Material::computeShader(const RenderStagePass renderStagePass) {
 
     if (_customShaderCBK) {
         const ShaderProgramDescriptor descriptor = _customShaderCBK(renderStagePass);
-        setShaderProgramInternal(descriptor, renderStagePass, false);
+        setShaderProgramInternal(descriptor, renderStagePass);
         return;
     }
 
@@ -615,7 +619,7 @@ void Material::computeShader(const RenderStagePass renderStagePass) {
         shaderDescriptor._modules.push_back(fragModule);
     }
 
-    setShaderProgramInternal(shaderDescriptor, renderStagePass, false);
+    setShaderProgramInternal(shaderDescriptor, renderStagePass);
 }
 
 bool Material::unload() {

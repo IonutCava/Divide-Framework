@@ -217,14 +217,17 @@ FORCE_INLINE ResourcePath MakeXMLSafe(const ResourcePath& subject) {
     return ResourcePath{ MakeXMLSafe(subject.str()) };
 }
 
-template<typename T_strA, typename T_strB>
-bool BeginsWith(const T_strA& input, const T_strB& compare, const bool ignoreWhitespace) {
+inline bool BeginsWith(const std::string_view input, const std::string_view compare, bool ignoreWhitespace) {
     if (ignoreWhitespace) {
-        return Ltrim(input).rfind(compare) == 0;
+        const auto itBegin = input.find_first_not_of(" \t\n\r\f\v");
+        if (itBegin != std::string_view::npos) {
+            return input.substr(itBegin).rfind(compare) == 0;
+        }
     }
 
     return input.rfind(compare) == 0;
 }
+
 
 template<typename T_str>
 T_str GetTrailingCharacters(const T_str& input, size_t count) {
@@ -322,10 +325,7 @@ T_str Ltrim(const T_str& s) {
 
 template<typename T_str>
 T_str& Ltrim(T_str& s) {
-    s.erase(eastl::begin(s),
-            eastl::find_if(eastl::begin(s),
-                         eastl::end(s),
-                         [](const char c) noexcept { return !std::isspace(c); }));
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](const T_str::value_type c) noexcept {return !std::isspace(c); }));
     return s;
 }
 
@@ -337,10 +337,7 @@ T_str Rtrim(const T_str& s) {
 
 template<typename T_str>
 T_str& Rtrim(T_str& s) {
-    s.erase(eastl::find_if(eastl::rbegin(s),
-                         eastl::rend(s),
-                         [](const char c) noexcept { return !std::isspace(c); }).base(),
-            eastl::end(s));
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](const T_str::value_type c) noexcept {return !std::isspace(c); }).base(), s.end());
     return s;
 }
 

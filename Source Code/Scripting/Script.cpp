@@ -120,12 +120,12 @@ void Script::preprocessIncludes(const string& source, const I32 level /*= 0 */) 
         Console::errorfn(Locale::Get(_ID("ERROR_SCRIPT_INCLUD_LIMIT")));
     }
 
-    std::smatch matches;
+    regexNamespace::smatch matches;
     string line, include_string;
 
     istringstream input(source);
     while (std::getline(input, line)) {
-        if (std::regex_search(line, matches, Paths::g_usePattern)) {
+        if (regexNamespace::regex_search(line, matches, Paths::g_usePattern)) {
             ResourcePath include_file = ResourcePath{ Util::Trim(matches[1].str()).c_str() };
             _usedAtoms.push_back(include_file);
 

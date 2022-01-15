@@ -122,6 +122,13 @@ class Material final : public CachedResource {
     using SpecularGlossiness = vec2<F32>;
     using CustomShaderUpdateCBK = DELEGATE_STD<ShaderProgramDescriptor, RenderStagePass>;
 
+    enum class UpdatePriority : U8 {
+        Default,
+        Medium,
+        High,
+        COUNT
+    };
+
     struct ShaderData {
         Str64 _depthShaderVertSource = "baseVertexShaders";
         Str32 _depthShaderVertVariant = "BasicLightData";
@@ -287,8 +294,7 @@ class Material final : public CachedResource {
 
     void recomputeShaders();
     void setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,
-                                  RenderStagePass stagePass,
-                                  bool computeOnAdd);
+                                  RenderStagePass stagePass);
 
     void setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,
                                   ShaderProgramInfo& shaderInfo,
@@ -318,6 +324,7 @@ class Material final : public CachedResource {
     PROPERTY_RW(CustomShaderUpdateCBK, customShaderCBK);
     POINTER_R_IW(Material, baseMaterial, nullptr);
     PROPERTY_RW(bool, ignoreXMLData, false);
+    PROPERTY_RW(UpdatePriority, updatePriorirty, UpdatePriority::Default);
 
     template<typename T> using StatesPerVariant     = eastl::array<T,                       to_base(RenderStagePass::VariantType::COUNT)>;
     template<typename T> using StateVariantsPerPass = eastl::array<StatesPerVariant<T>,     to_base(RenderPassType::COUNT)>;

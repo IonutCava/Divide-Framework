@@ -64,8 +64,7 @@ namespace Divide {
 
         bool IsNumber(const char* s);
 
-        template<typename T_strA = string, typename T_strB = string>
-        bool BeginsWith(const T_strA& input, const T_strB& compare, bool ignoreWhitespace);
+        bool BeginsWith(std::string_view input, std::string_view compare, bool ignoreWhitespace);
 
         template<typename T_str = string>
         T_str GetTrailingCharacters(const T_str& input, size_t count);

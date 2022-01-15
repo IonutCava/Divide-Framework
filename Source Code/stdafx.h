@@ -134,6 +134,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/functional/factory.hpp>
+#include <boost/regex.hpp>
 
 #include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
 
