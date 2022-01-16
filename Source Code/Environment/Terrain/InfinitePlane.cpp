@@ -54,7 +54,7 @@ bool InfinitePlane::load() {
 
     planeMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(_parentCache, textureWaterCaustics), albedoSampler.getHash(), TextureOperation::REPLACE);
 
-    planeMaterial->customShaderCBK([](const RenderStagePass stagePass) {
+    planeMaterial->computeShaderCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
         vertModule._sourceFile = "terrainPlane.glsl";

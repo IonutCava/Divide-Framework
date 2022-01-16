@@ -124,6 +124,13 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
            IS_VISIBLE = toBit(8)
        };
 
+       enum class PackageUpdateState : U8 {
+           NeedsRefresh = 0,
+           NeedsNewCull,
+           Processed,
+           COUNT
+       };
+
        struct DrawCommands {
            vector_fast<GFX::DrawCommand> _data;
            SharedMutex _dataLock;
@@ -224,10 +231,12 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     PROPERTY_RW(F32, dataFlag, 1.0f);
     PROPERTY_R_IW(bool, isInstanced, false);
     PROPERTY_R_IW(U32, indirectionBufferEntry, U32_MAX);
-    PROPERTY_RW(bool, rebuildRenderPackages, false);
+    PROPERTY_RW(PackageUpdateState, packageUpdateState, PackageUpdateState::COUNT);
+    PROPERTY_R_IW(bool, rebuildDrawCommands, false);
+
    protected:
 
-    void onMaterialChanged();
+    void clearDrawPackages();
     void onParentUsageChanged(NodeUsageContext context) const;
 
     void OnData(const ECS::CustomEvent& data) override;

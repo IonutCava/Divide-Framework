@@ -167,8 +167,6 @@ void Material::Properties::loadFromXML(const string& entryName, const boost::pro
 
     parallaxFactor(pt.get<F32>(entryName + ".parallaxFactor", parallaxFactor()));
 
-    doubleSided(pt.get<bool>(entryName + ".doubleSided", doubleSided()));
-
     receivesShadows(pt.get<bool>(entryName + ".receivesShadows", receivesShadows()));
 
     ignoreTexDiffuseAlpha(pt.get<bool>(entryName + ".ignoreTexDiffuseAlpha", overrides().ignoreTexDiffuseAlpha()));
@@ -180,6 +178,13 @@ void Material::Properties::loadFromXML(const string& entryName, const boost::pro
     useAlphaDiscard(pt.get<bool>(entryName + ".useAlphaDiscard", overrides().useAlphaDiscard()));
 
     isRefractive(pt.get<bool>(entryName + ".isRefractive", isRefractive()));
+
+    doubleSided(pt.get<bool>(entryName + ".doubleSided", doubleSided()));
+    {
+        //Clear this flag when loading from XML as it will conflict with our custom RenderStateBlock when loading it from XML!!
+        //doubleSided calls set this flag to true thus invalidating our recently loaded render state.
+        cullUpdated(false);
+    }
 }
 
 } //namespace Divide

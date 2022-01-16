@@ -21,9 +21,9 @@ namespace Divide {
         Parent::PreUpdate(dt);
 
         for (RenderingComponent* comp : _componentCache) {
-            if (comp->parentSGN()->getNode().rebuildDrawCommands()) {
-                comp->rebuildRenderPackages(true);
-                comp->parentSGN()->getNode().rebuildDrawCommands(false);
+            if (comp->rebuildDrawCommands() || comp->parentSGN()->getNode().rebuildDrawCommands()) {
+                comp->packageUpdateState(RenderingComponent::PackageUpdateState::NeedsRefresh);
+                comp->rebuildDrawCommands(false);
             }
         }
     }
@@ -36,10 +36,19 @@ namespace Divide {
         const U64 microSec = Time::MillisecondsToMicroseconds(dt);
 
         for (RenderingComponent* comp : _componentCache) {
-            if (comp->_materialInstance != nullptr && comp->_materialInstance->update(microSec)) {
-                comp->onMaterialChanged();
+            if (comp->parentSGN()->getNode().rebuildDrawCommands()) {
+                comp->parentSGN()->getNode().rebuildDrawCommands(false);
+            }
+            if (comp->_materialInstance != nullptr) {
+                const U32 materialUpdateMask = comp->_materialInstance->update(microSec);
+                if (BitCompare(materialUpdateMask, Material::UpdateResult::NewShader)) {
+                    comp->rebuildDrawCommands(true);
+                } else if (BitCompare(materialUpdateMask, Material::UpdateResult::NewCull)) {
+                    comp->packageUpdateState(RenderingComponent::PackageUpdateState::NeedsNewCull);
+                }
             }
         }
+
         Material::Update(microSec);
     }
 
@@ -47,20 +56,36 @@ namespace Divide {
         OPTICK_EVENT();
 
         Parent::PostUpdate(dt);
-
-        for (RenderingComponent* comp : _componentCache) {
-            if (comp->rebuildRenderPackages()) {
-                comp->rebuildRenderPackages(false);
-            }
-        }
     }
 
     void RenderingSystem::OnFrameStart() {
         Parent::OnFrameStart();
+
+        for (RenderingComponent* comp : _componentCache) {
+            if (comp->packageUpdateState() == RenderingComponent::PackageUpdateState::Processed) {
+                comp->packageUpdateState(RenderingComponent::PackageUpdateState::COUNT);
+            }
+        }
     }
 
     void RenderingSystem::OnFrameEnd() {
         Parent::OnFrameEnd();
+
+        for (RenderingComponent* comp : _componentCache) {
+            if (comp->packageUpdateState() == RenderingComponent::PackageUpdateState::NeedsRefresh) {
+                comp->clearDrawPackages();
+                if (comp->_materialInstance) {
+                    comp->_materialInstance->clearRenderStates();
+                }
+                comp->packageUpdateState(RenderingComponent::PackageUpdateState::Processed);
+            } else if (comp->packageUpdateState() == RenderingComponent::PackageUpdateState::NeedsNewCull) {
+                comp->clearDrawPackages();
+                if (comp->_materialInstance) {
+                    comp->_materialInstance->updateCullState();
+                }
+                comp->packageUpdateState(RenderingComponent::PackageUpdateState::Processed);
+            }
+        }
     }
 
     bool RenderingSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {

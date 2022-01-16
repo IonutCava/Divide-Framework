@@ -179,9 +179,19 @@ void RenderingComponent::setMaxRenderRange(const F32 maxRange) noexcept {
     _renderRange.max = std::min(maxRange,  1.0f * g_renderRangeLimit);
 }
 
-void RenderingComponent::onMaterialChanged() {
-    OPTICK_EVENT();
-    _parentSGN->getNode().rebuildDrawCommands(true);
+void RenderingComponent::clearDrawPackages() {
+    SharedLock<SharedMutex> r_lock(_renderPackagesLock);
+    for (auto& packagesPerPassType : _renderPackages) {
+        for (auto& packagesPerVariant : packagesPerPassType) {
+            for (auto& packagesPerPassIndex : packagesPerVariant) {
+                for (auto& pacakgesPerIndex : packagesPerPassIndex) {
+                    for (auto& [idx, pkg] : pacakgesPerIndex) {
+                        Clear(pkg);
+                    }
+                }
+            }
+        }
+    }
 }
 
 bool RenderingComponent::canDraw(const RenderStagePass renderStagePass) {
@@ -213,7 +223,7 @@ void RenderingComponent::onParentUsageChanged(const NodeUsageContext context) co
 void RenderingComponent::rebuildMaterial() {
     if (_materialInstance != nullptr) {
         _materialInstance->rebuild();
-        onMaterialChanged();
+        rebuildDrawCommands(true);
     }
 
     const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
@@ -377,9 +387,6 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
 
     if (hasCommands) {
         RenderPackage& pkg = getDrawPackage(renderStagePass);
-        if (rebuildRenderPackages()) {
-            Clear(pkg);
-        }
         if (pkg.pipelineCmd()._pipeline == nullptr) {
             if (isInstanced()) {
                 pkg.pushConstantsCmd()._constants.set(_ID("INDIRECT_DATA_IDX"), GFX::PushConstantType::UINT, 0u);
@@ -389,7 +396,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
             }
             PipelineDescriptor pipelineDescriptor = {};
             if (_materialInstance != nullptr) {
-                pipelineDescriptor._stateHash = _materialInstance->getRenderStateBlock(renderStagePass);
+                pipelineDescriptor._stateHash = _materialInstance->getOrCreateRenderStateBlock(renderStagePass);
                 pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramGUID(renderStagePass);
                 if (!_materialInstance->getTextureData(renderStagePass, pkg.descriptorSetCmd()._set._textureData)) {
                     NOP();

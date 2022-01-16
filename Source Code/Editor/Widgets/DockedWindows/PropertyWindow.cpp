@@ -1078,7 +1078,7 @@ namespace Divide {
             if (program != nullptr) {
                 shaderName = program->resourceName().c_str();
             }
-            stateHash = material->getRenderStateBlock(currentStagePass);
+            stateHash = material->getOrCreateRenderStateBlock(currentStagePass);
         }
 
         if (ImGui::CollapsingHeader(("Program: " + shaderName).c_str())) {

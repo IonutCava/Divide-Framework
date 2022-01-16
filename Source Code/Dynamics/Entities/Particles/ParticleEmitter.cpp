@@ -107,20 +107,22 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     const bool useTexture = _particleTexture != nullptr;
     Material_ptr mat = CreateResource<Material>(_parentCache, ResourceDescriptor(useTexture ? "Material_particles_Texture" : "Material_particles"));
 
-    // Generate a render state
-    RenderStateBlock particleRenderState;
-    particleRenderState.setCullMode(CullMode::NONE);
-    particleRenderState.setZFunc(ComparisonFunction::EQUAL);
-    _particleStateBlockHash = particleRenderState.getHash();
+    mat->computeRenderStateCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
+        // Generate a render state
+        RenderStateBlock particleRenderState;
+        particleRenderState.setCullMode(CullMode::NONE);
+        particleRenderState.setZFunc(IsDepthPass(stagePass) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL);
 
-    particleRenderState.setZFunc(ComparisonFunction::LEQUAL);
-    _particleStateBlockHashDepth = particleRenderState.getHash();
+        if (IsShadowPass(stagePass)) {
+            particleRenderState.setColourWrites(true, true, false, false);
+        } else if (IsDepthPrePass(stagePass) && stagePass._stage != RenderStage::DISPLAY) {
+            particleRenderState.setColourWrites(false, false, false, false);
+        }
 
-    mat->setRenderStateBlock(_particleStateBlockHashDepth, RenderStage::COUNT, RenderPassType::PRE_PASS);
-    mat->setRenderStateBlock(_particleStateBlockHash, RenderStage::COUNT, RenderPassType::MAIN_PASS);
-    mat->setRenderStateBlock(_particleStateBlockHash, RenderStage::COUNT, RenderPassType::OIT_PASS);
+        return particleRenderState.getHash();
+    });
 
-    mat->customShaderCBK([&](const RenderStagePass stagePass) {
+    mat->computeShaderCBK([useTexture]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
         vertModule._sourceFile = "particles.glsl";

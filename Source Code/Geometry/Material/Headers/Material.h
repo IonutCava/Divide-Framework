@@ -120,13 +120,22 @@ class Material final : public CachedResource {
     static constexpr size_t INVALID_TEX_HASH = std::numeric_limits<size_t>::max();
 
     using SpecularGlossiness = vec2<F32>;
-    using CustomShaderUpdateCBK = DELEGATE_STD<ShaderProgramDescriptor, RenderStagePass>;
+    using ComputeShaderCBK = DELEGATE_STD<ShaderProgramDescriptor, Material*, RenderStagePass>;
+    using ComputeRenderStateCBK = DELEGATE_STD<size_t, Material*, RenderStagePass>;
 
     enum class UpdatePriority : U8 {
         Default,
         Medium,
         High,
         COUNT
+    };
+
+    enum class UpdateResult : U8 {
+        OK = toBit(1),
+        NewCull = toBit(2),
+        NewShader = toBit(3),
+        TransparencyUpdate = toBit(4),
+        COUNT = 4
     };
 
     struct ShaderData {
@@ -201,6 +210,7 @@ class Material final : public CachedResource {
         void toggleTransparency(bool state) noexcept;
         void useAlphaDiscard(bool state) noexcept;
         void baseColour(const FColour4& colour) noexcept;
+
     protected:
         void saveToXML(const string& entryName, boost::property_tree::ptree& pt) const;
         void loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
@@ -218,7 +228,6 @@ class Material final : public CachedResource {
     explicit Material(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name);
 
     static void OnStartup(SamplerAddress defaultTexAddress);
-    static void ApplyDefaultStateBlocks(Material& target);
     static void RecomputeShaders();
     static void Update(U64 deltaTimeUS);
 
@@ -227,8 +236,11 @@ class Material final : public CachedResource {
     /// clone calls CreateResource internally!)
     [[nodiscard]] Material_ptr clone(const Str256& nameSuffix);
     [[nodiscard]] bool unload() override;
-    /// Returns true if the material changed between update calls
-    [[nodiscard]] bool update(U64 deltaTimeUS);
+    /// Returns a bit mask composed of UpdateResult flags
+    [[nodiscard]] U32 update(U64 deltaTimeUS);
+
+    void clearRenderStates();
+    void updateCullState();
 
     bool setSampler(TextureUsage textureUsageSlot, size_t samplerHash);
     bool setTexture(TextureUsage textureUsageSlot,
@@ -258,7 +270,7 @@ class Material final : public CachedResource {
 
     [[nodiscard]] const TextureInfo& getTextureInfo(TextureUsage usage) const;
 
-    [[nodiscard]] size_t getRenderStateBlock(RenderStagePass renderStagePass) const;
+    [[nodiscard]] size_t getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
     [[nodiscard]] Texture_wptr getTexture(TextureUsage textureUsage) const;
 
     [[nodiscard]] bool getTextureData(RenderStagePass renderStagePass, TextureDataContainer& textureData);
@@ -285,9 +297,6 @@ class Material final : public CachedResource {
     void getSortKeys(RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey) const;
 
    private:
-    /// Constructs a shader for the specified renderStatePass
-    void computeShader(RenderStagePass renderStagePass);
-
     void addShaderDefineInternal(ShaderType type, const string& define, bool addPrefix);
 
     void updateTransparency();
@@ -321,7 +330,8 @@ class Material final : public CachedResource {
     std::array<TextureInfo, to_base(TextureUsage::COUNT)> _textures;
     PROPERTY_RW(Properties, properties);
     PROPERTY_RW(ShaderData, baseShaderData);
-    PROPERTY_RW(CustomShaderUpdateCBK, customShaderCBK);
+    PROPERTY_RW(ComputeShaderCBK, computeShaderCBK);
+    PROPERTY_RW(ComputeRenderStateCBK, computeRenderStateCBK);
     POINTER_R_IW(Material, baseMaterial, nullptr);
     PROPERTY_RW(bool, ignoreXMLData, false);
     PROPERTY_RW(UpdatePriority, updatePriorirty, UpdatePriority::Default);

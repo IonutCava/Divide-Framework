@@ -191,7 +191,7 @@ bool WaterPlane::load() {
      WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
     waterMat->setTexture(TextureUsage::NORMALMAP, waterNM, defaultSampler.getHash(), TextureOperation::REPLACE);
-    waterMat->customShaderCBK([](const RenderStagePass stagePass) {
+    waterMat->computeShaderCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
         vertModule._sourceFile = "water.glsl";

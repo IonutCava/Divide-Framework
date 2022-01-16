@@ -577,7 +577,7 @@ bool Sky::load() {
     skyMat->properties().shadingMode(ShadingMode::BLINN_PHONG);
     skyMat->properties().roughness(0.01f);
 
-    skyMat->customShaderCBK([](const RenderStagePass stagePass) {
+    skyMat->computeShaderCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
         vertModule._sourceFile = "sky.glsl";
@@ -609,30 +609,25 @@ bool Sky::load() {
         return shaderDescriptor;
     });
 
-    // Generate a render state
-    RenderStateBlock skyboxRenderState = {};
-    skyboxRenderState.setCullMode(CullMode::FRONT);
-    skyboxRenderState.setZFunc(ComparisonFunction::LEQUAL);
-    const size_t hashA = skyboxRenderState.getHash();
-    skyMat->setRenderStateBlock(hashA, RenderStage::COUNT, RenderPassType::PRE_PASS);
+    skyMat->computeRenderStateCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
+        const bool planarReflection = stagePass._stage == RenderStage::REFLECTION && stagePass._variant == static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR);
 
-    skyboxRenderState.setZFunc(ComparisonFunction::EQUAL);
-    const size_t hashB = skyboxRenderState.getHash();
-    skyMat->setRenderStateBlock(hashB, RenderStage::COUNT, RenderPassType::MAIN_PASS);
-    skyMat->setRenderStateBlock(hashB, RenderStage::COUNT, RenderPassType::OIT_PASS);
+        RenderStateBlock skyboxRenderState{};
+        skyboxRenderState.setCullMode(planarReflection ? CullMode::BACK : CullMode::FRONT);
+        skyboxRenderState.setZFunc(IsDepthPass(stagePass) ? ComparisonFunction::LEQUAL : ComparisonFunction::EQUAL);
+        if (IsShadowPass(stagePass)) {
+             skyboxRenderState.setColourWrites(true, true, false, false);
+        } else if (IsDepthPrePass(stagePass) && stagePass._stage != RenderStage::DISPLAY) {
+            skyboxRenderState.setColourWrites(false, false, false, false);
+        }
 
-    skyboxRenderState.setZFunc(ComparisonFunction::LEQUAL);
-    const size_t hashC = skyboxRenderState.getHash();
-    skyMat->setRenderStateBlock(hashC, RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE));
+        return skyboxRenderState.getHash();
+    });
 
-    skyboxRenderState.setCullMode(CullMode::BACK);
-    const size_t hashD = skyboxRenderState.getHash();
-    skyMat->setRenderStateBlock(hashD, RenderStage::REFLECTION, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR));
-
-    skyMat->setTexture(TextureUsage::UNIT0,     _skybox,          _skyboxSampler,     TextureOperation::NONE);
-    skyMat->setTexture(TextureUsage::HEIGHTMAP, _weatherTex,      noiseSamplerLinear, TextureOperation::NONE);
-    skyMat->setTexture(TextureUsage::UNIT1,     _curlNoiseTex,    noiseSamplerLinear, TextureOperation::NONE);
-    skyMat->setTexture(TextureUsage::SPECULAR,  _worlNoiseTex,    noiseSamplerMipMap, TextureOperation::NONE);
+    skyMat->setTexture(TextureUsage::UNIT0, _skybox, _skyboxSampler, TextureOperation::NONE);
+    skyMat->setTexture(TextureUsage::HEIGHTMAP, _weatherTex, noiseSamplerLinear, TextureOperation::NONE);
+    skyMat->setTexture(TextureUsage::UNIT1, _curlNoiseTex, noiseSamplerLinear, TextureOperation::NONE);
+    skyMat->setTexture(TextureUsage::SPECULAR, _worlNoiseTex, noiseSamplerMipMap, TextureOperation::NONE);
     skyMat->setTexture(TextureUsage::NORMALMAP, _perWorlNoiseTex, noiseSamplerMipMap, TextureOperation::NONE);
 
     setMaterialTpl(skyMat);

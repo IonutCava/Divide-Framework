@@ -110,9 +110,6 @@ class ParticleEmitter final : public SceneNode {
     BuffersPerPlayer _particleGPUBuffers{};
     std::array<bool, to_base(RenderStage::COUNT)> _buffersDirty{};
 
-    size_t _particleStateBlockHash = 0;
-    size_t _particleStateBlockHashDepth = 0;
-
     Task* _bufferUpdate = nullptr;
     Task* _bbUpdate = nullptr;
     Texture_ptr _particleTexture = nullptr;

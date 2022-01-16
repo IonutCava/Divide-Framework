@@ -68,8 +68,20 @@ struct RenderStagePass {
     PassIndex _pass = PassIndex::PASS_0;          // usually some kind of actual pass index (eg. cube face we are rendering into, current CSM split, etc)
 };
 
+    [[nodiscard]] static constexpr bool IsShadowPass(const RenderStagePass stagePass) noexcept {
+        return stagePass._stage == RenderStage::SHADOW;
+    }
+
+    [[nodiscard]] static constexpr bool IsDepthPrePass(const RenderStagePass stagePass) noexcept {
+        return IsShadowPass(stagePass) || stagePass._passType == RenderPassType::PRE_PASS;
+    }  
+    
     [[nodiscard]] static constexpr bool IsDepthPass(const RenderStagePass stagePass) noexcept {
-        return stagePass._stage == RenderStage::SHADOW || stagePass._passType == RenderPassType::PRE_PASS;
+        return IsShadowPass(stagePass) || stagePass._passType == RenderPassType::PRE_PASS;
+    }
+   
+    [[nodiscard]] static constexpr bool IsZPrePass(const RenderStagePass stagePass) noexcept {
+        return stagePass._stage == RenderStage::DISPLAY && stagePass._passType == RenderPassType::PRE_PASS;
     }
 
     static constexpr U8 BaseIndex(const RenderStage stage, const RenderPassType passType) noexcept {

@@ -389,8 +389,6 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     vegMaterial->properties().isStatic(false);
     vegMaterial->properties().isInstanced(true);
 
-    Material::ApplyDefaultStateBlocks(*vegMaterial);
-
     ShaderModuleDescriptor compModule = {};
     compModule._moduleType = ShaderType::COMPUTE;
     compModule._sourceFile = "instanceCullVegetation.glsl";
@@ -417,7 +415,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
-    vegMaterial->customShaderCBK([](const RenderStagePass stagePass) {
+    vegMaterial->computeShaderCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
         ShaderModuleDescriptor vertModule = {};
         vertModule._batchSameFile = false;
         vertModule._moduleType = ShaderType::VERTEX;

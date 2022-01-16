@@ -11,7 +11,7 @@
 </TRANSFORM>
 <ANIMATION>
     <Animation__Speed>1</Animation__Speed>
-    <Animation__Frame__Index x="66" y="65" z="67"/>
+    <Animation__Frame__Index x="42" y="41" z="43"/>
 </ANIMATION>
 <INVERSE_KINEMATICS/>
 <RAGDOLL/>
@@ -38,28 +38,8 @@
         <useAlphaDiscard>true</useAlphaDiscard>
         <isRefractive>false</isRefractive>
         <RenderStates>
-            <1>
+            <0>
                 <colourWrite r="true" g="true" b="false" a="false"/>
-                <zBias>0</zBias>
-                <zUnits>0</zUnits>
-                <zFunc>LESS</zFunc>
-                <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
-                <fillMode>Solid</fillMode>
-                <frontFaceCCW>true</frontFaceCCW>
-                <scissorTestEnabled>false</scissorTestEnabled>
-                <depthTestEnabled>true</depthTestEnabled>
-                <stencilEnable>false</stencilEnable>
-                <stencilFailOp>KEEP</stencilFailOp>
-                <stencilPassOp>KEEP</stencilPassOp>
-                <stencilZFailOp>KEEP</stencilZFailOp>
-                <stencilFunc>NEVER</stencilFunc>
-                <stencilRef>0</stencilRef>
-                <stencilMask>4294967295</stencilMask>
-                <stencilWriteMask>4294967295</stencilWriteMask>
-            </1>
-            <2>
-                <colourWrite r="false" g="false" b="false" a="false"/>
                 <zBias>0</zBias>
                 <zUnits>0</zUnits>
                 <zFunc>LEQUAL</zFunc>
@@ -77,8 +57,28 @@
                 <stencilRef>0</stencilRef>
                 <stencilMask>4294967295</stencilMask>
                 <stencilWriteMask>4294967295</stencilWriteMask>
-            </2>
-            <3>
+            </0>
+            <1>
+                <colourWrite r="true" g="true" b="true" a="true"/>
+                <zBias>0</zBias>
+                <zUnits>0</zUnits>
+                <zFunc>LEQUAL</zFunc>
+                <tessControlPoints>3</tessControlPoints>
+                <cullMode>CW/BACK</cullMode>
+                <fillMode>Solid</fillMode>
+                <frontFaceCCW>true</frontFaceCCW>
+                <scissorTestEnabled>false</scissorTestEnabled>
+                <depthTestEnabled>true</depthTestEnabled>
+                <stencilEnable>false</stencilEnable>
+                <stencilFailOp>KEEP</stencilFailOp>
+                <stencilPassOp>KEEP</stencilPassOp>
+                <stencilZFailOp>KEEP</stencilZFailOp>
+                <stencilFunc>NEVER</stencilFunc>
+                <stencilRef>0</stencilRef>
+                <stencilMask>4294967295</stencilMask>
+                <stencilWriteMask>4294967295</stencilWriteMask>
+            </1>
+            <2>
                 <colourWrite r="true" g="true" b="true" a="true"/>
                 <zBias>0</zBias>
                 <zUnits>0</zUnits>
@@ -97,168 +97,16 @@
                 <stencilRef>0</stencilRef>
                 <stencilMask>4294967295</stencilMask>
                 <stencilWriteMask>4294967295</stencilWriteMask>
-            </3>
-            <4>
-                <colourWrite r="true" g="true" b="true" a="true"/>
-                <zBias>0</zBias>
-                <zUnits>0</zUnits>
-                <zFunc>LEQUAL</zFunc>
-                <tessControlPoints>3</tessControlPoints>
-                <cullMode>CW/BACK</cullMode>
-                <fillMode>Solid</fillMode>
-                <frontFaceCCW>true</frontFaceCCW>
-                <scissorTestEnabled>false</scissorTestEnabled>
-                <depthTestEnabled>true</depthTestEnabled>
-                <stencilEnable>false</stencilEnable>
-                <stencilFailOp>KEEP</stencilFailOp>
-                <stencilPassOp>KEEP</stencilPassOp>
-                <stencilZFailOp>KEEP</stencilZFailOp>
-                <stencilFunc>NEVER</stencilFunc>
-                <stencilRef>0</stencilRef>
-                <stencilMask>4294967295</stencilMask>
-                <stencilWriteMask>4294967295</stencilWriteMask>
-            </4>
+            </2>
         </RenderStates>
-        <SHADOW>
-            <PRE_PASS>
-                <0>
-                    <id>1</id>
-                </0>
-                <1>
-                    <id>1</id>
-                </1>
-                <2>
-                    <id>1</id>
-                </2>
-            </PRE_PASS>
-            <MAIN_PASS>
-                <0>
-                    <id>1</id>
-                </0>
-                <1>
-                    <id>1</id>
-                </1>
-                <2>
-                    <id>1</id>
-                </2>
-            </MAIN_PASS>
-            <OIT_PASS>
-                <0>
-                    <id>1</id>
-                </0>
-                <1>
-                    <id>1</id>
-                </1>
-                <2>
-                    <id>1</id>
-                </2>
-            </OIT_PASS>
-        </SHADOW>
-        <REFLECTION>
-            <PRE_PASS>
-                <0>
-                    <id>2</id>
-                </0>
-                <1>
-                    <id>2</id>
-                </1>
-                <2>
-                    <id>2</id>
-                </2>
-            </PRE_PASS>
-            <MAIN_PASS>
-                <0>
-                    <id>3</id>
-                </0>
-                <1>
-                    <id>3</id>
-                </1>
-                <2>
-                    <id>3</id>
-                </2>
-            </MAIN_PASS>
-            <OIT_PASS>
-                <0>
-                    <id>3</id>
-                </0>
-                <1>
-                    <id>3</id>
-                </1>
-                <2>
-                    <id>3</id>
-                </2>
-            </OIT_PASS>
-        </REFLECTION>
-        <REFRACTION>
-            <PRE_PASS>
-                <0>
-                    <id>2</id>
-                </0>
-                <1>
-                    <id>2</id>
-                </1>
-                <2>
-                    <id>2</id>
-                </2>
-            </PRE_PASS>
-            <MAIN_PASS>
-                <0>
-                    <id>3</id>
-                </0>
-                <1>
-                    <id>3</id>
-                </1>
-                <2>
-                    <id>3</id>
-                </2>
-            </MAIN_PASS>
-            <OIT_PASS>
-                <0>
-                    <id>3</id>
-                </0>
-                <1>
-                    <id>3</id>
-                </1>
-                <2>
-                    <id>3</id>
-                </2>
-            </OIT_PASS>
-        </REFRACTION>
-        <DISPLAY>
-            <PRE_PASS>
-                <0>
-                    <id>4</id>
-                </0>
-                <1>
-                    <id>4</id>
-                </1>
-                <2>
-                    <id>4</id>
-                </2>
-            </PRE_PASS>
-            <MAIN_PASS>
-                <0>
-                    <id>3</id>
-                </0>
-                <1>
-                    <id>3</id>
-                </1>
-                <2>
-                    <id>3</id>
-                </2>
-            </MAIN_PASS>
-            <OIT_PASS>
-                <0>
-                    <id>3</id>
-                </0>
-                <1>
-                    <id>3</id>
-                </1>
-                <2>
-                    <id>3</id>
-                </2>
-            </OIT_PASS>
-        </DISPLAY>
+        <RenderStateIndex>
+            <PerStagePass index="0" stage="0" pass="1" variant="0"/>
+            <PerStagePass index="0" stage="0" pass="1" variant="1"/>
+            <PerStagePass index="0" stage="0" pass="1" variant="2"/>
+            <PerStagePass index="1" stage="3" pass="0" variant="0"/>
+            <PerStagePass index="2" stage="3" pass="1" variant="0"/>
+            <PerStagePass index="2" stage="3" pass="2" variant="0"/>
+        </RenderStateIndex>
         <texture>
             <UNIT0>
                 <name>guard1_body.png</name>

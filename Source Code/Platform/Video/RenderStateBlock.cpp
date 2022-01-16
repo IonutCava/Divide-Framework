@@ -323,7 +323,7 @@ void RenderStateBlock::saveToXML(const RenderStateBlock& block, const string& en
     pt.put(entryName + ".stencilWriteMask", block._stencilWriteMask);
 }
 
-size_t RenderStateBlock::loadFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
+std::pair<RenderStateBlock, size_t> RenderStateBlock::loadFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     RenderStateBlock block;
     block.setColourWrites(pt.get(entryName + ".colourWrite.<xmlattr>.r", true),
                           pt.get(entryName + ".colourWrite.<xmlattr>.g", true),
@@ -351,7 +351,7 @@ size_t RenderStateBlock::loadFromXML(const string& entryName, const boost::prope
     
     block.setStencilReadWriteMask(pt.get(entryName + ".stencilMask", 0xFFFFFFFF),
                                   pt.get(entryName + ".stencilWriteMask", 0xFFFFFFFF));
-    return block.getHash();
+    return { block, block.getHash() };
 }
 
 };
