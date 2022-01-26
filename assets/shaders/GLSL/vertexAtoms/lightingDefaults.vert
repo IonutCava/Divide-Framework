@@ -1,7 +1,7 @@
 #ifndef _LIGHTING_DEFAULTS_VERT_
 #define _LIGHTING_DEFAULTS_VERT_
 
-#if defined(COMPUTE_TBN) || defined(NEED_TANGENT)
+#if defined(COMPUTE_TBN)
 mat3 computeTBN(in mat3 normalMatrixW) {
     const vec3 N = normalize(normalMatrixW * dvd_Normal);
     vec3 T = normalize(normalMatrixW * dvd_Tangent);
@@ -10,7 +10,7 @@ mat3 computeTBN(in mat3 normalMatrixW) {
     const vec3 B = cross(N, T);
     return mat3(dvd_ViewMatrix) * mat3(T, B, N);
 }
-#endif //COMPUTE_TBN || NEED_TANGNET
+#endif //COMPUTE_TBN
 
 void computeViewDirectionWV(in NodeTransformData data) {
     const vec3 cameraDirection = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);

@@ -696,7 +696,7 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
     {
         OPTICK_EVENT("cullNode - Bounding Sphere Distance Test");
         distanceToClosestPointSQ = bSphereCenter.distanceSquared(eye) - SQUARED(radius);
-        if (distanceToClosestPointSQ > params._cullMaxDistanceSq) {
+        if (distanceToClosestPointSQ > SQUARED(params._cullMaxDistance)) {
             // Node is too far away
             return true;
         }
@@ -704,7 +704,7 @@ bool SceneGraphNode::cullNode(const NodeCullParams& params,
     {
         OPTICK_EVENT("cullNode - Bounding Box Distance Test");
         distanceToClosestPointSQ = boundingBox.nearestPoint(eye).distanceSquared(eye);
-        if (distanceToClosestPointSQ > params._cullMaxDistanceSq) {
+        if (distanceToClosestPointSQ > SQUARED(params._cullMaxDistance)) {
             // Check again using the AABB
             return true;
         }

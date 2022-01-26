@@ -116,8 +116,11 @@ bool createDirectory(const char* path) {
     if (!pathExists(path)) {
         const auto targetPath = std::filesystem::path(path);
         std::error_code ec = {};
-        const bool ret = create_directory(targetPath, ec);
-        return ret;
+        const bool ret = create_directories(targetPath, ec);
+        if (!ret) {
+            return pathExists(path);
+        }
+        return true;
     }
 
     return true;

@@ -3,7 +3,10 @@
 
 #include "waterData.cmn"
 
+#define UNDERWATER_ROUGNESS 0.3f
+
 vec4 textureNoTileInternal(in sampler2DArray tex, in vec3 texUV) {
+
 #if !defined(REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS)
     if (VAR._LoDLevel >= 2) {
         return texture(tex, texUV);
@@ -23,71 +26,13 @@ vec4 textureNoTileInternal(in sampler2DArray tex, in vec3 texUV) {
 #define SampleTextureNoTile textureNoTileInternal
 #endif //LOW_QUALITY || !REDUCE_TEXTURE_TILE_ARTIFACT
 
-#define BlendMapDataType float[TOTAL_LAYER_COUNT]
-
-BlendMapDataType getBlendFactor(in vec2 uv) {
-    INSERT_BLEND_AMNT_ARRAY
-
-    uint offset = 0u;
-    for (uint i = 0u; i < MAX_TEXTURE_LAYERS; ++i) {
-        const vec4 blendColour = GetBlend(vec3(uv, i));
-        for (uint j = 0; j < CURRENT_LAYER_COUNT[i]; ++j) {
-            blendAmount[offset + j] = blendColour[j];
-        }
-        offset += CURRENT_LAYER_COUNT[i];
-    }
-
-    return blendAmount;
-}
-
-mat3 cotangentFrame() {
-    const vec3 V = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
-
-    // get edge vectors of the pixel triangle
-    const vec3 dp1  = dFdx(-V);
-    const vec3 dp2  = dFdy(-V);
-    const vec2 duv1 = dFdx(VAR._texCoord);
-    const vec2 duv2 = dFdy(VAR._texCoord);
-#if defined(REFLECTION_PASS)
-    vec3 normalW = -VAR._normalW;
-#else //REFLECTION_PASS
-    vec3 normalW = VAR._normalW;
-#endif //REFLECTION_PASS
-    // solve the linear system
-    const vec3 dp2perp = cross(dp2, VAR._normalW);
-    const vec3 dp1perp = cross(normalW, dp1);
-    const vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
-    const vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
-
-    // construct a scale-invariant frame 
-    const float invmax = inversesqrt(max(dot(T, T), dot(B, B)));
-    return mat3(T * invmax,
-                B * invmax,
-                VAR._normalW);
-
-}
-
-mat3 getTBNW() {
-    // We need to compute tangent and bitengent vectors with 
-    // as cotangent_frame's results do not apply for what we need them to do
-    const vec3 N = normalize(VAR._normalW);
-    const vec3 T1 = cross(N, vec3(0.f, 0.f, 1.f));
-    const vec3 T2 = cross(N, vec3(0.f, 1.f, 0.f));
-    const vec3 T = normalize(length(T1) > length(T2) ? T1 : T2);
-    const vec3 B = normalize(-cross(N, T));
-    // Orthogonal matrix(each axis is a perpendicular unit vector)
-    // The transpose of an orthogonal matrix equals its inverse
-    return mat3(T, B, N);
-}
-
-mat3 getTBNWV() {
-    return mat3(dvd_ViewMatrix) * getTBNW();
-}
-
 #if defined(HAS_PARALLAX)
-float getDisplacementValueFromCoords(in vec2 sampleUV, in BlendMapDataType amnt) {
+
+#define getTBNW() (mat3(dvd_InverseViewMatrix) * getTBNWV())
+
+float getDisplacementValueFromCoords(in vec2 sampleUV, in vec4 amnt) {
     float ret = 0.0f;
-    for (uint i = 0; i < TOTAL_LAYER_COUNT; ++i) {
+    for (int i = 0; i < MAX_TEXTURE_LAYERS; ++i) {
         ret = max(ret, SampleTextureNoTile(texMetalness, vec3(sampleUV * CURRENT_TILE_FACTORS[i], DISPLACEMENT_IDX[i])).r * amnt[i]);
     }
     // Transform the height to displacement (easier to fake depth than height on flat surfaces)
@@ -134,7 +79,7 @@ vec2 ParallaxOcclusionMapping(in vec2 scaledCoords, in vec3 viewDirT, float curr
 #if defined(LOW_QUALITY) || !defined(HAS_PARALLAX)
 #define getScaledCoords(UV, AMNT) scaledTextureCoords(UV, TEXTURE_TILE_SIZE)
 #else //LOW_QUALITY || !HAS_PARALLAX
-vec2 getScaledCoords(vec2 uv, in BlendMapDataType amnt) {
+vec2 getScaledCoords(vec2 uv, in vec4 amnt) {
     vec2 scaledCoords = scaledTextureCoords(uv, TEXTURE_TILE_SIZE);
 #if 0
     //ToDo: Maybe bump this 1 unit? -Ionut
@@ -161,20 +106,7 @@ vec2 getScaledCoords(vec2 uv, in BlendMapDataType amnt) {
 }
 #endif //LOW_QUALITY || !HAS_PARALLAX
 
-vec3 getTerrainNormal(in BlendMapDataType amnt, in vec2 uv) {
-    vec3 normal = vec3(0.f);
-    for (uint i = 0; i < TOTAL_LAYER_COUNT; ++i) {
-        normal = mix(normal, SampleTextureNoTile(texNormalMap, vec3(uv * CURRENT_TILE_FACTORS[i], NORMAL_IDX[i])).rgb, amnt[i]);
-    }
-
-    return 2.f * normal - 1.f;
-}
-
-vec3 getUnderwaterNormal() {
-    const vec3 normal = GetCaustics(vec3(VAR._texCoord * UNDERWATER_TILE_SCALE, 2)).rgb;
-
-    return 2.f * normal - 1.f;
-}
+#define getUnderwaterNormal() (2.f * GetCaustics(vec3(VAR._texCoord * UNDERWATER_TILE_SCALE, 2)).rgb - 1.f)
 
 float _private_roughness = 1.f;
 void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OMR) {
@@ -183,39 +115,68 @@ void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OM
     OMR.b = _private_roughness;
 }
 
-#if defined(MAIN_DISPLAY_PASS) && defined(PRE_PASS)
-float getTerrainRoughness(in BlendMapDataType amnt, in vec2 uv) {
-    float roughness = 0.f;
-    for (uint i = 0u; i < TOTAL_LAYER_COUNT; ++i) {
+vec4 getBlendedAlbedo() {
+    vec4 albedo = vec4(0.f);
+    for (int i = 0; i < MAX_TEXTURE_LAYERS; ++i) {
+        const vec4 blendAmnt = GetBlend(vec3(VAR._texCoord, i));
+        const vec2 uv = getScaledCoords(VAR._texCoord, blendAmnt);
         // Albedo & Roughness
-        roughness = mix(roughness, SampleTextureNoTile(texDiffuse0, vec3(uv * CURRENT_TILE_FACTORS[i], ALBEDO_IDX[i])).a, amnt[i]);
-    }
-
-    return roughness;
-}
-
-vec4 GetTerrainNormalWVAndRoughness() {
-    const BlendMapDataType blendAmnt = getBlendFactor(VAR._texCoord);
-    const vec2 uv = getScaledCoords(VAR._texCoord, blendAmnt);
-    const vec2 waterData = GetWaterDetails(VAR._vertexW.xyz, TERRAIN_HEIGHT_OFFSET);
-    const vec3 normalMap = mix(getTerrainNormal(blendAmnt, uv), getUnderwaterNormal(), waterData.x);
-    const vec3 normalWV = normalize(mat3(dvd_ViewMatrix) * cotangentFrame() * normalMap);
-    _private_roughness = mix(getTerrainRoughness(blendAmnt, uv), 0.3f, waterData.x);
-
-    return vec4(normalWV, _private_roughness);
-}
-
-#else //MAIN_DISPLAY_PASS && PRE_PASS
-vec4 getTerrainAlbedo(in BlendMapDataType amnt, in vec2 uv) {
-    vec4 albedo = vec4(0.0f);
-    for (uint i = 0u; i < TOTAL_LAYER_COUNT; ++i) {
-        // Albedo & Roughness
-        albedo = mix(albedo, SampleTextureNoTile(texDiffuse0, vec3(uv * CURRENT_TILE_FACTORS[i], ALBEDO_IDX[i])), amnt[i]);
+        for (int j = 0; j < 4; ++j) {
+            const uint offset = Mad(i, 4u, j);
+            albedo = mix(albedo, SampleTextureNoTile(texDiffuse0, vec3(uv * CURRENT_TILE_FACTORS[offset], ALBEDO_IDX[offset])), blendAmnt[j]);
+        }
     }
 
     return albedo;
 }
 
+vec3 getBlendedNormal() {
+    vec3 normal = vec3(0.f);
+    for (int i = 0; i < MAX_TEXTURE_LAYERS; ++i) {
+        const vec4 blendAmnt = GetBlend(vec3(VAR._texCoord, i));
+        const vec2 uv = getScaledCoords(VAR._texCoord, blendAmnt);
+
+        for (int j = 0; j < 4; ++j) {
+            const uint offset = Mad(i, 4u, j);
+            normal = mix(normal, SampleTextureNoTile(texNormalMap, vec3(uv * CURRENT_TILE_FACTORS[offset], NORMAL_IDX[offset])).rgb, blendAmnt[j]);
+        }
+    }
+
+    return 2.f * normal - 1.f;
+}
+
+
+#if defined(MAIN_DISPLAY_PASS) && defined(PRE_PASS)
+vec4 GetBlendedNormalAndRoughness() {
+    vec4 normalAndRoughness = vec4(0.f);
+    for (int i = 0; i < MAX_TEXTURE_LAYERS; ++i) {
+        const vec4 blendAmnt = GetBlend(vec3(VAR._texCoord, i));
+        const vec2 uv = getScaledCoords(VAR._texCoord, blendAmnt);
+        for (int j = 0; j < 4; ++j) {
+            const uint offset = Mad(i, 4u, j);
+            normalAndRoughness.xyz = mix(normalAndRoughness.xyz, SampleTextureNoTile(texNormalMap, vec3(uv * CURRENT_TILE_FACTORS[offset], NORMAL_IDX[offset])).rgb, blendAmnt[j]);
+        }
+        for (int j = 0; j < 4; ++j) {
+            const uint offset = Mad(i, 4u, j);
+            normalAndRoughness.w = mix(normalAndRoughness.w, SampleTextureNoTile(texDiffuse0, vec3(uv * CURRENT_TILE_FACTORS[offset], ALBEDO_IDX[offset])).a, blendAmnt[j]);
+        }
+    }
+
+    normalAndRoughness.xyz = 2.f * normalAndRoughness.xyz - 1.f;
+    return normalAndRoughness;
+}
+
+vec4 GetTerrainNormalWVAndRoughness() {
+    const vec2 waterData = GetWaterDetails(VAR._vertexW.xyz, TERRAIN_HEIGHT_OFFSET);
+    vec4 normalAndRoughness = mix(GetBlendedNormalAndRoughness(), vec4(getUnderwaterNormal(), UNDERWATER_ROUGNESS), waterData.x);
+
+    normalAndRoughness.xyz = normalize(VAR._tbnWV * normalAndRoughness.xyz);
+    _private_roughness = normalAndRoughness.w;
+
+    return normalAndRoughness;
+}
+
+#else //MAIN_DISPLAY_PASS && PRE_PASS
 vec4 getUnderwaterAlbedo(in vec2 uv, in float waterDepth) {
     const float time2 = MSToSeconds(dvd_TimeMS) * 0.1f;
     const vec4 uvNormal = vec4(uv + time2.xx, uv + vec2(-time2, time2));
@@ -223,21 +184,20 @@ vec4 getUnderwaterAlbedo(in vec2 uv, in float waterDepth) {
     return vec4(mix(0.5f * (GetCaustics(vec3(uvNormal.xy, 0)).rgb + texture(texSpecular, vec3(uvNormal.zw, 0)).rgb),
                     GetCaustics(vec3(uv, 1)).rgb,
                     waterDepth),
-                0.3f);
+                UNDERWATER_ROUGNESS);
 }
 
 vec4 BuildTerrainData(out vec3 normalWV) {
-    const BlendMapDataType blendAmnt = getBlendFactor(VAR._texCoord);
-    const vec2 uv = getScaledCoords(VAR._texCoord, blendAmnt);
     const vec2 waterData = GetWaterDetails(VAR._vertexW.xyz, TERRAIN_HEIGHT_OFFSET);
+
 #if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS)
     normalWV = normalize(unpackNormal(sampleTexSceneNormals().rg));
 #else //MAIN_DISPLAY_PASS && !PRE_PASS
-    const vec3 normalMap = mix(getTerrainNormal(blendAmnt, uv), getUnderwaterNormal(), waterData.x);
-    normalWV = normalize(mat3(dvd_ViewMatrix) * cotangentFrame() * normalMap);
+    const vec3 normalMap = mix(getBlendedNormal(), getUnderwaterNormal(), waterData.x);
+    normalWV = normalize(VAR._tbnWV * normalMap);
 #endif //MAIN_DISPLAY_PASS && !PRE_PASS
 
-    const vec4 ret = mix(getTerrainAlbedo(blendAmnt, uv), getUnderwaterAlbedo(VAR._texCoord * UNDERWATER_TILE_SCALE, waterData.y), waterData.x);
+    const vec4 ret = mix(getBlendedAlbedo(), getUnderwaterAlbedo(VAR._texCoord * UNDERWATER_TILE_SCALE, waterData.y), waterData.x);
     _private_roughness = ret.a;
     return ret;
 }

@@ -8,7 +8,7 @@
 void main() {
     const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 #if defined(USE_ALPHA_DISCARD)
-    if (getAlpha(data, vec3(VAR._texCoord, 0)) < INV_Z_TEST_SIGMA) {
+    if (getAlpha(data, vec3(VAR._texCoord, 0)) < ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
 #endif //USE_ALPHA_DISCARD
@@ -24,7 +24,7 @@ void main() {
 void main() {
 #if defined(USE_ALPHA_DISCARD)
     const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
-    if (getAlpha(data, vec3(VAR._texCoord, 0)) < INV_Z_TEST_SIGMA) {
+    if (getAlpha(data, vec3(VAR._texCoord, 0)) < ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
 #endif //USE_ALPHA_DISCARD
@@ -41,7 +41,7 @@ out vec2 _colourOut;
 void main() {
 #if defined(USE_ALPHA_DISCARD)
     const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
-    if (getAlpha(data, vec3(VAR._texCoord, 0)) < INV_Z_TEST_SIGMA) {
+    if (getAlpha(data, vec3(VAR._texCoord, 0)) < ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
 #endif //USE_ALPHA_DISCARD

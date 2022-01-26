@@ -804,12 +804,12 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
             texture.texturePath(filePath);
             texture.operation(texOp);
             texture.srgb(srgb);
-            if (usage == TextureUsage::NORMALMAP) {
-                STUBBED("Find a way to properly compress normal maps! -Ionut");
-                texture.useDDSCache(false);
-            } else {
-                texture.useDDSCache(true);
-            }
+            texture.useDDSCache(true);
+            texture.isNormalMap(usage == TextureUsage::NORMALMAP);
+            texture.alphaForTransparency(usage == TextureUsage::UNIT0 ||
+                                         usage == TextureUsage::UNIT1 ||
+                                         usage == TextureUsage::OPACITY);
+
             material._textures[to_base(usage)] = texture;
         }
     };

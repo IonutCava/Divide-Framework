@@ -161,11 +161,26 @@ void fillEnumTables() {
     glImageFormatTable[to_base(GFXImageFormat::BGRA)] = GL_BGRA;
     glImageFormatTable[to_base(GFXImageFormat::RGBA)] = GL_RGBA;
     glImageFormatTable[to_base(GFXImageFormat::DEPTH_COMPONENT)] = GL_DEPTH_COMPONENT;
-    glImageFormatTable[to_base(GFXImageFormat::COMPRESSED_RGB_DXT1)] = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-    glImageFormatTable[to_base(GFXImageFormat::COMPRESSED_RGBA_DXT1)] = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-    glImageFormatTable[to_base(GFXImageFormat::COMPRESSED_RGBA_DXT3)] = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-    glImageFormatTable[to_base(GFXImageFormat::COMPRESSED_RGBA_DXT5)] = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-    
+
+    glImageFormatTable[to_base(GFXImageFormat::BC4s)] = GL_COMPRESSED_SIGNED_RED_RGTC1_EXT;
+    glImageFormatTable[to_base(GFXImageFormat::BC4u)] = GL_COMPRESSED_RED_RGTC1_EXT;
+    glImageFormatTable[to_base(GFXImageFormat::BC5s)] = GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT;
+    glImageFormatTable[to_base(GFXImageFormat::BC5u)] = GL_COMPRESSED_RED_GREEN_RGTC2_EXT;
+    glImageFormatTable[to_base(GFXImageFormat::BC6s)] = GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT;
+    glImageFormatTable[to_base(GFXImageFormat::BC6u)] = GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT;
+    glImageFormatTable[to_base(GFXImageFormat::BC7)] = GL_COMPRESSED_RGBA_BPTC_UNORM;
+    glImageFormatTable[to_base(GFXImageFormat::BC7_SRGB)] = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB;
+
+    glImageFormatTable[to_base(GFXImageFormat::DXT1_RGB)] = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;   //BC1
+    glImageFormatTable[to_base(GFXImageFormat::DXT1_RGBA)] = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT; //BC1a
+    glImageFormatTable[to_base(GFXImageFormat::DXT3_RGBA)] = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT; //BC2
+    glImageFormatTable[to_base(GFXImageFormat::DXT5_RGBA)] = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT; //BC3
+
+    glImageFormatTable[to_base(GFXImageFormat::DXT1_RGB_SRGB)] = GL_COMPRESSED_SRGB_S3TC_DXT1_EXT;
+    glImageFormatTable[to_base(GFXImageFormat::DXT1_RGBA_SRGB)] = GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT;
+    glImageFormatTable[to_base(GFXImageFormat::DXT3_RGBA_SRGB)] = GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT;
+    glImageFormatTable[to_base(GFXImageFormat::DXT5_RGBA_SRGB)] = GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT;
+
     glPrimitiveTypeTable[to_base(PrimitiveType::API_POINTS)] = GL_POINTS;
     glPrimitiveTypeTable[to_base(PrimitiveType::LINES)] = GL_LINES;
     glPrimitiveTypeTable[to_base(PrimitiveType::LINE_LOOP)] =  GL_LINE_LOOP;
@@ -382,36 +397,25 @@ GLenum internalFormat(const GFXImageFormat baseFormat, const GFXDataFormat dataT
                 default: DIVIDE_UNEXPECTED_CALL();
             };
         }break;
-        case GFXImageFormat::COMPRESSED_RGB_DXT1:
+        // compressed formats
+        case GFXImageFormat::DXT1_RGB_SRGB:
+        case GFXImageFormat::DXT1_RGBA_SRGB:
+        case GFXImageFormat::DXT3_RGBA_SRGB:
+        case GFXImageFormat::DXT5_RGBA_SRGB:
+        case GFXImageFormat::BC1:
+        case GFXImageFormat::BC1a:
+        case GFXImageFormat::BC2:
+        case GFXImageFormat::BC3:
+        case GFXImageFormat::BC3n:
+        case GFXImageFormat::BC4s:
+        case GFXImageFormat::BC4u:
+        case GFXImageFormat::BC5s:
+        case GFXImageFormat::BC5u:
+        case GFXImageFormat::BC6s:
+        case GFXImageFormat::BC6u:
+        case GFXImageFormat::BC7:
+        case GFXImageFormat::BC7_SRGB:
         {
-            if (srgb) {
-                return GL_COMPRESSED_SRGB_S3TC_DXT1_EXT;
-            }
-
-            return glImageFormatTable[to_base(baseFormat)];
-        };
-        case GFXImageFormat::COMPRESSED_RGBA_DXT1:
-        {
-            if (srgb) {
-                return GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT;
-            }
-
-            return glImageFormatTable[to_base(baseFormat)];
-        };
-        case GFXImageFormat::COMPRESSED_RGBA_DXT3:
-        {
-            if (srgb) {
-                return GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT;
-            }
-
-            return glImageFormatTable[to_base(baseFormat)];
-        };
-        case GFXImageFormat::COMPRESSED_RGBA_DXT5:
-        {
-            if (srgb) {
-                return GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT;
-            }
-
             return glImageFormatTable[to_base(baseFormat)];
         };
         default: DIVIDE_UNEXPECTED_CALL();

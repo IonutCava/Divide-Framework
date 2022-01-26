@@ -39,7 +39,7 @@ layout(location = 0) in vec4 particleColour;
 layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 void main() {
-    if (getAlpha(texDiffuse0, vec3(VAR._texCoord,0)) < INV_Z_TEST_SIGMA) {
+    if (texture(texDiffuse0, vec3(VAR._texCoord,0)).a < ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
 
@@ -68,7 +68,6 @@ void main(){
    
 #ifdef HAS_TEXTURE
     vec4 texColour = texture(texDiffuse0, vec3(VAR._texCoord, 0));
-    texColour.a = getScaledAlpha(texColour.a, VAR._texCoord, textureSize(texDiffuse0, 0));
 
     vec4 colour = particleColour * texColour;
 #else
@@ -80,7 +79,7 @@ void main(){
     colour.a *= max(0.1f, 1.f - pow(softness, 2.f));
 
 #if defined(PRE_PASS)
-    if (colour.a <= INV_Z_TEST_SIGMA) {
+    if (colour.a <= ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
     const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];

@@ -1,6 +1,10 @@
 #ifndef _BUMP_MAPPING_FRAG_
 #define _BUMP_MAPPING_FRAG_
 
+#if !defined(HAS_TBN)
+#define HAS_TBN
+#endif //!HAS_TBN
+
 #define BUMP_NONE  0
 #define BUMP_NORMAL 1
 #define BUMP_PARALLAX 2

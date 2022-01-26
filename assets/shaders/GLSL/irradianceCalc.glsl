@@ -60,9 +60,9 @@ vec2 integrateBRDF(float roughness, float NoV)
 
     float A = 0.0;
     float B = 0.0;
-    const uint numSamples = 1024;
+    const int numSamples = 1024;
 
-    for (uint i = 0u; i < numSamples; i++) {
+    for (int i = 0; i < numSamples; i++) {
         vec2 Xi = hammersley(i, numSamples);
         // Sample microfacet direction
         vec3 H = importanceSampleGGX(Xi, roughness, N);
@@ -128,8 +128,8 @@ vec3 prefilterEnvMap(float roughness, vec3 R, float imgSize)
     vec3 V = R;
 
     vec3 prefilteredColor = vec3(0.0);
-    float totalWeight = 0.0;
-    for (uint i = 0u; i < NUM_SAMPLES; i++) {
+    float totalWeight = 0.f;
+    for (int i = 0; i < NUM_SAMPLES; i++) {
         vec2 Xi = hammersley(i, NUM_SAMPLES);
         vec3 H = importanceSampleGGX(Xi, roughness, N);
         float VoH = dot(V, H);

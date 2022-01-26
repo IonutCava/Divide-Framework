@@ -18,7 +18,7 @@ namespace Divide {
 namespace {
     constexpr U32 g_nodesPerCullingPartition = 32u;
 
-    [[nodiscard]] bool isTransformNode(const SceneNodeType nodeType, const ObjectType objType) noexcept {
+    [[nodiscard]] FORCE_INLINE bool isTransformNode(const SceneNodeType nodeType, const ObjectType objType) noexcept {
         return nodeType == SceneNodeType::TYPE_TRANSFORM || 
                nodeType == SceneNodeType::TYPE_TRIGGER || 
                objType  == ObjectType::MESH;
@@ -40,34 +40,28 @@ namespace {
     }
 
     [[nodiscard]] bool shouldCullNode(const RenderStage stage, const SceneGraphNode* node, bool& isTransformNodeOut) {
-        const SceneNode& sceneNode = node->getNode();
-        const SceneNodeType snType = sceneNode.type();
-
-        ObjectType objectType = ObjectType::COUNT;
-        if (snType == SceneNodeType::TYPE_OBJECT3D) {
-            objectType = static_cast<const Object3D&>(sceneNode).getObjectType();
-        }
-
         if (node->hasFlag(SceneGraphNode::Flags::VISIBILITY_LOCKED)) {
             return false;
+        }
+
+        const SceneNodeType snType = node->getNode().type();
+        ObjectType objectType = ObjectType::COUNT;
+        if (snType == SceneNodeType::TYPE_OBJECT3D) {
+            objectType = node->getNode<Object3D>().getObjectType();
         }
 
         isTransformNodeOut = isTransformNode(snType, objectType);
         if (!isTransformNodeOut) {
             // only checks nodes and can return true for a shadow stage
-            return stage == RenderStage::SHADOW && doesNotCastShadows(node, snType, objectType);
+            if (stage == RenderStage::SHADOW && doesNotCastShadows(node, snType, objectType)) {
+                return true;
+            }
+
+            return false;
         }
 
         return true;
     }
-}
-
-bool RenderPassCuller::OnStartup([[maybe_unused]] PlatformContext& context) {
-    return true;
-}
-
-bool RenderPassCuller::OnShutdown([[maybe_unused]] PlatformContext& context) {
-    return true;
 }
 
 void RenderPassCuller::clear() noexcept {
@@ -163,20 +157,18 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, c
 void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, U8 recursionLevel, VisibleNodeList<>& nodes) const {
     OPTICK_EVENT();
 
-    if (params._stage == RenderStage::DISPLAY) {
-        Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(currentNode, false);
-    }
-
     // Early out for inactive nodes
     if (currentNode->hasFlag(SceneGraphNode::Flags::ACTIVE)) {
-
         FrustumCollision collisionResult = FrustumCollision::FRUSTUM_OUT;
-        const I64 nodeGUID = currentNode->getGUID();
-        const I64* ignoredGUIDs = params._ignoredGUIDS.first;
+
         const size_t guidCount = params._ignoredGUIDS.second;
-        for (size_t i = 0u; i < guidCount; ++i) {
-            if (nodeGUID == ignoredGUIDs[i]) {
-                return;
+        if (guidCount > 0u) {
+            const I64 nodeGUID = currentNode->getGUID();
+            const I64* ignoredGUIDs = params._ignoredGUIDS.first;
+            for (size_t i = 0u; i < guidCount; ++i) {
+                if (nodeGUID == ignoredGUIDs[i]) {
+                    return;
+                }
             }
         }
 
@@ -195,13 +187,13 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
         if (isTransformNode || !Attorney::SceneGraphNodeRenderPassCuller::cullNode(currentNode, params, cullFlags, collisionResult, distanceSqToCamera)) {
             if (!isTransformNode) {
                 VisibleNode node;
-                node._node = currentNode;
-                node._distanceToCameraSq = distanceSqToCamera;
+                {
+                    node._node = currentNode;
+                    node._distanceToCameraSq = distanceSqToCamera;
+                }
                 nodes.append(node);
             }
-            if (params._stage == RenderStage::DISPLAY) {
-                Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(currentNode, true);
-            }
+
             // Parent node intersects the view, so check children
             if (collisionResult == FrustumCollision::FRUSTUM_INTERSECT) {
                 SceneGraphNode::ChildContainer& children = currentNode->getChildren();
@@ -245,10 +237,7 @@ void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const N
     const U32 childCount = children._count.load();
     for (U32 i = 0u; i < childCount; ++i) {
         SceneGraphNode* child = children._data[i];
-        if (params._stage == RenderStage::DISPLAY) {
-            Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(child, false);
-        }
-
+ 
         if (!child->hasFlag(SceneGraphNode::Flags::ACTIVE)) {
             continue;
         }
@@ -266,9 +255,6 @@ void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const N
                 node._node = child;
                 node._distanceToCameraSq = distanceSqToCamera;
                 nodes.append(node);
-                if (params._stage == RenderStage::DISPLAY) {
-                    Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(child, true);
-                }
 
                 addAllChildren(child, params, cullFlags, nodes);
             }
@@ -286,15 +272,9 @@ void RenderPassCuller::frustumCull(const NodeCullParams& params, const U16 cullF
     F32 distanceSqToCamera = std::numeric_limits<F32>::max();
     FrustumCollision collisionResult = FrustumCollision::FRUSTUM_OUT;
     for (SceneGraphNode* node : nodes) {
-        if (params._stage == RenderStage::DISPLAY) {
-            Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(node, false);
-        }
         // Internal node cull (check against camera frustum and all that ...)
         if (!Attorney::SceneGraphNodeRenderPassCuller::cullNode(node, params, cullFlags, collisionResult, distanceSqToCamera)) {
             nodesOut.append({ node, distanceSqToCamera });
-            if (params._stage == RenderStage::DISPLAY) {
-                Attorney::SceneGraphNodeRenderPassCuller::visiblePostCulling(node, false);
-            }
         }
     }
 }

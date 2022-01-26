@@ -1,10 +1,7 @@
 --Vertex
 
 #define NEED_SCENE_DATA
-#if !defined(DEPTH_PASS)
-#define NEED_TANGENT
-#endif //DEPTH_PASS
-
+#define COMPUTE_TBN
 #define NO_VELOCITY
 #include "vbInputData.vert"
 #include "vegetationData.cmn"
@@ -18,7 +15,6 @@ VegetationData GrassData(in uint instanceID) {
 layout(location = 0) flat out uint  _layer;
 layout(location = 1) flat out uint  _instanceID;
 layout(location = 2)      out float _alphaFactor;
-layout(location = 3)      out mat3  _tbnWV;
 
 #define GRASS_DISPLACEMENT_DISTANCE 50.0f
 #define GRASS_DISPLACEMENT_MAGNITUDE 0.5f
@@ -37,19 +33,16 @@ void largetScaleMotion(inout vec4 vertexW, in vec4 vertex, in float heightExtent
 }
 
 void main() {
-    const NodeTransformData nodeData = fetchInputData();
-
     VegetationData data = GrassData(gl_InstanceID);
-    _instanceID = gl_InstanceID;
-
-#if defined(USE_CULL_DISTANCE)
-    if (data.data.z > 2.5f) {
-        gl_CullDistance[0] = -1.0f;
+    if (data.data.z < 0.f) {
+        //gl_CullDistance[0] = -1.0f;
+        gl_Position = vec4(2.f, 2.f, 2.f, 1.f);
+        return;
     }
-    float scale = data.positionAndScale.w;
-#else //USE_CULL_DISTANCE
-    float scale = data.data.z > 2.5f ? 0.0f : data.positionAndScale.w * Saturate(data.data.z);
-#endif //USE_CULL_DISTANCE
+
+    const NodeTransformData nodeData = fetchInputData();
+    _instanceID = gl_InstanceID;
+    float scale = data.positionAndScale.w * Saturate(data.data.z);
 
     _alphaFactor = Saturate(data.data.z);
 
@@ -83,12 +76,9 @@ void main() {
 #endif //!SHADOW_PASS
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
-
-    computeViewDirectionWV(nodeData);
-
     dvd_Normal = normalize(QuaternionRotate(dvd_Normal, data.orientationQuad));
-    _tbnWV = computeTBN(dvd_NormalMatrixW(nodeData));
-    VAR._normalWV = _tbnWV[2];
+
+    computeLightVectors(nodeData);
 
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
 }
@@ -101,7 +91,6 @@ layout(early_fragment_tests) in;
 
 #define NO_REFLECTIONS
 #define NO_VELOCITY
-#define USE_CUSTOM_TBN
 //#define DEBUG_LODS
 
 #include "BRDF.frag"
@@ -110,11 +99,6 @@ layout(early_fragment_tests) in;
 layout(location = 0) flat in uint  _layer;
 layout(location = 1) flat in uint  _instanceID;
 layout(location = 2)      in float _alphaFactor;
-layout(location = 3)      in mat3  _tbnWV;
-
-mat3 getTBNWV() {
-    return _tbnWV;
-}
 
 void main (void){
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
@@ -144,7 +128,7 @@ void main (void){
     const vec3 normalWV = getNormalWV(data, vec3(VAR._texCoord, 0));
 
     vec4 colour = vec4(albedo.rgb, min(albedo.a, _alphaFactor));
-    if (albedo.a >= Z_TEST_SIGMA) {
+    if (albedo.a > ALPHA_DISCARD_THRESHOLD) {
         colour = getPixelColour(albedo, data, normalWV);
     }
     writeScreenColour(colour);
@@ -159,10 +143,9 @@ void main (void){
 layout(location = 0) flat in uint  _layer;
 layout(location = 1) flat in uint  _instanceID;
 layout(location = 2)      in float _alphaFactor;
-layout(location = 3)      in mat3  _tbnWV;
 
 void main() {
-    if (getAlpha(texDiffuse0, vec3(VAR._texCoord, _layer)) * _alphaFactor < INV_Z_TEST_SIGMA) {
+    if (texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a * _alphaFactor < ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
     const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
@@ -174,7 +157,6 @@ void main() {
 layout(location = 0) flat in uint  _layer;
 layout(location = 1) flat in uint  _instanceID;
 layout(location = 2)      in float _alphaFactor;
-layout(location = 3)      in mat3  _tbnWV;
 
 #include "texturing.frag"
 #include "vsm.frag"
@@ -183,7 +165,7 @@ out vec2 _colourOut;
 
 void main(void) {
     // Only discard alpha == 0
-    if (getAlpha(texDiffuse0, vec3(VAR._texCoord, _layer)) < Z_TEST_SIGMA) {
+    if (texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a < ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
 

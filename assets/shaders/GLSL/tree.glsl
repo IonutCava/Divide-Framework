@@ -30,8 +30,8 @@ void main(void){
     const VegetationData data = TreeData(gl_InstanceID);
 
     float scale = data.positionAndScale.w;
-
     VAR._LoDLevel = data.data.z;
+
 #if defined(HAS_CULLING_OUT)
     gl_CullDistance[0] = -0.01f * when_gt(VAR._LoDLevel, 2.1f);
 #else

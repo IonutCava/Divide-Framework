@@ -108,7 +108,7 @@ bool getSunLight(const in ray_t ray, inout float optical_depthR, inout float opt
     const float march_step = t1 / float(num_samples_light);
 
     
-    for (uint i = 0; i < num_samples_light; ++i) {
+    for (int i = 0; i < num_samples_light; ++i) {
         const vec3 s = ray.origin + ray.direction * (march_pos + 0.5f * march_step);
         const float height = length(s) - dvd_planetRadius;
         if (height < 0.f) {
@@ -161,7 +161,7 @@ vec3 getIncidentLight(const in ray_t ray, const in vec3 sun_dir) {
     vec3 sumM = vec3(0.f);
     float march_pos = 0.f;
 
-    for (uint i = 0; i < dvd_raySteps; ++i) {
+    for (int i = 0; i < dvd_raySteps; ++i) {
         const vec3 s = ray.origin + ray.direction * (march_pos + 0.5f * march_step);
         const float height = length(s) - dvd_planetRadius;
 

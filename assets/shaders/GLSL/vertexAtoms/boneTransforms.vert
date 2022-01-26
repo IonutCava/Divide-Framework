@@ -1,6 +1,11 @@
 #ifndef _BONE_TRANSFORM_VERT_
 #define _BONE_TRANSFORM_VERT_
 
+vec4 transformVector(in vec4 vectorIn, in mat4[4] transformMatrix) {
+    return vec4(transformMatrix[0] * vectorIn + transformMatrix[1] * vectorIn +
+                transformMatrix[2] * vectorIn + transformMatrix[3] * vectorIn);
+}
+
 #if defined(HAS_VELOCITY)
 layout(binding = BUFFER_BONE_TRANSFORMS_PREV, std140) uniform dvd_BoneTransformsPrev
 {
@@ -15,8 +20,7 @@ vec4 applyPrevBoneTransforms(in vec4 vertex) {
         inBoneWeightData.w * boneTransformsPrev[inBoneIndiceData.w]
     );
 
-    return (transformMatrix[0] * vertex + transformMatrix[1] * vertex +
-            transformMatrix[2] * vertex + transformMatrix[3] * vertex);
+    return transformVector(vertex, transformMatrix);
 }
 #endif //HAS_VELOCITY
 
@@ -32,22 +36,16 @@ vec4 applyBoneTransforms(in vec4 vertex) {
         inBoneWeightData.w * boneTransforms[inBoneIndiceData.w]
     );
 
-    const vec4 ret = (transformMatrix[0] * vertex + transformMatrix[1] * vertex +
-                      transformMatrix[2] * vertex + transformMatrix[3] * vertex);
-
 #if !defined(DEPTH_PASS)
-    vec4 tempNormal = vec4(dvd_Normal, 0.f);
-    dvd_Normal = vec4(transformMatrix[0] * tempNormal + transformMatrix[1] * tempNormal +
-                      transformMatrix[2] * tempNormal + transformMatrix[3] * tempNormal).xyz;
-#if defined(COMPUTE_TBN)  || defined(NEED_TANGENT)
-    vec4 tempTangent = vec4(dvd_Tangent, 0.f);
-    dvd_Tangent = vec4(transformMatrix[0] * tempTangent + transformMatrix[1] * tempTangent +
-                       transformMatrix[2] * tempTangent + transformMatrix[3] * tempTangent).xyz;
-#endif //COMPUTE_TBN || NEED_TANGENT
+    dvd_Normal  = transformVector(vec4(dvd_Normal, 0.f), transformMatrix).xyz;
+
+#if defined(ENABLE_TBN)
+    dvd_Tangent = transformVector(vec4(dvd_Tangent, 0.f), transformMatrix).xyz;
+#endif //ENABLE_TBN
 
 #endif //!DEPTH_PASS
 
-    return ret;
+    return transformVector(vertex, transformMatrix);
 }
 
 #endif //_BONE_TRANSFORM_VERT_

@@ -81,7 +81,7 @@ layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 
 void main()
 {
-    if (getAlpha(texDiffuse0, vec3(VAR._texCoord, 0)) < INV_Z_TEST_SIGMA) {
+    if (texture(texDiffuse0, vec3(VAR._texCoord, 0)).a < ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
     

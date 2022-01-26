@@ -219,12 +219,8 @@ bool GL_API::InitGLSW(Configuration& config) {
         { "vec3"       , "_viewDirectionWV"},  // 72 bytes
         { "vec2"       , "_texCoord"},         // 80 bytes
         { "flat uvec4" , "_indirectionIDs"},   // 96 bytes
-        { "flat uint"  , "_LoDLevel"}          // 100 bytes
-    };
-
-    constexpr std::pair<const char*, const char*> shaderVaryingsBump[] =
-    {
-        { "mat3" , "_tbnWV"}, // 136 bytes
+        //{ "flat uint" , "_LoDLevel"},        // 100 bytes
+        //{ "mat3" , "_tbnWV"},                // 136 bytes
     };
 
     constexpr const char* crossTypeGLSLHLSL = "#define float2 vec2\n"
@@ -250,16 +246,30 @@ bool GL_API::InitGLSW(Configuration& config) {
             passData.append(Util::StringFormat(baseString.c_str(), name, name));
             passData.append("\n");
         }
-        passData.append("#if defined(COMPUTE_TBN)\n");
-        for (const auto& [varType, name] : shaderVaryingsBump) {
-            passData.append(Util::StringFormat(baseString.c_str(), name, name));
-            passData.append("\n");
-        }
-        passData.append("#endif\n");
+
+        passData.append("#if defined(ENABLE_LOD)\n");
+        passData.append(Util::StringFormat(baseString.c_str(), "_LoDLevel", "_LoDLevel"));
+        passData.append("\n#endif //ENABLE_LOD\n");
+
+        passData.append("#if defined(ENABLE_TBN)\n");
+        passData.append(Util::StringFormat(baseString.c_str(), "_tbnWV", "_tbnWV"));
+        passData.append("\n#endif //ENABLE_TBN\n");
 
         passData.append("}\n");
 
         return passData;
+    };
+
+    const auto addVaryings = [&](const ShaderType type) {
+        for (const auto& [varType, name] : shaderVaryings) {
+            AppendToShaderHeader(type, Util::StringFormat("    %s %s;", varType, name));
+        }
+        AppendToShaderHeader(type, "#if defined(ENABLE_TBN)");
+        AppendToShaderHeader(type, "    mat3 _tbnWV;");
+        AppendToShaderHeader(type, "#endif //ENABLE_TBN");
+        AppendToShaderHeader(type, "#if defined(ENABLE_LOD)");
+        AppendToShaderHeader(type, "    flat uint _LoDLevel;");
+        AppendToShaderHeader(type, "#endif //ENABLE_LOD");
     };
 
     // Initialize GLSW
@@ -363,11 +373,10 @@ bool GL_API::InitGLSW(Configuration& config) {
                          Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS * 
                          Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < GL_API::s_maxWorgroupInvocations);
 
-    constexpr F32 Z_TEST_SIGMA = 0.00001f;// 1.f / U8_MAX;
-
     // ToDo: Automate adding of buffer bindings by using, for example, a TypeUtil::bufferBindingToString -Ionut
-    AppendToShaderHeader(ShaderType::COUNT,    "#define Z_TEST_SIGMA "                    + Util::to_string(Z_TEST_SIGMA) + "f");
-    AppendToShaderHeader(ShaderType::COUNT,    "#define INV_Z_TEST_SIGMA "                + Util::to_string(1.f - Z_TEST_SIGMA) + "f");
+    AppendToShaderHeader(ShaderType::COUNT,    "#define ALPHA_DISCARD_THRESHOLD "         + Util::to_string(Config::ALPHA_DISCARD_THRESHOLD) + "f");
+    AppendToShaderHeader(ShaderType::COUNT,    "#define Z_TEST_SIGMA "                    + Util::to_string(Config::Z_TEST_SIGMA) + "f");
+    AppendToShaderHeader(ShaderType::COUNT,    "#define INV_Z_TEST_SIGMA "                + Util::to_string(1.f - Config::Z_TEST_SIGMA) + "f");
     AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_CSM_SPLITS_PER_LIGHT "        + Util::to_string(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
     AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_SHADOW_CASTING_LIGHTS "       + Util::to_string(Config::Lighting::MAX_SHADOW_CASTING_LIGHTS));
     AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_SHADOW_CASTING_DIR_LIGHTS "   + Util::to_string(Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS));
@@ -497,40 +506,27 @@ bool GL_API::InitGLSW(Configuration& config) {
         AppendToShaderHeader(ShaderType::FRAGMENT, Util::StringFormat("#define DEBUG_%s %d", TypeUtil::MaterialDebugFlagToString(flag), i));
     }
 
-    const auto addVaryings = [&](const ShaderType type) {
-        for (const auto& [varType, name] : shaderVaryings) {
-            AppendToShaderHeader(type, Util::StringFormat("    %s %s;", varType, name));
-        }
-    };
+    AppendToShaderHeader(ShaderType::COUNT, "#if defined(PRE_PASS) || defined(SHADOW_PASS)");
+    AppendToShaderHeader(ShaderType::COUNT, "#   define DEPTH_PASS");
+    AppendToShaderHeader(ShaderType::COUNT, "#endif //PRE_PASS || SHADOW_PASS");
 
-    const auto addVaryingsBump = [&](const ShaderType type) {
-        for (const auto& [varType, name] : shaderVaryingsBump) {
-            AppendToShaderHeader(type, Util::StringFormat("    %s %s;", varType, name));
-        }
-    };
+    AppendToShaderHeader(ShaderType::COUNT, "#if defined(COMPUTE_TBN) && !defined(ENABLE_TBN)");
+    AppendToShaderHeader(ShaderType::COUNT, "#   define ENABLE_TBN");
+    AppendToShaderHeader(ShaderType::COUNT, "#endif //COMPUTE_TBN && !ENABLE_TBN");
 
     // Vertex shader output
     AppendToShaderHeader(ShaderType::VERTEX, "out Data {");
     addVaryings(ShaderType::VERTEX);
-    AppendToShaderHeader(ShaderType::VERTEX, "#if defined(COMPUTE_TBN)");
-    addVaryingsBump(ShaderType::VERTEX);
-    AppendToShaderHeader(ShaderType::VERTEX, "#endif");
     AppendToShaderHeader(ShaderType::VERTEX, "} _out;\n");
 
     // Tessellation Control shader input
     AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "in Data {");
     addVaryings(ShaderType::TESSELLATION_CTRL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#if defined(COMPUTE_TBN)");
-    addVaryingsBump(ShaderType::TESSELLATION_CTRL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#endif");
     AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "} _in[];\n");
 
     // Tessellation Control shader output
     AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "out Data {");
     addVaryings(ShaderType::TESSELLATION_CTRL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#if defined(COMPUTE_TBN)");
-    addVaryingsBump(ShaderType::TESSELLATION_CTRL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#endif");
     AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "} _out[];\n");
 
     AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, getPassData(ShaderType::TESSELLATION_CTRL));
@@ -538,35 +534,23 @@ bool GL_API::InitGLSW(Configuration& config) {
     // Tessellation Eval shader input
     AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "in Data {");
     addVaryings(ShaderType::TESSELLATION_EVAL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#if defined(COMPUTE_TBN)");
-    addVaryingsBump(ShaderType::TESSELLATION_EVAL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#endif");
     AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "} _in[];\n");
 
     // Tessellation Eval shader output
     AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "out Data {");
     addVaryings(ShaderType::TESSELLATION_EVAL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#if defined(COMPUTE_TBN)");
-    addVaryingsBump(ShaderType::TESSELLATION_EVAL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#endif");
     AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "} _out;\n");
 
     AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, getPassData(ShaderType::TESSELLATION_EVAL));
-
+    
     // Geometry shader input
     AppendToShaderHeader(ShaderType::GEOMETRY, "in Data {");
     addVaryings(ShaderType::GEOMETRY);
-    AppendToShaderHeader(ShaderType::GEOMETRY, "#if defined(COMPUTE_TBN)");
-    addVaryingsBump(ShaderType::GEOMETRY);
-    AppendToShaderHeader(ShaderType::GEOMETRY, "#endif");
     AppendToShaderHeader(ShaderType::GEOMETRY, "} _in[];\n");
 
     // Geometry shader output
     AppendToShaderHeader(ShaderType::GEOMETRY, "out Data {");
     addVaryings(ShaderType::GEOMETRY);
-    AppendToShaderHeader(ShaderType::GEOMETRY, "#if defined(COMPUTE_TBN)");
-    addVaryingsBump(ShaderType::GEOMETRY);
-    AppendToShaderHeader(ShaderType::GEOMETRY, "#endif");
     AppendToShaderHeader(ShaderType::GEOMETRY, "} _out;\n");
 
     AppendToShaderHeader(ShaderType::GEOMETRY, getPassData(ShaderType::GEOMETRY));
@@ -574,9 +558,6 @@ bool GL_API::InitGLSW(Configuration& config) {
     // Fragment shader input
     AppendToShaderHeader(ShaderType::FRAGMENT, "in Data {");
     addVaryings(ShaderType::FRAGMENT);
-    AppendToShaderHeader(ShaderType::FRAGMENT, "#if defined(COMPUTE_TBN)");
-    addVaryingsBump(ShaderType::FRAGMENT);
-    AppendToShaderHeader(ShaderType::FRAGMENT, "#endif");
     AppendToShaderHeader(ShaderType::FRAGMENT, "} _in;\n");
 
     AppendToShaderHeader(ShaderType::VERTEX, "#define VAR _out");
@@ -712,13 +693,11 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
         assert(buffer != nullptr);
 
         const ImVec2 pos = data->DisplayPos;
-        for (I32 n = 0; n < data->CmdListsCount; n++)
-        {
+        for (I32 n = 0; n < data->CmdListsCount; n++) {
+
             const ImDrawList* cmd_list = data->CmdLists[n];
 
-            cmd._cmd.firstIndex = 0;
-
-            idxBuffer.smallIndices = sizeof(ImDrawIdx) == 2;
+            idxBuffer.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
             idxBuffer.count = to_U32(cmd_list->IdxBuffer.Size);
             idxBuffer.data = cmd_list->IdxBuffer.Data;
 
@@ -726,19 +705,17 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
             buffer->updateBuffer(0u, 0u, to_U32(cmd_list->VtxBuffer.size()), cmd_list->VtxBuffer.Data);
             buffer->updateIndexBuffer(idxBuffer);
 
-            for (I32 cmd_i = 0; cmd_i < cmd_list->CmdBuffer.size(); ++cmd_i)
-            {
-                const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+            for (const ImDrawCmd& pcmd : cmd_list->CmdBuffer) {
 
-                if (pcmd->UserCallback) {
+                if (pcmd.UserCallback) {
                     // User callback (registered via ImDrawList::AddCallback)
-                    pcmd->UserCallback(cmd_list, pcmd);
+                    pcmd.UserCallback(cmd_list, &pcmd);
                 } else {
                     Rect<I32> clip_rect = {
-                        pcmd->ClipRect.x - pos.x,
-                        pcmd->ClipRect.y - pos.y,
-                        pcmd->ClipRect.z - pos.x,
-                        pcmd->ClipRect.w - pos.y
+                        pcmd.ClipRect.x - pos.x,
+                        pcmd.ClipRect.y - pos.y,
+                        pcmd.ClipRect.z - pos.x,
+                        pcmd.ClipRect.w - pos.y
                     };
 
                     const Rect<I32>& viewport = stateTracker._activeViewport;
@@ -753,12 +730,15 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
                         clip_rect.y  = viewport.w - tempW;
 
                         stateTracker.setScissor(clip_rect);
-                        stateTracker.bindTexture(to_U8(TextureUsage::UNIT0), TextureType::TEXTURE_2D, static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd->TextureId)));
-                        cmd._cmd.indexCount = to_U32(pcmd->ElemCount);
+                        stateTracker.bindTexture(to_U8(TextureUsage::UNIT0),
+                                                 TextureType::TEXTURE_2D,
+                                                 static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd.TextureId)));
+
+                        cmd._cmd.indexCount = pcmd.ElemCount;
+                        cmd._cmd.firstIndex = pcmd.IdxOffset;
                         buffer->draw(cmd);
                      }
                 }
-                cmd._cmd.firstIndex += pcmd->ElemCount;
             }
             buffer->lockBuffers();
             buffer->incQueue();
@@ -808,9 +788,9 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
 
         U32 indexCount = 0u;
         switch (cmd._primitiveType) {
+            case PrimitiveType::COUNT      : DIVIDE_UNEXPECTED_CALL();         break;
             case PrimitiveType::TRIANGLES  : indexCount = cmd._drawCount * 3;  break;
             case PrimitiveType::API_POINTS : indexCount = cmd._drawCount * 1;  break;
-            case PrimitiveType::COUNT      : DIVIDE_UNEXPECTED_CALL();         break;
             default                        : indexCount = cmd._cmd.indexCount; break;
         }
 

@@ -58,6 +58,11 @@ struct ResourcePath
     ResourcePath& append(const std::string_view& str);
 
     [[nodiscard]] const string& str() const noexcept { return _str; }
+
+    const string& convertToLower() noexcept { 
+        std::transform(_str.begin(), _str.end(), _str.begin(), [](unsigned char c) { return std::tolower(c); });
+        return str();
+    }
 private:
     string _str;
 };

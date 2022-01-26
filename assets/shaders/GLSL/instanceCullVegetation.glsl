@@ -36,9 +36,7 @@ vec3 rotate_vertex_position(vec3 position, vec4 q) {
     return v + 2.0f * cross(q.xyz, cross(q.xyz, v) + q.w * v);
 }
 
-void CullItem(in uint idx) {
-    Data[idx].data.z = 3.0f;
-}
+#define CullItem(IDX) (Data[IDX].data.z = -1.f)
 
 float getLoD(in float dist) {
     if (dist < dvd_visibilityDistance * 0.15f) {
@@ -57,6 +55,7 @@ void main(void) {
 
     const uint ident = gl_GlobalInvocationID.x;
     const uint nodeIndex = (dvd_terrainChunkOffset * MAX_INSTANCES) + ident;
+
     if (ident >= MAX_INSTANCES) {
         CullItem(nodeIndex);
         return;
@@ -78,8 +77,6 @@ void main(void) {
         CullItem(nodeIndex);
         return;
     }
-
-    Data[nodeIndex].data.z = 1.0f;
 
     if (HiZCull(positionW, extents.w) || IsUnderWater(positionW.xyz)) {
         CullItem(nodeIndex);

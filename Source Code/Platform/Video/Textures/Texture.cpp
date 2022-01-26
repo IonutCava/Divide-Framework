@@ -163,7 +163,6 @@ void Texture::threadedLoad() {
 
         if (loadedFromFile) {
             // Create a new Rendering API-dependent texture object
-            _descriptor.compressed(dataStorage.compressed());
             _descriptor.baseFormat(dataStorage.format());
             _descriptor.dataType(dataStorage.dataType());
             // Uploading to the GPU dependents on the rendering API
@@ -221,7 +220,7 @@ bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, Image
                                _height,
                                path,
                                name,
-                               _descriptor.useDDSCache())) 
+                               _descriptor.textureOptions())) 
     {
         if (fileData.layerCount() > 0) {
             Console::errorfn(Locale::Get(_ID("ERROR_TEXTURE_LAYER_LOAD")), name.c_str());
@@ -229,7 +228,7 @@ bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, Image
         }
         Console::errorfn(Locale::Get(_ID("ERROR_TEXTURE_LOAD")), name.c_str());
         // missing_texture.jpg must be something that really stands out
-        if (!fileData.loadFromFile(_descriptor.srgb(), _width, _height, Paths::g_assetsLocation + Paths::g_texturesLocation, s_missingTextureFileName, false)) {
+        if (!fileData.loadFromFile(_descriptor.srgb(), _width, _height, Paths::g_assetsLocation + Paths::g_texturesLocation, s_missingTextureFileName)) {
             DIVIDE_UNEXPECTED_CALL();
         }
     } else {
@@ -267,8 +266,7 @@ bool Texture::checkTransparency(const ResourcePath& path, const ResourcePath& na
     }
 
     if (!skip) {
-        if (fileData.hasAlphaChannel()) {
-
+        if (HasAlphaChannel(fileData.format())) {
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = width;
             descriptor._partitionSize = std::max(16u, to_U32(width / 10));

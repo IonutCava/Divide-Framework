@@ -165,7 +165,7 @@ namespace Divide {
         }
 
         const auto printNode = [&](const char* icon) {
-            if (s_onlyVisibleNodes && sgn->parent() != nullptr && !sgn->visiblePostCulling()) {
+            if (s_onlyVisibleNodes && sgn->parent() != nullptr && !Attorney::EditorSolutionExplorerWindow::isNodeInView(_parent, *sgn)) {
                 return false;
             }
             const bool isRoot = sgn->parent() == nullptr;

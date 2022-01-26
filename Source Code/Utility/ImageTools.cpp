@@ -26,7 +26,155 @@
 //#include <IL/ilut.h>
 #pragma warning(pop)
 
+#include <nvtt/include/nvtt/nvtt.h>
+
 namespace Divide::ImageTools {
+    constexpr bool g_KeepDevILDDSCompatibility = true;
+
+namespace nvttHelpers {
+    struct ErrorHandler : public nvtt::ErrorHandler {
+        void error(nvtt::Error e) override {
+            switch (e) {
+                case nvtt::Error_Unknown: Console::errorfn("NVTT : unknown error"); break;
+                case nvtt::Error_InvalidInput: Console::errorfn("NVTT : invalid input"); break;
+                case nvtt::Error_UnsupportedFeature: Console::errorfn("NVTT : unsupported feature"); break;
+                case nvtt::Error_CudaError: Console::errorfn("NVTT : cuda error"); break;
+                case nvtt::Error_FileOpen: Console::errorfn("NVTT : file open error"); break;
+                case nvtt::Error_FileWrite: Console::errorfn("NVTT : file write error"); break;
+                default: break;
+            }
+        }
+    };
+    struct OutputHandler : public nvtt::OutputHandler {
+        struct MipMapData {
+            vector<U8> _pixelData;
+            I32 _width = 0;
+            I32 _height = 0;
+            I32 _depth = 0;
+        };
+        vector<MipMapData> _mipmaps;
+        I32 _currentMipLevel = 0;
+        U8 _numComponents = 0u;
+        nvtt::Format _format = nvtt::Format::Format_BC1;
+        bool _discardAlpha = false;
+
+        OutputHandler(nvtt::Format format, bool discardAlpha, U8 numComponents)
+            : _format(format), _discardAlpha(discardAlpha), _numComponents(numComponents)
+        {
+        }
+
+        virtual ~OutputHandler()
+        {
+        }
+
+        // create the osg image from the given format
+        bool assignImage(ImageLayer& image) {
+            // convert nvtt format to OpenGL pixel format
+            GFXImageFormat pixelFormat = GFXImageFormat::COUNT;
+            switch (_format)
+            {
+            case nvtt::Format_RGBA:
+                pixelFormat = _discardAlpha ? GFXImageFormat::RGB : GFXImageFormat::RGBA;
+                break;
+            case nvtt::Format_BC1:
+                pixelFormat = GFXImageFormat::BC1;
+                break;
+            case nvtt::Format_BC1a:
+                pixelFormat = GFXImageFormat::BC1a;
+                break;
+            case nvtt::Format_BC2:
+                pixelFormat = GFXImageFormat::BC2;
+                break;
+            case nvtt::Format_BC3:
+                pixelFormat = GFXImageFormat::BC3;
+                break;
+            case nvtt::Format_BC4:
+                pixelFormat = GFXImageFormat::BC4u;
+                break;
+            case nvtt::Format_BC5:
+                pixelFormat = GFXImageFormat::BC5u;
+                break; 
+            case nvtt::Format_BC6:
+                pixelFormat = GFXImageFormat::BC6u;
+                break;
+            case nvtt::Format_BC7:
+                pixelFormat = GFXImageFormat::BC7;
+                break;
+            default:
+                Console::errorfn("NVTT: Invalid or not supported format");
+                return false;
+            }
+
+            for (MipMapData& data : _mipmaps) {
+                if (!image.allocateMip(data._pixelData.data(), data._pixelData.size(), to_U16(data._width), to_U16(data._height), to_U16(data._depth), _numComponents)) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            }
+
+            return true;
+        }
+
+        /// Indicate the start of a new compressed image that's part of the final texture.
+        virtual void beginImage(int size, int width, int height, int depth, int face, int miplevel)
+        {
+            MipMapData& data = _mipmaps.push_back();
+            data._width = width;
+            data._height = height;
+            data._depth = depth;
+            data._pixelData.resize(size);
+            _currentMipLevel = miplevel;
+        }
+
+        virtual void endImage()
+        {
+        }
+
+        /// Output data. Compressed data is output as soon as it's generated to minimize memory allocations.
+        virtual bool writeData(const void* data, int size)
+        {
+            // Copy mipmap data
+            memcpy(&_mipmaps[_currentMipLevel]._pixelData, data, size);
+            return true;
+        }
+    };
+
+    [[nodiscard]] bool isBC1n(const nvtt::Format format, const bool isNormalMap) noexcept {
+        return isNormalMap && format == nvtt::Format_BC1;
+    }
+
+    [[nodiscard]] nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGrayscale) noexcept {
+        assert(outputFormat != ImageOutputFormat::COUNT);
+
+        if (!g_KeepDevILDDSCompatibility && outputFormat != ImageOutputFormat::AUTO) {
+            switch (outputFormat) {
+                case ImageOutputFormat::BC1:      return nvtt::Format::Format_BC1;
+                case ImageOutputFormat::BC1a:     return nvtt::Format::Format_BC1a;
+                case ImageOutputFormat::BC2:      return nvtt::Format::Format_BC2;
+                case ImageOutputFormat::BC3:      return isNormalMap ? nvtt::Format::Format_BC3n : nvtt::Format::Format_BC3;
+                case ImageOutputFormat::BC4:      return nvtt::Format::Format_BC4;
+                case ImageOutputFormat::BC5:      return nvtt::Format::Format_BC5;
+                case ImageOutputFormat::BC6:      return nvtt::Format::Format_BC6;
+                case ImageOutputFormat::BC7:      return nvtt::Format::Format_BC7;
+                //case ImageOutputFormat::BC3_RGBM: return nvtt::Format::Format_BC3_RGBM; //Not supported
+            };
+        }
+
+        if_constexpr(g_KeepDevILDDSCompatibility) {
+            return isNormalMap ? nvtt::Format::Format_BC3n : hasAlpha ? nvtt::Format::Format_BC3 : nvtt::Format::Format_BC1;
+        }
+        return isNormalMap ? nvtt::Format::Format_BC5 : isGrayscale ? nvtt::Format::Format_BC4 : nvtt::Format::Format_BC7;
+    }
+
+    [[nodiscard]] nvtt::MipmapFilter getNVTTMipFilter(const MipMapFilter filter) noexcept {
+        switch (filter) {
+            case MipMapFilter::BOX: return nvtt::MipmapFilter_Box;
+            case MipMapFilter::TRIANGLE: return nvtt::MipmapFilter_Triangle;
+            case MipMapFilter::KAISER: return nvtt::MipmapFilter_Kaiser;
+        }
+
+        return nvtt::MipmapFilter_Box;
+    }
+}; // namespace nvttHelpers
 
 namespace {
     Mutex s_imageLoadingMutex;
@@ -82,13 +230,19 @@ bool ImageData::loadFromMemory(Byte* data, const size_t size, const U16 width, c
     return layer.allocateMip(data, size, width, height, depth, numComponents);
 }
 
-bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name, const bool useDDSCache) {
+bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name) {
+    ImportOptions options{};
+    options._useDDSCache = false;
+    return loadFromFile(srgb, refWidth, refHeight, path, name, options);
+}
+
+bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name, const ImportOptions options) {
     _path = path;
     _name = name;
-
+    _name.convertToLower();
     // We can handle DDS files directly
-    if (hasExtension(_name, "DDS")) {
-        return loadDDS_IL(srgb, refWidth, refHeight, _path, _name);
+    if (hasExtension(_name, "dds")) {
+        return loadDDS_NVTT(srgb, refWidth, refHeight, _path, _name);
     }
 
     const ResourcePath fullPath = _path + _name;
@@ -107,6 +261,8 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
     // By default, STB images are loaded with the origin in the top(upper) left. So don't flip if s_useUpperLeftOrigin is TRUE as that is our loading default
     stbi_set_flip_vertically_on_load_thread(UseUpperLeftOrigin() ? FALSE : TRUE);
 
+    constexpr F32 gamma = 2.2f;
+
     I32 width = 0, height = 0, comp = 0;
     U8* dataLDR = nullptr;
     U16* data16Bit = nullptr;
@@ -117,33 +273,106 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
     if (!_isHDR && !_16Bit) {
         if (Texture::UseTextureDDSCache() && !_isHDR && !_16Bit) {
             const ResourcePath cachePath = Texture::GetCachePath(_path);
-            const ResourcePath cacheName = _name + ".DDS";
+            const ResourcePath cacheName = _name + ".dds";
 
             STUBBED("Get rid of DevIL completely! It is really really bad for DDS handling (quality/performance) compared to the alternatives -Ionut");
 
             // Try and save regular images to DDS for better compression next time
-            if (useDDSCache) {
-                const ResourcePath cacheFilePath = cachePath + cacheName;
+            if (options._useDDSCache) {
+                if (!createDirectory(cachePath)) {
+                    DebugBreak();
+                }
 
+                const ResourcePath cacheFilePath = cachePath + cacheName;
                 if (!fileExists(cacheFilePath)) {
-                    if (createDirectory(cachePath)) {
-                        ScopedLock<Mutex> lock(s_imageLoadingMutex);
-                        ILuint imageID = 0u;
-                        ilGenImages(1, &imageID);
-                        ilBindImage(imageID);
-                        checkError();
-                        if (ilLoadImage(fullPath.c_str()) == IL_TRUE) {
-                            const ILint channelCount = ilGetInteger(IL_IMAGE_CHANNELS);
-                            ilSetInteger(IL_DXTC_FORMAT, channelCount == 4 ? IL_DXT5 : IL_DXT1);
-                            iluBuildMipmaps();
-                            ilSave(IL_DDS, cacheFilePath.c_str());
-                            checkError();
+                    ScopedLock<Mutex> lock(s_imageLoadingMutex);
+
+                    nvtt::Context context;
+                    context.enableCudaAcceleration(true);
+
+                    nvtt::Surface image;
+                    bool hasAlpha = false;
+                    if (image.load(fullPath.c_str(), &hasAlpha)) {
+                        const nvtt::Format outputFormat = nvttHelpers::getNVTTFormat(options._outputFormat, options._isNormalMap, hasAlpha, false);
+
+                        // Setup compression options.
+                        nvtt::CompressionOptions compressionOptions;
+                        compressionOptions.setFormat(outputFormat);
+                        compressionOptions.setQuality(options._fastCompression ? nvtt::Quality::Quality_Fastest : nvtt::Quality::Quality_Normal);
+                        if (outputFormat == nvtt::Format_BC6) {
+                            compressionOptions.setPixelType(nvtt::PixelType_UnsignedFloat);
+                        } else if (outputFormat == nvtt::Format_BC2) {
+                            // Dither alpha when using BC2.
+                            compressionOptions.setQuantization(/*color dithering*/false, /*alpha dithering*/true, /*binary alpha*/false);
+                        } else if (outputFormat == nvtt::Format_BC1a) {
+                            // Binary alpha when using BC1a.
+                            compressionOptions.setQuantization(/*color dithering*/false, /*alpha dithering*/true, /*binary alpha*/true, 127);
                         }
-                        ilDeleteImages(1, &imageID);
-                        checkError();
+
+                        if (nvttHelpers::isBC1n(outputFormat, options._isNormalMap)) {
+                            compressionOptions.setColorWeights(1, 1, 0);
+                        }
+
+                        nvtt::OutputOptions outputOptions;
+                        outputOptions.setFileName(cacheFilePath.c_str());
+                        nvttHelpers::ErrorHandler errorHandler;
+                        outputOptions.setErrorHandler(&errorHandler);
+                        if (outputFormat == nvtt::Format_BC6 || outputFormat == nvtt::Format_BC7) {
+                            outputOptions.setContainer(nvtt::Container_DDS10);
+                        } else {
+                            outputOptions.setContainer(nvtt::Container_DDS);
+                        }
+                        if (options._outputSRGB) {
+                            outputOptions.setSrgbFlag(true);
+                        }
+
+                        const I32 outputSize = context.estimateSize(image, 1, compressionOptions);
+
+                        image.setNormalMap(options._isNormalMap);
+
+                        if (!context.outputHeader(image, image.countMipmaps(), compressionOptions, outputOptions)) {
+                            DebugBreak();
+                        }
+
+                        if (UseUpperLeftOrigin()) {
+                            image.flipY();
+                        }
+                        F32 coverage = 0.f;
+                        if (options._isNormalMap) {
+                            image.normalizeNormalMap();
+                        } else {
+                            if (hasAlpha && options._alphaChannelTransparency) {
+                                coverage = image.alphaTestCoverage(Config::ALPHA_DISCARD_THRESHOLD);
+                                image.setAlphaMode(nvtt::AlphaMode::AlphaMode_Transparency);
+                            } else {
+                                image.setAlphaMode(nvtt::AlphaMode::AlphaMode_None);
+                            }
+                        }
+                        if (!context.compress(image, 0, 0, compressionOptions, outputOptions)) {
+                            DebugBreak();
+                        }
+
+                        // Build and output mipmaps.
+                        if (!options._skipMipMaps) {
+                            I32 m = 1;
+                            while (image.buildNextMipmap(nvttHelpers::getNVTTMipFilter(options._mipFilter))) {
+                                if (options._isNormalMap) {
+                                    image.normalizeNormalMap();
+                                } else {
+                                    if (hasAlpha && options._alphaChannelTransparency) {
+                                        image.scaleAlphaToCoverage(coverage, Config::ALPHA_DISCARD_THRESHOLD);
+                                    }
+                                }
+
+                                context.compress(image, 0, m, compressionOptions, outputOptions);
+                                m++;
+                            }
+                        }
+
                     }
                 }
-                return loadDDS_IL(srgb, refWidth, refHeight, cachePath, cacheName);
+
+                return loadDDS_NVTT(srgb, refWidth, refHeight, cachePath, cacheName);
             }
         }
     }
@@ -163,7 +392,6 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
         Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), fullPath.c_str());
         return false;
     }
-    _compressed = false;
 
     ImageLayer& layer = _layers.emplace_back();
 
@@ -271,6 +499,11 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
     return ret;
 }
 
+bool ImageData::loadDDS_NVTT([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name) {
+    //ToDo: Use a better DDS loader
+    return loadDDS_IL(srgb, refWidth, refHeight, path, name);
+}
+
 bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name) {
     const ResourcePath fullPath = path + name;
 
@@ -286,9 +519,24 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
         checkError();
     };
 
+    if (ilLoadImage(fullPath.c_str()) == IL_FALSE) {
+        checkError();
+        Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), _name.c_str());
+        return false;
+    }
+    
+    const ILint dxtFormat = ilGetInteger(IL_DXTC_DATA_FORMAT);
+    const bool compressed = dxtFormat == IL_DXT1 ||
+                            dxtFormat == IL_DXT1A||
+                            dxtFormat == IL_DXT2 ||
+                            dxtFormat == IL_DXT3 ||
+                            dxtFormat == IL_DXT4 ||
+                            dxtFormat == IL_DXT5;
+
+
     const auto flipActiveMip = [&]() {
         if (!s_useUpperLeftOrigin) {
-            if (_compressed) {
+            if (compressed) {
                 ilFlipSurfaceDxtcData();
             } else {
                 iluFlipImage();
@@ -297,20 +545,6 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
         }
     };
 
-    if (ilLoadImage(fullPath.c_str()) == IL_FALSE) {
-        checkError();
-        Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), _name.c_str());
-        return false;
-    }
-    
-    const ILint dxtFormat = ilGetInteger(IL_DXTC_DATA_FORMAT);
-    _compressed = dxtFormat == IL_DXT1 ||
-                  dxtFormat == IL_DXT1A||
-                  dxtFormat == IL_DXT2 ||
-                  dxtFormat == IL_DXT3 ||
-                  dxtFormat == IL_DXT4 ||
-                  dxtFormat == IL_DXT5;
-    
     ILinfo imageInfo;
     iluGetImageInfo(&imageInfo);
     checkError();
@@ -373,16 +607,16 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
     const ILint channelCount = ilGetInteger(IL_IMAGE_CHANNELS);
     checkError();
 
-    if (_compressed) {
+    if (compressed) {
         switch (dxtFormat) {
             case IL_DXT1: {
-                _format = channelCount == 3 ? GFXImageFormat::COMPRESSED_RGB_DXT1 : GFXImageFormat::COMPRESSED_RGBA_DXT1;
+                _format = channelCount == 3 ? GFXImageFormat::DXT1_RGB : GFXImageFormat::DXT1_RGBA;
             }  break;
             case IL_DXT3: {
-                _format = GFXImageFormat::COMPRESSED_RGBA_DXT3;
+                _format = GFXImageFormat::DXT3_RGBA;
             } break;
             case IL_DXT5: {
-                _format = GFXImageFormat::COMPRESSED_RGBA_DXT5;
+                _format = GFXImageFormat::DXT5_RGBA;
             } break;
             default: {
                 DIVIDE_UNEXPECTED_CALL();
@@ -452,7 +686,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
                 flipActiveMip();
                 checkError();
 
-                if (_compressed && image == 0 && face == 0 && m == 0) {
+                if (compressed && image == 0 && face == 0 && m == 0) {
                     _decompressedData.resize(to_size(imageInfo.Width) * imageInfo.Height * imageInfo.Depth * 4);
                     ilCopyPixels(0, 0, 0, imageInfo.Width, imageInfo.Height, imageInfo.Depth, IL_RGBA, IL_UNSIGNED_BYTE, _decompressedData.data());
                 }
@@ -462,7 +696,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
                 checkError();
 
                 ILuint size = width * height * depth * imageInfo.Bpp;
-                if (_compressed) {
+                if (compressed) {
                     size = ilGetDXTCData(nullptr, 0, dxtFormat);
                     checkError();
                 }
@@ -471,9 +705,9 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
                                                      to_U16(width),
                                                      to_U16(height),
                                                      to_U16(depth),
-                                                     _compressed ? 0  // 0 here means that our calculated size will be 0, thus our specified size will always be used
-                                                                 : to_U8(channelCount * storageSizeFactor)); //For short and float type data we need to increase the available storage a bit (channel count assumes a Byte per component here)
-                if (_compressed) {
+                                                     compressed ? 0  // 0 here means that our calculated size will be 0, thus our specified size will always be used
+                                                                : to_U8(channelCount * storageSizeFactor)); //For short and float type data we need to increase the available storage a bit (channel count assumes a Byte per component here)
+                if (compressed) {
                     ilGetDXTCData(data, size, dxtFormat);
                     checkError();
                 } else {
@@ -485,14 +719,6 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
     }
 
     return true;
-}
-
-bool ImageData::hasAlphaChannel() const noexcept {
-    if (_compressed) {
-        return _format != GFXImageFormat::COMPRESSED_RGB_DXT1;
-    }
-
-    return _format == GFXImageFormat::BGRA || _format == GFXImageFormat::RGBA;
 }
 
 UColour4 ImageData::getColour(const I32 x, const I32 y, [[maybe_unused]] U32 layer, const U8 mipLevel) const {
@@ -511,23 +737,20 @@ namespace {
 
 void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& c, const U32 layer, const U8 mipLevel) const {
     assert(comp >= 0 && comp < 4);
-    assert(!_compressed || mipLevel == 0);
+    assert(!IsCompressed(_format) || mipLevel == 0);
     assert(_layers.size() > layer);
 
-    if (!hasAlphaChannel() && comp == 3) {
+    if (!HasAlphaChannel(_format) && comp == 3) {
         c = U8_MAX;
         return;
     }
 
-    assert(!_compressed || mipLevel == 0);
-    assert(_layers.size() > layer);
-
-    LayerData* mip = _layers[layer].getMip(mipLevel);
+    const LayerData* mip = _layers[layer].getMip(mipLevel);
 
     // Decompressed data is always UByte-RGBA
-    const U32 pixelStride = _compressed ? 4 : _bpp / 8;
+    const U32 pixelStride = IsCompressed(_format) ? 4 : _bpp / 8;
     const I32 idx = ((y * mip->_dimensions.width + x) * pixelStride) + comp;
-    if (_compressed) {
+    if (IsCompressed(_format)) {
         // Decompressed data is always UByte-RGBA
         c = _decompressedData[idx];
     } else {
@@ -542,40 +765,40 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
 }
 
 void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, const U32 layer, const U8 mipLevel) const {
-    assert(!_compressed || mipLevel == 0);
+    assert(!IsCompressed(_format) || mipLevel == 0);
     assert(_layers.size() > layer);
 
-    LayerData* mip = _layers[layer].getMip(mipLevel);
+    const LayerData* mip = _layers[layer].getMip(mipLevel);
     // Decompressed data is always UByte-RGBA
-    const U32 pixelStride = _compressed ? 4 : _bpp / 8;
+    const U32 pixelStride = IsCompressed(_format) ? 4 : _bpp / 8;
     const I32 idx = ((y * mip->_dimensions.width + x) * pixelStride);
 
-    if (_compressed) {
+    if (IsCompressed(_format)) {
         // Decompressed data is always UByte-RGBA
         const U8* src = _decompressedData.data();
         r = src[idx + 0];
         g = src[idx + 1];
         b = src[idx + 2]; 
-        a = hasAlphaChannel() ? src[idx + 3] : 255;
+        a = HasAlphaChannel(_format) ? src[idx + 3] : 255;
     } else {
         if (_isHDR) {
             const F32* src = static_cast<F32*>(mip->data());
             r = F32ToU8Colour(src[idx + 0]);
             g = F32ToU8Colour(src[idx + 1]);
             b = F32ToU8Colour(src[idx + 2]);
-            a = hasAlphaChannel() ? F32ToU8Colour(src[idx + 3]) : 255;
+            a = HasAlphaChannel(_format) ? F32ToU8Colour(src[idx + 3]) : 255;
         } else if (_16Bit) {
             const U16* src = static_cast<U16*>(mip->data());
             r = U16ToU8Colour(src[idx + 0]); 
             g = U16ToU8Colour(src[idx + 1]);
             b = U16ToU8Colour(src[idx + 2]);
-            a = hasAlphaChannel() ? U16ToU8Colour(src[idx + 3]) : 255;
+            a = HasAlphaChannel(_format) ? U16ToU8Colour(src[idx + 3]) : 255;
         } else {
             const U8* src = static_cast<U8*>(mip->data());
             r = U8ToU8Colour(src[idx + 0]);
             g = U8ToU8Colour(src[idx + 1]);
             b = U8ToU8Colour(src[idx + 2]);
-            a = hasAlphaChannel() ? U8ToU8Colour(src[idx + 3]) : 255;
+            a = HasAlphaChannel(_format) ? U8ToU8Colour(src[idx + 3]) : 255;
         }
     }
 }

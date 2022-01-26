@@ -86,6 +86,9 @@ namespace Profile {
 } // namespace Profile
 
 
+constexpr float Z_TEST_SIGMA = 0.00001f;// 1.f / U8_MAX;
+constexpr float ALPHA_DISCARD_THRESHOLD = 1.f - 0.05f;
+
 /// Application desired framerate for physics and input simulations
 constexpr unsigned int TARGET_FRAME_RATE = 60;
 

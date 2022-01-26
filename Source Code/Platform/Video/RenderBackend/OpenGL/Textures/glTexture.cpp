@@ -29,27 +29,8 @@ namespace {
         return 1u;
     }
 
-    FORCE_INLINE [[nodiscard]] U8 GetChannelCount(const GFXImageFormat baseFormat) noexcept {
-        switch (baseFormat) {
-            case GFXImageFormat::RED: {
-                return 1u;
-            } break;
-            case GFXImageFormat::RG: {
-                return  2u;
-            } break;
-            case GFXImageFormat::RGB: {
-                return  3u;
-            } break;
-            case GFXImageFormat::RGBA: {
-                return  4u;
-            } break;
-        };
-
-        return 4u;
-    }
-
     FORCE_INLINE [[nodiscard]] U8 GetBitsPerPixel(const GFXDataFormat format, const GFXImageFormat baseFormat) noexcept {
-        return GetSizeFactor(format) * GetChannelCount(baseFormat) * 8;
+        return GetSizeFactor(format) * NumChannels(baseFormat) * 8;
     }
 };
 glTexture::glTexture(GFXDevice& context,
@@ -176,16 +157,6 @@ void glTexture::validateDescriptor() {
         assert(!_descriptor.srgb());
     }
 
-    switch (_descriptor.baseFormat()) {
-        case GFXImageFormat::COMPRESSED_RGB_DXT1:
-        case GFXImageFormat::COMPRESSED_RGBA_DXT1:
-        case GFXImageFormat::COMPRESSED_RGBA_DXT3:
-        case GFXImageFormat::COMPRESSED_RGBA_DXT5: {
-            _descriptor.compressed(true);
-        } break;
-        default: break;
-    }
-
     // Cap upper mip count limit
     if (_width > 0 && _height > 0) {
         //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
@@ -256,12 +227,12 @@ void glTexture::loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& 
     prepareTextureData(dimensions.width, dimensions.height);
 
     // This should never be called for compressed textures
-    assert(!_descriptor.compressed());
+    assert(!IsCompressed(_descriptor.baseFormat()));
 
     reserveStorage(false);
     if (!IsMultisampledTexture(_loadingData._textureType)) {
         ImageTools::ImageData imgData = {};
-        if (imgData.loadFromMemory(data.first, data.second, _width, _height, 1, GetSizeFactor(_descriptor.dataType()) * GetChannelCount(_descriptor.baseFormat()))) {
+        if (imgData.loadFromMemory(data.first, data.second, _width, _height, 1, GetSizeFactor(_descriptor.dataType()) * NumChannels(_descriptor.baseFormat()))) {
             loadDataUncompressed(imgData);
                 assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
         }
@@ -274,7 +245,7 @@ void glTexture::loadData(const ImageTools::ImageData& imageData) {
     prepareTextureData(imageData.dimensions(0u, 0u).width, imageData.dimensions(0u, 0u).height);
     reserveStorage(true);
 
-    if (_descriptor.compressed()) {
+    if (IsCompressed(_descriptor.baseFormat())) {
         if (_descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
             _descriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
         }
@@ -535,7 +506,7 @@ void glTexture::bindLayer(const U8 slot, const U8 level, const U8 layer, const b
 }
 
 std::pair<std::shared_ptr<Byte[]>, size_t> glTexture::readData(U16 mipLevel, const GFXDataFormat desiredFormat) const {
-    if (_descriptor.compressed()) {
+    if (IsCompressed(_descriptor.baseFormat())) {
         DIVIDE_ASSERT(false, "glTexture::readData: Compressed textures not supported!");
         return {nullptr, 0};
     }

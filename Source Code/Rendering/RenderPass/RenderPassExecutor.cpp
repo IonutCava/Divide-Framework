@@ -1266,7 +1266,7 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex idx, Camera* camera, Ren
     cullParams._ignoredGUIDS = { &ignoreGUID, 1 };
     cullParams._cameraEyePos = camSnapshot._eye;
     cullParams._frustum = &camera->getFrustum();
-    cullParams._cullMaxDistanceSq = std::min(cullParams._cullMaxDistanceSq, SQUARED(camSnapshot._zPlanes.y));
+    cullParams._cullMaxDistance = std::min(cullParams._cullMaxDistance, camSnapshot._zPlanes.y);
     cullParams._maxLoD = params._maxLoD;
 
     U16 cullFlags = to_base(CullOptions::DEFAULT_CULL_OPTIONS);
@@ -1416,7 +1416,7 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex idx, Camera* camera, Ren
         GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ camSnapshot });
 
         GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-        beginRenderPassTransparentCmd->_name = "DO_EDITOR_POST_RENDER_PASS";
+        beginRenderPassTransparentCmd->_name = "DO_POST_RENDER_PASS";
         beginRenderPassTransparentCmd->_target = params._target;
         SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 1, false);
         SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 2, false);

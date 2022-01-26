@@ -19,6 +19,7 @@
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "Shcore.lib")
+#pragma comment(lib, "nvtt.lib")
 
 #pragma comment(lib, "PhysX_64.lib")
 #pragma comment(lib, "PhysXCooking_64.lib")

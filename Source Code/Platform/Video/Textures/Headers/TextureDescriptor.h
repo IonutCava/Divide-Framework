@@ -36,6 +36,7 @@
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Utility/Headers/Colours.h"
+#include "Utility/Headers/ImageTools.h"
 
 namespace Divide {
 
@@ -137,10 +138,12 @@ class TextureDescriptor final : public PropertyDescriptor {
     /// Use SRGB colour space
     PROPERTY_RW(bool, srgb, false);
     PROPERTY_RW(bool, normalized, true);
-    PROPERTY_RW(bool, useDDSCache, true);
-    PROPERTY_RW(bool, compressed, false);
+    PROPERTY_RW(ImageTools::ImportOptions, textureOptions);
     PROPERTY_RW(MipMappingState, mipMappingState, MipMappingState::AUTO);
 };
+
+[[nodiscard]] bool IsCompressed(GFXImageFormat format) noexcept;
+[[nodiscard]] bool HasAlphaChannel (GFXImageFormat format) noexcept;
 
 inline bool operator==(const TextureDescriptor& lhs, const TextureDescriptor& rhs) {
     return lhs.getHash() == rhs.getHash();
@@ -170,18 +173,31 @@ inline bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rh
     switch (format) {
         case GFXImageFormat::RED:
         case GFXImageFormat::DEPTH_COMPONENT:
+        case GFXImageFormat::BC4s:
+        case GFXImageFormat::BC4u:
             return 1u;
         case GFXImageFormat::RG:
+        case GFXImageFormat::BC5s:
+        case GFXImageFormat::BC5u:
             return 2u;
         case GFXImageFormat::BGR:
         case GFXImageFormat::RGB:
-        case GFXImageFormat::COMPRESSED_RGB_DXT1:
+        case GFXImageFormat::BC1:
+        case GFXImageFormat::DXT1_RGB_SRGB:
+        case GFXImageFormat::BC6s:
+        case GFXImageFormat::BC6u:
             return 3u;
         case GFXImageFormat::BGRA:
         case GFXImageFormat::RGBA:
-        case GFXImageFormat::COMPRESSED_RGBA_DXT1:
-        case GFXImageFormat::COMPRESSED_RGBA_DXT3:
-        case GFXImageFormat::COMPRESSED_RGBA_DXT5:
+        case GFXImageFormat::DXT1_RGBA_SRGB:
+        case GFXImageFormat::DXT3_RGBA_SRGB:
+        case GFXImageFormat::DXT5_RGBA_SRGB:
+        case GFXImageFormat::BC1a:
+        case GFXImageFormat::BC2:
+        case GFXImageFormat::BC3:
+        case GFXImageFormat::BC3n:
+        case GFXImageFormat::BC7:
+        case GFXImageFormat::BC7_SRGB:
             return 4u;
 
         default:

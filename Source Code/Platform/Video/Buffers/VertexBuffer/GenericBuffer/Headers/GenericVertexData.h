@@ -49,8 +49,8 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
    public:
      
      struct IndexBuffer {
-         size_t count = 0;
-         size_t offsetCount = 0;
+         size_t count = 0u;
+         size_t offsetCount = 0u;
          bufferPtr data = nullptr;
          bool smallIndices = false;
      };

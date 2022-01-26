@@ -40,7 +40,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Rendering/Headers/FrameListener.h"
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
-
 #include "Editor/Widgets/Headers/Gizmo.h"
 
 #include "Platform/Headers/DisplayWindow.h"
@@ -250,14 +249,16 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] bool saveSceneChanges(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "") const;
     [[nodiscard]] bool switchScene(const char* scenePath);
 
-    // Returns true if the window was closed
+    /// Returns true if the window was closed
     [[nodiscard]] bool modalTextureView(const char* modalName, const Texture* tex, const vec2<F32>& dimensions, bool preserveAspect, bool useModal) const;
-    // Returns true if the modal window was closed
+    /// Returns true if the modal window was closed
     [[nodiscard]] bool modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const;
-    // Return true if the model was spawned as a scene node
+    /// Return true if the model was spawned as a scene node
     [[nodiscard]] bool spawnGeometry(const Mesh_ptr& mesh, const vec3<F32>& scale, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& rotation, const string& name) const;
+    /// Return true if the specified node passed frustum culling during the main render pass
+    [[nodiscard]] bool isNodeInView(const SceneGraphNode& node) const noexcept;
 
-    void onRemoveComponent(const EditorComponent& comp) const ;
+    void onRemoveComponent(const EditorComponent& comp) const;
 
     [[nodiscard]] ECSManager& getECSManager() const;
     [[nodiscard]] LightPool& getActiveLightPool() const;
@@ -399,6 +400,9 @@ namespace Attorney {
             return editor.lockSolutionExplorer();
         }
 
+        [[nodiscard]] static bool isNodeInView(const Editor& editor, const SceneGraphNode& node) {
+            return editor.isNodeInView(node);
+        }
         friend class Divide::SolutionExplorerWindow;
     };
 

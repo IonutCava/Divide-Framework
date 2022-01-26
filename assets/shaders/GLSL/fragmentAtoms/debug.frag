@@ -93,7 +93,7 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
                 vec3 colour = vec3(0.f);
 
                 const uint dirLightCount = dvd_LightData.x;
-                for (uint lightIdx = 0; lightIdx < dirLightCount; ++lightIdx) {
+                for (int lightIdx = 0; lightIdx < dirLightCount; ++lightIdx) {
                     const Light light = dvd_LightSource[lightIdx];
                     const int shadowIndex = dvd_LightSource[lightIdx]._options.y;
                     if (shadowIndex > -1) {

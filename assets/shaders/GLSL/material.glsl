@@ -11,7 +11,7 @@ void main (void) {
     const vec4 albedo = getAlbedo(data, vec3(VAR._texCoord, 0));
   
 #if defined(USE_ALPHA_DISCARD)
-    if (albedo.a < INV_Z_TEST_SIGMA) {
+    if (albedo.a < ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
 #endif //USE_ALPHA_DISCARD

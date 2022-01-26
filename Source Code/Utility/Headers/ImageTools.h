@@ -42,6 +42,38 @@ void OnShutdown();
 
 [[nodiscard]] bool UseUpperLeftOrigin() noexcept;
 
+enum class MipMapFilter : U8 {
+    BOX,
+    TRIANGLE,
+    KAISER,
+    COUNT
+};
+
+enum class ImageOutputFormat : U8 {
+    BC1, //Will be BC1n for normal maps
+    BC1a,
+    BC2,
+    BC3,//Will be BC3n for normal maps
+    BC4,
+    BC5,
+    BC6,
+    BC7,
+    //BC3_RGBM, //Not supported
+    AUTO,  // BC7 for textures, BC5 for normal maps, BC4 single channel images
+    COUNT
+};
+
+struct ImportOptions {
+    bool _useDDSCache = true;
+    bool _skipMipMaps = false;
+    bool _isNormalMap = false;
+    bool _fastCompression = false;
+    bool _outputSRGB = false;
+    bool _alphaChannelTransparency = true; //< If false, the alpha channel represents arbitrary data (e.g. in splatmaps)
+    MipMapFilter _mipFilter = MipMapFilter::KAISER;
+    ImageOutputFormat _outputFormat = ImageOutputFormat::AUTO;
+};
+
 struct LayerData {
     virtual ~LayerData() = default;
     [[nodiscard]] virtual bufferPtr data() const = 0;
@@ -140,8 +172,6 @@ struct ImageData final : NonCopyable {
         return _layers[layer].getMip(mipLevel)->_dimensions;
     }
 
-    /// set and get the image's compression state
-    [[nodiscard]] bool compressed() const noexcept { return _compressed; }
     /// get the number of pre-loaded mip maps (same number for each layer)
     [[nodiscard]] U8 mipCount() const { return _layers.empty() ? 0u : _layers.front().mipCount(); }
     /// get the total number of image layers
@@ -164,22 +194,20 @@ struct ImageData final : NonCopyable {
     FORCE_INLINE void getBlue(const I32 x, const I32 y, U8& b, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 2, b, layer, mipLevel); }
     FORCE_INLINE void getAlpha(const I32 x, const I32 y, U8& a, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 3, a, layer, mipLevel); }
 
-    [[nodiscard]] bool hasAlphaChannel() const noexcept;
-
     [[nodiscard]] bool loadFromMemory(Byte* data, size_t size, U16 width, U16 height, U16 depth, U8 numComponents);
     /// creates this image instance from the specified data
-    [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, bool useDDSCache);
+    [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
+    [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, ImportOptions options);
 
   protected:
     friend class ImageDataInterface;
+    [[nodiscard]] bool loadDDS_NVTT(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
     [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
 
    private:
     //Each entry is a separate mip map.
     vector<ImageLayer> _layers{};
     vector<U8> _decompressedData{};
-    /// is the image stored as a regular image or in a compressed format? (eg. DXT1 / DXT3 / DXT5)
-    bool _compressed = false;
     /// 16bit data
     bool _16Bit = false;
     /// HDR data

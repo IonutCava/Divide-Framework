@@ -110,12 +110,50 @@ namespace Divide {
         Util::Hash_combine(_hash, to_U32(_texType));
         Util::Hash_combine(_hash, _srgb);
         Util::Hash_combine(_hash, _normalized);
-        Util::Hash_combine(_hash, _useDDSCache);
-        Util::Hash_combine(_hash, _compressed);
+        Util::Hash_combine(_hash, _textureOptions._alphaChannelTransparency);
+        Util::Hash_combine(_hash, _textureOptions._fastCompression);
+        Util::Hash_combine(_hash, _textureOptions._isNormalMap);
+        Util::Hash_combine(_hash, _textureOptions._mipFilter);
+        Util::Hash_combine(_hash, _textureOptions._skipMipMaps);
+        Util::Hash_combine(_hash, _textureOptions._outputFormat);
+        Util::Hash_combine(_hash, _textureOptions._outputSRGB);
+        Util::Hash_combine(_hash, _textureOptions._useDDSCache);
 
         return _hash;
     }
-
+    
+    [[nodiscard]] bool IsCompressed(const GFXImageFormat format) noexcept {
+        return format == GFXImageFormat::BC1            ||
+               format == GFXImageFormat::BC1a           ||
+               format == GFXImageFormat::BC2            ||
+               format == GFXImageFormat::BC3            ||
+               format == GFXImageFormat::BC3n           ||
+               format == GFXImageFormat::BC4s           ||
+               format == GFXImageFormat::BC4u           ||
+               format == GFXImageFormat::BC5s           ||
+               format == GFXImageFormat::BC5u           ||
+               format == GFXImageFormat::BC6s           ||
+               format == GFXImageFormat::BC6u           ||
+               format == GFXImageFormat::BC7            ||
+               format == GFXImageFormat::BC7_SRGB       ||
+               format == GFXImageFormat::DXT1_RGB_SRGB  ||
+               format == GFXImageFormat::DXT1_RGBA_SRGB ||
+               format == GFXImageFormat::DXT5_RGBA_SRGB ||
+               format == GFXImageFormat::DXT3_RGBA_SRGB;
+    }
+    [[nodiscard]] bool HasAlphaChannel(const GFXImageFormat format) noexcept {
+        return format == GFXImageFormat::BC1a           ||
+               format == GFXImageFormat::BC2            ||
+               format == GFXImageFormat::BC3            ||
+               format == GFXImageFormat::BC3n           ||
+               format == GFXImageFormat::BC7            ||
+               format == GFXImageFormat::BC7_SRGB       ||
+               format == GFXImageFormat::DXT1_RGBA_SRGB ||
+               format == GFXImageFormat::DXT3_RGBA_SRGB ||
+               format == GFXImageFormat::DXT5_RGBA_SRGB ||
+               format == GFXImageFormat::BGRA           ||
+               format == GFXImageFormat::RGBA;
+    }
     namespace XMLParser {
         void saveToXML(const SamplerDescriptor& sampler, const string& entryName, boost::property_tree::ptree& pt) {
             pt.put(entryName + ".Sampler.Filter.<xmlattr>.min", TypeUtil::TextureFilterToString(sampler.minFilter()));

@@ -64,14 +64,11 @@ layout(location = 12) out vec3[5] tcs_debugColour[];
 
 float SphereToScreenSpaceTessellation(in vec3 w0, in vec3 w1, in float diameter, in mat4 worldViewMat)
 {
-    const vec3 centre = 0.5f * (w0 + w1);
-    const vec4 view0 = worldViewMat * vec4(centre, 1.f);
+    const vec4 view0 = worldViewMat * vec4((w0 + w1) * 0.5f, 1.f);
     const vec4 view1 = view0 + vec4(WORLD_SCALE_X * diameter, 0.f, 0.f, 0.f);
 
-    vec4 clip0 = dvd_ProjectionMatrix * view0; // to clip space
-    vec4 clip1 = dvd_ProjectionMatrix * view1; // to clip space
-    clip0 /= clip0.w;                          // project
-    clip1 /= clip1.w;                          // project
+    vec3 clip0 = Homogenize(dvd_ProjectionMatrix * view0); // to clip space + projection
+    vec3 clip1 = Homogenize(dvd_ProjectionMatrix * view1); // to clip space + projection
     //clip0.xy = clip0.xy * 0.5f + 0.5f;       // to NDC (DX11 sample skipped this)
     //clip1.xy = clip1.xy * 0.5f + 0.5f;       // to NDC (DX11 sample skipped this)
     clip0.xy *= dvd_ScreenDimensions;          // to pixels
@@ -175,7 +172,7 @@ void main(void)
         gl_TessLevelOuter[3] = SphereToScreenSpaceTessellation(gl_in[1].gl_Position.xyz, gl_in[2].gl_Position.xyz, sideLen, worldViewMat);
 
 //#if !defined(LOW_QUALITY)
-        // Sadly can't disable this for reflection/refraction cases as it the cracks get really obvious at certain angles
+        // Sadly can't disable this for reflection/refraction cases as the cracks get really obvious at certain angles
         // Edges that need adjacency adjustment are identified by the per-instance ip[0].adjacency 
         // scalars, in *conjunction* with a patch ID that puts them on the edge of a tile.
         const int PatchID = gl_PrimitiveID;
@@ -297,6 +294,19 @@ vec3 LerpDebugColours(in vec3 cIn[5], vec2 uv) {
 }
 #endif //TOGGLE_DEBUG || TOGGLE_TESS_LEVEL
 
+mat3 getTBNW() {
+    // We need to compute tangent and bitengent vectors with 
+    // as cotangent_frame's results do not apply for what we need them to do
+    const vec3 N = normalize(_out._normalW);
+    const vec3 T1 = cross(N, WORLD_Z_AXIS);
+    const vec3 T2 = cross(N, WORLD_Y_AXIS);
+    const vec3 T = normalize(length(T1) > length(T2) ? T1 : T2);
+    const vec3 B = normalize(-cross(N, T));
+    // Orthogonal matrix(each axis is a perpendicular unit vector)
+    // The transpose of an orthogonal matrix equals its inverse
+    return mat3(T, B, N);
+}
+
 void main()
 {
     // Calculate the vertex position using the four original points and interpolate depending on the tessellation coordinates.
@@ -310,6 +320,7 @@ void main()
     _out._vertexWV = dvd_ViewMatrix * _out._vertexW;
     setClipPlanes(); //Only need world vertex position for clipping
     _out._normalW = dvd_NormalMatrixW(dvd_Transforms[TRANSFORM_IDX]) * getNormal(_out._texCoord);
+    _out._tbnWV = mat3(dvd_ViewMatrix) * getTBNW();
     _out._indirectionIDs = _in[0]._indirectionIDs;
 #if !defined(PRE_PASS) && !defined(SHADOW_PASS)
     _out._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_cameraPosition.xyz - _out._vertexW.xyz);
@@ -513,7 +524,7 @@ void main(void) {
     colourOut.rgb = tes_debugColour;
 #else //TOGGLE_TESS_LEVEL
 #if defined(TOGGLE_BLEND_MAP)
-    for (uint i = 0u; i < MAX_TEXTURE_LAYERS; ++i) {
+    for (int i = 0; i < MAX_TEXTURE_LAYERS; ++i) {
         colourOut.rgb += GetBlend(vec3(VAR._texCoord, i)).rgb;
     }
 #else //TOGGLE_BLEND_MAP

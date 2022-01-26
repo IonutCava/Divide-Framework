@@ -21,7 +21,7 @@ void main() {
     const ivec2 C = ivec2(gl_FragCoord.xy);
 
     const float revealage = texelFetch(revealageTexture, C, SampleID).r;
-    if (revealage >= INV_Z_TEST_SIGMA) {
+    if (revealage >= ALPHA_DISCARD_THRESHOLD) {
         // Save the blending and color texture fetch cost
         discard;
     }

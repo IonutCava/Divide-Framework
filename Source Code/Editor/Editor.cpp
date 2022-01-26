@@ -838,6 +838,20 @@ void Editor::infiniteGridScale(const F32 value) noexcept {
     _gridSettingsDirty = true;
 }
 
+bool Editor::isNodeInView(const SceneGraphNode& node) const noexcept {
+    const I64 targetGUID = node.getGUID();
+
+    const auto& visibleNodes = _context.kernel().sceneManager()->getNodeCache(RenderStage::DISPLAY);
+    const size_t nodeCount = visibleNodes.size();
+    for (size_t i = 0u; i < nodeCount; ++i) {
+        if (visibleNodes.node(i)._node->getGUID() == targetGUID) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTargetID target, GFX::CommandBuffer& bufferInOut) {
     if (!sceneGizmoEnabled() && !infiniteGridEnabled()) {
         return;

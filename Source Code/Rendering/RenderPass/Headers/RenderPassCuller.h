@@ -69,44 +69,44 @@ struct NodeCullParams {
     std::pair<I64*, size_t> _ignoredGUIDS;
     vec3<F32> _cameraEyePos;
     const Frustum* _frustum = nullptr;
-    F32 _cullMaxDistanceSq = std::numeric_limits<F32>::max();
+    F32 _cullMaxDistance = std::numeric_limits<F32>::max();
     I32 _maxLoD = -1;
     RenderStage _stage = RenderStage::COUNT;
 };
 
 struct VisibleNode {
     SceneGraphNode* _node = nullptr;
-    F32 _distanceToCameraSq = 0.0f;
+    F32 _distanceToCameraSq = 0.f;
     bool _materialReady = true;
 };
 
 using FeedBackContainer = vector_fast<VisibleNode>;
 
-template<size_t N = Config::MAX_VISIBLE_NODES>
+template<typename T = VisibleNode, size_t N = Config::MAX_VISIBLE_NODES>
 struct VisibleNodeList
 {
-    using Container = std::array<VisibleNode, N>;
+    using Container = std::array<T, N>;
 
     void append(const VisibleNodeList& other) noexcept {
         assert(_index + other._index < _nodes.size());
 
-        std::memcpy(_nodes.data() + _index, other._nodes.data(), other._index * sizeof(VisibleNode));
+        std::memcpy(_nodes.data() + _index, other._nodes.data(), other._index * sizeof(T));
         _index += other._index;
     }
 
-    void append(const VisibleNode& node) noexcept {
+    void append(const T& node) noexcept {
         _nodes[_index.fetch_add(1)] = node;
     }
                   void      reset()       noexcept { _index.store(0); }
     [[nodiscard]] size_t    size()  const noexcept { return _index.load(); }
     [[nodiscard]] bufferPtr data()  const noexcept { return (bufferPtr)_nodes.data(); }
 
-    [[nodiscard]] const VisibleNode& node(size_t idx) const noexcept { 
+    [[nodiscard]] const T& node(size_t idx) const noexcept { 
         assert(idx < _index.load());
         return _nodes[idx]; 
     }
 
-    [[nodiscard]] VisibleNode& node(size_t idx) noexcept {
+    [[nodiscard]] T& node(size_t idx) noexcept {
         assert(idx < _index.load());
         return _nodes[idx];
     }
@@ -117,9 +117,6 @@ private:
 
 class RenderPassCuller {
     public:
-        static bool OnStartup(PlatformContext& context);
-        static bool OnShutdown(PlatformContext& context);
-
         void clear() noexcept;
 
         VisibleNodeList<>& frustumCull(const NodeCullParams& params, const U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context);

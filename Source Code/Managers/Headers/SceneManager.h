@@ -135,6 +135,8 @@ public:
     // get the full list of refractive nodes
     void getSortedRefractiveNodes(const Camera* camera, RenderStage stage, bool inView, VisibleNodeList<>& nodesOut) const;
 
+    const VisibleNodeList<>& getNodeCache(const RenderStage stage) const noexcept;
+
     void onChangeFocus(bool hasFocus);
 
     /// Check if the scene was loaded properly

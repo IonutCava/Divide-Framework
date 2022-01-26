@@ -317,8 +317,11 @@ namespace Divide {
     }
 
     Texture_ptr ContentExplorerWindow::getTextureForPath(const ResourcePath& texturePath, const ResourcePath& textureName) const {
+        ImageTools::ImportOptions options{};
+        options._useDDSCache = false;
+
         TextureDescriptor texturePreviewDescriptor(TextureType::TEXTURE_2D);
-        texturePreviewDescriptor.useDDSCache(false);
+        texturePreviewDescriptor.textureOptions(options);
 
         ResourceDescriptor textureResource(textureName.str());
         textureResource.assetName(textureName);

@@ -3,10 +3,6 @@
 
 #include "utility.cmn"
 
-#if defined(PRE_PASS) || defined(SHADOW_PASS)
-#   define DEPTH_PASS
-#endif
-
 #if defined(GEOM_SHADER)
 #define InBlock gl_in[];
 #else //GEOM_SHADER

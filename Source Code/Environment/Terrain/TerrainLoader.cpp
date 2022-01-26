@@ -182,25 +182,33 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     albedoSampler.anisotropyLevel(16);
     const size_t albedoHash = albedoSampler.getHash();
 
+    ImageTools::ImportOptions importOptions{};
+    importOptions._useDDSCache = true;
+
     TextureDescriptor albedoDescriptor(TextureType::TEXTURE_2D_ARRAY);
     albedoDescriptor.layerCount(to_U16(textures[to_base(TerrainTextureType::ALBEDO_ROUGHNESS)].size()));
     albedoDescriptor.srgb(false);
+    importOptions._alphaChannelTransparency = false; //roughness
+    importOptions._isNormalMap = false;
+    albedoDescriptor.textureOptions(importOptions);
 
     TextureDescriptor blendMapDescriptor(TextureType::TEXTURE_2D_ARRAY);
     blendMapDescriptor.layerCount(to_U16(splatTextures.size()));
     blendMapDescriptor.srgb(false);
-    blendMapDescriptor.useDDSCache(false);
+    importOptions._alphaChannelTransparency = false; //splat lookup
+    importOptions._isNormalMap = false;
 
     TextureDescriptor normalDescriptor(TextureType::TEXTURE_2D_ARRAY);
     normalDescriptor.layerCount(to_U16(textures[to_base(TerrainTextureType::NORMAL)].size()));
     normalDescriptor.srgb(false);
-    STUBBED("Find a way to properly compress normal maps! -Ionut");
-    normalDescriptor.useDDSCache(false);
+    importOptions._alphaChannelTransparency = false; //not really needed
+    importOptions._isNormalMap = true;
 
     TextureDescriptor extraDescriptor(TextureType::TEXTURE_2D_ARRAY);
     extraDescriptor.layerCount(extraMapCount);
     extraDescriptor.srgb(false);
-    extraDescriptor.useDDSCache(false);
+    importOptions._alphaChannelTransparency = false; //who knows what we pack here?
+    importOptions._isNormalMap = false;
 
     textureBlendMap.assetName(blendMapArray);
     textureBlendMap.propertyDescriptor(blendMapDescriptor);
@@ -244,19 +252,12 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     U8 totalLayerCount = 0;
     string layerCountDataStr = Util::StringFormat("const uint CURRENT_LAYER_COUNT[ %d ] = {", layerCount);
-    string blendAmntStr = "INSERT_BLEND_AMNT_ARRAY float blendAmount[TOTAL_LAYER_COUNT] = {";
     for (U8 i = 0; i < layerCount; ++i) {
         layerCountDataStr.append(Util::StringFormat("%d,", channelCountPerLayer[i]));
-        for (U8 j = 0; j < channelCountPerLayer[i]; ++j) {
-            blendAmntStr.append("0.0f,");
-        }
         totalLayerCount += channelCountPerLayer[i];
     }
     layerCountDataStr.pop_back();
     layerCountDataStr.append("};");
-
-    blendAmntStr.pop_back();
-    blendAmntStr.append("};");
 
     const TerrainDescriptor::LayerData& layerTileData = terrainDescriptor->layerDataEntries();
     string tileFactorStr = "const vec2 CURRENT_TILE_FACTORS[TOTAL_LAYER_COUNT] = {\n";
@@ -320,35 +321,36 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     WAIT_FOR_CONDITION(albedoTile->getState() == ResourceState::RES_LOADED);
     const U16 tileMapSize = albedoTile->width();
 
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "TEXTURE_TILE_SIZE " + Util::to_string(tileMapSize), true);
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "TERRAIN_HEIGHT_OFFSET " + Util::to_string(altitudeRange.x), true);
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_X " + Util::to_string(WorldScale.width), true);
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_Y " + Util::to_string(altitudeRange.y - altitudeRange.x), true);
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_Z " + Util::to_string(WorldScale.height), true);
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "INV_CONTROL_VTX_PER_TILE_EDGE " + Util::to_string(1.f / TessellationParams::VTX_PER_TILE_EDGE), true);
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("CONTROL_VTX_PER_TILE_EDGE %d", TessellationParams::VTX_PER_TILE_EDGE), true);
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("PATCHES_PER_TILE_EDGE %d", TessellationParams::PATCHES_PER_TILE_EDGE), true);
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("MAX_TEXTURE_LAYERS %d", layerCount), true);
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, "ENABLE_LOD");
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, "ENABLE_TBN");
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, "TEXTURE_TILE_SIZE " + Util::to_string(tileMapSize));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, "TERRAIN_HEIGHT_OFFSET " + Util::to_string(altitudeRange.x));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_X " + Util::to_string(WorldScale.width));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_Y " + Util::to_string(altitudeRange.y - altitudeRange.x));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_Z " + Util::to_string(WorldScale.height));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, "INV_CONTROL_VTX_PER_TILE_EDGE " + Util::to_string(1.f / TessellationParams::VTX_PER_TILE_EDGE));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("CONTROL_VTX_PER_TILE_EDGE %d", TessellationParams::VTX_PER_TILE_EDGE));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("PATCHES_PER_TILE_EDGE %d", TessellationParams::PATCHES_PER_TILE_EDGE));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("MAX_TEXTURE_LAYERS %d", layerCount));
     if (terrainConfig.detailLevel > 1) {
-        terrainMaterial->addShaderDefine(ShaderType::COUNT, "REDUCE_TEXTURE_TILE_ARTIFACT", true);
+        terrainMaterial->addShaderDefine(ShaderType::COUNT, "REDUCE_TEXTURE_TILE_ARTIFACT");
         if (terrainConfig.detailLevel > 2) {
-            terrainMaterial->addShaderDefine(ShaderType::COUNT, "REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS", true);
+            terrainMaterial->addShaderDefine(ShaderType::COUNT, "REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS");
             if (terrainConfig.detailLevel > 3) {
-                terrainMaterial->addShaderDefine(ShaderType::COUNT, "HIGH_QUALITY_TILE_ARTIFACT_REDUCTION", true);
+                terrainMaterial->addShaderDefine(ShaderType::COUNT, "HIGH_QUALITY_TILE_ARTIFACT_REDUCTION");
             }
         }
     }
-    terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, Util::StringFormat("UNDERWATER_TILE_SCALE %d", to_I32(underwaterTileScale)), true);
-    terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, Util::StringFormat("TOTAL_LAYER_COUNT %d", totalLayerCount), true);
+    terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, Util::StringFormat("UNDERWATER_TILE_SCALE %d", to_I32(underwaterTileScale)));
+    terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, Util::StringFormat("TOTAL_LAYER_COUNT %d", totalLayerCount));
     terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, layerCountDataStr, false);
     terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, tileFactorStr, false);
     for (const string& str : indexData) {
         terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, str, false);
     }
-    terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, blendAmntStr, true);
 
     if (!terrainMaterial->properties().receivesShadows()) {
-        terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, "DISABLE_SHADOW_MAPPING", true);
+        terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, "DISABLE_SHADOW_MAPPING");
     }
 
     terrainMaterial->computeShaderCBK([name, terrainConfig]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
@@ -756,10 +758,13 @@ VegetationDetails& TerrainLoader::initializeVegetationDetails(const Terrain_ptr&
 
     const ResourcePath grassMap{ terrainDescriptor->getVariable("grassMap")};
     const ResourcePath treeMap{ terrainDescriptor->getVariable("treeMap") };
-    if (!vegDetails.grassMap->loadFromFile(false, 0, 0, terrainLocation, grassMap, true)) {
+    ImageTools::ImportOptions options{};
+    options._alphaChannelTransparency = false;
+    options._isNormalMap = false;
+    if (!vegDetails.grassMap->loadFromFile(false, 0, 0, terrainLocation, grassMap, options)) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (!vegDetails.treeMap->loadFromFile(false, 0, 0, terrainLocation, treeMap, true)) {
+    if (!vegDetails.treeMap->loadFromFile(false, 0, 0, terrainLocation, treeMap, options)) {
         DIVIDE_UNEXPECTED_CALL();
     }
 

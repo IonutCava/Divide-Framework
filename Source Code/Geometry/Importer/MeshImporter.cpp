@@ -215,6 +215,8 @@ namespace Import {
         dataOut << _texturePath;
         dataOut << _srgb;
         dataOut << _useDDSCache;
+        dataOut << _isNormalMap;
+        dataOut << _alphaForTransparency;
         dataOut << to_U32(_wrapU);
         dataOut << to_U32(_wrapV);
         dataOut << to_U32(_wrapW);
@@ -228,6 +230,8 @@ namespace Import {
         dataIn >> _texturePath;
         dataIn >> _srgb;
         dataIn >> _useDDSCache;
+        dataIn >> _isNormalMap;
+        dataIn >> _alphaForTransparency;
         dataIn >> data; _wrapU = static_cast<TextureWrap>(data);
         dataIn >> data; _wrapV = static_cast<TextureWrap>(data);
         dataIn >> data; _wrapW = static_cast<TextureWrap>(data);
@@ -401,8 +405,13 @@ namespace Import {
                 textureSampler.wrapV(tex.wrapV());
                 textureSampler.wrapW(tex.wrapW());
 
+                ImageTools::ImportOptions importOptions{};
+                importOptions._useDDSCache = tex.useDDSCache();
+                importOptions._isNormalMap = tex.isNormalMap();
+                importOptions._alphaChannelTransparency = tex.alphaForTransparency();
+
                 textureDescriptor.srgb(tex.srgb());
-                textureDescriptor.useDDSCache(tex.useDDSCache());
+                textureDescriptor.textureOptions(importOptions);
                 ResourceDescriptor texture(tex.textureName().str());
                 texture.assetName(tex.textureName());
                 texture.assetLocation(tex.texturePath());

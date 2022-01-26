@@ -301,7 +301,6 @@ private:
     PROPERTY_R(U32, nodeFlags, 0u);
     PROPERTY_R(U32, instanceCount, 1u);
     PROPERTY_R(bool, serialize, true);
-    PROPERTY_R_IW(bool, visiblePostCulling, false);
     PROPERTY_R(NodeUsageContext, usageContext, NodeUsageContext::NODE_STATIC);
     //ToDo: make this work in a multi-threaded environment
     mutable I8 _frustPlaneCache = -1;
@@ -371,10 +370,6 @@ namespace Attorney {
         // Returns true if the node should be culled (is not visible for the current stage)
         static bool cullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags, FrustumCollision& collisionTypeOut, F32& distanceToClosestPointSQ) {
             return node->cullNode(params, cullFlags, collisionTypeOut, distanceToClosestPointSQ);
-        }
-        
-        static void visiblePostCulling(SceneGraphNode* node, const bool state) noexcept {
-            node->visiblePostCulling(state);
         }
 
         friend class Divide::RenderPassCuller;

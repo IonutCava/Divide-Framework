@@ -74,15 +74,23 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     _drawConstantsCmd._constants.set(_ID("_fadeActive"),  GFX::PushConstantType::BOOL,  false);
     _drawConstantsCmd._constants.set(_ID("_zPlanes"),     GFX::PushConstantType::VEC2,  vec2<F32>(0.01f, 500.0f));
 
-    const TextureDescriptor texDescriptor(TextureType::TEXTURE_2D);
+    TextureDescriptor texDescriptor(TextureType::TEXTURE_2D);
 
-    ResourceDescriptor textureWaterCaustics("Underwater Caustics");
+    ImageTools::ImportOptions options;
+    options._isNormalMap = true;
+    options._useDDSCache = true;
+    options._outputSRGB = false;
+    texDescriptor.textureOptions(options);
+
+    ResourceDescriptor textureWaterCaustics("Underwater Normal Map");
     textureWaterCaustics.assetName(ResourcePath("terrain_water_NM.jpg"));
     textureWaterCaustics.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);
     textureWaterCaustics.propertyDescriptor(texDescriptor);
     textureWaterCaustics.waitForReady(false);
     _underwaterTexture = CreateResource<Texture>(cache, textureWaterCaustics, loadTasks);
 
+    options._isNormalMap = false;
+    texDescriptor.textureOptions(options);
     ResourceDescriptor noiseTexture("noiseTexture");
     noiseTexture.assetName(ResourcePath("bruit_gaussien.jpg"));
     noiseTexture.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);

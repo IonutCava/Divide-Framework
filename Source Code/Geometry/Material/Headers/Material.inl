@@ -64,7 +64,7 @@ inline const ShaderProgramInfo& Material::shaderInfo(const RenderStagePass rende
     return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][to_base(renderStagePass._variant)];
 }
 
-inline void Material::addShaderDefine(const ShaderType type, const string& define, const bool addPrefix) {
+inline void Material::addShaderDefine(const ShaderType type, const string& define, const bool addPrefix = true) {
     if (type != ShaderType::COUNT) {
         addShaderDefineInternal(type, define, addPrefix);
     } else {

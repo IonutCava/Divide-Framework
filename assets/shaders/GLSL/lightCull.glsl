@@ -69,7 +69,7 @@ void main() {
     // hold the result of light culling for this cluster
     uint visibleLights[LIGHT_TYPE_COUNT][MAX_LIGHTS_PER_CLUSTER];
     uint visibleCount[LIGHT_TYPE_COUNT];
-    for (uint i = 0u; i < LIGHT_TYPE_COUNT; ++i) {
+    for (int i = 0; i < LIGHT_TYPE_COUNT; ++i) {
         visibleCount[i] = 0u;
     }
     uint visibleCountTotal = 0u;
@@ -100,7 +100,7 @@ void main() {
         barrier();
 
         // each thread is one cluster and checks against all lights in the cache
-        for (uint i = 0u; i < batchSize; ++i) {
+        for (int i = 0; i < batchSize; ++i) {
             if (visibleCountTotal < MAX_LIGHTS_PER_CLUSTER &&
                 lightIntersectsCluster(clusterMin, clusterMax, sharedLights[i]))
             {
@@ -121,10 +121,10 @@ void main() {
     const uint offset = atomicAdd(globalIndexCount[0], visibleCountTotal);
 
     // copy indices of lights
-    for (uint i = 0u; i < visibleCount[LIGHT_POINT_IDX]; ++i) {
+    for (int i = 0; i < visibleCount[LIGHT_POINT_IDX]; ++i) {
         globalLightIndexList[offset + i] = visibleLights[LIGHT_POINT_IDX][i];
     }
-    for (uint i = 0u; i < visibleCount[LIGHT_SPOT_IDX]; ++i) {
+    for (int i = 0; i < visibleCount[LIGHT_SPOT_IDX]; ++i) {
         globalLightIndexList[offset + visibleCount[LIGHT_POINT_IDX] + i] = visibleLights[LIGHT_SPOT_IDX][i];
     }
 

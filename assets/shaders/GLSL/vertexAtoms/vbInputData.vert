@@ -15,9 +15,9 @@ NodeTransformData fetchInputData() {
 
     dvd_Vertex = vec4(inVertexData, 1.f);
     dvd_Normal = UnpackVec3(inNormalData);
-#if defined(COMPUTE_TBN) || defined(NEED_TANGENT)
+#if defined(ENABLE_TBN)
     dvd_Tangent = UnpackVec3(inTangentData);
-#endif //COMPUTE_TBN || NEED_TANGENT
+#endif //ENABLE_TBN
 #if !defined(DEPTH_PASS)
     dvd_Colour = inColourData;
 #endif //DEPTH_PASS
@@ -32,7 +32,10 @@ NodeTransformData fetchInputData() {
 }
 
 vec4 computeData(in NodeTransformData data) {
+#if defined(ENABLE_LOD)
     VAR._LoDLevel  = dvd_LoDLevel(data);
+#endif //ENABLE_LOD
+
     VAR._vertexW   = data._worldMatrix * dvd_Vertex;
 #if 0
     VAR._vertexWV  = dvd_ViewMatrix * VAR._vertexW;

@@ -362,7 +362,8 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     s_treeMaterial->baseShaderData(treeShaderData);
     s_treeMaterial->properties().shadingMode(ShadingMode::BLINN_PHONG);
     s_treeMaterial->properties().isInstanced(true);
-    s_treeMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("MAX_TREE_INSTANCES %d", s_maxTreeInstances).c_str(), true);
+    s_treeMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("MAX_TREE_INSTANCES %d", s_maxTreeInstances).c_str());
+    s_treeMaterial->addShaderDefine(ShaderType::COUNT, "ENABLE_LOD");
 
     SamplerDescriptor grassSampler = {};
     grassSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
@@ -393,6 +394,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     compModule._moduleType = ShaderType::COMPUTE;
     compModule._sourceFile = "instanceCullVegetation.glsl";
     compModule._defines.emplace_back("NO_CAM_BLOCK", true);
+    compModule._defines.emplace_back("ENABLE_LOD", true);
     compModule._defines.emplace_back(Util::StringFormat("WORK_GROUP_SIZE %d", WORK_GROUP_SIZE), true);
     compModule._defines.emplace_back(Util::StringFormat("MAX_TREE_INSTANCES %d", s_maxTreeInstances).c_str(), true);
     compModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
@@ -422,7 +424,8 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
         vertModule._sourceFile = "grass.glsl";
 
         vertModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
-        vertModule._defines.emplace_back("COMPUTE_TBN", true);
+        vertModule._defines.emplace_back("ENABLE_TBN", true);
+        vertModule._defines.emplace_back("ENABLE_LOD", true);
 
         ShaderModuleDescriptor fragModule = {};
         fragModule._moduleType = ShaderType::FRAGMENT;

@@ -39,19 +39,11 @@ namespace Divide {
 constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 bool SceneManager::OnStartup(PlatformContext& context) {
-    if (RenderPassCuller::OnStartup(context)) {
-        return Attorney::SceneManager::onStartup(context);
-    }
-    
-    return false;
+    return Attorney::SceneManager::onStartup(context);
 }
 
 bool SceneManager::OnShutdown(PlatformContext& context) {
-    if (RenderPassCuller::OnShutdown(context)) {
-        return Attorney::SceneManager::onShutdown(context);
-    }
-
-    return false;
+    return Attorney::SceneManager::onShutdown(context);
 }
 
 SceneManager::SceneManager(Kernel& parentKernel)
@@ -455,9 +447,9 @@ vector<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& scre
     //Step 1: Grab ALL nodes in rect
     vector<SceneGraphNode*> ret = {};
 
-    VisibleNodeList<1024> inRectList;
-    const VisibleNodeList<>& visNodes = _renderPassCuller->getNodeCache(RenderStage::DISPLAY);
-    for (size_t i = 0; i < visNodes.size(); ++i) {
+    VisibleNodeList<VisibleNode, 1024> inRectList;
+    const VisibleNodeList<>& visNodes = getNodeCache(RenderStage::DISPLAY);
+    for (size_t i = 0u; i < visNodes.size(); ++i) {
         const VisibleNode& node = visNodes.node(i);
         if (IsNodeInRect(node._node)) {
             inRectList.append(node);
@@ -465,8 +457,8 @@ vector<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& scre
     }
 
     //Step 2: Check Straight LoS to camera
-    VisibleNodeList<1024> LoSList;
-    for (size_t i = 0; i < inRectList.size(); ++i) {
+    VisibleNodeList<VisibleNode, 1024> LoSList;
+    for (size_t i = 0u; i < inRectList.size(); ++i) {
         const VisibleNode& node = inRectList.node(i);
         if (HasLoSToCamera(node._node, node._node->get<BoundsComponent>()->getBoundingSphere().getCenter())) {
             LoSList.append(node);
@@ -668,7 +660,7 @@ void SceneManager::getSortedReflectiveNodes(const Camera* camera, const RenderSt
         cullParams._stage = stage;
         cullParams._cameraEyePos = camera->getEye();
         cullParams._frustum = &camera->getFrustum();
-        cullParams._cullMaxDistanceSq = SQUARED(camera->getZPlanes().y);
+        cullParams._cullMaxDistance = camera->getZPlanes().y;
 
         _renderPassCuller->frustumCull(cullParams, to_base(CullOptions::DEFAULT_CULL_OPTIONS), allNodes, nodesOut);
     } else {
@@ -694,12 +686,16 @@ void SceneManager::getSortedRefractiveNodes(const Camera* camera, const RenderSt
         cullParams._stage = stage;
         cullParams._cameraEyePos = camera->getEye();
         cullParams._frustum = &camera->getFrustum();
-        cullParams._cullMaxDistanceSq = SQUARED(camera->getZPlanes().y);
+        cullParams._cullMaxDistance = camera->getZPlanes().y;
 
         _renderPassCuller->frustumCull(cullParams, to_base(CullOptions::DEFAULT_CULL_OPTIONS), allNodes, nodesOut);
     } else {
         _renderPassCuller->toVisibleNodes(camera, allNodes, nodesOut);
     }
+}
+
+const VisibleNodeList<>& SceneManager::getNodeCache(const RenderStage stage) const noexcept {
+    return _renderPassCuller->getNodeCache(stage);
 }
 
 void SceneManager::initDefaultCullValues(const RenderStage stage, NodeCullParams& cullParamsInOut) noexcept {
@@ -708,9 +704,9 @@ void SceneManager::initDefaultCullValues(const RenderStage stage, NodeCullParams
     cullParamsInOut._stage = stage;
     cullParamsInOut._lodThresholds = activeScene.state()->renderState().lodThresholds(stage);
     if (stage != RenderStage::SHADOW) {
-        cullParamsInOut._cullMaxDistanceSq = SQUARED(activeScene.state()->renderState().generalVisibility());
+        cullParamsInOut._cullMaxDistance = activeScene.state()->renderState().generalVisibility();
     } else {
-        cullParamsInOut._cullMaxDistanceSq = std::numeric_limits<F32>::max();
+        cullParamsInOut._cullMaxDistance = std::numeric_limits<F32>::max();
     }
 }
 

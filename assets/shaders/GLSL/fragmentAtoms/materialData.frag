@@ -207,29 +207,21 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
 #endif //SHADING_MODE_BLINN_PHONG
     const vec3 albedoIn = albedo + dvd_Ambient(matData);
 
-#define DielectricSpecular vec3(0.04f)
-#define Black vec3(0.f)
+    const vec3 dielectricSpecular = vec3(0.04f);
+    const vec3 black = vec3(0.f);
 
-    material._diffuseColour = mix(albedoIn * (vec3(1.f) - DielectricSpecular), Black, material._metallic);
-    material._F0 = mix(DielectricSpecular, albedoIn, material._metallic);
-
-#undef Black
-#undef DielectricSpecular
+    material._diffuseColour = mix(albedoIn * (vec3(1.f) - dielectricSpecular), black, material._metallic);
+    material._F0 = mix(dielectricSpecular, albedoIn, material._metallic);
 
     return material;
 }
 
 
-#if defined(USE_CUSTOM_TBN)
-mat3 getTBNWV();
-#else //USE_CUSTOM_TBN
-#if defined(COMPUTE_TBN)
+#if defined(ENABLE_TBN)
 #define getTBNWV() VAR._tbnWV
-#else //COMPUTE_TBN
-// Default: T - X-axis, B - Z-axis, N - Y-axis
-#define getTBNWV() mat3(vec3(1.f, 0.f, 0.f), vec3(0.f, 0.f, 1.f), vec3(1.f, 0.f, 0.f))
-#endif //COMPUTE_TBN
-#endif //USE_CUSTOM_TBN
+#else //ENABLE_TBN
+#define getTBNWV() mat3(WORLD_X_AXIS, WORLD_Z_AXIS, WORLD_Y_AXIS)
+#endif //ENABLE_TBN
 
 #if !defined(PRE_PASS)
 // Reduce specular aliasing by producing a modified roughness value
@@ -273,12 +265,11 @@ vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {
 #if defined(USE_ALPHA_DISCARD)
 float getAlpha(in NodeMaterialData data, in vec3 uv) {
     if (dvd_TexOpOpacity(data) != TEX_NONE) {
-        const float refAlpha = dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
-        return getScaledAlpha(refAlpha, uv.xy, textureSize(texOpacityMap, 0));
+        return dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
     }
 
     if (dvd_UseAlbedoTextureAlphaChannel(data) && dvd_TexOpUnit0(data) != TEX_NONE) {
-        return getAlpha(texDiffuse0, uv);
+        return texture(texDiffuse0, uv).a;
     }
 
     return dvd_BaseColour(data).a;
@@ -289,14 +280,11 @@ vec4 getAlbedo(in NodeMaterialData data, in vec3 uv) {
     vec4 albedo = getTextureColour(data, uv);
 
     if (dvd_TexOpOpacity(data) != TEX_NONE) {
-        const float refAlpha = dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
-        albedo.a = getScaledAlpha(refAlpha, uv.xy, textureSize(texOpacityMap, 0));
+        albedo.a = dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
     }
 
     if (!dvd_UseAlbedoTextureAlphaChannel(data)) {
         albedo.a = dvd_BaseColour(data).a;
-    } else if (dvd_TexOpUnit0(data) != TEX_NONE) {
-        albedo.a = getScaledAlpha(albedo.a, uv.xy, textureSize(texDiffuse0, 0));
     }
 
     return albedo;
