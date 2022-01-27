@@ -2011,8 +2011,9 @@ bool Editor::saveToXML() const {
     pt.put("editor.grid.<xmlattr>.enabled", infiniteGridEnabled());
     pt.put("editor.grid.<xmlattr>.axisWidth", infiniteGridAxisWidth());
     pt.put("editor.grid.<xmlattr>.scale", infiniteGridScale());
-
-    _editorCamera->saveToXML(pt, "editor");
+    if (_editorCamera) {
+        _editorCamera->saveToXML(pt, "editor");
+    }
     for (size_t i = 0u; i < _recentSceneList.size(); ++i) {
         pt.add("editor.recentScene.entry", _recentSceneList.get(i).c_str());
     }

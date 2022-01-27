@@ -14,39 +14,28 @@ goto run_Release
 
 :run_Release
 ECHO Running Release Mode
-ECHO Copying DLLs
-robocopy 3rdParty\assimp\bin\Release\ Build\ assimp-vc142-mt.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ Build\ PhysX_64.dll  /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ Build\ PhysXCommon_64.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ Build\ PhysXFoundation_64.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ Build\ PhysXCooking_64.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\release\ Build\ PhysXGPU_64.dll /NP /NJH /NJS
+cd "3rdParty"
+call "copyDLLsToBin.bat" "Release"
+cd "../"
 ECHO Launching Executable
 Build\Divide.exe %*
-exit /b
+exit/B %errlev%
 
 :run_Profile
 ECHO Running Profile Mode
-ECHO Copying DLLs
-robocopy 3rdParty\assimp\bin\Release\ Build\ assimp-vc142-mt.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ Build\ PhysX_64.dll  /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ Build\ PhysXCommon_64.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ Build\ PhysXFoundation_64.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ Build\ PhysXCooking_64.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\profile\ Build\ PhysXGPU_64.dll /NP /NJH /NJS
+cd "3rdParty"
+call "copyDLLsToBin.bat" "Profile"
+cd "../"
 ECHO Launching Executable
 Build\Divide_p.exe %*
-exit /b
+exit/B %errlev%
 
 :run_Debug
 ECHO Running Profile Mode
-ECHO Copying DLLs
-robocopy 3rdParty\assimp\bin\Debug\ Build\ assimp-vc142-mt.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ Build\ PhysX_64.dll  /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ Build\ PhysXCommon_64.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ Build\ PhysXFoundation_64.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ Build\ PhysXCooking_64.dll /NP /NJH /NJS
-robocopy 3rdParty\physx4\physx\bin\win.x86_64.vc142.mt\debug\ Build\ PhysXGPU_64.dll /NP /NJH /NJS
+cd "3rdParty"
+call "copyDLLsToBin.bat" "Debug"
+cd "../"
 ECHO Launching Executable
 Build\Divide_d.exe %*
-exit /b
+
+exit/B %errlev%
