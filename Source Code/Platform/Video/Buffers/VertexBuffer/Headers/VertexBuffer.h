@@ -38,12 +38,12 @@
 
 namespace Divide {
 class ByteBuffer;
-
+class GenericVertexData;
     /// Vertex Buffer interface class to allow API-independent implementation of data
 /// This class does NOT represent an API-level VB, such as: GL_ARRAY_BUFFER / D3DVERTEXBUFFER
 /// It is only a "buffer" for "vertex info" abstract of implementation. (e.g.:
 /// OGL uses a vertex array object for this)
-class NOINITVTABLE VertexBuffer : public VertexDataInterface {
+class VertexBuffer final : public VertexDataInterface {
    public:
     constexpr static U32 PRIMITIVE_RESTART_INDEX_L = 0xFFFFFFFF;
     constexpr static U32 PRIMITIVE_RESTART_INDEX_S = 0xFFFF;
@@ -80,16 +80,9 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
     };
 
     VertexBuffer(GFXDevice& context);
-    virtual ~VertexBuffer() = default;
+    ~VertexBuffer() = default;
 
-    virtual bool create(bool staticDraw = true);
-
-    void useLargeIndices(const bool state = true) noexcept {
-        assert(_indices.empty() && "VertexBuffer error: Index format type specified before buffer creation!");
-
-        _format = state ? GFXDataFormat::UNSIGNED_INT
-                        : GFXDataFormat::UNSIGNED_SHORT;
-    }
+    bool create(bool staticDraw = true);
 
     void setVertexCount(const size_t size) {
         _data.resize(size);
@@ -155,11 +148,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
                          UNORM_CHAR_TO_FLOAT(weight.b[3]));
     }
 
-    virtual bool queueRefresh() = 0;
-
-    [[nodiscard]] bool usesLargeIndices() const noexcept {
-        return _format == GFXDataFormat::UNSIGNED_INT;
-    }
+    void queueRefresh() noexcept { _refreshQueued = true; }
 
     [[nodiscard]] size_t getIndexCount() const noexcept {
         return _indices.size();
@@ -175,7 +164,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
     }
 
     void addIndex(const U32 index) {
-        assert(usesLargeIndices() || index <= U16_MAX);
+        assert(useLargeIndices() || index <= U16_MAX);
         _indices.push_back(index);
     }
 
@@ -191,13 +180,9 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         }
     }
 
-    void hasRestartIndex(const bool state) noexcept {
-        _primitiveRestartEnabled = state;
-    }
-
     void addRestartIndex() {
-        hasRestartIndex(true);
-        addIndex(usesLargeIndices() ? PRIMITIVE_RESTART_INDEX_L : PRIMITIVE_RESTART_INDEX_S);
+        primitiveRestartEnabled(true);
+        addIndex(useLargeIndices() ? PRIMITIVE_RESTART_INDEX_L : PRIMITIVE_RESTART_INDEX_S);
      }
 
     void modifyPositionValues(const U32 indexOffset, const vector<vec3<F32>>& newValues) {
@@ -355,14 +340,7 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
         return getPartitionOffset(to_U16(_partitions.size() - 1));
     }
 
-    virtual void reset() {
-        _staticBuffer = false;
-        _primitiveRestartEnabled = false;
-        _partitions.clear();
-        _data.clear();
-        _indices.clear();
-        _attribDirty.fill(false);
-    }
+    void reset();
 
     void fromBuffer(const VertexBuffer& other);
     bool deserialize(ByteBuffer& dataIn);
@@ -371,38 +349,50 @@ class NOINITVTABLE VertexBuffer : public VertexDataInterface {
     static void setAttribMasks(size_t count, const AttribFlags& flagMask);
     static void setAttribMask(size_t index, const AttribFlags& flagMask);
 
-    void keepData(const bool state) noexcept {
-        _keepDataInMemory = state;
-    }
+    void keepData(const bool state) noexcept { _keepDataInMemory = state; }
 
-    virtual void computeNormals();
-    virtual void computeTangents();
+    void computeNormals();
+    void computeTangents();
 
    protected:
-    static vector<AttribFlags> _attribMasks;
+    static vector<AttribFlags> s_attribMasks;
 
-    virtual bool refresh() = 0;
-    virtual bool createInternal();
+    bool refresh();
+    bool createInternal();
 
-    [[nodiscard]] bool keepData() const noexcept {
-        return _keepDataInMemory;
-    }
+    [[nodiscard]] bool keepData() const noexcept { return _keepDataInMemory; }
+
+    bool getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
+    /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer
+    size_t populateAttributeSize();
+    /// Enable full VAO based VB (all pointers are tracked by VAO's)
+    void uploadVBAttributes();
+    void upload();
+    void draw(const GenericDrawCommand& command) override;
+
+    PROPERTY_RW(bool, useLargeIndices, false);
 
    protected:
+    // first: offset, second: count
+    vector<std::pair<size_t, size_t>> _partitions;
+    vector<Vertex> _data;
+    /// Used for creating an "IB". If it's empty, then an outside source should provide the indices
+    vector<U32> _indices;
+    /// Cache system to update only required data
+    AttribFlags _attribDirty{};
+    AttribFlags _useAttribute{};
+    AttribValues _attributeOffset{};
+    size_t _prevSize = 0u;
+    size_t _prevSizeIndices = 0u;
+    size_t _effectiveEntrySize = 0u;
+    ///< A refresh call might be called before "Create()". This should help with that
+    bool _refreshQueued = false;
+    bool _uploadQueued = false;
     /// Flag used to prevent clearing of the _data vector for static buffers
     bool _keepDataInMemory = false;
     /// If this flag is true, no further modification are allowed on the buffer (static geometry)
     bool _staticBuffer = false;
-    /// The format of the buffer data
-    GFXDataFormat _format = GFXDataFormat::UNSIGNED_SHORT;
-    // first: offset, second: count
-    vector<std::pair<size_t, size_t>> _partitions;
-    /// Used for creating an "IB". If it's empty, then an outside source should provide the indices
-    vector<U32> _indices;
-    vector<Vertex> _data;
-    /// Cache system to update only required data
-    std::array<bool, to_base(AttribLocation::COUNT)> _attribDirty{};
-    bool _primitiveRestartEnabled = false;;
+    GenericVertexData* _internalGVD = nullptr;
 };
 
 };  // namespace Divide

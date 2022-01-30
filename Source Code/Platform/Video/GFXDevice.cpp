@@ -2533,15 +2533,13 @@ GFXDevice::ObjectArena& GFXDevice::objectArena() noexcept {
     return _gpuObjectArena;
 }
 
-RenderTarget* GFXDevice::newRT(const RenderTargetDescriptor& descriptor) {
+RenderTarget* GFXDevice::newRTInternal(const RenderTargetDescriptor& descriptor) {
     RenderTarget* temp = nullptr;
     {
-        ScopedLock<Mutex> w_lock(objectArenaMutex());
-
         switch (renderAPI()) {
             case RenderAPI::OpenGL:
             case RenderAPI::OpenGLES: {
-                temp =  new (objectArena()) glFramebuffer(*this, descriptor);
+                temp = new (objectArena()) glFramebuffer(*this, descriptor);
             } break;
             case RenderAPI::Vulkan: {
                 temp = new (objectArena()) vkRenderTarget(*this, descriptor);
@@ -2558,6 +2556,26 @@ RenderTarget* GFXDevice::newRT(const RenderTargetDescriptor& descriptor) {
             objectArena().DTOR(temp);
         }
     }
+    return temp;
+}
+
+RenderTarget* GFXDevice::newRT(const RenderTargetDescriptor& descriptor) {
+    RenderTarget* temp = nullptr;
+    {
+        ScopedLock<Mutex> w_lock(objectArenaMutex());
+        temp = newRTInternal(descriptor);
+    }
+    bool valid = false;
+    if (temp != nullptr) {
+        valid = temp->create();
+        assert(valid);
+    }
+
+    return valid ? temp : nullptr;
+}
+
+RenderTarget* GFXDevice::newRTLocked(const RenderTargetDescriptor& descriptor) {
+    RenderTarget* temp = newRTInternal(descriptor);
 
     bool valid = false;
     if (temp != nullptr) {
@@ -2605,26 +2623,13 @@ bool GFXDevice::destroyIMP(IMPrimitive*& primitive) {
 }
 
 VertexBuffer* GFXDevice::newVB() {
-
     ScopedLock<Mutex> w_lock(objectArenaMutex());
+    return newVBLocked();
+}
 
-    VertexBuffer* temp = nullptr;
-    switch (renderAPI()) {
-        case RenderAPI::OpenGL:
-        case RenderAPI::OpenGLES: {
-            temp = new (objectArena()) glVertexArray(*this);
-        } break;
-        case RenderAPI::Vulkan: {
-            temp = new (objectArena()) vkVertexBuffer(*this);
-        } break;
-        case RenderAPI::None: {
-            temp = new (objectArena()) noVertexBuffer(*this);
-        } break;
-        default: {
-            DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
-        } break;
-    };
+VertexBuffer* GFXDevice::newVBLocked() {
 
+    VertexBuffer* temp =  temp = new (objectArena()) VertexBuffer(*this);
     if (temp != nullptr) {
         objectArena().DTOR(temp);
     }
@@ -2633,8 +2638,11 @@ VertexBuffer* GFXDevice::newVB() {
 }
 
 PixelBuffer* GFXDevice::newPB(const PBType type, const char* name) {
-
     ScopedLock<Mutex> w_lock(objectArenaMutex());
+    return newPBLocked(type, name);
+}
+
+PixelBuffer* GFXDevice::newPBLocked(const PBType type, const char* name) {
 
     PixelBuffer* temp = nullptr;
     switch (renderAPI()) {
@@ -2661,8 +2669,11 @@ PixelBuffer* GFXDevice::newPB(const PBType type, const char* name) {
 }
 
 GenericVertexData* GFXDevice::newGVD(const U32 ringBufferLength, const char* name) {
-
     ScopedLock<Mutex> w_lock(objectArenaMutex());
+    return newGVDLocked(ringBufferLength, name);
+}
+
+GenericVertexData* GFXDevice::newGVDLocked(const U32 ringBufferLength, const char* name) {
 
     GenericVertexData* temp = nullptr;
     switch (renderAPI()) {
@@ -2694,8 +2705,16 @@ Texture* GFXDevice::newTexture(const size_t descriptorHash,
                                const ResourcePath& assetLocations,
                                const bool asyncLoad,
                                const TextureDescriptor& texDescriptor) {
-
     ScopedLock<Mutex> w_lock(objectArenaMutex());
+    return newTextureLocked(descriptorHash, resourceName, assetNames, assetLocations, asyncLoad, texDescriptor);
+}
+
+Texture* GFXDevice::newTextureLocked(const size_t descriptorHash,
+                                     const Str256& resourceName,
+                                     const ResourcePath& assetNames,
+                                     const ResourcePath& assetLocations,
+                                     const bool asyncLoad,
+                                     const TextureDescriptor& texDescriptor) {
 
     // Texture is a resource! Do not use object arena!
     Texture* temp = nullptr;
@@ -2743,8 +2762,16 @@ ShaderProgram* GFXDevice::newShaderProgram(const size_t descriptorHash,
                                            const ResourcePath& assetLocation,
                                            const ShaderProgramDescriptor& descriptor,
                                            const bool asyncLoad) {
-
     ScopedLock<Mutex> w_lock(objectArenaMutex());
+    return newShaderProgramLocked(descriptorHash, resourceName, assetName, assetLocation, descriptor, asyncLoad);
+}
+
+ShaderProgram* GFXDevice::newShaderProgramLocked(const size_t descriptorHash,
+                                                 const Str256& resourceName,
+                                                 const Str256& assetName,
+                                                 const ResourcePath& assetLocation,
+                                                 const ShaderProgramDescriptor& descriptor,
+                                                 const bool asyncLoad) {
 
     ShaderProgram* temp = nullptr;
     switch (renderAPI()) {

@@ -407,14 +407,6 @@ Texture_ptr PreRenderBatch::luminanceTex() const noexcept {
     return _currentLuminance;
 }
 
-void PreRenderBatch::onFilterEnabled(const FilterType filter) {
-    onFilterToggle(filter, true);
-}
-
-void PreRenderBatch::onFilterDisabled(const FilterType filter) {
-    onFilterToggle(filter, false);
-}
-
 void PreRenderBatch::onFilterToggle(const FilterType filter, const bool state) {
     for (OperatorBatch& batch : _operators) {
         for (auto& op : batch) {

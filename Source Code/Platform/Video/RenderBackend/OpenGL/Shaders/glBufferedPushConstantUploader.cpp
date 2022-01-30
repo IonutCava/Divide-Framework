@@ -29,14 +29,14 @@ namespace Divide {
             glNamedBufferData(_uniformBlockBufferHandle, _uniformBlockSize, _uniformBlockBuffer, GL_STATIC_DRAW);
             _uniformBlockDirty = false;
 
-            assert(GL_API::getStateTracker().getBoundBuffer(GL_UNIFORM_BUFFER, _uniformBlockIndex) == _uniformBlockBufferHandle);
+            assert(GL_API::GetStateTracker().getBoundBuffer(GL_UNIFORM_BUFFER, _uniformBlockIndex) == _uniformBlockBufferHandle);
         }
     }
 
     void glBufferedPushConstantUploader::prepare() {
         if (_uniformBlockBufferHandle != GLUtil::k_invalidObjectID) {
             assert(_uniformBlockIndex != GLUtil::k_invalidObjectID);
-            GL_API::getStateTracker().setActiveBufferIndex(GL_UNIFORM_BUFFER, _uniformBlockBufferHandle, _uniformBlockIndex);
+            GL_API::GetStateTracker().setActiveBufferIndex(GL_UNIFORM_BUFFER, _uniformBlockBufferHandle, _uniformBlockIndex);
         }
     }
 

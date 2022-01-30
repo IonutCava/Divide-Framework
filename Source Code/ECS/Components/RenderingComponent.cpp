@@ -465,7 +465,7 @@ void RenderingComponent::getCommandBuffer(RenderPackage* const pkg, GFX::Command
             for (GenericDrawCommand& gCmd : cmd->_drawCommands) {
                 gCmd._commandOffset = startOffset++;
                 if (gCmd._bufferIndex == GenericDrawCommand::INVALID_BUFFER_INDEX) {
-                    gCmd._bufferIndex = pkg->stagePassBaseIndex();
+                    gCmd._bufferIndex = 0u;
                 }
             }
         }

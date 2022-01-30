@@ -213,13 +213,19 @@ void Renderer::prepareLighting(const RenderStage stage,
 
         GFX::EnqueueCommand(bufferInOut, bindDescriptorSetsCommand);
 
-        //if (data._previousProjMatrix != cameraSnapshot._projectionMatrix) 
-        {
+
+        if (data._previousProjMatrix != cameraSnapshot._projectionMatrix)  {
             data._previousProjMatrix = cameraSnapshot._projectionMatrix;
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
             {
+                GFX::SendPushConstantsCommand pushConstantsCommands{};
+                pushConstantsCommands._constants.set(_ID("inverseProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
+                pushConstantsCommands._constants.set(_ID("viewport"), GFX::PushConstantType::IVEC4, context().gfx().getViewport());
+                pushConstantsCommands._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+
                 GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
+                GFX::EnqueueCommand(bufferInOut, pushConstantsCommands);
                 GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ _computeWorkgroupSize });
                 GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_STORAGE) });
             }

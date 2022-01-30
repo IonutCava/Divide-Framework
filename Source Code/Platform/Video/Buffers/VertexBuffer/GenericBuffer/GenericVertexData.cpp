@@ -19,7 +19,7 @@ GenericVertexData::~GenericVertexData()
 
 AttributeDescriptor& GenericVertexData::attribDescriptor(const U32 attribIndex) {
     AttributeDescriptor& desc = _attributeMapDraw[attribIndex];
-    desc.attribIndex(attribIndex);
+    desc.index(attribIndex);
     return desc;
 }
 

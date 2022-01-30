@@ -393,8 +393,8 @@ void glFramebuffer::setBlendState(const RTBlendStates& blendStates, const RTAtta
         const RTBlendState& blend = blendStates[i];
 
         // Set blending per attachment if specified. Overrides general blend state
-        GL_API::getStateTracker().setBlending(static_cast<GLuint>(colourAtt->binding() - to_U32(GL_COLOR_ATTACHMENT0)), blend._blendProperties);
-        GL_API::getStateTracker().setBlendColour(blend._blendColour);
+        GL_API::GetStateTracker().setBlending(static_cast<GLuint>(colourAtt->binding() - to_U32(GL_COLOR_ATTACHMENT0)), blend._blendProperties);
+        GL_API::GetStateTracker().setBlendColour(blend._blendColour);
     }
 }
 
@@ -479,7 +479,7 @@ void glFramebuffer::setDefaultState(const RTDrawDescriptor& drawPolicy) {
     prepareBuffers(drawPolicy, colourAttachments);
 
     /// Set the depth range
-    GL_API::getStateTracker().setDepthRange(_descriptor._depthRange.min, _descriptor._depthRange.max);
+    GL_API::GetStateTracker().setDepthRange(_descriptor._depthRange.min, _descriptor._depthRange.max);
 
     /// Check that everything is valid
     checkStatus();
@@ -492,7 +492,7 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy) {
     GL_API::PushDebugMessage(_debugMessage.c_str());
 
     // Activate FBO
-    GL_API::getStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, _framebufferHandle);
+    GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, _framebufferHandle);
 
     // Set the viewport
     if (drawPolicy._setViewport) {
@@ -520,7 +520,7 @@ void glFramebuffer::end(const bool needsUnbind) const {
     OPTICK_EVENT();
 
     if (needsUnbind) {
-        GL_API::getStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, 0);
+        GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, 0);
     }
 
     if (_previousPolicy._setViewport) {
@@ -704,8 +704,8 @@ void glFramebuffer::readData(const vec4<U16>& rect,
                              const std::pair<bufferPtr, size_t> outData) const {
     OPTICK_EVENT();
 
-    GL_API::getStateTracker().setPixelPackUnpackAlignment();
-    GL_API::getStateTracker().setActiveFB(RenderTargetUsage::RT_READ_ONLY, _framebufferHandle);
+    GL_API::GetStateTracker().setPixelPackUnpackAlignment();
+    GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_READ_ONLY, _framebufferHandle);
     glReadnPixels(
         rect.x, rect.y, rect.z, rect.w,
         GLUtil::glImageFormatTable[to_U32(imageFormat)],

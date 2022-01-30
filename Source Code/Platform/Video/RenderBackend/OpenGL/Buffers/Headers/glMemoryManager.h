@@ -38,11 +38,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 namespace GLUtil {
 namespace GLMemory{
+    enum class GLMemoryType {
+        SHADER_BUFFER = 0u,
+        VERTEX_BUFFER,
+        INDEX_BUFFER,
+        OTHER,
+        COUNT
+    };
+
     struct Block
     {
+        Byte* _ptr = nullptr;
         size_t _offset = 0u;
         size_t _size = 0u;
-        Byte* _ptr = nullptr;
         GLuint _bufferHandle = 0u;
         bool _free = true;
     };
@@ -58,7 +66,8 @@ namespace GLMemory{
     class Chunk final : NonCopyable, NonMovable
     {
     public:
-        explicit Chunk(size_t size, 
+        explicit Chunk(bool poolAllocations,
+                       size_t size,
                        size_t alignment,
                        BufferStorageMask storageMask,
                        MapBufferAccessMask accessMask,
@@ -73,8 +82,12 @@ namespace GLMemory{
         PROPERTY_RW(GLenum, usage, GL_NONE);
         PROPERTY_RW(size_t, alignment, 0u);
 
+        FORCE_INLINE [[nodiscard]] bool poolAllocations() const noexcept { return _poolAllocations;  }
+
     protected:
         vector_fast<Block> _blocks;
+        Byte* _memory = nullptr;
+        const bool _poolAllocations = false;
     };
 
     class ChunkAllocator final : NonCopyable, NonMovable
@@ -83,21 +96,25 @@ namespace GLMemory{
         explicit ChunkAllocator(size_t size) noexcept;
 
         // if size > mSize, allocate to the next power of 2
-        [[nodiscard]] Chunk* allocate(size_t size, 
+        [[nodiscard]] Chunk* allocate(bool poolAllocations,
+                                      size_t size,
                                       size_t alignment,
                                       BufferStorageMask storageMask,
                                       MapBufferAccessMask accessMask,
                                       GLenum usage) const;
 
     private:
-        size_t _size = 0u;
+        const size_t _size = 0u;
     };
 
     class DeviceAllocator
     {
     public:
+        explicit DeviceAllocator(GLMemoryType memoryType) noexcept;
+
         void init(size_t size);
-        [[nodiscard]] Block allocate(size_t size,
+        [[nodiscard]] Block allocate(bool poolAllocations,
+                                     size_t size,
                                      size_t alignment,
                                      BufferStorageMask storageMask,
                                      MapBufferAccessMask accessMask,
@@ -107,65 +124,15 @@ namespace GLMemory{
         void deallocate(const Block &block) const;
         void deallocate();
 
+        FORCE_INLINE [[nodiscard]] GLMemoryType glMemoryType() const noexcept { return _memoryType; }
+
     private:
         mutable Mutex _chunkAllocatorLock;
+        const GLMemoryType _memoryType = GLMemoryType::COUNT;
         eastl::unique_ptr<ChunkAllocator> _chunkAllocator = nullptr;
         vector_fast<Chunk*> _chunks;
     };
 } // namespace GLMemory
-
-class VBO final {
-public:
-    // Allocate VBOs in 16K chunks. This will HIGHLY depend on actual data usage and requires testing.
-    static constexpr U32 MAX_VBO_CHUNK_SIZE_BYTES = 16 * 1024;
-    // nVidia recommended (years ago) to use up to 4 megs per VBO. Use 32 MEG VBOs :D
-    static constexpr U32  MAX_VBO_SIZE_BYTES = 32 * 1024 * 1024;
-    // The total number of available chunks per VBO is easy to figure out
-    static constexpr U32 MAX_VBO_CHUNK_COUNT = MAX_VBO_SIZE_BYTES / MAX_VBO_CHUNK_SIZE_BYTES;
-
-    static U32 GetChunkCountForSize(size_t sizeInBytes) noexcept;
-
-    VBO() noexcept = default;
-
-    void freeAll();
-    bool checkChunksAvailability(size_t offset, U32 count, U32& chunksUsedTotal) noexcept;
-
-    bool allocateChunks(U32 count, GLenum usage, size_t& offsetOut);
-
-    bool allocateWhole(U32 count, GLenum usage);
-
-    void releaseChunks(size_t offset);
-
-    size_t getMemUsage() noexcept;
-
-    //keep track of what chunks we are using
-    //for each chunk, keep track how many next chunks are also part of the same allocation
-    std::array<std::pair<bool, U32>, MAX_VBO_CHUNK_COUNT> _chunkUsageState = create_array<MAX_VBO_CHUNK_COUNT, std::pair<bool, U32>>(std::make_pair(false, 0));
-
-    PROPERTY_R_IW(GLuint, handle, 0u);
-
-private:
-    GLenum _usage = GL_NONE;
-    bool   _filledManually = false;
-};
-
-struct AllocationHandle {
-    explicit AllocationHandle() noexcept
-        : _id(0),
-          _offset(0)
-    {
-    }
-
-    GLuint _id;
-    size_t _offset;
-};
-
-bool commitVBO(U32 chunkCount, GLenum usage, GLuint& handleOut, size_t& offsetOut);
-bool releaseVBO(GLuint& handle, size_t& offset);
-size_t getVBOMemUsage(GLuint handle) noexcept;
-U32 getVBOCount() noexcept;
-
-void clearVBOs() noexcept;
 
 void createAndAllocBuffer(size_t bufferSize,
                           GLenum usageMask,

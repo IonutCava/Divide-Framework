@@ -38,8 +38,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
     struct AttributeDescriptor {
-        AttributeDescriptor() noexcept;
-
         void set(U32 bufferIndex,
                  U32 componentsPerElement,
                  GFXDataFormat dataType) noexcept;
@@ -55,36 +53,25 @@ namespace Divide {
                  bool normalized,
                  size_t strideInBytes) noexcept;
 
-        void attribIndex(U32 index) noexcept;
-        void strideInBytes(size_t strideInBytes) noexcept;
-        void bufferIndex(U32 bufferIndex) noexcept;
+        void index(U32 index) noexcept;
+        void parentBuffer(U32 bufferIndex) noexcept;
         void componentsPerElement(U32 componentsPerElement) noexcept;
-        void interleavedOffsetInBytes(U32 interleavedOffsetInBytes) noexcept;
-        void normalized(bool normalized) noexcept;
-        void dataType(GFXDataFormat type) noexcept;
         void wasSet(bool wasSet) noexcept;
         void clean() noexcept;
+        void normalized(bool normalized) noexcept;
+        void enabled(bool state) noexcept;
+        void strideInBytes(size_t strideInBytes) noexcept;
+        void dataType(GFXDataFormat type) noexcept;
 
-        [[nodiscard]] U32 attribIndex() const noexcept { return _index; }
-        [[nodiscard]] size_t strideInBytes() const noexcept { return _strideInBytes; }
-        [[nodiscard]] U32 bufferIndex() const noexcept { return _parentBuffer; }
-        [[nodiscard]] U32 componentsPerElement() const noexcept { return _componentsPerElement; }
-        [[nodiscard]] bool normalized() const noexcept { return _normalized; }
-        [[nodiscard]] U32 interleavedOffsetInBytes() const noexcept { return _interleavedOffset; }
-        [[nodiscard]] GFXDataFormat dataType() const noexcept { return _type; }
-        [[nodiscard]] bool wasSet() const noexcept { return _wasSet; }
-        [[nodiscard]] bool dirty() const noexcept { return _dirty; }
- 
-    protected:
-        U32 _index;
-        U32 _parentBuffer;
-        U32 _componentsPerElement;
-        U32 _interleavedOffset;
-        bool _wasSet;
-        bool _dirty;
-        bool _normalized;
-        size_t _strideInBytes;
-        GFXDataFormat _type;
+        PROPERTY_R(U32, index, 0u);
+        PROPERTY_R(U32, parentBuffer, 0u);
+        PROPERTY_R(U32, componentsPerElement, 0u);
+        PROPERTY_R(bool, wasSet, false);
+        PROPERTY_R(bool, dirty, false);
+        PROPERTY_R(bool, normalized, false);
+        PROPERTY_R(bool, enabled, true);
+        PROPERTY_R(size_t, strideInBytes, 0u);
+        PROPERTY_R(GFXDataFormat, dataType, GFXDataFormat::UNSIGNED_INT);
     };
 }; //namespace Divide
 

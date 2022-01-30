@@ -40,6 +40,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/PixelBuffer/Headers/glPixelBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/VertexBuffer/Headers/glVAOPool.h"
+#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferLockManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShader.h"
 #include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h"
 #include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glSamplerObject.h"
@@ -91,6 +92,7 @@ public:
     GL_API(GFXDevice& context, bool glES);
 
 protected:
+    using IMGUIBuffer = std::pair<GenericVertexData*, eastl::unique_ptr<glBufferLockManager>>;
 
     /// Try and create a valid OpenGL context taking in account the specified command line arguments
     ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) override;
@@ -103,7 +105,7 @@ protected:
     void endFrame(DisplayWindow& window, bool global = false) override;
     void idle(bool fast) override;
 
-    GenericVertexData* getOrCreateIMGUIBuffer(I64 windowGUID);
+    IMGUIBuffer& getOrCreateIMGUIBuffer(I64 windowGUID);
 
     /// Text rendering is handled exclusively by Mikko Mononen's FontStash library
     /// (https://github.com/memononen/fontstash)
@@ -143,8 +145,9 @@ protected:
     bool setViewport(const Rect<I32>& viewport) override;
     ShaderResult bindPipeline(const Pipeline& pipeline) const;
 public:
-    static GLStateTracker& getStateTracker() noexcept;
-    static GLUtil::GLMemory::DeviceAllocator& getMemoryAllocator() noexcept;
+    static GLStateTracker& GetStateTracker() noexcept;
+    static GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
+    static GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
 
     static bool MakeTexturesResidentInternal(SamplerAddress address);
     static bool MakeTexturesNonResidentInternal(SamplerAddress address);
@@ -229,7 +232,8 @@ private:
 
     I32 _glswState = -1;
     CEGUI::OpenGL3Renderer* _GUIGLrenderer = nullptr;
-    hashMap<I64, GenericVertexData*> _IMGUIBuffers;
+
+    hashMap<I64, IMGUIBuffer> _IMGUIBuffers;
     std::pair<I64, SDL_GLContext> _currentContext = {-1, nullptr};
 
 private:
@@ -262,7 +266,9 @@ private:
     static SharedMutex s_samplerMapLock;
     static SamplerObjectMap s_samplerMap;
     static GLStateTracker  s_stateTracker;
-    static GLUtil::GLMemory::DeviceAllocator s_memoryAllocator;
+
+    static std::array<GLUtil::GLMemory::DeviceAllocator, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> s_memoryAllocators;
+    static std::array<size_t, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> s_memoryAllocatorSizes;
 
     static GLUtil::glTextureViewCache s_textureViewCache;
 

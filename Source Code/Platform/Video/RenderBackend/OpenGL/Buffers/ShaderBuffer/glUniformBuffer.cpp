@@ -39,6 +39,7 @@ glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescripto
     implParams._dataSize = _alignedBufferSize * queueLength();
     implParams._explicitFlush = BitCompare(_flags, Flags::EXPLICIT_RANGE_FLUSH);
     implParams._name = _name.empty() ? nullptr : _name.c_str();
+    implParams._useChunkAllocation = _usage != Usage::COMMAND_BUFFER && _usage != Usage::ATOMIC_COUNTER;
 
     _bufferImpl = MemoryManager_NEW glBufferImpl(context, implParams);
 

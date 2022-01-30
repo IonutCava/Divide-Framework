@@ -51,6 +51,15 @@ using I16 = int16_t;
 using I32 = int32_t;
 using I64 = int64_t;
 
+using u8  = U8;
+using u16 = U16;
+using u32 = U32;
+using u64 = U64;
+using s8  = I8;
+using s16 = I16;
+using s32 = I32;
+using s64 = I64;
+
 // "At least" number of bits
 using U8x  = uint_least8_t;
 using U16x = uint_least16_t;
@@ -61,10 +70,23 @@ using I16x = int_least16_t;
 using I32x = int_least32_t;
 using I64x = int_least64_t;
 
+using u8x  = U8x;
+using u16x = U16x;
+using u32x = U32x;
+using u64x = U64x;
+using s8x  = I8x;
+using s16x = I16x;
+using s32x = I32x;
+using s64x = I64x;
+
 //double is 8 bytes with Microsoft's compiler)
 using F32  = float;
 using D64  = double;
 using D128 = long double;
+
+using r32 = F32;
+using r64 = D64;
+using r128 = D128;
 
 // Just a name to use as a reminder that these values shoul be be in the 0.0f to 1.0f range
 using F32_NORM = F32;
@@ -72,6 +94,8 @@ using F32_NORM = F32;
 using F32_SNORM = F32;
 
 using bufferPtr = void*;
+
+using Byte = std::byte;
 
 #define U8_MAX  std::numeric_limits<U8>::max()
 #define U16_MAX std::numeric_limits<U16>::max()
@@ -82,6 +106,15 @@ using bufferPtr = void*;
 #define I32_MAX std::numeric_limits<I32>::max()
 #define I64_MAX std::numeric_limits<I64>::max()
 
+#define u8_MAX U8_MAX
+#define u16_MAX U16_MAX
+#define u32_MAX U32_MAX
+#define u64_MAX U64_MAX
+#define s8_MAX I8_MAX
+#define s16_MAX I16_MAX
+#define s32_MAX I32_MAX
+#define s64_MAX I64_MAX
+
 #define U8x_MAX  std::numeric_limits<U8x>::max()
 #define U16x_MAX std::numeric_limits<U16x>::max()
 #define U32x_MAX std::numeric_limits<U32x>::max()
@@ -91,7 +124,14 @@ using bufferPtr = void*;
 #define I32x_MAX std::numeric_limits<I32x>::max()
 #define I64x_MAX std::numeric_limits<I64x>::max()
 
-using Byte = std::byte;
+#define u8x_MAX U8x_MAX
+#define u16x_MAX U16x_MAX
+#define u32x_MAX U32x_MAX
+#define u64x_MAX U64x_MAX
+#define s8x_MAX I8x_MAX
+#define s16x_MAX I16x_MAX
+#define s32x_MAX I32x_MAX
+#define s64x_MAX I64x_MAX
 
 union P32 {
     U32 i = 0u;
@@ -116,21 +156,13 @@ union P64 {
     P64(U8* bytes) noexcept { std::memcpy(b, bytes, 8 * sizeof(U8)); }
 };
 
-static const P64 P64_FLAGS_TRUE = { 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u };
+static const P64 P64_FLAGS_TRUE  = { 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u };
 static const P64 P64_FLAGS_FALSE = { 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u };
 
-inline bool operator==(const P32& lhs, const P32& rhs) noexcept {
-    return lhs.i == rhs.i;
-}
-inline bool operator!=(const P32& lhs, const P32& rhs) noexcept {
-    return lhs.i != rhs.i;
-}
-inline bool operator==(const P64& lhs, const P64& rhs) noexcept {
-    return lhs.i == rhs.i;
-}
-inline bool operator!=(const P64& lhs, const P64& rhs) noexcept {
-    return lhs.i != rhs.i;
-}
+FORCE_INLINE bool operator==(const P32& lhs, const P32& rhs) noexcept { return lhs.i == rhs.i; }
+FORCE_INLINE bool operator!=(const P32& lhs, const P32& rhs) noexcept { return lhs.i != rhs.i; }
+FORCE_INLINE bool operator==(const P64& lhs, const P64& rhs) noexcept { return lhs.i == rhs.i; }
+FORCE_INLINE bool operator!=(const P64& lhs, const P64& rhs) noexcept { return lhs.i != rhs.i; }
 
 //Ref: https://stackoverflow.com/questions/7416699/how-to-define-24bit-data-type-in-c
 constexpr I32 INT24_MAX = 8388607;

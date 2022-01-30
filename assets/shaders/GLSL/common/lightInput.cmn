@@ -83,7 +83,6 @@ layout(binding = BUFFER_LIGHT_INDICES, std430) COMP_ONLY_W buffer lightIndexSSBO
     uint globalLightIndexList[];
 };
 
-#if defined(COMPUTE_SHADER)
 struct VolumeTileAABB
 {
     vec4 minPoint;
@@ -99,7 +98,8 @@ layout(binding = BUFFER_LIGHT_CLUSTER_AABBS, std430) LIGHT_CLUSTER_ACCESS buffer
 {
     VolumeTileAABB lightClusterAABBs[];
 };
-#else //COMPUTE_SHADER
+
+#if !defined(COMPUTE_SHADER)
 
 float ToLinearDepth(in float depthIn, in vec2 depthRange);
 

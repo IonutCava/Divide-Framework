@@ -184,7 +184,7 @@ void OpenGL3StateChangeWrapper::bindVertexArray(GLuint vertexArray)
 {
     if(vertexArray != d_vertexArrayObject)
     {
-        Divide::GL_API::getStateTracker().setActiveVAO(vertexArray);
+        Divide::GL_API::GetStateTracker().setActiveVAO(vertexArray);
         d_vertexArrayObject = vertexArray;
     }
 }
@@ -200,7 +200,7 @@ void OpenGL3StateChangeWrapper::blendFunc(GLenum sfactor, GLenum dfactor)
                                             Divide::BlendOperation::ADD
         };
         blend._enabled = true;
-        Divide::GL_API::getStateTracker().setBlending(blend);
+        Divide::GL_API::GetStateTracker().setBlending(blend);
     }
 }
 
@@ -218,7 +218,7 @@ void OpenGL3StateChangeWrapper::blendFuncSeparate(GLenum sfactorRGB, GLenum dfac
         };
         blend._enabled = true;
 
-        Divide::GL_API::getStateTracker().setBlending(blend);
+        Divide::GL_API::GetStateTracker().setBlending(blend);
     }
 }
 
@@ -226,7 +226,7 @@ void OpenGL3StateChangeWrapper::viewport(GLint x, GLint y, GLsizei width, GLsize
 {
     const bool callIsRedundant = d_viewPortParams.equal(x, y, width, height);
     if (!callIsRedundant) {
-        Divide::GL_API::getStateTracker().setViewport(x, y, width, height);
+        Divide::GL_API::GetStateTracker().setViewport(x, y, width, height);
     }
 }
 
@@ -234,20 +234,20 @@ void OpenGL3StateChangeWrapper::scissor(GLint x, GLint y, GLsizei width, GLsizei
 {
     const bool callIsRedundant = d_scissorParams.equal(x, y, width, height);
     if (!callIsRedundant) {
-        Divide::GL_API::getStateTracker().setScissor(x, y, width, height);
+        Divide::GL_API::GetStateTracker().setScissor(x, y, width, height);
     }
 }
 void OpenGL3StateChangeWrapper::bindBuffer(GLenum target, GLuint buffer)
 {
     const bool callIsRedundant = d_bindBufferParams.equal(target, buffer);
     if (!callIsRedundant) {
-        Divide::GL_API::getStateTracker().setActiveBuffer(target, buffer);
+        Divide::GL_API::GetStateTracker().setActiveBuffer(target, buffer);
     }
 }
 
 void OpenGL3StateChangeWrapper::bindDefaultState(bool scissor)
 {
-    Divide::GL_API::getStateTracker().setStateBlock(scissor ? d_defaultStateHashScissor : d_defaultStateHashNoScissor);
+    Divide::GL_API::GetStateTracker().setStateBlock(scissor ? d_defaultStateHashScissor : d_defaultStateHashNoScissor);
 }
 
 }

@@ -40,8 +40,7 @@
 
 namespace Divide {
 
-class glGenericVertexData final : public GenericVertexData,
-                                  public glVertexDataContainer {
+class glGenericVertexData final : public GenericVertexData {
     struct BufferBindConfig {
         BufferBindConfig() noexcept : BufferBindConfig(0, 0, 0)
         {
@@ -72,7 +71,10 @@ class glGenericVertexData final : public GenericVertexData,
         size_t _offset;
         GLuint _buffer;
     };
-
+    struct glVertexDataIndexContainer {
+        vector_fast<size_t> _countData;
+        vector_fast<GLuint> _indexOffsetData;
+    };
    public:
     glGenericVertexData(GFXDevice& context, U32 ringBufferLength, const char* name = nullptr);
     ~glGenericVertexData();
@@ -87,11 +89,9 @@ class glGenericVertexData final : public GenericVertexData,
 
     void updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) override;
 
-    void lockBuffers() override;
-    bool waitBufferRange(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bool blockClient) override;
-
    protected:
     friend class GFXDevice;
+    friend class glVertexArray;
     void draw(const GenericDrawCommand& command) override;
 
    protected:
@@ -100,17 +100,24 @@ class glGenericVertexData final : public GenericVertexData,
     void setAttributes(const GenericDrawCommand& command);
     void setAttributeInternal(const GenericDrawCommand& command, AttributeDescriptor& descriptor) const;
 
-   private:
-    bool _smallIndices;
-    bool _idxBufferDirty;
+    void rebuildCountAndIndexData(U32 drawCount,
+                                  U32 indexCount,
+                                  U32 firstIndex,
+                                  size_t indexBufferSize);
 
-    GLuint _indexBuffer;
-    GLuint _indexBufferSize;
-    GLenum _indexBufferUsage;
-    GLuint _vertexArray;
+   private:
+    glVertexDataIndexContainer _indexInfo;
     vector<glGenericBuffer*> _bufferObjects;
     vector<U32> _instanceDivisor;
-    eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> _bufferLockQueue;
+    GLuint _indexBuffer = 0u;
+    GLuint _indexBufferSize = 0u;
+    GLuint _vertexArray = 0u;
+    GLuint _lastDrawCount = 0u;
+    GLuint _lastIndexCount = 0u;
+    GLuint _lastFirstIndex = 0u;
+    GLenum _indexBufferUsage = GL_NONE;
+    GLenum _indexDataType = GL_NONE;
+    bool _idxBufferDirty = false;
 };
 
 };  // namespace Divide

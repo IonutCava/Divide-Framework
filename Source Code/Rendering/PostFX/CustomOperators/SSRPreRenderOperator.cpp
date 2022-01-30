@@ -101,6 +101,8 @@ void SSRPreRenderOperator::reshape(const U16 width, const U16 height) {
 }
 
 void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::CommandBuffer& bufferInOut) {
+    PreRenderOperator::prepare(idx, bufferInOut);
+
     if (_stateChanged && !_enabled) {
         RTClearDescriptor clearDescriptor = {};
         clearDescriptor._clearDepth = true;

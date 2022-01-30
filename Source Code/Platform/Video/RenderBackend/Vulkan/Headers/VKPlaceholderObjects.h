@@ -99,21 +99,6 @@ namespace Divide {
         bool hasBatch() const noexcept override { return false; }
     };
 
-    class vkVertexBuffer final : public VertexBuffer {
-      public:
-        vkVertexBuffer(GFXDevice& context)
-            : VertexBuffer(context)
-        {}
-
-        void draw([[maybe_unused]] const GenericDrawCommand& command) noexcept override {}
-
-        bool queueRefresh() noexcept override { return refresh(); }
-
-      protected:
-        bool refresh() noexcept override { return true; }
-    };
-
-
     class vkPixelBuffer final : public PixelBuffer {
     public:
         vkPixelBuffer(GFXDevice& context, const PBType type, const char* name)
@@ -155,12 +140,6 @@ namespace Divide {
                           [[maybe_unused]] U32 elementCountRange,
                           [[maybe_unused]] bufferPtr data) noexcept override
         {
-        }
-
-        void lockBuffers() noexcept override {}
-
-        bool waitBufferRange([[maybe_unused]] U32 buffer, [[maybe_unused]] U32 elementCountOffset, [[maybe_unused]] U32 elementCountRange, [[maybe_unused]] bool blockClient) noexcept override {
-            return false;
         }
     };
 

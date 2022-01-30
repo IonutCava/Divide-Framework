@@ -199,7 +199,10 @@ public:
 
     /// Returns a pointer to a specific component. Returns null if the SGN does not have the component requested
     template <typename T>
-    T* get() const { return _compManager->GetComponent<T>(GetEntityID()); } ///< ToDo: Optimise this -Ionut
+    T* get() const {
+        std::scoped_lock<std::mutex > r_lock(s_ComponentManagerLock);
+        return _compManager->GetComponent<T>(GetEntityID());
+    } ///< ToDo: Optimise this -Ionut
 
     void SendEvent(ECS::CustomEvent&& event);
 

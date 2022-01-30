@@ -356,16 +356,16 @@ void glimBatchData::UnbindOGL(void) noexcept {
     if (!m_bUploadedToGPU) 
         return;
 
-	Divide::GL_API::getStateTracker().setActiveVAO(0);
+	Divide::GL_API::GetStateTracker().setActiveVAO(0);
 }
 
 void glimBatchData::BindOGL(Divide::I64 uiCurrentProgram) {
     if (!m_bUploadedToGPU)
         return;
 
-    Divide::GL_API::getStateTracker().setActiveVAO(m_VertexArrayObjectID);
-    Divide::GL_API::getStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, m_uiVertexBufferID);
-    Divide::GL_API::getStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    Divide::GL_API::GetStateTracker().setActiveVAO(m_VertexArrayObjectID);
+    Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, m_uiVertexBufferID);
+    Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     const Divide::hashMap<unsigned int, GlimArrayData>::iterator itend = m_Attributes.end();
 

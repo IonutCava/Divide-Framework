@@ -346,10 +346,13 @@ public:
 
     /// Create and return a new vertex array (VAO + VB + IB).
     VertexBuffer*      newVB();
+    VertexBuffer*      newVBLocked();
     /// Create and return a new pixel buffer using the requested format.
     PixelBuffer*       newPB(PBType type = PBType::PB_TEXTURE_2D, const char* name = nullptr);
+    PixelBuffer*       newPBLocked(PBType type = PBType::PB_TEXTURE_2D, const char* name = nullptr);
     /// Create and return a new generic vertex data object
     GenericVertexData* newGVD(U32 ringBufferLength, const char* name = nullptr);
+    GenericVertexData* newGVDLocked(U32 ringBufferLength, const char* name = nullptr);
     /// Create and return a new texture.
     Texture*           newTexture(size_t descriptorHash,
                                   const Str256& resourceName,
@@ -358,13 +361,26 @@ public:
                                   bool asyncLoad,
                                   const TextureDescriptor& texDescriptor);
 
+    Texture*           newTextureLocked(size_t descriptorHash,
+                                        const Str256& resourceName,
+                                        const ResourcePath& assetNames,
+                                        const ResourcePath& assetLocations,
+                                        bool asyncLoad,
+                                        const TextureDescriptor& texDescriptor);
+
     /// Create and return a new shader program.
     ShaderProgram*     newShaderProgram(size_t descriptorHash,
                                         const Str256& resourceName,
                                         const Str256& assetName,
                                         const ResourcePath& assetLocation,
                                         const ShaderProgramDescriptor& descriptor,
-                                        bool asyncLoad);
+                                        bool asyncLoad);   
+    ShaderProgram*     newShaderProgramLocked(size_t descriptorHash,
+                                              const Str256& resourceName,
+                                              const Str256& assetName,
+                                              const ResourcePath& assetLocation,
+                                              const ShaderProgramDescriptor& descriptor,
+                                              bool asyncLoad);
     /// Create and return a new shader buffer. 
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false
     /// or a 'Shader Storage Block Object' otherwise
@@ -406,6 +422,7 @@ protected:
 
     /// Create and return a new framebuffer.
     RenderTarget* newRT(const RenderTargetDescriptor& descriptor);
+    RenderTarget* newRTLocked(const RenderTargetDescriptor& descriptor);
 
     // returns true if the window and the viewport have different aspect ratios
     bool fitViewportInWindow(U16 w, U16 h);
@@ -455,7 +472,7 @@ private:
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
-
+    RenderTarget* newRTInternal(const RenderTargetDescriptor& descriptor);
     ErrorCode createAPIInstance(RenderAPI api);
 
 private:

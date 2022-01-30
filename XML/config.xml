@@ -26,7 +26,7 @@
 	<language>enGB</language>
 	<!-- RUNTIME: Values use by the application after loading is complete -->
 	<runtime>
-		<title>DIVIDE Framework - (C) Ionut Cava 2021</title>
+		<title>DIVIDE Framework - (C) Ionut Cava 2022</title>
 		<!-- 0 = primary display, 1 = secondary display, etc. Value is clamped between [1, LAST_DISPLAY] -->
 		<targetDisplay>1</targetDisplay>
 		<!-- 0 = NULL, 1 - OpenGL4, 2 - GLES3, 3 - Vulkan-->
@@ -82,9 +82,9 @@
 		<useBindlessTextures>false</useBindlessTextures>
 		<debugBindlessTextures>false</debugBindlessTextures>
 		<!-- Environment probe resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->
-		<reflectionProbeResolution>256</reflectionProbeResolution>
+		<reflectionProbeResolution>128</reflectionProbeResolution>
 		<!-- Planar reflector resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->
-		<reflectionPlaneResolution>512</reflectionPlaneResolution>
+		<reflectionPlaneResolution>256</reflectionPlaneResolution>
 		<numLightsPerCluster>100</numLightsPerCluster>
 		<enableFog>true</enableFog>
 		<fogDensity>0.0700000003</fogDensity>

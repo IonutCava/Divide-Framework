@@ -36,12 +36,27 @@ GL_API::SamplerObjectMap GL_API::s_samplerMap;
 GLUtil::glVAOPool GL_API::s_vaoPool;
 glHardwareQueryPool* GL_API::s_hardwareQueryPool = nullptr;
 
-GLStateTracker& GL_API::getStateTracker() noexcept {
+GLStateTracker& GL_API::GetStateTracker() noexcept {
     return s_stateTracker;
 }
 
-GLUtil::GLMemory::DeviceAllocator& GL_API::getMemoryAllocator() noexcept {
-    return s_memoryAllocator;
+GLUtil::GLMemory::GLMemoryType GL_API::GetMemoryTypeForUsage(const GLenum usage) noexcept {
+    assert(usage != GL_NONE);
+    switch (usage) {
+        case GL_UNIFORM_BUFFER:
+        case GL_SHADER_STORAGE_BUFFER:
+            return GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER;
+        case GL_ELEMENT_ARRAY_BUFFER:
+            return GLUtil::GLMemory::GLMemoryType::INDEX_BUFFER;
+        case GL_ARRAY_BUFFER:
+            return GLUtil::GLMemory::GLMemoryType::VERTEX_BUFFER;
+    };
+
+    return GLUtil::GLMemory::GLMemoryType::OTHER;
+}
+
+GLUtil::GLMemory::DeviceAllocator& GL_API::GetMemoryAllocator(const GLUtil::GLMemory::GLMemoryType memoryType) noexcept {
+    return s_memoryAllocators[to_base(memoryType)];
 }
 
 /// Reset as much of the GL default state as possible within the limitations given
@@ -76,7 +91,7 @@ bool GL_API::DeleteBuffers(const GLuint count, GLuint* buffers) {
     if (count > 0 && buffers != nullptr) {
         for (GLuint i = 0; i < count; ++i) {
             const GLuint crtBuffer = buffers[i];
-            GLStateTracker& stateTracker = getStateTracker();
+            GLStateTracker& stateTracker = GetStateTracker();
             for (GLuint& boundBuffer : stateTracker._activeBufferID) {
                 if (boundBuffer == crtBuffer) {
                     boundBuffer = GLUtil::k_invalidObjectID;
@@ -100,8 +115,8 @@ bool GL_API::DeleteBuffers(const GLuint count, GLuint* buffers) {
 bool GL_API::DeleteVAOs(const GLuint count, GLuint* vaos) {
     if (count > 0 && vaos != nullptr) {
         for (GLuint i = 0; i < count; ++i) {
-            if (getStateTracker()._activeVAOID == vaos[i]) {
-                getStateTracker()._activeVAOID = GLUtil::k_invalidObjectID;
+            if (GetStateTracker()._activeVAOID == vaos[i]) {
+                GetStateTracker()._activeVAOID = GLUtil::k_invalidObjectID;
                 break;
             }
         }
@@ -116,7 +131,7 @@ bool GL_API::DeleteFramebuffers(const GLuint count, GLuint* framebuffers) {
     if (count > 0 && framebuffers != nullptr) {
         for (GLuint i = 0; i < count; ++i) {
             const GLuint crtFB = framebuffers[i];
-            for (GLuint& activeFB : getStateTracker()._activeFBID) {
+            for (GLuint& activeFB : GetStateTracker()._activeFBID) {
                 if (activeFB == crtFB) {
                     activeFB = GLUtil::k_invalidObjectID;
                 }
@@ -132,8 +147,8 @@ bool GL_API::DeleteFramebuffers(const GLuint count, GLuint* framebuffers) {
 bool GL_API::DeleteShaderPrograms(const GLuint count, GLuint* programs) {
     if (count > 0 && programs != nullptr) {
         for (GLuint i = 0; i < count; ++i) {
-            if (getStateTracker()._activeShaderProgram == programs[i]) {
-                getStateTracker().setActiveProgram(0u);
+            if (GetStateTracker()._activeShaderProgram == programs[i]) {
+                GetStateTracker().setActiveProgram(0u);
             }
             glDeleteProgram(programs[i]);
         }
@@ -147,8 +162,8 @@ bool GL_API::DeleteShaderPrograms(const GLuint count, GLuint* programs) {
 bool GL_API::DeleteShaderPipelines(const GLuint count, GLuint* programPipelines) {
     if (count > 0 && programPipelines != nullptr) {
         for (GLuint i = 0; i < count; ++i) {
-            if (getStateTracker()._activeShaderPipeline == programPipelines[i]) {
-                getStateTracker().setActiveShaderPipeline(0u);
+            if (GetStateTracker()._activeShaderPipeline == programPipelines[i]) {
+                GetStateTracker().setActiveShaderPipeline(0u);
             }
         }
 
@@ -165,7 +180,7 @@ bool GL_API::DeleteTextures(const GLuint count, GLuint* textures, const TextureT
         for (GLuint i = 0; i < count; ++i) {
             const GLuint crtTex = textures[i];
             if (crtTex != 0) {
-                GLStateTracker& stateTracker = getStateTracker();
+                GLStateTracker& stateTracker = GetStateTracker();
 
                 auto bindingIt = stateTracker._textureBoundMap[to_base(texType)];
                 for (GLuint& handle : bindingIt) {
@@ -195,7 +210,7 @@ bool GL_API::DeleteSamplers(const GLuint count, GLuint* samplers) {
         for (GLuint i = 0; i < count; ++i) {
             const GLuint crtSampler = samplers[i];
             if (crtSampler != 0) {
-                for (GLuint& boundSampler : getStateTracker()._samplerBoundMap) {
+                for (GLuint& boundSampler : GetStateTracker()._samplerBoundMap) {
                     if (boundSampler == crtSampler) {
                         boundSampler = 0;
                     }

@@ -13,6 +13,8 @@
 
 namespace ECS
 {
+	std::mutex IEntity::s_ComponentManagerLock;
+
 	DEFINE_STATIC_LOGGER(IEntity, "Entity")
 		
 	IEntity::IEntity() :

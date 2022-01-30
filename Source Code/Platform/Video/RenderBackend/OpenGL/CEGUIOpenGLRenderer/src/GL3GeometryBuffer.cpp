@@ -103,7 +103,7 @@ void OpenGL3GeometryBuffer::draw() const
 
             d_glStateChanger->bindDefaultState(currentBatch.clip);
 
-            Divide::GL_API::getStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, currentBatch.texture);
+            Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, currentBatch.texture);
 
             // draw the geometry
             const unsigned int numVertices = currentBatch.vertexCount;
@@ -144,9 +144,9 @@ void OpenGL3GeometryBuffer::initialiseOpenGLBuffers()
     // This binds and sets up a vbo. The 
     const GLsizei stride = 9 * sizeof(GLfloat);
 
-    Divide::GL_API::getStateTracker().setActiveVAO(d_verticesVAO);
-    Divide::GL_API::getStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, d_verticesVBO);
-    Divide::GL_API::getStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    Divide::GL_API::GetStateTracker().setActiveVAO(d_verticesVAO);
+    Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, d_verticesVBO);
+    Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     glVertexAttribPointer(d_shaderTexCoordLoc, 2, GL_FLOAT, GL_FALSE, stride, nullptr);
     glEnableVertexAttribArray(d_shaderTexCoordLoc);
@@ -158,10 +158,10 @@ void OpenGL3GeometryBuffer::initialiseOpenGLBuffers()
     glEnableVertexAttribArray(d_shaderPosLoc);
 
     // Unbind Vertex Attribute Array (VAO)
-    Divide::GL_API::getStateTracker().setActiveVAO(0);
+    Divide::GL_API::GetStateTracker().setActiveVAO(0);
 
     // Unbind array and element array buffers
-    Divide::GL_API::getStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, 0);
+    Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 //----------------------------------------------------------------------------//

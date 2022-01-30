@@ -117,25 +117,6 @@ private:
     U32 _maxBindings = 0u;
 };
 
-struct glVertexDataContainer;
-struct glVertexDataIndexContainer {
-    vector_fast<size_t> _countData;
-    vector_fast<GLuint> _indexOffsetData;
-};
-
-struct glVertexDataContainer {
-    GLuint _lastDrawCount = 0u;
-    GLuint _lastIndexCount = 0u;
-    GLuint _lastFirstIndex = 0u;
-
-    eastl::unique_ptr<glVertexDataIndexContainer> _indexInfo;
-
-    void rebuildCountAndIndexData(U32 drawCount,
-                                  U32 indexCount,
-                                  U32 firstIndex,
-                                  size_t indexBufferSize);
-};
-
 enum class glObjectType : U8 {
     TYPE_BUFFER = 0,
     TYPE_TEXTURE,
@@ -217,8 +198,8 @@ extern thread_local SDL_GLContext s_glSecondaryContext;
 
 extern Mutex s_glSecondaryContextMutex;
 
+///Note: If internal format is not GL_NONE, an indexed draw is issued!
 void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
-                         bool drawIndexed,
                          bool useIndirectBuffer,
                          GLenum internalFormat,
                          const size_t* const countData = nullptr,

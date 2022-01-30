@@ -39,7 +39,7 @@ namespace ECS
 
 		// if false, entity won't be updated
 		bool					m_Active;
-
+		static std::mutex s_ComponentManagerLock;
 	public:
 
 		IEntity();
@@ -48,18 +48,21 @@ namespace ECS
 		template<class T>
 		T* GetComponent() const
 		{
+			std::scoped_lock<std::mutex> r_lock(s_ComponentManagerLock);
 			return this->m_ComponentManagerInstance->GetComponent<T>(this->m_EntityID);
 		}
 
 		template<class T, class ...P>
 		T* AddComponent(P&&... param)
 		{
+			std::scoped_lock<std::mutex > r_lock(s_ComponentManagerLock);
 			return this->m_ComponentManagerInstance->AddComponent<T>(this->m_EntityID, std::forward<P>(param)...);
 		}
 
 		template<class T>
 		void RemoveComponent()
 		{
+			std::scoped_lock<std::mutex> r_lock(s_ComponentManagerLock);
 			this->m_ComponentManagerInstance->RemoveComponent<T>(this->m_EntityID);
 		}
 

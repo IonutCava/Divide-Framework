@@ -44,7 +44,7 @@ namespace {
         }
 
         bool destroy() noexcept {
-            for (auto& [context, _] : _contexts) {
+            for (const auto& [context, _] : _contexts) {
                 SDL_GL_DeleteContext(context);
             }
             _contexts.clear();
@@ -342,7 +342,10 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
         glEnable(static_cast<GLenum>(static_cast<U32>(GL_CLIP_DISTANCE0) + i));
     }
 
-    s_memoryAllocator.init(512 * 1024/*Mb*/ * 1024/*Kb*/);
+    for (U8 i = 0u; i < to_base(GLUtil::GLMemory::GLMemoryType::COUNT); ++i) {
+        s_memoryAllocators[i].init(s_memoryAllocatorSizes[i]);
+    }
+
     s_textureViewCache.init(256);
 
     // FontStash library initialization
@@ -439,14 +442,14 @@ void GL_API::closeRenderingAPI() {
         DeleteVAOs(1, &s_dummyVAO);
     }
     s_textureViewCache.destroy();
-    glVertexArray::cleanup();
-    GLUtil::clearVBOs();
     s_vaoPool.destroy();
     if (s_hardwareQueryPool != nullptr) {
         s_hardwareQueryPool->destroy();
         MemoryManager::DELETE(s_hardwareQueryPool);
     }
-    s_memoryAllocator.deallocate();
+    for (auto& allocator : s_memoryAllocators) {
+        allocator.deallocate();
+    }
     g_ContextPool.destroy();
 }
 

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <editor>
-    <showMemEditor>true</showMemEditor>
+    <showMemEditor>false</showMemEditor>
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
-    <textEditor>C:/Program Files (x86)/Notepad++/notepad++.exe</textEditor>
+    <textEditor/>
     <lastOpenSceneGUID>625</lastOpenSceneGUID>
     <grid enabled="true" axisWidth="2" scale="1"/>
     <camera>
@@ -28,7 +28,4 @@
             <movementLocked>false</movementLocked>
         </Editor__Camera>
     </camera>
-    <recentScene>
-        <entry>TestPBR</entry>
-    </recentScene>
 </editor>

@@ -68,9 +68,9 @@ void DebugCallback(const GLenum source,
         }
 
         std::string fullScope = "GL";
-        for (U8 i = 0u; i < GL_API::getStateTracker()._debugScopeDepth; ++i) {
+        for (U8 i = 0u; i < GL_API::GetStateTracker()._debugScopeDepth; ++i) {
             fullScope.append("::");
-            fullScope.append(GL_API::getStateTracker()._debugScope[i]);
+            fullScope.append(GL_API::GetStateTracker()._debugScope[i]);
         }
         // Print the message and the details
         const string outputError = Util::StringFormat(
@@ -80,8 +80,8 @@ void DebugCallback(const GLenum source,
             gl_type,
             id, 
             gl_severity, 
-            GL_API::getStateTracker()._activeShaderProgram,
-            GL_API::getStateTracker()._activeShaderPipeline,
+            GL_API::GetStateTracker()._activeShaderProgram,
+            GL_API::GetStateTracker()._activeShaderPipeline,
             fullScope.c_str(),
             message);
 

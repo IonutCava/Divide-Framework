@@ -271,14 +271,14 @@ void OpenGLTexture::loadUncompressedTextureBuffer(const Rectf& dest_area,
                                                   const GLvoid* buffer) const
 {
 
-    Divide::GL_API::getStateTracker().setPixelUnpackAlignment(1);
+    Divide::GL_API::GetStateTracker().setPixelUnpackAlignment(1);
     glTextureSubImage2D(d_ogltexture, 0,
                     static_cast<GLint>(dest_area.left()),
                     static_cast<GLint>(dest_area.top()),
                     static_cast<GLsizei>(dest_area.getWidth()),
                     static_cast<GLsizei>(dest_area.getHeight()),
                     d_format, d_subpixelFormat, buffer);
-    Divide::GL_API::getStateTracker().setPixelUnpackAlignment();
+    Divide::GL_API::GetStateTracker().setPixelUnpackAlignment();
 }
 
 //----------------------------------------------------------------------------//
@@ -338,10 +338,10 @@ void OpenGLTexture::setTextureSize_impl(const Sizef& sz)
         CEGUI_THROW(RendererException("size too big"));
 
     // save old texture binding
-    const Divide::U32 old_tex = Divide::GL_API::getStateTracker().getBoundTextureHandle(0, Divide::TextureType::TEXTURE_2D);
+    const Divide::U32 old_tex = Divide::GL_API::GetStateTracker().getBoundTextureHandle(0, Divide::TextureType::TEXTURE_2D);
 
     // set texture to required size
-    Divide::GL_API::getStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, d_ogltexture);
+    Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, d_ogltexture);
 
     if (d_isCompressed)
     {
@@ -360,7 +360,7 @@ void OpenGLTexture::setTextureSize_impl(const Sizef& sz)
     }
 
     // restore previous texture binding.
-    Divide::GL_API::getStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, old_tex);
+    Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, old_tex);
 }
 
 //----------------------------------------------------------------------------//
@@ -425,9 +425,9 @@ void OpenGLTexture::blitToMemory(void* targetData, size_t buffSize)
       }
       else
       {
-          Divide::GL_API::getStateTracker().setPixelPackAlignment(1);
+          Divide::GL_API::GetStateTracker().setPixelPackAlignment(1);
           glGetTextureImage(d_ogltexture, 0, d_format, d_subpixelFormat, (gl::GLsizei)buffSize, targetData);
-          Divide::GL_API::getStateTracker().setPixelPackAlignment();
+          Divide::GL_API::GetStateTracker().setPixelPackAlignment();
       }
     
 }

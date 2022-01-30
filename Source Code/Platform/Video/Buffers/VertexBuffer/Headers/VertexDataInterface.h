@@ -64,11 +64,9 @@ class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsReso
     virtual void draw(const GenericDrawCommand& command) = 0;
 
     PROPERTY_R(PoolHandle, handle);
-    PROPERTY_RW(bool, renderIndirect, true);
-protected:
-    using VDIPool = ObjectPool<VertexDataInterface, 4096>;
+    PROPERTY_RW(bool, primitiveRestartEnabled, false);
 
-public:
+    using VDIPool = ObjectPool<VertexDataInterface, 4096>;
     // We only need this pool in order to get a valid handle to pass around to command buffers instead of using raw pointers
     static VDIPool s_VDIPool;
 };

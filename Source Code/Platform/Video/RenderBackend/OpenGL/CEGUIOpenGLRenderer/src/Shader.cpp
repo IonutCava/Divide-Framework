@@ -85,13 +85,13 @@ OpenGL3Shader::~OpenGL3Shader()
 //----------------------------------------------------------------------------//
 void OpenGL3Shader::bind() const
 {
-    Divide::GL_API::getStateTracker().setActiveProgram(d_program);
+    Divide::GL_API::GetStateTracker().setActiveProgram(d_program);
 }
 
 //----------------------------------------------------------------------------//
 void OpenGL3Shader::unbind() const
 {
-    Divide::GL_API::getStateTracker().setActiveProgram(0);
+    Divide::GL_API::GetStateTracker().setActiveProgram(0);
 }
 
 //----------------------------------------------------------------------------//

@@ -766,9 +766,9 @@ bool glShaderProgram::recompile(bool& skipped) {
     }
 
     // Remember bind state and unbind it if needed
-    const bool wasBound = GL_API::getStateTracker()._activeShaderPipeline == _handle;
+    const bool wasBound = GL_API::GetStateTracker()._activeShaderPipeline == _handle;
     if (wasBound) {
-        GL_API::getStateTracker().setActiveShaderPipeline(0u);
+        GL_API::GetStateTracker().setActiveShaderPipeline(0u);
     }
     threadedLoad(true);
     // Restore bind state
@@ -796,7 +796,7 @@ ShaderResult glShaderProgram::bind() {
     }
 
     // Set this program as the currently active one
-    if (GL_API::getStateTracker().setActiveShaderPipeline(_handle)) {
+    if (GL_API::GetStateTracker().setActiveShaderPipeline(_handle)) {
         // All of this needs to be run on an actual bind operation. If we are already bound, we assume we did all this
         processValidation();
         for (const glShader* shader : _shaderStage) {

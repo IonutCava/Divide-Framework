@@ -17,6 +17,7 @@ glGenericBuffer::glGenericBuffer(GFXDevice& context, const GenericBufferParams& 
     implParams._target = params._usage;
     implParams._name = params._name;
     implParams._explicitFlush = true;
+    implParams._useChunkAllocation = params._usage != GL_ELEMENT_ARRAY_BUFFER;
 
     _bufferImpl = MemoryManager_NEW glBufferImpl(context, implParams);
 
@@ -82,36 +83,13 @@ void glGenericBuffer::clearData(const GLuint elementOffset, const GLuint ringWri
     bufferImpl()->writeOrClearBytes(offsetInBytes, rangeInBytes, nullptr, true);
 }
 
-void glVertexDataContainer::rebuildCountAndIndexData(const U32 drawCount, const  U32 indexCount, const U32 firstIndex, const size_t indexBufferSize) {
-    if (_lastDrawCount == drawCount && _lastIndexCount == indexCount && _lastFirstIndex == firstIndex) {
-        return;
-    }
-    if (_indexInfo == nullptr) {
-        _indexInfo = eastl::make_unique<glVertexDataIndexContainer>();
+bool glGenericBuffer::needsSynchronization() const noexcept {
+    if (!bufferImpl()) {
+        return false;
     }
 
-    if (_lastDrawCount != drawCount || _lastIndexCount != indexCount) {
-        if (drawCount >= _indexInfo->_countData.size()) {
-            _indexInfo->_countData.resize(drawCount);
-        }
-
-        eastl::fill(begin(_indexInfo->_countData), begin(_indexInfo->_countData) + drawCount, indexCount);
-    }
-
-    if (indexBufferSize > 0 && (_lastDrawCount != drawCount || _lastFirstIndex != firstIndex)) {
-        const U32 idxCountInternal = to_U32(drawCount * indexBufferSize);
-
-        if (idxCountInternal >= _indexInfo->_indexOffsetData.size()) {
-            _indexInfo->_indexOffsetData.resize(idxCountInternal);
-        }
-
-        if (_lastFirstIndex != firstIndex) {
-            eastl::fill(begin(_indexInfo->_indexOffsetData), begin(_indexInfo->_indexOffsetData) + idxCountInternal, firstIndex);
-        }
-    }
-    _lastDrawCount = drawCount;
-    _lastIndexCount = indexCount;
-    _lastFirstIndex = firstIndex;
+    return bufferImpl()->params()._bufferParams._sync;
 }
+
 
 }; //namespace Divide

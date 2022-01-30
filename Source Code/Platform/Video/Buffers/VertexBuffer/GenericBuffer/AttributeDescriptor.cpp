@@ -4,19 +4,6 @@
 
 namespace Divide {
 
-AttributeDescriptor::AttributeDescriptor() noexcept
-  : _index(0),
-    _parentBuffer(0),
-    _componentsPerElement(0),
-    _interleavedOffset(0),
-    _wasSet(false),
-    _dirty(true),
-    _normalized(false),
-    _strideInBytes(0),
-    _type(GFXDataFormat::UNSIGNED_INT)
-{
-}
-
 void AttributeDescriptor::set(const U32 bufferIndex, const U32 componentsPerElement, const GFXDataFormat dataType) noexcept {
     set(bufferIndex, componentsPerElement, dataType, false);
 }
@@ -34,14 +21,15 @@ void AttributeDescriptor::set(const U32 bufferIndex,
                               const bool normalized,
                               const size_t strideInBytes) noexcept {
 
-    this->bufferIndex(bufferIndex);
+    enabled(true);
+    this->parentBuffer(bufferIndex);
     this->componentsPerElement(componentsPerElement);
     this->normalized(normalized);
     this->strideInBytes(strideInBytes);
     this->dataType(dataType);
 }
 
-void AttributeDescriptor::attribIndex(const U32 index) noexcept {
+void AttributeDescriptor::index(const U32 index) noexcept {
     _index = index;
     _dirty = true;
     _wasSet = false;
@@ -53,7 +41,7 @@ void AttributeDescriptor::strideInBytes(const size_t strideInBytes) noexcept {
     _wasSet = false;
 }
 
-void AttributeDescriptor::bufferIndex(const U32 bufferIndex) noexcept {
+void AttributeDescriptor::parentBuffer(const U32 bufferIndex) noexcept {
     _parentBuffer = bufferIndex;
     _dirty = true;
     _wasSet = false;
@@ -70,12 +58,7 @@ void AttributeDescriptor::normalized(const bool normalized) noexcept {
 }
 
 void AttributeDescriptor::dataType(const GFXDataFormat type) noexcept {
-    _type = type;
-    _dirty = true;
-}
-
-void AttributeDescriptor::interleavedOffsetInBytes(const U32 interleavedOffsetInBytes) noexcept {
-    _interleavedOffset = interleavedOffsetInBytes;
+    _dataType = type;
     _dirty = true;
 }
 
@@ -90,4 +73,12 @@ void AttributeDescriptor::clean() noexcept {
     _dirty = false;
 }
 
+void AttributeDescriptor::enabled(const bool state) noexcept {
+    if (_enabled != state) {
+        _enabled = state;
+
+        _wasSet = false;
+        _dirty = true;
+    }
+}
 }; //namespace Divide

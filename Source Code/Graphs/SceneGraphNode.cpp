@@ -110,6 +110,7 @@ SceneGraphNode::~SceneGraphNode()
         //_children._count.store(0u);
     }
 
+    std::scoped_lock<std::mutex > r_lock(s_ComponentManagerLock);
     _compManager->RemoveAllComponents(GetEntityID());
 }
 
@@ -580,7 +581,10 @@ void SceneGraphNode::processEvents() {
                 default: break;
             }
 
-            _compManager->PassDataToAllComponents(id, evt);
+            {
+                std::scoped_lock<std::mutex > r_lock(s_ComponentManagerLock);
+                _compManager->PassDataToAllComponents(id, evt);
+            }
             Events._eventsFreeList[idx] = true;
         }
     }
@@ -864,8 +868,6 @@ void SceneGraphNode::loadFromXML(const boost::property_tree::ptree& pt) {
         return;
     }
 
-    changeUsageContext(pt.get("static", false) ? NodeUsageContext::NODE_STATIC : NodeUsageContext::NODE_DYNAMIC);
-
     U32 componentsToLoad = 0;
     for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i) {
         const U32 componentBit = 1 << i;
@@ -882,6 +884,8 @@ void SceneGraphNode::loadFromXML(const boost::property_tree::ptree& pt) {
     for (EditorComponent* editorComponent : Hacks._editorComponents) {
         Attorney::EditorComponentSceneGraphNode::loadFromXML(*editorComponent, pt);
     }
+
+    changeUsageContext(pt.get("static", false) ? NodeUsageContext::NODE_STATIC : NodeUsageContext::NODE_DYNAMIC);
 }
 
 void SceneGraphNode::setFlag(const Flags flag, const bool recursive) {

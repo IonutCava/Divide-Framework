@@ -68,8 +68,7 @@ class PreRenderBatch {
     void execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut);
     void reshape(U16 width, U16 height);
 
-    void onFilterEnabled(FilterType filter);
-    void onFilterDisabled(FilterType filter);
+    void onFilterToggle(FilterType filter, bool state);
 
     [[nodiscard]] RenderTargetHandle getInput(bool hdr) const;
     [[nodiscard]] RenderTargetHandle getOutput(bool hdr) const;
@@ -143,8 +142,6 @@ class PreRenderBatch {
 
         return FilterSpace::COUNT;
     }
-
-    void onFilterToggle(FilterType filter, bool state);
 
     [[nodiscard]] bool operatorsReady() const noexcept;
 

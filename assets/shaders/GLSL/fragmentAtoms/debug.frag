@@ -142,8 +142,12 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
         } break;
         case DEBUG_DEPTH_CLUSTER_AABBS :
         {
-            const uint clusterIdx = GetClusterIndex(gl_FragCoord);
-            debugColour = turboColormap(float(clusterIdx) / (32));
+            /*const uint clusterIdx = GetClusterIndex(gl_FragCoord);
+            VolumeTileAABB currentCluster = lightClusterAABBs[clusterIndex];
+            const vec3 clusterMin = currentCluster.minPoint.xyz;
+            const vec3 clusterMax = currentCluster.maxPoint.xyz;
+
+            debugColour = (clusterMin + clusterMax) * 0.5f;*/
         }break;
         case DEBUG_REFRACTIONS:
         case DEBUG_REFLECTIONS: {

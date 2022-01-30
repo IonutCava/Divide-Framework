@@ -70,6 +70,8 @@ class glGenericBuffer {
 
       POINTER_R(glBufferImpl, bufferImpl, nullptr);
 
+      [[nodiscard]] bool needsSynchronization() const noexcept;
+
   protected:
       GLuint _elementCount;
       GLuint _ringSizeFactor;

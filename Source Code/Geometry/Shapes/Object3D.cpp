@@ -51,7 +51,6 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
 
     if (!getObjectFlag(ObjectFlag::OBJECT_FLAG_NO_VB)) {
         _buffer = context.newVB();
-        _buffer->renderIndirect(true);
     }
 
     switch (type) {

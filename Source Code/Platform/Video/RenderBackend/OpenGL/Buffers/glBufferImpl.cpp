@@ -73,13 +73,15 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
                                                                   ? GL_API::s_SSBOffsetAlignment
                                                                   : sizeof(U32);
 
-        _memoryBlock = GL_API::getMemoryAllocator().allocate(_params._dataSize,
-                                                             alignment,
-                                                             storageMask,
-                                                             accessMask,
-                                                             params._target,
-                                                             _params._name,
-                                                             _params._bufferParams._initialData);
+        GLUtil::GLMemory::DeviceAllocator& allocator = GL_API::GetMemoryAllocator(GL_API::GetMemoryTypeForUsage(_params._target));
+        _memoryBlock = allocator.allocate(_params._useChunkAllocation,
+                                          _params._dataSize,
+                                          alignment,
+                                          storageMask,
+                                          accessMask,
+                                          params._target,
+                                          _params._name,
+                                          _params._bufferParams._initialData);
         assert(_memoryBlock._ptr != nullptr && _memoryBlock._size >= _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!");
     }
 }
@@ -87,12 +89,13 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
 glBufferImpl::~glBufferImpl()
 {
     if (_memoryBlock._bufferHandle > 0) {
-        if (!waitByteRange(0, _memoryBlock._size, true)) {
+        if (!waitByteRange(0u, _memoryBlock._size, true)) {
             DIVIDE_UNEXPECTED_CALL();
         }
 
         if (_memoryBlock._ptr != nullptr) {
-            GL_API::getMemoryAllocator().deallocate(_memoryBlock);
+            GLUtil::GLMemory::DeviceAllocator& allocator = GL_API::GetMemoryAllocator(GL_API::GetMemoryTypeForUsage(_params._target));
+            allocator.deallocate(_memoryBlock);
         } else {
             glInvalidateBufferData(_memoryBlock._bufferHandle);
             GLUtil::freeBuffer(_memoryBlock._bufferHandle, nullptr);
@@ -145,13 +148,13 @@ bool glBufferImpl::bindByteRange(const GLuint bindIndex, const size_t offsetInBy
 
     bool bound = true;
     if (bindIndex == to_base(ShaderBufferLocation::CMD_BUFFER)) {
-        GL_API::getStateTracker().setActiveBuffer(GL_DRAW_INDIRECT_BUFFER, _memoryBlock._bufferHandle);
+        GL_API::GetStateTracker().setActiveBuffer(GL_DRAW_INDIRECT_BUFFER, _memoryBlock._bufferHandle);
     } else {
         const size_t offset = _memoryBlock._offset + offsetInBytes;
         // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
         const size_t range = (offset == 0u && rangeInBytes == _memoryBlock._size) ? 0u : rangeInBytes;
 
-        bound = GL_API::getStateTracker().setActiveBufferIndexRange(_params._target, _memoryBlock._bufferHandle, bindIndex, offset, range);
+        bound = GL_API::GetStateTracker().setActiveBufferIndexRange(_params._target, _memoryBlock._bufferHandle, bindIndex, offset, range);
     }
 
     if (_params._bufferParams._sync) {

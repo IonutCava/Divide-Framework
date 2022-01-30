@@ -94,7 +94,7 @@ public:
                 SetBit(_filterStack, 1u << to_U32(filter));
             }
             _filtersDirty = true;
-            getFilterBatch().onFilterEnabled(filter);
+            getFilterBatch().onFilterToggle(filter, true);
         }
     }
 
@@ -106,7 +106,7 @@ public:
                 ClearBit(_filterStack, 1u << to_U32(filter));
             }
             _filtersDirty = true;
-            getFilterBatch().onFilterDisabled(filter);
+            getFilterBatch().onFilterToggle(filter, false);
         }
     }
 

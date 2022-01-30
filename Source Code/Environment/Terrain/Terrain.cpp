@@ -230,7 +230,6 @@ void Terrain::postBuild() {
             params._instanceDivisor = 1u;
 
             _terrainBuffer = _context.newGVD(1);
-            _terrainBuffer->renderIndirect(true);
             if_constexpr(USE_BASE_VERTEX_OFFSETS) {
                 _terrainBuffer->create(1);
             } else {

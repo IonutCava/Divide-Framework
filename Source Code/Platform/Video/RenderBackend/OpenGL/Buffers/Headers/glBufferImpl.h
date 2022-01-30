@@ -44,6 +44,7 @@ struct BufferImplParams {
     GLenum _target = GL_NONE;
     size_t _dataSize = 0;
     bool _explicitFlush = true;
+    bool _useChunkAllocation = false;
     const char* _name = nullptr;
 };
 

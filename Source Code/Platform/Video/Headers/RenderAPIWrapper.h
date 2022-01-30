@@ -81,6 +81,7 @@ struct PerformanceMetrics
 };
 
 using AttribFlags = std::array<bool, to_base(AttribLocation::COUNT)>;
+using AttribValues = std::array<size_t, to_base(AttribLocation::COUNT)>;
 
 /// Renderer Programming Interface
 class NOINITVTABLE RenderAPIWrapper : NonCopyable {

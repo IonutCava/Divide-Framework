@@ -430,21 +430,20 @@ void SubmitIndirectCommand(const IndirectDrawCommand& cmd,
                            const U32 drawCount,
                            const GLenum mode,
                            const GLenum internalFormat,
-                           const bool drawIndexed,
                            const GLuint cmdBufferOffset)
 {
     const size_t offset = cmdBufferOffset * sizeof(IndirectDrawCommand);
     if (drawCount == 1) {
         // We could just submit a multi-draw with a draw count of 1, but this might avoid some CPU overhead.
         // Either I or the driver has to do the count check/loop, but I can profile my own code.
-        if (drawIndexed) {
+        if (internalFormat != GL_NONE) {
             glDrawElementsIndirect(mode, internalFormat, (bufferPtr)offset);
         } else {
             // This needs a different command buffer and different IndirectDrawCommand (16byte instead of 20)
             glDrawArraysInstancedBaseInstance(mode, cmd.firstIndex, cmd.indexCount, cmd.primCount, cmd.baseInstance);
         }
     } else {
-        if (drawIndexed) {
+        if (internalFormat != GL_NONE) {
             glMultiDrawElementsIndirect(mode, internalFormat, (bufferPtr)offset, drawCount, sizeof(IndirectDrawCommand));
         } else {
             glMultiDrawArraysIndirect(mode, (bufferPtr)offset, drawCount, sizeof(IndirectDrawCommand));
@@ -456,20 +455,19 @@ void SubmitDirectCommand(const IndirectDrawCommand& cmd,
                          const U32 drawCount,
                          const GLenum mode,
                          const GLenum internalFormat,
-                         const bool drawIndexed,
                          const size_t* const countData,
                          const bufferPtr indexData) 
 {
     if (drawCount > 1 && cmd.primCount == 1) {
         // We could just submit a multi-draw with a draw count of 1, but this might avoid some CPU overhead.
         // Either I or the driver has to do the count check/loop, but I can profile my own code.
-        if (drawIndexed) {
+        if (internalFormat != GL_NONE) {
             glMultiDrawElements(mode, reinterpret_cast<const GLsizei*>(countData), internalFormat, static_cast<void* const*>(indexData), drawCount);
         } else {
             glMultiDrawArrays(mode, static_cast<GLint*>(indexData), reinterpret_cast<const GLsizei*>(countData), drawCount);
         }
     } else {
-        if (drawIndexed) {
+        if (internalFormat != GL_NONE) {
             const size_t elementSize = internalFormat == GL_UNSIGNED_SHORT ? sizeof(GLushort) : sizeof(GLuint);
             for (GLuint i = 0; i < drawCount; ++i) {
                 glDrawElementsInstancedBaseVertexBaseInstance(mode,
@@ -481,7 +479,7 @@ void SubmitDirectCommand(const IndirectDrawCommand& cmd,
                                                               cmd.baseInstance);
             }
         } else {
-            for (GLuint i = 0; i < drawCount; ++i) {
+            for (GLuint i = 0u; i < drawCount; ++i) {
                 glDrawArraysInstancedBaseInstance(mode,
                                                   cmd.firstIndex,
                                                   cmd.indexCount,
@@ -494,7 +492,6 @@ void SubmitDirectCommand(const IndirectDrawCommand& cmd,
 
 void SubmitRenderCommand(const GLenum primitiveType,
                          const GenericDrawCommand& drawCommand,
-                         const bool drawIndexed,
                          const bool useIndirectBuffer,
                          const GLenum internalFormat,
                          const size_t* const countData,
@@ -502,68 +499,100 @@ void SubmitRenderCommand(const GLenum primitiveType,
 {
     
     if (useIndirectBuffer) {
-        SubmitIndirectCommand(drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, drawIndexed, drawCommand._commandOffset);
+        SubmitIndirectCommand(drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, drawCommand._commandOffset);
     } else {
-        SubmitDirectCommand(drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, drawIndexed, countData, indexData);
+        SubmitDirectCommand(drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, countData, indexData);
     }
 }
 }
 
+struct HardwareQueryContext {
+    glHardwareQueryRing* _primitiveQuery = nullptr;
+    glHardwareQueryRing* _sampleCountQuery = nullptr;
+    glHardwareQueryRing* _anySamplesQuery = nullptr;
+    U32 _cmdOptions = 0u;
+    U16 _queryLookupId = 0u;
+    bool _queriesGenerated = false;
+};
+
+[[nodiscard]] bool QueriesGenerated(const HardwareQueryContext& context) noexcept {
+    if (context._cmdOptions == to_base(CmdRenderOptions::RENDER_GEOMETRY)) {
+        // This is the most common case
+        return false;
+    }
+
+    return context._primitiveQuery != nullptr ||
+           context._sampleCountQuery != nullptr ||
+           context._anySamplesQuery != nullptr;
+}
+
+void BeginHardwareQueries(HardwareQueryContext& context) {
+    if (context._cmdOptions == to_base(CmdRenderOptions::RENDER_GEOMETRY)) {
+        // This is the most common case
+        return;
+    }
+
+    if (BitCompare(context._cmdOptions, CmdRenderOptions::QUERY_PRIMITIVE_COUNT)) {
+        context._primitiveQuery = &GL_API::s_hardwareQueryPool->allocate(GL_PRIMITIVES_GENERATED);
+        context._primitiveQuery->begin();
+    } else {
+        context._primitiveQuery = nullptr;
+    }
+
+    if (BitCompare(context._cmdOptions, CmdRenderOptions::QUERY_SAMPLE_COUNT)) {
+        context._sampleCountQuery = &GL_API::s_hardwareQueryPool->allocate(GL_SAMPLES_PASSED);
+        context._sampleCountQuery->begin();
+    } else {
+        context._sampleCountQuery = nullptr;
+    }
+
+    if (BitCompare(context._cmdOptions, CmdRenderOptions::QUERY_ANY_SAMPLE_RENDERED)) {
+        context._anySamplesQuery = &GL_API::s_hardwareQueryPool->allocate(GL_ANY_SAMPLES_PASSED);
+        context._anySamplesQuery->begin();
+    } else {
+        context._anySamplesQuery = nullptr;
+    }
+}
+
+void EndHardwareQueries(const HardwareQueryContext& context) {
+    if (QueriesGenerated(context)) {
+        GenericDrawCommandResults::QueryResult& results = GenericDrawCommandResults::g_queryResults[context._queryLookupId];
+
+        if (context._primitiveQuery != nullptr) {
+            results._primitivesGenerated = to_U64(context._primitiveQuery->getResultNoWait());
+        }
+        if (context._sampleCountQuery != nullptr) {
+            results._samplesPassed = to_U32(context._sampleCountQuery->getResultNoWait());
+        }
+        if (context._anySamplesQuery != nullptr) {
+            results._anySamplesPassed = to_U32(context._anySamplesQuery->getResultNoWait());
+        }
+    }
+}
+
 void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
-                         const bool drawIndexed,
                          const bool useIndirectBuffer,
                          const GLenum internalFormat,
                          const size_t* const countData,
                          const bufferPtr indexData)
 {
-    DIVIDE_ASSERT(drawCommand._primitiveType != PrimitiveType::COUNT,
-                  "GLUtil::submitRenderCommand error: Draw command's type is not valid!");
+    // OpenGL rendering is not thread-safe anyway, so this works
+    static HardwareQueryContext context;
 
-    GL_API::getStateTracker().toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
+    GL_API::GetStateTracker().toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
 
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_GEOMETRY)) {
-        bool runQueries = false;
-        glHardwareQueryRing* primitiveQuery = nullptr;
-        glHardwareQueryRing* sampleCountQuery = nullptr;
-        glHardwareQueryRing* anySamplesQuery = nullptr;
+        DIVIDE_ASSERT(drawCommand._primitiveType != PrimitiveType::COUNT, "GLUtil::submitRenderCommand error: Draw command's type is not valid!");
+        context._queryLookupId = drawCommand._sourceBuffer._id;
+        context._cmdOptions = drawCommand._renderOptions;
 
-        if (isEnabledOption(drawCommand, CmdRenderOptions::QUERY_PRIMITIVE_COUNT)) {
-            primitiveQuery = &GL_API::s_hardwareQueryPool->allocate(GL_PRIMITIVES_GENERATED);
-            primitiveQuery->begin();
-            runQueries = true;
-        }
-        if (isEnabledOption(drawCommand, CmdRenderOptions::QUERY_SAMPLE_COUNT)) {
-            sampleCountQuery = &GL_API::s_hardwareQueryPool->allocate(GL_SAMPLES_PASSED);
-            sampleCountQuery->begin();
-            runQueries = true;
-        }
-        if (isEnabledOption(drawCommand, CmdRenderOptions::QUERY_ANY_SAMPLE_RENDERED)) {
-            anySamplesQuery = &GL_API::s_hardwareQueryPool->allocate(GL_ANY_SAMPLES_PASSED);
-            anySamplesQuery->begin();
-            runQueries = true;
-        }
-
-        //----- DRAW ------
-        const GLenum primitiveType = glPrimitiveTypeTable[to_base(drawCommand._primitiveType)];
-        SubmitRenderCommand(primitiveType, drawCommand, drawIndexed, useIndirectBuffer, internalFormat, countData, indexData);
-        //-----------------
-
-        if (runQueries) {
-            auto& results = GenericDrawCommandResults::g_queryResults[drawCommand._sourceBuffer._id];
-            if (primitiveQuery != nullptr) {
-               results._primitivesGenerated = to_U64(primitiveQuery->getResultNoWait());
-            }
-            if (sampleCountQuery != nullptr) {
-                results._samplesPassed = to_U32(sampleCountQuery->getResultNoWait());
-            }
-            if (anySamplesQuery != nullptr) {
-                results._anySamplesPassed = to_U32(anySamplesQuery->getResultNoWait());
-            }
-        }
+        BeginHardwareQueries(context);
+        SubmitRenderCommand(glPrimitiveTypeTable[to_base(drawCommand._primitiveType)], drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
+        EndHardwareQueries(context);
     }
 
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_WIREFRAME)) {
-        SubmitRenderCommand(GL_LINE_LOOP, drawCommand, drawIndexed, useIndirectBuffer, internalFormat, countData, indexData);
+        SubmitRenderCommand(GL_LINE_LOOP, drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
     }
 }
 

@@ -50,7 +50,7 @@ class SSRPreRenderOperator final : public PreRenderOperator {
     [[nodiscard]] bool ready() const noexcept override;
 
    protected:
-       void onToggle(const bool state) override { _stateChanged = true; }
+       void onToggle(const bool state) override { PreRenderOperator::onToggle(state); _stateChanged = true; }
        void prepare(PlayerIndex idx, GFX::CommandBuffer& bufferInOut) override;
 
    private:

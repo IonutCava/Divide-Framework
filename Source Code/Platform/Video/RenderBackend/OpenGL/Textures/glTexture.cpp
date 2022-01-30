@@ -262,7 +262,7 @@ void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {
     const GLenum glFormat = GLUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
     const U32 numLayers = imageData.layerCount();
 
-    GL_API::getStateTracker().setPixelPackUnpackAlignment();
+    GL_API::GetStateTracker().setPixelPackUnpackAlignment();
     for (U32 l = 0u; l < numLayers; ++l) {
         const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
         const U8 numMips = layer.mipCount();
@@ -333,7 +333,7 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) con
     const U32 numLayers = imageData.layerCount();
     const U8 numMips = imageData.mipCount();
 
-    GL_API::getStateTracker().setPixelPackUnpackAlignment();
+    GL_API::GetStateTracker().setPixelPackUnpackAlignment();
 
     for (U32 l = 0u; l < numLayers; ++l) {
         const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
@@ -465,7 +465,7 @@ void glTexture::bindLayer(const U8 slot, const U8 level, const U8 layer, const b
     assert(layer == 0u || !layered);
     if (access != GL_NONE) {
         const GLenum glInternalFormat = GLUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
-        GL_API::getStateTracker().bindTextureImage(slot, _data._textureHandle, level, layered, layer, access, glInternalFormat);
+        GL_API::GetStateTracker().bindTextureImage(slot, _data._textureHandle, level, layered, layer, access, glInternalFormat);
     } else {
         DIVIDE_UNEXPECTED_CALL();
     }
@@ -531,14 +531,14 @@ std::pair<std::shared_ptr<Byte[]>, size_t> glTexture::readData(U16 mipLevel, con
 
     std::shared_ptr<Byte[]> grabData(new Byte[size]);
 
-    GL_API::getStateTracker().setPixelPackAlignment(1);
+    GL_API::GetStateTracker().setPixelPackAlignment(1);
     glGetTextureImage(_data._textureHandle,
                       0,
                       GLUtil::glImageFormatTable[to_base(_descriptor.baseFormat())],
                       GLUtil::glDataFormat[to_base(dataFormat)],
                       size,
                       (bufferPtr)grabData.get());
-    GL_API::getStateTracker().setPixelPackAlignment();
+    GL_API::GetStateTracker().setPixelPackAlignment();
 
     return { grabData, to_size( size) };
 }

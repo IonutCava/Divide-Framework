@@ -53,12 +53,13 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
          size_t offsetCount = 0u;
          bufferPtr data = nullptr;
          bool smallIndices = false;
+         bool indicesNeedCast = false;
      };
 
      struct SetBufferParams {
          BufferParams _bufferParams;
-         U32 _buffer = 0;
-         U32 _instanceDivisor = 0;
+         U32 _buffer = 0u;
+         U32 _instanceDivisor = 0u;
          bool _useRingBuffer = false;
      };
 
@@ -84,10 +85,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
 
     const IndexBuffer& indexBuffer() const noexcept { return _idxBuffer; }
 
-    /// Only used on buffers created with sync = false; 
-    virtual void lockBuffers() = 0;
-    virtual bool waitBufferRange(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bool blockClient) = 0;
-
+    PROPERTY_RW(bool, renderIndirect, true);
    protected:
     using AttributeMap = hashMap<U32, AttributeDescriptor>;
     AttributeMap _attributeMapDraw;

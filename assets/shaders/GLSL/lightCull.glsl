@@ -61,6 +61,7 @@ void main() {
     const uint clusterIndex = gl_GlobalInvocationID.z * gl_WorkGroupSize.x * gl_WorkGroupSize.y +
                               gl_GlobalInvocationID.y * gl_WorkGroupSize.x +
                               gl_GlobalInvocationID.x;
+
     VolumeTileAABB currentCluster = lightClusterAABBs[clusterIndex];
     const vec3 clusterMin = currentCluster.minPoint.xyz;
     const vec3 clusterMax = currentCluster.maxPoint.xyz;

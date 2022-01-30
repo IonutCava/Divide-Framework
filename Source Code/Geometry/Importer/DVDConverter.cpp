@@ -324,7 +324,7 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
         }
     }
 
-    vb->useLargeIndices(vertexCount + 1 > U16_MAX);
+    vb->useLargeIndices(vertexCount >= U16_MAX);
     vb->setVertexCount(vertexCount);
     vb->reserveIndexCount(indexCount);
 
@@ -344,7 +344,7 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
             data._triangles[lod].reserve(idxCount / 3);
             const auto& indices = data._indices[lod];
             for (size_t i = 0; i < idxCount; i += 3) {
-                U32 triangleTemp[3] = {
+                const U32 triangleTemp[3] = {
                     indices[i + 0] + previousOffset,
                     indices[i + 1] + previousOffset,
                     indices[i + 2] + previousOffset

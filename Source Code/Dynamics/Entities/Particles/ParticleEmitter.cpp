@@ -42,10 +42,9 @@ ParticleEmitter::ParticleEmitter(GFXDevice& context, ResourceCache* parentCache,
                 to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS) | to_base(ComponentType::RENDERING)),
       _context(context)
 {
-    for (U8 i = 0; i < s_MaxPlayerBuffers; ++i) {
-        for (U8 j = 0; j < to_base(RenderStage::COUNT); ++j) {
+    for (U8 i = 0u; i < s_MaxPlayerBuffers; ++i) {
+        for (U8 j = 0u; j < to_base(RenderStage::COUNT); ++j) {
             _particleGPUBuffers[i][j] = _context.newGVD(g_particleBufferSizeFactor);
-            _particleGPUBuffers[i][j]->renderIndirect(true);
         }
     }
 

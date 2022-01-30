@@ -438,6 +438,8 @@ U8 SSAOPreRenderOperator::sampleCount() const noexcept {
 }
 
 void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::CommandBuffer& bufferInOut) {
+    PreRenderOperator::prepare(idx, bufferInOut);
+
     if (_stateChanged && !_enabled) {
         RTClearDescriptor clearDescriptor = {};
         clearDescriptor._clearDepth = true;
