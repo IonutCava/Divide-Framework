@@ -114,8 +114,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
                            bool asyncLoad);
     virtual ~ShaderProgram();
 
-    /// Is the shader ready for drawing?
-    [[nodiscard]] virtual bool isValid() const = 0;
     bool load() override;
     bool unload() override;
 

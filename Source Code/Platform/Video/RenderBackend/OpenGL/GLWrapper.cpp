@@ -504,6 +504,7 @@ bool GL_API::InitGLSW(Configuration& config) {
     AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_BONE_INDICE "              + Util::to_string(to_base(AttribLocation::BONE_INDICE)));
     AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_WIDTH "                    + Util::to_string(to_base(AttribLocation::WIDTH)));
     AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_GENERIC "                  + Util::to_string(to_base(AttribLocation::GENERIC)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define ATTRIB_FREE_START "               + Util::to_string(to_base(AttribLocation::COUNT) + 1u));
     AppendToShaderHeader(ShaderType::FRAGMENT, "#define MAX_SHININESS "                   + Util::to_string(Material::MAX_SHININESS));
 
     for (U8 i = 0u; i < to_U8(ShadingMode::COUNT) + 1u; ++i) {
@@ -1006,7 +1007,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             const GFX::ComputeMipMapsCommand* crtCmd = commandBuffer.get<GFX::ComputeMipMapsCommand>(entry);
 
             if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
-                OPTICK_EVENT("GL: In-place computation");
+                OPTICK_EVENT("GL: In-place computation - Full");
                 GL_API::ComputeMipMaps(crtCmd->_texture->data()._textureHandle);
             } else {
                 OPTICK_EVENT("GL: View-based computation");
@@ -1049,7 +1050,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
                 if (!cacheHit)
                 {
-                    OPTICK_EVENT("GL: View cache miss");
+                    OPTICK_EVENT("GL: cache miss  - Image");
                     glTextureView(handle,
                                     GLUtil::glTextureTypeTable[to_base(view._targetType)],
                                     view._textureData._textureHandle,
@@ -1060,7 +1061,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                                     static_cast<GLuint>(view._layerRange.y));
                 }
 
-                OPTICK_EVENT("GL: In-place computation");
+                OPTICK_EVENT("GL: In-place computation - Image");
                 GL_API::ComputeMipMaps(handle);
                 s_textureViewCache.deallocate(handle, 3);
             }

@@ -14,7 +14,7 @@ ringCount = how many tessellated rings we want the terrain to use. We can define
 			If ringCount < #rings, the extra rings are ignored
 ring# = number of tiles per side of the "ring". See nVidia's DX11 Tessellated Terrain demo (i.e. the TileRing class)
 -->
-<tileSettings startWidth="0.1" ringCount="4" ring1="8" ring2="16" ring3="16" ring4 ="24" ring5="32" ring6="64"/>
+<tileSettings startWidth="0.25" ringCount="4" ring1="8" ring2="16" ring3="16" ring4 ="24" ring5="32" ring6="64"/>
 <!--
 min and max basically remap what 0 and 1 respectively mean in the heightmap
 -->

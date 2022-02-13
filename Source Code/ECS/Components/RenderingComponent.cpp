@@ -724,6 +724,8 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
 }
 
 void RenderingComponent::OnData(const ECS::CustomEvent& data) {
+    SGNComponent::OnData(data);
+
     switch (data._type) {
         case  ECS::CustomEvent::Type::TransformUpdated:
         {

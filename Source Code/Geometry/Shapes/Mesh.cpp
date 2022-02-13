@@ -21,24 +21,10 @@ Mesh::Mesh(GFXDevice& context,
     : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, ObjectType::MESH, 0),
       _animator(nullptr)
 {
-    _boundingBox.reset();
+    _boundingBox.set(-EPSILON_F32, EPSILON_F32);
+    setBounds(_boundingBox);
 }
-void Mesh::sceneUpdate(const U64 deltaTimeUS,
-                       SceneGraphNode* sgn,
-                       SceneState& sceneState) {
 
-    if (_recomputeBBQueued) {
-        _boundingBox.reset();
-        for (const auto& subMesh : _subMeshList) {
-            _boundingBox.add(subMesh._mesh->getBounds());
-        }
-
-        setBounds(_boundingBox);
-        _recomputeBBQueued = false;
-    }
-
-    return Object3D::sceneUpdate(deltaTimeUS, sgn, sceneState);
-}
 
 void Mesh::addSubMesh(const SubMesh_ptr& subMesh, const mat4<F32>& localTransform) {
     // Hold a reference to the SubMesh by ID
@@ -48,7 +34,6 @@ void Mesh::addSubMesh(const SubMesh_ptr& subMesh, const mat4<F32>& localTransfor
 
 void Mesh::setNodeData(const MeshNodeData& nodeStructure) {
     _nodeStructure = nodeStructure;
-    queueRecomputeBB();
 }
 
 void Mesh::setMaterialTpl(const Material_ptr& material) {
@@ -106,7 +91,6 @@ void Mesh::processNode(SceneGraphNode* parentNode, const MeshNodeData& node) {
         tempNodeDescriptor._instanceCount = parentNode->instanceCount();
         tempNodeDescriptor._name = node._name;
         tempNodeDescriptor._componentMask = to_base(ComponentType::TRANSFORM) |
-                                            to_base(ComponentType::BOUNDS) |
                                             to_base(ComponentType::NETWORKING);
         for (const MeshNodeData& it : node._children) {
             SceneGraphNode* targetSGN = parentNode;

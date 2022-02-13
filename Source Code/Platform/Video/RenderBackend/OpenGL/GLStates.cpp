@@ -14,7 +14,7 @@ GLuint GL_API::s_UBOffsetAlignment = 0u;
 GLuint GL_API::s_UBMaxSize = 0u;
 GLuint GL_API::s_SSBOffsetAlignment = 0u;
 GLuint GL_API::s_SSBMaxSize = 0u;
-GLuint GL_API::s_dummyVAO = 0u;
+GLuint GL_API::s_dummyVAO = GLUtil::k_invalidObjectID;
 GLuint GL_API::s_maxTextureUnits = 0;
 GLuint GL_API::s_maxAtomicBufferBindingIndices = 0u;
 GLuint GL_API::s_maxAttribBindings = 0u;
@@ -33,7 +33,6 @@ vector<GL_API::ResidentTexture> GL_API::s_residentTextures;
 
 SharedMutex GL_API::s_samplerMapLock;
 GL_API::SamplerObjectMap GL_API::s_samplerMap;
-GLUtil::glVAOPool GL_API::s_vaoPool;
 glHardwareQueryPool* GL_API::s_hardwareQueryPool = nullptr;
 
 GLStateTracker& GL_API::GetStateTracker() noexcept {
@@ -113,8 +112,8 @@ bool GL_API::DeleteBuffers(const GLuint count, GLuint* buffers) {
 }
 
 bool GL_API::DeleteVAOs(const GLuint count, GLuint* vaos) {
-    if (count > 0 && vaos != nullptr) {
-        for (GLuint i = 0; i < count; ++i) {
+    if (count > 0u && vaos != nullptr) {
+        for (GLuint i = 0u; i < count; ++i) {
             if (GetStateTracker()._activeVAOID == vaos[i]) {
                 GetStateTracker()._activeVAOID = GLUtil::k_invalidObjectID;
                 break;
@@ -159,20 +158,6 @@ bool GL_API::DeleteShaderPrograms(const GLuint count, GLuint* programs) {
     return false;
 }
 
-bool GL_API::DeleteShaderPipelines(const GLuint count, GLuint* programPipelines) {
-    if (count > 0 && programPipelines != nullptr) {
-        for (GLuint i = 0; i < count; ++i) {
-            if (GetStateTracker()._activeShaderPipeline == programPipelines[i]) {
-                GetStateTracker().setActiveShaderPipeline(0u);
-            }
-        }
-
-        glDeleteProgramPipelines(count, programPipelines);
-        memset(programPipelines, 0, count * sizeof(GLuint));
-        return true;
-    }
-    return false;
-}
 
 bool GL_API::DeleteTextures(const GLuint count, GLuint* textures, const TextureType texType) {
     if (count > 0 && textures != nullptr) {

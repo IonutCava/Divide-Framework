@@ -17,51 +17,6 @@ namespace Divide {
 
 namespace {
     constexpr U32 g_nodesPerCullingPartition = 32u;
-
-    [[nodiscard]] FORCE_INLINE bool isTransformNode(const SceneNodeType nodeType, const ObjectType objType) noexcept {
-        return nodeType == SceneNodeType::TYPE_TRANSFORM || 
-               nodeType == SceneNodeType::TYPE_TRIGGER || 
-               objType  == ObjectType::MESH;
-    }
-
-    // Return true if this node should be removed from a shadow pass
-    [[nodiscard]] bool doesNotCastShadows(const SceneGraphNode* node, const SceneNodeType sceneNodeType, const ObjectType objType) {
-        if (sceneNodeType == SceneNodeType::TYPE_SKY ||
-            sceneNodeType == SceneNodeType::TYPE_WATER ||
-            sceneNodeType == SceneNodeType::TYPE_INFINITEPLANE ||
-            objType       == ObjectType::DECAL)
-        {
-            return true;
-        }
-
-        const RenderingComponent* rComp = node->get<RenderingComponent>();
-        assert(rComp != nullptr);
-        return !rComp->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS);
-    }
-
-    [[nodiscard]] bool shouldCullNode(const RenderStage stage, const SceneGraphNode* node, bool& isTransformNodeOut) {
-        if (node->hasFlag(SceneGraphNode::Flags::VISIBILITY_LOCKED)) {
-            return false;
-        }
-
-        const SceneNodeType snType = node->getNode().type();
-        ObjectType objectType = ObjectType::COUNT;
-        if (snType == SceneNodeType::TYPE_OBJECT3D) {
-            objectType = node->getNode<Object3D>().getObjectType();
-        }
-
-        isTransformNodeOut = isTransformNode(snType, objectType);
-        if (!isTransformNodeOut) {
-            // only checks nodes and can return true for a shadow stage
-            if (stage == RenderStage::SHADOW && doesNotCastShadows(node, snType, objectType)) {
-                return true;
-            }
-
-            return false;
-        }
-
-        return true;
-    }
 }
 
 void RenderPassCuller::clear() noexcept {
@@ -157,73 +112,60 @@ VisibleNodeList<>& RenderPassCuller::frustumCull(const NodeCullParams& params, c
 void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, U8 recursionLevel, VisibleNodeList<>& nodes) const {
     OPTICK_EVENT();
 
-    // Early out for inactive nodes
-    if (currentNode->hasFlag(SceneGraphNode::Flags::ACTIVE)) {
-        FrustumCollision collisionResult = FrustumCollision::FRUSTUM_OUT;
-
-        const size_t guidCount = params._ignoredGUIDS.second;
-        if (guidCount > 0u) {
-            const I64 nodeGUID = currentNode->getGUID();
-            const I64* ignoredGUIDs = params._ignoredGUIDS.first;
-            for (size_t i = 0u; i < guidCount; ++i) {
-                if (nodeGUID == ignoredGUIDs[i]) {
-                    return;
-                }
-            }
-        }
-
-        // If it fails the culling test, stop
-        bool isTransformNode = false;
-        if (shouldCullNode(params._stage, currentNode, isTransformNode)) {
-            if (isTransformNode) {
-                collisionResult = FrustumCollision::FRUSTUM_INTERSECT;
-            } else {
+    // We can manually exclude nodes by GUID, so check that
+    if (params._ignoredGUIDS.second > 0u) {
+        // This is used, for example, by reflective nodes that should exclude themselves (mirrors, water, etc)
+        const I64 nodeGUID = currentNode->getGUID();
+        for (size_t i = 0u; i < params._ignoredGUIDS.second; ++i) {
+            if (nodeGUID == params._ignoredGUIDS.first[i]) {
                 return;
             }
         }
+    }
 
-        // Internal node cull (check against camera frustum and all that ...)
-        F32 distanceSqToCamera = 0.0f;
-        if (isTransformNode || !Attorney::SceneGraphNodeRenderPassCuller::cullNode(currentNode, params, cullFlags, collisionResult, distanceSqToCamera)) {
-            if (!isTransformNode) {
-                VisibleNode node;
-                {
-                    node._node = currentNode;
-                    node._distanceToCameraSq = distanceSqToCamera;
-                }
-                nodes.append(node);
-            }
+    // Internal node cull (check against camera frustum and all that ...)
+    F32 distanceSqToCamera = 0.0f;
+    const FrustumCollision collisionResult = Attorney::SceneGraphNodeRenderPassCuller::cullNode(currentNode, params, cullFlags, distanceSqToCamera);
+    if (collisionResult != FrustumCollision::FRUSTUM_OUT) {
+        if (!SceneGraphNode::IsContainerNode(*currentNode)) {
+            // Only add non-container nodes to the visible list. Otherwise, proceed and check children
+            nodes.append({currentNode, distanceSqToCamera});
+        }
 
-            // Parent node intersects the view, so check children
-            if (collisionResult == FrustumCollision::FRUSTUM_INTERSECT) {
-                SceneGraphNode::ChildContainer& children = currentNode->getChildren();
+        // Parent node intersects the view, so check children
+        if (collisionResult == FrustumCollision::FRUSTUM_INTERSECT) {
+            SceneGraphNode::ChildContainer& children = currentNode->getChildren();
 
-                ParallelForDescriptor descriptor = {};
-                descriptor._iterCount = children._count.load();
+            ParallelForDescriptor descriptor = {};
+            descriptor._iterCount = children._count.load();
 
-                if (descriptor._iterCount > 0u) {
-                    SharedLock<SharedMutex> r_lock(children._lock);
+            if (descriptor._iterCount > 0u) {
+                SharedLock<SharedMutex> r_lock(children._lock);
 
-                    if (descriptor._iterCount > g_nodesPerCullingPartition * 2) {
-                        descriptor._partitionSize = g_nodesPerCullingPartition;
-                        descriptor._priority = recursionLevel < 2 ? TaskPriority::DONT_CARE : TaskPriority::REALTIME;
-                        descriptor._useCurrentThread = true;
-                        descriptor._cbk = [&](const Task*, const U32 start, const U32 end) {
-                            for (U32 i = start; i < end; ++i) {
-                                frustumCullNode(children._data[i], params, cullFlags, recursionLevel + 1, nodes);
-                            }
-                        };
-                        parallel_for(currentNode->context(), descriptor);
-                    } else {
-                        for (U32 i = 0u; i < descriptor._iterCount; ++i) {
+                if (descriptor._iterCount > g_nodesPerCullingPartition * 2) {
+                    descriptor._partitionSize = g_nodesPerCullingPartition;
+                    descriptor._priority = recursionLevel < 2 ? TaskPriority::DONT_CARE : TaskPriority::REALTIME;
+                    descriptor._useCurrentThread = true;
+                    descriptor._cbk = [&](const Task*, const U32 start, const U32 end) {
+                        for (U32 i = start; i < end; ++i) {
                             frustumCullNode(children._data[i], params, cullFlags, recursionLevel + 1, nodes);
-                        };
-                    }
+                        }
+                    };
+                    parallel_for(currentNode->context(), descriptor);
+                } else {
+                    for (U32 i = 0u; i < descriptor._iterCount; ++i) {
+                        frustumCullNode(children._data[i], params, cullFlags, recursionLevel + 1, nodes);
+                    };
                 }
-            } else {
-                // All nodes are in view entirely
-                addAllChildren(currentNode, params, cullFlags, nodes);
             }
+        } else {
+            // All nodes are in view entirely
+            U16 quickCullFlags = cullFlags; // Parent is already in frustum, so no need to check the children
+            ClearBit(quickCullFlags, to_base(CullOptions::CULL_AGAINST_CLIPPING_PLANES));
+            ClearBit(quickCullFlags, to_base(CullOptions::CULL_AGAINST_FRUSTUM));
+            NodeCullParams nodeChildParams = params;
+            nodeChildParams._skipBoundsChecking = true;
+            addAllChildren(currentNode, nodeChildParams, quickCullFlags, nodes);
         }
     }
 }
@@ -232,33 +174,29 @@ void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const N
     OPTICK_EVENT();
 
     const SceneGraphNode::ChildContainer& children = currentNode->getChildren();
-    SharedLock<SharedMutex> r_lock(children._lock);
+    U32 childCount = children._count.load();
 
-    const U32 childCount = children._count.load();
+    if (childCount == 0u) {
+        return;
+    }
+
+    SharedLock<SharedMutex> r_lock(children._lock);
+    childCount = children._count.load(); //double check
     for (U32 i = 0u; i < childCount; ++i) {
         SceneGraphNode* child = children._data[i];
- 
-        if (!child->hasFlag(SceneGraphNode::Flags::ACTIVE)) {
-            continue;
+
+        bool visible = false;
+        if (!SceneGraphNode::IsContainerNode(*child)) {
+            F32 distanceSqToCamera = std::numeric_limits<F32>::max();
+            if (Attorney::SceneGraphNodeRenderPassCuller::cullNode(child, params, cullFlags, distanceSqToCamera) != FrustumCollision::FRUSTUM_OUT) {
+                nodes.append({child, distanceSqToCamera });
+                visible = true;
+            }
+        } else {
+            visible = Attorney::SceneGraphNodeRenderPassCuller::cullNode(child, params, cullFlags) != FrustumCollision::FRUSTUM_OUT;
         }
 
-        bool isTransformNode = false;
-        if (!shouldCullNode(params._stage, child, isTransformNode)) {
-            F32 distanceSqToCamera = std::numeric_limits<F32>::max();
-            FrustumCollision collisionResult = FrustumCollision::FRUSTUM_OUT;
-            U16 quickCullFlags = cullFlags;
-            // Parent is already in frustum, so no need to check the children
-            ClearBit(quickCullFlags, to_base(CullOptions::CULL_AGAINST_CLIPPING_PLANES));
-            ClearBit(quickCullFlags, to_base(CullOptions::CULL_AGAINST_FRUSTUM));
-            if (!Attorney::SceneGraphNodeRenderPassCuller::cullNode(child, params, cullFlags, collisionResult, distanceSqToCamera)) {
-                VisibleNode node = {};
-                node._node = child;
-                node._distanceToCameraSq = distanceSqToCamera;
-                nodes.append(node);
-
-                addAllChildren(child, params, cullFlags, nodes);
-            }
-        } else if (isTransformNode) {
+        if (visible) {
             addAllChildren(child, params, cullFlags, nodes);
         }
     }
@@ -270,10 +208,8 @@ void RenderPassCuller::frustumCull(const NodeCullParams& params, const U16 cullF
     nodesOut.reset();
 
     F32 distanceSqToCamera = std::numeric_limits<F32>::max();
-    FrustumCollision collisionResult = FrustumCollision::FRUSTUM_OUT;
     for (SceneGraphNode* node : nodes) {
-        // Internal node cull (check against camera frustum and all that ...)
-        if (!Attorney::SceneGraphNodeRenderPassCuller::cullNode(node, params, cullFlags, collisionResult, distanceSqToCamera)) {
+        if (Attorney::SceneGraphNodeRenderPassCuller::cullNode(node, params, cullFlags, distanceSqToCamera) != FrustumCollision::FRUSTUM_OUT) {
             nodesOut.append({ node, distanceSqToCamera });
         }
     }

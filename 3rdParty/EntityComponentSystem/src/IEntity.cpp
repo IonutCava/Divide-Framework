@@ -10,10 +10,11 @@
 */
 
 #include "IEntity.h"
+#include "ComponentManager.h"
 
 namespace ECS
 {
-	std::mutex IEntity::s_ComponentManagerLock;
+	std::shared_mutex IEntity::s_ComponentManagerLock;
 
 	DEFINE_STATIC_LOGGER(IEntity, "Entity")
 		
@@ -39,5 +40,17 @@ namespace ECS
 		}
 
 		this->m_Active = active;
+	}
+
+	void IEntity::RemoveAllComponents()
+	{
+		std::scoped_lock<std::shared_mutex> r_lock(s_ComponentManagerLock);
+		this->m_ComponentManagerInstance->RemoveAllComponents(this->m_EntityID);
+	}
+
+	void IEntity::PassDataToAllComponents(const ECS::CustomEvent& evt)
+	{
+		std::shared_lock<std::shared_mutex> r_lock(s_ComponentManagerLock);
+		this->m_ComponentManagerInstance->PassDataToAllComponents(this->m_EntityID, evt);
 	}
 }

@@ -18,6 +18,8 @@ robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Buil
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/release/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 goto run_Common
 
 :run_Profile
@@ -35,6 +37,8 @@ robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Buil
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/profile/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 goto run_Common
 
 :run_Debug
@@ -52,6 +56,8 @@ robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXCommon_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXCooking_64.dll /NP /NJH /NJS
 robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXFoundation_64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXDevice64.dll /NP /NJH /NJS
+robocopy physx4/install/vc15win64/PhysX/bin/win.x86_64.vc142.mt/debug/ ../Build/ PhysXGpu_64.dll /NP /NJH /NJS
 goto run_Common
 
 :run_Common

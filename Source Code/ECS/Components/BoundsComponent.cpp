@@ -149,6 +149,8 @@ void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool r
 }
 
 void BoundsComponent::OnData(const ECS::CustomEvent& data) {
+    SGNComponent::OnData(data);
+
     if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
         flagBoundingBoxDirty(data._flag, true);
     }
@@ -160,35 +162,38 @@ void BoundsComponent::setRefBoundingBox(const BoundingBox& nodeBounds) noexcept 
     _transformUpdatedMask.store(to_base(TransformType::ALL));
 }
 
-const BoundingBox& BoundsComponent::updateAndGetBoundingBox() {
+void BoundsComponent::updateBoundingBoxTransform() {
     OPTICK_EVENT();
 
-    const U32 mask = _transformUpdatedMask.exchange(0u);
-    if (mask == 0u) {
-        // already clean
-        return _boundingBox;
+    if (_transformUpdatedMask == 0u) {
+        return;
     }
-    {
-        const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
-        SharedLock<SharedMutex> w_lock(children._lock);
-        const U32 childCount = children._count;
-        for (U32 i = 0u; i < childCount; ++i) {
-            children._data[i]->get<BoundsComponent>()->updateAndGetBoundingBox();
-        }
-    }
+
     const mat4<F32> mat = _parentSGN->get<TransformComponent>()->getWorldMatrix();
     _boundingBox.transform(_refBoundingBox.getMin(), _refBoundingBox.getMax(), mat);
+}
 
+void BoundsComponent::appendChildBBs() {
+    OPTICK_EVENT();
+
+    if (_transformUpdatedMask.exchange(0u) == 0u) {
+        return;
+    }
+
+    const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
+
+    SharedLock<SharedMutex> w_lock(children._lock);
+    const U32 childCount = children._count;
+    for (U32 i = 0u; i < childCount; ++i) {
+        BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
+        if (bComp) {
+            // This will also clear our transform flag so subsequent calls will be fast
+            bComp->appendChildBBs();
+            _boundingBox.add(bComp->getBoundingBox());
+        }
+    }
     _boundingSphere.fromBoundingBox(_boundingBox);
     _obbDirty.store(true);
-
-    _parentSGN->SendEvent(
-    {
-        ECS::CustomEvent::Type::BoundsUpdated,
-        this,
-    });
-
-    return _boundingBox;
 }
 
 const OBB& BoundsComponent::getOBB() {

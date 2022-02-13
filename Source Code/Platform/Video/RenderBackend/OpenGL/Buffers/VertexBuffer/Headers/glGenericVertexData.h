@@ -111,7 +111,7 @@ class glGenericVertexData final : public GenericVertexData {
     vector<U32> _instanceDivisor;
     GLuint _indexBuffer = 0u;
     GLuint _indexBufferSize = 0u;
-    GLuint _vertexArray = 0u;
+    GLuint _vertexArray = GLUtil::k_invalidObjectID;
     GLuint _lastDrawCount = 0u;
     GLuint _lastIndexCount = 0u;
     GLuint _lastFirstIndex = 0u;

@@ -62,6 +62,7 @@ namespace Input {
 enum class TaskPoolType : U8 {
     HIGH_PRIORITY = 0,
     LOW_PRIORITY,
+    RENDER_PASS,
     COUNT
 };
 
@@ -95,7 +96,7 @@ class PlatformContext {
     void endFrame(U32 componentMask = to_base(SystemComponentType::ALL));
 
     void beginFrame(const SystemComponentType component) { beginFrame(to_base(component)); }
-    void idle(const SystemComponentType component) { idle(to_base(component)); }
+    void idle(const SystemComponentType component) { idle(false, to_base(component)); }
     void endFrame(const SystemComponentType component) { endFrame(to_base(component)); }
 
     void terminate();

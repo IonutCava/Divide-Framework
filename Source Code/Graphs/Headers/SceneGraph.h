@@ -134,6 +134,7 @@ class SceneGraph final : NonCopyable,
     void onNodeDestroy(SceneGraphNode* oldNode);
     void onNodeAdd(SceneGraphNode* newNode);
     void onNodeUpdated(const SceneGraphNode& node);
+    void onNodeSpatialChange(const SceneGraphNode& node);
 
     bool frameStarted(const FrameEvent& evt) override;
     bool frameEnded(const FrameEvent& evt) override;
@@ -154,6 +155,7 @@ class SceneGraph final : NonCopyable,
     std::array<vector<SceneGraphNode*>, to_base(SceneNodeType::COUNT)> _nodesByType;
 
     mutable Mutex _nodeCreateMutex;
+    mutable SharedMutex _nodesByTypeLock;
     mutable SharedMutex _pendingDeletionLock;
     hashMap<SceneGraphNode*, vector<size_t>> _pendingDeletion;
 };
@@ -174,6 +176,10 @@ class SceneGraphSGN {
 
     static void onNodeShaderReady(SceneGraph* sceneGraph, const SceneGraphNode& node) {
         sceneGraph->onNodeUpdated(node);
+    }
+
+    static void onNodeSpatialChange(SceneGraph* sceneGraph, const SceneGraphNode& node) {
+        sceneGraph->onNodeSpatialChange(node);
     }
 
     friend class Divide::SceneGraphNode;

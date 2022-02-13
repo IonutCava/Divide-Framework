@@ -44,7 +44,7 @@ namespace Divide {
 
         for (U32 idx = 0u; idx < threadCount; ++idx) {
             _threads.emplace_back(
-            [&]{
+            [&, idx]{
                 const std::thread::id threadID = std::this_thread::get_id();
                 _parent.onThreadCreate(idx, threadID);
                 while (_isRunning) {

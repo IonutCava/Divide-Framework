@@ -38,8 +38,6 @@ namespace Divide {
     template<class T, class U>
     ECSSystem<T, U>::ECSSystem(ECS::ECSEngine& engine)
         : _engine(engine)
-        , _compManager(engine.GetComponentManager())
-        , _container(_compManager->GetComponentContainer<U>())
     {
         _serializer._parent = this;
         _componentCache.reserve(Config::MAX_VISIBLE_NODES);
@@ -62,13 +60,14 @@ namespace Divide {
     void ECSSystem<T, U>::PreUpdate(const F32 dt) {
         OPTICK_EVENT();
 
-        const size_t compCount = _container->size();
+        const auto container = _engine.GetComponentManager()->GetComponentContainer<U>();
+        const size_t compCount = container->size();
         // Keep memory in order to avoid mid-frame allocs
         if (_componentCache.size() < compCount) {
             _componentCache.resize(compCount);
         }
 
-        auto iterBegin = _container->begin();
+        auto iterBegin = container->begin();
         for (size_t idx = 0u; idx < compCount; ++idx) {
             _componentCache[idx] = &*iterBegin;
             ++iterBegin;

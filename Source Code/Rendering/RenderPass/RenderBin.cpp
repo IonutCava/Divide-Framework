@@ -61,13 +61,6 @@ void RenderBin::sort(const RenderingOrder renderOrder) {
                             return a._distanceToCameraSq < b._distanceToCameraSq;
                         });
         } break;
-        case RenderingOrder::WATER_FIRST: {
-            eastl::sort(begin(_renderBinStack),
-                        binEndIt,
-                        [](const RenderBinItem& a, const RenderBinItem&) noexcept -> bool {
-                            return a._renderable->parentSGN()->getNode().type() == SceneNodeType::TYPE_WATER;
-                        });
-        } break;
         case RenderingOrder::NONE: {
             // no need to sort
         } break;

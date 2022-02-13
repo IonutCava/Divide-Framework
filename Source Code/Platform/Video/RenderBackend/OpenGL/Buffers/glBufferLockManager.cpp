@@ -74,7 +74,7 @@ bool glBufferLockManager::waitForLockedRange(size_t lockBeginBytes,
                 GL_API::RegisterSyncDelete(lock._syncObj);
             } break;
             case BufferLockState::ERROR: {
-                //DebugBreak();
+                //DIVIDE_UNEXPECTED_CALL();
                 // Something is holding OpenGL in a busy state. Trace down the offending calls and surround them
                 // by a DriverBusy(true/false) pair
             } break;

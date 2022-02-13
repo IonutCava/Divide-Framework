@@ -70,9 +70,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers\glGenericVertexData.h">
       <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers\glVertexArray.h">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Textures\Headers\glSamplerObject.h">
       <Filter>Video\RenderBackend\OpenGL\Textures\Headers</Filter>
     </ClInclude>
@@ -194,9 +191,6 @@
       <Filter>Video\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers\glVAOCache.h">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers\glVAOPool.h">
       <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Headers\PlatformRuntime.h">
@@ -396,9 +390,6 @@
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\glGenericVertexData.cpp">
       <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer</Filter>
     </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\glVertexArray.cpp">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer</Filter>
-    </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\glBufferLockManager.cpp">
       <Filter>Video\RenderBackend\OpenGL\Buffers</Filter>
     </ClCompile>
@@ -507,9 +498,6 @@
       <Filter>File</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\glVAOCache.cpp">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\glVAOPool.cpp">
       <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\PlatformRuntime.cpp" />

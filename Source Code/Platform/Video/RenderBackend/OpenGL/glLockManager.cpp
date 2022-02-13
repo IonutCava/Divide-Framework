@@ -44,7 +44,6 @@ bool glLockManager::Wait(const GLsync syncObj, const bool blockClient, const boo
     OPTICK_EVENT();
     OPTICK_TAG("Blocking", blockClient);
     OPTICK_TAG("QuickCheck", quickCheck);
-    OPTICK_TAG("RetryCount", retryCount);
 
     if (!blockClient) {
         glWaitSync(syncObj, 0, GL_TIMEOUT_IGNORED);

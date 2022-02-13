@@ -111,8 +111,9 @@ void InfinitePlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, Scen
     TransformComponent* tComp = sgn->get<TransformComponent>();
 
     const vec3<F32>& newEye = sceneState.parentScene().playerCamera()->getEye();
-
-    tComp->setPosition(newEye.x, tComp->getWorldPosition().y, newEye.z);
+    if (newEye.xz().distanceSquared(tComp->getWorldPosition().xz()) > SQUARED(2)) {
+        tComp->setPosition(newEye.x, tComp->getWorldPosition().y, newEye.z);
+    }
 }
 
 void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {

@@ -84,6 +84,10 @@ void TaskPool::onThreadDestroy([[maybe_unused]] const std::thread::id& threadID)
 }
 
 bool TaskPool::enqueue(Task& task, const TaskPriority priority, const U32 taskIndex, const DELEGATE<void>& onCompletionFunction) {
+    if (TaskPool::USE_OPTICK_PROFILER) {
+        OPTICK_EVENT();
+    }
+
     const bool isRealtime = priority == TaskPriority::REALTIME;
     const bool hasOnCompletionFunction = !isRealtime && onCompletionFunction;
 
@@ -138,11 +142,20 @@ void TaskPool::waitForTask(const Task& task) {
         OPTICK_EVENT();
     }
 
-    UniqueLock<Mutex> lock(_taskFinishedMutex);
-    _taskFinishedCV.wait(lock, [&task]() noexcept { return Finished(task); });
+    using namespace std::chrono_literals;
+    while (!Finished(task)) {
+        threadWaiting();
+
+        UniqueLock<Mutex> lock(_taskFinishedMutex);
+        _taskFinishedCV.wait_for(lock, 5ms, [&task]() noexcept { return Finished(task); });
+    }
 }
 
 size_t TaskPool::flushCallbackQueue() {
+    if (TaskPool::USE_OPTICK_PROFILER) {
+        OPTICK_EVENT();
+    }
+
     size_t ret = 0u;
 
     if (_threadedCallbackBuffer.size_approx() > 0u) {
@@ -171,6 +184,10 @@ size_t TaskPool::flushCallbackQueue() {
 }
 
 void TaskPool::waitForAllTasks(const bool flushCallbacks) {
+    if (TaskPool::USE_OPTICK_PROFILER) {
+        OPTICK_EVENT();
+    }
+
     if (type() != TaskPoolType::COUNT) {
         {
             UniqueLock<Mutex> lock(_taskFinishedMutex);
@@ -184,6 +201,10 @@ void TaskPool::waitForAllTasks(const bool flushCallbacks) {
 }
 
 void TaskPool::taskCompleted(Task& task, const bool hasOnCompletionFunction) {
+    if (TaskPool::USE_OPTICK_PROFILER) {
+        OPTICK_EVENT();
+    }
+
     task._callback = {}; //<Needed to cleanup any stale resources (e.g. captured by lamdas)
     if (hasOnCompletionFunction) {
         _threadedCallbackBuffer.enqueue(task._id);
@@ -214,6 +235,10 @@ void TaskPool::taskCompleted(Task& task, const bool hasOnCompletionFunction) {
 }
 
 Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) noexcept {
+    if (TaskPool::USE_OPTICK_PROFILER) {
+        OPTICK_EVENT();
+    }
+
     if (parentTask != nullptr) {
         parentTask->_unfinishedJobs.fetch_add(1u);
     }
@@ -238,6 +263,10 @@ Task* TaskPool::AllocateTask(Task* parentTask, const bool allowedInIdle) noexcep
 }
 
 void TaskPool::threadWaiting(const bool forceExecute) {
+    if (TaskPool::USE_OPTICK_PROFILER) {
+        OPTICK_EVENT();
+    }
+
     if (!forceExecute && Runtime::isMainThread()) {
         flushCallbackQueue();
     } else {
@@ -250,6 +279,10 @@ void TaskPool::threadWaiting(const bool forceExecute) {
 }
 
 void TaskPool::waitAndJoin() const {
+    if (TaskPool::USE_OPTICK_PROFILER) {
+        OPTICK_EVENT();
+    }
+
     if (type() == TaskPoolType::TYPE_BLOCKING) {
         assert(_blockingPool != nullptr);
 
@@ -266,6 +299,10 @@ void TaskPool::waitAndJoin() const {
 }
 
 void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor) {
+    if (TaskPool::USE_OPTICK_PROFILER) {
+        OPTICK_EVENT();
+    }
+
     if (descriptor._iterCount == 0u) {
         return;
     }

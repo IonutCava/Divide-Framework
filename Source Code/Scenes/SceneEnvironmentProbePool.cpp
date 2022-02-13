@@ -288,6 +288,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         });
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ pipelineCalcLut });
 
+        Texture* brdfLutTexture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
         GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._images.add(Image
             {
                 SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get(),
@@ -304,6 +305,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::TEXTURE_FETCH);
 
+        GFX::EnqueueCommand<GFX::ComputeMipMapsCommand>(bufferInOut)->_texture = brdfLutTexture;
         s_lutTextureDirty = false;
     }
     {
@@ -624,16 +626,16 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
     }
 }
 
-void SceneEnvironmentProbePool::OnNodeUpdated(const SceneEnvironmentProbePool& probePool, const SceneGraphNode& node) noexcept {
+void SceneEnvironmentProbePool::onNodeUpdated(const SceneGraphNode& node) noexcept {
     const BoundingSphere& bSphere = node.get<BoundsComponent>()->getBoundingSphere();
-    probePool.lockProbeList();
-    const EnvironmentProbeList& probes = probePool.getLocked();
+    lockProbeList();
+    const EnvironmentProbeList& probes = getLocked();
     for (const auto& probe : probes) {
         if (probe->checkCollisionAndQueueUpdate(bSphere)) {
             NOP();
         }
     }
-    probePool.unlockProbeList();
+    unlockProbeList();
     if (node.getNode().type() == SceneNodeType::TYPE_SKY) {
         SkyLightNeedsRefresh(true);
     }

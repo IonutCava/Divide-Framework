@@ -485,6 +485,10 @@ class SceneGraph {
 
     static SceneEnvironmentProbePool* getEnvProbes(const Scene& scene) noexcept {
         return scene._envProbePool.get();
+    } 
+    
+    static LightPool* getLightPool(const Scene& scene) noexcept {
+        return scene.lightPool().get();
     }
 
     static void addSceneGraphToLoad(Scene& scene, const XML::SceneNode&& rootNode) { 

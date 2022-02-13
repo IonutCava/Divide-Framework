@@ -48,8 +48,8 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
 
         [[nodiscard]] const OBB& getOBB();
 
-        /*[[nodiscard]]*/ const BoundingBox& updateAndGetBoundingBox();
-
+        void updateBoundingBoxTransform();
+        void appendChildBBs();
         [[nodiscard]] FORCE_INLINE const bool isClean() const noexcept { return _transformUpdatedMask.load() == 0u; }
 
         PROPERTY_R(bool, showAABB, false);

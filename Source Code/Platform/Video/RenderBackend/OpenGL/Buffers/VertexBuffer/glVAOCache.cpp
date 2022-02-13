@@ -2,7 +2,7 @@
 
 #include "Headers/glVAOCache.h"
 #include "Utility/Headers/Localization.h"
-
+#include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 namespace Divide {
@@ -15,8 +15,8 @@ glVAOCache::~glVAOCache()
 
 void glVAOCache::clear() {
     for (VAOMap::value_type& value : _cache) {
-        if (value.second != 0) {
-            GL_API::s_vaoPool.deallocate(value.second);
+        if (value.second != GLUtil::k_invalidObjectID) {
+            GL_API::DeleteVAOs(1, &value.second);
         }
     }
     _cache.clear();
@@ -29,7 +29,9 @@ bool glVAOCache::getVAO(const AttribFlags& flags, GLuint& vaoOut) {
 }
 
 bool glVAOCache::getVAO(const AttribFlags& flags, GLuint& vaoOut, size_t& hashOut) {
-    vaoOut = 0;
+    DIVIDE_ASSERT(Runtime::isMainThread());
+
+    vaoOut = GLUtil::k_invalidObjectID;
 
     // Hash the received attributes
     hashOut = std::hash<AttribFlags>()(flags);
@@ -44,8 +46,8 @@ bool glVAOCache::getVAO(const AttribFlags& flags, GLuint& vaoOut, size_t& hashOu
     }
 
     // Otherwise allocate a new VAO and save it in the cache
-    vaoOut = GL_API::s_vaoPool.allocate();
-    assert(vaoOut != 0 && Locale::Get(_ID("ERROR_VAO_INIT")));
+    glCreateVertexArrays(1, &vaoOut);
+    assert(vaoOut != GLUtil::k_invalidObjectID && Locale::Get(_ID("ERROR_VAO_INIT")));
     insert(_cache, hashOut, vaoOut);
     return false;
 }

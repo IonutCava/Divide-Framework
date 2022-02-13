@@ -44,7 +44,7 @@ struct glVAOCache {
     void clear();
 
     // sets vaoOut to an existing or a new VAO that matches the specified attribute specification
-    // Returns true if we had a cache-HIT
+    // Returns true if we had a cache-HIT otherwise creates a new VAO and assigns newVaoLabel to the object
     [[nodiscard]] bool getVAO(const AttribFlags& flags, GLuint& vaoOut);
     [[nodiscard]] bool getVAO(const AttribFlags& flags, GLuint& vaoOut, size_t& hashOut);
 

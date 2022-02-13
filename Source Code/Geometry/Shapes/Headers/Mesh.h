@@ -98,9 +98,6 @@ class Mesh final : public Object3D {
     void postLoad(SceneGraphNode* sgn) override;
 
     void setMaterialTpl(const Material_ptr& material) override;
-    void sceneUpdate(U64 deltaTimeUS,
-                     SceneGraphNode* sgn,
-                     SceneState& sceneState) override;
 
     void setAnimator(const std::shared_ptr<SceneAnimator>& animator) noexcept {
         assert(getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED));
@@ -112,8 +109,6 @@ class Mesh final : public Object3D {
         return _animator; 
     }
 
-    void queueRecomputeBB() noexcept { _recomputeBBQueued = true; }
-
    protected:
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Mesh"; }
     void addSubMesh(const SubMesh_ptr& subMesh, const mat4<F32>& localTransform);
@@ -123,7 +118,6 @@ class Mesh final : public Object3D {
 
    protected:
     bool _visibleToNetwork = true;
-    bool _recomputeBBQueued = true;
     U64 _lastTimeStamp = 0ull;
     /// Animation player to animate the mesh if necessary
     std::shared_ptr<SceneAnimator> _animator;

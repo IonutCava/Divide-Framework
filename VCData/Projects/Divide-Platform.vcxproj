@@ -90,8 +90,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\RenderTarget\Headers\glFramebuffer.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\ShaderBuffer\Headers\glUniformBuffer.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers\glGenericVertexData.h" />
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers\glVAOPool.h" />
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers\glVertexArray.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers\glVAOCache.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glHardwareQuery.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glHardwareQueryPool.h" />
@@ -187,8 +185,6 @@
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\RenderTarget\glFramebuffer.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\ShaderBuffer\glUniformBuffer.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\glGenericVertexData.cpp" />
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\glVAOPool.cpp" />
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\glVertexArray.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\glVAOCache.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLError.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glHardwareQuery.cpp" />

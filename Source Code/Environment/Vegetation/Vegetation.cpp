@@ -617,7 +617,7 @@ void Vegetation::uploadVegetationData(SceneGraphNode* sgn) {
             rComp->occlusionCull(false);
         }
 
-        const BoundingBox aabb = _treeParentNode->get<BoundsComponent>()->updateAndGetBoundingBox();
+        const BoundingBox aabb = _treeParentNode->get<BoundsComponent>()->getBoundingBox();
         BoundingSphere bs;
         bs.fromBoundingBox(aabb);
 

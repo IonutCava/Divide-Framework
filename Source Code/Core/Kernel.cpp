@@ -35,9 +35,11 @@
 namespace Divide {
 
 namespace {
-    constexpr U32 g_backupThreadPoolSize = 2u;
+    constexpr U8 g_minimumGeneralPurposeThreadCount = 8u;
+    constexpr U8 g_backupThreadPoolSize = 2u;
+    constexpr U8 g_renderThreadPoolSize = to_base(RenderStage::COUNT);
     constexpr U32 g_printTimerBase = 15u;
-
+    constexpr U8  g_warmupFrameCount = 8u;
     U32 g_printTimer = g_printTimerBase;
 
 };
@@ -162,7 +164,9 @@ void Kernel::idle(const bool fast) {
 }
 
 void Kernel::onLoop() {
-    if (!_timingData.keepAlive()) {
+    OPTICK_EVENT();
+
+    if (!keepAlive()) {
         // exiting the rendering loop will return us to the last control point
         _platformContext.app().mainLoopActive(false);
         if (!sceneManager()->saveActiveScene(true, false)) {
@@ -180,7 +184,8 @@ void Kernel::onLoop() {
     _platformContext.app().timer().update();
     {
         Time::ScopedTimer timer(_appLoopTimer);
-   
+
+        keepAlive(true);
         // Update time at every render loop
         _timingData.update(Time::Game::ElapsedMicroseconds());
         FrameEvent evt = {};
@@ -190,33 +195,37 @@ void Kernel::onLoop() {
         {
             Time::ScopedTimer timer3(_frameTimer);
             // Launch the FRAME_STARTED event
-            _timingData.keepAlive(frameListenerMgr().createAndProcessEvent(Time::Game::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_STARTED, evt));
-
-            const bool timeFrozen = _timingData.freezeLoopTime();
-
-            const U64 deltaTimeUSApp   = _timingData.currentTimeDeltaUS();
-            const U64 deltaTimeUSReal  = timeFrozen ? 0ULL : deltaTimeUSApp;
-            const U64 deltaTimeUSFixed = timeFrozen ? 0ULL : Time::SecondsToMicroseconds(1) / TICKS_PER_SECOND;
+            if (!frameListenerMgr().createAndProcessEvent(Time::Game::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_STARTED, evt)) {
+                keepAlive(false);
+            }
 
             // Process the current frame
-            _timingData.keepAlive(_timingData.keepAlive() && mainLoopScene(evt, deltaTimeUSFixed, deltaTimeUSReal, deltaTimeUSApp));
+            if (!mainLoopScene(evt)) {
+                keepAlive(false);
+            }
 
             // Launch the FRAME_PROCESS event (a.k.a. the frame processing has ended event)
-            _timingData.keepAlive(_timingData.keepAlive() && frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_PROCESS, evt));
+            if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_PROCESS, evt)) {
+                keepAlive(false);
+            }
         }
         _platformContext.endFrame();
 
         // Launch the FRAME_ENDED event (buffers have been swapped)
 
-        _timingData.keepAlive(_timingData.keepAlive() && frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_ENDED, evt));
+        if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_ENDED, evt)) {
+            keepAlive(false);
+        }
 
-        _timingData.keepAlive(_timingData.keepAlive() && !_platformContext.app().ShutdownRequested());
+        if (_platformContext.app().ShutdownRequested()) {
+            keepAlive(false);
+        }
     
         const ErrorCode err = _platformContext.app().errorCode();
 
         if (err != ErrorCode::NO_ERR) {
             Console::errorfn("Error detected: [ %s ]", getErrorCodeName(err));
-            _timingData.keepAlive(false);
+            keepAlive(false);
         }
     }
 
@@ -254,8 +263,8 @@ void Kernel::onLoop() {
             _platformContext.app().timer().getFrameRateAndTime(fps, frameTime);
             const Str256& activeSceneName = _sceneManager->getActiveScene().resourceName();
             constexpr const char* buildType = Config::Build::IS_DEBUG_BUILD ? "DEBUG" : Config::Build::IS_PROFILE_BUILD ? "PROFILE" : "RELEASE";
-            constexpr const char* titleString = "[%s] - %s - %s - %5.2f FPS - %3.2f ms - FrameIndex: %d";
-            window.title(titleString, buildType, originalTitle.c_str(), activeSceneName.c_str(), fps, frameTime, platformContext().gfx().frameCount());
+            constexpr const char* titleString = "[%s] - %s - %s - %5.2f FPS - %3.2f ms - FrameIndex: %d - Update Calls : %d - Alpha : %1.2f";
+            window.title(titleString, buildType, originalTitle.c_str(), activeSceneName.c_str(), fps, frameTime, platformContext().gfx().frameCount(), _timingData.updateLoops(), _timingData.alpha());
         }
     }
 
@@ -277,10 +286,7 @@ void Kernel::onLoop() {
     }
 }
 
-bool Kernel::mainLoopScene(FrameEvent& evt,
-                           U64 deltaTimeUSFixed, //Framerate independent deltaTime. Can be paused. (e.g. used by scene updates)
-                           U64 deltaTimeUSReal,  //Framerate dependent deltaTime. Can be paused. (e.g. used by physics)
-                           U64 deltaTimeUSApp)   //Real app delta time between frames. Can't be paused (e.g. used by editor)
+bool Kernel::mainLoopScene(FrameEvent& evt)
 {
     OPTICK_EVENT();
 
@@ -289,7 +295,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
         Time::ScopedTimer timer2(_cameraMgrTimer);
         // Update cameras. Always use app timing as pausing time would freeze the cameras in place
         // ToDo: add a speed slider in the editor -Ionut
-        Camera::update(deltaTimeUSApp);
+        Camera::update(_timingData.appTimeDeltaUS());
     }
 
     if (_platformContext.mainWindow().minimized()) {
@@ -300,23 +306,26 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
 
     {// We should pause physics simulations if needed, but the framerate dependency is handled by whatever 3rd party pfx library we are using
         Time::ScopedTimer timer2(_physicsProcessTimer);
-        _platformContext.pfx().process(deltaTimeUSReal);
+        _platformContext.pfx().process(_timingData.realTimeDeltaUS());
     }
     {
         Time::ScopedTimer timer2(_sceneUpdateTimer);
 
         const U8 playerCount = _sceneManager->getActivePlayerCount();
-        U8 loopCount = 0;
-        while (_timingData.runUpdateLoop()) {
+
+        _timingData.updateLoops(0u);
+
+        const U64 fixedTimestep = _timingData.fixedTimeStep();
+        while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US) {
             // Everything inside here should use fixed timesteps, apart from GFX updates which should use both!
             // Some things (e.g. tonemapping) need to resolve even if the simulation is paused (might not remain true in the future)
 
-            if (loopCount == 0) {
+            if (_timingData.updateLoops() == 0u) {
                 _sceneUpdateLoopTimer.start();
             }
-            _sceneManager->onStartUpdateLoop(loopCount);
+            _sceneManager->onStartUpdateLoop(_timingData.updateLoops());
 
-            _sceneManager->processGUI(deltaTimeUSFixed);
+            _sceneManager->processGUI(fixedTimestep);
 
             // Flush any pending threaded callbacks
             for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i) {
@@ -324,22 +333,22 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
             }
 
             // Update scene based on input
-            for (U8 i = 0; i < playerCount; ++i) {
-                _sceneManager->processInput(i, deltaTimeUSFixed);
+            for (U8 i = 0u; i < playerCount; ++i) {
+                _sceneManager->processInput(i, fixedTimestep);
             }
             // process all scene events
-            _sceneManager->processTasks(deltaTimeUSFixed);
+            _sceneManager->processTasks(fixedTimestep);
             // Update the scene state based on current time (e.g. animation matrices)
-            _sceneManager->updateSceneState(deltaTimeUSFixed);
+            _sceneManager->updateSceneState(fixedTimestep);
             // Update visual effect timers as well
-            Attorney::GFXDeviceKernel::update(_platformContext.gfx(), deltaTimeUSFixed, deltaTimeUSApp);
+            Attorney::GFXDeviceKernel::update(_platformContext.gfx(), fixedTimestep, _timingData.appTimeDeltaUS());
 
-            if (loopCount == 0) {
+            if (_timingData.updateLoops() == 0u) {
                 _sceneUpdateLoopTimer.stop();
             }
 
-            _timingData.endUpdateLoop(deltaTimeUSFixed, true);
-            ++loopCount;
+            _timingData.updateLoops(_timingData.updateLoops() + 1u);
+            _timingData.accumulator(_timingData.accumulator() - FIXED_UPDATE_RATE_US);
         }
     }
 
@@ -354,36 +363,32 @@ bool Kernel::mainLoopScene(FrameEvent& evt,
         }
     }
 
-    D64 interpolationFactor = 1.0;
-    if (!_timingData.freezeLoopTime()) {
-        interpolationFactor = static_cast<D64>(_timingData.currentTimeUS() + deltaTimeUSApp - _timingData.nextGameTickUS()) / deltaTimeUSApp;
-        CLAMP_01(interpolationFactor);
-    }
-
-    GFXDevice::FrameInterpolationFactor(interpolationFactor);
+    GFXDevice::FrameInterpolationFactor(_timingData.alpha());
     
     // Update windows and get input events
     SDLEventManager::pollEvents();
 
     WindowManager& winManager = _platformContext.app().windowManager();
-    winManager.update(deltaTimeUSApp);
+    winManager.update(_timingData.appTimeDeltaUS());
     {
         Time::ScopedTimer timer3(_physicsUpdateTimer);
         // Update physics
-        _platformContext.pfx().update(deltaTimeUSReal);
+        _platformContext.pfx().update(_timingData.realTimeDeltaUS());
     }
 
     // Update the graphical user interface
-    _platformContext.gui().update(deltaTimeUSReal);
+    _platformContext.gui().update(_timingData.realTimeDeltaUS());
 
     if_constexpr(Config::Build::ENABLE_EDITOR) {
-        _platformContext.editor().update(deltaTimeUSApp);
+        _platformContext.editor().update(_timingData.appTimeDeltaUS());
     }
 
     return presentToScreen(evt);
 }
 
 void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetViewports, const U8 count) {
+    OPTICK_EVENT();
+
     const I32 xOffset = mainViewport.x;
     const I32 yOffset = mainViewport.y;
     const I32 width   = mainViewport.z;
@@ -401,8 +406,6 @@ void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetVi
         targetViewports[1].set(xOffset, 0 + yOffset,          width, halfHeight);
         return;
     }
-
-    OPTICK_EVENT();
 
     // Basic idea (X - viewport):
     // Odd # of players | Even # of players
@@ -567,7 +570,9 @@ void Kernel::warmup() {
     Console::printfn(Locale::Get(_ID("START_RENDER_LOOP")));
 
     _timingData.freezeTime(true);
-    onLoop();
+    for (U8 i = 0u; i < g_warmupFrameCount; ++i) {
+        onLoop();
+    }
     _timingData.freezeTime(false);
 
     _timingData.update(Time::App::ElapsedMicroseconds());
@@ -602,9 +607,9 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     I32 threadCount = config.runtime.maxWorkerThreads;
     if (config.runtime.maxWorkerThreads < 0) {
-        threadCount = std::max(HardwareThreadCount(), to_U32(RenderStage::COUNT) + g_backupThreadPoolSize);
+        threadCount = HardwareThreadCount();
     }
-    totalThreadCount(threadCount);
+    totalThreadCount(std::max(threadCount, to_I32(g_renderThreadPoolSize) + g_backupThreadPoolSize + g_minimumGeneralPurposeThreadCount));
 
     // Create mem log file
     const Str256& mem = config.debug.memFile.c_str();
@@ -654,32 +659,39 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     if (initError != ErrorCode::NO_ERR) {
         return initError;
     }
-    std::atomic_size_t threadCounter = totalThreadCount();
-    assert(threadCounter.load() > g_backupThreadPoolSize);
+    { // Start thread pools
+        std::atomic_size_t threadCounter = totalThreadCount();
+        assert(threadCounter.load() > g_backupThreadPoolSize);
 
-    if (!_platformContext.taskPool(TaskPoolType::HIGH_PRIORITY).init(to_U32(totalThreadCount()) - g_backupThreadPoolSize,
-                                                                     TaskPool::TaskPoolType::TYPE_BLOCKING,
-                                                                     [this, &threadCounter](const std::thread::id& threadID) {
-                                                                         Attorney::PlatformContextKernel::onThreadCreated(platformContext(), threadID);
-                                                                         threadCounter.fetch_sub(1);
-                                                                     },
-                                                                     "DIVIDE_WORKER_THREAD_"))
-    {
-        return ErrorCode::CPU_NOT_SUPPORTED;
+        const auto initTaskPool = [&](const TaskPoolType taskPoolType, const U32 threadCount, const char* threadPrefix, const bool blocking = true)
+        {
+            const TaskPool::TaskPoolType poolType = blocking ? TaskPool::TaskPoolType::TYPE_BLOCKING : TaskPool::TaskPoolType::TYPE_LOCKFREE;
+            if (!_platformContext.taskPool(taskPoolType).init(threadCount, poolType, 
+                [this, &threadCounter](const std::thread::id& threadID) {
+                    Attorney::PlatformContextKernel::onThreadCreated(platformContext(), threadID);
+                    threadCounter.fetch_sub(1);
+                },
+                threadPrefix))
+            {
+                return ErrorCode::CPU_NOT_SUPPORTED;
+            }
+                return ErrorCode::NO_ERR;
+        };
+
+        initError = initTaskPool(TaskPoolType::HIGH_PRIORITY, to_U32(totalThreadCount()) - g_backupThreadPoolSize - g_renderThreadPoolSize, "DIVIDE_WORKER_THREAD_", true);
+        if (initError != ErrorCode::NO_ERR) {
+            return initError;
+        }
+        initError = initTaskPool(TaskPoolType::LOW_PRIORITY, to_U32(g_backupThreadPoolSize), "DIVIDE_BACKUP_THREAD_", true);
+        if (initError != ErrorCode::NO_ERR) {
+            return initError;
+        }
+        initError = initTaskPool(TaskPoolType::RENDER_PASS, to_U32(g_renderThreadPoolSize), "DIVIDE_RENDER_THREAD_", false);
+        if (initError != ErrorCode::NO_ERR) {
+            return initError;
+        }
+        WAIT_FOR_CONDITION(threadCounter.load() == 0);
     }
-
-    if (!_platformContext.taskPool(TaskPoolType::LOW_PRIORITY).init(g_backupThreadPoolSize,
-                                                                    TaskPool::TaskPoolType::TYPE_BLOCKING,
-                                                                    [this, &threadCounter](const std::thread::id& threadID) {
-                                                                        Attorney::PlatformContextKernel::onThreadCreated(platformContext(), threadID);
-                                                                        threadCounter.fetch_sub(1);
-                                                                    },
-                                                                    "DIVIDE_BACKUP_THREAD_"))
-    {
-        return ErrorCode::CPU_NOT_SUPPORTED;
-    }
-
-    WAIT_FOR_CONDITION(threadCounter.load() == 0);
 
     initError = _platformContext.gfx().postInitRenderingAPI(config.runtime.resolution);
     // If we could not initialize the graphics device, exit
@@ -698,10 +710,10 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     _inputConsumers[to_base(InputConsumerType::Scene)] = _sceneManager;
 
     // Add our needed app-wide render passes. RenderPassManager is responsible for deleting these!
-    _renderPassManager->addRenderPass("shadowPass",     0, RenderStage::SHADOW);
-    _renderPassManager->addRenderPass("reflectionPass", 1, RenderStage::REFLECTION, { 0 });
-    _renderPassManager->addRenderPass("refractionPass", 2, RenderStage::REFRACTION, { 0 });
-    _renderPassManager->addRenderPass("displayStage",   3, RenderStage::DISPLAY, { 1, 2}, true);
+    _renderPassManager->setRenderPass(RenderStage::SHADOW,     {   },  false);
+    _renderPassManager->setRenderPass(RenderStage::REFLECTION, { RenderStage::SHADOW },  false);
+    _renderPassManager->setRenderPass(RenderStage::REFRACTION, { RenderStage::SHADOW },  false);
+    _renderPassManager->setRenderPass(RenderStage::DISPLAY,    { RenderStage::REFLECTION, RenderStage::REFRACTION }, true);
 
     Console::printfn(Locale::Get(_ID("SCENE_ADD_DEFAULT_CAMERA")));
 

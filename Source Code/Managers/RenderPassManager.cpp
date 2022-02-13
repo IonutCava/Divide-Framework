@@ -100,7 +100,7 @@ void RenderPassManager::postInit() {
         }
     }
 
-    _renderPassCommandBuffer[0] = GFX::AllocateCommandBuffer();
+    _renderPassCommandBuffer[to_base(RenderStage::COUNT)] = GFX::AllocateCommandBuffer();
     _postRenderBuffer = GFX::AllocateCommandBuffer();
     _skyLightRenderBuffer = GFX::AllocateCommandBuffer();
 }
@@ -108,36 +108,50 @@ void RenderPassManager::postInit() {
 void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& pool, const CameraSnapshot& cameraSnapshot) {
     OPTICK_EVENT();
 
-    const SceneRenderState& sceneRenderState = *params._sceneRenderState;
-    const PlayerIndex player = params._playerPass;
+    const auto GetTaskPriority = [](const I8 renderStageIdx) noexcept {
+        if (renderStageIdx == 0) {
+            return TaskPriority::REALTIME;
+        }
 
-    for (U8 i = 0u; i < _renderPassCount; ++i)
-    { //All of our render passes should run in parallel
-        _renderTasks[i] = CreateTask(nullptr,
-            [player, pass = _renderPasses[i], buf = _renderPassCommandBuffer[i], &sceneRenderState](const Task& parentTask) {
-            OPTICK_EVENT("RenderPass: BuildCommandBuffer");
-            buf->clear(false);
-            pass->render(player, parentTask, sceneRenderState, *buf);
-            buf->batch();
-        },
-            false);
-        Start(*_renderTasks[i], pool, g_multiThreadedCommandGeneration ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
-    }
+        return g_multiThreadedCommandGeneration ? TaskPriority::DONT_CARE : TaskPriority::REALTIME;
+    }; 
+
     { //PostFX should be pretty fast
         PostFX& postFX = _context.getRenderer().postFX();
-        _renderTasks[_renderPassCount] = CreateTask(nullptr,
-            [player, buf = _renderPassCommandBuffer[_renderPassCount], sceneManager = parent().sceneManager(), &postFX, cameraSnapshot, timer = _postFxRenderTimer](const Task& /*parentTask*/) {
-                OPTICK_EVENT("PostFX: BuildCommandBuffer");
+        _renderTasks[to_base(RenderStage::COUNT)] = CreateTask(nullptr,
+                                                               [player = params._playerPass,
+                                                                buf = _renderPassCommandBuffer[to_base(RenderStage::COUNT)],
+                                                                sceneManager = parent().sceneManager(),
+                                                                &postFX,
+                                                                cameraSnapshot,
+                                                                timer = _postFxRenderTimer](const Task& /*parentTask*/)
+                                                                {
+                                                                    OPTICK_EVENT("PostFX: BuildCommandBuffer");
+                                                           
+                                                                    buf->clear(false);
+                                                           
+                                                                    Time::ScopedTimer time(*timer);
+                                                                    postFX.apply(player, cameraSnapshot, *buf);
+                                                           
+                                                                    buf->batch();
+                                                               },
+                                                               false);
+        Start(*_renderTasks[to_base(RenderStage::COUNT)], pool, GetTaskPriority(to_I8(RenderStage::COUNT)));
+    }
 
-                buf->clear(false);
+    for (I8 i = to_I8(RenderStage::COUNT) - 1; i >= 0; i--)
+    { //All of our render passes should run in parallel
+        _renderTasks[i] = CreateTask(nullptr,
+                                     [i, player = params._playerPass, pass = _renderPasses[i], buf = _renderPassCommandBuffer[i], sceneRenderState = params._sceneRenderState](const Task& parentTask) {
+                                        OPTICK_EVENT("RenderPass: BuildCommandBuffer");
+                                        OPTICK_TAG("Pass IDX", i);
+                                        buf->clear(false);
+                                        pass->render(player, parentTask, *sceneRenderState, *buf);
+                                        buf->batch();
+                                    },
+                                    false);
 
-                Time::ScopedTimer time(*timer);
-                postFX.apply(player, cameraSnapshot, *buf);
-
-                buf->batch();
-            },
-            false);
-        Start(*_renderTasks[_renderPassCount], pool, g_multiThreadedCommandGeneration ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
+        Start(*_renderTasks[i], pool, GetTaskPriority(i));
     }
 }
 
@@ -163,8 +177,6 @@ void RenderPassManager::render(const RenderParams& params) {
 
     activeLightPool.preRenderAllPasses(cam);
 
-    TaskPool& pool = context.taskPool(TaskPoolType::HIGH_PRIORITY);
-
     RenderPassExecutor::PreRender();
 
     {
@@ -174,10 +186,6 @@ void RenderPassManager::render(const RenderParams& params) {
            GFX::CommandBuffer& buf = *_skyLightRenderBuffer;
            buf.clear(false);
            SceneEnvironmentProbePool::UpdateSkyLight(gfx, buf);
-       }
-       {
-           Time::ScopedTimer timeAll(*_renderPassTimer);
-           startRenderTasks(params, pool, cam->snapshot());
        }
        GFX::CommandBuffer& buf = *_postRenderBuffer;
        buf.clear(false);
@@ -214,6 +222,11 @@ void RenderPassManager::render(const RenderParams& params) {
            }
        }
     }
+    TaskPool& pool = context.taskPool(TaskPoolType::RENDER_PASS);
+    {
+        Time::ScopedTimer timeAll(*_renderPassTimer);
+        startRenderTasks(params, pool, cam->snapshot());
+    }
     {
         OPTICK_EVENT("RenderPassManager::FlushCommandBuffers");
         Time::ScopedTimer timeCommands(*_flushCommandBufferTimer);
@@ -222,8 +235,10 @@ void RenderPassManager::render(const RenderParams& params) {
         static eastl::array<bool, MAX_RENDER_PASSES> s_completedPasses;
 
         s_completedPasses.fill(false);
-        const auto stillWorking = [passCount = _renderPassCount](const eastl::array<bool, MAX_RENDER_PASSES>& passes) noexcept {
-            for (U8 i = 0u; i < passCount; ++i) {
+
+        // std::any_of(begin, begin + stage_count, false);
+        const auto stillWorking = [](const eastl::array<bool, MAX_RENDER_PASSES>& passes) noexcept {
+            for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i) {
                 if (!passes[i]) {
                     return true;
                 }
@@ -240,8 +255,9 @@ void RenderPassManager::render(const RenderParams& params) {
 
                 // For every render pass
                 bool finished = true;
-                for (U8 i = 0u; i < _renderPassCount; ++i) {
+                for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i) {
                     if (s_completedPasses[i] || !Finished(*_renderTasks[i])) {
+                        _parent.platformContext().idle(PlatformContext::SystemComponentType::COUNT);
                         continue;
                     }
 
@@ -250,11 +266,11 @@ void RenderPassManager::render(const RenderParams& params) {
 
                     bool dependenciesRunning = false;
                     // For every dependency in the list try and see if it's running
-                    for (U8 j = 0u; j < _renderPassCount && !dependenciesRunning; ++j) {
+                    for (U8 j = 0u; j < to_base(RenderStage::COUNT) && !dependenciesRunning; ++j) {
                         // If it is running, we can't render yet
                         if (j != i && !s_completedPasses[j]) {
-                            for (const U8 dep : dependencies) {
-                                if (_renderPasses[j]->sortKey() == dep) {
+                            for (const RenderStage dep : dependencies) {
+                                if (_renderPasses[j]->stageFlag() == dep) {
                                     dependenciesRunning = true;
                                     break;
                                 }
@@ -293,8 +309,8 @@ void RenderPassManager::render(const RenderParams& params) {
     }
 
     // Flush the postFX stack
-    Wait(*_renderTasks[_renderPassCount], pool);
-    _context.flushCommandBuffer(*_renderPassCommandBuffer[_renderPassCount], false);
+    Wait(*_renderTasks[to_base(RenderStage::COUNT)], pool);
+    _context.flushCommandBuffer(*_renderPassCommandBuffer[to_base(RenderStage::COUNT)], false);
 
     RenderPassExecutor::PostRender();
     activeLightPool.postRenderAllPasses();
@@ -305,54 +321,28 @@ void RenderPassManager::render(const RenderParams& params) {
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
 }
 
-RenderPass& RenderPassManager::addRenderPass(const Str64& renderPassName,
-                                             const U8 orderKey,
-                                             const RenderStage renderStage,
-                                             const vector<U8>& dependencies,
-                                             const bool usePerformanceCounters) {
+RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage,
+                                             const vector<RenderStage>& dependencies,
+                                             const bool usePerformanceCounters)
+{
     DIVIDE_ASSERT(Runtime::isMainThread());
 
-    assert(!renderPassName.empty());
-    assert(_renderPassCount < MAX_RENDER_PASSES);
+    RenderPass* item = nullptr;
 
-    if (_executors[to_base(renderStage)] == nullptr) {
+    if (_executors[to_base(renderStage)] != nullptr) {
+        item = _renderPasses[to_base(renderStage)];
+        item->dependencies(dependencies);
+        item->performanceCounters(usePerformanceCounters);
+    } else {
         _executors[to_base(renderStage)] = std::make_unique<RenderPassExecutor>(*this, _context, renderStage);
+        item = MemoryManager_NEW RenderPass(*this, _context, renderStage, dependencies, usePerformanceCounters);
+        _renderPasses[to_base(renderStage)] = item;
+
+        //Secondary command buffers. Used in a threaded fashion. Always keep an extra buffer for PostFX
+        _renderPassCommandBuffer[to_base(renderStage)] = GFX::AllocateCommandBuffer();
     }
-
-    RenderPass* item = MemoryManager_NEW RenderPass(*this, _context, renderPassName, orderKey, renderStage, dependencies, usePerformanceCounters);
-    item->initBufferData();
-
-    _renderPasses[_renderPassCount] = item;
-    eastl::sort(begin(_renderPasses), 
-                begin(_renderPasses) + _renderPassCount,
-                [](RenderPass* a, RenderPass* b) noexcept { return a->sortKey() < b->sortKey(); });
-
-    //Secondary command buffers. Used in a threaded fashion. Always keep an extra buffer for PostFX
-    _renderPassCommandBuffer[++_renderPassCount] = GFX::AllocateCommandBuffer();
 
     return *item;
-}
-
-void RenderPassManager::removeRenderPass(const Str64& name) {
-    DIVIDE_ASSERT(Runtime::isMainThread());
-
-    for (U8 i = 0u; i < _renderPassCount; ++i) {
-        if (_renderPasses[i]->name().compare(name) != 0) {
-            continue;
-        }
-
-        GFX::DeallocateCommandBuffer(_renderPassCommandBuffer[_renderPassCount + 1u]);
-
-        MemoryManager::SAFE_DELETE(_renderPasses[i]);
-        std::copy(begin(_renderPasses) + i + 1u,
-                  end(_renderPasses),
-                  begin(_renderPasses) + i);
-        _renderPasses.back() = nullptr;
-
-        --_renderPassCount;
-
-        break;
-    }
 }
 
 U32 RenderPassManager::getLastTotalBinSize(const RenderStage renderStage) const noexcept {
@@ -360,15 +350,7 @@ U32 RenderPassManager::getLastTotalBinSize(const RenderStage renderStage) const 
 }
 
 const RenderPass& RenderPassManager::getPassForStage(const RenderStage renderStage) const noexcept {
-    for (U8 i = 0u; i < _renderPassCount; ++i) {
-        const RenderPass* pass = _renderPasses[i];
-        if (pass->stageFlag() == renderStage) {
-            return *pass;
-        }
-    }
-
-    DIVIDE_UNEXPECTED_CALL();
-    return *_renderPasses[0];
+    return *_renderPasses[to_base(renderStage)];
 }
 
 void RenderPassManager::doCustomPass(Camera* camera, const RenderPassParams params, GFX::CommandBuffer& bufferInOut) {

@@ -39,7 +39,6 @@
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/PixelBuffer/Headers/glPixelBuffer.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/VertexBuffer/Headers/glVAOPool.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferLockManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShader.h"
 #include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h"
@@ -164,7 +163,6 @@ public:
     static void PushDebugMessage(const char* message);
     static void PopDebugMessage();
 
-    static bool DeleteShaderPipelines(GLuint count, GLuint* programsPipelines);
     static bool DeleteShaderPrograms(GLuint count, GLuint * programs);
     static bool DeleteTextures(GLuint count, GLuint* textures, TextureType texType);
     static bool DeleteSamplers(GLuint count, GLuint* samplers);
@@ -249,8 +247,6 @@ private:
 
     static vector<ResidentTexture> s_residentTextures;
 
-    /// The main VAO pool. We use a pool to avoid multithreading issues with VAO states
-    static GLUtil::glVAOPool s_vaoPool;
     /// Used to render points (e.g. to render full screen quads with geometry shaders)
     static GLuint s_dummyVAO;
     /// Maximum anisotropic filtering level

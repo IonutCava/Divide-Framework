@@ -7,7 +7,6 @@
         <scale x="1" y="1" z="1"/>
     </Transform>
 </TRANSFORM>
-<BOUNDS/>
 <NETWORKING/>
 <POINT_LIGHT>
     <Range>10</Range>

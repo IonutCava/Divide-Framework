@@ -519,6 +519,7 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
                 default:
                 case _ID("TRANSFORM"): {
                     skipAdd = false;
+                    normalMask &= ~to_base(ComponentType::BOUNDS);
                 } break;
             }
         }

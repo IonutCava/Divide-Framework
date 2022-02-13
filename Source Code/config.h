@@ -96,9 +96,6 @@ constexpr unsigned int TARGET_FRAME_RATE = 60;
 /// e.g. For TARGET_FRAME_RATE = 60, TICK_DIVISOR = 2 => update at 30Hz, render at 60Hz.
 constexpr unsigned int TICK_DIVISOR = 2;
 
-/// Maximum frame skip count. How many update calls are we allowed to catch up before fast-forwarding and rendering the frame regardless
-constexpr unsigned int MAX_FRAMESKIP = 3;
-
 /// The minimum threshold needed for a threaded loop to use sleep. Update intervals bellow this threshold will not use sleep!
 constexpr unsigned int MIN_SLEEP_THRESHOLD_MS = 5;
 

@@ -81,8 +81,6 @@ namespace Divide {
 
     protected:
         ECS::ECSEngine& _engine;
-        ECS::ComponentManager* _compManager = nullptr;
-        ECS::ComponentManager::ComponentContainer<U>* _container = nullptr;
 
         ECSSerializer<T, U> _serializer;
         vector_fast<U*> _componentCache;

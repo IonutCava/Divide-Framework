@@ -28,6 +28,11 @@ namespace{
     const RenderTargetID g_depthMapID {
         RenderTargetUsage::SHADOW,
         to_base(ShadowType::LAYERED)
+    }; 
+    
+    const RenderTargetID g_depthMapCacheID {
+        RenderTargetUsage::SHADOW_CACHE,
+        to_base(ShadowType::LAYERED)
     };
 
     Configuration::Rendering::ShadowMapping g_shadowSettings;
@@ -395,7 +400,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
 
     const RenderTarget& shadowMapRT = _context.renderTargetPool().renderTarget(g_depthMapID);
 
-    const I32 layerOffset = to_I32(light.getShadowOffset());
+    const I32 layerOffset = to_I32(light.getShadowArrayOffset());
     const I32 layerCount = to_I32(light.csmSplitCount());
 
     GFX::BlitRenderTargetCommand* blitRenderTargetCommand = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>(bufferInOut);

@@ -447,7 +447,7 @@ void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX:
         clearDescriptor._resetToDefault = true;
 
         GFX::ClearRenderTargetCommand clearMainTarget = {};
-        clearMainTarget._target = _ssaoOutput._targetID;
+        clearMainTarget._target = { RenderTargetUsage::SSAO_RESULT };
         clearMainTarget._descriptor = clearDescriptor;
         EnqueueCommand(bufferInOut, clearMainTarget);
     }

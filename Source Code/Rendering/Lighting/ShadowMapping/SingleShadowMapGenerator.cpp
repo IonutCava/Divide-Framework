@@ -24,6 +24,7 @@ namespace Divide {
 
 namespace {
     const RenderTargetID g_depthMapID(RenderTargetUsage::SHADOW, to_base(ShadowType::SINGLE));
+    const RenderTargetID g_depthMapCacheID(RenderTargetUsage::SHADOW_CACHE, to_base(ShadowType::SINGLE));
     Configuration::Rendering::ShadowMapping g_shadowSettings;
 };
 
@@ -200,7 +201,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
     const RenderTarget& shadowMapRT = _context.renderTargetPool().renderTarget(g_depthMapID);
     const auto& shadowAtt = shadowMapRT.getAttachment(RTAttachmentType::Colour, 0);
 
-    const U16 layerOffset = light.getShadowOffset();
+    const U16 layerOffset = light.getShadowArrayOffset();
     constexpr I32 layerCount = 1;
 
     GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};

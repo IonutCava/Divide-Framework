@@ -429,7 +429,11 @@ glShaderProgram::glShaderProgram(GFXDevice& context,
 glShaderProgram::~glShaderProgram()
 {
     unload();
-    GL_API::DeleteShaderPipelines(1, &_handle);
+    if (GL_API::GetStateTracker()._activeShaderPipeline == _handle) {
+        GL_API::GetStateTracker().setActiveShaderPipeline(0u);
+    }
+
+    glDeleteProgramPipelines(1, &_handle);
 }
 
 bool glShaderProgram::unload() {
@@ -445,7 +449,7 @@ bool glShaderProgram::unload() {
 }
 
 ShaderResult glShaderProgram::rebindStages() {
-    assert(isValid());
+    assert(_handle != GLUtil::k_invalidObjectID);
 
     for (glShader* shader : _shaderStage) {
         const ShaderResult ret = shader->uploadToGPU(_handle);
@@ -492,17 +496,27 @@ void glShaderProgram::processValidation() {
 }
 
 ShaderResult glShaderProgram::validatePreBind(const bool rebind) {
-    if (!isValid()) {
-        OPTICK_EVENT();
+    OPTICK_EVENT();
+
+    if (!_stagesBound && rebind) {
         glBufferLockManager::DriverBusy(true);
         assert(getState() == ResourceState::RES_LOADED);
-        glCreateProgramPipelines(1, &_handle);
-        glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
         ShaderResult ret = ShaderResult::OK;
+        if (_handle == GLUtil::k_invalidObjectID) {
+            if (getGUID() == ShaderProgram::NullShaderGUID()) {
+                _handle = 0u;
+            } else {
+                glCreateProgramPipelines(1, &_handle);
+                if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                    glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
+                }
+            }
+        }
         if (rebind) {
             ret = rebindStages();
             if (ret == ShaderResult::OK) {
                 _validationQueued = true;
+                _stagesBound = true;
             }
         }
         glBufferLockManager::DriverBusy(false);
@@ -522,10 +536,10 @@ void glShaderProgram::threadedLoad(const bool reloadExisting) {
         RegisterShaderProgram(std::dynamic_pointer_cast<ShaderProgram>(shared_from_this()).get());
     }
 
+    _stagesBound = false;
+    assert(reloadExisting || _handle == GLUtil::k_invalidObjectID);
     // NULL shader means use shaderProgram(0), so bypass the normal loading routine
-    if (getGUID() == ShaderProgram::NullShaderGUID()) {
-        _handle = 0;
-    } else {
+    if (getGUID() != ShaderProgram::NullShaderGUID()) {
         reloadShaders(reloadExisting);
     }
     // Pass the rest of the loading steps to the parent class
@@ -755,10 +769,6 @@ bool glShaderProgram::recompile(bool& skipped) {
         return false;
     }
 
-    if (!isValid()) {
-        return false;
-    }
-
     skipped = false;
     if (getGUID() == ShaderProgram::NullShaderGUID()) {
         _handle = 0u;
@@ -777,12 +787,6 @@ bool glShaderProgram::recompile(bool& skipped) {
     }
 
     return true;
-}
-
-/// Check every possible combination of flags to make sure this program can be used for rendering
-bool glShaderProgram::isValid() const noexcept {
-    // null shader is a valid shader
-    return _handle != GLUtil::k_invalidObjectID;
 }
 
 /// Bind this shader program
@@ -810,7 +814,7 @@ ShaderResult glShaderProgram::bind() {
 void glShaderProgram::uploadPushConstants(const PushConstants& constants) {
     OPTICK_EVENT()
 
-    assert(isValid());
+    assert(_handle != GLUtil::k_invalidObjectID);
     for (const glShader* shader : _shaderStage) {
         if (shader->valid()) {
             shader->uploadPushConstants(constants);

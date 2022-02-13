@@ -71,6 +71,7 @@ namespace Divide {
     }
 
     void SGNComponent::OnData([[maybe_unused]] const ECS::CustomEvent& data) {
+       
     }
 
 } //namespace Divide

@@ -57,12 +57,10 @@ RenderingOrder RenderQueue::getSortOrder(const RenderStagePass stagePass, const 
             sortOrder = RenderingOrder::NONE;
         } break;
         case RenderBinType::IMPOSTOR:
-        case RenderBinType::TERRAIN: {
-            sortOrder = RenderingOrder::FRONT_TO_BACK;
-        } break;
+        case RenderBinType::WATER:
+        case RenderBinType::TERRAIN: 
         case RenderBinType::TERRAIN_AUX: {
-            // Water first, everything else after
-            sortOrder = RenderingOrder::WATER_FIRST;
+            sortOrder = RenderingOrder::FRONT_TO_BACK;
         } break;
         case RenderBinType::TRANSLUCENT: {
             // We are using weighted blended OIT. State is fine (and faster)
@@ -100,6 +98,8 @@ RenderBin* RenderQueue::getBinForNode(const SceneGraphNode* node, const Material
             return _renderBins[to_base(RenderBinType::SKY)];
 
         case SceneNodeType::TYPE_WATER:
+            return _renderBins[to_base(RenderBinType::WATER)];
+
         case SceneNodeType::TYPE_INFINITEPLANE:
             return _renderBins[to_base(RenderBinType::TERRAIN_AUX)];
 

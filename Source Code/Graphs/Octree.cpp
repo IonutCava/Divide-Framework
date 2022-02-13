@@ -667,6 +667,7 @@ void Octree::handleIntersection(const IntersectionRecord& intersection) const {
         if(obj1->parentSGN()->isRelated(obj2->parentSGN())) {
             return;
         }
+
         RigidBodyComponent* comp1 = obj1->parentSGN()->get<RigidBodyComponent>();
         RigidBodyComponent* comp2 = obj2->parentSGN()->get<RigidBodyComponent>();
 

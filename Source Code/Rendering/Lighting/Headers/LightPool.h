@@ -100,10 +100,13 @@ class LightPool : public SceneComponent,
   public:
     struct ShadowLightList
     {
-        U16 _count = 0;
         std::array<Light*, Config::Lighting::MAX_SHADOW_CASTING_LIGHTS> _entries{};
+        U16 _count = 0u;
     };
-
+    struct MovingVolume {
+        BoundingSphere _volume;
+        bool _staticSource = false;
+    };
     using LightList = vector<Light*>;
 
     explicit LightPool(Scene& parentScene, PlatformContext& context);
@@ -129,7 +132,8 @@ class LightPool : public SceneComponent,
 
     [[nodiscard]] Light* getLight(I64 lightGUID, LightType type) const;
 
-    void prepareLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
+    void sortLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
+    void uploadLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
 
     void uploadLightData(RenderStage stage, GFX::CommandBuffer& bufferInOut);
 
@@ -137,6 +141,10 @@ class LightPool : public SceneComponent,
 
     void preRenderAllPasses(const Camera* playerCamera);
     void postRenderAllPasses() noexcept;
+
+    void onVolumeMoved(const BoundingSphere& volume, bool staticSource);
+
+    [[nodiscard]] const vector<MovingVolume>& movedVolumes() const;
 
     /// nullptr = disabled
     void debugLight(Light* light);
@@ -184,6 +192,9 @@ class LightPool : public SceneComponent,
                               });
     }
 
+    [[nodiscard]] bool isShadowCacheInvalidated(const vec3<F32>& cameraPosition, Light* light);
+
+
     [[nodiscard]] static bool IsLightInViewFrustum(const Frustum& frustum, Light* light) noexcept;
 
   private:
@@ -194,7 +205,7 @@ class LightPool : public SceneComponent,
 
   private:
      struct SceneData {
-         // x = directional light count, y = point light count, z = spot light count, w = shadow light count
+         // x = directional light count, y = point light count, z = spot light count, w = reserved
          vec4<U32> _globalData = { 0, 0, 0, 0 };
          // a = reserved
          vec4<F32> _ambientColour = DefaultColours::BLACK;
@@ -213,9 +224,10 @@ class LightPool : public SceneComponent,
 
     std::array<LightList,         to_base(LightType::COUNT)>   _lights{};
     std::array<bool,              to_base(LightType::COUNT)>   _lightTypeState{};
-
-    ShadowLightList _sortedShadowLights = {};
     ShadowProperties _shadowBufferData;
+
+    mutable SharedMutex _movedSceneVolumesLock;
+    vector<MovingVolume> _movedSceneVolumes;
 
     mutable SharedMutex _lightLock{};
 
@@ -224,8 +236,9 @@ class LightPool : public SceneComponent,
     ShaderBuffer* _lightBuffer = nullptr;
     ShaderBuffer* _sceneBuffer = nullptr;
     ShaderBuffer* _shadowBuffer = nullptr;
-    bool _shadowBufferDirty = false;
     Time::ProfileTimer& _shadowPassTimer;
+    U32              _totalLightCount = 0u;
+    bool _shadowBufferDirty = false;
     bool _init = false;
 
     static std::array<TextureUsage, to_base(ShadowType::COUNT)> _shadowLocation;

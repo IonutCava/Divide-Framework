@@ -52,7 +52,7 @@ vec4 getPositionAndRangeForLight(in Light source) {
 
 layout(binding = BUFFER_LIGHT_SCENE, std140) uniform dvd_LightSceneDataBlock
 {
-    // x = directional light count, y = point light count, z = spot light count, w = shadow light count
+    // x = directional light count, y = point light count, z = spot light count, w = unused
     uvec4 dvd_LightData;
     vec4  dvd_AmbientColour;
     mat4 _light_padding0[3]; 

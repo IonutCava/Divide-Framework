@@ -63,29 +63,56 @@ struct FrameEvent;
 
 /// Application update rate
 constexpr U32 TICKS_PER_SECOND = Config::TARGET_FRAME_RATE / Config::TICK_DIVISOR;
+constexpr U64 FIXED_UPDATE_RATE_US = Time::SecondsToMicroseconds(1) / TICKS_PER_SECOND;
+constexpr U64 MAX_FRAME_TIME_US = Time::MillisecondsToMicroseconds(250);
 
 struct LoopTimingData {
     PROPERTY_R(U64, currentTimeUS, 0ULL);
-    PROPERTY_R(U64, currentTimeFrozenUS, 0ULL);
-    PROPERTY_R(U64, currentTimeDeltaUS, 0ULL);
     PROPERTY_R(U64, previousTimeUS, 0ULL);
-    PROPERTY_R(U64, nextGameTickUS, 0ULL);
-    // number of scene update loops
-    PROPERTY_R(U8, updateLoops, 0u);
-    PROPERTY_RW(bool, keepAlive, true);
-    PROPERTY_R(bool, freezeLoopTime, false);
+    PROPERTY_R(U64, currentTimeDeltaUS, 0ULL);
+    PROPERTY_RW(U64, accumulator, 0ULL);
 
+    PROPERTY_RW(U8, updateLoops, 0u);
+    PROPERTY_R(bool, freezeLoopTime, false);
+    PROPERTY_R(U64, currentTimeFrozenUS, 0ULL);
+
+    /// Real app delta time between frames. Can't be paused (e.g. used by editor)
+    [[nodiscard]] inline U64 appTimeDeltaUS() const noexcept {
+        return currentTimeDeltaUS();
+    }
+
+    /// Simulated app delta time between frames. Can be paused. (e.g. used by physics)
+    [[nodiscard]] inline U64 realTimeDeltaUS() const noexcept {
+        return _freezeLoopTime ? 0ULL : appTimeDeltaUS();
+    }
+
+    /// Framerate independent delta time between frames. Can be paused. (e.g. used by scene updates)
+    [[nodiscard]] inline U64 fixedTimeStep() const noexcept {
+        return _freezeLoopTime ? 0ULL : FIXED_UPDATE_RATE_US;
+    }
+
+    [[nodiscard]] inline F32 alpha() const noexcept {
+        const F32 diff = Time::MicrosecondsToMilliseconds<F32>(_accumulator)        /
+                         Time::MicrosecondsToMilliseconds<F32>(FIXED_UPDATE_RATE_US);
+        return _freezeLoopTime ? 1.f : CLAMPED_01(diff);
+    }
 
     void update(const U64 elapsedTimeUS) noexcept {
+        if (_currentTimeUS == 0u) {
+            _currentTimeUS = elapsedTimeUS;
+        }
+
+        _updateLoops = 0u;
         _previousTimeUS = _currentTimeUS;
         _currentTimeUS = elapsedTimeUS;
         _currentTimeDeltaUS = _currentTimeUS - _previousTimeUS;
 
         // In case we break in the debugger
-        if (_currentTimeDeltaUS > Time::SecondsToMicroseconds(1)) {
-            _currentTimeDeltaUS = Time::SecondsToMicroseconds(1) / TICKS_PER_SECOND;
-            _previousTimeUS = _currentTimeUS - _currentTimeDeltaUS;
+        if (_currentTimeDeltaUS > MAX_FRAME_TIME_US) {
+            _currentTimeDeltaUS = MAX_FRAME_TIME_US;
         }
+
+        _accumulator += _currentTimeDeltaUS;
     }
 
     // return true on change
@@ -97,29 +124,6 @@ struct LoopTimingData {
         }
         return false;
     }
-
-    bool runUpdateLoop() noexcept {
-        if (_currentTimeUS > _nextGameTickUS && _updateLoops < Config::MAX_FRAMESKIP) {
-            return true;
-        }
-
-        _updateLoops = 0;
-        return false;
-    }
-
-    void endUpdateLoop(const U64 deltaTimeUS, const bool fixedTimestep) noexcept {
-        _nextGameTickUS += deltaTimeUS;
-        ++_updateLoops;
-
-        if (fixedTimestep) {
-            if (_updateLoops == Config::MAX_FRAMESKIP && _currentTimeUS > _nextGameTickUS) {
-                _nextGameTickUS = _currentTimeUS;
-            }
-        } else {
-            _nextGameTickUS = _currentTimeUS;
-        }
-    }
-
 };
 
 namespace Attorney {
@@ -179,12 +183,14 @@ class Kernel final : public Input::InputAggregatorInterface,
     bool onUTF8(const Input::UTF8Event& arg) override;
 
     PROPERTY_RW(LoopTimingData, timingData);
+    PROPERTY_RW(bool, keepAlive, true);
     POINTER_R(ResourceCache, resourceCache, nullptr);
     POINTER_R(SceneManager, sceneManager, nullptr)
     POINTER_R(RenderPassManager, renderPassManager, nullptr);
 
-    PROPERTY_R_IW(size_t, totalThreadCount, 0);
+    PROPERTY_R_IW(size_t, totalThreadCount, 0u);
     PROPERTY_R(FrameListenerManager, frameListenerMgr);
+
     FrameListenerManager& frameListenerMgr() noexcept { return _frameListenerMgr; }
 
     PROPERTY_R(PlatformContext, platformContext);
@@ -195,10 +201,7 @@ class Kernel final : public Input::InputAggregatorInterface,
     void shutdown();
     void startSplashScreen();
     void stopSplashScreen();
-    bool mainLoopScene(FrameEvent& evt,
-                       U64 deltaTimeUSFixed, //Framerate independent deltaTime. Can be paused. (e.g. used by scene updates)
-                       U64 deltaTimeUSReal,  //Framerate dependent deltaTime. Can be paused. (e.g. used by physics)
-                       U64 deltaTimeUSApp);  //Real app delta time between frames. Can't be paused (e.g. used by editor)
+    bool mainLoopScene(FrameEvent& evt);
     bool presentToScreen(FrameEvent& evt);
     /// Update all engine components that depend on the current screen size. Returns true if the rendering viewport and the window viewport have differnt aspect ratios
     bool onSizeChange(const SizeChangeParams& params);

@@ -8,9 +8,9 @@
 layout(location = ATTRIB_POSITION) in vec4 inVertexData;
 layout(location = ATTRIB_COLOR)    in vec4 inColourData;
 
-layout(location = 10) out vec4 vtx_adjancency;
-layout(location = 11) out float vtx_tileSize;
-layout(location = 12) out flat uint vtx_ringID;
+layout(location = ATTRIB_FREE_START + 1) out vec4 vtx_adjancency;
+layout(location = ATTRIB_FREE_START + 2) out float vtx_tileSize;
+layout(location = ATTRIB_FREE_START + 3) out flat uint vtx_ringID;
 
 void main(void)
 {
@@ -39,17 +39,17 @@ void main(void)
 #include "terrainUtils.cmn"
 
 // Most of the stuff here is from nVidia's DX11 terrain tessellation sample
-layout(location = 10) in vec4 vtx_adjancency[];
-layout(location = 11) in float vtx_tileSize[];
-layout(location = 12) in flat uint vtx_ringID[];
+layout(location = ATTRIB_FREE_START + 1) in vec4 vtx_adjancency[];
+layout(location = ATTRIB_FREE_START + 2) in float vtx_tileSize[];
+layout(location = ATTRIB_FREE_START + 3) in flat uint vtx_ringID[];
 
 // Outputs
 layout(vertices = 4) out;
-layout(location = 10) out float tcs_tileSize[];
-layout(location = 11) out flat uint tcs_ringID[];
+layout(location = ATTRIB_FREE_START + 1) out float tcs_tileSize[];
+layout(location = ATTRIB_FREE_START + 2) out flat uint tcs_ringID[];
 
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
-layout(location = 12) out vec3[5] tcs_debugColour[];
+layout(location = ATTRIB_FREE_START + 4) out vec3[5] tcs_debugColour[];
 #if defined(TOGGLE_DEBUG)
 #if defined(TOGGLE_NORMALS)
 #undef MAX_TESS_LEVEL
@@ -257,23 +257,32 @@ void main(void)
 --TessellationE
 
 #define NO_CLIP_CULL_IN
+#if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
+#define NO_CLIP_CULL_OUT
+#endif //TOGGLE_DEBUG || TOGGLE_TESS_LEVEL
+
+#define NEED_SCENE_DATA
+
 layout(quads, fractional_even_spacing, cw) in;
 
 #include "terrainUtils.cmn"
+#include "sceneData.cmn"
+#include "waterData.cmn"
 
-layout(location = 10) in float tcs_tileSize[];
-layout(location = 11) in flat uint tcs_ringID[];
+layout(location = ATTRIB_FREE_START + 1) in float tcs_tileSize[];
+layout(location = ATTRIB_FREE_START + 2) in flat uint tcs_ringID[];
+
+layout(location = ATTRIB_FREE_START + 0) out vec2 tes_waterData;
 
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
-layout(location = 12) in vec3[5] tcs_debugColour[];
-layout(location = 12) out vec3  tes_debugColour;
-
 #if defined(TOGGLE_DEBUG)
-layout(location = 10) out float tes_tileSize;
-layout(location = 11) out flat uint tes_ringID;
-layout(location = 13) out float tes_PatternValue;
+layout(location = ATTRIB_FREE_START + 1) out float tes_tileSize;
+layout(location = ATTRIB_FREE_START + 2) out flat uint tes_ringID;
+layout(location = ATTRIB_FREE_START + 3) out float tes_PatternValue;
 #endif //TOGGLE_DEBUG
 
+layout(location = ATTRIB_FREE_START + 4) in vec3[5] tcs_debugColour[];
+layout(location = ATTRIB_FREE_START + 4) out vec3  tes_debugColour;
 #endif //TOGGLE_DEBUG || TOGGLE_TESS_LEVEL
 
 #define Bilerp(v0, v1, v2, v3, i) lerp(lerp(v0, v3, i.x), lerp(v1, v2, i.x), i.y)
@@ -318,13 +327,17 @@ void main()
     _out._texCoord = WorldXZtoHeightUV(pos.xz);
     _out._vertexW = dvd_WorldMatrix(dvd_Transforms[TRANSFORM_IDX]) * dvd_terrainWorld * vec4(pos.x, GetHeight(_out._texCoord), pos.z, 1.0f);
     _out._vertexWV = dvd_ViewMatrix * _out._vertexW;
+#if !defined(NO_CLIP_CULL_OUT)
     setClipPlanes(); //Only need world vertex position for clipping
+#endif //!NO_CLIP_CULL_OUT
     _out._normalW = dvd_NormalMatrixW(dvd_Transforms[TRANSFORM_IDX]) * getNormal(_out._texCoord);
     _out._tbnWV = mat3(dvd_ViewMatrix) * getTBNW();
     _out._indirectionIDs = _in[0]._indirectionIDs;
 #if !defined(PRE_PASS) && !defined(SHADOW_PASS)
     _out._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_cameraPosition.xyz - _out._vertexW.xyz);
 #endif //PRE_PASS && SHADOW_PASS
+
+    tes_waterData = GetWaterDetails(_out._vertexW.xyz, TERRAIN_HEIGHT_OFFSET);
 
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
     tes_debugColour = LerpDebugColours(tcs_debugColour[0], gl_TessCoord.xy);
@@ -355,13 +368,16 @@ void main()
 
 layout(triangles) in;
 
-layout(location = 10) in float tes_tileSize[];
-layout(location = 11) in flat uint tes_ringID[];
-layout(location = 12) in vec3 tes_debugColour[];
-layout(location = 13) in float tes_PatternValue[];
+layout(location = ATTRIB_FREE_START + 0) in vec2 tes_waterData[];
+layout(location = ATTRIB_FREE_START + 0) out vec2 gs_waterData;
 
-layout(location = 10) out vec3 gs_wireColor;
-layout(location = 11) noperspective out vec4 gs_edgeDist;  //w - patternValue
+layout(location = ATTRIB_FREE_START + 1) in float tes_tileSize[];
+layout(location = ATTRIB_FREE_START + 2) in flat uint tes_ringID[];
+layout(location = ATTRIB_FREE_START + 3) in float tes_PatternValue[];
+layout(location = ATTRIB_FREE_START + 4) in vec3 tes_debugColour[];
+
+layout(location = ATTRIB_FREE_START + 1) out vec3 gs_wireColor;
+layout(location = ATTRIB_FREE_START + 2) noperspective out vec4 gs_edgeDist;  //w - patternValue
 
 #if defined(TOGGLE_NORMALS)
 layout(line_strip, max_vertices = 18) out;
@@ -381,6 +397,8 @@ void PerVertex(in int i, in vec3 edge_dist) {
                        i == 1 ? edge_dist.y : 0.0,
                        i >= 2 ? edge_dist.z : 0.0,
                        tes_PatternValue[i]);
+
+    gs_waterData = tes_waterData[i];
 }
 
 void main(void)
@@ -477,15 +495,17 @@ void main(void)
 
 layout(early_fragment_tests) in;
 
+layout(location = ATTRIB_FREE_START + 0) in vec2 tes_waterData;
+
 #if defined(TOGGLE_DEBUG)
 
-layout(location = 10) in vec3 gs_wireColor;
-layout(location = 11) noperspective in vec4 gs_edgeDist;  //w - patternValue
+layout(location = ATTRIB_FREE_START + 1) in vec3 gs_wireColor;
+layout(location = ATTRIB_FREE_START + 2) noperspective in vec4 gs_edgeDist;  //w - patternValue
 
 #else //TOGGLE_DEBUG
 
 #if defined(TOGGLE_TESS_LEVEL)
-layout(location = 12) in vec3 tes_debugColour;
+layout(location = ATTRIB_FREE_START + 3) in vec3 tes_debugColour;
 #endif //TOGGLE_TESS_LEVEL
 
 #endif //TOGGLE_DEBUG
@@ -505,7 +525,7 @@ layout(location = 12) in vec3 tes_debugColour;
 
 void main(void) {
 
-    vec3 normalWV; 
+    vec3 normalWV;
     const vec4 albedo = BuildTerrainData(normalWV);
 
     vec4 colourOut = vec4(0.f, 0.f, 0.f, 1.f);
@@ -552,6 +572,8 @@ void main(void) {
 }
 
 --Fragment.PrePass
+
+layout(location = ATTRIB_FREE_START + 0) in vec2 tes_waterData;
 
 #include "terrainUtils.cmn" 
 #include "prePass.frag"
