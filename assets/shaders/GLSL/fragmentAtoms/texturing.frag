@@ -33,11 +33,11 @@ float sum(vec3 v) { return v.x + v.y + v.z; }
 float sum(vec4 v) { return v.x + v.y + v.z + v.w; }
 
 vec4 textureNoTile(sampler2D samp, in vec2 uv) {
-    vec2 ddx = dFdx(uv);
-    vec2 ddy = dFdy(uv);
+    const vec2 ddx = dFdx(uv);
+    const vec2 ddy = dFdy(uv);
 
-    vec2 iuv = floor(uv);
-    vec2 fuv = fract(uv);
+    const vec2 iuv = floor(uv);
+    const vec2 fuv = fract(uv);
 
     // generate per-tile transform
     vec4 ofa = hash4(iuv + vec2(0.0, 0.0));
@@ -52,13 +52,13 @@ vec4 textureNoTile(sampler2D samp, in vec2 uv) {
     ofd.zw = sign(ofd.zw - 0.5f);
 
     // uv's, and derivarives (for correct mipmapping)
-    vec2 uva = uv * ofa.zw + ofa.xy; vec2 ddxa = ddx * ofa.zw; vec2 ddya = ddy * ofa.zw;
-    vec2 uvb = uv * ofb.zw + ofb.xy; vec2 ddxb = ddx * ofb.zw; vec2 ddyb = ddy * ofb.zw;
-    vec2 uvc = uv * ofc.zw + ofc.xy; vec2 ddxc = ddx * ofc.zw; vec2 ddyc = ddy * ofc.zw;
-    vec2 uvd = uv * ofd.zw + ofd.xy; vec2 ddxd = ddx * ofd.zw; vec2 ddyd = ddy * ofd.zw;
+    const vec2 uva = uv * ofa.zw + ofa.xy; const vec2 ddxa = ddx * ofa.zw; const vec2 ddya = ddy * ofa.zw;
+    const vec2 uvb = uv * ofb.zw + ofb.xy; const vec2 ddxb = ddx * ofb.zw; const vec2 ddyb = ddy * ofb.zw;
+    const vec2 uvc = uv * ofc.zw + ofc.xy; const vec2 ddxc = ddx * ofc.zw; const vec2 ddyc = ddy * ofc.zw;
+    const vec2 uvd = uv * ofd.zw + ofd.xy; const vec2 ddxd = ddx * ofd.zw; const vec2 ddyd = ddy * ofd.zw;
 
     // fetch and blend
-    vec2 b = smoothstep(0.25f, 0.75f, fuv);
+    const vec2 b = smoothstep(0.25f, 0.75f, fuv);
 
     return mix(mix(textureGrad(samp, uva, ddxa, ddya),
                    textureGrad(samp, uvb, ddxb, ddyb),
@@ -108,51 +108,48 @@ vec4 textureNoTile(sampler2DArray samp, in vec3 uvIn) {
                b.y);
 }
 
-vec4 textureNoTile(sampler2D samp, sampler2DArray noiseSampler, in int noiseSamplerIdx, in vec2 uv, in float v) {
+vec4 textureNoTile(sampler2D samp, sampler2DArray noiseSampler, in vec2 uv) {
     // sample variation pattern    
-    float k = texture(noiseSampler, vec3(0.005 * uv, noiseSamplerIdx)).x; // cheap (cache friendly) lookup    
+    float k = texture(noiseSampler, vec3(0.005f * uv, 0)).x; // cheap (cache friendly) lookup    
 
-    vec2 duvdx = dFdx(uv);
-    vec2 duvdy = dFdy(uv);
+    float index = k * 8.f;
+    float i = floor(index);
+    float f = fract(index);
 
-    float l = k * 8.0;
-    float f = fract(l);
-    float ia = floor(l);
-    float ib = ia + 1.0;
+    vec2 offa = sin(vec2(3.f, 7.f) * (i + 0.f)); // can replace with any other hash
+    vec2 offb = sin(vec2(3.f, 7.f) * (i + 1.f)); // can replace with any other hash
 
-    vec2 offa = sin(vec2(3.0, 7.0) * ia); // can replace with any other hash
-    vec2 offb = sin(vec2(3.0, 7.0) * ib); // can replace with any other hash
+    const vec2 dx = dFdx(uv), dy = dFdy(uv);
 
-    vec4 cola = textureGrad(samp, uv + v * offa, duvdx, duvdy);
-    vec4 colb = textureGrad(samp, uv + v * offb, duvdx, duvdy);
+    // sample the two closest virtual patterns    
+    vec4 cola = textureGrad(samp, uv + offa, dx, dy);
+    vec4 colb = textureGrad(samp, uv + offb, dx, dy);
 
     // interpolate between the two virtual patterns    
-    return mix(cola, colb, smoothstep(0.2, 0.8, f - 0.1 * sum(cola - colb)));
+    return mix(cola, colb, smoothstep(0.2f, 0.8f, f - 0.1f * sum(cola - colb)));
 }
 
-vec4 textureNoTile(sampler2DArray samp, sampler2DArray noiseSampler, in int noiseSamplerIdx, in vec3 uvIn, in float v) {
+vec4 textureNoTile(sampler2DArray samp, sampler2DArray noiseSampler, in vec3 uvIn) {
     const vec2 uv = uvIn.xy;
 
     // sample variation pattern
-    float k = texture(noiseSampler, vec3(0.005f * uv, noiseSamplerIdx)).x; // cheap (cache friendly) lookup 
+    float k = texture(noiseSampler, vec3(0.005f * uv, 0)).x; // cheap (cache friendly) lookup 
 
-    vec2 duvdx = dFdx(uv);
-    vec2 duvdy = dFdy(uv);
+    float index = k * 8.f;
+    float i = floor(index);
+    float f = fract(index);
 
-    float l = k * 8.0;
-    float f = fract(l);
-    float ia = floor(l);
-    float ib = ia + 1.0;
+    const vec2 offa = sin(vec2(3.f, 7.f) * (i + 0.f)); // can replace with any other hash
+    const vec2 offb = sin(vec2(3.f, 7.f) * (i + 1.f)); // can replace with any other hash
 
-    vec2 offa = sin(vec2(3.0, 7.0) * ia); // can replace with any other hash
-    vec2 offb = sin(vec2(3.0, 7.0) * ib); // can replace with any other hash
+    const vec2 dx = dFdx(uv), dy = dFdy(uv);
 
     // sample the two closest virtual patterns    
-    vec4 cola = textureGrad(samp, vec3(uv + v * offa, uvIn.z), duvdx, duvdy);
-    vec4 colb = textureGrad(samp, vec3(uv + v * offb, uvIn.z), duvdx, duvdy);
+    vec4 cola = textureGrad(samp, vec3(uv + offa, uvIn.z), dx, dy);
+    vec4 colb = textureGrad(samp, vec3(uv + offb, uvIn.z), dx, dy);
 
     // interpolate between the two virtual patterns    
-    return mix(cola, colb, smoothstep(0.2, 0.8, f - 0.1 * sum(cola - colb)));
+    return mix(cola, colb, smoothstep(0.2f, 0.8f, f - 0.1f * sum(cola - colb)));
 }
 
 #endif //_TEXTURING_FRAG_

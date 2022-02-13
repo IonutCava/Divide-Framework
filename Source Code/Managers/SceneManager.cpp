@@ -720,8 +720,9 @@ VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params, co
 }
 
 void SceneManager::prepareLightData(const RenderStage stage, const CameraSnapshot& cameraSnapshot) {
+    getActiveScene().lightPool()->sortLightData(stage, cameraSnapshot);
     if (stage != RenderStage::SHADOW) {
-        getActiveScene().lightPool()->prepareLightData(stage, cameraSnapshot);
+        getActiveScene().lightPool()->uploadLightData(stage, cameraSnapshot);
     }
 }
 
@@ -987,7 +988,7 @@ bool SceneManager::saveActiveScene(bool toCache, const bool deferred, const DELE
             if (toCache) {
                 return false;
             }
-            DebugBreak();
+            DIVIDE_UNEXPECTED_CALL();
         }
         Wait(*_saveTask, pool);
     }

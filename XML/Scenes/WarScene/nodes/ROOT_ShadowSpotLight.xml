@@ -7,7 +7,6 @@
         <scale x="0.999991775" y="0.999994338" z="0.99998945"/>
     </Transform>
 </TRANSFORM>
-<BOUNDS/>
 <NETWORKING/>
 <SPOT_LIGHT>
     <Cutoff__Angle>25</Cutoff__Angle>

@@ -50,6 +50,7 @@ namespace ECS {
     struct CustomEvent {
         enum class Type : Divide::U8 {
             TransformUpdated = 0,
+            AnimationUpdated,
             RelationshipCacheInvalidated,
             BoundsUpdated,
             DrawBoundsChanged,

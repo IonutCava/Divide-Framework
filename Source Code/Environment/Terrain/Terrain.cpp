@@ -145,8 +145,8 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
     vegetationNodeDescriptor._serialize = false;
     vegetationNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
     vegetationNodeDescriptor._componentMask = to_base(ComponentType::TRANSFORM) |
-        to_base(ComponentType::BOUNDS) |
-        to_base(ComponentType::RENDERING);
+                                              to_base(ComponentType::BOUNDS) |
+                                              to_base(ComponentType::RENDERING);
 
     for (const TerrainChunk* chunk : _terrainChunks) {
         vegetationNodeDescriptor._node = Attorney::TerrainChunkTerrain::getVegetation(*chunk);

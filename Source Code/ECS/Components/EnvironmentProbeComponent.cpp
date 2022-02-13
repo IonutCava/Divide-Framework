@@ -265,6 +265,8 @@ F32 EnvironmentProbeComponent::distanceSqTo(const vec3<F32>& pos) const noexcept
 }
 
 void EnvironmentProbeComponent::OnData(const ECS::CustomEvent& data) {
+    SGNComponent::OnData(data);
+
     if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
         const vec3<F32> pos = _parentSGN->get<TransformComponent>()->getWorldPosition();
         setBounds(_refaabb.getMin() + pos, _refaabb.getMax() + pos);

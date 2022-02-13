@@ -44,15 +44,14 @@ namespace {
     }
 }
 
-RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, Str64 name, const U8 sortKey, const RenderStage passStageFlag, const vector<U8>& dependencies, const bool performanceCounters)
+RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, const RenderStage renderStage, const vector<RenderStage>& dependencies, const bool performanceCounters)
     : _performanceCounters(performanceCounters),
       _context(context),
       _parent(parent),
       _config(context.context().config()),
-      _stageFlag(passStageFlag),
-      _sortKey(sortKey),
+      _stageFlag(renderStage),
       _dependencies(dependencies),
-      _name(MOV(name))
+      _name(TypeUtil::RenderStageToString(renderStage))
 {
     for (U8 i = 0u; i < to_base(_stageFlag); ++i) {
         const U8 passCountToSkip = TotalPassCountForStage(static_cast<RenderStage>(i));
@@ -60,19 +59,27 @@ RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, Str64 name
     }
 }
 
-void RenderPass::initBufferData() {
-    if (_performanceCounters) {
-        // Atomic counter for occlusion culling
-        ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._usage = ShaderBuffer::Usage::ATOMIC_COUNTER;
-        bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._bufferParams._elementSize = sizeof(U32);
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-        bufferDescriptor._ringBufferLength = 5;
-        bufferDescriptor._separateReadWrite = true;
-        bufferDescriptor._name = Util::StringFormat("CULL_COUNTER_%s", TypeUtil::RenderStageToString(_stageFlag));
-        _cullCounter = _context.newSB(bufferDescriptor);
+void RenderPass::performanceCounters(const bool state) {
+    if (performanceCounters() != state) {
+        _performanceCounters = state;
+
+        if (state) {
+            assert(_cullCounter == nullptr);
+            // Atomic counter for occlusion culling
+            ShaderBufferDescriptor bufferDescriptor = {};
+            bufferDescriptor._usage = ShaderBuffer::Usage::ATOMIC_COUNTER;
+            bufferDescriptor._bufferParams._elementCount = 1;
+            bufferDescriptor._bufferParams._elementSize = sizeof(U32);
+            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+            bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+            bufferDescriptor._ringBufferLength = 5;
+            bufferDescriptor._separateReadWrite = true;
+            bufferDescriptor._name = Util::StringFormat("CULL_COUNTER_%s", TypeUtil::RenderStageToString(_stageFlag));
+            _cullCounter = _context.newSB(bufferDescriptor);
+        } else {
+            assert(_cullCounter != nullptr);
+            MemoryManager::SAFE_DELETE(_cullCounter);
+        }
     }
 }
 

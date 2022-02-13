@@ -88,6 +88,9 @@ FWD_DECLARE_MANAGED_STRUCT(DebugView);
 /// All the information needed for a single light's shadowmap
 class NOINITVTABLE ShadowMap {
   public:
+    static constexpr U8 MAX_SHADOW_FRAME_LIFETIME = 32u;
+
+  public:
     // Init and destroy buffers, shaders, etc
     static void initShadowMaps(GFXDevice& context);
     static void destroyShadowMaps(GFXDevice& context);
@@ -96,17 +99,16 @@ class NOINITVTABLE ShadowMap {
     static void resetShadowMaps(GFX::CommandBuffer& bufferInOut);
 
     static void bindShadowMaps(GFX::CommandBuffer& bufferInOut);
-    static U16  lastUsedDepthMapOffset(ShadowType shadowType);
-    static U16  findFreeDepthMapOffset(ShadowType shadowType, U32 layerCount);
     static U32  getLightLayerRequirements(const Light& light);
-    static void commitDepthMapOffset(ShadowType shadowType, U32 layerOffest, U32 layerCount);
-    static bool freeDepthMapOffset(ShadowType shadowType, U32 layerOffest, U32 layerCount);
+    static bool freeShadowMapOffset(const Light& light);
+    static bool markShadowMapsUsed(Light& light);
     static bool generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut);
 
     static ShadowType getShadowTypeForLightType(LightType type) noexcept;
     static LightType getLightTypeForShadowType(ShadowType type) noexcept;
 
-    static const RenderTargetHandle& getDepthMap(LightType type);
+    static const RenderTargetHandle& getShadowMap(LightType type);
+    static const RenderTargetHandle& getShadowMapCache(LightType type);
 
     static void setDebugViewLight(GFXDevice& context, Light* light);
 
@@ -115,12 +117,20 @@ class NOINITVTABLE ShadowMap {
     static vector<Camera*>& shadowCameras(const ShadowType type) noexcept { return s_shadowCameras[to_base(type)]; }
 
   protected:
-    using LayerUsageMask = vector<bool>;
-    static Mutex s_depthMapUsageLock;
-    static std::array<LayerUsageMask, to_base(ShadowType::COUNT)> s_depthMapUsage;
+      static bool commitLayerRange(Light& light);
+      static bool freeShadowMapOffsetLocked(const Light& light);
+  protected:
+    struct ShadowLayerData {
+        I64 _lightGUID = -1;
+        U16 _lifetime = MAX_SHADOW_FRAME_LIFETIME;
+    };
+    using LayerLifetimeMask = vector<ShadowLayerData>;
+    static Mutex s_shadowMapUsageLock;
+    static std::array<LayerLifetimeMask, to_base(ShadowType::COUNT)> s_shadowMapLifetime;
     static std::array<ShadowMapGenerator*, to_base(ShadowType::COUNT)> s_shadowMapGenerators;
 
     static std::array<RenderTargetHandle, to_base(ShadowType::COUNT)> s_shadowMaps;
+    static std::array<RenderTargetHandle, to_base(ShadowType::COUNT)> s_shadowMapCaches;
     static vector<DebugView_ptr> s_debugViews;
 
     static Light* s_shadowPreviewLight;

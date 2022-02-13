@@ -109,8 +109,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
 
     /// Make sure this program is ready for deletion
     bool unload() override;
-    /// Check every possible combination of flags to make sure this program can be used for rendering
-    bool isValid() const noexcept override;
 
     void uploadPushConstants(const PushConstants& constants);
 
@@ -171,6 +169,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     GLuint _handle = GLUtil::k_invalidObjectID;
 
     bool _validationQueued = false;
+    bool _stagesBound = false;
     bool _hasUniformBlockBuffer = false;
     vector<glShader*> _shaderStage;
 

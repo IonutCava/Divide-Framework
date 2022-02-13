@@ -66,12 +66,10 @@ class RenderPass final : NonCopyable {
 
   public:
     // passStageFlags: the first stage specified will determine the data format used by the additional stages in the list
-    explicit RenderPass(RenderPassManager& parent, GFXDevice& context, Str64 name, U8 sortKey, RenderStage passStageFlag, const vector<U8>& dependencies, bool performanceCounters = false);
+    explicit RenderPass(RenderPassManager& parent, GFXDevice& context, RenderStage renderStage, const vector<RenderStage>& dependencies, bool performanceCounters = false);
 
     void render(PlayerIndex idx, const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut) const;
 
-    [[nodiscard]] inline U8 sortKey() const noexcept { return _sortKey; }
-    [[nodiscard]] inline const vector<U8>& dependencies() const noexcept { return _dependencies; }
     [[nodiscard]] inline U32 getLastTotalBinSize() const noexcept { return _lastNodeCount; }
     [[nodiscard]] inline const Str64& name() const noexcept { return _name; }
 
@@ -79,10 +77,12 @@ class RenderPass final : NonCopyable {
 
     BufferData getBufferData(RenderStagePass stagePass) const noexcept;
 
-    void initBufferData();
+    void performanceCounters(bool state);
+
+    PROPERTY_RW(vector<RenderStage>, dependencies);
+    PROPERTY_R(bool, performanceCounters, false);
 
    private:
-    const bool _performanceCounters;
 
     GFXDevice& _context;
     RenderPassManager& _parent;
@@ -90,14 +90,12 @@ class RenderPass final : NonCopyable {
 
     RenderStage _stageFlag = RenderStage::COUNT;
 
-    U8 _sortKey = 0u;
     U32 _transformIndexOffset = 0u;
     mutable U32 _lastCmdCount = 0u;
     mutable U32 _lastNodeCount = 0u;
 
     ShaderBuffer* _cullCounter = nullptr;
     Str64 _name = "";
-    vector<U8> _dependencies{};
 };
 
 }  // namespace Divide

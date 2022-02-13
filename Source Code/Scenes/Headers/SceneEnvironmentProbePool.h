@@ -78,6 +78,8 @@ public:
     void prepareDebugData();
     POINTER_RW(EnvironmentProbeComponent, debugProbe, nullptr);
 
+    void onNodeUpdated(const SceneGraphNode& node) noexcept;
+
     static vector<Camera*>& ProbeCameras() noexcept { return s_probeCameras; }
 
     static I16  AllocateSlice(bool lock);
@@ -86,7 +88,6 @@ public:
     static bool ProbesDirty()                 noexcept { return s_probesDirty; }
     static void ProbesDirty(const bool state) noexcept { s_probesDirty = state; }
 
-    static void OnNodeUpdated(const SceneEnvironmentProbePool& probePool, const SceneGraphNode& node) noexcept;
     static void OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept;
 
     static [[nodiscard]] bool DebuggingSkyLight() noexcept;

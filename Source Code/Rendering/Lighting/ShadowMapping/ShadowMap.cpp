@@ -24,12 +24,13 @@
 
 namespace Divide {
 
-Mutex ShadowMap::s_depthMapUsageLock;
-std::array<ShadowMap::LayerUsageMask, to_base(ShadowType::COUNT)> ShadowMap::s_depthMapUsage;
+Mutex ShadowMap::s_shadowMapUsageLock;
+std::array<ShadowMap::LayerLifetimeMask, to_base(ShadowType::COUNT)> ShadowMap::s_shadowMapLifetime;
 std::array<ShadowMapGenerator*, to_base(ShadowType::COUNT)> ShadowMap::s_shadowMapGenerators;
 
 vector<DebugView_ptr> ShadowMap::s_debugViews;
 std::array<RenderTargetHandle, to_base(ShadowType::COUNT)> ShadowMap::s_shadowMaps;
+std::array<RenderTargetHandle, to_base(ShadowType::COUNT)> ShadowMap::s_shadowMapCaches;
 Light* ShadowMap::s_shadowPreviewLight = nullptr;
 
 std::array<U16, to_base(ShadowType::COUNT)> ShadowMap::s_shadowPassIndex;
@@ -85,15 +86,19 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
         settings.point.shadowMapResolution = nextPOW2(settings.point.shadowMapResolution);
     }
 
-    SamplerDescriptor depthMapSampler = {};
-    depthMapSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-    depthMapSampler.magFilter(TextureFilter::LINEAR);
-    depthMapSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
+    SamplerDescriptor shadowMapSampler = {};
+    shadowMapSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
+    shadowMapSampler.magFilter(TextureFilter::LINEAR);
+    shadowMapSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
 
-    RenderTargetHandle crtTarget;
+    SamplerDescriptor shadowMapSamplerCache = {};
+    shadowMapSamplerCache.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
+    shadowMapSamplerCache.magFilter(TextureFilter::NEAREST);
+    shadowMapSamplerCache.minFilter(TextureFilter::NEAREST);
+    shadowMapSamplerCache.anisotropyLevel(0u);
+
+    RenderTargetHandle crtTarget, crtTargetCache;
     for (U8 i = 0; i < to_U8(ShadowType::COUNT); ++i) {
-        s_depthMapUsage[i].resize(0);
-
         switch (static_cast<ShadowType>(i)) {
             case ShadowType::LAYERED:
             case ShadowType::SINGLE: {
@@ -105,31 +110,48 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                     continue;
                 }
 
-                depthMapSampler.anisotropyLevel(isCSM ? settings.csm.maxAnisotropicFilteringLevel : settings.spot.maxAnisotropicFilteringLevel);
+                shadowMapSampler.anisotropyLevel(isCSM ? settings.csm.maxAnisotropicFilteringLevel : settings.spot.maxAnisotropicFilteringLevel);
 
                 // Default filters, LINEAR is OK for this
-                TextureDescriptor depthMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXImageFormat::RG, isCSM ? GFXDataFormat::FLOAT_32 : GFXDataFormat::FLOAT_16);
-                depthMapDescriptor.layerCount(isCSM ? Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT
-                                                    : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS);
-                depthMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
+                TextureDescriptor shadowMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXImageFormat::RG, isCSM ? GFXDataFormat::FLOAT_32 : GFXDataFormat::FLOAT_16);
+                shadowMapDescriptor.layerCount(isCSM ? Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT
+                                                     : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS);
 
-                RTAttachmentDescriptors att = {
-                    { depthMapDescriptor, depthMapSampler.getHash(), RTAttachmentType::Colour },
-                };
+                shadowMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
                 RenderTargetDescriptor desc = {};
-                desc._name = isCSM ? "CSM_ShadowMap" : "Single_ShadowMap";
                 desc._resolution.set(to_U16(isCSM ? settings.csm.shadowMapResolution : settings.spot.shadowMapResolution));
-                desc._attachmentCount = to_U8(att.size());
-                desc._attachments = att.data();
 
-                crtTarget = context.renderTargetPool().allocateRT(RenderTargetUsage::SHADOW, desc, isCSM ? to_base(ShadowType::LAYERED) : to_base(ShadowType::SINGLE));
+                {
+                    RTAttachmentDescriptors att = {
+                        { shadowMapDescriptor, shadowMapSampler.getHash(), RTAttachmentType::Colour }
+                    };
 
+                    desc._name = isCSM ? "CSM_ShadowMap" : "Single_ShadowMap";
+                    desc._attachmentCount = to_U8(att.size());
+                    desc._attachments = att.data();
+                    crtTarget = context.renderTargetPool().allocateRT(RenderTargetUsage::SHADOW, desc, isCSM ? to_base(ShadowType::LAYERED) : to_base(ShadowType::SINGLE));
+                }
+                {
+                    TextureDescriptor shadowMapCacheDescriptor = shadowMapDescriptor;
+                    shadowMapCacheDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+
+                    RTAttachmentDescriptors attCache = {
+                        { shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::Colour }
+                    };
+
+                    desc._name = isCSM ? "CSM_ShadowMap_StaticCache" : "Single_ShadowMap_StaticCache";
+                    desc._attachmentCount = to_U8(attCache.size());
+                    desc._attachments = attCache.data();
+                    crtTargetCache = context.renderTargetPool().allocateRT(RenderTargetUsage::SHADOW_CACHE, desc, isCSM ? to_base(ShadowType::LAYERED) : to_base(ShadowType::SINGLE));
+                }
                 if (isCSM) {
                     s_shadowMapGenerators[i] = MemoryManager_NEW CascadedShadowMapsGenerator(context);
                 } else {
                     s_shadowMapGenerators[i] = MemoryManager_NEW SingleShadowMapGenerator(context);
                 }
+
+                s_shadowMapLifetime[i].resize(shadowMapDescriptor.layerCount());
             } break;
             case ShadowType::CUBEMAP: {
                 if (!settings.point.enabled) {
@@ -139,12 +161,12 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                 TextureDescriptor colourMapDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
                 colourMapDescriptor.layerCount(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS);
                 colourMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
-                depthMapSampler.minFilter(TextureFilter::LINEAR);
-                depthMapSampler.anisotropyLevel(0);
-                const size_t samplerHash = depthMapSampler.getHash();
+                shadowMapSampler.minFilter(TextureFilter::LINEAR);
+                shadowMapSampler.anisotropyLevel(0);
+                const size_t samplerHash = shadowMapSampler.getHash();
 
                 TextureDescriptor depthDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
-                depthDescriptor.layerCount(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS);
+                depthDescriptor.layerCount(colourMapDescriptor.layerCount());
                 depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
 
                 RTAttachmentDescriptors att = {
@@ -153,18 +175,35 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                 };
 
                 RenderTargetDescriptor desc = {};
-                desc._name = "Cube_ShadowMap";
                 desc._resolution.set(to_U16(settings.point.shadowMapResolution));
-                desc._attachmentCount = to_U8(att.size());
-                desc._attachments = att.data();
+                {
+                    desc._name = "Cube_ShadowMap";
+                    desc._attachmentCount = to_U8(att.size());
+                    desc._attachments = att.data();
+                    crtTarget = context.renderTargetPool().allocateRT(RenderTargetUsage::SHADOW, desc, to_base(ShadowType::CUBEMAP));
+                }
+                {
+                    TextureDescriptor shadowMapCacheDescriptor = colourMapDescriptor;
+                    shadowMapCacheDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-                crtTarget = context.renderTargetPool().allocateRT(RenderTargetUsage::SHADOW, desc, to_base(ShadowType::CUBEMAP));
+                    RTAttachmentDescriptors attCache = {
+                        { shadowMapCacheDescriptor, shadowMapSamplerCache.getHash(), RTAttachmentType::Colour },
+                        { depthDescriptor, samplerHash, RTAttachmentType::Depth },
+                    };
+
+                    desc._name = "Cube_ShadowMap_StaticCache";
+                    desc._attachmentCount = to_U8(attCache.size());
+                    desc._attachments = attCache.data();
+                    crtTargetCache = context.renderTargetPool().allocateRT(RenderTargetUsage::SHADOW_CACHE, desc, to_base(ShadowType::CUBEMAP));
+                }
 
                 s_shadowMapGenerators[i] = MemoryManager_NEW CubeShadowMapGenerator(context);
+                s_shadowMapLifetime[i].resize(colourMapDescriptor.layerCount());
             } break;
             case ShadowType::COUNT: break;
         }
         s_shadowMaps[i] = crtTarget;
+        s_shadowMapCaches[i] = crtTargetCache;
     }
 }
 
@@ -183,6 +222,11 @@ void ShadowMap::destroyShadowMaps(GFXDevice& context) {
         handle._rt = nullptr;
     }
 
+    for (RenderTargetHandle& handle : s_shadowMapCaches) {
+        context.renderTargetPool().deallocateRT(handle);
+        handle._rt = nullptr;
+    }
+
     for (ShadowMapGenerator* smg : s_shadowMapGenerators) {
         MemoryManager::SAFE_DELETE(smg);
     }
@@ -191,16 +235,16 @@ void ShadowMap::destroyShadowMaps(GFXDevice& context) {
 }
 
 void ShadowMap::resetShadowMaps(GFX::CommandBuffer& bufferInOut) {
-    for (U8 i = 0u; i < to_base(ShadowType::COUNT); ++i) {
-        // We don't need to clear the draw buffers here as both the CSM and Single-layer targets use full-size blitting from intermidiate targets
-        // so every pixel gets overwritten anyway.
-        GFX::EnqueueCommand<GFX::ResetRenderTargetCommand>(bufferInOut)->_source = RenderTargetID(RenderTargetUsage::SHADOW, i);
-    }
-
-    ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
+    ScopedLock<Mutex> w_lock(s_shadowMapUsageLock);
     for (U32 i = 0u; i < to_base(ShadowType::COUNT); ++i) {
-        s_depthMapUsage[i].resize(0);
         s_shadowPassIndex[i] = 0u;
+    }
+    for (LayerLifetimeMask& lifetimePerType : s_shadowMapLifetime) {
+        for (ShadowLayerData& lifetime : lifetimePerType) {
+            if (lifetime._lifetime < MAX_SHADOW_FRAME_LIFETIME) {
+                ++lifetime._lifetime;
+            }
+        }
     }
 }
 
@@ -213,80 +257,102 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
         }
 
         const ShadowType shadowType = static_cast<ShadowType>(i);
-        const U16 useCount = lastUsedDepthMapOffset(shadowType);
-
         const U8 bindSlot = LightPool::GetShadowBindSlotOffset(static_cast<ShadowType>(i));
         const RTAttachment& shadowTexture = sm._rt->getAttachment(RTAttachmentType::Colour, 0);
-        const TextureDescriptor& texDescriptor = shadowTexture.descriptor()._texDescriptor;
-
-        if (IS_IN_RANGE_EXCLUSIVE(useCount, to_U16(0u), texDescriptor.layerCount())) {
-            TextureViewEntry entry = {};
-            entry._binding = bindSlot;
-            entry._view._textureData = shadowTexture.texture()->data();
-            entry._descriptor = shadowTexture.texture()->descriptor();
-            entry._view._samplerHash = shadowTexture.samplerHash();
-            entry._view._mipLevels.set(0, shadowTexture.texture()->mipCount());
-            entry._view._layerRange.set(0, useCount);
-            descriptorSetCmd._set._textureViews.add(entry);
-        } else {
-            descriptorSetCmd._set._textureData.add(TextureEntry{ shadowTexture.texture()->data(), shadowTexture.samplerHash(), bindSlot });
-        }
+        descriptorSetCmd._set._textureData.add(TextureEntry{ shadowTexture.texture()->data(), shadowTexture.samplerHash(), bindSlot });
     }
     EnqueueCommand(bufferInOut, descriptorSetCmd);
 }
 
-U16 ShadowMap::lastUsedDepthMapOffset(const ShadowType shadowType) {
-    ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
-    const LayerUsageMask& usageMask = s_depthMapUsage[to_U32(shadowType)];
-
-    for (U16 i = 0; i < to_U16(usageMask.size()); ++i) {
-        if (usageMask[i] == false) {
-            return i;
-        }
-    }
-
-    return to_U16(usageMask.size());
+bool ShadowMap::freeShadowMapOffset(const Light& light) {
+    ScopedLock<Mutex> w_lock(s_shadowMapUsageLock);
+    return freeShadowMapOffsetLocked(light);
 }
 
-U16 ShadowMap::findFreeDepthMapOffset(const ShadowType shadowType, const U32 layerCount) {
-    ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
-
-    LayerUsageMask& usageMask = s_depthMapUsage[to_U32(shadowType)];
-    U16 layer = U16_MAX;
-    const U16 usageCount = to_U16(usageMask.size());
-    for (U16 i = 0; i < usageCount; ++i) {
-        if (usageMask[i] == false) {
-            layer = i;
-            break;
-        }
+bool ShadowMap::freeShadowMapOffsetLocked(const Light& light) {
+    const U16 layerOffset = light.getShadowArrayOffset();
+    if (layerOffset == U16_MAX) {
+        return true;
     }
 
-    if (layer > usageCount) {
-        layer = usageCount;
-        usageMask.insert(std::end(usageMask), layerCount, false);
-    }
+    const U32 layerRequirement = getLightLayerRequirements(light);
+    const ShadowType sType = getShadowTypeForLightType(light.getLightType());
 
-    return layer;
-}
-
-void ShadowMap::commitDepthMapOffset(const ShadowType shadowType, const U32 layerOffest, const U32 layerCount) {
-    ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
-
-    LayerUsageMask& usageMask = s_depthMapUsage[to_U32(shadowType)];
-    for (U32 i = layerOffest; i < layerOffest + layerCount; ++i) {
-        usageMask[i] = true;
-    }
-}
-
-bool ShadowMap::freeDepthMapOffset(const ShadowType shadowType, const U32 layerOffest, const U32 layerCount) {
-    ScopedLock<Mutex> w_lock(s_depthMapUsageLock);
-
-    LayerUsageMask& usageMask = s_depthMapUsage[to_U32(shadowType)];
-    for (U32 i = layerOffest; i < layerOffest + layerCount; ++i) {
-        usageMask[i] = false;
+    LayerLifetimeMask& lifetimeMask = s_shadowMapLifetime[to_U32(sType)];
+    for (U32 i = layerOffset; i < layerOffset + layerRequirement; ++i) {
+        lifetimeMask[i]._lifetime = MAX_SHADOW_FRAME_LIFETIME;
+        lifetimeMask[i]._lightGUID = -1;
     }
 
     return true;
+}
+
+bool ShadowMap::commitLayerRange(Light& light) {
+    const U32 layerCount = getLightLayerRequirements(light);
+    if (layerCount == 0u) {
+        return false;
+    }
+
+    const U16 crtArrayOffset = light.getShadowArrayOffset();
+
+    const ShadowType shadowType = getShadowTypeForLightType(light.getLightType());
+
+    ScopedLock<Mutex> w_lock(s_shadowMapUsageLock);
+    LayerLifetimeMask& lifetimeMask = s_shadowMapLifetime[to_U32(shadowType)];
+    if (crtArrayOffset != U16_MAX) {
+        bool valid = true;
+        for (U16 i = 0u; i < layerCount; ++i) {
+            if (lifetimeMask[crtArrayOffset + i]._lightGUID == light.getGUID()) {
+                lifetimeMask[crtArrayOffset + i]._lifetime = 0u;
+            } else {
+                valid = false;
+            }
+            
+        }
+        if (valid) {
+            return true;
+        }
+    }
+
+    if (crtArrayOffset != U16_MAX) {
+        freeShadowMapOffsetLocked(light);
+    }
+
+    // Common case. Broken out for ease of debugging
+    if (layerCount == 1u) {
+        for (U16 i = 0u; i < lifetimeMask.size(); ++i) {
+            if (lifetimeMask[i]._lifetime >= MAX_SHADOW_FRAME_LIFETIME) {
+                lifetimeMask[i]._lifetime = 0u;
+                lifetimeMask[i]._lightGUID = light.getGUID();
+                light.setShadowArrayOffset(i);
+                return true;
+            }
+        }
+    } else {
+        // Really only happens for directional lights due to the way CSM is layed out
+        const U16 availableLayers = to_U16(lifetimeMask.size());
+        bool found = false;
+        for (U16 i = 0u; i < availableLayers - layerCount; ++i) {
+            for (U16 j = i; j < i + layerCount; ++j) {
+                if (lifetimeMask[j]._lifetime < MAX_SHADOW_FRAME_LIFETIME) {
+                    found = false;
+                    break;
+                }
+
+                found = true;
+            }
+            if (found) {
+                for (U16 j = i; j < i + layerCount; ++j) {
+                    lifetimeMask[j]._lifetime = 0u;
+                    lifetimeMask[j]._lightGUID = light.getGUID();
+                }
+                light.setShadowArrayOffset(i);
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 U32 ShadowMap::getLightLayerRequirements(const Light& light) {
@@ -300,27 +366,43 @@ U32 ShadowMap::getLightLayerRequirements(const Light& light) {
     return 0u;
 }
 
-bool ShadowMap::generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut) {
-    OPTICK_EVENT();
-
-    const U32 layerRequirement = getLightLayerRequirements(light);
-    const ShadowType sType = getShadowTypeForLightType(light.getLightType());
-
-    if (layerRequirement == 0u || s_shadowMapGenerators[to_base(sType)] == nullptr) {
+bool ShadowMap::markShadowMapsUsed(Light& light) {
+    const U8 shadowTypeIdx = to_base(getShadowTypeForLightType(light.getLightType()));
+    if (!commitLayerRange(light)) {
+        // If we don't have enough resources available, something went terribly wrong as we limit shadow casting lights per-type
+        // and allocate enough slices for the worst case -Ionut
+        DIVIDE_UNEXPECTED_CALL();
         return false;
     }
-
-    const U16 offset = findFreeDepthMapOffset(sType, layerRequirement);
-    light.setShadowOffset(offset);
-    commitDepthMapOffset(sType, offset, layerRequirement);
-
-    s_shadowMapGenerators[to_base(sType)]->render(playerCamera, light, s_shadowPassIndex[to_base(sType)]++, bufferInOut);
 
     return true;
 }
 
-const RenderTargetHandle& ShadowMap::getDepthMap(const LightType type) {
+bool ShadowMap::generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
+
+    const U8 shadowTypeIdx = to_base(getShadowTypeForLightType(light.getLightType()));
+    if (s_shadowMapGenerators[shadowTypeIdx] == nullptr){
+        // If we don't have enough resources available, something went terribly wrong as we limit shadow casting lights per-type
+        // and allocate enough slices for the worst case -Ionut
+        DIVIDE_UNEXPECTED_CALL();
+        return false;
+    }
+
+    if (markShadowMapsUsed(light)) {
+        s_shadowMapGenerators[shadowTypeIdx]->render(playerCamera, light, s_shadowPassIndex[shadowTypeIdx]++, bufferInOut);
+        return true;
+    }
+
+    return false;
+}
+
+const RenderTargetHandle& ShadowMap::getShadowMap(const LightType type) {
     return s_shadowMaps[to_base(getShadowTypeForLightType(type))];
+}
+
+const RenderTargetHandle& ShadowMap::getShadowMapCache(const LightType type) {
+    return s_shadowMapCaches[to_base(getShadowTypeForLightType(type))];
 }
 
 void ShadowMap::setMSAASampleCount(const ShadowType type, const U8 sampleCount) {
@@ -373,17 +455,18 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                 constexpr I16 Base = 2;
                 for (U8 i = 0; i < splitCount; ++i) {
                     DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1 - splitCount + i));
-                    shadow->_texture = getDepthMap(LightType::DIRECTIONAL)._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
-                    shadow->_samplerHash = getDepthMap(LightType::DIRECTIONAL)._rt->getAttachment(RTAttachmentType::Colour, 0).samplerHash();
+                    shadow->_texture = getShadowMap(LightType::DIRECTIONAL)._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
+                    shadow->_samplerHash = getShadowMap(LightType::DIRECTIONAL)._rt->getAttachment(RTAttachmentType::Colour, 0).samplerHash();
                     shadow->_shader = previewShader;
-                    shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, i + light->getShadowOffset());
-                    shadow->_name = Util::StringFormat("CSM_%d", i + light->getShadowOffset());
-                    shadow->_groupID = Base + to_I16(light->shadowIndex());
+                    shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, i + light->getShadowArrayOffset());
+                    shadow->_name = Util::StringFormat("CSM_%d", i + light->getShadowArrayOffset());
+                    shadow->_groupID = Base + to_I16(light->shadowPropertyIndex());
                     shadow->_enabled = true;
                     s_debugViews.push_back(shadow);
                 }
             } break;
             case LightType::SPOT: {
+                constexpr I16 Base = 22;
                 fragModule._variant = "Layered.LinearDepth";
 
                 ShaderProgramDescriptor shaderDescriptor = {};
@@ -395,15 +478,17 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                 shadowPreviewShader.threaded(false);
 
                 DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1));
-                shadow->_texture = getDepthMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
-                shadow->_samplerHash = getDepthMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::Colour, 0).samplerHash();
+                shadow->_texture = getShadowMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
+                shadow->_samplerHash = getShadowMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::Colour, 0).samplerHash();
                 shadow->_shader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
-                shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, light->getShadowOffset());
-                shadow->_name = Util::StringFormat("SM_%d", light->getShadowOffset());
+                shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, light->getShadowArrayOffset());
+                shadow->_name = Util::StringFormat("SM_%d", light->getShadowArrayOffset());
                 shadow->_enabled = true;
+                shadow->_groupID = Base + to_I16(light->shadowPropertyIndex());
                 s_debugViews.push_back(shadow);
             }break;
             case LightType::POINT: {
+                constexpr I16 Base = 222;
                 fragModule._variant = "Cube.Shadow";
 
                 ShaderProgramDescriptor shaderDescriptor = {};
@@ -418,16 +503,15 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
 
                 const vec2<F32> zPlanes = shadowCameras(ShadowType::CUBEMAP)[0]->getZPlanes();
 
-                constexpr I16 Base = 5;
-                for (U32 i = 0; i < 6; ++i) {
+                for (U8 i = 0u; i < 6u; ++i) {
                     DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1 - 6 + i));
-                    shadow->_texture = getDepthMap(LightType::POINT)._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
-                    shadow->_samplerHash = getDepthMap(LightType::POINT)._rt->getAttachment(RTAttachmentType::Colour, 0).samplerHash();
+                    shadow->_texture = getShadowMap(LightType::POINT)._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
+                    shadow->_samplerHash = getShadowMap(LightType::POINT)._rt->getAttachment(RTAttachmentType::Colour, 0).samplerHash();
                     shadow->_shader = previewShader;
-                    shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, light->getShadowOffset());
+                    shadow->_shaderData.set(_ID("layer"), GFX::PushConstantType::INT, light->getShadowArrayOffset());
                     shadow->_shaderData.set(_ID("face"), GFX::PushConstantType::INT, i);
-                    shadow->_groupID = Base + to_I16(light->shadowIndex());
-                    shadow->_name = Util::StringFormat("CubeSM_%d_face_%d", light->getShadowOffset(), i);
+                    shadow->_groupID = Base + to_I16(light->shadowPropertyIndex());
+                    shadow->_name = Util::StringFormat("CubeSM_%d_face_%d", light->getShadowArrayOffset(), i);
                     shadow->_enabled = true;
                     s_debugViews.push_back(shadow);
                 }

@@ -54,8 +54,6 @@ BEGIN_COMPONENT_EXT1(SpotLight, ComponentType::SPOT_LIGHT, Light)
     void OnData(const ECS::CustomEvent& data) override;
     void setDirection(const vec3<F32>& direction) const;
 
-   private:
-     bool _drawImpostor = false;
 END_COMPONENT(SpotLight);
 
 }  // namespace Divide

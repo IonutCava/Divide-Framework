@@ -199,10 +199,7 @@ public:
 
     /// Returns a pointer to a specific component. Returns null if the SGN does not have the component requested
     template <typename T>
-    T* get() const {
-        std::scoped_lock<std::mutex > r_lock(s_ComponentManagerLock);
-        return _compManager->GetComponent<T>(GetEntityID());
-    } ///< ToDo: Optimise this -Ionut
+    FORCE_INLINE [[nodiscard]] T* get() const { return GetComponent<T>(); }
 
     void SendEvent(ECS::CustomEvent&& event);
 
@@ -240,11 +237,12 @@ public:
     /// Serialization: load from XML file (expressed as a boost property_tree)
     void loadFromXML(const boost::property_tree::ptree& pt);
 
+    [[nodiscard]] static bool IsContainerNode(const SceneGraphNode& node) noexcept;
 private:
     /// Process any events that might of queued up during the ECS Update stages
     void processEvents();
-    /// Returns true if the node SHOULD be culled (is not visible for the current stage). Calls "preCullNode" internally.
-    bool cullNode(const NodeCullParams& params, const U16 cullFlags, FrustumCollision& collisionTypeOut, F32& distanceToClosestPointSQ) const;
+    /// Returns a collision result that determines if the node SHOULD be culled (is not visible for the current stage). 
+    FrustumCollision cullNode(const NodeCullParams& params, const U16 cullFlags,F32& distanceToClosestPointSQ) const;
     /// Called after preRender and after we rebuild our command buffers. Useful for modifying the command buffer that's going to be used for this RenderStagePass
     void prepareRender(RenderingComponent& rComp, RenderStagePass renderStagePass, const CameraSnapshot& cameraSnapshot, bool refreshData);
     /// Called whenever we send a networking packet from our NetworkingComponent (if any). FrameCount is the frame ID sent with the packet.
@@ -272,6 +270,13 @@ private:
 
     void AddSGNComponentInternal(SGNComponent* comp);
     void RemoveSGNComponentInternal(SGNComponent* comp);
+
+
+    template<bool checkInternalNode = false>
+    SceneGraphNode* findChildInternal(U64 nameHash, bool recursive = false) const;
+    template<bool checkInternalNode = false>
+    SceneGraphNode* findChildInternal(I64 GUID, bool recursive = false) const;
+
 private:
     SGNRelationshipCache _relationshipCache;
     ChildContainer _children;
@@ -281,6 +286,7 @@ private:
         vector_fast<EditorComponent*> _editorComponents;
         TransformComponent* _transformComponentCache = nullptr;
         BoundsComponent* _boundsComponentCache = nullptr;
+        RenderingComponent* _renderingComponent = nullptr;
     } Hacks;
 
     struct events
@@ -297,6 +303,7 @@ private:
     POINTER_R(ECS::ComponentManager, compManager, nullptr);
     POINTER_R(SceneGraphNode, parent, nullptr);
     PROPERTY_R(Str64, name, "");
+    PROPERTY_R(U64, nameHash, 0u);
     PROPERTY_R(I64, queuedNewParent, -1);
     PROPERTY_RW(U64, lockToCamera, 0u);
     PROPERTY_R(U64, elapsedTimeUS, 0u);
@@ -371,8 +378,13 @@ namespace Attorney {
 
     class SceneGraphNodeRenderPassCuller {
         // Returns true if the node should be culled (is not visible for the current stage)
-        static bool cullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags, FrustumCollision& collisionTypeOut, F32& distanceToClosestPointSQ) {
-            return node->cullNode(params, cullFlags, collisionTypeOut, distanceToClosestPointSQ);
+        static FrustumCollision cullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags, F32& distanceToClosestPointSQ) {
+            return node->cullNode(params, cullFlags, distanceToClosestPointSQ);
+        }  
+
+        static FrustumCollision cullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags) {
+            F32 distanceToClosestPointSQ = std::numeric_limits<F32>::max();
+            return cullNode(node, params, cullFlags, distanceToClosestPointSQ);
         }
 
         friend class Divide::RenderPassCuller;

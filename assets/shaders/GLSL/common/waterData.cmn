@@ -1,10 +1,6 @@
 #ifndef _WATER_DATA_CMN_
 #define _WATER_DATA_CMN_
 
-#if defined(FRAG_SHADER) || defined(NEED_SCENE_DATA)
-
-#include "sceneData.cmn"
-
 bool IsUnderWater(in vec3 vertexW) {
     for (int i = 0; i < GLOBAL_WATER_BODIES_COUNT; ++i)
     {
@@ -57,5 +53,4 @@ vec2 GetWaterDetails(in vec3 vertexW, in float maxDepth) {
 
     return Saturate(vec2(maxDistance, minDepth));
 }
-#endif //FRAG_SHADER || NEED_SCENE_DATA
 #endif //_WATER_DATA_CMN_

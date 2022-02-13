@@ -46,6 +46,7 @@ GFXRTPool::GFXRTPool(GFXDevice& parent)
     _renderTargets[to_U32(RenderTargetUsage::HI_Z_REFLECT)].resize(1, nullptr);
 
     _renderTargets[to_U32(RenderTargetUsage::SHADOW)].resize(to_base(ShadowType::COUNT), nullptr);
+    _renderTargets[to_U32(RenderTargetUsage::SHADOW_CACHE)].resize(to_base(ShadowType::COUNT), nullptr);
 
     _renderTargets[to_U32(RenderTargetUsage::REFLECTION_PLANAR)].resize(Config::MAX_REFLECTIVE_NODES_IN_VIEW, nullptr);
     _renderTargets[to_U32(RenderTargetUsage::REFRACTION_PLANAR)].resize(Config::MAX_REFRACTIVE_NODES_IN_VIEW, nullptr);

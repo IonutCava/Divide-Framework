@@ -35,6 +35,7 @@
 
 #include "ECS/Components/Headers/SGNComponent.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
+#include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 
 namespace Divide {
 
@@ -58,12 +59,11 @@ class Light : public GUIDWrapper, public ECS::Event::IEventListener
     // Worst case scenario: cube shadows = 6 passes
     struct ShadowProperties {
         // x = light type, y = arrayOffset, z - bias, w - strength
-        vec4<F32> _lightDetails;
+        vec4<F32> _lightDetails{0.f, -1.f, 0.f, 1.f};
         /// light's position in world space. w - csm split distances (or whatever else might be needed)
         std::array<vec4<F32>, 6> _lightPosition{};
         /// light viewProjection matrices
         std::array<mat4<F32>, 6> _lightVP{};
-        U32 _lastShadowIndex = U32_MAX;
         bool _dirty = false;
     };
 
@@ -118,10 +118,6 @@ class Light : public GUIDWrapper, public ECS::Event::IEventListener
         return _shadowProperties._lightPosition[index];
     }
 
-    [[nodiscard]] U16 getShadowOffset() const noexcept {
-        return to_U16(_shadowProperties._lightDetails.y);
-    }
-
     void setShadowVPMatrix(const U8 index, const mat4<F32>& newValue) noexcept {
         assert(index < 6);
         
@@ -147,51 +143,66 @@ class Light : public GUIDWrapper, public ECS::Event::IEventListener
         }
     }
 
-    void setShadowOffset(const U16 offset) noexcept {
-        if (to_U16(_shadowProperties._lightDetails.y) != offset) {
-            _shadowProperties._lightDetails.y = to_F32(offset);
+    void setShadowArrayOffset(const U16 offset) noexcept {
+        if (getShadowArrayOffset() != offset) {
+            _shadowProperties._lightDetails.y = offset == U16_MAX ? -1.f : to_F32(offset);
             _shadowProperties._dirty = true;
         }
     }
 
-    void cleanShadowProperties(const U32 newShadowIndex) noexcept {
+    void cleanShadowProperties() noexcept {
         _shadowProperties._dirty = false;
-        _shadowProperties._lastShadowIndex = newShadowIndex;
+        staticShadowsDirty(false);
+        dynamicShadowsDirty(false);
+    }
+
+    [[nodiscard]] U16 getShadowArrayOffset() const noexcept {
+        if (_shadowProperties._lightDetails.y < 0.f) {
+            return U16_MAX;
+        }
+
+        return to_U16(_shadowProperties._lightDetails.y);
     }
 
     [[nodiscard]] SceneGraphNode* getSGN()       noexcept { return _sgn; }
     [[nodiscard]] const SceneGraphNode* getSGN() const noexcept { return _sgn; }
 
+    PROPERTY_R_IW(BoundingSphere, boundingVolume);
     PROPERTY_R(vec3<F32>, positionCache);
     PROPERTY_R(vec3<F32>, directionCache);
     /// Does this light cast shadows?
     PROPERTY_RW(bool, castsShadows);
     /// Turn the light on/off
     PROPERTY_RW(bool, enabled);
-    /// Light range used for attenuation computation
+    /// Light range used for attenuation computation. Range = radius (not diameter!)
     PROPERTY_RW(F32, range, 10.0f);
     /// Light intensity in "lumens" (not really). Just a colour multiplier for now. ToDo: fix that -Ionut
     PROPERTY_RW(F32, intensity, 1.0f);
     /// Index used to look up shadow properties in shaders
-    PROPERTY_R_IW(I32, shadowIndex, -1);
-
+    PROPERTY_R_IW(I32, shadowPropertyIndex, -1);
     /// A generic ID used to identify the light more easily
     PROPERTY_RW(U32, tag, 0u);
+
+    PROPERTY_RW(bool, staticShadowsDirty, true);
+    PROPERTY_RW(bool, dynamicShadowsDirty, true);
+
+    /// Same as showDirectionCone but triggered differently (i.e. on selection in editor)
+    PROPERTY_R_IW(bool, drawImpostor, false);
 
    protected:
      friend class LightPool;
      void updateCache(const ECS::CustomEvent& event);
-
      void registerFields(EditorComponent& comp);
+     virtual void updateBoundingVolume(const Camera* playerCamera);
+
    protected:
     SceneGraphNode* _sgn = nullptr;
     LightPool& _parentPool;
-    /// rgb - diffuse, a - reserved
-    UColour4  _colour;
     // Shadow mapping properties
     ShadowProperties _shadowProperties;
-
-    LightType _type;
+    /// rgb - diffuse, a - reserved
+    UColour4  _colour;
+    LightType _type = LightType::COUNT;
 };
 
 };  // namespace Divide

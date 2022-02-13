@@ -66,10 +66,46 @@ enum class RenderTargetUsage : U8 {
     ENVIRONMENT,
     IBL,
     SHADOW,
+    SHADOW_CACHE,
     EDITOR,
     OTHER,
     COUNT
 };
+
+namespace Names {
+    static constexpr char* renderTargetUsage[] = {
+        "SCREEN",
+        "SCREEN_MS",
+        "SCREEN_PREV",
+        "OIT",
+        "OIT_MS",
+        "OIT_REFLECT",
+        "SSAO_RESULT",
+        "LINEAR_DEPTH",
+        "SSR_RESULT",
+        "HI_Z",
+        "HI_Z_REFLECT",
+        "REFLECTION_PLANAR",
+        "REFLECTION_PLANAR_BLUR",
+        "REFRACTION_PLANAR",
+        "REFLECTION_CUBE",
+        "ENVIRONMENT",
+        "IBL",
+        "SHADOW",
+        "SHADOW_CACHE",
+        "EDITOR",
+        "OTHER",
+        "NONE"
+    };
+};
+
+static_assert(to_base(RenderTargetUsage::COUNT) + 1 == std::size(Names::renderTargetUsage));
+
+namespace TypeUtil {
+    const char* RenderTargetUsageToString(RenderTargetUsage usage) noexcept;
+    RenderTargetUsage StringToRenderTargetUsage(const char* name) noexcept;
+}
+
 /// A list of built-in sampler slots. Use these if possible and keep them sorted by how often they are used
 enum class TextureUsage : U8 {
     UNIT0 = 0u,

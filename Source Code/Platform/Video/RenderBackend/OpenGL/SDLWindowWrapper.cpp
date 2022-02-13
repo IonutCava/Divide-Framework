@@ -14,7 +14,6 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/ShaderBuffer/Headers/glUniformBuffer.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/VertexBuffer/Headers/glVertexArray.h"
 #include "Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/GL3Renderer.h"
 #include <glbinding-aux/ContextInfo.h>
 
@@ -31,8 +30,6 @@
 
 namespace Divide {
 namespace {
-    constexpr U32 g_maxVAOS = 512u;
-
     struct ContextPool {
         bool init(const size_t size, const DisplayWindow& window) {
             SDL_Window* raw = window.getRawWindow();
@@ -358,8 +355,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
 
     // Prepare immediate mode emulation rendering
     NS_GLIM::glim.SetVertexAttribLocation(to_base(AttribLocation::POSITION));
-    // Initialize our VAO pool
-    s_vaoPool.init(g_maxVAOS);
 
     // Initialize our query pool
     s_hardwareQueryPool->init(
@@ -386,8 +381,10 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     // Init any buffer locking mechanism we might need
     glBufferLockManager::OnStartup();
     // We need a dummy VAO object for point rendering
-    s_dummyVAO = s_vaoPool.allocate();
-
+    glCreateVertexArrays(1, &s_dummyVAO);
+    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+        glObjectLabel(GL_VERTEX_ARRAY, s_dummyVAO, -1, "Dummy VAO");
+    }
     // Once OpenGL is ready for rendering, init CEGUI
     _GUIGLrenderer = &CEGUI::OpenGL3Renderer::create();
     _GUIGLrenderer->enableExtraStateSettings(false);
@@ -438,11 +435,10 @@ void GL_API::closeRenderingAPI() {
     _fonsContext = nullptr;
 
     _fonts.clear();
-    if (s_dummyVAO > 0) {
+    if (s_dummyVAO != GLUtil::k_invalidObjectID) {
         DeleteVAOs(1, &s_dummyVAO);
     }
     s_textureViewCache.destroy();
-    s_vaoPool.destroy();
     if (s_hardwareQueryPool != nullptr) {
         s_hardwareQueryPool->destroy();
         MemoryManager::DELETE(s_hardwareQueryPool);

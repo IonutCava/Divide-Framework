@@ -432,7 +432,7 @@ namespace Divide {
                 if (light != nullptr) {
                     if (light->castsShadows()) {
                         if (ImGui::CollapsingHeader("Light Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
-                            ImGui::Text("Shadow Offset: %d", to_U32(light->getShadowOffset()));
+                            ImGui::Text("Shadow Offset: %d", to_U32(light->getShadowArrayOffset()));
 
                             switch (light->getLightType()) {
                                 case LightType::POINT: {

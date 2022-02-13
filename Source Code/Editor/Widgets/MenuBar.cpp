@@ -56,34 +56,6 @@ namespace {
         bool _closePopup = false;
     } g_saveSceneParams;
 
-    const char* UsageToString(const RenderTargetUsage usage) noexcept {
-        switch (usage) {
-            case RenderTargetUsage::EDITOR: return "Editor";
-            case RenderTargetUsage::ENVIRONMENT: return "Environment";
-            case RenderTargetUsage::IBL: return "IBL";
-            case RenderTargetUsage::SSAO_RESULT: return "SSAO Result";
-            case RenderTargetUsage::LINEAR_DEPTH: return "Linear Depth";
-            case RenderTargetUsage::SSR_RESULT: return "SSR Result";
-            case RenderTargetUsage::HI_Z: return "HI-Z";
-            case RenderTargetUsage::HI_Z_REFLECT: return "HI-Z Reflect";
-            case RenderTargetUsage::OIT: return "OIT";
-            case RenderTargetUsage::OIT_MS: return "OIT_MS";
-            case RenderTargetUsage::OIT_REFLECT: return "OIT_REFLECT";
-            case RenderTargetUsage::OTHER: return "Other";
-            case RenderTargetUsage::REFLECTION_CUBE: return "Cube Reflection";
-            case RenderTargetUsage::REFLECTION_PLANAR: return "Planar Reflection";
-            case RenderTargetUsage::REFLECTION_PLANAR_BLUR: return "Planar Reflection Blur";
-            case RenderTargetUsage::REFRACTION_PLANAR: return "Planar Refraction";
-            case RenderTargetUsage::SCREEN: return "Screen";
-            case RenderTargetUsage::SCREEN_PREV: return "Screen_Prev";
-            case RenderTargetUsage::SCREEN_MS: return "Screen_MS";
-            case RenderTargetUsage::SHADOW: return "Shadow";
-            case RenderTargetUsage::COUNT: break;
-        }
-
-        return "Unknown";
-    }
-
     const char* EdgeMethodName(const PreRenderBatch::EdgeDetectionMethod method) noexcept {
         switch (method) {
             case PreRenderBatch::EdgeDetectionMethod::Depth: return "Depth";
@@ -640,11 +612,11 @@ void MenuBar::drawToolsMenu([[maybe_unused]] const bool modifierPressed) {
                 const auto& rTargets = pool.renderTargets(usage);
 
                 if (rTargets.empty()) {
-                    if (ImGui::MenuItem(UsageToString(usage), "", false, false))
+                    if (ImGui::MenuItem(TypeUtil::RenderTargetUsageToString(usage), "", false, false))
                     {
                     }
                 } else {
-                    if (ImGui::BeginMenu(UsageToString(usage)))
+                    if (ImGui::BeginMenu(TypeUtil::RenderTargetUsageToString(usage)))
                     {
                         for (const auto& rt : rTargets) {
                             if (rt == nullptr) {

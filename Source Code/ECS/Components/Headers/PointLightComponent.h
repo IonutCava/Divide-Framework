@@ -44,8 +44,6 @@ BEGIN_COMPONENT_EXT1(PointLight, ComponentType::POINT_LIGHT, Light)
    protected:
     void OnData(const ECS::CustomEvent& data) override;
 
-   private:
-    bool _drawImpostor = false;
 END_COMPONENT(PointLight);
 
 }  // namespace Divide

@@ -72,6 +72,7 @@ struct NodeCullParams {
     F32 _cullMaxDistance = std::numeric_limits<F32>::max();
     I32 _maxLoD = -1;
     RenderStage _stage = RenderStage::COUNT;
+    bool _skipBoundsChecking = false;
 };
 
 struct VisibleNode {

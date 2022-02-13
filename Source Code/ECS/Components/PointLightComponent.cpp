@@ -25,6 +25,8 @@ PointLightComponent::PointLightComponent(SceneGraphNode* sgn, PlatformContext& c
 }
 
 void PointLightComponent::OnData(const ECS::CustomEvent& data) {
+    SGNComponent::OnData(data);
+
     if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
         updateCache(data);
     } else if (data._type == ECS::CustomEvent::Type::EntityFlagChanged) {

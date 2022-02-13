@@ -71,6 +71,16 @@ namespace Divide {
 
     void AnimationSystem::PostUpdate(const F32 dt) {
         Parent::PostUpdate(dt);
+        for (AnimationComponent* const comp : _componentCache) {
+            if (comp->frameTicked()) {
+                comp->parentSGN()->SendEvent(
+                    ECS::CustomEvent{
+                         ECS::CustomEvent::Type::AnimationUpdated,
+                         comp
+                    }
+                );
+            }
+        }
     }
 
     void AnimationSystem::OnFrameStart() {

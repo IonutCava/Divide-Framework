@@ -75,36 +75,36 @@ vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool
 
     const float ndv = abs(dot(N, V)) + M_EPSILON;
 
-    for (int lightIdx = 0; lightIdx < dirLightCount; ++lightIdx) {
+    for (uint lightIdx = 0u; lightIdx < dirLightCount; ++lightIdx) {
         const Light light = dvd_LightSource[lightIdx];
         const vec3 lightVec = normalize(-light._directionWV.xyz);
         const float ndl = GetNdotL(N, lightVec);
         const int shadowIndex = light._options.y;
-        const float shadowMultiplier = (shadowIndex >= 0 && receivesShadows) ? getShadowMultiplierDirectional(shadowIndex, TanAcosNdL(ndl)) : 1.f;
+        const float shadowMultiplier = mix(1.f, getShadowMultiplierDirectional(shadowIndex, TanAcosNdL(ndl)), (shadowIndex >= 0 && receivesShadows));
         radianceIn += GetBRDF(lightVec, V, N, light._colour.rgb, shadowMultiplier, ndl, ndv, material);
     }
 
-    for (int i = 0; i < pointLightCount; ++i) {
+    for (uint i = 0u; i < pointLightCount; ++i) {
         const Light light = dvd_LightSource[globalLightIndexList[lightIndexOffset + i] + dirLightCount];
         const vec3 lightDir = light._positionWV.xyz - VAR._vertexWV.xyz;
         const vec3 lightVec = normalize(lightDir);
 
         const float ndl = GetNdotL(N, lightVec);
         const int shadowIndex = light._options.y;
-        const float shadowMultiplier = (shadowIndex >= 0 && receivesShadows) ? getShadowMultiplierPoint(shadowIndex, TanAcosNdL(ndl)) : 1.f;
+        const float shadowMultiplier = mix(1.f, getShadowMultiplierPoint(shadowIndex, TanAcosNdL(ndl)), (shadowIndex >= 0 && receivesShadows));
 
         const float att = Saturate(1.f - (Squared(length(lightDir)) / Squared(light._positionWV.w)));
         radianceIn += GetBRDF(lightVec, V, N, light._colour.rgb, Squared(att) * shadowMultiplier, ndl, ndv, material);
     }
 
-    for (int i = 0; i < spotLightCount; ++i) {
+    for (uint i = 0u; i < spotLightCount; ++i) {
         const Light light = dvd_LightSource[globalLightIndexList[lightIndexOffset + pointLightCount + i] + dirLightCount];
         const vec3 lightDir = light._positionWV.xyz - VAR._vertexWV.xyz;
         const vec3 lightVec = normalize(lightDir);
 
         const float ndl = GetNdotL(N, lightVec);
         const int shadowIndex = light._options.y;
-        const float shadowMultiplier = (shadowIndex >= 0 && receivesShadows) ? getShadowMultiplierSpot(shadowIndex, TanAcosNdL(ndl)) : 1.f;
+        const float shadowMultiplier = mix(1.f, getShadowMultiplierSpot(shadowIndex, TanAcosNdL(ndl)), (shadowIndex >= 0 && receivesShadows));
 
         const vec3  spotDirectionWV = normalize(light._directionWV.xyz);
         const float cosOuterConeAngle = light._colour.w;

@@ -157,7 +157,7 @@ bool createFile(const char* filePathAndName, const bool overwriteExisting) {
     }
 
     if (!CreateDirectories((const_sysInfo()._workingDirectory + splitPathToNameAndLocation(filePathAndName).second.str()).c_str())) {
-        DebugBreak();
+        DIVIDE_UNEXPECTED_CALL();
     }
 
     return std::ifstream(filePathAndName, std::fstream::in).good();

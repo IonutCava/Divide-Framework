@@ -82,6 +82,8 @@ F32 SpotLightComponent::coneSlantHeight() const noexcept {
 }
 
 void SpotLightComponent::OnData(const ECS::CustomEvent& data) {
+    SGNComponent::OnData(data);
+
     if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
         updateCache(data);
     } else if (data._type == ECS::CustomEvent::Type::EntityFlagChanged) {

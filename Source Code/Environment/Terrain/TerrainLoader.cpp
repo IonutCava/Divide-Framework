@@ -56,6 +56,30 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     Attorney::TerrainLoader::descriptor(*terrain, terrainDescriptor);
     const U8 textureQuality = context.config().terrain.textureQuality;
+
+    // Noise texture
+    SamplerDescriptor noiseMediumSampler = {};
+    noiseMediumSampler.wrapUVW(TextureWrap::REPEAT);
+    noiseMediumSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
+    noiseMediumSampler.magFilter(TextureFilter::LINEAR);
+    noiseMediumSampler.anisotropyLevel(16);
+    const size_t noiseHash = noiseMediumSampler.getHash();
+    
+    ImageTools::ImportOptions importOptions{};
+    importOptions._useDDSCache = true;
+
+    TextureDescriptor noiseMediumDescriptor(TextureType::TEXTURE_2D_ARRAY);
+    noiseMediumDescriptor.layerCount(1u);
+    noiseMediumDescriptor.srgb(false);
+    importOptions._alphaChannelTransparency = false;
+    importOptions._isNormalMap = false;
+    noiseMediumDescriptor.textureOptions(importOptions);
+
+    ResourceDescriptor textureNoiseMedium("Terrain Noise Map_" + name);
+    textureNoiseMedium.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);
+    textureNoiseMedium.assetName(ResourcePath{ "medium_noise.png" });
+    textureNoiseMedium.propertyDescriptor(noiseMediumDescriptor);
+
     // Blend maps
     ResourceDescriptor textureBlendMap("Terrain Blend Map_" + name);
     textureBlendMap.assetLocation(terrainLocation);
@@ -88,47 +112,31 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     vector<string> textures[to_base(TerrainTextureType::COUNT)] = {};
     vector<string> splatTextures = {};
 
-    const size_t idxCount = layerCount * to_size(TerrainTextureChannel::COUNT);
-    std::array<vector<U16>, to_base(TerrainTextureType::COUNT)> indices;
-    std::array<U16, to_base(TerrainTextureType::COUNT)> offsets{};
-    vector<U8> channelCountPerLayer(layerCount, 0u);
-
-    for (auto& it : indices) {
-        it.resize(idxCount, 255u);
-    }
-    offsets.fill(0u);
-
     const char* textureNames[to_base(TerrainTextureType::COUNT)] = {
         "Albedo_roughness", "Normal", "Displacement"
     };
 
-    U16 idx = 0;
-    for (U8 i = 0; i < layerCount; ++i) {
+    for (U8 i = 0u; i < layerCount; ++i) {
         layerOffsetStr = Util::to_string(i);
         splatTextures.push_back(terrainDescriptor->getVariable("blendMap" + layerOffsetStr));
-        U8 j = 0;
-        for (const auto &[channelName, channel] : channels) {
+    }
+
+    for (U8 i = 0u; i < layerCount; ++i) {
+        layerOffsetStr = Util::to_string(i);
+        splatTextures.push_back(terrainDescriptor->getVariable("blendMap" + layerOffsetStr));
+        U8 j = 0u;
+        for (const auto& [channelName, channel] : channels) {
             currentMaterial = terrainDescriptor->getVariable(channelName + layerOffsetStr + "_mat");
             if (currentMaterial.empty()) {
                 continue;
             }
 
-            for (U8 k = 0; k < to_base(TerrainTextureType::COUNT); ++k) {
-                const auto [index, wasNew] = FindOrInsert(textureQuality, textures[k], Util::StringFormat("%s.%s", textureNames[k], k == to_base(TerrainTextureType::ALBEDO_ROUGHNESS) ? "png" : "jpg"), currentMaterial);
-                indices[k][idx] = index;
-                if (wasNew) {
-                    ++offsets[k];
-                }
+            for (U8 k = 0u; k < to_base(TerrainTextureType::COUNT); ++k) {
+                FindOrInsert(textureQuality, textures[k], Util::StringFormat("%s.%s", textureNames[k], k == to_base(TerrainTextureType::ALBEDO_ROUGHNESS) ? "png" : "jpg"), currentMaterial);
             }
 
             ++j;
-            ++idx;
         }
-        channelCountPerLayer[i] = j;
-    }
-
-    for (U8 k = 0; k < to_base(TerrainTextureType::COUNT); ++k) {
-        indices[k].resize(idx);
     }
 
     ResourcePath blendMapArray = {};
@@ -181,9 +189,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     albedoSampler.magFilter(TextureFilter::LINEAR);
     albedoSampler.anisotropyLevel(16);
     const size_t albedoHash = albedoSampler.getHash();
-
-    ImageTools::ImportOptions importOptions{};
-    importOptions._useDDSCache = true;
 
     TextureDescriptor albedoDescriptor(TextureType::TEXTURE_2D_ARRAY);
     albedoDescriptor.layerCount(to_U16(textures[to_base(TerrainTextureType::ALBEDO_ROUGHNESS)].size()));
@@ -250,20 +255,11 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     terrainMaterial->properties().parallaxFactor(0.3f);
     terrainMaterial->properties().toggleTransparency(false);
 
-    U8 totalLayerCount = 0;
-    string layerCountDataStr = Util::StringFormat("const uint CURRENT_LAYER_COUNT[ %d ] = {", layerCount);
-    for (U8 i = 0; i < layerCount; ++i) {
-        layerCountDataStr.append(Util::StringFormat("%d,", channelCountPerLayer[i]));
-        totalLayerCount += channelCountPerLayer[i];
-    }
-    layerCountDataStr.pop_back();
-    layerCountDataStr.append("};");
-
     const TerrainDescriptor::LayerData& layerTileData = terrainDescriptor->layerDataEntries();
-    string tileFactorStr = "const vec2 CURRENT_TILE_FACTORS[TOTAL_LAYER_COUNT] = {\n";
-    for (U8 i = 0; i < layerCount; ++i) {
+    string tileFactorStr = Util::StringFormat("const vec2 CURRENT_TILE_FACTORS[%d] = {\n", layerCount * 4);
+    for (U8 i = 0u; i < layerCount; ++i) {
         const TerrainDescriptor::LayerDataEntry& entry = layerTileData[i];
-        for (U8 j = 0; j < channelCountPerLayer[i]; ++j) {
+        for (U8 j = 0u; j < 4u; ++j) {
             const vec2<F32>& factors = entry[j];
             tileFactorStr.append(fmt::sprintf("%*c", 8, ' '));
             tileFactorStr.append(Util::StringFormat("vec2(%3.2f, %3.2f),\n", factors.s, factors.t));
@@ -272,21 +268,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     tileFactorStr.pop_back();
     tileFactorStr.pop_back();
     tileFactorStr.append("\n};");
-
-    const char* idxNames[to_base(TerrainTextureType::COUNT)] = {
-        "ALBEDO_IDX", "NORMAL_IDX", "DISPLACEMENT_IDX"
-    };
-
-    std::array<string, to_base(TerrainTextureType::COUNT)> indexData = {};
-    for (U8 i = 0; i < to_base(TerrainTextureType::COUNT); ++i) {
-        string& dataStr = indexData[i];
-        dataStr = Util::StringFormat("const uint %s[ %d ] = {", idxNames[i], indices[i].size());
-        for (const U16 idxTemp : indices[i]) {
-            dataStr.append(Util::StringFormat("%d,", idxTemp));
-        }
-        dataStr.pop_back();
-        dataStr.append("};");
-    }
 
     ResourcePath helperTextures { terrainDescriptor->getVariable("waterCaustics") + "," +
                                   terrainDescriptor->getVariable("underwaterAlbedoTexture") + "," +
@@ -304,16 +285,24 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     heightMapTexture.assetLocation(terrainLocation);
     heightMapTexture.assetName(ResourcePath{ terrainDescriptor->getVariable("heightfieldTex") });
 
+    ImageTools::ImportOptions options{};
+    options._useDDSCache = false;
+
     TextureDescriptor heightMapDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::COUNT);
+    heightMapDescriptor.textureOptions(options);
+    heightMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+
     heightMapTexture.propertyDescriptor(heightMapDescriptor);
     terrainMaterial->properties().isStatic(true);
     terrainMaterial->properties().isInstanced(true);
     terrainMaterial->setTexture(TextureUsage::UNIT0, CreateResource<Texture>(terrain->parentResourceCache(), textureAlbedoMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureUsage::UNIT1, CreateResource<Texture>(terrain->parentResourceCache(), textureNoiseMedium), noiseHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
     terrainMaterial->setTexture(TextureUsage::OPACITY, CreateResource<Texture>(terrain->parentResourceCache(), textureBlendMap), blendMapHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
     terrainMaterial->setTexture(TextureUsage::NORMALMAP, CreateResource<Texture>(terrain->parentResourceCache(), textureNormalMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
     terrainMaterial->setTexture(TextureUsage::HEIGHTMAP, CreateResource<Texture>(terrain->parentResourceCache(), heightMapTexture), heightSamplerHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
     terrainMaterial->setTexture(TextureUsage::SPECULAR, CreateResource<Texture>(terrain->parentResourceCache(), textureWaterCaustics), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
     terrainMaterial->setTexture(TextureUsage::METALNESS, CreateResource<Texture>(terrain->parentResourceCache(), textureExtraMaps), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
+    terrainMaterial->setTexture(TextureUsage::EMISSIVE, Texture::DefaultTexture(), albedoHash, TextureOperation::NONE, TexturePrePassUsage::ALWAYS);
 
     const Configuration::Terrain terrainConfig = context.config().terrain;
     const vec2<F32> WorldScale = terrain->tessParams().WorldScale();
@@ -336,18 +325,10 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         terrainMaterial->addShaderDefine(ShaderType::COUNT, "REDUCE_TEXTURE_TILE_ARTIFACT");
         if (terrainConfig.detailLevel > 2) {
             terrainMaterial->addShaderDefine(ShaderType::COUNT, "REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS");
-            if (terrainConfig.detailLevel > 3) {
-                terrainMaterial->addShaderDefine(ShaderType::COUNT, "HIGH_QUALITY_TILE_ARTIFACT_REDUCTION");
-            }
         }
     }
     terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, Util::StringFormat("UNDERWATER_TILE_SCALE %d", to_I32(underwaterTileScale)));
-    terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, Util::StringFormat("TOTAL_LAYER_COUNT %d", totalLayerCount));
-    terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, layerCountDataStr, false);
     terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, tileFactorStr, false);
-    for (const string& str : indexData) {
-        terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, str, false);
-    }
 
     if (!terrainMaterial->properties().receivesShadows()) {
         terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, "DISABLE_SHADOW_MAPPING");
@@ -392,6 +373,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(tescModule);
         shaderDescriptor._modules.push_back(teseModule);
+        shaderDescriptor._modules.push_back(fragModule);
 
         const bool hasGeometryPass = wMode == Terrain::WireframeMode::EDGES || wMode == Terrain::WireframeMode::NORMALS;
         if (hasGeometryPass) {
@@ -432,8 +414,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         }
 
         if (stagePass._stage == RenderStage::SHADOW) {
-            shaderDescriptor._modules.push_back(fragModule);
-
             for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
                 if (shaderModule._moduleType == ShaderType::FRAGMENT) {
                     shaderModule._variant = "Shadow.VSM";
@@ -441,58 +421,54 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                 shaderModule._defines.emplace_back("MAX_TESS_LEVEL 32", true);
             }
             shaderDescriptor._name = "Terrain_ShadowVSM-" + name + propName;
-        } else { // Not RenderStage::SHADOW
-            if (stagePass._stage == RenderStage::DISPLAY) {
-                shaderDescriptor._modules.push_back(fragModule);
-
-                //ToDo: Implement this! -Ionut
-                constexpr bool hasParallax = false;
-                if (hasParallax) {
-                    for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
-                        if (shaderModule._moduleType == ShaderType::FRAGMENT) {
-                            shaderModule._defines.emplace_back("HAS_PARALLAX", true);
-                            break;
-                        }
+        } else if (stagePass._stage == RenderStage::DISPLAY) {
+            //ToDo: Implement this! -Ionut
+            constexpr bool hasParallax = false;
+            if (hasParallax) {
+                for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
+                    if (shaderModule._moduleType == ShaderType::FRAGMENT) {
+                        shaderModule._defines.emplace_back("HAS_PARALLAX", true);
+                        break;
                     }
                 }
-                if (stagePass._passType == RenderPassType::PRE_PASS) {
-                    for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
-                        if (shaderModule._moduleType == ShaderType::FRAGMENT) {
-                            shaderModule._variant = "PrePass";
-                        }
-                        shaderModule._defines.emplace_back("PRE_PASS", true);
+            }
+            if (stagePass._passType == RenderPassType::PRE_PASS) {
+                for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
+                    if (shaderModule._moduleType == ShaderType::FRAGMENT) {
+                        shaderModule._variant = "PrePass";
                     }
-                    shaderDescriptor._name = "Terrain_PrePass-" + name + propName + (hasParallax ? ".Parallax" : "");
-                } else {
-                    shaderDescriptor._name = "Terrain_Colour-" + name + propName + (hasParallax ? ".Parallax" : "");
+                    shaderModule._defines.emplace_back("PRE_PASS", true);
                 }
-            } else { // Not RenderStage::DISPLAY
-                if (IsDepthPass(stagePass)) {
-                    for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
-                        shaderModule._defines.emplace_back("LOW_QUALITY", true);
-                        shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
+                shaderDescriptor._name = "Terrain_PrePass-" + name + propName + (hasParallax ? ".Parallax" : "");
+            } else {
+                shaderDescriptor._name = "Terrain_Colour-" + name + propName + (hasParallax ? ".Parallax" : "");
+            }
+        } else { // Not RenderStage::DISPLAY
+            if (IsDepthPass(stagePass)) {
+                shaderDescriptor._modules.pop_back(); //No frag shader
+
+                for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
+                    shaderModule._defines.emplace_back("LOW_QUALITY", true);
+                    shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
+                }
+
+                shaderDescriptor._name = "Terrain_PrePass_LowQuality-" + name + propName;
+            } else {
+                for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
+                    if (shaderModule._moduleType == ShaderType::FRAGMENT) {
+                        shaderModule._variant = "LQPass";
                     }
 
-                    shaderDescriptor._name = "Terrain_PrePass_LowQuality-" + name + propName;
-                } else {
-                    shaderDescriptor._modules.push_back(fragModule);
-
-                    for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
-                        if (shaderModule._moduleType == ShaderType::FRAGMENT) {
-                            shaderModule._variant = "LQPass";
-                        }
-
-                        shaderModule._defines.emplace_back("LOW_QUALITY", true);
-                        shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
-                        if (stagePass._stage == RenderStage::REFLECTION) {
-                            shaderModule._defines.emplace_back("REFLECTION_PASS", true);
-                        }
-                    }
+                    shaderModule._defines.emplace_back("LOW_QUALITY", true);
+                    shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
                     if (stagePass._stage == RenderStage::REFLECTION) {
-                        shaderDescriptor._name = "Terrain_Colour_LowQuality_Reflect-" + name + propName;
-                    } else {
-                        shaderDescriptor._name = "Terrain_Colour_LowQuality-" + name + propName;
+                        shaderModule._defines.emplace_back("REFLECTION_PASS", true);
                     }
+                }
+                if (stagePass._stage == RenderStage::REFLECTION) {
+                    shaderDescriptor._name = "Terrain_Colour_LowQuality_Reflect-" + name + propName;
+                } else {
+                    shaderDescriptor._name = "Terrain_Colour_LowQuality-" + name + propName;
                 }
             }
         }

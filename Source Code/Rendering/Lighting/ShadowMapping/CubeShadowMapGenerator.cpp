@@ -16,6 +16,8 @@
 namespace Divide {
 namespace {
     const RenderTargetID g_depthMapID(RenderTargetUsage::SHADOW, to_base(ShadowType::CUBEMAP));
+    const RenderTargetID g_depthMapCacheID(RenderTargetUsage::SHADOW_CACHE, to_base(ShadowType::CUBEMAP));
+
     Configuration::Rendering::ShadowMapping g_shadowSettings;
 };
 
@@ -40,12 +42,12 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
     GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
     RenderPassParams params = {};
-    params._target = RenderTargetID(RenderTargetUsage::SHADOW, to_base(ShadowType::CUBEMAP));
+    params._target = g_depthMapID;
     params._sourceNode = light.getSGN();
     params._stagePass = { RenderStage::SHADOW, RenderPassType::MAIN_PASS, lightIndex, static_cast<RenderStagePass::VariantType>(light.getLightType()) };
 
     _context.generateCubeMap(params,
-                             light.getShadowOffset(),
+                             light.getShadowArrayOffset(),
                              light.getSGN()->get<TransformComponent>()->getWorldPosition(),
                              vec2<F32>(0.001f, light.range() * 1.1f),
                              bufferInOut,

@@ -110,14 +110,8 @@ public:
     void render(const RenderParams& params);
 
     /// Add a new pass that will run once for each of the RenderStages specified
-    RenderPass& addRenderPass(const Str64& renderPassName,
-                              U8 orderKey,
-                              RenderStage renderStage,
-                              const vector<U8>& dependencies = {},
-                              bool usePerformanceCounters = false);
+    RenderPass& setRenderPass(RenderStage renderStage,  const vector<RenderStage>& dependencies = {}, bool usePerformanceCounters = false);
 
-    /// Find a render pass by name and remove it from the manager
-    void removeRenderPass(const Str64& name);
     [[nodiscard]] U32 getLastTotalBinSize(RenderStage renderStage) const noexcept;
     [[nodiscard]] I32 drawCallCount(const RenderStage stage) const noexcept { return _drawCallCount[to_base(stage)]; }
 
@@ -137,7 +131,6 @@ private:
     ShaderProgram_ptr _OITCompositionShaderMS = nullptr;
     ShaderProgram_ptr _gbufferResolveShader = nullptr;
 
-    U8 _renderPassCount = 0u;
     std::array<RenderPass*, MAX_RENDER_PASSES> _renderPasses = create_array<MAX_RENDER_PASSES, RenderPass*>(nullptr);
     std::array<GFX::CommandBuffer*, MAX_RENDER_PASSES + 1u> _renderPassCommandBuffer = create_array<MAX_RENDER_PASSES + 1u, GFX::CommandBuffer*>(nullptr);
     std::array<Task*, MAX_RENDER_PASSES + 1u> _renderTasks = create_array<MAX_RENDER_PASSES + 1u, Task*>(nullptr);

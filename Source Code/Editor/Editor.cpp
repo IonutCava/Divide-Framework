@@ -234,7 +234,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     }
     
     if (!CreateDirectories((Paths::g_saveLocation + Paths::Editor::g_saveLocation).c_str())) {
-        DebugBreak();
+        DIVIDE_UNEXPECTED_CALL();
     }
 
     _mainWindow = &_context.app().windowManager().getWindow(0u);
@@ -670,6 +670,7 @@ void Editor::toggle(const bool state) {
 
 void Editor::update(const U64 deltaTimeUS) {
     OPTICK_EVENT();
+
     static bool allGizmosEnabled = false;
 
     Time::ScopedTimer timer(_editorUpdateTimer);

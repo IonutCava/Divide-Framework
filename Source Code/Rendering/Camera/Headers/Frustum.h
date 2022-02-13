@@ -48,6 +48,7 @@ class Frustum {
 
     [[nodiscard]] FrustumCollision ContainsPoint(const vec3<F32>& point, I8& lastPlaneCache) const noexcept;
     [[nodiscard]] FrustumCollision ContainsBoundingBox(const BoundingBox& bbox, I8& lastPlaneCache) const noexcept;
+    [[nodiscard]] FrustumCollision ContainsSphere(const BoundingSphere& bSphere) const noexcept;
     [[nodiscard]] FrustumCollision ContainsSphere(const vec3<F32>& center, F32 radius, I8& lastPlaneCache) const noexcept;
 
     [[nodiscard]] FrustumCollision ContainsPoint(const vec3<F32>& point) const noexcept {

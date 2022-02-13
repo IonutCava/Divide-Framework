@@ -24,19 +24,17 @@ glGenericVertexData::~glGenericVertexData()
     // Make sure we don't have any of our VAOs bound
     GL_API::GetStateTracker().setActiveVAO(0);
     // Delete the rendering VAO
-    if (_vertexArray > 0) {
-        GL_API::s_vaoPool.deallocate(_vertexArray);
+    if (_vertexArray != GLUtil::k_invalidObjectID) {
+        GL_API::DeleteVAOs(1, &_vertexArray);
     }
 
     GLUtil::freeBuffer(_indexBuffer);
 }
 
-/// Create the specified number of buffers and queries and attach them to this
-/// vertex data container
+/// Create the specified number of buffers and queries and attach them to this vertex data container
 void glGenericVertexData::create(const U8 numBuffers) {
     // Prevent double create
     assert(_bufferObjects.empty() && "glGenericVertexData error: create called with no buffers specified!");
-    GL_API::s_vaoPool.allocate(1, &_vertexArray);
     // Create our buffer objects
     _bufferObjects.resize(numBuffers, nullptr);
     _instanceDivisor.resize(numBuffers, 0);
@@ -44,6 +42,13 @@ void glGenericVertexData::create(const U8 numBuffers) {
 
 /// Submit a draw command to the GPU using this object and the specified command
 void glGenericVertexData::draw(const GenericDrawCommand& command) {
+    if (_vertexArray == GLUtil::k_invalidObjectID) {
+        glCreateVertexArrays(1, &_vertexArray);
+        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+            glObjectLabel(GL_VERTEX_ARRAY, _vertexArray, -1, _name.c_str());
+        }
+    }
+
     // Update buffer bindings
     setBufferBindings(command);
     // Update vertex attributes if needed (e.g. if offsets changed)

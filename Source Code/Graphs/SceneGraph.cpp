@@ -9,6 +9,7 @@
 #include "Utility/Headers/Localization.h"
 
 #include "ECS/Systems/Headers/ECSManager.h"
+#include "ECS/Components/Headers/BoundsComponent.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Physics/Headers/PXDevice.h"
 
@@ -79,12 +80,19 @@ void SceneGraph::onNodeUpdated(const SceneGraphNode& node) {
     //ToDo: Maybe add particles too? -Ionut
     switch (node.getNode<>().type()) {
         case SceneNodeType::TYPE_OBJECT3D : {
-            const SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes(parentScene());
-            SceneEnvironmentProbePool::OnNodeUpdated(*probes, node);
+            SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes(parentScene());
+            probes->onNodeUpdated(node);
         } break;
         case SceneNodeType::TYPE_SKY: {
             SceneEnvironmentProbePool::SkyLightNeedsRefresh(true);
         } break;
+    }
+}
+
+void SceneGraph::onNodeSpatialChange(const SceneGraphNode& node) {
+    if (node.get<BoundsComponent>()) {
+        LightPool* pool = Attorney::SceneGraph::getLightPool(parentScene());
+        pool->onVolumeMoved(node.get<BoundsComponent>()->getBoundingSphere(), node.usageContext() == NodeUsageContext::NODE_STATIC);
     }
 }
 
@@ -100,20 +108,24 @@ void SceneGraph::onNodeDestroy(SceneGraphNode* oldNode) {
         return;
     }
 
-    erase_if(_nodesByType[to_base(oldNode->getNode().type())],
-             [guid](SceneGraphNode* node)-> bool
-             {
-                 return node && node->getGUID() == guid;
-             });
-
+    {
+        ScopedLock<SharedMutex> w_lock(_nodesByTypeLock);
+        erase_if(_nodesByType[to_base(oldNode->getNode().type())],
+                 [guid](SceneGraphNode* node)-> bool
+                 {
+                     return node && node->getGUID() == guid;
+                 });
+    }
     Attorney::SceneGraph::onNodeDestroy(_parentScene, oldNode);
 
     _nodeListChanged = true;
 }
 
 void SceneGraph::onNodeAdd(SceneGraphNode* newNode) {
-    _nodesByType[to_base(newNode->getNode().type())].push_back(newNode);
-
+    {
+        ScopedLock<SharedMutex> w_lock(_nodesByTypeLock);
+        _nodesByType[to_base(newNode->getNode().type())].push_back(newNode);
+    }
     _nodeListChanged = true;
 
     if (_loadComplete) {
@@ -297,6 +309,8 @@ bool SceneGraph::intersect(const SGNIntersectionParams& params, vector<SGNRayRes
 }
 
 void SceneGraph::postLoad() {
+
+    SharedLock<SharedMutex> r_lock(_nodesByTypeLock);
     for (const auto& nodes : _nodesByType) {
         for (SceneGraphNode* node : nodes) {
             if (node->get<BoundsComponent>()) {
@@ -330,13 +344,17 @@ void SceneGraph::destroySceneGraphNode(SceneGraphNode*& node, const bool inPlace
 
 size_t SceneGraph::getTotalNodeCount() const noexcept {
     size_t ret = 0;
+
+    SharedLock<SharedMutex> r_lock(_nodesByTypeLock);
     for (const auto& nodes : _nodesByType) {
         ret += nodes.size();
     }
 
     return ret;
 }
+
 const vector<SceneGraphNode*>& SceneGraph::getNodesByType(const SceneNodeType type) const {
+    SharedLock<SharedMutex> r_lock(_nodesByTypeLock);
     return _nodesByType[to_base(type)];
 }
 

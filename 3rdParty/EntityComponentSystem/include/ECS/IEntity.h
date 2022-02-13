@@ -19,6 +19,8 @@ namespace ECS
 
 	static const EntityId INVALID_ENTITY_ID = util::Handle64::INVALID_HANDLE;
 
+	struct CustomEvent;
+
 	class ECS_API IEntity
 	{
 		friend class EntityManager;
@@ -39,7 +41,7 @@ namespace ECS
 
 		// if false, entity won't be updated
 		bool					m_Active;
-		static std::mutex s_ComponentManagerLock;
+		static std::shared_mutex s_ComponentManagerLock;
 	public:
 
 		IEntity();
@@ -48,24 +50,27 @@ namespace ECS
 		template<class T>
 		T* GetComponent() const
 		{
-			std::scoped_lock<std::mutex> r_lock(s_ComponentManagerLock);
+			std::shared_lock<std::shared_mutex> r_lock(s_ComponentManagerLock);
 			return this->m_ComponentManagerInstance->GetComponent<T>(this->m_EntityID);
 		}
 
 		template<class T, class ...P>
 		T* AddComponent(P&&... param)
 		{
-			std::scoped_lock<std::mutex > r_lock(s_ComponentManagerLock);
+			std::scoped_lock<std::shared_mutex > r_lock(s_ComponentManagerLock);
 			return this->m_ComponentManagerInstance->AddComponent<T>(this->m_EntityID, std::forward<P>(param)...);
 		}
 
 		template<class T>
 		void RemoveComponent()
 		{
-			std::scoped_lock<std::mutex> r_lock(s_ComponentManagerLock);
+			std::scoped_lock<std::shared_mutex> r_lock(s_ComponentManagerLock);
 			this->m_ComponentManagerInstance->RemoveComponent<T>(this->m_EntityID);
 		}
 
+		void RemoveAllComponents();
+
+		void PassDataToAllComponents(const ECS::CustomEvent& evt);
 		// COMPARE ENTITIES
 
 		inline bool operator==(const IEntity& rhs) const { return this->m_EntityID == rhs.m_EntityID; }

@@ -70,7 +70,8 @@ namespace Divide {
                       ECS::CustomEvent::Type::TransformUpdated,
                       comp,
                       mask
-                });
+                }
+            );
         }
         events.resize(0);
     }

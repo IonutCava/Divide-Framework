@@ -7,7 +7,6 @@
         <scale x="1" y="1" z="1"/>
     </Transform>
 </TRANSFORM>
-<BOUNDS/>
 <NETWORKING/>
 <ENVIRONMENT_PROBE>
     <Is__Local>true</Is__Local>

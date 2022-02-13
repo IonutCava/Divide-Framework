@@ -67,23 +67,23 @@ enum class RenderingOrder : U8 {
     FRONT_TO_BACK,
     BACK_TO_FRONT,
     BY_STATE,
-    WATER_FIRST, //Hack, but improves rendering perf :D
     COUNT
 };
 
 //Bins can hold certain node types. This is also the order in which nodes will be rendered!
 enum class RenderBinType : U8 {
     OPAQUE,      ///< Opaque objects will occlude a lot of the terrain and terrain is REALLY expensive to render, so maybe draw them first?
-    TERRAIN_AUX, ///< Water, infinite ground plane, etc. Ground, but not exactly ground. Still oclude a lot of terrain AND cheaper to render
+    WATER,       ///< Water might end up being as expensive as terrain, so these will probably need reshuffling
     TERRAIN,     ///< Actual terrain. It should cover most of the remaining empty screen space
+    TERRAIN_AUX, ///< E.g. infinite ground plane
     SKY,         ///< Sky needs to be drawn after ALL opaque geometry to save on fillrate
-    TRANSLUCENT, ///< Translucent items use a [0.0...1.0] alpha values supplied via an opacity map or the albedo's alpha channel
+    TRANSLUCENT, ///< Translucent items use a [0.0...1.0] alpha value supplied via an opacity map or via the albedo's alpha channel
     IMPOSTOR,    ///< Impostors should be overlayed over everything since they are a debugging tool
     COUNT
 };
 namespace Names {
     static const char* renderBinType[] = {
-        "OPAQUE", "TERRAIN_AUX", "TERRAIN", "SKY", "TRANSLUCENT", "IMPOSTOR", "UNKNOWN"
+        "OPAQUE", "WATER", "TERRAIN", "TERRAIN_AUX", "SKY", "TRANSLUCENT", "IMPOSTOR", "UNKNOWN"
     };
 };
 

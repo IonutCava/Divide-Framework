@@ -190,8 +190,6 @@ namespace Divide {
                         const bool asyncLoad)
             : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, asyncLoad)
         {}
-
-        bool isValid() const noexcept override { return true; }
     };
 
 

@@ -106,7 +106,7 @@ namespace Divide {
 
                 g_nodeDescriptor = {};
                 g_nodeDescriptor._name = Util::StringFormat("New_Child_Node_%d", sgn->getGUID());
-                g_nodeDescriptor._componentMask = to_U32(ComponentType::TRANSFORM) | to_U32(ComponentType::BOUNDS);
+                g_nodeDescriptor._componentMask = to_U32(ComponentType::TRANSFORM);
                 g_currentNodeType = SceneNodeType::TYPE_TRANSFORM;
                 _parentNode = sgn;
             }

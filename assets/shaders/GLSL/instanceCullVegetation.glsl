@@ -29,6 +29,7 @@ uniform vec3 cameraPosition;
 #define NEED_SCENE_DATA
 #include "HiZCullingAlgorithm.cmn";
 #include "vegetationData.cmn"
+#include "sceneData.cmn"
 #include "waterData.cmn"
 
 vec3 rotate_vertex_position(vec3 position, vec4 q) {

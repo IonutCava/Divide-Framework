@@ -4,6 +4,7 @@
 #include "Rendering/Lighting/Headers/LightPool.h"
 
 #include "ECS/Components/Headers/TransformComponent.h"
+#include "ECS/Components/Headers/SpotLightComponent.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Predefined/Headers/Sphere3D.h"
 #include "Graphs/Headers/SceneGraph.h"
@@ -42,7 +43,7 @@ Light::Light(SceneGraphNode* sgn, [[maybe_unused]] const F32 range, const LightT
         //assert?
     }
 
-    for (U8 i = 0; i < 6; ++i) {
+    for (U8 i = 0u; i < 6u; ++i) {
         _shadowProperties._lightVP[i].identity();
         _shadowProperties._lightPosition[i].w = std::numeric_limits<F32>::max();
     }
@@ -142,12 +143,44 @@ void Light::updateCache(const ECS::CustomEvent& event) {
     const TransformComponent* tComp = static_cast<TransformComponent*>(event._sourceCmp);
     assert(tComp != nullptr);
 
+    bool transformChanged = false;
     if (_type != LightType::DIRECTIONAL && BitCompare(event._flag, to_U32(TransformType::TRANSLATION))) {
         _positionCache = tComp->getWorldPosition();
+        transformChanged = true;
     }
 
     if (_type != LightType::POINT && BitCompare(event._flag, to_U32(TransformType::ROTATION))) {
         _directionCache = tComp->getWorldDirection();
+        transformChanged = true;
+    }
+
+    if (transformChanged) {
+        staticShadowsDirty(true);
+        dynamicShadowsDirty(true);
+    }
+}
+
+void Light::updateBoundingVolume(const Camera* playerCamera) {
+    switch (getLightType()) {
+        case LightType::DIRECTIONAL:
+            _boundingVolume.setCenter(playerCamera->getEye());
+            _boundingVolume.setRadius(range());
+            break;
+        case LightType::POINT:
+            _boundingVolume.setCenter(positionCache());
+            _boundingVolume.setRadius(range());
+            break;
+        case LightType::SPOT: {
+            const Angle::RADIANS<F32> angle = Angle::DegreesToRadians(static_cast<SpotLightComponent*>(this)->outerConeCutoffAngle());
+            const F32 radius = angle > M_PI_4 ? range() * tan(angle) : range() * 0.5f / pow(cos(angle), 2.0f);
+            const vec3<F32> position = positionCache() + directionCache() * radius;
+
+            _boundingVolume.setCenter(position);
+            _boundingVolume.setRadius(radius);
+            break;
+        };
+
+        default: break;
     }
 }
 
