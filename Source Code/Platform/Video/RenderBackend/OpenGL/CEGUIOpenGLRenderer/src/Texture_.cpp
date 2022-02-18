@@ -341,7 +341,9 @@ void OpenGLTexture::setTextureSize_impl(const Sizef& sz)
     const Divide::U32 old_tex = Divide::GL_API::GetStateTracker().getBoundTextureHandle(0, Divide::TextureType::TEXTURE_2D);
 
     // set texture to required size
-    Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, d_ogltexture);
+    if (Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, d_ogltexture) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
 
     if (d_isCompressed)
     {
@@ -360,7 +362,9 @@ void OpenGLTexture::setTextureSize_impl(const Sizef& sz)
     }
 
     // restore previous texture binding.
-    Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, old_tex);
+    if (Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, old_tex) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 //----------------------------------------------------------------------------//

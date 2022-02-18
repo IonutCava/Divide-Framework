@@ -71,7 +71,7 @@ namespace ImGui {
         bool resetScrollingWhenRestart;
     public:
         PopupMenuSimpleParams(bool _resetScrollingWhenRestart = true)
-            : open(false), selectedEntry(-1), hoveredEntry(-1), endIndex(-1), startIndex(-1), scrollTimer(ImGui::GetTime()), resetScrollingWhenRestart(_resetScrollingWhenRestart)
+            : open(false), selectedEntry(-1), hoveredEntry(-1), endIndex(-1), startIndex(-1), scrollTimer((float)ImGui::GetTime()), resetScrollingWhenRestart(_resetScrollingWhenRestart)
         {}
         friend int PopupMenuSimple(PopupMenuSimpleParams& params, const char** pTotalEntries, int numTotalEntries, int numAllowedEntries, bool reverseItems, const char* optionalTitle, const char* scrollUpEntryText, const char* scrollDownEntryText);
     };
@@ -541,7 +541,7 @@ namespace ImGui {
                 const char e = '\0';
                 if (!text && !allowNullDestText) text = &e;
                 if (text) {
-                    const int sz = strlen(text);
+                    const size_t sz = strlen(text);
                     destText = (char*)ImGui::MemAlloc(sz + 1); strcpy(destText, text);
                 }
             }
@@ -754,20 +754,20 @@ namespace ImGui {
 
         // Callbacks:
         typedef void (*TreeViewNodeCallback)(TreeViewNode* node, TreeView& parent, void* userPtr);
-        void setTreeViewNodePopupMenuDrawerCb(TreeViewNodeCallback cb, void* userPtr = NULL) { treeViewNodePopupMenuDrawerCb = cb; treeViewNodePopupMenuDrawerCbUserPtr = userPtr; }
+        void setTreeViewNodePopupMenuDrawerCb(TreeViewNodeCallback cb, void* userPtr_ = NULL) { treeViewNodePopupMenuDrawerCb = cb; treeViewNodePopupMenuDrawerCbUserPtr = userPtr_; }
         inline TreeViewNodeCallback getTreeViewNodePopupMenuDrawerCb() const { return treeViewNodePopupMenuDrawerCb; }
         inline static const char* GetTreeViewNodePopupMenuName() { return "TreeViewNodePopupMenu"; }  // you can use this name inside the callback: e.g. ImGui::BeginPopup(ImGui::TreeView::GetTreeViewNodePopupMenuName());
         // must return true if icon is hovered. If set, use ImGui::SameLine() before returning
         typedef bool (*TreeViewNodeDrawIconCallback)(TreeViewNode* node, TreeView& parent, void* userPtr);
-        void setTreeViewNodeDrawIconCb(TreeViewNodeDrawIconCallback cb, void* userPtr = NULL) { treeViewNodeDrawIconCb = cb; treeViewNodeDrawIconCbUserPtr = userPtr; }
+        void setTreeViewNodeDrawIconCb(TreeViewNodeDrawIconCallback cb, void* userPtr_ = NULL) { treeViewNodeDrawIconCb = cb; treeViewNodeDrawIconCbUserPtr = userPtr_; }
         inline TreeViewNodeDrawIconCallback getTreeViewNodeDrawIconCb() const { return treeViewNodeDrawIconCb; }
         // just called after all rendering in this node (can be used to append stuff at the right of the line)
         typedef void (*TreeViewNodeAfterDrawCallback)(TreeViewNode* node, TreeView& parent, float windowWidth, void* userPtr);
-        void setTreeViewNodeAfterDrawCb(TreeViewNodeAfterDrawCallback cb, void* userPtr = NULL) { treeViewNodeAfterDrawCb = cb; treeViewNodeAfterDrawCbUserPtr = userPtr; }
+        void setTreeViewNodeAfterDrawCb(TreeViewNodeAfterDrawCallback cb, void* userPtr_ = NULL) { treeViewNodeAfterDrawCb = cb; treeViewNodeAfterDrawCbUserPtr = userPtr_; }
         inline TreeViewNodeAfterDrawCallback getTreeViewNodeAfterDrawCb() const { return treeViewNodeAfterDrawCb; }
         // called after a node is created and before it's deleted (usable for TreeViewNode::userPtrs)
         typedef void (*TreeViewNodeCreationDelationCallback)(TreeViewNode* node, TreeView& parent, bool delation, void* userPtr);
-        void setTreeViewNodeCreationDelationCb(TreeViewNodeCreationDelationCallback cb, void* userPtr = NULL) { treeViewNodeCreationDelationCb = cb; treeViewNodeCreationDelationCbUserPtr = userPtr; }
+        void setTreeViewNodeCreationDelationCb(TreeViewNodeCreationDelationCallback cb, void* userPtr_ = NULL) { treeViewNodeCreationDelationCb = cb; treeViewNodeCreationDelationCbUserPtr = userPtr_; }
         inline TreeViewNodeCreationDelationCallback getTreeViewNodeCreationDelationCb() const { return treeViewNodeCreationDelationCb; }
 
 

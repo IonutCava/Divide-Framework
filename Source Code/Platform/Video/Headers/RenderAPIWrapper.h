@@ -80,12 +80,39 @@ struct PerformanceMetrics
     U64 _tessellationInvocations = 0u;
 };
 
+struct DeviceInformation
+{
+    U32 _maxWorgroupCount[3] = {65535u, 65535u, 65535u};
+    U16 _maxWorgroupSize[3] = {1024u, 1024u, 64u};
+    size_t _UBOMaxSizeBytes = 64 * 1024;
+    size_t _SSBOMaxSizeBytes = 1024 * 1024 * 1024u;
+    size_t _maxComputeSharedMemoryBytes = 1024 * 1024 * 1024;
+    U32 _maxWorgroupInvocations = 1024u;
+    U32 _maxVertAttributeBindings = 16u;
+    U32 _maxVertAttributes = 16u;
+    U32 _maxVertOutputComponents = 16u;
+    U32 _maxAtomicBufferBindingIndices = 4u;
+    U32 _maxSSBOBufferBindings = 32u;
+    U32 _shaderCompilerThreads = 1u;
+    std::pair<U8, U8> _versionInfo = { 4u, 6u };
+    U16 _UBOffsetAlignmentBytes = 256u;
+    U16 _SSBOffsetAlignmentBytes = 16u;
+    U8 _maxTextureUnits = 32u;
+    U8 _maxRTColourAttachments = 4u;
+    U8 _maxAnisotropy = 0u;
+    U8 _maxClipDistances = 2u;
+    U8 _maxCullDistances = 6u;
+    U8 _maxClipAndCullDistances = 8u;
+    GPUVendor _vendor = GPUVendor::COUNT;
+    GPURenderer _renderer = GPURenderer::COUNT;
+    bool _bindlessTexturesSupported = false;
+};
+
 using AttribFlags = std::array<bool, to_base(AttribLocation::COUNT)>;
 using AttribValues = std::array<size_t, to_base(AttribLocation::COUNT)>;
 
 /// Renderer Programming Interface
 class NOINITVTABLE RenderAPIWrapper : NonCopyable {
-
 public:
     virtual ~RenderAPIWrapper() = default;
 
@@ -101,7 +128,7 @@ protected:
     virtual ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) = 0;
     virtual void closeRenderingAPI() = 0;
 
-    [[nodiscard]] virtual PerformanceMetrics getPerformanceMetrics() const noexcept = 0;
+    [[nodiscard]] virtual const PerformanceMetrics& getPerformanceMetrics() const noexcept = 0;
 
     virtual void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) = 0;
     virtual void flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const GFX::CommandBuffer& commandBuffer) = 0;

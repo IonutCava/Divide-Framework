@@ -1,227 +1,14 @@
 #include "stdafx.h"
 
-#include "config.h"
-
 #include "Headers/glShaderProgram.h"
+#include "Headers/glShader.h"
+
 #include "Core/Headers/PlatformContext.h"
-
-#include "Platform/Video/RenderBackend/OpenGL/glsw/Headers/glsw.h"
-
-#include "Platform/File/Headers/FileManagement.h"
-#include "Platform/File/Headers/FileUpdateMonitor.h"
-#include "Platform/File/Headers/FileWatcherManager.h"
-
-#include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferLockManager.h"
-
-#include "Core/Headers/Kernel.h"
-#include "Core/Headers/StringHelper.h"
-#include "Core/Headers/EngineTaskPool.h"
 #include "Utility/Headers/Localization.h"
 
-#include "Platform/Headers/PlatformRuntime.h"
-
-extern "C" {
-#include "fcpp/fpp.h"
-}
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable:4458)
-#pragma warning(disable:4706)
-#endif
-#include <boost/wave.hpp>
-#include <boost/wave/cpplexer/cpp_lex_iterator.hpp> // lexer class
-#include <boost/wave/cpplexer/cpp_lex_token.hpp>    // token class
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-
 namespace Divide {
-    constexpr GLint s_maxHeaderRecursionLevel = 64;
-
-namespace Preprocessor{
-     //ref: https://stackoverflow.com/questions/14858017/using-boost-wave
-    class custom_directives_hooks final : public boost::wave::context_policies::default_preprocessing_hooks
-    {
-    public:
-        template <typename ContextT, typename ContainerT>
-        bool found_unknown_directive(ContextT const& /*ctx*/, ContainerT const& line, ContainerT& pending) {
-            auto itBegin = cbegin(line);
-            const auto itEnd = cend(line);
-
-            const boost::wave::token_id ret = boost::wave::util::impl::skip_whitespace(itBegin, itEnd);
-
-            if (ret == boost::wave::T_IDENTIFIER) {
-                const auto& temp = (*itBegin).get_value();
-                if (temp == "version" || temp == "extension") {
-                    // handle #version and #extension directives
-                    copy(cbegin(line), itEnd, back_inserter(pending));
-                    return true;
-                }
-            }
-
-            return false;  // unknown directive
-        }
-    };
-
-    struct WorkData
-    {
-        const char* _input = nullptr;
-        size_t _inputSize = 0u;
-        const char* _fileName = nullptr;
-
-        std::array<char, 16 << 10> _scratch{};
-        eastl::string _depends = "";
-        eastl::string _default = "";
-        eastl::string _output = "";
-
-        U32 _scratchPos = 0u;
-        U32 _fGetsPos = 0u;
-        bool _firstError = true;
-    };
-
-     namespace Callback {
-         FORCE_INLINE void AddDependency(const char* file, void* userData) {
-            eastl::string& depends = static_cast<WorkData*>(userData)->_depends;
-
-            depends += " \\\n ";
-            depends += file;
-        }
-
-        char* Input(char* buffer, const int size, void* userData) noexcept {
-            WorkData* work = static_cast<WorkData*>(userData);
-            int i = 0;
-            for (char ch = work->_input[work->_fGetsPos];
-                work->_fGetsPos < work->_inputSize && i < size - 1; ch = work->_input[++work->_fGetsPos]) {
-                buffer[i++] = ch;
-
-                if (ch == '\n' || i == size) {
-                    buffer[i] = '\0';
-                    work->_fGetsPos++;
-                    return buffer;
-                }
-            }
-
-            return nullptr;
-        }
-
-        FORCE_INLINE void Output(const int ch, void* userData) {
-            static_cast<WorkData*>(userData)->_output += static_cast<char>(ch);
-        }
-
-        char* Scratch(const char* str, WorkData& workData) {
-            char* result = &workData._scratch[workData._scratchPos];
-            strcpy(result, str);
-            workData._scratchPos += to_U32(strlen(str)) + 1;
-            return result;
-        }
-
-        void Error(void* userData, const char* format, const va_list args) {
-            static bool firstErrorPrint = true;
-            WorkData* work = static_cast<WorkData*>(userData);
-            char formatted[1024];
-            vsnprintf(formatted, 1024, format, args);
-            if (work->_firstError) {
-                work->_firstError = false;
-                Console::errorfn("------------------------------------------");
-                Console::errorfn(Locale::Get(firstErrorPrint ? _ID("ERROR_GLSL_PARSE_ERROR_NAME_LONG")
-                                                             : _ID("ERROR_GLSL_PARSE_ERROR_NAME_SHORT")), work->_fileName);
-                firstErrorPrint = false;
-            }
-            if (strlen(formatted) != 1 && formatted[0] != '\n') {
-                Console::errorfn(Locale::Get(_ID("ERROR_GLSL_PARSE_ERROR_MSG")), formatted);
-            } else {
-                Console::errorfn("------------------------------------------\n");
-            }
-        }
-    }
-    
-     eastl::string PreProcessBoost(const eastl::string& source, const char* fileName) {
-         eastl::string ret = {};
-
-         // Fallback to slow Boost.Wave parsing
-         using ContextType = boost::wave::context<eastl::string::const_iterator,
-                             boost::wave::cpplexer::lex_iterator<boost::wave::cpplexer::lex_token<>>,
-                             boost::wave::iteration_context_policies::load_file_to_string,
-                             custom_directives_hooks>;
-
-         ContextType ctx(cbegin(source), cend(source), fileName);
-
-         ctx.set_language(enable_long_long(ctx.get_language()));
-         ctx.set_language(enable_preserve_comments(ctx.get_language()));
-         ctx.set_language(enable_prefer_pp_numbers(ctx.get_language()));
-         ctx.set_language(enable_emit_line_directives(ctx.get_language(), false));
-
-         for (const auto& it : ctx) {
-             ret.append(it.get_value().c_str());
-         }
-
-         return ret;
-     }
-
-    eastl::string PreProcess(const eastl::string& source, const char* fileName) {
-        constexpr U8 g_maxTagCount = 64;
-
-        if (source.empty()) {
-            return source;
-        }
-
-        eastl::string temp(source.size() + 1, ' ');
-        {
-            const char* in  = source.data();
-                  char* out = temp.data();
-            const char* end = out + source.size();
-
-            for (char ch = *in++; out < end && ch != '\0'; ch = *in++) {
-                if (ch != '\r') {
-                    *out++ = ch;
-                }
-            }
-            *out = '\0';
-        }
-
-        WorkData workData{
-            temp.c_str(), // input
-            temp.size(),  // input size
-            fileName      // file name
-        };
-
-        fppTag tags[g_maxTagCount]{};
-        fppTag* tagHead = tags;
-  
-        const auto setTag = [&tagHead](const int tag, void* value) {
-            tagHead->tag = tag;
-            tagHead->data = value;
-            ++tagHead;
-        };
-
-        setTag(FPPTAG_USERDATA,           &workData);
-        setTag(FPPTAG_DEPENDS,            Callback::AddDependency);
-        setTag(FPPTAG_INPUT,              Callback::Input);
-        setTag(FPPTAG_OUTPUT,             Callback::Output);
-        setTag(FPPTAG_ERROR,              Callback::Error);
-        setTag(FPPTAG_INPUT_NAME,         Callback::Scratch(fileName, workData));
-        setTag(FPPTAG_KEEPCOMMENTS,       (void*)TRUE);
-        setTag(FPPTAG_IGNOREVERSION,      (void*)FALSE);
-        setTag(FPPTAG_LINE,               (void*)FALSE);
-        setTag(FPPTAG_OUTPUTBALANCE,      (void*)TRUE);
-        setTag(FPPTAG_OUTPUTSPACE,        (void*)TRUE);
-        setTag(FPPTAG_NESTED_COMMENTS,    (void*)TRUE);
-        //setTag(FPPTAG_IGNORE_CPLUSPLUS, (void*)TRUE);
-        setTag(FPPTAG_RIGHTCONCAT,        (void*)TRUE);
-        //setTag(FPPTAG_WARNILLEGALCPP,   (void*)TRUE);
-        setTag(FPPTAG_END,                nullptr);
-
-        if (fppPreProcess(tags) != 0) {
-            return PreProcessBoost(source, fileName);
-        }
-
-        return workData._output;
-    }
-
-} //Preprocessor
 
 namespace {
     constexpr size_t g_validationBufferMaxSize = 64 * 1024;
@@ -268,42 +55,13 @@ namespace {
         return 999;
     };
 
-    UpdateListener g_sFileWatcherListener(
-        [](const std::string_view atomName, const FileUpdateEvent evt) {
-            glShaderProgram::OnAtomChange(atomName, evt);
-        }
-    );
-
     moodycamel::BlockingConcurrentQueue<BinaryDumpEntry> g_sShaderBinaryDumpQueue;
-    moodycamel::BlockingConcurrentQueue<TextDumpEntry>   g_sDumpToFileQueue;
     moodycamel::BlockingConcurrentQueue<ValidationEntry> g_sValidationQueue;
     std::atomic_bool                                     g_newValidationQueueEntry;
 }
 
 void glShaderProgram::InitStaticData() {
-    const ResourcePath locPrefix{ Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::GLSL::g_parentShaderLoc };
-
-    shaderAtomLocationPrefix[to_base(ShaderType::FRAGMENT)]          = locPrefix + Paths::Shaders::GLSL::g_fragAtomLoc;
-    shaderAtomLocationPrefix[to_base(ShaderType::VERTEX)]            = locPrefix + Paths::Shaders::GLSL::g_vertAtomLoc;
-    shaderAtomLocationPrefix[to_base(ShaderType::GEOMETRY)]          = locPrefix + Paths::Shaders::GLSL::g_geomAtomLoc;
-    shaderAtomLocationPrefix[to_base(ShaderType::TESSELLATION_CTRL)] = locPrefix + Paths::Shaders::GLSL::g_tescAtomLoc;
-    shaderAtomLocationPrefix[to_base(ShaderType::TESSELLATION_EVAL)] = locPrefix + Paths::Shaders::GLSL::g_teseAtomLoc;
-    shaderAtomLocationPrefix[to_base(ShaderType::COMPUTE)]           = locPrefix + Paths::Shaders::GLSL::g_compAtomLoc;
-    shaderAtomLocationPrefix[to_base(ShaderType::COUNT)]             = locPrefix + Paths::Shaders::GLSL::g_comnAtomLoc;
-
-    shaderAtomExtensionName[to_base(ShaderType::FRAGMENT)]          = Paths::Shaders::GLSL::g_fragAtomExt;
-    shaderAtomExtensionName[to_base(ShaderType::VERTEX)]            = Paths::Shaders::GLSL::g_vertAtomExt;
-    shaderAtomExtensionName[to_base(ShaderType::GEOMETRY)]          = Paths::Shaders::GLSL::g_geomAtomExt;
-    shaderAtomExtensionName[to_base(ShaderType::TESSELLATION_CTRL)] = Paths::Shaders::GLSL::g_tescAtomExt;
-    shaderAtomExtensionName[to_base(ShaderType::TESSELLATION_EVAL)] = Paths::Shaders::GLSL::g_teseAtomExt;
-    shaderAtomExtensionName[to_base(ShaderType::COMPUTE)]           = Paths::Shaders::GLSL::g_compAtomExt;
-    shaderAtomExtensionName[to_base(ShaderType::COUNT)]             = Paths::Shaders::GLSL::g_comnAtomExt;
-
-    for (U8 i = 0u; i < to_base(ShaderType::COUNT) + 1; ++i) {
-        shaderAtomExtensionHash[i] = _ID(shaderAtomExtensionName[i].c_str());
-    }
-
-    std::atomic_init(&g_newValidationQueueEntry, false);
+     std::atomic_init(&g_newValidationQueueEntry, false);
 }
 
 void glShaderProgram::DestroyStaticData() {
@@ -311,28 +69,6 @@ void glShaderProgram::DestroyStaticData() {
     while(g_sShaderBinaryDumpQueue.try_dequeue(temp)) {
         NOP();
     }
-}
-
-void glShaderProgram::OnStartup() {
-    if_constexpr (!Config::Build::IS_SHIPPING_BUILD) {
-        FileWatcher& watcher = FileWatcherManager::allocateWatcher();
-        s_shaderFileWatcherID = watcher.getGUID();
-        g_sFileWatcherListener.addIgnoredEndCharacter('~');
-        g_sFileWatcherListener.addIgnoredExtension("tmp");
-
-        const vector<ResourcePath> atomLocations = GetAllAtomLocations();
-        for (const ResourcePath& loc : atomLocations) {
-            if (!CreateDirectories(loc)) {
-                DebugBreak();
-            }
-            watcher().addWatch(loc.c_str(), &g_sFileWatcherListener);
-        }
-    }
-}
-
-void glShaderProgram::OnShutdown() {
-    FileWatcherManager::deallocateWatcher(s_shaderFileWatcherID);
-    s_shaderFileWatcherID = -1;
 }
 
 void glShaderProgram::ProcessValidationQueue() {
@@ -380,11 +116,6 @@ void glShaderProgram::ProcessValidationQueue() {
     }
 }
 
-void glShaderProgram::DumpShaderTextCacheToDisk(const TextDumpEntry& entry) {
-    if (!ShaderFileWrite(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText, ResourcePath(entry._name), entry._sourceCode.c_str())) {
-        DIVIDE_UNEXPECTED_CALL();
-    }
-}
 
 void glShaderProgram::DumpShaderBinaryCacheToDisk(const BinaryDumpEntry& entry) {
     if (!glShader::DumpBinary(entry._handle, entry._name)) {
@@ -399,13 +130,6 @@ void glShaderProgram::Idle(PlatformContext& platformContext) {
 
     // One validation per Idle call
     ProcessValidationQueue();
-
-    // Schedule all of the shader "dump to text file" operations
-    static TextDumpEntry textOutputCache;
-    while(g_sDumpToFileQueue.try_dequeue(textOutputCache)) {
-        DIVIDE_ASSERT(!textOutputCache._name.empty() && !textOutputCache._sourceCode.empty());
-        Start(*CreateTask([cache = MOV(textOutputCache)](const Task &) { DumpShaderTextCacheToDisk(cache); }), platformContext.taskPool(TaskPoolType::LOW_PRIORITY));
-    }
 
     // Schedule all of the shader "dump to binary file" operations
     static BinaryDumpEntry binaryOutputCache;
@@ -430,7 +154,9 @@ glShaderProgram::~glShaderProgram()
 {
     unload();
     if (GL_API::GetStateTracker()._activeShaderPipeline == _handle) {
-        GL_API::GetStateTracker().setActiveShaderPipeline(0u);
+        if (GL_API::GetStateTracker().setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     }
 
     glDeleteProgramPipelines(1, &_handle);
@@ -491,8 +217,6 @@ void glShaderProgram::processValidation() {
         g_sValidationQueue.enqueue({ resourceName(), _handle, stageMask });
         g_newValidationQueueEntry.store(true);
     }
-
-    
 }
 
 ShaderResult glShaderProgram::validatePreBind(const bool rebind) {
@@ -532,73 +256,15 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind) {
 void glShaderProgram::threadedLoad(const bool reloadExisting) {
     OPTICK_EVENT()
 
-    if (!weak_from_this().expired()) {
-        RegisterShaderProgram(std::dynamic_pointer_cast<ShaderProgram>(shared_from_this()).get());
-    }
-
     _stagesBound = false;
     assert(reloadExisting || _handle == GLUtil::k_invalidObjectID);
     // NULL shader means use shaderProgram(0), so bypass the normal loading routine
     if (getGUID() != ShaderProgram::NullShaderGUID()) {
         reloadShaders(reloadExisting);
     }
+
     // Pass the rest of the loading steps to the parent class
-    if (!reloadExisting) {
-        ShaderProgram::load();
-    }
-}
-
-glShaderProgram::AtomUniformPair glShaderProgram::loadSourceCode(const Str128& stageName,
-                                                                 const Str8& extension,
-                                                                 const string& header,
-                                                                 size_t definesHash,
-                                                                 const bool reloadExisting,
-                                                                 Str256& fileNameOut,
-                                                                 eastl::string& sourceCodeOut) const
-{
-    AtomUniformPair ret = {};
-
-    fileNameOut = definesHash != 0
-                            ? Util::StringFormat("%s.%zu.%s", stageName.c_str(), definesHash, extension.c_str())
-                            : Util::StringFormat("%s.%s", stageName.c_str(), extension.c_str());
-
-    sourceCodeOut.resize(0);
-    if (s_useShaderTextCache && !reloadExisting) {
-        ShaderFileRead(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText,
-                       ResourcePath(fileNameOut),
-                       sourceCodeOut);
-    }
-
-    if (sourceCodeOut.empty()) {
-        // Use GLSW to read the appropriate part of the effect file
-        // based on the specified stage and properties
-        const char* sourceCodeStr = glswGetShader(stageName.c_str());
-        if (sourceCodeStr != nullptr) {
-            sourceCodeOut = sourceCodeStr;
-        }
-
-        // GLSW may fail for various reasons (not a valid effect stage, invalid name, etc)
-        if (!sourceCodeOut.empty()) {
-            // And replace in place with our program's headers created earlier
-            Util::ReplaceStringInPlace(sourceCodeOut, "_CUSTOM_DEFINES__", header);
-            sourceCodeOut = PreprocessIncludes(ResourcePath(resourceName()), sourceCodeOut, 0, ret._atoms, true);
-            sourceCodeOut = Preprocessor::PreProcess(sourceCodeOut, fileNameOut.c_str());
-            sourceCodeOut = GatherUniformDeclarations(sourceCodeOut, ret._uniforms);
-        }
-    }
-
-    return ret;
-}
-
-/// Creation of a new shader pipeline. Pass in a shader token and use glsw to load the corresponding effects
-bool glShaderProgram::load() {
-    if (_asyncLoad) {
-        Start(*CreateTask([this](const Task &) {threadedLoad(false); }), _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
-    } else {
-        threadedLoad(false);
-    }
-
-    return true;
+    ShaderProgram::threadedLoad(reloadExisting);
 }
 
 bool glShaderProgram::reloadShaders(const bool reloadExisting) {
@@ -615,10 +281,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
     using UniformList = eastl::set<ShaderProgram::UniformDeclaration, decltype(g_cmp)>;
     UniformList allUniforms(g_cmp);
 
-    if (reloadExisting) {
-        glswClearCurrentContext();
-    }
-    glswSetPath((assetLocation() + "/" + Paths::Shaders::GLSL::g_parentShaderLoc).c_str(), ".glsl");
+    setGLSWPath(reloadExisting);
 
     U64 batchCounter = 0;
     hashMap<U64, vector<ShaderModuleDescriptor>> modulesByFile;
@@ -691,7 +354,6 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
                                                                reloadExisting,
                                                                stageData._fileName,
                                                                sourceCode);
-
             if (sourceCode.empty()) {
                 continue;
             }
@@ -736,7 +398,7 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
             for (glShader* tempShader : _shaderStage) {
                 if (tempShader->nameHash() == targetNameHash) {
                     glShader::loadShader(tempShader, false, MOV(loadData));
-                    _validationQueued = rebindStages() == ShaderResult::OK;
+                    _stagesBound = false;
                     break;
                 }
             }
@@ -754,10 +416,6 @@ bool glShaderProgram::reloadShaders(const bool reloadExisting) {
     }
 
     return !_shaderStage.empty();
-}
-
-void glShaderProgram::QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName) {
-    g_sDumpToFileQueue.enqueue({ fileName, sourceCode });
 }
 
 bool glShaderProgram::recompile(bool& skipped) {
@@ -778,7 +436,9 @@ bool glShaderProgram::recompile(bool& skipped) {
     // Remember bind state and unbind it if needed
     const bool wasBound = GL_API::GetStateTracker()._activeShaderPipeline == _handle;
     if (wasBound) {
-        GL_API::GetStateTracker().setActiveShaderPipeline(0u);
+        if (GL_API::GetStateTracker().setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     }
     threadedLoad(true);
     // Restore bind state
@@ -800,7 +460,7 @@ ShaderResult glShaderProgram::bind() {
     }
 
     // Set this program as the currently active one
-    if (GL_API::GetStateTracker().setActiveShaderPipeline(_handle)) {
+    if (GL_API::GetStateTracker().setActiveShaderPipeline(_handle) == GLStateTracker::BindResult::JUST_BOUND) {
         // All of this needs to be run on an actual bind operation. If we are already bound, we assume we did all this
         processValidation();
         for (const glShader* shader : _shaderStage) {
@@ -821,192 +481,20 @@ void glShaderProgram::uploadPushConstants(const PushConstants& constants) {
         }
     }
 }
+void glShaderProgram::onAtomChangeInternal(const std::string_view atomName, const FileUpdateEvent evt) {
+    ShaderProgram::onAtomChangeInternal(atomName, evt);
 
-eastl::string glShaderProgram::GatherUniformDeclarations(const eastl::string & source, vector<UniformDeclaration>& foundUniforms) {
-    static const regexNamespace::regex uniformPattern { R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
+    const U64 atomNameHash = _ID(string{ atomName }.c_str());
 
-    eastl::string ret;
-    ret.reserve(source.size());
-
-    string line;
-    regexNamespace::smatch matches;
-    istringstream input(source.c_str());
-    while (std::getline(input, line)) {
-        if (Util::BeginsWith(line, "uniform", true) &&
-            regexNamespace::regex_search(line, matches, uniformPattern))
-        {
-            foundUniforms.push_back(UniformDeclaration{
-                Util::Trim(matches[1].str()), //type
-                Util::Trim(matches[2].str())  //name
-            });
-        } else {
-            ret.append(line.c_str());
-            ret.append("\n");
-        }
-    }
-
-    return ret;
-}
-
-eastl::string glShaderProgram::PreprocessIncludes(const ResourcePath& name,
-                                                  const eastl::string& source,
-                                                  const GLint level,
-                                                  vector<ResourcePath>& foundAtoms,
-                                                  const bool lock) {
-    if (level > s_maxHeaderRecursionLevel) {
-        Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INCLUD_LIMIT")));
-    }
-
-    size_t lineNumber = 1;
-    regexNamespace::smatch matches;
-
-    string line;
-    eastl::string output, includeString;
-    istringstream input(source.c_str());
-
-    while (std::getline(input, line)) {
-        const std::string_view directive = !line.empty() ? std::string_view{line}.substr(1) : "";
-
-        const bool isInclude = Util::BeginsWith(line, "#", true) && 
-                               !Util::BeginsWith(directive, "version", true) &&
-                               !Util::BeginsWith(directive, "extension", true) &&
-                               !Util::BeginsWith(directive, "define", true) &&
-                               !Util::BeginsWith(directive, "if", true) &&
-                               !Util::BeginsWith(directive, "else", true) &&
-                               !Util::BeginsWith(directive, "elif", true) &&
-                               !Util::BeginsWith(directive, "endif", true) &&
-                               !Util::BeginsWith(directive, "pragma", true) &&
-                               regexNamespace::regex_search(line, matches, Paths::g_includePattern);
-        if (!isInclude) {
-            output.append(line.c_str());
-        } else {
-            const ResourcePath includeFile = ResourcePath(Util::Trim(matches[1].str()));
-            foundAtoms.push_back(includeFile);
-
-            ShaderType typeIndex = ShaderType::COUNT;
-            bool found = false;
-            // switch will throw warnings due to promotion to int
-            const U64 extHash = _ID(Util::GetTrailingCharacters(includeFile.str(), 4).c_str());
-            for (U8 i = 0; i < to_base(ShaderType::COUNT) + 1; ++i) {
-                if (extHash == shaderAtomExtensionHash[i]) {
-                    typeIndex = static_cast<ShaderType>(i);
-                    found = true;
+    for (glShader* shader : _shaderStage) {
+        for (const glShader::LoadData& it : shader->_loadData._data) {
+            for (const U64 atomHash : it.atoms) {
+                if (atomHash == atomNameHash) {
+                    s_recompileQueue.push(this);
                     break;
                 }
             }
-
-            DIVIDE_ASSERT(found, "Invalid shader include type");
-            bool wasParsed = false;
-            if (lock) {
-                includeString = ShaderFileRead(shaderAtomLocationPrefix[to_U32(typeIndex)], includeFile, true, foundAtoms, wasParsed).c_str();
-            } else {
-                includeString = ShaderFileReadLocked(shaderAtomLocationPrefix[to_U32(typeIndex)], includeFile, true, foundAtoms, wasParsed).c_str();
-            }
-            if (includeString.empty()) {
-                Console::errorfn(Locale::Get(_ID("ERROR_GLSL_NO_INCLUDE_FILE")), name.c_str(), lineNumber, includeFile.c_str());
-            }
-            if (wasParsed) {
-                output.append(includeString);
-            } else {
-                output.append(PreprocessIncludes(name, includeString, level + 1, foundAtoms, lock));
-            }
         }
-
-        output.append("\n");
-        ++lineNumber;
-    }
-
-    return output;
-}
-
-const string& glShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed) {
-    ScopedLock<SharedMutex> w_lock(s_atomLock);
-    return ShaderFileReadLocked(filePath, atomName, recurse, foundAtoms, wasParsed);
-}
-
-/// Open the file found at 'filePath' matching 'atomName' and return it's source code
-const string& glShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed) {
-    const U64 atomNameHash = _ID(atomName.c_str());
-    // See if the atom was previously loaded and still in cache
-    const AtomMap::iterator it = s_atoms.find(atomNameHash);
-    
-    // If that's the case, return the code from cache
-    if (it != std::cend(s_atoms)) {
-        const auto& atoms = s_atomIncludes[atomNameHash];
-        foundAtoms.insert(end(foundAtoms), begin(atoms), end(atoms));
-        wasParsed = true;
-        return it->second;
-    }
-
-    wasParsed = false;
-    // If we forgot to specify an atom location, we have nothing to return
-    assert(!filePath.empty());
-
-    // Open the atom file and add the code to the atom cache for future reference
-    eastl::string output;
-    if (readFile(filePath, atomName, output, FileType::TEXT) != FileError::NONE) {
-        DIVIDE_UNEXPECTED_CALL();
-    }
-
-    vector<ResourcePath> atoms = {};
-    vector<UniformDeclaration> uniforms = {};
-    if (recurse) {
-        output = PreprocessIncludes(atomName, output, 0, atoms, false);
-    }
-
-    foundAtoms.insert(end(foundAtoms), begin(atoms), end(atoms));
-    const auto&[entry, result] = s_atoms.insert({ atomNameHash, output.c_str() });
-    assert(result);
-    s_atomIncludes.insert({atomNameHash, atoms});
-
-    // Return the source code
-    return entry->second;
-}
-
-bool glShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& fileName, eastl::string& sourceCodeOut) {
-    return readFile(filePath, ResourcePath(decorateFileName(fileName.str())), sourceCodeOut, FileType::TEXT) == FileError::NONE;
-}
-
-bool glShaderProgram::ShaderFileWrite(const ResourcePath& filePath, const ResourcePath& fileName, const char* sourceCode) {
-    return writeFile(filePath, ResourcePath(decorateFileName(fileName.str())), sourceCode, strlen(sourceCode), FileType::TEXT) == FileError::NONE;
-}
-
-void glShaderProgram::OnAtomChange(const std::string_view atomName, const FileUpdateEvent evt) {
-    DIVIDE_ASSERT(evt != FileUpdateEvent::COUNT);
-
-    // Do nothing if the specified file is "deleted". We do not want to break running programs
-    if (evt == FileUpdateEvent::DELETE) {
-        return;
-    }
-    // ADD and MODIFY events should get processed as usual
-
-    const U64 atomNameHash = _ID(string{ atomName }.c_str());
-    {
-        // Clear the atom from the cache
-        ScopedLock<SharedMutex> w_lock(s_atomLock);
-        if (s_atoms.erase(atomNameHash) == 1) {
-            NOP();
-        }
-    }
-
-    //Get list of shader programs that use the atom and rebuild all shaders in list;
-    SharedLock<SharedMutex> r_lock(s_programLock);
-    for (const auto& [_, programEntry] : s_shaderPrograms) {
-
-        const auto& shaders = static_cast<glShaderProgram*>(programEntry.first)->_shaderStage;
-
-        for (glShader* shader : shaders) {
-            for (const auto& it : shader->_loadData._data) {
-                for (const U64 atomHash : it.atoms) {
-                    if (atomHash == atomNameHash) {
-                        s_recompileQueue.push(programEntry.first);
-                        goto NEXT_SHADER_PROGRAM;
-                    }
-                }
-            }
-        }
-        NEXT_SHADER_PROGRAM:
-        NOP();
     }
 }
 

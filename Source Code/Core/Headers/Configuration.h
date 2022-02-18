@@ -124,7 +124,6 @@ struct Configuration final : XML::IXMLSerializable {
         U8 MSAASamples = 0u;
         U8 maxAnisotropicFilteringLevel = 16;
         bool useBindlessTextures = false;
-        bool debugBindlessTextures = false;
         U16 reflectionProbeResolution = 256;
         U16 reflectionPlaneResolution = 512;
         I32 numLightsPerCluster = -1;

@@ -13,7 +13,6 @@
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/RenderTarget/Headers/glFramebuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/ShaderBuffer/Headers/glUniformBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/VertexBuffer/Headers/glGenericVertexData.h"
-#include "Platform/Video/RenderBackend/OpenGL/glsw/Headers/glsw.h"
 
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
@@ -29,7 +28,6 @@
 
 #include <glbinding-aux/Meta.h>
 
-#include "Scenes/Headers/SceneShaderData.h"
 #include "Text/Headers/fontstash.h"
 
 namespace Divide {
@@ -71,7 +69,6 @@ GL_API::GL_API(GFXDevice& context, [[maybe_unused]] const bool glES)
 {
     std::atomic_init(&s_glFlushQueued, false);
 }
-
 
 /// Prepare the GPU for rendering a frame
 void GL_API::beginFrame(DisplayWindow& window, const bool global) {
@@ -122,12 +119,30 @@ void GL_API::beginFrame(DisplayWindow& window, const bool global) {
     clearStates(window, stateTracker, global);
 }
 
-/// Finish rendering the current frame
-void GL_API::endFrame(DisplayWindow& window, const bool global) {
-    OPTICK_EVENT("GL_API: endFrame");
+void GL_API::endFrameLocal(const DisplayWindow& window) {
+    OPTICK_EVENT();
 
-    // End the timing query started in beginFrame() in debug builds
-    if (global && _runQueries) {
+    // Swap buffers    
+    SDL_GLContext glContext = static_cast<SDL_GLContext>(window.userData());
+    const I64 windowGUID = window.getGUID();
+
+    if (glContext != nullptr && (_currentContext.first != windowGUID || _currentContext.second != glContext)) {
+        OPTICK_EVENT("GL_API: Swap Context");
+        SDL_GL_MakeCurrent(window.getRawWindow(), glContext);
+        _currentContext = std::make_pair(windowGUID, glContext);
+    }
+    {
+        OPTICK_EVENT("GL_API: Swap Buffers");
+        SDL_GL_SwapWindow(window.getRawWindow());
+    }
+}
+
+void GL_API::endFrameGlobal(const DisplayWindow& window) {
+    OPTICK_EVENT();
+
+    if (_runQueries) {
+        // End the timing query started in beginFrame() in debug builds
+
         if_constexpr(g_runAllQueriesInSameFrame) {
             for (U8 i = 0; i < to_base(QueryType::COUNT); ++i) {
                 _performanceQueries[i]->end();
@@ -136,458 +151,83 @@ void GL_API::endFrame(DisplayWindow& window, const bool global) {
             _performanceQueries[_queryIdxForCurrentFrame]->end();
         }
     }
-    // Swap buffers
-    {
-        if (global) {
-            if (glGetGraphicsResetStatus() != GL_NO_ERROR) { 
-                DIVIDE_UNEXPECTED_CALL_MSG("OpenGL Reset Status raised!");
-            }
-            _swapBufferTimer.start();
-        }
 
-        
-        SDL_GLContext glContext = static_cast<SDL_GLContext>(window.userData());
-        const I64 windowGUID = window.getGUID();
-            
-        if (glContext != nullptr && (_currentContext.first != windowGUID || _currentContext.second != glContext)) {
-            OPTICK_EVENT("GL_API: Swap Context");
-            SDL_GL_MakeCurrent(window.getRawWindow(), glContext);
-            _currentContext = std::make_pair(windowGUID, glContext);
-        }
-        {
-            OPTICK_EVENT("GL_API: Swap Buffers");
-            SDL_GL_SwapWindow(window.getRawWindow());
-        }
-        
-        if (global) {
-            _swapBufferTimer.stop();
-            s_textureViewCache.onFrameEnd();
-            s_glFlushQueued.store(false);
-            if (s_UseBindlessTextures) {
-                for (ResidentTexture& texture : s_residentTextures) {
-                    if (texture._address == 0u) {
-                        // Most common case
-                        continue;
-                    }
+    if (glGetGraphicsResetStatus() != GL_NO_ERROR) {
+        DIVIDE_UNEXPECTED_CALL_MSG("OpenGL Reset Status raised!");
+    }
 
-                    if (++texture._frameCount > g_maxTextureResidencyFrameCount) {
-                        glMakeTextureHandleNonResidentARB(texture._address);
-                        texture = {};
-                    }
-                }
+    _swapBufferTimer.start();
+    endFrameLocal(window);
+    SDL_Delay(1);
+    _swapBufferTimer.stop();
+
+    OPTICK_EVENT("GL_API: Post-Swap cleanup");
+    s_textureViewCache.onFrameEnd();
+    s_glFlushQueued.store(false);
+    if (ShaderProgram::s_UseBindlessTextures) {
+        for (ResidentTexture& texture : s_residentTextures) {
+            if (texture._address == 0u) {
+                // Most common case
+                continue;
             }
 
-            while (TryDeleteExpiredSync()){
-                NOP();
+            if (++texture._frameCount > g_maxTextureResidencyFrameCount) {
+                glMakeTextureHandleNonResidentARB(texture._address);
+                texture = {};
             }
         }
     }
 
-    if (global && _runQueries) {
-          OPTICK_EVENT("GL_API: Time Query");
-          static std::array<I64, to_base(QueryType::COUNT)> results{};
-          if_constexpr(g_runAllQueriesInSameFrame) {
-              for (U8 i = 0; i < to_base(QueryType::COUNT); ++i) {
-                  results[i] = _performanceQueries[i]->getResultNoWait();
-                  _performanceQueries[i]->incQueue();
-              }
-          } else {
-              results[_queryIdxForCurrentFrame] = _performanceQueries[_queryIdxForCurrentFrame]->getResultNoWait();
-              _performanceQueries[_queryIdxForCurrentFrame]->incQueue();
-          }
-          _queryIdxForCurrentFrame = (_queryIdxForCurrentFrame + 1) % to_base(QueryType::COUNT);
+    if (_runQueries) {
+        OPTICK_EVENT("GL_API: Time Query");
+        static std::array<I64, to_base(QueryType::COUNT)> results{};
+        if_constexpr(g_runAllQueriesInSameFrame) {
+            for (U8 i = 0; i < to_base(QueryType::COUNT); ++i) {
+                results[i] = _performanceQueries[i]->getResultNoWait();
+                _performanceQueries[i]->incQueue();
+            }
+        } else {
+            results[_queryIdxForCurrentFrame] = _performanceQueries[_queryIdxForCurrentFrame]->getResultNoWait();
+            _performanceQueries[_queryIdxForCurrentFrame]->incQueue();
+        }
 
-          if (g_runAllQueriesInSameFrame || _queryIdxForCurrentFrame == 0) {
-              _perfMetrics._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>(results[to_base(QueryType::GPU_TIME)]);
-              _perfMetrics._verticesSubmitted = to_U64(results[to_base(QueryType::VERTICES_SUBMITTED)]);
-              _perfMetrics._primitivesGenerated = to_U64(results[to_base(QueryType::PRIMITIVES_GENERATED)]);
-              _perfMetrics._tessellationPatches = to_U64(results[to_base(QueryType::TESSELLATION_PATCHES)]);
-              _perfMetrics._tessellationInvocations = to_U64(results[to_base(QueryType::TESSELLATION_CTRL_INVOCATIONS)]);
-          }
+        _queryIdxForCurrentFrame = (_queryIdxForCurrentFrame + 1) % to_base(QueryType::COUNT);
+
+        if (g_runAllQueriesInSameFrame || _queryIdxForCurrentFrame == 0) {
+            _perfMetrics._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>(results[to_base(QueryType::GPU_TIME)]);
+            _perfMetrics._verticesSubmitted = to_U64(results[to_base(QueryType::VERTICES_SUBMITTED)]);
+            _perfMetrics._primitivesGenerated = to_U64(results[to_base(QueryType::PRIMITIVES_GENERATED)]);
+            _perfMetrics._tessellationPatches = to_U64(results[to_base(QueryType::TESSELLATION_PATCHES)]);
+            _perfMetrics._tessellationInvocations = to_U64(results[to_base(QueryType::TESSELLATION_CTRL_INVOCATIONS)]);
+        }
     }
 
     _runQueries = _context.queryPerformanceStats();
+    {
+        OPTICK_EVENT("GL_API: Sync Cleanup");
+        while (TryDeleteExpiredSync()) {
+            NOP();
+        }
+    }
 }
-PerformanceMetrics GL_API::getPerformanceMetrics() const noexcept {
+
+/// Finish rendering the current frame
+void GL_API::endFrame(DisplayWindow& window, const bool global) {
+    OPTICK_EVENT();
+
+    if (global) {
+        endFrameGlobal(window);
+    } else {
+        endFrameLocal(window);
+    }
+}
+
+const PerformanceMetrics& GL_API::getPerformanceMetrics() const noexcept {
     return _perfMetrics;
 }
 
 void GL_API::idle([[maybe_unused]] const bool fast) {
-    OPTICK_EVENT("GL_API: fast idle");
     glShaderProgram::Idle(_context.context());
-}
-
-void GL_API::AppendToShaderHeader(const ShaderType type, const string& entry) {
-    glswAddDirectiveToken(type != ShaderType::COUNT ? Names::shaderTypes[to_U8(type)] : "", entry.c_str());
-}
-
-bool GL_API::InitGLSW(Configuration& config) {
-    constexpr std::pair<const char*, const char*> shaderVaryings[] =
-    {
-        { "vec4"       , "_vertexW"},          // 16 bytes
-        { "vec4"       , "_vertexWV"},         // 32 bytes
-        { "vec4"       , "_prevVertexWVP"},    // 48 bytes
-        { "vec3"       , "_normalWV"},         // 60 bytes
-        { "vec3"       , "_viewDirectionWV"},  // 72 bytes
-        { "vec2"       , "_texCoord"},         // 80 bytes
-        { "flat uvec4" , "_indirectionIDs"},   // 96 bytes
-        //{ "flat uint" , "_LoDLevel"},        // 100 bytes
-        //{ "mat3" , "_tbnWV"},                // 136 bytes
-    };
-
-    constexpr const char* crossTypeGLSLHLSL = "#define float2 vec2\n"
-                                              "#define float3 vec3\n"
-                                              "#define float4 vec4\n"
-                                              "#define int2 ivec2\n"
-                                              "#define int3 ivec3\n"
-                                              "#define int4 ivec4\n"
-                                              "#define float2x2 mat2\n"
-                                              "#define float3x3 mat3\n"
-                                              "#define float4x4 mat4\n"
-                                              "#define lerp mix";
-
-    const auto getPassData = [&](const ShaderType type) -> string {
-        string baseString = "     _out.%s = _in[index].%s;";
-        if (type == ShaderType::TESSELLATION_CTRL) {
-            baseString = "    _out[gl_InvocationID].%s = _in[index].%s;";
-        }
-
-        string passData("void PassData(in int index) {");
-        passData.append("\n");
-        for (const auto& [varType, name] : shaderVaryings) {
-            passData.append(Util::StringFormat(baseString.c_str(), name, name));
-            passData.append("\n");
-        }
-
-        passData.append("#if defined(ENABLE_LOD)\n");
-        passData.append(Util::StringFormat(baseString.c_str(), "_LoDLevel", "_LoDLevel"));
-        passData.append("\n#endif //ENABLE_LOD\n");
-
-        passData.append("#if defined(ENABLE_TBN)\n");
-        passData.append(Util::StringFormat(baseString.c_str(), "_tbnWV", "_tbnWV"));
-        passData.append("\n#endif //ENABLE_TBN\n");
-
-        passData.append("}\n");
-
-        return passData;
-    };
-
-    const auto addVaryings = [&](const ShaderType type) {
-        for (const auto& [varType, name] : shaderVaryings) {
-            AppendToShaderHeader(type, Util::StringFormat("    %s %s;", varType, name));
-        }
-        AppendToShaderHeader(type, "#if defined(ENABLE_TBN)");
-        AppendToShaderHeader(type, "    mat3 _tbnWV;");
-        AppendToShaderHeader(type, "#endif //ENABLE_TBN");
-        AppendToShaderHeader(type, "#if defined(ENABLE_LOD)");
-        AppendToShaderHeader(type, "    flat uint _LoDLevel;");
-        AppendToShaderHeader(type, "#endif //ENABLE_LOD");
-    };
-
-    // Initialize GLSW
-    GLint glswState = -1;
-    if (!glswGetCurrentContext()) {
-        glswState = glswInit();
-        DIVIDE_ASSERT(glswState == 1);
-    }
-
-    I32 numLightsPerCluster = config.rendering.numLightsPerCluster;
-    if (numLightsPerCluster < 0) {
-        numLightsPerCluster = to_I32(Config::Lighting::ClusteredForward::MAX_LIGHTS_PER_CLUSTER);
-    } else {
-        numLightsPerCluster = std::min(numLightsPerCluster, to_I32(Config::Lighting::ClusteredForward::MAX_LIGHTS_PER_CLUSTER));
-    }
-    if (numLightsPerCluster != config.rendering.numLightsPerCluster) {
-        config.rendering.numLightsPerCluster = numLightsPerCluster;
-        config.changed(true);
-    }
-    const U16 reflectionProbeRes = to_U16(nextPOW2(CLAMPED(to_U32(config.rendering.reflectionProbeResolution), 16u, 4096u) - 1u));
-    if (reflectionProbeRes != config.rendering.reflectionProbeResolution) {
-        config.rendering.reflectionProbeResolution = reflectionProbeRes;
-        config.changed(true);
-    }
-
-    DIVIDE_ASSERT(Config::MAX_CULL_DISTANCES <= GLUtil::getGLValue(GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES) - Config::MAX_CLIP_DISTANCES,
-                  "GLWrapper error: incorrect combination of clip and cull distance counts");
-    static_assert(Config::MAX_BONE_COUNT_PER_NODE <= 1024, "GLWrapper error: too many bones per vert. Can't fit inside UBO");
-    // Add our engine specific defines and various code pieces to every GLSL shader
-    // Add version as the first shader statement, followed by copyright notice
-    AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#version 4%d0 core", GLUtil::getGLValue(GL_MINOR_VERSION)));
-    AppendToShaderHeader(ShaderType::COUNT, "/*Copyright 2009-2022 DIVIDE-Studio*/");
-
-    if (s_UseBindlessTextures || s_DebugBindlessTextures) {
-        AppendToShaderHeader(ShaderType::COUNT, "#extension  GL_ARB_bindless_texture : require");
-    }
-
-    AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_gpu_shader5 : require");
-    if (!GetStateTracker()._opengl46Supported) {
-        AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_shader_draw_parameters : require");
-        AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_cull_distance : require");
-        AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_enhanced_layouts : require");
-
-        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_DRAW_ID gl_DrawIDARB");
-        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_VERTEX gl_BaseVertexARB");
-        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_INSTANCE gl_BaseInstanceARB");
-    } else {
-        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_DRAW_ID gl_DrawID");
-        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_VERTEX gl_BaseVertex");
-        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_INSTANCE gl_BaseInstance");
-    }
-
-    AppendToShaderHeader(ShaderType::COUNT, crossTypeGLSLHLSL);
-
-    // Add current build environment information to the shaders
-    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
-        AppendToShaderHeader(ShaderType::COUNT, "#define _DEBUG");
-    } else if_constexpr(Config::Build::IS_PROFILE_BUILD) {
-        AppendToShaderHeader(ShaderType::COUNT, "#define _PROFILE");
-    } else {
-        AppendToShaderHeader(ShaderType::COUNT, "#define _RELEASE");
-    }
-
-    // Shader stage level reflection system. A shader stage must know what stage it's used for
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define VERT_SHADER");
-    AppendToShaderHeader(ShaderType::FRAGMENT, "#define FRAG_SHADER");
-    AppendToShaderHeader(ShaderType::GEOMETRY, "#define GEOM_SHADER");
-    AppendToShaderHeader(ShaderType::COMPUTE,  "#define COMPUTE_SHADER");
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#define TESS_EVAL_SHADER");
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#define TESS_CTRL_SHADER");
-
-    // This line gets replaced in every shader at load with the custom list of defines specified by the material
-    AppendToShaderHeader(ShaderType::COUNT, "_CUSTOM_DEFINES__");
-
-    // Add some nVidia specific pragma directives
-    if (GFXDevice::getGPUVendor() == GPUVendor::NVIDIA) {
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(fastmath on)");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(fastprecision on)");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(inline all)");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(ifcvt none)");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(strict on)");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(unroll all)");
-    }
-
-    if_constexpr(Config::USE_COLOURED_WOIT) {
-        AppendToShaderHeader(ShaderType::COUNT, "#define USE_COLOURED_WOIT");
-    }
-
-    if (s_UseBindlessTextures) {
-        AppendToShaderHeader(ShaderType::COUNT, "#define BINDLESS_TEXTURES_ENABLED");
-    }
-    if (s_DebugBindlessTextures) {
-        AppendToShaderHeader(ShaderType::COUNT, "#define DEBUG_BINDLESS_TEXTURES");
-    }
-
-    DIVIDE_ASSERT(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < GL_API::s_maxWorgroupSize[0] &&
-                  Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < GL_API::s_maxWorgroupSize[1] &&
-                  Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < GL_API::s_maxWorgroupSize[2]);
-
-    DIVIDE_ASSERT(to_U32(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS) * 
-                         Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS * 
-                         Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < GL_API::s_maxWorgroupInvocations);
-
-    // ToDo: Automate adding of buffer bindings by using, for example, a TypeUtil::bufferBindingToString -Ionut
-    AppendToShaderHeader(ShaderType::COUNT,    "#define ALPHA_DISCARD_THRESHOLD "         + Util::to_string(Config::ALPHA_DISCARD_THRESHOLD) + "f");
-    AppendToShaderHeader(ShaderType::COUNT,    "#define Z_TEST_SIGMA "                    + Util::to_string(Config::Z_TEST_SIGMA) + "f");
-    AppendToShaderHeader(ShaderType::COUNT,    "#define INV_Z_TEST_SIGMA "                + Util::to_string(1.f - Config::Z_TEST_SIGMA) + "f");
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_CSM_SPLITS_PER_LIGHT "        + Util::to_string(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_SHADOW_CASTING_LIGHTS "       + Util::to_string(Config::Lighting::MAX_SHADOW_CASTING_LIGHTS));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_SHADOW_CASTING_DIR_LIGHTS "   + Util::to_string(Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_SHADOW_CASTING_POINT_LIGHTS " + Util::to_string(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_SHADOW_CASTING_SPOT_LIGHTS "  + Util::to_string(Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_LIGHTS "                      + Util::to_string(Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_VISIBLE_NODES "               + Util::to_string(Config::MAX_VISIBLE_NODES));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_CONCURRENT_MATERIALS "        + Util::to_string(Config::MAX_CONCURRENT_MATERIALS));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_CLIP_PLANES "                 + Util::to_string(Config::MAX_CLIP_DISTANCES));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_CULL_DISTANCES "              + Util::to_string(Config::MAX_CULL_DISTANCES));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_ACCUMULATION "             + Util::to_string(to_base(GFXDevice::ScreenTargets::ACCUMULATION)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_ALBEDO "                   + Util::to_string(to_base(GFXDevice::ScreenTargets::ALBEDO)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_VELOCITY "                 + Util::to_string(to_base(GFXDevice::ScreenTargets::VELOCITY)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_NORMALS "                  + Util::to_string(to_base(GFXDevice::ScreenTargets::NORMALS)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_REVEALAGE "                + Util::to_string(to_base(GFXDevice::ScreenTargets::REVEALAGE)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define TARGET_MODULATE "                 + Util::to_string(to_base(GFXDevice::ScreenTargets::MODULATE)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_CAM_BLOCK "                + Util::to_string(to_base(ShaderBufferLocation::CAM_BLOCK)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_RENDER_BLOCK "             + Util::to_string(to_base(ShaderBufferLocation::RENDER_BLOCK)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_0 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_0)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_1 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_1)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_2 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_2)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_3 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_3)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_ATOMIC_COUNTER_4 "         + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_4)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_GPU_COMMANDS "             + Util::to_string(to_base(ShaderBufferLocation::GPU_COMMANDS)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_NORMAL "             + Util::to_string(to_base(ShaderBufferLocation::LIGHT_NORMAL)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_SCENE "              + Util::to_string(to_base(ShaderBufferLocation::LIGHT_SCENE)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_SHADOW "             + Util::to_string(to_base(ShaderBufferLocation::LIGHT_SHADOW)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_INDICES "            + Util::to_string(to_base(ShaderBufferLocation::LIGHT_INDICES)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_GRID "               + Util::to_string(to_base(ShaderBufferLocation::LIGHT_GRID)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_INDEX_COUNT "        + Util::to_string(to_base(ShaderBufferLocation::LIGHT_INDEX_COUNT)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_LIGHT_CLUSTER_AABBS "      + Util::to_string(to_base(ShaderBufferLocation::LIGHT_CLUSTER_AABBS)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_TRANSFORM_DATA "      + Util::to_string(to_base(ShaderBufferLocation::NODE_TRANSFORM_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_TEXTURE_DATA "        + Util::to_string(to_base(ShaderBufferLocation::NODE_TEXTURE_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_MATERIAL_DATA "       + Util::to_string(to_base(ShaderBufferLocation::NODE_MATERIAL_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_NODE_INDIRECTION_DATA "    + Util::to_string(to_base(ShaderBufferLocation::NODE_INDIRECTION_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_SCENE_DATA "               + Util::to_string(to_base(ShaderBufferLocation::SCENE_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_PROBE_DATA "               + Util::to_string(to_base(ShaderBufferLocation::PROBE_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_COMMANDS "                 + Util::to_string(to_base(ShaderBufferLocation::CMD_BUFFER)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_GRASS_DATA "               + Util::to_string(to_base(ShaderBufferLocation::GRASS_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_TREE_DATA "                + Util::to_string(to_base(ShaderBufferLocation::TREE_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define BUFFER_UNIFORM_BLOCK "            + Util::to_string(to_base(ShaderBufferLocation::UNIFORM_BLOCK)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_X_THREADS "              + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_Y_THREADS "              + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_Z_THREADS "              + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_X "                      + Util::to_string(Renderer::CLUSTER_SIZE.x));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_Y "                      + Util::to_string(Renderer::CLUSTER_SIZE.y));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define CLUSTERS_Z "                      + Util::to_string(Renderer::CLUSTER_SIZE.z));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define SKY_LIGHT_LAYER_IDX "             + Util::to_string(SceneEnvironmentProbePool::SkyProbeLayerIndex()));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MAX_LIGHTS_PER_CLUSTER "          + Util::to_string(numLightsPerCluster));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define REFLECTION_PROBE_RESOLUTION "     + Util::to_string(reflectionProbeRes));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define REFLECTION_PROBE_MIP_COUNT "      + Util::to_string(to_U32(std::log2(reflectionProbeRes))));
-    for (U8 i = 0; i < to_base(TextureUsage::COUNT); ++i) {
-        AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define TEXTURE_%s %d", TypeUtil::TextureUsageToString(static_cast<TextureUsage>(i)), i).c_str());
-    }
-    for (U8 i = 0; i < to_base(TextureOperation::COUNT); ++i) {
-        AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define TEX_%s %d", TypeUtil::TextureOperationToString(static_cast<TextureOperation>(i)), i).c_str());
-    }
-    AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define WORLD_X_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_X_AXIS.x, WORLD_X_AXIS.y, WORLD_X_AXIS.z));
-    AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define WORLD_Y_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_Y_AXIS.x, WORLD_Y_AXIS.y, WORLD_Y_AXIS.z));
-    AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define WORLD_Z_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_Z_AXIS.x, WORLD_Z_AXIS.y, WORLD_Z_AXIS.z));
-
-
-    AppendToShaderHeader(ShaderType::COUNT, "#define M_EPSILON 1e-5f");
-    AppendToShaderHeader(ShaderType::COUNT, "#define M_PI 3.14159265358979323846");
-    AppendToShaderHeader(ShaderType::COUNT, "#define M_PI_2 (3.14159265358979323846 / 2)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define INV_M_PI 0.31830988618");
-
-    AppendToShaderHeader(ShaderType::COUNT, "#define ACCESS_RW");
-    AppendToShaderHeader(ShaderType::COUNT, "#define ACCESS_R readonly");
-    AppendToShaderHeader(ShaderType::COUNT, "#define ACCESS_W writeonly");
-
-    AppendToShaderHeader(ShaderType::VERTEX, "#define COMP_ONLY_W readonly");
-    AppendToShaderHeader(ShaderType::VERTEX, "#define COMP_ONLY_R");
-    AppendToShaderHeader(ShaderType::VERTEX, "#define COMP_ONLY_RW readonly");
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#define COMP_ONLY_W readonly");
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#define COMP_ONLY_R");
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#define COMP_ONLY_RW readonly");
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#define COMP_ONLY_W readonly");
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#define COMP_ONLY_R");
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#define COMP_ONLY_RW readonly");
-    AppendToShaderHeader(ShaderType::GEOMETRY, "#define COMP_ONLY_W readonly");
-    AppendToShaderHeader(ShaderType::GEOMETRY, "#define COMP_ONLY_R");
-    AppendToShaderHeader(ShaderType::GEOMETRY, "#define COMP_ONLY_RW readonly");
-    AppendToShaderHeader(ShaderType::FRAGMENT, "#define COMP_ONLY_W readonly");
-    AppendToShaderHeader(ShaderType::FRAGMENT, "#define COMP_ONLY_R");
-    AppendToShaderHeader(ShaderType::FRAGMENT, "#define COMP_ONLY_RW readonly");
-    AppendToShaderHeader(ShaderType::COMPUTE, "#define COMP_ONLY_W ACCESS_W");
-    AppendToShaderHeader(ShaderType::COMPUTE, "#define COMP_ONLY_R ACCESS_R");
-    AppendToShaderHeader(ShaderType::COMPUTE, "#define COMP_ONLY_RW ACCESS_RW");
-
-    AppendToShaderHeader(ShaderType::COUNT, "#define AND(a, b) (a * b)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define OR(a, b) min(a + b, 1.f)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define XOR(a, b) ((a + b) % 2)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define NOT(X) (1.f - X)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define Squared(X) (X * X)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define Round(X) floor((X) + .5f)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define Saturate(X) clamp(X, 0, 1)");
-    AppendToShaderHeader(ShaderType::COUNT, "#define Mad(a, b, c) (a * b + c)");
-
-    AppendToShaderHeader(ShaderType::COUNT,    "#define GLOBAL_WATER_BODIES_COUNT "       + Util::to_string(GLOBAL_WATER_BODIES_COUNT));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define GLOBAL_PROBE_COUNT "              + Util::to_string(GLOBAL_PROBE_COUNT));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define MATERIAL_TEXTURE_COUNT "          + Util::to_string(MATERIAL_TEXTURE_COUNT));
-    AppendToShaderHeader(ShaderType::COMPUTE,  "#define BUFFER_LUMINANCE_HISTOGRAM "      + Util::to_string(to_base(ShaderBufferLocation::LUMINANCE_HISTOGRAM)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define BUFFER_BONE_TRANSFORMS "          + Util::to_string(to_base(ShaderBufferLocation::BONE_TRANSFORMS)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define BUFFER_BONE_TRANSFORMS_PREV "     + Util::to_string(to_base(ShaderBufferLocation::BONE_TRANSFORMS_PREV)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define MAX_BONE_COUNT_PER_NODE "         + Util::to_string(Config::MAX_BONE_COUNT_PER_NODE));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_POSITION "                 + Util::to_string(to_base(AttribLocation::POSITION)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_TEXCOORD "                 + Util::to_string(to_base(AttribLocation::TEXCOORD)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_NORMAL "                   + Util::to_string(to_base(AttribLocation::NORMAL)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_TANGENT "                  + Util::to_string(to_base(AttribLocation::TANGENT)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_COLOR "                    + Util::to_string(to_base(AttribLocation::COLOR)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_BONE_WEIGHT "              + Util::to_string(to_base(AttribLocation::BONE_WEIGHT)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_BONE_INDICE "              + Util::to_string(to_base(AttribLocation::BONE_INDICE)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_WIDTH "                    + Util::to_string(to_base(AttribLocation::WIDTH)));
-    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_GENERIC "                  + Util::to_string(to_base(AttribLocation::GENERIC)));
-    AppendToShaderHeader(ShaderType::COUNT,    "#define ATTRIB_FREE_START "               + Util::to_string(to_base(AttribLocation::COUNT) + 1u));
-    AppendToShaderHeader(ShaderType::FRAGMENT, "#define MAX_SHININESS "                   + Util::to_string(Material::MAX_SHININESS));
-
-    for (U8 i = 0u; i < to_U8(ShadingMode::COUNT) + 1u; ++i) {
-        const ShadingMode mode = static_cast<ShadingMode>(i);
-        AppendToShaderHeader(ShaderType::FRAGMENT, Util::StringFormat("#define SHADING_%s %d", TypeUtil::ShadingModeToString(mode), i));
-    }
-
-    AppendToShaderHeader(ShaderType::FRAGMENT, Util::StringFormat("#define SHADING_COUNT %d", to_base(ShadingMode::COUNT)));
-
-    for (U8 i = 0u; i < to_U8(MaterialDebugFlag::COUNT) + 1u; ++i) {
-        const MaterialDebugFlag flag = static_cast<MaterialDebugFlag>(i);
-        AppendToShaderHeader(ShaderType::FRAGMENT, Util::StringFormat("#define DEBUG_%s %d", TypeUtil::MaterialDebugFlagToString(flag), i));
-    }
-
-    AppendToShaderHeader(ShaderType::COUNT, "#if defined(PRE_PASS) || defined(SHADOW_PASS)");
-    AppendToShaderHeader(ShaderType::COUNT, "#   define DEPTH_PASS");
-    AppendToShaderHeader(ShaderType::COUNT, "#endif //PRE_PASS || SHADOW_PASS");
-
-    AppendToShaderHeader(ShaderType::COUNT, "#if defined(COMPUTE_TBN) && !defined(ENABLE_TBN)");
-    AppendToShaderHeader(ShaderType::COUNT, "#   define ENABLE_TBN");
-    AppendToShaderHeader(ShaderType::COUNT, "#endif //COMPUTE_TBN && !ENABLE_TBN");
-
-    // Vertex shader output
-    AppendToShaderHeader(ShaderType::VERTEX, "out Data {");
-    addVaryings(ShaderType::VERTEX);
-    AppendToShaderHeader(ShaderType::VERTEX, "} _out;\n");
-
-    // Tessellation Control shader input
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "in Data {");
-    addVaryings(ShaderType::TESSELLATION_CTRL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "} _in[];\n");
-
-    // Tessellation Control shader output
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "out Data {");
-    addVaryings(ShaderType::TESSELLATION_CTRL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "} _out[];\n");
-
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, getPassData(ShaderType::TESSELLATION_CTRL));
-
-    // Tessellation Eval shader input
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "in Data {");
-    addVaryings(ShaderType::TESSELLATION_EVAL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "} _in[];\n");
-
-    // Tessellation Eval shader output
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "out Data {");
-    addVaryings(ShaderType::TESSELLATION_EVAL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "} _out;\n");
-
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, getPassData(ShaderType::TESSELLATION_EVAL));
-    
-    // Geometry shader input
-    AppendToShaderHeader(ShaderType::GEOMETRY, "in Data {");
-    addVaryings(ShaderType::GEOMETRY);
-    AppendToShaderHeader(ShaderType::GEOMETRY, "} _in[];\n");
-
-    // Geometry shader output
-    AppendToShaderHeader(ShaderType::GEOMETRY, "out Data {");
-    addVaryings(ShaderType::GEOMETRY);
-    AppendToShaderHeader(ShaderType::GEOMETRY, "} _out;\n");
-
-    AppendToShaderHeader(ShaderType::GEOMETRY, getPassData(ShaderType::GEOMETRY));
-
-    // Fragment shader input
-    AppendToShaderHeader(ShaderType::FRAGMENT, "in Data {");
-    addVaryings(ShaderType::FRAGMENT);
-    AppendToShaderHeader(ShaderType::FRAGMENT, "} _in;\n");
-
-    AppendToShaderHeader(ShaderType::VERTEX, "#define VAR _out");
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#define VAR _in[gl_InvocationID]");
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "#define VAR _in[0]");
-    AppendToShaderHeader(ShaderType::GEOMETRY, "#define VAR _in");
-    AppendToShaderHeader(ShaderType::FRAGMENT, "#define VAR _in");
-
-    AppendToShaderHeader(ShaderType::COUNT, "_CUSTOM_UNIFORMS__");
-
-    // Check initialization status for GLSL and glsl-optimizer
-    return glswState == 1;
-}
-
-bool GL_API::DeInitGLSW() noexcept {
-    // Shutdown GLSW
-    return glswShutdown() == 1;
 }
 
 /// Try to find the requested font in the font cache. Load on cache miss.
@@ -696,13 +336,13 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
     OPTICK_EVENT();
 
     if (data != nullptr && data->Valid) {
-        auto& stateTracker = GetStateTracker();
+        GLStateTracker& stateTracker = GetStateTracker();
 
         GenericVertexData::IndexBuffer idxBuffer;
         GenericDrawCommand cmd = {};
         cmd._primitiveType = PrimitiveType::TRIANGLES;
 
-        auto& [buffer, lockManager] = getOrCreateIMGUIBuffer(windowGUID);
+        GenericVertexData* buffer = _context.getOrCreateIMGUIBuffer(windowGUID);
         assert(buffer != nullptr);
 
         const ImVec2 pos = data->DisplayPos;
@@ -714,7 +354,6 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
             idxBuffer.count = to_U32(cmd_list->IdxBuffer.Size);
             idxBuffer.data = cmd_list->IdxBuffer.Data;
 
-            lockManager->waitForLockedRange(0u, to_U32(cmd_list->VtxBuffer.size()), true);
             buffer->updateBuffer(0u, 0u, to_U32(cmd_list->VtxBuffer.size()), cmd_list->VtxBuffer.Data);
             buffer->updateIndexBuffer(idxBuffer);
 
@@ -743,9 +382,11 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
                         clip_rect.y  = viewport.w - tempW;
 
                         stateTracker.setScissor(clip_rect);
-                        stateTracker.bindTexture(to_U8(TextureUsage::UNIT0),
-                                                 TextureType::TEXTURE_2D,
-                                                 static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd.TextureId)));
+                        if (stateTracker.bindTexture(to_U8(TextureUsage::UNIT0),
+                                                     TextureType::TEXTURE_2D,
+                                                     static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd.TextureId))) == GLStateTracker::BindResult::FAILED) {
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
 
                         cmd._cmd.indexCount = pcmd.ElemCount;
                         cmd._cmd.firstIndex = pcmd.IdxOffset;
@@ -753,7 +394,6 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
                      }
                 }
             }
-            lockManager->lockRange(0u, to_U32(cmd_list->VtxBuffer.size()), _context.frameCount());
             buffer->incQueue();
         }
     }
@@ -761,7 +401,7 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
 
 ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     OPTICK_EVENT();
-    auto& stateTracker = GetStateTracker();
+    GLStateTracker& stateTracker = GetStateTracker();
 
     if (stateTracker._activePipeline && *stateTracker._activePipeline == pipeline) {
         return ShaderResult::OK;
@@ -776,7 +416,9 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     // Set the proper render states
     const size_t stateBlockHash = pipeline.stateHash();
     // Passing 0 is a perfectly acceptable way of enabling the default render state block
-    stateTracker.setStateBlock(stateBlockHash != 0 ? stateBlockHash : _context.getDefaultStateBlock(false));
+    if (stateTracker.setStateBlock(stateBlockHash != 0 ? stateBlockHash : _context.getDefaultStateBlock(false)) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 
     glShaderProgram& glProgram = static_cast<glShaderProgram&>(*program);
     // We need a valid shader as no fixed function pipeline is available
@@ -784,9 +426,13 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
     const ShaderResult ret = Attorney::GLAPIShaderProgram::bind(glProgram);
 
-    if (ret == ShaderResult::StillLoading) {
-        stateTracker.setActiveProgram(0u);
-        stateTracker.setActiveShaderPipeline(0u);
+    if (ret != ShaderResult::OK) {
+        if (stateTracker.setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+        if (stateTracker.setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
         stateTracker._activePipeline = nullptr;
     }
 
@@ -797,7 +443,9 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
     OPTICK_EVENT();
 
     if (cmd._sourceBuffer._id == 0) {
-        GetStateTracker().setActiveVAO(s_dummyVAO);
+        if (GetStateTracker().setActiveVAO(s_dummyVAO) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
 
         U32 indexCount = 0u;
         switch (cmd._primitiveType) {
@@ -828,27 +476,26 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
 void GL_API::PushDebugMessage(const char* message) {
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, static_cast<GLuint>(_ID(message)), -1, message);
-        assert(GetStateTracker()._debugScopeDepth < GetStateTracker()._debugScope.size());
-        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth++] = message;
     }
+    assert(GetStateTracker()._debugScopeDepth < GetStateTracker()._debugScope.size());
+    GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth++] = message;
 }
 
 void GL_API::PopDebugMessage() {
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glPopDebugGroup();
-        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = "";
     }
+    GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = "";
 }
 
 void GL_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
     GL_API::ProcessMipMapsQueue();
-    GetStateTracker()._flushingCommandBuffer = true;
 }
 
 void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const GFX::CommandBuffer& commandBuffer) {
     OPTICK_EVENT();
 
-    const auto cmdType = static_cast<GFX::CommandType>(entry._typeIndex);
+    const GFX::CommandType cmdType = static_cast<GFX::CommandType>(entry._typeIndex);
 
     OPTICK_TAG("Type", to_base(cmdType));
 
@@ -903,37 +550,27 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             GetStateTracker()._activeRenderTarget->setBlendState(crtCmd->_blendStates);
         }break;
         case GFX::CommandType::COPY_TEXTURE: {
+            OPTICK_EVENT();
+
             GL_API::ProcessMipMapsQueue();
-
             const GFX::CopyTextureCommand* crtCmd = commandBuffer.get<GFX::CopyTextureCommand>(entry);
-
             glTexture::copy(crtCmd->_source, crtCmd->_destination, crtCmd->_params);
         }break;
         case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
+            OPTICK_EVENT();
+
             GL_API::ProcessMipMapsQueue();
-
             GFX::BindDescriptorSetsCommand* crtCmd = commandBuffer.get<GFX::BindDescriptorSetsCommand>(entry);
-
-            DescriptorSet& set = crtCmd->_set;
-            if (!makeTexturesResident(set._textureData, set._textureViews)) {
-                //Error
+            if (!crtCmd->_set._textureViews.empty() &&
+                makeTextureViewsResidentInternal(crtCmd->_set._textureViews, 0u, U8_MAX) == GLStateTracker::BindResult::FAILED)
+            {
+                DIVIDE_UNEXPECTED_CALL();
             }
-            if (!makeImagesResident(set._images)) {
-                //Error
+            if (!crtCmd->_set._textureData.empty() &&
+                makeTexturesResidentInternal(crtCmd->_set._textureData, 0u, U8_MAX) == GLStateTracker::BindResult::FAILED)
+            {
+                DIVIDE_UNEXPECTED_CALL();
             }
-
-            OPTICK_EVENT("Bind Shader Buffers");
-            for (U8 i = 0u; i < set._buffers.count(); ++i) {
-                const ShaderBufferBinding& binding = set._buffers._entries[i];
-                if (binding._binding == ShaderBufferLocation::COUNT) {
-                    // might be leftover from a batching call
-                    continue;
-                }
-
-                assert(binding._buffer != nullptr);
-                binding._buffer->bindRange(binding._binding, binding._elementRange.min, binding._elementRange.max);
-            }
-
         }break;
         case GFX::CommandType::BIND_PIPELINE: {
             const Pipeline* pipeline = commandBuffer.get<GFX::BindPipelineCommand>(entry)->_pipeline;
@@ -1060,9 +697,10 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                                     static_cast<GLuint>(view._layerRange.x),
                                     static_cast<GLuint>(view._layerRange.y));
                 }
-
-                OPTICK_EVENT("GL: In-place computation - Image");
-                GL_API::ComputeMipMaps(handle);
+                {
+                    OPTICK_EVENT("GL: In-place computation - Image");
+                    GL_API::ComputeMipMaps(handle);
+                }
                 s_textureViewCache.deallocate(handle, 3);
             }
         }break;
@@ -1109,9 +747,9 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             if(GetStateTracker()._activePipeline != nullptr) {
                 OPTICK_EVENT("GL: Dispatch Compute");
                 const vec3<U32>& workGroupCount = crtCmd->_computeGroupSize;
-                DIVIDE_ASSERT(workGroupCount.x < GL_API::s_maxWorgroupCount[0] &&
-                              workGroupCount.y < GL_API::s_maxWorgroupCount[1] &&
-                              workGroupCount.z < GL_API::s_maxWorgroupCount[2]);
+                DIVIDE_ASSERT(workGroupCount.x < GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] &&
+                              workGroupCount.y < GFXDevice::GetDeviceInformation()._maxWorgroupCount[1] &&
+                              workGroupCount.z < GFXDevice::GetDeviceInformation()._maxWorgroupCount[2]);
                 glDispatchCompute(crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z);
             }
         }break;
@@ -1217,6 +855,8 @@ void GL_API::RegisterSyncDelete(GLsync fenceSync) {
 }
 
 bool GL_API::TryDeleteExpiredSync() {
+    OPTICK_EVENT();
+
     GLsync fence = nullptr;
     if (s_fenceSyncDeletionQueue.try_dequeue(fence)) {
         assert(fence != nullptr);
@@ -1269,72 +909,9 @@ void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& c
         OPTICK_EVENT("GL_FLUSH");
         glFlush();
     }
-
-    GetStateTracker()._flushingCommandBuffer = false;
 }
 
-GL_API::IMGUIBuffer& GL_API::getOrCreateIMGUIBuffer(const I64 windowGUID) {
-    const auto it = _IMGUIBuffers.find(windowGUID);
-    if (it != eastl::cend(_IMGUIBuffers)) {
-        return it->second;
-    }
-
-    // Ring buffer wouldn't work properly with an IMMEDIATE MODE gui
-    // We update and draw multiple times in a loop
-    GenericVertexData* ret = _context.newGVD(1);
-
-    GenericVertexData::IndexBuffer idxBuff;
-    idxBuff.smallIndices = sizeof(ImDrawIdx) == 2;
-    idxBuff.count = (1 << 16) * 3;
-
-    ret->create(1);
-    ret->renderIndirect(false);
-
-    GenericVertexData::SetBufferParams params = {};
-    params._buffer = 0;
-    params._useRingBuffer = false;
-
-    params._bufferParams._elementCount = 1 << 16;
-    params._bufferParams._elementSize = sizeof(ImDrawVert);
-    params._bufferParams._usePersistentMapping = false;
-    params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-    params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-    params._bufferParams._sync = false; // We use manual waiting and locking
-    params._bufferParams._initialData = { nullptr, 0 };
-
-    ret->setBuffer(params); //Pos, UV and Colour
-    ret->setIndexBuffer(idxBuff, BufferUpdateFrequency::OFTEN);
-
-    AttributeDescriptor& descPos = ret->attribDescriptor(to_base(AttribLocation::GENERIC));
-    AttributeDescriptor& descUV = ret->attribDescriptor(to_base(AttribLocation::TEXCOORD));
-    AttributeDescriptor& descColour = ret->attribDescriptor(to_base(AttribLocation::COLOR));
-
-#   define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
-    descPos.set(   0, 2, GFXDataFormat::FLOAT_32,      false, to_U32(OFFSETOF(ImDrawVert, pos)));
-    descUV.set(    0, 2, GFXDataFormat::FLOAT_32,      false, to_U32(OFFSETOF(ImDrawVert, uv)));
-    descColour.set(0, 4, GFXDataFormat::UNSIGNED_BYTE, true,  to_U32(OFFSETOF(ImDrawVert, col)));
-#   undef OFFSETOF
-
-    auto& buffer = _IMGUIBuffers[windowGUID];
-    buffer.first = ret;
-    buffer.second = eastl::make_unique<glBufferLockManager>();
-
-    return buffer;
-}
-
-bool GL_API::makeImagesResident(const Images& images) const {
-    OPTICK_EVENT();
-
-    for (const Image& image : images._entries) {
-        if (image._texture != nullptr) {
-            image._texture->bindLayer(image._binding, image._level, image._layer, image._layered, image._flag );
-        }
-    }
-
-    return true;
-}
-
-bool GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, const U8 offset, U8 count) const {
+GLStateTracker::BindResult GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, const U8 offset, U8 count) const {
     // All of the complicate and fragile code bellow does actually provide a measurable performance increase 
     // (micro second range for a typical scene, nothing amazing, but still ...)
     // CPU cost is comparable to the multiple glBind calls on some specific driver + GPU combos.
@@ -1348,7 +925,7 @@ bool GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, con
     assert(to_size(offset) + count <= totalTextureCount);
     const auto& textures = textureData._entries;
 
-    bool bound = false;
+    GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
     if (count > 1) {
         // If we have 3 or more textures, there's a chance we might get a binding gap, so just sort
         if (totalTextureCount > 2) {
@@ -1385,8 +962,8 @@ bool GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, con
             static bool init = false;
             if (!init) {
                 init = true;
-                handles.resize(s_maxTextureUnits, GLUtil::k_invalidObjectID);
-                samplers.resize(s_maxTextureUnits, GLUtil::k_invalidObjectID);
+                handles.resize(GFXDevice::GetDeviceInformation()._maxTextureUnits, GLUtil::k_invalidObjectID);
+                samplers.resize(GFXDevice::GetDeviceInformation()._maxTextureUnits, GLUtil::k_invalidObjectID);
             } else {
                 std::memset(&handles[startBinding], GLUtil::k_invalidObjectID, (to_size(endBinding - startBinding) + 1) * sizeof(GLuint));
             }
@@ -1408,14 +985,17 @@ bool GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, con
                 }
             }
 
-            bound = stateTracker.bindTextures(startBinding, endBinding - startBinding + 1, targetType, &handles[startBinding], &samplers[startBinding]);
+            result = stateTracker.bindTextures(startBinding, endBinding - startBinding + 1, targetType, &handles[startBinding], &samplers[startBinding]);
         } else {
             matchingTexCount = 1;
-            bound = makeTexturesResidentInternal(textureData, offset, 1) || bound;
+            result = makeTexturesResidentInternal(textureData, offset, 1);
+            if (result == GLStateTracker::BindResult::FAILED) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
 
         // Recurse to try and get more matches
-        bound = makeTexturesResidentInternal(textureData, offset + matchingTexCount, count - matchingTexCount) || bound;
+        result = makeTexturesResidentInternal(textureData, offset + matchingTexCount, count - matchingTexCount);
     } else if (count == 1) {
         // Normal usage. Bind a single texture at a time
         const TextureEntry& entry = textures[offset];
@@ -1423,20 +1003,19 @@ bool GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, con
             assert(IsValid(entry._data));
             const GLuint handle = entry._data._textureHandle;
             const GLuint sampler = GetSamplerHandle(entry._sampler);
-            bound = stateTracker.bindTextures(entry._binding, 1, entry._data._textureType, &handle, &sampler) || bound;
+            result = stateTracker.bindTextures(entry._binding, 1, entry._data._textureType, &handle, &sampler);
         }
     } else {
-        // Used for breaking the debugger if we get missing textures or similar issues
-        NOP();
+        result = GLStateTracker::BindResult::ALREADY_BOUND;
     }
 
-    return bound;
+    return result;
 }
 
-bool GL_API::makeTextureViewsResidentInternal(const TextureViews& textureViews, const U8 offset, U8 count) const {
+GLStateTracker::BindResult GL_API::makeTextureViewsResidentInternal(const TextureViews& textureViews, const U8 offset, U8 count) const {
     count = std::min(count, to_U8(textureViews.count()));
 
-    bool bound = false;
+    GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
     for (U8 i = offset; i < count + offset; ++i) {
         const auto& it = textureViews._entries[i];
         const size_t viewHash = it.getHash();
@@ -1469,16 +1048,19 @@ bool GL_API::makeTextureViewsResidentInternal(const TextureViews& textureViews, 
         }
 
         const GLuint samplerHandle = GetSamplerHandle(it._view._samplerHash);
-        bound = GetStateTracker().bindTextures(static_cast<GLushort>(it._binding), 1, view._targetType, &textureID, &samplerHandle) || bound;
+        result = GetStateTracker().bindTextures(static_cast<GLushort>(it._binding), 1, view._targetType, &textureID, &samplerHandle);
+        if (result == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
         // Self delete after 3 frames unless we use it again
         s_textureViewCache.deallocate(textureID, 3u);
     }
 
-    return bound;
+    return result;
 }
 
 bool GL_API::MakeTexturesResidentInternal(const SamplerAddress address) {
-    if (!s_UseBindlessTextures) {
+    if (!ShaderProgram::s_UseBindlessTextures) {
         return true;
     }
 
@@ -1513,7 +1095,7 @@ bool GL_API::MakeTexturesResidentInternal(const SamplerAddress address) {
 }
 
 bool GL_API::MakeTexturesNonResidentInternal(const SamplerAddress address) {
-    if (!s_UseBindlessTextures) {
+    if (!ShaderProgram::s_UseBindlessTextures) {
         return true;
     }
 
@@ -1530,14 +1112,6 @@ bool GL_API::MakeTexturesNonResidentInternal(const SamplerAddress address) {
     }
 
     return true;
-}
-
-bool GL_API::makeTexturesResident(TextureDataContainer& textureData, const TextureViews& textureViews, const U8 offset, const U8 count) const {
-    OPTICK_EVENT();
-
-    bool bound = makeTextureViewsResidentInternal(textureViews, offset, count);
-    bound = makeTexturesResidentInternal(textureData, offset, count) || bound;
-    return bound;
 }
 
 bool GL_API::setViewport(const Rect<I32>& viewport) {

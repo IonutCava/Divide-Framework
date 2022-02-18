@@ -356,16 +356,24 @@ void glimBatchData::UnbindOGL(void) noexcept {
     if (!m_bUploadedToGPU) 
         return;
 
-	Divide::GL_API::GetStateTracker().setActiveVAO(0);
+    if (Divide::GL_API::GetStateTracker().setActiveVAO(0) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 void glimBatchData::BindOGL(Divide::I64 uiCurrentProgram) {
     if (!m_bUploadedToGPU)
         return;
 
-    Divide::GL_API::GetStateTracker().setActiveVAO(m_VertexArrayObjectID);
-    Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, m_uiVertexBufferID);
-    Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    if (Divide::GL_API::GetStateTracker().setActiveVAO(m_VertexArrayObjectID) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
+    if (Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, m_uiVertexBufferID) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
+    if (Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
 
     const Divide::hashMap<unsigned int, GlimArrayData>::iterator itend = m_Attributes.end();
 

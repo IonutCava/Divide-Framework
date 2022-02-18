@@ -91,8 +91,6 @@ public:
     GL_API(GFXDevice& context, bool glES);
 
 protected:
-    using IMGUIBuffer = std::pair<GenericVertexData*, eastl::unique_ptr<glBufferLockManager>>;
-
     /// Try and create a valid OpenGL context taking in account the specified command line arguments
     ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) override;
     /// Clear everything that was setup in initRenderingAPI()
@@ -103,8 +101,6 @@ protected:
     /// Finish rendering the current frame
     void endFrame(DisplayWindow& window, bool global = false) override;
     void idle(bool fast) override;
-
-    IMGUIBuffer& getOrCreateIMGUIBuffer(I64 windowGUID);
 
     /// Text rendering is handled exclusively by Mikko Mononen's FontStash library
     /// (https://github.com/memononen/fontstash)
@@ -121,7 +117,7 @@ protected:
 
     void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
 
-    [[nodiscard]] PerformanceMetrics getPerformanceMetrics() const noexcept override;
+    [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept override;
 
     /// Return the size in pixels that we can render to. This differs from the window size on Retina displays
     vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
@@ -136,13 +132,12 @@ protected:
     /// Reset as much of the GL default state as possible within the limitations given
     void clearStates(const DisplayWindow& window, GLStateTracker& stateTracker, bool global) const;
 
-    bool makeTexturesResidentInternal(TextureDataContainer& textureData, U8 offset = 0, U8 count = U8_MAX) const;
-    bool makeTextureViewsResidentInternal(const TextureViews& textureViews, U8 offset = 0, U8 count = U8_MAX) const;
-    bool makeTexturesResident(TextureDataContainer& textureData, const TextureViews& textureViews, U8 offset = 0, U8 count = U8_MAX) const;
-    bool makeImagesResident(const Images& images) const;
+    [[nodiscard]] GLStateTracker::BindResult makeTexturesResidentInternal(TextureDataContainer& textureData, U8 offset = 0u, U8 count = U8_MAX) const;
+    [[nodiscard]] GLStateTracker::BindResult makeTextureViewsResidentInternal(const TextureViews& textureViews, U8 offset = 0u, U8 count = U8_MAX) const;
 
     bool setViewport(const Rect<I32>& viewport) override;
     ShaderResult bindPipeline(const Pipeline& pipeline) const;
+
 public:
     static GLStateTracker& GetStateTracker() noexcept;
     static GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
@@ -182,33 +177,11 @@ public:
     /// Return the OpenGL sampler object's handle for the given hash value
     static GLuint GetSamplerHandle(size_t samplerHash);
 
-private:
-    static bool InitGLSW(Configuration& config);
-    static bool DeInitGLSW() noexcept;
-
-    /// Use GLSW to append tokens to shaders. Use ShaderType::COUNT to append to all stages
-    static void AppendToShaderHeader(ShaderType type, const string& entry);
-
-protected:
-    /// Number of available texture units
-    static GLuint s_maxTextureUnits;
-    /// Number of available attribute binding indices
-    static GLuint s_maxAttribBindings;
-
-public:
-    static GLuint s_maxAtomicBufferBindingIndices;
-    /// Max number of texture attachments to an FBO
-    static GLuint s_maxFBOAttachments;
-    /// Shader block data
-    static GLuint s_UBOffsetAlignment;
-    static GLuint s_UBMaxSize;
-    static GLuint s_SSBOffsetAlignment;
-    static GLuint s_SSBMaxSize;
-
-    static bool s_UseBindlessTextures;
-    static bool s_DebugBindlessTextures;
-
     static glHardwareQueryPool* s_hardwareQueryPool;
+
+private:
+    void endFrameLocal(const DisplayWindow& window);
+    void endFrameGlobal(const DisplayWindow& window);
 
 private:
     GFXDevice& _context;
@@ -228,10 +201,8 @@ private:
     /// FontStash's context
     FONScontext* _fonsContext = nullptr;
 
-    I32 _glswState = -1;
     CEGUI::OpenGL3Renderer* _GUIGLrenderer = nullptr;
 
-    hashMap<I64, IMGUIBuffer> _IMGUIBuffers;
     std::pair<I64, SDL_GLContext> _currentContext = {-1, nullptr};
 
 private:
@@ -249,13 +220,6 @@ private:
 
     /// Used to render points (e.g. to render full screen quads with geometry shaders)
     static GLuint s_dummyVAO;
-    /// Maximum anisotropic filtering level
-    static GLuint s_maxAnisotropicFilteringLevel;
-    /// Maximum wourkgroup info
-    static GLuint s_maxWorgroupInvocations;
-    static GLuint s_maxWorgroupCount[3];
-    static GLuint s_maxWorgroupSize[3];
-    static GLuint s_maxComputeSharedMemory;
     /// /*sampler hash value*/ /*sampler object*/
     using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
 

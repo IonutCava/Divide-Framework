@@ -21,14 +21,14 @@ namespace {
     }
     FORCE_INLINE U32 ColorAttachmentToIndex(const GLenum colorAttachmentEnum) noexcept {
         switch (colorAttachmentEnum) {
-            case GL_DEPTH_ATTACHMENT  : return GL_API::s_maxFBOAttachments + 1u;
-            case GL_STENCIL_ATTACHMENT: return GL_API::s_maxFBOAttachments + 2u;
+            case GL_DEPTH_ATTACHMENT  : return GFXDevice::GetDeviceInformation()._maxRTColourAttachments + 1u;
+            case GL_STENCIL_ATTACHMENT: return GFXDevice::GetDeviceInformation()._maxRTColourAttachments + 2u;
             default: { //GL_COLOR_ATTACHMENTn
                 constexpr U32 offset = to_U32(GL_COLOR_ATTACHMENT0);
                 const U32 enumValue = to_U32(colorAttachmentEnum);
                 if (enumValue >= offset) {
                     const U32 diff = enumValue - offset;
-                    assert(diff < GL_API::s_maxFBOAttachments);
+                    assert(diff < GFXDevice::GetDeviceInformation()._maxRTColourAttachments);
                     return diff;
                 }
             } break;
@@ -78,7 +78,7 @@ glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& d
     // Everything disabled so that the initial "begin" will override this
     DisableAll(_previousPolicy._drawMask);
     _activeColourBuffers.fill(GL_NONE);
-    _attachmentState.resize(GL_API::s_maxFBOAttachments + 2u); //colours + depth + stencil
+    _attachmentState.resize(GFXDevice::GetDeviceInformation()._maxRTColourAttachments + 2u); //colours + depth + stencil
 }
 
 glFramebuffer::~glFramebuffer()
@@ -183,16 +183,18 @@ bool glFramebuffer::create() {
     }
 
     // For every attachment, be it a colour or depth attachment ...
-    [[maybe_unused]] GLuint attachmentCountTotal = 0u;
+    GLuint attachmentCountTotal = 0u;
     for (U8 i = 0; i < to_base(RTAttachmentType::COUNT); ++i) {
         for (U8 j = 0; j < _attachmentPool->attachmentCount(static_cast<RTAttachmentType>(i)); ++j) {
             initAttachment(static_cast<RTAttachmentType>(i), j);
-            assert(GL_API::s_maxFBOAttachments > ++attachmentCountTotal);
+            DIVIDE_ASSERT(GFXDevice::GetDeviceInformation()._maxRTColourAttachments > ++attachmentCountTotal);
         }
     }
 
     setDefaultState({});
-
+    RTClearDescriptor initialClear{};
+    initialClear._resetToDefault = false;
+    clear(initialClear);
     return checkStatus();
 }
 
@@ -492,7 +494,9 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy) {
     GL_API::PushDebugMessage(_debugMessage.c_str());
 
     // Activate FBO
-    GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, _framebufferHandle);
+    if (GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 
     // Set the viewport
     if (drawPolicy._setViewport) {
@@ -520,7 +524,9 @@ void glFramebuffer::end(const bool needsUnbind) const {
     OPTICK_EVENT();
 
     if (needsUnbind) {
-        GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, 0);
+        if (GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, 0) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     }
 
     if (_previousPolicy._setViewport) {
@@ -705,7 +711,9 @@ void glFramebuffer::readData(const vec4<U16>& rect,
     OPTICK_EVENT();
 
     GL_API::GetStateTracker().setPixelPackUnpackAlignment();
-    GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_READ_ONLY, _framebufferHandle);
+    if (GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_READ_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
     glReadnPixels(
         rect.x, rect.y, rect.z, rect.w,
         GLUtil::glImageFormatTable[to_U32(imageFormat)],

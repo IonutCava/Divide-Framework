@@ -43,9 +43,9 @@ struct NodeMaterialData
     //rgb - ambientColour (Don't really need this. To remove eventually, but since we have the space, might as well)
     //a - specular strength [0...Material::MAX_SHININESS]. Used mainly by Phong shading
     vec4 _colourData;
-    //x = 4x8U: occlusion, metallic, roughness, reserved
-    //y = 4x8U: specularR, specularG, specularB, isDoubleSided
-    //z = 4x8U: reserved, shadingMode, use packed OMR, bump method
+    //x = 4x8U: occlusion, metallic, roughness, isDoubleSided
+    //y = 4x8U: specularR, specularG, specularB, use packed OMR
+    //z = 4x8U: bump method, shadingMode, reserved, reserved
     //w = Probe lookup index + 1 (0 = sky cubemap)
     uvec4 _data;
     //x = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, Emissive
@@ -57,23 +57,29 @@ struct NodeMaterialData
 
 #define dvd_BaseColour(materialData) materialData._albedo
 #define dvd_EmissiveColour(materialData) materialData._emissiveAndParallax.rgb
-#define dvd_Specular(materialData) unpackUnorm4x8(materialData._data.y).rgb
 #define dvd_Ambient(materialData) materialData._colourData.rgb
 #define dvd_SpecularStrength(materialData) materialData._colourData.a
-#define dvd_ProbeIndex(materialData) materialData._data.w
+
 #define dvd_TexOperationsA(materialData) uvec4(unpackUnorm4x8(materialData._textureOperations.x) * 255)
 #define dvd_TexOperationsB(materialData) uvec4(unpackUnorm4x8(materialData._textureOperations.y) * 255)
 #define dvd_TexOpUnit0(materialData) dvd_TexOperationsA(materialData).x
 #define dvd_TexOpSpecular(materialData) dvd_TexOperationsA(materialData).z
 #define dvd_TexOpEmissive(materialData) dvd_TexOperationsA(materialData).w
 #define dvd_TexOpOpacity(materialData)  dvd_TexOperationsB(materialData).w
-#define dvd_BumpMethod(X) uint(unpackUnorm4x8(dvd_Materials[X]._data.z).w * 255)
+
+#define dvd_OMR(materialData) unpackUnorm4x8(materialData._data.x).rgb
+#define dvd_IsDoubleSided(materialData) (uint(unpackUnorm4x8(materialData._data.x).a) == 1u)
+#define dvd_Specular(materialData) unpackUnorm4x8(materialData._data.y).rgb
+#define dvd_UsePackedOMR(materialData) (uint(unpackUnorm4x8(materialData._data.y).w) == 1u)
+#define dvd_BumpMethod(X) uint(unpackUnorm4x8(dvd_Materials[X]._data.z).x * 255)
+#define dvd_ShadingMode(materialData) uint(unpackUnorm4x8(materialData._data.z).y * 255)
+#define dvd_ProbeIndex(materialData) materialData._data.w
+
 #define dvd_UseAlbedoTextureAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).x) == 1u)
 #define dvd_UseOpacityAlphaChannel(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.z).y) == 1u)
-#define dvd_ReceivesShadows(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.w).x) == 1u)
 #define dvd_SpecularGloss(materialData) unpackUnorm4x8(materialData._textureOperations.z).zw
+#define dvd_ReceivesShadows(materialData) (uint(unpackUnorm4x8(materialData._textureOperations.w).x) == 1u)
 #define dvd_ParallaxFactor(X) dvd_Materials[X]._emissiveAndParallax.a
-#define dvd_IsDoubleSided(materialData) (uint(unpackUnorm4x8(materialData._data.y).a * 255) == 1u)
 
 #endif //FRAG_SHADER
 

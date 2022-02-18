@@ -85,13 +85,17 @@ OpenGL3Shader::~OpenGL3Shader()
 //----------------------------------------------------------------------------//
 void OpenGL3Shader::bind() const
 {
-    Divide::GL_API::GetStateTracker().setActiveProgram(d_program);
+    if (Divide::GL_API::GetStateTracker().setActiveProgram(d_program) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 //----------------------------------------------------------------------------//
 void OpenGL3Shader::unbind() const
 {
-    Divide::GL_API::GetStateTracker().setActiveProgram(0);
+    if (Divide::GL_API::GetStateTracker().setActiveProgram(0) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 //----------------------------------------------------------------------------//

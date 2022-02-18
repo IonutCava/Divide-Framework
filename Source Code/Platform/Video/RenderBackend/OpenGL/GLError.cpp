@@ -46,7 +46,7 @@ void DebugCallback(const GLenum source,
         } else if (type == GL_DEBUG_TYPE_PERFORMANCE) {
             gl_type = "Performance";
         } else if (type == GL_DEBUG_TYPE_OTHER) {
-            gl_type = "Performance";
+            gl_type = "Other";
         } else if (type == GL_DEBUG_TYPE_MARKER) {
             gl_type = "Marker";
         } else if (type == GL_DEBUG_TYPE_PUSH_GROUP) {

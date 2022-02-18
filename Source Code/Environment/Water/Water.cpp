@@ -187,8 +187,9 @@ bool WaterPlane::load() {
     waterMat->properties().shadingMode(ShadingMode::BLINN_PHONG);
     waterMat->properties().bumpMethod(BumpMethod::NORMAL);
     waterMat->properties().isStatic(true);
+    waterMat->addShaderDefine(ShaderType::COUNT, "ENABLE_TBN");
 
-     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
+    WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
     waterMat->setTexture(TextureUsage::NORMALMAP, waterNM, defaultSampler.getHash(), TextureOperation::REPLACE);
     waterMat->computeShaderCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {

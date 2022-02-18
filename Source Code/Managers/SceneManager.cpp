@@ -720,8 +720,8 @@ VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params, co
 }
 
 void SceneManager::prepareLightData(const RenderStage stage, const CameraSnapshot& cameraSnapshot) {
-    getActiveScene().lightPool()->sortLightData(stage, cameraSnapshot);
     if (stage != RenderStage::SHADOW) {
+        getActiveScene().lightPool()->sortLightData(stage, cameraSnapshot);
         getActiveScene().lightPool()->uploadLightData(stage, cameraSnapshot);
     }
 }

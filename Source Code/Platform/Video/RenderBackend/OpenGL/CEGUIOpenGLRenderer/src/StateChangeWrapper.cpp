@@ -184,7 +184,9 @@ void OpenGL3StateChangeWrapper::bindVertexArray(GLuint vertexArray)
 {
     if(vertexArray != d_vertexArrayObject)
     {
-        Divide::GL_API::GetStateTracker().setActiveVAO(vertexArray);
+        if (Divide::GL_API::GetStateTracker().setActiveVAO(vertexArray) == Divide::GLStateTracker::BindResult::FAILED) {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        }
         d_vertexArrayObject = vertexArray;
     }
 }
@@ -241,13 +243,17 @@ void OpenGL3StateChangeWrapper::bindBuffer(GLenum target, GLuint buffer)
 {
     const bool callIsRedundant = d_bindBufferParams.equal(target, buffer);
     if (!callIsRedundant) {
-        Divide::GL_API::GetStateTracker().setActiveBuffer(target, buffer);
+        if (Divide::GL_API::GetStateTracker().setActiveBuffer(target, buffer) == Divide::GLStateTracker::BindResult::FAILED) {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        }
     }
 }
 
 void OpenGL3StateChangeWrapper::bindDefaultState(bool scissor)
 {
-    Divide::GL_API::GetStateTracker().setStateBlock(scissor ? d_defaultStateHashScissor : d_defaultStateHashNoScissor);
+    if (Divide::GL_API::GetStateTracker().setStateBlock(scissor ? d_defaultStateHashScissor : d_defaultStateHashNoScissor) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 }

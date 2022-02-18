@@ -146,29 +146,6 @@ public:
     /// Update animations, network data, sounds, triggers etc.
     void updateSceneState(U64 deltaTimeUS);
 
-    /// Gather input events and process them in the current scene
-    void processInput(const PlayerIndex idx, const U64 deltaTimeUS) {
-        OPTICK_EVENT();
-
-        getActiveScene().processInput(idx, deltaTimeUS);
-    }
-
-    void processTasks(const U64 deltaTimeUS) {
-        OPTICK_EVENT();
-
-        getActiveScene().processTasks(deltaTimeUS);
-    }
-
-    void processGUI(const U64 deltaTimeUS) {
-        OPTICK_EVENT();
-
-        getActiveScene().processGUI(deltaTimeUS);
-    }
-
-    void onStartUpdateLoop(const U8 loopNumber) {
-        getActiveScene().onStartUpdateLoop(loopNumber);
-    }
-
     void onSizeChange(const SizeChangeParams& params);
 
     [[nodiscard]] U8 playerPass() const noexcept { return _currentPlayerPass; }

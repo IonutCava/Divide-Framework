@@ -6,6 +6,9 @@
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/PlatformContext.h"
 
+// For debug rendering
+#include "Platform/Video/Headers/GFXDevice.h"
+
 namespace Divide {
     BoundsSystem::BoundsSystem(ECS::ECSEngine& parentEngine, PlatformContext& context)
         : PlatformContextComponent(context),
@@ -70,6 +73,18 @@ namespace Divide {
                 ECS::CustomEvent::Type::BoundsUpdated,
                 bComp,
             });
+        }
+        for (BoundsComponent* bComp : _componentCache) {
+            if (!bComp->showAABB()) {
+                continue;
+            }
+
+            const BoundingBox& bb = bComp->getBoundingBox();
+            IMPrimitive::BoxDescriptor descriptor;
+            descriptor.min = bb.getMin();
+            descriptor.max = bb.getMax();
+            descriptor.colour = DefaultColours::WHITE_U8;
+            context().gfx().debugDrawBox(bComp->getGUID() + 0, descriptor);
         }
     }
 

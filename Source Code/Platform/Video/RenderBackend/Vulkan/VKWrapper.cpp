@@ -23,8 +23,9 @@ namespace Divide {
     void VK_API::closeRenderingAPI() noexcept {
     }
 
-    PerformanceMetrics VK_API::getPerformanceMetrics() const noexcept {
-        return {};
+    const PerformanceMetrics& VK_API::getPerformanceMetrics() const noexcept {
+        static PerformanceMetrics perf;
+        return perf;
     }
 
     void VK_API::flushCommand([[maybe_unused]] const GFX::CommandBuffer::CommandEntry& entry, [[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {

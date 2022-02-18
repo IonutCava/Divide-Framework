@@ -79,7 +79,9 @@ static int glfons__renderCreate(void* userPtr, int width, int height)
     if (!gl->glfons_vaoID) glCreateVertexArrays(1, &gl->glfons_vaoID);
 	if (!gl->glfons_vaoID) return 0;
 
-    Divide::GL_API::GetStateTracker().setActiveVAO(gl->glfons_vaoID);
+    if (Divide::GL_API::GetStateTracker().setActiveVAO(gl->glfons_vaoID) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
     {
         if (!gl->glfons_vboID) {
             glCreateBuffers(1, &gl->glfons_vboID);
@@ -185,8 +187,12 @@ static void glfons__renderDraw(void* userPtr, const FONSvert* verts, int nverts)
     }
 
     { //Prep
-        Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, gl->tex);
-        Divide::GL_API::GetStateTracker().setActiveVAO(gl->glfons_vaoID);
+        if (Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, gl->tex) == Divide::GLStateTracker::BindResult::FAILED) {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        }
+        if (Divide::GL_API::GetStateTracker().setActiveVAO(gl->glfons_vaoID) == Divide::GLStateTracker::BindResult::FAILED) {
+            Divide::DIVIDE_UNEXPECTED_CALL();
+        }
     }
 
     { //Update

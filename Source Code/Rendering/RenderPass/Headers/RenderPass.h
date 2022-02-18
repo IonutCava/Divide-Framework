@@ -62,7 +62,7 @@ class RenderPass final : NonCopyable {
        };
   public:
     // Size factor for command, transform and material buffers
-    static constexpr U8 DataBufferRingSize = 4u;
+    static constexpr U8 DataBufferRingSize = 5u;
 
   public:
     // passStageFlags: the first stage specified will determine the data format used by the additional stages in the list

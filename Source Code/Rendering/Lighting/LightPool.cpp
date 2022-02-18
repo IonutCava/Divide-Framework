@@ -217,7 +217,7 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
 
     U32 totalShadowLightCount = 0u;
 
-    const U8 stageIndex = to_U8(RenderStage::SHADOW);
+    constexpr U8 stageIndex = to_U8(RenderStage::SHADOW);
     LightList& sortedLights = _sortedLights[stageIndex];
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
@@ -395,7 +395,6 @@ void LightPool::sortLightData(const RenderStage stage, const CameraSnapshot& cam
     } else {
         eastl::sort(begin(sortedLights), end(sortedLights), lightSortCbk);
     }
-
     {
         SharedLock<SharedMutex> r_lock(_lightLock);
         const LightList& dirLights = _lights[to_base(LightType::DIRECTIONAL)];

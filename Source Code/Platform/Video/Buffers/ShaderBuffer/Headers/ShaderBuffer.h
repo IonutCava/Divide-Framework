@@ -68,12 +68,8 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
 
     virtual ~ShaderBuffer() = default;
 
-            void clearData();
-
     virtual void clearData(U32 offsetElementCount,
                            U32 rangeElementCount);
-
-    virtual void writeData(bufferPtr data);
 
     virtual void writeData(U32 offsetElementCount,
                            U32 rangeElementCount,
@@ -98,32 +94,27 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
                                ptrdiff_t offsetInBytes,
                                ptrdiff_t rangeInBytes) = 0;
 
-    /// Bind return false if the buffer was already bound
-    virtual bool bind(U8 bindIndex);
-
-    bool bind(ShaderBufferLocation bindIndex);
-
     bool bindRange(U8 bindIndex,
                    U32 offsetElementCount,
                    U32 rangeElementCount);
 
-    bool bindRange(ShaderBufferLocation bindIndex,
-                   U32 offsetElementCount,
-                   U32 rangeElementCount);
+    [[nodiscard]] FORCE_INLINE U32    getPrimitiveCount() const noexcept { return _params._elementCount; }
+    [[nodiscard]] FORCE_INLINE size_t getPrimitiveSize()  const noexcept { return _params._elementSize; }
+    [[nodiscard]] FORCE_INLINE Usage  getUsage()          const noexcept { return _usage;  }
 
-    [[nodiscard]] U32 getPrimitiveCount() const noexcept { return _params._elementCount; }
-    [[nodiscard]] size_t getPrimitiveSize() const noexcept { return _params._elementSize; }
-    [[nodiscard]] Usage getUsage() const noexcept { return _usage;  }
+    /// Bind return false if the buffer was already bound
+    FORCE_INLINE bool bind(U8 bindIndex) { return bindRange(bindIndex, 0, _params._elementCount); }
+    FORCE_INLINE void writeData(bufferPtr data) { writeData(0, _params._elementCount, data); }
+    FORCE_INLINE void clearData() { clearData(0, _params._elementCount); }
+    FORCE_INLINE bool bind(ShaderBufferLocation bindIndex) { return bind(to_U8(bindIndex)); }
+    FORCE_INLINE bool bindRange(ShaderBufferLocation bindIndex, U32 offsetElementCount, U32 rangeElementCount) { return bindRange(to_U8(bindIndex), offsetElementCount, rangeElementCount); }
 
     [[nodiscard]] static size_t AlignmentRequirement(Usage usage) noexcept;
     PROPERTY_R(string, name);
 
    protected:
     BufferParams _params;
-    size_t _maxSize = 0;
-
-    static size_t s_boundAlignmentRequirement;
-    static size_t s_unboundAlignmentRequirement;
+    size_t _maxSize = 0u;
 
     const U32 _flags;
     const Usage _usage;

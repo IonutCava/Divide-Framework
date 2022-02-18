@@ -4,6 +4,7 @@
 
 #include "Headers/glLockManager.h"
 #include "Headers/GLWrapper.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 
 namespace Divide {
@@ -37,21 +38,20 @@ namespace {
 
 void GLStateTracker::init() 
 {
-    _opengl46Supported = GLUtil::getGLValue<GLint>(GL_MINOR_VERSION) == 6;
-    _vaoBufferData.init(GL_API::s_maxAttribBindings);
-    _samplerBoundMap.resize(GL_API::s_maxTextureUnits, 0u);
-    _textureTypeBoundMap.resize(GL_API::s_maxTextureUnits, TextureType::COUNT);
+    _vaoBufferData.init(GFXDevice::GetDeviceInformation()._maxVertAttributeBindings);
+    _samplerBoundMap.resize(GFXDevice::GetDeviceInformation()._maxTextureUnits, 0u);
+    _textureTypeBoundMap.resize(GFXDevice::GetDeviceInformation()._maxTextureUnits, TextureType::COUNT);
 
-    _imageBoundMap.resize(GL_API::s_maxTextureUnits);
+    _imageBoundMap.resize(GFXDevice::GetDeviceInformation()._maxTextureUnits);
     for (auto& it : _textureBoundMap) {
-        it.resize(GL_API::s_maxTextureUnits, 0u);
+        it.resize(GFXDevice::GetDeviceInformation()._maxTextureUnits, 0u);
     }
 
-    _blendProperties.resize(GL_API::s_maxFBOAttachments, BlendingProperties());
-    _blendEnabled.resize(GL_API::s_maxFBOAttachments, GL_FALSE);
+    _blendProperties.resize(GFXDevice::GetDeviceInformation()._maxRTColourAttachments, BlendingProperties());
+    _blendEnabled.resize(GFXDevice::GetDeviceInformation()._maxRTColourAttachments, GL_FALSE);
 }
 
-void GLStateTracker::setStateBlock(size_t stateBlockHash) {
+GLStateTracker::BindResult GLStateTracker::setStateBlock(size_t stateBlockHash) {
     if (stateBlockHash == 0) {
         stateBlockHash = RenderStateBlock::defaultHash();
     }
@@ -65,7 +65,10 @@ void GLStateTracker::setStateBlock(size_t stateBlockHash) {
 
         // Activate the new render state block in an rendering API dependent way
         activateStateBlock(currentState);
+        return BindResult::JUST_BOUND;
     }
+
+    return BindResult::ALREADY_BOUND;
 }
 
 /// Pixel pack alignment is usually changed by textures, PBOs, etc
@@ -159,11 +162,11 @@ void GLStateTracker::toggleRasterization(const bool state) {
     }
 }
 
-bool GLStateTracker::bindSamplers(const GLushort unitOffset,
-                                  const GLuint samplerCount,
-                                  const GLuint* const samplerHandles) 
+GLStateTracker::BindResult GLStateTracker::bindSamplers(const GLushort unitOffset,
+                                                        const GLuint samplerCount,
+                                                        const GLuint* const samplerHandles) 
 {
-    if (samplerCount > 0 && unitOffset + samplerCount < GL_API::s_maxTextureUnits)
+    if (samplerCount > 0 && unitOffset + samplerCount < GFXDevice::GetDeviceInformation()._maxTextureUnits)
     {
         if (samplerCount == 1) {
             GLuint& handle = _samplerBoundMap[unitOffset];
@@ -171,8 +174,9 @@ bool GLStateTracker::bindSamplers(const GLushort unitOffset,
             if (handle != targetHandle) {
                 glBindSampler(unitOffset, targetHandle);
                 handle = targetHandle;
-                return true;
+                return BindResult::JUST_BOUND;
             }
+            return BindResult::ALREADY_BOUND;
         } else {
             glBindSamplers(unitOffset, samplerCount, samplerHandles);
             if (samplerHandles != nullptr) {
@@ -180,30 +184,32 @@ bool GLStateTracker::bindSamplers(const GLushort unitOffset,
             } else {
                 memset(_samplerBoundMap.data(), 0u, sizeof(GLuint) * samplerCount);
             }
-            return true;
+            return BindResult::JUST_BOUND;
         } 
     }
 
-    return false;
+    return BindResult::FAILED;
 }
 
 /// Bind a texture specified by a GL handle and GL type to the specified unit using the sampler object defined by hash value
-bool GLStateTracker::bindTexture(const GLushort unit, const TextureType type, GLuint handle, GLuint samplerHandle) {
+GLStateTracker::BindResult GLStateTracker::bindTexture(const GLushort unit, const TextureType type, GLuint handle, GLuint samplerHandle) {
     // Fail if we specified an invalid unit. Assert instead of returning false because this might be related to a bad algorithm
-    DIVIDE_ASSERT(unit < static_cast<GLuint>(GL_API::s_maxTextureUnits), "GLStates error: invalid texture unit specified as a texture binding slot!");
+    DIVIDE_ASSERT(unit < GFXDevice::GetDeviceInformation()._maxTextureUnits, "GLStates error: invalid texture unit specified as a texture binding slot!");
     return bindTextures(unit, 1, type, &handle, &samplerHandle);
 }
 
-bool GLStateTracker::bindTextures(const GLushort unitOffset,
-                                  const GLuint textureCount,
-                                  const TextureType texturesType,
-                                  const GLuint* const textureHandles,
-                                  const GLuint* const samplerHandles) {
+GLStateTracker::BindResult GLStateTracker::bindTextures(const GLushort unitOffset,
+                                                        const GLuint textureCount,
+                                                        const TextureType texturesType,
+                                                        const GLuint* const textureHandles,
+                                                        const GLuint* const samplerHandles) {
+
+    BindResult result = BindResult::FAILED;
 
     // This trick will save us from looking up the desired handle from the array twice (for single textures)
     // and also provide an easy way of figuring out if we bound anything
     GLuint lastValidHandle = GLUtil::k_invalidObjectID;
-    if (textureCount > 0 && unitOffset + textureCount < GL_API::s_maxTextureUnits) {
+    if (textureCount > 0 && unitOffset + textureCount < GFXDevice::GetDeviceInformation()._maxTextureUnits) {
 
           if (texturesType == TextureType::COUNT) {
               // Due to the use of DSA we can't specify the texture type directly.
@@ -237,15 +243,20 @@ bool GLStateTracker::bindTextures(const GLushort unitOffset,
                   glBindTextures(unitOffset, textureCount, textureHandles);
               }
               eastl::fill_n(&_textureTypeBoundMap[unitOffset], textureCount, texturesType);
+              result = BindResult::JUST_BOUND;
+          } else {
+              result = BindResult::ALREADY_BOUND;
           }
 
-        bindSamplers(unitOffset, textureCount, samplerHandles);
+        if (bindSamplers(unitOffset, textureCount, samplerHandles) == BindResult::FAILED) {
+            result = BindResult::FAILED;
+        }
     }
 
-    return (lastValidHandle != GLUtil::k_invalidObjectID);
+    return result;
 }
 
-bool GLStateTracker::bindTextureImage(const GLushort unit, const GLuint handle, const GLint level,
+GLStateTracker::BindResult GLStateTracker::bindTextureImage(const GLushort unit, const GLuint handle, const GLint level,
                                       const bool layered, const GLint layer, const GLenum access, const GLenum format) {
     static ImageBindSettings tempSettings;
     tempSettings = {handle, level, layered ? GL_TRUE : GL_FALSE, layer, access, format};
@@ -254,14 +265,14 @@ bool GLStateTracker::bindTextureImage(const GLushort unit, const GLuint handle, 
     if (settings != tempSettings) {
         glBindImageTexture(unit, handle, level, layered ? GL_TRUE : GL_FALSE, layer, access, format);
         settings = tempSettings;
-        return true;
+        return BindResult::JUST_BOUND;
     }
 
-    return false;
+    return BindResult::ALREADY_BOUND;
 }
 
 /// Single place to change buffer objects for every target available
-bool GLStateTracker::bindActiveBuffer(const GLuint vaoID, const GLuint location, GLuint bufferID, const GLuint instanceDivisor, size_t offset, size_t stride) {
+GLStateTracker::BindResult GLStateTracker::bindActiveBuffer(const GLuint vaoID, const GLuint location, GLuint bufferID, const GLuint instanceDivisor, size_t offset, size_t stride) {
     if (_vaoBufferData.instanceDivisor(vaoID, location) != instanceDivisor) {
         glVertexArrayBindingDivisor(vaoID, location, instanceDivisor);
         _vaoBufferData.instanceDivisor(vaoID, location, instanceDivisor);
@@ -275,20 +286,20 @@ bool GLStateTracker::bindActiveBuffer(const GLuint vaoID, const GLuint location,
         glVertexArrayVertexBuffer(vaoID, location, bufferID, static_cast<GLintptr>(offset), static_cast<GLsizei>(stride));
         // Remember the new binding for future reference
         _vaoBufferData.bindingParams(vaoID, location, currentParams);
-        return true;
+        return BindResult::JUST_BOUND;
     }
 
-    return false;
+    return BindResult::ALREADY_BOUND;
 }
 
-bool GLStateTracker::setActiveFB(const RenderTarget::RenderTargetUsage usage, const GLuint ID) {
+GLStateTracker::BindResult GLStateTracker::setActiveFB(const RenderTarget::RenderTargetUsage usage, const GLuint ID) {
     GLuint temp = 0;
     return setActiveFB(usage, ID, temp);
 }
 
 /// Switch the current framebuffer by binding it as either a R/W buffer, read
 /// buffer or write buffer
-bool GLStateTracker::setActiveFB(const RenderTarget::RenderTargetUsage usage, GLuint ID, GLuint& previousID) {
+GLStateTracker::BindResult GLStateTracker::setActiveFB(const RenderTarget::RenderTargetUsage usage, GLuint ID, GLuint& previousID) {
     // We may query the active framebuffer handle and get an invalid handle in
     // return and then try to bind the queried handle
     // This is, for example, in save/restore FB scenarios. An invalid handle
@@ -297,17 +308,19 @@ bool GLStateTracker::setActiveFB(const RenderTarget::RenderTargetUsage usage, GL
         ID = 0;
     }
     previousID = _activeFBID[to_U32(usage)];
+
     // Prevent double bind
     if (_activeFBID[to_U32(usage)] == ID) {
         if (usage == RenderTarget::RenderTargetUsage::RT_READ_WRITE) {
             if (_activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] == ID &&
                 _activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_WRITE_ONLY)] == ID) {
-                return false;
+                return BindResult::ALREADY_BOUND;
             }
         } else {
-            return false;
+            return BindResult::ALREADY_BOUND;
         }
     }
+
     // Bind the requested buffer to the appropriate target
     switch (usage) {
         case RenderTarget::RenderTargetUsage::RT_READ_WRITE: {
@@ -331,16 +344,16 @@ bool GLStateTracker::setActiveFB(const RenderTarget::RenderTargetUsage usage, GL
     // Remember the new binding state for future reference
     _activeFBID[to_U32(usage)] = ID;
 
-    return true;
+    return BindResult::JUST_BOUND;
 }
 
-bool GLStateTracker::setActiveVAO(const GLuint ID) {
+GLStateTracker::BindResult GLStateTracker::setActiveVAO(const GLuint ID) {
     GLuint temp = 0;
     return setActiveVAO(ID, temp);
 }
 
 /// Switch the currently active vertex array object
-bool GLStateTracker::setActiveVAO(const GLuint ID, GLuint& previousID) {
+GLStateTracker::BindResult GLStateTracker::setActiveVAO(const GLuint ID, GLuint& previousID) {
     previousID = _activeVAOID;
     // Prevent double bind
     if (_activeVAOID != ID) {
@@ -349,15 +362,15 @@ bool GLStateTracker::setActiveVAO(const GLuint ID, GLuint& previousID) {
         //setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         // Activate the specified VAO
         glBindVertexArray(ID);
-        return true;
+        return BindResult::JUST_BOUND;
     }
 
-    return false;
+    return BindResult::ALREADY_BOUND;
 }
 
 
 /// Single place to change buffer objects for every target available
-bool GLStateTracker::setActiveBuffer(const GLenum target, const GLuint bufferHandle, GLuint& previousID) {
+GLStateTracker::BindResult GLStateTracker::setActiveBuffer(const GLenum target, const GLuint bufferHandle, GLuint& previousID) {
     GLuint& crtBinding = target != GL_ELEMENT_ARRAY_BUFFER 
                                  ? _activeBufferID[GetBufferTargetIndex(target)]
                                  : _activeVAOIB[_activeVAOID];
@@ -365,22 +378,22 @@ bool GLStateTracker::setActiveBuffer(const GLenum target, const GLuint bufferHan
 
     // Prevent double bind (hope that this is the most common case. Should be.)
     if (previousID == bufferHandle) {
-        return false;
+        return BindResult::ALREADY_BOUND;
     }
 
     // Remember the new binding for future reference
     crtBinding = bufferHandle;
     // Bind the specified buffer handle to the desired buffer target
     glBindBuffer(target, bufferHandle);
-    return true;
+    return BindResult::JUST_BOUND;
 }
 
-bool GLStateTracker::setActiveBuffer(const GLenum target, const GLuint bufferHandle) {
+GLStateTracker::BindResult GLStateTracker::setActiveBuffer(const GLenum target, const GLuint bufferHandle) {
     GLuint temp = 0u;
     return setActiveBuffer(target, bufferHandle, temp);
 }
 
-bool GLStateTracker::setActiveBufferIndexRange(const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes, GLuint& previousID) {
+GLStateTracker::BindResult GLStateTracker::setActiveBufferIndexRange(const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes, GLuint& previousID) {
     BindConfig& crtConfig = g_currentBindConfig[GetBufferTargetIndex(target)];
     DIVIDE_ASSERT(bindIndex < crtConfig.size());
 
@@ -397,58 +410,62 @@ bool GLStateTracker::setActiveBufferIndexRange(const GLenum target, const GLuint
         } else {
             glBindBufferRange(target, bindIndex, bufferHandle, offsetInBytes, rangeInBytes);
         }
-        return true;
+        return BindResult::JUST_BOUND;
     }
 
-    return false;
+    return BindResult::ALREADY_BOUND;
 }
 
-bool GLStateTracker::setActiveBufferIndex(const GLenum target, const GLuint bufferHandle, const GLuint bindIndex) {
+GLStateTracker::BindResult GLStateTracker::setActiveBufferIndex(const GLenum target, const GLuint bufferHandle, const GLuint bindIndex) {
     GLuint temp = 0u;
     return setActiveBufferIndex(target, bufferHandle, bindIndex, temp);
 }
 
-bool GLStateTracker::setActiveBufferIndex(const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, GLuint& previousID) {
+GLStateTracker::BindResult GLStateTracker::setActiveBufferIndex(const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, GLuint& previousID) {
     return setActiveBufferIndexRange(target, bufferHandle, bindIndex, 0u, 0u, previousID);
 }
 
-bool GLStateTracker::setActiveBufferIndexRange(const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes) {
+GLStateTracker::BindResult GLStateTracker::setActiveBufferIndexRange(const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes) {
     GLuint temp = 0u;
     return setActiveBufferIndexRange(target, bufferHandle, bindIndex, offsetInBytes, rangeInBytes, temp);
 }
 
 /// Change the currently active shader program. Passing null will unbind shaders (will use program 0)
-bool GLStateTracker::setActiveProgram(const GLuint programHandle) {
+GLStateTracker::BindResult GLStateTracker::setActiveProgram(const GLuint programHandle) {
     // Check if we are binding a new program or unbinding all shaders
     // Prevent double bind
     if (_activeShaderProgram != programHandle) {
-        setActiveShaderPipeline(0u);
+        if (setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
 
         // Remember the new binding for future reference
         _activeShaderProgram = programHandle;
         // Bind the new program
         glUseProgram(programHandle);
-        return true;
+        return BindResult::JUST_BOUND;
     }
 
-    return false;
+    return BindResult::ALREADY_BOUND;
 }
 
 /// Change the currently active shader pipeline. Passing null will unbind shaders (will use pipeline 0)
-bool GLStateTracker::setActiveShaderPipeline(const GLuint pipelineHandle) {
+GLStateTracker::BindResult GLStateTracker::setActiveShaderPipeline(const GLuint pipelineHandle) {
     // Check if we are binding a new program or unbinding all shaders
     // Prevent double bind
     if (_activeShaderPipeline != pipelineHandle) {
-        setActiveProgram(0u);
+        if (setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
 
         // Remember the new binding for future reference
         _activeShaderPipeline = pipelineHandle;
         // Bind the new pipeline
         glBindProgramPipeline(pipelineHandle);
-        return true;
+        return BindResult::JUST_BOUND;
     }
 
-    return false;
+    return BindResult::ALREADY_BOUND;
 }
 
 void GLStateTracker::setDepthRange(F32 nearVal, F32 farVal) {
@@ -540,7 +557,7 @@ void GLStateTracker::setBlending(const BlendingProperties& blendingProperties) {
 void GLStateTracker::setBlending(const GLuint drawBufferIdx,const BlendingProperties& blendingProperties) {
     const bool enable = blendingProperties.blendEnabled();
 
-    assert(drawBufferIdx < GL_API::s_maxFBOAttachments);
+    assert(drawBufferIdx < GFXDevice::GetDeviceInformation()._maxRTColourAttachments);
 
     if (_blendEnabled[drawBufferIdx] == GL_TRUE != enable) {
         enable ? glEnablei(GL_BLEND, drawBufferIdx) : glDisablei(GL_BLEND, drawBufferIdx);

@@ -45,12 +45,6 @@ class GL_API;
 class glShader;
 class glLockManager;
 
-struct TextDumpEntry
-{
-    Str256 _name;
-    string _sourceCode;
-};
-
 struct BinaryDumpEntry
 {
     Str256 _name;
@@ -67,7 +61,6 @@ struct ValidationEntry
 enum class ShaderResult : U8 {
     Failed = 0,
     OK,
-    StillLoading,
     COUNT
 };
 
@@ -92,68 +85,25 @@ class glShaderProgram final : public ShaderProgram, public glObject {
 
     static void InitStaticData();
     static void DestroyStaticData();
-    static void OnStartup();
-    static void OnShutdown();
     static void Idle(PlatformContext& platformContext);
 
-    template<typename StringType> 
-    static StringType decorateFileName(const StringType& name) {
-        if_constexpr(Config::Build::IS_DEBUG_BUILD) {
-            return "DEBUG." + name;
-        } else if_constexpr(Config::Build::IS_PROFILE_BUILD) {
-            return "PROFILE." + name;
-        } else {
-            return "RELEASE." + name;
-        }
-    }
 
     /// Make sure this program is ready for deletion
     bool unload() override;
 
     void uploadPushConstants(const PushConstants& constants);
 
-    static void OnAtomChange(std::string_view atomName, FileUpdateEvent evt);
-    static const string& ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed);
-    static const string& ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed);
-
-    static bool ShaderFileRead(const ResourcePath& filePath, const ResourcePath& fileName, eastl::string& sourceCodeOut);
-    static bool ShaderFileWrite(const ResourcePath& filePath, const ResourcePath& fileName, const char* sourceCode);
-    static eastl::string PreprocessIncludes(const ResourcePath& name,
-                                            const eastl::string& source,
-                                            GLint level,
-                                            vector<ResourcePath>& foundAtoms,
-                                            bool lock);
-
-    static eastl::string GatherUniformDeclarations(const eastl::string& source, vector<UniformDeclaration>& foundUniforms);
-
-    static void QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName);
+    void onAtomChangeInternal(std::string_view atomName, FileUpdateEvent evt) override;
 
   protected:
-   struct AtomUniformPair {
-       vector<ResourcePath> _atoms;
-       vector<UniformDeclaration> _uniforms;
-   };
-
-    /// return a list of atom names
-   AtomUniformPair loadSourceCode(const Str128& stageName,
-                                  const Str8& extension,
-                                  const string& header,
-                                  size_t definesHash,
-                                  bool reloadExisting,
-                                  Str256& fileNameOut,
-                                  eastl::string& sourceCodeOut) const;
-
     ShaderResult rebindStages();
     ShaderResult validatePreBind(bool rebind = true);
     void processValidation();
     
     bool recompile(bool& skipped) override;
-    /// Creation of a new shader program. Pass in a shader token and use glsw to
-    /// load the corresponding effects
-    bool load() override;
     /// This should be called in the loading thread, but some issues are still
     /// present, and it's not recommended (yet)
-    void threadedLoad(bool reloadExisting);
+    void threadedLoad(bool reloadExisting) override;
 
     /// Returns true if at least one shader linked successfully
     bool reloadShaders(bool reloadExisting);
@@ -162,7 +112,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     ShaderResult bind();
 
     static void ProcessValidationQueue();
-    static void DumpShaderTextCacheToDisk(const TextDumpEntry& entry);
     static void DumpShaderBinaryCacheToDisk(const BinaryDumpEntry& entry);
 
    private:
@@ -172,18 +121,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     bool _stagesBound = false;
     bool _hasUniformBlockBuffer = false;
     vector<glShader*> _shaderStage;
-
-    static I64 s_shaderFileWatcherID;
-
-    /// Shaders loaded from files are kept as atoms
-    static SharedMutex s_atomLock;
-    static AtomMap s_atoms;
-    static AtomInclusionMap s_atomIncludes;
-
-    //extra entry for "common" location
-    static ResourcePath shaderAtomLocationPrefix[to_base(ShaderType::COUNT) + 1];
-    static Str8 shaderAtomExtensionName[to_base(ShaderType::COUNT) + 1];
-    static U64 shaderAtomExtensionHash[to_base(ShaderType::COUNT) + 1];
 };
 
 namespace Attorney {

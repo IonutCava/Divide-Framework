@@ -156,12 +156,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\Headers\bstrlib.h">
-      <Filter>glsw\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\Headers\glsw.h">
-      <Filter>glsw\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Text\Headers\fontstash.h">
       <Filter>fontstash\Headers</Filter>
     </ClInclude>
@@ -510,14 +504,14 @@
     <ClInclude Include="..\..\3rdParty\imgui-node-editor\imgui_node_editor_internal.h">
       <Filter>imgui-node-editor</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\glsw\Headers\bstrlib.h">
+      <Filter>glsw\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\glsw\Headers\glsw.h">
+      <Filter>glsw\Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\bstrlib.c">
-      <Filter>glsw</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\glsw.c">
-      <Filter>glsw</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\3rdParty\ChaiScript\src\chaiscript_stdlib_module.cpp">
       <Filter>ChaiScript</Filter>
     </ClCompile>
@@ -886,6 +880,12 @@
     </ClCompile>
     <ClCompile Include="..\..\3rdParty\imgui-node-editor\imgui_node_editor_api.cpp">
       <Filter>imgui-node-editor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\glsw\bstrlib.c">
+      <Filter>glsw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\glsw\glsw.c">
+      <Filter>glsw</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

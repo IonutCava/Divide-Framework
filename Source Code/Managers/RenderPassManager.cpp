@@ -176,9 +176,6 @@ void RenderPassManager::render(const RenderParams& params) {
     _context.setPreviousViewProjectionMatrix(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix);
 
     activeLightPool.preRenderAllPasses(cam);
-
-    RenderPassExecutor::PreRender();
-
     {
        Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
        {
@@ -312,13 +309,16 @@ void RenderPassManager::render(const RenderParams& params) {
     Wait(*_renderTasks[to_base(RenderStage::COUNT)], pool);
     _context.flushCommandBuffer(*_renderPassCommandBuffer[to_base(RenderStage::COUNT)], false);
 
-    RenderPassExecutor::PostRender();
     activeLightPool.postRenderAllPasses();
 
     Time::ScopedTimer time(*_blitToDisplayTimer);
     gfx.flushCommandBuffer(*_postRenderBuffer);
 
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
+}
+
+void RenderPassManager::postRender(const RenderStage renderStage) {
+    _executors[to_base(renderStage)]->postRender();
 }
 
 RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage,

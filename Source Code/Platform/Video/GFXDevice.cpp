@@ -88,8 +88,7 @@ namespace {
 };
 
 D64 GFXDevice::s_interpolationFactor = 1.0;
-GPUVendor GFXDevice::s_GPUVendor = GPUVendor::COUNT;
-GPURenderer GFXDevice::s_GPURenderer = GPURenderer::COUNT;
+DeviceInformation GFXDevice::s_deviceInformation{};
 
 #pragma region Construction, destruction, initialization
 GFXDevice::GFXDevice(Kernel & parent)
@@ -186,15 +185,38 @@ ErrorCode GFXDevice::initRenderingAPI(const I32 argc, char** argv, const RenderA
 
     _rtPool = MemoryManager_NEW GFXRTPool(*this);
 
-    return ErrorCode::NO_ERR;
+    I32 numLightsPerCluster = config.rendering.numLightsPerCluster;
+    if (numLightsPerCluster < 0) {
+        numLightsPerCluster = to_I32(Config::Lighting::ClusteredForward::MAX_LIGHTS_PER_CLUSTER);
+    }
+    else {
+        numLightsPerCluster = std::min(numLightsPerCluster, to_I32(Config::Lighting::ClusteredForward::MAX_LIGHTS_PER_CLUSTER));
+    }
+    if (numLightsPerCluster != config.rendering.numLightsPerCluster) {
+        config.rendering.numLightsPerCluster = numLightsPerCluster;
+        config.changed(true);
+    }
+    const U16 reflectionProbeRes = to_U16(nextPOW2(CLAMPED(to_U32(config.rendering.reflectionProbeResolution), 16u, 4096u) - 1u));
+    if (reflectionProbeRes != config.rendering.reflectionProbeResolution) {
+        config.rendering.reflectionProbeResolution = reflectionProbeRes;
+        config.changed(true);
+    }
+
+    return ShaderProgram::OnStartup(parent().resourceCache());
 }
 
 ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     std::atomic_uint loadTasks = 0;
     ResourceCache* cache = parent().resourceCache();
-    const Configuration& config = _parent.platformContext().config();
+    Configuration& config = _parent.platformContext().config();
 
-    ShaderProgram::OnStartup(cache);
+
+
+    ErrorCode err = ShaderProgram::PostInitAPI(cache);
+    if (err != ErrorCode::NO_ERR) {
+        return err;
+    }
+
     Texture::OnStartup(*this);
     RenderPassExecutor::OnStartup(*this);
     GFX::InitPools();
@@ -890,7 +912,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     }
 
     // Everything is ready from the rendering point of view
-    return ErrorCode::NO_ERR;
+    return err;
 }
 
 
@@ -934,8 +956,9 @@ void GFXDevice::closeRenderingAPI() {
 
     // Close the shader manager
     MemoryManager::DELETE(_shaderComputeQueue);
-    RenderPassExecutor::OnShutdown();
-    ShaderProgram::OnShutdown();
+    if (!ShaderProgram::OnShutdown()) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
     Texture::OnShutdown();
     _gpuObjectArena.clear();
     assert(ShaderProgram::ShaderProgramCount() == 0);
@@ -964,7 +987,7 @@ void GFXDevice::closeRenderingAPI() {
 
 #pragma region Main frame loop
 /// After a swap buffer call, the CPU may be idle waiting for the GPU to draw to the screen, so we try to do some processing
-void GFXDevice::idle(const bool fast) const {
+void GFXDevice::idle(const bool fast) {
     OPTICK_EVENT();
 
     _api->idle(fast);
@@ -973,7 +996,7 @@ void GFXDevice::idle(const bool fast) const {
     // Pass the idle call to the post processing system
     _renderer->idle();
     // And to the shader manager
-    ShaderProgram::Idle();
+    ShaderProgram::Idle(context());
 }
 
 void GFXDevice::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
@@ -1357,6 +1380,18 @@ void GFXDevice::stepResolution(const bool increment) {
         _resolutionChangeQueued.first.set(foundRes);
         _resolutionChangeQueued.second = true;
     }
+}
+
+bool GFXDevice::makeImagesResident(const Images& images) const {
+    OPTICK_EVENT();
+
+    for (const Image& image : images._entries) {
+        if (image._texture != nullptr) {
+            image._texture->bindLayer(image._binding, image._level, image._layer, image._layered, image._flag);
+        }
+    }
+
+    return true;
 }
 
 void GFXDevice::toggleFullScreen() const
@@ -1780,12 +1815,32 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 commandBuffer.get<GFX::ExternalCommand>(cmd)->_cbk();
                 break;
 
+            case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
+                OPTICK_EVENT("Bind Shader Buffers");
+
+                GFX::BindDescriptorSetsCommand* crtCmd = commandBuffer.get<GFX::BindDescriptorSetsCommand>(cmd);
+                DescriptorSet& set = crtCmd->_set;
+                for (U8 i = 0u; i < set._buffers.count(); ++i) {
+                    const ShaderBufferBinding& binding = set._buffers._entries[i];
+                    if (binding._binding == ShaderBufferLocation::COUNT) {
+                        // might be leftover from a batching call
+                        continue;
+                    }
+
+                    assert(binding._buffer != nullptr);
+                    binding._buffer->bindRange(binding._binding, binding._elementRange.min, binding._elementRange.max);
+                }
+                if (!makeImagesResident(set._images)) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            } break;
             case GFX::CommandType::DRAW_TEXT:
             case GFX::CommandType::DRAW_IMGUI:
             case GFX::CommandType::DRAW_COMMANDS:
             case GFX::CommandType::DISPATCH_COMPUTE:
                 uploadGPUBlock(); 
                 [[fallthrough]];
+            
             default: break;
         }
 
@@ -2530,6 +2585,52 @@ Mutex& GFXDevice::objectArenaMutex() noexcept {
 
 GFXDevice::ObjectArena& GFXDevice::objectArena() noexcept {
     return _gpuObjectArena;
+}
+
+GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID) {
+    const auto it = _IMGUIBuffers.find(windowGUID);
+    if (it != eastl::cend(_IMGUIBuffers)) {
+        return it->second;
+    }
+
+    // Ring buffer wouldn't work properly with an IMMEDIATE MODE gui
+    // We update and draw multiple times in a loop
+    GenericVertexData* ret = newGVD(1);
+
+    GenericVertexData::IndexBuffer idxBuff;
+    idxBuff.smallIndices = sizeof(ImDrawIdx) == 2;
+    idxBuff.count = (1 << 16) * 3;
+
+    ret->create(1);
+    ret->renderIndirect(false);
+
+    GenericVertexData::SetBufferParams params = {};
+    params._buffer = 0;
+    params._useRingBuffer = false;
+
+    params._bufferParams._elementCount = 1 << 16;
+    params._bufferParams._elementSize = sizeof(ImDrawVert);
+    params._bufferParams._usePersistentMapping = false;
+    params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+    params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+    params._bufferParams._sync = true;
+    params._bufferParams._initialData = { nullptr, 0 };
+
+    ret->setBuffer(params); //Pos, UV and Colour
+    ret->setIndexBuffer(idxBuff, BufferUpdateFrequency::OFTEN);
+
+    AttributeDescriptor& descPos = ret->attribDescriptor(to_base(AttribLocation::GENERIC));
+    AttributeDescriptor& descUV = ret->attribDescriptor(to_base(AttribLocation::TEXCOORD));
+    AttributeDescriptor& descColour = ret->attribDescriptor(to_base(AttribLocation::COLOR));
+
+#   define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
+    descPos.set(0, 2, GFXDataFormat::FLOAT_32, false, to_U32(OFFSETOF(ImDrawVert, pos)));
+    descUV.set(0, 2, GFXDataFormat::FLOAT_32, false, to_U32(OFFSETOF(ImDrawVert, uv)));
+    descColour.set(0, 4, GFXDataFormat::UNSIGNED_BYTE, true, to_U32(OFFSETOF(ImDrawVert, col)));
+#   undef OFFSETOF
+
+    _IMGUIBuffers[windowGUID] = ret;
+    return ret;
 }
 
 RenderTarget* GFXDevice::newRTInternal(const RenderTargetDescriptor& descriptor) {

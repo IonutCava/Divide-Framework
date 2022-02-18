@@ -39,11 +39,4 @@ void SubMesh::setParentMesh(Mesh* const parentMesh) {
     setGeometryVB(_parentMesh->getGeometryVB());
 }
 
-
-void SubMesh::sceneUpdate(const U64 deltaTimeUS,
-                          SceneGraphNode* sgn,
-                          SceneState& sceneState) {
-    Object3D::sceneUpdate(deltaTimeUS, sgn, sceneState);
-
-}
 };

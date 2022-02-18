@@ -38,11 +38,13 @@ namespace GLUtil {
 
 template<typename T>
 void getGLValue(const GLenum param, T& value, const GLint index) {
+    GLint valueTemp = 0;
     if (index < 0) {
-        glGetIntegerv(param, static_cast<GLint*>(&value));
+        glGetIntegerv(param, &valueTemp);
     } else {
-        glGetIntegeri_v(param, static_cast<GLuint>(index), static_cast<GLint*>(&value));
+        glGetIntegeri_v(param, static_cast<GLuint>(index), &valueTemp);
     }
+    value = static_cast<T>(valueTemp);
 }
 
 template<typename T>

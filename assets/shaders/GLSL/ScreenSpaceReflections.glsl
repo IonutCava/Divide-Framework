@@ -226,7 +226,13 @@ void main() {
 #if defined(DEBUG_NAN_VALUES)
                     if (dvd_MaterialDebugFlag == DEBUG_SSR)
                     {
-                        if (isnan(reflBlend) || isnan(ssr.r) || isnan(ssr.g) || isnan(ssr.b)) {
+                       if (isnan(prevHit.r) || isnan(prevHit.g)) {
+                            ambientReflected = vec3(1.f, 0.f, 1.f);
+                            reflBlend = 0.f;
+                        } else if (isnan(reflBlend)) {
+                            ambientReflected = vec3(0.f, 0.f, 1.f);
+                            reflBlend = 0.f;
+                        } else if(isnan(ssr.r) || isnan(ssr.g) || isnan(ssr.b)) {
                             ambientReflected = vec3(1.f, 0.f, 0.f);
                             reflBlend = 0.f;
                         }

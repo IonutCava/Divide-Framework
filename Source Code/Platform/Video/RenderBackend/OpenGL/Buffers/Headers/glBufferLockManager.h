@@ -92,7 +92,7 @@ class glBufferLockManager final : public glLockManager {
     bool lockRange(size_t lockBeginBytes, size_t lockLength, U32 frameID);
 
    private:
-    mutable Mutex _lock;
+    mutable SharedMutex _lock;
     vector<BufferLock> _bufferLocks;
     vector<BufferLock> _swapLocks;
     static std::atomic_bool s_driverBusy;

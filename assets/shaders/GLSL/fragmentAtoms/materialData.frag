@@ -152,29 +152,23 @@ float SpecularToMetalness(in vec3 specular, in float power) {
 
 float SpecularToRoughness(in vec3 specular, in float power) {
     const float roughnessFactor = 1.f - sqrt(power / MAX_SHININESS);
+    const float luminance = Luminance(specular);
     // Specular intensity directly impacts roughness regardless of shininess
-    return 1.f - ((Saturate(pow(roughnessFactor, 2)) * Luminance(specular)));
+    return 1.f - Saturate(pow(roughnessFactor, 2) * luminance);
 }
 
 float getRoughness(in NodeMaterialData matData, in vec2 uv, in float normalVariation) {
     float roughness = 0.f;
 
-    const vec4 unpackedData = (unpackUnorm4x8(matData._data.z) * 255);
-    const bool usePacked = uint(unpackedData.z) == 1u;
-
-    vec4 OMR = unpackUnorm4x8(matData._data.x);
-    const uvec4 texOpsB = dvd_TexOperationsB(matData);
-    getTextureOMR(usePacked, vec3(uv, 0), texOpsB.xyz, OMR.rgb);
-    roughness = OMR.b;
-
 #if defined(SHADING_MODE_BLINN_PHONG)
     // Deduce a roughness factor from specular colour and shininess
     const vec4 specular = getSpecular(matData, vec3(uv, 0));
     roughness = SpecularToRoughness(specular.rgb, specular.a);
+#else  //SHADING_MODE_BLINN_PHONG
+    vec3 OMR = dvd_OMR(matData);
+    getTextureOMR(dvd_UsePackedOMR(matData), vec3(uv, 0), dvd_TexOperationsB(matData).xyz, OMR.rgb);
+    roughness = mix(OMR.b, 1.f, normalVariation);
 #endif //SHADING_MODE_BLINN_PHONG
-
-    // Try to reduce specular aliasing by increasing roughness when minified normal maps have high variation.
-    roughness = mix(roughness, 1.f, normalVariation);
 
     return roughness;
 }
@@ -184,26 +178,25 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
     material._emissive = getEmissiveColour(matData, vec3(uv, 0));
     material._specular = getSpecular(matData, vec3(uv, 0));
 
-    vec4 OMR = unpackUnorm4x8(matData._data.x);
+    vec3 OMR = dvd_OMR(matData);
 
-    #define UnpackedData (unpackUnorm4x8(matData._data.z) * 255)
-    #define UsePacked (uint(UnpackedData.z) == 1u)
-
-    getTextureOMR(UsePacked, vec3(uv, 0), dvd_TexOperationsB(matData).xyz, OMR.rgb);
+    getTextureOMR(dvd_UsePackedOMR(matData), vec3(uv, 0), dvd_TexOperationsB(matData).xyz, OMR.rgb);
     material._occlusion = OMR.r;
-    material._metallic = OMR.g;
 
 #if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS)
     material._roughness = sampleTexSceneNormals().b;
 #else //MAIN_DISPLAY_PASS && !PRE_PASS
-    material._roughness = OMR.b;
 #if defined(SHADING_MODE_BLINN_PHONG)
     material._roughness = SpecularToRoughness(material._specular.rgb, material._specular.a);
+#else //SHADING_MODE_BLINN_PHONG
+    material._roughness = OMR.b;
 #endif //SHADING_MODE_BLINN_PHONG
 #endif //MAIN_DISPLAY_PASS && !PRE_PASS
 
 #if defined(SHADING_MODE_BLINN_PHONG)
     material._metallic = SpecularToMetalness(material._specular.rgb, material._specular.a);
+#else //SHADING_MODE_BLINN_PHONG
+    material._metallic = OMR.g;
 #endif //SHADING_MODE_BLINN_PHONG
     const vec3 albedoIn = albedo + dvd_Ambient(matData);
 
@@ -294,17 +287,22 @@ vec4 getAlbedo(in NodeMaterialData data, in vec3 uv) {
 #endif //HAS_TRANSPARENCY
 
 #if defined(MAIN_DISPLAY_PASS)
+vec3 getNormalMap(in sampler2DArray tex, in vec3 uv) {
+    return normalize(2.f * texture(tex, uv).rgb - 1.f);
+}
+
 vec3 getNormalMap(in sampler2DArray tex, in vec3 uv, out float normalVariation) {
     const vec3 normalMap = 2.f * texture(tex, uv).rgb - 1.f;
     const float normalMap_Mip = textureQueryLod(tex, uv.xy).x;
     const float normalMap_Length = length(normalMap);
+
+    // Try to reduce specular aliasing by increasing roughness when minified normal maps have high variation.
     const float variation = 1.f - pow(normalMap_Length, 8.f);
     const float minification = Saturate(normalMap_Mip - 2.f);
 
-    normalVariation = variation * minification;
-    const vec3 normalW = (normalMap / normalMap_Length);
+    normalVariation = Saturate(variation * minification);
 
-    return normalW;
+    return normalMap / normalMap_Length;
 }
 #else //MAIN_DISPLAY_PASS
 vec3 getNormalMap(in sampler2DArray tex, in vec3 uv) {

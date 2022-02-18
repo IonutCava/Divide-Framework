@@ -178,8 +178,6 @@ class Material final : public CachedResource {
         PROPERTY_R(bool, usePackedOMR, false);
         PROPERTY_R(bool, isRefractive, false);
         PROPERTY_R(bool, doubleSided, false);
-        PROPERTY_RW(bool, useBindlessTextures, false);
-        PROPERTY_RW(bool, debugBindlessTextures, false);
         PROPERTY_R(ShadingMode, shadingMode, ShadingMode::COUNT);
         PROPERTY_R(TranslucencySource, translucencySource, TranslucencySource::COUNT);
 

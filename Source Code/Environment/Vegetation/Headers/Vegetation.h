@@ -120,8 +120,9 @@ class Vegetation final : public SceneNode {
                      SceneGraphNode* sgn,
                      SceneState& sceneState) override;
    private:
-    void uploadVegetationData(SceneGraphNode* sgn);
+    void uploadVegetationData(vector<Byte>& grassDataOut, vector<Byte> treeDataOut);
     void computeVegetationTransforms(bool treeData);
+    void prepareDraw(SceneGraphNode* sgn);
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Vegetation"; }
 
@@ -172,7 +173,6 @@ class Vegetation final : public SceneNode {
     static eastl::unordered_set<vec2<F32>> s_grassPositions;
 
     static U32 s_maxChunks;
-    static bool s_buffersBound;
 
     static Material_ptr s_treeMaterial;
     static Material_ptr s_vegetationMaterial;

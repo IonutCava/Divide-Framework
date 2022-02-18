@@ -46,9 +46,6 @@ struct BufferLockEntry;
 /// Base class for shader uniform blocks
 class glUniformBuffer final : public ShaderBuffer {
     public:
-        static void OnGLInit() noexcept;
-
-    public:
         glUniformBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
         ~glUniformBuffer();
 

@@ -72,7 +72,7 @@ void RenderPass::performanceCounters(const bool state) {
             bufferDescriptor._bufferParams._elementSize = sizeof(U32);
             bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
             bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-            bufferDescriptor._ringBufferLength = 5;
+            bufferDescriptor._ringBufferLength = DataBufferRingSize;
             bufferDescriptor._separateReadWrite = true;
             bufferDescriptor._name = Util::StringFormat("CULL_COUNTER_%s", TypeUtil::RenderStageToString(_stageFlag));
             _cullCounter = _context.newSB(bufferDescriptor);
@@ -161,12 +161,12 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
             if (_config.rendering.shadowMapping.enabled) {
                 constexpr bool useNegOneToOneDepth = false;
                 SceneManager* mgr = _parent.parent().sceneManager();
-                const Camera* camera = Attorney::SceneManagerCameraAccessor::playerCamera(mgr);
-
                 LightPool& lightPool = Attorney::SceneManagerRenderPass::lightPool(mgr);
 
-                GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Shadow Render Stage" });
+                const Camera* camera = Attorney::SceneManagerCameraAccessor::playerCamera(mgr);
 
+                GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Shadow Render Stage" });
+                lightPool.sortLightData(RenderStage::SHADOW, camera->snapshot());
                 lightPool.generateShadowMaps(*camera, bufferInOut);
                 
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);

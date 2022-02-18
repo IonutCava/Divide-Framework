@@ -22,7 +22,9 @@ glGenericVertexData::~glGenericVertexData()
     }
 
     // Make sure we don't have any of our VAOs bound
-    GL_API::GetStateTracker().setActiveVAO(0);
+    if (GL_API::GetStateTracker().setActiveVAO(0) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
     // Delete the rendering VAO
     if (_vertexArray != GLUtil::k_invalidObjectID) {
         GL_API::DeleteVAOs(1, &_vertexArray);
@@ -50,26 +52,38 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
     }
 
     // Update buffer bindings
-    setBufferBindings(command);
+    if (!_bufferObjects.empty()) {
+        if (command._bufferIndex == GenericDrawCommand::INVALID_BUFFER_INDEX) {
+            for (U32 i = 0u; i < _bufferObjects.size(); ++i) {
+                bindBufferInternal(i, i);
+            }
+        } else {
+            bindBufferInternal(command._bufferIndex, 0u);
+        }
+    }
     // Update vertex attributes if needed (e.g. if offsets changed)
-    setAttributes(command);
-
-    GLStateTracker& stateTracker = GL_API::GetStateTracker();
+    for (auto& [buf, descriptor] : _attributeMapDraw) {
+        setAttributeInternal(command, descriptor);
+    }
 
     // Delay this for as long as possible
-    stateTracker.setActiveVAO(_vertexArray);
+    if (GL_API::GetStateTracker().setActiveVAO(_vertexArray) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
     if (_idxBufferDirty) {
-        stateTracker.setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer);
+        if (GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
         _idxBufferDirty = false;
     }
-    stateTracker.togglePrimitiveRestart(primitiveRestartEnabled());
+    GL_API::GetStateTracker().togglePrimitiveRestart(primitiveRestartEnabled());
     // Submit the draw command
     if (renderIndirect()) {
         GLUtil::SubmitRenderCommand(command,
                                     true,
                                     _indexDataType);
     } else {
-        rebuildCountAndIndexData(command._drawCount, command._cmd.indexCount, command._cmd.firstIndex, indexBuffer().count);
+        rebuildCountAndIndexData(command._drawCount, command._cmd.indexCount, command._cmd.firstIndex, idxBuffer().count);
         GLUtil::SubmitRenderCommand(command,
                                     false,
                                     _indexDataType,
@@ -127,6 +141,7 @@ void glGenericVertexData::updateIndexBuffer(const IndexBuffer& indices) {
             _indexBuffer,
             { data, _indexBufferSize },
             _name.empty() ? nullptr : (_name + "_index").c_str());
+        _idxBufferDirty = true;
     } else {
         const size_t offset = indices.offsetCount * elementSize;
         const size_t count = indices.count * elementSize;
@@ -177,30 +192,10 @@ void glGenericVertexData::bindBufferInternal(const U32 bufferIdx, const  U32 loc
     entry._length = buffer->elementCount() * elementSize;
     entry._offset = entry._length * queueIndex();
 
-    GL_API::GetStateTracker().bindActiveBuffer(_vertexArray, location, buffer->bufferHandle(), _instanceDivisor[bufferIdx], entry._offset, elementSize);
+    if (GL_API::GetStateTracker().bindActiveBuffer(_vertexArray, location, buffer->bufferHandle(), _instanceDivisor[bufferIdx], entry._offset, elementSize) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
     GL_API::RegisterBufferBind(MOV(entry), true);
-}
-
-void glGenericVertexData::setBufferBindings(const GenericDrawCommand& command) {
-    if (_bufferObjects.empty()) {
-        return;
-    }
-
-    if (command._bufferIndex == GenericDrawCommand::INVALID_BUFFER_INDEX) {
-        for (U32 i = 0u; i < _bufferObjects.size(); ++i) {
-            bindBufferInternal(i, i);
-        }
-    } else {
-        bindBufferInternal(command._bufferIndex, 0u);
-    }
-}
-
-/// Update the appropriate attributes 
-void glGenericVertexData::setAttributes(const GenericDrawCommand& command) {
-    // Get the appropriate list of attributes and update them in turn
-    for (auto& [buf, descriptor] : _attributeMapDraw) {
-        setAttributeInternal(command, descriptor);
-    }
 }
 
 /// Update internal attribute data
@@ -212,7 +207,7 @@ void glGenericVertexData::setAttributeInternal([[maybe_unused]] const GenericDra
 
     // If the attribute wasn't activate until now, enable it
     if (!descriptor.wasSet()) {
-        assert(descriptor.index() < GL_API::s_maxAttribBindings &&
+        assert(descriptor.index() < GFXDevice::GetDeviceInformation()._maxVertAttributeBindings &&
                "GL Wrapper: insufficient number of attribute binding locations available on current hardware!");
 
         if (descriptor.enabled()) {

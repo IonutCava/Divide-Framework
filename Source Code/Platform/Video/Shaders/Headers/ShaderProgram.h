@@ -89,13 +89,22 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     friend class Attorney::ShaderProgramKernel;
 
    public:
+    static bool s_UseBindlessTextures;
 
     struct UniformDeclaration
     {
         Str64 _type;
         Str256 _name;
     };
-
+    struct AtomUniformPair {
+        vector<ResourcePath> _atoms;
+        vector<UniformDeclaration> _uniforms;
+    };
+    struct TextDumpEntry
+    {
+        Str256 _name;
+        string _sourceCode;
+    };
     using ShaderProgramMapEntry = std::pair<ShaderProgram*, size_t>;
     using ShaderProgramMap = ska::bytell_hash_map<I64 /*handle*/, ShaderProgramMapEntry>;
     using AtomMap = ska::bytell_hash_map<U64 /*name hash*/, string>;
@@ -162,9 +171,11 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     /** ------ END EXPERIMENTAL CODE ----- **/
 
     //==================== static methods ===============================//
-    static void Idle();
-    static void OnStartup(ResourceCache* parentCache);
-    static void OnShutdown();
+    static void Idle(PlatformContext& platformContext);
+    [[nodiscard]] static ErrorCode OnStartup(ResourceCache* parentCache);
+    [[nodiscard]] static ErrorCode PostInitAPI(ResourceCache* parentCache);
+    [[nodiscard]] static bool OnShutdown();
+    [[nodiscard]] static bool OnThreadCreated(const GFXDevice& gfx, const std::thread::id& threadID);
     /// Queue a shaderProgram recompile request
     static bool RecompileShaderProgram(const Str256& name);
     /// Remove a shaderProgram from the program cache
@@ -201,6 +212,20 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "ShaderProgram"; }
 
+    static void OnAtomChange(std::string_view atomName, FileUpdateEvent evt);
+    static void QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName);
+
+    template<typename StringType> 
+    inline static StringType DecorateFileName(const StringType& name) {
+        if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+            return "DEBUG." + name;
+        } else if_constexpr(Config::Build::IS_PROFILE_BUILD) {
+            return "PROFILE." + name;
+        } else {
+            return "RELEASE." + name;
+        }
+    }
+
     PROPERTY_RW(bool, highPriority, true);
 
    protected:
@@ -222,6 +247,34 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static std::pair<I64, ShaderProgramMapEntry> s_lastRequestedShaderProgram;
     static SharedMutex s_programLock;
 
+protected:
+    virtual void threadedLoad(bool reloadExisting);
+    virtual void onAtomChangeInternal(std::string_view atomName, FileUpdateEvent evt);
+            void setGLSWPath(bool clearExisting);
+
+    AtomUniformPair loadSourceCode(const Str128& stageName,
+                                   const Str8& extension,
+                                   const string& header,
+                                   size_t definesHash,
+                                   bool reloadExisting,
+                                   Str256& fileNameOut,
+                                   eastl::string& sourceCodeOut) const;
+private:
+    static const string& ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed);
+    static const string& ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed);
+
+    static bool ShaderFileRead(const ResourcePath& filePath, const ResourcePath& fileName, eastl::string& sourceCodeOut);
+    static bool ShaderFileWrite(const ResourcePath& filePath, const ResourcePath& fileName, const char* sourceCode);
+
+    static void DumpShaderTextCacheToDisk(const TextDumpEntry& entry);
+
+    static eastl::string GatherUniformDeclarations(const eastl::string& source, vector<UniformDeclaration>& foundUniforms);
+
+    static eastl::string PreprocessIncludes(const ResourcePath& name,
+                                        const eastl::string& source,
+                                        I32 level,
+                                        vector<ResourcePath>& foundAtoms,
+                                        bool lock);
    private:
     std::array<vector<U32>, to_base(ShaderType::COUNT)> _functionIndex;
     std::array<vector<U32>, to_base(ShaderType::COUNT)> _availableFunctionIndex;
@@ -237,6 +290,18 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static bool s_useShaderTextCache;
     static bool s_useShaderBinaryCache;
     static std::atomic_int s_shaderCount;
+
+    static I64 s_shaderFileWatcherID;
+
+    /// Shaders loaded from files are kept as atoms
+    static SharedMutex s_atomLock;
+    static AtomMap s_atoms;
+    static AtomInclusionMap s_atomIncludes;
+
+    //extra entry for "common" location
+    static ResourcePath shaderAtomLocationPrefix[to_base(ShaderType::COUNT) + 1];
+    static Str8 shaderAtomExtensionName[to_base(ShaderType::COUNT) + 1];
+    static U64 shaderAtomExtensionHash[to_base(ShaderType::COUNT) + 1];
 };
 
 namespace Attorney {

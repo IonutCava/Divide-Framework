@@ -47,11 +47,10 @@ FWD_DECLARE_MANAGED_CLASS(SceneNode);
 /// This class manages all of the RenderBins and renders them in the correct order
 class RenderQueue final : public KernelComponent {
   public: 
-    using RenderBinArray = std::array<RenderBin*, to_base(RenderBinType::COUNT)>;
+    using RenderBinArray = std::array<eastl::unique_ptr<RenderBin>, to_base(RenderBinType::COUNT)>;
 
   public:
     explicit RenderQueue(Kernel& parent, RenderStage stage);
-    ~RenderQueue();
 
     //binAndFlag: if true, populate from bin, if false, populate from everything except bin
     void populateRenderQueues(RenderStagePass stagePass, std::pair<RenderBinType, bool> binAndFlag, RenderQueuePackages& queueInOut);
@@ -62,13 +61,8 @@ class RenderQueue final : public KernelComponent {
     void addNodeToQueue(const SceneGraphNode* sgn, RenderStagePass stagePass, F32 minDistToCameraSq, RenderBinType targetBinType = RenderBinType::COUNT);
     [[nodiscard]] U16 getRenderQueueStackSize() const noexcept;
 
-    [[nodiscard]] RenderBin* getBin(const RenderBinType rbType) noexcept {
-        return _renderBins[to_base(rbType)];
-    }
-
-    [[nodiscard]] RenderBin* getBin(const U16 renderBin) noexcept {
-        return _renderBins[renderBin];
-    }
+    [[nodiscard]] RenderBin* getBin(const U16 renderBin) const noexcept { return _renderBins[renderBin].get(); }
+    [[nodiscard]] RenderBin* getBin(const RenderBinType rbType) const noexcept { return getBin(to_base(rbType)); }
 
     [[nodiscard]] RenderBinArray& getBins() noexcept {
         return _renderBins;

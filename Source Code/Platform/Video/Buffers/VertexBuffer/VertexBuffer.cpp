@@ -447,14 +447,14 @@ void VertexBuffer::reset() {
 
 void VertexBuffer::fromBuffer(const VertexBuffer& other) {
     reset();
-    _keepDataInMemory = other._keepDataInMemory;
-    _staticBuffer = other._staticBuffer;
-    _partitions = other._partitions;
-    _attribDirty = other._attribDirty;
-    useLargeIndices(other._useLargeIndices);
-    primitiveRestartEnabled(other._primitiveRestartEnabled);
+    staticBuffer(other.staticBuffer());
+    keepData(other.keepData());
+    useLargeIndices(other.useLargeIndices());
+    primitiveRestartEnabled(other.primitiveRestartEnabled());
     unchecked_copy(_indices, other._indices);
     unchecked_copy(_data, other._data);
+    _partitions = other._partitions;
+    _attribDirty = other._attribDirty;
 }
 
 bool VertexBuffer::deserialize(ByteBuffer& dataIn) {
@@ -469,7 +469,7 @@ bool VertexBuffer::deserialize(ByteBuffer& dataIn) {
         if (idString == _ID("VB")) {
             reset();
             dataIn >> _staticBuffer;
-            dataIn >> _keepDataInMemory;
+            dataIn >> _keepData;
             dataIn >> _partitions;
             dataIn >> _indices;
             dataIn >> _data;
@@ -489,7 +489,7 @@ bool VertexBuffer::serialize(ByteBuffer& dataOut) const {
         dataOut << BYTE_BUFFER_VERSION;
         dataOut << _ID("VB");
         dataOut << _staticBuffer;
-        dataOut << _keepDataInMemory;
+        dataOut << _keepData;
         dataOut << _partitions;
         dataOut << _indices;
         dataOut << _data;

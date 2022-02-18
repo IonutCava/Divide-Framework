@@ -65,7 +65,9 @@ glPixelBuffer::~glPixelBuffer()
 bufferPtr glPixelBuffer::begin() const {
     GL_API::GetStateTracker().setPixelPackUnpackAlignment();
     glNamedBufferSubData(_pixelBufferHandle, 0, _bufferSize, nullptr);
-    GL_API::GetStateTracker().setActiveBuffer(GL_PIXEL_UNPACK_BUFFER, _pixelBufferHandle);
+    if (GL_API::GetStateTracker().setActiveBuffer(GL_PIXEL_UNPACK_BUFFER, _pixelBufferHandle) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 
     switch (_pbtype) {
         case PBType::PB_TEXTURE_1D:
@@ -109,7 +111,9 @@ bufferPtr glPixelBuffer::begin() const {
 
 void glPixelBuffer::end() const {
     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);  // release the mapped buffer
-    GL_API::GetStateTracker().setActiveBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    if (GL_API::GetStateTracker().setActiveBuffer(GL_PIXEL_UNPACK_BUFFER, 0) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 bool glPixelBuffer::create(GLushort width, GLushort height, const GLushort depth,

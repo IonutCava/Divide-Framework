@@ -44,7 +44,6 @@ RenderingComponent::RenderingComponent(SceneGraphNode* parentSGN, PlatformContex
 {
     _lodLevels.fill(0u);
     _lodLockLevels.fill({ false, to_U8(0u) });
-
     _renderRange.min =  0.f;
     _renderRange.max =  g_renderRangeLimit;
 
@@ -257,15 +256,12 @@ void RenderingComponent::getMaterialData(NodeMaterialData& dataOut) const {
 }
 
 void RenderingComponent::getMaterialTextures(NodeMaterialTextures& texturesOut, const SamplerAddress defaultTexAddress) const {
-    const vec2<U32> defaultAddress = TextureToUVec2(defaultTexAddress);
     if (_materialInstance != nullptr) {
         _materialInstance->getTextures(*this, texturesOut);
-    } else {
-        for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
-            texturesOut[i] = defaultAddress;
-        }
+        return;
     }
-    texturesOut[MATERIAL_TEXTURE_COUNT] = defaultAddress;
+
+    texturesOut.fill(TextureToUVec2(defaultTexAddress));
 }
 
 /// Called after the current node was rendered
@@ -417,7 +413,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
 void RenderingComponent::retrieveDrawCommands(const RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
     OPTICK_EVENT();
 
-    const U32 iBufferEntry = indirectionBufferEntry();
+    const U32 iBufferEntry = _indirectionBufferEntry;
 
     {
         RenderPackage& pkg = getDrawPackage(stagePass);
@@ -433,7 +429,7 @@ void RenderingComponent::retrieveDrawCommands(const RenderStagePass stagePass, c
     const auto& [offset, count] = _lodIndexOffsets[std::min(_lodLevels[to_U8(stagePass._stage)], to_U8(_lodIndexOffsets.size() - 1))];
     const bool autoIndex = offset != 0u || count != 0u;
     {
-        SharedLock<SharedMutex> r_lock(_drawCommands._dataLock);
+        SharedLock<SharedMutex> r_lock2(_drawCommands._dataLock);
         for (const GFX::DrawCommand& drawCmd : _drawCommands._data) {
             for (const GenericDrawCommand& gCmd : drawCmd._drawCommands) {
                 cmdsInOut.push_back(gCmd._cmd);

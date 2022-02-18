@@ -16,7 +16,7 @@ namespace Divide {
 glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor)
     : ShaderBuffer(context, descriptor)
 {
-    _maxSize = _usage == Usage::CONSTANT_BUFFER ? GL_API::s_UBMaxSize : GL_API::s_SSBMaxSize;
+    _maxSize = _usage == Usage::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._UBOMaxSizeBytes : GFXDevice::GetDeviceInformation()._SSBOMaxSizeBytes;
 
     const size_t targetElementSize = getAlignmentCorrected(_params._elementSize);
     if (targetElementSize > _params._elementSize) {
@@ -112,11 +112,6 @@ bool glUniformBuffer::bindByteRange(const U8 bindIndex, ptrdiff_t offsetInBytes,
     }
 
     return false;
-}
-
-void glUniformBuffer::OnGLInit() noexcept {
-    s_boundAlignmentRequirement = GL_API::s_UBOffsetAlignment;
-    s_unboundAlignmentRequirement = GL_API::s_SSBOffsetAlignment;
 }
 
 }  // namespace Divide

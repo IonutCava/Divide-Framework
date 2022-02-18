@@ -9,26 +9,9 @@
 
 namespace Divide {
 
-/// The following static variables are used to remember the current OpenGL state
-GLuint GL_API::s_UBOffsetAlignment = 0u;
-GLuint GL_API::s_UBMaxSize = 0u;
-GLuint GL_API::s_SSBOffsetAlignment = 0u;
-GLuint GL_API::s_SSBMaxSize = 0u;
 GLuint GL_API::s_dummyVAO = GLUtil::k_invalidObjectID;
-GLuint GL_API::s_maxTextureUnits = 0;
-GLuint GL_API::s_maxAtomicBufferBindingIndices = 0u;
-GLuint GL_API::s_maxAttribBindings = 0u;
-GLuint GL_API::s_maxFBOAttachments = 0u;
-GLuint GL_API::s_maxAnisotropicFilteringLevel = 0u;
-GLuint GL_API::s_maxWorgroupInvocations = 0u;
-GLuint GL_API::s_maxComputeSharedMemory = 0u;
-GLuint GL_API::s_maxWorgroupCount[3] = { 0u, 0u, 0u };
-GLuint GL_API::s_maxWorgroupSize[3] = { 0u, 0u, 0u };
-bool GL_API::s_UseBindlessTextures = false;
-bool GL_API::s_DebugBindlessTextures = false;
 SharedMutex GL_API::s_mipmapQueueSetLock;
 eastl::unordered_set<GLuint> GL_API::s_mipmapQueue;
-
 vector<GL_API::ResidentTexture> GL_API::s_residentTextures;
 
 SharedMutex GL_API::s_samplerMapLock;
@@ -61,14 +44,22 @@ GLUtil::GLMemory::DeviceAllocator& GL_API::GetMemoryAllocator(const GLUtil::GLMe
 /// Reset as much of the GL default state as possible within the limitations given
 void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTracker, const bool global) const {
     if (global) {
-        stateTracker.bindTextures(0, s_maxTextureUnits - 1, TextureType::COUNT, nullptr, nullptr);
+        if (stateTracker.bindTextures(0, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, TextureType::COUNT, nullptr, nullptr) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
         stateTracker.setPixelPackUnpackAlignment();
         stateTracker._activePixelBuffer = nullptr;
     }
 
-    stateTracker.setActiveVAO(0);
-    stateTracker.setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    stateTracker.setActiveFB(RenderTarget::RenderTargetUsage::RT_READ_WRITE, 0);
+    if (stateTracker.setActiveVAO(0) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    if (stateTracker.setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    if (stateTracker.setActiveFB(RenderTarget::RenderTargetUsage::RT_READ_WRITE, 0) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
     stateTracker._activeClearColour.set(window.clearColour());
     const U8 blendCount = to_U8(stateTracker._blendEnabled.size());
     for (U8 i = 0u; i < blendCount; ++i) {
@@ -81,9 +72,15 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTrack
 
     stateTracker._activePipeline = nullptr;
     stateTracker._activeRenderTarget = nullptr;
-    stateTracker.setActiveProgram(0u);
-    stateTracker.setActiveShaderPipeline(0u);
-    stateTracker.setStateBlock(RenderStateBlock::defaultHash());
+    if (stateTracker.setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    if (stateTracker.setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    if (stateTracker.setStateBlock(RenderStateBlock::defaultHash()) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 bool GL_API::DeleteBuffers(const GLuint count, GLuint* buffers) {
@@ -147,7 +144,9 @@ bool GL_API::DeleteShaderPrograms(const GLuint count, GLuint* programs) {
     if (count > 0 && programs != nullptr) {
         for (GLuint i = 0; i < count; ++i) {
             if (GetStateTracker()._activeShaderProgram == programs[i]) {
-                GetStateTracker().setActiveProgram(0u);
+                if (GetStateTracker().setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
             }
             glDeleteProgram(programs[i]);
         }

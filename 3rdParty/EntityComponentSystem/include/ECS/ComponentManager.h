@@ -26,6 +26,14 @@
 
 namespace ECS
 {
+	template<class U>
+	struct ComponentMonitor {
+		static std::atomic_bool s_ComponentsChanged;
+	};
+
+	template<class U>
+	std::atomic_bool ComponentMonitor<U>::s_ComponentsChanged = false;
+
 	class ECS_API ComponentManager : Memory::GlobalMemoryUser
 	{
 		friend class IComponent;
@@ -74,6 +82,8 @@ namespace ECS
 				object->~IComponent();
 
 				this->DestroyObject(object);
+
+				ComponentMonitor<T>::s_ComponentsChanged.store(true);
 			}
 
 		}; // class ComponentContainer
@@ -152,6 +162,8 @@ namespace ECS
 			// create mapping from entity id its component id
 			MapEntityComponent(entityId, componentId, CTID);
 
+			ComponentMonitor<T>::s_ComponentsChanged.store(true);
+
 			return static_cast<T*>(component);
 		}
 
@@ -188,6 +200,8 @@ namespace ECS
 
 			// unmap entity id to component id
 			UnmapEntityComponent(entityId, componentId, CTID);
+
+			ComponentMonitor<T>::s_ComponentsChanged.store(true);
 		}
 
 		void RemoveAllComponents(const EntityId entityId)

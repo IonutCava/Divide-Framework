@@ -349,18 +349,20 @@ class VertexBuffer final : public VertexDataInterface {
     static void setAttribMasks(size_t count, const AttribFlags& flagMask);
     static void setAttribMask(size_t index, const AttribFlags& flagMask);
 
-    void keepData(const bool state) noexcept { _keepDataInMemory = state; }
-
     void computeNormals();
     void computeTangents();
+
+    /// Flag used to prevent clearing of the _data vector for static buffers
+    PROPERTY_RW(bool, keepData, false);
+    PROPERTY_RW(bool, useLargeIndices, false);
+    /// If this flag is true, no further modification are allowed on the buffer (static geometry)
+    PROPERTY_R_IW(bool, staticBuffer, false);
 
    protected:
     static vector<AttribFlags> s_attribMasks;
 
     bool refresh();
     bool createInternal();
-
-    [[nodiscard]] bool keepData() const noexcept { return _keepDataInMemory; }
 
     bool getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
     /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer
@@ -369,8 +371,6 @@ class VertexBuffer final : public VertexDataInterface {
     void uploadVBAttributes();
     void upload();
     void draw(const GenericDrawCommand& command) override;
-
-    PROPERTY_RW(bool, useLargeIndices, false);
 
    protected:
     // first: offset, second: count
@@ -388,10 +388,6 @@ class VertexBuffer final : public VertexDataInterface {
     ///< A refresh call might be called before "Create()". This should help with that
     bool _refreshQueued = false;
     bool _uploadQueued = false;
-    /// Flag used to prevent clearing of the _data vector for static buffers
-    bool _keepDataInMemory = false;
-    /// If this flag is true, no further modification are allowed on the buffer (static geometry)
-    bool _staticBuffer = false;
     GenericVertexData* _internalGVD = nullptr;
 };
 

@@ -230,7 +230,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     PROPERTY_RW(bool, occlusionCull, true);
     PROPERTY_RW(F32, dataFlag, 1.0f);
     PROPERTY_R_IW(bool, isInstanced, false);
-    PROPERTY_R_IW(U32, indirectionBufferEntry, U32_MAX);
     PROPERTY_RW(PackageUpdateState, packageUpdateState, PackageUpdateState::COUNT);
     PROPERTY_R_IW(bool, rebuildDrawCommands, false);
 
@@ -285,6 +284,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
 
     std::array<std::pair<bool, U8>, to_base(RenderStage::COUNT)> _lodLockLevels{};
+    U32 _indirectionBufferEntry = U32_MAX;
 
     std::array<std::pair<size_t, size_t>, 4> _lodIndexOffsets{};
 
@@ -356,7 +356,11 @@ class RenderingCompRenderBin {
 class RenderingCompRenderPassExecutor {
 
     static void setIndirectionBufferEntry(RenderingComponent* renderable, const U32 indirectionBufferEntry) noexcept {
-        renderable->indirectionBufferEntry(indirectionBufferEntry);
+        renderable->_indirectionBufferEntry = indirectionBufferEntry;
+    }
+
+    static U32 getIndirectionBufferEntry(RenderingComponent* renderable) noexcept {
+        return renderable->_indirectionBufferEntry;
     }
 
     static void getCommandBuffer(RenderingComponent* renderable, RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut) {

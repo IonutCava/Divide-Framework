@@ -17,54 +17,12 @@ Trigger::Trigger(ResourceCache* parentCache, const size_t descriptorHash, const 
     _taskPool = &parentResourceCache()->context().taskPool(TaskPoolType::HIGH_PRIORITY);
 }
 
-void Trigger::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) {
-    if (_drawImpostor) {
-        /// update dummy position if it is so
-        IMPrimitive::SphereDescriptor descriptor;
-        descriptor.center = _triggerPosition;
-        descriptor.radius = _radius;
-        descriptor.colour = DefaultColours::RED_U8;
-        sgn->context().gfx().debugDrawSphere(getGUID() + 0, descriptor);
-        sgn->getChildren().getChild(0)->get<TransformComponent>()->setPosition(_triggerPosition);
-        sgn->getChildren().getChild(0)->setFlag(SceneGraphNode::Flags::ACTIVE);
-    }
-}
-
-void Trigger::setParams(Task& triggeredTask,
-                        const vec3<F32>& triggerPosition,
-                        const F32 radius) noexcept {
-    /// Check if position has changed
-    if (!_triggerPosition.compare(triggerPosition)) {
-        _triggerPosition = triggerPosition;
-    }
-    /// Check if radius has changed
-    if (!COMPARE(_radius, radius)) {
-        _radius = radius;
-    }
+void Trigger::setCallback(Task& triggeredTask) noexcept {
     _triggeredTask = &triggeredTask;
 }
 
 bool Trigger::unload() {
     return SceneNode::unload();
-}
-
-bool Trigger::check(Unit* const unit, const vec3<F32>& camEyePos) const {
-    if (!_enabled)
-        return false;
-
-    vec3<F32> position;
-    if (!unit) {  ///< use camera position
-        position = camEyePos;
-    } else {  ///< use unit position
-        position = unit->getCurrentPosition();
-    }
-    /// Should we trigger the Task?
-    if (position.compare(_triggerPosition, _radius)) {
-        /// Check if the Task is valid, and trigger if it is
-        return trigger();
-    }
-    /// Not triggered
-    return false;
 }
 
 bool Trigger::trigger() const {

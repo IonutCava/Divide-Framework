@@ -44,24 +44,12 @@ class Trigger final : public SceneNode {
    public:
     explicit Trigger(ResourceCache* parentCache, size_t descriptorHash, const Str256& name);
 
-    void sceneUpdate(U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) override;
-
-    /// Checks if the unit has activated this trigger and launches the Task
-    /// If we receive a nullptr unit as a param, we use the camera position
-    [[nodiscard]] bool check(Unit* unit, const vec3<F32>& camEyePos = VECTOR3_ZERO) const;
     /// Trigger's the Task regardless of position
     [[nodiscard]] bool trigger() const;
-    /// Draw a sphere at the trigger's position
-    /// The impostor has the radius of the trigger's radius
-    void setDrawImpostor(const bool state) noexcept { _drawImpostor = state; }
     /// Enable or disable the trigger
     void setEnabled(const bool state) noexcept { _enabled = state; }
-    /// Set the callback, the position and the radius of the trigger
-    void setParams(Task& triggeredTask, const vec3<F32>& triggerPosition, F32 radius) noexcept;
-    /// Just update the callback
-    void setParams(Task& triggeredTask) noexcept {
-        setParams(triggeredTask, _triggerPosition, _radius);
-    }
+    /// Set the callback
+    void setCallback(Task& triggeredTask) noexcept;
 
     /// SceneNode concrete implementations
     bool unload() override;
@@ -72,12 +60,6 @@ class Trigger final : public SceneNode {
     /// The Task to be launched when triggered
     Task* _triggeredTask = nullptr;
     TaskPool* _taskPool = nullptr;
-    /// The trigger circle's center position
-    vec3<F32> _triggerPosition;
-    /// The trigger's radius
-    F32 _radius = 1.f;
-    /// Draw the impostor?
-    bool _drawImpostor = false;
     bool _enabled = true;
 };
 

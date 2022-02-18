@@ -140,26 +140,16 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
         gpuRendererStr = "Unknown GPU Renderer";
         renderer = GPURenderer::UNKNOWN;
     }
-
-    GFXDevice::setGPURenderer(renderer);
-    GFXDevice::setGPUVendor(vendor);
-
     // GPU info, including vendor, gpu and driver
     Console::printfn(Locale::Get(_ID("GL_VENDOR_STRING")), gpuVendorStr, gpuRendererStr, glGetString(GL_VERSION));
 
+    DeviceInformation deviceInformation{};
+    deviceInformation._vendor = vendor;
+    deviceInformation._renderer = renderer;
+
     // Not supported in RenderDoc (as of 2021). Will always return false when using it to debug the app
-    const bool extensionSupported = glbinding::aux::ContextInfo::supported({ GLextension::GL_ARB_bindless_texture });
-    Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURE_EXTENSION_STATE")), extensionSupported ? "True" : "False");
-
-    s_UseBindlessTextures = config.rendering.useBindlessTextures && extensionSupported;
-    s_DebugBindlessTextures = config.rendering.debugBindlessTextures;
-
-    if (s_UseBindlessTextures != config.rendering.useBindlessTextures) {
-        config.rendering.useBindlessTextures = s_UseBindlessTextures;
-        config.changed(true);
-    }
-
-    Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURES_STATE")), s_UseBindlessTextures ? "True" : "False", s_DebugBindlessTextures ? "True": "False");
+    deviceInformation._bindlessTexturesSupported = glbinding::aux::ContextInfo::supported({ GLextension::GL_ARB_bindless_texture });
+    Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURE_EXTENSION_STATE")), deviceInformation._bindlessTexturesSupported ? "True" : "False");
 
     if (s_hardwareQueryPool == nullptr) {
         s_hardwareQueryPool = MemoryManager_NEW glHardwareQueryPool(_context);
@@ -172,62 +162,44 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         // hard-wire our debug callback function with OpenGL's implementation
         glDebugMessageCallback((GLDEBUGPROC)GLUtil::DebugCallback, nullptr);
-        if (GFXDevice::getGPUVendor() == GPUVendor::NVIDIA) {
-            // nVidia flushes a lot of useful info about buffer allocations and shader
-            // re-compiles due to state and what now, but those aren't needed until that's
-            // what's actually causing the bottlenecks
-            const U32 nvidiaBufferErrors[] = { 131185, 131218, 131186 };
-            // Disable shader compiler errors (shader class handles that)
-            glDebugMessageControl(GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DEBUG_TYPE_ERROR,
-                                  GL_DONT_CARE, 0, nullptr, GL_FALSE);
-            // Disable nVidia buffer allocation info (an easy enable is to change the
-            // count param to 0)
-            glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER,
-                                  GL_DONT_CARE, 3, nvidiaBufferErrors, GL_FALSE);
-            // Shader will be recompiled nVidia error
-            glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE,
-                                  GL_DONT_CARE, 3, nvidiaBufferErrors, GL_FALSE);
-        }
     }
 
     // If we got here, let's figure out what capabilities we have available
     // Maximum addressable texture image units in the fragment shader
-    s_maxTextureUnits = static_cast<GLuint>(std::max(GLUtil::getGLValue(GL_MAX_TEXTURE_IMAGE_UNITS), 16));
-    s_residentTextures.resize(to_size(s_maxTextureUnits) * (1 << 4));
+    deviceInformation._maxTextureUnits = to_U8(CLAMPED(GLUtil::getGLValue(GL_MAX_TEXTURE_IMAGE_UNITS), 16u, 255u));
+    s_residentTextures.resize(to_size(deviceInformation._maxTextureUnits) * (1 << 4));
 
-    GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIB_BINDINGS, s_maxAttribBindings);
-    GLUtil::getGLValue(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS, s_maxAtomicBufferBindingIndices);
-    Console::printfn(Locale::Get(_ID("GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS")),
-                     s_maxAtomicBufferBindingIndices);
+    GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings);
+    GLUtil::getGLValue(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS, deviceInformation._maxAtomicBufferBindingIndices);
+    Console::printfn(Locale::Get(_ID("GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS")), deviceInformation._maxAtomicBufferBindingIndices);
 
-    if (to_base(TextureUsage::COUNT) >= s_maxTextureUnits) {
+    if (to_base(TextureUsage::COUNT) >= deviceInformation._maxTextureUnits) {
         Console::errorfn(Locale::Get(_ID("ERROR_INSUFFICIENT_TEXTURE_UNITS")));
         return ErrorCode::GFX_NOT_SUPPORTED;
     }
 
-    if (to_base(AttribLocation::COUNT) >= s_maxAttribBindings) {
+    if (to_base(AttribLocation::COUNT) >= deviceInformation._maxVertAttributeBindings) {
         Console::errorfn(Locale::Get(_ID("ERROR_INSUFFICIENT_ATTRIB_BINDS")));
         return ErrorCode::GFX_NOT_SUPPORTED;
     }
 
-    GLint majGLVersion = GLUtil::getGLValue(GL_MAJOR_VERSION);
-    GLint minGLVersion = GLUtil::getGLValue(GL_MINOR_VERSION);
-    Console::printfn(Locale::Get(_ID("GL_MAX_VERSION")), majGLVersion, minGLVersion);
+    deviceInformation._versionInfo.first = to_U8(GLUtil::getGLValue(GL_MAJOR_VERSION));
+    deviceInformation._versionInfo.second = to_U8(GLUtil::getGLValue(GL_MINOR_VERSION));
+    Console::printfn(Locale::Get(_ID("GL_MAX_VERSION")), deviceInformation._versionInfo.first, deviceInformation._versionInfo.second);
 
-    if (majGLVersion <= 4 && minGLVersion < 6) {
+    if (deviceInformation._versionInfo.first < 4 || (deviceInformation._versionInfo.first == 4 && deviceInformation._versionInfo.second < 6)) {
         Console::errorfn(Locale::Get(_ID("ERROR_OPENGL_VERSION_TO_OLD")));
         return ErrorCode::GFX_NOT_SUPPORTED;
     }
 
     // Maximum number of colour attachments per framebuffer
-    GLUtil::getGLValue(GL_MAX_COLOR_ATTACHMENTS, s_maxFBOAttachments);
+    GLUtil::getGLValue(GL_MAX_COLOR_ATTACHMENTS, deviceInformation._maxRTColourAttachments);
 
     s_stateTracker.init();
 
-    if (s_stateTracker._opengl46Supported) {
-        glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
-        Console::printfn(Locale::Get(_ID("GL_SHADER_THREADS")), GLUtil::getGLValue(GL_MAX_SHADER_COMPILER_THREADS_ARB));
-    }
+    glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
+    deviceInformation._shaderCompilerThreads = GLUtil::getGLValue(GL_MAX_SHADER_COMPILER_THREADS_ARB);
+    Console::printfn(Locale::Get(_ID("GL_SHADER_THREADS")), deviceInformation._shaderCompilerThreads);
 
     glEnable(GL_MULTISAMPLE);
     // Line smoothing should almost always be used
@@ -239,9 +211,9 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     // Cap max anisotropic level to what the hardware supports
     CLAMP(config.rendering.maxAnisotropicFilteringLevel,
           to_U8(0),
-          to_U8(s_stateTracker._opengl46Supported ? GLUtil::getGLValue(GL_MAX_TEXTURE_MAX_ANISOTROPY)
-                                                  : GLUtil::getGLValue(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
-    s_maxAnisotropicFilteringLevel = config.rendering.maxAnisotropicFilteringLevel;
+          to_U8(GLUtil::getGLValue(GL_MAX_TEXTURE_MAX_ANISOTROPY)));
+
+    deviceInformation._maxAnisotropy = config.rendering.maxAnisotropicFilteringLevel;
 
     // Number of sample buffers associated with the framebuffer & MSAA sample count
     const U8 maxGLSamples = to_U8(std::min(254, GLUtil::getGLValue(GL_MAX_SAMPLES)));
@@ -254,54 +226,52 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
 
     // Print all of the OpenGL functionality info to the console and log
     // How many uniforms can we send to fragment shaders
-    Console::printfn(Locale::Get(_ID("GL_MAX_UNIFORM")),
-                     GLUtil::getGLValue(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS));
+    Console::printfn(Locale::Get(_ID("GL_MAX_UNIFORM")), GLUtil::getGLValue(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS));
     // How many uniforms can we send to vertex shaders
-    Console::printfn(Locale::Get(_ID("GL_MAX_VERT_UNIFORM")),
-                     GLUtil::getGLValue(GL_MAX_VERTEX_UNIFORM_COMPONENTS));
+    Console::printfn(Locale::Get(_ID("GL_MAX_VERT_UNIFORM")), GLUtil::getGLValue(GL_MAX_VERTEX_UNIFORM_COMPONENTS));
     // How many uniforms can we send to vertex + fragment shaders at the same time
-    Console::printfn(Locale::Get(_ID("GL_MAX_FRAG_AND_VERT_UNIFORM")),
-                     GLUtil::getGLValue(GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS));
+    Console::printfn(Locale::Get(_ID("GL_MAX_FRAG_AND_VERT_UNIFORM")), GLUtil::getGLValue(GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS));
     // How many attributes can we send to a vertex shader
-    Console::printfn(Locale::Get(_ID("GL_MAX_VERT_ATTRIB")),
-                     GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIBS)); 
+    deviceInformation._maxVertAttributes = GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIBS);
+    Console::printfn(Locale::Get(_ID("GL_MAX_VERT_ATTRIB")), deviceInformation._maxVertAttributes);
+        
     // How many workgroups can we have per compute dispatch
     for (U8 i = 0u; i < 3; ++i) {
-        GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_COUNT, s_maxWorgroupCount[i], i);
-        GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_SIZE, s_maxWorgroupSize[i], i);
+        GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorgroupCount[i], i);
+        GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_SIZE,  deviceInformation._maxWorgroupSize[i], i);
     }
 
-    s_maxWorgroupInvocations = GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
-    s_maxComputeSharedMemory = GLUtil::getGLValue(GL_MAX_COMPUTE_SHARED_MEMORY_SIZE);
+    deviceInformation._maxWorgroupInvocations = GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
+    deviceInformation._maxComputeSharedMemoryBytes = GLUtil::getGLValue(GL_MAX_COMPUTE_SHARED_MEMORY_SIZE);
 
     Console::printfn(Locale::Get(_ID("GL_MAX_COMPUTE_WORK_GROUP_INFO")),
-                     s_maxWorgroupCount[0], s_maxWorgroupCount[1], s_maxWorgroupCount[2], 
-                     s_maxWorgroupSize[0], s_maxWorgroupSize[1], s_maxWorgroupSize[2],
-                     s_maxWorgroupInvocations);
-    Console::printfn(Locale::Get(_ID("GL_MAX_COMPUTE_SHARED_MEMORY_SIZE")),
-                     s_maxComputeSharedMemory / 1024);
+                     deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
+                     deviceInformation._maxWorgroupSize[0],  deviceInformation._maxWorgroupSize[1],  deviceInformation._maxWorgroupSize[2],
+                     deviceInformation._maxWorgroupInvocations);
+    Console::printfn(Locale::Get(_ID("GL_MAX_COMPUTE_SHARED_MEMORY_SIZE")), deviceInformation._maxComputeSharedMemoryBytes / 1024);
     
     // Maximum number of texture units we can address in shaders
     Console::printfn(Locale::Get(_ID("GL_MAX_TEX_UNITS")),
                      GLUtil::getGLValue(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS),
-                     s_maxTextureUnits);
+                     deviceInformation._maxTextureUnits);
     // Maximum number of varying components supported as outputs in the vertex shader
-    Console::printfn(Locale::Get(_ID("GL_MAX_VERTEX_OUTPUT_COMPONENTS")),
-                     GLUtil::getGLValue(GL_MAX_VERTEX_OUTPUT_COMPONENTS));
+    deviceInformation._maxVertOutputComponents = GLUtil::getGLValue(GL_MAX_VERTEX_OUTPUT_COMPONENTS);
+    Console::printfn(Locale::Get(_ID("GL_MAX_VERTEX_OUTPUT_COMPONENTS")), deviceInformation._maxVertOutputComponents);
+
     // Query shading language version support
     Console::printfn(Locale::Get(_ID("GL_GLSL_SUPPORT")),
                      glGetString(GL_SHADING_LANGUAGE_VERSION));
     // In order: Maximum number of uniform buffer binding points,
     //           maximum size in basic machine units of a uniform block and
     //           minimum required alignment for uniform buffer sizes and offset
-    GLUtil::getGLValue(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, s_UBOffsetAlignment);
-    GLUtil::getGLValue(GL_MAX_UNIFORM_BLOCK_SIZE, s_UBMaxSize);
-    const bool UBOSizeOver1Mb = s_UBMaxSize / 1024 > 1024;
+    GLUtil::getGLValue(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, deviceInformation._UBOffsetAlignmentBytes);
+    GLUtil::getGLValue(GL_MAX_UNIFORM_BLOCK_SIZE, deviceInformation._UBOMaxSizeBytes);
+    const bool UBOSizeOver1Mb = deviceInformation._UBOMaxSizeBytes / 1024 > 1024;
     Console::printfn(Locale::Get(_ID("GL_UBO_INFO")),
                      GLUtil::getGLValue(GL_MAX_UNIFORM_BUFFER_BINDINGS),
-                     (s_UBMaxSize / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
+                     (deviceInformation._UBOMaxSizeBytes / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
                      UBOSizeOver1Mb ? "Mb" : "Kb",
-                     s_UBOffsetAlignment);
+                     deviceInformation._UBOffsetAlignmentBytes);
 
     // In order: Maximum number of shader storage buffer binding points,
     //           maximum size in basic machine units of a shader storage block,
@@ -309,14 +279,15 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     //           be accessed by all active shaders and
     //           minimum required alignment for shader storage buffer sizes and
     //           offset.
-    GLUtil::getGLValue(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, s_SSBOffsetAlignment);
-    GLUtil::getGLValue(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, s_SSBMaxSize);
+    GLUtil::getGLValue(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, deviceInformation._SSBOffsetAlignmentBytes);
+    GLUtil::getGLValue(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, deviceInformation._SSBOMaxSizeBytes);
+    deviceInformation._maxSSBOBufferBindings = GLUtil::getGLValue(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS);
     Console::printfn(
         Locale::Get(_ID("GL_SSBO_INFO")),
-        GLUtil::getGLValue(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS),
-        GLUtil::getGLValue(GL_MAX_SHADER_STORAGE_BLOCK_SIZE) / 1024 / 1024,
+        deviceInformation._maxSSBOBufferBindings,
+        deviceInformation._SSBOMaxSizeBytes / 1024 / 1024,
         GLUtil::getGLValue(GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS),
-        s_SSBOffsetAlignment);
+        deviceInformation._SSBOffsetAlignmentBytes);
 
     // Maximum number of subroutines and maximum number of subroutine uniform
     // locations usable in a shader
@@ -328,6 +299,25 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     GLUtil::getGLValue(GL_SMOOTH_LINE_WIDTH_RANGE, range);
     Console::printfn(Locale::Get(_ID("GL_LINE_WIDTH_INFO")), range[0], range[1]);
 
+    const I32 clipDistanceCount = std::max(GLUtil::getGLValue(GL_MAX_CLIP_DISTANCES), 0);
+    const I32 cullDistanceCount = std::max(GLUtil::getGLValue(GL_MAX_CULL_DISTANCES), 0);
+
+    deviceInformation._maxClipAndCullDistances = to_U8(GLUtil::getGLValue(GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES));
+    deviceInformation._maxClipDistances = to_U8(clipDistanceCount);
+    deviceInformation._maxCullDistances = to_U8(cullDistanceCount);
+    DIVIDE_ASSERT(Config::MAX_CLIP_DISTANCES <= deviceInformation._maxClipDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
+    DIVIDE_ASSERT(Config::MAX_CULL_DISTANCES <= deviceInformation._maxCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
+    DIVIDE_ASSERT(Config::MAX_CULL_DISTANCES + Config::MAX_CLIP_DISTANCES <= deviceInformation._maxClipAndCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
+
+    DIVIDE_ASSERT(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < deviceInformation._maxWorgroupSize[0] &&
+                  Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < deviceInformation._maxWorgroupSize[1] &&
+                  Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < deviceInformation._maxWorgroupSize[2]);
+
+    DIVIDE_ASSERT(to_U32(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS) *
+                         Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
+                         Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < deviceInformation._maxWorgroupInvocations);
+
+    GFXDevice::OverrideDeviceInformation(deviceInformation);
     // Seamless cubemaps are a nice feature to have enabled (core since 3.2)
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
     //glEnable(GL_FRAMEBUFFER_SRGB);
@@ -374,10 +364,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
         }
     );
 
-    // Initialize shader buffers
-    glUniformBuffer::OnGLInit();
-    // Init static program data
-    glShaderProgram::OnStartup();
     // Init any buffer locking mechanism we might need
     glBufferLockManager::OnStartup();
     // We need a dummy VAO object for point rendering
@@ -403,21 +389,14 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
 
     // Prepare shader headers and various shader related states
     glShaderProgram::InitStaticData();
-    if (InitGLSW(config)) {
-        // That's it. Everything should be ready for draw calls
-        Console::printfn(Locale::Get(_ID("START_OGL_API_OK")));
-        return ErrorCode::NO_ERR;
-    }
-
-
-    return ErrorCode::GLSL_INIT_ERROR;
+    // That's it. Everything should be ready for draw calls
+    Console::printfn(Locale::Get(_ID("START_OGL_API_OK")));
+    return ErrorCode::NO_ERR;
 }
 
 /// Clear everything that was setup in initRenderingAPI()
 void GL_API::closeRenderingAPI() {
-    glShaderProgram::OnShutdown();
     glShaderProgram::DestroyStaticData();
-    DeInitGLSW();
 
     if (_GUIGLrenderer) {
         CEGUI::OpenGL3Renderer::destroy(*_GUIGLrenderer);
@@ -529,10 +508,6 @@ void GL_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) {
         glDebugMessageCallback((GLDEBUGPROC)GLUtil::DebugCallback, GLUtil::s_glSecondaryContext);
     }
 
-    if (s_stateTracker._opengl46Supported) {
-        glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
-    }
-
-    InitGLSW(_context.context().config());
+    glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
 }
 };

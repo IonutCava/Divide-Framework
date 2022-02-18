@@ -67,9 +67,6 @@ class GUI;
 class GUIText;
 class SceneGUIElements;
 
-class GL_API;
-class DX_API;
-
 class Light;
 class Camera;
 class Quad3D;
@@ -239,7 +236,7 @@ public:  // GPU interface
     ErrorCode postInitRenderingAPI(const vec2<U16>& renderResolution);
     void closeRenderingAPI();
 
-    void idle(bool fast) const;
+    void idle(bool fast);
     void beginFrame(DisplayWindow& window, bool global);
     void endFrame(DisplayWindow& window, bool global);
 
@@ -286,6 +283,8 @@ public:  // GPU interface
     inline F32 renderingAspectRatio() const noexcept;
     inline const vec2<U16>& renderingResolution() const noexcept;
 
+    bool makeImagesResident(const Images& images) const;
+
     /// Switch between fullscreen rendering
     void toggleFullScreen() const;
     void increaseResolution();
@@ -322,23 +321,23 @@ public:  // Accessors and Mutators
     bool getDebugGroupState(I16 groupID) const;
     void getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& namesOut);
 
-    [[nodiscard]] inline PerformanceMetrics getPerformanceMetrics() const noexcept;
+    [[nodiscard]] inline const PerformanceMetrics& getPerformanceMetrics() const noexcept;
 
     inline vec2<U16> getDrawableSize(const DisplayWindow& window) const;
     inline U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const;
     inline void onThreadCreated(const std::thread::id& threadID) const;
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
-    static void setGPUVendor(const GPUVendor gpuVendor) noexcept { s_GPUVendor = gpuVendor; }
-    static void setGPURenderer(const GPURenderer gpuRenderer) noexcept { s_GPURenderer = gpuRenderer; }
-
     [[nodiscard]] static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }
-    [[nodiscard]] static GPUVendor getGPUVendor() noexcept { return s_GPUVendor; }
-    [[nodiscard]] static GPURenderer getGPURenderer() noexcept { return s_GPURenderer; }
+
+    static const DeviceInformation& GetDeviceInformation() noexcept;
+    static void OverrideDeviceInformation(const DeviceInformation& info) noexcept;
 
 public:
     Mutex&       objectArenaMutex() noexcept;
     ObjectArena& objectArena() noexcept;
+
+    GenericVertexData* getOrCreateIMGUIBuffer(I64 windowGUID);
 
     /// Create and return a new immediate mode emulation primitive.
     IMPrimitive*       newIMP();
@@ -441,6 +440,7 @@ protected:
     void debugDrawCones(GFX::CommandBuffer& bufferInOut);
     void debugDrawSpheres(GFX::CommandBuffer& bufferInOut);
     void debugDrawFrustums(GFX::CommandBuffer& bufferInOut);
+
 
 protected:
     friend class RenderPassManager;
@@ -557,6 +557,8 @@ private:
 
     std::array<CameraSnapshot, Config::MAX_LOCAL_PLAYER_COUNT> _cameraSnapshotHistory;
 
+    hashMap<I64, GenericVertexData*> _IMGUIBuffers;
+
     std::stack<Rect<I32>> _viewportStack;
     Mutex _gpuObjectArenaMutex;
     Mutex _imprimitiveMutex;
@@ -564,8 +566,8 @@ private:
     ObjectArena _gpuObjectArena;
 
     static D64 s_interpolationFactor;
-    static GPUVendor s_GPUVendor;
-    static GPURenderer s_GPURenderer;
+
+    static DeviceInformation s_deviceInformation;
 };
 
 namespace Attorney {

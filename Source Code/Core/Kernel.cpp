@@ -317,27 +317,35 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
 
         const U64 fixedTimestep = _timingData.fixedTimeStep();
         while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US) {
+            OPTICK_EVENT("Run Update Loop");
             // Everything inside here should use fixed timesteps, apart from GFX updates which should use both!
             // Some things (e.g. tonemapping) need to resolve even if the simulation is paused (might not remain true in the future)
 
             if (_timingData.updateLoops() == 0u) {
                 _sceneUpdateLoopTimer.start();
             }
-            _sceneManager->onStartUpdateLoop(_timingData.updateLoops());
-
-            _sceneManager->processGUI(fixedTimestep);
-
+            {
+                OPTICK_EVENT("GUI Update");
+                _sceneManager->getActiveScene().processGUI(fixedTimestep);
+            }
             // Flush any pending threaded callbacks
             for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i) {
                 _platformContext.taskPool(static_cast<TaskPoolType>(i)).flushCallbackQueue();
             }
 
             // Update scene based on input
-            for (U8 i = 0u; i < playerCount; ++i) {
-                _sceneManager->processInput(i, fixedTimestep);
+            {
+                OPTICK_EVENT("Process input");
+                for (U8 i = 0u; i < playerCount; ++i) {
+                    OPTICK_TAG("Player index", i);
+                    _sceneManager->getActiveScene().processInput(i, fixedTimestep);
+                }
             }
             // process all scene events
-            _sceneManager->processTasks(fixedTimestep);
+            {
+                OPTICK_EVENT("Process scene events");
+                _sceneManager->getActiveScene().processTasks(fixedTimestep);
+            }
             // Update the scene state based on current time (e.g. animation matrices)
             _sceneManager->updateSceneState(fixedTimestep);
             // Update visual effect timers as well

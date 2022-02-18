@@ -1327,12 +1327,6 @@ void Scene::updateSceneState(const U64 deltaTimeUS) {
     _aiManager->update(deltaTimeUS);
 }
 
-void Scene::onStartUpdateLoop(const U8 loopNumber) const {
-    OPTICK_EVENT()
-
-    _sceneGraph->onStartUpdateLoop(loopNumber);
-}
-
 void Scene::updateSceneStateInternal([[maybe_unused]] const U64 deltaTimeUS) {
 }
 

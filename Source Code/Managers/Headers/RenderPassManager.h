@@ -108,6 +108,7 @@ public:
 
     /// Call every render queue's render function in order
     void render(const RenderParams& params);
+    void postRender(RenderStage renderStage);
 
     /// Add a new pass that will run once for each of the RenderStages specified
     RenderPass& setRenderPass(RenderStage renderStage,  const vector<RenderStage>& dependencies = {}, bool usePerformanceCounters = false);
@@ -120,6 +121,7 @@ public:
 
 private:
     void startRenderTasks(const RenderParams& params, TaskPool& pool, const CameraSnapshot& cameraSnapshot);
+
 private:
     friend class RenderPassExecutor;
     [[nodiscard]] const RenderPass& getPassForStage(RenderStage renderStage) const noexcept;

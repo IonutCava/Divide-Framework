@@ -75,14 +75,14 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
     [[nodiscard]] U32 getProgramHandle() const noexcept { return _programHandle; }
 
-    /// The shader's name is a period-separated list of strings used to define
-    /// the main shader file and the properties to load
-    [[nodiscard]] const Str256& name() const noexcept { return _name; }
-
     void AddRef() noexcept { _refCount.fetch_add(1); }
     /// Returns true if ref count reached 0
     bool SubRef() noexcept { return _refCount.fetch_sub(1) == 1; }
     [[nodiscard]] size_t GetRef() const noexcept { return _refCount.load(); }
+
+    PROPERTY_R(Str256, name);
+    PROPERTY_R(bool, valid, false);
+    PROPERTY_R(bool, loadedFromBinary, false);
 
    public:
     // ======================= static data ========================= //
@@ -112,9 +112,6 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     void onParentValidation();
     [[nodiscard]] UseProgramStageMask stageMask() const noexcept { return _stageMask;  }
 
-    PROPERTY_R(bool, valid, false);
-    PROPERTY_R(bool, loadedFromBinary, false);
-
    private:
 
     static bool DumpBinary(GLuint handle, const Str256& name);
@@ -124,7 +121,6 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     /// A list of preprocessor defines (if the bool in the pair is true, #define is automatically added
     vector<std::pair<string, bool>> _definesList;
     eastl::unique_ptr<glPushConstantUploader> _constantUploader = nullptr;
-    Str256 _name;
     std::atomic_size_t _refCount;
     UseProgramStageMask _stageMask;
     GLuint _programHandle = GLUtil::k_invalidObjectID;

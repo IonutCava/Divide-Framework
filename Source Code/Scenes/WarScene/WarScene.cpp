@@ -798,7 +798,7 @@ void WarScene::postLoadMainThread() {
 
 void WarScene::onSetActive() {
     Scene::onSetActive();
-    //_firstPersonWeapon->lockToCamera(_ID(playerCamera()->name()));
+    //playerCamera()->lockToObject(_firstPersonWeapon);
 }
 
 void WarScene::weaponCollision(const RigidBodyComponent& collider) {

@@ -127,7 +127,8 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
     F32 distanceSqToCamera = 0.0f;
     const FrustumCollision collisionResult = Attorney::SceneGraphNodeRenderPassCuller::cullNode(currentNode, params, cullFlags, distanceSqToCamera);
     if (collisionResult != FrustumCollision::FRUSTUM_OUT) {
-        if (!SceneGraphNode::IsContainerNode(*currentNode)) {
+        const bool isContainer = SceneGraphNode::IsContainerNode(*currentNode);
+        if (!isContainer) {
             // Only add non-container nodes to the visible list. Otherwise, proceed and check children
             nodes.append({currentNode, distanceSqToCamera});
         }
@@ -164,32 +165,28 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
             ClearBit(quickCullFlags, to_base(CullOptions::CULL_AGAINST_CLIPPING_PLANES));
             ClearBit(quickCullFlags, to_base(CullOptions::CULL_AGAINST_FRUSTUM));
             NodeCullParams nodeChildParams = params;
-            nodeChildParams._skipBoundsChecking = true;
+            nodeChildParams._skipBoundsChecking = !isContainer;
             addAllChildren(currentNode, nodeChildParams, quickCullFlags, nodes);
         }
     }
 }
 
-void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, VisibleNodeList<>& nodes) const {
+void RenderPassCuller::addAllChildren(SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, VisibleNodeList<>& nodes) const {
+    constexpr U32 g_nodesPerPartition = 8u;
+
     OPTICK_EVENT();
 
     const SceneGraphNode::ChildContainer& children = currentNode->getChildren();
-    U32 childCount = children._count.load();
-
-    if (childCount == 0u) {
+    if (children._count.load() == 0u) {
         return;
     }
 
-    SharedLock<SharedMutex> r_lock(children._lock);
-    childCount = children._count.load(); //double check
-    for (U32 i = 0u; i < childCount; ++i) {
-        SceneGraphNode* child = children._data[i];
-
+    const auto addFunc = [&](SceneGraphNode* child) {
         bool visible = false;
         if (!SceneGraphNode::IsContainerNode(*child)) {
             F32 distanceSqToCamera = std::numeric_limits<F32>::max();
             if (Attorney::SceneGraphNodeRenderPassCuller::cullNode(child, params, cullFlags, distanceSqToCamera) != FrustumCollision::FRUSTUM_OUT) {
-                nodes.append({child, distanceSqToCamera });
+                nodes.append({ child, distanceSqToCamera });
                 visible = true;
             }
         } else {
@@ -198,6 +195,25 @@ void RenderPassCuller::addAllChildren(const SceneGraphNode* currentNode, const N
 
         if (visible) {
             addAllChildren(child, params, cullFlags, nodes);
+        }
+    };
+
+    SharedLock<SharedMutex> r_lock(children._lock);
+    const U32 childCount = children._count.load(); //double check
+
+    if (childCount > g_nodesPerPartition * 2) {
+        ParallelForDescriptor descriptor = {};
+        descriptor._iterCount = childCount;
+        descriptor._partitionSize = g_nodesPerPartition;
+        descriptor._cbk = [&](const Task* /*parentTask*/, const U32 start, const U32 end) {
+            for (U32 i = start; i < end; ++i) {
+                addFunc(children._data[i]);
+            }
+        };
+        parallel_for(currentNode->context(), descriptor);
+    } else {
+        for (U32 i = 0u; i < childCount; ++i) {
+            addFunc(children._data[i]);
         }
     }
 }

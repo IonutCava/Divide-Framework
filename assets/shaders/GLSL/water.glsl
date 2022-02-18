@@ -1,5 +1,6 @@
 -- Vertex
 
+#define COMPUTE_TBN
 #include "vbInputData.vert"
 #include "lightingDefaults.vert"
 
@@ -41,6 +42,8 @@ uniform vec2 _fogStartEndDistances;
 #include "output.frag"
 #endif //PRE_PASS
 
+#include "bumpMapping.frag"
+
 const float Eta = 0.15f; //water
 
 float Fresnel(in vec3 viewDir, in vec3 normal) {
@@ -55,17 +58,14 @@ void main()
     const vec3 normalWV = normalize(unpackNormal(sampleTexSceneNormals().rg));
 #else //MAIN_DISPLAY_PASS && !PRE_PASS
     const float time2 = MSToSeconds(dvd_TimeMS) * 0.05f;
-    const vec2 uvNormal0 = (VAR._texCoord * _noiseTile) + vec2(time2, time2);
+    const vec2 uvNormal0 = (VAR._texCoord * _noiseTile) + vec2( time2, time2);
     const vec2 uvNormal1 = (VAR._texCoord * _noiseTile) + vec2(-time2, time2);
 
-    float variation0 = 0.f, variation1 = 0.f;
-    const vec3 normal0 = getNormalMap(texNormalMap, vec3(uvNormal0, 0), variation0);
-    const vec3 normal1 = getNormalMap(texNormalMap, vec3(uvNormal1, 0), variation1);
-    const float normalVariation = max(variation0, variation1);
+    const vec3 normal0 = getNormalMap(texNormalMap, vec3(uvNormal0, 0));
+    const vec3 normal1 = getNormalMap(texNormalMap, vec3(uvNormal1, 0));
 
-    const vec3 normalWV = normalize(getTBNWV() * ((normal0 + normal1) * 0.5f));
-    //vec3 normal = normalPartialDerivativesBlend(normal0, normal1);
-    //const vec3 normalWV = normalize(mat3(dvd_ViewMatrix) * normalW);
+    vec3 normal = normalPartialDerivativesBlend(normal0, normal1);
+    const vec3 normalWV = normalize(getTBNWV() * normal);
 #endif
 
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
@@ -113,9 +113,11 @@ void main()
     // Increase the specular light by the shininess value and add the specular to the final color.
     // Check to make sure the specular was positive so we aren't adding black spots to the water.
 
-    writeScreenColour(outColour  + (specular > 0.f ? pow(specular, _specularShininess) : 0.f));
+   
+    writeScreenColour(outColour + (specular > 0.f ? pow(specular, _specularShininess) : 0.f));
+
 #else //!PRE_PASS
-    const float roughness = getRoughness(data, VAR._texCoord, normalVariation);
+    const float roughness = getRoughness(data, VAR._texCoord, 0.f);
     writeGBuffer(normalWV, roughness);
 #endif //PRE_PASS
 }

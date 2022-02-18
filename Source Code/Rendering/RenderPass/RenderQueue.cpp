@@ -24,20 +24,13 @@ RenderQueue::RenderQueue(Kernel& parent, const RenderStage stage)
             continue;
         }
 
-        _renderBins[i] = MemoryManager_NEW RenderBin(rbType, stage);
-    }
-}
-
-RenderQueue::~RenderQueue()
-{
-    for (RenderBin* bin : _renderBins) {
-        MemoryManager::DELETE(bin);
+        _renderBins[i] = eastl::make_unique<RenderBin>(rbType, stage);
     }
 }
 
 U16 RenderQueue::getRenderQueueStackSize() const noexcept {
     U16 temp = 0u;
-    for (const RenderBin* bin : _renderBins) {
+    for (const auto& bin : _renderBins) {
         if (bin != nullptr) {
             temp += bin->getBinSize();
         }
@@ -85,23 +78,23 @@ RenderBin* RenderQueue::getBinForNode(const SceneGraphNode* node, const Material
                                         to_U32(ComponentType::DIRECTIONAL_LIGHT) |
                                         to_U32(ComponentType::ENVIRONMENT_PROBE);
             if (AnyCompare(node->componentMask(), compareMask)) {
-                return _renderBins[to_base(RenderBinType::IMPOSTOR)];
+                return getBin(RenderBinType::IMPOSTOR);
             }
             return nullptr;
         }
 
         case SceneNodeType::TYPE_VEGETATION:
         case SceneNodeType::TYPE_PARTICLE_EMITTER:
-            return _renderBins[to_base(RenderBinType::TRANSLUCENT)];
+            return getBin(RenderBinType::TRANSLUCENT);
 
         case SceneNodeType::TYPE_SKY:
-            return _renderBins[to_base(RenderBinType::SKY)];
+            return getBin(RenderBinType::SKY);
 
         case SceneNodeType::TYPE_WATER:
-            return _renderBins[to_base(RenderBinType::WATER)];
+            return getBin(RenderBinType::WATER);
 
         case SceneNodeType::TYPE_INFINITEPLANE:
-            return _renderBins[to_base(RenderBinType::TERRAIN_AUX)];
+            return getBin(RenderBinType::TERRAIN_AUX);
 
         // Water is also opaque as refraction and reflection are separate textures
         // We may want to break this stuff up into mesh rendering components and not care about specifics anymore (i.e. just material checks)
@@ -110,21 +103,21 @@ RenderBin* RenderQueue::getBinForNode(const SceneGraphNode* node, const Material
             if (node->getNode().type() == SceneNodeType::TYPE_OBJECT3D) {
                 switch (node->getNode<Object3D>().getObjectType()) {
                     case ObjectType::TERRAIN:
-                        return _renderBins[to_base(RenderBinType::TERRAIN)];
+                        return getBin(RenderBinType::TERRAIN);
 
                     case ObjectType::DECAL:
-                        return _renderBins[to_base(RenderBinType::TRANSLUCENT)];
+                        return getBin(RenderBinType::TRANSLUCENT);
                     default: break;
                 }
             }
             // Check if the object has a material with transparency/translucency
             if (matInstance != nullptr && matInstance->hasTransparency()) {
                 // Add it to the appropriate bin if so ...
-                return _renderBins[to_base(RenderBinType::TRANSLUCENT)];
+                return getBin(RenderBinType::TRANSLUCENT);
             }
 
             //... else add it to the general geometry bin
-            return _renderBins[to_base(RenderBinType::OPAQUE)];
+            return getBin(RenderBinType::OPAQUE);
         }
         default:
         case SceneNodeType::COUNT:
@@ -138,7 +131,7 @@ void RenderQueue::addNodeToQueue(const SceneGraphNode* sgn,
                                  const F32 minDistToCameraSq,
                                  const RenderBinType targetBinType)
 {
-    RenderingComponent* const renderingCmp = sgn->get<RenderingComponent>();
+    const RenderingComponent* const renderingCmp = sgn->get<RenderingComponent>();
     // We need a rendering component to render the node
     assert(renderingCmp != nullptr);
     RenderBin* rb = getBinForNode(sgn, renderingCmp->getMaterialInstance());
@@ -160,12 +153,12 @@ void RenderQueue::populateRenderQueues(const RenderStagePass stagePass, const st
             return;
         }
 
-        for (const RenderBin* renderBin : _renderBins) {
+        for (const auto& renderBin : _renderBins) {
             renderBin->populateRenderQueue(stagePass, queueInOut);
         }
     } else {
         // Everything except the specified type or just the specified type
-        for (const RenderBin* renderBin : _renderBins) {
+        for (const auto& renderBin : _renderBins) {
             if ((renderBin->getType() == binType) == includeBin) {
                 renderBin->populateRenderQueue(stagePass, queueInOut);
             }
@@ -174,7 +167,7 @@ void RenderQueue::populateRenderQueues(const RenderStagePass stagePass, const st
 }
 
 void RenderQueue::postRender(const SceneRenderState& renderState, const RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut) {
-    for (RenderBin* renderBin : _renderBins) {
+    for (const auto& renderBin : _renderBins) {
         renderBin->postRender(renderState, stagePass, bufferInOut);
     }
 }
@@ -194,11 +187,11 @@ void RenderQueue::sort(const RenderStagePass stagePass, const RenderBinType targ
     {
         TaskPool& pool = parent().platformContext().taskPool(TaskPoolType::HIGH_PRIORITY);
         Task* sortTask = CreateTask(TASK_NOP);
-        for (RenderBin* renderBin : _renderBins) {
+        for (const auto& renderBin : _renderBins) {
             if (renderBin->getBinSize() > threadBias) {
                 const RenderingOrder sortOrder = renderOrder == RenderingOrder::COUNT ? getSortOrder(stagePass, renderBin->getType()) : renderOrder;
                 Start(*CreateTask(sortTask,
-                                    [renderBin, sortOrder](const Task& /*parentTask*/) {
+                                    [&renderBin, sortOrder](const Task& /*parentTask*/) {
                                         renderBin->sort(sortOrder);
                                     }),
                       pool);
@@ -207,7 +200,7 @@ void RenderQueue::sort(const RenderStagePass stagePass, const RenderBinType targ
 
         Start(*sortTask, pool);
 
-        for (RenderBin* renderBin : _renderBins) {
+        for (const auto& renderBin : _renderBins) {
             if (renderBin->getBinSize() <= threadBias) {
                 const RenderingOrder sortOrder = renderOrder == RenderingOrder::COUNT ? getSortOrder(stagePass, renderBin->getType()) : renderOrder;
                 renderBin->sort(sortOrder);
@@ -220,11 +213,11 @@ void RenderQueue::sort(const RenderStagePass stagePass, const RenderBinType targ
 
 void RenderQueue::refresh(const RenderBinType targetBinType) noexcept {
     if (targetBinType == RenderBinType::COUNT) {
-        for (RenderBin* renderBin : _renderBins) {
+        for (const auto& renderBin : _renderBins) {
             renderBin->refresh();
         }
     } else {
-        for (RenderBin* renderBin : _renderBins) {
+        for (const auto& renderBin : _renderBins) {
             if (renderBin->getType() == targetBinType) {
                 renderBin->refresh();
             }
@@ -238,15 +231,12 @@ U16 RenderQueue::getSortedQueues(const vector<RenderBinType>& binTypes, RenderBi
     U16 countOut = 0u;
 
     if (binTypes.empty()) {
-        for (const RenderBin* renderBin : _renderBins) {
-            RenderBin::SortedQueue& nodes = queuesOut[to_base(renderBin->getType())];
-            countOut += renderBin->getSortedNodes(nodes);
+        for (const auto& renderBin : _renderBins) {
+            countOut += renderBin->getSortedNodes(queuesOut[to_base(renderBin->getType())]);
         }
     } else {
         for (const RenderBinType type : binTypes) {
-            const RenderBin* renderBin = _renderBins[to_base(type)];
-            RenderBin::SortedQueue& nodes = queuesOut[to_base(type)];
-            countOut += renderBin->getSortedNodes(nodes);
+            countOut += getBin(type)->getSortedNodes(queuesOut[to_base(type)]);
         }
     }
     return countOut;

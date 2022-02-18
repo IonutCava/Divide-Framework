@@ -30,6 +30,11 @@ SceneNode::SceneNode(ResourceCache* parentCache, const size_t descriptorHash, co
     });
 }
 
+SceneNode::~SceneNode()
+{
+    assert(_materialTemplate == nullptr);
+}
+
 string SceneNode::getTypeName() const {
     if (_type == SceneNodeType::TYPE_OBJECT3D) {
         const Object3D* obj = static_cast<const Object3D*>(this);
@@ -75,11 +80,11 @@ const Material_ptr& SceneNode::getMaterialTpl() const {
 }
 
 void SceneNode::setMaterialTpl(const Material_ptr& material) {
-    if (material) {  // If we need to update the material
+    if (material != nullptr) {  // If we need to update the material
         // UpgradableReadLock ur_lock(_materialLock);
 
         // If we had an old material
-        if (_materialTemplate) {  
+        if (_materialTemplate != nullptr) {
             // if the old material isn't the same as the new one
             if (_materialTemplate->getGUID() != material->getGUID()) {
                 Console::printfn(Locale::Get(_ID("REPLACE_MATERIAL")),

@@ -68,9 +68,9 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
         }
   
         const size_t alignment = params._target == GL_UNIFORM_BUFFER 
-                                                ? GL_API::s_UBOffsetAlignment
+                                                ? GFXDevice::GetDeviceInformation()._UBOffsetAlignmentBytes
                                                 : _params._target == GL_SHADER_STORAGE_BUFFER
-                                                                  ? GL_API::s_SSBOffsetAlignment
+                                                                  ? GFXDevice::GetDeviceInformation()._SSBOffsetAlignmentBytes
                                                                   : sizeof(U32);
 
         GLUtil::GLMemory::DeviceAllocator& allocator = GL_API::GetMemoryAllocator(GL_API::GetMemoryTypeForUsage(_params._target));
@@ -146,22 +146,26 @@ bool glBufferImpl::bindByteRange(const GLuint bindIndex, const size_t offsetInBy
         }
     }
 
-    bool bound = true;
+    GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
     if (bindIndex == to_base(ShaderBufferLocation::CMD_BUFFER)) {
-        GL_API::GetStateTracker().setActiveBuffer(GL_DRAW_INDIRECT_BUFFER, _memoryBlock._bufferHandle);
+        result = GL_API::GetStateTracker().setActiveBuffer(GL_DRAW_INDIRECT_BUFFER, _memoryBlock._bufferHandle);
     } else {
         const size_t offset = _memoryBlock._offset + offsetInBytes;
         // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
         const size_t range = (offset == 0u && rangeInBytes == _memoryBlock._size) ? 0u : rangeInBytes;
+        result = GL_API::GetStateTracker().setActiveBufferIndexRange(_params._target, _memoryBlock._bufferHandle, bindIndex, offset, range);
+    }
 
-        bound = GL_API::GetStateTracker().setActiveBufferIndexRange(_params._target, _memoryBlock._bufferHandle, bindIndex, offset, range);
+    if (result == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
     }
 
     if (_params._bufferParams._sync) {
+        // Register the bind even if we get GLStateTracker::BindResult::ALREADY_BOUND so that we know that the data is still being used by the GPU
         GL_API::RegisterBufferBind({this, offsetInBytes, rangeInBytes}, !_params._bufferParams._syncAtEndOfCmdBuffer);
     }
 
-    return bound;
+    return result == GLStateTracker::BindResult::JUST_BOUND;
 }
 
 [[nodiscard]] inline bool Overlaps(const BufferMapRange& lhs, const BufferMapRange& rhs) noexcept {

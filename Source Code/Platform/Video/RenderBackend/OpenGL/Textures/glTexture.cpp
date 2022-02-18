@@ -51,7 +51,7 @@ glTexture::glTexture(GFXDevice& context,
 SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
     assert(_data._textureType != TextureType::COUNT);
 
-    if (!GL_API::s_DebugBindlessTextures) {
+    if (ShaderProgram::s_UseBindlessTextures) {
         const GLuint sampler = GL_API::GetSamplerHandle(samplerHash);
         ScopedLock<Mutex> w_lock(_gpuAddressesLock);
         if (_cachedAddressForSampler.second != sampler) {
@@ -214,7 +214,7 @@ void glTexture::submitTextureData() {
     ScopedLock<Mutex> w_lock(_gpuAddressesLock);
     _data = _loadingData;
 
-    if (GL_API::s_UseBindlessTextures) {
+    if (ShaderProgram::s_UseBindlessTextures) {
         _baseTexAddress = glGetTextureHandleARB(_data._textureHandle);
     } else {
         _baseTexAddress = _data._textureHandle;
@@ -465,7 +465,9 @@ void glTexture::bindLayer(const U8 slot, const U8 level, const U8 layer, const b
     assert(layer == 0u || !layered);
     if (access != GL_NONE) {
         const GLenum glInternalFormat = GLUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
-        GL_API::GetStateTracker().bindTextureImage(slot, _data._textureHandle, level, layered, layer, access, glInternalFormat);
+        if (GL_API::GetStateTracker().bindTextureImage(slot, _data._textureHandle, level, layered, layer, access, glInternalFormat) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     } else {
         DIVIDE_UNEXPECTED_CALL();
     }

@@ -85,41 +85,39 @@ public:
     {
         static_assert(Config::MAX_CONCURRENT_MATERIALS <= U16_MAX);
 
-        using FlagContainer = std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES>;
+        using FlagContainer = std::array<std::atomic_bool, Config::MAX_VISIBLE_NODES>;
         using LookupInfoContainer = std::array<std::pair<size_t, U16>, Config::MAX_CONCURRENT_MATERIALS>;
         using MaterialDataContainer = std::array<NodeMaterialData, Config::MAX_CONCURRENT_MATERIALS>;
         MaterialDataContainer _gpuData{};
-        LookupInfoContainer _nodeMaterialLookupInfo{};
-        FlagContainer _processedThisFrame{};
+        LookupInfoContainer _lookupInfo{};
+        std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES> _nodeProcessedThisFrame;
     };
 
     struct BufferTexturesData
     {
-        using FlagContainer = std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES>;
-        using LookupInfoContainer = std::array<std::pair<size_t, U32>, MAX_INDIRECTION_ENTRIES>;
-        using TexturesDataContainer = std::array<NodeMaterialTextures, MAX_INDIRECTION_ENTRIES>;
+        using FlagContainer = std::array<std::atomic_bool, Config::MAX_VISIBLE_NODES>;
+        using LookupInfoContainer = std::array<std::pair<size_t, U32>, Config::MAX_VISIBLE_NODES>;
+        using TexturesDataContainer = std::array<NodeMaterialTextures, Config::MAX_VISIBLE_NODES>;
         TexturesDataContainer _gpuData{};
-        LookupInfoContainer _nodeTexturesLookupInfo{};
-        FlagContainer _processedThisFrame{};
+        LookupInfoContainer _lookupInfo{};
+        std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES> _nodeProcessedThisFrame;
 
     };
     struct BufferTransformData
     {
-        using FlagContainer = std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES>;
-        using TransformDataContainer = std::array<NodeTransformData, MAX_INDIRECTION_ENTRIES>;
+        using FlagContainer = std::array<std::atomic_bool, Config::MAX_VISIBLE_NODES>;
+        using TransformDataContainer = std::array<NodeTransformData, Config::MAX_VISIBLE_NODES>;
         TransformDataContainer _gpuData{};
-        std::array<bool, MAX_INDIRECTION_ENTRIES> _freeList{};
-        FlagContainer _processedThisFrame{};
+        std::array<bool, Config::MAX_VISIBLE_NODES> _freeList{};
+        std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES> _nodeProcessedThisFrame;
     };
 
     struct BufferIndirectionData {
         std::array<NodeIndirectionData, MAX_INDIRECTION_ENTRIES> _gpuData;
-        std::array<bool, MAX_INDIRECTION_ENTRIES> _freeList{};
     };
     
     template<typename DataContainer>
     struct ExecutorBuffer {
-        U32 _bufferIndex = 0u;
         U32 _highWaterMark = 0u;
         ShaderBuffer* _gpuBuffer = nullptr;
         Mutex _lock;
@@ -135,12 +133,11 @@ public:
     void doCustomPass(PlayerIndex idx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut);
     void postInit(const ShaderProgram_ptr& OITCompositionShader, 
                   const ShaderProgram_ptr& OITCompositionShaderMS,
-                  const ShaderProgram_ptr& ResolveGBufferShaderMS) const;
+                  const ShaderProgram_ptr& ResolveGBufferShaderMS);
+
+    void postRender();
 
     static void OnStartup(const GFXDevice& gfx);
-    static void OnShutdown();
-    static void PreRender();
-    static void PostRender();
 
 private:
     ShaderBuffer* getCommandBufferForStagePass(RenderStagePass stagePass);
@@ -229,17 +226,18 @@ private:
 
     eastl::set<SamplerAddress> _uniqueTextureAddresses{};
 
-    static bool s_globalDataInit;
+    ExecutorBuffer<BufferMaterialData> _materialBuffer;
+    ExecutorBuffer<BufferTexturesData> _texturesBuffer;
+    ExecutorBuffer<BufferTransformData> _transformBuffer;
+    ExecutorBuffer<BufferIndirectionData> _indirectionBuffer;
 
+    static bool s_globalDataInit;
+    static std::array<bool, MAX_INDIRECTION_ENTRIES> s_indirectionFreeList;
+    static Mutex s_indirectionGlobalLock;
     static SamplerAddress s_defaultTextureSamplerAddress;
     static Pipeline* s_OITCompositionPipeline;
     static Pipeline* s_OITCompositionMSPipeline;
     static Pipeline* s_ResolveGBufferPipeline;
-
-    static ExecutorBuffer<BufferMaterialData> s_materialBuffer;
-    static ExecutorBuffer<BufferTexturesData> s_texturesBuffer;
-    static ExecutorBuffer<BufferTransformData> s_transformBuffer;
-    static ExecutorBuffer<BufferIndirectionData> s_indirectionBuffer;
 };
 } //namespace Divide
 

@@ -116,8 +116,6 @@ Material::Material(GFXDevice& context, ResourceCache* parentCache, const size_t 
       _context(context),
       _parentCache(parentCache)
 {
-    properties().useBindlessTextures(context.context().config().rendering.useBindlessTextures);
-    properties().debugBindlessTextures(context.context().config().rendering.debugBindlessTextures);
     properties().receivesShadows(_context.context().config().rendering.shadowMapping.enabled);
 
     for (TextureInfo& tex : _textures) {
@@ -711,7 +709,7 @@ size_t Material::getOrCreateRenderStateBlock(const RenderStagePass renderStagePa
 
 void Material::getSortKeys(const RenderStagePass renderStagePass, I64& shaderKey, I32& textureKey) const {
     shaderKey = shaderInfo(renderStagePass)._shaderKeyCache;
-    if (properties().useBindlessTextures()) {
+    if (ShaderProgram::s_UseBindlessTextures) {
         textureKey = 0u;
     } else {
         SharedLock<SharedMutex> r_lock(_textureLock);
@@ -799,9 +797,15 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
     dataOut._data.x = Util::PACK_UNORM4x8(CLAMPED_01(properties().occlusion()),
                                           CLAMPED_01(properties().metallic()),
                                           CLAMPED_01(properties().roughness()),
-                                          0.f);
-    dataOut._data.y = Util::PACK_UNORM4x8(specColour.r, specColour.g, specColour.b, (properties().doubleSided() ? 1.f : 0.f));
-    dataOut._data.z = Util::PACK_UNORM4x8(0u, to_U8(properties().shadingMode()), properties().usePackedOMR() ? 1u : 0u, to_U8(properties().bumpMethod()));
+                                          (properties().doubleSided() ? 1.f : 0.f));
+    dataOut._data.y = Util::PACK_UNORM4x8(specColour.r,
+                                          specColour.g,
+                                          specColour.b,
+                                          properties().usePackedOMR() ? 1.f : 0.f);
+    dataOut._data.z = Util::PACK_UNORM4x8(to_U8(properties().bumpMethod()),
+                                          to_U8(properties().shadingMode()),
+                                          0u,
+                                          0u);
     dataOut._data.w = bestProbeID;
 
     dataOut._textureOperations.x = Util::PACK_UNORM4x8(to_U8(_textures[to_base(TextureUsage::UNIT0)]._operation),
@@ -820,7 +824,7 @@ void Material::getData(const RenderingComponent& parentComp, const U32 bestProbe
 }
 
 void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTextures& texturesOut) {
-    for (U8 i = 0u; i < MATERIAL_TEXTURE_COUNT; ++i) {
+    for (size_t i = 0u; i < std::size(g_materialTextures); ++i) {
         texturesOut[i] = TextureToUVec2(_textures[to_base(g_materialTextures[i])]._address);
     }
 }
@@ -828,7 +832,7 @@ void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTex
 bool Material::getTextureData(const RenderStagePass renderStagePass, TextureDataContainer& textureData) {
     OPTICK_EVENT();
     // We only need to actually bind NON-RESIDENT textures. 
-    if (properties().useBindlessTextures() && !properties().debugBindlessTextures()) {
+    if (ShaderProgram::s_UseBindlessTextures) {
         return true;
     }
 

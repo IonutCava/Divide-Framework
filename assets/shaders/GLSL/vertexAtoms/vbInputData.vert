@@ -32,10 +32,7 @@ NodeTransformData fetchInputData() {
 }
 
 vec4 computeData(in NodeTransformData data) {
-#if defined(ENABLE_LOD)
     VAR._LoDLevel  = dvd_LoDLevel(data);
-#endif //ENABLE_LOD
-
     VAR._vertexW   = data._worldMatrix * dvd_Vertex;
 #if 0
     VAR._vertexWV  = dvd_ViewMatrix * VAR._vertexW;

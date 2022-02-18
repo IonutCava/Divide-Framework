@@ -2,8 +2,9 @@
 
 #include "Headers/glSamplerObject.h"
 
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
-#include "Platform/Video/Textures/Headers/TextureDescriptor.h"
+
 
 namespace Divide {
 
@@ -34,10 +35,9 @@ GLuint glSamplerObject::construct(const SamplerDescriptor& descriptor) {
         glSamplerParameteri(samplerID, GL_TEXTURE_COMPARE_MODE, to_base(GL_NONE));
     }
 
-    const GLfloat minAnisotropy = std::min<GLfloat>(to_F32(descriptor.anisotropyLevel()), to_F32(GL_API::s_maxAnisotropicFilteringLevel));
+    const GLfloat minAnisotropy = std::min<GLfloat>(to_F32(descriptor.anisotropyLevel()), to_F32(GFXDevice::GetDeviceInformation()._maxAnisotropy));
     if (minAnisotropy > 1) {
-        const GLenum anisoEnum = GL_API::GetStateTracker()._opengl46Supported ? GL_TEXTURE_MAX_ANISOTROPY : GL_TEXTURE_MAX_ANISOTROPY_EXT;
-        glSamplerParameterf(samplerID, anisoEnum, minAnisotropy);
+        glSamplerParameterf(samplerID, GL_TEXTURE_MAX_ANISOTROPY, minAnisotropy);
     }
 
     return samplerID;

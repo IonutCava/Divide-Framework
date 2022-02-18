@@ -180,7 +180,6 @@ class Scene : public Resource, public PlatformContextComponent {
         virtual void updateSceneStateInternal(U64 deltaTimeUS);
         /// Update animations, network data, sounds, triggers etc.
         void updateSceneState(U64 deltaTimeUS);
-        void onStartUpdateLoop(U8 loopNumber) const;
 #pragma endregion
 
 #pragma region Task Management

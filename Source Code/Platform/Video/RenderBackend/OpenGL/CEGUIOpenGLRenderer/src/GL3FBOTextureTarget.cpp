@@ -75,7 +75,9 @@ void OpenGL3FBOTextureTarget::activate()
     // remember previously bound FBO to make sure we set it back
     // when deactivating
     // switch to rendering to the texture
-    Divide::GL_API::GetStateTracker().setActiveFB(Divide::RenderTarget::RenderTargetUsage::RT_WRITE_ONLY, d_frameBuffer, d_previousFrameBuffer);
+    if (Divide::GL_API::GetStateTracker().setActiveFB(Divide::RenderTarget::RenderTargetUsage::RT_WRITE_ONLY, d_frameBuffer, d_previousFrameBuffer) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
 
     OpenGLTextureTarget::activate();
 }
@@ -86,7 +88,9 @@ void OpenGL3FBOTextureTarget::deactivate()
     OpenGLTextureTarget::deactivate();
 
     // switch back to rendering to the previously bound framebuffer
-    Divide::GL_API::GetStateTracker().setActiveFB(Divide::RenderTarget::RenderTargetUsage::RT_WRITE_ONLY, d_previousFrameBuffer);
+    if (Divide::GL_API::GetStateTracker().setActiveFB(Divide::RenderTarget::RenderTargetUsage::RT_WRITE_ONLY, d_previousFrameBuffer) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 //----------------------------------------------------------------------------//

@@ -50,11 +50,7 @@ struct Octree  {
     static constexpr F32 MIN_SIZE = 1.0f;
     static constexpr I32 MAX_LIFE_SPAN_LIMIT = 64;
 
-    Octree() = default;
-
     explicit Octree(Octree* parent, U16 nodeMask);
-    explicit Octree(Octree* parent, U16 nodeMask, const BoundingBox& rootAABB);
-    explicit Octree(Octree* parent, U16 nodeMask, const BoundingBox& rootAABB, const vector<const SceneGraphNode*>& nodes);
 
     void update(U64 deltaTimeUS);
     [[nodiscard]] bool addNode(SceneGraphNode* node) const;
@@ -82,9 +78,6 @@ private:
     void findEnclosingBox() noexcept;
     void findEnclosingCube() noexcept;
 
-    [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, const vector<const SceneGraphNode*>& objects);
-    [[nodiscard]] bool createNode(Octree& newNode, const BoundingBox& region, const SceneGraphNode* object);
-
     [[nodiscard]] vector<IntersectionRecord> getIntersection(const Frustum& frustum, U16 typeFilterMask) const;
     [[nodiscard]] vector<IntersectionRecord> getIntersection(const Ray& intersectRay, F32 start, F32 end, U16 typeFilterMask) const;
 
@@ -99,16 +92,21 @@ private:
     PROPERTY_R_IW(bool, active, false);
 
 private:
-    vector<const SceneGraphNode*> _objects;
+    Octree* const _parent = nullptr;
+    const U16 _nodeExclusionMask = 0u;
+
+    mutable SharedMutex _objectLock;
+    eastl::fixed_vector<const SceneGraphNode*, 8, true, eastl::dvd_allocator> _objects;
+
     moodycamel::ConcurrentQueue<const SceneGraphNode*> _movedObjects;
+
     vector<IntersectionRecord> _intersectionsCache;
+
     BoundingBox _region;
-    Octree* _parent = nullptr;
     I32 _curLife = -1;
     I32 _maxLifespan = MAX_LIFE_SPAN_LIMIT / 8;
-    U16 _nodeExclusionMask = 0u;
 
-    vector_fast<Octree> _childNodes;
+    std::array<eastl::unique_ptr<Octree>, 8> _childNodes;
 
     //ToDo: make this work in a multi-threaded environment
     mutable I8 _frustPlaneCache = -1;

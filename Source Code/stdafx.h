@@ -113,6 +113,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <EASTL/include/EASTL/queue.h>
 #include <EASTL/include/EASTL/deque.h>
 #include <EASTL/include/EASTL/vector_map.h>
+#include <EASTL/include/EASTL/fixed_set.h>
 #include <EASTL/include/EASTL/fixed_vector.h>
 #include <EASTL/include/EASTL/shared_ptr.h>
 #include <EASTL/include/EASTL/weak_ptr.h>

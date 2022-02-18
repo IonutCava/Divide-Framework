@@ -83,15 +83,14 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
     
     AttributeDescriptor& attribDescriptor(U32 attribIndex);
 
-    const IndexBuffer& indexBuffer() const noexcept { return _idxBuffer; }
-
     PROPERTY_RW(bool, renderIndirect, true);
+    PROPERTY_R(IndexBuffer, idxBuffer);
+
    protected:
     using AttributeMap = hashMap<U32, AttributeDescriptor>;
     AttributeMap _attributeMapDraw;
 
     string _name;
-    IndexBuffer _idxBuffer;
 };
 
 };  // namespace Divide

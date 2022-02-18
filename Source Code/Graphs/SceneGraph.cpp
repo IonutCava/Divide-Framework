@@ -116,6 +116,23 @@ void SceneGraph::onNodeDestroy(SceneGraphNode* oldNode) {
                      return node && node->getGUID() == guid;
                  });
     }
+    {
+        ScopedLock<Mutex> w_lock(_nodeEventLock);
+        erase_if(_nodeEventQueue,
+                 [guid](SceneGraphNode* node)-> bool
+                 {
+                    return node && node->getGUID() == guid;
+                 });
+    } 
+    {
+        ScopedLock<Mutex> w_lock(_nodeParentChangeLock);
+        erase_if(_nodeParentChangeQueue,
+                 [guid](SceneGraphNode* node)-> bool
+                 {
+                     return node && node->getGUID() == guid;
+                 });
+    }
+
     Attorney::SceneGraph::onNodeDestroy(_parentScene, oldNode);
 
     _nodeListChanged = true;
@@ -162,6 +179,8 @@ bool SceneGraph::removeNode(SceneGraphNode* node) {
 }
 
 bool SceneGraph::frameStarted(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
     // Gather all nodes at the start of the frame only if we added/removed any of them
     if (_nodeListChanged) {
         // Very rarely called
@@ -178,9 +197,19 @@ bool SceneGraph::frameStarted(const FrameEvent& evt) {
 }
 
 bool SceneGraph::frameEnded(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
     {
         OPTICK_EVENT("ECS::OnFrameEnd");
         GetECSEngine().OnFrameEnd();
+    }
+    {
+        OPTICK_EVENT("Process parent change queue");
+        ScopedLock<Mutex> w_lock(_nodeParentChangeLock);
+        for (SceneGraphNode* node : _nodeParentChangeQueue) {
+            Attorney::SceneGraphNodeSceneGraph::changeParent(node);
+        }
+        _nodeParentChangeQueue.clear();
     }
     {
         ScopedLock<SharedMutex> lock(_pendingDeletionLock);
@@ -199,6 +228,24 @@ bool SceneGraph::frameEnded(const FrameEvent& evt) {
 void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
     OPTICK_EVENT();
 
+    Task* _octreeUpdateTask = nullptr;
+    if (_loadComplete) {
+        _octreeUpdateTask = CreateTask(
+            [this, deltaTimeUS](const Task& /*parentTask*/) mutable
+            {
+                OPTICK_EVENT("Octree Update");
+                _octreeUpdating = true;
+                if (_octreeChanged) {
+                    _octree->updateTree();
+                }
+                _octree->update(deltaTimeUS);
+            });
+        Start(*_octreeUpdateTask,
+            parentScene().context().taskPool(TaskPoolType::HIGH_PRIORITY),
+            TaskPriority::DONT_CARE,
+            [this]() noexcept { _octreeUpdating = false; });
+    }
+
     const F32 msTime = Time::MicrosecondsToMilliseconds<F32>(deltaTimeUS);
     {
         OPTICK_EVENT("ECS::PreUpdate");
@@ -212,52 +259,56 @@ void SceneGraph::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
         OPTICK_EVENT("ECS::PostUpdate");
         GetECSEngine().PostUpdate(msTime);
     }
+    {
+        OPTICK_EVENT("Process node scene update");
+        const U32 nodeCount = to_U32(_nodeList.size());
+       
+          // Only do a parallel for if we have at least 2 partitions to run in parallel, otherwise we just waste a lot of time on setup and destruction
+        if (nodeCount > g_nodesPerPartition * 2) {
+            ParallelForDescriptor descriptor = {};
+            descriptor._iterCount = nodeCount;
+            descriptor._partitionSize = g_nodesPerPartition;
+            descriptor._cbk = [&](const Task* /*parentTask*/, const U32 start, const U32 end) {
+                for (U32 i = start; i < end; ++i) {
+                    _nodeList[i]->sceneUpdate(deltaTimeUS, sceneState);
+                }
+            };
 
-    const U32 nodeCount = to_U32(_nodeList.size());
-
-    // Only do a parallel for if we have at least 2 partitions to run in parallel, otherwise we just waste a lot of time on setup and destruction
-    if (nodeCount > g_nodesPerPartition * 2) {
-        ParallelForDescriptor descriptor = {};
-        descriptor._iterCount = to_U32(_nodeList.size());
-        descriptor._partitionSize = g_nodesPerPartition;
-        descriptor._cbk = [this](const Task* /*parentTask*/, const U32 start, const U32 end) {
-            for (U32 i = start; i < end; ++i) {
-                Attorney::SceneGraphNodeSceneGraph::processEvents(_nodeList[i]);
+            parallel_for(parentScene().context(), descriptor);
+        } else {
+            for (SceneGraphNode* node : _nodeList) {
+                node->sceneUpdate(deltaTimeUS, sceneState);
             }
-        };
-
-        parallel_for(parentScene().context(), descriptor);
-    } else {
-        for (SceneGraphNode* node : _nodeList) {
-            Attorney::SceneGraphNodeSceneGraph::processEvents(node);
         }
     }
+    {
+        OPTICK_EVENT("Process event queue");
+        const U32 nodeCount = to_U32(_nodeEventQueue.size());
 
-    for (SceneGraphNode* node : _nodeList) {
-        node->sceneUpdate(deltaTimeUS, sceneState);
-    }
-
-    if (_loadComplete) {
-        Task* task = CreateTask(
-            [this, deltaTimeUS](const Task& /*parentTask*/) mutable
-            {
-                OPTICK_EVENT("Octree Update");
-                _octreeUpdating = true;
-                if (_octreeChanged) {
-                    _octree->updateTree();
+        // Only do a parallel for if we have at least 2 partitions to run in parallel, otherwise we just waste a lot of time on setup and destruction
+        ScopedLock<Mutex> w_lock(_nodeEventLock);
+        if (nodeCount > g_nodesPerPartition * 2) {
+            ParallelForDescriptor descriptor = {};
+            descriptor._iterCount = nodeCount;
+            descriptor._partitionSize = g_nodesPerPartition;
+            descriptor._cbk = [this](const Task* /*parentTask*/, const U32 start, const U32 end) {
+                for (U32 i = start; i < end; ++i) {
+                    Attorney::SceneGraphNodeSceneGraph::processEvents(_nodeEventQueue[i]);
                 }
-                _octree->update(deltaTimeUS);
-        });
+            };
 
-        Start(*task,
-              parentScene().context().taskPool(TaskPoolType::HIGH_PRIORITY),
-              //TaskPriority::DONT_CARE,
-              TaskPriority::REALTIME,
-              [this]() noexcept { _octreeUpdating = false; });
+            parallel_for(parentScene().context(), descriptor);
+        } else {
+            for (SceneGraphNode* node : _nodeEventQueue) {
+                Attorney::SceneGraphNodeSceneGraph::processEvents(node);
+            }
+        }
+        _nodeEventQueue.clear();
     }
-}
 
-void SceneGraph::onStartUpdateLoop([[maybe_unused]] const U8 loopNumber) {
+    if (_octreeUpdateTask != nullptr) {
+        Wait(*_octreeUpdateTask, parentScene().context().taskPool(TaskPoolType::HIGH_PRIORITY));
+    }
 }
 
 void SceneGraph::onNetworkSend(const U32 frameCount) {

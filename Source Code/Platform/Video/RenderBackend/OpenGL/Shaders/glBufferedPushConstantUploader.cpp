@@ -36,7 +36,9 @@ namespace Divide {
     void glBufferedPushConstantUploader::prepare() {
         if (_uniformBlockBufferHandle != GLUtil::k_invalidObjectID) {
             assert(_uniformBlockIndex != GLUtil::k_invalidObjectID);
-            GL_API::GetStateTracker().setActiveBufferIndex(GL_UNIFORM_BUFFER, _uniformBlockBufferHandle, _uniformBlockIndex);
+            if (GL_API::GetStateTracker().setActiveBufferIndex(GL_UNIFORM_BUFFER, _uniformBlockBufferHandle, _uniformBlockIndex) == GLStateTracker::BindResult::FAILED) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
     }
 

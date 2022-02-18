@@ -75,8 +75,9 @@ void TerrainChunk::load(const U8 depth, const vec2<U32>& pos, const U32 targetCh
     Attorney::TerrainChunk::registerTerrainChunk(*_parentTerrain, this);
 }
 
-void TerrainChunk::initializeVegetation(GFXDevice& context, const VegetationDetails& vegDetails) {
+Vegetation& TerrainChunk::initializeVegetation(GFXDevice& context, const VegetationDetails& vegDetails) {
     _vegetation.reset(new Vegetation(context, *this, vegDetails));
+    return *_vegetation;
 }
 
 const BoundingBox& TerrainChunk::bounds() const noexcept {

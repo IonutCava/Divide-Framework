@@ -130,7 +130,7 @@ class RenderPassCuller {
 
     protected:
         void frustumCullNode(SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, U8 recursionLevel, VisibleNodeList<>& nodes) const;
-        void addAllChildren(const SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, VisibleNodeList<>& nodes) const;
+        void addAllChildren(SceneGraphNode* currentNode, const NodeCullParams& params, const U16 cullFlags, VisibleNodeList<>& nodes) const;
 
     protected:
         std::array<VisibleNodeList<>, to_base(RenderStage::COUNT)> _visibleNodes;

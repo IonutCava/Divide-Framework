@@ -231,9 +231,15 @@ void OpenGL3Renderer::endRendering()
 //----------------------------------------------------------------------------//
 void OpenGL3Renderer::setupExtraStates()
 {
-    Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, 0);
-    Divide::GL_API::GetStateTracker().setActiveProgram(0);
-    Divide::GL_API::GetStateTracker().setActiveShaderPipeline(0);
+    if (Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, 0) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
+    if (Divide::GL_API::GetStateTracker().setActiveProgram(0) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
+    if (Divide::GL_API::GetStateTracker().setActiveShaderPipeline(0) == Divide::GLStateTracker::BindResult::FAILED) {
+        Divide::DIVIDE_UNEXPECTED_CALL();
+    }
 
     d_openGLStateChanger->blendFunc(GL_ONE, GL_ZERO);
     d_openGLStateChanger->bindVertexArray(0);

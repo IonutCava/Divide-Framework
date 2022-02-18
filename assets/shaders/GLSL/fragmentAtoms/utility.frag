@@ -119,16 +119,24 @@ bool isInFrustum(in vec3 coords) {
 vec2 unpackVec2(in uint pckd)  { return unpackHalf2x16(pckd); }
 vec2 unpackVec2(in float pckd) { return unpackHalf2x16(floatBitsToUint(pckd)); }
 
-//ref: https://aras-p.info/texts/CompactNormalStorage.html#method08ppview
+//https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+//https://www.shadertoy.com/view/Mtfyzl#
 vec2 packNormal(in vec3 n) {
-    return n.xy / (sqrt(8 * n.z + 8)) + 0.5f;
+    n /= (abs(n.x) + abs(n.y) + abs(n.z));
+    n.xy = (n.z >= 0.f) ? n.xy : (1.f - abs(n.yx)) * sign(n.xy);
+    n.xy = n.xy * 0.5f + 0.5f;
+    return n.xy;
 }
 
 vec3 unpackNormal(in vec2 enc) {
-    const vec2 fenc = 4 * enc - 2;
-    const float f = dot(fenc, fenc);
-    const float g = sqrt(1.f - f * 0.25f);
-    return vec3(fenc * g, 1.f - f * 0.5f);
+    vec2 f = 2.f * enc - 1.f;
+
+    // https://twitter.com/Stubbesaurus/status/937994790553227264
+    vec3 n = vec3(f, 1.f - abs(f.x) - abs(f.y));
+    const float t = max(-n.z, 0.f);
+    n.x += (n.x >= 0.f ? -t : t);
+    n.y += (n.y >= 0.f ? -t : t);
+    return normalize(n);
 }
 
 #endif //_UTILITY_FRAG_

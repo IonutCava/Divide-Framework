@@ -618,10 +618,10 @@
     <ClInclude Include="..\..\3rdParty\SimpleINI\SimpleIni.h" />
     <ClInclude Include="..\..\3rdParty\TileableVolumeNoise\libtarga.h" />
     <ClInclude Include="..\..\3rdParty\TileableVolumeNoise\TileableVolumeNoise.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\Headers\bstrlib.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\Headers\glsw.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Text\Headers\fontstash.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Text\Headers\glfontstash.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\glsw\Headers\bstrlib.h" />
+    <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\glsw\Headers\glsw.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\3rdParty\Allocator\Allocator_.cpp" />
@@ -866,22 +866,8 @@
     <ClCompile Include="..\..\3rdParty\SimpleINI\ConvertUTF.c" />
     <ClCompile Include="..\..\3rdParty\TileableVolumeNoise\libtarga.c" />
     <ClCompile Include="..\..\3rdParty\TileableVolumeNoise\TileableVolumeNoise.cpp" />
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\bstrlib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glsw\glsw.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile-Editor|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Editor|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Editor|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\glsw\bstrlib.c" />
+    <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\glsw\glsw.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\3rdParty\imgui-node-editor\imgui_bezier_math.inl" />

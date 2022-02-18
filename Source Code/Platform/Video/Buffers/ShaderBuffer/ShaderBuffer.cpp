@@ -5,8 +5,16 @@
 
 namespace Divide {
 
-size_t ShaderBuffer::s_boundAlignmentRequirement = 0;
-size_t ShaderBuffer::s_unboundAlignmentRequirement = 0;
+size_t ShaderBuffer::AlignmentRequirement(const Usage usage) noexcept {
+    if (usage == Usage::CONSTANT_BUFFER) {
+        return GFXDevice::GetDeviceInformation()._UBOffsetAlignmentBytes;
+    }
+    if (usage == Usage::UNBOUND_BUFFER || usage == Usage::COMMAND_BUFFER) {
+        return GFXDevice::GetDeviceInformation()._SSBOffsetAlignmentBytes;
+    }
+
+    return sizeof(U32);
+}
 
 ShaderBuffer::ShaderBuffer(GFXDevice& context,
                            const ShaderBufferDescriptor& descriptor)
@@ -17,55 +25,29 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context,
         _usage(descriptor._usage),
         _name(descriptor._name)
 {
-    if (_params._sync) {
-        _params._sync = !(BitCompare(_flags, Flags::NO_SYNC) || descriptor._bufferParams._updateFrequency == BufferUpdateFrequency::RARELY);
+    if (descriptor._bufferParams._updateFrequency == BufferUpdateFrequency::RARELY || BitCompare(_flags, Flags::NO_SYNC)) {
+        _params._sync = false;
     }
 
     assert(descriptor._usage != Usage::COUNT);
     assert(descriptor._bufferParams._elementSize * descriptor._bufferParams._elementCount > 0 && "ShaderBuffer::Create error: Invalid buffer size!");
 }
 
-void ShaderBuffer::writeData(const bufferPtr data) {
-    writeBytes(0, static_cast<ptrdiff_t>(_params._elementCount * _params._elementSize), data);
-}
-
-void ShaderBuffer::clearData() {
-    clearData(0, _params._elementCount);
-}
-
 void ShaderBuffer::clearData(const U32 offsetElementCount, const U32 rangeElementCount) {
-
     clearBytes(static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),
                static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize));
 }
 
 void ShaderBuffer::writeData(const U32 offsetElementCount, const U32 rangeElementCount, const bufferPtr data) {
-
     writeBytes(static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),
                static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize),
                data);
 }
 
 void ShaderBuffer::readData(const U32 offsetElementCount, const U32 rangeElementCount, const bufferPtr result) const {
-
     readBytes(static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),
               static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize),
               result);
-}
-
-size_t ShaderBuffer::AlignmentRequirement(const Usage usage) noexcept {
-    return usage == Usage::CONSTANT_BUFFER ? s_boundAlignmentRequirement : 
-                    (usage == Usage::UNBOUND_BUFFER  || usage == Usage::COMMAND_BUFFER)
-                        ? s_unboundAlignmentRequirement 
-                        : sizeof(U32);
-}
-
-bool ShaderBuffer::bind(const U8 bindIndex) {
-    return bindByteRange(bindIndex, 0, static_cast<ptrdiff_t>(_params._elementCount * _params._elementSize));
-}
-
-bool ShaderBuffer::bind(const ShaderBufferLocation bindIndex) {
-    return bind(to_U8(bindIndex));
 }
 
 bool ShaderBuffer::bindRange(const U8 bindIndex,
@@ -78,10 +60,5 @@ bool ShaderBuffer::bindRange(const U8 bindIndex,
                          static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize));
 }
 
-bool ShaderBuffer::bindRange(const ShaderBufferLocation bindIndex,
-                             const U32 offsetElementCount,
-                             const U32 rangeElementCount) {
-    return bindRange(to_U8(bindIndex), offsetElementCount, rangeElementCount);
-}
 
 } //namespace Divide;

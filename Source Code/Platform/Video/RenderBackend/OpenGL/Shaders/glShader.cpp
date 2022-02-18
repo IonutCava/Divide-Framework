@@ -439,7 +439,7 @@ bool glShader::load(ShaderLoadData&& data) {
         for (const auto& src : it.sourceCode) {
             concatSource.append(src.c_str());
         }
-        glShaderProgram::QueueShaderWriteToFile(concatSource, it._fileName);
+        ShaderProgram::QueueShaderWriteToFile(concatSource, it._fileName);
     }
 
     return true;
@@ -518,7 +518,7 @@ bool glShader::loadFromBinary() {
     // Load the program from the binary file, if available and allowed, to avoid linking.
     if (ShaderProgram::UseShaderBinaryCache()) {
 
-        const Str256 decoratedName{ glShaderProgram::decorateFileName(_name) };
+        const Str256 decoratedName{ ShaderProgram::DecorateFileName(_name) };
         const ResourcePath binaryPath{ decoratedName + g_binaryBinExtension };
         const ResourcePath formatPath{ decoratedName + g_binaryFmtExtension };
         const ResourcePath cachePath{ Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin };
@@ -578,7 +578,7 @@ bool glShader::DumpBinary(const GLuint handle, const Str256& name) {
     GLenum binaryFormat = GL_NONE;
     glGetProgramBinary(handle, binaryLength, nullptr, &binaryFormat, binary);
     if (binaryFormat != GL_NONE) {
-        const Str256 decoratedName{ glShaderProgram::decorateFileName(name) };
+        const Str256 decoratedName{ glShaderProgram::DecorateFileName(name) };
         const ResourcePath binaryPath { decoratedName + g_binaryBinExtension };
         const ResourcePath formatPath { decoratedName + g_binaryFmtExtension };
         const ResourcePath cachePath  { Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin };

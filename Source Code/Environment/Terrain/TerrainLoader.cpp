@@ -310,7 +310,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     WAIT_FOR_CONDITION(albedoTile->getState() == ResourceState::RES_LOADED);
     const U16 tileMapSize = albedoTile->width();
 
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "ENABLE_LOD");
     terrainMaterial->addShaderDefine(ShaderType::COUNT, "ENABLE_TBN");
     terrainMaterial->addShaderDefine(ShaderType::COUNT, "TEXTURE_TILE_SIZE " + Util::to_string(tileMapSize));
     terrainMaterial->addShaderDefine(ShaderType::COUNT, "TERRAIN_HEIGHT_OFFSET " + Util::to_string(altitudeRange.x));

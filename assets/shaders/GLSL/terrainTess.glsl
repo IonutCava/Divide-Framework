@@ -303,17 +303,17 @@ vec3 LerpDebugColours(in vec3 cIn[5], vec2 uv) {
 }
 #endif //TOGGLE_DEBUG || TOGGLE_TESS_LEVEL
 
-mat3 getTBNW() {
+mat3 getTBNW(in vec3 normalW) {
     // We need to compute tangent and bitengent vectors with 
     // as cotangent_frame's results do not apply for what we need them to do
-    const vec3 N = normalize(_out._normalW);
+    const vec3 N = normalize(normalW);
     const vec3 T1 = cross(N, WORLD_Z_AXIS);
     const vec3 T2 = cross(N, WORLD_Y_AXIS);
     const vec3 T = normalize(length(T1) > length(T2) ? T1 : T2);
     const vec3 B = normalize(-cross(N, T));
     // Orthogonal matrix(each axis is a perpendicular unit vector)
     // The transpose of an orthogonal matrix equals its inverse
-    return mat3(T, B, N);
+    return  mat3(T, B, N);
 }
 
 void main()
@@ -331,7 +331,7 @@ void main()
     setClipPlanes(); //Only need world vertex position for clipping
 #endif //!NO_CLIP_CULL_OUT
     _out._normalW = dvd_NormalMatrixW(dvd_Transforms[TRANSFORM_IDX]) * getNormal(_out._texCoord);
-    _out._tbnWV = mat3(dvd_ViewMatrix) * getTBNW();
+    _out._tbnWV = mat3(dvd_ViewMatrix) * getTBNW(_out._normalW);
     _out._indirectionIDs = _in[0]._indirectionIDs;
 #if !defined(PRE_PASS) && !defined(SHADOW_PASS)
     _out._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_cameraPosition.xyz - _out._vertexW.xyz);
@@ -525,7 +525,7 @@ layout(location = ATTRIB_FREE_START + 3) in vec3 tes_debugColour;
 
 void main(void) {
 
-    vec3 normalWV;
+    vec3 normalWV = WORLD_Y_AXIS;
     const vec4 albedo = BuildTerrainData(normalWV);
 
     vec4 colourOut = vec4(0.f, 0.f, 0.f, 1.f);

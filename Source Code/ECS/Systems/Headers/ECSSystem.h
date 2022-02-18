@@ -86,6 +86,7 @@ namespace Divide {
         vector_fast<U*> _componentCache;
 
     };
+
 }
 
 #endif //_ECS_SYSTEM_H_

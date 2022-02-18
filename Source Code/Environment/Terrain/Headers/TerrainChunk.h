@@ -81,7 +81,7 @@ class TerrainChunk {
     [[nodiscard]] const Vegetation_ptr& getVegetation() const noexcept { return _vegetation; }
 
     friend class Vegetation;
-    void initializeVegetation(GFXDevice& context, const VegetationDetails& vegDetails);
+    Vegetation& initializeVegetation(GFXDevice& context, const VegetationDetails& vegDetails);
 
    private:
     QuadtreeNode& _quadtreeNode;

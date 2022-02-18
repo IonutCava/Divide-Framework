@@ -305,8 +305,6 @@ private:
     PROPERTY_R(Str64, name, "");
     PROPERTY_R(U64, nameHash, 0u);
     PROPERTY_R(I64, queuedNewParent, -1);
-    PROPERTY_RW(U64, lockToCamera, 0u);
-    PROPERTY_R(U64, elapsedTimeUS, 0u);
     PROPERTY_R(U32, componentMask, 0u);
     PROPERTY_R(U32, nodeFlags, 0u);
     PROPERTY_R(U32, instanceCount, 1u);
@@ -333,7 +331,9 @@ namespace Attorney {
         static void processEvents(SceneGraphNode* node) {
             node->processEvents();
         }
-
+        static void changeParent(SceneGraphNode* node) {
+            node->setParentInternal();
+        }
         static void onNetworkSend(const SceneGraphNode* node, const U32 frameCount) {
             node->onNetworkSend(frameCount);
         }

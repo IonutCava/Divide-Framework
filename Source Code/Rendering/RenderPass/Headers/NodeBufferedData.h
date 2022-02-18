@@ -55,8 +55,10 @@ constexpr TextureUsage g_materialTextures[] = {
     TextureUsage::REFLECTION_CUBE
 };
 
-constexpr size_t MATERIAL_TEXTURE_COUNT = std::size(g_materialTextures);
-using NodeMaterialTextures = std::array<vec2<U32>, MATERIAL_TEXTURE_COUNT + 1>;
+constexpr size_t MATERIAL_TEXTURE_COUNT = std::size(g_materialTextures) + 2; /* padded for alignment. Keep at 128 bytes.*/
+
+using NodeMaterialTextureAddress = vec2<U32>;
+using NodeMaterialTextures = std::array<NodeMaterialTextureAddress, MATERIAL_TEXTURE_COUNT>;
 
 FORCE_INLINE [[nodiscard]] vec2<U32> TextureToUVec2(const SamplerAddress address) noexcept {
     // GL_ARB_bindless_texture:
@@ -101,9 +103,9 @@ FORCE_INLINE [[nodiscard]] SamplerAddress Uvec2ToTexture(const vec2<U32> address
         //rgb - ambientColour (Don't really need this. To remove eventually, but since we have the space, might as well)
         //a - specular strength [0...Material::MAX_SHININESS]. Used mainly by Phong shading
         vec4<F32> _colourData;
-        //x = 4x8U: occlusion, metallic, roughness, selection flag (1 == hovered, 2 == selected)
-        //y = 4x8U: reserved, reserved, reserved, isDoubleSided
-        //z = 4x8U: reserved, shadingMode, use packed OMR, bump method
+        //x = 4x8U: occlusion, metallic, roughness, isDoubleSided
+        //y = 4x8U: specular.r, specular.g, specular.b, use packed OMR
+        //z = 4x8U: bump method, shadingMode, reserved, reserved
         //w = Probe lookup index + 1 (0 = sky cubemap)
         vec4<U32> _data;
         //x = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, Emissive
@@ -114,7 +116,7 @@ FORCE_INLINE [[nodiscard]] SamplerAddress Uvec2ToTexture(const vec2<U32> address
     };
 
     [[nodiscard]] size_t HashMaterialData(const NodeMaterialData& dataIn);
-    [[nodiscard]] size_t HashTexturesData(const NodeMaterialTextures& dataIn);
+    [[nodiscard]] size_t HashTexturesData(const NodeMaterialTextures& dataIn) noexcept;
 #pragma pack(pop)
 
 } //namespace Divide

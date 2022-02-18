@@ -96,8 +96,6 @@ class glGenericVertexData final : public GenericVertexData {
 
    protected:
     void bindBufferInternal(U32 bufferIdx, U32 location);
-    void setBufferBindings(const GenericDrawCommand& command);
-    void setAttributes(const GenericDrawCommand& command);
     void setAttributeInternal(const GenericDrawCommand& command, AttributeDescriptor& descriptor) const;
 
     void rebuildCountAndIndexData(U32 drawCount,

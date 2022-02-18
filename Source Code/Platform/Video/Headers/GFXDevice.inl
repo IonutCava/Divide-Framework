@@ -105,9 +105,19 @@ GFXDevice::getCurrentViewport() const noexcept {
     return _viewport;
 }
 
-inline PerformanceMetrics 
+inline const PerformanceMetrics&
 GFXDevice::getPerformanceMetrics() const noexcept {
     return _api->getPerformanceMetrics();
+}
+
+inline const DeviceInformation&
+GFXDevice::GetDeviceInformation() noexcept {
+    return s_deviceInformation;
+}
+
+inline void
+GFXDevice::OverrideDeviceInformation(const DeviceInformation& info) noexcept {
+    s_deviceInformation = info;
 }
 
 inline vec2<U16>
@@ -123,6 +133,9 @@ GFXDevice::getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const {
 inline void
 GFXDevice::onThreadCreated(const std::thread::id& threadID) const {
     _api->onThreadCreated(threadID);
+    if (!ShaderProgram::OnThreadCreated(*this, threadID)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 inline const vec2<U16>& 

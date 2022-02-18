@@ -41,7 +41,7 @@ bool SceneGraphNode::IsContainerNode(const SceneGraphNode& node) noexcept {
 
     return nodeType == SceneNodeType::TYPE_TRANSFORM ||
            nodeType == SceneNodeType::TYPE_TRIGGER ||
-           (nodeType == SceneNodeType::TYPE_OBJECT3D && 
+           (nodeType == SceneNodeType::TYPE_OBJECT3D &&
             static_cast<Object3D*>(node._node.get())->getObjectType() == ObjectType::MESH);
 }
 
@@ -226,6 +226,8 @@ void SceneGraphNode::setParent(SceneGraphNode* parent, const bool defer) {
     _queuedNewParent = parent->getGUID();
     if (!defer) {
         setParentInternal();
+    } else {
+        Attorney::SceneGraphSGN::onNodeParentChange(sceneGraph(), this);
     }
 }
 
@@ -490,89 +492,61 @@ void SceneGraphNode::processDeleteQueue(vector<size_t>& childList) {
 /// Please call in MAIN THREAD! Nothing is thread safe here (for now) -Ionut
 void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) {
     OPTICK_EVENT();
-
-    setParentInternal();
-
-    // update local time
-    _elapsedTimeUS += deltaTimeUS;
-
     if (hasFlag(Flags::ACTIVE)) {
-        if (_lockToCamera != 0u) {
-            TransformComponent* tComp = get<TransformComponent>();
-            assert(tComp != nullptr);
-            Camera* cam = Camera::findCamera(_lockToCamera);
-            if (cam) {
-                cam->updateLookAt();
-                tComp->setOffset(true, cam->worldMatrix());
-            }
-        }
-
         Attorney::SceneNodeSceneGraph::sceneUpdate(_node.get(), deltaTimeUS, this, sceneState);
     }
 
     if (hasFlag(Flags::PARENT_POST_RENDERED)) {
         clearFlag(Flags::PARENT_POST_RENDERED);
     }
-
-    if (get<RenderingComponent>() == nullptr) {
-        const BoundsComponent* bComp = get<BoundsComponent>();
-        if (bComp && bComp->showAABB()) {
-            const BoundingBox& bb = bComp->getBoundingBox();
-            IMPrimitive::BoxDescriptor descriptor;
-            descriptor.min = bb.getMin();
-            descriptor.max = bb.getMax();
-            descriptor.colour = DefaultColours::WHITE_U8;
-            _context.gfx().debugDrawBox(bComp->getGUID() + 0, descriptor);
-        }
-    }
 }
 
 void SceneGraphNode::processEvents() {
     OPTICK_EVENT();
-    if (Events._eventsCount.load() == 0u) {
-        return;
-    }
+
+    DIVIDE_ASSERT(Events._eventsCount.load() != 0u);
 
     const ECS::EntityId id = GetEntityID();
     for (size_t idx = 0u; idx < Events.EVENT_QUEUE_SIZE; ++idx) {
-        if (!Events._eventsFreeList[idx]) {
-            Events._eventsCount.fetch_sub(1u);
-
-            const ECS::CustomEvent& evt = Events._events[idx];
-
-            switch (evt._type) {
-                case ECS::CustomEvent::Type::RelationshipCacheInvalidated: {
-                    if (!_relationshipCache.isValid()) {
-                        _relationshipCache.rebuild();
-                    }
-                } break;
-                case ECS::CustomEvent::Type::EntityFlagChanged: {
-                    if (static_cast<Flags>(evt._flag) == Flags::SELECTED) {
-                        RenderingComponent* rComp = get<RenderingComponent>();
-                        if (rComp != nullptr) {
-                            const bool state = evt._dataFirst == 1u;
-                            const bool recursive = evt._dataSecond == 1u;
-                            rComp->toggleRenderOption(RenderingComponent::RenderOptions::RENDER_SELECTION, state, recursive);
-                        }
-                    }
-                } break;
-                case ECS::CustomEvent::Type::BoundsUpdated: {
-                    Attorney::SceneGraphSGN::onNodeMoved(_sceneGraph, *this);
-                }break;
-                case ECS::CustomEvent::Type::NewShaderReady: {
-                    Attorney::SceneGraphSGN::onNodeShaderReady(_sceneGraph, *this);
-                } break;
-                default: break;
-            }
-
-            PassDataToAllComponents(evt);
-
-            if (evt._type == ECS::CustomEvent::Type::TransformUpdated ||
-                evt._type == ECS::CustomEvent::Type::AnimationUpdated) {
-                Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
-            }
-            Events._eventsFreeList[idx] = true;
+        if (Events._eventsFreeList[idx]) {
+            continue;
         }
+
+        Events._eventsCount.fetch_sub(1u);
+        const ECS::CustomEvent& evt = Events._events[idx];
+
+        switch (evt._type) {
+            case ECS::CustomEvent::Type::RelationshipCacheInvalidated: {
+                if (!_relationshipCache.isValid()) {
+                    _relationshipCache.rebuild();
+                }
+            } break;
+            case ECS::CustomEvent::Type::EntityFlagChanged: {
+                if (static_cast<Flags>(evt._flag) == Flags::SELECTED) {
+                    RenderingComponent* rComp = get<RenderingComponent>();
+                    if (rComp != nullptr) {
+                        const bool state = evt._dataFirst == 1u;
+                        const bool recursive = evt._dataSecond == 1u;
+                        rComp->toggleRenderOption(RenderingComponent::RenderOptions::RENDER_SELECTION, state, recursive);
+                    }
+                }
+            } break;
+            case ECS::CustomEvent::Type::BoundsUpdated: {
+                Attorney::SceneGraphSGN::onNodeMoved(sceneGraph(), *this);
+            }break;
+            case ECS::CustomEvent::Type::NewShaderReady: {
+                Attorney::SceneGraphSGN::onNodeShaderReady(sceneGraph(), *this);
+            } break;
+            default: break;
+        }
+
+        PassDataToAllComponents(evt);
+
+        if (evt._type == ECS::CustomEvent::Type::TransformUpdated ||
+            evt._type == ECS::CustomEvent::Type::AnimationUpdated) {
+            Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
+        }
+        Events._eventsFreeList[idx] = true;
     }
 }
 
@@ -637,11 +611,7 @@ namespace {
         }
 
         const RenderingComponent* rComp = node->get<RenderingComponent>();
-        if (rComp != nullptr) {
-            return !rComp->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS);
-        }
-
-        return false;
+        return rComp != nullptr &&  rComp->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS);
     }
 
     [[nodiscard]] F32 distanceSquareToPos(const vec3<F32>& pos, const BoundingSphere& sphere) noexcept {
@@ -962,6 +932,7 @@ void SceneGraphNode::SendEvent(ECS::CustomEvent&& event) {
             if (Events._eventsFreeList[idx].exchange(false)) {
                 Events._eventsCount.fetch_add(1u);
                 Events._events[idx] = MOV(event);
+                Attorney::SceneGraphSGN::onNodeEvent(sceneGraph(), this);
                 return;
             }
 

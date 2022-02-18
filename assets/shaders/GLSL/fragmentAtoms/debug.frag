@@ -157,8 +157,7 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
             debugColour = turboColormap(float(MATERIAL_IDX + 1) / dvd_Materials.length());
         } break;
         case DEBUG_SHADING_MODE: {
-            const vec4 unpackedData = (unpackUnorm4x8(materialData._data.z) * 255);
-            debugColour = turboColormap(float(uint(unpackedData.y) + 1) / SHADING_COUNT); break;
+            debugColour = turboColormap(float(dvd_ShadingMode(materialData) + 1) / SHADING_COUNT); break;
         } break;
     }
 

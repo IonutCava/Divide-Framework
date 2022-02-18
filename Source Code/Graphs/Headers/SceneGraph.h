@@ -78,7 +78,6 @@ class SceneGraph final : NonCopyable,
 
     /// Update all nodes. Called from "updateSceneState" from class Scene
     void sceneUpdate(U64 deltaTimeUS, SceneState& sceneState);
-    void onStartUpdateLoop(U8 loopNumber);
 
     bool intersect(const SGNIntersectionParams& params, vector<SGNRayResult>& intersectionsOut) const;
 
@@ -158,6 +157,12 @@ class SceneGraph final : NonCopyable,
     mutable SharedMutex _nodesByTypeLock;
     mutable SharedMutex _pendingDeletionLock;
     hashMap<SceneGraphNode*, vector<size_t>> _pendingDeletion;
+
+    mutable Mutex _nodeEventLock;
+    eastl::fixed_vector<SceneGraphNode*, 1024, true,  eastl::dvd_allocator> _nodeEventQueue;
+
+    mutable Mutex _nodeParentChangeLock;
+    eastl::fixed_vector<SceneGraphNode*, 256, true, eastl::dvd_allocator> _nodeParentChangeQueue;
 };
 
 namespace Attorney {
@@ -180,6 +185,16 @@ class SceneGraphSGN {
 
     static void onNodeSpatialChange(SceneGraph* sceneGraph, const SceneGraphNode& node) {
         sceneGraph->onNodeSpatialChange(node);
+    }
+
+    static void onNodeEvent(SceneGraph* sceneGraph, SceneGraphNode* node) {
+        ScopedLock<Mutex> w_lock(sceneGraph->_nodeEventLock);
+        insert_unique(sceneGraph->_nodeEventQueue, node);
+    } 
+    
+    static void onNodeParentChange(SceneGraph* sceneGraph, SceneGraphNode* node) {
+        ScopedLock<Mutex> w_lock(sceneGraph->_nodeParentChangeLock);
+        insert_unique(sceneGraph->_nodeParentChangeQueue, node);
     }
 
     friend class Divide::SceneGraphNode;

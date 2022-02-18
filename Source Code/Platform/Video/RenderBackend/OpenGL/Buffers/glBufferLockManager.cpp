@@ -27,7 +27,7 @@ void glBufferLockManager::DriverBusy(const bool state) noexcept {
 
 glBufferLockManager::~glBufferLockManager()
 {
-    const ScopedLock<Mutex> w_lock(_lock);
+    const SharedLock<SharedMutex> r_lock(_lock);
     for (const BufferLock& lock : _bufferLocks) {
         GL_API::RegisterSyncDelete(lock._syncObj);
     }
@@ -49,7 +49,7 @@ bool glBufferLockManager::waitForLockedRange(size_t lockBeginBytes,
     const BufferRange testRange{lockBeginBytes, lockLength};
 
     bool error = false;
-    ScopedLock<Mutex> w_lock(_lock);
+    ScopedLock<SharedMutex> w_lock(_lock);
     _swapLocks.resize(0);
     for (const BufferLock& lock : _bufferLocks) {
         switch (lock._state) {
@@ -93,39 +93,45 @@ bool glBufferLockManager::lockRange(const size_t lockBeginBytes, const size_t lo
 
     const BufferRange testRange{ lockBeginBytes, lockLength };
 
-    ScopedLock<Mutex> w_lock(_lock);
-
-    // This should avoid any lock leaks, since any fences we haven't waited on will be considered "signaled" eventually
-    for (BufferLock& lock : _bufferLocks) {
-        if (lock._frameID < frameID && frameID - lock._frameID >= g_LockFrameLifetime) {
-            lock._state = BufferLockState::EXPIRED;
+    {
+        OPTICK_EVENT("Attempt reuse");
+        SharedLock<SharedMutex> w_lock(_lock);
+        // This should avoid any lock leaks, since any fences we haven't waited on will be considered "signaled" eventually
+        for (BufferLock& lock : _bufferLocks) {
+            if (lock._frameID < frameID && frameID - lock._frameID >= g_LockFrameLifetime) {
+                lock._state = BufferLockState::EXPIRED;
+            }
         }
-    }
 
-    // See if we can reuse an old lock. Ignore the old fence since the new one will guard the same mem region. (Right?)
-    for (BufferLock& lock : _bufferLocks) {
-        if (Overlaps(testRange, lock._range) && 
-            (lock._state == BufferLockState::ACTIVE ||
-             lock._state == BufferLockState::ERROR))
+        // See if we can reuse an old lock. Ignore the old fence since the new one will guard the same mem region. (Right?)
+        for (BufferLock& lock : _bufferLocks) {
+            if (Overlaps(testRange, lock._range) && 
+                (lock._state == BufferLockState::ACTIVE ||
+                 lock._state == BufferLockState::ERROR))
         
-        {
-            GL_API::RegisterSyncDelete(lock._syncObj);
+            {
+                OPTICK_EVENT("Reusing existing fence");
+                GL_API::RegisterSyncDelete(lock._syncObj);
 
-            lock._range._startOffset = std::min(testRange._startOffset, lock._range._startOffset);
-            lock._range._length = std::max(testRange._length, lock._range._length);
-            lock._frameID = frameID;
-            lock._syncObj = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-            return true;
+                lock._range._startOffset = std::min(testRange._startOffset, lock._range._startOffset);
+                lock._range._length = std::max(testRange._length, lock._range._length);
+                lock._frameID = frameID;
+                lock._syncObj = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+                return true;
+            }
         }
     }
-
-    // No luck with our reuse search. Add a new lock.
-    _bufferLocks.emplace_back(
-        testRange,
-        glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0),
-        frameID
-    );
-
+    {
+        OPTICK_EVENT("Add Fence");
+        // We might have a race condition here where we end up adding a mergeble fence, but that is fine
+        ScopedLock<SharedMutex> w_lock(_lock);
+        // No luck with our reuse search. Add a new lock.
+        _bufferLocks.emplace_back(
+            testRange,
+            glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0),
+            frameID
+        );
+    }
     return true;
 }
 
