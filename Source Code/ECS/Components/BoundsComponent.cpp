@@ -182,7 +182,6 @@ void BoundsComponent::appendChildRefBBs() {
     for (U32 i = 0u; i < childCount; ++i) {
         BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
         if (bComp) {
-            // This will also clear our transform flag so subsequent calls will be fast
             bComp->appendChildRefBBs();
             _refBoundingBox.add(bComp->_refBoundingBox);
         }
