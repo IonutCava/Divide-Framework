@@ -61,10 +61,13 @@ namespace Divide {
             if (instanceRoot != nullptr) {
                 predicate(baseMaterial, instanceRoot);
 
-                const auto& instances = instanceRoot->getInstances();
+                //ToDo: Not hread safe 
+                instanceRoot->lockInstancesForRead();
+                const auto& instances = instanceRoot->getInstancesLocked();
                 for (Material* mat : instances) {
                     ApplyToMaterials(baseMaterial, mat, predicate);
                 }
+                instanceRoot->unlockInstancesForRead();
             }
         }
 

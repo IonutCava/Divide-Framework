@@ -141,6 +141,21 @@ namespace Divide {
         }
     }
 
+    bool SolutionExplorerWindow::nodeHasChildrenInView(const SceneGraphNode* sgn) const {
+        const SceneGraphNode::ChildContainer& children = sgn->getChildren();
+        SharedLock<SharedMutex> r_lock(children._lock);
+        const U32 childCount = children._count;
+        for (U32 i = 0u; i < childCount; ++i) {
+            if (Attorney::EditorSolutionExplorerWindow::isNodeInView(_parent, *children._data[i]) ||
+                nodeHasChildrenInView(children._data[i]))
+            {
+                return true;
+            }
+        }
+
+        return  false;
+    }
+
     void SolutionExplorerWindow::printSceneGraphNode(SceneManager* sceneManager,
                                                      SceneGraphNode* sgn,
                                                      const I32 nodeIDX,
@@ -165,9 +180,12 @@ namespace Divide {
         }
 
         const auto printNode = [&](const char* icon) {
-            if (s_onlyVisibleNodes && sgn->parent() != nullptr && !Attorney::EditorSolutionExplorerWindow::isNodeInView(_parent, *sgn)) {
-                return false;
+            if (s_onlyVisibleNodes && !Attorney::EditorSolutionExplorerWindow::isNodeInView(_parent, *sgn)) {
+                if (!SceneGraphNode::IsContainerNode(*sgn) || !nodeHasChildrenInView(sgn)) {
+                    return false;
+                }
             }
+
             const bool isRoot = sgn->parent() == nullptr;
             const bool nodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)sgn->getGUID(),
                                                     node_flags,
@@ -262,7 +280,6 @@ namespace Divide {
             ImGui::PopStyleVar();
             ImGui::TreePop();
         }
-
 
         ImGui::EndChild();
         if (lockExplorer) {
