@@ -10,7 +10,7 @@ struct VegetationData {
     vec4 data;
 };
 
-#if defined(MAX_TREE_INSTANCES) && defined(CULL_TREES)
+#if defined(MAX_TREE_INSTANCES)
 layout(std430, binding = BUFFER_TREE_DATA) coherent COMP_ONLY_RW buffer dvd_treeTransformBlock {
     VegetationData treeData[];
 };

@@ -555,22 +555,22 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStageP
 
     const AnimationComponent* aComp = get<AnimationComponent>();
     if (aComp) {
-        RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
         {
+            DescriptorSet& set = rComp.getDescriptorSet(renderStagePass);
             const AnimationComponent::AnimData data = aComp->getAnimationData();
             if (data._boneBuffer != nullptr) {
                 ShaderBufferBinding bufferBinding;
                 bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS;
                 bufferBinding._buffer = data._boneBuffer;
                 bufferBinding._elementRange = data._boneBufferRange;
-                pkg.descriptorSetCmd()._set._buffers.add(bufferBinding);
+                set._buffers.add(bufferBinding);
             }
             if (data._prevBoneBufferRange.max > 0) {
                 ShaderBufferBinding bufferBinding;
                 bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS_PREV;
                 bufferBinding._buffer = data._boneBuffer;
                 bufferBinding._elementRange = data._prevBoneBufferRange;
-                pkg.descriptorSetCmd()._set._buffers.add(bufferBinding);
+                set._buffers.add(bufferBinding);
             }
         }
     }

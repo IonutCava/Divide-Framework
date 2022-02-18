@@ -34,6 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _PIPELINE_H_
 
 #include "Core/Headers/Hashable.h"
+#include "Platform/Video/Headers/BlendingProperties.h"
 
 namespace Divide {
 
@@ -62,10 +63,11 @@ struct PipelineDescriptor final : Hashable {
     size_t _stateHash = 0;
     I64 _shaderProgramHandle = 0;
     U8 _multiSampleCount = 0u;
+    RTBlendStates _blendStates;
 
     PipelineDescriptor() = default;
-    PipelineDescriptor(const size_t hash, const I64 handle, const U8 sampleCount = 0u) noexcept
-        : _stateHash(hash), _shaderProgramHandle(handle), _multiSampleCount(sampleCount)
+    PipelineDescriptor(const size_t hash, const I64 handle, const U8 sampleCount = 0u, const RTBlendStates blendStates = {}) noexcept
+        : _stateHash(hash), _shaderProgramHandle(handle), _multiSampleCount(sampleCount), _blendStates(blendStates)
     {
     }
 
@@ -109,8 +111,6 @@ public:
 private: //data
     size_t _cachedHash = 0;
     PipelineDescriptor _descriptor;
-    
-
 }; //class Pipeline
 
 }; //namespace Divide

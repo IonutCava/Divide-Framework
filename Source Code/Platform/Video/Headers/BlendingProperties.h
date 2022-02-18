@@ -38,52 +38,35 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 struct BlendingProperties {
-    BlendProperty  _blendSrc = BlendProperty::ONE;
-    BlendProperty  _blendDest = BlendProperty::ZERO;
-    BlendOperation _blendOp = BlendOperation::ADD;
 
-    BlendProperty  _blendSrcAlpha = BlendProperty::ONE;
-    BlendProperty  _blendDestAlpha = BlendProperty::ZERO;
-    BlendOperation _blendOpAlpha = BlendOperation::COUNT;
-
-    bool _enabled = false;
-
-    bool operator==(const BlendingProperties& rhs) const noexcept {
-        return _enabled == rhs._enabled &&
-               _blendSrc == rhs._blendSrc &&
-               _blendDest == rhs._blendDest &&
-               _blendOp == rhs._blendOp &&
-               _blendSrcAlpha == rhs._blendSrcAlpha &&
-               _blendDestAlpha == rhs._blendDestAlpha &&
-               _blendOpAlpha == rhs._blendOpAlpha;
-    }
-
-    bool operator!=(const BlendingProperties& rhs) const noexcept {
-        return _enabled != rhs._enabled ||
-               _blendSrc != rhs._blendSrc ||
-               _blendDest != rhs._blendDest ||
-               _blendOp != rhs._blendOp ||
-               _blendSrcAlpha != rhs._blendSrcAlpha ||
-               _blendDestAlpha != rhs._blendDestAlpha ||
-               _blendOpAlpha != rhs._blendOpAlpha;
-    }
-
-    [[nodiscard]] bool blendEnabled() const noexcept {
-        return _enabled;
-    }
-
-    void reset() noexcept {
-        _enabled = false;
-
-        _blendSrc = BlendProperty::ONE;
-        _blendDest = BlendProperty::ZERO;
-        _blendOp = BlendOperation::ADD;
-
-        _blendSrcAlpha = BlendProperty::ONE;
-        _blendDestAlpha = BlendProperty::ZERO;
-        _blendOpAlpha = BlendOperation::ADD;
-    }
+    PROPERTY_RW(BlendProperty,  blendSrc, BlendProperty::ONE);
+    PROPERTY_RW(BlendProperty,  blendDest, BlendProperty::ZERO);
+    PROPERTY_RW(BlendOperation, blendOp, BlendOperation::ADD);
+    PROPERTY_RW(BlendProperty,  blendSrcAlpha, BlendProperty::ONE);
+    PROPERTY_RW(BlendProperty,  blendDestAlpha, BlendProperty::ZERO);
+    PROPERTY_RW(BlendOperation, blendOpAlpha, BlendOperation::COUNT);
+    PROPERTY_RW(bool, enabled, false);
 };
+
+[[nodiscard]] size_t GetHash(const BlendingProperties& properties);
+bool operator==(const BlendingProperties& lhs, const BlendingProperties& rhs) noexcept;
+bool operator!=(const BlendingProperties& lhsc, const BlendingProperties& rhs) noexcept;
+
+// 4 should be more than enough even for batching multiple render targets together
+constexpr U8 MAX_RT_COLOUR_ATTACHMENTS = 4;
+
+struct RTBlendState {
+    UColour4 _blendColour = { 0u, 0u, 0u, 0u };
+    BlendingProperties _blendProperties;
+};
+
+bool operator==(const RTBlendState& lhs, const RTBlendState& rhs) noexcept;
+bool operator!=(const RTBlendState& lhs, const RTBlendState& rhs) noexcept;
+
+// Blend state 0 with no RT bound == Global blend
+using RTBlendStates = std::array<RTBlendState, MAX_RT_COLOUR_ATTACHMENTS>;
+
+[[nodiscard]] size_t GetHash(const RTBlendStates& blendStates);
 
 }; //namespace Divide
 

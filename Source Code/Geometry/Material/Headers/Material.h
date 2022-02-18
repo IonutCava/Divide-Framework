@@ -248,6 +248,11 @@ class Material final : public CachedResource {
                     TexturePrePassUsage prePassUsage = TexturePrePassUsage::AUTO);
     void setTextureOperation(TextureUsage textureUsageSlot, TextureOperation op);
 
+    void lockInstancesForRead() const;
+    void unlockInstancesForRead() const;
+    void lockInstancesForWrite() const;
+    void unlockInstancesForWrite() const;
+    [[nodiscard]] const vector<Material*>& getInstancesLocked() const noexcept;
     [[nodiscard]] const vector<Material*>& getInstances() const noexcept;
 
     [[nodiscard]] FColour4 getBaseColour(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
@@ -343,6 +348,8 @@ class Material final : public CachedResource {
 
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> _extraShaderDefines{};
     mutable SharedMutex _textureLock{};
+
+    mutable SharedMutex _instanceLock;
     vector<Material*> _instances{};
 
     static SamplerAddress s_defaultTextureAddress;

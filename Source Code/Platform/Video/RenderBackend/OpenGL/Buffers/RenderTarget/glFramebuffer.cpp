@@ -382,24 +382,6 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
     }
 }
 
-void glFramebuffer::setBlendState(const RTBlendStates& blendStates) const {
-    const RTAttachmentPool::PoolEntry& colourAttachments = _attachmentPool->get(RTAttachmentType::Colour);
-    setBlendState(blendStates, colourAttachments);
-}
-
-void glFramebuffer::setBlendState(const RTBlendStates& blendStates, const RTAttachmentPool::PoolEntry& activeAttachments) const {
-    OPTICK_EVENT();
-
-    for (size_t i = 0u; i < activeAttachments.size(); ++i) {
-        const RTAttachment_ptr& colourAtt = activeAttachments[i];
-        const RTBlendState& blend = blendStates[i];
-
-        // Set blending per attachment if specified. Overrides general blend state
-        GL_API::GetStateTracker().setBlending(static_cast<GLuint>(colourAtt->binding() - to_U32(GL_COLOR_ATTACHMENT0)), blend._blendProperties);
-        GL_API::GetStateTracker().setBlendColour(blend._blendColour);
-    }
-}
-
 void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy, const RTAttachmentPool::PoolEntry& activeAttachments) {
     OPTICK_EVENT();
 

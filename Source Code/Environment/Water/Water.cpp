@@ -314,9 +314,7 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
 
     EditorDataState& state = _editorDataDirtyState[to_base(renderStagePass._stage)];
     if (state == EditorDataState::CHANGED || state == EditorDataState::PROCESSED) {
-        RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
-
-        PushConstants& constants = pkg.pushConstantsCmd()._constants;
+        PushConstants& constants = rComp.getPushConstants(renderStagePass);
         constants.set(_ID("_noiseFactor"), GFX::PushConstantType::VEC2, noiseFactor());
         constants.set(_ID("_noiseTile"), GFX::PushConstantType::VEC2, noiseTile());
         constants.set(_ID("_fogStartEndDistances"), GFX::PushConstantType::VEC2, fogStartEnd());

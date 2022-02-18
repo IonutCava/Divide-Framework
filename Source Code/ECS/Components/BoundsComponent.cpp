@@ -173,6 +173,22 @@ void BoundsComponent::updateBoundingBoxTransform() {
     _boundingBox.transform(_refBoundingBox.getMin(), _refBoundingBox.getMax(), mat);
 }
 
+void BoundsComponent::appendChildRefBBs() {
+    OPTICK_EVENT();
+    const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
+
+    SharedLock<SharedMutex> w_lock(children._lock);
+    const U32 childCount = children._count;
+    for (U32 i = 0u; i < childCount; ++i) {
+        BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
+        if (bComp) {
+            // This will also clear our transform flag so subsequent calls will be fast
+            bComp->appendChildRefBBs();
+            _refBoundingBox.add(bComp->_refBoundingBox);
+        }
+    }
+}
+
 void BoundsComponent::appendChildBBs() {
     OPTICK_EVENT();
 
@@ -189,7 +205,7 @@ void BoundsComponent::appendChildBBs() {
         if (bComp) {
             // This will also clear our transform flag so subsequent calls will be fast
             bComp->appendChildBBs();
-            _boundingBox.add(bComp->getBoundingBox());
+            _boundingBox.add(bComp->_boundingBox);
         }
     }
     _boundingSphere.fromBoundingBox(_boundingBox);

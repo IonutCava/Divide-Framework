@@ -401,6 +401,34 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
                 pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
                 pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
             }
+            if (renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS) {
+                RTBlendState& state0 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
+                state0._blendProperties.enabled(true);
+                state0._blendProperties.blendSrc(BlendProperty::SRC_ALPHA);
+                state0._blendProperties.blendDest(BlendProperty::INV_SRC_ALPHA);
+                state0._blendProperties.blendOp(BlendOperation::ADD);
+            } else if (renderStagePass._passType == RenderPassType::OIT_PASS) {
+                RTBlendState& state0 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::ACCUMULATION)];
+                state0._blendProperties.enabled(true);
+                state0._blendProperties.blendSrc(BlendProperty::ONE);
+                state0._blendProperties.blendDest(BlendProperty::ONE);
+                state0._blendProperties.blendOp(BlendOperation::ADD);
+
+                RTBlendState& state1 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::REVEALAGE)];
+                state1._blendProperties.enabled(true);
+                state1._blendProperties.blendSrc(BlendProperty::ZERO);
+                state1._blendProperties.blendDest(BlendProperty::INV_SRC_COLOR);
+                state1._blendProperties.blendOp(BlendOperation::ADD);
+
+                if_constexpr(Config::USE_COLOURED_WOIT) {
+                    RTBlendState& state2 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::MODULATE)];
+                    state2._blendProperties.enabled(true);
+                    state2._blendProperties.blendSrc(BlendProperty::ONE);
+                    state2._blendProperties.blendDest(BlendProperty::ONE);
+                    state2._blendProperties.blendOp(BlendOperation::ADD);
+                }
+            }
+
             pkg.pipelineCmd()._pipeline = _context.newPipeline(pipelineDescriptor);
         }
 
@@ -466,6 +494,23 @@ void RenderingComponent::getCommandBuffer(RenderPackage* const pkg, GFX::Command
             }
         }
     }
+}
+
+DescriptorSet& RenderingComponent::getDescriptorSet(const RenderStagePass renderStagePass) {
+    return getDrawPackage(renderStagePass).descriptorSetCmd()._set;
+}
+
+PushConstants& RenderingComponent::getPushConstants(const RenderStagePass renderStagePass) {
+    return getDrawPackage(renderStagePass).pushConstantsCmd()._constants;
+}
+
+void RenderingComponent::addAdditionalCommands(const RenderStagePass renderStagePass, GFX::CommandBuffer* cmdBuffer) {
+    getDrawPackage(renderStagePass).additionalCommands(cmdBuffer);
+}
+
+size_t RenderingComponent::getPipelineHash(const RenderStagePass renderStagePass) {
+    const Pipeline* pipeline = getDrawPackage(renderStagePass).pipelineCmd()._pipeline;
+    return (pipeline != nullptr ? pipeline->getHash() : 0u);
 }
 
 RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass renderStagePass) {

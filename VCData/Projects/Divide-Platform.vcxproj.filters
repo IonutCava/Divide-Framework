@@ -615,6 +615,9 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Shaders\glUniformPushConstantUploader.cpp">
       <Filter>Video\RenderBackend\OpenGL\Shaders</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\BlendingProperties.cpp">
+      <Filter>Video</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Audio">

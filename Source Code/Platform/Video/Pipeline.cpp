@@ -16,19 +16,23 @@ size_t PipelineDescriptor::getHash() const {
         Util::Hash_combine(_hash, i);
     }
 
+    Util::Hash_combine(_hash, GetHash(_blendStates));
+
     return _hash;
 }
 
 bool PipelineDescriptor::operator==(const PipelineDescriptor &other) const noexcept {
     return _stateHash == other._stateHash &&
            _multiSampleCount == other._multiSampleCount &&
-           _shaderProgramHandle == other._shaderProgramHandle;
+           _shaderProgramHandle == other._shaderProgramHandle &&
+           _blendStates == other._blendStates;
 }
 
 bool PipelineDescriptor::operator!=(const PipelineDescriptor &other) const noexcept {
     return _stateHash != other._stateHash ||
            _multiSampleCount != other._multiSampleCount ||
-           _shaderProgramHandle != other._shaderProgramHandle;
+           _shaderProgramHandle != other._shaderProgramHandle ||
+           _blendStates != other._blendStates;
 }
 
 Pipeline::Pipeline(const PipelineDescriptor& descriptor)

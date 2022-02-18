@@ -267,26 +267,24 @@ void OpenGL3Renderer::setupRenderingBlendMode(const BlendMode mode,
 
     if (d_activeBlendMode == BM_RTT_PREMULTIPLIED)
     {
-        Divide::BlendingProperties blend = {
-                                            Divide::BlendProperty::ONE,
-                                            Divide::BlendProperty::INV_SRC_ALPHA,
-                                            Divide::BlendOperation::ADD
-        };
-        blend._enabled = true;
+        Divide::BlendingProperties blend{};
+        blend.enabled(true);
+        blend.blendSrc(Divide::BlendProperty::ONE);
+        blend.blendDest(Divide::BlendProperty::INV_SRC_ALPHA);
+        blend.blendOp(Divide::BlendOperation::ADD);
 
         Divide::GL_API::GetStateTracker().setBlending(blend);
     }
     else
     {
-        Divide::BlendingProperties blend = {
-                                                      Divide::BlendProperty::SRC_ALPHA,
-                                                      Divide::BlendProperty::INV_SRC_ALPHA,
-                                                      Divide::BlendOperation::ADD,
-                                                      Divide::BlendProperty::INV_DEST_ALPHA,
-                                                      Divide::BlendProperty::ONE,
-                                                      Divide::BlendOperation::ADD
-        };
-        blend._enabled = true;
+        Divide::BlendingProperties blend{};
+        blend.enabled(true);
+        blend.blendSrc(Divide::BlendProperty::SRC_ALPHA);
+        blend.blendDest(Divide::BlendProperty::INV_SRC_ALPHA);
+        blend.blendOp(Divide::BlendOperation::ADD);
+        blend.blendSrcAlpha(Divide::BlendProperty::INV_DEST_ALPHA);
+        blend.blendDestAlpha(Divide::BlendProperty::ONE);
+        blend.blendOpAlpha(Divide::BlendOperation::ADD);
 
         Divide::GL_API::GetStateTracker().setBlending(blend);
     }

@@ -38,9 +38,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-// 4 should be more than enough even for batching multiple render targets together
-constexpr U8 MAX_RT_COLOUR_ATTACHMENTS = 4;
-
 struct RTDrawMask {
     std::array<bool, MAX_RT_COLOUR_ATTACHMENTS> _disabledColours = {
         false,
@@ -53,12 +50,6 @@ struct RTDrawMask {
     bool _disabledStencil = false;
 };
 
-struct RTBlendState {
-    UColour4 _blendColour = {0u, 0u, 0u, 0u};
-    BlendingProperties _blendProperties;
-};
-
-using RTBlendStates = std::array<RTBlendState, MAX_RT_COLOUR_ATTACHMENTS>;
 
 struct RTClearColourDescriptor
 {

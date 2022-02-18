@@ -130,22 +130,11 @@ void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer
 
     if (guiConfig.cegui.enabled) {
         GFX::EnqueueCommand<GFX::ExternalCommand>(bufferInOut)->_cbk = [this]() { CEGUIDrawInternal(); };
-
-        GFX::SetBlendCommand blendCmd = {};
-        blendCmd._blendProperties = BlendingProperties{
-            BlendProperty::SRC_ALPHA,
-            BlendProperty::INV_SRC_ALPHA,
-            BlendOperation::ADD
-        };
-        blendCmd._blendProperties._enabled = true;
-        GFX::EnqueueCommand(bufferInOut, blendCmd);
-
-        context.drawTextureInViewport(getCEGUIRenderTextureData(), 0u, viewport, false, false, bufferInOut);
+        context.drawTextureInViewport(getCEGUIRenderTextureData(), 0u, viewport, false, false, true, bufferInOut);
     }
 
     // Restore full state
     GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline =  _postCEGUIPipeline;
-    GFX::EnqueueCommand<GFX::SetBlendCommand>(bufferInOut);
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 

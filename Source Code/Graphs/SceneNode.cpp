@@ -22,9 +22,6 @@ SceneNode::SceneNode(ResourceCache* parentCache, const size_t descriptorHash, co
     std::atomic_init(&_sgnParentCount, 0);
     _requiredComponentMask |= requiredComponentMask;
 
-    _boundingBox.setMin(-1.0f);
-    _boundingBox.setMax(1.0f);
-
     getEditorComponent().onChangedCbk([this](const std::string_view field) {
         editorFieldChanged(field);
     });

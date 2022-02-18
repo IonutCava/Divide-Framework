@@ -299,6 +299,11 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         shaderResDescriptor.propertyDescriptor(shaderDescriptor);
         _infiniteGridProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
         gridPipeDesc._shaderProgramHandle = _infiniteGridProgram->getGUID();
+        BlendingProperties& blend = gridPipeDesc._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)]._blendProperties;
+        blend.enabled(true);
+        blend.blendSrc(BlendProperty::SRC_ALPHA);
+        blend.blendDest(BlendProperty::INV_SRC_ALPHA);
+        blend.blendOp(BlendOperation::ADD);
         _infiniteGridPipeline = _context.gfx().newPipeline(gridPipeDesc);
 
         PipelineDescriptor pipelineDesc;
@@ -868,15 +873,7 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
             _gridSettingsDirty = false;
         }
 
-        RTBlendState& state0 = GFX::EnqueueCommand<GFX::SetBlendStateCommand>(bufferInOut)->_blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
-        state0._blendProperties._enabled = true;
-        state0._blendProperties._blendSrc = BlendProperty::SRC_ALPHA;
-        state0._blendProperties._blendDest = BlendProperty::INV_SRC_ALPHA;
-        state0._blendProperties._blendOp = BlendOperation::ADD;
-
         bufferInOut.add(_infiniteGridPrimitive->toCommandBuffer());
-        // Reset blend states
-        GFX::EnqueueCommand(bufferInOut, GFX::SetBlendStateCommand{});
     }
 
     // Debug axis form the axis arrow gizmo in the corner of the screen
@@ -1044,7 +1041,6 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     static bool s_initDrawCmds = false;
     static GFX::BindPipelineCommand s_pipelineCmd = {};
     static GFX::SendPushConstantsCommand s_pushConstantsCommand = {};
-    static GFX::SetBlendCommand s_blendCmd = {};
     static GFX::BeginDebugScopeCommand s_beginDebugScope{ "Render IMGUI" };
 
     if (windowGUID == -1) {
@@ -1072,6 +1068,11 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         PipelineDescriptor pipelineDesc = {};
         pipelineDesc._stateHash = state.getHash();
         pipelineDesc._shaderProgramHandle = _imguiProgram->getGUID();
+        BlendingProperties& blend = pipelineDesc._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)]._blendProperties;
+        blend.enabled(true);
+        blend.blendSrc(BlendProperty::SRC_ALPHA);
+        blend.blendDest(BlendProperty::INV_SRC_ALPHA);
+        blend.blendOp(BlendOperation::ADD);
         s_pipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDesc);
 
         PushConstants pushConstants = {};
@@ -1082,18 +1083,11 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         pushConstants.set(_ID("layer"), GFX::PushConstantType::UINT, 0u);
         s_pushConstantsCommand._constants = pushConstants;
 
-        s_blendCmd._blendProperties = BlendingProperties{
-            BlendProperty::SRC_ALPHA,
-            BlendProperty::INV_SRC_ALPHA,
-            BlendOperation::ADD
-        };
         s_initDrawCmds = true;
     }
 
     GFX::EnqueueCommand(bufferInOut, s_beginDebugScope);
 
-    s_blendCmd._blendProperties._enabled = true;
-    GFX::EnqueueCommand(bufferInOut, s_blendCmd);
     GFX::EnqueueCommand(bufferInOut, s_pipelineCmd);
     GFX::EnqueueCommand(bufferInOut, s_pushConstantsCommand);
     GFX::EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
@@ -1119,9 +1113,6 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     drawIMGUI._data = pDrawData;
     drawIMGUI._windowGUID = windowGUID;
     GFX::EnqueueCommand(bufferInOut, drawIMGUI);
-
-    s_blendCmd._blendProperties._enabled = false;
-    GFX::EnqueueCommand(bufferInOut, s_blendCmd);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }

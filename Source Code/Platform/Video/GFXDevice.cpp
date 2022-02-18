@@ -857,6 +857,13 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = _displayShader->getGUID();
                 _drawFSTexturePipelineCmd._pipeline = newPipeline(pipelineDescriptor);
+
+                RTBlendState& blendState = pipelineDescriptor._blendStates[0];
+                blendState._blendProperties.enabled(true);
+                blendState._blendProperties.blendSrc(BlendProperty::SRC_ALPHA);
+                blendState._blendProperties.blendDest(BlendProperty::INV_SRC_ALPHA);
+                blendState._blendProperties.blendOp(BlendOperation::ADD);
+                _drawFSTexturePipelineBlendCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
         {
@@ -1885,6 +1892,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
                               Rect<I32>{0, 0, renderTarget.getWidth(), renderTarget.getHeight()},
                               false,
                               true,
+                              false,
                               cmdBufferInOut);
 
         GFX::EnqueueCommand(cmdBufferInOut, GFX::EndRenderPassCommand{});
@@ -2031,7 +2039,7 @@ void GFXDevice::drawText(const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bu
     }
 }
 
-void GFXDevice::drawTextureInViewport(const TextureData data, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, GFX::CommandBuffer& bufferInOut) {
+void GFXDevice::drawTextureInViewport(const TextureData data, const size_t samplerHash, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut) {
     static GFX::BeginDebugScopeCommand   s_beginDebugScopeCmd    { "Draw Texture In Viewport" };
     static GFX::SendPushConstantsCommand s_pushConstantsSRGBTrue { PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, true}}};
     static GFX::SendPushConstantsCommand s_pushConstantsSRGBFalse{ PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, false}}};
@@ -2041,7 +2049,7 @@ void GFXDevice::drawTextureInViewport(const TextureData data, const size_t sampl
 
     GFX::EnqueueCommand(bufferInOut, s_beginDebugScopeCmd);
     GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
-    GFX::EnqueueCommand(bufferInOut, drawToDepthOnly ? _drawFSDepthPipelineCmd : _drawFSTexturePipelineCmd);
+    GFX::EnqueueCommand(bufferInOut, drawToDepthOnly ? _drawFSDepthPipelineCmd : drawBlend ? _drawFSTexturePipelineBlendCmd : _drawFSTexturePipelineCmd);
     GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ data, samplerHash, TextureUsage::UNIT0 });
     GFX::EnqueueCommand(bufferInOut, GFX::PushViewportCommand{ viewport });
 

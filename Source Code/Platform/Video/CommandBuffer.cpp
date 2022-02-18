@@ -204,7 +204,6 @@ void CommandBuffer::batch() {
             case CommandType::POP_CAMERA:
             case CommandType::SET_CLIP_PLANES:
             case CommandType::SET_SCISSOR:
-            case CommandType::SET_BLEND:
             case CommandType::SET_VIEWPORT:
             case CommandType::PUSH_VIEWPORT:
             case CommandType::POP_VIEWPORT:
@@ -247,7 +246,6 @@ void CommandBuffer::clean() {
     const Rect<I32>* prevScissorRect = nullptr;
     const Rect<I32>* prevViewportRect = nullptr;
     const DescriptorSet* prevDescriptorSet = nullptr;
-    const BlendingProperties* prevBlendProperties = nullptr;
 
     for (CommandEntry& cmd :_commandOrder) {
         bool erase = false;
@@ -324,16 +322,6 @@ void CommandBuffer::clean() {
                     erase = true;
                 }
             } break;
-            case CommandType::SET_BLEND: {
-                OPTICK_EVENT("Clean Viewport");
-
-                const BlendingProperties& blendProperties = get<SetBlendCommand>(cmd)->_blendProperties;
-                if (prevBlendProperties == nullptr || *prevBlendProperties != blendProperties) {
-                    prevBlendProperties = &blendProperties;
-                } else {
-                    erase = true;
-                }
-            } break;
             default: break;
         };
 
@@ -402,11 +390,6 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
                     }
                     pushedSubPass = false;
                 } break;
-                case CommandType::SET_BLEND_STATE: {
-                    if (!pushedPass) {
-                        return { ErrorType::MISSING_BEGIN_RENDER_PASS_FOR_BLEND, cmdIndex };
-                    }
-                }break;
                 case CommandType::BEGIN_DEBUG_SCOPE: {
                     ++pushedDebugScope;
                 } break;

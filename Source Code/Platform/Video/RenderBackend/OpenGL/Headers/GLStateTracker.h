@@ -63,7 +63,7 @@ namespace Divide {
         // Just a wrapper around glClipControl
         void setClippingPlaneState(bool lowerLeftOrigin, bool negativeOneToOneDepth);
         void setBlending(const BlendingProperties& blendingProperties);
-        void resetBlending() { setBlending(_blendPropertiesGlobal); }
+        void resetBlending() { setBlending(_blendPropertiesGlobal); setBlendColour({ 0u, 0u, 0u, 0u }); }
         /// Set the blending properties for the specified draw buffer
         void setBlending(GLuint drawBufferIdx, const BlendingProperties& blendingProperties);
         void resetBlending(const GLuint drawBufferIdx) { setBlending(drawBufferIdx, _blendProperties[drawBufferIdx]); }
@@ -168,9 +168,7 @@ namespace Divide {
         GLfloat _depthFarVal = -1.f;
         bool _lowerLeftOrigin = true;
         bool _negativeOneToOneDepth = true;
-        BlendingProperties _blendPropertiesGlobal = { BlendProperty::ONE,
-                                                      BlendProperty::ONE,
-                                                      BlendOperation::ADD };
+        BlendingProperties _blendPropertiesGlobal;
         GLboolean _blendEnabledGlobal = GL_FALSE;
 
         // 32 buffer bindings for now

@@ -196,12 +196,12 @@ void OpenGL3StateChangeWrapper::blendFunc(GLenum sfactor, GLenum dfactor)
     const bool callIsRedundant = d_blendFuncParams.equal(sfactor, dfactor);
     if(!callIsRedundant)
     {
-        Divide::BlendingProperties blend = {
-                                            Divide::getProperty(sfactor),
-                                            Divide::getProperty(dfactor),
-                                            Divide::BlendOperation::ADD
-        };
-        blend._enabled = true;
+        Divide::BlendingProperties blend{};
+        blend.enabled(true);
+        blend.blendSrc(Divide::getProperty(sfactor));
+        blend.blendDest(Divide::getProperty(dfactor));
+        blend.blendOp(Divide::BlendOperation::ADD);
+
         Divide::GL_API::GetStateTracker().setBlending(blend);
     }
 }
@@ -210,15 +210,14 @@ void OpenGL3StateChangeWrapper::blendFuncSeparate(GLenum sfactorRGB, GLenum dfac
 {
     const bool callIsRedundant = d_blendFuncSeperateParams.equal(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
     if (!callIsRedundant) {
-        Divide::BlendingProperties blend = {
-                                                        Divide::getProperty(sfactorRGB),
-                                                        Divide::getProperty(dfactorRGB),
-                                                        Divide::BlendOperation::ADD,
-                                                        Divide::getProperty(sfactorAlpha),
-                                                        Divide::getProperty(dfactorAlpha),
-                                                        Divide::BlendOperation::ADD
-        };
-        blend._enabled = true;
+        Divide::BlendingProperties blend{};
+        blend.enabled(true);
+        blend.blendSrc(Divide::getProperty(sfactorRGB));
+        blend.blendDest(Divide::getProperty(dfactorRGB));
+        blend.blendOp(Divide::BlendOperation::ADD);
+        blend.blendSrcAlpha(Divide::getProperty(sfactorAlpha));
+        blend.blendDestAlpha(Divide::getProperty(dfactorAlpha));
+        blend.blendOpAlpha(Divide::BlendOperation::ADD);
 
         Divide::GL_API::GetStateTracker().setBlending(blend);
     }

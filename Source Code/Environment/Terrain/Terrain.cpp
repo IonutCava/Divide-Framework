@@ -316,8 +316,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
                                     vec3<F32>(tessParams().WorldScale()[0], 1.f, tessParams().WorldScale()[1]),
                                     mat3<F32>());
 
-    RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
-    PushConstants& constants = pkg.pushConstantsCmd()._constants;
+    PushConstants& constants = rComp.getPushConstants(renderStagePass);
     constants.set(_ID("dvd_terrainWorld"), GFX::PushConstantType::MAT4, terrainWorldMat);
     constants.set(_ID("dvd_uvEyeOffset"), GFX::PushConstantType::VEC2, uvEye);
     constants.set(_ID("dvd_tessTriangleWidth"),  GFX::PushConstantType::FLOAT, triangleWidth);

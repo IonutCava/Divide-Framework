@@ -218,6 +218,7 @@
     <ClCompile Include="../../Source Code\Platform\Video\RenderBackend\OpenGL\GLStateTracker.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\ConditionalWait.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\File\ResourcePath.cpp" />
+    <ClCompile Include="..\..\Source Code\Platform\Video\BlendingProperties.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\glimBatch.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\glimBatchAttributes.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\GLIM\glimBatchData.cpp" />

@@ -58,12 +58,10 @@ enum class CommandType : U8 {
     END_PIXEL_BUFFER,
     BEGIN_RENDER_SUB_PASS,
     END_RENDER_SUB_PASS,
-    SET_BLEND_STATE,
     SET_VIEWPORT,
     PUSH_VIEWPORT,
     POP_VIEWPORT,
     SET_SCISSOR,
-    SET_BLEND,
     CLEAR_RT,
     RESET_RT,
     RESET_AND_CLEAR_RT,
@@ -98,7 +96,7 @@ enum class CommandType : U8 {
 namespace Names {
     static const char* commandType[] = {
         "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_PIXEL_BUFFER", "END_PIXEL_BUFFER", "BEGIN_RENDER_SUB_PASS",
-        "END_RENDER_SUB_PASS", "SET_BLEND_STATE", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT", "SET_SCISSOR", "SET_BLEND", "CLEAR_RT",
+        "END_RENDER_SUB_PASS", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT", "SET_SCISSOR", "CLEAR_RT",
         "RESET_RT", "RESET_AND_CLEAR_RT", "BLIT_RT", "COPY_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS", "SET_CAMERA",
         "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_DESCRIPTOR_SETS", "SEND_PUSH_CONSTANTS",
         "DRAW_COMMANDS", "DRAW_TEXT", "DRAW_IMGUI", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
@@ -165,10 +163,6 @@ DEFINE_COMMAND_BEGIN(BeginRenderSubPassCommand, CommandType::BEGIN_RENDER_SUB_PA
     vector<RenderTarget::DrawLayerParams> _writeLayers;
 DEFINE_COMMAND_END(BeginRenderSubPassCommand);
 
-DEFINE_COMMAND_BEGIN(SetBlendStateCommand, CommandType::SET_BLEND_STATE);
-    RTBlendStates _blendStates;
-DEFINE_COMMAND_END(SetBlendStateCommand);
-
 DEFINE_COMMAND(EndRenderSubPassCommand, CommandType::END_RENDER_SUB_PASS);
 
 DEFINE_COMMAND_BEGIN(BlitRenderTargetCommand, CommandType::BLIT_RT);
@@ -221,10 +215,6 @@ DEFINE_COMMAND_END(ComputeMipMapsCommand);
 DEFINE_COMMAND_BEGIN(SetScissorCommand, CommandType::SET_SCISSOR);
     Rect<I32> _rect;
 DEFINE_COMMAND_END(SetScissorCommand);
-
-DEFINE_COMMAND_BEGIN(SetBlendCommand, CommandType::SET_BLEND);
-    BlendingProperties _blendProperties;
-DEFINE_COMMAND_END(SetBlendCommand);
 
 DEFINE_COMMAND_BEGIN(SetCameraCommand, CommandType::SET_CAMERA);
     SetCameraCommand(const CameraSnapshot& cameraSnapshot) noexcept : _cameraSnapshot(cameraSnapshot) {}

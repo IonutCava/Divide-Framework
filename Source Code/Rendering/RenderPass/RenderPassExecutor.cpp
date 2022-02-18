@@ -251,14 +251,26 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
 
+        pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS->getGUID();
+        s_ResolveGBufferPipeline = _context.newPipeline(pipelineDescriptor);
+
+        RTBlendState& state0 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
+        state0._blendProperties.enabled(true);
+        state0._blendProperties.blendOp(BlendOperation::ADD);
+        if_constexpr(Config::USE_COLOURED_WOIT) {
+            state0._blendProperties.blendSrc(BlendProperty::INV_SRC_ALPHA);
+            state0._blendProperties.blendDest(BlendProperty::ONE);
+        } else {
+            state0._blendProperties.blendSrc(BlendProperty::SRC_ALPHA);
+            state0._blendProperties.blendDest(BlendProperty::INV_SRC_ALPHA);
+        }
+
         pipelineDescriptor._shaderProgramHandle = OITCompositionShader->getGUID();
         s_OITCompositionPipeline = _context.newPipeline(pipelineDescriptor);
 
         pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS->getGUID();
         s_OITCompositionMSPipeline = _context.newPipeline(pipelineDescriptor);
 
-        pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS->getGUID();
-        s_ResolveGBufferPipeline = _context.newPipeline(pipelineDescriptor);
     }
 
     _transformBuffer._data._freeList.fill(true);
@@ -716,6 +728,10 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
             OPTICK_EVENT("buildDrawCommands - retrieve draw commands: OIT_PASS")
             stagePass._passType = RenderPassType::OIT_PASS;
             retrieveCommands();
+        } else {
+            OPTICK_EVENT("buildDrawCommands - retrieve draw commands: TRANSPARENCY_PASS")
+            stagePass._passType = RenderPassType::TRANSPARENCY_PASS;
+            retrieveCommands();
         }
         stagePass._passType = prevType;
     }
@@ -916,7 +932,7 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params,
                                                    : std::make_pair(RenderBinType::TRANSLUCENT, transparencyPass),
                                       _renderQueuePackages);
 
-    
+
     for (const auto&[rComp, pkg] : _renderQueuePackages) {
         Attorney::RenderingCompRenderPassExecutor::getCommandBuffer(rComp, pkg, bufferInOut);
     }
@@ -1084,29 +1100,6 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     beginRenderPassOitCmd->_target = params._targetOIT;
     SetEnabled(beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
     //beginRenderPassOitCmd->_descriptor._alphaToCoverage = true;
-
-    {
-        GFX::SetBlendStateCommand* setBlendStateCmd = GFX::EnqueueCommand<GFX::SetBlendStateCommand>(bufferInOut);
-        RTBlendState& state0 = setBlendStateCmd->_blendStates[to_U8(GFXDevice::ScreenTargets::ACCUMULATION)];
-        state0._blendProperties._enabled = true;
-        state0._blendProperties._blendSrc = BlendProperty::ONE;
-        state0._blendProperties._blendDest = BlendProperty::ONE;
-        state0._blendProperties._blendOp = BlendOperation::ADD;
-
-        RTBlendState& state1 = setBlendStateCmd->_blendStates[to_U8(GFXDevice::ScreenTargets::REVEALAGE)];
-        state1._blendProperties._enabled = true;
-        state1._blendProperties._blendSrc = BlendProperty::ZERO;
-        state1._blendProperties._blendDest = BlendProperty::INV_SRC_COLOR;
-        state1._blendProperties._blendOp = BlendOperation::ADD;
-
-        if_constexpr(Config::USE_COLOURED_WOIT) {
-            RTBlendState& state2 = setBlendStateCmd->_blendStates[to_U8(GFXDevice::ScreenTargets::MODULATE)];
-            state2._blendProperties._enabled = true;
-            state2._blendProperties._blendSrc = BlendProperty::ONE;
-            state2._blendProperties._blendDest = BlendProperty::ONE;
-            state2._blendProperties._blendOp = BlendOperation::ADD;
-        }
-    }
     {
         const RenderTarget& nonMSTarget = _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN);
         const auto& colourAtt = nonMSTarget.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
@@ -1114,9 +1107,6 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     }
 
     prepareRenderQueues(params, nodes, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut);
-
-    // Reset blend states
-    GFX::EnqueueCommand(bufferInOut, GFX::SetBlendStateCommand{});
 
     // We're gonna do a new bind soon enough
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut)->_setDefaultRTState = params._targetOIT._usage == RenderTargetUsage::OIT_MS;
@@ -1137,20 +1127,6 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
         GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
     }
 
-    {
-        GFX::SetBlendStateCommand* setBlendStateCmd = GFX::EnqueueCommand<GFX::SetBlendStateCommand>(bufferInOut);
-        RTBlendState& state0 = setBlendStateCmd->_blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
-        state0._blendProperties._enabled = true;
-        state0._blendProperties._blendOp = BlendOperation::ADD;
-        if_constexpr(Config::USE_COLOURED_WOIT) {
-            state0._blendProperties._blendSrc = BlendProperty::INV_SRC_ALPHA;
-            state0._blendProperties._blendDest = BlendProperty::ONE;
-        } else {
-            state0._blendProperties._blendSrc = BlendProperty::SRC_ALPHA;
-            state0._blendProperties._blendDest = BlendProperty::INV_SRC_ALPHA;
-        }
-    }
-
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline });
 
     RenderTarget& oitRT = _context.renderTargetPool().renderTarget(params._targetOIT);
@@ -1166,9 +1142,6 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
         
     GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ GenericDrawCommand{} })->_drawCommands.front()._primitiveType = PrimitiveType::TRIANGLES;
 
-    // Reset blend states
-    GFX::EnqueueCommand(bufferInOut, GFX::SetBlendStateCommand{});
-
     if (layeredRendering) {
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderSubPassCommand{});
     }
@@ -1181,48 +1154,31 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
 void RenderPassExecutor::transparencyPass(const VisibleNodeList<>& nodes, const RenderPassParams& params, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
 
-    if (_stage == RenderStage::SHADOW) {
-        return;
+    assert(params._stagePass._passType == RenderPassType::TRANSPARENCY_PASS);
+
+    //Grab all transparent geometry
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - Transparency Pass" });
+
+    const bool layeredRendering = params._layerParams._layer > 0;
+
+    GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+    beginRenderPassTransparentCmd->_name = "DO_TRANSPARENCY_PASS";
+    beginRenderPassTransparentCmd->_target = params._target;
+    SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
+
+    if (layeredRendering) {
+        GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
     }
 
-    if (params._stagePass._passType == RenderPassType::OIT_PASS) {
-        woitPass(nodes, params, cameraSnapshot, bufferInOut);
-    } else {
-        assert(params._stagePass._passType == RenderPassType::MAIN_PASS);
+    prepareRenderQueues(params, nodes, cameraSnapshot, true, RenderingOrder::BACK_TO_FRONT, bufferInOut);
 
-        //Grab all transparent geometry
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - Transparency Pass" });
-
-        const bool layeredRendering = params._layerParams._layer > 0;
-
-        GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-        beginRenderPassTransparentCmd->_name = "DO_TRANSPARENCY_PASS";
-        beginRenderPassTransparentCmd->_target = params._target;
-        SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
-
-        if (layeredRendering) {
-            GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
-        }
-
-        RTBlendState& state0 = GFX::EnqueueCommand<GFX::SetBlendStateCommand>(bufferInOut)->_blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
-        state0._blendProperties._enabled = true;
-        state0._blendProperties._blendSrc = BlendProperty::SRC_ALPHA;
-        state0._blendProperties._blendDest = BlendProperty::INV_SRC_ALPHA;
-        state0._blendProperties._blendOp = BlendOperation::ADD;
-
-        prepareRenderQueues(params, nodes, cameraSnapshot, true, RenderingOrder::BACK_TO_FRONT, bufferInOut);
-
-        // Reset blend states
-        GFX::EnqueueCommand(bufferInOut, GFX::SetBlendStateCommand{});
-
-        if (layeredRendering) {
-            GFX::EnqueueCommand(bufferInOut, GFX::EndRenderSubPassCommand{});
-        }
-
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
-
-        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+    if (layeredRendering) {
+        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderSubPassCommand{});
     }
+
+    GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
 void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
@@ -1367,6 +1323,9 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
         if (doOITPass) {
             params._stagePass._passType = RenderPassType::OIT_PASS;
             hasInvalidNodes = validateNodesForStagePass(visibleNodes, params._stagePass) || hasInvalidNodes;
+        } else {
+            params._stagePass._passType = RenderPassType::TRANSPARENCY_PASS;
+            hasInvalidNodes = validateNodesForStagePass(visibleNodes, params._stagePass) || hasInvalidNodes;
         }
     }
 
@@ -1420,11 +1379,16 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
 #   pragma endregion
 
 #   pragma region TRANSPARENCY_PASS
-    // If doIOTPass is false, use forward pass shaders (i.e. MAIN_PASS again for transparents)
-    if (doOITPass) {
-        params._stagePass._passType = RenderPassType::OIT_PASS;
+    if (_stage != RenderStage::SHADOW) {
+        // If doIOTPass is false, use forward pass shaders (i.e. MAIN_PASS again for transparents)
+        if (doOITPass) {
+            params._stagePass._passType = RenderPassType::OIT_PASS;
+            woitPass(visibleNodes, params, camSnapshot, bufferInOut);
+        } else {
+            params._stagePass._passType = RenderPassType::TRANSPARENCY_PASS;
+            transparencyPass(visibleNodes, params, camSnapshot, bufferInOut);
+        }
     }
-    transparencyPass(visibleNodes, params, camSnapshot, bufferInOut);
 #   pragma endregion
 
     if (_stage == RenderStage::DISPLAY) {

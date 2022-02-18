@@ -21,10 +21,8 @@ Mesh::Mesh(GFXDevice& context,
     : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, ObjectType::MESH, 0),
       _animator(nullptr)
 {
-    _boundingBox.set(-EPSILON_F32, EPSILON_F32);
     setBounds(_boundingBox);
 }
-
 
 void Mesh::addSubMesh(const SubMesh_ptr& subMesh, const mat4<F32>& localTransform) {
     // Hold a reference to the SubMesh by ID

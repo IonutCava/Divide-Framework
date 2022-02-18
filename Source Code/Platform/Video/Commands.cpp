@@ -20,7 +20,6 @@ IMPLEMENT_COMMAND(BeginPixelBufferCommand);
 IMPLEMENT_COMMAND(EndPixelBufferCommand);
 IMPLEMENT_COMMAND(BeginRenderSubPassCommand);
 IMPLEMENT_COMMAND(EndRenderSubPassCommand);
-IMPLEMENT_COMMAND(SetBlendStateCommand);
 IMPLEMENT_COMMAND(BlitRenderTargetCommand);
 IMPLEMENT_COMMAND(ClearRenderTargetCommand);
 IMPLEMENT_COMMAND(ResetRenderTargetCommand);
@@ -29,7 +28,6 @@ IMPLEMENT_COMMAND(CopyTextureCommand);
 IMPLEMENT_COMMAND(ClearTextureCommand);
 IMPLEMENT_COMMAND(ComputeMipMapsCommand);
 IMPLEMENT_COMMAND(SetScissorCommand);
-IMPLEMENT_COMMAND(SetBlendCommand);
 IMPLEMENT_COMMAND(SetCameraCommand);
 IMPLEMENT_COMMAND(PushCameraCommand);
 IMPLEMENT_COMMAND(PopCameraCommand);
@@ -51,6 +49,23 @@ IMPLEMENT_COMMAND(ExternalCommand);
 string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     assert(cmd._pipeline != nullptr);
 
+    const auto blendStateToString = [](const RTBlendState& state) -> string {
+        if (!state._blendProperties.enabled()) {
+            return "Disabled";
+        }
+
+        return Util::StringFormat("Colour {%d, %d, %d, %d}, Blend Src { %s }, Blend Dest { %s }, Blend Op { %s }, Blend Src Alpha { %s }, Blend Dest Alpha { %s }, Blend Op alpha { %s }",
+                                  state._blendColour.r,
+                                  state._blendColour.g,
+                                  state._blendColour.b,
+                                  state._blendColour.a,
+                                  Divide::Names::blendProperty[to_base(state._blendProperties.blendSrc())],
+                                  Divide::Names::blendProperty[to_base(state._blendProperties.blendDest())],
+                                  Divide::Names::blendOperation[to_base(state._blendProperties.blendOp())],
+                                  Divide::Names::blendProperty[to_base(state._blendProperties.blendSrcAlpha())],
+                                  Divide::Names::blendProperty[to_base(state._blendProperties.blendDestAlpha())],
+                                  Divide::Names::blendOperation[to_base(state._blendProperties.blendOpAlpha())]);
+    };
     string ret = "\n";
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
@@ -63,6 +78,20 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     }
     ret.append(Util::StringFormat("State hash : %zu\n", cmd._pipeline->stateHash()));
 
+    ret.append("    ");
+    for (U16 j = 0; j < indent; ++j) {
+        ret.append("    ");
+    }
+    ret.append("Blending states: \n");
+    const RTBlendStates& blendStates = cmd._pipeline->descriptor()._blendStates;
+    U8 idx = 0u;
+    for (const RTBlendState& state : blendStates) {
+        ret.append("    ");
+        for (U16 j = 0; j < indent; ++j) {
+            ret.append("    ");
+        }
+        ret.append(Util::StringFormat("%d: %s\n", idx++, blendStateToString(state)));
+    }
     return ret;
 }
 

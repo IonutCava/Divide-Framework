@@ -393,7 +393,7 @@ public:
     void drawText(const TextElementBatch& batch, GFX::CommandBuffer& bufferInOut, bool pushCamera = true) const;
 
     // Render the texture using a custom viewport
-    void drawTextureInViewport(TextureData data, size_t samplerHash, const Rect<I32>& viewport, bool convertToSrgb, bool drawToDepthOnly, GFX::CommandBuffer& bufferInOut);
+    void drawTextureInViewport(TextureData data, size_t samplerHash, const Rect<I32>& viewport, bool convertToSrgb, bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut);
 
     void blurTarget(RenderTargetHandle& blurSource, 
                     RenderTargetHandle& blurBuffer,
@@ -528,6 +528,7 @@ private:
     Pipeline* _debugGizmoPipelineNoCull = nullptr;
     Pipeline* _debugGizmoPipelineNoCullNoDepth = nullptr;
     GFX::BindPipelineCommand _drawFSTexturePipelineCmd;
+    GFX::BindPipelineCommand _drawFSTexturePipelineBlendCmd;
     GFX::BindPipelineCommand _drawFSDepthPipelineCmd;
     GFX::BindPipelineCommand _blurBoxPipelineSingleCmd;
     GFX::BindPipelineCommand _blurBoxPipelineLayeredCmd;

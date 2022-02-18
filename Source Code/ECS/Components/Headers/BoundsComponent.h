@@ -50,6 +50,7 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
 
         void updateBoundingBoxTransform();
         void appendChildBBs();
+        void appendChildRefBBs();
         [[nodiscard]] FORCE_INLINE const bool isClean() const noexcept { return _transformUpdatedMask.load() == 0u; }
 
         PROPERTY_R(bool, showAABB, false);

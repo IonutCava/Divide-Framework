@@ -130,7 +130,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
            Processed,
            COUNT
        };
-
        struct DrawCommands {
            vector_fast<GFX::DrawCommand> _data;
            SharedMutex _dataLock;
@@ -164,8 +163,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void getMaterialData(NodeMaterialData& dataOut) const;
     void getMaterialTextures(NodeMaterialTextures& texturesOut, SamplerAddress defaultTexAddress) const;
 
-    [[nodiscard]] RenderPackage& getDrawPackage(RenderStagePass renderStagePass);
-
     [[nodiscard]] const Material_ptr& getMaterialInstance() const noexcept { return _materialInstance; }
 
     [[nodiscard]] DrawCommands& drawCommands() noexcept { return _drawCommands; }
@@ -187,7 +184,13 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     void setLoDIndexOffset(U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept;
 
+    DescriptorSet& getDescriptorSet(RenderStagePass renderStagePass);
+    PushConstants& getPushConstants(RenderStagePass renderStagePass);
+    void addAdditionalCommands(const RenderStagePass renderStagePass, GFX::CommandBuffer* cmdBuffer);
+    size_t getPipelineHash(const RenderStagePass renderStagePass);
+
   protected:
+    [[nodiscard]] RenderPackage& getDrawPackage(RenderStagePass renderStagePass);
     [[nodiscard]] U8 getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
     void toggleBoundsDraw(bool showAABB, bool showBS, bool showOBB, bool recursive);
@@ -347,6 +350,10 @@ class RenderingCompRenderBin {
                            const RenderStagePass renderStagePass,
                            GFX::CommandBuffer& bufferInOut) {
         renderable->postRender(sceneRenderState, renderStagePass, bufferInOut);
+    }
+
+    static RenderPackage& getDrawPackage(RenderingComponent* renderable, const RenderStagePass renderStagePass) {
+        return renderable->getDrawPackage(renderStagePass);
     }
 
     friend class Divide::RenderBin;

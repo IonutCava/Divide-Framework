@@ -90,11 +90,7 @@ void RenderBin::addNodeToBin(const SceneGraphNode* sgn, const RenderStagePass re
 
     // Sort by state hash depending on the current rendering stage
     // Save the render state hash value for sorting
-    RenderingComponent* rComp = item._renderable;
-    const RenderPackage& pkg = rComp->getDrawPackage(renderStagePass);
-    const GFX::BindPipelineCommand& pipelinecmd = pkg.pipelineCmd();
-
-    item._stateHash = pipelinecmd._pipeline->getHash();
+    item._stateHash = item._renderable->getPipelineHash(renderStagePass);
 
     const Material_ptr& nodeMaterial = item._renderable->getMaterialInstance();
     if (nodeMaterial) {
@@ -110,7 +106,7 @@ void RenderBin::populateRenderQueue(const RenderStagePass stagePass, RenderQueue
         RenderingComponent* rComp = _renderBinStack[i]._renderable;
         queueInOut.push_back({
             rComp,
-            &rComp->getDrawPackage(stagePass)
+            &Attorney::RenderingCompRenderBin::getDrawPackage(rComp, stagePass)
         });
     }
 }

@@ -47,6 +47,14 @@ enum class RenderAPI : U8 {
     COUNT
 };
 
+namespace Names {
+    static const char* renderAPI[] = {
+        "None", "OpenGL", "OpenGLES", "Vulkan", "ERROR"
+    };
+};
+
+static_assert(std::size(Names::renderAPI) == to_base(RenderAPI::COUNT) + 1);
+
 enum class RenderTargetUsage : U8 {
     SCREEN = 0,
     SCREEN_MS,
@@ -180,11 +188,27 @@ enum class ReflectorType : U8
     COUNT
 };
 
+namespace Names {
+    static const char* reflectorType[] = {
+        "PLANAR", "CUBE", "NONE"
+    };
+};
+
+static_assert(std::size(Names::reflectorType) == to_base(ReflectorType::COUNT) + 1);
+
 enum class RefractorType : U8
 {
     PLANAR = 0,
     COUNT
 };
+
+namespace Names {
+    static const char* refractorType[] = {
+        "PLANAR", "NONE"
+    };
+};
+
+static_assert(std::size(Names::refractorType) == to_base(RefractorType::COUNT) + 1);
 
 /// The different types of lights supported
 enum class LightType : U8
@@ -200,12 +224,23 @@ namespace Names {
     };
 };
 
+static_assert(std::size(Names::lightType) == to_base(LightType::COUNT) + 1);
+
 enum class FrustumCollision : U8
 {
     FRUSTUM_OUT = 0,
-    FRUSTUM_IN = 1,
-    FRUSTUM_INTERSECT = 2
+    FRUSTUM_IN,
+    FRUSTUM_INTERSECT,
+    COUNT
 };
+
+namespace Names {
+    static const char* frustumCollision[] = {
+        "FRUSTUM_OUT", "FRUSTUM_IN", "FRUSTUM_INTERSECT", "NONE"
+    };
+};
+
+static_assert(std::size(Names::frustumCollision) == to_base(FrustumCollision::COUNT) + 1);
 
 enum class FrustumPlane : U8
 {
@@ -217,6 +252,15 @@ enum class FrustumPlane : U8
     PLANE_BOTTOM,
     COUNT
 };
+
+namespace Names {
+    static const char* frustumPlane[] = {
+        "PLANE_LEFT", "PLANE_RIGHT", "PLANE_NEAR", "PLANE_FAR",
+        "PLANE_TOP", "PLANE_BOTTOM", "NONE"
+    };
+};
+
+static_assert(std::size(Names::frustumPlane) == to_base(FrustumPlane::COUNT) + 1);
 
 enum class FrustumPoints : U8
 {
@@ -231,6 +275,16 @@ enum class FrustumPoints : U8
     COUNT
 };
 
+namespace Names {
+    static const char* frustumPoints[] = {
+        "NEAR_LEFT_TOP", "NEAR_RIGHT_TOP", "NEAR_RIGHT_BOTTOM", "NEAR_LEFT_BOTTOM",
+        "FAR_LEFT_TOP", "FAR_RIGHT_TOP", "FAR_RIGHT_BOTTOM", "FAR_LEFT_BOTTOM",
+        "NONE"
+    };
+};
+
+static_assert(std::size(Names::frustumPoints) == to_base(FrustumPoints::COUNT) + 1);
+
 /// State the various attribute locations to use in shaders with VAO/VB's
 enum class AttribLocation : U8 {
     POSITION = 0,
@@ -244,6 +298,16 @@ enum class AttribLocation : U8 {
     GENERIC = 8,
     COUNT
 };
+
+namespace Names {
+    static const char* attribLocation[] = {
+        "POSITION", "TEXCOORD", "NORMAL", "TANGENT",
+        "COLOR", "BONE_WEIGHT", "BONE_INDICE", "WIDTH",
+        "GENERIC", "NONE"
+    };
+};
+
+static_assert(std::size(Names::attribLocation) == to_base(AttribLocation::COUNT) + 1);
 
 enum class ShaderBufferLocation : U8 {
     CAM_BLOCK = 0,
@@ -278,6 +342,19 @@ enum class ShaderBufferLocation : U8 {
     ATOMIC_COUNTER_4 = 4,
 };
 
+namespace Names {
+    static const char* shaderBufferLocation[] = {
+        "CAM_BLOCK", "RENDER_BLOCK", "GPU_COMMANDS", "LIGHT_NORMAL",
+        "LIGHT_SCENE", "LIGHT_SHADOW", "LIGHT_INDICES", "LIGHT_GRID",
+        "LIGHT_INDEX_COUNT", "LIGHT_CLUSTER_AABBS", "NODE_TRANSFORM_DATA", "NODE_MATERIAL_DATA",
+        "NODE_TEXTURE_DATA", "NODE_INDIRECTION_DATA", "BONE_TRANSFORMS", "BONE_TRANSFORMS_PREV",
+        "SCENE_DATA", "PROBE_DATA", "GRASS_DATA", "TREE_DATA"
+        "CMD_BUFFER", "LUMINANCE_HISTOGRAM", "UNIFORM_BLOCK", "NONE"
+    };
+};
+
+static_assert(std::size(Names::shaderBufferLocation) == to_base(ShaderBufferLocation::COUNT) + 1);
+
 enum class RenderStage : U8 {
     SHADOW = 0,
     REFLECTION = 1,
@@ -292,19 +369,23 @@ namespace Names {
     };
 };
 
+static_assert(std::size(Names::renderStage) == to_base(RenderStage::COUNT) + 1);
 
 enum class RenderPassType : U8 {
     PRE_PASS = 0,
     MAIN_PASS = 1,
     OIT_PASS = 2,
+    TRANSPARENCY_PASS = 3,
     COUNT
 };
 
 namespace Names {
     static const char* renderPassType[] = {
-        "PRE_PASS", "MAIN_PASS", "OIT_PASS", "NONE"
+        "PRE_PASS", "MAIN_PASS", "OIT_PASS", "TRANSPARENCY_PASS", "NONE"
     };
 };
+
+static_assert(std::size(Names::renderPassType) == to_base(RenderPassType::COUNT) + 1);
 
 enum class PBType : U8 { 
     PB_TEXTURE_1D, 
@@ -312,6 +393,14 @@ enum class PBType : U8 {
     PB_TEXTURE_3D,
     COUNT
 };
+
+namespace Names {
+    static const char* pbType[] = {
+        "PB_TEXTURE_1D", "PB_TEXTURE_2D", "PB_TEXTURE_3D", "NONE"
+    };
+};
+
+static_assert(std::size(Names::pbType) == to_base(PBType::COUNT) + 1);
 
 enum class PrimitiveType : U8 {
     API_POINTS = 0x0000,
@@ -332,6 +421,8 @@ namespace Names {
         "POINTS", "LINES", "LINE_LOOP", "LINE_STRIP", "TRIANGLES", "TRIANGLE_STRIP", "TRIANGLE_FAN", "QUAD_STRIP", "POLYGON", "PATCH", "NONE"
     };
 };
+
+static_assert(std::size(Names::primitiveType) == to_base(PrimitiveType::COUNT) + 1);
 
 /// Specifies how the red, green, blue, and alpha source blending factors are computed.
 enum class BlendProperty : U8 {
@@ -354,6 +445,14 @@ enum class BlendProperty : U8 {
     /// Place all properties above this.
     COUNT
 };
+namespace Names {
+    static const char* blendProperty[] = {
+       "ZERO", "ONE", "SRC_COLOR", "INV_SRC_COLOR", "SRC_ALPHA", "INV_SRC_ALPHA", "DEST_ALPHA", "INV_DEST_ALPHA",
+       "DEST_COLOR", "INV_DEST_COLOR", "SRC_ALPHA_SAT", "NONE"
+    };
+};
+
+static_assert(std::size(Names::blendProperty) == to_base(BlendProperty::COUNT) + 1);
 
 /// Specifies how source and destination colours are combined.
 enum class BlendOperation : U8 {
@@ -373,6 +472,14 @@ enum class BlendOperation : U8 {
     /// Place all properties above this.
     COUNT
 };
+
+namespace Names {
+    static const char* blendOperation[] = {
+        "ADD", "SUBTRACT", "REV_SUBTRACT", "MIN", "MAX", "NONE"
+    };
+};
+
+static_assert(std::size(Names::blendOperation) == to_base(BlendOperation::COUNT) + 1);
 
 /// Valid comparison functions for most states
 /// YYY = test value using this function
@@ -405,6 +512,8 @@ namespace Names {
     };
 };
 
+static_assert(std::size(Names::compFunctionNames) == to_base(ComparisonFunction::COUNT) + 1);
+
 /// Specifies whether front- or back-facing facets are candidates for culling.
 enum class CullMode : U8 {
     NONE = 0,
@@ -426,6 +535,8 @@ namespace Names {
     };
 };
 
+static_assert(std::size(Names::cullModes) == to_base(CullMode::COUNT) + 1);
+
 /// Available shader stages
 enum class ShaderType : U8 {
     FRAGMENT = 0,
@@ -443,6 +554,7 @@ namespace Names {
     };
 };
 
+static_assert(std::size(Names::shaderTypes) == to_base(ShaderType::COUNT) + 1);
 
 /// Valid front and back stencil test actions
 enum class StencilOperation : U8 {
@@ -477,6 +589,8 @@ namespace Names {
     };
 };
 
+static_assert(std::size(Names::stencilOpNames) == to_base(StencilOperation::COUNT) + 1);
+
 /// Defines all available fill modes for primitives
 enum class FillMode : U8 {
     /// Polygon vertices that are marked as the start of a boundary edge are
@@ -491,10 +605,12 @@ enum class FillMode : U8 {
 };
 
 namespace Names {
-    static const char* fillModes[] = {
+    static const char* fillMode[] = {
         "Point", "Wireframe", "Solid", "ERROR!"
     };
 };
+
+static_assert(std::size(Names::fillMode) == to_base(FillMode::COUNT) + 1);
 
 enum class TextureType : U8 {
     TEXTURE_1D = 0,
@@ -507,6 +623,14 @@ enum class TextureType : U8 {
     TEXTURE_2D_ARRAY_MS,
     COUNT
 };
+
+namespace Names {
+    static const char* textureType[] = {
+        "TEXTURE_1D", "TEXTURE_2D", "TEXTURE_3D", "TEXTURE_CUBE_MAP", "TEXTURE_2D_ARRAY", "TEXTURE_CUBE_ARRAY", "TEXTURE_2D_MS", "TEXTURE_2D_ARRAY_MS", "NONE"
+    };
+};
+
+static_assert(std::size(Names::textureType) == to_base(TextureType::COUNT) + 1);
 
 enum class TextureFilter : U8 {
     LINEAR = 0x0000,
@@ -523,6 +647,8 @@ namespace Names {
         "LINEAR", "NEAREST", "NEAREST_MIPMAP_NEAREST", "LINEAR_MIPMAP_NEAREST", "NEAREST_MIPMAP_LINEAR", "LINEAR_MIPMAP_LINEAR", "NONE"
     };
 };
+
+static_assert(std::size(Names::textureFilter) == to_base(TextureFilter::COUNT) + 1);
 
 enum class TextureWrap : U8 {
     // Texture coordinates outside [0...1] are clamped to the nearest valid value.
@@ -541,6 +667,8 @@ namespace Names {
         "CLAMP", "CLAMP_TO_EDGE", "CLAMP_TO_BORDER", "DECAL", "REPEAT", "MIRROR_REPEAT", "NONE"
     };
 };
+
+static_assert(std::size(Names::textureWrap) == to_base(TextureWrap::COUNT) + 1);
 
 enum class GFXImageFormat : U8 {
     RED = 0,
@@ -581,18 +709,36 @@ enum class GFXImageFormat : U8 {
     DXT3_RGBA = BC2,
     DXT5_RGBA = BC3,
 };
+namespace Names {
+    static const char* GFXImageFormat[] = {
+        "RED", "RG", "BGR", "RGB", "BGRA", "RGBA", "DEPTH_COMPONENT", "BC1/DXT1_RGB", "BC1a/DXT1_RGBA", "BC2/DXT3_RGBA",
+        "BC3/DXT5_RGBA", "BC3n", "BC4s", "BC4u", "BC5s", "BC5u", "BC6s", "BC6u", "BC7", "BC7_SRGB",
+        "DXT1_RGB_SRGB", "DXT1_RGBA_SRGB", "DXT3_RGBA_SRGB", "DXT5_RGBA_SRGB", "NONE",
+    };
+};
+
+static_assert(std::size(Names::GFXImageFormat) == to_base(GFXImageFormat::COUNT) + 1);
 
 enum class GFXDataFormat : U8 {
-    UNSIGNED_BYTE = 0x0000,
-    UNSIGNED_SHORT = 0x0001,
-    UNSIGNED_INT = 0x0002,
-    SIGNED_BYTE = 0x0003,
-    SIGNED_SHORT = 0x0004,
-    SIGNED_INT = 0x0005,
-    FLOAT_16 = 0x0006,
-    FLOAT_32 = 0x0008,
+    UNSIGNED_BYTE = 0,
+    UNSIGNED_SHORT,
+    UNSIGNED_INT,
+    SIGNED_BYTE,
+    SIGNED_SHORT,
+    SIGNED_INT,
+    FLOAT_16,
+    FLOAT_32,
     COUNT
 };
+
+namespace Names {
+    static const char* GFXDataFormat[] = {
+        "UNSIGNED_BYTE", "UNSIGNED_SHORT", "UNSIGNED_INT", "SIGNED_BYTE", "SIGNED_SHORT", "SIGNED_INT",
+        "FLOAT_16", "FLOAT_32", "ERROR"
+    };
+};
+
+static_assert(std::size(Names::GFXDataFormat) == to_base(GFXDataFormat::COUNT) + 1);
 
 enum class GPUVendor : U8 {
     NVIDIA = 0,
@@ -609,6 +755,15 @@ enum class GPUVendor : U8 {
     COUNT
 };
 
+namespace Names {
+    static const char* GPUVendor[] = {
+        "NVIDIA", "AMD", "INTEL", "MICROSOFT", "IMAGINATION_TECH", "ARM",
+        "QUALCOMM", "VIVANTE", "ALPHAMOSAIC", "WEBGL", "OTHER", "ERROR"
+    };
+};
+
+static_assert(std::size(Names::GPUVendor) == to_base(GPUVendor::COUNT) + 1);
+
 enum class GPURenderer : U8 {
     UNKNOWN = 0,
     ADRENO,
@@ -624,6 +779,15 @@ enum class GPURenderer : U8 {
     COUNT
 };
 
+namespace Names {
+    static const char* GPURenderer[] = {
+        "UNKNOWN", "ADRENO", "GEFORCE", "INTEL", "MALI", "POWERVR",
+        "RADEON", "VIDEOCORE", "VIVANTE", "WEBGL", "GDI", "ERROR"
+    };
+};
+
+static_assert(std::size(Names::GPURenderer) == to_base(GPURenderer::COUNT) + 1);
+
 enum class BufferUpdateUsage : U8 {
     CPU_W_GPU_R = 0, //DRAW
     CPU_R_GPU_W = 1, //READ
@@ -632,12 +796,28 @@ enum class BufferUpdateUsage : U8 {
     COUNT
 };
 
+namespace Names {
+    static const char* bufferUpdateUsage[] = {
+        "CPU_W_GPU_R", "CPU_R_GPU_W", "GPU_R_GPU_W / GPU_W_CPU_R", "NONE"
+    };
+};
+
+static_assert(std::size(Names::bufferUpdateUsage) == to_base(BufferUpdateUsage::COUNT) + 1);
+
 enum class BufferUpdateFrequency : U8 {
     RARELY = 0,     //STATIC
     OCASSIONAL = 1, //DYNAMIC
     OFTEN = 2,      //STREAM
     COUNT
 };
+
+namespace Names {
+    static const char* bufferUpdateFrequency[] = {
+        "RARELY", "OCASSIONAL", "OFTEN", "NONE"
+    };
+};
+
+static_assert(std::size(Names::bufferUpdateFrequency) == to_base(BufferUpdateFrequency::COUNT) + 1);
 
 enum class QueryType : U8 {
     VERTICES_SUBMITTED = 0,
@@ -648,6 +828,13 @@ enum class QueryType : U8 {
     COUNT
 };
 
+namespace Names {
+    static const char* queryType[] = {
+        "VERTICES_SUBMITTED", "PRIMITIVES_GENERATED", "TESSELLATION_PATCHES", "TESSELLATION_CTRL_INVOCATIONS", "GPU_TIME", "NONE"
+    };
+};
+
+static_assert(std::size(Names::queryType) == to_base(QueryType::COUNT) + 1);
 
 };  // namespace Divide
 

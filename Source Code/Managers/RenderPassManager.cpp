@@ -201,7 +201,7 @@ void RenderPassManager::render(const RenderParams& params) {
        const TextureData texData = screenAtt.texture()->data();
        const Rect<I32>& targetViewport = params._targetViewport;
        // Apply gamma correction here as PostFX requires everything in linear space
-       gfx.drawTextureInViewport(texData, screenAtt.samplerHash(), targetViewport, true, false, buf);
+       gfx.drawTextureInViewport(texData, screenAtt.samplerHash(), targetViewport, true, false, false, buf);
 
        {
            Time::ScopedTimer timeGUIBuffer(*_processGUITimer);

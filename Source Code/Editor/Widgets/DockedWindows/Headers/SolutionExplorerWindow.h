@@ -62,6 +62,7 @@ class SolutionExplorerWindow final : public DockedWindow, public PlatformContext
       void goToNode(const SceneGraphNode* sgn) const;
       void saveNode(const SceneGraphNode* sgn) const;
       void loadNode(SceneGraphNode* sgn) const;
+      [[nodiscard]] bool nodeHasChildrenInView(const SceneGraphNode* sgn) const;
 
       SceneNode_ptr createNode();
   private:

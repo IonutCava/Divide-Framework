@@ -268,19 +268,16 @@ I32 GL_API::getFont(const Str64& fontName) {
 void GL_API::drawText(const TextElementBatch& batch) {
     OPTICK_EVENT();
 
-    GetStateTracker().setBlending(0,
-        BlendingProperties{
-            BlendProperty::SRC_ALPHA,
-            BlendProperty::INV_SRC_ALPHA,
-            BlendOperation::ADD,
+    BlendingProperties textBlend{};
+    textBlend.blendSrc(BlendProperty::SRC_ALPHA);
+    textBlend.blendDest(BlendProperty::INV_SRC_ALPHA);
+    textBlend.blendOp(BlendOperation::ADD);
+    textBlend.blendSrcAlpha(BlendProperty::ONE);
+    textBlend.blendDestAlpha(BlendProperty::ZERO);
+    textBlend.blendOpAlpha(BlendOperation::COUNT);
+    textBlend.enabled(true);
 
-            BlendProperty::ONE,
-            BlendProperty::ZERO,
-            BlendOperation::COUNT,
-
-            true //enabled
-        }
-    );
+    GetStateTracker().setBlending(0, textBlend);
     GetStateTracker().setBlendColour(DefaultColours::BLACK_U8);
 
     const I32 width = _context.renderingResolution().width;
@@ -419,7 +416,14 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     if (stateTracker.setStateBlock(stateBlockHash != 0 ? stateBlockHash : _context.getDefaultStateBlock(false)) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
-
+    U16 i = 0u;
+    for (const RTBlendState& blendState : pipeline.descriptor()._blendStates) {
+        if (i == 0u) {
+            GL_API::GetStateTracker().setBlendColour(blendState._blendColour);
+        }
+        GL_API::GetStateTracker().setBlending(i, blendState._blendProperties);
+        ++i;
+    }
     glShaderProgram& glProgram = static_cast<glShaderProgram&>(*program);
     // We need a valid shader as no fixed function pipeline is available
 
@@ -543,12 +547,6 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         }break;
         case GFX::CommandType::END_RENDER_SUB_PASS: {
         }break;
-        case GFX::CommandType::SET_BLEND_STATE: {
-            const GFX::SetBlendStateCommand* crtCmd = commandBuffer.get<GFX::SetBlendStateCommand>(entry);
-
-            assert(GL_API::GetStateTracker()._activeRenderTarget != nullptr);
-            GetStateTracker()._activeRenderTarget->setBlendState(crtCmd->_blendStates);
-        }break;
         case GFX::CommandType::COPY_TEXTURE: {
             OPTICK_EVENT();
 
@@ -609,9 +607,6 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         } break;
         case GFX::CommandType::SET_SCISSOR: {
             GetStateTracker().setScissor(commandBuffer.get<GFX::SetScissorCommand>(entry)->_rect);
-        }break;
-        case GFX::CommandType::SET_BLEND: {
-            GetStateTracker().setBlending(commandBuffer.get<GFX::SetBlendCommand>(entry)->_blendProperties);
         }break;
         case GFX::CommandType::SET_TEXTURE_RESIDENCY: {
             const GFX::SetTexturesResidencyCommand* crtCmd = commandBuffer.get<GFX::SetTexturesResidencyCommand>(entry);

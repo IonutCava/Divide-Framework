@@ -34,8 +34,29 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-inline const vector<Material*>& Material::getInstances() const noexcept {
+inline void Material::lockInstancesForRead() const {
+    _instanceLock.lock_shared();
+}
+
+inline void Material::unlockInstancesForRead() const {
+    _instanceLock.unlock_shared();
+}
+
+inline void Material::lockInstancesForWrite() const {
+    _instanceLock.lock();
+}
+
+inline void Material::unlockInstancesForWrite() const {
+    _instanceLock.unlock();
+}
+
+inline const vector<Material*>& Material::getInstancesLocked() const noexcept {
     return _instances;
+}
+
+inline const vector<Material*>& Material::getInstances() const noexcept {
+    SharedLock<SharedMutex> r_lock(_instanceLock);
+    return getInstancesLocked();
 }
 
 inline Texture_wptr Material::getTexture(const TextureUsage textureUsage) const {

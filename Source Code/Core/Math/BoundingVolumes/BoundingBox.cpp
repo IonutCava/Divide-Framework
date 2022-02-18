@@ -7,8 +7,8 @@
 namespace Divide {
 
 BoundingBox::BoundingBox() noexcept
-    : _min(std::numeric_limits<F32>::max()),
-      _max(std::numeric_limits<F32>::lowest())
+    : _min(-(EPSILON_F32 * 2)),
+      _max( (EPSILON_F32 * 2))
 {
 }
 

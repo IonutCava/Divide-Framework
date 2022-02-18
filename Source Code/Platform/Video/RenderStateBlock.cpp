@@ -19,7 +19,7 @@ namespace TypeUtil {
         return Names::stencilOpNames[to_base(op)];
     }
     const char* FillModeToString(const FillMode mode) noexcept {
-        return Names::fillModes[to_base(mode)];
+        return Names::fillMode[to_base(mode)];
     }
     const char* CullModeToString(const CullMode mode) noexcept {
         return Names::cullModes[to_base(mode)];
@@ -45,7 +45,7 @@ namespace TypeUtil {
     }
     FillMode StringToFillMode(const char* name) noexcept {
         for (U8 i = 0; i < to_U8(FillMode::COUNT); ++i) {
-            if (strcmp(name, Names::fillModes[i]) == 0) {
+            if (strcmp(name, Names::fillMode[i]) == 0) {
                 return static_cast<FillMode>(i);
             }
         }

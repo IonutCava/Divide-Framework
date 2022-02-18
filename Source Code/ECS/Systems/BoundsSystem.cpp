@@ -50,7 +50,11 @@ namespace Divide {
                 bComp->setRefBoundingBox(sceneNode.getBounds());
             }
         }
-        
+        for (BoundsComponent* bComp : _componentCache) {
+            if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->parentSGN()->getNode())) {
+                bComp->appendChildRefBBs();
+            }
+        }
     }
 
     void BoundsSystem::PostUpdate(const F32 dt) {

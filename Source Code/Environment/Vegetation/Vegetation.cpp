@@ -495,14 +495,12 @@ void Vegetation::createAndUploadGPUData(GFXDevice& gfxDevice, const Terrain_ptr&
             bufferDescriptor._name = "Tree_data";
             bufferDescriptor._bufferParams._initialData = { treeData.data(), treeData.size() };
             s_treeData = gfxDevice.newSB(bufferDescriptor);
-            s_treeData->bind(ShaderBufferLocation::TREE_DATA);
         }
         if (s_maxGrassInstances > 0) {
             bufferDescriptor._bufferParams._elementCount = to_U32(s_maxGrassInstances * s_maxChunks);
             bufferDescriptor._name = "Grass_data";
             bufferDescriptor._bufferParams._initialData = { grassData.data(), grassData.size() };
             s_grassData = gfxDevice.newSB(bufferDescriptor);
-            s_grassData->bind(ShaderBufferLocation::GRASS_DATA);
         }
 
         createVegetationMaterial(gfxDevice, terrain, vegDetails);
@@ -654,12 +652,8 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
                                const CameraSnapshot& cameraSnapshot,
                                bool refreshData) 
 {
-    RenderPackage& pkg = rComp.getDrawPackage(renderStagePass);
-    {
-        pkg.additionalCommands(nullptr);
-        PushConstants& constants = pkg.pushConstantsCmd()._constants;
-        constants.set(_ID("dvd_terrainChunkOffset"), GFX::PushConstantType::UINT, _terrainChunk.ID());
-    }
+    rComp.getPushConstants(renderStagePass).set(_ID("dvd_terrainChunkOffset"), GFX::PushConstantType::UINT, _terrainChunk.ID());
+    rComp.addAdditionalCommands(renderStagePass, nullptr);
 
     if (renderStagePass._passType != RenderPassType::PRE_PASS) {
         return;
@@ -704,7 +698,22 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull Vegetation" });
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._textureData.add(TextureEntry{ hizTexture->data(), hizAttachment.samplerHash(), TextureUsage::UNIT0 });
+        if (s_grassData) {
+            ShaderBufferBinding bufferGrass;
+            bufferGrass._binding = ShaderBufferLocation::GRASS_DATA;
+            bufferGrass._buffer = s_grassData;
+            bufferGrass._elementRange = { 0u, s_grassData->getPrimitiveCount() };
 
+            set._buffers.add(bufferGrass);
+        }
+        if (s_treeData) {
+            ShaderBufferBinding bufferTrees;
+            bufferTrees._binding = ShaderBufferLocation::TREE_DATA;
+            bufferTrees._buffer = s_treeData;
+            bufferTrees._elementRange = { 0u, s_treeData->getPrimitiveCount() };
+
+            set._buffers.add(bufferTrees);
+        }
         GFX::DispatchComputeCommand computeCmd = {};
         if (_instanceCountGrass > 0) {
             computeCmd._computeGroupSize.set((_instanceCountGrass + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1);
@@ -727,7 +736,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         EnqueueCommand(bufferInOut, memCmd);
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-        pkg.additionalCommands(_cullVegetationCmds);
+        rComp.addAdditionalCommands(renderStagePass, _cullVegetationCmds);
     }
 
     SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);

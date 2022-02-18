@@ -228,7 +228,9 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
         }
     }
 
+    ScopedLock<SharedMutex> w_lock(_instanceLock);
     _instances.emplace_back(cloneMat.get());
+
     return cloneMat;
 }
 
@@ -546,6 +548,8 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     }
     if (renderStagePass._passType == RenderPassType::OIT_PASS) {
         moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("OIT_PASS", true);
+    } else if (renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS) {
+        moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("TRANSPARENCY_PASS", true);
     }
     switch (properties().shadingMode()) {
         case ShadingMode::FLAT: {
@@ -635,12 +639,14 @@ bool Material::unload() {
     }
     
     if (_baseMaterial != nullptr) {
+        ScopedLock<SharedMutex> w_lock(_instanceLock);
         erase_if(_baseMaterial->_instances,
                  [guid = getGUID()](Material* instance) noexcept {
                      return instance->getGUID() == guid;
                  });
     }
 
+    SharedLock<SharedMutex> r_lock(_instanceLock);
     for (Material* instance : _instances) {
         instance->_baseMaterial = nullptr;
     }
