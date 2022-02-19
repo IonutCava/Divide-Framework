@@ -114,26 +114,24 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
     GFX::BindDescriptorSetsCommand descriptorSetCmd{};
     descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
     descriptorSetCmd._set._textureData.add(TextureEntry{ extraTex, extraAtt.samplerHash(), TextureUsage::DEPTH });
-    EnqueueCommand(bufferInOut, descriptorSetCmd);
+    GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
 
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
     beginRenderPassCmd._target = output._targetID;
     beginRenderPassCmd._descriptor = _screenOnlyDraw;
     beginRenderPassCmd._name = "DO_DOF_PASS";
-    EnqueueCommand(bufferInOut, beginRenderPassCmd);
+    GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-    EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipeline });
+    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipeline });
 
     if (_constantsDirty) {
-        EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _constants });
+        GFX::EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _constants });
         _constantsDirty = false;
     }
 
-    EnqueueCommand(bufferInOut, _drawCmd);
-
-    EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
     return true;
 }
-
 }

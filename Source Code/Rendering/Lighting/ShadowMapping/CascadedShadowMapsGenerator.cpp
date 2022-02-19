@@ -412,7 +412,6 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
     if (g_shadowSettings.csm.enableBlurring) {
         _shaderConstantsCmd._constants.set(_ID("layerCount"), GFX::PushConstantType::INT, layerCount);
 
-        static GFX::DrawCommand s_drawCmd{};
         static GFX::BeginRenderPassCommand s_beginRenderPassHorizontalCmd{};
         static GFX::BeginRenderPassCommand s_beginRenderPassVerticalCmd{};
         static GFX::BindPipelineCommand s_blurPipelineCmd{};
@@ -420,8 +419,6 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
         static bool s_commandsInit = false;
         if (!s_commandsInit) {
             s_commandsInit = true;
-
-            s_drawCmd._drawCommands.push_back(GenericDrawCommand{});
 
             s_beginRenderPassHorizontalCmd._target = _blurBuffer._targetID;
             s_beginRenderPassHorizontalCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
@@ -448,7 +445,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
 
         GFX::EnqueueCommand(bufferInOut, _shaderConstantsCmd);
 
-        GFX::EnqueueCommand(bufferInOut, s_drawCmd);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 
@@ -465,7 +462,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
 
         GFX::EnqueueCommand(bufferInOut, _shaderConstantsCmd);
 
-        GFX::EnqueueCommand(bufferInOut, s_drawCmd);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
     }

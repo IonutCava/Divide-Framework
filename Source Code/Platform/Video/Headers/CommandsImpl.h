@@ -107,12 +107,14 @@ namespace Names {
 static_assert(sizeof(Names::commandType) / sizeof(Names::commandType[0]) == to_size(CommandType::COUNT) + 1);
 
 DEFINE_COMMAND_BEGIN(BindPipelineCommand, CommandType::BIND_PIPELINE);
+    BindPipelineCommand() noexcept = default;
     BindPipelineCommand(const Pipeline* pipeline) noexcept : _pipeline(pipeline) {}
 
     const Pipeline* _pipeline = nullptr;
 DEFINE_COMMAND_END(BindPipelineCommand);
 
 DEFINE_COMMAND_BEGIN(SendPushConstantsCommand, CommandType::SEND_PUSH_CONSTANTS);
+    SendPushConstantsCommand() noexcept = default;
     SendPushConstantsCommand(const PushConstants& constants) noexcept : _constants(constants) {}
 
     PushConstants _constants;
@@ -122,18 +124,21 @@ DEFINE_COMMAND_BEGIN(DrawCommand, CommandType::DRAW_COMMANDS);
     using CommandContainer = eastl::fixed_vector<GenericDrawCommand, 4, true, eastl::dvd_allocator>;
     static_assert(sizeof(GenericDrawCommand) == 32, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
 
+    DrawCommand() : DrawCommand(GenericDrawCommand{}) {}
     DrawCommand(const GenericDrawCommand& cmd) : _drawCommands{ { cmd } } {}
 
     CommandContainer _drawCommands;
 DEFINE_COMMAND_END(DrawCommand);
 
 DEFINE_COMMAND_BEGIN(SetViewportCommand, CommandType::SET_VIEWPORT);
+    SetViewportCommand() noexcept = default;
     SetViewportCommand(const Rect<I32>& viewport) noexcept : _viewport(viewport) {}
 
     Rect<I32> _viewport;
 DEFINE_COMMAND_END(SetViewportCommand);
 
 DEFINE_COMMAND_BEGIN(PushViewportCommand, CommandType::PUSH_VIEWPORT);
+    PushViewportCommand() noexcept = default;
     PushViewportCommand(const Rect<I32>& viewport) noexcept : _viewport(viewport) {}
 
     Rect<I32> _viewport;
@@ -175,6 +180,7 @@ DEFINE_COMMAND_BEGIN(BlitRenderTargetCommand, CommandType::BLIT_RT);
 DEFINE_COMMAND_END(BlitRenderTargetCommand);
 
 DEFINE_COMMAND_BEGIN(ClearRenderTargetCommand, CommandType::CLEAR_RT);
+    ClearRenderTargetCommand() noexcept = default;
     ClearRenderTargetCommand(const RenderTargetID& target, const RTClearDescriptor& descriptor) noexcept : _target(target), _descriptor(descriptor) {}
     RenderTargetID _target;
     RTClearDescriptor _descriptor;
@@ -217,12 +223,14 @@ DEFINE_COMMAND_BEGIN(SetScissorCommand, CommandType::SET_SCISSOR);
 DEFINE_COMMAND_END(SetScissorCommand);
 
 DEFINE_COMMAND_BEGIN(SetCameraCommand, CommandType::SET_CAMERA);
+    SetCameraCommand() noexcept = default;
     SetCameraCommand(const CameraSnapshot& cameraSnapshot) noexcept : _cameraSnapshot(cameraSnapshot) {}
 
     CameraSnapshot _cameraSnapshot;
 DEFINE_COMMAND_END(SetCameraCommand);
 
 DEFINE_COMMAND_BEGIN(PushCameraCommand, CommandType::PUSH_CAMERA);
+    PushCameraCommand() noexcept = default;
     PushCameraCommand(const CameraSnapshot& cameraSnapshot) noexcept : _cameraSnapshot(cameraSnapshot) {}
 
     CameraSnapshot _cameraSnapshot;
@@ -231,12 +239,14 @@ DEFINE_COMMAND_END(PushCameraCommand);
 DEFINE_COMMAND(PopCameraCommand, CommandType::POP_CAMERA);
 
 DEFINE_COMMAND_BEGIN(SetClipPlanesCommand, CommandType::SET_CLIP_PLANES);
+    SetClipPlanesCommand() noexcept = default;
     SetClipPlanesCommand(const FrustumClipPlanes& clippingPlanes) noexcept : _clippingPlanes(clippingPlanes) {}
 
     FrustumClipPlanes _clippingPlanes;
 DEFINE_COMMAND_END(SetClipPlanesCommand);
 
 DEFINE_COMMAND_BEGIN(BindDescriptorSetsCommand, CommandType::BIND_DESCRIPTOR_SETS);
+    BindDescriptorSetsCommand() noexcept = default;
     BindDescriptorSetsCommand(const DescriptorSet& set) noexcept : _set(set) {}
 
     DescriptorSet _set;
@@ -248,6 +258,7 @@ DEFINE_COMMAND_BEGIN(SetTexturesResidencyCommand, CommandType::SET_TEXTURE_RESID
 DEFINE_COMMAND_END(SetTexturesResidencyCommand);
 
 DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);
+    BeginDebugScopeCommand() noexcept = default;
     BeginDebugScopeCommand(const char* scopeName) noexcept : _scopeName(scopeName) {}
 
     Str64 _scopeName;
@@ -256,12 +267,14 @@ DEFINE_COMMAND_END(BeginDebugScopeCommand);
 DEFINE_COMMAND(EndDebugScopeCommand, CommandType::END_DEBUG_SCOPE);
 
 DEFINE_COMMAND_BEGIN(AddDebugMessageCommand, CommandType::ADD_DEBUG_MESSAGE);
+    AddDebugMessageCommand() noexcept = default;
     AddDebugMessageCommand(const char* msg) noexcept : _msg(msg) {}
 
     Str64 _msg;
 DEFINE_COMMAND_END(AddDebugMessageCommand);
 
 DEFINE_COMMAND_BEGIN(DrawTextCommand, CommandType::DRAW_TEXT);
+    DrawTextCommand() noexcept = default;
     DrawTextCommand(TextElementBatch&& batch) noexcept : _batch(MOV(batch)) {}
     DrawTextCommand(TextElementBatch batch) noexcept : _batch(MOV(batch)) {}
 
@@ -274,6 +287,7 @@ DEFINE_COMMAND_BEGIN(DrawIMGUICommand, CommandType::DRAW_IMGUI);
 DEFINE_COMMAND_END(DrawIMGUICommand);
 
 DEFINE_COMMAND_BEGIN(DispatchComputeCommand, CommandType::DISPATCH_COMPUTE);
+    DispatchComputeCommand() noexcept = default;
     DispatchComputeCommand(const U32 xGroupSize, const U32 yGroupSize, const U32 zGroupSize) noexcept : _computeGroupSize(xGroupSize, yGroupSize, zGroupSize) {}
     DispatchComputeCommand(const vec3<U32>& groupSize) noexcept : _computeGroupSize(groupSize) {}
 
@@ -281,6 +295,7 @@ DEFINE_COMMAND_BEGIN(DispatchComputeCommand, CommandType::DISPATCH_COMPUTE);
 DEFINE_COMMAND_END(DispatchComputeCommand);
 
 DEFINE_COMMAND_BEGIN(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);
+    MemoryBarrierCommand() noexcept = default;
     MemoryBarrierCommand(const U32 mask) noexcept : _barrierMask(mask) {}
 
     U32 _barrierMask = 0u;

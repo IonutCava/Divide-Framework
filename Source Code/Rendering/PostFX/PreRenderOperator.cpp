@@ -9,8 +9,7 @@ namespace Divide {
 PreRenderOperator::PreRenderOperator(GFXDevice& context, PreRenderBatch& parent, const FilterType operatorType)
     : _context(context),
       _parent(parent),
-      _operatorType(operatorType),
-      _drawCmd{ GenericDrawCommand {} }
+      _operatorType(operatorType)
 {
     DisableAll(_screenOnlyDraw._drawMask);
     SetEnabled(_screenOnlyDraw._drawMask, RTAttachmentType::Colour, 0, true);

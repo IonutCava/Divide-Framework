@@ -410,10 +410,7 @@ GFX::CommandBuffer& IMPrimitive::toCommandBuffer() const {
         if (_viewport != Rect<I32>(-1)) {
             GFX::EnqueueCommand(*_cmdBuffer, GFX::SetViewportCommand{ _viewport });
         }
-
-        GenericDrawCommand cmd{};
-        cmd._sourceBuffer = handle();
-        GFX::EnqueueCommand(*_cmdBuffer, GFX::DrawCommand{ cmd });
+        GFX::EnqueueCommand<GFX::DrawCommand>(*_cmdBuffer)->_drawCommands.back()._sourceBuffer = handle();
 
         _cmdBufferDirty = false;
     }

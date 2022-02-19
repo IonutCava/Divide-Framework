@@ -1282,7 +1282,6 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
     const auto& bufferAttachment = blurBuffer._rt->getAttachment(att, index);
 
     GFX::SendPushConstantsCommand pushConstantsCmd{};
-    GFX::DrawCommand drawCmd{ GenericDrawCommand{} };
 
     const U8 loopCount = gaussian ? 1u : layerCount;
 
@@ -1316,7 +1315,7 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
                 pushConstantsCmd._constants.set(_ID("layer"), GFX::PushConstantType::INT, to_I32(loop));
                 GFX::EnqueueCommand(bufferInOut, pushConstantsCmd);
             }
-            GFX::EnqueueCommand(bufferInOut, drawCmd);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
         }
 
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
@@ -1342,7 +1341,7 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
                 pushConstantsCmd._constants.set(_ID("layer"), GFX::PushConstantType::INT, to_I32(loop));
                 GFX::EnqueueCommand(bufferInOut, pushConstantsCmd);
             }
-            GFX::EnqueueCommand(bufferInOut, drawCmd);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
         }
 
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
@@ -1945,7 +1944,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
             constants.set(_ID("depthInfo"),   GFX::PushConstantType::IVEC2, vec2<I32>(level - 1, wasEven ? 1 : 0));
 
             // Dummy draw command as the full screen quad is generated completely in the vertex shader
-            GFX::EnqueueCommand(cmdBufferInOut, GFX::DrawCommand{ GenericDrawCommand{} });
+            GFX::EnqueueCommand<GFX::DrawCommand>(cmdBufferInOut);
 
             GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(cmdBufferInOut);
         }
@@ -2058,7 +2057,7 @@ void GFXDevice::drawTextureInViewport(const TextureData data, const size_t sampl
         GFX::EnqueueCommand(bufferInOut, convertToSrgb ? s_pushConstantsSRGBTrue : s_pushConstantsSRGBFalse);
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ GenericDrawCommand{} });
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
     GFX::EnqueueCommand(bufferInOut, GFX::PopViewportCommand{});
     GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -2297,7 +2296,7 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
             view->_textureBindSlot
         });
 
-        GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ GenericDrawCommand{} });
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 
         if (!view->_name.empty()) {
             labelStack.emplace_back(view->_name, viewport.sizeY, viewport);

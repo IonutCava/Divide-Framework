@@ -87,11 +87,9 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     constants.set(_ID("dvd_velocityScale"), GFX::PushConstantType::FLOAT, velocityFactor);
     constants.set(_ID("dvd_maxSamples"),    GFX::PushConstantType::INT,   to_I32(maxSamples()));
 
-    GFX::EnqueueCommand(bufferInOut, _drawCmd);
-
-    GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{ });
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
     return true;
 }
-
 }

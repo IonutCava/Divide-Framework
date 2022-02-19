@@ -160,9 +160,8 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
 
     GFX::EnqueueCommand(bufferInOut, _constantsCmd);
 
-    GFX::EnqueueCommand(bufferInOut, _drawCmd);
-
-    GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
     return false;
 }

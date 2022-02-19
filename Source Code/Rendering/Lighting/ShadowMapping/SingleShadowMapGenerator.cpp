@@ -178,13 +178,13 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     clearDescriptor._clearColours = true;
     clearDescriptor._resetToDefault = true;
 
-    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str()));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str()));
     GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
     GFX::ClearRenderTargetCommand clearMainTarget = {};
     clearMainTarget._target = params._target;
     clearMainTarget._descriptor = clearDescriptor;
-    EnqueueCommand(bufferInOut, clearMainTarget);
+    GFX::EnqueueCommand(bufferInOut, clearMainTarget);
 
     _context.parent().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut);
 
@@ -214,7 +214,6 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
     if (g_shadowSettings.spot.enableBlurring) {
         _shaderConstants.set(_ID("layerCount"), GFX::PushConstantType::INT, layerCount);
 
-        GFX::DrawCommand drawCmd{ GenericDrawCommand{} };
         GFX::BindDescriptorSetsCommand descriptorSetCmd{};
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         GFX::SendPushConstantsCommand pushConstantsCommand{};
@@ -223,9 +222,9 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         beginRenderPassCmd._target = _blurBuffer._targetID;
         beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
 
-        EnqueueCommand(bufferInOut, beginRenderPassCmd);
+        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-        EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurPipeline });
+        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurPipeline });
 
         TextureData texData = shadowAtt.texture()->data();
         descriptorSetCmd._set._textureData.add(TextureEntry{ texData, shadowAtt.samplerHash(), TextureUsage::UNIT0 });
@@ -237,32 +236,28 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         _shaderConstants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, 0);
 
         pushConstantsCommand._constants = _shaderConstants;
-        EnqueueCommand(bufferInOut, pushConstantsCommand);
-
-        EnqueueCommand(bufferInOut, drawCmd);
-
-        EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(bufferInOut, pushConstantsCommand);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
         // Blur vertically
         const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
         texData = blurAtt.texture()->data();
         descriptorSetCmd._set._textureData.add(TextureEntry{ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
-        EnqueueCommand(bufferInOut, descriptorSetCmd);
+        GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
 
         beginRenderPassCmd._target = g_depthMapID;
         beginRenderPassCmd._descriptor = {};
         beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
-        EnqueueCommand(bufferInOut, beginRenderPassCmd);
+        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
         pushConstantsCommand._constants.set(_ID("verticalBlur"), GFX::PushConstantType::BOOL, true);
         pushConstantsCommand._constants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, 0);
         pushConstantsCommand._constants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT, layerOffset);
 
-        EnqueueCommand(bufferInOut, pushConstantsCommand);
-
-        EnqueueCommand(bufferInOut, drawCmd);
-
-        EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand(bufferInOut, pushConstantsCommand);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
 }
 
@@ -272,5 +267,4 @@ void SingleShadowMapGenerator::updateMSAASampleCount(const U8 sampleCount) {
         _drawBufferDepth._rt->updateSampleCount(sampleCount);
     }
 }
-
 };

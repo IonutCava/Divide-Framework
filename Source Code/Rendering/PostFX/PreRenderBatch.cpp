@@ -443,8 +443,6 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::BindPipelineCommand bindPipelineCmd{};
         bindPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-        GFX::DrawCommand drawCmd{ GenericDrawCommand{} };
-
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: Linearise depth buffer";
         GFX::EnqueueCommand(bufferInOut, clearLinearDepthCmd);
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
@@ -456,7 +454,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
-        GFX::EnqueueCommand(bufferInOut, drawCmd);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
@@ -637,8 +635,6 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     computeMipMapsCommand._texture = prevScreenRT.getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO)).texture().get();
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
-    GFX::DrawCommand drawCmd{ GenericDrawCommand{} };
-
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
         static size_t lumaSamplerHash = 0u;
         if (lumaSamplerHash == 0u) {
@@ -673,7 +669,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         _toneMapConstantsCmd._constants.set(_ID("skipToneMapping"),      GFX::PushConstantType::BOOL, _context.materialDebugFlag() != MaterialDebugFlag::COUNT);
         GFX::EnqueueCommand(bufferInOut, _toneMapConstantsCmd);
 
-        GFX::EnqueueCommand(bufferInOut, drawCmd);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
@@ -701,7 +697,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("dvd_edgeThreshold"), GFX::PushConstantType::FLOAT, edgeDetectionThreshold());
 
-        GFX::EnqueueCommand(bufferInOut, drawCmd);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);

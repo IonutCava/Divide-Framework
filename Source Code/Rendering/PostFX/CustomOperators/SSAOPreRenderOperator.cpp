@@ -525,8 +525,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),   TextureUsage::DEPTH });
             set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
 
-            GFX::EnqueueCommand(bufferInOut, _drawCmd);
-
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
         { // Generate Half Res AO
@@ -544,9 +543,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             set._textureData.add(TextureEntry{ _noiseTexture->data(),         _noiseSampler,              TextureUsage::UNIT0 });
             set._textureData.add(TextureEntry{ halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash(),TextureUsage::DEPTH });
 
-            GFX::EnqueueCommand(bufferInOut, _drawCmd);
-
-            GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
         { // UpSample AO
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
@@ -570,9 +568,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             set._textureData.add(TextureEntry{ halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash(), TextureUsage::NORMALMAP });
             set._textureData.add(TextureEntry{ depthAtt.texture()->data(),     depthAtt.samplerHash(),     TextureUsage::DEPTH });
 
-            GFX::EnqueueCommand(bufferInOut, _drawCmd);
-
-            GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
     } else {
         { // Generate Full Res AO
@@ -589,8 +586,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
             GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
-            GFX::EnqueueCommand(bufferInOut, _drawCmd);
-
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
     }
@@ -617,9 +613,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
                 set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(),    ssaoAtt.samplerHash(),   TextureUsage::UNIT0 });
 
-                GFX::EnqueueCommand(bufferInOut, _drawCmd);
-
-                GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+                GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+                GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
             }
             { //Vertical
                 GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
@@ -636,9 +631,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
                 set._textureData.add(TextureEntry{ horizBlur.texture()->data(),  ssaoAtt.samplerHash(),   TextureUsage::UNIT0 });
 
-                GFX::EnqueueCommand(bufferInOut, _drawCmd);
-
-                GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+                GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+                GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
             }
         } else {
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
@@ -650,14 +644,12 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
             set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(), ssaoAtt.samplerHash(), TextureUsage::UNIT0 });
 
-            GFX::EnqueueCommand(bufferInOut, _drawCmd);
-
-            GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
     }
 
     // No need to swap targets
     return false;
 }
-
 }

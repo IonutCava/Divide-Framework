@@ -179,19 +179,19 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
 
     if (useSMAA()) {
         { //Step 1: Compute weights
-            RTClearDescriptor clearTarget = {};
+            RTClearDescriptor clearTarget{};
             clearTarget._clearDepth = false;
             clearTarget._clearColours = true;
 
-            GFX::ClearRenderTargetCommand clearRenderTargetCmd = {};
+            GFX::ClearRenderTargetCommand clearRenderTargetCmd{};
             clearRenderTargetCmd._target = _smaaWeights._targetID;
             clearRenderTargetCmd._descriptor = clearTarget;
-            EnqueueCommand(bufferInOut, clearRenderTargetCmd);
+            GFX::EnqueueCommand(bufferInOut, clearRenderTargetCmd);
 
-            GFX::BeginRenderPassCommand beginRenderPassCmd = {};
+            GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = _smaaWeights._targetID;
             beginRenderPassCmd._name = "DO_SMAA_WEIGHT_PASS";
-            EnqueueCommand(bufferInOut, beginRenderPassCmd);
+            GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::Colour, 0);
             const TextureData edgesTex = att.texture()->data();
@@ -200,7 +200,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
 
             SamplerDescriptor samplerDescriptor = {};
 
-            GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
+            GFX::BindDescriptorSetsCommand descriptorSetCmd{};
             descriptorSetCmd._set._textureData.add(TextureEntry{ edgesTex, att.samplerHash(),TextureUsage::UNIT0 });
             samplerDescriptor.minFilter(TextureFilter::LINEAR);
             samplerDescriptor.magFilter(TextureFilter::LINEAR);
@@ -208,36 +208,34 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             samplerDescriptor.minFilter(TextureFilter::NEAREST);
             samplerDescriptor.magFilter(TextureFilter::NEAREST);
             descriptorSetCmd._set._textureData.add(TextureEntry{ searchTex, samplerDescriptor.getHash(), to_U8(TextureUsage::UNIT1) + 1 });
-            EnqueueCommand(bufferInOut, descriptorSetCmd);
+            GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
 
-            EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaWeightPipeline });
-            EnqueueCommand(bufferInOut, _pushConstantsCommand);
+            GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaWeightPipeline });
+            GFX::EnqueueCommand(bufferInOut, _pushConstantsCommand);
 
-            EnqueueCommand(bufferInOut, _drawCmd);
-
-            EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{ });
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
         { //Step 2: Blend
-            GFX::BeginRenderPassCommand beginRenderPassCmd = {};
+            GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = output._targetID;
             beginRenderPassCmd._descriptor = _screenOnlyDraw;
             beginRenderPassCmd._name = "DO_SMAA_BLEND_PASS";
-            EnqueueCommand(bufferInOut, beginRenderPassCmd);
+            GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _smaaWeights._rt->getAttachment(RTAttachmentType::Colour, 0);
             const TextureData blendTex = att.texture()->data();
 
-            GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
+            GFX::BindDescriptorSetsCommand descriptorSetCmd{};
             descriptorSetCmd._set._textureData.add(TextureEntry{screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0});
             descriptorSetCmd._set._textureData.add(TextureEntry{blendTex, att.samplerHash(),TextureUsage::UNIT1 });
-            EnqueueCommand(bufferInOut, descriptorSetCmd);
+            GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
 
-            EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaBlendPipeline });
-            EnqueueCommand(bufferInOut, _pushConstantsCommand);
+            GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaBlendPipeline });
+            GFX::EnqueueCommand(bufferInOut, _pushConstantsCommand);
 
-            EnqueueCommand(bufferInOut, _drawCmd);
-
-            EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{ });
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
     } else {
         // Apply FXAA/SMAA to the specified render target
@@ -245,21 +243,19 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         beginRenderPassCmd._target = output._targetID;
         beginRenderPassCmd._descriptor = _screenOnlyDraw;
         beginRenderPassCmd._name = "DO_POSTAA_PASS";
-        EnqueueCommand(bufferInOut, beginRenderPassCmd);
+        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-        EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _fxaaPipeline });
-        EnqueueCommand(bufferInOut, _pushConstantsCommand);
+        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _fxaaPipeline });
+        GFX::EnqueueCommand(bufferInOut, _pushConstantsCommand);
 
-        GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
+        GFX::BindDescriptorSetsCommand descriptorSetCmd{};
         descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
-        EnqueueCommand(bufferInOut, descriptorSetCmd);
+        GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
 
-        EnqueueCommand(bufferInOut, _drawCmd);
-
-        EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{ });
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
 
     return true;
 }
-
 }

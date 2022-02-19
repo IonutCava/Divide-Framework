@@ -154,7 +154,6 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: Apply" };
     static GFX::BeginRenderPassCommand s_beginRenderPassCmd{};
     static GFX::BindDescriptorSetsCommand s_descriptorSetCmd{};
-    static GFX::DrawCommand s_drawCommand{};
 
     static size_t s_samplerHash = 0u;
     if (s_samplerHash == 0u) {
@@ -165,8 +164,6 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
         s_beginRenderPassCmd._target = RenderTargetUsage::SCREEN;
         s_beginRenderPassCmd._descriptor = _postFXTarget;
         s_beginRenderPassCmd._name = "DO_POSTFX_PASS";
-
-        s_drawCommand._drawCommands = { GenericDrawCommand{} };
 
         TextureDataContainer& textureContainer = s_descriptorSetCmd._set._textureData;
         textureContainer.add(TextureEntry{ _underwaterTexture->data(),   s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER) });
@@ -211,7 +208,7 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     textureContainer.add(TextureEntry{ velocityAtt.texture()->data(),      s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY) });
     GFX::EnqueueCommand(bufferInOut, s_descriptorSetCmd);
 
-    GFX::EnqueueCommand(bufferInOut, s_drawCommand);
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 
     GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 

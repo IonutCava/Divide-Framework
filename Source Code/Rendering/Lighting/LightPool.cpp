@@ -539,12 +539,9 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
         pipelineDescriptor._shaderProgramHandle = _lightImpostorShader->getGUID();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::API_POINTS;
 
-        GenericDrawCommand pointsCmd{};
-        pointsCmd._drawCount = to_U16(totalLightCount);
-
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _context.gfx().newPipeline(pipelineDescriptor) });
         GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ _lightIconsTexture->data(), s_samplerHash, TextureUsage::UNIT0 });
-        GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ pointsCmd });
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.back()._drawCount = to_U16(totalLightCount);
     }
 }
 
