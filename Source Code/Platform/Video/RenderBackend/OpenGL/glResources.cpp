@@ -91,11 +91,11 @@ std::array<GLenum, to_base(CullMode::COUNT)> glCullModeTable;
 std::array<GLenum, to_base(FillMode::COUNT)> glFillModeTable;
 std::array<GLenum, to_base(TextureType::COUNT)> glTextureTypeTable;
 std::array<GLenum, to_base(GFXImageFormat::COUNT)> glImageFormatTable;
-std::array<GLenum, to_base(PrimitiveType::COUNT)> glPrimitiveTypeTable;
+std::array<GLenum, to_base(PrimitiveTopology::COUNT)> glPrimitiveTypeTable;
 std::array<GLenum, to_base(GFXDataFormat::COUNT)> glDataFormat;
 std::array<GLenum, to_base(TextureWrap::COUNT)> glWrapTable;
 std::array<GLenum, to_base(TextureFilter::COUNT)> glTextureFilterTable;
-std::array<NS_GLIM::GLIM_ENUM, to_base(PrimitiveType::COUNT)> glimPrimitiveType;
+std::array<NS_GLIM::GLIM_ENUM, to_base(PrimitiveTopology::COUNT)> glimPrimitiveType;
 std::array<GLenum, to_base(ShaderType::COUNT)> glShaderStageTable;
 std::array<UseProgramStageMask, to_base(ShaderType::COUNT) + 1> glProgramStageMask;
 std::map<GLenum, size_t> glTypeSizeInBytes;
@@ -181,17 +181,17 @@ void fillEnumTables() {
     glImageFormatTable[to_base(GFXImageFormat::DXT3_RGBA_SRGB)] = GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT;
     glImageFormatTable[to_base(GFXImageFormat::DXT5_RGBA_SRGB)] = GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT;
 
-    glPrimitiveTypeTable[to_base(PrimitiveType::API_POINTS)] = GL_POINTS;
-    glPrimitiveTypeTable[to_base(PrimitiveType::LINES)] = GL_LINES;
-    glPrimitiveTypeTable[to_base(PrimitiveType::LINE_LOOP)] =  GL_LINE_LOOP;
-    glPrimitiveTypeTable[to_base(PrimitiveType::LINE_STRIP)] = GL_LINE_STRIP;
-    glPrimitiveTypeTable[to_base(PrimitiveType::TRIANGLES)] = GL_TRIANGLES;
-    glPrimitiveTypeTable[to_base(PrimitiveType::TRIANGLE_STRIP)] = GL_TRIANGLE_STRIP;
-    glPrimitiveTypeTable[to_base(PrimitiveType::TRIANGLE_FAN)] = GL_TRIANGLE_FAN;
-    // glPrimitiveTypeTable[to_base(PrimitiveType::QUADS)] = GL_QUADS; //<Deprecated
-    glPrimitiveTypeTable[to_base(PrimitiveType::QUAD_STRIP)] = GL_QUAD_STRIP;
-    glPrimitiveTypeTable[to_base(PrimitiveType::POLYGON)] = GL_POLYGON;
-    glPrimitiveTypeTable[to_base(PrimitiveType::PATCH)] = GL_PATCHES;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::API_POINTS)] = GL_POINTS;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::LINES)] = GL_LINES;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::LINE_LOOP)] =  GL_LINE_LOOP;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::LINE_STRIP)] = GL_LINE_STRIP;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLES)] = GL_TRIANGLES;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLE_STRIP)] = GL_TRIANGLE_STRIP;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLE_FAN)] = GL_TRIANGLE_FAN;
+    // glPrimitiveTypeTable[to_base(PrimitiveTopology::QUADS)] = GL_QUADS; //<Deprecated
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::QUAD_STRIP)] = GL_QUAD_STRIP;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::POLYGON)] = GL_POLYGON;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::PATCH)] = GL_PATCHES;
 
     glDataFormat[to_base(GFXDataFormat::UNSIGNED_BYTE)] = GL_UNSIGNED_BYTE;
     glDataFormat[to_base(GFXDataFormat::UNSIGNED_SHORT)] = GL_UNSIGNED_SHORT;
@@ -216,15 +216,15 @@ void fillEnumTables() {
     glTextureFilterTable[to_base(TextureFilter::NEAREST_MIPMAP_LINEAR)] = GL_NEAREST_MIPMAP_LINEAR;
     glTextureFilterTable[to_base(TextureFilter::LINEAR_MIPMAP_LINEAR)] = GL_LINEAR_MIPMAP_LINEAR;
 
-    glimPrimitiveType[to_base(PrimitiveType::API_POINTS)] = NS_GLIM::GLIM_ENUM::GLIM_POINTS;
-    glimPrimitiveType[to_base(PrimitiveType::LINES)] = NS_GLIM::GLIM_ENUM::GLIM_LINES;
-    glimPrimitiveType[to_base(PrimitiveType::LINE_LOOP)] = NS_GLIM::GLIM_ENUM::GLIM_LINE_LOOP;
-    glimPrimitiveType[to_base(PrimitiveType::LINE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_LINE_STRIP;
-    glimPrimitiveType[to_base(PrimitiveType::TRIANGLES)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLES;
-    glimPrimitiveType[to_base(PrimitiveType::TRIANGLE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_STRIP;
-    glimPrimitiveType[to_base(PrimitiveType::TRIANGLE_FAN)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_FAN;
-    glimPrimitiveType[to_base(PrimitiveType::QUAD_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_QUAD_STRIP;
-    glimPrimitiveType[to_base(PrimitiveType::POLYGON)] = NS_GLIM::GLIM_ENUM::GLIM_POLYGON;
+    glimPrimitiveType[to_base(PrimitiveTopology::API_POINTS)] = NS_GLIM::GLIM_ENUM::GLIM_POINTS;
+    glimPrimitiveType[to_base(PrimitiveTopology::LINES)] = NS_GLIM::GLIM_ENUM::GLIM_LINES;
+    glimPrimitiveType[to_base(PrimitiveTopology::LINE_LOOP)] = NS_GLIM::GLIM_ENUM::GLIM_LINE_LOOP;
+    glimPrimitiveType[to_base(PrimitiveTopology::LINE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_LINE_STRIP;
+    glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLES)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLES;
+    glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_STRIP;
+    glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_FAN)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_FAN;
+    glimPrimitiveType[to_base(PrimitiveTopology::QUAD_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_QUAD_STRIP;
+    glimPrimitiveType[to_base(PrimitiveTopology::POLYGON)] = NS_GLIM::GLIM_ENUM::GLIM_POLYGON;
 
     glShaderStageTable[to_base(ShaderType::VERTEX)] = GL_VERTEX_SHADER;
     glShaderStageTable[to_base(ShaderType::FRAGMENT)] = GL_FRAGMENT_SHADER;
@@ -582,12 +582,11 @@ void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
     GL_API::GetStateTracker().toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
 
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_GEOMETRY)) {
-        DIVIDE_ASSERT(drawCommand._primitiveType != PrimitiveType::COUNT, "GLUtil::submitRenderCommand error: Draw command's type is not valid!");
         context._queryLookupId = drawCommand._sourceBuffer._id;
         context._cmdOptions = drawCommand._renderOptions;
 
         BeginHardwareQueries(context);
-        SubmitRenderCommand(glPrimitiveTypeTable[to_base(drawCommand._primitiveType)], drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
+        SubmitRenderCommand(glPrimitiveTypeTable[to_base(GL_API::GetStateTracker()._activeTopology)], drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
         EndHardwareQueries(context);
     }
 

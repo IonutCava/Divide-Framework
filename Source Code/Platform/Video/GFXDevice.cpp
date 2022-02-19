@@ -674,6 +674,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             PipelineDescriptor pipelineDesc;
             pipelineDesc._stateHash = _stateDepthOnlyRenderingHash;
             pipelineDesc._shaderProgramHandle = _HIZConstructProgram->getGUID();
+            pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
             _HIZPipeline = newPipeline(pipelineDesc);
         });
     }
@@ -761,6 +763,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _blurBoxPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
@@ -779,6 +782,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _blurBoxPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
@@ -810,6 +814,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::API_POINTS;
                 _blurGaussianPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
@@ -831,6 +836,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::API_POINTS;
                 _blurGaussianPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
@@ -856,6 +862,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor = {};
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = _displayShader->getGUID();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _drawFSTexturePipelineCmd._pipeline = newPipeline(pipelineDescriptor);
 
                 RTBlendState& blendState = pipelineDescriptor._blendStates[0];
@@ -874,6 +881,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor = {};
                 pipelineDescriptor._stateHash = _stateDepthOnlyRenderingHash;
                 pipelineDescriptor._shaderProgramHandle = _depthShader->getGUID();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _drawFSDepthPipelineCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
@@ -1275,7 +1283,6 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
 
     GFX::SendPushConstantsCommand pushConstantsCmd{};
     GFX::DrawCommand drawCmd{ GenericDrawCommand{} };
-    drawCmd._drawCommands.front()._primitiveType = gaussian ? PrimitiveType::API_POINTS : PrimitiveType::TRIANGLES;
 
     const U8 loopCount = gaussian ? 1u : layerCount;
 
@@ -1863,9 +1870,6 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
 std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut) {
     assert(depthBuffer != HiZTarget);
 
-    GenericDrawCommand drawCmd = {};
-    drawCmd._primitiveType = PrimitiveType::TRIANGLES;
-
     // The depth buffer's resolution should be equal to the screen's resolution
     RenderTarget& renderTarget = _rtPool->renderTarget(HiZTarget);
     const U16 width = renderTarget.getWidth();
@@ -1941,7 +1945,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
             constants.set(_ID("depthInfo"),   GFX::PushConstantType::IVEC2, vec2<I32>(level - 1, wasEven ? 1 : 0));
 
             // Dummy draw command as the full screen quad is generated completely in the vertex shader
-            GFX::EnqueueCommand(cmdBufferInOut, GFX::DrawCommand{ drawCmd });
+            GFX::EnqueueCommand(cmdBufferInOut, GFX::DrawCommand{ GenericDrawCommand{} });
 
             GFX::EnqueueCommand<GFX::EndRenderSubPassCommand>(cmdBufferInOut);
         }
@@ -2044,9 +2048,6 @@ void GFXDevice::drawTextureInViewport(const TextureData data, const size_t sampl
     static GFX::SendPushConstantsCommand s_pushConstantsSRGBTrue { PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, true}}};
     static GFX::SendPushConstantsCommand s_pushConstantsSRGBFalse{ PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, false}}};
 
-    GenericDrawCommand drawCmd = {};
-    drawCmd._primitiveType = PrimitiveType::TRIANGLES;
-
     GFX::EnqueueCommand(bufferInOut, s_beginDebugScopeCmd);
     GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
     GFX::EnqueueCommand(bufferInOut, drawToDepthOnly ? _drawFSDepthPipelineCmd : drawBlend ? _drawFSTexturePipelineBlendCmd : _drawFSTexturePipelineCmd);
@@ -2057,7 +2058,7 @@ void GFXDevice::drawTextureInViewport(const TextureData data, const size_t sampl
         GFX::EnqueueCommand(bufferInOut, convertToSrgb ? s_pushConstantsSRGBTrue : s_pushConstantsSRGBFalse);
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
+    GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ GenericDrawCommand{} });
     GFX::EnqueueCommand(bufferInOut, GFX::PopViewportCommand{});
     GFX::EnqueueCommand(bufferInOut, GFX::PopCameraCommand{});
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -2260,11 +2261,9 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
     PipelineDescriptor pipelineDesc{};
     pipelineDesc._stateHash = _state2DRenderingHash;
     pipelineDesc._shaderProgramHandle = -1;
+    pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     const Rect<I32> previousViewport(_viewport);
-
-    GenericDrawCommand drawCmd{};
-    drawCmd._primitiveType = PrimitiveType::TRIANGLES;
 
     Pipeline* crtPipeline = nullptr;
     U16 idx = 0u;
@@ -2298,7 +2297,7 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
             view->_textureBindSlot
         });
 
-        GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ drawCmd });
+        GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ GenericDrawCommand{} });
 
         if (!view->_name.empty()) {
             labelStack.emplace_back(view->_name, viewport.sizeY, viewport);
@@ -2853,7 +2852,7 @@ Pipeline* GFXDevice::newPipeline(const PipelineDescriptor& descriptor) {
     // Pipeline with no shader is no pipeline at all
     DIVIDE_ASSERT(descriptor._shaderProgramHandle != 0, "Missing shader handle during pipeline creation!");
 
-    const size_t hash = descriptor.getHash();
+    const size_t hash = GetHash(descriptor);
 
     ScopedLock<Mutex> lock(_pipelineCacheLock);
     const hashMap<size_t, Pipeline, NoHash<size_t>>::iterator it = _pipelineCache.find(hash);

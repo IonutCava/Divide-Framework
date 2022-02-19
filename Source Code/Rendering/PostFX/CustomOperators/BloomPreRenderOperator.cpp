@@ -47,6 +47,7 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _bloomCalc->getGUID();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _bloomCalcPipeline = _context.newPipeline(pipelineDescriptor);
     });
@@ -64,6 +65,8 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _bloomApply->getGUID();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
         _bloomApplyPipeline = _context.newPipeline(pipelineDescriptor);
     });
 
@@ -163,7 +166,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     beginRenderPassCmd._name = "DO_BLOOM_PASS";
     EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-    EnqueueCommand(bufferInOut, _triangleDrawCmd);
+    EnqueueCommand(bufferInOut, _drawCmd);
 
     EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 
@@ -193,7 +196,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     beginRenderPassCmd._descriptor = _screenOnlyDraw;
     EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-    EnqueueCommand(bufferInOut, _triangleDrawCmd);
+    EnqueueCommand(bufferInOut, _drawCmd);
 
     EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 

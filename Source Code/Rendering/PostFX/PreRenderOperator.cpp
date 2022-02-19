@@ -9,22 +9,11 @@ namespace Divide {
 PreRenderOperator::PreRenderOperator(GFXDevice& context, PreRenderBatch& parent, const FilterType operatorType)
     : _context(context),
       _parent(parent),
-      _operatorType(operatorType)
+      _operatorType(operatorType),
+      _drawCmd{ GenericDrawCommand {} }
 {
     DisableAll(_screenOnlyDraw._drawMask);
     SetEnabled(_screenOnlyDraw._drawMask, RTAttachmentType::Colour, 0, true);
-
-    GenericDrawCommand pointsCmd = {};
-    pointsCmd._primitiveType = PrimitiveType::API_POINTS;
-    pointsCmd._drawCount = 1;
-
-    _pointDrawCmd = { pointsCmd };
-
-    GenericDrawCommand triangleCmd = {};
-    triangleCmd._primitiveType = PrimitiveType::TRIANGLES;
-    triangleCmd._drawCount = 1;
-
-    _triangleDrawCmd = { triangleCmd };
 }
 
 bool PreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, [[maybe_unused]] GFX::CommandBuffer& bufferInOut) {

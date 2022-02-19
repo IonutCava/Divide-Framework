@@ -473,6 +473,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader->getGUID();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         s_downsamplePipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
@@ -524,7 +525,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),   TextureUsage::DEPTH });
             set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
 
-            GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+            GFX::EnqueueCommand(bufferInOut, _drawCmd);
 
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
@@ -543,7 +544,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             set._textureData.add(TextureEntry{ _noiseTexture->data(),         _noiseSampler,              TextureUsage::UNIT0 });
             set._textureData.add(TextureEntry{ halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash(),TextureUsage::DEPTH });
 
-            GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+            GFX::EnqueueCommand(bufferInOut, _drawCmd);
 
             GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
         }
@@ -569,7 +570,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             set._textureData.add(TextureEntry{ halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash(), TextureUsage::NORMALMAP });
             set._textureData.add(TextureEntry{ depthAtt.texture()->data(),     depthAtt.samplerHash(),     TextureUsage::DEPTH });
 
-            GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+            GFX::EnqueueCommand(bufferInOut, _drawCmd);
 
             GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
         }
@@ -588,7 +589,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
             GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
-            GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+            GFX::EnqueueCommand(bufferInOut, _drawCmd);
 
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
@@ -616,7 +617,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
                 set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(),    ssaoAtt.samplerHash(),   TextureUsage::UNIT0 });
 
-                GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+                GFX::EnqueueCommand(bufferInOut, _drawCmd);
 
                 GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
             }
@@ -635,7 +636,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
                 set._textureData.add(TextureEntry{ horizBlur.texture()->data(),  ssaoAtt.samplerHash(),   TextureUsage::UNIT0 });
 
-                GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+                GFX::EnqueueCommand(bufferInOut, _drawCmd);
 
                 GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
             }
@@ -649,7 +650,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
             set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(), ssaoAtt.samplerHash(), TextureUsage::UNIT0 });
 
-            GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+            GFX::EnqueueCommand(bufferInOut, _drawCmd);
 
             GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
         }

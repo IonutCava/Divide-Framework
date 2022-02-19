@@ -333,17 +333,18 @@ bool WaterPlane::PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& poi
     return sgn->get<BoundsComponent>()->getBoundingBox().containsPoint(point);
 }
 
-void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
+void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+
+    topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
 
     GenericDrawCommand cmd = {};
-    cmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
     cmd._cmd.indexCount = to_U32(_plane->getGeometryVB()->getIndexCount());
     cmd._sourceBuffer = _plane->getGeometryVB()->handle();
 
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
     _editorDataDirtyState.fill(EditorDataState::CHANGED);
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
 }
 
 /// update water refraction

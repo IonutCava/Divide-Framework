@@ -142,7 +142,7 @@ class Terrain final : public Object3D {
 
     void postBuild();
 
-    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) override;
 
      void prepareRender(SceneGraphNode* sgn,
                         RenderingComponent& rComp,

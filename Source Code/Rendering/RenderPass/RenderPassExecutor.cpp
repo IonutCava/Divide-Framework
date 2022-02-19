@@ -252,6 +252,7 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
 
         pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS->getGUID();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
         s_ResolveGBufferPipeline = _context.newPipeline(pipelineDescriptor);
 
         RTBlendState& state0 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
@@ -1140,7 +1141,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     set._textureData.add(TextureEntry{ accum,     accumAtt.samplerHash(), to_base(TextureUsage::UNIT0) });
     set._textureData.add(TextureEntry{ revealage, revAtt.samplerHash(),   to_base(TextureUsage::UNIT1) });
         
-    GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ GenericDrawCommand{} })->_drawCommands.front()._primitiveType = PrimitiveType::TRIANGLES;
+    GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ GenericDrawCommand{} });
 
     if (layeredRendering) {
         GFX::EnqueueCommand(bufferInOut, GFX::EndRenderSubPassCommand{});
@@ -1227,7 +1228,7 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
             set._textureData.add(TextureEntry{ velocityAtt.texture()->data(), velocityAtt.samplerHash(), to_base(TextureUsage::UNIT0) });
             set._textureData.add(TextureEntry{ normalsAtt.texture()->data(),  normalsAtt.samplerHash(),  to_base(TextureUsage::UNIT1) });
 
-            GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ GenericDrawCommand{} })->_drawCommands.front()._primitiveType = PrimitiveType::TRIANGLES;
+            GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ GenericDrawCommand{} });
             GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 
         }

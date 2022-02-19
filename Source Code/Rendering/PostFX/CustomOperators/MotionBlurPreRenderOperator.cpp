@@ -43,6 +43,7 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _blurApply->getGUID();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _blurApplyPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
     });
@@ -86,7 +87,7 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     constants.set(_ID("dvd_velocityScale"), GFX::PushConstantType::FLOAT, velocityFactor);
     constants.set(_ID("dvd_maxSamples"),    GFX::PushConstantType::INT,   to_I32(maxSamples()));
 
-    GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+    GFX::EnqueueCommand(bufferInOut, _drawCmd);
 
     GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{ });
 

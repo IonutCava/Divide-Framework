@@ -63,6 +63,8 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
             PipelineDescriptor pipelineDescriptor;
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _fxaa->getGUID();
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
             _fxaaPipeline = _context.newPipeline(pipelineDescriptor);
         });
     }
@@ -89,6 +91,8 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
             PipelineDescriptor pipelineDescriptor;
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _smaaWeightComputation->getGUID();
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
             _smaaWeightPipeline = _context.newPipeline(pipelineDescriptor);
         });
 
@@ -105,6 +109,8 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
             PipelineDescriptor pipelineDescriptor;
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _smaaBlend->getGUID();
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
             _smaaBlendPipeline = _context.newPipeline(pipelineDescriptor);
         });
     }
@@ -207,7 +213,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaWeightPipeline });
             EnqueueCommand(bufferInOut, _pushConstantsCommand);
 
-            EnqueueCommand(bufferInOut, _triangleDrawCmd);
+            EnqueueCommand(bufferInOut, _drawCmd);
 
             EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{ });
         }
@@ -229,7 +235,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaBlendPipeline });
             EnqueueCommand(bufferInOut, _pushConstantsCommand);
 
-            EnqueueCommand(bufferInOut, _triangleDrawCmd);
+            EnqueueCommand(bufferInOut, _drawCmd);
 
             EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{ });
         }
@@ -248,7 +254,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
         EnqueueCommand(bufferInOut, descriptorSetCmd);
 
-        EnqueueCommand(bufferInOut, _triangleDrawCmd);
+        EnqueueCommand(bufferInOut, _drawCmd);
 
         EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{ });
     }

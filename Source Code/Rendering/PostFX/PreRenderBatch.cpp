@@ -438,15 +438,12 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _lineariseDepthBuffer->getGUID();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
         GFX::BindPipelineCommand bindPipelineCmd{};
         bindPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-        GenericDrawCommand triangleCmd = {};
-        triangleCmd._primitiveType = PrimitiveType::TRIANGLES;
-        triangleCmd._drawCount = 1;
-
-        GFX::DrawCommand drawCmd{};
-        drawCmd._drawCommands = { { triangleCmd } };
+        GFX::DrawCommand drawCmd{ GenericDrawCommand{} };
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: Linearise depth buffer";
         GFX::EnqueueCommand(bufferInOut, clearLinearDepthCmd);
@@ -491,32 +488,27 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     static Pipeline* pipelineLumCalcHistogram = nullptr, * pipelineLumCalcAverage = nullptr, * pipelineToneMap = nullptr, * pipelineToneMapAdaptive = nullptr;
 
     if (pipelineLumCalcHistogram == nullptr) {
+        PipelineDescriptor pipelineDescriptor{};
+
         const size_t stateHash = _context.get2DStateBlock();
-        pipelineLumCalcHistogram = _context.newPipeline({
-            stateHash,
-            _createHistogram->getGUID()
-        });
+        pipelineDescriptor._stateHash = stateHash;
+        pipelineDescriptor._shaderProgramHandle = _createHistogram->getGUID();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-        pipelineLumCalcAverage = _context.newPipeline({
-                stateHash,
-                _averageHistogram->getGUID()
-            });
+        pipelineLumCalcHistogram = _context.newPipeline(pipelineDescriptor);
 
-        pipelineToneMapAdaptive = _context.newPipeline({
-                stateHash,
-                _toneMapAdaptive->getGUID()
-            });
+        pipelineDescriptor._shaderProgramHandle = _averageHistogram->getGUID();
+        pipelineLumCalcAverage = _context.newPipeline(pipelineDescriptor);
 
-        pipelineToneMap = _context.newPipeline({
-                stateHash,
-                _toneMap->getGUID()
-            });
+        pipelineDescriptor._shaderProgramHandle = _toneMapAdaptive->getGUID();
+        pipelineToneMapAdaptive = _context.newPipeline(pipelineDescriptor);
+
+        pipelineDescriptor._shaderProgramHandle = _toneMap->getGUID();
+        pipelineToneMap = _context.newPipeline(pipelineDescriptor);
 
         for (U8 i = 0u; i < to_U8(EdgeDetectionMethod::COUNT); ++i) {
-            _edgeDetectionPipelines[i] = _context.newPipeline({
-                stateHash,
-                _edgeDetection[i]->getGUID()
-            });
+            pipelineDescriptor._shaderProgramHandle = _edgeDetection[i]->getGUID();
+            _edgeDetectionPipelines[i] = _context.newPipeline(pipelineDescriptor);
         }
     }
 
@@ -645,12 +637,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     computeMipMapsCommand._texture = prevScreenRT.getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO)).texture().get();
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
-    GenericDrawCommand triangleCmd = {};
-    triangleCmd._primitiveType = PrimitiveType::TRIANGLES;
-    triangleCmd._drawCount = 1;
-
-    GFX::DrawCommand drawCmd{};
-    drawCmd._drawCommands = { { triangleCmd } };
+    GFX::DrawCommand drawCmd{ GenericDrawCommand{} };
 
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
         static size_t lumaSamplerHash = 0u;

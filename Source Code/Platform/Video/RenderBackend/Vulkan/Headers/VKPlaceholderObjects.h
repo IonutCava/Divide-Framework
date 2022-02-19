@@ -75,7 +75,7 @@ namespace Divide {
         void beginBatch([[maybe_unused]] bool reserveBuffers, [[maybe_unused]] U32 vertexCount, [[maybe_unused]] U32 attributeCount) noexcept override {
         }
 
-        void begin([[maybe_unused]] PrimitiveType type) noexcept override {
+        void begin([[maybe_unused]] PrimitiveTopology type) noexcept override {
         }
 
         void vertex([[maybe_unused]] F32 x, [[maybe_unused]] F32 y, [[maybe_unused]] F32 z) noexcept override {

@@ -187,21 +187,21 @@ void IMPrimitive::fromBoxes(const BoxDescriptor* boxes, const size_t count) {
             // Set it's colour
             attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(colour));
             // Draw the bottom loop
-            begin(PrimitiveType::LINE_LOOP);
+            begin(PrimitiveTopology::LINE_LOOP);
                 vertex(min.x, min.y, min.z);
                 vertex(max.x, min.y, min.z);
                 vertex(max.x, min.y, max.z);
                 vertex(min.x, min.y, max.z);
             end();
             // Draw the top loop
-            begin(PrimitiveType::LINE_LOOP);
+            begin(PrimitiveTopology::LINE_LOOP);
                 vertex(min.x, max.y, min.z);
                 vertex(max.x, max.y, min.z);
                 vertex(max.x, max.y, max.z);
                 vertex(min.x, max.y, max.z);
             end();
             // Connect the top to the bottom
-            begin(PrimitiveType::LINES);
+            begin(PrimitiveTopology::LINES);
                 vertex(min.x, min.y, min.z);
                 vertex(min.x, max.y, min.z);
                 vertex(max.x, min.y, min.z);
@@ -236,7 +236,7 @@ void IMPrimitive::fromSpheres(const SphereDescriptor* spheres, const size_t coun
         F32 t = 1.f;
         // Create the object
             attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(sphere.colour));
-            begin(PrimitiveType::LINE_LOOP);
+            begin(PrimitiveTopology::LINE_LOOP);
                 for (U32 i = 0u; i < sphere.stacks; i++) {
                     const F32 rho = i * drho;
                     const F32 srho = std::sin(rho);
@@ -303,7 +303,7 @@ void IMPrimitive::fromCones(const ConeDescriptor* cones, const size_t count) {
         // draw cone top
         attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(cone.colour));
         // Top
-        begin(PrimitiveType::TRIANGLE_FAN);
+        begin(PrimitiveTopology::TRIANGLE_FAN);
             vertex(cone.root);
             for (U8 j = 0u; j < slices; ++j) {
                 vertex(pts[j]);
@@ -311,7 +311,7 @@ void IMPrimitive::fromCones(const ConeDescriptor* cones, const size_t count) {
         end();
 
         // Bottom
-        begin(PrimitiveType::TRIANGLE_FAN);
+        begin(PrimitiveTopology::TRIANGLE_FAN);
             vertex(c);
             for (I8 j = slices - 1; j >= 0; --j) {
                 vertex(pts[j]);
@@ -343,7 +343,7 @@ void IMPrimitive::fromLinesInternal(const Line* lines, size_t count) {
     attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(lines[0].colourStart()));
     attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(1.f, 1.f));
     // Set the mode to line rendering
-    begin(PrimitiveType::LINES);
+    begin(PrimitiveTopology::LINES);
     // Add every line in the list to the batch
     for (size_t i = 0u; i < count; ++i) {
         const Line& line = lines[i];
@@ -388,7 +388,7 @@ GFX::CommandBuffer& IMPrimitive::toCommandBuffer() const {
     {
         _cmdBuffer->clear();
 
-        DIVIDE_ASSERT(_pipeline->shaderProgramHandle() != 0, "IMPrimitive error: Draw call received without a valid shader defined!");
+        DIVIDE_ASSERT(_pipeline->descriptor()._shaderProgramHandle != 0, "IMPrimitive error: Draw call received without a valid shader defined!");
 
         GFX::EnqueueCommand(*_cmdBuffer, GFX::BindPipelineCommand{ _pipeline });
 
@@ -412,7 +412,6 @@ GFX::CommandBuffer& IMPrimitive::toCommandBuffer() const {
         }
 
         GenericDrawCommand cmd{};
-        cmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
         cmd._sourceBuffer = handle();
         GFX::EnqueueCommand(*_cmdBuffer, GFX::DrawCommand{ cmd });
 

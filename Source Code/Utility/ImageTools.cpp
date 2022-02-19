@@ -142,7 +142,7 @@ namespace nvttHelpers {
         return isNormalMap && format == nvtt::Format_BC1;
     }
 
-    [[nodiscard]] nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGrayscale) noexcept {
+    [[nodiscard]] nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGreyscale) noexcept {
         assert(outputFormat != ImageOutputFormat::COUNT);
 
         if (!g_KeepDevILDDSCompatibility && outputFormat != ImageOutputFormat::AUTO) {
@@ -162,7 +162,7 @@ namespace nvttHelpers {
         if_constexpr(g_KeepDevILDDSCompatibility) {
             return isNormalMap ? nvtt::Format::Format_BC3n : hasAlpha ? nvtt::Format::Format_BC3 : nvtt::Format::Format_BC1;
         }
-        return isNormalMap ? nvtt::Format::Format_BC5 : isGrayscale ? nvtt::Format::Format_BC4 : nvtt::Format::Format_BC7;
+        return isNormalMap ? nvtt::Format::Format_BC5 : isGreyscale ? nvtt::Format::Format_BC4 : nvtt::Format::Format_BC7;
     }
 
     [[nodiscard]] nvtt::MipmapFilter getNVTTMipFilter(const MipMapFilter filter) noexcept {
@@ -293,7 +293,8 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
                     nvtt::Surface image;
                     bool hasAlpha = false;
                     if (image.load(fullPath.c_str(), &hasAlpha)) {
-                        const nvtt::Format outputFormat = nvttHelpers::getNVTTFormat(options._outputFormat, options._isNormalMap, hasAlpha, false);
+                        const bool isGreyScale = false;
+                        const nvtt::Format outputFormat = nvttHelpers::getNVTTFormat(options._outputFormat, options._isNormalMap, hasAlpha, isGreyScale);
 
                         // Setup compression options.
                         nvtt::CompressionOptions compressionOptions;

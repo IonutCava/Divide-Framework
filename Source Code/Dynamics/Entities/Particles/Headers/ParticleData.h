@@ -82,11 +82,11 @@ class ParticleData {
 
     void setParticleGeometry(const vector<vec3<F32>>& particleGeometryVertices,
                              const vector<U32>& particleGeometryIndices,
-                             PrimitiveType particleGeometryType);
+                             PrimitiveTopology particleGeometryType);
 
     void setBillboarded(bool state) noexcept;
 
-    [[nodiscard]] PrimitiveType particleGeometryType() const noexcept {
+    [[nodiscard]] PrimitiveTopology particleGeometryType() const noexcept {
         return _particleGeometryType;
     }
 
@@ -125,7 +125,7 @@ class ParticleData {
     bool _isBillboarded = true;
     vector<vec3<F32>> _particleGeometryVertices;
     vector<U32> _particleGeometryIndices;
-    PrimitiveType _particleGeometryType = PrimitiveType::COUNT;
+    PrimitiveTopology _particleGeometryType = PrimitiveTopology::COUNT;
 
     GFXDevice& _context;
 };

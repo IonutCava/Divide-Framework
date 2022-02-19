@@ -46,8 +46,7 @@ GUISplash::GUISplash(ResourceCache* cache,
 }
 
 void GUISplash::render(GFXDevice& context) const {
-    GenericDrawCommand drawCmd = {};
-    drawCmd._primitiveType = PrimitiveType::TRIANGLES;
+    
 
     SamplerDescriptor splashSampler = {};
     splashSampler.wrapUVW(TextureWrap::CLAMP);
@@ -58,6 +57,7 @@ void GUISplash::render(GFXDevice& context) const {
     PipelineDescriptor pipelineDescriptor;
     pipelineDescriptor._stateHash = context.get2DStateBlock();
     pipelineDescriptor._shaderProgramHandle = _splashShader->getGUID();
+    pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
     GFX::CommandBuffer& buffer = sBuffer();
@@ -82,7 +82,7 @@ void GUISplash::render(GFXDevice& context) const {
     descriptorSetCmd._set._textureData.add(TextureEntry{ _splashImage->data(), splashSampler.getHash(), TextureUsage::UNIT0 });
     EnqueueCommand(buffer, descriptorSetCmd);
 
-    EnqueueCommand(buffer, GFX::DrawCommand{ drawCmd });
+    EnqueueCommand(buffer, GFX::DrawCommand{ GenericDrawCommand{} });
 
     context.flushCommandBuffer(buffer);
 }

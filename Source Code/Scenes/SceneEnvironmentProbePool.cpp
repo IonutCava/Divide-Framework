@@ -281,11 +281,12 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         }
     }
     if (s_lutTextureDirty) {
-        const Pipeline* pipelineCalcLut = context.newPipeline(
-        {
-                context.get2DStateBlock(),
-                s_lutComputeShader->getGUID()
-        });
+        PipelineDescriptor pipelineDescriptor{};
+        pipelineDescriptor._stateHash = context.get2DStateBlock();
+        pipelineDescriptor._shaderProgramHandle = s_lutComputeShader->getGUID();
+
+        const Pipeline* pipelineCalcLut = context.newPipeline(pipelineDescriptor);
+
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ pipelineCalcLut });
 
         Texture* brdfLutTexture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
@@ -427,11 +428,11 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
 void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 layerID, const U8 faceIndex, GFX::CommandBuffer& bufferInOut) {
     static Pipeline* pipelineCalcPrefiltered = nullptr;
     if (pipelineCalcPrefiltered == nullptr) {
-        pipelineCalcPrefiltered = context.newPipeline(
-        {
-            context.get2DStateBlock(),
-            s_prefilterComputeShader->getGUID()
-        });
+        PipelineDescriptor pipelineDescriptor{};
+        pipelineDescriptor._stateHash = context.get2DStateBlock();
+        pipelineDescriptor._shaderProgramHandle = s_prefilterComputeShader->getGUID();
+
+        pipelineCalcPrefiltered = context.newPipeline(pipelineDescriptor);
     }
 
     const RTAttachment& sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
@@ -484,11 +485,10 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
 void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U16 layerID, const U8 faceIndex, GFX::CommandBuffer& bufferInOut) {
     static Pipeline* pipelineCalcIrradiance = nullptr;
     if (pipelineCalcIrradiance == nullptr) {
-        pipelineCalcIrradiance = context.newPipeline(
-            {
-                context.get2DStateBlock(),
-                s_irradianceComputeShader->getGUID()
-            });
+        PipelineDescriptor pipelineDescriptor{};
+        pipelineDescriptor._stateHash = context.get2DStateBlock();
+        pipelineDescriptor._shaderProgramHandle = s_irradianceComputeShader->getGUID();
+        pipelineCalcIrradiance = context.newPipeline(pipelineDescriptor);
     }
 
     const RTAttachment& sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);

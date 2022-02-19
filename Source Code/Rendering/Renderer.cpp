@@ -70,6 +70,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         ResourceDescriptor cullShaderDesc("lightCull");
         cullShaderDesc.propertyDescriptor(cullDescritpor);
         _lightCullComputeShader = CreateResource<ShaderProgram>(cache, cullShaderDesc);
+
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._shaderProgramHandle = _lightCullComputeShader->getGUID();
         _lightCullPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);

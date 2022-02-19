@@ -114,7 +114,7 @@ namespace NS_GLIM
             // render all triangles
             if (m_Data.m_uiTriangleElements > 0)
             {
-                cmd._primitiveType = Divide::PrimitiveType::TRIANGLES;
+                Divide::GL_API::GetStateTracker()._activeTopology = Divide::PrimitiveTopology::TRIANGLES;
                 cmd._cmd.indexCount = m_Data.m_uiTriangleElements;
                 if (Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Data.m_uiElementBufferID_Triangles) == Divide::GLStateTracker::BindResult::FAILED) {
                     Divide::DIVIDE_UNEXPECTED_CALL();
@@ -127,7 +127,7 @@ namespace NS_GLIM
             // render all triangles
             if (m_Data.m_uiWireframeElements > 0)
             {
-                cmd._primitiveType = Divide::PrimitiveType::LINES;
+                Divide::GL_API::GetStateTracker()._activeTopology = Divide::PrimitiveTopology::LINES;
                 cmd._cmd.indexCount = m_Data.m_uiWireframeElements;
                 if (Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Data.m_uiElementBufferID_Wireframe) == Divide::GLStateTracker::BindResult::FAILED) {
                     Divide::DIVIDE_UNEXPECTED_CALL();
@@ -139,7 +139,7 @@ namespace NS_GLIM
         // render all lines
         if (m_Data.m_uiLineElements > 0)
         {
-            cmd._primitiveType = Divide::PrimitiveType::LINES;
+            Divide::GL_API::GetStateTracker()._activeTopology = Divide::PrimitiveTopology::LINES;
             cmd._cmd.indexCount = m_Data.m_uiLineElements;
             if (Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Data.m_uiElementBufferID_Lines) == Divide::GLStateTracker::BindResult::FAILED) {
                 Divide::DIVIDE_UNEXPECTED_CALL();
@@ -150,7 +150,7 @@ namespace NS_GLIM
         // render all points
         if (m_Data.m_uiPointElements > 0)
         {
-            cmd._primitiveType = Divide::PrimitiveType::API_POINTS;
+            Divide::GL_API::GetStateTracker()._activeTopology = Divide::PrimitiveTopology::API_POINTS;
             cmd._cmd.indexCount = m_Data.m_uiPointElements;
             if (Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Data.m_uiElementBufferID_Points) == Divide::GLStateTracker::BindResult::FAILED) {
                 Divide::DIVIDE_UNEXPECTED_CALL();

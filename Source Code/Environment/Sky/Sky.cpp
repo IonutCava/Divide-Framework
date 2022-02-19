@@ -804,9 +804,10 @@ void Sky::prepareRender(SceneGraphNode* sgn,
     SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
-void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
+void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+    topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
+
     GenericDrawCommand cmd = {};
-    cmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
     cmd._sourceBuffer = _sky->getGeometryVB()->handle();
     cmd._cmd.indexCount = to_U32(_sky->getGeometryVB()->getIndexCount());
 
@@ -816,7 +817,7 @@ void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& 
 
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
 }
 
 }

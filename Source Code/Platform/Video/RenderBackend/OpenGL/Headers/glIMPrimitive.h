@@ -60,7 +60,7 @@ class glIMPrimitive final : public IMPrimitive {
     /// Return true if this primitive contains drawable geometry data
     bool hasBatch() const noexcept override;
     /// Begins gathering information about the given type of primitives.
-    void begin(PrimitiveType type) override;
+    void begin(PrimitiveTopology type) override;
     /// Ends gathering information about the primitives.
     void end() override;
     /// Specify the position of a vertex belonging to this primitive

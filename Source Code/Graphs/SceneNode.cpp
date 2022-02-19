@@ -105,8 +105,9 @@ bool SceneNode::unload() {
 void SceneNode::editorFieldChanged([[maybe_unused]] std::string_view field) {
 }
 
-void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] vector_fast<GFX::DrawCommand>& cmdsOut)
+void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut)
 {
+    DIVIDE_ASSERT(cmdsOut.empty() || topologyOut != PrimitiveTopology::COUNT);
 }
 
 void SceneNode::onNetworkSend([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] WorldPacket& dataOut) const {

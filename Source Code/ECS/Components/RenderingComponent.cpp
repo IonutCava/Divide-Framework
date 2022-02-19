@@ -347,7 +347,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
 
         if (!hasCommands) {
             ScopedLock<SharedMutex> w_lock(_drawCommands._dataLock);
-            _parentSGN->getNode().buildDrawCommands(_parentSGN, _drawCommands._data);
+            _parentSGN->getNode().buildDrawCommands(_parentSGN, _drawCommands._data, _primitiveTopology);
             for (GFX::DrawCommand& drawCmd : _drawCommands._data) {
                 for (GenericDrawCommand& cmd : drawCmd._drawCommands) {
                     hasCommands = true;
@@ -391,6 +391,8 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
                 }
             }
             PipelineDescriptor pipelineDescriptor = {};
+            pipelineDescriptor._primitiveTopology = _primitiveTopology;
+
             if (_materialInstance != nullptr) {
                 pipelineDescriptor._stateHash = _materialInstance->getOrCreateRenderStateBlock(renderStagePass);
                 pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramGUID(renderStagePass);
@@ -510,7 +512,7 @@ void RenderingComponent::addAdditionalCommands(const RenderStagePass renderStage
 
 size_t RenderingComponent::getPipelineHash(const RenderStagePass renderStagePass) {
     const Pipeline* pipeline = getDrawPackage(renderStagePass).pipelineCmd()._pipeline;
-    return (pipeline != nullptr ? pipeline->getHash() : 0u);
+    return (pipeline != nullptr ? pipeline->hash() : 0u);
 }
 
 RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass renderStagePass) {

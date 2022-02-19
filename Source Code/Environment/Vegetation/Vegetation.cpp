@@ -787,12 +787,13 @@ void Vegetation::sceneUpdate(const U64 deltaTimeUS,
 }
 
 
-void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
+void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+
+    topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
 
     const U16 partitionID = s_lodPartitions[0];
 
     GenericDrawCommand cmd = {};
-    cmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
     cmd._sourceBuffer = s_buffer->handle();
     cmd._cmd.primCount = _instanceCountGrass;
     cmd._cmd.indexCount = to_U32(s_buffer->getPartitionIndexCount(partitionID));
@@ -812,7 +813,7 @@ void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCom
         prevID = id;
     }
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
 }
 
 namespace {

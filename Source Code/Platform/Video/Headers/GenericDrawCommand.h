@@ -57,7 +57,7 @@ struct IndirectDrawCommand {
     U32 baseInstance = 0;  // 20 bytes
 };
 
-enum class CmdRenderOptions : U8 {
+enum class CmdRenderOptions : U16 {
     RENDER_GEOMETRY = toBit(1),
     RENDER_WIREFRAME = toBit(2),
     RENDER_NO_RASTERIZE = toBit(3),
@@ -74,9 +74,8 @@ struct GenericDrawCommand {
     PoolHandle _sourceBuffer = {};                                        // 12 bytes
     U32 _commandOffset = 0u;                                              // 9  bytes
     U16 _drawCount = 1u;                                                  // 5  bytes
-    U8  _renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY);      // 3  bytes
-    U8  _bufferIndex  = INVALID_BUFFER_INDEX;                             // 2  bytes
-    PrimitiveType _primitiveType = PrimitiveType::COUNT;                  // 1  bytes
+    U16 _renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY);      // 3  bytes
+    U8  _bufferIndex  = INVALID_BUFFER_INDEX;                             // 1  bytes
 };
 #pragma pack(pop)
 

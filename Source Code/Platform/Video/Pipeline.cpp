@@ -7,37 +7,40 @@
 
 namespace Divide {
 
-size_t PipelineDescriptor::getHash() const {
-    _hash = _stateHash;
-    Util::Hash_combine(_hash, _multiSampleCount);
-    Util::Hash_combine(_hash, _shaderProgramHandle);
+size_t GetHash(const PipelineDescriptor& descriptor) {
+    size_t hash = descriptor._stateHash;
+    Util::Hash_combine(hash, descriptor._multiSampleCount);
+    Util::Hash_combine(hash, descriptor._shaderProgramHandle);
+    Util::Hash_combine(hash, descriptor._primitiveTopology);
 
     for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i) {
-        Util::Hash_combine(_hash, i);
+        Util::Hash_combine(hash, i);
     }
 
-    Util::Hash_combine(_hash, GetHash(_blendStates));
+    Util::Hash_combine(hash, GetHash(descriptor._blendStates));
 
-    return _hash;
+    return hash;
 }
 
-bool PipelineDescriptor::operator==(const PipelineDescriptor &other) const noexcept {
-    return _stateHash == other._stateHash &&
-           _multiSampleCount == other._multiSampleCount &&
-           _shaderProgramHandle == other._shaderProgramHandle &&
-           _blendStates == other._blendStates;
+bool operator==(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
+    return lhs._stateHash == rhs._stateHash &&
+           lhs._multiSampleCount == rhs._multiSampleCount &&
+           lhs._shaderProgramHandle == rhs._shaderProgramHandle &&
+           lhs._primitiveTopology == rhs._primitiveTopology &&
+           lhs._blendStates == rhs._blendStates;
 }
 
-bool PipelineDescriptor::operator!=(const PipelineDescriptor &other) const noexcept {
-    return _stateHash != other._stateHash ||
-           _multiSampleCount != other._multiSampleCount ||
-           _shaderProgramHandle != other._shaderProgramHandle ||
-           _blendStates != other._blendStates;
+bool operator!=(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
+    return lhs._stateHash != rhs._stateHash ||
+           lhs._multiSampleCount != rhs._multiSampleCount ||
+           lhs._shaderProgramHandle != rhs._shaderProgramHandle ||
+           lhs._primitiveTopology != rhs._primitiveTopology ||
+           lhs._blendStates != rhs._blendStates;
 }
 
 Pipeline::Pipeline(const PipelineDescriptor& descriptor)
-    : _cachedHash(descriptor.getHash()),
-      _descriptor(descriptor)
+    : _descriptor(descriptor)
+    , _hash(GetHash(descriptor))
 {
 }
 

@@ -146,6 +146,7 @@ namespace Divide {
         U8 _debugScopeDepth = 0u;
 
         Pipeline const* _activePipeline = nullptr;
+        PrimitiveTopology _activeTopology = PrimitiveTopology::COUNT;
         glFramebuffer*  _activeRenderTarget = nullptr;
         glPixelBuffer*  _activePixelBuffer = nullptr;
         /// Current active vertex array object's handle

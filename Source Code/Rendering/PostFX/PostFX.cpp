@@ -117,6 +117,8 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = context.gfx().get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _postProcessingShader->getGUID();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
         _drawPipeline = context.gfx().newPipeline(pipelineDescriptor);
     });
 
@@ -164,10 +166,7 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
         s_beginRenderPassCmd._descriptor = _postFXTarget;
         s_beginRenderPassCmd._name = "DO_POSTFX_PASS";
 
-        GenericDrawCommand drawCommand;
-        drawCommand._primitiveType = PrimitiveType::TRIANGLES;
-        drawCommand._drawCount = 1;
-        s_drawCommand._drawCommands = { {drawCommand} };
+        s_drawCommand._drawCommands = { GenericDrawCommand{} };
 
         TextureDataContainer& textureContainer = s_descriptorSetCmd._set._textureData;
         textureContainer.add(TextureEntry{ _underwaterTexture->data(),   s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER) });

@@ -38,80 +38,33 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-enum class MemoryBarrierType : U32 {
-    BUFFER_UPDATE = toBit(1),
-    SHADER_STORAGE = toBit(2),
-    COMMAND_BUFFER = toBit(3),
-    ATOMIC_COUNTER = toBit(4),
-    QUERY = toBit(5),
-    RENDER_TARGET = toBit(6),
-    TEXTURE_UPDATE = toBit(7),
-    TEXTURE_FETCH = toBit(8),
-    SHADER_IMAGE = toBit(9),
-    TRANSFORM_FEEDBACK = toBit(10),
-    VERTEX_ATTRIB_ARRAY = toBit(11),
-    INDEX_ARRAY = toBit(12),
-    UNIFORM_DATA = toBit(13),
-    PIXEL_BUFFER = toBit(14),
-    PERSISTENT_BUFFER = toBit(15),
-    ALL_MEM_BARRIERS = PERSISTENT_BUFFER + 256,
-    TEXTURE_BARRIER = toBit(16), //This is not included in ALL!
-    COUNT = 15
-};
-
-struct PipelineDescriptor final : Hashable {
+struct PipelineDescriptor {
+    RTBlendStates _blendStates;
     size_t _stateHash = 0;
     I64 _shaderProgramHandle = 0;
     U8 _multiSampleCount = 0u;
-    RTBlendStates _blendStates;
-
-    PipelineDescriptor() = default;
-    PipelineDescriptor(const size_t hash, const I64 handle, const U8 sampleCount = 0u, const RTBlendStates blendStates = {}) noexcept
-        : _stateHash(hash), _shaderProgramHandle(handle), _multiSampleCount(sampleCount), _blendStates(blendStates)
-    {
-    }
-
-    size_t getHash() const override;
-    bool operator==(const PipelineDescriptor& other) const noexcept;
-    bool operator!=(const PipelineDescriptor& other) const noexcept;
+    PrimitiveTopology _primitiveTopology = PrimitiveTopology::COUNT;
 }; //struct PipelineDescriptor
+
+size_t GetHash(const PipelineDescriptor& descriptor);
+bool operator==(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs);
+bool operator!=(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs);
 
 class Pipeline {
 public:
     explicit Pipeline(const PipelineDescriptor& descriptor);
 
-    I64 shaderProgramHandle() const noexcept {
-        return _descriptor._shaderProgramHandle;
-    }
-
-    const PipelineDescriptor& descriptor() const noexcept {
-        return _descriptor;
-    }
-
-    size_t stateHash() const noexcept {
-        return _descriptor._stateHash;
-    }
-
-    U8 multiSampleCount() const noexcept {
-        return _descriptor._multiSampleCount;
-    }
-
-    size_t getHash() const noexcept {
-        return _cachedHash;
-    }
-
-    bool operator==(const Pipeline& other) const noexcept {
-        return _cachedHash == other._cachedHash;
-    }
-
-    bool operator!=(const Pipeline& other) const noexcept {
-        return _cachedHash != other._cachedHash;
-    }
-
-private: //data
-    size_t _cachedHash = 0;
-    PipelineDescriptor _descriptor;
+    PROPERTY_R_IW(PipelineDescriptor, descriptor);
+    PROPERTY_R_IW(size_t, hash, 0u);
 }; //class Pipeline
+
+inline bool operator==(const Pipeline& lhs, const Pipeline& rhs) noexcept {
+    return lhs.hash() == rhs.hash();
+}
+
+inline bool operator!=(const Pipeline& lhs, const Pipeline& rhs) noexcept {
+    return lhs.hash() != rhs.hash();
+}
 
 }; //namespace Divide
 

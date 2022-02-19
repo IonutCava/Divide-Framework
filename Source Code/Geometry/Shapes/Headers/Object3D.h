@@ -163,7 +163,7 @@ class Object3D : public SceneNode {
     [[nodiscard]] static vector<SceneGraphNode*> filterByType(const vector<SceneGraphNode*>& nodes, ObjectType filter);
 
     [[nodiscard]] bool isPrimitive() const noexcept;
-    [[nodiscard]] PrimitiveType getGeometryBufferType() const noexcept;
+    [[nodiscard]] PrimitiveTopology getGeometryBufferType() const noexcept;
     [[nodiscard]] bool saveCache(ByteBuffer& outputBuffer) const override;
     [[nodiscard]] bool loadCache(ByteBuffer& inputBuffer) override;
 
@@ -179,7 +179,7 @@ class Object3D : public SceneNode {
     /// Please manually delete the old VB if available before replacing!
     virtual void setGeometryVB(VertexBuffer* vb);
 
-    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) override;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Object3D"; }
 

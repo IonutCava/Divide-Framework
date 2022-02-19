@@ -127,7 +127,7 @@ class SceneNode : public CachedResource {
                                const CameraSnapshot& cameraSnapshot,
                                bool refreshData);
 
-    virtual void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut);
+    virtual void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut);
 
     bool unload() override;
     virtual void setMaterialTpl(const Material_ptr& material);

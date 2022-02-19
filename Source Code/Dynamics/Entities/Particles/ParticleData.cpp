@@ -19,7 +19,7 @@ ParticleData::ParticleData(GFXDevice& context, const U32 particleCount, const U3
     _particleGeometryVertices[1].set(-0.5f, -0.5f, 0.0f);
     _particleGeometryVertices[2].set(0.5f,  0.5f, 0.0f);
     _particleGeometryVertices[3].set(0.5f, -0.5f, 0.0f);
-    _particleGeometryType = PrimitiveType::TRIANGLE_STRIP;
+    _particleGeometryType = PrimitiveTopology::TRIANGLE_STRIP;
     generateParticles(particleCount, optionsMask);
 }
 
@@ -134,7 +134,7 @@ void ParticleData::swapData(const U32 indexA, const U32 indexB) {
 
 void ParticleData::setParticleGeometry(const vector<vec3<F32>>& particleGeometryVertices,
                                        const vector<U32>& particleGeometryIndices,
-                                       const PrimitiveType particleGeometryType) {
+                                       const PrimitiveTopology particleGeometryType) {
     _particleGeometryVertices = particleGeometryVertices;
     _particleGeometryIndices = particleGeometryIndices;
     _particleGeometryType = particleGeometryType;

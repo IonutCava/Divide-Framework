@@ -46,6 +46,8 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _ssrShader->getGUID();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
         _pipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
     });
 
@@ -158,7 +160,7 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
 
     GFX::EnqueueCommand(bufferInOut, _constantsCmd);
 
-    GFX::EnqueueCommand(bufferInOut, _triangleDrawCmd);
+    GFX::EnqueueCommand(bufferInOut, _drawCmd);
 
     GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 

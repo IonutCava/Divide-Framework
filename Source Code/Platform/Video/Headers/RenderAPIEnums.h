@@ -402,7 +402,7 @@ namespace Names {
 
 static_assert(std::size(Names::pbType) == to_base(PBType::COUNT) + 1);
 
-enum class PrimitiveType : U8 {
+enum class PrimitiveTopology : U8 {
     API_POINTS = 0x0000,
     LINES = 0x0001,
     LINE_LOOP = 0x0002,
@@ -422,7 +422,7 @@ namespace Names {
     };
 };
 
-static_assert(std::size(Names::primitiveType) == to_base(PrimitiveType::COUNT) + 1);
+static_assert(std::size(Names::primitiveType) == to_base(PrimitiveTopology::COUNT) + 1);
 
 /// Specifies how the red, green, blue, and alpha source blending factors are computed.
 enum class BlendProperty : U8 {
@@ -739,6 +739,28 @@ namespace Names {
 };
 
 static_assert(std::size(Names::GFXDataFormat) == to_base(GFXDataFormat::COUNT) + 1);
+
+
+enum class MemoryBarrierType : U32 {
+    BUFFER_UPDATE = toBit(1),
+    SHADER_STORAGE = toBit(2),
+    COMMAND_BUFFER = toBit(3),
+    ATOMIC_COUNTER = toBit(4),
+    QUERY = toBit(5),
+    RENDER_TARGET = toBit(6),
+    TEXTURE_UPDATE = toBit(7),
+    TEXTURE_FETCH = toBit(8),
+    SHADER_IMAGE = toBit(9),
+    TRANSFORM_FEEDBACK = toBit(10),
+    VERTEX_ATTRIB_ARRAY = toBit(11),
+    INDEX_ARRAY = toBit(12),
+    UNIFORM_DATA = toBit(13),
+    PIXEL_BUFFER = toBit(14),
+    PERSISTENT_BUFFER = toBit(15),
+    ALL_MEM_BARRIERS = PERSISTENT_BUFFER + 256,
+    TEXTURE_BARRIER = toBit(16), //This is not included in ALL!
+    COUNT = 15
+};
 
 enum class GPUVendor : U8 {
     NVIDIA = 0,

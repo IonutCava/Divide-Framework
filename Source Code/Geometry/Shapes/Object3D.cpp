@@ -84,14 +84,14 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
     };
 }
 
-PrimitiveType Object3D::getGeometryBufferType() const noexcept {
+PrimitiveTopology Object3D::getGeometryBufferType() const noexcept {
     switch (_geometryType) {
         case ObjectType::BOX_3D:
         case ObjectType::MESH:
-        case ObjectType::SUBMESH: return PrimitiveType::TRIANGLES;
+        case ObjectType::SUBMESH: return PrimitiveTopology::TRIANGLES;
     }
 
-    return PrimitiveType::TRIANGLE_STRIP;
+    return PrimitiveTopology::TRIANGLE_STRIP;
 }
 
 bool Object3D::isPrimitive() const noexcept {
@@ -142,13 +142,14 @@ void Object3D::prepareRender(SceneGraphNode* sgn,
     SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
-void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
+void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
     VertexBuffer* vb = getGeometryVB();
     if (vb != nullptr) {
         if (cmdsOut.size() == 0u) {
+            topologyOut = getGeometryBufferType();
+
             const U16 partitionID = _geometryPartitionIDs[0];
             GenericDrawCommand cmd;
-            cmd._primitiveType = getGeometryBufferType();
             cmd._sourceBuffer = vb->handle();
             cmd._bufferIndex = GenericDrawCommand::INVALID_BUFFER_INDEX;
             cmd._cmd.indexCount = to_U32(vb->getPartitionIndexCount(partitionID));
@@ -173,7 +174,7 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawComma
         }
     }
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
 }
 
 // Create a list of triangles from the vertices + indices lists based on primitive type
@@ -204,14 +205,14 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
 
     const size_t partitionOffset = geometry->getPartitionOffset(_geometryPartitionIDs[0]);
     const size_t partitionCount = geometry->getPartitionIndexCount(_geometryPartitionIDs[0]);
-    const PrimitiveType type = getGeometryBufferType();
+    const PrimitiveTopology type = getGeometryBufferType();
 
     if (geometry->getIndexCount() == 0) {
         return false;
     }
 
     size_t indiceCount = partitionCount;
-    if (type == PrimitiveType::TRIANGLE_STRIP) {
+    if (type == PrimitiveTopology::TRIANGLE_STRIP) {
         const size_t indiceStart = 2 + partitionOffset;
         const size_t indiceEnd = indiceCount + partitionOffset;
         vec3<U32> curTriangle;
@@ -225,7 +226,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
             }
             triangles.push_back(curTriangle);
         }
-    } else if (type == PrimitiveType::TRIANGLES) {
+    } else if (type == PrimitiveTopology::TRIANGLES) {
         indiceCount /= 3;
         triangles.reserve(indiceCount);
         const vector<U32>& indices = geometry->getIndices();

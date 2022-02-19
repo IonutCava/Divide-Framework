@@ -71,13 +71,17 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(Util::StringFormat("Shader handle : %d\n", cmd._pipeline->shaderProgramHandle()));
+    ret.append(Util::StringFormat("Shader handle : %d\n", cmd._pipeline->descriptor()._shaderProgramHandle));
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(Util::StringFormat("State hash : %zu\n", cmd._pipeline->stateHash()));
-
+    ret.append(Util::StringFormat("State hash : %zu\n", cmd._pipeline->hash()));
+    ret.append("    ");
+    for (U16 j = 0; j < indent; ++j) {
+        ret.append("    ");
+    }
+    ret.append(Util::StringFormat("Primitive topology : %s\n", Divide::Names::primitiveType[to_base(cmd._pipeline->descriptor()._primitiveTopology)]));
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
@@ -117,7 +121,7 @@ string ToString(const DrawCommand& cmd, const U16 indent)  {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("%d: Draw count: %d Type: %s Base instance: %d Instance count: %d Index count: %d\n", i++, drawCmd._drawCount, Divide::Names::primitiveType[to_base(drawCmd._primitiveType)], drawCmd._cmd.baseInstance, drawCmd._cmd.primCount, drawCmd._cmd.indexCount));
+        ret.append(Util::StringFormat("%d: Draw count: %d Base instance: %d Instance count: %d Index count: %d\n", i++, drawCmd._drawCount, drawCmd._cmd.baseInstance, drawCmd._cmd.primCount, drawCmd._cmd.indexCount));
     }
 
     return ret;

@@ -221,7 +221,7 @@ void CommandBuffer::batch() {
             }break;
             case CommandType::BIND_PIPELINE: {
                 const BindPipelineCommand* crtCmd = get<BindPipelineCommand>(cmd);
-                hasWork = crtCmd->_pipeline != nullptr && crtCmd->_pipeline->getHash() != 0;
+                hasWork = crtCmd->_pipeline != nullptr && crtCmd->_pipeline->hash() != 0u;
             }break;
             default: break;
         };
@@ -267,7 +267,7 @@ void CommandBuffer::clean() {
 
                 const Pipeline* pipeline = get<BindPipelineCommand>(cmd)->_pipeline;
                 // If the current pipeline is identical to the previous one, remove it
-                if (prevPipeline == nullptr || prevPipeline->getHash() != pipeline->getHash()) {
+                if (prevPipeline == nullptr || prevPipeline->hash() != pipeline->hash()) {
                     prevPipeline = pipeline;
                 } else {
                     erase = true;

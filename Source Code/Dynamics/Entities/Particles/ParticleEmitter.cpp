@@ -241,16 +241,17 @@ bool ParticleEmitter::unload() {
     return SceneNode::unload();
 }
 
-void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
+void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+    topologyOut = _particles->particleGeometryType();
+
     GenericDrawCommand cmd = {};
-    cmd._primitiveType = _particles->particleGeometryType();
     cmd._cmd.indexCount = to_U32(_particles->particleGeometryIndices().size());
     if (cmd._cmd.indexCount == 0) {
         cmd._cmd.indexCount = to_U32(_particles->particleGeometryVertices().size());
     }
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
 }
 
 void ParticleEmitter::prepareRender(SceneGraphNode* sgn,

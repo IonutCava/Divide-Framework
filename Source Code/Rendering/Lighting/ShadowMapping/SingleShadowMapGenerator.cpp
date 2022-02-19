@@ -67,12 +67,11 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->getGUID();
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::API_POINTS;
+
             _blurPipeline = _context.newPipeline(pipelineDescriptor);
         });
     }
-
-    PipelineDescriptor pipelineDescriptor = {};
-    pipelineDescriptor._stateHash = _context.get2DStateBlock();
 
     _shaderConstants.set(_ID("layerCount"), GFX::PushConstantType::INT, 1);
     _shaderConstants.set(_ID("layerOffsetRead"), GFX::PushConstantType::INT, (I32)0);
@@ -215,14 +214,10 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
     if (g_shadowSettings.spot.enableBlurring) {
         _shaderConstants.set(_ID("layerCount"), GFX::PushConstantType::INT, layerCount);
 
-        GenericDrawCommand pointsCmd = {};
-        pointsCmd._primitiveType = PrimitiveType::API_POINTS;
-        pointsCmd._drawCount = 1;
-
-        GFX::DrawCommand drawCmd = { pointsCmd };
-        GFX::BindDescriptorSetsCommand descriptorSetCmd = {};
-        GFX::BeginRenderPassCommand beginRenderPassCmd = {};
-        GFX::SendPushConstantsCommand pushConstantsCommand = {};
+        GFX::DrawCommand drawCmd{ GenericDrawCommand{} };
+        GFX::BindDescriptorSetsCommand descriptorSetCmd{};
+        GFX::BeginRenderPassCommand beginRenderPassCmd{};
+        GFX::SendPushConstantsCommand pushConstantsCommand{};
 
         // Blur horizontally
         beginRenderPassCmd._target = _blurBuffer._targetID;

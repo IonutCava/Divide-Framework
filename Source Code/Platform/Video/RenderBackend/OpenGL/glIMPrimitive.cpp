@@ -33,7 +33,7 @@ bool glIMPrimitive::hasBatch() const noexcept {
     return !_imInterface->isCleared();
 }
 
-void glIMPrimitive::begin(const PrimitiveType type) {
+void glIMPrimitive::begin(const PrimitiveTopology type) {
     _imInterface->Begin(GLUtil::glimPrimitiveType[to_U32(type)]);
 }
 
@@ -76,7 +76,7 @@ void glIMPrimitive::endBatch() noexcept {
 void glIMPrimitive::pipeline(const Pipeline& pipeline) noexcept {
 
     IMPrimitive::pipeline(pipeline);
-    _imInterface->SetShaderProgramHandle(pipeline.shaderProgramHandle());
+    _imInterface->SetShaderProgramHandle(pipeline.descriptor()._shaderProgramHandle);
 }
 
 void glIMPrimitive::draw(const GenericDrawCommand& cmd) {

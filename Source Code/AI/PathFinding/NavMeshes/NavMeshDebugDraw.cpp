@@ -46,7 +46,6 @@ void NavMeshDebugDraw::beginBatch() {
 
     PipelineDescriptor pipeDesc;
     pipeDesc._stateHash = navigationDebugStateBlock.getHash();
-
     _primitive->pipeline(*_context.newPipeline(pipeDesc));
 
     assert(_primitive != nullptr);
@@ -75,15 +74,15 @@ void NavMeshDebugDraw::begin(const duDebugDrawPrimitives prim, F32 size) {
 
     switch (prim) {
         case DU_DRAW_TRIS:
-            _primType = PrimitiveType::TRIANGLES;
+            _primType = PrimitiveTopology::TRIANGLES;
             break;
         case DU_DRAW_POINTS:
-            _primType = PrimitiveType::API_POINTS;
+            _primType = PrimitiveTopology::API_POINTS;
             break;
         case DU_DRAW_LINES:
-            _primType = PrimitiveType::LINES;
+            _primType = PrimitiveTopology::LINES;
             break;
-        case DU_DRAW_QUADS: /*_primType = PrimitiveType::QUADS;*/
+        case DU_DRAW_QUADS: /*_primType = PrimitiveTopology::QUADS;*/
             assert(prim == DU_DRAW_QUADS);
     }
 

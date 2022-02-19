@@ -19,17 +19,18 @@ SubMesh::SubMesh(GFXDevice& context, ResourceCache* parentCache, const size_t de
 {
 }
 
-void SubMesh::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
+void SubMesh::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+
+    topologyOut = PrimitiveTopology::TRIANGLES;
 
     GenericDrawCommand cmd = {};
-    cmd._primitiveType = PrimitiveType::TRIANGLES,
     cmd._sourceBuffer = getGeometryVB()->handle();
     cmd._cmd.firstIndex = to_U32(getGeometryVB()->getPartitionOffset(_geometryPartitionIDs[0]));
     cmd._cmd.indexCount = to_U32(getGeometryVB()->getPartitionIndexCount(_geometryPartitionIDs[0]));
     cmd._cmd.primCount = sgn->instanceCount();
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
-    Object3D::buildDrawCommands(sgn, cmdsOut);
+    Object3D::buildDrawCommands(sgn, cmdsOut, topologyOut);
 }
 
 void SubMesh::setParentMesh(Mesh* const parentMesh) {

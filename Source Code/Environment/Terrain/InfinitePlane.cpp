@@ -116,17 +116,17 @@ void InfinitePlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, Scen
     }
 }
 
-void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
+void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+    topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
 
     //infinite plane
     GenericDrawCommand planeCmd = {};
-    planeCmd._primitiveType = PrimitiveType::TRIANGLE_STRIP;
     planeCmd._cmd.firstIndex = 0u;
     planeCmd._cmd.indexCount = to_U32(_plane->getGeometryVB()->getIndexCount());
     planeCmd._sourceBuffer = _plane->getGeometryVB()->handle();
     cmdsOut.emplace_back(GFX::DrawCommand{ planeCmd });
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
 }
 
 } //namespace Divide

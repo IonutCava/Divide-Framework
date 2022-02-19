@@ -49,7 +49,7 @@ class Texture;
 namespace GFX {
     class CommandBuffer;
 };
-enum class PrimitiveType : U8;
+enum class PrimitiveTopology : U8;
 
 FWD_DECLARE_MANAGED_CLASS(IMPrimitive);
 
@@ -111,7 +111,7 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
                             U32 vertexCount,
                             U32 attributeCount) = 0;
 
-    virtual void begin(PrimitiveType type) = 0;
+    virtual void begin(PrimitiveTopology type) = 0;
     virtual void vertex(F32 x, F32 y, F32 z) = 0;
     void vertex(const vec3<F32>& vert) {
         vertex(vert.x, vert.y, vert.z);

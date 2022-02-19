@@ -52,6 +52,8 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _dofShader->getGUID();
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
         _pipeline = _context.newPipeline(pipelineDescriptor);
     });
 
@@ -127,7 +129,7 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
         _constantsDirty = false;
     }
 
-    EnqueueCommand(bufferInOut, _triangleDrawCmd);
+    EnqueueCommand(bufferInOut, _drawCmd);
 
     EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
 

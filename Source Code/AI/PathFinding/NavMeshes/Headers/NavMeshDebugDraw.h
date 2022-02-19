@@ -98,7 +98,7 @@ class NavMeshDebugDraw final : public duDebugDraw {
 
    private:
     GFXDevice& _context;
-    PrimitiveType _primType = PrimitiveType::COUNT;
+    PrimitiveTopology _primType = PrimitiveTopology::COUNT;
     IMPrimitive*_primitive = nullptr;
     U32 _colour = 0;
     bool _overrideColour = false;

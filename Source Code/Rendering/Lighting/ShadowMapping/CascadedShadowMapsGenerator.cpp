@@ -77,12 +77,10 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->getGUID();
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::API_POINTS;
             _blurPipeline = _context.newPipeline(pipelineDescriptor);
         });
     }
-
-    PipelineDescriptor pipelineDescriptor = {};
-    pipelineDescriptor._stateHash = _context.get2DStateBlock();
 
     _shaderConstantsCmd._constants.set(_ID("layerCount"),       GFX::PushConstantType::INT, to_I32(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
     _shaderConstantsCmd._constants.set(_ID("layerOffsetRead"),  GFX::PushConstantType::INT, to_I32(0));
@@ -423,10 +421,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
         if (!s_commandsInit) {
             s_commandsInit = true;
 
-            GenericDrawCommand pointsCmd = {};
-            pointsCmd._primitiveType = PrimitiveType::API_POINTS;
-            pointsCmd._drawCount = 1;
-            s_drawCmd._drawCommands.push_back(pointsCmd);
+            s_drawCmd._drawCommands.push_back(GenericDrawCommand{});
 
             s_beginRenderPassHorizontalCmd._target = _blurBuffer._targetID;
             s_beginRenderPassHorizontalCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";

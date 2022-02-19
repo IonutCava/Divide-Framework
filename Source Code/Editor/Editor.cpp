@@ -314,7 +314,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 
     _infiniteGridPrimitive = _context.gfx().newIMP();
     _infiniteGridPrimitive->beginBatch(true, 6, 0);
-        _infiniteGridPrimitive->begin(PrimitiveType::TRIANGLES);
+        _infiniteGridPrimitive->begin(PrimitiveTopology::TRIANGLES);
             _infiniteGridPrimitive->vertex( 1.f, 1.f, 0.f);
             _infiniteGridPrimitive->vertex(-1.f,-1.f, 0.f);
             _infiniteGridPrimitive->vertex(-1.f, 1.f, 0.f);
@@ -1068,6 +1068,8 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         PipelineDescriptor pipelineDesc = {};
         pipelineDesc._stateHash = state.getHash();
         pipelineDesc._shaderProgramHandle = _imguiProgram->getGUID();
+        pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
         BlendingProperties& blend = pipelineDesc._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)]._blendProperties;
         blend.enabled(true);
         blend.blendSrc(BlendProperty::SRC_ALPHA);

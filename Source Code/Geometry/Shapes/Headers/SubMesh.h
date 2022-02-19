@@ -83,7 +83,7 @@ class SubMesh : public Object3D {
    protected:
     void setParentMesh(Mesh* parentMesh);
 
-    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) override;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "SubMesh"; }
 

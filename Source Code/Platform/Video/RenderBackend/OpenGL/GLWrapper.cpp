@@ -337,7 +337,6 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
 
         GenericVertexData::IndexBuffer idxBuffer;
         GenericDrawCommand cmd = {};
-        cmd._primitiveType = PrimitiveType::TRIANGLES;
 
         GenericVertexData* buffer = _context.getOrCreateIMGUIBuffer(windowGUID);
         assert(buffer != nullptr);
@@ -404,14 +403,16 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
         return ShaderResult::OK;
     }
 
-    ShaderProgram* program = ShaderProgram::FindShaderProgram(pipeline.shaderProgramHandle());
+    ShaderProgram* program = ShaderProgram::FindShaderProgram(pipeline.descriptor()._shaderProgramHandle);
     if (program == nullptr) {
         return ShaderResult::Failed;
     }
 
+    stateTracker._activeTopology = pipeline.descriptor()._primitiveTopology;
+
     stateTracker._activePipeline = &pipeline;
     // Set the proper render states
-    const size_t stateBlockHash = pipeline.stateHash();
+    const size_t stateBlockHash = pipeline.descriptor()._stateHash;
     // Passing 0 is a perfectly acceptable way of enabling the default render state block
     if (stateTracker.setStateBlock(stateBlockHash != 0 ? stateBlockHash : _context.getDefaultStateBlock(false)) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
@@ -447,19 +448,19 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
     OPTICK_EVENT();
 
     if (cmd._sourceBuffer._id == 0) {
-        if (GetStateTracker().setActiveVAO(s_dummyVAO) == GLStateTracker::BindResult::FAILED) {
+        if (GL_API::GetStateTracker().setActiveVAO(s_dummyVAO) == GLStateTracker::BindResult::FAILED) {
             DIVIDE_UNEXPECTED_CALL();
         }
 
         U32 indexCount = 0u;
-        switch (cmd._primitiveType) {
-            case PrimitiveType::COUNT      : DIVIDE_UNEXPECTED_CALL();         break;
-            case PrimitiveType::TRIANGLES  : indexCount = cmd._drawCount * 3;  break;
-            case PrimitiveType::API_POINTS : indexCount = cmd._drawCount * 1;  break;
+        switch (GL_API::GetStateTracker()._activeTopology) {
+            case PrimitiveTopology::COUNT      : DIVIDE_UNEXPECTED_CALL();         break;
+            case PrimitiveTopology::TRIANGLES  : indexCount = cmd._drawCount * 3;  break;
+            case PrimitiveTopology::API_POINTS : indexCount = cmd._drawCount * 1;  break;
             default                        : indexCount = cmd._cmd.indexCount; break;
         }
 
-        glDrawArrays(GLUtil::glPrimitiveTypeTable[to_U32(cmd._primitiveType)], cmd._cmd.firstIndex, indexCount);
+        glDrawArrays(GLUtil::glPrimitiveTypeTable[to_base(GL_API::GetStateTracker()._activeTopology)], cmd._cmd.firstIndex, indexCount);
     } else {
         // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
         static PoolHandle lastID = { U16_MAX, 0u };
@@ -574,7 +575,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             const Pipeline* pipeline = commandBuffer.get<GFX::BindPipelineCommand>(entry)->_pipeline;
             assert(pipeline != nullptr);
             if (bindPipeline(*pipeline) == ShaderResult::Failed) {
-                Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INVALID_BIND")), pipeline->shaderProgramHandle());
+                Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INVALID_BIND")), pipeline->descriptor()._shaderProgramHandle);
             }
         } break;
         case GFX::CommandType::SEND_PUSH_CONSTANTS: {
@@ -595,7 +596,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                 break;
             }
 
-            ShaderProgram* program = ShaderProgram::FindShaderProgram(activePipeline->shaderProgramHandle());
+            ShaderProgram* program = ShaderProgram::FindShaderProgram(activePipeline->descriptor()._shaderProgramHandle);
             if (program == nullptr) {
                 // Should we skip the upload?
                 dumpLogs();
@@ -1043,7 +1044,7 @@ GLStateTracker::BindResult GL_API::makeTextureViewsResidentInternal(const Textur
         }
 
         const GLuint samplerHandle = GetSamplerHandle(it._view._samplerHash);
-        result = GetStateTracker().bindTextures(static_cast<GLushort>(it._binding), 1, view._targetType, &textureID, &samplerHandle);
+        result = GL_API::GetStateTracker().bindTextures(static_cast<GLushort>(it._binding), 1, view._targetType, &textureID, &samplerHandle);
         if (result == GLStateTracker::BindResult::FAILED) {
             DIVIDE_UNEXPECTED_CALL();
         }
