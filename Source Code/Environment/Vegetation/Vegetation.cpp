@@ -608,7 +608,6 @@ void Vegetation::prepareDraw(SceneGraphNode* sgn) {
         nodeDescriptor._node = crtMesh;
         nodeDescriptor._name = Util::StringFormat("Trees_chunk_%d", ID);
         _treeParentNode = sgn->addChildNode(nodeDescriptor);
-        _treeParentNode->setFlag(SceneGraphNode::Flags::VISIBILITY_LOCKED);
 
         TransformComponent* tComp = _treeParentNode->get<TransformComponent>();
         const vec4<F32>& offset = _terrainChunk.getOffsetAndSize();

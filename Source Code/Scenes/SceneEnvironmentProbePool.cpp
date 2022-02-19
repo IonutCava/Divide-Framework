@@ -263,6 +263,7 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
 }
 
 void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
     {
         static ComputationStages queuedStage = ComputationStages::COUNT;
 
@@ -361,6 +362,8 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMap(GFXDevice& context, const 
 }
 
 void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context, const U16 layerID, ComputationStages& stage, GFX::CommandBuffer& bufferInOut) {
+    OPTICK_EVENT();
+
     // This entire sequence is based on this awesome blog post by Bruno Opsenica: https://bruop.github.io/ibl/
     static U8 faceID = 0u;
 

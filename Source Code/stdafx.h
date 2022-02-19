@@ -130,6 +130,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <any>
 #include <regex>
 #include <limits>
+#include <execution>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/asio/streambuf.hpp>

@@ -136,6 +136,7 @@ private:
     std::array<RenderPass*, MAX_RENDER_PASSES> _renderPasses = create_array<MAX_RENDER_PASSES, RenderPass*>(nullptr);
     std::array<GFX::CommandBuffer*, MAX_RENDER_PASSES + 1u> _renderPassCommandBuffer = create_array<MAX_RENDER_PASSES + 1u, GFX::CommandBuffer*>(nullptr);
     std::array<Task*, MAX_RENDER_PASSES + 1u> _renderTasks = create_array<MAX_RENDER_PASSES + 1u, Task*>(nullptr);
+    Task* _skyLightUpdateTask = nullptr;
 
     std::array<std::unique_ptr<RenderPassExecutor>, to_base(RenderStage::COUNT)> _executors;
     std::array<Time::ProfileTimer*, to_base(RenderStage::COUNT)> _processCommandBufferTimer = create_array<to_base(RenderStage::COUNT), Time::ProfileTimer*>(nullptr);

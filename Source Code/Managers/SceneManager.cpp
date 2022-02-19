@@ -662,9 +662,9 @@ void SceneManager::getSortedReflectiveNodes(const Camera* camera, const RenderSt
         cullParams._frustum = &camera->getFrustum();
         cullParams._cullMaxDistance = camera->getZPlanes().y;
 
-        _renderPassCuller->frustumCull(cullParams, to_base(CullOptions::DEFAULT_CULL_OPTIONS), allNodes, nodesOut);
+        _renderPassCuller->frustumCull(parent().platformContext(), cullParams, to_base(CullOptions::DEFAULT_CULL_OPTIONS), allNodes, nodesOut);
     } else {
-        _renderPassCuller->toVisibleNodes(camera, allNodes, nodesOut);
+        _renderPassCuller->toVisibleNodes(parent().platformContext(), camera, allNodes, nodesOut);
     }
 }
 
@@ -688,9 +688,9 @@ void SceneManager::getSortedRefractiveNodes(const Camera* camera, const RenderSt
         cullParams._frustum = &camera->getFrustum();
         cullParams._cullMaxDistance = camera->getZPlanes().y;
 
-        _renderPassCuller->frustumCull(cullParams, to_base(CullOptions::DEFAULT_CULL_OPTIONS), allNodes, nodesOut);
+        _renderPassCuller->frustumCull(parent().platformContext(), cullParams, to_base(CullOptions::DEFAULT_CULL_OPTIONS), allNodes, nodesOut);
     } else {
-        _renderPassCuller->toVisibleNodes(camera, allNodes, nodesOut);
+        _renderPassCuller->toVisibleNodes(parent().platformContext(), camera, allNodes, nodesOut);
     }
 }
 

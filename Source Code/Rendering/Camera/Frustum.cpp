@@ -167,8 +167,7 @@ FrustumCollision PlaneBoundingBoxIntersect(const Plane<F32>& plane, const Boundi
     return FrustumCollision::FRUSTUM_IN;
 }
 
-FrustumCollision Frustum::ContainsSphere(const BoundingSphere& bSphere) const noexcept {
-    I8 lastPlaneCache = -1;
+FrustumCollision Frustum::ContainsSphere(const BoundingSphere& bSphere, I8& lastPlaneCache) const noexcept {
     return ContainsSphere(bSphere.getCenter(), bSphere.getRadius(), lastPlaneCache);
 }
 

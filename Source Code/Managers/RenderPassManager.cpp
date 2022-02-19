@@ -176,13 +176,18 @@ void RenderPassManager::render(const RenderParams& params) {
     _context.setPreviousViewProjectionMatrix(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix);
 
     activeLightPool.preRenderAllPasses(cam);
+    TaskPool& pool = context.taskPool(TaskPoolType::RENDER_PASS);
     {
        Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
        {
-           
-           GFX::CommandBuffer& buf = *_skyLightRenderBuffer;
-           buf.clear(false);
-           SceneEnvironmentProbePool::UpdateSkyLight(gfx, buf);
+           OPTICK_EVENT("RenderPassManager::update sky light");
+           _skyLightUpdateTask = CreateTask(nullptr, 
+               [&gfx = _context, &buf = _skyLightRenderBuffer](const Task&) {
+                   buf->clear(false);
+                   SceneEnvironmentProbePool::UpdateSkyLight(gfx, *buf);
+               }, false);
+           // ToDo: Figure out how to make this multithreaded and properly resolve dependencies with MAIN, REFLECTION and REFRACTION passes -Ionut
+           Start(*_skyLightUpdateTask, pool, TaskPriority::REALTIME);
        }
        GFX::CommandBuffer& buf = *_postRenderBuffer;
        buf.clear(false);
@@ -219,7 +224,6 @@ void RenderPassManager::render(const RenderParams& params) {
            }
        }
     }
-    TaskPool& pool = context.taskPool(TaskPoolType::RENDER_PASS);
     {
         Time::ScopedTimer timeAll(*_renderPassTimer);
         startRenderTasks(params, pool, cam->snapshot());
@@ -228,6 +232,7 @@ void RenderPassManager::render(const RenderParams& params) {
         OPTICK_EVENT("RenderPassManager::FlushCommandBuffers");
         Time::ScopedTimer timeCommands(*_flushCommandBufferTimer);
 
+        Wait(*_skyLightUpdateTask, pool);
         gfx.flushCommandBuffer(*_skyLightRenderBuffer);
         static eastl::array<bool, MAX_RENDER_PASSES> s_completedPasses;
 

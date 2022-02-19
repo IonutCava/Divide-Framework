@@ -242,7 +242,9 @@ private:
     /// Process any events that might of queued up during the ECS Update stages
     void processEvents();
     /// Returns a collision result that determines if the node SHOULD be culled (is not visible for the current stage). 
-    FrustumCollision cullNode(const NodeCullParams& params, const U16 cullFlags,F32& distanceToClosestPointSQ) const;
+    FrustumCollision stateCullNode(const NodeCullParams& params, const U16 cullFlags, const F32 distanceToClosestPointSQ) const;
+    FrustumCollision clippingCullNode(const NodeCullParams& params) const;
+    FrustumCollision frustumCullNode(const NodeCullParams& params, const U16 cullFlags,F32& distanceToClosestPointSQ) const;
     /// Called after preRender and after we rebuild our command buffers. Useful for modifying the command buffer that's going to be used for this RenderStagePass
     void prepareRender(RenderingComponent& rComp, RenderStagePass renderStagePass, const CameraSnapshot& cameraSnapshot, bool refreshData);
     /// Called whenever we send a networking packet from our NetworkingComponent (if any). FrameCount is the frame ID sent with the packet.
@@ -378,13 +380,19 @@ namespace Attorney {
 
     class SceneGraphNodeRenderPassCuller {
         // Returns true if the node should be culled (is not visible for the current stage)
-        static FrustumCollision cullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags, F32& distanceToClosestPointSQ) {
-            return node->cullNode(params, cullFlags, distanceToClosestPointSQ);
+        static FrustumCollision frustumCullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags, F32& distanceToClosestPointSQ) {
+            return node->frustumCullNode(params, cullFlags, distanceToClosestPointSQ);
         }  
+        static FrustumCollision stateCullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags, F32 distanceToClosestPointSQ) {
+            return node->stateCullNode(params, cullFlags, distanceToClosestPointSQ);
+        }
+        static FrustumCollision clippingCullNode(const SceneGraphNode* node, const NodeCullParams& params) {
+            return node->clippingCullNode(params);
+        }
 
-        static FrustumCollision cullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags) {
+        static FrustumCollision frustumCullNode(const SceneGraphNode* node, const NodeCullParams& params, const U16 cullFlags) {
             F32 distanceToClosestPointSQ = std::numeric_limits<F32>::max();
-            return cullNode(node, params, cullFlags, distanceToClosestPointSQ);
+            return frustumCullNode(node, params, cullFlags, distanceToClosestPointSQ);
         }
 
         friend class Divide::RenderPassCuller;

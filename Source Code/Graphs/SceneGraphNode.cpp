@@ -615,18 +615,16 @@ namespace {
     }
 
     [[nodiscard]] F32 distanceSquareToPos(const vec3<F32>& pos, const BoundingSphere& sphere) noexcept {
-        return sphere.getCenter().distanceSquared(pos) - SQUARED(sphere.getRadius());
+        const F32 squareRadius = SQUARED(sphere.getRadius());
+        const F32 distanceSquareToCenter = sphere.getCenter().distanceSquared(pos);
+        // If this is negative, than the sphere contains the point, so we clamp min distance
+        return std::max(distanceSquareToCenter - squareRadius, 0.f);
     }
 };
 
-// Returns true if the node SHOULD be culled!
-FrustumCollision SceneGraphNode::cullNode(const NodeCullParams& params,
-                                          const U16 cullFlags,
-                                          F32& distanceToClosestPointSQ) const {
-    OPTICK_EVENT("CullNode - complex");
-
-    distanceToClosestPointSQ = std::numeric_limits<F32>::max();
-
+FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
+                                               const U16 cullFlags,
+                                               const F32 distanceToClosestPointSQ) const {
     // Early out for inactive nodes
     if (!hasFlag(SceneGraphNode::Flags::ACTIVE)) {
         return FrustumCollision::FRUSTUM_OUT;
@@ -637,20 +635,8 @@ FrustumCollision SceneGraphNode::cullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_OUT;
     }
 
-    // Drawing is disabled in general for this node
-    if (!_node->renderState().drawState()) {
-        return FrustumCollision::FRUSTUM_OUT;
-    }
-
-    // We may also wish to keep the sky always visible (e.g. for dynamic cubemaps)
-    const bool keepSky = BitCompare(cullFlags, CullOptions::KEEP_SKY_NODES) && _node->type() == SceneNodeType::TYPE_SKY;
-    // We may wish to always render this node for whatever reason (e.g. to preload shaders)
-    if (hasFlag(Flags::VISIBILITY_LOCKED) || keepSky) {
-        if (keepSky || _node->renderState().drawState(RenderStagePass{ params._stage, RenderPassType::COUNT })) {
-            distanceToClosestPointSQ = distanceSquareToPos(params._cameraEyePos, get<BoundsComponent>()->getBoundingSphere());
-            return FrustumCollision::FRUSTUM_IN;
-        }
-
+    // Drawing is disabled for this node
+    if (!_node->renderState().drawState(RenderStagePass{ params._stage, RenderPassType::COUNT })) {
         return FrustumCollision::FRUSTUM_OUT;
     }
 
@@ -669,34 +655,90 @@ FrustumCollision SceneGraphNode::cullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_OUT;
     }
 
+    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_LOD) && !IsContainerNode(*this)) {
+        OPTICK_EVENT("cullNode - LoD check")
+
+        RenderingComponent* rComp = get<RenderingComponent>();
+        const vec2<F32>& renderRange = rComp->renderRange();
+        const F32 minDistanceSQ = SQUARED(renderRange.min) * (renderRange.min < 0.f ? -1.f : 1.f); //Keep the sign. Might need it for rays or shadows.
+        const F32 maxDistanceSQ = SQUARED(renderRange.max);
+
+        if (!IS_IN_RANGE_INCLUSIVE(distanceToClosestPointSQ, minDistanceSQ, maxDistanceSQ)) {
+            return FrustumCollision::FRUSTUM_OUT;
+        }
+
+        // We are in range, so proceed to LoD checks
+        const U8 LoDLevel = rComp->getLoDLevel(distanceToClosestPointSQ, params._stage, params._lodThresholds);
+        if ((params._maxLoD > -1 && LoDLevel > params._maxLoD) || LoDLevel > _node->renderState().maxLodLevel()) {
+            return FrustumCollision::FRUSTUM_OUT;
+        }
+    }
+
+    return FrustumCollision::FRUSTUM_IN;
+}
+
+FrustumCollision SceneGraphNode::clippingCullNode(const NodeCullParams& params) const {
+    OPTICK_EVENT("cullNode - Bounding Sphere - Clipping Planes Test");
     const BoundsComponent* bComp = get<BoundsComponent>();
-    if (params._skipBoundsChecking || !bComp) {
-        distanceToClosestPointSQ = bComp == nullptr ? 0.f : distanceSquareToPos(params._cameraEyePos, get<BoundsComponent>()->getBoundingSphere());
+    if (bComp) {
+        auto& planes = params._clippingPlanes.planes();
+        auto& states = params._clippingPlanes.planeState();
+        const BoundingSphere& boundingSphere = bComp->getBoundingSphere();
+        for (U8 i = 0u; i < to_U8(ClipPlaneIndex::COUNT); ++i) {
+            if (!states[i]) {
+                continue;
+            }
+
+            if (PlaneBoundingSphereIntersect(planes[i], boundingSphere) == FrustumCollision::FRUSTUM_OUT) {
+                // Fails the clipping plane test
+                return FrustumCollision::FRUSTUM_OUT;
+            }
+        }
+    }
+
+    // We got here, so we insist on this node being parsed, even if we are missing a BoundsComponent
+    // It will always pass clipping plane culling as it has no volume
+    return FrustumCollision::FRUSTUM_IN;
+}
+
+FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
+                                                 const U16 cullFlags,
+                                                 F32& distanceToClosestPointSQ) const {
+    OPTICK_EVENT("CullNode - complex");
+
+    distanceToClosestPointSQ = std::numeric_limits<F32>::max();
+    const BoundsComponent* bComp = get<BoundsComponent>();
+
+    // We may wish to skip frustum culling but still grab the distance to the node
+    // We may also wish to always render this node for whatever reason (e.g. to preload shaders)
+    // We may also wish to keep the sky always visible (e.g. for dynamic cubemaps)
+    // We may also not have a BoundsComponent for whatever reason
+    if (!BitCompare(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM) ||
+        hasFlag(Flags::VISIBILITY_LOCKED) ||
+        (BitCompare(cullFlags, CullOptions::KEEP_SKY_NODES) && _node->type() == SceneNodeType::TYPE_SKY) ||
+        bComp == nullptr) 
+    {
+        distanceToClosestPointSQ = bComp == nullptr ? 0.f : distanceSquareToPos(params._cameraEyePos, bComp->getBoundingSphere());
         return FrustumCollision::FRUSTUM_IN;
     }
 
-    const BoundingSphere& boundingSphere = bComp->getBoundingSphere();
-    const BoundingBox& boundingBox = bComp->getBoundingBox();
-    const vec3<F32>& bSphereCenter = boundingSphere.getCenter();
-    const F32 radius = boundingSphere.getRadius();
-
-    STUBBED("ToDo: make this work in a multi-threaded environment -Ionut");
-    _frustPlaneCache = -1;
-    I8 fakePlaneCache = -1;
-
     // Get camera info
     const vec3<F32>& eye = params._cameraEyePos;
+    const BoundingSphere& boundingSphere = bComp->getBoundingSphere();
     {
         OPTICK_EVENT("cullNode - Bounding Sphere Distance Test");
-        distanceToClosestPointSQ = bSphereCenter.distanceSquared(eye) - SQUARED(radius);
+        distanceToClosestPointSQ = distanceSquareToPos(eye, boundingSphere);
         if (distanceToClosestPointSQ > SQUARED(params._cullMaxDistance)) {
             // Node is too far away
             return FrustumCollision::FRUSTUM_OUT;
         }
     }
+
+    const BoundingBox& boundingBox = bComp->getBoundingBox();
     {
         OPTICK_EVENT("cullNode - Bounding Box Distance Test");
-        distanceToClosestPointSQ = boundingBox.nearestPoint(eye).distanceSquared(eye);
+        // Again, handle the case when "eye" is contained within the AABB
+        distanceToClosestPointSQ = std::max(boundingBox.nearestPoint(eye).distanceSquared(eye), 0.f);
         if (distanceToClosestPointSQ > SQUARED(params._cullMaxDistance)) {
             // Check again using the AABB
             return FrustumCollision::FRUSTUM_OUT;
@@ -710,55 +752,27 @@ FrustumCollision SceneGraphNode::cullNode(const NodeCullParams& params,
 
     }
 
-    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_CLIPPING_PLANES)) {
-        OPTICK_EVENT("cullNode - Bounding Sphere - Clipping Planes Test");
-        auto& planes = params._clippingPlanes.planes();
-        auto& states = params._clippingPlanes.planeState();
-        for (U8 i = 0u; i < to_U8(ClipPlaneIndex::COUNT); ++i) {
-            if (states[i]) {
-                if (PlaneBoundingSphereIntersect(planes[i], boundingSphere) == FrustumCollision::FRUSTUM_OUT) {
-                    // Fails the clipping plane test
-                    return FrustumCollision::FRUSTUM_OUT;
-                }
-            }
-        }
-    }
-
     FrustumCollision collisionType = FrustumCollision::FRUSTUM_IN;
     if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM)) {
         OPTICK_EVENT("cullNode - Bounding Sphere & Box Frustum Test");
 
         // Sphere is in range, so check bounds primitives against the frustum
         if (!boundingBox.containsPoint(eye)) {
+            I8 frustPlaneCache = params._stage == RenderStage::DISPLAY ? _frustPlaneCache : -1;
+
             // Check if the bounding sphere is in the frustum, as Frustum <-> Sphere check is fast
-            collisionType = params._frustum->ContainsSphere(bSphereCenter, radius, fakePlaneCache);
+            collisionType = params._frustum->ContainsSphere(boundingSphere, frustPlaneCache);
             if (collisionType == FrustumCollision::FRUSTUM_INTERSECT) {
                 // If the sphere is not completely in the frustum, check the AABB
-                collisionType = params._frustum->ContainsBoundingBox(boundingBox, fakePlaneCache);
+                collisionType = params._frustum->ContainsBoundingBox(boundingBox, frustPlaneCache);
+            }
+            if (params._stage == RenderStage::DISPLAY) {
+                _frustPlaneCache = frustPlaneCache;
             }
         } else {// else we are inside the AABB, so INTERSECT is correct
             collisionType = FrustumCollision::FRUSTUM_INTERSECT;
         }
         if (collisionType == FrustumCollision::FRUSTUM_OUT) {
-            return FrustumCollision::FRUSTUM_OUT;
-        }
-    }
-
-    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_LOD) && !IsContainerNode(*this)) {
-        OPTICK_EVENT("cullNode - LoD check")
-
-        RenderingComponent* rComp = get<RenderingComponent>();
-        const vec2<F32>& renderRange = rComp->renderRange();
-        const F32 minDistanceSQ = SQUARED(renderRange.min) * (renderRange.min < 0.f ? -1.f : 1.f); //Keep the sign. Might need it for rays or shadows.
-        const F32 maxDistanceSQ = SQUARED(renderRange.max);
-
-        if (!IS_IN_RANGE_INCLUSIVE(distanceToClosestPointSQ, minDistanceSQ, maxDistanceSQ)) {
-            return FrustumCollision::FRUSTUM_OUT;
-        } 
-
-        // We are in range, so proceed to LoD checks
-        const U8 LoDLevel = rComp->getLoDLevel(distanceToClosestPointSQ, params._stage, params._lodThresholds);
-        if ((params._maxLoD > -1 && LoDLevel > params._maxLoD) || LoDLevel > _node->renderState().maxLodLevel()) {
             return FrustumCollision::FRUSTUM_OUT;
         }
     }

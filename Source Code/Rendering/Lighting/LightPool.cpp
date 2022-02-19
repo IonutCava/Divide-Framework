@@ -15,8 +15,6 @@
 #include "ECS/Components/Headers/SpotLightComponent.h"
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 
-#include <execution>
-
 namespace Divide {
 
 std::array<TextureUsage, to_base(ShadowType::COUNT)> LightPool::_shadowLocation = { {
@@ -46,7 +44,8 @@ namespace {
 }
 
 bool LightPool::IsLightInViewFrustum(const Frustum& frustum, Light* light) noexcept {
-    return frustum.ContainsSphere(light->boundingVolume()) != FrustumCollision::FRUSTUM_OUT;
+    I8 frustumPlaneCache = -1;
+    return frustum.ContainsSphere(light->boundingVolume(), frustumPlaneCache) != FrustumCollision::FRUSTUM_OUT;
 }
 
 LightPool::LightPool(Scene& parentScene, PlatformContext& context)
