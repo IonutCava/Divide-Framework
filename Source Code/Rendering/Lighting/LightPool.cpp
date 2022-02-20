@@ -2,7 +2,7 @@
 
 #include "Headers/LightPool.h"
 
-#include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/Kernel.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Managers/Headers/SceneManager.h"
@@ -43,13 +43,14 @@ namespace {
     }
 }
 
-bool LightPool::IsLightInViewFrustum(const Frustum& frustum, Light* light) noexcept {
+bool LightPool::IsLightInViewFrustum(const Frustum& frustum, const Light* const light) noexcept {
     I8 frustumPlaneCache = -1;
     return frustum.ContainsSphere(light->boundingVolume(), frustumPlaneCache) != FrustumCollision::FRUSTUM_OUT;
 }
 
 LightPool::LightPool(Scene& parentScene, PlatformContext& context)
-    : SceneComponent(parentScene),
+    : FrameListener("LightPool", context.kernel().frameListenerMgr(), 231),
+      SceneComponent(parentScene),
       PlatformContextComponent(context),
      _shadowPassTimer(Time::ADD_TIMER("Shadow Pass Timer"))
 {
@@ -157,6 +158,20 @@ bool LightPool::clear() noexcept {
     return _lights.empty();
 }
 
+bool LightPool::frameStarted([[maybe_unused]] const FrameEvent& evt) {
+    OPTICK_EVENT();
+
+    return true;
+}
+
+bool LightPool::frameEnded(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
+    ScopedLock<SharedMutex> w_lock(_movedSceneVolumesLock);
+    _movedSceneVolumes.resize(0);
+    return true;
+}
+
 bool LightPool::addLight(Light& light) {
     const LightType type = light.getLightType();
     const U32 lightTypeIdx = to_base(type);
@@ -192,13 +207,10 @@ bool LightPool::removeLight(const Light& light) {
 }
 
 void LightPool::onVolumeMoved(const BoundingSphere& volume, const bool staticSource) {
+    OPTICK_EVENT();
+
     ScopedLock<SharedMutex> w_lock(_movedSceneVolumesLock);
     _movedSceneVolumes.push_back({ volume , staticSource });
-}
-
-const vector<LightPool::MovingVolume>& LightPool::movedVolumes() const {
-    SharedLock<SharedMutex> r_lock(_movedSceneVolumesLock);
-    return _movedSceneVolumes;
 }
 
 //ToDo: Generate shadow maps in parallel - Ionut
@@ -301,9 +313,6 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
     _shadowBufferDirty = true;
 
     ShadowMap::bindShadowMaps(bufferInOut);
-
-    ScopedLock<SharedMutex> w_lock(_movedSceneVolumesLock);
-    _movedSceneVolumes.resize(0);
 }
 
 void LightPool::debugLight(Light* light) {
@@ -465,8 +474,11 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
 }
 
 [[nodiscard]] bool LightPool::isShadowCacheInvalidated(const vec3<F32>& cameraPosition, Light* const light) {
-    if (movedVolumes().empty()) {
-        return light->staticShadowsDirty() || light->dynamicShadowsDirty();
+    {
+        SharedLock<SharedMutex> r_lock(_movedSceneVolumesLock);
+        if (_movedSceneVolumes.empty()) {
+            return light->staticShadowsDirty() || light->dynamicShadowsDirty();
+        }
     }
 
     const BoundingSphere& lightBounds = light->boundingVolume();

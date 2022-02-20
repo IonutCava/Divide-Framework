@@ -36,15 +36,6 @@ namespace {
     }
 };
 
-bool SceneGraphNode::IsContainerNode(const SceneGraphNode& node) noexcept {
-    const SceneNodeType nodeType = node._node->type();
-
-    return nodeType == SceneNodeType::TYPE_TRANSFORM ||
-           nodeType == SceneNodeType::TYPE_TRIGGER ||
-           (nodeType == SceneNodeType::TYPE_OBJECT3D &&
-            static_cast<Object3D*>(node._node.get())->getObjectType() == ObjectType::MESH);
-}
-
 SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor)
     : PlatformContextComponent(sceneGraph->parentScene().context()),
       _relationshipCache(this),
@@ -55,7 +46,6 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
       _usageContext(descriptor._usageContext)
 {
     std::atomic_init(&_children._count, 0u);
-    std::atomic_init(&Events._eventsCount, 0u);
     for (auto& it : Events._eventsFreeList) {
         std::atomic_init(&it, true);
     }
@@ -92,6 +82,14 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
     AddComponents(_node->requiredComponentMask(), false);
 
     Attorney::SceneNodeSceneGraph::registerSGNParent(_node.get(), this);
+
+    const SceneNodeType nodeType = _node->type();
+    if (nodeType == SceneNodeType::TYPE_TRANSFORM ||
+        nodeType == SceneNodeType::TYPE_TRIGGER ||
+        (nodeType == SceneNodeType::TYPE_OBJECT3D && getNode<Object3D>().getObjectType() == ObjectType::MESH))
+    {
+        setFlag(Flags::IS_CONTAINER);
+    }
 }
 
 /// If we are destroying the current graph node
@@ -504,24 +502,23 @@ void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState) 
 void SceneGraphNode::processEvents() {
     OPTICK_EVENT();
 
-    DIVIDE_ASSERT(Events._eventsCount.load() != 0u);
-
     const ECS::EntityId id = GetEntityID();
     for (size_t idx = 0u; idx < Events.EVENT_QUEUE_SIZE; ++idx) {
         if (Events._eventsFreeList[idx]) {
             continue;
         }
 
-        Events._eventsCount.fetch_sub(1u);
         const ECS::CustomEvent& evt = Events._events[idx];
 
         switch (evt._type) {
             case ECS::CustomEvent::Type::RelationshipCacheInvalidated: {
+                OPTICK_EVENT("RelationshipCacheInvalidated");
                 if (!_relationshipCache.isValid()) {
                     _relationshipCache.rebuild();
                 }
             } break;
             case ECS::CustomEvent::Type::EntityFlagChanged: {
+                OPTICK_EVENT("EntityFlagChanged");
                 if (static_cast<Flags>(evt._flag) == Flags::SELECTED) {
                     RenderingComponent* rComp = get<RenderingComponent>();
                     if (rComp != nullptr) {
@@ -531,21 +528,27 @@ void SceneGraphNode::processEvents() {
                     }
                 }
             } break;
-            case ECS::CustomEvent::Type::BoundsUpdated: {
-                Attorney::SceneGraphSGN::onNodeMoved(sceneGraph(), *this);
-            }break;
             case ECS::CustomEvent::Type::NewShaderReady: {
+                OPTICK_EVENT("NewShaderReady");
                 Attorney::SceneGraphSGN::onNodeShaderReady(sceneGraph(), *this);
             } break;
+            case ECS::CustomEvent::Type::TransformUpdated: {
+                OPTICK_EVENT("TransformUpdated");
+                Attorney::SceneGraphSGN::onNodeMoved(sceneGraph(), *this);
+                Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
+            } break;
+            case ECS::CustomEvent::Type::AnimationUpdated:
+            case ECS::CustomEvent::Type::BoundsUpdated: {
+                OPTICK_EVENT("onNodeSpatialChange");
+                Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
+            }break;
             default: break;
         }
-
-        PassDataToAllComponents(evt);
-
-        if (evt._type == ECS::CustomEvent::Type::TransformUpdated ||
-            evt._type == ECS::CustomEvent::Type::AnimationUpdated) {
-            Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
+        {
+            OPTICK_EVENT("PassDataToAllComponents");
+            PassDataToAllComponents(evt);
         }
+
         Events._eventsFreeList[idx] = true;
     }
 }
@@ -614,11 +617,9 @@ namespace {
         return rComp != nullptr &&  rComp->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS);
     }
 
-    [[nodiscard]] F32 distanceSquareToPos(const vec3<F32>& pos, const BoundingSphere& sphere) noexcept {
-        const F32 squareRadius = SQUARED(sphere.getRadius());
-        const F32 distanceSquareToCenter = sphere.getCenter().distanceSquared(pos);
+    [[nodiscard]] FORCE_INLINE F32 distanceSquareToPos(const vec3<F32>& pos, const BoundingSphere& sphere) noexcept {
         // If this is negative, than the sphere contains the point, so we clamp min distance
-        return std::max(distanceSquareToCenter - squareRadius, 0.f);
+        return std::max(sphere.getCenter().distanceSquared(pos) - SQUARED(sphere.getRadius()), 0.f);
     }
 };
 
@@ -655,7 +656,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_OUT;
     }
 
-    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_LOD) && !IsContainerNode(*this)) {
+    if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_LOD) && !hasFlag(Flags::IS_CONTAINER)) {
         OPTICK_EVENT("cullNode - LoD check")
 
         RenderingComponent* rComp = get<RenderingComponent>();
@@ -704,11 +705,13 @@ FrustumCollision SceneGraphNode::clippingCullNode(const NodeCullParams& params) 
 FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
                                                  const U16 cullFlags,
                                                  F32& distanceToClosestPointSQ) const {
-    OPTICK_EVENT("CullNode - complex");
+    OPTICK_EVENT();
 
-    distanceToClosestPointSQ = std::numeric_limits<F32>::max();
+    const F32 maxDistanceSQ = SQUARED(params._cullMaxDistance);
     const BoundsComponent* bComp = get<BoundsComponent>();
 
+    distanceToClosestPointSQ = bComp == nullptr ? 0.f : distanceSquareToPos(params._cameraEyePos, bComp->getBoundingSphere());
+    
     // We may wish to skip frustum culling but still grab the distance to the node
     // We may also wish to always render this node for whatever reason (e.g. to preload shaders)
     // We may also wish to keep the sky always visible (e.g. for dynamic cubemaps)
@@ -718,62 +721,45 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
         (BitCompare(cullFlags, CullOptions::KEEP_SKY_NODES) && _node->type() == SceneNodeType::TYPE_SKY) ||
         bComp == nullptr) 
     {
-        distanceToClosestPointSQ = bComp == nullptr ? 0.f : distanceSquareToPos(params._cameraEyePos, bComp->getBoundingSphere());
         return FrustumCollision::FRUSTUM_IN;
     }
 
-    // Get camera info
-    const vec3<F32>& eye = params._cameraEyePos;
-    const BoundingSphere& boundingSphere = bComp->getBoundingSphere();
-    {
-        OPTICK_EVENT("cullNode - Bounding Sphere Distance Test");
-        distanceToClosestPointSQ = distanceSquareToPos(eye, boundingSphere);
-        if (distanceToClosestPointSQ > SQUARED(params._cullMaxDistance)) {
-            // Node is too far away
-            return FrustumCollision::FRUSTUM_OUT;
-        }
+    if (distanceToClosestPointSQ > maxDistanceSQ) {
+        // Node is too far away
+        return FrustumCollision::FRUSTUM_OUT;
     }
 
-    const BoundingBox& boundingBox = bComp->getBoundingBox();
-    {
-        OPTICK_EVENT("cullNode - Bounding Box Distance Test");
-        // Again, handle the case when "eye" is contained within the AABB
-        distanceToClosestPointSQ = std::max(boundingBox.nearestPoint(eye).distanceSquared(eye), 0.f);
-        if (distanceToClosestPointSQ > SQUARED(params._cullMaxDistance)) {
-            // Check again using the AABB
-            return FrustumCollision::FRUSTUM_OUT;
-        }
+    // Refine the distance a bit using AABBs now as these are "tighter". Again, handle the case when "eye" is contained within the AABB
+    distanceToClosestPointSQ = std::max(bComp->getBoundingBox().nearestPoint(params._cameraEyePos).distanceSquared(params._cameraEyePos), 0.f);
+    if (distanceToClosestPointSQ > maxDistanceSQ) {
+        // Check again using the AABB
+        return FrustumCollision::FRUSTUM_OUT;
+    }
 
-        const F32 upperBound = params._minExtents.maxComponent();
-        if (upperBound > 0.0f && boundingBox.getExtent().maxComponent() < upperBound) {
-            // Node is too small for the current render pass
-            return FrustumCollision::FRUSTUM_OUT;
-        }
-
+    if (bComp->getBoundingBox().getExtent().maxComponent() < std::max(params._minExtents.maxComponent(), 0.f)) {
+        // Node is too small for the current render pass
+        return FrustumCollision::FRUSTUM_OUT;
     }
 
     FrustumCollision collisionType = FrustumCollision::FRUSTUM_IN;
     if (BitCompare(cullFlags, CullOptions::CULL_AGAINST_FRUSTUM)) {
         OPTICK_EVENT("cullNode - Bounding Sphere & Box Frustum Test");
-
         // Sphere is in range, so check bounds primitives against the frustum
-        if (!boundingBox.containsPoint(eye)) {
+        if (bComp->getBoundingBox().containsPoint(params._cameraEyePos)) {
+            // We are inside the AABB, so INTERSECT is correct
+            collisionType = FrustumCollision::FRUSTUM_INTERSECT;
+        } else {
             I8 frustPlaneCache = params._stage == RenderStage::DISPLAY ? _frustPlaneCache : -1;
 
             // Check if the bounding sphere is in the frustum, as Frustum <-> Sphere check is fast
-            collisionType = params._frustum->ContainsSphere(boundingSphere, frustPlaneCache);
+            collisionType = params._frustum->ContainsSphere(bComp->getBoundingSphere(), frustPlaneCache);
             if (collisionType == FrustumCollision::FRUSTUM_INTERSECT) {
                 // If the sphere is not completely in the frustum, check the AABB
-                collisionType = params._frustum->ContainsBoundingBox(boundingBox, frustPlaneCache);
+                collisionType = params._frustum->ContainsBoundingBox(bComp->getBoundingBox(), frustPlaneCache);
             }
             if (params._stage == RenderStage::DISPLAY) {
                 _frustPlaneCache = frustPlaneCache;
             }
-        } else {// else we are inside the AABB, so INTERSECT is correct
-            collisionType = FrustumCollision::FRUSTUM_INTERSECT;
-        }
-        if (collisionType == FrustumCollision::FRUSTUM_OUT) {
-            return FrustumCollision::FRUSTUM_OUT;
         }
     }
 
@@ -944,7 +930,6 @@ void SceneGraphNode::SendEvent(ECS::CustomEvent&& event) {
         bool flush = false;
         {
             if (Events._eventsFreeList[idx].exchange(false)) {
-                Events._eventsCount.fetch_add(1u);
                 Events._events[idx] = MOV(event);
                 Attorney::SceneGraphSGN::onNodeEvent(sceneGraph(), this);
                 return;

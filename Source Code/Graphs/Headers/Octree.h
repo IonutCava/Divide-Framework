@@ -45,38 +45,70 @@ class BoundsComponent;
 struct SGNIntersectionParams;
 
 // ref: http://www.gamedev.net/page/resources/_/technical/game-programming/introduction-to-octrees-r3529
-struct Octree  {
-    /// Minimum cube size is 1x1x1
-    static constexpr F32 MIN_SIZE = 1.0f;
-    static constexpr I32 MAX_LIFE_SPAN_LIMIT = 64;
-
-    explicit Octree(Octree* parent, U16 nodeMask);
+class Octree {
+public:
+    explicit Octree(U16 nodeMask);
 
     void update(U64 deltaTimeUS);
-    [[nodiscard]] bool addNode(SceneGraphNode* node) const;
-    [[nodiscard]] bool removeNode(SceneGraphNode* node) const;
-    void getAllRegions(vector<BoundingBox>& regionsOut) const;
 
-    [[nodiscard]] const BoundingBox& getRegion() const noexcept { return _region; }
-
-    void updateTree();
+    [[nodiscard]] bool addNode(SceneGraphNode* node);
+    [[nodiscard]] bool removeNode(SceneGraphNode* node);
 
     [[nodiscard]] vector<IntersectionRecord> allIntersections(const Frustum& region, U16 typeFilterMask);
     [[nodiscard]] vector<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end);
     [[nodiscard]] vector<IntersectionRecord> allIntersections(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
     [[nodiscard]] IntersectionRecord         nearestIntersection(const Ray& intersectionRay, F32 start, F32 end, U16 typeFilterMask);
 
+    void getAllRegions(vector<BoundingBox>& regionsOut) const;
+
 protected:
     friend class SceneGraph;
     void onNodeMoved(const SceneGraphNode& sgn);
 
+protected:
+    friend class OctreeNode;
+    void onChildBuildTree();
+    void onChildStateChange(OctreeNode* node, bool state);
+
 private:
+    void updateTree();
+    void handleIntersection(const IntersectionRecord& intersection) const;
+
+protected:
+    eastl::unique_ptr<OctreeNode> _root = nullptr;
+    vector<const SceneGraphNode*> _intersectionsObjectCache;
+    eastl::queue<SceneGraphNode*> _pendingInsertion;
+    eastl::queue<SceneGraphNode*> _pendingRemoval;
+    Mutex _pendingInsertLock;
+    bool _treeReady = false;
+    bool _treeBuilt = false;
+    const U16 _nodeExclusionMask = 0u;
+
+    Mutex _linearObjectCacheLock;
+    vector<OctreeNode*> _linearObjectCache;
+};
+
+class OctreeNode  {
+public:
+    /// Minimum cube size is 1x1x1
+    static constexpr F32 MIN_SIZE = 1.0f;
+    static constexpr I32 MAX_LIFE_SPAN_LIMIT = 64;
+
+    explicit OctreeNode(OctreeNode* parent, U16 nodeMask, Octree* parentTree);
+
+    void update(U64 deltaTimeUS);
+    void getAllRegions(vector<BoundingBox>& regionsOut) const;
+
+    [[nodiscard]] const BoundingBox& getRegion() const noexcept { return _region; }
+
+protected:
+    friend class Octree;
     [[nodiscard]] U8 activeNodes() const noexcept;
 
     void buildTree();
     void insert(const SceneGraphNode* object);
-    void findEnclosingBox() noexcept;
-    void findEnclosingCube() noexcept;
+    void findEnclosingBox();
+    void findEnclosingCube();
 
     [[nodiscard]] vector<IntersectionRecord> getIntersection(const Frustum& frustum, U16 typeFilterMask) const;
     [[nodiscard]] vector<IntersectionRecord> getIntersection(const Ray& intersectRay, F32 start, F32 end, U16 typeFilterMask) const;
@@ -84,7 +116,6 @@ private:
     [[nodiscard]] size_t getTotalObjectCount() const;
     void updateIntersectionCache(vector<const SceneGraphNode*>& parentObjects);
     
-    void handleIntersection(const IntersectionRecord& intersection) const;
     [[nodiscard]] bool getIntersection(BoundsComponent* bComp, const Frustum& frustum, IntersectionRecord& irOut) const noexcept;
     [[nodiscard]] bool getIntersection(BoundsComponent* bComp1, BoundsComponent* bComp2, IntersectionRecord& irOut) const noexcept;
     [[nodiscard]] bool getIntersection(BoundsComponent* bComp, const Ray& intersectRay, F32 start, F32 end, IntersectionRecord& irOut) const noexcept;
@@ -92,7 +123,8 @@ private:
     PROPERTY_R_IW(bool, active, false);
 
 private:
-    Octree* const _parent = nullptr;
+    Octree* const _parentTree = nullptr;
+    OctreeNode* const _parent = nullptr;
     const U16 _nodeExclusionMask = 0u;
 
     mutable SharedMutex _objectLock;
@@ -106,17 +138,10 @@ private:
     I32 _curLife = -1;
     I32 _maxLifespan = MAX_LIFE_SPAN_LIMIT / 8;
 
-    std::array<eastl::unique_ptr<Octree>, 8> _childNodes;
+    std::array<eastl::unique_ptr<OctreeNode>, 8> _childNodes;
 
     //ToDo: make this work in a multi-threaded environment
     mutable I8 _frustPlaneCache = -1;
-
-    static vector<const SceneGraphNode*> s_intersectionsObjectCache;
-    static eastl::queue<SceneGraphNode*> s_pendingInsertion;
-    static eastl::queue<SceneGraphNode*> s_pendingRemoval;
-    static Mutex s_pendingInsertLock;
-    static bool s_treeReady;
-    static bool s_treeBuilt;
 };
 
 };  // namespace Divide

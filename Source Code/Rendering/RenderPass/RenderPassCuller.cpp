@@ -160,8 +160,7 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
     F32 distanceSqToCamera = 0.0f;
     const FrustumCollision collisionResult = Attorney::SceneGraphNodeRenderPassCuller::frustumCullNode(currentNode, params, cullFlags, distanceSqToCamera);
     if (collisionResult != FrustumCollision::FRUSTUM_OUT) {
-        const bool isContainer = SceneGraphNode::IsContainerNode(*currentNode);
-        if (!isContainer) {
+        if (!currentNode->hasFlag(SceneGraphNode::Flags::IS_CONTAINER)) {
             // Only add non-container nodes to the visible list. Otherwise, proceed and check children
             nodes.append({currentNode, distanceSqToCamera});
         }

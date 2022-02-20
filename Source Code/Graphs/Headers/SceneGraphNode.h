@@ -110,7 +110,8 @@ public:
         VISIBILITY_LOCKED = toBit(5),
         PARENT_POST_RENDERED = toBit(6),
         SELECTION_LOCKED = toBit(7),
-        COUNT = 8
+        IS_CONTAINER = toBit(8),
+        COUNT = 9
     };
 
     struct ChildContainer {
@@ -237,7 +238,6 @@ public:
     /// Serialization: load from XML file (expressed as a boost property_tree)
     void loadFromXML(const boost::property_tree::ptree& pt);
 
-    [[nodiscard]] static bool IsContainerNode(const SceneGraphNode& node) noexcept;
 private:
     /// Process any events that might of queued up during the ECS Update stages
     void processEvents();
@@ -297,7 +297,6 @@ private:
         static constexpr size_t EVENT_QUEUE_SIZE = 128;
         std::array<ECS::CustomEvent, EVENT_QUEUE_SIZE> _events;
         std::array<std::atomic_bool, EVENT_QUEUE_SIZE> _eventsFreeList;
-        std::atomic_size_t _eventsCount = 0u;
     } Events;
 
     POINTER_R(SceneGraph, sceneGraph, nullptr);

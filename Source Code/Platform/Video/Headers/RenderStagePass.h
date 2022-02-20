@@ -145,7 +145,6 @@ struct RenderStagePass {
                 }
             }
             case RenderStage::COUNT:
-                [[fallthrough]];
             default: 
                 DIVIDE_UNEXPECTED_CALL();
         }

@@ -6,28 +6,198 @@
 
 namespace Divide {
 
-
-bool Octree::s_treeReady = false;
-bool Octree::s_treeBuilt = false;
-
-Mutex Octree::s_pendingInsertLock;
-eastl::queue<SceneGraphNode*> Octree::s_pendingInsertion;
-eastl::queue<SceneGraphNode*> Octree::s_pendingRemoval;
-vector<const SceneGraphNode*> Octree::s_intersectionsObjectCache;
-
-Octree::Octree(Octree* parent, const U16 nodeMask)
-    : _parent(parent),
-      _region { VECTOR3_ZERO, VECTOR3_ZERO },
-      _nodeExclusionMask(nodeMask)
+Octree::Octree(const U16 nodeMask)
+    : _nodeExclusionMask(nodeMask)
 {
+    _root = eastl::make_unique<OctreeNode>(nullptr, _nodeExclusionMask, this);
 }
 
 void Octree::update(const U64 deltaTimeUS) {
-    if (!s_treeBuilt) {
-        buildTree();
+    if (!_treeBuilt) {
+        _root->buildTree();
         return;
     }
 
+    _root->update(deltaTimeUS);
+
+    // root node
+    _intersectionsObjectCache.resize(0);
+    _intersectionsObjectCache.reserve(_root->getTotalObjectCount());
+
+    _root->updateIntersectionCache(_intersectionsObjectCache);
+
+    for (const IntersectionRecord& ir : _root->_intersectionsCache) {
+        handleIntersection(ir);
+    }
+}
+
+void Octree::handleIntersection(const IntersectionRecord& intersection) const {
+    const BoundsComponent* obj1 = intersection._intersectedObject1;
+    const BoundsComponent* obj2 = intersection._intersectedObject2;
+    if (obj1 != nullptr && obj2 != nullptr) {
+        // Check for child / parent relation
+        if (obj1->parentSGN()->isRelated(obj2->parentSGN())) {
+            return;
+        }
+
+        RigidBodyComponent* comp1 = obj1->parentSGN()->get<RigidBodyComponent>();
+        RigidBodyComponent* comp2 = obj2->parentSGN()->get<RigidBodyComponent>();
+
+        if (comp1 && comp2) {
+            comp1->onCollision(*comp2);
+            comp2->onCollision(*comp1);
+        }
+    }
+}
+
+bool Octree::addNode(SceneGraphNode* node) {
+    const U16 nodeType = 1 << to_U16(node->getNode<>().type());
+    if (node && !BitCompare(_nodeExclusionMask, nodeType) && node->get<BoundsComponent>()) {
+        ScopedLock<Mutex> w_lock(_pendingInsertLock);
+        _pendingInsertion.push(node);
+        _treeReady = false;
+        return true;
+    }
+
+    return false;
+}
+
+bool Octree::removeNode(SceneGraphNode* node) {
+    ScopedLock<Mutex> w_lock(_pendingInsertLock);
+    _pendingRemoval.push(node);
+    _treeReady = false;
+    return true;
+}
+
+void Octree::onChildBuildTree() {
+    _treeBuilt = true;
+    _treeReady = true;
+}
+
+/// This gives you the first object encountered by the intersection ray
+IntersectionRecord Octree::nearestIntersection(const Ray& intersectionRay, const F32 start, const F32 end, const U16 typeFilterMask) {
+    updateTree();
+
+    vector<IntersectionRecord> intersections = _root->getIntersection(intersectionRay, start, end, typeFilterMask);
+
+    IntersectionRecord nearest;
+
+    for (const IntersectionRecord& ir : intersections) {
+        if (!nearest._hasHit) {
+            nearest = ir;
+            continue;
+        }
+
+        if (ir._distance < nearest._distance) {
+            nearest = ir;
+        }
+    }
+
+    return nearest;
+}
+
+/// This gives you a list of every intersection record created with the intersection ray
+vector<IntersectionRecord> Octree::allIntersections(const Ray& intersectionRay, const F32 start, const F32 end) {
+    return allIntersections(intersectionRay, start, end, ~_nodeExclusionMask);
+}
+
+/// This gives you a list of all intersections, filtered by a specific type of object
+vector<IntersectionRecord> Octree::allIntersections(const Ray& intersectionRay, const F32 start, const F32 end, const U16 typeFilterMask) {
+    updateTree();
+
+    return _root->getIntersection(intersectionRay, start, end, typeFilterMask);
+}
+
+/// This gives you a list of all objects which [intersect or are contained within] the given frustum and meet the given object type
+vector<IntersectionRecord> Octree::allIntersections(const Frustum& region, const U16 typeFilterMask) {
+    updateTree();
+    return _root->getIntersection(region, typeFilterMask);
+}
+
+
+void Octree::updateTree() {
+    if (_treeReady) {
+        return;
+    }
+
+    ScopedLock<Mutex> w_lock1(_pendingInsertLock);
+
+    bool needsRebuild = false;
+    if (!_treeBuilt) {
+        ScopedLock<SharedMutex> w_lock2(_root->_objectLock);
+        while (!_pendingInsertion.empty()) {
+            _root->_objects.push_back(_pendingInsertion.front());
+            _pendingInsertion.pop();
+        }
+        needsRebuild = true;
+
+    } else {
+        while (!_pendingInsertion.empty()) {
+            _root->insert(_pendingInsertion.front());
+            _pendingInsertion.pop();
+        }
+    }
+
+    //ToDo: We can optimise this by settings removed nodes to inactive! -Ionut
+    {
+        ScopedLock<SharedMutex> w_lock2(_root->_objectLock);
+        while (!_pendingRemoval.empty()) {
+            const SceneGraphNode* nodeToRemove = _pendingRemoval.front();
+            needsRebuild = dvd_erase_if(_root->_objects, [targetGUID = nodeToRemove->getGUID()](const SceneGraphNode* node) {
+                return node->getGUID() == targetGUID;
+            }) || needsRebuild;
+            _pendingRemoval.pop();
+        }
+    }
+    if (needsRebuild) {
+        _root->buildTree();
+    }
+
+    _treeReady = true;
+}
+
+void Octree::onNodeMoved(const SceneGraphNode& sgn) {
+    OPTICK_EVENT();
+
+    const I64 targetGUID = sgn.getGUID();
+
+    ScopedLock<Mutex> w_lock(_linearObjectCacheLock);
+    for (OctreeNode* node : _linearObjectCache) {
+        SharedLock<SharedMutex> r_lock(node->_objectLock);
+        //go through and update every object in the current tree node
+        for (const SceneGraphNode* crtNode : node->_objects) {
+            if (crtNode->getGUID() != targetGUID) {
+                continue;
+            }
+
+            node->_movedObjects.enqueue(&sgn);
+            return;
+        }
+    }
+}
+
+void Octree::onChildStateChange(OctreeNode* node, const bool state) {
+    ScopedLock<Mutex> w_lock(_linearObjectCacheLock);
+    if (state) {
+        _linearObjectCache.push_back(node);
+    } else {
+        eastl::erase(_linearObjectCache, node);
+    }
+}
+
+void Octree::getAllRegions(vector<BoundingBox>& regionsOut) const {
+    _root->getAllRegions(regionsOut);
+}
+
+OctreeNode::OctreeNode(OctreeNode* parent, const U16 nodeMask, Octree* parentTree)
+    : _parent(parent)
+    , _parentTree(parentTree)
+    , _region { VECTOR3_ZERO, VECTOR3_ZERO }
+    , _nodeExclusionMask(nodeMask)
+{
+}
+
+void OctreeNode::update(const U64 deltaTimeUS) {
     // prune any dead objects from the tree
     {
         ScopedLock<SharedMutex> w_lock(_objectLock);
@@ -66,7 +236,7 @@ void Octree::update(const U64 deltaTimeUS) {
     //note that we have to do this last so that we don't accidentally update the same object more than once per frame.
     const SceneGraphNode* movedObjPtr = nullptr;
     while(_movedObjects.try_dequeue(movedObjPtr)) {
-        Octree*  current = this;
+        OctreeNode*  current = this;
 
         //figure out how far up the tree we need to go to reinsert our moved object
         //try to move the object into an enclosing parent node until we've got full containment
@@ -98,42 +268,13 @@ void Octree::update(const U64 deltaTimeUS) {
     for (auto& child : _childNodes) {
         if (child && child->active() && child->_curLife == 0) {
             child->active(false);
+            _parentTree->onChildStateChange(child.get(), false);
         }
     }
-    // root node
-    if (_parent == nullptr) {
-        s_intersectionsObjectCache.resize(0);
-        s_intersectionsObjectCache.reserve(getTotalObjectCount());
-
-        updateIntersectionCache(s_intersectionsObjectCache);
-
-        for(const IntersectionRecord& ir : _intersectionsCache) {
-            handleIntersection(ir);
-        }
-    }
-}
-
-bool Octree::addNode(SceneGraphNode* node) const {
-    const U16 nodeType = 1 << to_U16(node->getNode<>().type());
-    if (node && !BitCompare(_nodeExclusionMask, nodeType) && node->get<BoundsComponent>()) {
-        ScopedLock<Mutex> w_lock(s_pendingInsertLock);
-        s_pendingInsertion.push(node);
-        s_treeReady = false;
-        return true;
-    }
-
-    return false;
-}
-
-bool Octree::removeNode(SceneGraphNode* node) const {
-    ScopedLock<Mutex> w_lock(s_pendingInsertLock);
-    s_pendingRemoval.push(node);
-    s_treeReady = false;
-    return true;
 }
 
 /// A tree has already been created, so we're going to try to insert an item into the tree without rebuilding the whole thing
-void Octree::insert(const SceneGraphNode* object) {
+void OctreeNode::insert(const SceneGraphNode* object) {
     const vec3<F32> dimensions(_region.getExtent());
     {
         ScopedLock<SharedMutex> w_lock(_objectLock);
@@ -181,7 +322,7 @@ void Octree::insert(const SceneGraphNode* object) {
             //is the object fully contained within a quadrant?
             if (childOctant[i].containsBox(bb)) {
                 if (!child) {
-                    child = eastl::make_unique<Octree>(this, _nodeExclusionMask);
+                    child = eastl::make_unique<OctreeNode>(this, _nodeExclusionMask, _parentTree);
                 }
                 if (child->active()) {
                     child->insert(object);   //Add the item into that tree and let the child tree figure out what to do with it
@@ -195,8 +336,10 @@ void Octree::insert(const SceneGraphNode* object) {
                         }
                         child->active(true);
                         child->buildTree();
+                        _parentTree->onChildStateChange(child.get(), true);
                     } else {
                         child->active(false);
+                        _parentTree->onChildStateChange(child.get(), false);
                     }
                 }
                 found = true;
@@ -213,31 +356,8 @@ void Octree::insert(const SceneGraphNode* object) {
     }
 }
 
-void Octree::onNodeMoved(const SceneGraphNode& sgn) {
-    {
-        SharedLock<SharedMutex> r_lock(_objectLock);
-        //go through and update every object in the current tree node
-        const I64 targetGUID = sgn.getGUID();
-        for (const SceneGraphNode* crtNode : _objects) {
-            if (crtNode->getGUID() != targetGUID) {
-                continue;
-            }
-
-            _movedObjects.enqueue(&sgn);
-            return;
-        }
-    }
-
-    //recursively update any child nodes.
-    for (auto& child : _childNodes) {
-        if (child && child->active()) {
-            child->onNodeMoved(sgn);
-        }
-    }
-}
-
 /// Naively builds an oct tree from scratch.
-void Octree::buildTree() {
+void OctreeNode::buildTree() {
     // terminate the recursion if we're a leaf node
     {
         SharedLock<SharedMutex> w_lock(_objectLock);
@@ -318,7 +438,7 @@ void Octree::buildTree() {
         auto& child = _childNodes[i];
         if (!octList[i].empty()) {
             if (!child) {
-                child = eastl::make_unique<Octree>(this, _nodeExclusionMask);
+                child = eastl::make_unique<OctreeNode>(this, _nodeExclusionMask, _parentTree);
             }
             child->_region = octant[i];
             {
@@ -329,18 +449,19 @@ void Octree::buildTree() {
             }
             child->active(true);
             child->buildTree();
+            _parentTree->onChildStateChange(child.get(), true);
         } else {
             if (child) {
                 child->active(false);
+                _parentTree->onChildStateChange(child.get(), false);
             }
         }
     }
 
-    s_treeBuilt = true;
-    s_treeReady = true;
+    _parentTree->onChildBuildTree();
 }
 
-void Octree::findEnclosingBox() noexcept
+void OctreeNode::findEnclosingBox()
 {
     SharedLock<SharedMutex> r_lock(_objectLock);
 
@@ -385,7 +506,7 @@ void Octree::findEnclosingBox() noexcept
 }
 
 /// This finds the smallest enclosing cube which is a power of 2, for all objects in the list.
-void Octree::findEnclosingCube() noexcept {
+void OctreeNode::findEnclosingCube() {
     findEnclosingBox();
 
     //we can't guarantee that all bounding regions will be relative to the origin, so to keep the math
@@ -413,44 +534,7 @@ void Octree::findEnclosingCube() noexcept {
     _region.translate(-offset);
 }
 
-void Octree::updateTree() {
-    ScopedLock<Mutex> w_lock1(s_pendingInsertLock);
-
-    bool needsRebuild = false;
-    if (!s_treeBuilt) {
-        ScopedLock<SharedMutex> w_lock2(_objectLock);
-        while (!s_pendingInsertion.empty()) {
-            _objects.push_back(s_pendingInsertion.front());
-            s_pendingInsertion.pop();
-        }
-        needsRebuild = true;
-
-    } else {
-        while (!s_pendingInsertion.empty()) {
-            insert(s_pendingInsertion.front());
-            s_pendingInsertion.pop();
-        }
-    }
-
-    //ToDo: We can optimise this by settings removed nodes to inactive! -Ionut
-    {
-        ScopedLock<SharedMutex> w_lock2(_objectLock);
-        while (!s_pendingRemoval.empty()) {
-            const SceneGraphNode* nodeToRemove = s_pendingRemoval.front();
-            needsRebuild = dvd_erase_if(_objects, [targetGUID = nodeToRemove->getGUID()](const SceneGraphNode* node) {
-                return node->getGUID() == targetGUID;
-            }) || needsRebuild;
-            s_pendingRemoval.pop();
-        }
-    }
-    if (needsRebuild) {
-        buildTree();
-    }
-
-    s_treeReady = true;
-}
-
-void Octree::getAllRegions(vector<BoundingBox>& regionsOut) const {
+void OctreeNode::getAllRegions(vector<BoundingBox>& regionsOut) const {
     for (const auto& child : _childNodes) {
         if (child && child->active()) {
             child->getAllRegions(regionsOut);
@@ -460,7 +544,7 @@ void Octree::getAllRegions(vector<BoundingBox>& regionsOut) const {
     regionsOut.emplace_back(getRegion().getMin(), getRegion().getMax());
 }
 
-U8 Octree::activeNodes() const noexcept {
+U8 OctreeNode::activeNodes() const noexcept {
     U8 ret = 0u;
     for (const auto& child : _childNodes) {
         ret += (child && child->active() ? 1u : 0u);
@@ -468,7 +552,7 @@ U8 Octree::activeNodes() const noexcept {
     return ret;
 }
 
-size_t Octree::getTotalObjectCount() const {
+size_t OctreeNode::getTotalObjectCount() const {
     size_t count = 0u;
     {
         SharedLock<SharedMutex> w_lock(_objectLock);
@@ -481,7 +565,7 @@ size_t Octree::getTotalObjectCount() const {
 }
 
 /// Gives you a list of all intersection records which intersect or are contained within the given frustum area
-vector<IntersectionRecord> Octree::getIntersection(const Frustum& frustum, const U16 typeFilterMask) const {
+vector<IntersectionRecord> OctreeNode::getIntersection(const Frustum& frustum, const U16 typeFilterMask) const {
 
     vector<IntersectionRecord> ret{};
 
@@ -522,7 +606,7 @@ vector<IntersectionRecord> Octree::getIntersection(const Frustum& frustum, const
 }
 
 /// Gives you a list of intersection records for all objects which intersect with the given ray
-vector<IntersectionRecord> Octree::getIntersection(const Ray& intersectRay, const F32 start, const F32 end, const U16 typeFilterMask) const {
+vector<IntersectionRecord> OctreeNode::getIntersection(const Ray& intersectRay, const F32 start, const F32 end, const U16 typeFilterMask) const {
     SharedLock<SharedMutex> w_lock(_objectLock);
 
     vector<IntersectionRecord> ret{};
@@ -566,7 +650,7 @@ vector<IntersectionRecord> Octree::getIntersection(const Ray& intersectRay, cons
     return ret;
 }
 
-void Octree::updateIntersectionCache(vector<const SceneGraphNode*>& parentObjects) {
+void OctreeNode::updateIntersectionCache(vector<const SceneGraphNode*>& parentObjects) {
     SharedLock<SharedMutex> w_lock(_objectLock);
 
     _intersectionsCache.resize(0);
@@ -639,73 +723,7 @@ void Octree::updateIntersectionCache(vector<const SceneGraphNode*>& parentObject
     }
 }
 
-/// This gives you a list of every intersection record created with the intersection ray
-vector<IntersectionRecord> Octree::allIntersections(const Ray& intersectionRay, const F32 start, const F32 end) {
-    return allIntersections(intersectionRay, start, end, ~_nodeExclusionMask);
-}
-
-/// This gives you the first object encountered by the intersection ray
-IntersectionRecord Octree::nearestIntersection(const Ray& intersectionRay, const F32 start, const F32 end, const U16 typeFilterMask) {
-    if (!s_treeReady) {
-        updateTree();
-    }
-
-    vector<IntersectionRecord> intersections = getIntersection(intersectionRay, start, end, typeFilterMask);
-
-    IntersectionRecord nearest;
-
-    for(const IntersectionRecord& ir : intersections) {
-        if (!nearest._hasHit) {
-            nearest = ir;
-            continue;
-        }
-
-        if (ir._distance < nearest._distance) {
-            nearest = ir;
-        }
-    }
-
-    return nearest;
-}
-
-/// This gives you a list of all intersections, filtered by a specific type of object
-vector<IntersectionRecord> Octree::allIntersections(const Ray& intersectionRay, const F32 start, const F32 end, const U16 typeFilterMask) {
-    if (!s_treeReady) {
-        updateTree();
-    }
-
-    return getIntersection(intersectionRay, start, end, typeFilterMask);
-}
-
-/// This gives you a list of all objects which [intersect or are contained within] the given frustum and meet the given object type
-vector<IntersectionRecord> Octree::allIntersections(const Frustum& region, const U16 typeFilterMask) {
-    if (!s_treeReady) {
-        updateTree();
-    }
-
-    return getIntersection(region, typeFilterMask);
-}
-
-void Octree::handleIntersection(const IntersectionRecord& intersection) const {
-    const BoundsComponent* obj1 = intersection._intersectedObject1;
-    const BoundsComponent* obj2 = intersection._intersectedObject2;
-    if (obj1 != nullptr && obj2 != nullptr) {
-        // Check for child / parent relation
-        if(obj1->parentSGN()->isRelated(obj2->parentSGN())) {
-            return;
-        }
-
-        RigidBodyComponent* comp1 = obj1->parentSGN()->get<RigidBodyComponent>();
-        RigidBodyComponent* comp2 = obj2->parentSGN()->get<RigidBodyComponent>();
-
-        if (comp1 && comp2) {
-            comp1->onCollision(*comp2);
-            comp2->onCollision(*comp1);
-        }
-    }
-}
-
-bool Octree::getIntersection(BoundsComponent* bComp, const Frustum& frustum, IntersectionRecord& irOut) const noexcept {
+bool OctreeNode::getIntersection(BoundsComponent* bComp, const Frustum& frustum, IntersectionRecord& irOut) const noexcept {
     _frustPlaneCache = -1; //ToDo: Fix this caching system to work with multithreading -Ionut
     if (frustum.ContainsBoundingBox(bComp->getBoundingBox(), _frustPlaneCache) != FrustumCollision::FRUSTUM_OUT) {
         irOut.reset();
@@ -718,7 +736,7 @@ bool Octree::getIntersection(BoundsComponent* bComp, const Frustum& frustum, Int
     return false;
 }
 
-bool Octree::getIntersection(BoundsComponent* boundsNode1, BoundsComponent* boundsNode2, IntersectionRecord& irOut) const noexcept {
+bool OctreeNode::getIntersection(BoundsComponent* boundsNode1, BoundsComponent* boundsNode2, IntersectionRecord& irOut) const noexcept {
     if (boundsNode1->parentSGN()->getGUID() != boundsNode2->parentSGN()->getGUID()) {
         if (boundsNode1->getBoundingSphere().collision(boundsNode2->getBoundingSphere())) {
             if (boundsNode1->getBoundingBox().collision(boundsNode2->getBoundingBox())) {
@@ -735,7 +753,7 @@ bool Octree::getIntersection(BoundsComponent* boundsNode1, BoundsComponent* boun
     return false;
 }
 
-bool Octree::getIntersection(BoundsComponent* bComp, const Ray& intersectRay, const F32 start, const F32 end, IntersectionRecord& irOut) const noexcept {
+bool OctreeNode::getIntersection(BoundsComponent* bComp, const Ray& intersectRay, const F32 start, const F32 end, IntersectionRecord& irOut) const noexcept {
     if (bComp->getBoundingBox().intersect(intersectRay, start, end).hit) {
         irOut.reset();
         irOut._intersectedObject1 = bComp;

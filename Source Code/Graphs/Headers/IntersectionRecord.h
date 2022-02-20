@@ -37,7 +37,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct Octree;
+class OctreeNode;
 class BoundsComponent;
 
 class IntersectionRecord
@@ -68,7 +68,7 @@ class IntersectionRecord
     /// this is a reference to the current node within the octree for where the collision occurred. In some cases, the collision handler
     /// will want to be able to spawn new objects and insert them into the tree. This node is a good starting place for inserting these objects
     /// since it is a very near approximation to where we want to be in the tree.
-    const Octree* _treeNode = nullptr;
+    const OctreeNode* _treeNode = nullptr;
     /// This is the distance from the ray to the intersection point. 
     /// You'll usually want to use the nearest collision point if you get multiple intersections.
     D64 _distance = 0.;

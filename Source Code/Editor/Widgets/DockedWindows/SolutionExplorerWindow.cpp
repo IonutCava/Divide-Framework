@@ -181,7 +181,7 @@ namespace Divide {
 
         const auto printNode = [&](const char* icon) {
             if (s_onlyVisibleNodes && !Attorney::EditorSolutionExplorerWindow::isNodeInView(_parent, *sgn)) {
-                if (!SceneGraphNode::IsContainerNode(*sgn) || !nodeHasChildrenInView(sgn)) {
+                if (!sgn->hasFlag(SceneGraphNode::Flags::IS_CONTAINER) || !nodeHasChildrenInView(sgn)) {
                     return false;
                 }
             }

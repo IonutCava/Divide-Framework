@@ -630,6 +630,8 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
 }
 
 void SceneEnvironmentProbePool::onNodeUpdated(const SceneGraphNode& node) noexcept {
+    OPTICK_EVENT();
+
     const BoundingSphere& bSphere = node.get<BoundsComponent>()->getBoundingSphere();
     lockProbeList();
     const EnvironmentProbeList& probes = getLocked();
@@ -645,6 +647,8 @@ void SceneEnvironmentProbePool::onNodeUpdated(const SceneGraphNode& node) noexce
 }
 
 void SceneEnvironmentProbePool::OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept {
+    OPTICK_EVENT();
+
     probePool.lockProbeList();
     const EnvironmentProbeList& probes = probePool.getLocked();
     for (const auto& probe : probes) {

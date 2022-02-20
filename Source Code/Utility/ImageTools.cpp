@@ -571,14 +571,18 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
     switch (imageInfo.Type) {
         case IL_BYTE:
             _dataType = GFXDataFormat::SIGNED_BYTE;
-            [[fallthrough]];
+            _isHDR = _16Bit = false;
+            break;
         case IL_UNSIGNED_BYTE:
             _isHDR = _16Bit = false;
             _dataType = GFXDataFormat::UNSIGNED_BYTE;
             break;
         case IL_SHORT:
             _dataType = GFXDataFormat::SIGNED_SHORT;
-            [[fallthrough]];
+            _isHDR = false;
+            _16Bit = true;
+            storageSizeFactor = 2;
+            break;
         case IL_UNSIGNED_SHORT:
             _isHDR = false;
             _16Bit = true;

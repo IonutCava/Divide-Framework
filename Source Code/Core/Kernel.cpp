@@ -315,6 +315,8 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
 
         _timingData.updateLoops(0u);
 
+        constexpr U8 MAX_FRAME_SKIP = 4u;
+
         const U64 fixedTimestep = _timingData.fixedTimeStep();
         while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US) {
             OPTICK_EVENT("Run Update Loop");
@@ -351,12 +353,15 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
             // Update visual effect timers as well
             Attorney::GFXDeviceKernel::update(_platformContext.gfx(), fixedTimestep, _timingData.appTimeDeltaUS());
 
-            if (_timingData.updateLoops() == 0u) {
-                _sceneUpdateLoopTimer.stop();
-            }
-
             _timingData.updateLoops(_timingData.updateLoops() + 1u);
             _timingData.accumulator(_timingData.accumulator() - FIXED_UPDATE_RATE_US);
+            const U8 loopCount = _timingData.updateLoops();
+            if (loopCount == 1u) {
+                _sceneUpdateLoopTimer.stop();
+            } else if (loopCount == MAX_FRAME_SKIP) {
+                _timingData.accumulator(FIXED_UPDATE_RATE_US);
+                break;
+            }
         }
     }
 

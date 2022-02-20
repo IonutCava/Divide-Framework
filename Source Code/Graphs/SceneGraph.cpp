@@ -48,7 +48,7 @@ SceneGraph::SceneGraph(Scene& parentScene)
                                         1 << to_base(SceneNodeType::TYPE_INFINITEPLANE) |
                                         1 << to_base(SceneNodeType::TYPE_VEGETATION);
 
-    _octree = eastl::make_unique<Octree>(nullptr, octreeExclusionMask);
+    _octree = eastl::make_unique<Octree>(octreeExclusionMask);
     _octreeUpdating = false;
 }
 
@@ -76,6 +76,7 @@ void SceneGraph::addToDeleteQueue(SceneGraphNode* node, const size_t childIdx) {
 }
 
 void SceneGraph::onNodeUpdated(const SceneGraphNode& node) {
+    OPTICK_EVENT();
 
     //ToDo: Maybe add particles too? -Ionut
     switch (node.getNode<>().type()) {
@@ -90,13 +91,18 @@ void SceneGraph::onNodeUpdated(const SceneGraphNode& node) {
 }
 
 void SceneGraph::onNodeSpatialChange(const SceneGraphNode& node) {
-    if (node.get<BoundsComponent>()) {
+    BoundsComponent* bComp = node.get<BoundsComponent>();
+    if (bComp != nullptr) {
+        OPTICK_EVENT();
+
         LightPool* pool = Attorney::SceneGraph::getLightPool(parentScene());
-        pool->onVolumeMoved(node.get<BoundsComponent>()->getBoundingSphere(), node.usageContext() == NodeUsageContext::NODE_STATIC);
+        pool->onVolumeMoved(bComp->getBoundingSphere(), node.usageContext() == NodeUsageContext::NODE_STATIC);
     }
 }
 
 void SceneGraph::onNodeMoved(const SceneGraphNode& node) {
+    OPTICK_EVENT();
+
     _octree->onNodeMoved(node);
     onNodeUpdated(node);
 }

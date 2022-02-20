@@ -426,7 +426,6 @@ bool DisplayWindow::setDimensions(U16 width, U16 height) {
         case WindowType::FULLSCREEN_WINDOWED: //fall-through
             changeType(WindowType::WINDOW);
         case WindowType::WINDOW: 
-            [[fallthrough]];
         default: {
             maximized(false);
             SDL_SetWindowSize(_sdlWindow, newW, newH);

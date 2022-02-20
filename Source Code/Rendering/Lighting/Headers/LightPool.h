@@ -39,6 +39,7 @@
 
 #include "Scenes/Headers/SceneComponent.h"
 #include "Core/Headers/PlatformContextComponent.h"
+#include "Managers/Headers/FrameListenerManager.h"
 
 namespace Divide {
 
@@ -50,8 +51,9 @@ class ShaderBuffer;
 class SceneGraphNode;
 class SceneRenderState;
 
-class LightPool : public SceneComponent,
-                  public PlatformContextComponent {
+class LightPool final : public FrameListener, 
+                        public SceneComponent,
+                        public PlatformContextComponent {
   protected:
       struct LightProperties {
           /// rgb = diffuse
@@ -144,8 +146,6 @@ class LightPool : public SceneComponent,
 
     void onVolumeMoved(const BoundingSphere& volume, bool staticSource);
 
-    [[nodiscard]] const vector<MovingVolume>& movedVolumes() const;
-
     /// nullptr = disabled
     void debugLight(Light* light);
 
@@ -174,6 +174,10 @@ class LightPool : public SceneComponent,
     POINTER_R(Light, debugLight, nullptr);
 
   protected:
+    [[nodiscard]] bool frameStarted(const FrameEvent& evt) override;
+    [[nodiscard]] bool frameEnded(const FrameEvent& evt) override;
+
+  protected:
     using LightShadowProperties = std::array<Light::ShadowProperties, Config::Lighting::MAX_SHADOW_CASTING_LIGHTS>;
 
     friend class RenderPass;
@@ -195,7 +199,7 @@ class LightPool : public SceneComponent,
     [[nodiscard]] bool isShadowCacheInvalidated(const vec3<F32>& cameraPosition, Light* light);
 
 
-    [[nodiscard]] static bool IsLightInViewFrustum(const Frustum& frustum, Light* light) noexcept;
+    [[nodiscard]] static bool IsLightInViewFrustum(const Frustum& frustum, const Light* light) noexcept;
 
   private:
       void init();
@@ -227,7 +231,7 @@ class LightPool : public SceneComponent,
     ShadowProperties _shadowBufferData;
 
     mutable SharedMutex _movedSceneVolumesLock;
-    vector<MovingVolume> _movedSceneVolumes;
+    eastl::fixed_vector<MovingVolume, Config::MAX_VISIBLE_NODES, true, eastl::dvd_allocator> _movedSceneVolumes;
 
     mutable SharedMutex _lightLock{};
 
