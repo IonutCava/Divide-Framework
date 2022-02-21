@@ -18,26 +18,19 @@ void glVAOCache::clear() {
         if (value.second != GLUtil::k_invalidObjectID) {
             GL_API::DeleteVAOs(1, &value.second);
         }
-    }
-    _cache.clear();
+    }    _cache.clear();
 }
 
-// Returns an existing or a new VAO that matches the specified attribute specification
-bool glVAOCache::getVAO(const AttribFlags& flags, GLuint& vaoOut) {
-    size_t hash = 0;
-    return getVAO(flags, vaoOut, hash);
-}
 
-bool glVAOCache::getVAO(const AttribFlags& flags, GLuint& vaoOut, size_t& hashOut) {
+bool glVAOCache::getVAO(const size_t attributeHash, GLuint& vaoOut) {
+    static U32 s_VAOidx = 0u;
+
     DIVIDE_ASSERT(Runtime::isMainThread());
 
     vaoOut = GLUtil::k_invalidObjectID;
 
-    // Hash the received attributes
-    hashOut = std::hash<AttribFlags>()(flags);
-
     // See if we already have a matching VAO
-    const VAOMap::iterator it = _cache.find(hashOut);
+    const VAOMap::iterator it = _cache.find(attributeHash);
     if (it != std::cend(_cache)) {
         // Remember it if we do
         vaoOut = it->second;
@@ -47,8 +40,11 @@ bool glVAOCache::getVAO(const AttribFlags& flags, GLuint& vaoOut, size_t& hashOu
 
     // Otherwise allocate a new VAO and save it in the cache
     glCreateVertexArrays(1, &vaoOut);
-    assert(vaoOut != GLUtil::k_invalidObjectID && Locale::Get(_ID("ERROR_VAO_INIT")));
-    insert(_cache, hashOut, vaoOut);
+    DIVIDE_ASSERT(vaoOut != GLUtil::k_invalidObjectID, Locale::Get(_ID("ERROR_VAO_INIT")));
+    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+        glObjectLabel(GL_VERTEX_ARRAY, vaoOut, -1, Util::StringFormat("GENERIC_VAO_%d", s_VAOidx++).c_str());
+    }
+    insert(_cache, attributeHash, vaoOut);
     return false;
 }
 

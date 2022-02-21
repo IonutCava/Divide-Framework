@@ -227,7 +227,6 @@ void Terrain::postBuild() {
             params._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;
             params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
             params._bufferParams._sync = false;
-            params._instanceDivisor = 1u;
 
             _terrainBuffer = _context.newGVD(1);
             if_constexpr(USE_BASE_VERTEX_OFFSETS) {
@@ -258,10 +257,6 @@ void Terrain::postBuild() {
                     _terrainBuffer->setBuffer(params);
                 }
             }
-            AttributeDescriptor& descPosition  = _terrainBuffer->attribDescriptor(to_base(AttribLocation::POSITION));
-            AttributeDescriptor& descAdjacency = _terrainBuffer->attribDescriptor(to_base(AttribLocation::COLOR));
-            descPosition.set( 0u, 4, GFXDataFormat::FLOAT_32, false, 0u * sizeof(F32));
-            descAdjacency.set(0u, 4, GFXDataFormat::FLOAT_32, false, 4u * sizeof(F32));
         }
     }
 }
@@ -325,9 +320,28 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     Object3D::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
-void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut)
+void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut)
 {
     topologyOut = PrimitiveTopology::PATCH;
+
+    {
+        AttributeDescriptor& desc = vertexFormatInOut[to_base(AttribLocation::POSITION)];
+        desc._bindingIndex = 0u;
+        desc._componentsPerElement = 4u;
+        desc._dataType = GFXDataFormat::FLOAT_32;
+        desc._normalized = false;
+        desc._strideInBytes = 0u * sizeof(F32);
+        desc._instanceDivisor = 1u;
+    }
+    {
+        AttributeDescriptor& desc = vertexFormatInOut[to_base(AttribLocation::COLOR)];
+        desc._bindingIndex = 0u;
+        desc._componentsPerElement = 4u;
+        desc._dataType = GFXDataFormat::FLOAT_32;
+        desc._normalized = false;
+        desc._strideInBytes = 4u * sizeof(F32);
+        desc._instanceDivisor = 1u;
+    }
 
     GenericDrawCommand cmd = {};
     cmd._sourceBuffer = _terrainBuffer->handle();
@@ -347,7 +361,7 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawComman
     }
     
 
-    Object3D::buildDrawCommands(sgn, cmdsOut, topologyOut);
+    Object3D::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
 }
 
 const vector<VertexBuffer::Vertex>& Terrain::getVerts() const noexcept {

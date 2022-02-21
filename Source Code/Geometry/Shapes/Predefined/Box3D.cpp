@@ -80,7 +80,7 @@ Box3D::Box3D(GFXDevice& context, ResourceCache* parentCache, const size_t descri
         vb->modifyTexCoordValue(i, texCoords[i % 4]);
         vb->modifyNormalValue(i, normals[i / 4]);
     }
-    vb->create(false);
+    vb->create(false, true);
     setBounds(BoundingBox(-_halfExtent, _halfExtent));
 }
 
@@ -91,8 +91,6 @@ void Box3D::setHalfExtent(const vec3<F32>& halfExtent) {
     for (U32 i = 0u; i < std::size(vertices); ++i) {
         vb->modifyPositionValue(i, vertices[i] * _halfExtent);
     }
-
-    vb->queueRefresh();
     setBounds(BoundingBox(-_halfExtent, _halfExtent));
 }
 
@@ -101,7 +99,6 @@ void Box3D::fromPoints(const std::initializer_list<vec3<F32>>& points,
 
     VertexBuffer* vb = getGeometryVB();
     vb->modifyPositionValues(0, points);
-    vb->queueRefresh();
     _halfExtent = halfExtent;
     setBounds(BoundingBox(-_halfExtent * 0.5f, _halfExtent * 0.5f));
 }

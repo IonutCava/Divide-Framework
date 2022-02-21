@@ -80,6 +80,8 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     options._isNormalMap = true;
     options._useDDSCache = true;
     options._outputSRGB = false;
+    options._alphaChannelTransparency = false;
+
     texDescriptor.textureOptions(options);
 
     ResourceDescriptor textureWaterCaustics("Underwater Normal Map");

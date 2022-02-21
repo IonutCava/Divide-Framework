@@ -142,11 +142,12 @@ void Object3D::prepareRender(SceneGraphNode* sgn,
     SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
-void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
     VertexBuffer* vb = getGeometryVB();
     if (vb != nullptr) {
         if (cmdsOut.size() == 0u) {
             topologyOut = getGeometryBufferType();
+            vb->populateAttributeMap(vertexFormatInOut);
 
             const U16 partitionID = _geometryPartitionIDs[0];
             GenericDrawCommand cmd;
@@ -158,7 +159,7 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawComma
             
             cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
         }
-
+        
         U16 prevID = 0;
         RenderingComponent* rComp = sgn->get<RenderingComponent>();
         assert(rComp != nullptr);
@@ -174,7 +175,7 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawComma
         }
     }
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
 }
 
 // Create a list of triangles from the vertices + indices lists based on primitive type
@@ -274,8 +275,7 @@ void Object3D::playAnimations(SceneGraphNode* sgn, const bool state) {
         SharedLock<SharedMutex> w_lock(children._lock);
         const U32 childCount = children._count;
         for (U32 i = 0u; i < childCount; ++i) {
-            SceneGraphNode* child = children._data[i];
-            AnimationComponent* animCompInner = child->get<AnimationComponent>();
+            AnimationComponent* animCompInner = children._data[i]->get<AnimationComponent>();
             // Not all submeshes are necessarily animated. (e.g. flag on the back of a character)
             if (animCompInner != nullptr) {
                 animCompInner->playAnimations(state && animCompInner->playAnimations());
@@ -318,7 +318,7 @@ bool Object3D::loadCache(ByteBuffer& inputBuffer) {
 }
 
 void Object3D::saveToXML(boost::property_tree::ptree& pt) const {
-    if (static_cast<const Object3D*>(this)->isPrimitive()) {
+    if (isPrimitive()) {
         pt.put("model", TypeUtil::ObjectTypeToString(static_cast<const Object3D*>(this)->getObjectType()));
     } else {
         pt.put("model", resourceName().c_str());
@@ -329,7 +329,7 @@ void Object3D::saveToXML(boost::property_tree::ptree& pt) const {
 
 void Object3D::loadFromXML(const boost::property_tree::ptree& pt) {
     string temp;
-    if (static_cast<const Object3D*>(this)->isPrimitive()) {
+    if (isPrimitive()) {
         temp = pt.get("model", TypeUtil::ObjectTypeToString(getObjectType()));
         assert(temp == TypeUtil::ObjectTypeToString(getObjectType()));
     } else {

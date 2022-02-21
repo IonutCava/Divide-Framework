@@ -35,14 +35,14 @@
 
 #include "VertexDataInterface.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
+#include "Platform/Video/Headers/AttributeDescriptor.h"
 
 namespace Divide {
 class ByteBuffer;
 class GenericVertexData;
-    /// Vertex Buffer interface class to allow API-independent implementation of data
+/// Vertex Buffer interface class to allow API-independent implementation of data
 /// This class does NOT represent an API-level VB, such as: GL_ARRAY_BUFFER / D3DVERTEXBUFFER
-/// It is only a "buffer" for "vertex info" abstract of implementation. (e.g.:
-/// OGL uses a vertex array object for this)
+/// It is only a "buffer" for "vertex info" abstract of implementation. (e.g.: OGL uses a vertex array object for this)
 class VertexBuffer final : public VertexDataInterface {
    public:
     constexpr static U32 PRIMITIVE_RESTART_INDEX_L = 0xFFFFFFFF;
@@ -82,7 +82,7 @@ class VertexBuffer final : public VertexDataInterface {
     VertexBuffer(GFXDevice& context);
     ~VertexBuffer() = default;
 
-    bool create(bool staticDraw = true);
+    bool create(bool staticDraw, bool keepData);
 
     void setVertexCount(const size_t size) {
         _data.resize(size);
@@ -148,8 +148,6 @@ class VertexBuffer final : public VertexDataInterface {
                          UNORM_CHAR_TO_FLOAT(weight.b[3]));
     }
 
-    void queueRefresh() noexcept { _refreshQueued = true; }
-
     [[nodiscard]] size_t getIndexCount() const noexcept {
         return _indices.size();
     }
@@ -196,7 +194,8 @@ class VertexBuffer final : public VertexDataInterface {
             it++->_position.set(value);
        }
 
-       _attribDirty[to_base(AttribLocation::POSITION)] = true;
+       _useAttribute[to_base(AttribLocation::POSITION)] = true;
+       _refreshQueued = true;
     }
 
     void modifyPositionValue(const U32 index, const vec3<F32>& newValue) {
@@ -211,7 +210,8 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._position.set(x, y, z);
-        _attribDirty[to_base(AttribLocation::POSITION)] = true;
+        _useAttribute[to_base(AttribLocation::POSITION)] = true;
+        _refreshQueued = true;
     }
 
     void modifyColourValue(const U32 index, const UColour4& newValue) {
@@ -226,7 +226,8 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._colour.set(r, g, b, a);
-        _attribDirty[to_base(AttribLocation::COLOR)] = true;
+        _useAttribute[to_base(AttribLocation::COLOR)] = true;
+        _refreshQueued = true;
     }
 
     void modifyNormalValue(const U32 index, const vec3<F32>& newValue) {
@@ -241,7 +242,8 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._normal = Util::PACK_VEC3(x, y, z);
-        _attribDirty[to_base(AttribLocation::NORMAL)] = true;
+        _useAttribute[to_base(AttribLocation::NORMAL)] = true;
+        _refreshQueued = true;
     }
 
     void modifyTangentValue(const U32 index, const vec3<F32>& newValue) {
@@ -256,7 +258,8 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._tangent = Util::PACK_VEC3(x, y, z);
-        _attribDirty[to_base(AttribLocation::TANGENT)] = true;
+        _useAttribute[to_base(AttribLocation::TANGENT)] = true;
+        _refreshQueued = true;
     }
 
     void modifyTexCoordValue(const U32 index, const vec2<F32>& newValue) {
@@ -271,7 +274,8 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._texcoord.set(s, t);
-        _attribDirty[to_base(AttribLocation::TEXCOORD)] = true;
+        _useAttribute[to_base(AttribLocation::TEXCOORD)] = true;
+        _refreshQueued = true;
     }
 
     void modifyBoneIndices(const U32 index, const P32 indices) {
@@ -282,7 +286,8 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._indices = indices;
-        _attribDirty[to_base(AttribLocation::BONE_INDICE)] = true;
+        _useAttribute[to_base(AttribLocation::BONE_INDICE)] = true;
+        _refreshQueued = true;
     }
 
     void modifyBoneWeights(const U32 index, const FColour4& weights) {
@@ -302,7 +307,8 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._weights = packedWeights;
-        _attribDirty[to_base(AttribLocation::BONE_WEIGHT)] = true;
+        _useAttribute[to_base(AttribLocation::BONE_WEIGHT)] = true;
+        _refreshQueued = true;
     }
 
     [[nodiscard]] size_t partitionCount() const noexcept {
@@ -340,36 +346,29 @@ class VertexBuffer final : public VertexDataInterface {
         return getPartitionOffset(to_U16(_partitions.size() - 1));
     }
 
+    void populateAttributeMap(AttributeMap& mapInOut);
+
     void reset();
 
     void fromBuffer(const VertexBuffer& other);
     bool deserialize(ByteBuffer& dataIn);
     bool serialize(ByteBuffer& dataOut) const;
 
-    static void setAttribMasks(size_t count, const AttribFlags& flagMask);
-    static void setAttribMask(size_t index, const AttribFlags& flagMask);
-
     void computeNormals();
     void computeTangents();
 
     /// Flag used to prevent clearing of the _data vector for static buffers
-    PROPERTY_RW(bool, keepData, false);
     PROPERTY_RW(bool, useLargeIndices, false);
     /// If this flag is true, no further modification are allowed on the buffer (static geometry)
     PROPERTY_R_IW(bool, staticBuffer, false);
 
    protected:
-    static vector<AttribFlags> s_attribMasks;
 
-    bool refresh();
-    bool createInternal();
+    void refresh();
 
     bool getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
     /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer
-    size_t populateAttributeSize();
-    /// Enable full VAO based VB (all pointers are tracked by VAO's)
-    void uploadVBAttributes();
-    void upload();
+    void populateAttributeSize();
     void draw(const GenericDrawCommand& command) override;
 
    protected:
@@ -378,17 +377,12 @@ class VertexBuffer final : public VertexDataInterface {
     vector<Vertex> _data;
     /// Used for creating an "IB". If it's empty, then an outside source should provide the indices
     vector<U32> _indices;
-    /// Cache system to update only required data
-    AttribFlags _attribDirty{};
+    AttribValues _attribOffsets;
     AttribFlags _useAttribute{};
-    AttribValues _attributeOffset{};
-    size_t _prevSize = 0u;
-    size_t _prevSizeIndices = 0u;
     size_t _effectiveEntrySize = 0u;
-    ///< A refresh call might be called before "Create()". This should help with that
-    bool _refreshQueued = false;
-    bool _uploadQueued = false;
     GenericVertexData* _internalGVD = nullptr;
+    bool _refreshQueued = false;
+    bool _keepData = false;
 };
 
 };  // namespace Divide

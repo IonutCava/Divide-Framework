@@ -508,6 +508,7 @@ bool Sky::load() {
         textureDescriptor.srgb(false);
         textureDescriptor.layerCount(128);
         textureDescriptor.baseFormat(GFXImageFormat::RGBA);
+        textureDescriptor.textureOptions()._alphaChannelTransparency = false;
 
         ResourceDescriptor perlWorlDescriptor("perlWorl");
         perlWorlDescriptor.propertyDescriptor(textureDescriptor);
@@ -528,6 +529,7 @@ bool Sky::load() {
 
         textureDescriptor.texType(TextureType::TEXTURE_2D_ARRAY);
         textureDescriptor.layerCount(1u);
+
         // We should still keep mipmaps, but filtering should be set to linear
         //textureDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
         
@@ -548,7 +550,8 @@ bool Sky::load() {
     {
         TextureDescriptor skyboxTexture(TextureType::TEXTURE_CUBE_ARRAY);
         skyboxTexture.srgb(true);
-    
+        skyboxTexture.textureOptions()._alphaChannelTransparency = false;
+
         ResourceDescriptor skyboxTextures("SkyTextures");
         skyboxTextures.assetName(ResourcePath{ 
             "skyboxDay_FRONT.jpg, skyboxDay_BACK.jpg, skyboxDay_UP.jpg, skyboxDay_DOWN.jpg, skyboxDay_LEFT.jpg, skyboxDay_RIGHT.jpg," //Day
@@ -804,8 +807,10 @@ void Sky::prepareRender(SceneGraphNode* sgn,
     SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
-void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
     topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
+
+    _sky->getGeometryVB()->populateAttributeMap(vertexFormatInOut);
 
     GenericDrawCommand cmd = {};
     cmd._sourceBuffer = _sky->getGeometryVB()->handle();
@@ -817,7 +822,7 @@ void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& 
 
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
 }
 
 }

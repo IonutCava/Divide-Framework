@@ -81,8 +81,7 @@ void Sphere3D::rebuildInternal() {
         t -= dt;
     }
 
-    vb->create();
-    vb->queueRefresh();
+    vb->create(true, true);
     _geometryTriangles.resize(0);
 
     // ToDo: add some depth padding for collision and nav meshes

@@ -350,8 +350,7 @@ namespace Import {
             Attorney::MeshImporter::addSubMesh(*mesh, tempSubMesh, invGeometryTransform);
         }
 
-        mesh->getGeometryVB()->create();
-        mesh->getGeometryVB()->keepData(true); //< for physics and intersection tests
+        mesh->getGeometryVB()->create(true, true);
         Attorney::MeshImporter::setNodeData(*mesh, dataIn._nodeData);
 
         WAIT_FOR_CONDITION(taskCounter.load() == 0)

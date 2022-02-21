@@ -33,7 +33,6 @@
 #ifndef _GENERIC_VERTEX_DATA_H
 #define _GENERIC_VERTEX_DATA_H
 
-#include "AttributeDescriptor.h"
 #include "Core/Headers/RingBuffer.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
@@ -59,13 +58,12 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
      struct SetBufferParams {
          BufferParams _bufferParams;
          U32 _buffer = 0u;
-         U32 _instanceDivisor = 0u;
          bool _useRingBuffer = false;
      };
 
    public:
     GenericVertexData(GFXDevice& context, U32 ringBufferLength, const char* name = nullptr);
-    virtual ~GenericVertexData();
+    virtual ~GenericVertexData() = default;
 
     virtual void setIndexBuffer(const IndexBuffer& indices, BufferUpdateFrequency updateFrequency);
     virtual void updateIndexBuffer(const IndexBuffer& indices);
@@ -80,16 +78,12 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
                               U32 elementCountOffset,
                               U32 elementCountRange,
                               bufferPtr data) = 0;
-    
-    AttributeDescriptor& attribDescriptor(U32 attribIndex);
+   
 
     PROPERTY_RW(bool, renderIndirect, true);
     PROPERTY_R(IndexBuffer, idxBuffer);
 
    protected:
-    using AttributeMap = hashMap<U32, AttributeDescriptor>;
-    AttributeMap _attributeMapDraw;
-
     string _name;
 };
 

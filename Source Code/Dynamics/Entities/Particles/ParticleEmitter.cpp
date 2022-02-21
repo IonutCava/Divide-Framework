@@ -93,9 +93,6 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
 
                 buffer.setIndexBuffer(idxBuff, BufferUpdateFrequency::RARELY);
             }
-
-            AttributeDescriptor& desc = buffer.attribDescriptor(to_base(AttribLocation::POSITION));
-            desc.set(g_particleGeometryBuffer, 3, GFXDataFormat::FLOAT_32);
         }
     }
 
@@ -172,9 +169,6 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
 }
 
 bool ParticleEmitter::updateData() {
-    constexpr U32 positionAttribLocation = 13;
-    constexpr U32 colourAttribLocation = to_base(AttribLocation::COLOR);
-
     const U32 particleCount = _particles->totalCount();
 
     for (U8 i = 0; i < s_MaxPlayerBuffers; ++i) {
@@ -184,7 +178,6 @@ bool ParticleEmitter::updateData() {
             GenericVertexData::SetBufferParams params = {};
             params._buffer = g_particlePositionBuffer;
             params._useRingBuffer = true;
-            params._instanceDivisor = 1;
 
             params._bufferParams._elementCount = particleCount;
             params._bufferParams._elementSize = sizeof(vec4<F32>);
@@ -200,18 +193,6 @@ bool ParticleEmitter::updateData() {
             params._bufferParams._elementSize = sizeof(UColour4);
 
             buffer.setBuffer(params);
-
-            buffer.attribDescriptor(positionAttribLocation).set(g_particlePositionBuffer,
-                                                                4,
-                                                                GFXDataFormat::FLOAT_32,
-                                                                false,
-                                                                0);
-
-            buffer.attribDescriptor(colourAttribLocation).set(g_particleColourBuffer,
-                                                              4,
-                                                              GFXDataFormat::UNSIGNED_BYTE,
-                                                              true,
-                                                              0);
         }
     }
 
@@ -241,8 +222,31 @@ bool ParticleEmitter::unload() {
     return SceneNode::unload();
 }
 
-void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
     topologyOut = _particles->particleGeometryType();
+    {
+        AttributeDescriptor& desc = vertexFormatInOut[to_base(AttribLocation::POSITION)];
+        desc._bindingIndex = g_particleGeometryBuffer;
+        desc._componentsPerElement = 3u;
+        desc._dataType = GFXDataFormat::FLOAT_32;
+    }
+    {
+        AttributeDescriptor& desc = vertexFormatInOut[to_base(AttribLocation::NORMAL)];
+        desc._bindingIndex = g_particlePositionBuffer;
+        desc._componentsPerElement = 4u;
+        desc._dataType = GFXDataFormat::FLOAT_32;
+        desc._normalized = false;
+        desc._strideInBytes = 0u;
+        desc._instanceDivisor = 1u;
+    }
+    {
+        AttributeDescriptor& desc = vertexFormatInOut[to_base(AttribLocation::COLOR)];
+        desc._bindingIndex = g_particleColourBuffer;
+        desc._componentsPerElement = 4u;
+        desc._dataType = GFXDataFormat::UNSIGNED_BYTE;
+        desc._normalized = true;
+        desc._strideInBytes = 0u;
+    }
 
     GenericDrawCommand cmd = {};
     cmd._cmd.indexCount = to_U32(_particles->particleGeometryIndices().size());
@@ -251,7 +255,7 @@ void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::Dr
     }
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
 }
 
 void ParticleEmitter::prepareRender(SceneGraphNode* sgn,

@@ -293,6 +293,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     DrawCommands _drawCommands;
     PrimitiveTopology _primitiveTopology = PrimitiveTopology::COUNT;
+    AttributeMap _vertexFormat;
 
     static hashMap<U32, DebugView*> s_debugViews[2];
 END_COMPONENT(Rendering);

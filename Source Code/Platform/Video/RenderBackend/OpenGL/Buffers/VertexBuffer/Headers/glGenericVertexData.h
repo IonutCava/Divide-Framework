@@ -96,7 +96,8 @@ class glGenericVertexData final : public GenericVertexData {
 
    protected:
     void bindBufferInternal(U32 bufferIdx, U32 location);
-    void setAttributeInternal(const GenericDrawCommand& command, AttributeDescriptor& descriptor) const;
+    void bindBuffersInternal();
+    void setAttributeInternal(const GenericDrawCommand& command, AttributeDescriptor& descriptor);
 
     void rebuildCountAndIndexData(U32 drawCount,
                                   U32 indexCount,
@@ -106,16 +107,13 @@ class glGenericVertexData final : public GenericVertexData {
    private:
     glVertexDataIndexContainer _indexInfo;
     vector<glGenericBuffer*> _bufferObjects;
-    vector<U32> _instanceDivisor;
     GLuint _indexBuffer = 0u;
     GLuint _indexBufferSize = 0u;
-    GLuint _vertexArray = GLUtil::k_invalidObjectID;
     GLuint _lastDrawCount = 0u;
     GLuint _lastIndexCount = 0u;
     GLuint _lastFirstIndex = 0u;
     GLenum _indexBufferUsage = GL_NONE;
     GLenum _indexDataType = GL_NONE;
-    bool _idxBufferDirty = false;
 };
 
 };  // namespace Divide

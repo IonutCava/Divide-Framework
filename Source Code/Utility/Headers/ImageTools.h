@@ -199,6 +199,8 @@ struct ImageData final : NonCopyable {
     [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
     [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, ImportOptions options);
 
+    PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);
+
   protected:
     friend class ImageDataInterface;
     [[nodiscard]] bool loadDDS_NVTT(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);

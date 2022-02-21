@@ -56,6 +56,71 @@ void GLStateTracker::init()
     _blendEnabled.resize(GFXDevice::GetDeviceInformation()._maxRTColourAttachments, GL_FALSE);
 }
 
+void GLStateTracker::clear() {
+    _vaoCache.clear();
+}
+
+void GLStateTracker::setAttributesInternal(AttribHashes& hashes, const AttributeMap& attributes) {
+    // Update vertex attributes if needed (e.g. if offsets changed)
+    for(U8 idx = 0u; idx < to_base(AttribLocation::COUNT); ++idx) {
+        const AttributeDescriptor& descriptor = attributes[idx];
+
+        const size_t hash = GetHash(descriptor);
+        if (hashes[idx] == hash) {
+            continue;
+        }
+        hashes[idx] = hash;
+
+        if (descriptor._dataType != GFXDataFormat::COUNT) {
+            glEnableVertexArrayAttrib(_activeVAOID, idx);
+            glVertexArrayAttribBinding(_activeVAOID, idx, descriptor._bindingIndex);
+            const bool isIntegerType = descriptor._dataType != GFXDataFormat::FLOAT_16 &&
+                                       descriptor._dataType != GFXDataFormat::FLOAT_32;
+
+            if (!isIntegerType || descriptor._normalized) {
+                glVertexArrayAttribFormat(_activeVAOID,
+                    idx,
+                    descriptor._componentsPerElement,
+                    GLUtil::glDataFormat[to_U32(descriptor._dataType)],
+                    descriptor._normalized ? GL_TRUE : GL_FALSE,
+                    static_cast<GLuint>(descriptor._strideInBytes));
+            } else {
+                glVertexArrayAttribIFormat(_activeVAOID,
+                    idx,
+                    descriptor._componentsPerElement,
+                    GLUtil::glDataFormat[to_U32(descriptor._dataType)],
+                    static_cast<GLuint>(descriptor._strideInBytes));
+            }
+
+            const GLuint instanceDivisor = descriptor._instanceDivisor;
+            if (_vaoBufferData.instanceDivisor(_activeVAOID, idx) != instanceDivisor) {
+                glVertexArrayBindingDivisor(_activeVAOID, idx, instanceDivisor);
+                _vaoBufferData.instanceDivisor(_activeVAOID, idx, instanceDivisor);
+            }
+
+        } else {
+            glDisableVertexArrayAttrib(_activeVAOID, idx);
+        }
+    }
+}
+
+void GLStateTracker::setVertexFormat(const size_t attributeHash, const AttributeMap& attributes) {
+    GLuint vao = 0u;
+    if (!_vaoCache.getVAO(attributeHash, vao)) {
+        NOP(); //cache miss
+    }
+    if (setActiveVAO(vao) == BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+
+    const auto& activeHashes = _attributeHashes.find(vao);
+    if (activeHashes == _attributeHashes.end()) {
+        setAttributesInternal(hashAlg::insert(_attributeHashes, vao, {}).first->second, attributes);
+    } else {
+        setAttributesInternal(activeHashes->second, attributes);
+    }
+}
+
 GLStateTracker::BindResult GLStateTracker::setStateBlock(size_t stateBlockHash) {
     if (stateBlockHash == 0) {
         stateBlockHash = RenderStateBlock::defaultHash();
@@ -277,23 +342,40 @@ GLStateTracker::BindResult GLStateTracker::bindTextureImage(const GLushort unit,
 }
 
 /// Single place to change buffer objects for every target available
-GLStateTracker::BindResult GLStateTracker::bindActiveBuffer(const GLuint vaoID, const GLuint location, GLuint bufferID, const GLuint instanceDivisor, size_t offset, size_t stride) {
-    if (_vaoBufferData.instanceDivisor(vaoID, location) != instanceDivisor) {
-        glVertexArrayBindingDivisor(vaoID, location, instanceDivisor);
-        _vaoBufferData.instanceDivisor(vaoID, location, instanceDivisor);
-    }
+GLStateTracker::BindResult GLStateTracker::bindActiveBuffer(const GLuint location, GLuint bufferID, size_t offset, size_t stride) {
+    DIVIDE_ASSERT(_activeVAOID != GLUtil::k_invalidObjectID && _activeVAOID != 0u);
 
-    const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams(vaoID, location);
+    const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams(_activeVAOID, location);
     const VAOBindings::BufferBindingParams currentParams(bufferID, offset, stride);
 
     if (bindings != currentParams) {
         // Bind the specified buffer handle to the desired buffer target
-        glVertexArrayVertexBuffer(vaoID, location, bufferID, static_cast<GLintptr>(offset), static_cast<GLsizei>(stride));
+        glVertexArrayVertexBuffer(_activeVAOID, location, bufferID, static_cast<GLintptr>(offset), static_cast<GLsizei>(stride));
         // Remember the new binding for future reference
-        _vaoBufferData.bindingParams(vaoID, location, currentParams);
+        _vaoBufferData.bindingParams(_activeVAOID, location, currentParams);
         return BindResult::JUST_BOUND;
     }
 
+    return BindResult::ALREADY_BOUND;
+}
+
+GLStateTracker::BindResult GLStateTracker::bindActiveBuffers(const GLuint location, const GLsizei count, GLuint* bufferIDs, GLintptr* offsets, GLsizei* strides) {
+    DIVIDE_ASSERT(_activeVAOID != GLUtil::k_invalidObjectID && _activeVAOID != 0u);
+
+    bool needsBind = false;
+    for (GLsizei i = 0u; i < count; ++i) {
+        const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams(_activeVAOID, i);
+        const VAOBindings::BufferBindingParams currentParams(bufferIDs[i], offsets[i], strides[i]);
+        if (bindings != currentParams) {
+            _vaoBufferData.bindingParams(_activeVAOID, location + i, currentParams);
+            needsBind = true;
+        }
+    }
+    if (needsBind) {
+        glVertexArrayVertexBuffers(_activeVAOID, location, count, bufferIDs, offsets, strides);
+        return BindResult::JUST_BOUND;
+    }
+    
     return BindResult::ALREADY_BOUND;
 }
 
@@ -364,7 +446,6 @@ GLStateTracker::BindResult GLStateTracker::setActiveVAO(const GLuint ID, GLuint&
     if (_activeVAOID != ID) {
         // Remember the new binding for future reference
         _activeVAOID = ID;
-        //setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         // Activate the specified VAO
         glBindVertexArray(ID);
         return BindResult::JUST_BOUND;

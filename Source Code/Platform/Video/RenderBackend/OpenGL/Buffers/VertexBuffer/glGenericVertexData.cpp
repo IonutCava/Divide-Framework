@@ -21,15 +21,6 @@ glGenericVertexData::~glGenericVertexData()
         MemoryManager::DELETE(it);
     }
 
-    // Make sure we don't have any of our VAOs bound
-    if (GL_API::GetStateTracker().setActiveVAO(0) == GLStateTracker::BindResult::FAILED) {
-        DIVIDE_UNEXPECTED_CALL();
-    }
-    // Delete the rendering VAO
-    if (_vertexArray != GLUtil::k_invalidObjectID) {
-        GL_API::DeleteVAOs(1, &_vertexArray);
-    }
-
     GLUtil::freeBuffer(_indexBuffer);
 }
 
@@ -39,44 +30,25 @@ void glGenericVertexData::create(const U8 numBuffers) {
     assert(_bufferObjects.empty() && "glGenericVertexData error: create called with no buffers specified!");
     // Create our buffer objects
     _bufferObjects.resize(numBuffers, nullptr);
-    _instanceDivisor.resize(numBuffers, 0);
 }
 
 /// Submit a draw command to the GPU using this object and the specified command
 void glGenericVertexData::draw(const GenericDrawCommand& command) {
-    if (_vertexArray == GLUtil::k_invalidObjectID) {
-        glCreateVertexArrays(1, &_vertexArray);
-        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-            glObjectLabel(GL_VERTEX_ARRAY, _vertexArray, -1, _name.c_str());
-        }
-    }
-
     // Update buffer bindings
     if (!_bufferObjects.empty()) {
         if (command._bufferIndex == GenericDrawCommand::INVALID_BUFFER_INDEX) {
-            for (U32 i = 0u; i < _bufferObjects.size(); ++i) {
-                bindBufferInternal(i, i);
-            }
+            bindBuffersInternal();
         } else {
             bindBufferInternal(command._bufferIndex, 0u);
         }
     }
-    // Update vertex attributes if needed (e.g. if offsets changed)
-    for (auto& [buf, descriptor] : _attributeMapDraw) {
-        setAttributeInternal(command, descriptor);
-    }
 
-    // Delay this for as long as possible
-    if (GL_API::GetStateTracker().setActiveVAO(_vertexArray) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (_idxBufferDirty) {
-        if (GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer) == GLStateTracker::BindResult::FAILED) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-        _idxBufferDirty = false;
-    }
+
     GL_API::GetStateTracker().togglePrimitiveRestart(primitiveRestartEnabled());
+
     // Submit the draw command
     if (renderIndirect()) {
         GLUtil::SubmitRenderCommand(command,
@@ -105,8 +77,6 @@ void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices, const Buffe
     if (indices.count > 0) {
         updateIndexBuffer(indices);
     }
-
-    _idxBufferDirty = true;
 }
 
 void glGenericVertexData::updateIndexBuffer(const IndexBuffer& indices) {
@@ -141,7 +111,6 @@ void glGenericVertexData::updateIndexBuffer(const IndexBuffer& indices) {
             _indexBuffer,
             { data, _indexBufferSize },
             _name.empty() ? nullptr : (_name + "_index").c_str());
-        _idxBufferDirty = true;
     } else {
         const size_t offset = indices.offsetCount * elementSize;
         const size_t count = indices.count * elementSize;
@@ -172,7 +141,6 @@ void glGenericVertexData::setBuffer(const SetBufferParams& params) {
 
     glGenericBuffer * tempBuffer = MemoryManager_NEW glGenericBuffer(_context, paramsOut);
     _bufferObjects[buffer] = tempBuffer;
-    _instanceDivisor[buffer] = params._instanceDivisor;
 }
 
 /// Update the elementCount worth of data contained in the buffer starting from elementCountOffset size offset
@@ -181,6 +149,41 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
                                        const U32 elementCountRange,
                                        const bufferPtr data) {
     _bufferObjects[buffer]->writeData(elementCountRange, elementCountOffset, queueIndex(), data);
+}
+
+void glGenericVertexData::bindBuffersInternal() {
+    constexpr U8 MAX_BUFFER_BINDINGS = U8_MAX;
+
+    static GLuint s_bufferIDs[MAX_BUFFER_BINDINGS];
+    static GLintptr s_offsets[MAX_BUFFER_BINDINGS];
+    static GLsizei s_strides[MAX_BUFFER_BINDINGS];
+
+
+    const size_t bufferCount = _bufferObjects.size();
+    if (bufferCount == 1u) {
+        bindBufferInternal(0u, 0u);
+        return;
+    }
+
+    for (U32 i = 0u; i < bufferCount; ++i) {
+        const glGenericBuffer* buffer = _bufferObjects[i];
+        const size_t elementSize = buffer->bufferImpl()->params()._bufferParams._elementSize;
+
+        BufferLockEntry entry;
+        entry._buffer = buffer->bufferImpl();
+        entry._length = buffer->elementCount() * elementSize;
+        entry._offset = entry._length * queueIndex();
+
+        GL_API::RegisterBufferBind(MOV(entry), true);
+
+        s_bufferIDs[i] = buffer->bufferHandle();
+        s_offsets[i] = entry._offset;
+        s_strides[i] = elementSize;
+    }
+
+    if (GL_API::GetStateTracker().bindActiveBuffers(0u, bufferCount, s_bufferIDs, s_offsets, s_strides) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 void glGenericVertexData::bindBufferInternal(const U32 bufferIdx, const  U32 location) {
@@ -192,57 +195,10 @@ void glGenericVertexData::bindBufferInternal(const U32 bufferIdx, const  U32 loc
     entry._length = buffer->elementCount() * elementSize;
     entry._offset = entry._length * queueIndex();
 
-    if (GL_API::GetStateTracker().bindActiveBuffer(_vertexArray, location, buffer->bufferHandle(), _instanceDivisor[bufferIdx], entry._offset, elementSize) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker().bindActiveBuffer(location, buffer->bufferHandle(), entry._offset, elementSize) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
     GL_API::RegisterBufferBind(MOV(entry), true);
-}
-
-/// Update internal attribute data
-void glGenericVertexData::setAttributeInternal([[maybe_unused]] const GenericDrawCommand& command, AttributeDescriptor& descriptor) const {
-    // Early out if the attribute didn't change
-    if (!descriptor.dirty()) {
-        return;
-    }
-
-    // If the attribute wasn't activate until now, enable it
-    if (!descriptor.wasSet()) {
-        assert(descriptor.index() < GFXDevice::GetDeviceInformation()._maxVertAttributeBindings &&
-               "GL Wrapper: insufficient number of attribute binding locations available on current hardware!");
-
-        if (descriptor.enabled()) {
-            glEnableVertexArrayAttrib(_vertexArray, descriptor.index());
-            glVertexArrayAttribBinding(_vertexArray, descriptor.index(), descriptor.parentBuffer());
-        } else {
-            glDisableVertexArrayAttrib(_vertexArray, descriptor.index());
-        }
-        descriptor.wasSet(true);
-    }
-
-    if (descriptor.enabled()) {
-        // Update the attribute data
-        const GFXDataFormat format = descriptor.dataType();
-        const bool isIntegerType = format != GFXDataFormat::FLOAT_16 &&
-                                   format != GFXDataFormat::FLOAT_32;
-    
-        if (!isIntegerType || descriptor.normalized()) {
-            glVertexArrayAttribFormat(_vertexArray,
-                                      descriptor.index(),
-                                      descriptor.componentsPerElement(),
-                                      GLUtil::glDataFormat[to_U32(format)],
-                                      descriptor.normalized() ? GL_TRUE : GL_FALSE,
-                                      static_cast<GLuint>(descriptor.strideInBytes()));
-        } else {
-            glVertexArrayAttribIFormat(_vertexArray,
-                                       descriptor.index(),
-                                       descriptor.componentsPerElement(),
-                                       GLUtil::glDataFormat[to_U32(format)],
-                                       static_cast<GLuint>(descriptor.strideInBytes()));
-        }
-    }
-
-    // Inform the descriptor that the data was updated
-    descriptor.clean();
 }
 
 void glGenericVertexData::rebuildCountAndIndexData(const U32 drawCount, const  U32 indexCount, const U32 firstIndex, const size_t indexBufferSize) {

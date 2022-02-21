@@ -12,16 +12,6 @@ GenericVertexData::GenericVertexData(GFXDevice& context, const U32 ringBufferLen
     assert(handle()._id != 0);
 }
 
-GenericVertexData::~GenericVertexData()
-{
-    _attributeMapDraw.clear();
-}
-
-AttributeDescriptor& GenericVertexData::attribDescriptor(const U32 attribIndex) {
-    AttributeDescriptor& desc = _attributeMapDraw[attribIndex];
-    desc.index(attribIndex);
-    return desc;
-}
 
 void GenericVertexData::setIndexBuffer(const IndexBuffer& indices, [[maybe_unused]] BufferUpdateFrequency updateFrequency) {
     _idxBuffer = indices;

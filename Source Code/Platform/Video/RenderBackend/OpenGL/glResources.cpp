@@ -504,7 +504,8 @@ void SubmitRenderCommand(const GLenum primitiveType,
         SubmitDirectCommand(drawCommand._cmd, drawCommand._drawCount, primitiveType, internalFormat, countData, indexData);
     }
 }
-}
+
+} //namespace
 
 struct HardwareQueryContext {
     glHardwareQueryRing* _primitiveQuery = nullptr;

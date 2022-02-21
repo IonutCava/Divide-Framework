@@ -171,6 +171,7 @@ bool WaterPlane::load() {
     defaultSampler.anisotropyLevel(4);
 
     TextureDescriptor texDescriptor(TextureType::TEXTURE_2D_ARRAY);
+    texDescriptor.textureOptions()._alphaChannelTransparency = false;
     std::atomic_uint loadTasks = 0u;
 
     ResourceDescriptor waterTexture("waterTexture_" + name);
@@ -333,9 +334,10 @@ bool WaterPlane::PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& poi
     return sgn->get<BoundsComponent>()->getBoundingBox().containsPoint(point);
 }
 
-void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
 
     topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
+    _plane->getGeometryVB()->populateAttributeMap(vertexFormatInOut);
 
     GenericDrawCommand cmd = {};
     cmd._cmd.indexCount = to_U32(_plane->getGeometryVB()->getIndexCount());
@@ -344,7 +346,7 @@ void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCom
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
     _editorDataDirtyState.fill(EditorDataState::CHANGED);
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
 }
 
 /// update water refraction

@@ -9,7 +9,6 @@
 
 namespace Divide {
 
-GLuint GL_API::s_dummyVAO = GLUtil::k_invalidObjectID;
 SharedMutex GL_API::s_mipmapQueueSetLock;
 eastl::unordered_set<GLuint> GL_API::s_mipmapQueue;
 vector<GL_API::ResidentTexture> GL_API::s_residentTextures;

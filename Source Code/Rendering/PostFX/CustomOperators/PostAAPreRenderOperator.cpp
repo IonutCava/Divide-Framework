@@ -117,7 +117,8 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
     { //SMAA Textures
         TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D);
         textureDescriptor.srgb(false);
-        
+        textureDescriptor.textureOptions()._alphaChannelTransparency = false;
+
         ResourceDescriptor searchDescriptor("SMAA_Search");
         searchDescriptor.assetName(ResourcePath("smaa_search.png"));
         searchDescriptor.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);

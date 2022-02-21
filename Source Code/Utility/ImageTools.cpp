@@ -240,6 +240,8 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
     _path = path;
     _name = name;
     _name.convertToLower();
+    ignoreAlphaChannelTransparency(!options._alphaChannelTransparency);
+
     // We can handle DDS files directly
     if (hasExtension(_name, "dds")) {
         return loadDDS_NVTT(srgb, refWidth, refHeight, _path, _name);

@@ -39,6 +39,7 @@
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Rendering/Camera/Headers/Frustum.h"
+#include "Platform/Video/Headers/AttributeDescriptor.h"
 
 namespace Divide {
 
@@ -127,7 +128,7 @@ class SceneNode : public CachedResource {
                                const CameraSnapshot& cameraSnapshot,
                                bool refreshData);
 
-    virtual void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut);
+    virtual void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut);
 
     bool unload() override;
     virtual void setMaterialTpl(const Material_ptr& material);

@@ -26,7 +26,6 @@ Quad3D::Quad3D(GFXDevice& context,
     const F32 halfExtentZ = sideLength.z * 0.5f;
     
     getGeometryVB()->setVertexCount(4);
-    getGeometryVB()->keepData(true);
     getGeometryVB()->modifyPositionValue(0, -halfExtentX,  halfExtentY, -halfExtentZ); // TOP LEFT
     getGeometryVB()->modifyPositionValue(1,  halfExtentX,  halfExtentY, -halfExtentZ); // TOP RIGHT
     getGeometryVB()->modifyPositionValue(2, -halfExtentX, -halfExtentY,  halfExtentZ); // BOTTOM LEFT
@@ -53,7 +52,7 @@ Quad3D::Quad3D(GFXDevice& context,
     }
 
     getGeometryVB()->computeTangents();
-    getGeometryVB()->create();
+    getGeometryVB()->create(true, true);
 
     recomputeBounds();
 }
@@ -98,7 +97,6 @@ void Quad3D::setNormal(const CornerLocation corner, const vec3<F32>& normal) con
             getGeometryVB()->modifyNormalValue(3, normal);
         } break;
     }
-    getGeometryVB()->queueRefresh();
 }
 
 void Quad3D::setCorner(const CornerLocation corner, const vec3<F32>& value) {
@@ -118,7 +116,6 @@ void Quad3D::setCorner(const CornerLocation corner, const vec3<F32>& value) {
         default:
             break;
     }
-    getGeometryVB()->queueRefresh();
 
     recomputeBounds();
 }
@@ -130,7 +127,6 @@ void Quad3D::setDimensions(const vec4<F32>& rect) {
     getGeometryVB()->modifyPositionValue(1, rect.z, rect.w, 0);
     getGeometryVB()->modifyPositionValue(2, rect.x, rect.y, 0);
     getGeometryVB()->modifyPositionValue(3, rect.z, rect.y, 0);
-    getGeometryVB()->queueRefresh();
 
     recomputeBounds();
 }

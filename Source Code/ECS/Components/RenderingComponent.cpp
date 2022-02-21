@@ -347,7 +347,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
 
         if (!hasCommands) {
             ScopedLock<SharedMutex> w_lock(_drawCommands._dataLock);
-            _parentSGN->getNode().buildDrawCommands(_parentSGN, _drawCommands._data, _primitiveTopology);
+            _parentSGN->getNode().buildDrawCommands(_parentSGN, _drawCommands._data, _primitiveTopology, _vertexFormat);
             for (GFX::DrawCommand& drawCmd : _drawCommands._data) {
                 for (GenericDrawCommand& cmd : drawCmd._drawCommands) {
                     hasCommands = true;
@@ -392,6 +392,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
             }
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._primitiveTopology = _primitiveTopology;
+            pipelineDescriptor._vertexFormat = _vertexFormat;
 
             if (_materialInstance != nullptr) {
                 pipelineDescriptor._stateHash = _materialInstance->getOrCreateRenderStateBlock(renderStagePass);

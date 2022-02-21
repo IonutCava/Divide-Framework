@@ -105,7 +105,10 @@ bool SceneNode::unload() {
 void SceneNode::editorFieldChanged([[maybe_unused]] std::string_view field) {
 }
 
-void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut)
+void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn,
+                                  vector_fast<GFX::DrawCommand>& cmdsOut,
+                                  PrimitiveTopology& topologyOut,
+                                  [[maybe_unused]] AttributeMap& vertexFormatInOut)
 {
     DIVIDE_ASSERT(cmdsOut.empty() || topologyOut != PrimitiveTopology::COUNT);
 }

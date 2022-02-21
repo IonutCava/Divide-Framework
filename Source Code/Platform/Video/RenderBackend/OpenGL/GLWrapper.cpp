@@ -403,14 +403,12 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
         return ShaderResult::OK;
     }
 
-    ShaderProgram* program = ShaderProgram::FindShaderProgram(pipeline.descriptor()._shaderProgramHandle);
-    if (program == nullptr) {
-        return ShaderResult::Failed;
-    }
-
     stateTracker._activeTopology = pipeline.descriptor()._primitiveTopology;
 
     stateTracker._activePipeline = &pipeline;
+
+    stateTracker.setVertexFormat(pipeline.vertexFormatHash(), pipeline.descriptor()._vertexFormat);
+
     // Set the proper render states
     const size_t stateBlockHash = pipeline.descriptor()._stateHash;
     // Passing 0 is a perfectly acceptable way of enabling the default render state block
@@ -425,11 +423,16 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
         GL_API::GetStateTracker().setBlending(i, blendState._blendProperties);
         ++i;
     }
-    glShaderProgram& glProgram = static_cast<glShaderProgram&>(*program);
-    // We need a valid shader as no fixed function pipeline is available
 
-    // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
-    const ShaderResult ret = Attorney::GLAPIShaderProgram::bind(glProgram);
+    ShaderProgram* program = ShaderProgram::FindShaderProgram(pipeline.descriptor()._shaderProgramHandle);
+
+    ShaderResult ret = ShaderResult::Failed;
+    if (program != nullptr) {
+        glShaderProgram& glProgram = static_cast<glShaderProgram&>(*program);
+        // We need a valid shader as no fixed function pipeline is available
+        // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
+        ret = Attorney::GLAPIShaderProgram::bind(glProgram);
+    }
 
     if (ret != ShaderResult::OK) {
         if (stateTracker.setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
@@ -448,10 +451,6 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
     OPTICK_EVENT();
 
     if (cmd._sourceBuffer._id == 0) {
-        if (GL_API::GetStateTracker().setActiveVAO(s_dummyVAO) == GLStateTracker::BindResult::FAILED) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-
         U32 indexCount = 0u;
         switch (GL_API::GetStateTracker()._activeTopology) {
             case PrimitiveTopology::COUNT      : DIVIDE_UNEXPECTED_CALL();         break;

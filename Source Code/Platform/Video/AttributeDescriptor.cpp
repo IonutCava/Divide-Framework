@@ -1,0 +1,40 @@
+#include "stdafx.h"
+
+#include "Headers/AttributeDescriptor.h"
+
+namespace Divide {
+    size_t GetHash(const AttributeDescriptor& descriptor)
+    {
+        if (descriptor._dataType == GFXDataFormat::COUNT) {
+            return 0u;
+        }
+
+        size_t hash = 1337;
+        Util::Hash_combine(hash, descriptor._strideInBytes);
+        Util::Hash_combine(hash, descriptor._bindingIndex);
+        Util::Hash_combine(hash, descriptor._componentsPerElement);
+        Util::Hash_combine(hash, descriptor._instanceDivisor);
+        Util::Hash_combine(hash, descriptor._dataType);
+        Util::Hash_combine(hash, descriptor._normalized);
+
+        return hash;
+    }
+
+    bool operator==(const AttributeDescriptor& lhs, const AttributeDescriptor& rhs) noexcept {
+        return lhs._strideInBytes        == rhs._strideInBytes &&
+               lhs._bindingIndex         == rhs._bindingIndex &&
+               lhs._componentsPerElement == rhs._componentsPerElement &&
+               lhs._instanceDivisor      == rhs._instanceDivisor &&
+               lhs._dataType             == rhs._dataType &&
+               lhs._normalized           == rhs._normalized;
+    }
+
+    bool operator!=(const AttributeDescriptor& lhs, const AttributeDescriptor& rhs) noexcept {
+        return lhs._strideInBytes        != rhs._strideInBytes ||
+               lhs._bindingIndex         != rhs._bindingIndex ||
+               lhs._componentsPerElement != rhs._componentsPerElement ||
+               lhs._instanceDivisor      != rhs._instanceDivisor ||
+               lhs._dataType             != rhs._dataType ||
+               lhs._normalized           != rhs._normalized;
+    }
+}; //namespace Divide

@@ -46,6 +46,7 @@ bool InfinitePlane::load() {
 
     TextureDescriptor miscTexDescriptor(TextureType::TEXTURE_2D_ARRAY);
     miscTexDescriptor.srgb(true);
+    miscTexDescriptor.textureOptions()._alphaChannelTransparency = false;
 
     ResourceDescriptor textureWaterCaustics("Plane Water Caustics");
     textureWaterCaustics.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);
@@ -116,8 +117,9 @@ void InfinitePlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, Scen
     }
 }
 
-void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
     topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
+    _plane->getGeometryVB()->populateAttributeMap(vertexFormatInOut);
 
     //infinite plane
     GenericDrawCommand planeCmd = {};
@@ -126,7 +128,7 @@ void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::Draw
     planeCmd._sourceBuffer = _plane->getGeometryVB()->handle();
     cmdsOut.emplace_back(GFX::DrawCommand{ planeCmd });
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
 }
 
 } //namespace Divide

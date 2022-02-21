@@ -1070,6 +1070,24 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         pipelineDesc._shaderProgramHandle = _imguiProgram->getGUID();
         pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
+        AttributeDescriptor& descPos = pipelineDesc._vertexFormat[to_base(AttribLocation::GENERIC)];
+        AttributeDescriptor& descUV = pipelineDesc._vertexFormat[to_base(AttribLocation::TEXCOORD)];
+        AttributeDescriptor& descColour = pipelineDesc._vertexFormat[to_base(AttribLocation::COLOR)];
+
+#   define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
+        descPos._bindingIndex = descUV._bindingIndex = descColour._bindingIndex = 0u;
+        descPos._componentsPerElement = descUV._componentsPerElement = 2u;
+        descPos._dataType = descUV._dataType = GFXDataFormat::FLOAT_32;
+
+        descColour._componentsPerElement = 4u;
+        descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
+        descColour._normalized = true;
+
+        descPos._strideInBytes = to_U32(OFFSETOF(ImDrawVert, pos));
+        descUV._strideInBytes = to_U32(OFFSETOF(ImDrawVert, uv));
+        descColour._strideInBytes = to_U32(OFFSETOF(ImDrawVert, col));
+#   undef OFFSETOF
+
         BlendingProperties& blend = pipelineDesc._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)]._blendProperties;
         blend.enabled(true);
         blend.blendSrc(BlendProperty::SRC_ALPHA);

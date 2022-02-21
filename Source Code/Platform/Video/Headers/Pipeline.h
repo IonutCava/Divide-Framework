@@ -35,10 +35,12 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Core/Headers/Hashable.h"
 #include "Platform/Video/Headers/BlendingProperties.h"
+#include "Platform/Video/Headers/AttributeDescriptor.h"
 
 namespace Divide {
 
 struct PipelineDescriptor {
+    AttributeMap _vertexFormat;
     RTBlendStates _blendStates;
     size_t _stateHash = 0;
     I64 _shaderProgramHandle = 0;
@@ -56,6 +58,7 @@ public:
 
     PROPERTY_R_IW(PipelineDescriptor, descriptor);
     PROPERTY_R_IW(size_t, hash, 0u);
+    PROPERTY_R_IW(size_t, vertexFormatHash, 0u);
 }; //class Pipeline
 
 inline bool operator==(const Pipeline& lhs, const Pipeline& rhs) noexcept {

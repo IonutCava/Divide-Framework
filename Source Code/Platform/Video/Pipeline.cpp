@@ -18,6 +18,9 @@ size_t GetHash(const PipelineDescriptor& descriptor) {
     }
 
     Util::Hash_combine(hash, GetHash(descriptor._blendStates));
+    for (const AttributeDescriptor& attrDescriptor : descriptor._vertexFormat) {
+        Util::Hash_combine(hash, GetHash(attrDescriptor));
+    }
 
     return hash;
 }
@@ -27,7 +30,8 @@ bool operator==(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
            lhs._multiSampleCount == rhs._multiSampleCount &&
            lhs._shaderProgramHandle == rhs._shaderProgramHandle &&
            lhs._primitiveTopology == rhs._primitiveTopology &&
-           lhs._blendStates == rhs._blendStates;
+           lhs._blendStates == rhs._blendStates &&
+           lhs._vertexFormat == rhs._vertexFormat;
 }
 
 bool operator!=(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
@@ -35,13 +39,20 @@ bool operator!=(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
            lhs._multiSampleCount != rhs._multiSampleCount ||
            lhs._shaderProgramHandle != rhs._shaderProgramHandle ||
            lhs._primitiveTopology != rhs._primitiveTopology ||
-           lhs._blendStates != rhs._blendStates;
+           lhs._blendStates != rhs._blendStates ||
+           lhs._vertexFormat != rhs._vertexFormat;
 }
 
 Pipeline::Pipeline(const PipelineDescriptor& descriptor)
     : _descriptor(descriptor)
     , _hash(GetHash(descriptor))
 {
+    _vertexFormatHash = 1337;
+    for (const AttributeDescriptor& attrDescriptor : descriptor._vertexFormat) {
+        if (attrDescriptor._dataType != GFXDataFormat::COUNT) {
+            Util::Hash_combine(_vertexFormatHash, GetHash(attrDescriptor));
+        }
+    }
 }
 
 }; //namespace Divide

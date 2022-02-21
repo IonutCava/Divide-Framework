@@ -66,6 +66,22 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
                                   Divide::Names::blendProperty[to_base(state._blendProperties.blendDestAlpha())],
                                   Divide::Names::blendOperation[to_base(state._blendProperties.blendOpAlpha())]);
     };
+
+    const auto attributeDescriptorToString = [](const U8 idx, const AttributeDescriptor& desc) -> string {
+        if (desc._dataType == GFXDataFormat::COUNT) {
+            return "Disabled";
+        }
+
+
+        return Util::StringFormat("Index { %d }, Binding { %d }, Components per element { %d }, Component format { %s }, Normalised { %s }, Stride in bytes { %zu }",
+                                   idx,
+                                   desc._bindingIndex,
+                                   desc._componentsPerElement,
+                                   Divide::Names::GFXDataFormat[to_base(desc._dataType)],
+                                   desc._normalized ? "True" : "False",
+                                   desc._strideInBytes);
+    };
+
     string ret = "\n";
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
@@ -86,15 +102,29 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append("Blending states: \n");
-    const RTBlendStates& blendStates = cmd._pipeline->descriptor()._blendStates;
-    U8 idx = 0u;
-    for (const RTBlendState& state : blendStates) {
-        ret.append("    ");
-        for (U16 j = 0; j < indent; ++j) {
+    {
+        ret.append("Blending states: \n");
+        const RTBlendStates& blendStates = cmd._pipeline->descriptor()._blendStates;
+        U8 idx = 0u;
+        for (const RTBlendState& state : blendStates) {
             ret.append("    ");
+            for (U16 j = 0; j < indent; ++j) {
+                ret.append("    ");
+            }
+            ret.append(Util::StringFormat("%d: %s\n", idx++, blendStateToString(state)));
         }
-        ret.append(Util::StringFormat("%d: %s\n", idx++, blendStateToString(state)));
+    }
+    {
+        ret.append("Vertex format: \n");
+        U8 idx = 0u;
+        for (const AttributeDescriptor& desc : cmd._pipeline->descriptor()._vertexFormat) {
+            ret.append("    ");
+            for (U16 j = 0; j < indent; ++j) {
+                ret.append("    ");
+            }
+            ret.append(Util::StringFormat("%d: %s\n", idx, attributeDescriptorToString(idx, desc)));
+            ++idx;
+        }
     }
     return ret;
 }

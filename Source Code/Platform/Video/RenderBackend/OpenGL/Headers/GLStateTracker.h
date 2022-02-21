@@ -34,7 +34,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _GL_STATE_TRACKER_H_
 
 #include "glResources.h"
+#include "glVAOCache.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Headers/AttributeDescriptor.h"
 
 namespace Divide {
 
@@ -45,6 +47,8 @@ namespace Divide {
     class glBufferLockManager;
 
     struct GLStateTracker {
+        using AttribHashes = std::array<size_t, to_base(AttribLocation::COUNT)>;
+
         enum class BindResult : U8 {
             JUST_BOUND = 0,
             ALREADY_BOUND,
@@ -53,6 +57,7 @@ namespace Divide {
         };
 
         void init();
+        void clear();
 
         /// Enable or disable primitive restart and ensure that the correct index size is used
         void togglePrimitiveRestart(bool state);
@@ -71,6 +76,8 @@ namespace Divide {
         /// A state block should contain all rendering state changes needed for the next draw call.
         /// Some may be redundant, so we check each one individually
         void activateStateBlock(const RenderStateBlock& newBlock);
+
+        void setVertexFormat(const size_t attributeHash, const AttributeMap& attributes);
 
         /// Switch the currently active vertex array object
         [[nodiscard]] BindResult setActiveVAO(GLuint ID);
@@ -106,8 +113,9 @@ namespace Divide {
         /// Bind multiple samplers described by the array of hash values to the
         /// consecutive texture units starting from the specified offset
         [[nodiscard]] BindResult bindSamplers(GLushort unitOffset, GLuint samplerCount, const GLuint* samplerHandles);
-        /// Modify buffer bindings for a specific vao
-        [[nodiscard]] BindResult bindActiveBuffer(GLuint vaoID, GLuint location, GLuint bufferID, GLuint instanceDivisor, size_t offset, size_t stride);
+        /// Modify buffer bindings for the active vao
+        [[nodiscard]] BindResult bindActiveBuffer(GLuint location, GLuint bufferID, size_t offset, size_t stride);
+        [[nodiscard]] BindResult bindActiveBuffers(GLuint location, GLsizei count, GLuint* bufferIDs, GLintptr* offset, GLsizei* strides);
 
         /// Pixel pack and unpack alignment is usually changed by textures, PBOs, etc
         bool setPixelPackUnpackAlignment(const GLint packAlignment = 4, const GLint unpackAlignment = 4) { return setPixelPackAlignment(packAlignment) && setPixelUnpackAlignment(unpackAlignment); }
@@ -132,6 +140,8 @@ namespace Divide {
 
         void getActiveViewport(GLint* vp) const noexcept;
 
+      private:
+        void setAttributesInternal(AttribHashes& hashes, const AttributeMap& attributes);
       public:
           struct BindConfigEntry
           {
@@ -147,6 +157,7 @@ namespace Divide {
 
         Pipeline const* _activePipeline = nullptr;
         PrimitiveTopology _activeTopology = PrimitiveTopology::COUNT;
+
         glFramebuffer*  _activeRenderTarget = nullptr;
         glPixelBuffer*  _activePixelBuffer = nullptr;
         /// Current active vertex array object's handle
@@ -205,6 +216,8 @@ namespace Divide {
         TextureTypeBoundMapDef _textureTypeBoundMap = {};
 
         VAOBindings _vaoBufferData;
+        GLUtil::glVAOCache _vaoCache;
+        hashMap<GLuint, AttribHashes> _attributeHashes;
     }; //class GLStateTracker
 }; //namespace Divide
 

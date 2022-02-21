@@ -202,18 +202,23 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     blendMapDescriptor.srgb(false);
     importOptions._alphaChannelTransparency = false; //splat lookup
     importOptions._isNormalMap = false;
+    blendMapDescriptor.textureOptions(importOptions);
 
     TextureDescriptor normalDescriptor(TextureType::TEXTURE_2D_ARRAY);
     normalDescriptor.layerCount(to_U16(textures[to_base(TerrainTextureType::NORMAL)].size()));
     normalDescriptor.srgb(false);
     importOptions._alphaChannelTransparency = false; //not really needed
     importOptions._isNormalMap = true;
+    importOptions._useDDSCache = false;
+    normalDescriptor.textureOptions(importOptions);
+    importOptions._useDDSCache = true;
 
     TextureDescriptor extraDescriptor(TextureType::TEXTURE_2D_ARRAY);
     extraDescriptor.layerCount(extraMapCount);
     extraDescriptor.srgb(false);
     importOptions._alphaChannelTransparency = false; //who knows what we pack here?
     importOptions._isNormalMap = false;
+    extraDescriptor.textureOptions(importOptions);
 
     textureBlendMap.assetName(blendMapArray);
     textureBlendMap.propertyDescriptor(blendMapDescriptor);
@@ -275,6 +280,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                                   terrainDescriptor->getVariable("tileNoiseTexture") };
 
     TextureDescriptor helperTexDescriptor(TextureType::TEXTURE_2D_ARRAY);
+    helperTexDescriptor.textureOptions()._alphaChannelTransparency = false;
 
     ResourceDescriptor textureWaterCaustics("Terrain Helper Textures_" + name);
     textureWaterCaustics.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);

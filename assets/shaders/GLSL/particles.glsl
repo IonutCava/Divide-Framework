@@ -1,8 +1,9 @@
 -- Vertex
 
-#include "vertexDefault.vert"
+layout(location = ATTRIB_POSITION)  in vec3 inVertexData;
+layout(location = ATTRIB_COLOR)     in vec4 inColourData;
+layout(location = ATTRIB_NORMAL)    in vec4 particleNormalData;
 
-layout(location = 13) in vec4 particleNormalData;
 // Output data will be interpolated for each fragment.
 layout(location = 0) out vec4 particleColour;
 

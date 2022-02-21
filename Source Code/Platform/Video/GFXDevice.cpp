@@ -98,22 +98,6 @@ GFXDevice::GFXDevice(Kernel & parent)
     _viewport.set(-1);
 
     _queuedShadowSampleChange.fill(s_invalidQueueSampleCount);
-
-    AttribFlags flags{};
-    flags.fill(true);
-    VertexBuffer::setAttribMasks(to_size(to_base(RenderStage::COUNT) * to_base(RenderPassType::COUNT)), flags);
-
-    // Keep color attribute in depth passes for stuff like vertex-colour based animations (e.g. trees)
-    //flags[to_base(AttribLocation::COLOR)] = false; 
-    flags[to_base(AttribLocation::NORMAL)] = false;
-    flags[to_base(AttribLocation::TANGENT)] = false;
-
-    for (U8 stage = 0u; stage < to_base(RenderStage::COUNT); ++stage) {
-        VertexBuffer::setAttribMask(BaseIndex(static_cast<RenderStage>(stage), RenderPassType::PRE_PASS), flags);
-    }
-    for (U8 pass = 0u; pass < to_base(RenderPassType::COUNT); ++pass) {
-        VertexBuffer::setAttribMask(BaseIndex(RenderStage::SHADOW, static_cast<RenderPassType>(pass)), flags);
-    }
 }
 
 GFXDevice::~GFXDevice()
@@ -2624,16 +2608,6 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID) {
 
     ret->setBuffer(params); //Pos, UV and Colour
     ret->setIndexBuffer(idxBuff, BufferUpdateFrequency::OFTEN);
-
-    AttributeDescriptor& descPos = ret->attribDescriptor(to_base(AttribLocation::GENERIC));
-    AttributeDescriptor& descUV = ret->attribDescriptor(to_base(AttribLocation::TEXCOORD));
-    AttributeDescriptor& descColour = ret->attribDescriptor(to_base(AttribLocation::COLOR));
-
-#   define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
-    descPos.set(0, 2, GFXDataFormat::FLOAT_32, false, to_U32(OFFSETOF(ImDrawVert, pos)));
-    descUV.set(0, 2, GFXDataFormat::FLOAT_32, false, to_U32(OFFSETOF(ImDrawVert, uv)));
-    descColour.set(0, 4, GFXDataFormat::UNSIGNED_BYTE, true, to_U32(OFFSETOF(ImDrawVert, col)));
-#   undef OFFSETOF
 
     _IMGUIBuffers[windowGUID] = ret;
     return ret;

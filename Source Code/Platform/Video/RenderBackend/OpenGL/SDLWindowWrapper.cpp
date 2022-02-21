@@ -366,11 +366,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
 
     // Init any buffer locking mechanism we might need
     glBufferLockManager::OnStartup();
-    // We need a dummy VAO object for point rendering
-    glCreateVertexArrays(1, &s_dummyVAO);
-    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-        glObjectLabel(GL_VERTEX_ARRAY, s_dummyVAO, -1, "Dummy VAO");
-    }
     // Once OpenGL is ready for rendering, init CEGUI
     _GUIGLrenderer = &CEGUI::OpenGL3Renderer::create();
     _GUIGLrenderer->enableExtraStateSettings(false);
@@ -414,9 +409,6 @@ void GL_API::closeRenderingAPI() {
     _fonsContext = nullptr;
 
     _fonts.clear();
-    if (s_dummyVAO != GLUtil::k_invalidObjectID) {
-        DeleteVAOs(1, &s_dummyVAO);
-    }
     s_textureViewCache.destroy();
     if (s_hardwareQueryPool != nullptr) {
         s_hardwareQueryPool->destroy();
@@ -426,6 +418,7 @@ void GL_API::closeRenderingAPI() {
         allocator.deallocate();
     }
     g_ContextPool.destroy();
+    s_stateTracker.clear();
 }
 
 vec2<U16> GL_API::getDrawableSize(const DisplayWindow& window) const noexcept {

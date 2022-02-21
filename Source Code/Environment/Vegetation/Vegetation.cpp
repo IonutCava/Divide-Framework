@@ -295,8 +295,7 @@ void Vegetation::precomputeStaticData(GFXDevice& gfxDevice, const U32 chunkSize,
             s_lodPartitions[i] = s_buffer->partitionBuffer();
         }
 
-        s_buffer->create(true);
-        s_buffer->keepData(false);
+        s_buffer->create(true, false);
     }
 
     //ref: http://mollyrocket.com/casey/stream_0016.html
@@ -786,9 +785,10 @@ void Vegetation::sceneUpdate(const U64 deltaTimeUS,
 }
 
 
-void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut) {
+void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
 
     topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
+    s_buffer->populateAttributeMap(vertexFormatInOut);
 
     const U16 partitionID = s_lodPartitions[0];
 
@@ -812,7 +812,7 @@ void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCom
         prevID = id;
     }
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
 }
 
 namespace {

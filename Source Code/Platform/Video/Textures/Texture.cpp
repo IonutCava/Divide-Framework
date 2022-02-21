@@ -240,6 +240,11 @@ bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, Image
 
 bool Texture::checkTransparency(const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData) {
 
+    if (fileData.ignoreAlphaChannelTransparency()) {
+        _hasTransparency = false;
+        _hasTranslucency = false;
+        return true;
+    }
 
     const U32 layer = to_U32(fileData.layerCount() - 1);
 
@@ -267,29 +272,43 @@ bool Texture::checkTransparency(const ResourcePath& path, const ResourcePath& na
 
     if (!skip) {
         if (HasAlphaChannel(fileData.format())) {
+            bool hasTransulenctOrOpaquePixels = false;
+            // Allo about 4 pixels per partition to be ignored
+            constexpr U32 transparentPixelsSkipCount = 4u;
+
+            std::atomic_uint transparentPixelCount = 0u;
+
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = width;
             descriptor._partitionSize = std::max(16u, to_U32(width / 10));
             descriptor._useCurrentThread = true;
-            descriptor._cbk =  [this, &fileData, height, layer](const Task* /*parent*/, const U32 start, const U32 end) {
+            descriptor._cbk =  [this, &fileData, &hasTransulenctOrOpaquePixels, height, layer, &transparentPixelCount, transparentPixelsSkipCount](const Task* /*parent*/, const U32 start, const U32 end) {
                 U8 tempA = 0u;
                 for (U32 i = start; i < end; ++i) {
                     for (I32 j = 0; j < height; ++j) {
-                        if (_hasTransparency && _hasTranslucency) {
+                        if (_hasTransparency && (_hasTranslucency || hasTransulenctOrOpaquePixels)) {
                             return;
                         }
                         fileData.getAlpha(i, j, tempA, layer);
-                        if (IS_IN_RANGE_INCLUSIVE(tempA, 0, 254)) {
-                            _hasTransparency = true;
-                            _hasTranslucency = tempA > 1;
-                            if (_hasTranslucency) {
-                                return;
+                        if (IS_IN_RANGE_INCLUSIVE(tempA, 0, 250)) {
+                            if (transparentPixelCount.fetch_add(1u) >= transparentPixelsSkipCount) {
+                                _hasTransparency = true;
+                                _hasTranslucency = tempA > 1;
+                                if (_hasTranslucency) {
+                                    hasTransulenctOrOpaquePixels = true;
+                                    return;
+                                }
                             }
+                        } else if (tempA > 250) {
+                            hasTransulenctOrOpaquePixels = true;
                         }
                     }
                 }
             };
-
+            if (_hasTransparency && !_hasTranslucency && !hasTransulenctOrOpaquePixels) {
+                // All the alpha values are 0, so this channel is useless.
+                _hasTransparency = _hasTranslucency = false;
+            }
             parallel_for(_context.context(), descriptor);
             metadataCache << BYTE_BUFFER_VERSION;
             metadataCache << _hasTransparency;

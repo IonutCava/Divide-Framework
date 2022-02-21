@@ -69,9 +69,6 @@ class GenericVertexData;
 class glHardwareQueryRing;
 struct BufferLockEntry;
 
-namespace GLUtil {
-    struct glVAOCache;
-};
 
 /// OpenGL implementation of the RenderAPIWrapper
 class GL_API final : public RenderAPIWrapper {
@@ -85,7 +82,6 @@ class GL_API final : public RenderAPIWrapper {
     friend class glGenericVertexData;
 
     friend struct GLStateTracker;
-    friend struct GLUtil::glVAOCache;
 
 public:
     GL_API(GFXDevice& context, bool glES);
@@ -218,8 +214,6 @@ private:
 
     static vector<ResidentTexture> s_residentTextures;
 
-    /// Used to render points (e.g. to render full screen quads with geometry shaders)
-    static GLuint s_dummyVAO;
     /// /*sampler hash value*/ /*sampler object*/
     using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
 
