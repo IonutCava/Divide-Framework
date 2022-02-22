@@ -10,6 +10,8 @@ namespace Divide {
 
 /// Register a new Frame Listener to be processed every frame
 void FrameListenerManager::registerFrameListener(FrameListener* listener, const U32 callOrder) {
+    OPTICK_EVENT();
+
     assert(Runtime::isMainThread());
     assert(listener != nullptr);
 
@@ -24,6 +26,8 @@ void FrameListenerManager::registerFrameListener(FrameListener* listener, const 
 
 /// Remove an existent Frame Listener from our collection
 void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
+    OPTICK_EVENT();
+
     assert(Runtime::isMainThread());
 
     assert(listener != nullptr);
@@ -43,10 +47,10 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
 bool FrameListenerManager::frameEvent(const FrameEvent& evt) {
     switch (evt._type) {
         case FrameEventType::FRAME_EVENT_STARTED     : return frameStarted(evt);
-        case FrameEventType::FRAME_PRERENDER   : return framePreRender(evt);
+        case FrameEventType::FRAME_PRERENDER         : return framePreRender(evt);
         case FrameEventType::FRAME_SCENERENDER_START : return frameSceneRenderStarted(evt);
         case FrameEventType::FRAME_SCENERENDER_END   : return frameSceneRenderEnded(evt);
-        case FrameEventType::FRAME_POSTRENDER  : return framePostRender(evt);
+        case FrameEventType::FRAME_POSTRENDER        : return framePostRender(evt);
         case FrameEventType::FRAME_EVENT_PROCESS     : return frameRenderingQueued(evt);
         case FrameEventType::FRAME_EVENT_ENDED       : return frameEnded(evt);
         case FrameEventType::FRAME_EVENT_ANY         : return true;
@@ -56,6 +60,8 @@ bool FrameListenerManager::frameEvent(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameStarted(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->frameStarted(evt)) {
             return false;
@@ -65,6 +71,8 @@ bool FrameListenerManager::frameStarted(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::framePreRender(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->framePreRender(evt)) {
             return false;
@@ -74,6 +82,8 @@ bool FrameListenerManager::framePreRender(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameSceneRenderStarted(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->frameSceneRenderStarted(evt)) {
             return false;
@@ -83,6 +93,8 @@ bool FrameListenerManager::frameSceneRenderStarted(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameSceneRenderEnded(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->frameSceneRenderEnded(evt)) {
             return false;
@@ -92,6 +104,8 @@ bool FrameListenerManager::frameSceneRenderEnded(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameRenderingQueued(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->frameRenderingQueued(evt)) {
             return false;
@@ -101,6 +115,8 @@ bool FrameListenerManager::frameRenderingQueued(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::framePostRender(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
     for (FrameListener* listener : _listeners) {
         if (listener->enabled() && !listener->framePostRender(evt)) {
             return false;
@@ -110,6 +126,8 @@ bool FrameListenerManager::framePostRender(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::frameEnded(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
     for (FrameListener* listener : _listeners) {
         if (!listener->frameEnded(evt)) {
             return false;
@@ -123,6 +141,8 @@ bool FrameListenerManager::frameEnded(const FrameEvent& evt) {
 
 /// Please see the Ogre3D documentation about this
 void FrameListenerManager::createEvent(const U64 currentTimeUS, const FrameEventType type, FrameEvent& evt) {
+    OPTICK_EVENT();
+
     evt._currentTimeUS = currentTimeUS;
     evt._timeSinceLastEventUS = calculateEventTime(evt._currentTimeUS, FrameEventType::FRAME_EVENT_ANY);
     evt._timeSinceLastFrameUS = calculateEventTime(evt._currentTimeUS, type);

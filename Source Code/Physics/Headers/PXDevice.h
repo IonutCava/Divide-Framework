@@ -63,6 +63,8 @@ public:
     void update(U64 deltaTimeUS) override;
     void process(U64 deltaTimeUS) override;
     void idle() override;
+    void beginFrame();
+    void endFrame();
     bool convertActor(PhysicsAsset* actor, PhysicsGroup newGroup) override;
 
     bool initPhysicsScene(Scene& scene) override;

@@ -131,6 +131,8 @@ namespace Divide {
         bool setClearColour(const FColour4& colour);
         bool setClearColour(const UColour4& colour) { return setClearColour(Util::ToFloatColour(colour)); }
 
+        bool setDepthWrite(bool state);
+
         [[nodiscard]] GLuint getBoundTextureHandle(U8 slot, TextureType type) const;
         [[nodiscard]] GLuint getBoundSamplerHandle(U8 slot) const;
         [[nodiscard]] GLuint getBoundProgramHandle() const noexcept;
@@ -180,6 +182,7 @@ namespace Divide {
         GLfloat _depthFarVal = -1.f;
         bool _lowerLeftOrigin = true;
         bool _negativeOneToOneDepth = true;
+        bool _depthWriteEnabled = true;
         BlendingProperties _blendPropertiesGlobal;
         GLboolean _blendEnabledGlobal = GL_FALSE;
 

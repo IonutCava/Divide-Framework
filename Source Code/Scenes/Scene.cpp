@@ -116,6 +116,8 @@ bool Scene::OnShutdown([[maybe_unused]] PlatformContext& context) {
 }
 
 bool Scene::frameStarted() {
+    OPTICK_EVENT();
+
     ScopedLock<Mutex> lk(s_perFrameArenaMutex);
     s_perFrameArena.clear();
 

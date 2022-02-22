@@ -60,6 +60,7 @@ public:
     void setAudioState(const AudioState& state) noexcept { _state = state; }
     [[nodiscard]] AudioState& getActiveAudioState() noexcept { return _state; }
 
+    void idle();
     void beginFrame() override;
     void endFrame() override;
     void playSound(const AudioDescriptor_ptr& sound) override;

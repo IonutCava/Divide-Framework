@@ -9,8 +9,6 @@
 
 namespace Divide {
 
-bool TaskPool::USE_OPTICK_PROFILER = true;
-
 class StreamBuffer {
 public:
     explicit StreamBuffer(const char* filename)

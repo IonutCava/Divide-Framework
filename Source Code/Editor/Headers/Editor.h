@@ -145,6 +145,8 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] bool init(const vec2<U16>& renderResolution);
     void close();
     void idle() noexcept;
+    void beginFrame();
+    void endFrame();
     void update(U64 deltaTimeUS);
     /// Render any editor specific element that needs to be part of the scene (e.g. Control Gizmo)
     void drawScreenOverlay(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) const;

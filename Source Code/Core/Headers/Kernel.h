@@ -73,7 +73,8 @@ struct LoopTimingData {
     PROPERTY_RW(U64, accumulator, 0ULL);
 
     PROPERTY_RW(U8, updateLoops, 0u);
-    PROPERTY_R(bool, freezeLoopTime, false);
+    PROPERTY_R(bool, freezeLoopTime, false);  //Pause scene processing
+    PROPERTY_R(bool, forceRunPhysics, false); //Simulate physics even if the scene is paused
     PROPERTY_R(U64, currentTimeFrozenUS, 0ULL);
 
     /// Real app delta time between frames. Can't be paused (e.g. used by editor)

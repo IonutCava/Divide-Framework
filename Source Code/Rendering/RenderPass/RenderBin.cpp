@@ -20,10 +20,13 @@ RenderBin::RenderBin(const RenderBinType rbType, const RenderStage stage)
 }
 
 void RenderBin::sort(const RenderingOrder renderOrder) {
+    constexpr U16 k_parallelSortThreshold = 16u;
+
     OPTICK_EVENT();
 
+    const U16 binSize = getBinSize();
     const auto binStartIt = begin(_renderBinStack);
-    const auto binEndIt = binStartIt + getBinSize();
+    const auto binEndIt = binStartIt + binSize;
 
     switch (renderOrder) {
         case RenderingOrder::BY_STATE: {
@@ -32,34 +35,48 @@ void RenderBin::sort(const RenderingOrder renderOrder) {
             // 2: if the shader is identical, sort by state hash
             // 3: if shader is identical and state hash is identical, sort by albedo ID
             // 4: finally, sort by distance to camera (front to back)
-            eastl::sort(binStartIt,
-                        binEndIt,
-                        [](const RenderBinItem& a, const RenderBinItem& b) noexcept -> bool {
-                            // Sort by shader in all states The sort key is the shader id (for now)
-                            if (a._shaderKey != b._shaderKey) { return a._shaderKey < b._shaderKey; }
-                            // If the shader values are the same, we use the state hash for sorting
-                            // The _stateHash is a CRC value created based on the RenderState.
-                            if (a._stateHash != b._stateHash) { return a._stateHash < b._stateHash; }
-                            // If both the shader are the same and the state hashes match,
-                            // we sort by the secondary key (usually the texture id)
-                            if (a._textureKey != b._textureKey) { return a._textureKey < b._textureKey; }
-                            // ... and then finally fallback to front to back
-                            return a._distanceToCameraSq < b._distanceToCameraSq;
-                        });
+
+            const auto sortFunc = [](const RenderBinItem& a, const RenderBinItem& b) noexcept -> bool {
+                // Sort by shader in all states The sort key is the shader id (for now)
+                if (a._shaderKey != b._shaderKey) { return a._shaderKey < b._shaderKey; }
+                // If the shader values are the same, we use the state hash for sorting
+                // The _stateHash is a CRC value created based on the RenderState.
+                if (a._stateHash != b._stateHash) { return a._stateHash < b._stateHash; }
+                // If both the shader are the same and the state hashes match,
+                // we sort by the secondary key (usually the texture id)
+                if (a._textureKey != b._textureKey) { return a._textureKey < b._textureKey; }
+                // ... and then finally fallback to front to back
+                return a._distanceToCameraSq < b._distanceToCameraSq;
+            };
+
+            if (binSize > k_parallelSortThreshold) {
+                std::sort(std::execution::par_unseq, binStartIt, binEndIt, sortFunc);
+            } else {
+                eastl::sort(binStartIt, binEndIt, sortFunc);
+            }
+                      
         } break;
         case RenderingOrder::BACK_TO_FRONT: {
-            eastl::sort(binStartIt,
-                        binEndIt,
-                        [](const RenderBinItem& a, const RenderBinItem& b) noexcept -> bool {
-                            return a._distanceToCameraSq > b._distanceToCameraSq;
-                        });
+            const auto sortFunc = [](const RenderBinItem& a, const RenderBinItem& b) noexcept -> bool {
+                return a._distanceToCameraSq > b._distanceToCameraSq;
+            };
+
+            if (binSize > k_parallelSortThreshold) {
+                std::sort(std::execution::par_unseq, binStartIt, binEndIt, sortFunc);
+            } else {
+                eastl::sort(binStartIt, binEndIt, sortFunc);
+            }
         } break;
         case RenderingOrder::FRONT_TO_BACK: {
-            eastl::sort(binStartIt,
-                        binEndIt,
-                        [](const RenderBinItem& a, const RenderBinItem& b) noexcept -> bool {
-                            return a._distanceToCameraSq < b._distanceToCameraSq;
-                        });
+            const auto sortFunc = [](const RenderBinItem& a, const RenderBinItem& b) noexcept -> bool {
+                return a._distanceToCameraSq < b._distanceToCameraSq;
+            };
+
+            if (binSize > k_parallelSortThreshold) {
+                std::sort(std::execution::par_unseq, binStartIt, binEndIt, sortFunc);
+            } else {
+                eastl::sort(binStartIt, binEndIt, sortFunc);
+            }
         } break;
         case RenderingOrder::NONE: {
             // no need to sort

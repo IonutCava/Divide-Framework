@@ -84,6 +84,7 @@ public:
     void onChangeScene(Scene* newScene);
     void onUnloadScene(Scene* scene);
 
+    void idle();
     /// Main update call
     void update(U64 deltaTimeUS);
 

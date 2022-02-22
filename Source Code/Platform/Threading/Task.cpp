@@ -6,6 +6,8 @@
 namespace Divide {
 
 void Start(Task& task, TaskPool& pool, const TaskPriority priority, const DELEGATE<void>& onCompletionFunction) {
+    OPTICK_EVENT();
+
     if (!pool.enqueue(task, priority, task._id, onCompletionFunction)) {
         Console::errorfn(Locale::Get(_ID("TASK_SCHEDULE_FAIL")), 1);
         Start(task, pool, TaskPriority::REALTIME, onCompletionFunction);
@@ -13,6 +15,8 @@ void Start(Task& task, TaskPool& pool, const TaskPriority priority, const DELEGA
 }
 
 void Wait(const Task& task, TaskPool& pool) {
+    OPTICK_EVENT();
+
     pool.waitForTask(task);
 }
 

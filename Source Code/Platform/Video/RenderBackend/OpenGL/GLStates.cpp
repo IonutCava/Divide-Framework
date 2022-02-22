@@ -80,6 +80,8 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTrack
     if (stateTracker.setStateBlock(RenderStateBlock::defaultHash()) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
+
+    stateTracker.setDepthWrite(true);
 }
 
 bool GL_API::DeleteBuffers(const GLuint count, GLuint* buffers) {

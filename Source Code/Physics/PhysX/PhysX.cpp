@@ -228,6 +228,8 @@ inline void PhysX::updateTimeStep(U8 timeStepFactor, const F32 simSpeed) {
 
 /// Process results
 void PhysX::process(const U64 deltaTimeUS) {
+    OPTICK_EVENT();
+
     if (_targetScene && _timeStep > 0.0f) {
         _accumulator +=
             Time::MicrosecondsToMilliseconds<physx::PxReal>(deltaTimeUS);

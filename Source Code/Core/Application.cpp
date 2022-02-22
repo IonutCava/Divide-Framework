@@ -99,6 +99,10 @@ void Application::stop() {
     }
 }
 
+void Application::idle() {
+    NOP();
+}
+
 bool Application::step() {
     if (onLoop()) {
         OPTICK_FRAME("MainThread");

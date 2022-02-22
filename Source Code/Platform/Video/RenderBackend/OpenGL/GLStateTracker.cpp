@@ -743,6 +743,16 @@ bool GLStateTracker::setScissor(const Rect<I32>& rect) {
     return false;
 }
 
+bool GLStateTracker::setDepthWrite(const bool state) {
+    if (_depthWriteEnabled != state) {
+        _depthWriteEnabled = state;
+        glDepthMask(state ? GL_TRUE : GL_FALSE);
+        return true;
+    }
+
+    return false;
+}
+
 GLuint GLStateTracker::getBoundTextureHandle(const U8 slot, const TextureType type)  const {
     return type == TextureType::COUNT ? 0u : _textureBoundMap[to_base(type)][slot];
 }

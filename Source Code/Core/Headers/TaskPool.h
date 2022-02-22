@@ -63,8 +63,6 @@ public:
         COUNT
     };
 
-    static bool USE_OPTICK_PROFILER;
-
   public:
 
     explicit TaskPool() noexcept;

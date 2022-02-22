@@ -176,7 +176,7 @@ void RenderQueue::sort(const RenderStagePass stagePass, const RenderBinType targ
     OPTICK_EVENT();
 
     // How many elements should a render bin contain before we decide that sorting should happen on a separate thread
-    constexpr U16 threadBias = 64;
+    constexpr U16 k_threadBias = 64u;
     
     if (targetBinType != RenderBinType::COUNT)
     {
@@ -188,10 +188,10 @@ void RenderQueue::sort(const RenderStagePass stagePass, const RenderBinType targ
         TaskPool& pool = parent().platformContext().taskPool(TaskPoolType::HIGH_PRIORITY);
         Task* sortTask = CreateTask(TASK_NOP);
         for (const auto& renderBin : _renderBins) {
-            if (renderBin->getBinSize() > threadBias) {
+            if (renderBin->getBinSize() > k_threadBias) {
                 const RenderingOrder sortOrder = renderOrder == RenderingOrder::COUNT ? getSortOrder(stagePass, renderBin->getType()) : renderOrder;
                 Start(*CreateTask(sortTask,
-                                    [&renderBin, sortOrder](const Task& /*parentTask*/) {
+                                    [&renderBin, sortOrder](const Task&) {
                                         renderBin->sort(sortOrder);
                                     }),
                       pool);
@@ -201,7 +201,7 @@ void RenderQueue::sort(const RenderStagePass stagePass, const RenderBinType targ
         Start(*sortTask, pool);
 
         for (const auto& renderBin : _renderBins) {
-            if (renderBin->getBinSize() <= threadBias) {
+            if (renderBin->getBinSize() <= k_threadBias) {
                 const RenderingOrder sortOrder = renderOrder == RenderingOrder::COUNT ? getSortOrder(stagePass, renderBin->getType()) : renderOrder;
                 renderBin->sort(sortOrder);
             }

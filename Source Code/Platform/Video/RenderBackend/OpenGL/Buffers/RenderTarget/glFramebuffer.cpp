@@ -53,8 +53,6 @@ bool operator!=(const glFramebuffer::BindingState& lhs, const glFramebuffer::Bin
         lhs._layeredRendering != rhs._layeredRendering;
 }
 
-bool glFramebuffer::_zWriteEnabled = true;
-
 glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& descriptor)
     : RenderTarget(context, descriptor),
       glObject(glObjectType::TYPE_FRAMEBUFFER, context),
@@ -149,6 +147,9 @@ void glFramebuffer::toggleAttachment(const RTAttachment& attachment, const Attac
     }
 
     OPTICK_EVENT();
+    // It might be cleaner to always use DSA for stuff like this, but we can skip the driver's bookkeeping overhead if we handle it ourselves here
+    const bool useDSA = GL_API::GetStateTracker()._activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] != _framebufferHandle;
+    OPTICK_TAG("USE_DSA", useDSA);
 
     const Texture_ptr& tex = attachment.texture(false);
     if (layeredRendering && tex->numLayers() == 1 && !IsCubeTexture(tex->descriptor().texType())) {
@@ -163,13 +164,25 @@ void glFramebuffer::toggleAttachment(const RTAttachment& attachment, const Attac
     // Compare with old state
     if (bState != getAttachmentState(binding)) {
         if (state == AttachmentState::STATE_DISABLED) {
-            glNamedFramebufferTexture(_framebufferHandle, binding, 0u, 0);
+            if (useDSA) {
+                glNamedFramebufferTexture(_framebufferHandle, binding, 0u, 0);
+            } else {
+                glFramebufferTexture(GL_FRAMEBUFFER, binding, 0u, 0);
+            }
         } else {
             const GLuint handle = tex->data()._textureHandle;
             if (layeredRendering) {
-                glNamedFramebufferTextureLayer(_framebufferHandle, binding, handle, bState._writeLevel, bState._writeLayer);
+                if (useDSA) {
+                    glNamedFramebufferTextureLayer(_framebufferHandle, binding, handle, bState._writeLevel, bState._writeLayer);
+                } else {
+                    glFramebufferTextureLayer(GL_FRAMEBUFFER, binding, handle, bState._writeLevel, bState._writeLayer);
+                }
             } else {
-                glNamedFramebufferTexture(_framebufferHandle, binding, handle, bState._writeLevel);
+                if (useDSA) {
+                    glNamedFramebufferTexture(_framebufferHandle, binding, handle, bState._writeLevel);
+                } else {
+                    glFramebufferTexture(GL_FRAMEBUFFER, binding, handle, bState._writeLevel);
+                }
             }
         }
         queueCheckStatus();
@@ -243,6 +256,8 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
 
     const bool depthMisMatch = input->hasDepth() != output->hasDepth();
     if (depthMisMatch) {
+        OPTICK_EVENT("Depth mismatch");
+
         if (input->hasDepth()) {
             const RTAttachment* att = input->getAttachmentPtr(RTAttachmentType::Depth, 0u).get();
             input->toggleAttachment(*att, AttachmentState::STATE_DISABLED, false);
@@ -256,6 +271,7 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
 
     // Multiple attachments, multiple layers, multiple everything ... what a mess ... -Ionut
     if (params.hasBlitColours() && hasColour()) {
+        OPTICK_EVENT("Blit Colours");
 
         const RTAttachmentPool::PoolEntry& inputAttachments = input->_attachmentPool->get(RTAttachmentType::Colour);
         const RTAttachmentPool::PoolEntry& outputAttachments = output->_attachmentPool->get(RTAttachmentType::Colour);
@@ -365,6 +381,8 @@ void glFramebuffer::blitFrom(const RTBlitParams& params) {
     }
 
     if (!depthMisMatch && !blittedDepth && IsValid(params._blitDepth)) {
+        OPTICK_EVENT("Blit Depth");
+
         BlitHelpers::prepareAttachments(input, params._blitDepth, true);
         const RTAttachment* outAtt = BlitHelpers::prepareAttachments(output,  params._blitDepth, false);
         checkStatus();
@@ -401,9 +419,14 @@ void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy, const RTA
         }
 
         if (set) {
-            glNamedFramebufferDrawBuffers(_framebufferHandle,
-                                          MAX_RT_COLOUR_ATTACHMENTS,
-                                          _activeColourBuffers.data());
+            const bool useDSA = GL_API::GetStateTracker()._activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] != _framebufferHandle;
+            OPTICK_TAG("USE_DSA", useDSA);
+
+            if (useDSA) {
+                glNamedFramebufferDrawBuffers(_framebufferHandle, MAX_RT_COLOUR_ATTACHMENTS, _activeColourBuffers.data());
+            } else {
+                glDrawBuffers(MAX_RT_COLOUR_ATTACHMENTS, _activeColourBuffers.data());
+            }
         }
 
         queueCheckStatus();
@@ -411,11 +434,8 @@ void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy, const RTA
         const RTAttachment_ptr& depthAtt = _attachmentPool->get(RTAttachmentType::Depth, 0);
         _activeDepthBuffer = depthAtt && depthAtt->used();
      }
-    
-    if (IsEnabled(drawPolicy._drawMask, RTAttachmentType::Depth) != _zWriteEnabled) {
-        _zWriteEnabled = !_zWriteEnabled;
-        glDepthMask(_zWriteEnabled ? GL_TRUE : GL_FALSE);
-    }
+
+    GL_API::GetStateTracker().setDepthWrite(IsEnabled(drawPolicy._drawMask, RTAttachmentType::Depth));
 }
 
 void glFramebuffer::toggleAttachments() {
@@ -548,6 +568,9 @@ void glFramebuffer::QueueMipMapsRecomputation(const RTAttachment& attachment) {
 void glFramebuffer::clear(const RTClearDescriptor& drawPolicy, const RTAttachmentPool::PoolEntry& activeAttachments) const {
     OPTICK_EVENT();
 
+    const bool useDSA = GL_API::GetStateTracker()._activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] != _framebufferHandle;
+    OPTICK_TAG("USE_DSA", useDSA);
+
     if (drawPolicy._clearColours && hasColour()) {
         for (const RTAttachment_ptr& att : activeAttachments) {
             const U32 binding = att->binding();
@@ -564,23 +587,39 @@ void glFramebuffer::clear(const RTClearDescriptor& drawPolicy, const RTAttachmen
 
                     const FColour4& colour = clearColour != nullptr ? clearColour->_customClearColour[buffer] : att->clearColour();
                     if (att->texture(false)->descriptor().normalized()) {
-                        glClearNamedFramebufferfv(_framebufferHandle, GL_COLOR, buffer, colour._v);
+                        if (useDSA) {
+                            glClearNamedFramebufferfv(_framebufferHandle, GL_COLOR, buffer, colour._v);
+                        } else {
+                            glClearBufferfv(GL_COLOR, buffer, colour._v);
+                        }
                     } else {
                         switch (att->texture(false)->descriptor().dataType()) {
                             case GFXDataFormat::FLOAT_16:
-                            case GFXDataFormat::FLOAT_32 :
-                                glClearNamedFramebufferfv(_framebufferHandle, GL_COLOR, buffer, colour._v);
-                                break;
+                            case GFXDataFormat::FLOAT_32 : {
+                                if (useDSA) {
+                                    glClearNamedFramebufferfv(_framebufferHandle, GL_COLOR, buffer, colour._v);
+                                } else {
+                                    glClearBufferfv(GL_COLOR, buffer, colour._v);
+                                }
+                            } break;
                         
                             case GFXDataFormat::SIGNED_BYTE:
                             case GFXDataFormat::SIGNED_SHORT:
-                            case GFXDataFormat::SIGNED_INT :
-                                glClearNamedFramebufferiv(_framebufferHandle, GL_COLOR, buffer, Util::ToIntColour(colour)._v);
-                                break;
+                            case GFXDataFormat::SIGNED_INT: {
+                                if (useDSA) {
+                                    glClearNamedFramebufferiv(_framebufferHandle, GL_COLOR, buffer, Util::ToIntColour(colour)._v);
+                                } else {
+                                    glClearBufferiv(GL_COLOR, buffer, Util::ToIntColour(colour)._v);
+                                }
+                            } break;
 
-                            default:
-                                glClearNamedFramebufferuiv(_framebufferHandle, GL_COLOR, buffer, Util::ToUIntColour(colour)._v);
-                                break;
+                            default: {
+                                if (useDSA) {
+                                    glClearNamedFramebufferuiv(_framebufferHandle, GL_COLOR, buffer, Util::ToUIntColour(colour)._v);
+                                } else {
+                                    glClearBufferuiv(GL_COLOR, buffer, Util::ToUIntColour(colour)._v);
+                                }
+                            } break;
                         }
                     }
                     _context.registerDrawCall();

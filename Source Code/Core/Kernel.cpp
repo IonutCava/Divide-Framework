@@ -306,7 +306,9 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
 
     {// We should pause physics simulations if needed, but the framerate dependency is handled by whatever 3rd party pfx library we are using
         Time::ScopedTimer timer2(_physicsProcessTimer);
-        _platformContext.pfx().process(_timingData.realTimeDeltaUS());
+        if (!_timingData.freezeLoopTime() || _timingData.forceRunPhysics()) {
+            _platformContext.pfx().process(_timingData.realTimeDeltaUS());
+        }
     }
     {
         Time::ScopedTimer timer2(_sceneUpdateTimer);

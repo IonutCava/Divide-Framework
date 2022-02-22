@@ -195,10 +195,14 @@ void PhysXSceneInterface::UpdateActor(physx::PxActor* actor) {
 
 void PhysXSceneInterface::process(const U64 deltaTimeUS) {
     if (_gScene != nullptr) {
+        OPTICK_EVENT();
+
         _gScene->simulate(Time::MicrosecondsToMilliseconds<physx::PxReal>(deltaTimeUS));
 
-        while (!_gScene->fetchResults()) {
+        bool block = false;
+        while (!_gScene->fetchResults(block)) {
             idle();
+            block = true;
         }
     }
 }

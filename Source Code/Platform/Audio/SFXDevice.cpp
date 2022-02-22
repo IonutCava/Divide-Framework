@@ -57,6 +57,10 @@ void SFXDevice::closeAudioAPI() {
     }
 }
 
+void SFXDevice::idle() {
+    NOP();
+}
+
 void SFXDevice::beginFrame() {
     _api->beginFrame();
 

@@ -4,7 +4,7 @@
     <showSampleWindow>false</showSampleWindow>
     <themeIndex>6</themeIndex>
     <textEditor/>
-    <lastOpenSceneGUID>630</lastOpenSceneGUID>
+    <lastOpenSceneGUID>690</lastOpenSceneGUID>
     <grid enabled="true" axisWidth="2" scale="1"/>
     <camera>
         <Editor__Camera>
@@ -13,14 +13,14 @@
                 <distance>0</distance>
                 <active>false</active>
             </reflectionPlane>
-            <accumPitchDegrees>-16.8423328</accumPitchDegrees>
+            <accumPitchDegrees>-15.000001</accumPitchDegrees>
             <frustumLocked>false</frustumLocked>
-            <euler x="-15.3124561" y="52.6757812" z="1.92818499"/>
-            <eye x="144.941849" y="16.065918" z="0.992070615"/>
-            <orientation x="0.126779974" y="-0.437639803" z="-0.074045524" w="-0.887079179"/>
+            <euler x="-15.0000019" y="39.9999924" z="0"/>
+            <eye x="60" y="45" z="60"/>
+            <orientation x="-0.122654505" y="0.339094073" z="0.0446425863" w="0.93165338"/>
             <aspectRatio>1.76999998</aspectRatio>
             <zPlanes min="0.100000001" max="1000"/>
-            <FoV>77.7975693</FoV>
+            <FoV>58.9304428</FoV>
             <speedFactor turn="50" move="40" zoom="35"/>
             <fixedYawAxis x="0" y="1" z="0"/>
             <yawFixed>true</yawFixed>

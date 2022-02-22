@@ -138,6 +138,10 @@ void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
+void GUI::idle() {
+    NOP();
+}
+
 void GUI::update(const U64 deltaTimeUS) {
     OPTICK_EVENT();
 

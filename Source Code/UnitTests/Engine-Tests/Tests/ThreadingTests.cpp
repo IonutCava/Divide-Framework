@@ -7,8 +7,6 @@
 
 namespace Divide {
 
-bool TaskPool::USE_OPTICK_PROFILER = false;
-
 namespace {
     Mutex printLock{};
 

@@ -141,6 +141,7 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
     OPTICK_EVENT();
 
     if (_runQueries) {
+        OPTICK_EVENT("End GPU Queries");
         // End the timing query started in beginFrame() in debug builds
 
         if_constexpr(g_runAllQueriesInSameFrame) {
@@ -158,7 +159,10 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
 
     _swapBufferTimer.start();
     endFrameLocal(window);
-    SDL_Delay(1);
+    {
+        //OPTICK_EVENT("Post-swap delay");
+        //SDL_Delay(1);
+    }
     _swapBufferTimer.stop();
 
     OPTICK_EVENT("GL_API: Post-Swap cleanup");
@@ -898,6 +902,8 @@ void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& c
     //ranges mid-frame if we issue other writes during the same frame? -Ionut
     const U32 frameIndex = _context.frameCount();
     for (const BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
+        OPTICK_TAG("Buffer", to_U64(lockEntry._buffer->getGUID()));
+
         if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
             DIVIDE_UNEXPECTED_CALL();
         }

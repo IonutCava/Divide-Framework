@@ -79,6 +79,14 @@ void PXDevice::idle() {
     _api->idle();
 }
 
+void PXDevice::beginFrame() {
+    NOP();
+}
+
+void PXDevice::endFrame() {
+    NOP();
+}
+
 bool PXDevice::initPhysicsScene(Scene& scene) {
     return _api->initPhysicsScene(scene);
 }

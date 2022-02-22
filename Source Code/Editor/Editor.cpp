@@ -172,6 +172,14 @@ void Editor::idle() noexcept {
     NOP();
 }
 
+void Editor::beginFrame() {
+    NOP();
+}
+
+void Editor::endFrame() {
+    NOP();
+}
+
 void Editor::createFontTexture(const F32 DPIScaleFactor) {
     constexpr F32 fontSize = 13.f;
     constexpr F32 fontSizeBold = 16.f;
