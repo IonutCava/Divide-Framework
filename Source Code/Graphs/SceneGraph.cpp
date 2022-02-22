@@ -349,7 +349,7 @@ bool SceneGraph::intersect(const SGNIntersectionParams& params, vector<SGNRayRes
         const SceneNodeType snType =  node->getNode().type();
         ObjectType objectType = ObjectType::COUNT;
         if (snType == SceneNodeType::TYPE_OBJECT3D) {
-            objectType = static_cast<const Object3D&>(node->getNode()).getObjectType();
+            objectType = static_cast<const Object3D&>(node->getNode()).geometryType();
         }
 
         if (isIgnored(snType) || (!params._includeTransformNodes && IsTransformNode(snType, objectType))) {

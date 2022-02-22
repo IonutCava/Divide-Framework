@@ -798,7 +798,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
-                pipelineDescriptor._primitiveTopology = PrimitiveTopology::API_POINTS;
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
                 _blurGaussianPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
@@ -820,7 +820,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
-                pipelineDescriptor._primitiveTopology = PrimitiveTopology::API_POINTS;
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
                 _blurGaussianPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }

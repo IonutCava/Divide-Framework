@@ -137,12 +137,12 @@ class Terrain final : public Object3D {
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
 
    protected:
-    [[nodiscard]] Vert getVert(F32 x_clampf, F32 z_clampf) const;
-    [[nodiscard]] Vert getSmoothVert(F32 x_clampf, F32 z_clampf) const;
+     [[nodiscard]] Vert getVert(F32 x_clampf, F32 z_clampf) const;
+     [[nodiscard]] Vert getSmoothVert(F32 x_clampf, F32 z_clampf) const;
 
-    void postBuild();
+     void postBuild();
 
-    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) override;
+     void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) override;
 
      void prepareRender(SceneGraphNode* sgn,
                         RenderingComponent& rComp,
@@ -150,13 +150,13 @@ class Terrain final : public Object3D {
                         const CameraSnapshot& cameraSnapshot,
                         bool refreshData) override;
 
-    void postLoad(SceneGraphNode* sgn) override;
+     void postLoad(SceneGraphNode* sgn) override;
+     
+     void onEditorChange(std::string_view field);
+     
+     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Terrain"; }
 
-    void onEditorChange(std::string_view field);
-
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Terrain"; }
-
-    PROPERTY_R(TessellationParams, tessParams);
+     PROPERTY_R(TessellationParams, tessParams);
 
    public:
      vector<VertexBuffer::Vertex> _physicsVerts;

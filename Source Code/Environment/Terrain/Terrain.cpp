@@ -58,7 +58,7 @@ void TessellationParams::fromDescriptor(const std::shared_ptr<TerrainDescriptor>
 }
 
 Terrain::Terrain(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name)
-    : Object3D(context, parentCache, descriptorHash, name, ResourcePath{ name }, {}, ObjectType::TERRAIN, to_U32(ObjectFlag::OBJECT_FLAG_NO_VB)),
+    : Object3D(context, parentCache, descriptorHash, name, ResourcePath{ name }, {}, ObjectType::TERRAIN, ObjectFlag::OBJECT_FLAG_NO_VB),
       _terrainQuadtree()
 {
     _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(LightType::SPOT));
@@ -168,20 +168,23 @@ void Terrain::onEditorChange(const std::string_view field) {
 void Terrain::postBuild() {
     const U16 terrainWidth = _descriptor->dimensions().width;
     const U16 terrainHeight = _descriptor->dimensions().height;
+    {
+        vector<vec3<U32>> triangles;
+        // Generate index buffer
+        triangles.reserve((terrainWidth - 1) * (terrainHeight - 1) * 2);
 
-    // Generate index buffer
-    vector<vec3<U32>>& triangles = getTriangles(0u);
-    triangles.reserve((terrainWidth - 1) * (terrainHeight - 1) * 2);
-
-    //Ref : https://www.3dgep.com/multi-textured-terrain-in-opengl/
-    for (U32 height = 0; height < to_U32(terrainHeight - 1); ++height) {
-        for (U32 width = 0; width < to_U32(terrainWidth - 1); ++width) {
-            const U32 vertexIndex = TER_COORD(width, height, to_U32(terrainWidth));
-            // Top triangle (T0)
-            triangles.emplace_back(vertexIndex, vertexIndex + terrainWidth + 1u, vertexIndex + 1u);
-            // Bottom triangle (T1)
-            triangles.emplace_back(vertexIndex, vertexIndex + terrainWidth,      vertexIndex + terrainWidth + 1u);
+        //Ref : https://www.3dgep.com/multi-textured-terrain-in-opengl/
+        for (U32 height = 0; height < to_U32(terrainHeight - 1); ++height) {
+            for (U32 width = 0; width < to_U32(terrainWidth - 1); ++width) {
+                const U32 vertexIndex = TER_COORD(width, height, to_U32(terrainWidth));
+                // Top triangle (T0)
+                triangles.emplace_back(vertexIndex, vertexIndex + terrainWidth + 1u, vertexIndex + 1u);
+                // Bottom triangle (T1)
+                triangles.emplace_back(vertexIndex, vertexIndex + terrainWidth, vertexIndex + terrainWidth + 1u);
+            }
         }
+
+        addTriangles(0, triangles);
     }
 
     // Approximate bounding box

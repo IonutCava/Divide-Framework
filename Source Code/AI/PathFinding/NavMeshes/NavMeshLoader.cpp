@@ -338,7 +338,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
 
         ObjectType crtType = ObjectType::COUNT;
         if (nodeType == SceneNodeType::TYPE_OBJECT3D) {
-            crtType = sgn->getNode<Object3D>().getObjectType();
+            crtType = sgn->getNode<Object3D>().geometryType();
             // Even though we allow Object3Ds, we do not parse MESH nodes, instead we grab its children so we  get an accurate triangle list per node
             if (crtType == ObjectType::MESH) {
                 goto next;
@@ -385,12 +385,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
                 obj = sgn->getNode<WaterPlane>().getQuad().get();
             }
             assert(obj != nullptr);
-            const U16 partitionID = obj->getGeometryPartitionID(0u);
-            if (!obj->computeTriangleList(partitionID)) {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-
-            geometry = obj->getGeometryVB();
+            geometry = obj->geometryBuffer();
             assert(geometry != nullptr);
 
             const auto& vertices = geometry->getVertices();
@@ -399,7 +394,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
                 goto next;
             }
 
-            const auto& triangles = obj->getTriangles(partitionID);
+            const auto& triangles = obj->getTriangles(obj->getGeometryPartitionID(0u));
             if (triangles.empty()) {
                 Console::printfn(Locale::Get(_ID("NAV_MESH_NODE_NO_DATA")), resourceName);
                 goto next;

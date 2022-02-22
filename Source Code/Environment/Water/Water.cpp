@@ -337,11 +337,11 @@ bool WaterPlane::PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& poi
 void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
 
     topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
-    _plane->getGeometryVB()->populateAttributeMap(vertexFormatInOut);
+    _plane->geometryBuffer()->populateAttributeMap(vertexFormatInOut);
 
     GenericDrawCommand cmd = {};
-    cmd._cmd.indexCount = to_U32(_plane->getGeometryVB()->getIndexCount());
-    cmd._sourceBuffer = _plane->getGeometryVB()->handle();
+    cmd._cmd.indexCount = to_U32(_plane->geometryBuffer()->getIndexCount());
+    cmd._sourceBuffer = _plane->geometryBuffer()->handle();
 
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
     _editorDataDirtyState.fill(EditorDataState::CHANGED);

@@ -54,9 +54,9 @@ class Quad3D final : public Object3D {
                     bool doubleSided,
                     const vec3<F32>& sideLength);
 
-    vec3<F32> getCorner(CornerLocation corner) const;
+    vec3<F32> getCorner(CornerLocation corner);
 
-    void setNormal(CornerLocation corner, const vec3<F32>& normal) const;
+    void setNormal(CornerLocation corner, const vec3<F32>& normal);
 
     void setCorner(CornerLocation corner, const vec3<F32>& value);
 

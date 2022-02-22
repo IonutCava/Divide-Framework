@@ -17,7 +17,7 @@ Quad3D::Quad3D(GFXDevice& context,
                 {},
                 {},
                 ObjectType::QUAD_3D,
-                0u)
+                Object3D::ObjectFlag::OBJECT_FLAG_NONE)
 {
     const U16 indices[] = { 2, 0, 1, 1, 2, 3, 1, 0, 2, 2, 1, 3 };
 
@@ -25,76 +25,76 @@ Quad3D::Quad3D(GFXDevice& context,
     const F32 halfExtentY = sideLength.y * 0.5f;
     const F32 halfExtentZ = sideLength.z * 0.5f;
     
-    getGeometryVB()->setVertexCount(4);
-    getGeometryVB()->modifyPositionValue(0, -halfExtentX,  halfExtentY, -halfExtentZ); // TOP LEFT
-    getGeometryVB()->modifyPositionValue(1,  halfExtentX,  halfExtentY, -halfExtentZ); // TOP RIGHT
-    getGeometryVB()->modifyPositionValue(2, -halfExtentX, -halfExtentY,  halfExtentZ); // BOTTOM LEFT
-    getGeometryVB()->modifyPositionValue(3,  halfExtentX, -halfExtentY,  halfExtentZ); // BOTTOM RIGHT
+    geometryBuffer()->setVertexCount(4);
+    geometryBuffer()->modifyPositionValue(0, -halfExtentX,  halfExtentY, -halfExtentZ); // TOP LEFT
+    geometryBuffer()->modifyPositionValue(1,  halfExtentX,  halfExtentY, -halfExtentZ); // TOP RIGHT
+    geometryBuffer()->modifyPositionValue(2, -halfExtentX, -halfExtentY,  halfExtentZ); // BOTTOM LEFT
+    geometryBuffer()->modifyPositionValue(3,  halfExtentX, -halfExtentY,  halfExtentZ); // BOTTOM RIGHT
 
-    getGeometryVB()->modifyNormalValue(0, 0, 0, -1);
-    getGeometryVB()->modifyNormalValue(1, 0, 0, -1);
-    getGeometryVB()->modifyNormalValue(2, 0, 0, -1);
-    getGeometryVB()->modifyNormalValue(3, 0, 0, -1);
+    geometryBuffer()->modifyNormalValue(0, 0, 0, -1);
+    geometryBuffer()->modifyNormalValue(1, 0, 0, -1);
+    geometryBuffer()->modifyNormalValue(2, 0, 0, -1);
+    geometryBuffer()->modifyNormalValue(3, 0, 0, -1);
 
-    getGeometryVB()->modifyTexCoordValue(0, 0, 1);
-    getGeometryVB()->modifyTexCoordValue(1, 1, 1);
-    getGeometryVB()->modifyTexCoordValue(2, 0, 0);
-    getGeometryVB()->modifyTexCoordValue(3, 1, 0);
+    geometryBuffer()->modifyTexCoordValue(0, 0, 1);
+    geometryBuffer()->modifyTexCoordValue(1, 1, 1);
+    geometryBuffer()->modifyTexCoordValue(2, 0, 0);
+    geometryBuffer()->modifyTexCoordValue(3, 1, 0);
 
     const U8 indicesCount = doubleSided ? 12 : 6;
     for (U8 i = 0; i < indicesCount; i++) {
         // CCW draw order
-        getGeometryVB()->addIndex(indices[i]);
+        geometryBuffer()->addIndex(indices[i]);
         //  v0----v1
         //   |    |
         //   |    |
         //  v2----v3
     }
 
-    getGeometryVB()->computeTangents();
-    getGeometryVB()->create(true, true);
+    geometryBuffer()->computeTangents();
+    geometryBuffer()->create(true, true);
 
     recomputeBounds();
 }
 
-vec3<F32> Quad3D::getCorner(const CornerLocation corner) const
+vec3<F32> Quad3D::getCorner(const CornerLocation corner)
 {
     switch (corner) {
         case CornerLocation::TOP_LEFT:
-            return getGeometryVB()->getPosition(0);
+            return geometryBuffer()->getPosition(0);
         case CornerLocation::TOP_RIGHT:
-            return getGeometryVB()->getPosition(1);
+            return geometryBuffer()->getPosition(1);
         case CornerLocation::BOTTOM_LEFT:
-            return getGeometryVB()->getPosition(2);
+            return geometryBuffer()->getPosition(2);
         case CornerLocation::BOTTOM_RIGHT:
-            return getGeometryVB()->getPosition(3);
+            return geometryBuffer()->getPosition(3);
         default:
             break;
     }
     // Default returns top left corner. Why? Don't care ... seems like a
     // good idea. - Ionut
-    return getGeometryVB()->getPosition(0);
+    return geometryBuffer()->getPosition(0);
 }
 
-void Quad3D::setNormal(const CornerLocation corner, const vec3<F32>& normal) const {
+void Quad3D::setNormal(const CornerLocation corner, const vec3<F32>& normal) {
     switch (corner) {
         case CornerLocation::TOP_LEFT:
-            getGeometryVB()->modifyNormalValue(0, normal);
+            geometryBuffer()->modifyNormalValue(0, normal);
             break;
         case CornerLocation::TOP_RIGHT:
-            getGeometryVB()->modifyNormalValue(1, normal);
+            geometryBuffer()->modifyNormalValue(1, normal);
             break;
         case CornerLocation::BOTTOM_LEFT:
-            getGeometryVB()->modifyNormalValue(2, normal);
+            geometryBuffer()->modifyNormalValue(2, normal);
             break;
         case CornerLocation::BOTTOM_RIGHT:
-            getGeometryVB()->modifyNormalValue(3, normal);
+            geometryBuffer()->modifyNormalValue(3, normal);
             break;
         case CornerLocation::CORNER_ALL: {
-            getGeometryVB()->modifyNormalValue(0, normal);
-            getGeometryVB()->modifyNormalValue(1, normal);
-            getGeometryVB()->modifyNormalValue(2, normal);
-            getGeometryVB()->modifyNormalValue(3, normal);
+            geometryBuffer()->modifyNormalValue(0, normal);
+            geometryBuffer()->modifyNormalValue(1, normal);
+            geometryBuffer()->modifyNormalValue(2, normal);
+            geometryBuffer()->modifyNormalValue(3, normal);
         } break;
     }
 }
@@ -102,16 +102,16 @@ void Quad3D::setNormal(const CornerLocation corner, const vec3<F32>& normal) con
 void Quad3D::setCorner(const CornerLocation corner, const vec3<F32>& value) {
     switch (corner) {
         case CornerLocation::TOP_LEFT:
-            getGeometryVB()->modifyPositionValue(0, value);
+            geometryBuffer()->modifyPositionValue(0, value);
             break;
         case CornerLocation::TOP_RIGHT:
-            getGeometryVB()->modifyPositionValue(1, value);
+            geometryBuffer()->modifyPositionValue(1, value);
             break;
         case CornerLocation::BOTTOM_LEFT:
-            getGeometryVB()->modifyPositionValue(2, value);
+            geometryBuffer()->modifyPositionValue(2, value);
             break;
         case CornerLocation::BOTTOM_RIGHT:
-            getGeometryVB()->modifyPositionValue(3, value);
+            geometryBuffer()->modifyPositionValue(3, value);
             break;
         default:
             break;
@@ -123,10 +123,10 @@ void Quad3D::setCorner(const CornerLocation corner, const vec3<F32>& value) {
 // rect.xy = Top Left; rect.zw = Bottom right
 // Remember to invert for 2D mode
 void Quad3D::setDimensions(const vec4<F32>& rect) {
-    getGeometryVB()->modifyPositionValue(0, rect.x, rect.w, 0);
-    getGeometryVB()->modifyPositionValue(1, rect.z, rect.w, 0);
-    getGeometryVB()->modifyPositionValue(2, rect.x, rect.y, 0);
-    getGeometryVB()->modifyPositionValue(3, rect.z, rect.y, 0);
+    geometryBuffer()->modifyPositionValue(0, rect.x, rect.w, 0);
+    geometryBuffer()->modifyPositionValue(1, rect.z, rect.w, 0);
+    geometryBuffer()->modifyPositionValue(2, rect.x, rect.y, 0);
+    geometryBuffer()->modifyPositionValue(3, rect.z, rect.y, 0);
 
     recomputeBounds();
 }
@@ -135,8 +135,8 @@ void Quad3D::recomputeBounds() {
     setBounds(
         BoundingBox
         {
-        getGeometryVB()->getPosition(1),
-        getGeometryVB()->getPosition(2) + vec3<F32>{ 0.0f, 0.0f, 0.0025f }
+            geometryBuffer()->getPosition(1),
+            geometryBuffer()->getPosition(2) + vec3<F32>{ 0.0f, 0.0f, 0.0025f }
         }
     );
 }

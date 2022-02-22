@@ -363,9 +363,6 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
                 Object3D& obj = node->getNode<Object3D>();
                 const U8 lodCount = obj.getGeometryPartitionCount();
                 const U16 partitionID = obj.getGeometryPartitionID(lodCount - 1);
-                if (!obj.computeTriangleList(partitionID)) {
-                    return nullptr;
-                }
                 const vector<vec3<U32>>& triangles = obj.getTriangles(partitionID);
 
                 if (triangles.empty()) {
@@ -388,15 +385,14 @@ PhysicsAsset* PhysX::createRigidActor(SceneGraphNode* node, RigidBodyComponent& 
                     meshDesc.triangles.data = triangles.data();
 
                     physx::PxDefaultFileOutputStream outputStream(cachePath.c_str());
-                    if (obj.getObjectType() == ObjectType::TERRAIN) {
+                    if (obj.geometryType() == ObjectType::TERRAIN) {
                         const auto& verts = node->getNode<Terrain>().getVerts();
                         meshDesc.points.count = static_cast<physx::PxU32>(verts.size());
                         meshDesc.points.data = verts[0]._position._v;
                     } else {
-                        const VertexBuffer* vb = obj.getGeometryVB();
-                        DIVIDE_ASSERT(vb != nullptr);
-                        meshDesc.points.count = static_cast<physx::PxU32>(vb->getVertexCount());
-                        meshDesc.points.data = vb->getVertices()[0]._position._v;
+                        DIVIDE_ASSERT(obj.geometryBuffer() != nullptr);
+                        meshDesc.points.count = static_cast<physx::PxU32>(obj.geometryBuffer()->getVertexCount());
+                        meshDesc.points.data = obj.geometryBuffer()->getVertices()[0]._position._v;
                     }
 
                     const auto getErrorMessage = [](const physx::PxTriangleMeshCookingResult::Enum value) {

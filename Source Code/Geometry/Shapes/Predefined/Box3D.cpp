@@ -47,7 +47,7 @@ namespace {
     };
 };
 Box3D::Box3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name, const vec3<F32>& size)
-    : Object3D(context, parentCache, descriptorHash, name, {}, {}, ObjectType::BOX_3D, 0u)
+    : Object3D(context, parentCache, descriptorHash, name, {}, {}, ObjectType::BOX_3D, Object3D::ObjectFlag::OBJECT_FLAG_NONE)
 {
     static const vec2<F32> texCoords[4] = {
         {0.0f, 0.0f},
@@ -68,28 +68,26 @@ Box3D::Box3D(GFXDevice& context, ResourceCache* parentCache, const size_t descri
 
     _halfExtent.set(size / 2);
 
-    VertexBuffer* vb = getGeometryVB();
-    vb->setVertexCount(std::size(vertices));
+    geometryBuffer()->setVertexCount(std::size(vertices));
 
     for (const U16 idx : indices) {
-        vb->addIndex(idx);
+        geometryBuffer()->addIndex(idx);
     }
 
     for (U32 i = 0u; i < std::size(vertices); ++i) {
-        vb->modifyPositionValue(i, vertices[i] * _halfExtent);
-        vb->modifyTexCoordValue(i, texCoords[i % 4]);
-        vb->modifyNormalValue(i, normals[i / 4]);
+        geometryBuffer()->modifyPositionValue(i, vertices[i] * _halfExtent);
+        geometryBuffer()->modifyTexCoordValue(i, texCoords[i % 4]);
+        geometryBuffer()->modifyNormalValue(i, normals[i / 4]);
     }
-    vb->create(false, true);
+    geometryBuffer()->create(false, true);
     setBounds(BoundingBox(-_halfExtent, _halfExtent));
 }
 
 void Box3D::setHalfExtent(const vec3<F32>& halfExtent) {
     _halfExtent = halfExtent;
 
-    VertexBuffer* vb = getGeometryVB();
     for (U32 i = 0u; i < std::size(vertices); ++i) {
-        vb->modifyPositionValue(i, vertices[i] * _halfExtent);
+        geometryBuffer()->modifyPositionValue(i, vertices[i] * _halfExtent);
     }
     setBounds(BoundingBox(-_halfExtent, _halfExtent));
 }
@@ -97,8 +95,7 @@ void Box3D::setHalfExtent(const vec3<F32>& halfExtent) {
 void Box3D::fromPoints(const std::initializer_list<vec3<F32>>& points,
                         const vec3<F32>& halfExtent) {
 
-    VertexBuffer* vb = getGeometryVB();
-    vb->modifyPositionValues(0, points);
+    geometryBuffer()->modifyPositionValues(0, points);
     _halfExtent = halfExtent;
     setBounds(BoundingBox(-_halfExtent * 0.5f, _halfExtent * 0.5f));
 }

@@ -9,7 +9,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Geometry/Shapes/Headers/Mesh.h"
-#include "Geometry/Shapes/Headers/SkinnedSubMesh.h"
+#include "Geometry/Shapes/Headers/SubMesh.h"
 #include "Utility/Headers/Localization.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -307,7 +307,7 @@ namespace Import {
         }
 
         mesh->renderState().drawState(true);
-        mesh->getGeometryVB()->fromBuffer(*dataIn.vertexBuffer());
+        mesh->geometryBuffer()->fromBuffer(*dataIn.vertexBuffer());
         mesh->geometryDirty(true);
 
         std::atomic_uint taskCounter;
@@ -316,19 +316,16 @@ namespace Import {
         mat4<F32> invGeometryTransform;
         for (const Import::SubMeshData& subMeshData : dataIn._subMeshData) {
             // Submesh is created as a resource when added to the scenegraph
-            ResourceDescriptor subMeshDesc(subMeshData.name());
-            subMeshDesc.flag(true);
-            subMeshDesc.ID(subMeshData.index());
-            if (subMeshData.boneCount() > 0) {
-                subMeshDesc.enumValue(to_base(Object3D::ObjectFlag::OBJECT_FLAG_SKINNED));
-            }
-
-            SubMesh_ptr tempSubMesh = CreateResource<SubMesh>(cache, subMeshDesc);
+            SubMesh_ptr tempSubMesh = CreateResource<SubMesh>(cache, ResourceDescriptor(subMeshData.name()));
             if (!tempSubMesh) {
                 continue;
             }
+            tempSubMesh->id(subMeshData.index());
+            if (subMeshData.boneCount() > 0) {
+                tempSubMesh->setObjectFlag(Object3D::ObjectFlag::OBJECT_FLAG_SKINNED);
+            }
             // it may already be loaded
-            if (!tempSubMesh->getParentMesh()) {
+            if (!tempSubMesh->parentMesh()) {
                 for (U8 i = 0, j = 0; i < Import::MAX_LOD_LEVELS; ++i) {
                     if (!subMeshData._triangles[i].empty()) {
                         tempSubMesh->setGeometryPartitionID(j, subMeshData._partitionIDs[j]);
@@ -336,9 +333,9 @@ namespace Import {
                         ++j;
                     }
                 }
-                Attorney::SubMeshMeshImporter::setGeometryLimits(*tempSubMesh,
-                                                                 subMeshData.minPos(),
-                                                                 subMeshData.maxPos());
+                Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh,
+                                                              subMeshData.minPos(),
+                                                              subMeshData.maxPos());
                 //ToDo: Undo vert transform (verts should be in unit space) and use this matrix to get the correct positions/scales/etc back
                 invGeometryTransform.identity();
 
@@ -350,7 +347,7 @@ namespace Import {
             Attorney::MeshImporter::addSubMesh(*mesh, tempSubMesh, invGeometryTransform);
         }
 
-        mesh->getGeometryVB()->create(true, true);
+        mesh->geometryBuffer()->create(true, true);
         Attorney::MeshImporter::setNodeData(*mesh, dataIn._nodeData);
 
         WAIT_FOR_CONDITION(taskCounter.load() == 0)
@@ -364,13 +361,8 @@ namespace Import {
 
     /// Load the material for the current SubMesh
     Material_ptr MeshImporter::loadSubMeshMaterial(ResourceCache* cache, const Import::MaterialData& importData, const bool loadedFromCache, bool skinned, std::atomic_uint& taskCounter) {
-        ResourceDescriptor materialDesc(importData.name());
-        if (skinned) {
-            materialDesc.enumValue(to_base(Object3D::ObjectFlag::OBJECT_FLAG_SKINNED));
-        }
-
         bool wasInCache = false;
-        Material_ptr tempMaterial = CreateResource<Material>(cache, materialDesc, wasInCache);
+        Material_ptr tempMaterial = CreateResource<Material>(cache, ResourceDescriptor(importData.name()), wasInCache);
         if (wasInCache) {
             return tempMaterial;
         }
@@ -378,6 +370,7 @@ namespace Import {
             tempMaterial->ignoreXMLData(true);
         }
 
+        tempMaterial->properties().hardwareSkinning(skinned);
         tempMaterial->properties().emissive(importData.emissive());
         tempMaterial->properties().ambient(importData.ambient());
         tempMaterial->properties().specular(importData.specular().rgb);

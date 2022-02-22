@@ -181,16 +181,20 @@ void fillEnumTables() {
     glImageFormatTable[to_base(GFXImageFormat::DXT3_RGBA_SRGB)] = GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT;
     glImageFormatTable[to_base(GFXImageFormat::DXT5_RGBA_SRGB)] = GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT;
 
-    glPrimitiveTypeTable[to_base(PrimitiveTopology::API_POINTS)] = GL_POINTS;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::POINTS)] = GL_POINTS;
     glPrimitiveTypeTable[to_base(PrimitiveTopology::LINES)] = GL_LINES;
     glPrimitiveTypeTable[to_base(PrimitiveTopology::LINE_LOOP)] =  GL_LINE_LOOP;
     glPrimitiveTypeTable[to_base(PrimitiveTopology::LINE_STRIP)] = GL_LINE_STRIP;
     glPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLES)] = GL_TRIANGLES;
     glPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLE_STRIP)] = GL_TRIANGLE_STRIP;
     glPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLE_FAN)] = GL_TRIANGLE_FAN;
-    // glPrimitiveTypeTable[to_base(PrimitiveTopology::QUADS)] = GL_QUADS; //<Deprecated
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::QUADS)] = GL_QUADS; //<Deprecated
     glPrimitiveTypeTable[to_base(PrimitiveTopology::QUAD_STRIP)] = GL_QUAD_STRIP;
     glPrimitiveTypeTable[to_base(PrimitiveTopology::POLYGON)] = GL_POLYGON;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::LINES_ADJANCENCY)] = GL_LINES_ADJACENCY;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::LINE_STRIP_ADJACENCY)] = GL_LINE_STRIP_ADJACENCY;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLES_ADJACENCY)] = GL_TRIANGLES_ADJACENCY;
+    glPrimitiveTypeTable[to_base(PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY)] = GL_TRIANGLE_STRIP_ADJACENCY;
     glPrimitiveTypeTable[to_base(PrimitiveTopology::PATCH)] = GL_PATCHES;
 
     glDataFormat[to_base(GFXDataFormat::UNSIGNED_BYTE)] = GL_UNSIGNED_BYTE;
@@ -216,7 +220,7 @@ void fillEnumTables() {
     glTextureFilterTable[to_base(TextureFilter::NEAREST_MIPMAP_LINEAR)] = GL_NEAREST_MIPMAP_LINEAR;
     glTextureFilterTable[to_base(TextureFilter::LINEAR_MIPMAP_LINEAR)] = GL_LINEAR_MIPMAP_LINEAR;
 
-    glimPrimitiveType[to_base(PrimitiveTopology::API_POINTS)] = NS_GLIM::GLIM_ENUM::GLIM_POINTS;
+    glimPrimitiveType[to_base(PrimitiveTopology::POINTS)] = NS_GLIM::GLIM_ENUM::GLIM_POINTS;
     glimPrimitiveType[to_base(PrimitiveTopology::LINES)] = NS_GLIM::GLIM_ENUM::GLIM_LINES;
     glimPrimitiveType[to_base(PrimitiveTopology::LINE_LOOP)] = NS_GLIM::GLIM_ENUM::GLIM_LINE_LOOP;
     glimPrimitiveType[to_base(PrimitiveTopology::LINE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_LINE_STRIP;

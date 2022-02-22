@@ -9,7 +9,7 @@
 #include "Core/Headers/StringHelper.h"
 #include "Geometry/Animations/Headers/AnimationUtils.h"
 #include "Geometry/Animations/Headers/SceneAnimator.h"
-#include "Geometry/Shapes/Headers/SkinnedSubMesh.h"
+#include "Geometry/Shapes/Headers/SubMesh.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"

@@ -18,7 +18,7 @@ Mesh::Mesh(GFXDevice& context,
            const Str256& name,
            const ResourcePath& resourceName,
            const ResourcePath& resourceLocation)
-    : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, ObjectType::MESH, 0),
+    : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, ObjectType::MESH, Object3D::ObjectFlag::OBJECT_FLAG_NONE),
       _animator(nullptr)
 {
     setBounds(_boundingBox);
@@ -26,7 +26,7 @@ Mesh::Mesh(GFXDevice& context,
 
 void Mesh::addSubMesh(const SubMesh_ptr& subMesh, const mat4<F32>& localTransform) {
     // Hold a reference to the SubMesh by ID
-    _subMeshList.emplace_back(MeshData{ localTransform, subMesh, subMesh->getID() });
+    _subMeshList.emplace_back(MeshData{ localTransform, subMesh, subMesh->id() });
     Attorney::SubMeshMesh::setParentMesh(*subMesh, this);
 }
 
@@ -52,10 +52,10 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshI
                                to_base(ComponentType::RIGID_BODY) |
                                to_base(ComponentType::NAVIGATION);
 
-    constexpr U32 skinnedMask = normalMask |
-                                to_base(ComponentType::ANIMATION) |
+    constexpr U32 skinnedMask = to_base(ComponentType::ANIMATION) |
                                 to_base(ComponentType::INVERSE_KINEMATICS) |
                                 to_base(ComponentType::RAGDOLL);
+
     DIVIDE_ASSERT(meshIndex < _subMeshList.size());
 
     const MeshData& meshData = _subMeshList[meshIndex];
@@ -66,13 +66,13 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshI
     subMeshDescriptor._usageContext = parentNode->usageContext();
     subMeshDescriptor._instanceCount = parentNode->instanceCount();
     subMeshDescriptor._node = subMesh;
+    subMeshDescriptor._componentMask = normalMask;
 
     if (subMesh->getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED)) {
         assert(getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED));
-        subMeshDescriptor._componentMask = skinnedMask;
-    } else {
-        subMeshDescriptor._componentMask = normalMask;
+        subMeshDescriptor._componentMask |= skinnedMask;
     }
+
     subMeshDescriptor._name = Util::StringFormat("%s_%d", parentNode->name().c_str(), meshIndex);
 
     return parentNode->addChildNode(subMeshDescriptor);

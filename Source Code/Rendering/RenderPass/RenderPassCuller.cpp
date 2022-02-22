@@ -38,7 +38,7 @@ void RenderPassCuller::postCullNodes(const PlatformContext& context, const NodeC
                     continue;
                 }
 
-                if (snType != SceneNodeType::TYPE_OBJECT3D || node->getNode<Object3D>().getObjectType() == objType) {
+                if (snType != SceneNodeType::TYPE_OBJECT3D || node->getNode<Object3D>().geometryType() == objType) {
                     nodes.remove(i);
                 }
             }

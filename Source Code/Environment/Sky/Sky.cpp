@@ -810,11 +810,11 @@ void Sky::prepareRender(SceneGraphNode* sgn,
 void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
     topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
 
-    _sky->getGeometryVB()->populateAttributeMap(vertexFormatInOut);
+    _sky->geometryBuffer()->populateAttributeMap(vertexFormatInOut);
 
     GenericDrawCommand cmd = {};
-    cmd._sourceBuffer = _sky->getGeometryVB()->handle();
-    cmd._cmd.indexCount = to_U32(_sky->getGeometryVB()->getIndexCount());
+    cmd._sourceBuffer = _sky->geometryBuffer()->handle();
+    cmd._cmd.indexCount = to_U32(_sky->geometryBuffer()->getIndexCount());
 
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 

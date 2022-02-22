@@ -708,25 +708,20 @@ void RenderingComponent::drawDebugAxis() {
 
 void RenderingComponent::drawSkeleton() {
     const SceneNode& node = _parentSGN->getNode();
-    const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH;
+    const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).geometryType() == ObjectType::SUBMESH;
     if (!isSubMesh) {
         return;
     }
 
-    // Continue only for skinned 3D objects
-    if (static_cast<const Object3D&>(node).getObjectFlag(Object3D::ObjectFlag::OBJECT_FLAG_SKINNED))
-    {
-        // Get the animation component of any submesh. They should be synced anyway.
-        const AnimationComponent* animComp = _parentSGN->get<AnimationComponent>();
-        if (animComp != nullptr) {
-            // Get the skeleton lines from the submesh's animation component
-            _skeletonLinesDescriptor._lines = animComp->skeletonLines();
-            _skeletonLinesDescriptor.worldMatrix.set(_parentSGN->get<TransformComponent>()->getWorldMatrix());
-            // Submit the skeleton lines to the GPU for rendering
-            _context.debugDrawLines(_parentSGN->getGUID() + 213, _skeletonLinesDescriptor);
-        }
-    } 
-    
+    // Get the animation component of any submesh. They should be synced anyway.
+    const AnimationComponent* animComp = _parentSGN->get<AnimationComponent>();
+    if (animComp != nullptr) {
+        // Get the skeleton lines from the submesh's animation component
+        _skeletonLinesDescriptor._lines = animComp->skeletonLines();
+        _skeletonLinesDescriptor.worldMatrix.set(_parentSGN->get<TransformComponent>()->getWorldMatrix());
+        // Submit the skeleton lines to the GPU for rendering
+        _context.debugDrawLines(_parentSGN->getGUID() + 213, _skeletonLinesDescriptor);
+    }
 }
 
 void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool Sphere) {
@@ -735,7 +730,7 @@ void RenderingComponent::drawBounds(const bool AABB, const bool OBB, const bool 
     }
 
     const SceneNode& node = _parentSGN->getNode();
-    const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH;
+    const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).geometryType() == ObjectType::SUBMESH;
 
     if (AABB) {
         const BoundingBox& bb = _parentSGN->get<BoundsComponent>()->getBoundingBox();

@@ -16,8 +16,6 @@ CachedResource_ptr ImplResourceLoader<Material>::operator()() {
 
     if (!Load(ptr)) {
         ptr.reset();
-    } else {
-        ptr->properties().hardwareSkinning(_descriptor.enumValue() == to_base(Object3D::ObjectFlag::OBJECT_FLAG_SKINNED));
     }
 
     return ptr;

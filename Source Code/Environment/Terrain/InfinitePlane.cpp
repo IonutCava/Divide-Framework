@@ -119,13 +119,13 @@ void InfinitePlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, Scen
 
 void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
     topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
-    _plane->getGeometryVB()->populateAttributeMap(vertexFormatInOut);
+    _plane->geometryBuffer()->populateAttributeMap(vertexFormatInOut);
 
     //infinite plane
     GenericDrawCommand planeCmd = {};
     planeCmd._cmd.firstIndex = 0u;
-    planeCmd._cmd.indexCount = to_U32(_plane->getGeometryVB()->getIndexCount());
-    planeCmd._sourceBuffer = _plane->getGeometryVB()->handle();
+    planeCmd._cmd.indexCount = to_U32(_plane->geometryBuffer()->getIndexCount());
+    planeCmd._sourceBuffer = _plane->geometryBuffer()->handle();
     cmdsOut.emplace_back(GFX::DrawCommand{ planeCmd });
 
     SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);

@@ -265,9 +265,6 @@
     <ClCompile Include="../../Source Code/Graphs\SceneNodeRenderState.cpp">
       <Filter>Graphs</Filter>
     </ClCompile>
-    <ClCompile Include="../../Source Code/Geometry\Shapes\SkinnedSubMesh.cpp">
-      <Filter>Geometry\Shapes</Filter>
-    </ClCompile>
     <ClCompile Include="../../Source Code/Rendering\RenderPass\RenderBin.cpp">
       <Filter>Rendering\RenderPass</Filter>
     </ClCompile>
@@ -849,9 +846,6 @@
       <Filter>Geometry\Shapes\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code/Geometry\Shapes\Headers\Object3D.h">
-      <Filter>Geometry\Shapes\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Geometry\Shapes\Headers\SkinnedSubMesh.h">
       <Filter>Geometry\Shapes\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code/Geometry\Shapes\Headers\SubMesh.h">

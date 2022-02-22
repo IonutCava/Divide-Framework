@@ -205,8 +205,13 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
     _runQueries = _context.queryPerformanceStats();
     {
         OPTICK_EVENT("GL_API: Sync Cleanup");
-        while (TryDeleteExpiredSync()) {
-            NOP();
+        try {
+            while (TryDeleteExpiredSync()) {
+                NOP();
+            }
+        } catch (...)
+        {
+            DIVIDE_UNEXPECTED_CALL();
         }
     }
 }
@@ -453,10 +458,10 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
     if (cmd._sourceBuffer._id == 0) {
         U32 indexCount = 0u;
         switch (GL_API::GetStateTracker()._activeTopology) {
-            case PrimitiveTopology::COUNT      : DIVIDE_UNEXPECTED_CALL();         break;
-            case PrimitiveTopology::TRIANGLES  : indexCount = cmd._drawCount * 3;  break;
-            case PrimitiveTopology::API_POINTS : indexCount = cmd._drawCount * 1;  break;
-            default                        : indexCount = cmd._cmd.indexCount; break;
+            case PrimitiveTopology::COUNT     : DIVIDE_UNEXPECTED_CALL();         break;
+            case PrimitiveTopology::TRIANGLES : indexCount = cmd._drawCount * 3;  break;
+            case PrimitiveTopology::POINTS    : indexCount = cmd._drawCount * 1;  break;
+            default                           : indexCount = cmd._cmd.indexCount; break;
         }
 
         glDrawArrays(GLUtil::glPrimitiveTypeTable[to_base(GL_API::GetStateTracker()._activeTopology)], cmd._cmd.firstIndex, indexCount);

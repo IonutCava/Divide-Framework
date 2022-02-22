@@ -1601,7 +1601,7 @@ testNode:
             }
 
             if (crtNode->getNode().type() == SceneNodeType::TYPE_OBJECT3D &&
-                crtNode->getNode<Object3D>().getObjectType() == ObjectType::SUBMESH) {
+                crtNode->getNode<Object3D>().geometryType() == ObjectType::SUBMESH) {
                 // In normal gameplay, we need to top node for the selection (i.e. a mesh for submeshe intersections)
                 // Because we use either the physics system or a recursive scenegraph intersection loop, we may end up with
                 // child-node data as a result

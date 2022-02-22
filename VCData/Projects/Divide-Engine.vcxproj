@@ -624,7 +624,6 @@
     <ClCompile Include="../../Source Code/Geometry\Shapes\Predefined\Box3D.cpp" />
     <ClCompile Include="../../Source Code/Geometry\Shapes\Predefined\Quad3D.cpp" />
     <ClCompile Include="../../Source Code/Geometry\Shapes\Predefined\Sphere3D.cpp" />
-    <ClCompile Include="../../Source Code/Geometry\Shapes\SkinnedSubMesh.cpp" />
     <ClCompile Include="../../Source Code/Graphs\IntersectionRecord.cpp" />
     <ClCompile Include="../../Source Code/Graphs\Octree.cpp" />
     <ClCompile Include="../../Source Code/Graphs\SceneNodeRenderState.cpp" />
@@ -770,7 +769,6 @@
     <ClInclude Include="../../Source Code/Geometry\Material\Headers\ShaderProgramInfo.h" />
     <ClInclude Include="../../Source Code/Geometry\Shapes\Headers\Mesh.h" />
     <ClInclude Include="../../Source Code/Geometry\Shapes\Headers\Object3D.h" />
-    <ClInclude Include="../../Source Code/Geometry\Shapes\Headers\SkinnedSubMesh.h" />
     <ClInclude Include="../../Source Code/Geometry\Shapes\Headers\SubMesh.h" />
     <ClInclude Include="../../Source Code/Geometry\Shapes\Predefined\Headers\Box3D.h" />
     <ClInclude Include="../../Source Code/Geometry\Shapes\Predefined\Headers\Quad3D.h" />

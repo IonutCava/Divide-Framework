@@ -77,7 +77,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->getGUID();
-            pipelineDescriptor._primitiveTopology = PrimitiveTopology::API_POINTS;
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
             _blurPipeline = _context.newPipeline(pipelineDescriptor);
         });
     }
@@ -267,7 +267,7 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
                 for (auto& node : prevPassResults) {
                     const SceneNode& sNode = node._node->getNode();
                     if (sNode.type() == SceneNodeType::TYPE_OBJECT3D) {
-                        if (static_cast<const Object3D&>(sNode).getObjectType() == ObjectType::SUBMESH) {
+                        if (static_cast<const Object3D&>(sNode).geometryType() == ObjectType::SUBMESH) {
                             meshAABB.add(node._node->get<BoundsComponent>()->getBoundingBox());
                             validResult = true;
                         }

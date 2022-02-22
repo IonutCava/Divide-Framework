@@ -403,22 +403,29 @@ namespace Names {
 static_assert(std::size(Names::pbType) == to_base(PBType::COUNT) + 1);
 
 enum class PrimitiveTopology : U8 {
-    API_POINTS = 0x0000,
-    LINES = 0x0001,
-    LINE_LOOP = 0x0002,
-    LINE_STRIP = 0x0003,
-    TRIANGLES = 0x0004,
-    TRIANGLE_STRIP = 0x0005,
-    TRIANGLE_FAN = 0x0006,
-    QUAD_STRIP = 0x0007,
-    POLYGON = 0x0008,
-    PATCH = 0x0009,
+    POINTS = 0,
+    LINES,
+    LINE_LOOP,
+    LINE_STRIP,
+    TRIANGLES,
+    TRIANGLE_STRIP,
+    TRIANGLE_FAN,
+    QUADS, //Deprecated?
+    QUAD_STRIP,
+    POLYGON,
+    LINES_ADJANCENCY,
+    LINE_STRIP_ADJACENCY,
+    TRIANGLES_ADJACENCY,
+    TRIANGLE_STRIP_ADJACENCY,
+    PATCH,
     COUNT
 };
 
 namespace Names {
     static const char* primitiveType[] = {
-        "POINTS", "LINES", "LINE_LOOP", "LINE_STRIP", "TRIANGLES", "TRIANGLE_STRIP", "TRIANGLE_FAN", "QUAD_STRIP", "POLYGON", "PATCH", "NONE"
+        "POINTS", "LINES", "LINE_LOOP", "LINE_STRIP", "TRIANGLES", "TRIANGLE_STRIP",
+        "TRIANGLE_FAN", "QUADS", "QUAD_STRIP", "POLYGON", "LINES_ADJANCENCY",
+        "LINE_STRIP_ADJACENCY", "TRIANGLES_ADJACENCY", "TRIANGLE_STRIP_ADJACENCY", "PATCH", "NONE"
     };
 };
 

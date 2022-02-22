@@ -178,10 +178,10 @@ void glGenericVertexData::bindBuffersInternal() {
 
         s_bufferIDs[i] = buffer->bufferHandle();
         s_offsets[i] = entry._offset;
-        s_strides[i] = elementSize;
+        s_strides[i] = static_cast<GLsizei>(elementSize);
     }
 
-    if (GL_API::GetStateTracker().bindActiveBuffers(0u, bufferCount, s_bufferIDs, s_offsets, s_strides) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker().bindActiveBuffers(0u, static_cast<GLsizei>(bufferCount), s_bufferIDs, s_offsets, s_strides) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
 }

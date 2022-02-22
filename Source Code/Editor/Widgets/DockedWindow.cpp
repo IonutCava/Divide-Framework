@@ -58,7 +58,7 @@ namespace Divide {
     const char* DockedWindow::getIconForNode(const SceneGraphNode* sgn) noexcept {
         switch (sgn->getNode().type()) {
             case SceneNodeType::TYPE_OBJECT3D: {
-                switch (sgn->getNode<Object3D>().getObjectType()) {
+                switch (sgn->getNode<Object3D>().geometryType()) {
                     case ObjectType::SPHERE_3D: return ICON_FK_CIRCLE;
                     case ObjectType::BOX_3D: return ICON_FK_CUBE;
                     case ObjectType::QUAD_3D: return ICON_FK_SQUARE;

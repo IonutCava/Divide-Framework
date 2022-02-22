@@ -61,37 +61,54 @@ namespace Attorney {
 };
 
 class MeshImporter;
-class SubMesh : public Object3D {
+
+class AnimationComponent;
+class SubMesh final : public Object3D {
     friend class Attorney::SubMeshMesh;
     friend class Attorney::SubMeshMeshImporter;
+
+    enum class BoundingBoxState : U8 {
+        Computing = 0,
+        Computed,
+        COUNT
+    };
+
+    using BoundingBoxPerAnimation = vector<BoundingBox>;
+    using BoundingBoxPerAnimationStatus = vector<BoundingBoxState>;
 
    public:
     explicit SubMesh(GFXDevice& context,
                      ResourceCache* parentCache,
                      size_t descriptorHash,
-                     const Str256& name,
-                     ObjectFlag flag = ObjectFlag::OBJECT_FLAG_NO_VB);
+                     const Str256& name);
 
     virtual ~SubMesh() = default;
 
-    U32 getID() const noexcept { return _ID; }
-    /// When loading a submesh, the ID is the node index from the imported scene
-    /// scene->mMeshes[n] == (SubMesh with _ID == n)
-    void setID(const U32 ID) noexcept { _ID = ID; }
-    Mesh* getParentMesh() const noexcept { return _parentMesh; }
+    void postLoad(SceneGraphNode* sgn) override;
 
-   protected:
-    void setParentMesh(Mesh* parentMesh);
+    POINTER_R_IW(Mesh, parentMesh, nullptr);
+    PROPERTY_RW(U32, id, 0u);
 
+protected:
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "SubMesh"; }
 
-    // SGN node + parent mesh
-    size_t maxReferenceCount() const noexcept override { return 2; }
-   protected:
-    bool _visibleToNetwork = true;
-    bool _render = true;
-    U32 _ID = 0;
-    Mesh* _parentMesh = nullptr;
+private:
+    void computeBBForAnimation(SceneGraphNode* sgn, I32 animIndex);
+    void buildBoundingBoxesForAnim(const Task& parentTask, I32 animationIndex, const AnimationComponent* const animComp);
+
+    void updateBB(I32 animIndex);
+
+protected:
+    void onAnimationChange(SceneGraphNode* sgn, I32 newIndex) override;
+
+private:
+    /// Build status of bounding boxes for each animation
+    mutable SharedMutex _bbStateLock;
+    BoundingBoxPerAnimationStatus _boundingBoxesState;
+
+    /// store a map of bounding boxes for every animation. This should be large enough to fit all frames
+    mutable SharedMutex _bbLock;
+    BoundingBoxPerAnimation _boundingBoxes;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(SubMesh);
@@ -99,16 +116,17 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(SubMesh);
 namespace Attorney {
 class SubMeshMesh {
     static void setParentMesh(SubMesh& subMesh, Mesh* const parentMesh) {
-        subMesh.setParentMesh(parentMesh);
+        subMesh.parentMesh(parentMesh);
+        subMesh.geometryBuffer(parentMesh->geometryBuffer());
     }
 
     friend class Divide::Mesh;
 };
 
 class SubMeshMeshImporter {
-    static void setGeometryLimits(SubMesh& subMesh,
-                                  const vec3<F32>& min,
-                                  const vec3<F32>& max) noexcept {
+    static void setBoundingBox(SubMesh& subMesh,
+                               const vec3<F32>& min,
+                               const vec3<F32>& max) noexcept {
         subMesh._boundingBox.set(min, max);
     }
 

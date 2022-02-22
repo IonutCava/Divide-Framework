@@ -5,14 +5,14 @@
 namespace Divide {
 
 Sphere3D::Sphere3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name, const F32 radius, const U32 resolution)
-    : Object3D(context, parentCache, descriptorHash, name, {}, {}, ObjectType::SPHERE_3D, 0u),
+    : Object3D(context, parentCache, descriptorHash, name, {}, {}, ObjectType::SPHERE_3D, Object3D::ObjectFlag::OBJECT_FLAG_NONE),
     _radius(radius),
     _resolution(resolution)
 {
     const U32 vertexCount = SQUARED(resolution);
-    getGeometryVB()->setVertexCount(vertexCount);
-    getGeometryVB()->reserveIndexCount(vertexCount);
-    getGeometryVB()->useLargeIndices(vertexCount + 1 > U16_MAX);
+    geometryBuffer()->setVertexCount(vertexCount);
+    geometryBuffer()->reserveIndexCount(vertexCount);
+    geometryBuffer()->useLargeIndices(vertexCount + 1 > U16_MAX);
     geometryDirty(true);
 }
 
@@ -31,9 +31,7 @@ void Sphere3D::rebuildInternal() {
     const U32 slices = _resolution;
     const U32 stacks = _resolution;
 
-    VertexBuffer* const vb = getGeometryVB();
-
-    vb->reset();
+    geometryBuffer()->reset();
     const F32 drho = M_PI_f / stacks;
     const F32 dtheta = 2.0f * M_PI_f / slices;
     const F32 ds = 1.0f / slices;
@@ -41,9 +39,9 @@ void Sphere3D::rebuildInternal() {
     F32 t = 1.0f;
     U32 index = 0;  /// for the index buffer
 
-    vb->setVertexCount(stacks * ((slices + 1) * 2));
+    geometryBuffer()->setVertexCount(stacks * ((slices + 1) * 2));
 
-    for (U32 i = 0; i < stacks; i++) {
+    for (U32 i = 0u; i < stacks; i++) {
         const F32 rho = i * drho;
         const F32 srho = std::sin(rho);
         const F32 crho = std::cos(rho);
@@ -57,31 +55,31 @@ void Sphere3D::rebuildInternal() {
         for (U32 j = 0; j <= slices; j++) {
             const F32 theta = j == slices ? 0.0f : j * dtheta;
             const F32 stheta = -std::sin(theta);
-            const F32 ctheta = std::cos(theta);
+            const F32 ctheta =  std::cos(theta);
 
             F32 x = stheta * srho;
             F32 y = ctheta * srho;
             F32 z = crho;
 
-            vb->modifyPositionValue(index, x * _radius, y * _radius, z * _radius);
-            vb->modifyTexCoordValue(index, s, t);
-            vb->modifyNormalValue(index, x, y, z);
-            vb->addIndex(index++);
+            geometryBuffer()->modifyPositionValue(index, x * _radius, y * _radius, z * _radius);
+            geometryBuffer()->modifyTexCoordValue(index, s, t);
+            geometryBuffer()->modifyNormalValue(index, x, y, z);
+            geometryBuffer()->addIndex(index++);
 
             x = stheta * srhodrho;
             y = ctheta * srhodrho;
             z = crhodrho;
             s += ds;
 
-            vb->modifyPositionValue(index, x * _radius, y * _radius, z * _radius);
-            vb->modifyTexCoordValue(index, s, t - dt);
-            vb->modifyNormalValue(index, x, y, z);
-            vb->addIndex(index++);
+            geometryBuffer()->modifyPositionValue(index, x * _radius, y * _radius, z * _radius);
+            geometryBuffer()->modifyTexCoordValue(index, s, t - dt);
+            geometryBuffer()->modifyNormalValue(index, x, y, z);
+            geometryBuffer()->addIndex(index++);
         }
         t -= dt;
     }
 
-    vb->create(true, true);
+    geometryBuffer()->create(true, true);
     _geometryTriangles.resize(0);
 
     // ToDo: add some depth padding for collision and nav meshes

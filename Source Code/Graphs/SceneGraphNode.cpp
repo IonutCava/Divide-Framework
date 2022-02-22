@@ -81,12 +81,10 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
     AddComponents(descriptor._componentMask, false);
     AddComponents(_node->requiredComponentMask(), false);
 
-    Attorney::SceneNodeSceneGraph::registerSGNParent(_node.get(), this);
-
     const SceneNodeType nodeType = _node->type();
     if (nodeType == SceneNodeType::TYPE_TRANSFORM ||
         nodeType == SceneNodeType::TYPE_TRIGGER ||
-        (nodeType == SceneNodeType::TYPE_OBJECT3D && getNode<Object3D>().getObjectType() == ObjectType::MESH))
+        (nodeType == SceneNodeType::TYPE_OBJECT3D && getNode<Object3D>().geometryType() == ObjectType::MESH))
     {
         setFlag(Flags::IS_CONTAINER);
     }
@@ -98,13 +96,6 @@ SceneGraphNode::~SceneGraphNode()
     Console::printfn(Locale::Get(_ID("REMOVE_SCENEGRAPH_NODE")), name().c_str(), _node->resourceName().c_str());
 
     Attorney::SceneGraphSGN::onNodeDestroy(_sceneGraph, this);
-    Attorney::SceneNodeSceneGraph::unregisterSGNParent(_node.get(), this);
-    if (Attorney::SceneNodeSceneGraph::parentCount(_node.get()) == 0) {
-        assert(_node.use_count() <= Attorney::SceneNodeSceneGraph::maxReferenceCount(_node.get()));
-
-        _node.reset();
-    }
-
     // Bottom up
     {
         ScopedLock<SharedMutex> w_lock(_children._lock);
@@ -608,7 +599,7 @@ namespace {
         if (nodeType == SceneNodeType::TYPE_SKY ||
             nodeType == SceneNodeType::TYPE_WATER ||
             nodeType == SceneNodeType::TYPE_INFINITEPLANE ||
-            (nodeType == SceneNodeType::TYPE_OBJECT3D && node->getNode<Object3D>().getObjectType() == ObjectType::DECAL))
+            (nodeType == SceneNodeType::TYPE_OBJECT3D && node->getNode<Object3D>().geometryType() == ObjectType::DECAL))
         {
             return false;
         }

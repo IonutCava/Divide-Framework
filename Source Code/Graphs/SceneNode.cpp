@@ -19,7 +19,6 @@ SceneNode::SceneNode(ResourceCache* parentCache, const size_t descriptorHash, co
      _editorComponent(nullptr, &parentCache->context().editor(), ComponentType::COUNT, Names::sceneNodeType[to_base(type)]),
      _parentCache(parentCache)
 {
-    std::atomic_init(&_sgnParentCount, 0);
     _requiredComponentMask |= requiredComponentMask;
 
     getEditorComponent().onChangedCbk([this](const std::string_view field) {
@@ -35,8 +34,8 @@ SceneNode::~SceneNode()
 string SceneNode::getTypeName() const {
     if (_type == SceneNodeType::TYPE_OBJECT3D) {
         const Object3D* obj = static_cast<const Object3D*>(this);
-        if (obj->getObjectType() != ObjectType::COUNT) {
-            return TypeUtil::ObjectTypeToString(obj->getObjectType());
+        if (obj->geometryType() != ObjectType::COUNT) {
+            return TypeUtil::ObjectTypeToString(obj->geometryType());
         }
     }
 

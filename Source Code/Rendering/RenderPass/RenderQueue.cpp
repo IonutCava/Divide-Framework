@@ -101,7 +101,7 @@ RenderBin* RenderQueue::getBinForNode(const SceneGraphNode* node, const Material
         //case SceneNodeType::TYPE_WATER:
         case SceneNodeType::TYPE_OBJECT3D: {
             if (node->getNode().type() == SceneNodeType::TYPE_OBJECT3D) {
-                switch (node->getNode<Object3D>().getObjectType()) {
+                switch (node->getNode<Object3D>().geometryType()) {
                     case ObjectType::TERRAIN:
                         return getBin(RenderBinType::TERRAIN);
 

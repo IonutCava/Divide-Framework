@@ -61,6 +61,23 @@ namespace Names {
 
 static_assert(ArrayCount(Names::objectType) == to_base(ObjectType::COUNT) + 1, "ObjectType name array out of sync!");
 
+FORCE_INLINE constexpr bool IsPrimitive(const ObjectType type) noexcept {
+    return type == ObjectType::BOX_3D ||
+           type == ObjectType::QUAD_3D ||
+           type == ObjectType::PATCH_3D ||
+           type == ObjectType::SPHERE_3D;
+}
+
+FORCE_INLINE [[nodiscard]] constexpr PrimitiveTopology GetGeometryBufferType(const ObjectType type) noexcept {
+    switch (type) {
+        case ObjectType::BOX_3D:
+        case ObjectType::MESH:
+        case ObjectType::SUBMESH: return PrimitiveTopology::TRIANGLES;
+    }
+
+    return PrimitiveTopology::TRIANGLE_STRIP;
+}
+
 namespace TypeUtil {
     const char* ObjectTypeToString(const ObjectType objectType) noexcept;
     ObjectType StringToObjectType(const string& name);
@@ -70,17 +87,17 @@ class Object3D : public SceneNode {
    public:
 
     enum class ObjectFlag : U8 {
+        OBJECT_FLAG_NONE = 0,
         OBJECT_FLAG_SKINNED = toBit(1),
-        OBJECT_FLAG_NO_VB = toBit(2)
+        OBJECT_FLAG_NO_VB = toBit(2),
+        COUNT = 3
     };
 
     explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, ObjectType type, U32 flagMask);
+    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, ObjectType type, ObjectFlag flag);
 
     virtual ~Object3D() = default;
 
-    VertexBuffer* getGeometryVB() const noexcept;
-
-    ObjectType getObjectType() const noexcept { return _geometryType; }
 
     void setObjectFlag(const ObjectFlag flag) noexcept {
         SetBit(_geometryFlagMask, flag);
@@ -98,14 +115,9 @@ class Object3D : public SceneNode {
         return _geometryFlagMask;
     }
 
-    void postLoad(SceneGraphNode* sgn) override;
+    [[nodiscard]] VertexBuffer* geometryBuffer();
+    inline void geometryBuffer(VertexBuffer* vb) { _geometryBuffer = vb; }
 
-    void prepareRender(SceneGraphNode* sgn,
-                       RenderingComponent& rComp,
-                       RenderStagePass renderStagePass,
-                       const CameraSnapshot& cameraSnapshot,
-                       bool refreshData) override;
-                        
     virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] I32 newIndex) {}
 
     /// Use playAnimations() to toggle animation playback for the current object
@@ -134,17 +146,11 @@ class Object3D : public SceneNode {
         }
     }
 
-    [[nodiscard]] vector<vec3<U32>>& getTriangles(const U16 partitionID) {
-        if (partitionID >= _geometryTriangles.size()) {
-            _geometryTriangles.resize(to_size(partitionID) + 1);
-        }
-
-        return _geometryTriangles[std::min(partitionID, to_U16(_geometryTriangles.size()))];
-    }
-
-    [[nodiscard]] const vector<vec3<U32>>& getTriangles(const U16 partitionID) const {
-        DIVIDE_ASSERT(partitionID < _geometryTriangles.size());
-        return _geometryTriangles[std::min(partitionID, to_U16(_geometryTriangles.size()))];
+    [[nodiscard]] const vector<vec3<U32>>& getTriangles(const U16 partitionID) {
+         if (!computeTriangleList(partitionID)) {
+             DIVIDE_UNEXPECTED_CALL();
+         }
+         return _geometryTriangles[partitionID];
     }
 
     void addTriangles(const U16 partitionID, const vector<vec3<U32>>& triangles) {
@@ -157,13 +163,8 @@ class Object3D : public SceneNode {
                                                cend(triangles));
     }
 
-    // Create a list of triangles from the vertices + indices lists based on primitive type
-    [[nodiscard]] bool computeTriangleList(U16 partitionID, bool force = false);
-
     [[nodiscard]] static vector<SceneGraphNode*> filterByType(const vector<SceneGraphNode*>& nodes, ObjectType filter);
 
-    [[nodiscard]] bool isPrimitive() const noexcept;
-    [[nodiscard]] PrimitiveTopology getGeometryBufferType() const noexcept;
     [[nodiscard]] bool saveCache(ByteBuffer& outputBuffer) const override;
     [[nodiscard]] bool loadCache(ByteBuffer& inputBuffer) override;
 
@@ -171,13 +172,13 @@ class Object3D : public SceneNode {
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
 
     PROPERTY_RW(bool, geometryDirty, true);
+    PROPERTY_R(ObjectType, geometryType, ObjectType::COUNT);
 
    protected:
-    virtual void rebuildInternal();
+    // Create a list of triangles from the vertices + indices lists based on primitive type
+    [[nodiscard]] bool computeTriangleList(U16 partitionID, bool force = false);
 
-    /// Use a custom vertex buffer for this object (e.g., a SubMesh uses the mesh's vb)
-    /// Please manually delete the old VB if available before replacing!
-    virtual void setGeometryVB(VertexBuffer* vb);
+    virtual void rebuildInternal();
 
     void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) override;
 
@@ -187,16 +188,11 @@ class Object3D : public SceneNode {
     GFXDevice& _context;
     std::array<U16, 4> _geometryPartitionIDs;
     U32 _geometryFlagMask = 0u;
-    ObjectType _geometryType = ObjectType::COUNT;
-    RigidBodyShape _rigidBodyShape;
     /// 3 indices, pointing to position values, that form a triangle in the mesh.
     /// used, for example, for cooking collision meshes
     /// We keep separate triangle lists per partition
     vector<vector<vec3<U32>>> _geometryTriangles;
-
-  private:
-     /// A custom, override vertex buffer
-     VertexBuffer* _buffer = nullptr;
+    VertexBuffer* _geometryBuffer = nullptr;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Object3D);

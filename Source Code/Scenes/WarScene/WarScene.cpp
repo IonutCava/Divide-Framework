@@ -266,7 +266,7 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
         if (g_terrain == nullptr) {
             auto objects = sceneGraph()->getNodesByType(SceneNodeType::TYPE_OBJECT3D);
             for (SceneGraphNode* object : objects) {
-                if (object->getNode<Object3D>().getObjectType() == ObjectType::TERRAIN) {
+                if (object->getNode<Object3D>().geometryType() == ObjectType::TERRAIN) {
                     g_terrain = object;
                     break;
                 }

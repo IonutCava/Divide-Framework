@@ -67,7 +67,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->getGUID();
-            pipelineDescriptor._primitiveTopology = PrimitiveTopology::API_POINTS;
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 
             _blurPipeline = _context.newPipeline(pipelineDescriptor);
         });

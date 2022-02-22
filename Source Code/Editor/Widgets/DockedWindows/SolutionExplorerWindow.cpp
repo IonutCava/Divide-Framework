@@ -82,7 +82,7 @@ namespace Divide {
     void SolutionExplorerWindow::drawContextMenu(SceneGraphNode* sgn) {
         if (ImGui::BeginPopupContextItem("Context menu")) {
             const SceneNode& node = sgn->getNode();
-            const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH;
+            const bool isSubMesh = node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).geometryType() == ObjectType::SUBMESH;
             const bool isRoot = sgn->parent() == nullptr;
 
             ImGui::Text(Util::StringFormat("%s [%s]", getIconForNode(sgn), sgn->name().c_str()).c_str());

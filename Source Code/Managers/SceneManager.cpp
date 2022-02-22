@@ -422,7 +422,7 @@ vector<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& scre
         if (sNode.type() == SceneNodeType::TYPE_OBJECT3D) {
             auto* sComp = node->get<SelectionComponent>();
             if (sComp == nullptr && 
-                (sNode.type() == SceneNodeType::TYPE_OBJECT3D && node->getNode<Object3D>().getObjectType() == ObjectType::SUBMESH))
+                (sNode.type() == SceneNodeType::TYPE_OBJECT3D && node->getNode<Object3D>().geometryType() == ObjectType::SUBMESH))
             {
                 if (node->parent() != nullptr) {
                     // Already selected. Skip.
@@ -480,7 +480,7 @@ vector<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& scre
         if (parsedNode != nullptr) {
             while (true) {
                 const SceneNode& node = parsedNode->getNode();
-                if (node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).getObjectType() == ObjectType::SUBMESH) {
+                if (node.type() == SceneNodeType::TYPE_OBJECT3D && static_cast<const Object3D&>(node).geometryType() == ObjectType::SUBMESH) {
                     parsedNode = parsedNode->parent();
                 } else {
                     break;

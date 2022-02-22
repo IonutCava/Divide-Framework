@@ -117,7 +117,6 @@ class Mesh final : public Object3D {
     void setNodeData(const MeshNodeData& nodeStructure);
 
    protected:
-    bool _visibleToNetwork = true;
     U64 _lastTimeStamp = 0ull;
     /// Animation player to animate the mesh if necessary
     std::shared_ptr<SceneAnimator> _animator;

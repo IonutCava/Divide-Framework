@@ -150,7 +150,7 @@ namespace NS_GLIM
         // render all points
         if (m_Data.m_uiPointElements > 0)
         {
-            Divide::GL_API::GetStateTracker()._activeTopology = Divide::PrimitiveTopology::API_POINTS;
+            Divide::GL_API::GetStateTracker()._activeTopology = Divide::PrimitiveTopology::POINTS;
             cmd._cmd.indexCount = m_Data.m_uiPointElements;
             if (Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Data.m_uiElementBufferID_Points) == Divide::GLStateTracker::BindResult::FAILED) {
                 Divide::DIVIDE_UNEXPECTED_CALL();

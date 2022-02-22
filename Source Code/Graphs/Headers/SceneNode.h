@@ -164,8 +164,6 @@ class SceneNode : public CachedResource {
     [[nodiscard]] inline EditorComponent& getEditorComponent() noexcept { return _editorComponent; }
     [[nodiscard]] inline const EditorComponent& getEditorComponent() const noexcept { return _editorComponent; }
 
-    virtual size_t maxReferenceCount() const noexcept { return 1; }
-
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "SceneNode"; }
 
     PROPERTY_RW(SceneNodeType, type, SceneNodeType::COUNT);
@@ -190,8 +188,6 @@ class SceneNode : public CachedResource {
    private:
     Material_ptr _materialTemplate = nullptr;
 
-    std::atomic_size_t _sgnParentCount = 0;
-
     U32 _requiredComponentMask = to_U32(ComponentType::TRANSFORM);
 };
 
@@ -207,22 +203,6 @@ class SceneNodeSceneGraph {
                             SceneGraphNode* sgn, SceneState& sceneState) {
         OPTICK_EVENT();
         node->sceneUpdate(deltaTimeUS, sgn, sceneState);
-    }
-
-    static void registerSGNParent(SceneNode* node, [[maybe_unused]] SceneGraphNode* sgn) noexcept {
-        node->_sgnParentCount.fetch_add(1);
-    }
-
-    static void unregisterSGNParent(SceneNode* node, [[maybe_unused]] SceneGraphNode* sgn) noexcept {
-        node->_sgnParentCount.fetch_sub(1);
-    }
-
-    static size_t parentCount(const SceneNode* node) noexcept {
-        return node->_sgnParentCount.load();
-    }
-
-    static size_t maxReferenceCount(const SceneNode* node) noexcept {
-        return node->maxReferenceCount();
     }
 
     static EditorComponent& getEditorComponent(SceneNode* node) noexcept {
