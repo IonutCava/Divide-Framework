@@ -430,6 +430,112 @@ GLenum internalFormat(const GFXImageFormat baseFormat, const GFXDataFormat dataT
 
 namespace {
 
+void SubmitMultiIndirectCommand(const U32 drawCount,
+                                const GLenum mode,
+                                const GLenum internalFormat,
+                                const size_t offset)
+{
+    if (internalFormat != GL_NONE) {
+        glMultiDrawElementsIndirect(mode, internalFormat, (bufferPtr)offset, drawCount, sizeof(IndirectDrawCommand));
+    } else {
+        glMultiDrawArraysIndirect(mode, (bufferPtr)offset, drawCount, sizeof(IndirectDrawCommand));
+    }
+}
+
+void SubmitSingleIndirectCommand(const IndirectDrawCommand& cmd,
+                                 const GLenum mode,
+                                 const GLenum internalFormat,
+                                 const size_t offset)
+{
+    if (internalFormat != GL_NONE) {
+        glDrawElementsIndirect(mode, internalFormat, (bufferPtr)offset);
+    } else {
+        // This needs a different command buffer and different IndirectDrawCommand (16byte instead of 20)
+        if (cmd.primCount > 1u) {
+            if (cmd.baseInstance > 0u) {
+                glDrawArraysInstancedBaseInstance(mode, cmd.firstIndex, cmd.indexCount, cmd.primCount, cmd.baseInstance);
+            } else {
+                glDrawArraysInstanced(mode, cmd.firstIndex, cmd.indexCount, cmd.primCount);
+            }
+        } else {
+            if (cmd.baseInstance > 0u) {
+                glDrawArraysInstancedBaseInstance(mode, cmd.firstIndex, cmd.indexCount, 1u, cmd.baseInstance);
+            } else {
+                glDrawArrays(mode, cmd.firstIndex, cmd.indexCount);
+            }
+        }
+    }
+}
+
+void SubmitSingleDirectCommand(const GLenum mode,
+                               const GLenum internalFormat,
+                               const U32 indexCount,
+                               const U32 firstIndex,
+                               const U32 baseVertex,
+                               const U32 baseInstance,
+                               const size_t offset)
+{
+    if (internalFormat != GL_NONE) {
+        const size_t elementSize = internalFormat == GL_UNSIGNED_SHORT ? sizeof(GLushort) : sizeof(GLuint);
+        if (baseInstance > 0u) {
+            glDrawElementsInstancedBaseVertexBaseInstance(mode, indexCount, internalFormat, (bufferPtr)(offset * elementSize), 1, baseVertex, baseInstance);
+        } else {
+            if (baseVertex > 0u) {
+                glDrawElementsBaseVertex(mode, indexCount, internalFormat, (bufferPtr)(offset * elementSize), baseVertex);
+            } else {
+                glDrawElements(mode, indexCount, internalFormat, (bufferPtr)(offset * elementSize));
+            }
+        }
+    } else {
+        if (baseInstance > 0u) {
+            glDrawArraysInstancedBaseInstance(mode, firstIndex, indexCount, 1u, baseInstance);
+        } else {
+            glDrawArrays(mode, firstIndex, indexCount);
+        }
+    }
+}
+
+void SubmitMultiDirectCommand(const U32 drawCount,
+                              const GLenum mode,
+                              const GLenum internalFormat,
+                              const size_t* const countData,
+                              const bufferPtr indexData)
+{
+    if (internalFormat != GL_NONE) {
+        glMultiDrawElements(mode, reinterpret_cast<const GLsizei*>(countData), internalFormat, static_cast<void* const*>(indexData), drawCount);
+    } else {
+        glMultiDrawArrays(mode, static_cast<GLint*>(indexData), reinterpret_cast<const GLsizei*>(countData), drawCount);
+    }
+}
+
+void SubmitSingleDirectCommandInstanced(const GLenum mode, 
+                                        const GLenum internalFormat,
+                                        const U32 indexCount,
+                                        const U32 firstIndex,
+                                        const U32 primCount,
+                                        const U32 baseVertex,
+                                        const U32 baseInstance)
+{
+    if (internalFormat != GL_NONE) {
+        const size_t elementSize = internalFormat == GL_UNSIGNED_SHORT ? sizeof(GLushort) : sizeof(GLuint);
+        if (baseInstance > 0u) {
+            glDrawElementsInstancedBaseVertexBaseInstance(mode, indexCount, internalFormat, (bufferPtr)(firstIndex * elementSize), primCount, baseVertex, baseInstance);
+        } else {
+            if (baseVertex > 0u) {
+                glDrawElementsInstancedBaseVertex(mode, indexCount, internalFormat, (bufferPtr)(firstIndex * elementSize), primCount, baseVertex);
+            } else {
+                glDrawElementsInstanced(mode, indexCount, internalFormat, (bufferPtr)(firstIndex * elementSize), primCount);
+            }
+        }
+    } else {
+        if (baseInstance > 0u) {
+            glDrawArraysInstancedBaseInstance(mode, firstIndex, indexCount, primCount, baseInstance);
+        } else {
+            glDrawArraysInstanced(mode, firstIndex, indexCount, primCount);
+        }
+    }
+}
+
 void SubmitIndirectCommand(const IndirectDrawCommand& cmd,
                            const U32 drawCount,
                            const GLenum mode,
@@ -437,21 +543,12 @@ void SubmitIndirectCommand(const IndirectDrawCommand& cmd,
                            const GLuint cmdBufferOffset)
 {
     const size_t offset = cmdBufferOffset * sizeof(IndirectDrawCommand);
-    if (drawCount == 1) {
-        // We could just submit a multi-draw with a draw count of 1, but this might avoid some CPU overhead.
-        // Either I or the driver has to do the count check/loop, but I can profile my own code.
-        if (internalFormat != GL_NONE) {
-            glDrawElementsIndirect(mode, internalFormat, (bufferPtr)offset);
-        } else {
-            // This needs a different command buffer and different IndirectDrawCommand (16byte instead of 20)
-            glDrawArraysInstancedBaseInstance(mode, cmd.firstIndex, cmd.indexCount, cmd.primCount, cmd.baseInstance);
-        }
+
+    if (drawCount > 1u) {
+        SubmitMultiIndirectCommand(drawCount, mode, internalFormat, offset);
     } else {
-        if (internalFormat != GL_NONE) {
-            glMultiDrawElementsIndirect(mode, internalFormat, (bufferPtr)offset, drawCount, sizeof(IndirectDrawCommand));
-        } else {
-            glMultiDrawArraysIndirect(mode, (bufferPtr)offset, drawCount, sizeof(IndirectDrawCommand));
-        }
+        assert(drawCount == 1u);
+        SubmitSingleIndirectCommand(cmd, mode, internalFormat, offset);
     }
 }
 
@@ -462,34 +559,18 @@ void SubmitDirectCommand(const IndirectDrawCommand& cmd,
                          const size_t* const countData,
                          const bufferPtr indexData) 
 {
-    if (drawCount > 1 && cmd.primCount == 1) {
-        // We could just submit a multi-draw with a draw count of 1, but this might avoid some CPU overhead.
-        // Either I or the driver has to do the count check/loop, but I can profile my own code.
-        if (internalFormat != GL_NONE) {
-            glMultiDrawElements(mode, reinterpret_cast<const GLsizei*>(countData), internalFormat, static_cast<void* const*>(indexData), drawCount);
-        } else {
-            glMultiDrawArrays(mode, static_cast<GLint*>(indexData), reinterpret_cast<const GLsizei*>(countData), drawCount);
+    if (cmd.primCount > 1u) {
+        if (drawCount > 1u) {
+            DIVIDE_UNEXPECTED_CALL_MSG("Multi-draw is incompatible with instancing as gl_DrawID will have the wrong value. Split the call into multiple draw commands with manual uniform-updates in-between!");
         }
+
+        SubmitSingleDirectCommandInstanced(mode, internalFormat, cmd.indexCount, cmd.firstIndex, cmd.primCount, cmd.baseVertex, cmd.baseInstance);
     } else {
-        if (internalFormat != GL_NONE) {
-            const size_t elementSize = internalFormat == GL_UNSIGNED_SHORT ? sizeof(GLushort) : sizeof(GLuint);
-            for (GLuint i = 0; i < drawCount; ++i) {
-                glDrawElementsInstancedBaseVertexBaseInstance(mode,
-                                                              cmd.indexCount,
-                                                              internalFormat,
-                                                              (bufferPtr)(cmd.firstIndex * elementSize),
-                                                              cmd.primCount,
-                                                              cmd.baseVertex,
-                                                              cmd.baseInstance);
-            }
+        if (drawCount > 1u) {
+            SubmitMultiDirectCommand(drawCount, mode, internalFormat, countData, indexData);
         } else {
-            for (GLuint i = 0u; i < drawCount; ++i) {
-                glDrawArraysInstancedBaseInstance(mode,
-                                                  cmd.firstIndex,
-                                                  cmd.indexCount,
-                                                  cmd.primCount,
-                                                  cmd.baseInstance);
-            }
+            assert(drawCount == 1u);
+            SubmitSingleDirectCommand(mode, internalFormat, cmd.indexCount, cmd.firstIndex, cmd.baseVertex, cmd.baseInstance, cmd.firstIndex);
         }
     }
 }
@@ -583,15 +664,16 @@ void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
 {
     // OpenGL rendering is not thread-safe anyway, so this works
     static HardwareQueryContext context;
+    GLStateTracker& stateTracker = GL_API::GetStateTracker();
 
-    GL_API::GetStateTracker().toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
+    stateTracker.toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
 
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_GEOMETRY)) {
         context._queryLookupId = drawCommand._sourceBuffer._id;
         context._cmdOptions = drawCommand._renderOptions;
 
         BeginHardwareQueries(context);
-        SubmitRenderCommand(glPrimitiveTypeTable[to_base(GL_API::GetStateTracker()._activeTopology)], drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
+        SubmitRenderCommand(glPrimitiveTypeTable[to_base(stateTracker._activeTopology)], drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
         EndHardwareQueries(context);
     }
 

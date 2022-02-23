@@ -37,6 +37,10 @@ GLuint glGenericBuffer::bufferHandle() const noexcept {
     return bufferImpl()->memoryBlock()._bufferHandle;
 }
 
+size_t glGenericBuffer::dataOffset() const noexcept {
+    return bufferImpl()->memoryBlock()._offset;
+}
+
 void glGenericBuffer::writeData(const GLuint elementCount,
                                 const GLuint elementOffset,
                                 const GLuint ringWriteOffset,

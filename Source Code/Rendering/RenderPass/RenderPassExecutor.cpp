@@ -183,7 +183,7 @@ namespace {
 
             // We can gather all of our history (once we evicted the oldest entry) into our "previous frame written range" entry
             executorBuffer._bufferUpdateRangePrev.reset();
-            for (I32 i = 0; i < executorBuffer._gpuBuffer->queueLength() - 1; ++i) {
+            for (U32 i = 0u; i < executorBuffer._gpuBuffer->queueLength() - 1u; ++i) {
                 MergeBufferUpdateRanges(executorBuffer._bufferUpdateRangePrev, executorBuffer._bufferUpdateRangeHistory[i]);
             }
         }

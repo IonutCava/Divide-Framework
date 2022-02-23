@@ -2577,18 +2577,30 @@ GFXDevice::ObjectArena& GFXDevice::objectArena() noexcept {
     return _gpuObjectArena;
 }
 
-GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID) {
+GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const I32 maxCommandCount) {
+    const U32 newSize = to_U32(maxCommandCount * RenderPass::DataBufferRingSize);
+
+    GenericVertexData* ret = nullptr;
+
     const auto it = _IMGUIBuffers.find(windowGUID);
     if (it != eastl::cend(_IMGUIBuffers)) {
-        return it->second;
+        // If we need more space, skip this and just create a new, larger, buffer.
+        if (it->second->queueLength() >= newSize) {
+            return it->second;
+        } else {
+            ret = it->second;
+            ret->reset();
+            ret->resize(newSize);
+        }
     }
 
-    // Ring buffer wouldn't work properly with an IMMEDIATE MODE gui
-    // We update and draw multiple times in a loop
-    GenericVertexData* ret = newGVD(1);
+    if (ret == nullptr) {
+        ret = newGVD(newSize);
+        _IMGUIBuffers[windowGUID] = ret;
+    }
 
     GenericVertexData::IndexBuffer idxBuff;
-    idxBuff.smallIndices = sizeof(ImDrawIdx) == 2;
+    idxBuff.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
     idxBuff.count = (1 << 16) * 3;
 
     ret->create(1);
@@ -2596,11 +2608,11 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID) {
 
     GenericVertexData::SetBufferParams params = {};
     params._buffer = 0;
-    params._useRingBuffer = false;
+    params._useRingBuffer = true;
 
     params._bufferParams._elementCount = 1 << 16;
     params._bufferParams._elementSize = sizeof(ImDrawVert);
-    params._bufferParams._usePersistentMapping = false;
+    params._bufferParams._usePersistentMapping = true;
     params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
     params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     params._bufferParams._sync = true;
@@ -2609,7 +2621,6 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID) {
     ret->setBuffer(params); //Pos, UV and Colour
     ret->setIndexBuffer(idxBuff, BufferUpdateFrequency::OFTEN);
 
-    _IMGUIBuffers[windowGUID] = ret;
     return ret;
 }
 

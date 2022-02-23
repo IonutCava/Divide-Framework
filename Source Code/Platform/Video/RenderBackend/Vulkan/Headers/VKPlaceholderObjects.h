@@ -129,6 +129,10 @@ namespace Divide {
         void create([[maybe_unused]] U8 numBuffers = 1) noexcept override {
         }
 
+        void reset() override {
+
+        }
+
         void draw([[maybe_unused]] const GenericDrawCommand& command) noexcept override {
         }
 

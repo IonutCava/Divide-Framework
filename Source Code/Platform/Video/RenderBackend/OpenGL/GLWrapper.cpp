@@ -339,26 +339,32 @@ void GL_API::drawText(const TextElementBatch& batch) {
 }
 
 void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
+    static I32 s_maxCommandCount = 8u;
+
     OPTICK_EVENT();
 
-    if (data != nullptr && data->Valid) {
+    assert(data != nullptr);
+    if (data->Valid) {
+        s_maxCommandCount = std::max(s_maxCommandCount, data->CmdListsCount);
+
         GLStateTracker& stateTracker = GetStateTracker();
 
         GenericVertexData::IndexBuffer idxBuffer;
+        idxBuffer.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
+
         GenericDrawCommand cmd = {};
 
-        GenericVertexData* buffer = _context.getOrCreateIMGUIBuffer(windowGUID);
+        GenericVertexData* buffer = _context.getOrCreateIMGUIBuffer(windowGUID, s_maxCommandCount);
         assert(buffer != nullptr);
 
-        const ImVec2 pos = data->DisplayPos;
-        for (I32 n = 0; n < data->CmdListsCount; n++) {
+        for (I32 n = 0; n < data->CmdListsCount; ++n) {
 
             const ImDrawList* cmd_list = data->CmdLists[n];
 
-            idxBuffer.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
             idxBuffer.count = to_U32(cmd_list->IdxBuffer.Size);
             idxBuffer.data = cmd_list->IdxBuffer.Data;
 
+            buffer->incQueue();
             buffer->updateBuffer(0u, 0u, to_U32(cmd_list->VtxBuffer.size()), cmd_list->VtxBuffer.Data);
             buffer->updateIndexBuffer(idxBuffer);
 
@@ -369,10 +375,10 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
                     pcmd.UserCallback(cmd_list, &pcmd);
                 } else {
                     Rect<I32> clip_rect = {
-                        pcmd.ClipRect.x - pos.x,
-                        pcmd.ClipRect.y - pos.y,
-                        pcmd.ClipRect.z - pos.x,
-                        pcmd.ClipRect.w - pos.y
+                        pcmd.ClipRect.x - data->DisplayPos.x,
+                        pcmd.ClipRect.y - data->DisplayPos.y,
+                        pcmd.ClipRect.z - data->DisplayPos.x,
+                        pcmd.ClipRect.w - data->DisplayPos.y
                     };
 
                     const Rect<I32>& viewport = stateTracker._activeViewport;
@@ -399,7 +405,6 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
                      }
                 }
             }
-            buffer->incQueue();
         }
     }
 }

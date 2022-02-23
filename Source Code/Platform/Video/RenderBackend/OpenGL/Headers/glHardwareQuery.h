@@ -66,7 +66,7 @@ public:
     explicit glHardwareQueryRing(GFXDevice& context, GLenum queryType, U32 queueLength, U32 id = 0);
     ~glHardwareQueryRing();
 
-    void resize(I32 queueLength) override;
+    void resize(U32 queueLength) override;
 
     U32 id() const noexcept { return _id; }
 

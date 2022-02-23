@@ -337,7 +337,7 @@ public:
     Mutex&       objectArenaMutex() noexcept;
     ObjectArena& objectArena() noexcept;
 
-    GenericVertexData* getOrCreateIMGUIBuffer(I64 windowGUID);
+    GenericVertexData* getOrCreateIMGUIBuffer(I64 windowGUID, I32 maxCommandCount);
 
     /// Create and return a new immediate mode emulation primitive.
     IMPrimitive*       newIMP();

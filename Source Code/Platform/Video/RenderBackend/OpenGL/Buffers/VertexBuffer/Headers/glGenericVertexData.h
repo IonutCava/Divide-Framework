@@ -80,6 +80,7 @@ class glGenericVertexData final : public GenericVertexData {
     ~glGenericVertexData();
 
     void create(U8 numBuffers = 1) override;
+    void reset() override;
 
     void setIndexBuffer(const IndexBuffer& indices, BufferUpdateFrequency updateFrequency) override;
 

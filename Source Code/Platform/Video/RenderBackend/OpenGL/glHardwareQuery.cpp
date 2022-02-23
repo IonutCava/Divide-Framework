@@ -67,19 +67,19 @@ const glHardwareQuery& glHardwareQueryRing::writeQuery() const {
     return _queries[queueWriteIndex()];
 }
 
-void glHardwareQueryRing::resize(const I32 queueLength) {
+void glHardwareQueryRing::resize(const U32 queueLength) {
     RingBufferSeparateWrite::resize(queueLength);
 
-    const I32 crtCount = to_I32(_queries.size());
+    const size_t crtCount = _queries.size();
     if (queueLength < crtCount) {
-        while (queueLength < to_I32(crtCount)) {
+        while (queueLength < crtCount) {
             _queries.back().destroy();
             _queries.pop_back();
         }
     } else {
-        const I32 countToAdd = queueLength - crtCount;
+        const size_t countToAdd = queueLength - crtCount;
 
-        for (I32 i = 0; i < countToAdd; ++i) {
+        for (size_t i = 0; i < countToAdd; ++i) {
             _queries.emplace_back(_context);
             _queries.back().create(_queryType);
 

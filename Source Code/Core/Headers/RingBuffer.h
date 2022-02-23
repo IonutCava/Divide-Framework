@@ -38,12 +38,12 @@ namespace Divide {
 class RingBufferSeparateWrite : public NonCopyable {
 public:
     // If separateReadWrite is true, this behaves exactly like a RingBuffer
-    explicit RingBufferSeparateWrite(I32 queueLength, bool separateReadWrite, bool writeAhead = true) noexcept;
+    explicit RingBufferSeparateWrite(U32 queueLength, bool separateReadWrite, bool writeAhead = true) noexcept;
     virtual ~RingBufferSeparateWrite() = default;
 
-    virtual void resize(I32 queueLength);
+    virtual void resize(U32 queueLength);
 
-    [[nodiscard]] I32 queueLength() const noexcept { return _queueLength; }
+    [[nodiscard]] U32 queueLength() const noexcept { return _queueLength; }
 
     [[nodiscard]] I32 queueWriteIndex() const noexcept {
         const I32 ret = _queueIndex.load();
@@ -78,7 +78,7 @@ public:
     }
 
 private:
-    I32 _queueLength = 1;
+    U32 _queueLength = 1u;
     const bool _writeAhead = false;
     const bool _separateReadWrite = false;
     std::atomic_int _queueIndex = 0;
@@ -86,12 +86,12 @@ private:
 
 class RingBuffer : public NonCopyable {
 public:
-    explicit RingBuffer(I32 queueLength) noexcept;
+    explicit RingBuffer(U32 queueLength) noexcept;
     virtual ~RingBuffer() = default;
 
-    virtual void resize(I32 queueLength) noexcept;
+    virtual void resize(U32 queueLength) noexcept;
 
-    [[nodiscard]] I32 queueLength() const noexcept { return _queueLength; }
+    [[nodiscard]] U32 queueLength() const noexcept { return _queueLength; }
     [[nodiscard]] I32 queueIndex() const noexcept { return _queueIndex; }
 
     void incQueue() noexcept {
@@ -107,7 +107,7 @@ public:
     }
 
 private:
-    I32 _queueLength;
+    U32 _queueLength = 1u;
     std::atomic_int _queueIndex;
 };
 

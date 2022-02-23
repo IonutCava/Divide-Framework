@@ -55,6 +55,8 @@ class glGenericBuffer {
 
       [[nodiscard]] GLuint bufferHandle() const noexcept;
 
+      [[nodiscard]] size_t dataOffset() const noexcept;
+
       void clearData(GLuint elementOffset,
                      GLuint ringWriteOffset) const;
 

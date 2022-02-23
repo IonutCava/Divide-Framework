@@ -17,11 +17,7 @@ glGenericVertexData::glGenericVertexData(GFXDevice& context, const U32 ringBuffe
 
 glGenericVertexData::~glGenericVertexData()
 {
-    for (auto* it :_bufferObjects ) {
-        MemoryManager::DELETE(it);
-    }
-
-    GLUtil::freeBuffer(_indexBuffer);
+    reset();
 }
 
 /// Create the specified number of buffers and queries and attach them to this vertex data container
@@ -30,6 +26,15 @@ void glGenericVertexData::create(const U8 numBuffers) {
     assert(_bufferObjects.empty() && "glGenericVertexData error: create called with no buffers specified!");
     // Create our buffer objects
     _bufferObjects.resize(numBuffers, nullptr);
+}
+
+void glGenericVertexData::reset() {
+    for (auto* it : _bufferObjects) {
+        MemoryManager::DELETE(it);
+    }
+    _bufferObjects.resize(0);
+
+    GLUtil::freeBuffer(_indexBuffer);
 }
 
 /// Submit a draw command to the GPU using this object and the specified command
@@ -177,7 +182,7 @@ void glGenericVertexData::bindBuffersInternal() {
         GL_API::RegisterBufferBind(MOV(entry), true);
 
         s_bufferIDs[i] = buffer->bufferHandle();
-        s_offsets[i] = entry._offset;
+        s_offsets[i] = entry._offset + buffer->dataOffset();
         s_strides[i] = static_cast<GLsizei>(elementSize);
     }
 
@@ -195,7 +200,7 @@ void glGenericVertexData::bindBufferInternal(const U32 bufferIdx, const  U32 loc
     entry._length = buffer->elementCount() * elementSize;
     entry._offset = entry._length * queueIndex();
 
-    if (GL_API::GetStateTracker().bindActiveBuffer(location, buffer->bufferHandle(), entry._offset, elementSize) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker().bindActiveBuffer(location, buffer->bufferHandle(), buffer->dataOffset() + entry._offset, elementSize) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
     GL_API::RegisterBufferBind(MOV(entry), true);
