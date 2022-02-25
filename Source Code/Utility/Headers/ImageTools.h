@@ -87,7 +87,7 @@ struct LayerData {
 template<typename T>
 struct ImageMip final : LayerData {
 
-    explicit ImageMip(T* data, size_t len, const U16 width, const U16 height, const U16 depth, const U8 numComponents)
+    explicit ImageMip(const T* data, size_t len, const U16 width, const U16 height, const U16 depth, const U8 numComponents)
     {
         const size_t totalSizeTest = to_size(width) * height * depth * numComponents;
         const size_t actualSize = std::max(len, totalSizeTest);
@@ -110,7 +110,7 @@ protected:
 
 struct ImageLayer {
     template<typename T>
-    [[nodiscard]] T* allocateMip(T* data, size_t len, U16 width, U16 height, U16 depth, const U8 numComponents) {
+    [[nodiscard]] T* allocateMip(const T* data, size_t len, U16 width, U16 height, U16 depth, const U8 numComponents) {
         assert(_mips.size() < U8_MAX - 1);
 
         _mips.emplace_back(eastl::make_unique<ImageMip<T>>(data, len, width, height, depth, numComponents));
@@ -194,7 +194,7 @@ struct ImageData final : NonCopyable {
     FORCE_INLINE void getBlue(const I32 x, const I32 y, U8& b, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 2, b, layer, mipLevel); }
     FORCE_INLINE void getAlpha(const I32 x, const I32 y, U8& a, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 3, a, layer, mipLevel); }
 
-    [[nodiscard]] bool loadFromMemory(Byte* data, size_t size, U16 width, U16 height, U16 depth, U8 numComponents);
+    [[nodiscard]] bool loadFromMemory(const Byte* data, size_t size, U16 width, U16 height, U16 depth, U8 numComponents);
     /// creates this image instance from the specified data
     [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
     [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, ImportOptions options);

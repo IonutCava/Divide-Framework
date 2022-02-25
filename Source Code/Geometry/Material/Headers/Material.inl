@@ -104,12 +104,12 @@ inline void Material::addShaderDefineInternal(const ShaderType type, const strin
 
     if (!eastl::any_of(eastl::cbegin(defines),
                        eastl::cend(defines),
-                       [&define, addPrefix](const auto& it) {
-                            return it.second == addPrefix &&
-                                   it.first.compare(define.c_str()) == 0;
+                       [&define, addPrefix](const ModuleDefine& it) {
+                            return it._addPrefix == addPrefix &&
+                                   it._define.compare(define.c_str()) == 0;
                         }))
     {
-        defines.emplace_back(define.c_str(), addPrefix);
+        defines.emplace_back(define, addPrefix);
     }
 }
 

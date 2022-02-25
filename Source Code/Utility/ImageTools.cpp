@@ -225,7 +225,7 @@ bool UseUpperLeftOrigin() noexcept {
     return s_useUpperLeftOrigin;
 }
 
-bool ImageData::loadFromMemory(Byte* data, const size_t size, const U16 width, const U16 height, const U16 depth, const U8 numComponents) {
+bool ImageData::loadFromMemory(const Byte* data, const size_t size, const U16 width, const U16 height, const U16 depth, const U8 numComponents) {
     ImageLayer& layer = _layers.emplace_back();
     return layer.allocateMip(data, size, width, height, depth, numComponents);
 }

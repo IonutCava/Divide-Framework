@@ -34,10 +34,7 @@
 #define _GL_SHADER_H_
 
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
-#include "Platform/Video/Headers/GraphicsResource.h"
-
-
-#include <EASTL/array.h>
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
 
@@ -60,7 +57,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     };
 
     struct ShaderLoadData {
-        eastl::array<LoadData, to_base(ShaderType::COUNT)> _data;
+        std::array<LoadData, to_base(ShaderType::COUNT)> _data;
         string _uniformBlock = {};
         U8 _uniformIndex = 0u;
     };
@@ -119,7 +116,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
   private:
     ShaderLoadData _loadData;
     /// A list of preprocessor defines (if the bool in the pair is true, #define is automatically added
-    vector<std::pair<string, bool>> _definesList;
+    vector<ModuleDefine> _definesList;
     eastl::unique_ptr<glPushConstantUploader> _constantUploader = nullptr;
     std::atomic_size_t _refCount;
     UseProgramStageMask _stageMask;

@@ -146,11 +146,11 @@ void RenderPassCuller::frustumCullNode(SceneGraphNode* currentNode, const NodeCu
     OPTICK_EVENT();
 
     // We can manually exclude nodes by GUID, so check that
-    if (params._ignoredGUIDS.second > 0u) {
+    if (params._ignoredGUIDS._count > 0u) {
         // This is used, for example, by reflective nodes that should exclude themselves (mirrors, water, etc)
         const I64 nodeGUID = currentNode->getGUID();
-        for (size_t i = 0u; i < params._ignoredGUIDS.second; ++i) {
-            if (nodeGUID == params._ignoredGUIDS.first[i]) {
+        for (size_t i = 0u; i < params._ignoredGUIDS._count; ++i) {
+            if (nodeGUID == params._ignoredGUIDS._guids[i]) {
                 return;
             }
         }

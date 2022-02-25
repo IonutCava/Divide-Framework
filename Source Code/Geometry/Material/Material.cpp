@@ -1008,7 +1008,8 @@ void Material::loadRenderStatesFromXML(const string& entryName, const boost::pro
         if (it != cend(previousHashValues)) {
             _defaultRenderStates[s][p][v] = it->second;
         } else {
-            const auto[block, loadedHash] = RenderStateBlock::loadFromXML(Util::StringFormat("%s.%u", stateNode.c_str(), b), pt);
+            const RenderStateBlock block = RenderStateBlock::loadFromXML(Util::StringFormat("%s.%u", stateNode.c_str(), b), pt);
+            const size_t loadedHash = block.getHash();
             _defaultRenderStates[s][p][v] = loadedHash;
             previousHashValues[b] = loadedHash;
         }

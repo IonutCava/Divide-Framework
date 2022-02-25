@@ -168,7 +168,7 @@ namespace Divide {
         void loadData([[maybe_unused]] const ImageTools::ImageData& imageLayers) noexcept override {
         }
 
-        void loadData([[maybe_unused]] const std::pair<Byte*, size_t>& ptr, [[maybe_unused]] const vec2<U16>& dimensions) noexcept override {
+        void loadData([[maybe_unused]] const Byte* data, [[maybe_unused]] const size_t dataSize, [[maybe_unused]] const vec2<U16>& dimensions) noexcept override {
         }
 
         void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const noexcept override {
@@ -177,8 +177,9 @@ namespace Divide {
         void clearSubData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level, [[maybe_unused]] const vec4<I32>& rectToClear, [[maybe_unused]] const vec2<I32>& depthRange) const noexcept override {
         }
 
-        std::pair<std::shared_ptr<Byte[]>, size_t> readData([[maybe_unused]] U16 mipLevel, [[maybe_unused]] GFXDataFormat desiredFormat) const noexcept override {
-            return { nullptr, 0 };
+        TextureReadbackData readData([[maybe_unused]] U16 mipLevel, [[maybe_unused]] GFXDataFormat desiredFormat) const noexcept override {
+            TextureReadbackData data{};
+            return MOV(data);
         }
     };
 

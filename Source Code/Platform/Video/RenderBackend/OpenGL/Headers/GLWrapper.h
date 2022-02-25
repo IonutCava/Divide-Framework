@@ -199,7 +199,12 @@ private:
 
     CEGUI::OpenGL3Renderer* _GUIGLrenderer = nullptr;
 
-    std::pair<I64, SDL_GLContext> _currentContext = {-1, nullptr};
+    struct WindowGLContext {
+        I64 _windowGUID = -1;
+        SDL_GLContext _context = nullptr;
+    };
+
+    WindowGLContext _currentContext{};
 
 private:
     static std::atomic_bool s_glFlushQueued;

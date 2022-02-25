@@ -82,6 +82,12 @@ struct PerformanceMetrics
 
 struct DeviceInformation
 {
+    struct VersionInformation {
+        U8 _major = 0u;
+        U8 _minor = 0u;
+        U8 _patch = 0u;
+        U8 _variant = 0u;
+    };
     U32 _maxWorgroupCount[3] = {65535u, 65535u, 65535u};
     U16 _maxWorgroupSize[3] = {1024u, 1024u, 64u};
     size_t _UBOMaxSizeBytes = 64 * 1024;
@@ -94,7 +100,7 @@ struct DeviceInformation
     U32 _maxAtomicBufferBindingIndices = 4u;
     U32 _maxSSBOBufferBindings = 32u;
     U32 _shaderCompilerThreads = 1u;
-    std::pair<U8, U8> _versionInfo = { 4u, 6u };
+    VersionInformation _versionInfo = { 4u, 6u };
     U16 _UBOffsetAlignmentBytes = 256u;
     U16 _SSBOffsetAlignmentBytes = 16u;
     U8 _maxTextureUnits = 32u;

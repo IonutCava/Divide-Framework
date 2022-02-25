@@ -331,7 +331,7 @@ void Texture::setSampleCount(U8 newSampleCount) {
     CLAMP(newSampleCount, to_U8(0u), _context.gpuState().maxMSAASampleCount());
     if (_descriptor.msaaSamples() != newSampleCount) {
         _descriptor.msaaSamples(newSampleCount);
-        loadData({nullptr, 0 }, { width(), height() });
+        loadData(nullptr, 0u, { width(), height() });
     }
 }
 

@@ -101,7 +101,12 @@ enum class RenderQueueListType : U8 {
 };
 
 class RenderBin;
-using RenderQueuePackages = vector_fast<std::pair<RenderingComponent*, RenderPackage*>>;
+struct RenderQueuePackage {
+    RenderingComponent* _rComp = nullptr;
+    RenderPackage* _rPackage = nullptr;
+};
+
+using RenderQueuePackages = vector_fast<RenderQueuePackage>;
 
 /// This class contains a list of "RenderBinItem"'s and stores them sorted depending on designation
 class RenderBin {

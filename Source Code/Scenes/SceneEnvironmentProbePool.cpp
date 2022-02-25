@@ -29,7 +29,7 @@ vector<DebugView_ptr> SceneEnvironmentProbePool::s_debugViews;
 vector<Camera*> SceneEnvironmentProbePool::s_probeCameras;
 bool SceneEnvironmentProbePool::s_probesDirty = true;
 
-std::array<std::pair<bool, bool>, Config::MAX_REFLECTIVE_PROBES_PER_PASS> SceneEnvironmentProbePool::s_availableSlices;
+std::array<SceneEnvironmentProbePool::ProbeSlice, Config::MAX_REFLECTIVE_PROBES_PER_PASS> SceneEnvironmentProbePool::s_availableSlices;
 RenderTargetHandle SceneEnvironmentProbePool::s_reflection;
 RenderTargetHandle SceneEnvironmentProbePool::s_prefiltered;
 RenderTargetHandle SceneEnvironmentProbePool::s_irradiance;
@@ -56,7 +56,7 @@ I16 SceneEnvironmentProbePool::AllocateSlice(const bool lock) {
     static_assert(Config::MAX_REFLECTIVE_PROBES_PER_PASS < I16_MAX);
 
     for (U32 i = 0; i < Config::MAX_REFLECTIVE_PROBES_PER_PASS; ++i) {
-        if (s_availableSlices[i].first) {
+        if (s_availableSlices[i]._available) {
             s_availableSlices[i] = { false, lock };
             return to_I16(i);
         }
@@ -80,7 +80,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         s_probeCameras.emplace_back(Camera::createCamera<FreeFlyCamera>(Util::StringFormat("ProbeCamera_%d", i)));
     }
 
-    s_availableSlices.fill({ true, false });
+    s_availableSlices.fill({});
 
     // Reflection Targets
     SamplerDescriptor reflectionSampler = {};
@@ -245,8 +245,8 @@ const EnvironmentProbeList& SceneEnvironmentProbePool::sortAndGetLocked(const ve
 
 void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
     for (U16 i = 0u; i < Config::MAX_REFLECTIVE_PROBES_PER_PASS; ++i) {
-        if (!s_availableSlices[i].second) {
-            s_availableSlices[i].first = true;
+        if (!s_availableSlices[i]._locked) {
+            s_availableSlices[i]._available = true;
         }
     }
 

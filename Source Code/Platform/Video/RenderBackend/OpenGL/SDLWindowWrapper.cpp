@@ -30,19 +30,24 @@
 
 namespace Divide {
 namespace {
+    struct SDLContextEntry {
+        SDL_GLContext _context = nullptr;
+        bool _inUse = false;
+    };
+
     struct ContextPool {
         bool init(const size_t size, const DisplayWindow& window) {
             SDL_Window* raw = window.getRawWindow();
-            _contexts.resize(size, std::make_pair(nullptr, false));
-            for (auto&[context, _] : _contexts) {
-                context = SDL_GL_CreateContext(raw);
+            _contexts.resize(size);
+            for (SDLContextEntry& contextEntry : _contexts) {
+                contextEntry._context = SDL_GL_CreateContext(raw);
             }
             return true;
         }
 
         bool destroy() noexcept {
-            for (const auto& [context, _] : _contexts) {
-                SDL_GL_DeleteContext(context);
+            for (const SDLContextEntry& contextEntry : _contexts) {
+                SDL_GL_DeleteContext(contextEntry._context);
             }
             _contexts.clear();
             return true;
@@ -50,10 +55,10 @@ namespace {
 
         bool getAvailableContext(SDL_GLContext& ctx) noexcept {
             assert(!_contexts.empty());
-            for (auto& [context, used] : _contexts) {
-                if (!used) {
-                    ctx = context;
-                    used = true;
+            for (SDLContextEntry& contextEntry : _contexts) {
+                if (!contextEntry._inUse) {
+                    ctx = contextEntry._context;
+                    contextEntry._inUse = true;
                     return true;
                 }
             }
@@ -61,7 +66,7 @@ namespace {
             return false;
         }
 
-        vector<std::pair<SDL_GLContext, bool /*in use*/>> _contexts;
+        vector<SDLContextEntry> _contexts;
     } g_ContextPool;
 };
 
@@ -75,7 +80,8 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
 
     SDL_GL_MakeCurrent(window.getRawWindow(), (SDL_GLContext)window.userData());
     GLUtil::s_glMainRenderWindow = &window;
-    _currentContext = std::make_pair(window.getGUID(), window.userData());
+    _currentContext._windowGUID = window.getGUID();
+    _currentContext._context = window.userData();
 
     glbinding::Binding::initialize([](const char *proc) noexcept  { return (glbinding::ProcAddress)SDL_GL_GetProcAddress(proc); }, true);
 
@@ -183,11 +189,11 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
         return ErrorCode::GFX_NOT_SUPPORTED;
     }
 
-    deviceInformation._versionInfo.first = to_U8(GLUtil::getGLValue(GL_MAJOR_VERSION));
-    deviceInformation._versionInfo.second = to_U8(GLUtil::getGLValue(GL_MINOR_VERSION));
-    Console::printfn(Locale::Get(_ID("GL_MAX_VERSION")), deviceInformation._versionInfo.first, deviceInformation._versionInfo.second);
+    deviceInformation._versionInfo._major = to_U8(GLUtil::getGLValue(GL_MAJOR_VERSION));
+    deviceInformation._versionInfo._minor = to_U8(GLUtil::getGLValue(GL_MINOR_VERSION));
+    Console::printfn(Locale::Get(_ID("GL_MAX_VERSION")), deviceInformation._versionInfo._major, deviceInformation._versionInfo._minor);
 
-    if (deviceInformation._versionInfo.first < 4 || (deviceInformation._versionInfo.first == 4 && deviceInformation._versionInfo.second < 6)) {
+    if (deviceInformation._versionInfo._major < 4 || (deviceInformation._versionInfo._major == 4 && deviceInformation._versionInfo._minor < 6)) {
         Console::errorfn(Locale::Get(_ID("ERROR_OPENGL_VERSION_TO_OLD")));
         return ErrorCode::GFX_NOT_SUPPORTED;
     }

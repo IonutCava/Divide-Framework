@@ -116,8 +116,6 @@ class Material final : public CachedResource {
     friend class Attorney::MaterialRenderBin;
   public:
     static constexpr F32 MAX_SHININESS = 128.f;
-    static constexpr size_t INVALID_MAT_HASH = std::numeric_limits<size_t>::max();
-    static constexpr size_t INVALID_TEX_HASH = std::numeric_limits<size_t>::max();
 
     using SpecularGlossiness = vec2<F32>;
     using ComputeShaderCBK = DELEGATE_STD<ShaderProgramDescriptor, Material*, RenderStagePass>;

@@ -35,6 +35,7 @@
 
 #include "RenderBin.h"
 #include "Core/Headers/KernelComponent.h"
+#include "Platform/Video/Headers/RenderStagePass.h"
 
 namespace Divide {
 
@@ -49,11 +50,18 @@ class RenderQueue final : public KernelComponent {
   public: 
     using RenderBinArray = std::array<eastl::unique_ptr<RenderBin>, to_base(RenderBinType::COUNT)>;
 
+    struct PopulateQueueParams {
+        RenderStagePass _stagePass;
+        RenderBinType _binType = RenderBinType::COUNT;
+        ///_filterByBinType: if true, populate from bin, if false, populate from everything except bin
+        /// Combined with RenderBinType::COUNT, you get all 4 variants: all bins, no bins, just specified bin, all bins except for specified bin
+        bool _filterByBinType = false;
+    };
+
   public:
     explicit RenderQueue(Kernel& parent, RenderStage stage);
 
-    //binAndFlag: if true, populate from bin, if false, populate from everything except bin
-    void populateRenderQueues(RenderStagePass stagePass, std::pair<RenderBinType, bool> binAndFlag, RenderQueuePackages& queueInOut);
+    void populateRenderQueues(const PopulateQueueParams& params, RenderQueuePackages& queueInOut);
 
     void postRender(const SceneRenderState& renderState, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
     void sort(RenderStagePass stagePass, RenderBinType targetBinType = RenderBinType::COUNT, RenderingOrder renderOrder = RenderingOrder::COUNT);

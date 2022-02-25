@@ -58,6 +58,11 @@ namespace GFX {
 class RenderPassExecutor
 {
 public:
+    static constexpr size_t INVALID_MAT_HASH = std::numeric_limits<size_t>::max();
+    static constexpr size_t INVALID_TEX_HASH = std::numeric_limits<size_t>::max();
+    static constexpr U16 g_invalidMaterialIndex = Config::MAX_CONCURRENT_MATERIALS;
+    static constexpr U32 g_invalidTexturesIndex = g_invalidMaterialIndex;
+
     struct BufferUpdateRange
     {
         U32 _firstIDX = U32_MAX;
@@ -85,8 +90,13 @@ public:
     {
         static_assert(Config::MAX_CONCURRENT_MATERIALS <= U16_MAX);
 
+        struct LookupInfo {
+            size_t _hash = INVALID_MAT_HASH;
+            U16 _framesSinceLastUsed = g_invalidMaterialIndex;
+        };
+
         using FlagContainer = std::array<std::atomic_bool, Config::MAX_VISIBLE_NODES>;
-        using LookupInfoContainer = std::array<std::pair<size_t, U16>, Config::MAX_CONCURRENT_MATERIALS>;
+        using LookupInfoContainer = std::array<LookupInfo, Config::MAX_CONCURRENT_MATERIALS>;
         using MaterialDataContainer = std::array<NodeMaterialData, Config::MAX_CONCURRENT_MATERIALS>;
         MaterialDataContainer _gpuData{};
         LookupInfoContainer _lookupInfo{};
@@ -95,8 +105,12 @@ public:
 
     struct BufferTexturesData
     {
+        struct LookupInfo {
+            size_t _hash = INVALID_TEX_HASH;
+            U32 _framesSinceLastUsed = g_invalidTexturesIndex;
+        };
         using FlagContainer = std::array<std::atomic_bool, Config::MAX_VISIBLE_NODES>;
-        using LookupInfoContainer = std::array<std::pair<size_t, U32>, Config::MAX_VISIBLE_NODES>;
+        using LookupInfoContainer = std::array<LookupInfo, Config::MAX_VISIBLE_NODES>;
         using TexturesDataContainer = std::array<NodeMaterialTextures, Config::MAX_VISIBLE_NODES>;
         TexturesDataContainer _gpuData{};
         LookupInfoContainer _lookupInfo{};

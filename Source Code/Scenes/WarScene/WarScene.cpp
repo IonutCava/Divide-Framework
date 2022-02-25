@@ -400,34 +400,34 @@ bool WarScene::load() {
     sceneryNodeDescriptor._componentMask = normalMask;
 
     U8 locationFlag = 0;
-    std::pair<I32, I32> currentPos;
+    vec2<I32> currentPos;
     for (U8 i = 0; i < 40; ++i) {
         if (i < 10) {
             baseNode = cylinder[1];
             currentMesh = cylinderMeshNW;
             currentName = "Cylinder_NW_" + Util::to_string((I32)i);
-            currentPos.first = -200 + 40 * i + 50;
-            currentPos.second = -200 + 40 * i + 50;
+            currentPos.x = -200 + 40 * i + 50;
+            currentPos.y = -200 + 40 * i + 50;
         } else if (i >= 10 && i < 20) {
             baseNode = cylinder[2];
             currentMesh = cylinderMeshNE;
             currentName = "Cylinder_NE_" + Util::to_string((I32)i);
-            currentPos.first = 200 - 40 * (i % 10) - 50;
-            currentPos.second = -200 + 40 * (i % 10) + 50;
+            currentPos.x = 200 - 40 * (i % 10) - 50;
+            currentPos.y = -200 + 40 * (i % 10) + 50;
             locationFlag = 1;
         } else if (i >= 20 && i < 30) {
             baseNode = cylinder[3];
             currentMesh = cylinderMeshSW;
             currentName = "Cylinder_SW_" + Util::to_string((I32)i);
-            currentPos.first = -200 + 40 * (i % 20) + 50;
-            currentPos.second = 200 - 40 * (i % 20) - 50;
+            currentPos.x = -200 + 40 * (i % 20) + 50;
+            currentPos.y = 200 - 40 * (i % 20) - 50;
             locationFlag = 2;
         } else {
             baseNode = cylinder[4];
             currentMesh = cylinderMeshSE;
             currentName = "Cylinder_SE_" + Util::to_string((I32)i);
-            currentPos.first = 200 - 40 * (i % 30) - 50;
-            currentPos.second = 200 - 40 * (i % 30) - 50;
+            currentPos.x = 200 - 40 * (i % 30) - 50;
+            currentPos.y = 200 - 40 * (i % 30) - 50;
             locationFlag = 3;
         }
 
@@ -445,7 +445,7 @@ bool WarScene::load() {
         nComp->navigationContext(baseNode->get<NavigationComponent>()->navigationContext());
         nComp->navigationDetailOverride(baseNode->get<NavigationComponent>()->navMeshDetailOverride());
 
-        vec3<F32> position(to_F32(currentPos.first), -0.01f, to_F32(currentPos.second));
+        vec3<F32> position(to_F32(currentPos.x), -0.01f, to_F32(currentPos.y));
         tComp->setScale(baseNode->get<TransformComponent>()->getScale());
         tComp->setPosition(position);
         {
@@ -460,7 +460,6 @@ bool WarScene::load() {
             light->setDiffuseColour(DefaultColours::RANDOM());
             SceneGraphNode* lightSGN = _sceneGraph->getRoot().addNode(light, lightMask);
             lightSGN->get<TransformComponent>()->setPosition(position + vec3<F32>(0.0f, 8.0f, 0.0f));
-            _lightNodes2.emplace_back(lightSGN, false));
         }
         {
             ResourceDescriptor tempLight(Util::StringFormat("Light_point_%s_2", currentName.c_str()));
@@ -473,7 +472,6 @@ bool WarScene::load() {
             light->setDiffuseColour(DefaultColours::RANDOM());
             SceneGraphNode* lightSGN = _sceneGraph->getRoot().addNode(light, lightMask);
             lightSGN->get<TransformComponent>()->setPosition(position + vec3<F32>(0.0f, 8.0f, 0.0f));
-            _lightNodes2.emplace_back(lightSGN, true);
         }
         {
             ResourceDescriptor tempLight(Util::StringFormat("Light_spot_%s", currentName.c_str()));
@@ -488,7 +486,6 @@ bool WarScene::load() {
             SceneGraphNode* lightSGN = _sceneGraph->getRoot().addNode(light, lightMask);
             lightSGN->get<TransformComponent>()->setPosition(position + vec3<F32>(0.0f, 10.0f, 0.0f));
             lightSGN->get<TransformComponent>()->rotateX(-20);
-            _lightNodes3.push_back(lightSGN);
         }
     }
 

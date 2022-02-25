@@ -230,7 +230,7 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
     io.Fonts->AddFontFromFileTTF(textFontBoldPath.c_str(), fontSizeBold * DPIScaleFactor, &font_cfg);
 
     io.Fonts->GetTexDataAsRGBA32(&pPixels, &iWidth, &iHeight);
-    _fontTexture->loadData({ (Byte*)pPixels, iWidth * iHeight * 4 }, vec2<U16>(iWidth, iHeight));
+    _fontTexture->loadData((Byte*)pPixels, iWidth * iHeight * 4u, vec2<U16>(iWidth, iHeight));
     // Store our identifier as reloding data may change the handle!
     io.Fonts->TexID = (void*)(intptr_t)_fontTexture->data()._textureHandle;
 }

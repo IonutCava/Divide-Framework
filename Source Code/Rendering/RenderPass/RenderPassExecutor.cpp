@@ -25,8 +25,11 @@
 
 namespace Divide {
 namespace {
-    constexpr U16 g_invalidMaterialIndex = Config::MAX_CONCURRENT_MATERIALS;
-    constexpr U32 g_invalidTexturesIndex = g_invalidMaterialIndex;
+    template<typename T>
+    struct BufferCandidate {
+        T _index = std::numeric_limits<T>::max();
+        T _framesSinceLastUsed = std::numeric_limits<T>::max();
+    };
 
     // Remove materials that haven't been indexed in this amount of frames to make space for new ones
     constexpr U16 g_maxMaterialFrameLifetime = 6u;
@@ -275,14 +278,14 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
     }
 
     _transformBuffer._data._freeList.fill(true);
-    _materialBuffer._data._lookupInfo.fill({ Material::INVALID_MAT_HASH, g_invalidMaterialIndex });
+    _materialBuffer._data._lookupInfo.fill({ INVALID_MAT_HASH, g_invalidMaterialIndex });
     const vec2<U32> defaultSampler = TextureToUVec2(s_defaultTextureSamplerAddress);
     for (NodeMaterialTextures& textures : _texturesBuffer._data._gpuData) {
         for (NodeMaterialTextureAddress& texture : textures) {
             texture = defaultSampler;
         }
     }
-    _texturesBuffer._data._lookupInfo.fill({ Material::INVALID_TEX_HASH, g_invalidTexturesIndex });
+    _texturesBuffer._data._lookupInfo.fill({ INVALID_TEX_HASH, g_invalidTexturesIndex });
 
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
@@ -452,7 +455,7 @@ U32 RenderPassExecutor::processVisibleNodeTextures(RenderingComponent* rComp, bo
         OPTICK_EVENT("processVisibleNode - try match textures");
         const U32 idx = findTexturesMatch(texturesHash, infoContainer);
         if (idx != g_invalidTexturesIndex) {
-            infoContainer[idx].second = 0u;
+            infoContainer[idx]._framesSinceLastUsed = 0u;
             cacheHit = true;
             UpdateBufferRangeLocked(_texturesBuffer, idx);
             return idx;
@@ -462,34 +465,34 @@ U32 RenderPassExecutor::processVisibleNodeTextures(RenderingComponent* rComp, bo
     // If we fail, try and find an empty slot and update it
     OPTICK_EVENT("processVisibleNode - process unmatched textures");
     // No match found (cache miss) so add a new entry.
-    std::pair<U32, U32> bestCandidate = { g_invalidTexturesIndex, 0u };
+    BufferCandidate<U32> bestCandidate = { g_invalidTexturesIndex, 0u };
 
     const U32 count = to_U32(infoContainer.size());
     for (U32 idx = 0u; idx < count; ++idx) {
         const auto [hash, framesSinceLastUsed] = infoContainer[idx];
         // Two cases here. We either have empty slots (e.g. startup, cache clear, etc) ...
-        if (hash == Material::INVALID_TEX_HASH) {
+        if (hash == INVALID_TEX_HASH) {
             // ... in which case our current idx is what we are looking for ...
-            bestCandidate.first = idx;
-            bestCandidate.second = g_maxMaterialFrameLifetime;
+            bestCandidate._index = idx;
+            bestCandidate._framesSinceLastUsed = g_maxMaterialFrameLifetime;
             break;
         }
         // ... else we need to find a slot with a stale entry (but not one that is still in flight!)
-        if (framesSinceLastUsed >= std::max(to_U32(g_maxMaterialFrameLifetime), bestCandidate.second)) {
-            bestCandidate.first = idx;
-            bestCandidate.second = framesSinceLastUsed;
+        if (framesSinceLastUsed >= std::max(to_U32(g_maxMaterialFrameLifetime), bestCandidate._framesSinceLastUsed)) {
+            bestCandidate._index = idx;
+            bestCandidate._framesSinceLastUsed = framesSinceLastUsed;
             // Keep going and see if we can find an even older entry
         }
     }
 
-    assert(bestCandidate.first != g_invalidTexturesIndex);
+    assert(bestCandidate._index != g_invalidTexturesIndex);
 
-    infoContainer[bestCandidate.first] = { texturesHash, 0u };
-    assert(bestCandidate.first < _texturesBuffer._data._gpuData.size());
-    _texturesBuffer._data._gpuData[bestCandidate.first] = tempData;
-    UpdateBufferRangeLocked(_texturesBuffer, bestCandidate.first);
+    infoContainer[bestCandidate._index] = { texturesHash, 0u };
+    assert(bestCandidate._index < _texturesBuffer._data._gpuData.size());
+    _texturesBuffer._data._gpuData[bestCandidate._index] = tempData;
+    UpdateBufferRangeLocked(_texturesBuffer, bestCandidate._index);
 
-    return bestCandidate.first;
+    return bestCandidate._index;
 }
 
 void RenderPassExecutor::parseTextureRange(RenderBin::SortedQueue& queue, const U32 start, const U32 end) {
@@ -543,7 +546,7 @@ U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp, bo
         OPTICK_EVENT("processVisibleNode - try match material");
         const U16 idx = findMaterialMatch(materialHash, infoContainer);
         if (idx != g_invalidMaterialIndex) {
-            infoContainer[idx].second = 0u;
+            infoContainer[idx]._framesSinceLastUsed = 0u;
             cacheHit = true;
             UpdateBufferRangeLocked(_materialBuffer, idx);
             return idx;
@@ -553,35 +556,35 @@ U16 RenderPassExecutor::processVisibleNodeMaterial(RenderingComponent* rComp, bo
     // If we fail, try and find an empty slot and update it
     OPTICK_EVENT("processVisibleNode - process unmatched material");
     // No match found (cache miss) so add a new entry.
-    std::pair<U16, U16> bestCandidate = { g_invalidMaterialIndex, 0u };
+    BufferCandidate<U16> bestCandidate{ g_invalidMaterialIndex, 0u };
 
     const U16 count = to_U16(infoContainer.size());
     for (U16 idx = 0u; idx < count; ++idx) {
         const auto [hash, framesSinceLastUsed] = infoContainer[idx];
         // Two cases here. We either have empty slots (e.g. startup, cache clear, etc) ...
-        if (hash == Material::INVALID_MAT_HASH) {
+        if (hash == INVALID_MAT_HASH) {
             // ... in which case our current idx is what we are looking for ...
-            bestCandidate.first = idx;
-            bestCandidate.second = g_maxMaterialFrameLifetime;
+            bestCandidate._index = idx;
+            bestCandidate._framesSinceLastUsed = g_maxMaterialFrameLifetime;
             break;
         }
         // ... else we need to find a slot with a stale entry (but not one that is still in flight!)
-        if (framesSinceLastUsed >= std::max(g_maxMaterialFrameLifetime, bestCandidate.second)) {
-            bestCandidate.first = idx;
-            bestCandidate.second = framesSinceLastUsed;
+        if (framesSinceLastUsed >= std::max(g_maxMaterialFrameLifetime, bestCandidate._framesSinceLastUsed)) {
+            bestCandidate._index = idx;
+            bestCandidate._framesSinceLastUsed = framesSinceLastUsed;
             // Keep going and see if we can find an even older entry
         }
     }
 
-    DIVIDE_ASSERT(bestCandidate.first != g_invalidMaterialIndex, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
+    DIVIDE_ASSERT(bestCandidate._index != g_invalidMaterialIndex, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS");
 
-    infoContainer[bestCandidate.first] = { materialHash, 0u };
-    assert(bestCandidate.first < _materialBuffer._data._gpuData.size());
+    infoContainer[bestCandidate._index] = { materialHash, 0u };
+    assert(bestCandidate._index < _materialBuffer._data._gpuData.size());
 
-    _materialBuffer._data._gpuData[bestCandidate.first] = tempData;
-    UpdateBufferRangeLocked(_materialBuffer, bestCandidate.first);
+    _materialBuffer._data._gpuData[bestCandidate._index] = tempData;
+    UpdateBufferRangeLocked(_materialBuffer, bestCandidate._index);
 
-    return bestCandidate.first;
+    return bestCandidate._index;
 }
 
 
@@ -875,7 +878,12 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes,
     }
 
     _renderQueuePackages.resize(0);
-    _renderQueue.populateRenderQueues(stagePass, std::make_pair(RenderBinType::COUNT, true), _renderQueuePackages);
+
+    RenderQueue::PopulateQueueParams queueParams{};
+    queueParams._stagePass = stagePass;
+    queueParams._binType = RenderBinType::COUNT;
+    queueParams._filterByBinType = false;
+    _renderQueue.populateRenderQueues(queueParams, _renderQueuePackages);
 
     return buildDrawCommands(params, doPrePass, doOITPass, bufferInOut);
 }
@@ -928,10 +936,18 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params,
     _renderQueuePackages.reserve(Config::MAX_VISIBLE_NODES);
 
     // Draw everything in the depth pass but only draw stuff from the translucent bin in the OIT Pass and everything else in the colour pass
-    _renderQueue.populateRenderQueues(stagePass, IsDepthPass(stagePass)
-                                                   ? std::make_pair(RenderBinType::COUNT, true)
-                                                   : std::make_pair(RenderBinType::TRANSLUCENT, transparencyPass),
-                                      _renderQueuePackages);
+
+    RenderQueue::PopulateQueueParams queueParams{};
+    queueParams._stagePass = stagePass;
+    if (IsDepthPass(stagePass)) {
+        queueParams._binType = RenderBinType::COUNT;
+        queueParams._filterByBinType = false;
+    } else {
+        queueParams._binType = RenderBinType::TRANSLUCENT;
+        queueParams._filterByBinType = !transparencyPass;
+    }
+
+    _renderQueue.populateRenderQueues(queueParams, _renderQueuePackages);
 
 
     for (const auto&[rComp, pkg] : _renderQueuePackages) {
@@ -1435,14 +1451,14 @@ void RenderPassExecutor::postRender() {
         val.store(false);
     }
 
-    for (auto& it : _materialBuffer._data._lookupInfo) {
-        if (it.first != Material::INVALID_MAT_HASH) {
-            ++it.second;
+    for (BufferMaterialData::LookupInfo& it : _materialBuffer._data._lookupInfo) {
+        if (it._hash != INVALID_MAT_HASH) {
+            ++it._framesSinceLastUsed;
         }
     }
-    for (auto& it : _texturesBuffer._data._lookupInfo) {
-        if (it.first != Material::INVALID_TEX_HASH) {
-            ++it.second;
+    for (BufferTexturesData::LookupInfo& it : _texturesBuffer._data._lookupInfo) {
+        if (it._hash != INVALID_TEX_HASH) {
+            ++it._framesSinceLastUsed;
         }
     }
     {

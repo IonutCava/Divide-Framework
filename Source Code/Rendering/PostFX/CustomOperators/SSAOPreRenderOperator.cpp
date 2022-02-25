@@ -96,7 +96,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     textureAttachment.propertyDescriptor(noiseDescriptor);
     _noiseTexture = CreateResource<Texture>(cache, textureAttachment);
 
-    _noiseTexture->loadData({ (Byte*)noiseData.data(), noiseData.size() * sizeof(vec3<F32>) }, vec2<U16>(SSAO_NOISE_SIZE));
+    _noiseTexture->loadData((Byte*)noiseData.data(), noiseData.size() * sizeof(vec3<F32>), vec2<U16>(SSAO_NOISE_SIZE));
 
     {
         TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);

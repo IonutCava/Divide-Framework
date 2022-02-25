@@ -101,7 +101,7 @@ void glFramebuffer::initAttachment(const RTAttachmentType type, const U8 index) 
         // Do we need to resize the attachment?
         const bool shouldResize = tex->width() != getWidth() || tex->height() != getHeight();
         if (shouldResize) {
-            tex->loadData({nullptr, 0 }, vec2<U16>(getWidth(), getHeight()));
+            tex->loadData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()));
         }
         const bool updateSampleCount = tex->descriptor().msaaSamples() != _descriptor._msaaSamples;
         if (updateSampleCount) {

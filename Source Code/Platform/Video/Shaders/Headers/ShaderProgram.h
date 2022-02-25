@@ -62,7 +62,16 @@ namespace Attorney {
     class ShaderProgramKernel;
 }
 
-using ModuleDefines = vector<std::pair<string, bool>>;
+struct ModuleDefine {
+    ModuleDefine() = default;
+    ModuleDefine(const char* define, const bool addPrefix) : ModuleDefine(string{ define }, addPrefix) {}
+    ModuleDefine(const string& define, const bool addPrefix) : _define(define), _addPrefix(addPrefix) {}
+
+    string _define;
+    bool _addPrefix = true;
+};
+
+using ModuleDefines = vector<ModuleDefine>;
 
 struct ShaderModuleDescriptor {
     ModuleDefines _defines;

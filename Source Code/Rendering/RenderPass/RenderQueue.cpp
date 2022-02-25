@@ -142,25 +142,30 @@ void RenderQueue::addNodeToQueue(const SceneGraphNode* sgn,
     }
 }
 
-void RenderQueue::populateRenderQueues(const RenderStagePass stagePass, const std::pair<RenderBinType, bool> binAndFlag, RenderQueuePackages& queueInOut) {
+void RenderQueue::populateRenderQueues(const PopulateQueueParams& params, RenderQueuePackages& queueInOut) {
     OPTICK_EVENT();
 
-    const auto [binType, includeBin] = binAndFlag;
-
-    if (binType == RenderBinType::COUNT) {
-        if (!includeBin) {
+    if (params._binType == RenderBinType::COUNT) {
+        if (!params._filterByBinType) {
+            for (const auto& renderBin : _renderBins) {
+                renderBin->populateRenderQueue(params._stagePass, queueInOut);
+            }
+        } else {
             // Why are we allowed to exclude everything? idk.
-            return;
-        }
-
-        for (const auto& renderBin : _renderBins) {
-            renderBin->populateRenderQueue(stagePass, queueInOut);
+            NOP();
         }
     } else {
-        // Everything except the specified type or just the specified type
-        for (const auto& renderBin : _renderBins) {
-            if ((renderBin->getType() == binType) == includeBin) {
-                renderBin->populateRenderQueue(stagePass, queueInOut);
+        if (!params._filterByBinType) {
+            for (const auto& renderBin : _renderBins) {
+                if (renderBin->getType() == params._binType) {
+                    renderBin->populateRenderQueue(params._stagePass, queueInOut);
+                }
+            }
+        } else {
+            for (const auto& renderBin : _renderBins) {
+                if (renderBin->getType() != params._binType) {
+                    renderBin->populateRenderQueue(params._stagePass, queueInOut);
+                }
             }
         }
     }

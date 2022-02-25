@@ -56,14 +56,14 @@ class glTexture final : public Texture,
     void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rwFlag) override;
 
     void loadData(const ImageTools::ImageData& imageLayers) override;
-    void loadData(const std::pair<Byte*, size_t>& ptr, const vec2<U16>& dimensions) override;
+    void loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions) override;
 
     void clearData(const UColour4& clearColour, U8 level) const override;
     void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const override;
 
     static void copy(const TextureData& source, const TextureData& destination, const CopyTexParams& params);
 
-    std::pair<std::shared_ptr<Byte[]>, size_t> readData(U16 mipLevel, GFXDataFormat desiredFormat) const override;
+    TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const override;
 
    protected:
     void reserveStorage(bool fromFile);
@@ -80,7 +80,12 @@ class glTexture final : public Texture,
 
    private:
     GLenum _type = GL_NONE;
-    std::pair<SamplerAddress, GLuint> _cachedAddressForSampler = {0u, 0u};
+    struct SamplerAddressCache {
+        SamplerAddress _address = 0u;
+        GLuint _sampler = 0u;
+    };
+
+    SamplerAddressCache _cachedAddressForSampler{};
     SamplerAddress _baseTexAddress = 0u;
     TextureData _loadingData;
     Mutex _gpuAddressesLock;

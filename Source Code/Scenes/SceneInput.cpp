@@ -91,7 +91,12 @@ bool SceneInput::handleCallbacks(const PressReleaseActionCbks& cbks,
 
 bool SceneInput::onKeyDown(const Input::KeyEvent& arg) {
     if (g_recordInput) {
-        _keyLog[arg._deviceIndex].emplace_back(std::make_pair(arg._key, Input::InputState::PRESSED));
+        _keyLog[arg._deviceIndex].emplace_back(
+            KeyLogState{
+                arg._key,
+                Input::InputState::PRESSED
+            }
+        );
     }
 
     PressReleaseActionCbks cbks;
@@ -106,7 +111,12 @@ bool SceneInput::onKeyDown(const Input::KeyEvent& arg) {
 
 bool SceneInput::onKeyUp(const Input::KeyEvent& arg) {
     if (g_recordInput) {
-        _keyLog[arg._deviceIndex].emplace_back(std::make_pair(arg._key, Input::InputState::RELEASED));
+        _keyLog[arg._deviceIndex].emplace_back(
+            KeyLogState{
+                arg._key,
+                Input::InputState::RELEASED
+            }
+        );
     }
 
     PressReleaseActionCbks cbks;
@@ -226,7 +236,12 @@ bool SceneInput::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
 
     if (g_recordInput) {
         _mouseBtnLog[arg._deviceIndex].emplace_back(
-            std::make_tuple(arg.button(), Input::InputState::PRESSED, vec2<I32>(arg.absPosition().x, arg.absPosition().y)));
+            MouseLogState{
+                arg.button(),
+                Input::InputState::PRESSED,
+                vec2<I32>(arg.absPosition().x, arg.absPosition().y)
+            }
+        );
     }
 
     PressReleaseActionCbks cbks = {};
@@ -243,7 +258,12 @@ bool SceneInput::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
 bool SceneInput::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
     if (g_recordInput) {
         _mouseBtnLog[arg._deviceIndex].emplace_back(
-                                std::make_tuple(arg.button(), Input::InputState::RELEASED, vec2<I32>(arg.absPosition().x, arg.absPosition().y)));
+            MouseLogState{
+                arg.button(),
+                Input::InputState::RELEASED,
+                vec2<I32>(arg.absPosition().x, arg.absPosition().y)
+            }
+        );
     }
 
     PressReleaseActionCbks cbks = {};
@@ -327,15 +347,15 @@ bool SceneInput::getMouseMapping(const Input::MouseButton button, PressReleaseAc
     return false;
 }
 
-bool SceneInput::addJoystickMapping(const Input::Joystick device, const Input::JoystickElementType elementType, U32 id, const PressReleaseActions::Entry& btnCbks) {
-    const JoystickMapKey key = std::make_pair(to_base(elementType), id);
+bool SceneInput::addJoystickMapping(const Input::Joystick device, const Input::JoystickElementType elementType, const U32 id, const PressReleaseActions::Entry& btnCbks) {
+    const JoystickMapKey key{ elementType, id };
     return _joystickMap[to_base(device)][key].add(btnCbks);
 }
 
-bool SceneInput::removeJoystickMapping(const Input::Joystick device, const Input::JoystickElementType elementType, U32 id) {
+bool SceneInput::removeJoystickMapping(const Input::Joystick device, const Input::JoystickElementType elementType, const U32 id) {
     JoystickMapEntry& entry = _joystickMap[to_base(device)];
 
-    const JoystickMapEntry::iterator it = entry.find(std::make_pair(to_base(elementType), id));
+    const JoystickMapEntry::iterator it = entry.find({ elementType, id });
     if (it != std::end(entry)) {
         entry.erase(it);
         return false;
@@ -347,18 +367,18 @@ bool SceneInput::removeJoystickMapping(const Input::Joystick device, const Input
 bool SceneInput::getJoystickMapping(const Input::Joystick device, const Input::JoystickElementType elementType, U32 id, PressReleaseActionCbks& btnCbksOut) {
     JoystickMapCacheEntry& entry = _joystickMapCache[to_base(device)];
 
-    const JoystickMapCacheEntry::const_iterator itCache = entry.find(std::make_pair(to_base(elementType), id));
+    const JoystickMapCacheEntry::const_iterator itCache = entry.find({ elementType, id });
     if (itCache != std::cend(entry)) {
         btnCbksOut = itCache->second;
         return true;
     }
 
     JoystickMapEntry& entry2 = _joystickMap[to_base(device)];
-    const JoystickMapEntry::const_iterator it = entry2.find(std::make_pair(to_base(elementType), id));
+    const JoystickMapEntry::const_iterator it = entry2.find({ elementType, id });
     if (it != std::cend(entry2)) {
         const PressReleaseActions& actions = it->second;
         btnCbksOut.from(actions, _actionList);
-        const JoystickMapKey key = std::make_pair(to_base(elementType), id);
+        const JoystickMapKey key{ elementType, id };
         entry[key] = btnCbksOut;
         return true;
     }
@@ -366,7 +386,7 @@ bool SceneInput::getJoystickMapping(const Input::Joystick device, const Input::J
     return false;
 }
 
-InputActionList& SceneInput::actionList() {
+InputActionList& SceneInput::actionList() noexcept {
     return _actionList;
 }
 

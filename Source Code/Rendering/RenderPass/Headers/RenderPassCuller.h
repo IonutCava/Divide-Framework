@@ -62,11 +62,15 @@ enum class CullOptions : U16 {
 };
 
 class Frustum;
+struct GUIDList {
+    I64* _guids = nullptr;
+    size_t _count = 0u;
+};
 struct NodeCullParams {
     FrustumClipPlanes _clippingPlanes;
     vec4<U16> _lodThresholds = {1000u};
     vec3<F32> _minExtents = { 0.0f };
-    std::pair<I64*, size_t> _ignoredGUIDS;
+    GUIDList _ignoredGUIDS = {};
     vec3<F32> _cameraEyePos;
     const Frustum* _frustum = nullptr;
     F32 _cullMaxDistance = std::numeric_limits<F32>::max();

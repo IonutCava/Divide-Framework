@@ -80,8 +80,6 @@ BEGIN_SCENE(WarScene)
    private:
     GUIMessageBox* _infoBox = nullptr;
     vector<TransformComponent*> _lightNodeTransforms;
-    vector<std::pair<SceneGraphNode*, bool>> _lightNodes2;
-    vector<SceneGraphNode*> _lightNodes3;
 
    private:  // Game
     U32  _timeLimitMinutes;

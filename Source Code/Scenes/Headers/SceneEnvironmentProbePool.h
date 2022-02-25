@@ -126,7 +126,12 @@ protected:
     static bool s_skyLightNeedsRefresh;
 
 private:
-    static std::array<std::pair<bool/*available*/, bool/*locked*/>, Config::MAX_REFLECTIVE_PROBES_PER_PASS> s_availableSlices;
+    struct ProbeSlice {
+        bool _available = true;
+        bool _locked = false;
+    };
+
+    static std::array<ProbeSlice, Config::MAX_REFLECTIVE_PROBES_PER_PASS> s_availableSlices;
     static RenderTargetHandle s_reflection;
     static RenderTargetHandle s_prefiltered;
     static RenderTargetHandle s_irradiance;

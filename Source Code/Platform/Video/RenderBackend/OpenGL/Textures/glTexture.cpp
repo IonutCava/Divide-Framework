@@ -54,19 +54,19 @@ SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
     if (ShaderProgram::s_UseBindlessTextures) {
         const GLuint sampler = GL_API::GetSamplerHandle(samplerHash);
         ScopedLock<Mutex> w_lock(_gpuAddressesLock);
-        if (_cachedAddressForSampler.second != sampler) {
+        if (_cachedAddressForSampler._sampler != sampler) {
             if (sampler != 0u) {
                 assert(!GL_API::ComputeMipMapsQueued(_data._textureHandle));
-                _cachedAddressForSampler.first = glGetTextureSamplerHandleARB(_data._textureHandle, sampler);
-                _cachedAddressForSampler.second = sampler;
+                _cachedAddressForSampler._address = glGetTextureSamplerHandleARB(_data._textureHandle, sampler);
+                _cachedAddressForSampler._sampler = sampler;
             } else {
-                _cachedAddressForSampler.first = _baseTexAddress;
-                _cachedAddressForSampler.second = 0u;
+                _cachedAddressForSampler._address = _baseTexAddress;
+                _cachedAddressForSampler._sampler = 0u;
             }
         }
     }
 
-    return _cachedAddressForSampler.first;
+    return _cachedAddressForSampler._address;
 }
 
 bool glTexture::unload() {
@@ -219,11 +219,11 @@ void glTexture::submitTextureData() {
     } else {
         _baseTexAddress = _data._textureHandle;
     }
-    _cachedAddressForSampler.first = _baseTexAddress;
-    _cachedAddressForSampler.second = 0u;
+    _cachedAddressForSampler._address = _baseTexAddress;
+    _cachedAddressForSampler._sampler = 0u;
 }
 
-void glTexture::loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& dimensions) {
+void glTexture::loadData(const Byte* data, const size_t dataSize, const vec2<U16>& dimensions) {
     prepareTextureData(dimensions.width, dimensions.height);
 
     // This should never be called for compressed textures
@@ -232,7 +232,7 @@ void glTexture::loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& 
     reserveStorage(false);
     if (!IsMultisampledTexture(_loadingData._textureType)) {
         ImageTools::ImageData imgData = {};
-        if (imgData.loadFromMemory(data.first, data.second, _width, _height, 1, GetSizeFactor(_descriptor.dataType()) * NumChannels(_descriptor.baseFormat()))) {
+        if (imgData.loadFromMemory(data, dataSize, _width, _height, 1, GetSizeFactor(_descriptor.dataType()) * NumChannels(_descriptor.baseFormat()))) {
             loadDataUncompressed(imgData);
                 assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
         }
@@ -507,10 +507,11 @@ void glTexture::bindLayer(const U8 slot, const U8 level, const U8 layer, const b
     }
 }
 
-std::pair<std::shared_ptr<Byte[]>, size_t> glTexture::readData(U16 mipLevel, const GFXDataFormat desiredFormat) const {
+Texture::TextureReadbackData glTexture::readData(U16 mipLevel, const GFXDataFormat desiredFormat) const {
     if (IsCompressed(_descriptor.baseFormat())) {
         DIVIDE_ASSERT(false, "glTexture::readData: Compressed textures not supported!");
-        return {nullptr, 0};
+        TextureReadbackData data{};
+        return MOV(data);
     }
 
     CLAMP(mipLevel, to_U16(0u), _mipCount);
@@ -531,7 +532,9 @@ std::pair<std::shared_ptr<Byte[]>, size_t> glTexture::readData(U16 mipLevel, con
 
     const GLsizei size = GLsizei{ texWidth } * texHeight * bpp;
 
-    std::shared_ptr<Byte[]> grabData(new Byte[size]);
+    TextureReadbackData grabData{};
+    grabData._data.reset(new Byte[size]);
+    grabData._size = size;
 
     GL_API::GetStateTracker().setPixelPackAlignment(1);
     glGetTextureImage(_data._textureHandle,
@@ -539,10 +542,10 @@ std::pair<std::shared_ptr<Byte[]>, size_t> glTexture::readData(U16 mipLevel, con
                       GLUtil::glImageFormatTable[to_base(_descriptor.baseFormat())],
                       GLUtil::glDataFormat[to_base(dataFormat)],
                       size,
-                      (bufferPtr)grabData.get());
+                      (bufferPtr)grabData._data.get());
     GL_API::GetStateTracker().setPixelPackAlignment();
 
-    return { grabData, to_size( size) };
+    return MOV(grabData);
 }
 
 };

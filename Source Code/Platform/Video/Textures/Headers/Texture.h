@@ -67,7 +67,11 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     friend class Attorney::TextureKernel;
 
   public:
-
+      struct TextureReadbackData {
+          eastl::unique_ptr<Byte[]> _data = nullptr;
+          size_t _size = 0u;
+      };
+  public:
     explicit Texture(GFXDevice& context,
                      size_t descriptorHash,
                      const Str256& name,
@@ -92,7 +96,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
 
     /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
     virtual void loadData(const ImageTools::ImageData& imageData) = 0;
-    virtual void loadData(const std::pair<Byte*, size_t>& data, const vec2<U16>& dimensions) = 0;
+    virtual void loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions) = 0;
 
     /// Change the number of MSAA samples for this current texture
     void setSampleCount(U8 newSampleCount);
@@ -101,7 +105,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     virtual void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const = 0;
 
     // MipLevel will automatically clamped to the texture's internal limits
-    virtual std::pair<std::shared_ptr<Byte[]>, size_t> readData(U16 mipLevel, GFXDataFormat desiredFormat = GFXDataFormat::COUNT) const = 0;
+    [[nodiscard]] virtual TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat = GFXDataFormat::COUNT) const = 0;
 
     PROPERTY_R(TextureDescriptor, descriptor);
     PROPERTY_R(TextureData, data);

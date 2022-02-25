@@ -89,9 +89,10 @@ void GL_API::beginFrame(DisplayWindow& window, const bool global) {
     SDL_GLContext glContext = static_cast<SDL_GLContext>(window.userData());
     const I64 windowGUID = window.getGUID();
 
-    if (glContext != nullptr && (_currentContext.first != windowGUID || _currentContext.second != glContext)) {
+    if (glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext)) {
         SDL_GL_MakeCurrent(window.getRawWindow(), glContext);
-        _currentContext = std::make_pair(windowGUID, glContext);
+        _currentContext._windowGUID = windowGUID;
+        _currentContext._context = glContext;
     }
 
     // Clear our buffers
@@ -126,10 +127,11 @@ void GL_API::endFrameLocal(const DisplayWindow& window) {
     SDL_GLContext glContext = static_cast<SDL_GLContext>(window.userData());
     const I64 windowGUID = window.getGUID();
 
-    if (glContext != nullptr && (_currentContext.first != windowGUID || _currentContext.second != glContext)) {
+    if (glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext)) {
         OPTICK_EVENT("GL_API: Swap Context");
         SDL_GL_MakeCurrent(window.getRawWindow(), glContext);
-        _currentContext = std::make_pair(windowGUID, glContext);
+        _currentContext._windowGUID = windowGUID;
+        _currentContext._context = glContext;
     }
     {
         OPTICK_EVENT("GL_API: Swap Buffers");

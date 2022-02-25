@@ -96,7 +96,7 @@ RTAttachment_ptr& RTAttachmentPool::update(const RTAttachmentDescriptor& descrip
     Texture_ptr tex = CreateResource<Texture>(parentCache, textureAttachment);
     assert(tex);
 
-    tex->loadData({nullptr, 0 }, vec2<U16>(_parent.getWidth(), _parent.getHeight()));
+    tex->loadData(nullptr, 0u, vec2<U16>(_parent.getWidth(), _parent.getHeight()));
     ptr->setTexture(tex);
 
     ++_attachmentCount[to_U32(type)];

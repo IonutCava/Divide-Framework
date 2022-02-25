@@ -37,12 +37,25 @@
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
 namespace Divide {
-    struct pair_hash {
-        template <class T1, class T2>
-        std::size_t operator () (const std::pair<T1, T2> &p) const {
+    struct JoystickMapKey {
+        Input::JoystickElementType _element = Input::JoystickElementType::COUNT;
+        U32 _id = 0u;
+    };
+
+    inline bool operator==(const JoystickMapKey& lhs, const JoystickMapKey& rhs) noexcept {
+        return lhs._element == rhs._element &&
+               lhs._id == rhs._id;
+    }
+    inline bool operator!=(const JoystickMapKey& lhs, const JoystickMapKey& rhs) noexcept {
+        return lhs._element == rhs._element &&
+               lhs._id == rhs._id;
+    }
+
+    struct JoystickMapKeyHash {
+        std::size_t operator () (const JoystickMapKey& p) const {
             size_t hash = 17;
-            Util::Hash_combine(hash, p.first);
-            Util::Hash_combine(hash, p.second);
+            Util::Hash_combine(hash, p._element);
+            Util::Hash_combine(hash, p._id);
 
             return hash;
         }
@@ -62,20 +75,27 @@ struct PressReleaseActionCbks {
 
 class SceneInput final : public Input::InputAggregatorInterface {
    public:
-    using JoystickMapKey = std::pair<std::underlying_type_t<Input::JoystickElementType>, U32>;
-
     using KeyMapCache = hashMap<Input::KeyCode, PressReleaseActionCbks>;
     using MouseMapCache = hashMap<Input::MouseButton, PressReleaseActionCbks>;
-    using JoystickMapCacheEntry  = ska::bytell_hash_map<JoystickMapKey, PressReleaseActionCbks, pair_hash>;
+    using JoystickMapCacheEntry  = ska::bytell_hash_map<JoystickMapKey, PressReleaseActionCbks, JoystickMapKeyHash>;
     using JoystickMapCache = ska::bytell_hash_map<std::underlying_type_t<Input::Joystick>, JoystickMapCacheEntry>;
 
     using KeyMap = hashMap<Input::KeyCode, PressReleaseActions>;
     using MouseMap = hashMap<Input::MouseButton, PressReleaseActions>;
-    using JoystickMapEntry = ska::bytell_hash_map<JoystickMapKey, PressReleaseActions, pair_hash>;
+    using JoystickMapEntry = ska::bytell_hash_map<JoystickMapKey, PressReleaseActions, JoystickMapKeyHash>;
     using JoystickMap = ska::bytell_hash_map<std::underlying_type_t<Input::Joystick>, JoystickMapEntry>;
 
-    using KeyLog = vector<std::pair<Input::KeyCode, Input::InputState>>;
-    using MouseBtnLog = vector<std::tuple<Input::MouseButton, Input::InputState, vec2<I32>>>;
+    struct KeyLogState {
+        Input::KeyCode _key = Input::KeyCode::KC_SLEEP;
+        Input::InputState _state = Input::InputState::COUNT;
+    };
+    struct MouseLogState {
+        Input::MouseButton _btn = Input::MouseButton::COUNT;
+        Input::InputState _state = Input::InputState::COUNT;
+        vec2<I32> _position = VECTOR2_ZERO;
+    };
+    using KeyLog = vector_fast<KeyLogState>;
+    using MouseBtnLog = vector_fast<MouseLogState>;
 
     explicit SceneInput(Scene &parentScene);
 
@@ -122,7 +142,7 @@ class SceneInput final : public Input::InputAggregatorInterface {
     /// output to the mapping's function
     bool getJoystickMapping(Input::Joystick device, Input::JoystickElementType elementType, U32 id, PressReleaseActionCbks& btnCbksOut);
 
-    InputActionList& actionList();
+    InputActionList& actionList() noexcept;
 
     U8 getPlayerIndexForDevice(U8 deviceIndex) const;
 
