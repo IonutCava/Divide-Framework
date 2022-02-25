@@ -58,12 +58,14 @@ struct BufferParams
 
 class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsResource {
    public:
+    using Handle = PoolHandle;
+
     explicit VertexDataInterface(GFXDevice& context);
     virtual ~VertexDataInterface();
 
     virtual void draw(const GenericDrawCommand& command) = 0;
 
-    PROPERTY_R(PoolHandle, handle);
+    PROPERTY_R(Handle, handle);
     PROPERTY_RW(bool, primitiveRestartEnabled, false);
 
     using VDIPool = ObjectPool<VertexDataInterface, 4096>;

@@ -323,6 +323,8 @@ namespace Divide {
     }
 
     void PropertyWindow::backgroundUpdateInternal() {
+        OPTICK_EVENT();
+
         I64 guid = 12344231;
         for (const auto& it : g_debugFrustums) {
             const auto& [frustum, colour, realtime] = it.second;
@@ -521,6 +523,8 @@ namespace Divide {
     }
 
     void PropertyWindow::drawInternal() {
+        OPTICK_EVENT();
+
         constexpr F32 buttonWidth = 90.0f;
         constexpr F32 smallButtonWidth = 70.0f;
 
@@ -1076,8 +1080,8 @@ namespace Divide {
         string shaderName = "None";
         ShaderProgram* program = nullptr;
         if (currentStagePass._stage != RenderStage::COUNT && currentStagePass._passType != RenderPassType::COUNT) {
-            const I64 shaderGUID = material->computeAndGetProgramGUID(currentStagePass);
-            program = ShaderProgram::FindShaderProgram(shaderGUID);
+            const ShaderProgram::Handle shaderHandle = material->computeAndGetProgramHandle(currentStagePass);
+            program = ShaderProgram::FindShaderProgram(shaderHandle);
             if (program != nullptr) {
                 shaderName = program->resourceName().c_str();
             }

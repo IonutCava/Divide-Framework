@@ -125,7 +125,6 @@ bool glBufferLockManager::lockRange(const size_t lockBeginBytes, const size_t lo
         OPTICK_EVENT("Add Fence");
         // We might have a race condition here where we end up adding a mergeble fence, but that is fine
         ScopedLock<SharedMutex> w_lock(_lock);
-        OPTICK_EVENT("Add Fence - Post Lock");
         // No luck with our reuse search. Add a new lock.
         _bufferLocks.emplace_back(
             testRange,

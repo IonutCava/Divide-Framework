@@ -120,6 +120,8 @@ StatusBar::StatusBar(PlatformContext& context) noexcept
 }
 
 void StatusBar::draw() const {
+    OPTICK_EVENT();
+
     if (BeginStatusBar())
     {
         if (!_messages.empty()) {

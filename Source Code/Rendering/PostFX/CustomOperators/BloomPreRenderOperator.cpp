@@ -46,7 +46,7 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     _bloomCalc->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _bloomCalc->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _bloomCalc->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _bloomCalcPipeline = _context.newPipeline(pipelineDescriptor);
@@ -64,7 +64,7 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     _bloomApply->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _bloomApply->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _bloomApply->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _bloomApplyPipeline = _context.newPipeline(pipelineDescriptor);

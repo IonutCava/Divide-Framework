@@ -251,25 +251,25 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
 
-        pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS->getGUID();
+        pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
         s_ResolveGBufferPipeline = _context.newPipeline(pipelineDescriptor);
 
-        RTBlendState& state0 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
-        state0._blendProperties.enabled(true);
-        state0._blendProperties.blendOp(BlendOperation::ADD);
+        BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
+        state0.enabled(true);
+        state0.blendOp(BlendOperation::ADD);
         if_constexpr(Config::USE_COLOURED_WOIT) {
-            state0._blendProperties.blendSrc(BlendProperty::INV_SRC_ALPHA);
-            state0._blendProperties.blendDest(BlendProperty::ONE);
+            state0.blendSrc(BlendProperty::INV_SRC_ALPHA);
+            state0.blendDest(BlendProperty::ONE);
         } else {
-            state0._blendProperties.blendSrc(BlendProperty::SRC_ALPHA);
-            state0._blendProperties.blendDest(BlendProperty::INV_SRC_ALPHA);
+            state0.blendSrc(BlendProperty::SRC_ALPHA);
+            state0.blendDest(BlendProperty::INV_SRC_ALPHA);
         }
 
-        pipelineDescriptor._shaderProgramHandle = OITCompositionShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = OITCompositionShader->handle();
         s_OITCompositionPipeline = _context.newPipeline(pipelineDescriptor);
 
-        pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS->getGUID();
+        pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS->handle();
         s_OITCompositionMSPipeline = _context.newPipeline(pipelineDescriptor);
 
     }

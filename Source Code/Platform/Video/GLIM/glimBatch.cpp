@@ -85,7 +85,7 @@ namespace NS_GLIM
             s_StateChangeCallback ();
 
         // get the currently active shader program
-        GLIM_CHECK (m_Data.m_ShaderProgramHandle > 0, "GLIM_BATCH::RenderBatch: Currently no shader is bound or the shader has an error.");
+        GLIM_CHECK (m_Data.m_ShaderProgramHandle != Divide::ShaderProgram::INVALID_HANDLE, "GLIM_BATCH::RenderBatch: Currently no shader is bound or the shader has an error.");
 
         m_Data.Upload ();
 
@@ -328,7 +328,7 @@ namespace NS_GLIM
         m_Data.m_VertAttribLocation = vertexLocation;
     }
     
-    void GLIM_BATCH::SetShaderProgramHandle(Divide::I64 shaderProgramHandle) noexcept
+    void GLIM_BATCH::SetShaderProgramHandle(Divide::ShaderProgram::Handle shaderProgramHandle) noexcept
     {
         m_Data.m_ShaderProgramHandle = shaderProgramHandle;
     }

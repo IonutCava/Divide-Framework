@@ -53,6 +53,8 @@ namespace {
     }
 
     void PostFXWindow::drawInternal() {
+        OPTICK_EVENT();
+
         PreRenderBatch& batch = _postFX.getFilterBatch();
 
         const auto checkBox = [this](const FilterType filter, const char* label = "Enabled", const bool overrideScene = false) {

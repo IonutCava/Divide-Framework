@@ -84,6 +84,8 @@ void GUI::onUnloadScene(Scene* const scene) {
 }
 
 void GUI::CEGUIDrawInternal() {
+    OPTICK_EVENT();
+
     _ceguiRenderer->beginRendering();
     _ceguiRenderTextureTarget->clear();
     _ceguiContext->draw();
@@ -94,6 +96,7 @@ void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer
     if (!_init || !_activeScene) {
         return;
     }
+    OPTICK_EVENT();
 
     EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Render GUI" });
 
@@ -236,7 +239,7 @@ bool GUI::init(PlatformContext& context, ResourceCache* cache) {
 
     PipelineDescriptor pipelineDesc = {};
     pipelineDesc._stateHash = context.gfx().getDefaultStateBlock(false);
-    pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->getGUID();
+    pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->handle();
 
     _postCEGUIPipeline = context.gfx().newPipeline(pipelineDesc);
 

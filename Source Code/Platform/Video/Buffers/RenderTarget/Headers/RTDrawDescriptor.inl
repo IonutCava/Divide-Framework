@@ -47,16 +47,6 @@ inline bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept {
            lhs._disabledColours != rhs._disabledColours;
 }
 
-inline bool operator==(const RTBlendState& lhs, const RTBlendState& rhs) noexcept {
-    return lhs._blendProperties == rhs._blendProperties &&
-           lhs._blendColour == rhs._blendColour;
-}
-
-inline bool operator!=(const RTBlendState& lhs, const RTBlendState& rhs) noexcept {
-    return lhs._blendProperties != rhs._blendProperties ||
-           lhs._blendColour != rhs._blendColour;
-}
-
 inline bool operator==(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) noexcept {
     return lhs._drawMask == rhs._drawMask &&
            lhs._setViewport == rhs._setViewport &&

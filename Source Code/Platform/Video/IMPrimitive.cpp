@@ -388,7 +388,7 @@ GFX::CommandBuffer& IMPrimitive::toCommandBuffer() const {
     {
         _cmdBuffer->clear();
 
-        DIVIDE_ASSERT(_pipeline->descriptor()._shaderProgramHandle != 0, "IMPrimitive error: Draw call received without a valid shader defined!");
+        DIVIDE_ASSERT(_pipeline->descriptor()._shaderProgramHandle != ShaderProgram::INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
 
         GFX::EnqueueCommand(*_cmdBuffer, GFX::BindPipelineCommand{ _pipeline });
 

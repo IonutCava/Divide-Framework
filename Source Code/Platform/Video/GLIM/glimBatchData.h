@@ -11,6 +11,7 @@
 #include "Core/TemplateLibraries/Headers/Vector.h"
 #include "Core/TemplateLibraries/Headers/HashMap.h"
 #include "Core/TemplateLibraries/Headers/String.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace NS_GLIM
 {
@@ -45,7 +46,7 @@ namespace NS_GLIM
         unsigned int m_uiBufferOffset;
         unsigned int m_uiBufferStride;
         // previous attribute location (second) used with the saved shader program(first)
-        using AttributeLocationMap = Divide::hashMap<Divide::I64, int>;
+        using AttributeLocationMap = Divide::hashMap<Divide::ShaderProgram::Handle, int>;
         AttributeLocationMap m_programAttribLocation;
     };
 
@@ -72,7 +73,7 @@ namespace NS_GLIM
         // Uploads the data onto the GPU
         void Upload ();
         // Binds the vertex arrays for rendering.
-        void Bind (Divide::I64 uiCurrentProgram);
+        void Bind (Divide::ShaderProgram::Handle uiCurrentProgram);
         // Unbinds all data after rendering.
         void Unbind (void) noexcept;
 
@@ -80,7 +81,7 @@ namespace NS_GLIM
         // Uploads the data onto the GPU
         void UploadOGL ();
         // Binds the vertex arrays for rendering.
-        void BindOGL (Divide::I64 uiCurrentProgram);
+        void BindOGL (Divide::ShaderProgram::Handle uiCurrentProgram);
         // Unbinds all data after rendering.
         void UnbindOGL (void) noexcept;
 #endif
@@ -89,7 +90,7 @@ namespace NS_GLIM
         // Uploads the data onto the GPU
         void UploadD3D11 (void);
         // Binds the vertex arrays for rendering.
-        void BindD3D11 (Divide::I64 uiCurrentProgram);
+        void BindD3D11 (Divide::ShaderProgram::Handle uiCurrentProgram);
         // Unbinds all data after rendering.
         void UnbindD3D11 (void);
 #endif
@@ -137,7 +138,7 @@ namespace NS_GLIM
         // GL attrib location of the vertex data in the shader program
         unsigned int m_VertAttribLocation;
         // Current bound shader program's handle
-        Divide::I64 m_ShaderProgramHandle;
+        Divide::ShaderProgram::Handle m_ShaderProgramHandle;
         // GL ID of the vertex array.
         unsigned int m_uiVertexBufferID;
         // GL ID of the index buffer for points.

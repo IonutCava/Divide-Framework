@@ -22,6 +22,7 @@ namespace Divide {
     }
 
     void SceneViewWindow::drawInternal() {
+        OPTICK_EVENT();
 
         const auto button = [](const bool enabled, const char* label, const char* tooltip, const bool small = false) -> bool {
             if (!enabled) {

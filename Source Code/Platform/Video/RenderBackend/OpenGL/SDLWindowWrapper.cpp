@@ -432,6 +432,8 @@ void GL_API::QueueFlush() noexcept {
 }
 
 void GL_API::QueueComputeMipMaps(const GLuint textureHandle) {
+    OPTICK_EVENT();
+
     ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
     if (s_mipmapQueue.find(textureHandle) == std::cend(s_mipmapQueue)) {
         s_mipmapQueue.insert(textureHandle);
@@ -439,6 +441,8 @@ void GL_API::QueueComputeMipMaps(const GLuint textureHandle) {
 }
 
 void GL_API::DequeueComputeMipMaps(const GLuint textureHandle) {
+    OPTICK_EVENT();
+
     ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
     const auto it = s_mipmapQueue.find(textureHandle);
     if (it != std::cend(s_mipmapQueue)) {
@@ -447,6 +451,8 @@ void GL_API::DequeueComputeMipMaps(const GLuint textureHandle) {
 }
 
 void GL_API::ComputeMipMaps(const GLuint textureHandle) {
+    OPTICK_EVENT();
+
     ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
     const auto it = s_mipmapQueue.find(textureHandle);
     if (it != std::cend(s_mipmapQueue)) {
@@ -458,11 +464,15 @@ void GL_API::ComputeMipMaps(const GLuint textureHandle) {
 }
 
 bool GL_API::ComputeMipMapsQueued(const GLuint textureHandle) {
+    OPTICK_EVENT();
+
     ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
     return s_mipmapQueue.find(textureHandle) != std::cend(s_mipmapQueue);
 }
 
 void GL_API::ProcessMipMapsQueue() noexcept {
+    OPTICK_EVENT();
+
     {
         SharedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
         if (GL_API::s_mipmapQueue.empty()) {

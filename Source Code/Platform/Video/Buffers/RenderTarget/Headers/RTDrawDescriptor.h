@@ -93,8 +93,6 @@ void DisableAll(RTDrawMask& mask);
 
 bool operator==(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept;
 bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept;
-bool operator==(const RTBlendState& lhs, const RTBlendState& rhs) noexcept;
-bool operator!=(const RTBlendState& lhs, const RTBlendState& rhs) noexcept;
 bool operator==(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) noexcept;
 bool operator!=(const RTDrawDescriptor& lhs, const RTDrawDescriptor& rhs) noexcept;
 

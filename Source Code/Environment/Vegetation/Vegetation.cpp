@@ -542,9 +542,9 @@ void Vegetation::prepareDraw(SceneGraphNode* sgn) {
                            s_cullShaderTrees->getState() == ResourceState::RES_LOADED);
 
         PipelineDescriptor pipeDesc;
-        pipeDesc._shaderProgramHandle = s_cullShaderGrass->getGUID();
+        pipeDesc._shaderProgramHandle = s_cullShaderGrass->handle();
         _cullPipelineGrass = _context.newPipeline(pipeDesc);
-        pipeDesc._shaderProgramHandle = s_cullShaderTrees->getGUID();
+        pipeDesc._shaderProgramHandle = s_cullShaderTrees->handle();
         _cullPipelineTrees = _context.newPipeline(pipeDesc);
 
         renderState().drawState(true);

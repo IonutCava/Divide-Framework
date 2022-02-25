@@ -76,7 +76,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         _blurDepthMapShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
-            pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->getGUID();
+            pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->handle();
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
             _blurPipeline = _context.newPipeline(pipelineDescriptor);
         });

@@ -196,7 +196,7 @@ void OpenGL3StateChangeWrapper::blendFunc(GLenum sfactor, GLenum dfactor)
     const bool callIsRedundant = d_blendFuncParams.equal(sfactor, dfactor);
     if(!callIsRedundant)
     {
-        Divide::BlendingProperties blend{};
+        Divide::BlendingSettings blend{};
         blend.enabled(true);
         blend.blendSrc(Divide::getProperty(sfactor));
         blend.blendDest(Divide::getProperty(dfactor));
@@ -210,7 +210,7 @@ void OpenGL3StateChangeWrapper::blendFuncSeparate(GLenum sfactorRGB, GLenum dfac
 {
     const bool callIsRedundant = d_blendFuncSeperateParams.equal(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
     if (!callIsRedundant) {
-        Divide::BlendingProperties blend{};
+        Divide::BlendingSettings blend{};
         blend.enabled(true);
         blend.blendSrc(Divide::getProperty(sfactorRGB));
         blend.blendDest(Divide::getProperty(dfactorRGB));

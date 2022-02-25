@@ -475,6 +475,8 @@ void glFramebuffer::clear(const RTClearDescriptor& descriptor) {
 }
 
 void glFramebuffer::setDefaultState(const RTDrawDescriptor& drawPolicy) {
+    OPTICK_EVENT();
+
     toggleAttachments();
 
     const RTAttachmentPool::PoolEntry& colourAttachments = _attachmentPool->get(RTAttachmentType::Colour);
@@ -573,6 +575,7 @@ void glFramebuffer::clear(const RTClearDescriptor& drawPolicy, const RTAttachmen
 
     if (drawPolicy._clearColours && hasColour()) {
         for (const RTAttachment_ptr& att : activeAttachments) {
+            OPTICK_EVENT("Clear Colour Attachment");
             const U32 binding = att->binding();
             if (static_cast<GLenum>(binding) != GL_NONE) {
 
@@ -629,13 +632,18 @@ void glFramebuffer::clear(const RTClearDescriptor& drawPolicy, const RTAttachmen
     }
 
     if (drawPolicy._clearDepth && hasDepth()) {
+        OPTICK_EVENT("Clear Depth");
+
         if (drawPolicy._clearExternalDepth && _attachmentPool->get(RTAttachmentType::Depth, 0)->isExternal()) {
             return;
         }
         const RTClearColourDescriptor* clearColour = drawPolicy._customClearColour;
         const F32 depthValue = clearColour != nullptr ? clearColour->_customClearDepth : _descriptor._depthValue;
-
-        glClearNamedFramebufferfv(_framebufferHandle, GL_DEPTH, 0, &depthValue);
+        if (useDSA) {
+            glClearNamedFramebufferfv(_framebufferHandle, GL_DEPTH, 0, &depthValue);
+        } else {
+            glClearBufferfv(GL_DEPTH, 0, &depthValue);
+        }
         _context.registerDrawCall();
     }
 }

@@ -32,6 +32,8 @@ namespace Divide {
     }
 
     void DockedWindow::draw() {
+        OPTICK_EVENT();
+
         //window_flags |= ImGuiWindowFlags_NoTitleBar;
         //window_flags |= ImGuiWindowFlags_NoScrollbar;
         //window_flags |= ImGuiWindowFlags_MenuBar;

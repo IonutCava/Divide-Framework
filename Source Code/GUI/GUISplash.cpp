@@ -57,7 +57,7 @@ void GUISplash::render(GFXDevice& context) const {
 
     PipelineDescriptor pipelineDescriptor;
     pipelineDescriptor._stateHash = context.get2DStateBlock();
-    pipelineDescriptor._shaderProgramHandle = _splashShader->getGUID();
+    pipelineDescriptor._shaderProgramHandle = _splashShader->handle();
     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();

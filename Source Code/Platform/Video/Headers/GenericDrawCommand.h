@@ -42,27 +42,28 @@ namespace Divide {
 namespace GenericDrawCommandResults {
     struct QueryResult {
         U64 _primitivesGenerated = 0U;
-        U32 _samplesPassed = 0U;
-        U32 _anySamplesPassed = 0U;
+        U32 _samplesPassed       = 0U;
+        U32 _anySamplesPassed    = 0U;
     };
 
     extern hashMap<I64, QueryResult> g_queryResults;
 };
 
 struct IndirectDrawCommand {
-    U32 indexCount = 0;    // 4  bytes
-    U32 primCount = 1;     // 8  bytes
-    U32 firstIndex = 0;    // 12 bytes
-    U32 baseVertex = 0;    // 16 bytes
-    U32 baseInstance = 0;  // 20 bytes
+    U32 indexCount   = 0u;
+    U32 primCount    = 1u;
+    U32 firstIndex   = 0u;
+    U32 baseVertex   = 0u;
+    U32 baseInstance = 0u;
 };
+static_assert(sizeof(IndirectDrawCommand) == 20, "Wrong indirect command size!");
 
 enum class CmdRenderOptions : U16 {
-    RENDER_GEOMETRY = toBit(1),
-    RENDER_WIREFRAME = toBit(2),
-    RENDER_NO_RASTERIZE = toBit(3),
-    QUERY_PRIMITIVE_COUNT = toBit(4),
-    QUERY_SAMPLE_COUNT = toBit(5),
+    RENDER_GEOMETRY           = toBit(1),
+    RENDER_WIREFRAME          = toBit(2),
+    RENDER_NO_RASTERIZE       = toBit(3),
+    QUERY_PRIMITIVE_COUNT     = toBit(4),
+    QUERY_SAMPLE_COUNT        = toBit(5),
     QUERY_ANY_SAMPLE_RENDERED = toBit(6),
     COUNT = 6
 };
@@ -72,7 +73,7 @@ struct GenericDrawCommand {
     static constexpr U8 INVALID_BUFFER_INDEX = U8_MAX;
     IndirectDrawCommand _cmd = {};                                        // 32 bytes
     PoolHandle _sourceBuffer = {};                                        // 12 bytes
-    U32 _commandOffset = 0u;                                              // 9  bytes
+    U24 _commandOffset = 0u;                                              // 8  bytes
     U16 _drawCount = 1u;                                                  // 5  bytes
     U16 _renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY);      // 3  bytes
     U8  _bufferIndex  = INVALID_BUFFER_INDEX;                             // 1  bytes
@@ -80,8 +81,6 @@ struct GenericDrawCommand {
 #pragma pack(pop)
 
 static_assert(sizeof(GenericDrawCommand) == 32, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
-
-using DrawCommandContainer = eastl::fixed_vector<IndirectDrawCommand, Config::MAX_VISIBLE_NODES, false>;
 
 bool isEnabledOption(const GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;
 void toggleOption(GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;

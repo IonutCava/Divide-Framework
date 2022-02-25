@@ -52,7 +52,7 @@ void GLStateTracker::init()
         it.resize(GFXDevice::GetDeviceInformation()._maxTextureUnits, 0u);
     }
 
-    _blendProperties.resize(GFXDevice::GetDeviceInformation()._maxRTColourAttachments, BlendingProperties());
+    _blendProperties.resize(GFXDevice::GetDeviceInformation()._maxRTColourAttachments, BlendingSettings());
     _blendEnabled.resize(GFXDevice::GetDeviceInformation()._maxRTColourAttachments, GL_FALSE);
 }
 
@@ -104,7 +104,9 @@ void GLStateTracker::setAttributesInternal(AttribHashes& hashes, const Attribute
     }
 }
 
-void GLStateTracker::setVertexFormat(const size_t attributeHash, const AttributeMap& attributes) {
+void GLStateTracker::setVertexFormat(const PrimitiveTopology topology, const size_t attributeHash, const AttributeMap& attributes) {
+    _activeTopology = topology;
+
     GLuint vao = 0u;
     if (!_vaoCache.getVAO(attributeHash, vao)) {
         NOP(); //cache miss
@@ -586,7 +588,7 @@ void GLStateTracker::setBlendColour(const UColour4& blendColour) {
     }
 }
 
-void GLStateTracker::setBlending(const BlendingProperties& blendingProperties) {
+void GLStateTracker::setBlending(const BlendingSettings& blendingProperties) {
     OPTICK_EVENT();
 
     const bool enable = blendingProperties.enabled();
@@ -640,7 +642,7 @@ void GLStateTracker::setBlending(const BlendingProperties& blendingProperties) {
     }
 }
 
-void GLStateTracker::setBlending(const GLuint drawBufferIdx,const BlendingProperties& blendingProperties) {
+void GLStateTracker::setBlending(const GLuint drawBufferIdx,const BlendingSettings& blendingProperties) {
     const bool enable = blendingProperties.enabled();
 
     assert(drawBufferIdx < GFXDevice::GetDeviceInformation()._maxRTColourAttachments);
@@ -653,7 +655,7 @@ void GLStateTracker::setBlending(const GLuint drawBufferIdx,const BlendingProper
         }
     }
 
-    BlendingProperties& crtProperties = _blendProperties[drawBufferIdx];
+    BlendingSettings& crtProperties = _blendProperties[drawBufferIdx];
 
     if (enable && crtProperties != blendingProperties) {
         if (blendingProperties.blendOpAlpha() != BlendOperation::COUNT) {

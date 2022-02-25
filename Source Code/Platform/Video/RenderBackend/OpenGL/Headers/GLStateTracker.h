@@ -67,17 +67,17 @@ namespace Divide {
         void setDepthRange(F32 nearVal, F32 farVal);
         // Just a wrapper around glClipControl
         void setClippingPlaneState(bool lowerLeftOrigin, bool negativeOneToOneDepth);
-        void setBlending(const BlendingProperties& blendingProperties);
+        void setBlending(const BlendingSettings& blendingProperties);
         void resetBlending() { setBlending(_blendPropertiesGlobal); setBlendColour({ 0u, 0u, 0u, 0u }); }
         /// Set the blending properties for the specified draw buffer
-        void setBlending(GLuint drawBufferIdx, const BlendingProperties& blendingProperties);
+        void setBlending(GLuint drawBufferIdx, const BlendingSettings& blendingProperties);
         void resetBlending(const GLuint drawBufferIdx) { setBlending(drawBufferIdx, _blendProperties[drawBufferIdx]); }
         void setBlendColour(const UColour4& blendColour);
         /// A state block should contain all rendering state changes needed for the next draw call.
         /// Some may be redundant, so we check each one individually
         void activateStateBlock(const RenderStateBlock& newBlock);
 
-        void setVertexFormat(const size_t attributeHash, const AttributeMap& attributes);
+        void setVertexFormat(PrimitiveTopology topology, const size_t attributeHash, const AttributeMap& attributes);
 
         /// Switch the currently active vertex array object
         [[nodiscard]] BindResult setActiveVAO(GLuint ID);
@@ -144,6 +144,7 @@ namespace Divide {
 
       private:
         void setAttributesInternal(AttribHashes& hashes, const AttributeMap& attributes);
+
       public:
           struct BindConfigEntry
           {
@@ -183,7 +184,7 @@ namespace Divide {
         bool _lowerLeftOrigin = true;
         bool _negativeOneToOneDepth = true;
         bool _depthWriteEnabled = true;
-        BlendingProperties _blendPropertiesGlobal;
+        BlendingSettings _blendPropertiesGlobal;
         GLboolean _blendEnabledGlobal = GL_FALSE;
 
         // 32 buffer bindings for now
@@ -191,7 +192,7 @@ namespace Divide {
         using PerBufferConfig = std::array<BindConfig, 13>;
         PerBufferConfig g_currentBindConfig;
 
-        vector<BlendingProperties> _blendProperties;
+        vector<BlendingSettings> _blendProperties;
         vector<GLboolean> _blendEnabled;
         GLenum    _currentCullMode = GL_BACK;
         GLenum    _currentFrontFace = GL_CCW;

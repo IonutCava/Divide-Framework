@@ -36,6 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Headers/Hashable.h"
 #include "Platform/Video/Headers/BlendingProperties.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
 
@@ -43,7 +44,7 @@ struct PipelineDescriptor {
     AttributeMap _vertexFormat;
     RTBlendStates _blendStates;
     size_t _stateHash = 0;
-    I64 _shaderProgramHandle = 0;
+    ShaderProgram::Handle _shaderProgramHandle = ShaderProgram::INVALID_HANDLE;
     U8 _multiSampleCount = 0u;
     PrimitiveTopology _primitiveTopology = PrimitiveTopology::COUNT;
 }; //struct PipelineDescriptor

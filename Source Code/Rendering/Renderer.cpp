@@ -72,7 +72,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         _lightCullComputeShader = CreateResource<ShaderProgram>(cache, cullShaderDesc);
 
         PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._shaderProgramHandle = _lightCullComputeShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _lightCullComputeShader->handle();
         _lightCullPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
     {
@@ -85,7 +85,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         _lightCounterResetComputeShader = CreateResource<ShaderProgram>(cache, cullShaderDesc);
 
         PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._shaderProgramHandle = _lightCounterResetComputeShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _lightCounterResetComputeShader->handle();
         _lightResetCounterPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
     {
@@ -98,7 +98,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         _lightBuildClusteredAABBsComputeShader = CreateResource<ShaderProgram>(cache, buildShaderDesc);
 
         PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._shaderProgramHandle = _lightBuildClusteredAABBsComputeShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _lightBuildClusteredAABBsComputeShader->handle();
         _lightBuildClusteredAABBsPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
   

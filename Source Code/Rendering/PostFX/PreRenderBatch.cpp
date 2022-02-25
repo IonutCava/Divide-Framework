@@ -437,7 +437,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _lineariseDepthBuffer->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _lineariseDepthBuffer->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         GFX::BindPipelineCommand bindPipelineCmd{};
@@ -490,22 +490,22 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
         const size_t stateHash = _context.get2DStateBlock();
         pipelineDescriptor._stateHash = stateHash;
-        pipelineDescriptor._shaderProgramHandle = _createHistogram->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _createHistogram->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         pipelineLumCalcHistogram = _context.newPipeline(pipelineDescriptor);
 
-        pipelineDescriptor._shaderProgramHandle = _averageHistogram->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _averageHistogram->handle();
         pipelineLumCalcAverage = _context.newPipeline(pipelineDescriptor);
 
-        pipelineDescriptor._shaderProgramHandle = _toneMapAdaptive->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _toneMapAdaptive->handle();
         pipelineToneMapAdaptive = _context.newPipeline(pipelineDescriptor);
 
-        pipelineDescriptor._shaderProgramHandle = _toneMap->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _toneMap->handle();
         pipelineToneMap = _context.newPipeline(pipelineDescriptor);
 
         for (U8 i = 0u; i < to_U8(EdgeDetectionMethod::COUNT); ++i) {
-            pipelineDescriptor._shaderProgramHandle = _edgeDetection[i]->getGUID();
+            pipelineDescriptor._shaderProgramHandle = _edgeDetection[i]->handle();
             _edgeDetectionPipelines[i] = _context.newPipeline(pipelineDescriptor);
         }
     }

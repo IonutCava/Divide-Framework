@@ -80,7 +80,7 @@ void glimBatchData::Upload() {
 #endif
 }
 
-void glimBatchData::Bind(Divide::I64 uiCurrentProgram) {
+void glimBatchData::Bind(Divide::ShaderProgram::Handle uiCurrentProgram) {
 #ifdef AE_RENDERAPI_OPENGL
     BindOGL(uiCurrentProgram);
 #else
@@ -108,7 +108,7 @@ glimBatchData::glimBatchData() {
     m_pIndexBuffer_Wireframe = nullptr;
 #else
     m_VertAttribLocation = 0;
-    m_ShaderProgramHandle = 0;
+    m_ShaderProgramHandle = Divide::ShaderProgram::INVALID_HANDLE;
 #endif
 
     Reset();
@@ -361,7 +361,7 @@ void glimBatchData::UnbindOGL(void) noexcept {
     }
 }
 
-void glimBatchData::BindOGL(Divide::I64 uiCurrentProgram) {
+void glimBatchData::BindOGL(Divide::ShaderProgram::Handle uiCurrentProgram) {
     if (!m_bUploadedToGPU)
         return;
 

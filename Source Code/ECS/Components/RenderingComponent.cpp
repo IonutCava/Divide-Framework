@@ -396,39 +396,39 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
 
             if (_materialInstance != nullptr) {
                 pipelineDescriptor._stateHash = _materialInstance->getOrCreateRenderStateBlock(renderStagePass);
-                pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramGUID(renderStagePass);
+                pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramHandle (renderStagePass);
                 if (!_materialInstance->getTextureData(renderStagePass, pkg.descriptorSetCmd()._set._textureData)) {
                     NOP();
                 }
             } else {
                 pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
-                pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
+                pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->handle();
             }
             if (renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS) {
-                RTBlendState& state0 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
-                state0._blendProperties.enabled(true);
-                state0._blendProperties.blendSrc(BlendProperty::SRC_ALPHA);
-                state0._blendProperties.blendDest(BlendProperty::INV_SRC_ALPHA);
-                state0._blendProperties.blendOp(BlendOperation::ADD);
+                BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
+                state0.enabled(true);
+                state0.blendSrc(BlendProperty::SRC_ALPHA);
+                state0.blendDest(BlendProperty::INV_SRC_ALPHA);
+                state0.blendOp(BlendOperation::ADD);
             } else if (renderStagePass._passType == RenderPassType::OIT_PASS) {
-                RTBlendState& state0 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::ACCUMULATION)];
-                state0._blendProperties.enabled(true);
-                state0._blendProperties.blendSrc(BlendProperty::ONE);
-                state0._blendProperties.blendDest(BlendProperty::ONE);
-                state0._blendProperties.blendOp(BlendOperation::ADD);
+                BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ACCUMULATION)];
+                state0.enabled(true);
+                state0.blendSrc(BlendProperty::ONE);
+                state0.blendDest(BlendProperty::ONE);
+                state0.blendOp(BlendOperation::ADD);
 
-                RTBlendState& state1 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::REVEALAGE)];
-                state1._blendProperties.enabled(true);
-                state1._blendProperties.blendSrc(BlendProperty::ZERO);
-                state1._blendProperties.blendDest(BlendProperty::INV_SRC_COLOR);
-                state1._blendProperties.blendOp(BlendOperation::ADD);
+                BlendingSettings& state1 = pipelineDescriptor._blendStates._settings[to_U8(GFXDevice::ScreenTargets::REVEALAGE)];
+                state1.enabled(true);
+                state1.blendSrc(BlendProperty::ZERO);
+                state1.blendDest(BlendProperty::INV_SRC_COLOR);
+                state1.blendOp(BlendOperation::ADD);
 
                 if_constexpr(Config::USE_COLOURED_WOIT) {
-                    RTBlendState& state2 = pipelineDescriptor._blendStates[to_U8(GFXDevice::ScreenTargets::MODULATE)];
-                    state2._blendProperties.enabled(true);
-                    state2._blendProperties.blendSrc(BlendProperty::ONE);
-                    state2._blendProperties.blendDest(BlendProperty::ONE);
-                    state2._blendProperties.blendOp(BlendOperation::ADD);
+                    BlendingSettings& state2 = pipelineDescriptor._blendStates._settings[to_U8(GFXDevice::ScreenTargets::MODULATE)];
+                    state2.enabled(true);
+                    state2.blendSrc(BlendProperty::ONE);
+                    state2.blendDest(BlendProperty::ONE);
+                    state2.blendOp(BlendOperation::ADD);
                 }
             }
 

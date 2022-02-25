@@ -277,8 +277,8 @@ class Material final : public CachedResource {
     [[nodiscard]] Texture_wptr getTexture(TextureUsage textureUsage) const;
 
     [[nodiscard]] bool getTextureData(RenderStagePass renderStagePass, TextureDataContainer& textureData);
-    [[nodiscard]] I64 getProgramGUID(RenderStagePass renderStagePass) const;
-    [[nodiscard]] I64 computeAndGetProgramGUID(RenderStagePass renderStagePass);
+    [[nodiscard]] ShaderProgram::Handle getProgramHandle(RenderStagePass renderStagePass) const;
+    [[nodiscard]] ShaderProgram::Handle computeAndGetProgramHandle(RenderStagePass renderStagePass);
 
     void rebuild();
 

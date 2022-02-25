@@ -223,7 +223,7 @@ void OpenGL3Renderer::endRendering()
     if (d_initExtraStates)
         setupExtraStates();
 
-    Divide::GL_API::GetStateTracker().setBlending(Divide::BlendingProperties());
+    Divide::GL_API::GetStateTracker().setBlending(Divide::BlendingSettings());
 
     Divide::GL_API::PopDebugMessage();
 }
@@ -267,7 +267,7 @@ void OpenGL3Renderer::setupRenderingBlendMode(const BlendMode mode,
 
     if (d_activeBlendMode == BM_RTT_PREMULTIPLIED)
     {
-        Divide::BlendingProperties blend{};
+        Divide::BlendingSettings blend{};
         blend.enabled(true);
         blend.blendSrc(Divide::BlendProperty::ONE);
         blend.blendDest(Divide::BlendProperty::INV_SRC_ALPHA);
@@ -277,7 +277,7 @@ void OpenGL3Renderer::setupRenderingBlendMode(const BlendMode mode,
     }
     else
     {
-        Divide::BlendingProperties blend{};
+        Divide::BlendingSettings blend{};
         blend.enabled(true);
         blend.blendSrc(Divide::BlendProperty::SRC_ALPHA);
         blend.blendDest(Divide::BlendProperty::INV_SRC_ALPHA);

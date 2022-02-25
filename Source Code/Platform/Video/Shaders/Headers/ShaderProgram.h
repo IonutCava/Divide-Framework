@@ -84,11 +84,28 @@ public:
     vector<ShaderModuleDescriptor> _modules;
 };
 
+struct ShaderProgramMapEntry {
+    ShaderProgram* _program = nullptr;
+    U8 _generation = 0u;
+};
+
+inline bool operator==(const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs) noexcept {
+    return lhs._generation == rhs._generation &&
+           lhs._program == rhs._program;
+}
+
+inline bool operator!=(const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs) noexcept {
+    return lhs._generation != rhs._generation ||
+           lhs._program != rhs._program;
+}
+
 class NOINITVTABLE ShaderProgram : public CachedResource,
                                    public GraphicsResource {
     friend class Attorney::ShaderProgramKernel;
-
    public:
+    using Handle = PoolHandle;
+    static constexpr Handle INVALID_HANDLE{ U16_MAX, U8_MAX };
+
     static bool s_UseBindlessTextures;
 
     struct UniformDeclaration
@@ -105,12 +122,12 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
         Str256 _name;
         string _sourceCode;
     };
-    using ShaderProgramMapEntry = std::pair<ShaderProgram*, size_t>;
-    using ShaderProgramMap = ska::bytell_hash_map<I64 /*handle*/, ShaderProgramMapEntry>;
+
+     using ShaderProgramMap = std::array<ShaderProgramMapEntry, U16_MAX>;
+
     using AtomMap = ska::bytell_hash_map<U64 /*name hash*/, string>;
     //using AtomInclusionMap = ska::bytell_hash_map<U64 /*name hash*/, vector<ResourcePath>>;
     using AtomInclusionMap = hashMap<U64 /*name hash*/, vector<ResourcePath>>;
-    using UniformsInclusionMap = hashMap<U64 /*name hash*/, vector<UniformDeclaration>>;
     using ShaderQueue = eastl::stack<ShaderProgram*, vector_fast<ShaderProgram*> >;
 
    public:
@@ -179,13 +196,11 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     /// Queue a shaderProgram recompile request
     static bool RecompileShaderProgram(const Str256& name);
     /// Remove a shaderProgram from the program cache
-    static bool UnregisterShaderProgram(size_t shaderHash);
+    static bool UnregisterShaderProgram(Handle shaderHandle);
     /// Add a shaderProgram to the program cache
     static void RegisterShaderProgram(ShaderProgram* shaderProgram);
     /// Find a specific shader program by handle.
-    [[nodiscard]] static ShaderProgram* FindShaderProgram(I64 shaderHandle);
-    /// Find a specific shader program by descriptor hash.
-    [[nodiscard]] static ShaderProgram* FindShaderProgram(size_t shaderHash);
+    [[nodiscard]] static ShaderProgram* FindShaderProgram(Handle shaderHandle);
 
     /// Return a default shader used for general purpose rendering
     [[nodiscard]] static const ShaderProgram_ptr& DefaultShader() noexcept;
@@ -195,7 +210,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     [[nodiscard]] static const ShaderProgram_ptr& DefaultShaderOIT() noexcept;
 
     [[nodiscard]] static const ShaderProgram_ptr& NullShader() noexcept;
-    [[nodiscard]] static const I64                NullShaderGUID() noexcept;
+    [[nodiscard]] const I64 NullShaderGUID() noexcept;
 
     static void RebuildAllShaders();
 
@@ -227,6 +242,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     }
 
     PROPERTY_RW(bool, highPriority, true);
+    PROPERTY_R_IW(Handle, handle, INVALID_HANDLE);
 
    protected:
      static void UseShaderTextCache(bool state) noexcept { if (s_useShaderBinaryCache) { state = false; } s_useShaderTextCache = state; }
@@ -244,8 +260,13 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static ShaderQueue s_recompileQueue;
     /// Shader program cache
     static ShaderProgramMap s_shaderPrograms;
-    static std::pair<I64, ShaderProgramMapEntry> s_lastRequestedShaderProgram;
-    static SharedMutex s_programLock;
+
+    struct LastRequestedShader {
+        ShaderProgram* _program = nullptr;
+        Handle _handle = INVALID_HANDLE;
+    };
+    static LastRequestedShader s_lastRequestedShaderProgram;
+    static Mutex s_programLock;
 
 protected:
     virtual void threadedLoad(bool reloadExisting);

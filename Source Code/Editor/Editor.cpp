@@ -306,8 +306,8 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         ResourceDescriptor shaderResDescriptor("InfiniteGrid.Colour");
         shaderResDescriptor.propertyDescriptor(shaderDescriptor);
         _infiniteGridProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
-        gridPipeDesc._shaderProgramHandle = _infiniteGridProgram->getGUID();
-        BlendingProperties& blend = gridPipeDesc._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)]._blendProperties;
+        gridPipeDesc._shaderProgramHandle = _infiniteGridProgram->handle();
+        BlendingSettings& blend = gridPipeDesc._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
         blend.enabled(true);
         blend.blendSrc(BlendProperty::SRC_ALPHA);
         blend.blendDest(BlendProperty::INV_SRC_ALPHA);
@@ -316,7 +316,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 
         PipelineDescriptor pipelineDesc;
         pipelineDesc._stateHash = _context.gfx().getDefaultStateBlock(true);
-        pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
+        pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->handle();
         _axisGizmoPipeline = _context.gfx().newPipeline(pipelineDesc);
     }
 
@@ -770,6 +770,8 @@ void Editor::update(const U64 deltaTimeUS) {
 }
 
 bool Editor::render([[maybe_unused]] const U64 deltaTime) {
+    OPTICK_EVENT();
+
     const F32 statusBarHeight = _statusBar->height();
     
     static ImGuiDockNodeFlags opt_flags = ImGuiDockNodeFlags_None | ImGuiDockNodeFlags_PassthruCentralNode;
@@ -971,6 +973,8 @@ void Editor::drawScreenOverlay(const Camera* camera, const Rect<I32>& targetView
 }
 
 bool Editor::framePostRender(const FrameEvent& evt) {
+    OPTICK_EVENT();
+
     for (DockedWindow* window : _dockedWindows) {
         window->backgroundUpdate();
     }
@@ -1075,7 +1079,7 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
 
         PipelineDescriptor pipelineDesc = {};
         pipelineDesc._stateHash = state.getHash();
-        pipelineDesc._shaderProgramHandle = _imguiProgram->getGUID();
+        pipelineDesc._shaderProgramHandle = _imguiProgram->handle();
         pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         AttributeDescriptor& descPos = pipelineDesc._vertexFormat[to_base(AttribLocation::GENERIC)];
@@ -1096,7 +1100,7 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         descColour._strideInBytes = to_U32(OFFSETOF(ImDrawVert, col));
 #   undef OFFSETOF
 
-        BlendingProperties& blend = pipelineDesc._blendStates[to_U8(GFXDevice::ScreenTargets::ALBEDO)]._blendProperties;
+        BlendingSettings& blend = pipelineDesc._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
         blend.enabled(true);
         blend.blendSrc(BlendProperty::SRC_ALPHA);
         blend.blendDest(BlendProperty::INV_SRC_ALPHA);

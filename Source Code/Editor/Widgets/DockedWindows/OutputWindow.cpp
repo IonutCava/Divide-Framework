@@ -43,6 +43,8 @@ namespace Divide {
     }
 
     void OutputWindow::drawInternal() {
+        OPTICK_EVENT();
+
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
         {
             bool tooltip = false;

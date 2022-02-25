@@ -151,6 +151,7 @@ namespace Divide {
     }
 
     void ContentExplorerWindow::drawInternal() {
+        OPTICK_EVENT();
 
         const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_parent, Editor::ImGuiContextType::Editor);
 

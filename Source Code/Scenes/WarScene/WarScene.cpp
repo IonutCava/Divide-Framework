@@ -164,7 +164,7 @@ void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut) {
             _targetLines = _context.gfx().newIMP();
 
             PipelineDescriptor pipelineDescriptor = {};
-            pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShader()->getGUID();
+            pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShader()->handle();
 
             RenderStateBlock primitiveStateBlockNoZRead = {};
             primitiveStateBlockNoZRead.depthTestEnabled(false);

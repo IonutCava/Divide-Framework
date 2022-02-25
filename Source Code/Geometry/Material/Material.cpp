@@ -441,7 +441,7 @@ void Material::recomputeShaders() {
     }
 }
 
-I64 Material::computeAndGetProgramGUID(const RenderStagePass renderStagePass) {
+ShaderProgram::Handle Material::computeAndGetProgramHandle(const RenderStagePass renderStagePass) {
     constexpr U8 maxRetries = 250;
 
     bool justFinishedLoading = false;
@@ -451,24 +451,24 @@ I64 Material::computeAndGetProgramGUID(const RenderStagePass renderStagePass) {
                 NOP();
             }
         } else {
-            return getProgramGUID(renderStagePass);
+            return getProgramHandle(renderStagePass);
         }
     }
 
-    return ShaderProgram::DefaultShader()->getGUID();
+    return ShaderProgram::DefaultShader()->handle();
 }
 
-I64 Material::getProgramGUID(const RenderStagePass renderStagePass) const {
+ShaderProgram::Handle Material::getProgramHandle(const RenderStagePass renderStagePass) const {
 
     const ShaderProgramInfo& info = shaderInfo(renderStagePass);
 
     if (info._shaderRef != nullptr) {
         WAIT_FOR_CONDITION(info._shaderRef->getState() == ResourceState::RES_LOADED);
-        return info._shaderRef->getGUID();
+        return info._shaderRef->handle();
     }
     DIVIDE_UNEXPECTED_CALL();
 
-    return ShaderProgram::DefaultShader()->getGUID();
+    return ShaderProgram::DefaultShader()->handle();
 }
 
 bool Material::canDraw(const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading) {

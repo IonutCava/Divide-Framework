@@ -1,4 +1,4 @@
-/*
+/*7
 Copyright (c) 2018 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
@@ -37,20 +37,23 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-#pragma pack(push, 1)
 struct PoolHandle {
     U16 _id = 0u;
     U8  _generation = 0u;
-
-    bool operator== (const PoolHandle& val) const noexcept {
-        return _generation == val._generation && _id == val._id;
-    }
-
-    bool operator!= (const PoolHandle& val) const noexcept {
-        return _generation != val._generation || _id != val._id;
-    }
+    U8  _tag = 0u;
 };
-#pragma pack(pop)
+
+inline bool operator== (const PoolHandle& lhs, const PoolHandle& rhs) noexcept {
+    return lhs._generation == rhs._generation &&
+           lhs._id == rhs._id &&
+           lhs._tag == rhs._tag;
+}
+
+inline bool operator!= (const PoolHandle& lhs, const PoolHandle& rhs) noexcept {
+    return lhs._generation != rhs._generation ||
+           lhs._id != rhs._id ||
+           lhs._tag != rhs._tag;
+}
 
 template<typename T, size_t N>
 class ObjectPool {
@@ -75,6 +78,19 @@ protected:
 };
 
 } //namespace Divide
+
+namespace eastl {
+    template <> struct hash<Divide::PoolHandle>
+    {
+        size_t operator()(const Divide::PoolHandle& x) const noexcept
+        {
+            size_t h = 17;
+            Divide::Util::Hash_combine(h, x._generation);
+            Divide::Util::Hash_combine(h, x._id);
+            return h;
+        }
+    };
+};
 
 #endif //_OBJECT_POOL_H_
 

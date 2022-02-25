@@ -118,7 +118,7 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     _postProcessingShader->addStateCallback(ResourceState::RES_LOADED, [this, &context](CachedResource*) {
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = context.gfx().get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _postProcessingShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _postProcessingShader->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _drawPipeline = context.gfx().newPipeline(pipelineDescriptor);

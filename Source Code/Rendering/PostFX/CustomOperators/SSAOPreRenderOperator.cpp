@@ -472,31 +472,31 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader->handle();
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         s_downsamplePipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-        pipelineDescriptor._shaderProgramHandle = _ssaoGenerateHalfResShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _ssaoGenerateHalfResShader->handle();
         s_generateHalfResPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-        pipelineDescriptor._shaderProgramHandle = _ssaoUpSampleShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _ssaoUpSampleShader->handle();
         s_upsamplePipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-        pipelineDescriptor._shaderProgramHandle = _ssaoGenerateShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _ssaoGenerateShader->handle();
         s_generateFullResPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
         RenderStateBlock redChannelOnly = RenderStateBlock::get(_context.get2DStateBlock());
         redChannelOnly.setColourWrites(true, false, false, false);
 
         pipelineDescriptor._stateHash = redChannelOnly.getHash();
-        pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderHorizontal->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderHorizontal->handle();
         s_blurHorizontalPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-        pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderVertical->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderVertical->handle();
         s_blurVerticalPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
 
-        pipelineDescriptor._shaderProgramHandle = _ssaoPassThroughShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = _ssaoPassThroughShader->handle();
         s_passThroughPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
     }
 

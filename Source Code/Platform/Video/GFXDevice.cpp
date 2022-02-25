@@ -630,7 +630,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         _textRenderShader = CreateResource<ShaderProgram>(cache, immediateModeShader, loadTasks);
         _textRenderShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
             PipelineDescriptor descriptor = {};
-            descriptor._shaderProgramHandle = res->getGUID();
+            descriptor._shaderProgramHandle = _textRenderShader->handle();
             descriptor._stateHash = get2DStateBlock();
             _textRenderPipeline = newPipeline(descriptor);
         });
@@ -657,7 +657,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         _HIZConstructProgram->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
             PipelineDescriptor pipelineDesc;
             pipelineDesc._stateHash = _stateDepthOnlyRenderingHash;
-            pipelineDesc._shaderProgramHandle = _HIZConstructProgram->getGUID();
+            pipelineDesc._shaderProgramHandle = _HIZConstructProgram->handle();
             pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
             _HIZPipeline = newPipeline(pipelineDesc);
@@ -678,7 +678,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         _HIZCullProgram = CreateResource<ShaderProgram>(cache, descriptor2, loadTasks);
         _HIZCullProgram->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
             PipelineDescriptor pipelineDescriptor = {};
-            pipelineDescriptor._shaderProgramHandle = _HIZCullProgram->getGUID();
+            pipelineDescriptor._shaderProgramHandle = _HIZCullProgram->handle();
             _HIZCullPipeline = newPipeline(pipelineDescriptor);
         });
     }
@@ -746,7 +746,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
-                pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
+                pipelineDescriptor._shaderProgramHandle = blurShader->handle();
                 pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _blurBoxPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
             });
@@ -765,7 +765,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
-                pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
+                pipelineDescriptor._shaderProgramHandle = blurShader->handle();
                 pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _blurBoxPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
             });
@@ -797,7 +797,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
-                pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
+                pipelineDescriptor._shaderProgramHandle = blurShader->handle();
                 pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
                 _blurGaussianPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
             });
@@ -819,7 +819,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
-                pipelineDescriptor._shaderProgramHandle = blurShader->getGUID();
+                pipelineDescriptor._shaderProgramHandle = blurShader->handle();
                 pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
                 _blurGaussianPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
             });
@@ -845,15 +845,15 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             _displayShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
                 PipelineDescriptor pipelineDescriptor = {};
                 pipelineDescriptor._stateHash = get2DStateBlock();
-                pipelineDescriptor._shaderProgramHandle = _displayShader->getGUID();
+                pipelineDescriptor._shaderProgramHandle = _displayShader->handle();
                 pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _drawFSTexturePipelineCmd._pipeline = newPipeline(pipelineDescriptor);
 
-                RTBlendState& blendState = pipelineDescriptor._blendStates[0];
-                blendState._blendProperties.enabled(true);
-                blendState._blendProperties.blendSrc(BlendProperty::SRC_ALPHA);
-                blendState._blendProperties.blendDest(BlendProperty::INV_SRC_ALPHA);
-                blendState._blendProperties.blendOp(BlendOperation::ADD);
+                BlendingSettings& blendState = pipelineDescriptor._blendStates._settings[0];
+                blendState.enabled(true);
+                blendState.blendSrc(BlendProperty::SRC_ALPHA);
+                blendState.blendDest(BlendProperty::INV_SRC_ALPHA);
+                blendState.blendOp(BlendOperation::ADD);
                 _drawFSTexturePipelineBlendCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
@@ -864,7 +864,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             _depthShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
                 PipelineDescriptor pipelineDescriptor = {};
                 pipelineDescriptor._stateHash = _stateDepthOnlyRenderingHash;
-                pipelineDescriptor._shaderProgramHandle = _depthShader->getGUID();
+                pipelineDescriptor._shaderProgramHandle = _depthShader->handle();
                 pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _drawFSDepthPipelineCmd._pipeline = newPipeline(pipelineDescriptor);
             });
@@ -877,7 +877,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         RenderStateBlock primitiveStateBlock{};
 
         PipelineDescriptor pipelineDesc;
-        pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->getGUID();
+        pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->handle();
 
         pipelineDesc._stateHash = primitiveStateBlock.getHash();
         _debugGizmoPipeline = newPipeline(pipelineDesc);
@@ -1702,7 +1702,7 @@ const GFXShaderData::CamData& GFXDevice::cameraData() const noexcept {
 
 #pragma region Command buffers, occlusion culling, etc
 void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool batch) {
-    OPTICK_EVENT("FLUSHING COMMAND BUFFER");
+    OPTICK_EVENT();
 
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         DIVIDE_ASSERT(Runtime::isMainThread(), "GFXDevice::flushCommandBuffer called from worker thread!");
@@ -1727,6 +1727,8 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
         const GFX::CommandType cmdType = static_cast<GFX::CommandType>(cmd._typeIndex);
         switch (cmdType) {
             case GFX::CommandType::BLIT_RT: {
+                OPTICK_EVENT("BLIT_RT");
+
                 const GFX::BlitRenderTargetCommand* crtCmd = commandBuffer.get<GFX::BlitRenderTargetCommand>(cmd);
                 RenderTarget& source = renderTargetPool().renderTarget(crtCmd->_source);
                 RenderTarget& destination = renderTargetPool().renderTarget(crtCmd->_destination);
@@ -1739,22 +1741,30 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 destination.blitFrom(params);
             } break;
             case GFX::CommandType::CLEAR_RT: {
+                OPTICK_EVENT("CLEAR_RT");
+
                 const GFX::ClearRenderTargetCommand& crtCmd = *commandBuffer.get<GFX::ClearRenderTargetCommand>(cmd);
                 RenderTarget& source = renderTargetPool().renderTarget(crtCmd._target);
                 source.clear(crtCmd._descriptor);
             }break;
             case GFX::CommandType::RESET_RT: {
+                OPTICK_EVENT("RESET_RT");
+
                 const GFX::ResetRenderTargetCommand& crtCmd = *commandBuffer.get<GFX::ResetRenderTargetCommand>(cmd);
                 RenderTarget& source = renderTargetPool().renderTarget(crtCmd._source);
                 source.setDefaultState(crtCmd._descriptor);
             } break;
             case GFX::CommandType::RESET_AND_CLEAR_RT: {
+                OPTICK_EVENT("RESET_AND_CLEAR_RT");
+
                 const GFX::ResetAndClearRenderTargetCommand& crtCmd = *commandBuffer.get<GFX::ResetAndClearRenderTargetCommand>(cmd);
                 RenderTarget& source = renderTargetPool().renderTarget(crtCmd._source);
                 source.setDefaultState(crtCmd._drawDescriptor);
                 source.clear(crtCmd._clearDescriptor);
             } break;
             case GFX::CommandType::CLEAR_TEXTURE: {
+                OPTICK_EVENT("CLEAR_TEXTURE");
+
                 const GFX::ClearTextureCommand& crtCmd = *commandBuffer.get<GFX::ClearTextureCommand>(cmd);
                 if (crtCmd._texture != nullptr) {
                     if (crtCmd._clearRect) {
@@ -1765,35 +1775,49 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 }
             }break;
             case GFX::CommandType::READ_BUFFER_DATA: {
+                OPTICK_EVENT("READ_BUFFER_DATA");
+
                 const GFX::ReadBufferDataCommand& crtCmd = *commandBuffer.get<GFX::ReadBufferDataCommand>(cmd);
                 if (crtCmd._buffer != nullptr && crtCmd._target != nullptr) {
                     crtCmd._buffer->readData(crtCmd._offsetElementCount, crtCmd._elementCount, crtCmd._target);
                 }
             } break;
             case GFX::CommandType::CLEAR_BUFFER_DATA: {
+                OPTICK_EVENT("CLEAR_BUFFER_DATA");
+
                 const GFX::ClearBufferDataCommand& crtCmd = *commandBuffer.get<GFX::ClearBufferDataCommand>(cmd);
                 if (crtCmd._buffer != nullptr) {
                     crtCmd._buffer->clearData(crtCmd._offsetElementCount, crtCmd._elementCount);
                 }
             } break;
-            case GFX::CommandType::SET_VIEWPORT:
+            case GFX::CommandType::SET_VIEWPORT: {
+                OPTICK_EVENT("SET_VIEWPORT");
+
                 setViewport(commandBuffer.get<GFX::SetViewportCommand>(cmd)->_viewport);
-                break;
+            } break;
             case GFX::CommandType::PUSH_VIEWPORT: {
+                OPTICK_EVENT("PUSH_VIEWPORT");
+
                 const GFX::PushViewportCommand* crtCmd = commandBuffer.get<GFX::PushViewportCommand>(cmd);
                 _viewportStack.push(_viewport);
                 setViewport(crtCmd->_viewport);
             } break;
             case GFX::CommandType::POP_VIEWPORT: {
+                OPTICK_EVENT("POP_VIEWPORT");
+
                 setViewport(_viewportStack.top());
                 _viewportStack.pop();
             } break;
             case GFX::CommandType::SET_CAMERA: {
+                OPTICK_EVENT("SET_CAMERA");
+
                 const GFX::SetCameraCommand* crtCmd = commandBuffer.get<GFX::SetCameraCommand>(cmd);
                 // Tell the Rendering API to draw from our desired PoV
                 renderFromCamera(crtCmd->_cameraSnapshot);
             } break;
             case GFX::CommandType::PUSH_CAMERA: {
+                OPTICK_EVENT("PUSH_CAMERA");
+
                 const GFX::PushCameraCommand* crtCmd = commandBuffer.get<GFX::PushCameraCommand>(cmd);
                 DIVIDE_ASSERT(_cameraSnapshots.size() < _cameraSnapshots._Get_container().max_size(), "GFXDevice::flushCommandBuffer error: PUSH_CAMERA stack too deep!");
 
@@ -1801,19 +1825,25 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 renderFromCamera(crtCmd->_cameraSnapshot);
             } break;
             case GFX::CommandType::POP_CAMERA: {
+                OPTICK_EVENT("POP_CAMERA");
+
                 renderFromCamera(_cameraSnapshots.top());
                 _cameraSnapshots.pop();
             } break;
-            case GFX::CommandType::SET_CLIP_PLANES:
+            case GFX::CommandType::SET_CLIP_PLANES: {
+                OPTICK_EVENT("SET_CLIP_PLANES");
+
                 setClipPlanes(commandBuffer.get<GFX::SetClipPlanesCommand>(cmd)->_clippingPlanes);
-                break;
-            case GFX::CommandType::EXTERNAL:
+            } break;
+            case GFX::CommandType::EXTERNAL: {
+                OPTICK_EVENT("EXTERNAL");
+
                 uploadGPUBlock();
                 commandBuffer.get<GFX::ExternalCommand>(cmd)->_cbk();
-                break;
+            } break;
 
             case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
-                OPTICK_EVENT("Bind Shader Buffers");
+                OPTICK_EVENT("BIND_DESCRIPTOR_SETS");
 
                 GFX::BindDescriptorSetsCommand* crtCmd = commandBuffer.get<GFX::BindDescriptorSetsCommand>(cmd);
                 DescriptorSet& set = crtCmd->_set;
@@ -1851,6 +1881,8 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
 /// Based on RasterGrid implementation: http://rastergrid.com/blog/2010/10/hierarchical-z-map-based-occlusion-culling/
 /// Modified with nVidia sample code: https://github.com/nvpro-samples/gl_occlusion_culling
 std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut) {
+    OPTICK_EVENT();
+
     assert(depthBuffer != HiZTarget);
 
     // The depth buffer's resolution should be equal to the screen's resolution
@@ -2243,7 +2275,7 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
 
     PipelineDescriptor pipelineDesc{};
     pipelineDesc._stateHash = _state2DRenderingHash;
-    pipelineDesc._shaderProgramHandle = -1;
+    pipelineDesc._shaderProgramHandle = ShaderProgram::INVALID_HANDLE;
     pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     const Rect<I32> previousViewport(_viewport);
@@ -2263,10 +2295,10 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
             view->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, lodLevel);
             labelStack.emplace_back(Util::StringFormat("Mip level: %d", to_U8(lodLevel)), viewport.sizeY * 4, viewport);
         }
-        const I64 crtShader = pipelineDesc._shaderProgramHandle;
-        const I64 newShader = view->_shader->getGUID();
+        const ShaderProgram::Handle crtShader = pipelineDesc._shaderProgramHandle;
+        const ShaderProgram::Handle newShader = view->_shader->handle();
         if (crtShader != newShader) {
-            pipelineDesc._shaderProgramHandle = view->_shader->getGUID();
+            pipelineDesc._shaderProgramHandle = view->_shader->handle();
             crtPipeline = newPipeline(pipelineDesc);
         }
 
@@ -2834,7 +2866,7 @@ Texture* GFXDevice::newTextureLocked(const size_t descriptorHash,
 
 Pipeline* GFXDevice::newPipeline(const PipelineDescriptor& descriptor) {
     // Pipeline with no shader is no pipeline at all
-    DIVIDE_ASSERT(descriptor._shaderProgramHandle != 0, "Missing shader handle during pipeline creation!");
+    DIVIDE_ASSERT(descriptor._shaderProgramHandle != ShaderProgram::INVALID_HANDLE, "Missing shader handle during pipeline creation!");
 
     const size_t hash = GetHash(descriptor);
 

@@ -37,7 +37,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct BlendingProperties {
+// 4 should be more than enough even for batching multiple render targets together
+constexpr U8 MAX_RT_COLOUR_ATTACHMENTS = 4;
+
+struct BlendingSettings {
 
     PROPERTY_RW(BlendProperty,  blendSrc, BlendProperty::ONE);
     PROPERTY_RW(BlendProperty,  blendDest, BlendProperty::ZERO);
@@ -48,25 +51,19 @@ struct BlendingProperties {
     PROPERTY_RW(bool, enabled, false);
 };
 
-[[nodiscard]] size_t GetHash(const BlendingProperties& properties);
-bool operator==(const BlendingProperties& lhs, const BlendingProperties& rhs) noexcept;
-bool operator!=(const BlendingProperties& lhsc, const BlendingProperties& rhs) noexcept;
-
-// 4 should be more than enough even for batching multiple render targets together
-constexpr U8 MAX_RT_COLOUR_ATTACHMENTS = 4;
-
-struct RTBlendState {
-    UColour4 _blendColour = { 0u, 0u, 0u, 0u };
-    BlendingProperties _blendProperties;
-};
-
-bool operator==(const RTBlendState& lhs, const RTBlendState& rhs) noexcept;
-bool operator!=(const RTBlendState& lhs, const RTBlendState& rhs) noexcept;
+[[nodiscard]] size_t GetHash(const BlendingSettings& properties);
+bool operator==(const BlendingSettings& lhs, const BlendingSettings& rhs) noexcept;
+bool operator!=(const BlendingSettings& lhsc, const BlendingSettings& rhs) noexcept;
 
 // Blend state 0 with no RT bound == Global blend
-using RTBlendStates = std::array<RTBlendState, MAX_RT_COLOUR_ATTACHMENTS>;
+struct RTBlendStates {
+    UColour4 _blendColour = { 0u, 0u, 0u, 0u };
+    std::array<BlendingSettings, MAX_RT_COLOUR_ATTACHMENTS> _settings;
+};
 
 [[nodiscard]] size_t GetHash(const RTBlendStates& blendStates);
+bool operator==(const RTBlendStates& lhs, const RTBlendStates& rhs) noexcept;
+bool operator!=(const RTBlendStates& lhs, const RTBlendStates& rhs) noexcept;
 
 }; //namespace Divide
 

@@ -61,9 +61,9 @@ ShaderProgram_ptr ShaderProgram::s_imWorldOITShader = nullptr;
 ShaderProgram_ptr ShaderProgram::s_nullShader = nullptr;
 ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
 ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
-std::pair<I64, ShaderProgram::ShaderProgramMapEntry> ShaderProgram::s_lastRequestedShaderProgram = { -1, {} };
+ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
 
-SharedMutex ShaderProgram::s_programLock;
+Mutex ShaderProgram::s_programLock;
 std::atomic_int ShaderProgram::s_shaderCount;
 
 size_t ShaderProgramDescriptor::getHash() const {
@@ -620,10 +620,7 @@ ShaderProgram::~ShaderProgram()
 }
 
 void ShaderProgram::threadedLoad([[maybe_unused]] const bool reloadExisting) {
-    if (!weak_from_this().expired()) {
-        RegisterShaderProgram(std::dynamic_pointer_cast<ShaderProgram>(shared_from_this()).get());
-    }
-
+    RegisterShaderProgram(this);
     CachedResource::load();
 };
 
@@ -639,7 +636,7 @@ bool ShaderProgram::load() {
 
 bool ShaderProgram::unload() {
     // Unregister the program from the manager
-    return UnregisterShaderProgram(descriptorHash());
+    return UnregisterShaderProgram(handle());
 }
 
 /// Rebuild the specified shader stages from source code
@@ -657,15 +654,7 @@ void ShaderProgram::Idle(PlatformContext& platformContext) {
         // Else, recompile the top program from the queue
         bool skipped = false;
         ShaderProgram* program = s_recompileQueue.top();
-        if (program->recompile(skipped)) {
-            if (!skipped) {
-                if (program->getGUID() == s_lastRequestedShaderProgram.first) {
-                    s_lastRequestedShaderProgram = { -1, {} };
-                }
-            }
-            //Re-register because the handle is probably different by now
-            RegisterShaderProgram(program);
-        } else {
+        if (!program->recompile(skipped)) {
             Console::errorfn(Locale::Get(_ID("ERROR_SHADER_RECOMPILE_FAILED")), program->resourceName().c_str());
         }
         s_recompileQueue.pop();
@@ -684,12 +673,13 @@ void ShaderProgram::Idle(PlatformContext& platformContext) {
 /// that matches the name specified
 bool ShaderProgram::RecompileShaderProgram(const Str256& name) {
     bool state = false;
-    SharedLock<SharedMutex> r_lock(s_programLock);
+
+    ScopedLock<Mutex> lock(s_programLock);
 
     // Find the shader program
-    for (const auto& [handle, programEntry] : s_shaderPrograms) {
+    for (const ShaderProgramMapEntry& entry: s_shaderPrograms) {
        
-        ShaderProgram* program = programEntry.first;
+        ShaderProgram* program = entry._program;
         assert(program != nullptr);
 
         const Str256& shaderName = program->resourceName();
@@ -821,8 +811,8 @@ bool ShaderProgram::OnShutdown() {
     while (!s_recompileQueue.empty()) {
         s_recompileQueue.pop();
     }
-    s_shaderPrograms.clear();
-    s_lastRequestedShaderProgram = { -1, {} };
+    s_shaderPrograms.fill({});
+    s_lastRequestedShaderProgram = {};
 
     FileWatcherManager::deallocateWatcher(s_shaderFileWatcherID);
     s_shaderFileWatcherID = -1;
@@ -836,75 +826,80 @@ bool ShaderProgram::OnThreadCreated(const GFXDevice& gfx, [[maybe_unused]] const
 
 /// Whenever a new program is created, it's registered with the manager
 void ShaderProgram::RegisterShaderProgram(ShaderProgram* shaderProgram) {
-    size_t shaderHash = shaderProgram->descriptorHash();
-    UnregisterShaderProgram(shaderHash);
+    const auto cleanOldShaders = []() {
+        DIVIDE_UNEXPECTED_CALL_MSG("Not Implemented!");
+    };
 
-    ScopedLock<SharedMutex> w_lock(s_programLock);
-    s_shaderPrograms[shaderProgram->getGUID()] = { shaderProgram, shaderHash };
+    assert(shaderProgram != nullptr);
+
+    ScopedLock<Mutex> lock(s_programLock);
+    if (shaderProgram->handle() != INVALID_HANDLE) {
+        const ShaderProgramMapEntry& existingEntry = s_shaderPrograms[shaderProgram->handle()._id];
+        if (existingEntry._generation == shaderProgram->handle()._generation) {
+            // Nothing to do. Probably a reload of some kind.
+            assert(existingEntry._program != nullptr && existingEntry._program->getGUID() == shaderProgram->getGUID());
+            return;
+        }
+    }
+
+    U16 idx = 0u;
+    bool retry = false;
+    for (ShaderProgramMapEntry& entry: s_shaderPrograms) {
+        if (entry._program == nullptr && entry._generation < U8_MAX) {
+            entry._program = shaderProgram;
+            shaderProgram->_handle = { idx, entry._generation };
+            return;
+        }
+        if (++idx == 0u) {
+            if (retry) {
+                // We only retry once!
+                DIVIDE_UNEXPECTED_CALL();
+            }
+            retry = true;
+            // Handle overflow
+            cleanOldShaders();
+        }
+    }
 }
 
 /// Unloading/Deleting a program will unregister it from the manager
-bool ShaderProgram::UnregisterShaderProgram(size_t shaderHash) {
+bool ShaderProgram::UnregisterShaderProgram(const Handle shaderHandle) {
 
-    ScopedLock<SharedMutex> w_lock(s_programLock);
-    s_lastRequestedShaderProgram = { -1, {} };
-
-    if (s_shaderPrograms.empty()) {
-        // application shutdown?
-        return true;
-    }
-
-    const ShaderProgramMap::const_iterator it = eastl::find_if(
-        eastl::cbegin(s_shaderPrograms),
-        eastl::cend(s_shaderPrograms),
-        [shaderHash](const ShaderProgramMap::value_type& item) {
-            return item.second.second == shaderHash;
-        });
-
-    if (it != eastl::cend(s_shaderPrograms)) {
-        if (it->first == s_lastRequestedShaderProgram.first) {
-            s_lastRequestedShaderProgram = { -1, {} };
+    if (shaderHandle != INVALID_HANDLE) {
+        ScopedLock<Mutex> lock(s_programLock);
+        ShaderProgramMapEntry& entry = s_shaderPrograms[shaderHandle._id];
+        if (entry._generation == shaderHandle._generation) {
+            if (entry._program && entry._program == s_lastRequestedShaderProgram._program) {
+                s_lastRequestedShaderProgram = {};
+            }
+            entry._program = nullptr;
+            if (entry._generation < U8_MAX) {
+                entry._generation += 1u;
+            }
+            return true;
         }
-
-        s_shaderPrograms.erase(it);
-        return true;
     }
 
     // application shutdown?
     return false;
 }
 
-ShaderProgram* ShaderProgram::FindShaderProgram(const I64 shaderHandle) {
-    SharedLock<SharedMutex> r_lock(s_programLock);
-    if (shaderHandle == s_lastRequestedShaderProgram.first) {
-        return s_lastRequestedShaderProgram.second.first;
+ShaderProgram* ShaderProgram::FindShaderProgram(const Handle shaderHandle) {
+    ScopedLock<Mutex> lock(s_programLock);
+
+    if (shaderHandle == s_lastRequestedShaderProgram._handle) {
+        return s_lastRequestedShaderProgram._program;
     }
 
-    const auto& it = s_shaderPrograms.find(shaderHandle);
-    if (it != eastl::cend(s_shaderPrograms)) {
-        s_lastRequestedShaderProgram = { shaderHandle, it->second };
+    assert(shaderHandle._id != U16_MAX && shaderHandle._generation != U8_MAX);
+    const ShaderProgramMapEntry& entry = s_shaderPrograms[shaderHandle._id];
+    if (entry._generation == shaderHandle._generation) {
+        s_lastRequestedShaderProgram = { entry._program, shaderHandle };
 
-        return it->second.first;
-    }
-    s_lastRequestedShaderProgram = { -1, {} };
-    return nullptr;
-}
-
-ShaderProgram* ShaderProgram::FindShaderProgram(const size_t shaderHash) {
-    SharedLock<SharedMutex> r_lock(s_programLock);
-    if (s_lastRequestedShaderProgram.first != -1 && s_lastRequestedShaderProgram.second.second == shaderHash) {
-        return s_lastRequestedShaderProgram.second.first;
+        return entry._program;
     }
 
-    for (const auto& [handle, programEntry] : s_shaderPrograms) {
-        if (programEntry.second == shaderHash) {
-            s_lastRequestedShaderProgram = { handle, programEntry };
-
-            return programEntry.first;
-        }
-    }
-
-    s_lastRequestedShaderProgram = { -1, {} };
+    s_lastRequestedShaderProgram = {};
     return nullptr;
 }
 
@@ -925,13 +920,15 @@ const ShaderProgram_ptr& ShaderProgram::NullShader() noexcept {
 }
 
 const I64 ShaderProgram::NullShaderGUID() noexcept {
-    return s_nullShader != nullptr ? s_nullShader->getGUID() : -1;
+    return s_nullShader == nullptr ? 0 : s_nullShader->getGUID();
 }
 
 void ShaderProgram::RebuildAllShaders() {
-    SharedLock<SharedMutex> r_lock(s_programLock);
-    for (const auto& [handle, programEntry] : s_shaderPrograms) {
-        s_recompileQueue.push(programEntry.first);
+    ScopedLock<Mutex> lock(s_programLock);
+    for (const ShaderProgramMapEntry& entry : s_shaderPrograms) {
+        if (entry._program != nullptr) {
+            s_recompileQueue.push(entry._program);
+        }
     }
 }
 
@@ -1222,9 +1219,11 @@ void ShaderProgram::OnAtomChange(const std::string_view atomName, const FileUpda
     }
 
     //Get list of shader programs that use the atom and rebuild all shaders in list;
-    SharedLock<SharedMutex> r_lock(s_programLock);
-    for (const auto& [_, programEntry] : s_shaderPrograms) {
-        programEntry.first->onAtomChangeInternal(atomName, evt);
+    ScopedLock<Mutex> lock(s_programLock);
+    for (const ShaderProgramMapEntry& entry : s_shaderPrograms) {
+        if (entry._program != nullptr) {
+            entry._program->onAtomChangeInternal(atomName, evt);
+        }
     }
 }
 

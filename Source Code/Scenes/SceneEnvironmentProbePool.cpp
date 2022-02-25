@@ -284,7 +284,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
     if (s_lutTextureDirty) {
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = s_lutComputeShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = s_lutComputeShader->handle();
 
         const Pipeline* pipelineCalcLut = context.newPipeline(pipelineDescriptor);
 
@@ -433,7 +433,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
     if (pipelineCalcPrefiltered == nullptr) {
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = s_prefilterComputeShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = s_prefilterComputeShader->handle();
 
         pipelineCalcPrefiltered = context.newPipeline(pipelineDescriptor);
     }
@@ -490,7 +490,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
     if (pipelineCalcIrradiance == nullptr) {
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = s_irradianceComputeShader->getGUID();
+        pipelineDescriptor._shaderProgramHandle = s_irradianceComputeShader->handle();
         pipelineCalcIrradiance = context.newPipeline(pipelineDescriptor);
     }
 

@@ -49,22 +49,18 @@ IMPLEMENT_COMMAND(ExternalCommand);
 string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     assert(cmd._pipeline != nullptr);
 
-    const auto blendStateToString = [](const RTBlendState& state) -> string {
-        if (!state._blendProperties.enabled()) {
+    const auto blendStateToString = [](const BlendingSettings& state) -> string {
+        if (!state.enabled()) {
             return "Disabled";
         }
 
-        return Util::StringFormat("Colour {%d, %d, %d, %d}, Blend Src { %s }, Blend Dest { %s }, Blend Op { %s }, Blend Src Alpha { %s }, Blend Dest Alpha { %s }, Blend Op alpha { %s }",
-                                  state._blendColour.r,
-                                  state._blendColour.g,
-                                  state._blendColour.b,
-                                  state._blendColour.a,
-                                  Divide::Names::blendProperty[to_base(state._blendProperties.blendSrc())],
-                                  Divide::Names::blendProperty[to_base(state._blendProperties.blendDest())],
-                                  Divide::Names::blendOperation[to_base(state._blendProperties.blendOp())],
-                                  Divide::Names::blendProperty[to_base(state._blendProperties.blendSrcAlpha())],
-                                  Divide::Names::blendProperty[to_base(state._blendProperties.blendDestAlpha())],
-                                  Divide::Names::blendOperation[to_base(state._blendProperties.blendOpAlpha())]);
+        return Util::StringFormat("Blend Src{% s}, Blend Dest{% s}, Blend Op{% s}, Blend Src Alpha{% s}, Blend Dest Alpha{% s}, Blend Op alpha{% s}",
+                                  Divide::Names::blendProperty[to_base(state.blendSrc())],
+                                  Divide::Names::blendProperty[to_base(state.blendDest())],
+                                  Divide::Names::blendOperation[to_base(state.blendOp())],
+                                  Divide::Names::blendProperty[to_base(state.blendSrcAlpha())],
+                                  Divide::Names::blendProperty[to_base(state.blendDestAlpha())],
+                                  Divide::Names::blendOperation[to_base(state.blendOpAlpha())]);
     };
 
     const auto attributeDescriptorToString = [](const U8 idx, const AttributeDescriptor& desc) -> string {
@@ -87,7 +83,7 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(Util::StringFormat("Shader handle : %d\n", cmd._pipeline->descriptor()._shaderProgramHandle));
+    ret.append(Util::StringFormat("Shader handle : %d - %d\n", cmd._pipeline->descriptor()._shaderProgramHandle._id, cmd._pipeline->descriptor()._shaderProgramHandle._generation));
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
@@ -105,8 +101,11 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     {
         ret.append("Blending states: \n");
         const RTBlendStates& blendStates = cmd._pipeline->descriptor()._blendStates;
+
+        ret.append(Util::StringFormat("Colour {%d, %d, %d, %d}", blendStates._blendColour.r, blendStates._blendColour.g, blendStates._blendColour.b, blendStates._blendColour.a));
+
         U8 idx = 0u;
-        for (const RTBlendState& state : blendStates) {
+        for (const BlendingSettings& state : blendStates._settings) {
             ret.append("    ");
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");

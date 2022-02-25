@@ -247,6 +247,8 @@ namespace Divide {
     }
 
     void SolutionExplorerWindow::drawInternal() {
+        OPTICK_EVENT();
+
         SceneManager* sceneManager = context().kernel().sceneManager();
         Scene& activeScene = sceneManager->getActiveScene();
         SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
@@ -276,7 +278,10 @@ namespace Divide {
             for (PlayerIndex i = 0; i < static_cast<PlayerIndex>(Config::MAX_LOCAL_PLAYER_COUNT); ++i) {
                 printCameraNode(sceneManager, Attorney::SceneManagerCameraAccessor::playerCamera(sceneManager, i, true));
             }
-            printSceneGraphNode(sceneManager, root, 0, true, false, modifierPressed);
+            {
+                OPTICK_EVENT("Print SceneGraph");
+                printSceneGraphNode(sceneManager, root, 0, true, false, modifierPressed);
+            }
             ImGui::PopStyleVar();
             ImGui::TreePop();
         }
@@ -326,6 +331,7 @@ namespace Divide {
 
         static bool performanceStatsWereEnabled = false;
         if (ImGui::CollapsingHeader(ICON_FK_TACHOMETER" Performance Stats")) {
+            OPTICK_EVENT("Get/Print Performance Stats");
             performanceStatsWereEnabled = context().gfx().queryPerformanceStats();
             context().gfx().queryPerformanceStats(true);
             const auto& rpm = _context.kernel().renderPassManager();

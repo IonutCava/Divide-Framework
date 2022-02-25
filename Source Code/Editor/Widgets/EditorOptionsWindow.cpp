@@ -23,6 +23,9 @@ namespace Divide {
         if (!open) {
             return;
         }
+
+        OPTICK_EVENT();
+
         const ImVec2 CenterPos(ImGui::GetMainViewport()->Pos.x + ImGui::GetIO().DisplaySize.x * 0.5f,
                                ImGui::GetMainViewport()->Pos.y + ImGui::GetIO().DisplaySize.y * 0.5f);
         const ImVec2 FileDialogPos(ImGui::GetMainViewport()->Pos.x + 20, 
