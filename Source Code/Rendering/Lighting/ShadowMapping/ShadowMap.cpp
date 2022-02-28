@@ -448,7 +448,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
                  
                 ResourceDescriptor shadowPreviewShader("fbPreview.Layered.LinearDepth");
                 shadowPreviewShader.propertyDescriptor(shaderDescriptor);
-                shadowPreviewShader.threaded(false);
+                shadowPreviewShader.waitForReady(true);
                 ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
                 const U8 splitCount = static_cast<DirectionalLightComponent&>(*light).csmSplitCount();
 
@@ -475,7 +475,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
 
                 ResourceDescriptor shadowPreviewShader("fbPreview.Layered.LinearDepth");
                 shadowPreviewShader.propertyDescriptor(shaderDescriptor);
-                shadowPreviewShader.threaded(false);
+                shadowPreviewShader.waitForReady(true);
 
                 DebugView_ptr shadow = std::make_shared<DebugView>(to_I16(I16_MAX - 1));
                 shadow->_texture = getShadowMap(LightType::SPOT)._rt->getAttachment(RTAttachmentType::Colour, 0).texture();
@@ -498,7 +498,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
 
                 ResourceDescriptor shadowPreviewShader("fbPreview.Cube.Shadow");
                 shadowPreviewShader.propertyDescriptor(shaderDescriptor);
-                shadowPreviewShader.threaded(false);
+                shadowPreviewShader.waitForReady(true);
                 ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
 
                 const vec2<F32> zPlanes = shadowCameras(ShadowType::CUBEMAP)[0]->getZPlanes();

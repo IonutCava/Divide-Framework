@@ -9,9 +9,9 @@
 
 namespace Divide {
 
-SharedMutex GL_API::s_mipmapQueueSetLock;
-eastl::unordered_set<GLuint> GL_API::s_mipmapQueue;
 vector<GL_API::ResidentTexture> GL_API::s_residentTextures;
+
+bool GL_API::s_IsFlushingCommandBuffer = false;
 
 SharedMutex GL_API::s_samplerMapLock;
 GL_API::SamplerObjectMap GL_API::s_samplerMap;

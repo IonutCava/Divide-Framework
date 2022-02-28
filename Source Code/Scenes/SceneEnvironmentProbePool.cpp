@@ -160,7 +160,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
 
         ResourceDescriptor shadowPreviewShader("fbPreview.Cube");
         shadowPreviewShader.propertyDescriptor(shaderDescriptor);
-        shadowPreviewShader.threaded(false);
+        shadowPreviewShader.waitForReady(true);
         s_previewShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), shadowPreviewShader);
     }
     {
@@ -175,21 +175,21 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
             shaderDescriptor._modules.back()._variant = "Irradiance";
             ResourceDescriptor irradianceShader("IrradianceCalc");
             irradianceShader.propertyDescriptor(shaderDescriptor);
-            irradianceShader.threaded(false);
+            irradianceShader.waitForReady(true);
             s_irradianceComputeShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), irradianceShader);
         }
         {
             shaderDescriptor._modules.back()._variant = "LUT";
             ResourceDescriptor lutShader("LUTCalc");
             lutShader.propertyDescriptor(shaderDescriptor);
-            lutShader.threaded(false);
+            lutShader.waitForReady(true);
             s_lutComputeShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), lutShader);
         }
         {
             shaderDescriptor._modules.back()._variant = "PreFilter";
             ResourceDescriptor prefilterShader("PrefilterEnv");
             prefilterShader.propertyDescriptor(shaderDescriptor);
-            prefilterShader.threaded(false);
+            prefilterShader.waitForReady(true);
             s_prefilterComputeShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), prefilterShader);
         }
     }

@@ -77,7 +77,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
                      const Str256& name,
                      const ResourcePath& assetNames,
                      const ResourcePath& assetLocations,
-                     bool asyncLoad,
                      const TextureDescriptor& texDescriptor);
 
     virtual ~Texture();
@@ -133,9 +132,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     virtual void threadedLoad();
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Texture"; }
-
-  protected:
-    bool _asyncLoad = true;
 
   protected:
     static bool s_useDDSCache;

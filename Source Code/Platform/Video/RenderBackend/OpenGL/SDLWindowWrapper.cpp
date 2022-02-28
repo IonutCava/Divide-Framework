@@ -83,7 +83,9 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     _currentContext._windowGUID = window.getGUID();
     _currentContext._context = window.userData();
 
-    glbinding::Binding::initialize([](const char *proc) noexcept  { return (glbinding::ProcAddress)SDL_GL_GetProcAddress(proc); }, true);
+    glbinding::Binding::initialize([](const char *proc) noexcept  {
+                                        return (glbinding::ProcAddress)SDL_GL_GetProcAddress(proc);
+                                  }, true);
 
     if (SDL_GL_GetCurrentContext() == nullptr) {
         return ErrorCode::GLBINGING_INIT_ERROR;
@@ -420,7 +422,7 @@ void GL_API::closeRenderingAPI() {
         s_hardwareQueryPool->destroy();
         MemoryManager::DELETE(s_hardwareQueryPool);
     }
-    for (auto& allocator : s_memoryAllocators) {
+    for (GLUtil::GLMemory::DeviceAllocator& allocator : s_memoryAllocators) {
         allocator.deallocate();
     }
     g_ContextPool.destroy();
@@ -435,62 +437,6 @@ vec2<U16> GL_API::getDrawableSize(const DisplayWindow& window) const noexcept {
 
 void GL_API::QueueFlush() noexcept {
     s_glFlushQueued.store(true);
-}
-
-void GL_API::QueueComputeMipMaps(const GLuint textureHandle) {
-    OPTICK_EVENT();
-
-    ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
-    if (s_mipmapQueue.find(textureHandle) == std::cend(s_mipmapQueue)) {
-        s_mipmapQueue.insert(textureHandle);
-    }
-}
-
-void GL_API::DequeueComputeMipMaps(const GLuint textureHandle) {
-    OPTICK_EVENT();
-
-    ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
-    const auto it = s_mipmapQueue.find(textureHandle);
-    if (it != std::cend(s_mipmapQueue)) {
-        s_mipmapQueue.erase(it);
-    }
-}
-
-void GL_API::ComputeMipMaps(const GLuint textureHandle) {
-    OPTICK_EVENT();
-
-    ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
-    const auto it = s_mipmapQueue.find(textureHandle);
-    if (it != std::cend(s_mipmapQueue)) {
-        glGenerateTextureMipmap(*it);
-        s_mipmapQueue.erase(it);
-    } else {
-        glGenerateTextureMipmap(textureHandle);
-    }
-}
-
-bool GL_API::ComputeMipMapsQueued(const GLuint textureHandle) {
-    OPTICK_EVENT();
-
-    ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
-    return s_mipmapQueue.find(textureHandle) != std::cend(s_mipmapQueue);
-}
-
-void GL_API::ProcessMipMapsQueue() noexcept {
-    OPTICK_EVENT();
-
-    {
-        SharedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
-        if (GL_API::s_mipmapQueue.empty()) {
-            return;
-        }
-    }
-
-    ScopedLock<SharedMutex> w_lock(s_mipmapQueueSetLock);
-    for (const GLuint handle : s_mipmapQueue) {
-        glGenerateTextureMipmap(handle);
-    }
-    s_mipmapQueue.clear();
 }
 
 void GL_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) {
@@ -512,8 +458,7 @@ void GL_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) {
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-        // Debug callback in a separate thread requires a flag to distinguish it
-        // from the main thread's callbacks
+        // Debug callback in a separate thread requires a flag to distinguish it from the main thread's callbacks
         glDebugMessageCallback((GLDEBUGPROC)GLUtil::DebugCallback, GLUtil::s_glSecondaryContext);
     }
 

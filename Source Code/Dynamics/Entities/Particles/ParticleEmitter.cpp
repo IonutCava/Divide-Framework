@@ -183,7 +183,6 @@ bool ParticleEmitter::updateData() {
             params._bufferParams._elementSize = sizeof(vec4<F32>);
             params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
             params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-            params._bufferParams._sync = true;
             params._bufferParams._initialData = { nullptr, 0 };
 
             buffer.setBuffer(params);

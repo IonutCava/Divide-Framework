@@ -152,8 +152,10 @@ const Kernel& PlatformContext::kernel() const noexcept {
     return _kernel;
 }
 
-void PlatformContext::onThreadCreated(const std::thread::id& threadID) const {
-    _gfx->onThreadCreated(threadID);
+void PlatformContext::onThreadCreated(const TaskPoolType poolType, const std::thread::id& threadID) const {
+    if (poolType != TaskPoolType::LOW_PRIORITY) {
+        _gfx->onThreadCreated(threadID);
+    }
 }
 
 }; //namespace Divide

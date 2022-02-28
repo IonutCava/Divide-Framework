@@ -33,7 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _GL_STATE_TRACKER_H_
 #define _GL_STATE_TRACKER_H_
 
-#include "glResources.h"
 #include "glVAOCache.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"

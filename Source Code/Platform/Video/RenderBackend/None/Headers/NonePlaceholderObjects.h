@@ -153,9 +153,8 @@ namespace Divide {
                   const Str256& name,
                   const ResourcePath& assetNames,
                   const ResourcePath& assetLocations,
-                  const bool asyncLoad,
                   const TextureDescriptor& texDescriptor) noexcept
-            : Texture(context, descriptorHash, name, assetNames, assetLocations, asyncLoad, texDescriptor)
+            : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor)
         {}
 
         [[nodiscard]] SamplerAddress getGPUAddress([[maybe_unused]] size_t samplerHash) noexcept override {
@@ -189,9 +188,8 @@ namespace Divide {
                         const Str256& name,
                         const Str256& assetName,
                         const ResourcePath& assetLocation,
-                        const ShaderProgramDescriptor& descriptor,
-                        const bool asyncLoad) noexcept
-            : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, asyncLoad)
+                        const ShaderProgramDescriptor& descriptor) noexcept
+            : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor)
         {}
     };
 

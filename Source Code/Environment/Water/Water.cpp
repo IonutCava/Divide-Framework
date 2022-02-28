@@ -230,7 +230,7 @@ bool WaterPlane::load() {
     
     ResourceDescriptor waterPlane("waterPlane");
     waterPlane.flag(true);  // No default material
-    waterPlane.threaded(false);
+    waterPlane.waitForReady(true);
 
     _plane = CreateResource<Quad3D>(_parentCache, waterPlane);
     

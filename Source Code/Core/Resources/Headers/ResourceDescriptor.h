@@ -89,7 +89,6 @@ class ResourceDescriptor final : public Hashable {
     PROPERTY_RW(U32, ID, 0u);
     PROPERTY_RW(P32, mask); ///< 4 bool values representing  ... anything ...
     PROPERTY_RW(bool, flag, false);
-    PROPERTY_RW(bool, threaded, true);
     PROPERTY_RW(bool, waitForReady, true);
 
    private:

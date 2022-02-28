@@ -62,7 +62,6 @@ namespace Input {
 enum class TaskPoolType : U8 {
     HIGH_PRIORITY = 0,
     LOW_PRIORITY,
-    RENDER_PASS,
     COUNT
 };
 
@@ -150,7 +149,7 @@ class PlatformContext {
     [[nodiscard]] const DisplayWindow& mainWindow() const noexcept;
 
   protected:
-    void onThreadCreated(const std::thread::id& threadID) const;
+    void onThreadCreated(TaskPoolType poolType, const std::thread::id& threadID) const;
 
   private:
     /// Main application instance
@@ -187,8 +186,8 @@ class PlatformContext {
 
 namespace Attorney {
     class PlatformContextKernel {
-        static void onThreadCreated(const PlatformContext& context, const std::thread::id& threadID) {
-            context.onThreadCreated(threadID);
+        static void onThreadCreated(const PlatformContext& context, const TaskPoolType poolType, const std::thread::id& threadID) {
+            context.onThreadCreated(poolType, threadID);
         }
 
         friend class Divide::Kernel;

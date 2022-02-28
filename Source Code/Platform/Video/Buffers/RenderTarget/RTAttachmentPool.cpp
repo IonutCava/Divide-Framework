@@ -87,7 +87,6 @@ RTAttachment_ptr& RTAttachmentPool::update(const RTAttachmentDescriptor& descrip
 
     ResourceDescriptor textureAttachment(texName);
     textureAttachment.assetName(ResourcePath(texName));
-    textureAttachment.threaded(false);
     textureAttachment.waitForReady(true);
     textureAttachment.propertyDescriptor(descriptor._texDescriptor);
 

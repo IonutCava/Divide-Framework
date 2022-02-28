@@ -184,8 +184,8 @@ void RenderingComponent::clearDrawPackages() {
         for (auto& packagesPerVariant : packagesPerPassType) {
             for (auto& packagesPerPassIndex : packagesPerVariant) {
                 for (auto& pacakgesPerIndex : packagesPerPassIndex) {
-                    for (auto& [idx, pkg] : pacakgesPerIndex) {
-                        Clear(pkg);
+                    for (PackageEntry& entry : pacakgesPerIndex) {
+                        Clear(entry._package);
                     }
                 }
             }
@@ -524,24 +524,24 @@ RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass renderSt
 
     {
         SharedLock<SharedMutex> r_lock(_renderPackagesLock);
-        for (auto& [idx, pkg] : pacakgesPerIndex) {
-            if (idx == renderStagePass._index) {
-                return pkg;
+        for (PackageEntry& entry : pacakgesPerIndex) {
+            if (entry._index == renderStagePass._index) {
+                return entry._package;
             }
         }
     }
 
     ScopedLock<SharedMutex> w_lock(_renderPackagesLock);
     // check again
-    for (auto& [idx, pkg] : pacakgesPerIndex) {
-        if (idx == renderStagePass._index) {
-            return pkg;
+    for (PackageEntry& entry : pacakgesPerIndex) {
+        if (entry._index == renderStagePass._index) {
+            return entry._package;
         }
     }
 
-    auto& [idx, pkg]  = pacakgesPerIndex.emplace_back();
-    idx = renderStagePass._index;
-    return pkg;
+    PackageEntry& entry = pacakgesPerIndex.emplace_back();
+    entry._index = renderStagePass._index;
+    return entry._package;
 }
 
 bool RenderingComponent::updateReflection(const U16 reflectionIndex,

@@ -22,6 +22,10 @@ void Resource::setState(const ResourceState currentState) {
     _resourceState.store(currentState, std::memory_order_relaxed);
 }
 
+void Resource::waitForReady() const {
+    WAIT_FOR_CONDITION(getState() == ResourceState::RES_LOADED);
+}
+
 //---------------------------- Cached Resource ------------------------------------//
 CachedResource::CachedResource(const ResourceType type,
                                const size_t descriptorHash,

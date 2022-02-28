@@ -357,14 +357,12 @@ public:
                                   const Str256& resourceName,
                                   const ResourcePath& assetNames,
                                   const ResourcePath& assetLocations,
-                                  bool asyncLoad,
                                   const TextureDescriptor& texDescriptor);
 
     Texture*           newTextureLocked(size_t descriptorHash,
                                         const Str256& resourceName,
                                         const ResourcePath& assetNames,
                                         const ResourcePath& assetLocations,
-                                        bool asyncLoad,
                                         const TextureDescriptor& texDescriptor);
 
     /// Create and return a new shader program.
@@ -372,14 +370,12 @@ public:
                                         const Str256& resourceName,
                                         const Str256& assetName,
                                         const ResourcePath& assetLocation,
-                                        const ShaderProgramDescriptor& descriptor,
-                                        bool asyncLoad);   
+                                        const ShaderProgramDescriptor& descriptor);
     ShaderProgram*     newShaderProgramLocked(size_t descriptorHash,
                                               const Str256& resourceName,
                                               const Str256& assetName,
                                               const ResourcePath& assetLocation,
-                                              const ShaderProgramDescriptor& descriptor,
-                                              bool asyncLoad);
+                                              const ShaderProgramDescriptor& descriptor);
     /// Create and return a new shader buffer. 
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false
     /// or a 'Shader Storage Block Object' otherwise

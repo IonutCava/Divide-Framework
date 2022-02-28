@@ -79,8 +79,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
                              const Str256& name,
                              const Str256& assetName,
                              const ResourcePath& assetLocation,
-                             const ShaderProgramDescriptor& descriptor,
-                             bool asyncLoad);
+                             const ShaderProgramDescriptor& descriptor);
     ~glShaderProgram();
 
     static void InitStaticData();

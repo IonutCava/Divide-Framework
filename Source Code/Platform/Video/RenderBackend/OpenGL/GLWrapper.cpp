@@ -518,8 +518,50 @@ void GL_API::PopDebugMessage() {
     GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = "";
 }
 
-void GL_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
-    GL_API::ProcessMipMapsQueue();
+void GL_API::FlushMidBufferLockQueue(const U32 frameIndex) {
+    OPTICK_EVENT();
+    
+    for (const BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
+        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    }
+    s_bufferLockQueueMidFlush.resize(0);
+}
+
+void GL_API::FlushEndBufferLockQueue(const U32 frameIndex) {
+    OPTICK_EVENT();
+
+    for (const BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
+        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    }
+    s_bufferLockQueueEndOfBuffer.resize(0);
+}
+
+void GL_API::preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) {
+    OPTICK_EVENT();
+
+    s_IsFlushingCommandBuffer = true;
+
+    _bufferFlushPoints.resize(0);
+    GFX::CommandType prevCmdType = GFX::CommandType::COUNT;
+    const GFX::CommandBuffer::CommandOrderContainer& commands = commandBuffer();
+    for (const GFX::CommandBuffer::CommandEntry& cmd : commands) {
+        const GFX::CommandType cmdType = static_cast<GFX::CommandType>(cmd._typeIndex);
+        if (cmdType != prevCmdType) {
+            if (prevCmdType == GFX::CommandType::DRAW_COMMANDS ||
+                prevCmdType == GFX::CommandType::DISPATCH_COMPUTE ||
+                prevCmdType == GFX::CommandType::EXTERNAL ||
+                prevCmdType == GFX::CommandType::DRAW_TEXT ||
+                prevCmdType == GFX::CommandType::DRAW_IMGUI)
+            {
+                _bufferFlushPoints.push_back(cmd);
+            }
+            prevCmdType = cmdType;
+        }
+    }
 }
 
 void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const GFX::CommandBuffer& commandBuffer) {
@@ -587,14 +629,12 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::COPY_TEXTURE: {
             OPTICK_EVENT("COPY_TEXTURE");
 
-            GL_API::ProcessMipMapsQueue();
             const GFX::CopyTextureCommand* crtCmd = commandBuffer.get<GFX::CopyTextureCommand>(entry);
             glTexture::copy(crtCmd->_source, crtCmd->_destination, crtCmd->_params);
         }break;
         case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
             OPTICK_EVENT("BIND_DESCRIPTOR_SETS");
 
-            GL_API::ProcessMipMapsQueue();
             GFX::BindDescriptorSetsCommand* crtCmd = commandBuffer.get<GFX::BindDescriptorSetsCommand>(entry);
             if (!crtCmd->_set._textureViews.empty() &&
                 makeTextureViewsResidentInternal(crtCmd->_set._textureViews, 0u, U8_MAX) == GLStateTracker::BindResult::FAILED)
@@ -690,7 +730,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
             if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
                 OPTICK_EVENT("GL: In-place computation - Full");
-                GL_API::ComputeMipMaps(crtCmd->_texture->data()._textureHandle);
+                glGenerateTextureMipmap(crtCmd->_texture->data()._textureHandle);
             } else {
                 OPTICK_EVENT("GL: View-based computation");
 
@@ -742,17 +782,15 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                                     static_cast<GLuint>(view._layerRange.x),
                                     static_cast<GLuint>(view._layerRange.y));
                 }
-                {
+                if (view._mipLevels.x != 0u || view._mipLevels.y != 0u) {
                     OPTICK_EVENT("GL: In-place computation - Image");
-                    GL_API::ComputeMipMaps(handle);
+                    glGenerateTextureMipmap(handle);
                 }
                 s_textureViewCache.deallocate(handle, 3);
             }
         }break;
         case GFX::CommandType::DRAW_TEXT: {
             OPTICK_EVENT("DRAW_TEXT");
-
-            GL_API::ProcessMipMapsQueue();
 
             if (GetStateTracker()._activePipeline != nullptr) {
                 const GFX::DrawTextCommand* crtCmd = commandBuffer.get<GFX::DrawTextCommand>(entry);
@@ -762,8 +800,6 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::DRAW_IMGUI: {
             OPTICK_EVENT("DRAW_IMGUI");
 
-            GL_API::ProcessMipMapsQueue();
-
             if (GetStateTracker()._activePipeline != nullptr) {
                 const GFX::DrawIMGUICommand* crtCmd = commandBuffer.get<GFX::DrawIMGUICommand>(entry);
                 drawIMGUI(crtCmd->_data, crtCmd->_windowGUID);
@@ -771,8 +807,6 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         }break;
         case GFX::CommandType::DRAW_COMMANDS : {
             OPTICK_EVENT("DRAW_COMMANDS");
-
-            GL_API::ProcessMipMapsQueue();
 
             const GLStateTracker& stateTracker = GetStateTracker();
             const GFX::DrawCommand::CommandContainer& drawCommands = commandBuffer.get<GFX::DrawCommand>(entry)->_drawCommands;
@@ -792,8 +826,6 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         }break;
         case GFX::CommandType::DISPATCH_COMPUTE: {
             OPTICK_EVENT("DISPATCH_COMPUTE");
-
-            GL_API::ProcessMipMapsQueue();
 
             const GFX::DispatchComputeCommand* crtCmd = commandBuffer.get<GFX::DispatchComputeCommand>(entry);
 
@@ -888,22 +920,13 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         default: break;
     }
 
-    switch (cmdType) {
-        case GFX::CommandType::EXTERNAL:
-        case GFX::CommandType::DRAW_TEXT:
-        case GFX::CommandType::DRAW_IMGUI:
-        case GFX::CommandType::DRAW_COMMANDS:
-        case GFX::CommandType::DISPATCH_COMPUTE:
-        {
-            OPTICK_EVENT("LOCK BUFFERS");
-            const U32 frameIndex = _context.frameCount();
-            for (const BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
-                if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+    if (!s_bufferLockQueueMidFlush.empty()) {
+        for (const GFX::CommandBuffer::CommandEntry flushPoint : _bufferFlushPoints) {
+            if (entry == flushPoint) {
+                FlushMidBufferLockQueue(_context.frameCount());
+                break;
             }
-            s_bufferLockQueueMidFlush.resize(0);
-        } break;
+        }
     }
 }
 
@@ -924,10 +947,34 @@ bool GL_API::TryDeleteExpiredSync() {
     return false;
 }
 
-void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAfterFirstDraw) {
+bool GL_API::PendingBufferBindRange(const BufferLockEntry&& data, bool fenceAfterDrawCalls) {
+    const BufferRange testRange{ data._offset, data._length };
+
+    if (fenceAfterDrawCalls) {
+        for (BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
+            if (lockEntry._buffer->getGUID() == data._buffer->getGUID() &&
+                Overlaps({ lockEntry._offset, lockEntry._length }, testRange))
+            {
+                return true;
+            }
+        }
+    } else {
+        for (BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
+            if (lockEntry._buffer->getGUID() == data._buffer->getGUID() &&
+                Overlaps({lockEntry._offset, lockEntry._length}, testRange))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAfterDrawCalls) {
     assert(Runtime::isMainThread());
 
-    if (fenceAfterFirstDraw) {
+    if (fenceAfterDrawCalls) {
         for (BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
             if (lockEntry._buffer->getGUID() == data._buffer->getGUID()) {
                 lockEntry._offset = std::min(lockEntry._offset, data._offset);
@@ -951,17 +998,14 @@ void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAf
 
 void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     OPTICK_EVENT();
+
+    s_IsFlushingCommandBuffer = false;
+
     //ToDo: Should we fence only at the end of the frame instead of the end of the buffer and only flush required 
     //ranges mid-frame if we issue other writes during the same frame? -Ionut
     const U32 frameIndex = _context.frameCount();
-    for (const BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
-        OPTICK_TAG("Buffer", to_U64(lockEntry._buffer->getGUID()));
-
-        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-    }
-    s_bufferLockQueueEndOfBuffer.resize(0);
+    FlushMidBufferLockQueue(frameIndex);
+    FlushEndBufferLockQueue(frameIndex);
 
     bool expected = true;
     if (s_glFlushQueued.compare_exchange_strong(expected, false)) {

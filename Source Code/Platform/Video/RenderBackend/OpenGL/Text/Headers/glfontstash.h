@@ -41,8 +41,6 @@ FONS_DEF unsigned int glfonsRGBA(unsigned char r, unsigned char g, unsigned char
 
 #ifdef GLFONTSTASH_IMPLEMENTATION
 
-constexpr bool USE_EXPLICIT_FLUSH = true;
-
 constexpr GLuint GLFONS_VB_SIZE_FACTOR = 120;
 constexpr size_t GLFONS_VB_BUFFER_SIZE = GLFONS_VB_SIZE_FACTOR * sizeof(FONSvert) * FONS_VERTEX_COUNT;
 constexpr GLuint GLFONS_VERTEX_ATTRIB = (GLuint)Divide::AttribLocation::POSITION;
@@ -91,15 +89,9 @@ static int glfons__renderCreate(void* userPtr, int width, int height)
             return 0;
         }
 
-        BufferStorageMask storageMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT;
-        MapBufferAccessMask accessMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT;
-        
-        if (USE_EXPLICIT_FLUSH) {
-            accessMask |= GL_MAP_FLUSH_EXPLICIT_BIT;
-        } else {
-            storageMask |= GL_MAP_COHERENT_BIT;
-            accessMask |= GL_MAP_COHERENT_BIT;
-        }
+        const BufferStorageMask storageMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
+        const MapBufferAccessMask accessMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
+
         glNamedBufferStorage(gl->glfons_vboID, GLFONS_VB_BUFFER_SIZE, nullptr, storageMask);
         gl->glfons_vboData = (FONSvert*)glMapNamedBufferRange(gl->glfons_vboID, 0, GLFONS_VB_BUFFER_SIZE, accessMask);
 
@@ -197,10 +189,6 @@ static void glfons__renderDraw(void* userPtr, const FONSvert* verts, int nverts)
 
     { //Update
         memcpy((Divide::Byte*)gl->glfons_vboData + writeOffsetBytes, verts, dataSize);
-
-        if (USE_EXPLICIT_FLUSH) {
-            glFlushMappedNamedBufferRange(gl->glfons_vboID, writeOffsetBytes, dataSize);
-        }
     }
     { //Draw
         const GLint startIndex = (GLint)(writeOffsetBytes / sizeof(FONSvert));

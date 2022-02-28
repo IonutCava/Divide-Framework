@@ -246,7 +246,10 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void OnData(const ECS::CustomEvent& data) override;
 
    protected:
-    using PackageEntry = std::pair<U16, RenderPackage>;
+    struct PackageEntry {
+        RenderPackage _package;
+        U16 _index = 0u;
+    };
     using PackagesPerIndex = vector_fast<PackageEntry>;
     using PackagesPerPassIndex = std::array<PackagesPerIndex, to_base(RenderStagePass::PassIndex::COUNT)>;
     using PackagesPerVariant = std::array<PackagesPerPassIndex, to_base(RenderStagePass::VariantType::COUNT)>;

@@ -7,10 +7,6 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
-namespace {
-    constexpr bool USE_THREADED_SHADER_LOAD = true;
-}
-
 namespace Divide {
 
 template<>
@@ -30,9 +26,7 @@ CachedResource_ptr ImplResourceLoader<ShaderProgram>::operator()() {
                                                           _descriptor.resourceName(),
                                                           _descriptor.assetName().str(),
                                                           _descriptor.assetLocation(),
-                                                          *shaderDescriptor,
-                                                          USE_THREADED_SHADER_LOAD ? _descriptor.threaded()
-                                                                                   : false),
+                                                          *shaderDescriptor),
                           DeleteResource(_cache));
 
 

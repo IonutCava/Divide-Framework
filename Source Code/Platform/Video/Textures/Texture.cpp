@@ -31,7 +31,6 @@ void Texture::OnStartup(GFXDevice& gfx) {
     ResourceDescriptor textureResourceDescriptor("defaultEmptyTexture");
     textureResourceDescriptor.propertyDescriptor(textureDescriptor);
     textureResourceDescriptor.waitForReady(true);
-    textureResourceDescriptor.threaded(false);
     s_defaulTexture = CreateResource<Texture>(gfx.parent().resourceCache(), textureResourceDescriptor);
 
     Byte* defaultTexData = MemoryManager_NEW Byte[1u * 1u * 4];
@@ -79,14 +78,12 @@ Texture::Texture(GFXDevice& context,
                  const Str256& name,
                  const ResourcePath& assetNames,
                  const ResourcePath& assetLocations,
-                 const bool asyncLoad,
                  const TextureDescriptor& texDescriptor)
     : CachedResource(ResourceType::GPU_OBJECT, descriptorHash, name, assetNames, assetLocations),
       GraphicsResource(context, Type::TEXTURE, getGUID(), _ID(name.c_str())),
       _descriptor(texDescriptor),
       _data{0u, TextureType::COUNT},
-      _numLayers(texDescriptor.layerCount()),
-      _asyncLoad(asyncLoad)
+      _numLayers(texDescriptor.layerCount())
 {
 }
 
@@ -96,12 +93,9 @@ Texture::~Texture()
 }
 
 bool Texture::load() {
-    if (_asyncLoad) {
-        Start(*CreateTask([this]([[maybe_unused]] const Task & parent) { threadedLoad(); }),
-              _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
-    } else {
-        threadedLoad();
-    }
+    Start(*CreateTask([this]([[maybe_unused]] const Task & parent) { threadedLoad(); }),
+            _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
+
     return true;
 }
 

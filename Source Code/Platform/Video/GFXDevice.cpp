@@ -192,11 +192,9 @@ ErrorCode GFXDevice::initRenderingAPI(const I32 argc, char** argv, const RenderA
 ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     std::atomic_uint loadTasks = 0;
     ResourceCache* cache = parent().resourceCache();
-    Configuration& config = _parent.platformContext().config();
+    const Configuration& config = _parent.platformContext().config();
 
-
-
-    ErrorCode err = ShaderProgram::PostInitAPI(cache);
+    const ErrorCode err = ShaderProgram::PostInitAPI(cache);
     if (err != ErrorCode::NO_ERR) {
         return err;
     }
@@ -211,16 +209,13 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
 
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
-        //bufferDescriptor._separateReadWrite = false;
-        //bufferDescriptor._flags = to_base(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
         bufferDescriptor._bufferParams._elementCount = 1;
-        //bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = false;
-        bufferDescriptor._bufferParams._usePersistentMapping = false;
+        bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = false;
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
 
         {
-            //bufferDescriptor._ringBufferLength = TargetBufferSizeCam;
+            bufferDescriptor._ringBufferLength = TargetBufferSizeCam;
             bufferDescriptor._name = "DVD_GPU_CAM_DATA";
             bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::CamData);
             bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
@@ -229,7 +224,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             _camDataBuffer->bind(ShaderBufferLocation::CAM_BLOCK);
         }
         {
-            //bufferDescriptor._ringBufferLength = TargetBufferSizeRender;
+            bufferDescriptor._ringBufferLength = TargetBufferSizeRender;
             bufferDescriptor._name = "DVD_GPU_RENDER_DATA";
             bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::RenderData);
             bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._renderData, bufferDescriptor._bufferParams._elementSize };
@@ -1522,9 +1517,9 @@ void GFXDevice::uploadGPUBlock() {
     if (_gpuBlock._camNeedsUpload) {
         _gpuBlock._camNeedsUpload = false;
 
+        _camDataBuffer->incQueue();
         _camDataBuffer->writeData(&_gpuBlock._camData);
         _camDataBuffer->bind(ShaderBufferLocation::CAM_BLOCK);
-        _camDataBuffer->incQueue();
     }
 
     if (_gpuBlock._renderNeedsUpload) {
@@ -1532,9 +1527,9 @@ void GFXDevice::uploadGPUBlock() {
 
         _gpuBlock._renderData._renderProperties.z = to_F32(materialDebugFlag());
 
+        _renderDataBuffer->incQueue();
         _renderDataBuffer->writeData(&_gpuBlock._renderData);
         _renderDataBuffer->bind(ShaderBufferLocation::RENDER_BLOCK);
-        _renderDataBuffer->incQueue();
     }
 }
 
@@ -2644,10 +2639,8 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
 
     params._bufferParams._elementCount = 1 << 16;
     params._bufferParams._elementSize = sizeof(ImDrawVert);
-    params._bufferParams._usePersistentMapping = true;
     params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
     params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-    params._bufferParams._sync = true;
     params._bufferParams._initialData = { nullptr, 0 };
 
     ret->setBuffer(params); //Pos, UV and Colour
@@ -2826,17 +2819,15 @@ Texture* GFXDevice::newTexture(const size_t descriptorHash,
                                const Str256& resourceName,
                                const ResourcePath& assetNames,
                                const ResourcePath& assetLocations,
-                               const bool asyncLoad,
                                const TextureDescriptor& texDescriptor) {
     ScopedLock<Mutex> w_lock(objectArenaMutex());
-    return newTextureLocked(descriptorHash, resourceName, assetNames, assetLocations, asyncLoad, texDescriptor);
+    return newTextureLocked(descriptorHash, resourceName, assetNames, assetLocations, texDescriptor);
 }
 
 Texture* GFXDevice::newTextureLocked(const size_t descriptorHash,
                                      const Str256& resourceName,
                                      const ResourcePath& assetNames,
                                      const ResourcePath& assetLocations,
-                                     const bool asyncLoad,
                                      const TextureDescriptor& texDescriptor) {
 
     // Texture is a resource! Do not use object arena!
@@ -2844,13 +2835,13 @@ Texture* GFXDevice::newTextureLocked(const size_t descriptorHash,
     switch (renderAPI()) {
         case RenderAPI::OpenGL:
         case RenderAPI::OpenGLES: {
-            temp = new (objectArena()) glTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, asyncLoad, texDescriptor);
+            temp = new (objectArena()) glTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor);
         } break;
         case RenderAPI::Vulkan: {
-            temp = new (objectArena()) vkTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, asyncLoad, texDescriptor);
+            temp = new (objectArena()) vkTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor);
         } break;
         case RenderAPI::None: {
-            temp = new (objectArena()) noTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, asyncLoad, texDescriptor);
+            temp = new (objectArena()) noTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor);
         } break;
         default: {
             DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
@@ -2883,30 +2874,29 @@ ShaderProgram* GFXDevice::newShaderProgram(const size_t descriptorHash,
                                            const Str256& resourceName,
                                            const Str256& assetName,
                                            const ResourcePath& assetLocation,
-                                           const ShaderProgramDescriptor& descriptor,
-                                           const bool asyncLoad) {
+                                           const ShaderProgramDescriptor& descriptor) {
     ScopedLock<Mutex> w_lock(objectArenaMutex());
-    return newShaderProgramLocked(descriptorHash, resourceName, assetName, assetLocation, descriptor, asyncLoad);
+    return newShaderProgramLocked(descriptorHash, resourceName, assetName, assetLocation, descriptor);
 }
 
 ShaderProgram* GFXDevice::newShaderProgramLocked(const size_t descriptorHash,
                                                  const Str256& resourceName,
                                                  const Str256& assetName,
                                                  const ResourcePath& assetLocation,
-                                                 const ShaderProgramDescriptor& descriptor,
-                                                 const bool asyncLoad) {
+                                                 const ShaderProgramDescriptor& descriptor)
+{
 
     ShaderProgram* temp = nullptr;
     switch (renderAPI()) {
         case RenderAPI::OpenGL:
         case RenderAPI::OpenGLES: {
-            temp = new (objectArena()) glShaderProgram(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor, asyncLoad);
+            temp = new (objectArena()) glShaderProgram(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor);
         } break;
         case RenderAPI::Vulkan: {
-            temp = new (objectArena()) vkShaderProgram(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor, asyncLoad);
+            temp = new (objectArena()) vkShaderProgram(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor);
         } break;
         case RenderAPI::None: {
-            temp = new (objectArena()) noShaderProgram(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor, asyncLoad);
+            temp = new (objectArena()) noShaderProgram(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor);
         } break;
         default: {
             DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));

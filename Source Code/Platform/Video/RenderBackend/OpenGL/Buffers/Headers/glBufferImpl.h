@@ -35,6 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "glMemoryManager.h"
 #include "glBufferLockManager.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/GLStateTracker.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 
 namespace Divide {
@@ -43,7 +44,6 @@ struct BufferImplParams {
     BufferParams _bufferParams;
     GLenum _target = GL_NONE;
     size_t _dataSize = 0;
-    bool _explicitFlush = true;
     bool _useChunkAllocation = false;
     const char* _name = nullptr;
 };
@@ -58,8 +58,6 @@ class glBufferImpl final : public glObject, public GUIDWrapper {
 public:
     explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params);
     virtual ~glBufferImpl();
-
-    [[nodiscard]] bool bindByteRange(GLuint bindIndex, size_t offsetInBytes, size_t rangeInBytes);
 
     // Returns false if we encounter an error
     [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, U32 frameID);
@@ -80,9 +78,6 @@ protected:
     GFXDevice& _context;
 
     glBufferLockManager _lockManager;
-
-    SharedMutex _flushQueueLock;
-    eastl::deque<BufferMapRange> _flushQueue;
 };
 }; //namespace Divide
 

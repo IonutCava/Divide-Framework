@@ -21,11 +21,10 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context,
       : GraphicsResource(context, Type::SHADER_BUFFER, getGUID(), _ID(descriptor._name.c_str())),
         RingBufferSeparateWrite(descriptor._ringBufferLength, descriptor._separateReadWrite),
         _params(descriptor._bufferParams),
-        _flags(descriptor._flags),
         _usage(descriptor._usage),
         _name(descriptor._name)
 {
-    if (descriptor._bufferParams._updateFrequency == BufferUpdateFrequency::RARELY || BitCompare(_flags, Flags::NO_SYNC)) {
+    if (descriptor._bufferParams._updateFrequency == BufferUpdateFrequency::RARELY) {
         _params._sync = false;
     }
 

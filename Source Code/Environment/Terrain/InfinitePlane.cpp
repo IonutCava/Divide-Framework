@@ -82,7 +82,7 @@ bool InfinitePlane::load() {
 
     ResourceDescriptor infinitePlane("infinitePlane");
     infinitePlane.flag(true);  // No default material
-    infinitePlane.threaded(false);
+    infinitePlane.waitForReady(true);
     infinitePlane.ID(150u);
     infinitePlane.data().set(Util::FLOAT_TO_UINT(_dimensions.x * 2.f),
                             0u,

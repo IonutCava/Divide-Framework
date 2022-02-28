@@ -354,7 +354,6 @@ void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDes
 
     ResourceDescriptor shaderResDescriptor(shaderDescriptorRef._name);
     shaderResDescriptor.propertyDescriptor(shaderDescriptorRef);
-    shaderResDescriptor.threaded(false);
 
     ShaderProgram_ptr shader = CreateResource<ShaderProgram>(_context.parent().resourceCache(), shaderResDescriptor);
     if (shader != nullptr) {
@@ -377,6 +376,7 @@ void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDes
 
     shaderInfo._shaderRef = shader;
     shaderInfo._shaderCompStage = ShaderBuildStage::COMPUTED;
+    shaderInfo._shaderRef->waitForReady();
 }
 
 void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,
@@ -389,7 +389,6 @@ void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDes
 
     ResourceDescriptor shaderResDescriptor{ shaderDescriptorRef._name };
     shaderResDescriptor.propertyDescriptor(shaderDescriptorRef);
-    shaderResDescriptor.threaded(false);
 
     ShaderProgramInfo& info = shaderInfo(stagePass);
     // if we already have a different shader assigned ...
@@ -410,6 +409,7 @@ void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDes
         _context.shaderComputeQueue().process(shaderElement);
         info._shaderCompStage = ShaderBuildStage::COMPUTED;
         assert(info._shaderRef != nullptr);
+        info._shaderRef->waitForReady();
     } else {
         if (updatePriorirty() == UpdatePriority::Medium) {
             _context.shaderComputeQueue().addToQueueFront(shaderElement);

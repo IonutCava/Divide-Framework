@@ -50,7 +50,7 @@ class VK_API final : public RenderAPIWrapper {
       ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;
       void closeRenderingAPI() noexcept override;
       [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept override;
-      void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
+      void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
       void flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const GFX::CommandBuffer& commandBuffer) noexcept override;
       void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
       [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;

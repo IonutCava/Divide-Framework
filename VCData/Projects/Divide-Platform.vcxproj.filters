@@ -160,9 +160,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\Headers\RenderPackage.h">
       <Filter>Video\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glGenericBuffer.h">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\Headers\GFXShaderData.h">
       <Filter>Video\Headers</Filter>
     </ClInclude>
@@ -472,9 +469,6 @@
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderPackage.cpp">
       <Filter>Video</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\glGenericBuffer.cpp">
-      <Filter>Video\RenderBackend\OpenGL\Buffers</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\GFXShaderData.cpp">
       <Filter>Video</Filter>

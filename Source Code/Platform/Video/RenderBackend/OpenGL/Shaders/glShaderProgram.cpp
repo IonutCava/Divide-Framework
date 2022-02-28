@@ -134,7 +134,7 @@ void glShaderProgram::Idle(PlatformContext& platformContext) {
     // Schedule all of the shader "dump to binary file" operations
     static BinaryDumpEntry binaryOutputCache;
     while(g_sShaderBinaryDumpQueue.try_dequeue(binaryOutputCache)) {
-        Start(*CreateTask([cache = MOV(binaryOutputCache)](const Task&) { DumpShaderBinaryCacheToDisk(cache); }), platformContext.taskPool(TaskPoolType::LOW_PRIORITY));
+        Start(*CreateTask([cache = MOV(binaryOutputCache)](const Task&) { DumpShaderBinaryCacheToDisk(cache); }), platformContext.taskPool(TaskPoolType::HIGH_PRIORITY));
     }
 }
 
@@ -143,9 +143,8 @@ glShaderProgram::glShaderProgram(GFXDevice& context,
                                  const Str256& name,
                                  const Str256& assetName,
                                  const ResourcePath& assetLocation,
-                                 const ShaderProgramDescriptor& descriptor,
-                                 const bool asyncLoad)
-    : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, asyncLoad),
+                                 const ShaderProgramDescriptor& descriptor)
+    : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor),
       glObject(glObjectType::TYPE_SHADER_PROGRAM, context)
 {
 }

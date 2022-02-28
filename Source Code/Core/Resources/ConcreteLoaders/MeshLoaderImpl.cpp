@@ -61,17 +61,14 @@ CachedResource_ptr ImplResourceLoader<Mesh>::operator()() {
     }
 
     MeshLoadData loadingData(ptr, _cache, &_context, _descriptor);
-    if (_descriptor.threaded()) {
-        const ResourcePath assetLocaltion = _descriptor.assetLocation();
-        const ResourcePath assetName = _descriptor.assetName();
-        Task* task = CreateTask([this, assetLocaltion, assetName, loadingData](const Task &) {
-                                    threadedMeshLoad(loadingData, assetLocaltion, assetName);
-                                });
+    const ResourcePath assetLocaltion = _descriptor.assetLocation();
+    const ResourcePath assetName = _descriptor.assetName();
+    Task* task = CreateTask([this, assetLocaltion, assetName, loadingData](const Task &) {
+                                threadedMeshLoad(loadingData, assetLocaltion, assetName);
+                            });
 
-        Start(*task, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
-    } else {
-        threadedMeshLoad(loadingData, _descriptor.assetLocation(), _descriptor.assetName());
-    }
+    Start(*task, _context.taskPool(TaskPoolType::HIGH_PRIORITY));
+
     return ptr;
 }
 

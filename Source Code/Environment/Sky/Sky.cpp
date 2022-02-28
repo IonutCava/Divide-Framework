@@ -513,7 +513,6 @@ bool Sky::load() {
         ResourceDescriptor perlWorlDescriptor("perlWorl");
         perlWorlDescriptor.propertyDescriptor(textureDescriptor);
         perlWorlDescriptor.waitForReady(true);
-        perlWorlDescriptor.threaded(false);
         _perWorlNoiseTex = CreateResource<Texture>(_parentCache, perlWorlDescriptor);
         _perWorlNoiseTex->loadData(imgDataPerl);
  
@@ -523,7 +522,6 @@ bool Sky::load() {
         ResourceDescriptor worlDescriptor("worlNoise");
         worlDescriptor.propertyDescriptor(textureDescriptor);
         worlDescriptor.waitForReady(true);
-        worlDescriptor.threaded(false);
         _worlNoiseTex = CreateResource<Texture>(_parentCache, worlDescriptor);
         _worlNoiseTex->loadData(imgDataWorl);
 
@@ -626,6 +624,9 @@ bool Sky::load() {
 
         return skyboxRenderState.getHash();
     });
+
+    _weatherTex->waitForReady();
+    _curlNoiseTex->waitForReady();
 
     skyMat->setTexture(TextureUsage::UNIT0, _skybox, _skyboxSampler, TextureOperation::NONE);
     skyMat->setTexture(TextureUsage::HEIGHTMAP, _weatherTex, noiseSamplerLinear, TextureOperation::NONE);

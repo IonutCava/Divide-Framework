@@ -218,10 +218,8 @@ RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& con
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
     bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
-    bufferDescriptor._separateReadWrite = false;
     bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES;
     bufferDescriptor._usage = ShaderBuffer::Usage::COMMAND_BUFFER;
-    bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
     bufferDescriptor._bufferParams._elementSize = sizeof(IndirectDrawCommand);
     const char* stageName = TypeUtil::RenderStageToString(stage);
     for (U8 i = 0u; i < passCount; ++i) {
@@ -292,9 +290,7 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
     bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
-    bufferDescriptor._separateReadWrite = false;
     bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
-    bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::NONE);
     {// Node Transform buffer
         bufferDescriptor._bufferParams._elementCount = to_U32(_transformBuffer._data._gpuData.size());
         bufferDescriptor._bufferParams._elementSize = sizeof(NodeTransformData);

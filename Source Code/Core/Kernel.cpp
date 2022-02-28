@@ -37,11 +37,12 @@ namespace Divide {
 namespace {
     constexpr U8 g_minimumGeneralPurposeThreadCount = 8u;
     constexpr U8 g_backupThreadPoolSize = 2u;
-    constexpr U8 g_renderThreadPoolSize = to_base(RenderStage::COUNT);
+
+    static_assert(g_backupThreadPoolSize < g_minimumGeneralPurposeThreadCount);
+
     constexpr U32 g_printTimerBase = 15u;
     constexpr U8  g_warmupFrameCount = 8u;
     U32 g_printTimer = g_printTimerBase;
-
 };
 
 Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
@@ -620,12 +621,10 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     DIVIDE_ASSERT(g_backupThreadPoolSize >= 2u, "Backup thread pool needs at least 2 threads to handle background tasks without issues!");
 
-    I32 threadCount = config.runtime.maxWorkerThreads;
-    if (config.runtime.maxWorkerThreads < 0) {
-        threadCount = HardwareThreadCount();
+    {
+        const I32 threadCount = config.runtime.maxWorkerThreads < 0 ? config.runtime.maxWorkerThreads : HardwareThreadCount();
+        totalThreadCount(std::max(threadCount, to_I32(g_minimumGeneralPurposeThreadCount)));
     }
-    totalThreadCount(std::max(threadCount, to_I32(g_renderThreadPoolSize) + g_backupThreadPoolSize + g_minimumGeneralPurposeThreadCount));
-
     // Create mem log file
     const Str256& mem = config.debug.memFile.c_str();
     _platformContext.app().setMemoryLogFile(mem.compare("none") == 0 ? "mem.log" : mem);
@@ -675,15 +674,15 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
         return initError;
     }
     { // Start thread pools
-        std::atomic_size_t threadCounter = totalThreadCount();
-        assert(threadCounter.load() > g_backupThreadPoolSize);
+        const size_t cpuThreadCount = totalThreadCount();
+        std::atomic_size_t threadCounter = cpuThreadCount;
 
         const auto initTaskPool = [&](const TaskPoolType taskPoolType, const U32 threadCount, const char* threadPrefix, const bool blocking = true)
         {
             const TaskPool::TaskPoolType poolType = blocking ? TaskPool::TaskPoolType::TYPE_BLOCKING : TaskPool::TaskPoolType::TYPE_LOCKFREE;
             if (!_platformContext.taskPool(taskPoolType).init(threadCount, poolType, 
-                [this, &threadCounter](const std::thread::id& threadID) {
-                    Attorney::PlatformContextKernel::onThreadCreated(platformContext(), threadID);
+                [this, taskPoolType, &threadCounter](const std::thread::id& threadID) {
+                    Attorney::PlatformContextKernel::onThreadCreated(platformContext(), taskPoolType, threadID);
                     threadCounter.fetch_sub(1);
                 },
                 threadPrefix))
@@ -693,15 +692,11 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
                 return ErrorCode::NO_ERR;
         };
 
-        initError = initTaskPool(TaskPoolType::HIGH_PRIORITY, to_U32(totalThreadCount()) - g_backupThreadPoolSize - g_renderThreadPoolSize, "DIVIDE_WORKER_THREAD_", true);
+        initError = initTaskPool(TaskPoolType::HIGH_PRIORITY, to_U32(cpuThreadCount - g_backupThreadPoolSize), "DIVIDE_WORKER_THREAD_", true);
         if (initError != ErrorCode::NO_ERR) {
             return initError;
         }
         initError = initTaskPool(TaskPoolType::LOW_PRIORITY, to_U32(g_backupThreadPoolSize), "DIVIDE_BACKUP_THREAD_", true);
-        if (initError != ErrorCode::NO_ERR) {
-            return initError;
-        }
-        initError = initTaskPool(TaskPoolType::RENDER_PASS, to_U32(g_renderThreadPoolSize), "DIVIDE_RENDER_THREAD_", false);
         if (initError != ErrorCode::NO_ERR) {
             return initError;
         }

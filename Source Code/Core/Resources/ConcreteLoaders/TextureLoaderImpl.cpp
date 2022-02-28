@@ -55,7 +55,6 @@ CachedResource_ptr ImplResourceLoader<Texture>::operator()() {
                                               _descriptor.resourceName(),
                                               _descriptor.assetName(),
                                               _descriptor.assetLocation(),
-                                              _descriptor.threaded(),
                                               *texDescriptor),
                     DeleteResource(_cache));
 

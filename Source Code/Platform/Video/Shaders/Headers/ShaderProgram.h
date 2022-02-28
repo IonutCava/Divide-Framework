@@ -145,8 +145,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
                            const Str256& shaderName,
                            const Str256& shaderFileName,
                            const ResourcePath& shaderFileLocation,
-                           ShaderProgramDescriptor descriptor,
-                           bool asyncLoad);
+                           ShaderProgramDescriptor descriptor);
     virtual ~ShaderProgram();
 
     bool load() override;
@@ -314,8 +313,6 @@ private:
     friend class ImplResourceLoader;
 
     const ShaderProgramDescriptor _descriptor;
-
-    bool _asyncLoad = true;
 
     static bool s_useShaderTextCache;
     static bool s_useShaderBinaryCache;

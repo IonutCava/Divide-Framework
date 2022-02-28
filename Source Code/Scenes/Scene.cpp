@@ -486,8 +486,7 @@ void Scene::loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, S
                         model.assetLocation(Paths::g_assetsLocation + "models");
                         model.assetName(modelName);
                         model.flag(true);
-                        model.threaded(false);
-                        model.waitForReady(false);
+                        model.waitForReady(true);
                         Mesh_ptr meshPtr = CreateResource<Mesh>(resourceCache(), model);
                         if (meshPtr->getObjectFlag(Object3D::ObjectFlag::OBJECT_FLAG_SKINNED)) {
                             nodeStatic = false;
@@ -635,7 +634,6 @@ void Scene::addTerrain(SceneGraphNode* parentNode, const boost::property_tree::p
 
     ResourceDescriptor descriptor(ter->getVariable("terrainName"));
     descriptor.propertyDescriptor(*ter);
-    descriptor.threaded(false);
     descriptor.flag(ter->active());
     descriptor.waitForReady(false);
     Terrain_ptr ret = CreateResource<Terrain>(resourceCache(), descriptor);

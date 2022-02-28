@@ -114,7 +114,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
         ResourceDescriptor texture("Luminance Texture");
         texture.propertyDescriptor(lumaDescriptor);
-        texture.threaded(false);
         texture.waitForReady(true);
         _currentLuminance = CreateResource<Texture>(cache, texture);
 
@@ -315,7 +314,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     bufferDescriptor._name = "LUMINANCE_HISTOGRAM_BUFFER";
     bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
     bufferDescriptor._ringBufferLength = 0;
-    bufferDescriptor._separateReadWrite = false;
     bufferDescriptor._bufferParams._elementCount = 256;
     bufferDescriptor._bufferParams._elementSize = sizeof(U32);
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;

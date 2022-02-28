@@ -37,7 +37,6 @@ glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescripto
                                            ? GL_UNIFORM_BUFFER
                                            : GL_ATOMIC_COUNTER_BUFFER;
     implParams._dataSize = _alignedBufferSize * queueLength();
-    implParams._explicitFlush = BitCompare(_flags, Flags::EXPLICIT_RANGE_FLUSH);
     implParams._name = _name.empty() ? nullptr : _name.c_str();
     implParams._useChunkAllocation = _usage != Usage::COMMAND_BUFFER && _usage != Usage::ATOMIC_COUNTER;
 
@@ -108,7 +107,27 @@ bool glUniformBuffer::bindByteRange(const U8 bindIndex, ptrdiff_t offsetInBytes,
         DIVIDE_ASSERT(to_size(rangeInBytes) <= _maxSize && "glUniformBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
         DIVIDE_ASSERT(offsetInBytes == getAlignmentCorrected(offsetInBytes));
         offsetInBytes += queueReadIndex() * _alignedBufferSize;
-        return bufferImpl()->bindByteRange(bindIndex, offsetInBytes, getAlignmentCorrected(rangeInBytes));
+
+        GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
+        if (bindIndex == to_base(ShaderBufferLocation::CMD_BUFFER)) {
+            result = GL_API::GetStateTracker().setActiveBuffer(GL_DRAW_INDIRECT_BUFFER, bufferImpl()->memoryBlock()._bufferHandle);
+        } else {
+            const size_t offset = bufferImpl()->memoryBlock()._offset + offsetInBytes;
+            // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
+            const size_t range = getAlignmentCorrected((offset == 0u && to_size(rangeInBytes) == bufferImpl()->memoryBlock()._size) ? 0u : rangeInBytes);
+            result = GL_API::GetStateTracker().setActiveBufferIndexRange(bufferImpl()->params()._target, bufferImpl()->memoryBlock()._bufferHandle, bindIndex, offset, range);
+        }
+        if (result == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+
+        const BufferParams& bufferParams = bufferImpl()->params()._bufferParams;
+        if (bufferParams._sync) {
+            // Register the bind even if we get GLStateTracker::BindResult::ALREADY_BOUND so that we know that the data is still being used by the GPU
+            GL_API::RegisterBufferBind({ bufferImpl(), to_size(offsetInBytes), to_size(getAlignmentCorrected(rangeInBytes))}, !bufferParams._syncAtEndOfCmdBuffer);
+        }
+
+        return result == GLStateTracker::BindResult::JUST_BOUND;
     }
 
     return false;

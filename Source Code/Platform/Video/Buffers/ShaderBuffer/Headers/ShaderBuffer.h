@@ -56,13 +56,6 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
            COUNT
        };
 
-       enum class Flags : U8 {
-           NONE = 0,
-           EXPLICIT_RANGE_FLUSH = toBit(1),  ///< Flush the freshly written buffer region after a write (Will use coherent mapping if not set. Coherent mapping MAY be slower)
-           NO_SYNC = toBit(2),               ///< Skip any kind of sync between reads and writes. Useful if using stuff that auto-syncs like glBufferSubData in OpenGL
-           COUNT = 4
-       };
-
    public:
     explicit ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
 
@@ -115,8 +108,6 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
    protected:
     BufferParams _params;
     size_t _maxSize = 0u;
-
-    const U32 _flags;
     const Usage _usage;
 };
 
@@ -124,13 +115,9 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
 /// however for GPU->GPU buffers, we may want a sane initial state to work with.
 /// If _initialData is not NULL, we zero out whatever empty space is left available
 /// determined by comparing the data size to the buffer size
-/// 
-/// _bufferParams._sync will be overriden by the NO_SYNC flag or UpdateFrequency::ONCE if it is set to true only!
-/// if _bufferParams._sync is set to false, the buffer will not use sync mechanism regardless of the NO_SYNC flag (see ShaderBuffer constructor)
 struct ShaderBufferDescriptor {
     BufferParams _bufferParams;
     string _name = "";
-    U32 _flags = to_U32(ShaderBuffer::Flags::NONE);
     U32 _ringBufferLength = 1u;
     ShaderBuffer::Usage _usage = ShaderBuffer::Usage::COUNT;
     bool _separateReadWrite = false; ///< Use a separate read/write index based on queue length

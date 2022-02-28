@@ -78,6 +78,8 @@ class Resource : public GUIDWrapper
     PROPERTY_R(Str256, resourceName);
     PROPERTY_R(ResourceType, resourceType, ResourceType::COUNT);
 
+    void waitForReady() const;
+
    protected:
     virtual void setState(ResourceState currentState);
     [[nodiscard]] virtual const char* getResourceTypeName() const noexcept { return "Resource"; }

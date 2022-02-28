@@ -82,8 +82,6 @@ void LightPool::init() {
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
     bufferDescriptor._ringBufferLength = DataBufferRingSize;
-    bufferDescriptor._separateReadWrite = false;
-    bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::EXPLICIT_RANGE_FLUSH);
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     

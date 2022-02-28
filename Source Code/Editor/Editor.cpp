@@ -191,7 +191,6 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
                                         GFXDataFormat::UNSIGNED_BYTE);
         texDescriptor.layerCount(1u);
         ResourceDescriptor resDescriptor("IMGUI_font_texture");
-        resDescriptor.threaded(false);
         resDescriptor.propertyDescriptor(texDescriptor);
         ResourceCache* parentCache = _context.kernel().resourceCache();
         _fontTexture = CreateResource<Texture>(parentCache, resDescriptor);

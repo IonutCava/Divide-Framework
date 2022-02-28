@@ -38,10 +38,9 @@ glTexture::glTexture(GFXDevice& context,
                      const Str256& name,
                      const ResourcePath& resourceName,
                      const ResourcePath& resourceLocation,
-                     const bool asyncLoad,
                      const TextureDescriptor& texDescriptor)
 
-    : Texture(context, descriptorHash, name, resourceName, resourceLocation, asyncLoad, texDescriptor),
+    : Texture(context, descriptorHash, name, resourceName, resourceLocation, texDescriptor),
       glObject(glObjectType::TYPE_TEXTURE, context),
      _type(GL_NONE),
      _loadingData(_data)
@@ -56,7 +55,6 @@ SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
         ScopedLock<Mutex> w_lock(_gpuAddressesLock);
         if (_cachedAddressForSampler._sampler != sampler) {
             if (sampler != 0u) {
-                assert(!GL_API::ComputeMipMapsQueued(_data._textureHandle));
                 _cachedAddressForSampler._address = glGetTextureSamplerHandleARB(_data._textureHandle, sampler);
                 _cachedAddressForSampler._sampler = sampler;
             } else {
@@ -73,7 +71,6 @@ bool glTexture::unload() {
     assert(_data._textureType != TextureType::COUNT);
 
     if (_data._textureHandle > 0u) {
-        GL_API::DequeueComputeMipMaps(_data._textureHandle);
         glDeleteTextures(1, &_data._textureHandle);
         _data._textureHandle = 0u;
     }
@@ -208,7 +205,7 @@ void glTexture::submitTextureData() {
     glTextureParameteri(_loadingData._textureHandle, GL_TEXTURE_MAX_LEVEL, _mipCount);
 
     if (_descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
-        GL_API::ComputeMipMaps(_loadingData._textureHandle);
+        glGenerateTextureMipmap(_loadingData._textureHandle);
     }
 
     ScopedLock<Mutex> w_lock(_gpuAddressesLock);

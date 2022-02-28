@@ -107,7 +107,7 @@ protected:
 
     bool draw(const GenericDrawCommand& cmd) const;
 
-    void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
+    void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
 
     void flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const GFX::CommandBuffer& commandBuffer) override;
 
@@ -144,13 +144,8 @@ public:
 
     static void QueueFlush() noexcept;
 
-    /// Queue a mipmap recalculation
-    static void QueueComputeMipMaps(GLuint textureHandle);
-    static void DequeueComputeMipMaps(GLuint textureHandle);
-    static void ComputeMipMaps(GLuint textureHandle);
-    static [[nodiscard]] bool ComputeMipMapsQueued(GLuint textureHandle);
-    static void ProcessMipMapsQueue() noexcept;
-
+    static void FlushMidBufferLockQueue(U32 frameIndex);
+    static void FlushEndBufferLockQueue(U32 frameIndex);
     static void PushDebugMessage(const char* message);
     static void PopDebugMessage();
 
@@ -163,8 +158,8 @@ public:
 
     static void RegisterSyncDelete(GLsync fenceSync);
     static bool TryDeleteExpiredSync();
-    static void RegisterBufferBind(const BufferLockEntry&& data, bool fenceAfterFirstDraw);
-
+    static void RegisterBufferBind(const BufferLockEntry&& data, bool fenceAfterDrawCalls);
+    static bool PendingBufferBindRange(const BufferLockEntry&& data, bool fenceAfterDrawCalls);
     using IMPrimitivePool = MemoryPool<glIMPrimitive, 2048>;
 
     static IMPrimitive* NewIMP(Mutex& lock, GFXDevice& parent);
@@ -206,11 +201,10 @@ private:
 
     WindowGLContext _currentContext{};
 
+    eastl::fixed_vector<GFX::CommandBuffer::CommandEntry, 512, true> _bufferFlushPoints;
+
 private:
     static std::atomic_bool s_glFlushQueued;
-
-    static SharedMutex s_mipmapQueueSetLock;
-    static eastl::unordered_set<GLuint> s_mipmapQueue;
 
     struct ResidentTexture {
         SamplerAddress _address = 0u;
@@ -231,6 +225,7 @@ private:
 
     static GLUtil::glTextureViewCache s_textureViewCache;
 
+    static bool s_IsFlushingCommandBuffer;
     static IMPrimitivePool s_IMPrimitivePool;
     static moodycamel::ConcurrentQueue<GLsync> s_fenceSyncDeletionQueue;
     static eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> s_bufferLockQueueMidFlush;

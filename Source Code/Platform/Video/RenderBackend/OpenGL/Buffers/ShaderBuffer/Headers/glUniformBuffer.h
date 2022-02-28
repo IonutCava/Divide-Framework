@@ -38,10 +38,7 @@
 
 namespace Divide {
 
-class AtomicCounter;
 class glBufferImpl;
-class glGenericBuffer;
-struct BufferLockEntry;
 
 /// Base class for shader uniform blocks
 class glUniformBuffer final : public ShaderBuffer {

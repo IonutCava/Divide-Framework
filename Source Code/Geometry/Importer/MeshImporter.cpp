@@ -409,8 +409,7 @@ namespace Import {
                 texture.assetLocation(tex.texturePath());
                 texture.propertyDescriptor(textureDescriptor);
                 // No need to fire off additional threads just to wait on the result immediately after
-                texture.threaded(Runtime::isMainThread());
-                texture.waitForReady(false);
+                texture.waitForReady(true);
                 Texture_ptr texPtr = CreateResource<Texture>(cache, texture, taskCounter);
                 texPtr->addStateCallback(ResourceState::RES_LOADED, [tempMaterial, i, texPtr, tex, textureSampler](CachedResource*) {
                     tempMaterial->setTexture(static_cast<TextureUsage>(i), texPtr, textureSampler.getHash(),tex.operation());

@@ -600,12 +600,10 @@ ShaderProgram::ShaderProgram(GFXDevice& context,
                              const Str256& shaderName,
                              const Str256& shaderFileName,
                              const ResourcePath& shaderFileLocation,
-                             ShaderProgramDescriptor descriptor,
-                             const bool asyncLoad)
+                             ShaderProgramDescriptor descriptor)
     : CachedResource(ResourceType::GPU_OBJECT, descriptorHash, shaderName, ResourcePath(shaderFileName), shaderFileLocation),
       GraphicsResource(context, Type::SHADER_PROGRAM, getGUID(), _ID(shaderName.c_str())),
-      _descriptor(MOV(descriptor)),
-      _asyncLoad(asyncLoad)
+      _descriptor(MOV(descriptor))
 {
     if (shaderFileName.empty()) {
         assetName(ResourcePath(resourceName().c_str()));
@@ -625,12 +623,7 @@ void ShaderProgram::threadedLoad([[maybe_unused]] const bool reloadExisting) {
 };
 
 bool ShaderProgram::load() {
-    if (_asyncLoad) {
-        Start(*CreateTask([this](const Task&) {threadedLoad(false); }), _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
-    } else {
-        threadedLoad(false);
-    }
-
+    Start(*CreateTask([this](const Task&) {threadedLoad(false); }), _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
     return true;
 }
 
@@ -765,7 +758,7 @@ ErrorCode ShaderProgram::PostInitAPI(ResourceCache* parentCache) {
     // Create an immediate mode rendering shader that simulates the fixed function pipeline
     {
         ResourceDescriptor immediateModeShader("ImmediateModeEmulation");
-        immediateModeShader.threaded(false);
+        immediateModeShader.waitForReady(true);
         immediateModeShader.propertyDescriptor(shaderDescriptor);
         s_imShader = CreateResource<ShaderProgram>(parentCache, immediateModeShader);
         assert(s_imShader != nullptr);
@@ -773,7 +766,7 @@ ErrorCode ShaderProgram::PostInitAPI(ResourceCache* parentCache) {
     {
         shaderDescriptor._modules.back()._defines.emplace_back("WORLD_PASS", true);
         ResourceDescriptor immediateModeShader("ImmediateModeEmulation-World");
-        immediateModeShader.threaded(false);
+        immediateModeShader.waitForReady(true);
         immediateModeShader.propertyDescriptor(shaderDescriptor);
         s_imWorldShader = CreateResource<ShaderProgram>(parentCache, immediateModeShader);
         assert(s_imWorldShader != nullptr);
@@ -782,14 +775,14 @@ ErrorCode ShaderProgram::PostInitAPI(ResourceCache* parentCache) {
     {
         shaderDescriptor._modules.back()._defines.emplace_back("OIT_PASS", true);
         ResourceDescriptor immediateModeShader("ImmediateModeEmulation-OIT");
-        immediateModeShader.threaded(false);
+        immediateModeShader.waitForReady(true);
         immediateModeShader.propertyDescriptor(shaderDescriptor);
         s_imWorldOITShader = CreateResource<ShaderProgram>(parentCache, immediateModeShader);
         assert(s_imWorldOITShader != nullptr);
     }
     shaderDescriptor._modules.clear();
     ResourceDescriptor shaderDesc("NULL");
-    shaderDesc.threaded(false);
+    shaderDesc.waitForReady(true);
     shaderDesc.propertyDescriptor(shaderDescriptor);
     // Create a null shader (basically telling the API to not use any shaders when bound)
     s_nullShader = CreateResource<ShaderProgram>(parentCache, shaderDesc);

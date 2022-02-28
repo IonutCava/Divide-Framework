@@ -193,7 +193,6 @@ void VertexBuffer::refresh() {
         setBufferParams._bufferParams._elementCount = to_U32(_data.size());
         setBufferParams._bufferParams._sync = false;
         setBufferParams._bufferParams._syncAtEndOfCmdBuffer = false;
-        setBufferParams._bufferParams._usePersistentMapping = false;
         setBufferParams._bufferParams._updateFrequency = _staticBuffer ? BufferUpdateFrequency::RARELY : BufferUpdateFrequency::OFTEN;
         setBufferParams._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
         setBufferParams._bufferParams._initialData = { smallData.data(), smallData.size() };

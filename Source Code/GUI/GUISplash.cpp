@@ -20,7 +20,6 @@ GUISplash::GUISplash(ResourceCache* cache,
     splashDescriptor.textureOptions()._alphaChannelTransparency = false;
 
     ResourceDescriptor splashImage("SplashScreen Texture");
-    splashImage.threaded(false);
     splashImage.assetName(ResourcePath(splashImageName));
     splashImage.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);
     splashImage.propertyDescriptor(splashDescriptor);
@@ -42,7 +41,6 @@ GUISplash::GUISplash(ResourceCache* cache,
 
     ResourceDescriptor splashShader("fbPreview");
     splashShader.propertyDescriptor(shaderDescriptor);
-    splashShader.threaded(false);
     _splashShader = CreateResource<ShaderProgram>(cache, splashShader);
 }
 
@@ -55,6 +53,7 @@ void GUISplash::render(GFXDevice& context) const {
     splashSampler.magFilter(TextureFilter::NEAREST);
     splashSampler.anisotropyLevel(0);
 
+    _splashShader->waitForReady();
     PipelineDescriptor pipelineDescriptor;
     pipelineDescriptor._stateHash = context.get2DStateBlock();
     pipelineDescriptor._shaderProgramHandle = _splashShader->handle();
@@ -79,6 +78,7 @@ void GUISplash::render(GFXDevice& context) const {
     viewportCommand._viewport.set(0, 0, _dimensions.width, _dimensions.height);
     EnqueueCommand(buffer, viewportCommand);
 
+    _splashImage->waitForReady();
     GFX::BindDescriptorSetsCommand descriptorSetCmd;
     descriptorSetCmd._set._textureData.add(TextureEntry{ _splashImage->data(), splashSampler.getHash(), TextureUsage::UNIT0 });
     EnqueueCommand(buffer, descriptorSetCmd);

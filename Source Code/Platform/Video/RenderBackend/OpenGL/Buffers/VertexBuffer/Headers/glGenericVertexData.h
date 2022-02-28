@@ -34,8 +34,6 @@
 #define _GL_GENERIC_VERTEX_DATA_H
 
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
-
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glGenericBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 namespace Divide {
@@ -96,7 +94,7 @@ class glGenericVertexData final : public GenericVertexData {
     void draw(const GenericDrawCommand& command) override;
 
    protected:
-    void bindBufferInternal(U32 bufferIdx, U32 location);
+    void bindBufferInternal(U32 buffer, U32 location);
     void bindBuffersInternal();
     void setAttributeInternal(const GenericDrawCommand& command, AttributeDescriptor& descriptor);
 
@@ -106,8 +104,12 @@ class glGenericVertexData final : public GenericVertexData {
                                   size_t indexBufferSize);
 
    private:
+    struct genericBufferImpl {
+        glBufferImpl* _buffer = nullptr;
+        size_t _ringSizeFactor = 1u;
+    };
     glVertexDataIndexContainer _indexInfo;
-    vector<glGenericBuffer*> _bufferObjects;
+    vector<genericBufferImpl> _bufferObjects;
     GLuint _indexBuffer = 0u;
     GLuint _indexBufferSize = 0u;
     GLuint _lastDrawCount = 0u;

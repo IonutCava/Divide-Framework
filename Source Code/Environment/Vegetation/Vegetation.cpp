@@ -487,7 +487,6 @@ void Vegetation::createAndUploadGPUData(GFXDevice& gfxDevice, const Terrain_ptr&
         bufferDescriptor._bufferParams._elementSize = sizeof(VegetationData);
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
-        bufferDescriptor._flags = to_U32(ShaderBuffer::Flags::NO_SYNC);
 
         if (s_maxTreeInstances > 0) {
             bufferDescriptor._bufferParams._elementCount = to_U32(s_maxTreeInstances * s_maxChunks);
@@ -566,7 +565,7 @@ void Vegetation::prepareDraw(SceneGraphNode* sgn) {
                     ResourceDescriptor model("Tree");
                     model.assetLocation(Paths::g_assetsLocation + "models");
                     model.flag(true);
-                    model.threaded(false); ///< we need the extents asap!
+                    model.waitForReady(true);
                     model.assetName(meshName);
                     Mesh_ptr meshPtr = CreateResource<Mesh>(_context.parent().resourceCache(), model);
                     meshPtr->setMaterialTpl(s_treeMaterial);

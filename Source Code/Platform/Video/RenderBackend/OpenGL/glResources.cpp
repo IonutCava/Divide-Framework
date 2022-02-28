@@ -711,7 +711,6 @@ void glTextureViewCache::onFrameEnd() {
 
         if (lifeLeft == 0u) {
             _tempBuffer[count++] = _handles[i];
-            GL_API::DequeueComputeMipMaps(_handles[i]);
         }
     }
 

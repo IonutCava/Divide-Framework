@@ -176,7 +176,7 @@ void RenderPassManager::render(const RenderParams& params) {
     _context.setPreviousViewProjectionMatrix(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix);
 
     activeLightPool.preRenderAllPasses(cam);
-    TaskPool& pool = context.taskPool(TaskPoolType::RENDER_PASS);
+    TaskPool& pool = context.taskPool(TaskPoolType::HIGH_PRIORITY);
     {
        Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
        {

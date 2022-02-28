@@ -64,6 +64,16 @@ struct PolyContainerEntry
 };
 #pragma pack(pop)
 
+
+inline bool operator== (const PolyContainerEntry& lhs, const PolyContainerEntry& rhs) noexcept {
+    return lhs._data == rhs._data;
+}
+
+inline bool operator!= (const PolyContainerEntry& lhs, const PolyContainerEntry& rhs) noexcept {
+    return lhs._data != rhs._data;
+}
+
+
 constexpr bool VALIDATE_POLY_CONTAINERS = false;
 
 template<typename T>
