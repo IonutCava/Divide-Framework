@@ -128,6 +128,8 @@ namespace {
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
             timer.stop();
             const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>(timer.get() - Time::ProfileTimer::overhead());
+            printLine("threadedFunction completed in: " + std::to_string(durationMS) + " ms.");
+       
             setTestValue(true);
         }
 

@@ -1921,7 +1921,6 @@ namespace Divide {
             bool ignoreTexAlpha = material->properties().overrides().ignoreTexDiffuseAlpha();
             bool doubleSided = material->properties().doubleSided();
             bool refractive = material->properties().isRefractive();
-            const bool reflective = material->reflective();
 
             ImGui::Text("[Double Sided]"); ImGui::SameLine();
             if (ImGui::ToggleButton("[Double Sided]", &doubleSided) && !readOnly) {

@@ -159,7 +159,6 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
         case RenderStage::SHADOW: {
             OPTICK_EVENT("RenderPass - Shadow");
             if (_config.rendering.shadowMapping.enabled) {
-                constexpr bool useNegOneToOneDepth = false;
                 SceneManager* mgr = _parent.parent().sceneManager();
                 LightPool& lightPool = Attorney::SceneManagerRenderPass::lightPool(mgr);
 

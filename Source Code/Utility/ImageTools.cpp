@@ -263,8 +263,6 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
     // By default, STB images are loaded with the origin in the top(upper) left. So don't flip if s_useUpperLeftOrigin is TRUE as that is our loading default
     stbi_set_flip_vertically_on_load_thread(UseUpperLeftOrigin() ? FALSE : TRUE);
 
-    constexpr F32 gamma = 2.2f;
-
     I32 width = 0, height = 0, comp = 0;
     U8* dataLDR = nullptr;
     U16* data16Bit = nullptr;
@@ -328,8 +326,6 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
                         if (options._outputSRGB) {
                             outputOptions.setSrgbFlag(true);
                         }
-
-                        const I32 outputSize = context.estimateSize(image, 1, compressionOptions);
 
                         image.setNormalMap(options._isNormalMap);
 
@@ -661,7 +657,6 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
     const ILint numImages = ilGetInteger(IL_NUM_IMAGES) + 1;
     // ^^^^^^^^^^^^^ Querying for IL_NUM_IMAGES returns the number of images
     //               following the current one. Add 1 for the right image count!
-    const ILint numMipMaps = ilGetInteger(IL_NUM_MIPMAPS);
     const bool isCube = ilGetInteger(IL_IMAGE_CUBEFLAGS) != 0 || numImages % 6 == 0;
     
     ILint numFaces = ilGetInteger(IL_NUM_FACES) + 1;

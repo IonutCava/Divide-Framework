@@ -257,7 +257,7 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
         }
 
         const ShadowType shadowType = static_cast<ShadowType>(i);
-        const U8 bindSlot = LightPool::GetShadowBindSlotOffset(static_cast<ShadowType>(i));
+        const U8 bindSlot = LightPool::GetShadowBindSlotOffset(shadowType);
         const RTAttachment& shadowTexture = sm._rt->getAttachment(RTAttachmentType::Colour, 0);
         descriptorSetCmd._set._textureData.add(TextureEntry{ shadowTexture.texture()->data(), shadowTexture.samplerHash(), bindSlot });
     }
@@ -367,7 +367,6 @@ U32 ShadowMap::getLightLayerRequirements(const Light& light) {
 }
 
 bool ShadowMap::markShadowMapsUsed(Light& light) {
-    const U8 shadowTypeIdx = to_base(getShadowTypeForLightType(light.getLightType()));
     if (!commitLayerRange(light)) {
         // If we don't have enough resources available, something went terribly wrong as we limit shadow casting lights per-type
         // and allocate enough slices for the worst case -Ionut

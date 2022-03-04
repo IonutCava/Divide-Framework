@@ -307,8 +307,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         const size_t screenSampler[] = { samplerHash, samplerHashMips, samplerHash };
         const Str64 targetName[] = { "Screen", "Screen Prev", "Screen MS" };
 
-        const bool isMSAATarget = config.rendering.MSAASamples > 0u;
-
         for (U8 i = 0; i < 3; ++i) {
             screenDescriptor.mipMappingState(mipMapState[i]);
 
@@ -1562,7 +1560,6 @@ void GFXDevice::setClipPlanes(const FrustumClipPlanes& clipPlanes) {
 
 void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
     OPTICK_EVENT();
-    constexpr F32 reserved = 1.f;
 
     GFXShaderData::CamData& data = _gpuBlock._camData;
 

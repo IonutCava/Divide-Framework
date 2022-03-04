@@ -225,16 +225,11 @@ namespace ECS
 
         void DestroyAndRemoveEntity(EntityId entityId)
         {
-            IEntity* entity = this->m_EntityHandleTable[entityId];
-            const EntityTypeId ETID = entity->GetStaticEntityTypeID();
             RemoveDestroyedEntity(entityId);
         }
 
 		void DestroyEntity(EntityId entityId)
 		{
-			IEntity* entity = this->m_EntityHandleTable[entityId];
-		
-			const EntityTypeId ETID = entity->GetStaticEntityTypeID();
 
 			if (this->m_NumPendingDestroyedEntities < this->m_PendingDestroyedEntities.size())
 			{

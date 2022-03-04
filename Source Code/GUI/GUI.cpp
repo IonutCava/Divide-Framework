@@ -254,7 +254,6 @@ void GUI::recreateDefaultMessageBox() {
     if (_defaultMsgBox != nullptr) {
         MemoryManager::DELETE(_defaultMsgBox);
     }
-    const U64 guiID = _ID("AssertMsgBox");
 
     _defaultMsgBox = MemoryManager_NEW GUIMessageBox("AssertMsgBox",
                                                      "Assertion failure",

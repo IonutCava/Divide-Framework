@@ -6,8 +6,8 @@ if "%~1"=="Release" goto run_Release
 :run_Release
 ECHO Copying Release DLLs
 robocopy assimp/bin/Release/ ../Build/ assimp-vc142-mt.dll /NP /NJH /NJS
-robocopy sdl/bin/ ../Build/ SDL2.dll /NP /NJH /NJS
-robocopy sdl/bin/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
+robocopy sdl/bin/Release/ ../Build/ SDL2.dll /NP /NJH /NJS
+robocopy sdl/bin/Release/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIBase-0.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICommonDialogs-0.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICoreWindowRendererSet.dll /NP /NJH /NJS
@@ -25,8 +25,8 @@ goto run_Common
 :run_Profile
 ECHO Copying Profile DLLs
 robocopy assimp/bin/RelWithDebInfo/ ../Build/ assimp-vc142-mt.dll /NP /NJH /NJS
-robocopy sdl/bin/ ../Build/ SDL2p.dll /NP /NJH /NJS
-robocopy sdl/bin/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
+robocopy sdl/bin/Release/ ../Build/ SDL2.dll /NP /NJH /NJS
+robocopy sdl/bin/Release/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIBase-0.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICommonDialogs-0.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICoreWindowRendererSet.dll /NP /NJH /NJS
@@ -44,8 +44,8 @@ goto run_Common
 :run_Debug
 ECHO Copying Debug DLLs
 robocopy assimp/bin/Debug/ ../Build/ assimp-vc142-mtd.dll /NP /NJH /NJS
-robocopy sdl/bin/ ../Build/ SDL2d.dll /NP /NJH /NJS
-robocopy sdl/bin/ ../Build/ SDL2_mixer_d.dll /NP /NJH /NJS
+robocopy sdl/bin/Debug/ ../Build/ SDL2.dll /NP /NJH /NJS
+robocopy sdl/bin/Debug/ ../Build/ SDL2_mixer.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUIBase-0_d.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICommonDialogs-0_d.dll /NP /NJH /NJS
 robocopy cegui/bin/ ../Build/ CEGUICoreWindowRendererSet_d.dll /NP /NJH /NJS

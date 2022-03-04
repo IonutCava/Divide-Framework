@@ -174,19 +174,16 @@ namespace {
 
     template<typename DataContainer>
     bool NodeNeedsUpdate(ExecutorBuffer<DataContainer>& executorBuffer, const U32 indirectionIDX) {
-        auto& container = executorBuffer._nodeProcessedThisFrame;
-        if (container.find(indirectionIDX) != eastl::end(container)) {
-            return false;
+        {
+            SharedLock<SharedMutex> w_lock(executorBuffer._proccessedLock);
+            if (executorBuffer._nodeProcessedThisFrame.find(indirectionIDX) != executorBuffer._nodeProcessedThisFrame.cend()) {
+                return false;
+            }
         }
 
-        ScopedLock<Mutex> w_lock(executorBuffer._proccessedLock);
-        // Check again
-        if (container.find(indirectionIDX) != eastl::end(container)) {
-            return false;
-        }
-
-        container.insert(indirectionIDX);
-        return true;
+        ScopedLock<SharedMutex> w_lock(executorBuffer._proccessedLock);
+        // This does a check anyway, so should be safe
+        return executorBuffer._nodeProcessedThisFrame.insert(indirectionIDX).second;
     }
 
     template<typename DataContainer>

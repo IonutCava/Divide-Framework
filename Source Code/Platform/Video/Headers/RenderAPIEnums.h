@@ -364,7 +364,7 @@ enum class ShaderBufferLockType : U8 {
 
 namespace Names {
     static const char* shaderBufferLockType[] = {
-        "IMMEDIATE", "AFTER_DRAW_COMMANDS", "AFTER_COMMAND_BUFFER_FLUSH", "ERROR"
+        "IMMEDIATE", "AFTER_DRAW_COMMANDS", "AFTER_COMMAND_BUFFER_FLUSH", "NONE"
     };
 };
 

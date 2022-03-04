@@ -32,9 +32,10 @@ namespace Divide {
     }
 
     void SDLEventManager::pollEvents() {
+        static SDL_Event evt;
+
         OPTICK_EVENT();
 
-        SDL_Event evt;
         while (SDL_PollEvent(&evt)) {
             OPTICK_EVENT("OnLoop");
             OPTICK_TAG("Event", evt.type);
