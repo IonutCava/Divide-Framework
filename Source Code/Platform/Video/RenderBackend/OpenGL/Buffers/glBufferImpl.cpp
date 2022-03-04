@@ -17,19 +17,45 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
       _params(params),
       _context(context)
 {
-    assert(_params._bufferParams._updateFrequency != BufferUpdateFrequency::RARELY ||
-           _params._bufferParams._updateUsage == BufferUpdateUsage::GPU_R_GPU_W ||
-           (_params._bufferParams._initialData.second > 0 && _params._bufferParams._initialData.first != nullptr));
-
-    // We can't use persistent mapping with ONCE usage because we use block allocator for memory and it may have been mapped using write bits and we wouldn't know.
-    // Since we don't need to keep writing to the buffer, we can just use a regular glBufferData call once and be done with it.
-    const bool usePersistentMapping = _params._bufferParams._updateUsage != BufferUpdateUsage::GPU_R_GPU_W &&
-                                      _params._bufferParams._updateFrequency != BufferUpdateFrequency::RARELY;
+    assert(_params._bufferParams._updateFrequency != BufferUpdateFrequency::COUNT);
 
     // Create all buffers with zero mem and then write the actual data that we have (If we want to initialise all memory)
-    if (!usePersistentMapping) {
-        _params._bufferParams._sync = false;
-        const GLenum usage = _params._target == GL_ATOMIC_COUNTER_BUFFER ? GL_STREAM_READ : GetBufferUsage(_params._bufferParams._updateFrequency, _params._bufferParams._updateUsage);
+    if (_params._bufferParams._updateUsage == BufferUpdateUsage::GPU_R_GPU_W || _params._bufferParams._updateFrequency == BufferUpdateFrequency::ONCE) {
+        GLenum usage = GL_NONE;
+        if (_params._target == GL_ATOMIC_COUNTER_BUFFER) {
+            usage = GL_STREAM_READ;
+        } else {
+            switch (_params._bufferParams._updateFrequency) {
+                case BufferUpdateFrequency::ONCE:
+                    switch (_params._bufferParams._updateUsage) {
+                        case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_STATIC_DRAW; break;
+                        case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_STATIC_READ; break;
+                        case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_STATIC_COPY; break;
+                        default: break;
+                    }
+                    break;
+                case BufferUpdateFrequency::OCASSIONAL:
+                    switch (_params._bufferParams._updateUsage) {
+                        case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_DYNAMIC_DRAW; break;
+                        case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_DYNAMIC_READ; break;
+                        case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_DYNAMIC_COPY; break;
+                        default: break;
+                    }
+                    break;
+                case BufferUpdateFrequency::OFTEN:
+                    switch (_params._bufferParams._updateUsage) {
+                        case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_STREAM_DRAW; break;
+                        case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_STREAM_READ; break;
+                        case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_STREAM_COPY; break;
+                        default: break;
+                    }
+                    break;
+                default: break;
+            }
+        }
+
+        DIVIDE_ASSERT(usage != GL_NONE);
+
         GLUtil::createAndAllocBuffer(_params._dataSize, 
                                      usage,
                                      _memoryBlock._bufferHandle,
@@ -43,9 +69,6 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
         const BufferStorageMask storageMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
         const MapBufferAccessMask accessMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
 
-        assert(_params._bufferParams._updateFrequency != BufferUpdateFrequency::COUNT &&
-               _params._bufferParams._updateFrequency != BufferUpdateFrequency::RARELY);
-  
         const size_t alignment = params._target == GL_UNIFORM_BUFFER 
                                                 ? GFXDevice::GetDeviceInformation()._UBOffsetAlignmentBytes
                                                 : _params._target == GL_SHADER_STORAGE_BUFFER
@@ -76,7 +99,6 @@ glBufferImpl::~glBufferImpl()
             const GLUtil::GLMemory::DeviceAllocator& allocator = GL_API::GetMemoryAllocator(GL_API::GetMemoryTypeForUsage(_params._target));
             allocator.deallocate(_memoryBlock);
         } else {
-            glInvalidateBufferData(_memoryBlock._bufferHandle);
             GLUtil::freeBuffer(_memoryBlock._bufferHandle, nullptr);
         }
     }
@@ -84,7 +106,7 @@ glBufferImpl::~glBufferImpl()
 
 
 bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, const U32 frameID) {
-    if (_params._bufferParams._sync) {
+    if (_memoryBlock._ptr != nullptr) {
         return _lockManager.lockRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, frameID);
     }
 
@@ -92,11 +114,7 @@ bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeI
 }
 
 bool glBufferImpl::waitByteRange(const size_t offsetInBytes, const size_t rangeInBytes, const bool blockClient) {
-    if (_params._bufferParams._sync) {
-        if (_params._bufferParams._syncAtEndOfCmdBuffer) {
-            //DIVIDE_ASSERT(!GL_API::PendingBufferBindRange( BufferLockEntry{ this, offsetInBytes, rangeInBytes }, false));
-        }
-
+    if (_memoryBlock._ptr != nullptr) {
         return _lockManager.waitForLockedRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, blockClient);
     }
 
@@ -127,15 +145,12 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
             memcpy(&_memoryBlock._ptr[offsetInBytes], data, rangeInBytes);
         }
     } else {
-        if (zeroMem) {
-            const MapBufferAccessMask accessMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
-            Byte* ptr = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, accessMask);
-            memset(ptr, 0, rangeInBytes);
-            glUnmapNamedBuffer(_memoryBlock._bufferHandle);
-        } else {
-            glInvalidateBufferSubData(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes);
-            glNamedBufferSubData(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, data);
-        }
+        DIVIDE_ASSERT(zeroMem, "glBufferImpl: trying to write to a buffer create with BufferUpdateFrequency::ONCE");
+
+        const MapBufferAccessMask accessMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
+        Byte* ptr = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, accessMask);
+        memset(ptr, 0, rangeInBytes);
+        glUnmapNamedBuffer(_memoryBlock._bufferHandle);
     }
 }
 
@@ -161,39 +176,6 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
         }
         glUnmapNamedBuffer(_memoryBlock._bufferHandle);
     }
-}
-
-GLenum glBufferImpl::GetBufferUsage(const BufferUpdateFrequency frequency, const BufferUpdateUsage usage) noexcept {
-    switch (frequency) {
-        case BufferUpdateFrequency::RARELY:
-            switch (usage) {
-                case BufferUpdateUsage::CPU_W_GPU_R: return GL_STATIC_DRAW;
-                case BufferUpdateUsage::CPU_R_GPU_W: return GL_STATIC_READ;
-                case BufferUpdateUsage::GPU_R_GPU_W: return GL_STATIC_COPY;
-                default: break;
-            }
-            break;
-        case BufferUpdateFrequency::OCASSIONAL:
-            switch (usage) {
-                case BufferUpdateUsage::CPU_W_GPU_R: return GL_DYNAMIC_DRAW;
-                case BufferUpdateUsage::CPU_R_GPU_W: return GL_DYNAMIC_READ;
-                case BufferUpdateUsage::GPU_R_GPU_W: return GL_DYNAMIC_COPY;
-                default: break;
-            }
-            break;
-        case BufferUpdateFrequency::OFTEN:
-            switch (usage) {
-                case BufferUpdateUsage::CPU_W_GPU_R: return GL_STREAM_DRAW;
-                case BufferUpdateUsage::CPU_R_GPU_W: return GL_STREAM_READ;
-                case BufferUpdateUsage::GPU_R_GPU_W: return GL_STREAM_COPY;
-                default: break;
-            }
-            break;
-        default: break;
-    }
-
-    DIVIDE_UNEXPECTED_CALL();
-    return GL_DYNAMIC_DRAW;
 }
 
 }; //namespace Divide

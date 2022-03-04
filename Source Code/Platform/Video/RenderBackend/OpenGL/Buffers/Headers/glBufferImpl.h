@@ -67,9 +67,6 @@ public:
     void readBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data);
 
 public:
-    static GLenum GetBufferUsage(BufferUpdateFrequency frequency, BufferUpdateUsage usage) noexcept;
-
-public:
     PROPERTY_R(BufferImplParams, params);
     
     PROPERTY_R(GLUtil::GLMemory::Block, memoryBlock);

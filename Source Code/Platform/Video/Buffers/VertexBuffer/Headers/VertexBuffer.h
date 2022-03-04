@@ -85,6 +85,7 @@ class VertexBuffer final : public VertexDataInterface {
     bool create(bool staticDraw, bool keepData);
 
     void setVertexCount(const size_t size) {
+        _dataLayoutChanged = true;
         _data.resize(size);
     }
 
@@ -101,6 +102,7 @@ class VertexBuffer final : public VertexDataInterface {
     }
 
     void resizeVertexCount(const size_t size, const Vertex& defaultValue = {}) {
+        _dataLayoutChanged = true;
         _data.resize(size, defaultValue);
     }
 
@@ -164,6 +166,7 @@ class VertexBuffer final : public VertexDataInterface {
     void addIndex(const U32 index) {
         assert(useLargeIndices() || index <= U16_MAX);
         _indices.push_back(index);
+        _indicesChanged = true;
     }
 
     template <typename T>
@@ -176,6 +179,7 @@ class VertexBuffer final : public VertexDataInterface {
         if (containsRestartIndex) {
             hasRestartIndex(true);
         }
+        _indicesChanged = true;
     }
 
     void addRestartIndex() {
@@ -194,6 +198,7 @@ class VertexBuffer final : public VertexDataInterface {
             it++->_position.set(value);
        }
 
+       _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::POSITION)];
        _useAttribute[to_base(AttribLocation::POSITION)] = true;
        _refreshQueued = true;
     }
@@ -210,6 +215,7 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._position.set(x, y, z);
+        _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::POSITION)];
         _useAttribute[to_base(AttribLocation::POSITION)] = true;
         _refreshQueued = true;
     }
@@ -226,6 +232,7 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._colour.set(r, g, b, a);
+        _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::COLOR)];
         _useAttribute[to_base(AttribLocation::COLOR)] = true;
         _refreshQueued = true;
     }
@@ -242,6 +249,7 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._normal = Util::PACK_VEC3(x, y, z);
+        _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::NORMAL)];
         _useAttribute[to_base(AttribLocation::NORMAL)] = true;
         _refreshQueued = true;
     }
@@ -258,6 +266,7 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._tangent = Util::PACK_VEC3(x, y, z);
+        _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::TANGENT)];
         _useAttribute[to_base(AttribLocation::TANGENT)] = true;
         _refreshQueued = true;
     }
@@ -274,6 +283,7 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._texcoord.set(s, t);
+        _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::TEXCOORD)];
         _useAttribute[to_base(AttribLocation::TEXCOORD)] = true;
         _refreshQueued = true;
     }
@@ -286,6 +296,7 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._indices = indices;
+        _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::BONE_INDICE)];
         _useAttribute[to_base(AttribLocation::BONE_INDICE)] = true;
         _refreshQueued = true;
     }
@@ -307,6 +318,7 @@ class VertexBuffer final : public VertexDataInterface {
                       "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
         _data[index]._weights = packedWeights;
+        _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::BONE_WEIGHT)];
         _useAttribute[to_base(AttribLocation::BONE_WEIGHT)] = true;
         _refreshQueued = true;
     }
@@ -382,6 +394,8 @@ class VertexBuffer final : public VertexDataInterface {
     size_t _effectiveEntrySize = 0u;
     GenericVertexData* _internalGVD = nullptr;
     bool _refreshQueued = false;
+    bool _dataLayoutChanged = false;
+    bool _indicesChanged = true;
     bool _keepData = false;
 };
 

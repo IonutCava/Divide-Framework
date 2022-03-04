@@ -13,7 +13,7 @@ GenericVertexData::GenericVertexData(GFXDevice& context, const U32 ringBufferLen
 }
 
 
-void GenericVertexData::setIndexBuffer(const IndexBuffer& indices, [[maybe_unused]] BufferUpdateFrequency updateFrequency) {
+void GenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
     _idxBuffer = indices;
 }
 

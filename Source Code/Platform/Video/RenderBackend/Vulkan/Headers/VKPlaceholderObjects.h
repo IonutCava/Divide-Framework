@@ -214,6 +214,10 @@ namespace Divide {
         bool bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes) noexcept override {
             return true; 
         }
+
+        bool lockByteRange([[maybe_unused]] const ptrdiff_t offsetInBytes, [[maybe_unused]] const ptrdiff_t rangeInBytes, [[maybe_unused]] const ShaderBufferLockType lockType) override {
+            return true;
+        }
     };
 };  // namespace Divide
 #endif //_VK_PLACEHOLDER_OBJECTS_H_

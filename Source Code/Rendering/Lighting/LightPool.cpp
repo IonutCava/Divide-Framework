@@ -454,16 +454,19 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
     bufferLightData._binding = ShaderBufferLocation::LIGHT_NORMAL;
     bufferLightData._buffer = _lightBuffer;
     bufferLightData._elementRange = { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount };
-    
+    bufferLightData._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
+
     ShaderBufferBinding bufferLightScene;
     bufferLightScene._binding = ShaderBufferLocation::LIGHT_SCENE;
     bufferLightScene._buffer = _sceneBuffer;
     bufferLightScene._elementRange = { bufferOffset, 1u };
+    bufferLightScene._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding bufferShadow;
     bufferShadow._binding = ShaderBufferLocation::LIGHT_SHADOW;
     bufferShadow._buffer = _shadowBuffer;
     bufferShadow._elementRange = { 0u, 1u };
+    bufferShadow._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._buffers.add(bufferLightData);
@@ -542,6 +545,7 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
         bufferLightData._binding = ShaderBufferLocation::LIGHT_NORMAL;
         bufferLightData._buffer = _lightBuffer;
         bufferLightData._elementRange = { to_size(LightBufferIndex(RenderStage::DISPLAY)) * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount };
+        bufferLightData._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = _context.gfx().getDefaultStateBlock(false);

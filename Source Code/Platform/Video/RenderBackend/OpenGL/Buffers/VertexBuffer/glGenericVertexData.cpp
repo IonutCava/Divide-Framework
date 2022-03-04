@@ -69,15 +69,15 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
     }
 }
 
-void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices, const BufferUpdateFrequency updateFrequency) {
-    GenericVertexData::setIndexBuffer(indices, updateFrequency);
+void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
+    GenericVertexData::setIndexBuffer(indices);
 
     if (_indexBuffer != 0) {
         GLUtil::freeBuffer(_indexBuffer);
         _indexDataType = GL_NONE;
     }
 
-    _indexBufferUsage = glBufferImpl::GetBufferUsage(updateFrequency, BufferUpdateUsage::CPU_W_GPU_R);
+    _indexBufferUsage = indices.dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW;
 
     if (indices.count > 0) {
         updateIndexBuffer(indices);
@@ -129,7 +129,6 @@ void glGenericVertexData::updateIndexBuffer(const IndexBuffer& indices) {
 /// Specify the structure and data of the given buffer
 void glGenericVertexData::setBuffer(const SetBufferParams& params) {
     const U32 buffer = params._buffer;
-
     // Make sure the buffer exists
     DIVIDE_ASSERT(buffer >= 0 && buffer < _bufferObjects.size() && "glGenericVertexData error: set buffer called for invalid buffer index!");
 
@@ -143,7 +142,7 @@ void glGenericVertexData::setBuffer(const SetBufferParams& params) {
     implParams._bufferParams = params._bufferParams;
     implParams._dataSize = totalSizeInBytes;
     implParams._target = GL_ARRAY_BUFFER;
-    implParams._name = _name.empty() ? nullptr : _name.c_str();;
+    implParams._name = _name.empty() ? nullptr : _name.c_str();
     implParams._useChunkAllocation = true;
 
     _bufferObjects[buffer]._buffer = MemoryManager_NEW glBufferImpl(_context, implParams);
@@ -154,6 +153,7 @@ void glGenericVertexData::setBuffer(const SetBufferParams& params) {
             _bufferObjects[buffer]._buffer->writeOrClearBytes(i * bufferSizeInBytes, params._bufferParams._initialData.second, params._bufferParams._initialData.first, false);
         }
     }
+    _bufferObjects[buffer]._wasWritten = true;
 }
 
 /// Update the elementCount worth of data contained in the buffer starting from elementCountOffset size offset
@@ -174,6 +174,7 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
     }
 
     bufferImpl->writeOrClearBytes(offsetInBytes, dataCurrentSizeInBytes, data, false);
+    _bufferObjects[buffer]._wasWritten = true;
 }
 
 void glGenericVertexData::bindBuffersInternal() {
@@ -197,10 +198,11 @@ void glGenericVertexData::bindBufferInternal(const U32 buffer, const  U32 locati
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    if (bufferParams._sync) {
+    if (_bufferObjects[buffer]._wasWritten) {
         const size_t rangeInBytes = bufferParams._elementCount * bufferParams._elementSize;
         // Register the bind even if we get GLStateTracker::BindResult::ALREADY_BOUND so that we know that the data is still being used by the GPU
-        GL_API::RegisterBufferBind({ bufferImpl, offsetInBytes,  rangeInBytes }, !bufferParams._syncAtEndOfCmdBuffer);
+        GL_API::RegisterBufferLock({ bufferImpl, offsetInBytes,  rangeInBytes }, ShaderBufferLockType::AFTER_DRAW_COMMANDS);
+        _bufferObjects[buffer]._wasWritten = false;
     }
 }
 

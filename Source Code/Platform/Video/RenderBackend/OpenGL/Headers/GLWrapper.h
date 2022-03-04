@@ -61,6 +61,7 @@ namespace Time {
 };
 
 enum class WindowType : U8;
+enum class ShaderBufferLockType : U8;
 
 class DisplayWindow;
 class PlatformContext;
@@ -144,8 +145,8 @@ public:
 
     static void QueueFlush() noexcept;
 
-    static void FlushMidBufferLockQueue(U32 frameIndex);
-    static void FlushEndBufferLockQueue(U32 frameIndex);
+    static void FlushMidBufferLockQueue();
+    static void FlushEndBufferLockQueue();
     static void PushDebugMessage(const char* message);
     static void PopDebugMessage();
 
@@ -156,10 +157,7 @@ public:
     static bool DeleteVAOs(GLuint count, GLuint* vaos);
     static bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
 
-    static void RegisterSyncDelete(GLsync fenceSync);
-    static bool TryDeleteExpiredSync();
-    static void RegisterBufferBind(const BufferLockEntry&& data, bool fenceAfterDrawCalls);
-    static bool PendingBufferBindRange(const BufferLockEntry&& data, bool fenceAfterDrawCalls);
+    static void RegisterBufferLock(const BufferLockEntry&& data, ShaderBufferLockType lockType);
     using IMPrimitivePool = MemoryPool<glIMPrimitive, 2048>;
 
     static IMPrimitive* NewIMP(Mutex& lock, GFXDevice& parent);
@@ -169,6 +167,8 @@ public:
     static GLuint GetSamplerHandle(size_t samplerHash);
 
     static glHardwareQueryPool* s_hardwareQueryPool;
+
+    static U32 s_fenceSyncCounter;
 
 private:
     void endFrameLocal(const DisplayWindow& window);
@@ -227,7 +227,6 @@ private:
 
     static bool s_IsFlushingCommandBuffer;
     static IMPrimitivePool s_IMPrimitivePool;
-    static moodycamel::ConcurrentQueue<GLsync> s_fenceSyncDeletionQueue;
     static eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> s_bufferLockQueueMidFlush;
     static eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> s_bufferLockQueueEndOfBuffer;
 };

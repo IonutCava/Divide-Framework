@@ -188,16 +188,19 @@ void VertexBuffer::refresh() {
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        GenericVertexData::SetBufferParams setBufferParams{};
-        setBufferParams._bufferParams._elementSize = _effectiveEntrySize;
-        setBufferParams._bufferParams._elementCount = to_U32(_data.size());
-        setBufferParams._bufferParams._sync = false;
-        setBufferParams._bufferParams._syncAtEndOfCmdBuffer = false;
-        setBufferParams._bufferParams._updateFrequency = _staticBuffer ? BufferUpdateFrequency::RARELY : BufferUpdateFrequency::OFTEN;
-        setBufferParams._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-        setBufferParams._bufferParams._initialData = { smallData.data(), smallData.size() };
-        _internalGVD->setBuffer(setBufferParams);
-
+        if (_dataLayoutChanged) {
+            GenericVertexData::SetBufferParams setBufferParams{};
+            setBufferParams._bufferParams._elementSize = _effectiveEntrySize;
+            setBufferParams._bufferParams._elementCount = to_U32(_data.size());
+            setBufferParams._bufferParams._updateFrequency = _staticBuffer ? BufferUpdateFrequency::ONCE : BufferUpdateFrequency::OFTEN;
+            setBufferParams._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+            setBufferParams._bufferParams._initialData = { smallData.data(), smallData.size() };
+            _internalGVD->setBuffer(setBufferParams);
+            _dataLayoutChanged = false;
+        } else {
+            assert(!_staticBuffer);
+            _internalGVD->updateBuffer(0u, 0u, to_U32(_data.size()), smallData.data());
+        }
         if (_staticBuffer && !_keepData) {
             _data.clear();
         } else {
@@ -205,14 +208,27 @@ void VertexBuffer::refresh() {
         }
     }
 
-    // Check if we need to update the IBO (will be true for the first Refresh() call)
-    GenericVertexData::IndexBuffer idxBuffer{};
-    idxBuffer.count = _indices.size();
-    idxBuffer.offsetCount = 0u;
-    idxBuffer.smallIndices = !useLargeIndices();
-    idxBuffer.indicesNeedCast = idxBuffer.smallIndices;
-    idxBuffer.data = _indices.data();
-    _internalGVD->setIndexBuffer(idxBuffer, BufferUpdateFrequency::RARELY);
+    if (_indicesChanged) {
+        const GenericVertexData::IndexBuffer& existingIndices = _internalGVD->idxBuffer();
+
+        assert(!_staticBuffer || existingIndices.count == 0u);
+
+        // Check if we need to update the IBO (will be true for the first Refresh() call)
+        GenericVertexData::IndexBuffer idxBuffer{};
+        idxBuffer.count = _indices.size();
+        idxBuffer.offsetCount = 0u;
+        idxBuffer.smallIndices = !useLargeIndices();
+        idxBuffer.indicesNeedCast = idxBuffer.smallIndices;
+        idxBuffer.data = _indices.data();
+        idxBuffer.dynamic = !_staticBuffer;
+
+        if (!AreCompatible(existingIndices, idxBuffer)) {
+            _internalGVD->setIndexBuffer(idxBuffer);
+        } else {
+            _internalGVD->updateIndexBuffer(idxBuffer);
+        }
+        _indicesChanged = false;
+    }
 }
 
 /// Activate and set all of the required vertex attributes.
@@ -413,6 +429,7 @@ void VertexBuffer::fromBuffer(const VertexBuffer& other) {
     _attribOffsets = other._attribOffsets;
     _effectiveEntrySize = other._effectiveEntrySize;
     _refreshQueued = true;
+    _dataLayoutChanged = true;
 }
 
 bool VertexBuffer::deserialize(ByteBuffer& dataIn) {

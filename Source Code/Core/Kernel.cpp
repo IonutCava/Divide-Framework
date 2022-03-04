@@ -230,29 +230,28 @@ void Kernel::onLoop() {
         }
     }
 
-    const U32 frameCount = _platformContext.gfx().frameCount();
     if (platformContext().debug().enabled()) {
         static bool statsEnabled = false;
         // Turn on perf metric measuring 2 seconds before perf dump
-        if (frameCount % (Config::TARGET_FRAME_RATE * Time::Seconds(8)) == 0) {
+        if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(8)) == 0) {
             statsEnabled = platformContext().gfx().queryPerformanceStats();
             platformContext().gfx().queryPerformanceStats(true);
         }
         // Our stats should be up to date now
-        if (frameCount % (Config::TARGET_FRAME_RATE * Time::Seconds(10)) == 0) {
+        if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(10)) == 0) {
             Console::printfn(platformContext().debug().output().c_str());
             if (!statsEnabled) {
                 platformContext().gfx().queryPerformanceStats(false);
             }
         }
 
-        if (frameCount % (Config::TARGET_FRAME_RATE / 8) == 0u) {
+        if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 8) == 0u) {
             _platformContext.gui().modifyText("ProfileData", platformContext().debug().output(), true);
         }
     }
 
     if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
-        if (frameCount % 6 == 0u) {
+        if (GFXDevice::FrameCount() % 6 == 0u) {
         
             DisplayWindow& window = _platformContext.mainWindow();
             static string originalTitle;
@@ -265,7 +264,7 @@ void Kernel::onLoop() {
             const Str256& activeSceneName = _sceneManager->getActiveScene().resourceName();
             constexpr const char* buildType = Config::Build::IS_DEBUG_BUILD ? "DEBUG" : Config::Build::IS_PROFILE_BUILD ? "PROFILE" : "RELEASE";
             constexpr const char* titleString = "[%s] - %s - %s - %5.2f FPS - %3.2f ms - FrameIndex: %d - Update Calls : %d - Alpha : %1.2f";
-            window.title(titleString, buildType, originalTitle.c_str(), activeSceneName.c_str(), fps, frameTime, platformContext().gfx().frameCount(), _timingData.updateLoops(), _timingData.alpha());
+            window.title(titleString, buildType, originalTitle.c_str(), activeSceneName.c_str(), fps, frameTime, GFXDevice::FrameCount(), _timingData.updateLoops(), _timingData.alpha());
         }
     }
 
@@ -368,11 +367,9 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
         }
     }
 
-    const U32 frameCount = _platformContext.gfx().frameCount();
-
-    if (frameCount % (Config::TARGET_FRAME_RATE / Config::Networking::NETWORK_SEND_FREQUENCY_HZ) == 0) {
+    if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / Config::Networking::NETWORK_SEND_FREQUENCY_HZ) == 0) {
         U32 retryCount = 0;
-        while (!Attorney::SceneManagerKernel::networkUpdate(_sceneManager, frameCount)) {
+        while (!Attorney::SceneManagerKernel::networkUpdate(_sceneManager, GFXDevice::FrameCount())) {
             if (retryCount++ > Config::Networking::NETWORK_SEND_RETRY_COUNT) {
                 break;
             }
@@ -622,7 +619,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     DIVIDE_ASSERT(g_backupThreadPoolSize >= 2u, "Backup thread pool needs at least 2 threads to handle background tasks without issues!");
 
     {
-        const I32 threadCount = config.runtime.maxWorkerThreads < 0 ? config.runtime.maxWorkerThreads : HardwareThreadCount();
+        const I32 threadCount = config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : HardwareThreadCount();
         totalThreadCount(std::max(threadCount, to_I32(g_minimumGeneralPurposeThreadCount)));
     }
     // Create mem log file

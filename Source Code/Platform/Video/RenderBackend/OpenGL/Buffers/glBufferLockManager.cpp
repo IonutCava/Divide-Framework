@@ -8,7 +8,7 @@ namespace Divide {
 
 namespace {
     // Auto-delete locks older than this number of frames
-    constexpr U32 g_LockFrameLifetime = 6u; //(APP->Driver->GPU x2)
+    constexpr U32 g_LockFrameLifetime = 3u; //(APP->Driver->GPU)
 };
 
 std::atomic_bool glBufferLockManager::s_driverBusy;
@@ -29,7 +29,8 @@ glBufferLockManager::~glBufferLockManager()
 {
     const SharedLock<SharedMutex> r_lock(_lock);
     for (const BufferLock& lock : _bufferLocks) {
-        GL_API::RegisterSyncDelete(lock._syncObj);
+        glDeleteSync(lock._syncObj);
+        GL_API::s_fenceSyncCounter -= 1u;
     }
 }
 
@@ -41,10 +42,7 @@ bool glBufferLockManager::waitForLockedRange(size_t lockBeginBytes,
     OPTICK_TAG("BlockClient", blockClient);
     OPTICK_TAG("QuickCheck", quickCheck);
 
-    while (blockClient && DriverBusy()) {
-        // Random busy work
-        GL_API::TryDeleteExpiredSync();
-    }
+    WAIT_FOR_CONDITION(!(blockClient && DriverBusy()));
 
     const BufferRange testRange{lockBeginBytes, lockLength};
 
@@ -59,7 +57,10 @@ bool glBufferLockManager::waitForLockedRange(size_t lockBeginBytes,
                 } else {
                     U8 retryCount = 0u;
                     if (Wait(lock._syncObj, blockClient, quickCheck, retryCount)) {
-                        GL_API::RegisterSyncDelete(lock._syncObj);
+                        OPTICK_EVENT("Delete Sync Waited");
+                        glDeleteSync(lock._syncObj);
+                        GL_API::s_fenceSyncCounter -= 1u;
+
                         if (retryCount > g_MaxLockWaitRetries - 1) {
                             Console::errorfn("glBufferLockManager: Wait (%p) [%d - %d] %s - %d retries", this, lockBeginBytes, lockLength, blockClient ? "true" : "false", retryCount);
                         }
@@ -71,7 +72,9 @@ bool glBufferLockManager::waitForLockedRange(size_t lockBeginBytes,
                 }
             } break;
             case BufferLockState::EXPIRED: {
-                GL_API::RegisterSyncDelete(lock._syncObj);
+                OPTICK_EVENT("Delete Sync Expired");
+                glDeleteSync(lock._syncObj);
+                GL_API::s_fenceSyncCounter -= 1u;
             } break;
             case BufferLockState::ERROR: {
                 //DIVIDE_UNEXPECTED_CALL();
@@ -105,18 +108,18 @@ bool glBufferLockManager::lockRange(const size_t lockBeginBytes, const size_t lo
 
         // See if we can reuse an old lock. Ignore the old fence since the new one will guard the same mem region. (Right?)
         for (BufferLock& lock : _bufferLocks) {
-            if (Overlaps(testRange, lock._range) && 
-                (lock._state == BufferLockState::ACTIVE ||
-                 lock._state == BufferLockState::ERROR))
-        
+            if (Overlaps(testRange, lock._range))
             {
                 OPTICK_EVENT("Reusing existing fence");
-                GL_API::RegisterSyncDelete(lock._syncObj);
+                glDeleteSync(lock._syncObj);
+                GL_API::s_fenceSyncCounter -= 1u;
 
                 lock._range._startOffset = std::min(testRange._startOffset, lock._range._startOffset);
                 lock._range._length = std::max(testRange._length, lock._range._length);
                 lock._frameID = frameID;
                 lock._syncObj = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+                lock._state = BufferLockState::ACTIVE;
+                GL_API::s_fenceSyncCounter += 1u;
                 return true;
             }
         }
@@ -131,6 +134,7 @@ bool glBufferLockManager::lockRange(const size_t lockBeginBytes, const size_t lo
             glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0),
             frameID
         );
+        GL_API::s_fenceSyncCounter += 1u;
     }
     return true;
 }

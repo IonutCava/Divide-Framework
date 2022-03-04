@@ -78,6 +78,8 @@ struct PerformanceMetrics
     U64 _tessellationPatches = 0u;
     /// Number of times the tessellation control shader has been invoked
     U64 _tessellationInvocations = 0u;
+    /// Number of active sync objects
+    U32 _syncObjectsInFlight = 0u;
 };
 
 struct DeviceInformation

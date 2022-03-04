@@ -24,10 +24,6 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context,
         _usage(descriptor._usage),
         _name(descriptor._name)
 {
-    if (descriptor._bufferParams._updateFrequency == BufferUpdateFrequency::RARELY) {
-        _params._sync = false;
-    }
-
     assert(descriptor._usage != Usage::COUNT);
     assert(descriptor._bufferParams._elementSize * descriptor._bufferParams._elementCount > 0 && "ShaderBuffer::Create error: Invalid buffer size!");
 }
@@ -59,5 +55,14 @@ bool ShaderBuffer::bindRange(const U8 bindIndex,
                          static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize));
 }
 
+bool ShaderBuffer::lockRange(const ShaderBufferLockType lockType) {
+    return lockRange(0u, _params._elementCount, lockType);
+}
+
+bool ShaderBuffer::lockRange(const U32 offsetElementCount, const U32 rangeElementCount, const ShaderBufferLockType lockType) {
+    return lockByteRange(static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),
+                         static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize),
+                         lockType);
+}
 
 } //namespace Divide;

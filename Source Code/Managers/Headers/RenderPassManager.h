@@ -108,7 +108,6 @@ public:
 
     /// Call every render queue's render function in order
     void render(const RenderParams& params);
-    void postRender(RenderStage renderStage);
 
     /// Add a new pass that will run once for each of the RenderStages specified
     RenderPass& setRenderPass(RenderStage renderStage,  const vector<RenderStage>& dependencies = {}, bool usePerformanceCounters = false);

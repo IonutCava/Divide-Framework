@@ -320,10 +320,15 @@ void RenderPassManager::render(const RenderParams& params) {
     gfx.flushCommandBuffer(*_postRenderBuffer);
 
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
-}
 
-void RenderPassManager::postRender(const RenderStage renderStage) {
-    _executors[to_base(renderStage)]->postRender();
+    {
+        OPTICK_EVENT("Executor post-render");
+        for (auto& executor : _executors) {
+            if (executor != nullptr) {
+                executor->postRender();
+            }
+        }
+    }
 }
 
 RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage,

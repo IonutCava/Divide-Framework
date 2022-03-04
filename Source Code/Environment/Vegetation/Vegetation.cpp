@@ -485,7 +485,7 @@ void Vegetation::createAndUploadGPUData(GFXDevice& gfxDevice, const Terrain_ptr&
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
         bufferDescriptor._bufferParams._elementSize = sizeof(VegetationData);
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
 
         if (s_maxTreeInstances > 0) {
@@ -700,7 +700,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             bufferGrass._binding = ShaderBufferLocation::GRASS_DATA;
             bufferGrass._buffer = s_grassData;
             bufferGrass._elementRange = { 0u, s_grassData->getPrimitiveCount() };
-
+            bufferGrass._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
             set._buffers.add(bufferGrass);
         }
         if (s_treeData) {
@@ -708,6 +708,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             bufferTrees._binding = ShaderBufferLocation::TREE_DATA;
             bufferTrees._buffer = s_treeData;
             bufferTrees._elementRange = { 0u, s_treeData->getPrimitiveCount() };
+            bufferTrees._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
             set._buffers.add(bufferTrees);
         }

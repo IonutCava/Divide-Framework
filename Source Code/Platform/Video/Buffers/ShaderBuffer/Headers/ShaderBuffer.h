@@ -91,6 +91,14 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
                    U32 offsetElementCount,
                    U32 rangeElementCount);
 
+    virtual bool lockByteRange(ptrdiff_t offsetInBytes,
+                               ptrdiff_t rangeInBytes,
+                               ShaderBufferLockType lockType) = 0;
+
+    bool lockRange(ShaderBufferLockType lockType);
+
+    bool lockRange(U32 offsetElementCount, U32 rangeElementCount, ShaderBufferLockType lockType);
+
     [[nodiscard]] FORCE_INLINE U32    getPrimitiveCount() const noexcept { return _params._elementCount; }
     [[nodiscard]] FORCE_INLINE size_t getPrimitiveSize()  const noexcept { return _params._elementSize; }
     [[nodiscard]] FORCE_INLINE Usage  getUsage()          const noexcept { return _usage;  }

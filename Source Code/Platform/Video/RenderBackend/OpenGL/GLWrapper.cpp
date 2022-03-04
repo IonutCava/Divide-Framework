@@ -43,7 +43,7 @@ GLStateTracker GL_API::s_stateTracker;
 std::atomic_bool GL_API::s_glFlushQueued;
 GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
 GL_API::IMPrimitivePool GL_API::s_IMPrimitivePool{};
-moodycamel::ConcurrentQueue<GLsync> GL_API::s_fenceSyncDeletionQueue{};
+U32 GL_API::s_fenceSyncCounter = 0u;
 eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> GL_API::s_bufferLockQueueMidFlush;
 eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> GL_API::s_bufferLockQueueEndOfBuffer;
 
@@ -208,18 +208,9 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
         }
     }
 
+    _perfMetrics._syncObjectsInFlight = s_fenceSyncCounter;
+
     _runQueries = _context.queryPerformanceStats();
-    {
-        OPTICK_EVENT("GL_API: Sync Cleanup");
-        try {
-            while (TryDeleteExpiredSync()) {
-                NOP();
-            }
-        } catch (...)
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-    }
 }
 
 /// Finish rendering the current frame
@@ -518,22 +509,22 @@ void GL_API::PopDebugMessage() {
     GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = "";
 }
 
-void GL_API::FlushMidBufferLockQueue(const U32 frameIndex) {
+void GL_API::FlushMidBufferLockQueue() {
     OPTICK_EVENT();
     
     for (const BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
-        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
+        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, GFXDevice::FrameCount())) {
             DIVIDE_UNEXPECTED_CALL();
         }
     }
     s_bufferLockQueueMidFlush.resize(0);
 }
 
-void GL_API::FlushEndBufferLockQueue(const U32 frameIndex) {
+void GL_API::FlushEndBufferLockQueue() {
     OPTICK_EVENT();
 
     for (const BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
-        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, frameIndex)) {
+        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, GFXDevice::FrameCount())) {
             DIVIDE_UNEXPECTED_CALL();
         }
     }
@@ -923,58 +914,20 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
     if (!s_bufferLockQueueMidFlush.empty()) {
         for (const GFX::CommandBuffer::CommandEntry flushPoint : _bufferFlushPoints) {
             if (entry == flushPoint) {
-                FlushMidBufferLockQueue(_context.frameCount());
+                FlushMidBufferLockQueue();
                 break;
             }
         }
     }
 }
 
-void GL_API::RegisterSyncDelete(GLsync fenceSync) {
-    s_fenceSyncDeletionQueue.enqueue(fenceSync);
-}
-
-bool GL_API::TryDeleteExpiredSync() {
-    OPTICK_EVENT();
-
-    GLsync fence = nullptr;
-    if (s_fenceSyncDeletionQueue.try_dequeue(fence)) {
-        assert(fence != nullptr);
-        glDeleteSync(fence);
-        return true;
-    }
-
-    return false;
-}
-
-bool GL_API::PendingBufferBindRange(const BufferLockEntry&& data, bool fenceAfterDrawCalls) {
-    const BufferRange testRange{ data._offset, data._length };
-
-    if (fenceAfterDrawCalls) {
-        for (BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
-            if (lockEntry._buffer->getGUID() == data._buffer->getGUID() &&
-                Overlaps({ lockEntry._offset, lockEntry._length }, testRange))
-            {
-                return true;
-            }
-        }
-    } else {
-        for (BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
-            if (lockEntry._buffer->getGUID() == data._buffer->getGUID() &&
-                Overlaps({lockEntry._offset, lockEntry._length}, testRange))
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAfterDrawCalls) {
+void GL_API::RegisterBufferLock(const BufferLockEntry&& data, const ShaderBufferLockType lockType) {
     assert(Runtime::isMainThread());
-
-    if (fenceAfterDrawCalls) {
+    if (lockType == ShaderBufferLockType::IMMEDIATE) {
+        if (!data._buffer->lockByteRange(data._offset, data._length, GFXDevice::FrameCount())) {
+            NOP();
+        }
+    } else if (lockType == ShaderBufferLockType::AFTER_DRAW_COMMANDS) {
         for (BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
             if (lockEntry._buffer->getGUID() == data._buffer->getGUID()) {
                 lockEntry._offset = std::min(lockEntry._offset, data._offset);
@@ -983,7 +936,7 @@ void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAf
             }
         }
         s_bufferLockQueueMidFlush.push_back(data);
-    } else {
+    } else /* if (lockType == ShaderBufferLockType::LockType::AFTER_COMMAND_BUFFER_FLUSH*/ {
         for (BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
             if (lockEntry._buffer->getGUID() == data._buffer->getGUID()) {
                 lockEntry._offset = std::min(lockEntry._offset, data._offset);
@@ -995,17 +948,13 @@ void GL_API::RegisterBufferBind(const BufferLockEntry&& data, const bool fenceAf
     }
 }
 
-
 void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     OPTICK_EVENT();
 
     s_IsFlushingCommandBuffer = false;
 
-    //ToDo: Should we fence only at the end of the frame instead of the end of the buffer and only flush required 
-    //ranges mid-frame if we issue other writes during the same frame? -Ionut
-    const U32 frameIndex = _context.frameCount();
-    FlushMidBufferLockQueue(frameIndex);
-    FlushEndBufferLockQueue(frameIndex);
+    FlushMidBufferLockQueue();
+    FlushEndBufferLockQueue();
 
     bool expected = true;
     if (s_glFlushQueued.compare_exchange_strong(expected, false)) {

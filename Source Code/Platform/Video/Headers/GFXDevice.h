@@ -329,6 +329,7 @@ public:  // Accessors and Mutators
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
     [[nodiscard]] static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }
+    [[nodiscard]] static U32 FrameCount() noexcept { return s_frameCount; }
 
     static const DeviceInformation& GetDeviceInformation() noexcept;
     static void OverrideDeviceInformation(const DeviceInformation& info) noexcept;
@@ -406,7 +407,6 @@ public:
     PROPERTY_RW(bool, queryPerformanceStats, false);
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
-    PROPERTY_R_IW(U32, frameCount, 0u);
     PROPERTY_R_IW(U32, lastCullCount, 0u);
 
 protected:
@@ -563,6 +563,7 @@ private:
     ObjectArena _gpuObjectArena;
 
     static D64 s_interpolationFactor;
+    static U32 s_frameCount;
 
     static DeviceInformation s_deviceInformation;
 };

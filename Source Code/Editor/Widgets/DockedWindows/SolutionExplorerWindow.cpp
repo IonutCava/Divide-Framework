@@ -386,6 +386,8 @@ namespace Divide {
             ImGui::Text("Tessellation Patches: %s", Util::commaprint(perfMetrics._tessellationPatches));
             ImGui::NewLine();
             ImGui::Text("Tessellation Invocations: %s", Util::commaprint(perfMetrics._tessellationInvocations));
+            ImGui::NewLine();
+            ImGui::Text("Sync objects in flight: %d", perfMetrics._syncObjectsInFlight);
             ImGui::Separator();
             ImGui::NewLine();
 

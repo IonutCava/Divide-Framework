@@ -173,12 +173,32 @@ namespace {
     }
 
     template<typename DataContainer>
+    bool NodeNeedsUpdate(ExecutorBuffer<DataContainer>& executorBuffer, const U32 indirectionIDX) {
+        auto& container = executorBuffer._nodeProcessedThisFrame;
+        if (container.find(indirectionIDX) != eastl::end(container)) {
+            return false;
+        }
+
+        ScopedLock<Mutex> w_lock(executorBuffer._proccessedLock);
+        // Check again
+        if (container.find(indirectionIDX) != eastl::end(container)) {
+            return false;
+        }
+
+        container.insert(indirectionIDX);
+        return true;
+    }
+
+    template<typename DataContainer>
     void ExecutorBufferPostRender(ExecutorBuffer<DataContainer>& executorBuffer) {
+        OPTICK_EVENT();
+
         ScopedLock<Mutex> w_lock(executorBuffer._lock);
         const BufferUpdateRange rangeWrittenThisFrame = executorBuffer._bufferUpdateRangeHistory.back();
 
         // At the end of the frame, bump our history queue by one position and prepare the tail for a new write
         if_constexpr(RenderPass::DataBufferRingSize > 1u) {
+            OPTICK_EVENT("History Update");
             for (U8 i = 0u; i < RenderPass::DataBufferRingSize - 1; ++i) {
                 executorBuffer._bufferUpdateRangeHistory[i] = executorBuffer._bufferUpdateRangeHistory[i + 1];
             }
@@ -192,6 +212,7 @@ namespace {
         }
         // We need to increment our buffer queue to get the new write range into focus
         executorBuffer._gpuBuffer->incQueue();
+        executorBuffer._nodeProcessedThisFrame.clear();
     }
 }
 
@@ -216,7 +237,6 @@ RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& con
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-    bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
     bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
     bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES;
     bufferDescriptor._usage = ShaderBuffer::Usage::COMMAND_BUFFER;
@@ -288,7 +308,6 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-    bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = true;
     bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
     bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
     {// Node Transform buffer
@@ -297,9 +316,6 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
         bufferDescriptor._name = Util::StringFormat("NODE_TRANSFORM_DATA_%s", TypeUtil::RenderStageToString(_stage));
         _transformBuffer._gpuBuffer = _context.newSB(bufferDescriptor);
         _transformBuffer._bufferUpdateRangeHistory.resize(bufferDescriptor._ringBufferLength);
-        for (auto& flag : _transformBuffer._data._nodeProcessedThisFrame) {
-            std::atomic_init(&flag, false);
-        }
     }
     {// Node Material buffer
         bufferDescriptor._bufferParams._elementCount = to_U32(_materialBuffer._data._gpuData.size());
@@ -307,9 +323,6 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
         bufferDescriptor._name = Util::StringFormat("NODE_MATERIAL_DATA_%s", TypeUtil::RenderStageToString(_stage));
         _materialBuffer._gpuBuffer = _context.newSB(bufferDescriptor);
         _materialBuffer._bufferUpdateRangeHistory.resize(bufferDescriptor._ringBufferLength);
-        for (auto& flag : _materialBuffer._data._nodeProcessedThisFrame) {
-            std::atomic_init(&flag, false);
-        }
     }
     {// Node Textures buffer
         static_assert((sizeof(NodeMaterialTextures) * Config::MAX_VISIBLE_NODES) % 256 == 0u);
@@ -320,9 +333,6 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
         bufferDescriptor._name = Util::StringFormat("NODE_TEXTURE_DATA_%s", TypeUtil::RenderStageToString(_stage));
         _texturesBuffer._gpuBuffer = _context.newSB(bufferDescriptor);
         _texturesBuffer._bufferUpdateRangeHistory.resize(bufferDescriptor._ringBufferLength);
-        for (auto& flag : _texturesBuffer._data._nodeProcessedThisFrame) {
-            std::atomic_init(&flag, false);
-        }
     }
     {// Indirection Buffer
         bufferDescriptor._bufferParams._elementCount = to_U32(_indirectionBuffer._data._gpuData.size());
@@ -337,8 +347,8 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, 
     OPTICK_EVENT();
 
     const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry(rComp);
-    bool expected = false;
-    if (!_transformBuffer._data._nodeProcessedThisFrame[indirectionIDX].compare_exchange_strong(expected, true)) {
+
+    if (!NodeNeedsUpdate(_transformBuffer, indirectionIDX)) {
         return;
     }
 
@@ -495,8 +505,7 @@ void RenderPassExecutor::parseTextureRange(RenderBin::SortedQueue& queue, const 
     for (U32 i = start; i < end; ++i) {
 
         const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry(queue[i]);
-        bool expected = false;
-        if (!_texturesBuffer._data._nodeProcessedThisFrame[indirectionIDX].compare_exchange_strong(expected, true)) {
+        if (!NodeNeedsUpdate(_texturesBuffer, indirectionIDX)) {
             continue;
         }
 
@@ -588,8 +597,7 @@ void RenderPassExecutor::parseMaterialRange(RenderBin::SortedQueue& queue, const
     for (U32 i = start; i < end; ++i) {
 
         const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry(queue[i]);
-        bool expected = false;
-        if (!_materialBuffer._data._nodeProcessedThisFrame[indirectionIDX].compare_exchange_strong(expected, true)) {
+        if (!NodeNeedsUpdate(_materialBuffer, indirectionIDX)) {
             continue;
         }
 
@@ -764,32 +772,37 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
     cmdBufferBinding._binding = ShaderBufferLocation::CMD_BUFFER;
     cmdBufferBinding._buffer = cmdBuffer;
     cmdBufferBinding._elementRange = { 0u, cmdCount };
+    cmdBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding gpuCmdBinding{};
     gpuCmdBinding._binding = ShaderBufferLocation::GPU_COMMANDS;
     gpuCmdBinding._buffer = cmdBuffer;
     gpuCmdBinding._elementRange = { 0u, cmdBuffer->getPrimitiveCount()};
+    gpuCmdBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding materialBufferBinding{};
     materialBufferBinding._elementRange = { 0u, _materialBuffer._highWaterMark };
     materialBufferBinding._buffer = _materialBuffer._gpuBuffer;
     materialBufferBinding._binding = ShaderBufferLocation::NODE_MATERIAL_DATA;
+    materialBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding transformBufferBinding{};
     transformBufferBinding._elementRange = { 0u, _transformBuffer._highWaterMark };
     transformBufferBinding._buffer = _transformBuffer._gpuBuffer;
     transformBufferBinding._binding = ShaderBufferLocation::NODE_TRANSFORM_DATA;
+    transformBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding indirectionBufferBinding{};
     indirectionBufferBinding._elementRange = { 0u, _indirectionBuffer._highWaterMark };
     indirectionBufferBinding._buffer = _indirectionBuffer._gpuBuffer;
     indirectionBufferBinding._binding = ShaderBufferLocation::NODE_INDIRECTION_DATA;
+    indirectionBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding texturesBufferBinding{};
     texturesBufferBinding._elementRange = { 0u, _texturesBuffer._highWaterMark };
     texturesBufferBinding._buffer = _texturesBuffer._gpuBuffer;
     texturesBufferBinding._binding = ShaderBufferLocation::NODE_TEXTURE_DATA;
-
+    texturesBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
     {
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._buffers.add(cmdBufferBinding);
@@ -1432,32 +1445,27 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
 }
 
 void RenderPassExecutor::postRender() {
+    OPTICK_EVENT();
+
     ExecutorBufferPostRender(_indirectionBuffer);
     ExecutorBufferPostRender(_materialBuffer);
     ExecutorBufferPostRender(_transformBuffer);
     ExecutorBufferPostRender(_texturesBuffer);
-
-    for (std::atomic_bool& val : _transformBuffer._data._nodeProcessedThisFrame) {
-        val.store(false);
-    }
-    for (std::atomic_bool& val : _materialBuffer._data._nodeProcessedThisFrame) {
-        val.store(false);
-    }
-    for (std::atomic_bool& val : _texturesBuffer._data._nodeProcessedThisFrame) {
-        val.store(false);
-    }
-
-    for (BufferMaterialData::LookupInfo& it : _materialBuffer._data._lookupInfo) {
-        if (it._hash != INVALID_MAT_HASH) {
-            ++it._framesSinceLastUsed;
+    {
+        OPTICK_EVENT("Increment Lifetime");
+        for (BufferMaterialData::LookupInfo& it : _materialBuffer._data._lookupInfo) {
+            if (it._hash != INVALID_MAT_HASH) {
+                ++it._framesSinceLastUsed;
+            }
         }
-    }
-    for (BufferTexturesData::LookupInfo& it : _texturesBuffer._data._lookupInfo) {
-        if (it._hash != INVALID_TEX_HASH) {
-            ++it._framesSinceLastUsed;
+        for (BufferTexturesData::LookupInfo& it : _texturesBuffer._data._lookupInfo) {
+            if (it._hash != INVALID_TEX_HASH) {
+                ++it._framesSinceLastUsed;
+            }
         }
     }
     {
+        OPTICK_EVENT("Clear Freelists");
         ScopedLock<Mutex> w_lock(_transformBuffer._lock);
         _transformBuffer._data._freeList.fill(true);
     }

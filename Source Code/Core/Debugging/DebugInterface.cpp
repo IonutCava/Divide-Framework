@@ -31,7 +31,7 @@ void DebugInterface::idle() {
     const GFXDevice& gfx = _parent.platformContext().gfx();
     const Application& app = _parent.platformContext().app();
 
-    if (gfx.frameCount() % (Config::TARGET_FRAME_RATE / (Config::Build::IS_DEBUG_BUILD ? 4 : 2)) == 0)
+    if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / (Config::Build::IS_DEBUG_BUILD ? 4 : 2)) == 0)
     {
         _output = Util::StringFormat("Scene Update Loops: %d", timingData.updateLoops());
 

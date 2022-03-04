@@ -46,7 +46,7 @@
 namespace Divide {
     class noRenderTarget final : public RenderTarget {
       public:
-        noRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor) noexcept
+        noRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor)
           : RenderTarget(context, descriptor)
         {}
   
@@ -65,7 +65,7 @@ namespace Divide {
 
     class noIMPrimitive final : public IMPrimitive {
     public:
-        noIMPrimitive(GFXDevice& context) noexcept
+        noIMPrimitive(GFXDevice& context)
             : IMPrimitive(context)
         {}
 
@@ -101,7 +101,7 @@ namespace Divide {
 
     class noPixelBuffer final : public PixelBuffer {
     public:
-        noPixelBuffer(GFXDevice& context, const PBType type, const char* name) noexcept
+        noPixelBuffer(GFXDevice& context, const PBType type, const char* name)
             : PixelBuffer(context, type, name)
         {}
 
@@ -122,7 +122,7 @@ namespace Divide {
 
     class noGenericVertexData final : public GenericVertexData {
     public:
-        noGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const char* name) noexcept
+        noGenericVertexData(GFXDevice& context, const U32 ringBufferLength, const char* name)
             : GenericVertexData(context, ringBufferLength, name)
         {}
 
@@ -153,7 +153,7 @@ namespace Divide {
                   const Str256& name,
                   const ResourcePath& assetNames,
                   const ResourcePath& assetLocations,
-                  const TextureDescriptor& texDescriptor) noexcept
+                  const TextureDescriptor& texDescriptor)
             : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor)
         {}
 
@@ -188,14 +188,14 @@ namespace Divide {
                         const Str256& name,
                         const Str256& assetName,
                         const ResourcePath& assetLocation,
-                        const ShaderProgramDescriptor& descriptor) noexcept
+                        const ShaderProgramDescriptor& descriptor)
             : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor)
         {}
     };
 
     class noUniformBuffer final : public ShaderBuffer {
     public:
-        noUniformBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor) noexcept
+        noUniformBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor)
             : ShaderBuffer(context, descriptor)
         {}
 
@@ -209,6 +209,10 @@ namespace Divide {
         }
 
         bool bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes) noexcept override {
+            return true;
+        }
+
+        bool lockByteRange([[maybe_unused]] const ptrdiff_t offsetInBytes, [[maybe_unused]] const ptrdiff_t rangeInBytes, [[maybe_unused]] const ShaderBufferLockType lockType) override {
             return true;
         }
     };

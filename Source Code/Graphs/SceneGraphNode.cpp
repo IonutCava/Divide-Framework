@@ -557,6 +557,7 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStageP
                 bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS;
                 bufferBinding._buffer = data._boneBuffer;
                 bufferBinding._elementRange = data._boneBufferRange;
+                bufferBinding._lockType = ShaderBufferLockType::AFTER_DRAW_COMMANDS;
                 set._buffers.add(bufferBinding);
             }
             if (data._prevBoneBufferRange.max > 0) {
@@ -564,6 +565,7 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStageP
                 bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS_PREV;
                 bufferBinding._buffer = data._boneBuffer;
                 bufferBinding._elementRange = data._prevBoneBufferRange;
+                bufferBinding._lockType = ShaderBufferLockType::AFTER_DRAW_COMMANDS;
                 set._buffers.add(bufferBinding);
             }
         }

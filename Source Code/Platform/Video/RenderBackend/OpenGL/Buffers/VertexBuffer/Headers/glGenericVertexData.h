@@ -80,7 +80,7 @@ class glGenericVertexData final : public GenericVertexData {
     void create(U8 numBuffers = 1) override;
     void reset() override;
 
-    void setIndexBuffer(const IndexBuffer& indices, BufferUpdateFrequency updateFrequency) override;
+    void setIndexBuffer(const IndexBuffer& indices) override;
 
     void updateIndexBuffer(const IndexBuffer& indices) override;
 
@@ -107,6 +107,7 @@ class glGenericVertexData final : public GenericVertexData {
     struct genericBufferImpl {
         glBufferImpl* _buffer = nullptr;
         size_t _ringSizeFactor = 1u;
+        bool _wasWritten = true;
     };
     glVertexDataIndexContainer _indexInfo;
     vector<genericBufferImpl> _bufferObjects;

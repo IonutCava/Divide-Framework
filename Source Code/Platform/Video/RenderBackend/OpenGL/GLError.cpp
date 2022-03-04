@@ -73,15 +73,20 @@ void DebugCallback(const GLenum source,
             fullScope.append(GL_API::GetStateTracker()._debugScope[i]);
         }
         // Print the message and the details
+        const GLuint activeProgram = GL_API::GetStateTracker()._activeShaderProgram;
+        const GLuint activePipeline = GL_API::GetStateTracker()._activeShaderPipeline;
+
+        const char* programMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Program : %d][DebugGroup: %s][Message: %s]";
+        const char* pipelineMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Pipeline : %d][DebugGroup: %s][Message: %s]";
+
         const string outputError = Util::StringFormat(
-            "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Program : %d][Bound Pipeline : %d][DebugGroup: %s][Message: %s]",
+            activeProgram != 0u ? programMsg : pipelineMsg,
             userParam == nullptr ? "Main" : "Worker",
             gl_source,
             gl_type,
             id, 
             gl_severity, 
-            GL_API::GetStateTracker()._activeShaderProgram,
-            GL_API::GetStateTracker()._activeShaderPipeline,
+            activeProgram != 0u ? activeProgram : activePipeline,
             fullScope.c_str(),
             message);
 

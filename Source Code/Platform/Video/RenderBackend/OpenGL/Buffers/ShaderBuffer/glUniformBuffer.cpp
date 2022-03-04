@@ -100,6 +100,24 @@ void glUniformBuffer::writeBytes(ptrdiff_t offsetInBytes, const ptrdiff_t rangeI
     }
 }
 
+bool glUniformBuffer::lockByteRange(const ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes, const ShaderBufferLockType lockType) {
+    if (rangeInBytes > 0 && lockType != ShaderBufferLockType::COUNT) {
+        DIVIDE_ASSERT(offsetInBytes == getAlignmentCorrected(offsetInBytes));
+
+        GL_API::RegisterBufferLock(
+            {
+                bufferImpl(),
+                to_size(offsetInBytes + queueReadIndex() * _alignedBufferSize),
+                to_size(getAlignmentCorrected(rangeInBytes))
+            },
+            lockType);
+
+        return true;
+    }
+
+    return false;
+}
+
 bool glUniformBuffer::bindByteRange(const U8 bindIndex, ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes) {
     if (rangeInBytes > 0) {
         OPTICK_EVENT();
@@ -117,14 +135,9 @@ bool glUniformBuffer::bindByteRange(const U8 bindIndex, ptrdiff_t offsetInBytes,
             const size_t range = getAlignmentCorrected((offset == 0u && to_size(rangeInBytes) == bufferImpl()->memoryBlock()._size) ? 0u : rangeInBytes);
             result = GL_API::GetStateTracker().setActiveBufferIndexRange(bufferImpl()->params()._target, bufferImpl()->memoryBlock()._bufferHandle, bindIndex, offset, range);
         }
+
         if (result == GLStateTracker::BindResult::FAILED) {
             DIVIDE_UNEXPECTED_CALL();
-        }
-
-        const BufferParams& bufferParams = bufferImpl()->params()._bufferParams;
-        if (bufferParams._sync) {
-            // Register the bind even if we get GLStateTracker::BindResult::ALREADY_BOUND so that we know that the data is still being used by the GPU
-            GL_API::RegisterBufferBind({ bufferImpl(), to_size(offsetInBytes), to_size(getAlignmentCorrected(rangeInBytes))}, !bufferParams._syncAtEndOfCmdBuffer);
         }
 
         return result == GLStateTracker::BindResult::JUST_BOUND;

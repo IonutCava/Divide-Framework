@@ -100,7 +100,6 @@ public:
         using MaterialDataContainer = std::array<NodeMaterialData, Config::MAX_CONCURRENT_MATERIALS>;
         MaterialDataContainer _gpuData{};
         LookupInfoContainer _lookupInfo{};
-        std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES> _nodeProcessedThisFrame;
     };
 
     struct BufferTexturesData
@@ -114,7 +113,6 @@ public:
         using TexturesDataContainer = std::array<NodeMaterialTextures, Config::MAX_VISIBLE_NODES>;
         TexturesDataContainer _gpuData{};
         LookupInfoContainer _lookupInfo{};
-        std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES> _nodeProcessedThisFrame;
 
     };
     struct BufferTransformData
@@ -123,7 +121,6 @@ public:
         using TransformDataContainer = std::array<NodeTransformData, Config::MAX_VISIBLE_NODES>;
         TransformDataContainer _gpuData{};
         std::array<bool, Config::MAX_VISIBLE_NODES> _freeList{};
-        std::array<std::atomic_bool, MAX_INDIRECTION_ENTRIES> _nodeProcessedThisFrame;
     };
 
     struct BufferIndirectionData {
@@ -139,6 +136,9 @@ public:
         BufferUpdateRange _bufferUpdateRange;
         BufferUpdateRange _bufferUpdateRangePrev;
         vector<BufferUpdateRange> _bufferUpdateRangeHistory;
+
+        Mutex _proccessedLock;
+        eastl::fixed_set<U32, MAX_INDIRECTION_ENTRIES, false> _nodeProcessedThisFrame;
     };
 
 public:

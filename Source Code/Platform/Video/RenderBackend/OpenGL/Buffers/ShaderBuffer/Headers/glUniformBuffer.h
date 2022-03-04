@@ -50,6 +50,7 @@ class glUniformBuffer final : public ShaderBuffer {
         void readBytes(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes, bufferPtr result) const override;
         void writeBytes(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes, bufferPtr data) override;
 
+        bool lockByteRange(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes, ShaderBufferLockType lockType) override;
         bool bindByteRange(U8 bindIndex, ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes) override;
 
         POINTER_R_IW(glBufferImpl, bufferImpl, nullptr);

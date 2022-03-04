@@ -53,6 +53,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
          bufferPtr data = nullptr;
          bool smallIndices = false;
          bool indicesNeedCast = false;
+         bool dynamic = false;
      };
 
      struct SetBufferParams {
@@ -65,7 +66,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
     GenericVertexData(GFXDevice& context, U32 ringBufferLength, const char* name = nullptr);
     virtual ~GenericVertexData() = default;
 
-    virtual void setIndexBuffer(const IndexBuffer& indices, BufferUpdateFrequency updateFrequency);
+    virtual void setIndexBuffer(const IndexBuffer& indices);
     virtual void updateIndexBuffer(const IndexBuffer& indices);
 
     virtual void create(U8 numBuffers = 1) = 0;
@@ -87,6 +88,14 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
    protected:
     string _name;
 };
+
+inline bool AreCompatible(const GenericVertexData::IndexBuffer& lhs, const GenericVertexData::IndexBuffer& rhs) noexcept {
+    return lhs.count == rhs.count &&
+           lhs.indicesNeedCast == rhs.indicesNeedCast &&
+           lhs.offsetCount == rhs.offsetCount &&
+           lhs.smallIndices == rhs.smallIndices &&
+           lhs.dynamic == rhs.dynamic;
+}
 
 };  // namespace Divide
 

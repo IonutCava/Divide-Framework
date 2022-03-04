@@ -355,6 +355,21 @@ namespace Names {
 
 static_assert(std::size(Names::shaderBufferLocation) == to_base(ShaderBufferLocation::COUNT) + 1);
 
+enum class ShaderBufferLockType : U8 {
+    IMMEDIATE = 0,
+    AFTER_DRAW_COMMANDS,
+    AFTER_COMMAND_BUFFER_FLUSH,
+    COUNT
+};
+
+namespace Names {
+    static const char* shaderBufferLockType[] = {
+        "IMMEDIATE", "AFTER_DRAW_COMMANDS", "AFTER_COMMAND_BUFFER_FLUSH", "ERROR"
+    };
+};
+
+static_assert(std::size(Names::shaderBufferLockType) == to_base(ShaderBufferLockType::COUNT) + 1);
+
 enum class RenderStage : U8 {
     SHADOW = 0,
     REFLECTION = 1,
@@ -834,7 +849,7 @@ namespace Names {
 static_assert(std::size(Names::bufferUpdateUsage) == to_base(BufferUpdateUsage::COUNT) + 1);
 
 enum class BufferUpdateFrequency : U8 {
-    RARELY = 0,     //STATIC
+    ONCE = 0,       //STATIC
     OCASSIONAL = 1, //DYNAMIC
     OFTEN = 2,      //STREAM
     COUNT
@@ -842,7 +857,7 @@ enum class BufferUpdateFrequency : U8 {
 
 namespace Names {
     static const char* bufferUpdateFrequency[] = {
-        "RARELY", "OCASSIONAL", "OFTEN", "NONE"
+        "ONCE", "OCASSIONAL", "OFTEN", "NONE"
     };
 };
 

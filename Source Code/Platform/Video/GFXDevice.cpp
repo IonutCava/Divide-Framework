@@ -80,14 +80,16 @@ namespace TypeUtil {
 };
 
 namespace {
-    constexpr size_t TargetBufferSizeCam = (128 * 1024) / sizeof(GFXShaderData::CamData);
-    constexpr size_t TargetBufferSizeRender = (32 * 1024) / sizeof(GFXShaderData::RenderData);
+    constexpr size_t TargetBufferSizeCam = (512 * 1024) / sizeof(GFXShaderData::CamData);
+    constexpr size_t TargetBufferSizeRender = (64 * 1024) / sizeof(GFXShaderData::RenderData);
 
     constexpr U32 GROUP_SIZE_AABB = 64;
     constexpr U32 MAX_INVOCATIONS_BLUR_SHADER_LAYERED = 4;
 };
 
 D64 GFXDevice::s_interpolationFactor = 1.0;
+U32 GFXDevice::s_frameCount = 0u;
+
 DeviceInformation GFXDevice::s_deviceInformation{};
 
 #pragma region Construction, destruction, initialization
@@ -210,7 +212,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
         bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._bufferParams._syncAtEndOfCmdBuffer = false;
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
 
@@ -1050,7 +1051,8 @@ void GFXDevice::endFrame(DisplayWindow& window, const bool global) {
     OPTICK_EVENT();
 
     if (global) {
-        frameCount(frameCount() + 1);
+        s_frameCount += 1u;
+
         frameDrawCallsPrev(frameDrawCalls());
         frameDrawCalls(0u);
 
@@ -1517,6 +1519,7 @@ void GFXDevice::uploadGPUBlock() {
     if (_gpuBlock._camNeedsUpload) {
         _gpuBlock._camNeedsUpload = false;
 
+        _camDataBuffer->lockRange(ShaderBufferLockType::IMMEDIATE);
         _camDataBuffer->incQueue();
         _camDataBuffer->writeData(&_gpuBlock._camData);
         _camDataBuffer->bind(ShaderBufferLocation::CAM_BLOCK);
@@ -1527,6 +1530,7 @@ void GFXDevice::uploadGPUBlock() {
 
         _gpuBlock._renderData._renderProperties.z = to_F32(materialDebugFlag());
 
+        _renderDataBuffer->lockRange(ShaderBufferLockType::IMMEDIATE);
         _renderDataBuffer->incQueue();
         _renderDataBuffer->writeData(&_gpuBlock._renderData);
         _renderDataBuffer->bind(ShaderBufferLocation::RENDER_BLOCK);
@@ -1850,7 +1854,17 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                     }
 
                     assert(binding._buffer != nullptr);
-                    binding._buffer->bindRange(binding._binding, binding._elementRange.min, binding._elementRange.max);
+                    binding._buffer->bindRange(binding._binding,
+                                               binding._elementRange.min,
+                                               binding._elementRange.max);
+                    if (binding._lockType != ShaderBufferLockType::COUNT) {
+                        if (!binding._buffer->lockRange(binding._elementRange.min,
+                                                        binding._elementRange.max,
+                                                        binding._lockType))
+                        {
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
+                    }
                 }
                 if (!makeImagesResident(set._images)) {
                     DIVIDE_UNEXPECTED_CALL();
@@ -2004,6 +2018,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
         atomicCount._binding = ShaderBufferLocation::ATOMIC_COUNTER_0;
         atomicCount._buffer = bufferData._cullCounterBuffer;
         atomicCount._elementRange.set(0, 1);
+        atomicCount._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
         set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
     }
 
@@ -2629,6 +2644,7 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
     GenericVertexData::IndexBuffer idxBuff;
     idxBuff.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
     idxBuff.count = (1 << 16) * 3;
+    idxBuff.dynamic = true;
 
     ret->create(1);
     ret->renderIndirect(false);
@@ -2644,7 +2660,7 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
     params._bufferParams._initialData = { nullptr, 0 };
 
     ret->setBuffer(params); //Pos, UV and Colour
-    ret->setIndexBuffer(idxBuff, BufferUpdateFrequency::OFTEN);
+    ret->setIndexBuffer(idxBuff);
 
     return ret;
 }

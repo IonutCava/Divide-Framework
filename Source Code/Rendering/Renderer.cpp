@@ -105,7 +105,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
     bufferDescriptor._ringBufferLength = 1;
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
     bufferDescriptor._bufferParams._initialData = { nullptr, 0 };
 
@@ -192,24 +192,30 @@ void Renderer::prepareLighting(const RenderStage stage,
         GFX::BindDescriptorSetsCommand bindDescriptorSetsCommand{};
 
         ShaderBufferBinding bufferBinding{};
+        bufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
+
         bufferBinding._binding = ShaderBufferLocation::LIGHT_INDICES;
         bufferBinding._buffer = data._lightIndexBuffer;
         bufferBinding._elementRange = { 0u, data._lightIndexBuffer->getPrimitiveCount() };
+
         bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
 
         bufferBinding._binding = ShaderBufferLocation::LIGHT_CLUSTER_AABBS;
         bufferBinding._buffer = data._lightClusterAABBsBuffer;
         bufferBinding._elementRange = { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() };
+
         bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
 
         bufferBinding._binding = ShaderBufferLocation::LIGHT_GRID;
         bufferBinding._buffer = data._lightGridBuffer;
         bufferBinding._elementRange = { 0u, data._lightGridBuffer->getPrimitiveCount() };
+
         bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
 
         bufferBinding._binding = ShaderBufferLocation::LIGHT_INDEX_COUNT;
         bufferBinding._buffer = data._globalIndexCountBuffer;
         bufferBinding._elementRange = { 0u, data._globalIndexCountBuffer->getPrimitiveCount() };
+
         bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
 
         GFX::EnqueueCommand(bufferInOut, bindDescriptorSetsCommand);

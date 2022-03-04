@@ -610,7 +610,7 @@ void Scene::addTerrain(SceneGraphNode* parentNode, const boost::property_tree::p
         return;
     }
 
-    const auto registerTerrain = [this, nodeName, &parentNode, pt](CachedResource* res) {
+    const auto registerTerrain = [this, nodeName, parentNode, pt](CachedResource* res) {
         SceneGraphNodeDescriptor terrainNodeDescriptor;
         terrainNodeDescriptor._name = nodeName;
         terrainNodeDescriptor._node = std::static_pointer_cast<Terrain>(res->shared_from_this());
@@ -1813,7 +1813,7 @@ void Scene::updateSelectionData(PlayerIndex idx, DragSelectData& data, bool rema
 
     _linesPrimitive->fromLines(s_lines.data(), s_lines.size());
 
-    if (_context.gfx().frameCount() % 2 == 0) {
+    if (GFXDevice::FrameCount() % 2 == 0) {
         clearHoverTarget(idx);
         if (_parent.resetSelection(idx, false)) {
             const Camera* crtCamera = playerCamera(idx);

@@ -316,7 +316,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     bufferDescriptor._ringBufferLength = 0;
     bufferDescriptor._bufferParams._elementCount = 256;
     bufferDescriptor._bufferParams._elementSize = sizeof(U32);
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::RARELY;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_R_GPU_W;
 
     _histogramBuffer = _context.newSB(bufferDescriptor);
@@ -525,7 +525,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         const ShaderBufferBinding shaderBuffer{
             { 0u, _histogramBuffer->getPrimitiveCount() },
             _histogramBuffer,
-            ShaderBufferLocation::LUMINANCE_HISTOGRAM
+            ShaderBufferLocation::LUMINANCE_HISTOGRAM,
+            ShaderBufferLockType::AFTER_DRAW_COMMANDS
         };
 
         { // Histogram Pass

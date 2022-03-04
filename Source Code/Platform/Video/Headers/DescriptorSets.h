@@ -51,9 +51,10 @@ namespace Divide {
         vec2<U32>     _elementRange{};
         ShaderBuffer* _buffer = nullptr;
         ShaderBufferLocation _binding = ShaderBufferLocation::COUNT;
+        ShaderBufferLockType _lockType = ShaderBufferLockType::COUNT;
 
         bool set(const ShaderBufferBinding& other) noexcept;
-        bool set(ShaderBufferLocation binding, ShaderBuffer* buffer, const vec2<U32>& elementRange) noexcept;
+        bool set(ShaderBufferLocation binding, ShaderBuffer* buffer, const vec2<U32>& elementRange, ShaderBufferLockType lockType) noexcept;
     };
 
     class Texture;

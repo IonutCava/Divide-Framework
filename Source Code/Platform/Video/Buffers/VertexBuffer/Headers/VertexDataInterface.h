@@ -48,8 +48,6 @@ struct BufferParams
     std::pair<bufferPtr, size_t> _initialData = { nullptr, 0 };
     U32 _elementCount = 0;
     size_t _elementSize = 0;     ///< Buffer primitive size in bytes
-    bool _sync = true;
-    bool _syncAtEndOfCmdBuffer = true; ///< If true, a fence will be issued after the current command buffer finished flushing, otherwise it will be issued after the first draw/dispatch command
 
     BufferUpdateFrequency _updateFrequency = BufferUpdateFrequency::COUNT;
     BufferUpdateUsage _updateUsage = BufferUpdateUsage::COUNT;
