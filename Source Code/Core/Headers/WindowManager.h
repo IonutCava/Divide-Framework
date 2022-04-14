@@ -158,17 +158,17 @@ protected:
     friend class DisplayWindow;
     [[nodiscard]] static U32 CreateAPIFlags(RenderAPI api) noexcept;
     [[nodiscard]] ErrorCode configureAPISettings(RenderAPI api, U16 descriptorFlags) const;
-    [[nodiscard]] ErrorCode applyAPISettings(DisplayWindow* window) const;
+    [[nodiscard]] ErrorCode applyAPISettings(RenderAPI api, DisplayWindow* window);
     static void DestroyAPISettings(DisplayWindow* window) noexcept;
 
 protected:
-    U32 _apiFlags = 0;
-    I64 _mainWindowGUID = -1;
+    U32 _apiFlags{ 0 };
+    I64 _mainWindowGUID{ -1 };
 
-    PlatformContext* _context = nullptr;
+    PlatformContext* _context{ nullptr };
     vector<MonitorData> _monitors;
     vector<DisplayWindow*> _windows;
-
+    DisplayWindow::UserData _globalUserData{};
     static std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> s_cursors;
 };
 } //namespace Divide

@@ -140,7 +140,7 @@ namespace Divide {
         return _renderingViewport;
     }
 
-    inline void* DisplayWindow::userData() const noexcept {
+    inline DisplayWindow::UserData* DisplayWindow::userData() const noexcept {
         return _userData;
     }
 

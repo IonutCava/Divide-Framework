@@ -86,7 +86,7 @@ void GL_API::beginFrame(DisplayWindow& window, const bool global) {
 
     GLStateTracker& stateTracker = GetStateTracker();
 
-    SDL_GLContext glContext = static_cast<SDL_GLContext>(window.userData());
+    SDL_GLContext glContext = window.userData()->_glContext;
     const I64 windowGUID = window.getGUID();
 
     if (glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext)) {
@@ -124,7 +124,7 @@ void GL_API::endFrameLocal(const DisplayWindow& window) {
     OPTICK_EVENT();
 
     // Swap buffers    
-    SDL_GLContext glContext = static_cast<SDL_GLContext>(window.userData());
+    SDL_GLContext glContext = window.userData()->_glContext;
     const I64 windowGUID = window.getGUID();
 
     if (glContext != nullptr && (_currentContext._windowGUID != windowGUID || _currentContext._context != glContext)) {

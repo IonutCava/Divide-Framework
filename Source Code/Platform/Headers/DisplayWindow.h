@@ -105,6 +105,11 @@ class DisplayWindow final : public GUIDWrapper,
                             public PlatformContextComponent,
                             public SDLEventListener {
 public:
+
+    struct UserData {
+        SDL_GLContext _glContext{ nullptr };
+    };
+
     struct WindowEventArgs {
         I64 _windowGUID = -1;
         bool _flag = false;
@@ -208,7 +213,7 @@ public:
     [[nodiscard]] inline const Rect<I32>& renderingViewport() const noexcept;
     void renderingViewport(const Rect<I32>& viewport) noexcept;
 
-    [[nodiscard]] inline void* userData() const noexcept;
+    [[nodiscard]] inline UserData* userData() const noexcept;
 
     [[nodiscard]] bool grabState() const noexcept;
     void grabState(bool state) const noexcept;
@@ -240,7 +245,7 @@ private:
 
     WindowManager& _parent;
     SDL_Window* _sdlWindow = nullptr;
-    void* _userData = nullptr;
+    UserData* _userData = nullptr;
 
     /// The current rendering window type
     WindowType _type = WindowType::COUNT;

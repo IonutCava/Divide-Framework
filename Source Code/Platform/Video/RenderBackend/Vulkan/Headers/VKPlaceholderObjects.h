@@ -120,7 +120,11 @@ namespace Divide {
                   const ResourcePath& assetLocations,
                   const TextureDescriptor& texDescriptor)
             : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor)
-        {}
+        {
+            static std::atomic_uint s_textureHandle = 1u;
+            _data._textureType = _descriptor.texType();
+            _data._textureHandle = s_textureHandle.fetch_add(1u);
+        }
 
         [[nodiscard]] SamplerAddress getGPUAddress([[maybe_unused]] size_t samplerHash) noexcept override {
             return 0u;

@@ -274,7 +274,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         window->clearFlags(BitCompare(descriptor.flags, WindowDescriptor::Flags::CLEAR_COLOUR),
                            BitCompare(descriptor.flags, WindowDescriptor::Flags::CLEAR_DEPTH));
 
-        err = applyAPISettings(window);
+        err = applyAPISettings(descriptor.targetAPI, window);
     }
 
     if (err != ErrorCode::NO_ERR) {
@@ -405,7 +405,7 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5));
         }
         if (BitCompare(descriptorFlags, to_base(WindowDescriptor::Flags::SHARE_CONTEXT))) {
-            Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), static_cast<SDL_GLContext>(mainWindow()->userData())));
+            Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), mainWindow()->userData()->_glContext));
         } else {
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1));
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4));
@@ -418,11 +418,14 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
     return ErrorCode::NO_ERR;
 }
 
-ErrorCode WindowManager::applyAPISettings(DisplayWindow* window) const
+ErrorCode WindowManager::applyAPISettings(const RenderAPI api, DisplayWindow* window)
 {
     // Create a context and make it current
     if (BitCompare(window->_flags, WindowFlags::OWNS_RENDER_CONTEXT)) {
-        window->_userData = SDL_GL_CreateContext(window->getRawWindow());
+        if (api == RenderAPI::OpenGL) {
+            _globalUserData._glContext = SDL_GL_CreateContext(window->getRawWindow());
+        }
+        window->_userData = &_globalUserData;
     } else {
         window->_userData = mainWindow()->userData();
     }
@@ -434,27 +437,28 @@ ErrorCode WindowManager::applyAPISettings(DisplayWindow* window) const
         return ErrorCode::OGL_OLD_HARDWARE;
     }
 
-    Validate(SDL_GL_MakeCurrent(window->getRawWindow(), static_cast<SDL_GLContext>(window->userData())));
+    if (api == RenderAPI::OpenGL) {
+        Validate(SDL_GL_MakeCurrent(window->getRawWindow(), window->userData()->_glContext));
 
-    if (BitCompare(window->_flags, WindowFlags::VSYNC)) {
-        // Vsync is toggled on or off via the external config file
-        bool vsyncSet = false;
-        // Late swap may fail
-        if (_context->config().runtime.adaptiveSync) {
-            vsyncSet = SDL_GL_SetSwapInterval(-1) != -1;
+        if (BitCompare(window->_flags, WindowFlags::VSYNC)) {
+            // Vsync is toggled on or off via the external config file
+            bool vsyncSet = false;
+            // Late swap may fail
+            if (_context->config().runtime.adaptiveSync) {
+                vsyncSet = SDL_GL_SetSwapInterval(-1) != -1;
+            }
+
+            if (!vsyncSet) {
+                vsyncSet = SDL_GL_SetSwapInterval(1) != -1;
+            }
+            DIVIDE_ASSERT(vsyncSet, "VSync change failed!");
+        } else {
+            SDL_GL_SetSwapInterval(0);
         }
 
-        if (!vsyncSet) {
-            vsyncSet = SDL_GL_SetSwapInterval(1) != -1;
-        }
-        DIVIDE_ASSERT(vsyncSet, "VSync change failed!");
-    } else {
-        SDL_GL_SetSwapInterval(0);
+        // Switch back to the main render context (may be the same window ...)
+        Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), mainWindow()->userData()->_glContext));
     }
-
-    // Switch back to the main render context
-    Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), static_cast<SDL_GLContext>(mainWindow()->userData())));
-
     return ErrorCode::NO_ERR;
 }
 

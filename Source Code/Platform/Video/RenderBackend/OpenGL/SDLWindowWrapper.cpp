@@ -78,10 +78,10 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
     g_ContextPool.init(_context.parent().totalThreadCount(), window);
 
-    SDL_GL_MakeCurrent(window.getRawWindow(), (SDL_GLContext)window.userData());
+    SDL_GL_MakeCurrent(window.getRawWindow(), window.userData()->_glContext);
     GLUtil::s_glMainRenderWindow = &window;
     _currentContext._windowGUID = window.getGUID();
-    _currentContext._context = window.userData();
+    _currentContext._context = window.userData()->_glContext;
 
     glbinding::Binding::initialize([](const char *proc) noexcept  {
                                         return (glbinding::ProcAddress)SDL_GL_GetProcAddress(proc);
