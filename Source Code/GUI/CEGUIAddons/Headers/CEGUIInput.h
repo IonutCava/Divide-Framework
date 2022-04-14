@@ -38,12 +38,15 @@
 namespace Divide {
 
 class GUI;
+struct Configuration;
 
 /// This class defines AutoRepeatKey::repeatKey(...) as CEGUI key inputs
 class CEGUIInput final : public Input::InputAggregatorInterface,
                          public Input::AutoRepeatKey {
    public:
     explicit CEGUIInput(GUI& parent) noexcept;
+    void init(const Configuration& config) noexcept;
+
     /// Key pressed: return true if input was consumed
     bool onKeyDown(const Input::KeyEvent& key) override;
     /// Key released: return true if input was consumed
@@ -70,6 +73,7 @@ class CEGUIInput final : public Input::InputAggregatorInterface,
 
    protected:
     GUI& _parent;
+    bool _enabled{ false };
     /// Called on key events: return true if the input was consumed
     bool injectKey(bool pressed, const Input::KeyEvent& inKey);
     void repeatKey(I32 inKey, U32 Char) override;

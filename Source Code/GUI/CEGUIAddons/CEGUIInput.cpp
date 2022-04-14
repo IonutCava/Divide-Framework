@@ -2,6 +2,7 @@
 
 #include "Headers/CEGUIInput.h"
 
+#include "Core/Headers/Configuration.h"
 #include "GUI/Headers/GUI.h"
 
 namespace Divide {
@@ -11,9 +12,16 @@ CEGUIInput::CEGUIInput(GUI& parent) noexcept
 {
 }
 
+void CEGUIInput::init(const Configuration& config) noexcept {
+    _enabled = config.gui.cegui.enabled;
+}
+
 // return true if the input was consumed
 bool CEGUIInput::injectKey(const bool pressed, const Input::KeyEvent& inKey) {
-    
+    if (!_enabled) {
+        return false;
+    }
+
     bool consumed = false;
     if (pressed) {
         if (_parent.getCEGUIContext().injectKeyDown((CEGUI::Key::Scan)inKey._key)) {
@@ -33,6 +41,10 @@ bool CEGUIInput::injectKey(const bool pressed, const Input::KeyEvent& inKey) {
 }
 
 void CEGUIInput::repeatKey(I32 inKey, const U32 Char) {
+    if (!_enabled) {
+        return;
+    }
+
     // Now remember the key is still down, so we need to simulate the key being
     // released, and then repressed immediatly
     _parent.getCEGUIContext().injectKeyUp((CEGUI::Key::Scan)inKey);    // Key UP
@@ -52,6 +64,10 @@ bool CEGUIInput::onKeyUp(const Input::KeyEvent& key) {
 
 // Return true if input was consumed
 bool CEGUIInput::mouseMoved(const Input::MouseMoveEvent& arg) {
+    if (!_enabled) {
+        return false;
+    }
+
     if (arg.wheelEvent()) {
         return _parent.getCEGUIContext().injectMouseWheelChange(to_F32(arg.WheelV()));
     }
@@ -62,6 +78,10 @@ bool CEGUIInput::mouseMoved(const Input::MouseMoveEvent& arg) {
 
 // Return true if input was consumed
 bool CEGUIInput::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
+    if (!_enabled) {
+        return false;
+    }
+
     bool consumed = false;
     switch (arg.button()) {
         case Input::MouseButton::MB_Left: {
@@ -91,7 +111,12 @@ bool CEGUIInput::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
 
 // Return true if input was consumed
 bool CEGUIInput::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
+    if (!_enabled) {
+        return false;
+    }
+
     bool consumed = false;
+
     switch (arg.button()) {
         case Input::MouseButton::MB_Left: {
             consumed = _parent.getCEGUIContext().injectMouseButtonUp(CEGUI::LeftButton);

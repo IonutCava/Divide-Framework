@@ -353,11 +353,7 @@ bool WindowManager::anyWindowFocus() const noexcept {
 }
 
 U32 WindowManager::CreateAPIFlags(const RenderAPI api) noexcept {
-    if (api == RenderAPI::OpenGL || api == RenderAPI::OpenGLES) {
-        return SDL_WINDOW_OPENGL;
-    } 
-
-    return 0u;
+    return api == RenderAPI::Vulkan ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL;
 }
 
 void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept {
@@ -373,54 +369,50 @@ void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept {
 
 ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 descriptorFlags) const
 {
-    Uint32 OpenGLFlags = SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG | SDL_GL_CONTEXT_RESET_ISOLATION_FLAG;
+    if (api == RenderAPI::Vulkan) {
 
-    bool useDebugContext = false;
-    if_constexpr (Config::ENABLE_GPU_VALIDATION) {
-        // OpenGL error handling is available in any build configuration if the proper defines are in place.
-        OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
-        if (_context->config().debug.enableRenderAPIDebugging) {
-            useDebugContext = true;
-            OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
+    } else if (api == RenderAPI::OpenGL || api == RenderAPI::None) {
+        Uint32 OpenGLFlags = SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG | SDL_GL_CONTEXT_RESET_ISOLATION_FLAG;
+
+        bool useDebugContext = false;
+        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+            // OpenGL error handling is available in any build configuration if the proper defines are in place.
+            OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
+            if (_context->config().debug.enableRenderAPIDebugging) {
+                useDebugContext = true;
+                OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
+            }
         }
-    }
-    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, OpenGLFlags));
-    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_RELEASE_BEHAVIOR, SDL_GL_CONTEXT_RELEASE_BEHAVIOR_NONE));
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, OpenGLFlags));
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_RELEASE_BEHAVIOR, SDL_GL_CONTEXT_RELEASE_BEHAVIOR_NONE));
 
-    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1));
-    // 32Bit RGBA (R8G8B8A8), 24bit Depth, 8bit Stencil
-    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8));
-    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8));
-    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8));
-    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8));
-    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8));
-    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24));
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1));
+        // 32Bit RGBA (R8G8B8A8), 24bit Depth, 8bit Stencil
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8));
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8));
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8));
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8));
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8));
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24));
 
-    if (!useDebugContext) {
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_NO_ERROR, 1));
-    }
+        if (!useDebugContext) {
+            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_NO_ERROR, 1));
+        }
 
-    // OpenGL ES is not yet supported, but when added, it will need to mirror
-    // OpenGL functionality 1-to-1
-    if (api == RenderAPI::OpenGLES) {
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_EGL, 1));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1));
-    } else {
         Validate(SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE));
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4));
         if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6) != 0) {
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5));
         }
-    }
-
-    if (BitCompare(descriptorFlags, to_base(WindowDescriptor::Flags::SHARE_CONTEXT))) {
-        Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), static_cast<SDL_GLContext>(mainWindow()->userData())));
+        if (BitCompare(descriptorFlags, to_base(WindowDescriptor::Flags::SHARE_CONTEXT))) {
+            Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), static_cast<SDL_GLContext>(mainWindow()->userData())));
+        } else {
+            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1));
+            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4));
+            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1));
+        }
     } else {
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1));
+        return ErrorCode::GFX_NOT_SUPPORTED;
     }
 
     return ErrorCode::NO_ERR;

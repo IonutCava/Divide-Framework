@@ -34,8 +34,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _GENERIC_DRAW_COMMAND_H_
 
 #include "RenderAPIEnums.h"
-#include "Platform/Headers/PlatformDefines.h"
 #include "Core/Headers/ObjectPool.h"
+#include "Platform/Headers/PlatformDefines.h"
 
 namespace Divide {
 
@@ -71,8 +71,8 @@ enum class CmdRenderOptions : U16 {
 #pragma pack(push, 1)
 struct GenericDrawCommand {
     static constexpr U8 INVALID_BUFFER_INDEX = U8_MAX;
-    IndirectDrawCommand _cmd = {};                                        // 32 bytes
-    PoolHandle _sourceBuffer = {};                                        // 12 bytes
+    IndirectDrawCommand _cmd {};                                          // 32 bytes
+    PoolHandle _sourceBuffer {};                                          // 12 bytes
     U24 _commandOffset = 0u;                                              // 8  bytes
     U16 _drawCount = 1u;                                                  // 5  bytes
     U16 _renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY);      // 3  bytes

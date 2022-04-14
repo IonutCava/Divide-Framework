@@ -32,7 +32,6 @@
 #pragma once
 #ifndef _RESOURCE_H_
 #define _RESOURCE_H_
-#include "Core/Headers/ObjectPool.h"
 
 namespace Divide {
 

@@ -204,8 +204,8 @@ void SceneEnvironmentProbePool::OnShutdown(GFXDevice& context) {
     context.renderTargetPool().deallocateRT(s_prefiltered);
     context.renderTargetPool().deallocateRT(s_irradiance);
     context.renderTargetPool().deallocateRT(s_brdfLUT);
-    for (U8 i = 0u; i < 6u; ++i) {
-        Camera::destroyCamera(s_probeCameras[i]);
+    for (auto& camera : s_probeCameras) {
+        Camera::destroyCamera(camera);
     }
     s_probeCameras.clear();
     // Remove old views

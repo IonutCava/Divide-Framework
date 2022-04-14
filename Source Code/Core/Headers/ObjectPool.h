@@ -38,9 +38,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 struct PoolHandle {
-    U16 _id = 0u;
-    U8  _generation = 0u;
-    U8  _tag = 0u;
+    U16 _id{ 0u };
+    U8  _generation{ 0u };
+    U8  _tag{ 0u };
 };
 
 inline bool operator== (const PoolHandle& lhs, const PoolHandle& rhs) noexcept {
@@ -73,8 +73,8 @@ public:
 
 protected:
     mutable SharedMutex _poolLock;
-    std::array<PoolHandle, N> _ids = {};
-    std::array<T*, N> _pool = {};
+    std::array<PoolHandle, N> _ids{};
+    std::array<T*, N> _pool{};
 };
 
 } //namespace Divide

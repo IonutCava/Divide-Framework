@@ -33,6 +33,7 @@
 #ifndef _SHADER_PROGRAM_H_
 #define _SHADER_PROGRAM_H_
 
+#include "Core/Headers/ObjectPool.h"
 #include "Core/Resources/Headers/Resource.h"
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 #include "Platform/Video/Headers/GraphicsResource.h"

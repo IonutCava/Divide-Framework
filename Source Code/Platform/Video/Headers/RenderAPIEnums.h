@@ -40,16 +40,15 @@ constexpr U32 RT_MAX_COLOUR_ATTACHMENTS = 6;
 using SamplerAddress = U64;
 
 enum class RenderAPI : U8 {
-    None,      ///< not supported yet
+    None,      ///< No rendering. Used for testing or server code
     OpenGL,    ///< 4.x+
-    OpenGLES,  ///< 3.x+
     Vulkan,    ///< not supported yet
     COUNT
 };
 
 namespace Names {
     static const char* renderAPI[] = {
-        "None", "OpenGL", "OpenGLES", "Vulkan", "ERROR"
+        "None", "OpenGL", "Vulkan", "ERROR"
     };
 };
 

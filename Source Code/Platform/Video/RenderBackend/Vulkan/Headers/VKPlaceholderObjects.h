@@ -63,42 +63,6 @@ namespace Divide {
         }
     };
 
-    class vkIMPrimitive final : public IMPrimitive {
-    public:
-        vkIMPrimitive(GFXDevice& context)
-            : IMPrimitive(context)
-        {}
-
-        void draw([[maybe_unused]] const GenericDrawCommand& cmd) noexcept override {
-        }
-
-        void beginBatch([[maybe_unused]] bool reserveBuffers, [[maybe_unused]] U32 vertexCount, [[maybe_unused]] U32 attributeCount) noexcept override {
-        }
-
-        void begin([[maybe_unused]] PrimitiveTopology type) noexcept override {
-        }
-
-        void vertex([[maybe_unused]] F32 x, [[maybe_unused]] F32 y, [[maybe_unused]] F32 z) noexcept override {
-        }
-
-        void attribute1i([[maybe_unused]] U32 attribLocation, [[maybe_unused]] I32 value) noexcept override {
-        }
-
-        void attribute1f([[maybe_unused]] U32 attribLocation, [[maybe_unused]] F32 value) noexcept override {
-        }
-
-        void attribute4ub([[maybe_unused]] U32 attribLocation, [[maybe_unused]] U8 x, [[maybe_unused]] U8 y, [[maybe_unused]] U8 z, [[maybe_unused]] U8 w) noexcept override {
-        }
-
-        void attribute4f([[maybe_unused]] U32 attribLocation, [[maybe_unused]] F32 x, [[maybe_unused]] F32 y, [[maybe_unused]] F32 z, [[maybe_unused]] F32 w) noexcept override {
-        }
-
-        void end() noexcept override {}
-        void endBatch() noexcept override {}
-        void clearBatch() noexcept override {}
-        bool hasBatch() const noexcept override { return false; }
-    };
-
     class vkPixelBuffer final : public PixelBuffer {
     public:
         vkPixelBuffer(GFXDevice& context, const PBType type, const char* name)
@@ -218,6 +182,42 @@ namespace Divide {
         bool lockByteRange([[maybe_unused]] const ptrdiff_t offsetInBytes, [[maybe_unused]] const ptrdiff_t rangeInBytes, [[maybe_unused]] const ShaderBufferLockType lockType) override {
             return true;
         }
+    };
+
+    class vkIMPrimitive final : public IMPrimitive {
+    public:
+        vkIMPrimitive(GFXDevice& context) : IMPrimitive(context) {}
+
+    public:
+        /// Begins defining one piece of geometry that can later be rendered with
+        /// one set of states.
+        void beginBatch(bool reserveBuffers, U32 vertexCount, U32 attributeCount) override {}
+        /// Ends defining the batch. After this call "RenderBatch" can be called to
+        /// actually render it.
+        void endBatch() noexcept override {}
+        /// Resets the batch so that the primitive has nothing left to draw
+        void clearBatch() override {}
+        /// Return true if this primitive contains drawable geometry data
+        bool hasBatch() const noexcept override { return true; }
+        /// Begins gathering information about the given type of primitives.
+        void begin(PrimitiveTopology type) override {}
+        /// Ends gathering information about the primitives.
+        void end() override {}
+        /// Specify the position of a vertex belonging to this primitive
+        void vertex(F32 x, F32 y, F32 z) override {}
+        /// Specify each attribute at least once(even with dummy values) before
+        /// calling begin!
+        /// Specify an attribute that will be applied to all vertex calls after this
+        void attribute1i(U32 attribLocation, I32 value) override {}
+        void attribute1f(U32 attribLocation, F32 value) override {}
+        void attribute2f(U32 attribLocation, vec2<F32> value) override {}
+        void attribute3f(U32 attribLocation, vec3<F32> value) override {}
+        /// Specify an attribute that will be applied to all vertex calls after this
+        void attribute4ub(U32 attribLocation, U8 x, U8 y, U8 z, U8 w) override {}
+        /// Specify an attribute that will be applied to all vertex calls after this
+        void attribute4f(U32 attribLocation, F32 x, F32 y, F32 z, F32 w) override {}
+        /// Submit the created batch to the GPU for rendering
+        void draw(const GenericDrawCommand& cmd) override {}
     };
 };  // namespace Divide
 #endif //_VK_PLACEHOLDER_OBJECTS_H_

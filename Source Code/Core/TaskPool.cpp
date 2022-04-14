@@ -58,10 +58,14 @@ bool TaskPool::init(const U32 threadCount, const TaskPoolType poolType, const DE
 }
 
 void TaskPool::shutdown() {
-    waitForAllTasks(true);
-    waitAndJoin();
-    MemoryManager::SAFE_DELETE(_lockFreePool);
-    MemoryManager::SAFE_DELETE(_blockingPool);
+    if (type() != TaskPoolType::COUNT) {
+        waitForAllTasks(true);
+        waitAndJoin();
+        MemoryManager::SAFE_DELETE(_lockFreePool);
+        MemoryManager::SAFE_DELETE(_blockingPool);
+    } else {
+        DIVIDE_ASSERT(_lockFreePool == nullptr && _blockingPool == nullptr);
+    }
 }
 
 void TaskPool::onThreadCreate(const U32 threadIndex, const std::thread::id& threadID) {

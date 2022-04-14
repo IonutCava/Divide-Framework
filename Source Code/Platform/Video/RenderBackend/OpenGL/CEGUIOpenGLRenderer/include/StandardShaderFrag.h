@@ -31,34 +31,6 @@
 
 namespace CEGUI
 {
-
-const char
-    StandardShaderFrag_Opengl3[] = 
-        "#version 420 core\n"
-        
-        "layout(binding = 0) uniform sampler2D texture0;\n"
-        "in vec2 exTexCoord;\n"
-        "in vec4 exColour;\n"
-        "out vec4 out0;\n"
-        
-        "void main(void)\n"
-        "{\n"
-            "out0 = texture(texture0, exTexCoord) * exColour;\n"
-        "}",
-    StandardShaderFrag_OpenglEs3[] = 
-        "#version 320 es\n"
-
-        "layout(binding = 0) uniform sampler2D texture0;\n"
-        "precision highp float;\n"
-        "in vec2 exTexCoord;\n"
-        "in vec4 exColour;\n"
-        "layout(location = 0) out vec4 out0;\n"
-        
-        "void main(void)\n"
-        "{\n"
-            "out0 = texture(texture0, exTexCoord) * exColour;\n"
-        "}";
-    
 }
 
 #endif

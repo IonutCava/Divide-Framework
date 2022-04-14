@@ -159,6 +159,16 @@ class PlatformContext {
 
     /// Task pools
     std::array<TaskPool*, to_base(TaskPoolType::COUNT)> _taskPool;
+    /// Param handler
+    ParamHandler* _paramHandler = nullptr;
+    /// User configured settings
+    Configuration* _config = nullptr;
+    /// XML startup data
+    XMLEntryData* _entryData = nullptr;
+    /// Debugging interface: read only / editable variables
+    DebugInterface* _debug = nullptr;
+    /// Input handler
+    Input::InputHandler* _inputHandler = nullptr;
     /// Access to the GPU
     GFXDevice* _gfx = nullptr;
     /// The graphical user interface
@@ -167,21 +177,12 @@ class PlatformContext {
     SFXDevice* _sfx = nullptr;
     /// Access to the physics system
     PXDevice* _pfx = nullptr;
-    /// XML configuration data
-    XMLEntryData* _entryData = nullptr;
-    Configuration* _config = nullptr;
     /// Networking client
     LocalClient* _client = nullptr;
     /// Networking server
     Server* _server = nullptr;
-    /// Debugging interface: read only / editable variables
-    DebugInterface* _debug = nullptr;
     /// Game editor
     Editor* _editor = nullptr;
-    /// Input handler
-    Input::InputHandler* _inputHandler = nullptr;
-    /// Param handler
-    ParamHandler* _paramHandler = nullptr;
 };
 
 namespace Attorney {

@@ -85,7 +85,7 @@ class GL_API final : public RenderAPIWrapper {
     friend struct GLStateTracker;
 
 public:
-    GL_API(GFXDevice& context, bool glES);
+    GL_API(GFXDevice& context);
 
 protected:
     /// Try and create a valid OpenGL context taking in account the specified command line arguments

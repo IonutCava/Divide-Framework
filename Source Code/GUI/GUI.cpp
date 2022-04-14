@@ -86,10 +86,13 @@ void GUI::onUnloadScene(Scene* const scene) {
 void GUI::CEGUIDrawInternal() {
     OPTICK_EVENT();
 
-    _ceguiRenderer->beginRendering();
-    _ceguiRenderTextureTarget->clear();
-    _ceguiContext->draw();
-    _ceguiRenderer->endRendering();
+    const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
+    if (guiConfig.cegui.enabled) {
+        _ceguiRenderer->beginRendering();
+        _ceguiRenderTextureTarget->clear();
+        _ceguiContext->draw();
+        _ceguiRenderer->endRendering();
+    }
 }
 
 void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut) {
@@ -152,7 +155,8 @@ void GUI::update(const U64 deltaTimeUS) {
         return;
     }
 
-    if (parent().platformContext().config().gui.cegui.enabled) {
+    const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
+    if (guiConfig.cegui.enabled) {
         _ceguiInput.update(deltaTimeUS);
         auto& ceguiSystem = CEGUI::System::getSingleton();
         ceguiSystem.injectTimePulse(Time::MicrosecondsToSeconds<F32>(deltaTimeUS));
@@ -178,62 +182,65 @@ bool GUI::init(PlatformContext& context, ResourceCache* cache) {
         return false;
     }
 
-    CEGUI::DefaultResourceProvider* rp = static_cast<CEGUI::DefaultResourceProvider*>(CEGUI::System::getSingleton().getResourceProvider());
-
-    const CEGUI::String CEGUIInstallSharePath((Paths::g_assetsLocation + Paths::g_GUILocation).c_str());
-    rp->setResourceGroupDirectory("schemes", CEGUIInstallSharePath + "schemes/");
-    rp->setResourceGroupDirectory("imagesets", CEGUIInstallSharePath + "imagesets/");
-    rp->setResourceGroupDirectory("fonts", CEGUIInstallSharePath + Paths::g_fontsPath.c_str());
-    rp->setResourceGroupDirectory("layouts", CEGUIInstallSharePath + "layouts/");
-    rp->setResourceGroupDirectory("looknfeels", CEGUIInstallSharePath + "looknfeel/");
-    rp->setResourceGroupDirectory("lua_scripts", CEGUIInstallSharePath + "lua_scripts/");
-    rp->setResourceGroupDirectory("schemas", CEGUIInstallSharePath + "xml_schemas/");
-    rp->setResourceGroupDirectory("animations", CEGUIInstallSharePath + "animations/");
-
-    // set the default resource groups to be used
-    CEGUI::ImageManager::setImagesetDefaultResourceGroup("imagesets");
-    CEGUI::Font::setDefaultResourceGroup("fonts");
-    CEGUI::Scheme::setDefaultResourceGroup("schemes");
-    CEGUI::WidgetLookManager::setDefaultResourceGroup("looknfeels");
-    CEGUI::WindowManager::setDefaultResourceGroup("layouts");
-    CEGUI::ScriptModule::setDefaultResourceGroup("lua_scripts");
-    // setup default group for validation schemas
-    CEGUI::XMLParser* parser = CEGUI::System::getSingleton().getXMLParser();
-    if (parser->isPropertyPresent("SchemaDefaultResourceGroup")) {
-        parser->setProperty("SchemaDefaultResourceGroup", "schemas");
-    }
-    CEGUI::FontManager::getSingleton().createFromFile("DejaVuSans-10.font");
-    CEGUI::FontManager::getSingleton().createFromFile("DejaVuSans-12.font");
-    CEGUI::FontManager::getSingleton().createFromFile("DejaVuSans-10-NoScale.font");
-    CEGUI::FontManager::getSingleton().createFromFile("DejaVuSans-12-NoScale.font");
-    CEGUI::SchemeManager::getSingleton().createFromFile((defaultGUIScheme() + ".scheme").c_str());
-
-    const vec2<U16>& renderSize = context.gfx().renderingResolution();
-
-    const CEGUI::Sizef size(static_cast<float>(renderSize.width), static_cast<float>(renderSize.height));
-    // We create a CEGUI texture target and create a GUIContext that will use it.
-
-    _ceguiRenderer = CEGUI::System::getSingleton().getRenderer();
-    _ceguiRenderTextureTarget = _ceguiRenderer->createTextureTarget();
-    _ceguiRenderTextureTarget->declareRenderSize(size);
-    _ceguiContext = &CEGUI::System::getSingleton().createGUIContext(static_cast<CEGUI::RenderTarget&>(*_ceguiRenderTextureTarget));
-
-    _rootSheet = CEGUI::WindowManager::getSingleton().createWindow("DefaultWindow", "root_window");
-    _rootSheet->setMousePassThroughEnabled(true);
-    _rootSheet->setUsingAutoRenderingSurface(false);
-    _rootSheet->setPixelAligned(false);
-
-    _ceguiContext->setRootWindow(_rootSheet);
-    _ceguiContext->setDefaultTooltipType((defaultGUIScheme() + "/Tooltip").c_str());
-  
+    _ceguiInput.init(parent().platformContext().config());
 
     _console = MemoryManager_NEW GUIConsole(*this, context, cache);
     assert(_console);
-    _console->createCEGUIWindow();
 
     GUIButton::soundCallback([&context](const AudioDescriptor_ptr& sound) { context.sfx().playSound(sound); });
 
-    if (parent().platformContext().config().gui.cegui.enabled) {
+    const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
+    if (guiConfig.cegui.enabled) {
+
+        const vec2<U16>& renderSize = context.gfx().renderingResolution();
+        const CEGUI::Sizef size(static_cast<float>(renderSize.width), static_cast<float>(renderSize.height));
+
+        CEGUI::DefaultResourceProvider* rp = static_cast<CEGUI::DefaultResourceProvider*>(CEGUI::System::getSingleton().getResourceProvider());
+
+        const CEGUI::String CEGUIInstallSharePath((Paths::g_assetsLocation + Paths::g_GUILocation).c_str());
+        rp->setResourceGroupDirectory("schemes", CEGUIInstallSharePath + "schemes/");
+        rp->setResourceGroupDirectory("imagesets", CEGUIInstallSharePath + "imagesets/");
+        rp->setResourceGroupDirectory("fonts", CEGUIInstallSharePath + Paths::g_fontsPath.c_str());
+        rp->setResourceGroupDirectory("layouts", CEGUIInstallSharePath + "layouts/");
+        rp->setResourceGroupDirectory("looknfeels", CEGUIInstallSharePath + "looknfeel/");
+        rp->setResourceGroupDirectory("lua_scripts", CEGUIInstallSharePath + "lua_scripts/");
+        rp->setResourceGroupDirectory("schemas", CEGUIInstallSharePath + "xml_schemas/");
+        rp->setResourceGroupDirectory("animations", CEGUIInstallSharePath + "animations/");
+
+        // set the default resource groups to be used
+        CEGUI::ImageManager::setImagesetDefaultResourceGroup("imagesets");
+        CEGUI::Font::setDefaultResourceGroup("fonts");
+        CEGUI::Scheme::setDefaultResourceGroup("schemes");
+        CEGUI::WidgetLookManager::setDefaultResourceGroup("looknfeels");
+        CEGUI::WindowManager::setDefaultResourceGroup("layouts");
+        CEGUI::ScriptModule::setDefaultResourceGroup("lua_scripts");
+        // setup default group for validation schemas
+        CEGUI::XMLParser* parser = CEGUI::System::getSingleton().getXMLParser();
+        if (parser->isPropertyPresent("SchemaDefaultResourceGroup")) {
+            parser->setProperty("SchemaDefaultResourceGroup", "schemas");
+        }
+        CEGUI::FontManager::getSingleton().createFromFile("DejaVuSans-10.font");
+        CEGUI::FontManager::getSingleton().createFromFile("DejaVuSans-12.font");
+        CEGUI::FontManager::getSingleton().createFromFile("DejaVuSans-10-NoScale.font");
+        CEGUI::FontManager::getSingleton().createFromFile("DejaVuSans-12-NoScale.font");
+        CEGUI::SchemeManager::getSingleton().createFromFile((defaultGUIScheme() + ".scheme").c_str());
+
+        // We create a CEGUI texture target and create a GUIContext that will use it.
+
+        _ceguiRenderer = CEGUI::System::getSingleton().getRenderer();
+        _ceguiRenderTextureTarget = _ceguiRenderer->createTextureTarget();
+        _ceguiRenderTextureTarget->declareRenderSize(size);
+        _ceguiContext = &CEGUI::System::getSingleton().createGUIContext(static_cast<CEGUI::RenderTarget&>(*_ceguiRenderTextureTarget));
+
+        _rootSheet = CEGUI::WindowManager::getSingleton().createWindow("DefaultWindow", "root_window");
+        _rootSheet->setMousePassThroughEnabled(true);
+        _rootSheet->setUsingAutoRenderingSurface(false);
+        _rootSheet->setPixelAligned(false);
+
+        _ceguiContext->setRootWindow(_rootSheet);
+        _ceguiContext->setDefaultTooltipType((defaultGUIScheme() + "/Tooltip").c_str());
+
+        _console->createCEGUIWindow();
         CEGUI::System::getSingleton().notifyDisplaySizeChanged(size);
     }
 
@@ -255,20 +262,22 @@ void GUI::recreateDefaultMessageBox() {
         MemoryManager::DELETE(_defaultMsgBox);
     }
 
-    _defaultMsgBox = MemoryManager_NEW GUIMessageBox("AssertMsgBox",
-                                                     "Assertion failure",
-                                                     "Assertion failed with message: ",
-                                                     vec2<I32>(0),
-                                                     _context->rootSheet());
-
+    const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
+    if (guiConfig.cegui.enabled) {
+        _defaultMsgBox = MemoryManager_NEW GUIMessageBox("AssertMsgBox",
+                                                         "Assertion failure",
+                                                         "Assertion failed with message: ",
+                                                         vec2<I32>(0),
+                                                         _context->rootSheet());
+    }
     g_assertMsgBox = _defaultMsgBox;
 }
 
 void GUI::destroy() {
     if (_init) {
         Console::printfn(Locale::Get(_ID("STOP_GUI")));
-        MemoryManager::DELETE(_console);
-        MemoryManager::DELETE(_defaultMsgBox);
+        MemoryManager::SAFE_DELETE(_console);
+        MemoryManager::SAFE_DELETE(_defaultMsgBox);
         g_assertMsgBox = nullptr;
 
         {
@@ -282,12 +291,14 @@ void GUI::destroy() {
             }
         }
 
-        // Close CEGUI
-        try {
-            CEGUI::System::destroy();
-        }
-        catch (...) {
-            Console::d_errorfn(Locale::Get(_ID("ERROR_CEGUI_DESTROY")));
+        const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
+        if (guiConfig.cegui.enabled) {
+            // Close CEGUI
+            try {
+                CEGUI::System::destroy();
+            } catch (...) {
+                Console::d_errorfn(Locale::Get(_ID("ERROR_CEGUI_DESTROY")));
+            }
         }
         _init = false;
     }
@@ -296,14 +307,8 @@ void GUI::destroy() {
 void GUI::showDebugCursor(const bool state) {
     _showDebugCursor = state;
 
-    if (_rootSheet == nullptr) {
-        return;
-    }
-
-    if (state) {
-        _rootSheet->setMouseCursor("GWEN/Tree.Plus");
-    } else {
-        _rootSheet->setMouseCursor("");
+    if (_rootSheet != nullptr) {
+        _rootSheet->setMouseCursor(state ? "GWEN/Tree.Plus" : "");
     }
 }
 
@@ -317,142 +322,90 @@ void GUI::onSizeChange(const SizeChangeParams& params) {
         return;
     }
 
-    const CEGUI::Sizef windowSize(params.width, params.height);
-    CEGUI::System::getSingleton().notifyDisplaySizeChanged(windowSize);
-    if (_ceguiRenderTextureTarget) {
-        _ceguiRenderTextureTarget->declareRenderSize(windowSize);
-    }
+    const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
+    if (guiConfig.cegui.enabled) {
+        const CEGUI::Sizef windowSize(params.width, params.height);
+        CEGUI::System::getSingleton().notifyDisplaySizeChanged(windowSize);
+        if (_ceguiRenderTextureTarget) {
+            _ceguiRenderTextureTarget->declareRenderSize(windowSize);
+        }
 
 
-    if (_rootSheet) {
-        const Rect<I32>& renderViewport = { 0, 0, params.width, params.height };
-        _rootSheet->setSize(CEGUI::USize(CEGUI::UDim(0.0f, to_F32(renderViewport.z)),
-                                         CEGUI::UDim(0.0f, to_F32(renderViewport.w))));
-        _rootSheet->setPosition(CEGUI::UVector2(CEGUI::UDim(0.0f, to_F32(renderViewport.x)),
-                                                CEGUI::UDim(0.0f, to_F32(renderViewport.y))));
+        if (_rootSheet) {
+            const Rect<I32>& renderViewport = { 0, 0, params.width, params.height };
+            _rootSheet->setSize(CEGUI::USize(CEGUI::UDim(0.0f, to_F32(renderViewport.z)),
+                                             CEGUI::UDim(0.0f, to_F32(renderViewport.w))));
+            _rootSheet->setPosition(CEGUI::UVector2(CEGUI::UDim(0.0f, to_F32(renderViewport.x)),
+                                                    CEGUI::UDim(0.0f, to_F32(renderViewport.y))));
+        }
     }
 
 }
 
 void GUI::setCursorPosition(const I32 x, const I32 y) {
-    if (parent().platformContext().config().gui.cegui.enabled) {
+    const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
+    if (guiConfig.cegui.enabled) {
         getCEGUIContext().injectMousePosition(to_F32(x), to_F32(y));
     }
 }
 
 // Return true if input was consumed
 bool GUI::onKeyDown(const Input::KeyEvent& key) {
-    if (!_init) {
-        return false;
-    }
-
-    if (parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.onKeyDown(key);
-    }
-
-    return false;
+    return _ceguiInput.onKeyDown(key);
 }
 
 // Return true if input was consumed
 bool GUI::onKeyUp(const Input::KeyEvent& key) {
-    if (!_init) {
-        return false;
-    }
-
-    if (parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.onKeyUp(key);
-    }
-
-    return false;
+    return _ceguiInput.onKeyUp(key);
 }
 
 // Return true if input was consumed
 bool GUI::mouseMoved(const Input::MouseMoveEvent& arg) {
-    if (_init && parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.mouseMoved(arg);
-    }
-
-    return false;
+    return _ceguiInput.mouseMoved(arg);
 }
 
 // Return true if input was consumed
 bool GUI::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
-    if (_init && parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.mouseButtonPressed(arg);
-    }
-
-    return false;
+    return _ceguiInput.mouseButtonPressed(arg);
 }
 
 // Return true if input was consumed
 bool GUI::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
-    if (_init && parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.mouseButtonReleased(arg);
-    }
-
-    return false;
+    return _ceguiInput.mouseButtonReleased(arg);
 }
 
 // Return true if input was consumed
 bool GUI::joystickAxisMoved(const Input::JoystickEvent& arg) {
-    if (parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.joystickAxisMoved(arg);
-    }
-
-    return false;
+    return _ceguiInput.joystickAxisMoved(arg);
 }
 
 // Return true if input was consumed
 bool GUI::joystickPovMoved(const Input::JoystickEvent& arg) {
-    if (parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.joystickPovMoved(arg);
-    }
-
-    return false;
+    return _ceguiInput.joystickPovMoved(arg);
 }
 
 // Return true if input was consumed
 bool GUI::joystickButtonPressed(const Input::JoystickEvent& arg) {
-    if (parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.joystickButtonPressed(arg);
-    }
-
-    return false;
+    return _ceguiInput.joystickButtonPressed(arg);
 }
 
 // Return true if input was consumed
 bool GUI::joystickButtonReleased(const Input::JoystickEvent& arg) {
-    if (parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.joystickButtonReleased(arg);
-    }
-
-    return false;
+    return _ceguiInput.joystickButtonReleased(arg);
 }
 
 // Return true if input was consumed
 bool GUI::joystickBallMoved(const Input::JoystickEvent& arg) {
-    if (parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.joystickBallMoved(arg);
-    }
-
-    return false;
+    return _ceguiInput.joystickBallMoved(arg);
 }
 
 // Return true if input was consumed
 bool GUI::joystickAddRemove(const Input::JoystickEvent& arg) {
-    if (parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.joystickAddRemove(arg);
-    }
-
-    return false;
+    return _ceguiInput.joystickAddRemove(arg);
 }
 
 bool GUI::joystickRemap(const Input::JoystickEvent &arg) {
-    if (parent().platformContext().config().gui.cegui.enabled) {
-        return _ceguiInput.joystickRemap(arg);
-    }
-
-    return false;
+    return _ceguiInput.joystickRemap(arg);
 }
 
 bool GUI::onUTF8([[maybe_unused]] const Input::UTF8Event& arg) noexcept {

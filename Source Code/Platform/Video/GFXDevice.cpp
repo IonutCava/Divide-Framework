@@ -112,9 +112,8 @@ ErrorCode GFXDevice::createAPIInstance(const RenderAPI API) {
 
     ErrorCode err = ErrorCode::NO_ERR;
     switch (API) {
-        case RenderAPI::OpenGL:
-        case RenderAPI::OpenGLES: {
-            _api = eastl::make_unique<GL_API>(*this, API == RenderAPI::OpenGLES);
+        case RenderAPI::OpenGL:{
+            _api = eastl::make_unique<GL_API>(*this);
         } break;
         case RenderAPI::Vulkan: {
             _api = eastl::make_unique<VK_API>(*this);
@@ -2666,8 +2665,7 @@ RenderTarget* GFXDevice::newRTInternal(const RenderTargetDescriptor& descriptor)
     RenderTarget* temp = nullptr;
     {
         switch (renderAPI()) {
-            case RenderAPI::OpenGL:
-            case RenderAPI::OpenGLES: {
+            case RenderAPI::OpenGL: {
                 temp = new (objectArena()) glFramebuffer(*this, descriptor);
             } break;
             case RenderAPI::Vulkan: {
@@ -2717,13 +2715,16 @@ RenderTarget* GFXDevice::newRTLocked(const RenderTargetDescriptor& descriptor) {
 
 IMPrimitive* GFXDevice::newIMP() {
     switch (renderAPI()) {
-        case RenderAPI::OpenGL:
-        case RenderAPI::OpenGLES: {
+        case RenderAPI::OpenGL: {
             return GL_API::NewIMP(_imprimitiveMutex , *this);
         };
-        case RenderAPI::Vulkan:
+        case RenderAPI::Vulkan: {
+            ScopedLock<Mutex> w_lock(_imprimitiveMutex);
+            return MemoryManager_NEW vkIMPrimitive(*this);
+        }
         case RenderAPI::None: {
-            return nullptr;
+            ScopedLock<Mutex> w_lock(_imprimitiveMutex);
+            return MemoryManager_NEW noIMPrimitive(*this);
         };
         default: {
             DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
@@ -2735,13 +2736,14 @@ IMPrimitive* GFXDevice::newIMP() {
 
 bool GFXDevice::destroyIMP(IMPrimitive*& primitive) {
     switch (renderAPI()) {
-        case RenderAPI::OpenGL:
-        case RenderAPI::OpenGLES: {
+        case RenderAPI::OpenGL: {
             return GL_API::DestroyIMP(_imprimitiveMutex , primitive);
         };
         case RenderAPI::Vulkan:
         case RenderAPI::None: {
-            return false;
+            ScopedLock<Mutex> w_lock(_imprimitiveMutex);
+            MemoryManager::SAFE_DELETE(primitive);
+            return true;
         };
         default: {
             DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
@@ -2775,8 +2777,7 @@ PixelBuffer* GFXDevice::newPBLocked(const PBType type, const char* name) {
 
     PixelBuffer* temp = nullptr;
     switch (renderAPI()) {
-        case RenderAPI::OpenGL:
-        case RenderAPI::OpenGLES: {
+        case RenderAPI::OpenGL: {
             temp = new (objectArena()) glPixelBuffer(*this, type, name);
         } break;
         case RenderAPI::Vulkan: {
@@ -2806,8 +2807,7 @@ GenericVertexData* GFXDevice::newGVDLocked(const U32 ringBufferLength, const cha
 
     GenericVertexData* temp = nullptr;
     switch (renderAPI()) {
-        case RenderAPI::OpenGL:
-        case RenderAPI::OpenGLES: {
+        case RenderAPI::OpenGL: {
             temp = new (objectArena()) glGenericVertexData(*this, ringBufferLength, name);
         } break;
         case RenderAPI::Vulkan: {
@@ -2846,8 +2846,7 @@ Texture* GFXDevice::newTextureLocked(const size_t descriptorHash,
     // Texture is a resource! Do not use object arena!
     Texture* temp = nullptr;
     switch (renderAPI()) {
-        case RenderAPI::OpenGL:
-        case RenderAPI::OpenGLES: {
+        case RenderAPI::OpenGL: {
             temp = new (objectArena()) glTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor);
         } break;
         case RenderAPI::Vulkan: {
@@ -2901,8 +2900,7 @@ ShaderProgram* GFXDevice::newShaderProgramLocked(const size_t descriptorHash,
 
     ShaderProgram* temp = nullptr;
     switch (renderAPI()) {
-        case RenderAPI::OpenGL:
-        case RenderAPI::OpenGLES: {
+        case RenderAPI::OpenGL: {
             temp = new (objectArena()) glShaderProgram(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor);
         } break;
         case RenderAPI::Vulkan: {
@@ -2929,8 +2927,7 @@ ShaderBuffer* GFXDevice::newSB(const ShaderBufferDescriptor& descriptor) {
 
     ShaderBuffer* temp = nullptr;
     switch (renderAPI()) {
-        case RenderAPI::OpenGL:
-        case RenderAPI::OpenGLES: {
+        case RenderAPI::OpenGL: {
             temp = new (objectArena()) glUniformBuffer(*this, descriptor);
         } break;
         case RenderAPI::Vulkan: {

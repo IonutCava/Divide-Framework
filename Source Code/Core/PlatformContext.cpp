@@ -21,20 +21,20 @@
 namespace Divide {
 
 PlatformContext::PlatformContext(Application& app, Kernel& kernel)
-  :  _app(app)
-  ,  _kernel(kernel)
-  ,  _taskPool{}
-  ,  _gfx(MemoryManager_NEW GFXDevice(_kernel))         // Video
-  ,  _gui(MemoryManager_NEW GUI(_kernel))               // Audio
-  ,  _sfx(MemoryManager_NEW SFXDevice(_kernel))         // Physics
-  ,  _pfx(MemoryManager_NEW PXDevice(_kernel))          // Graphical User Interface
-  ,  _entryData(MemoryManager_NEW XMLEntryData())       // Initial XML data
-  ,  _config(MemoryManager_NEW Configuration())         // XML based configuration
-  ,  _client(MemoryManager_NEW LocalClient(_kernel))    // Network client
-  ,  _server(MemoryManager_NEW Server())                // Network server
-  ,  _debug(MemoryManager_NEW DebugInterface(_kernel))  // Debug Interface
-  ,  _inputHandler(MemoryManager_NEW Input::InputHandler(_kernel, _app))
-  ,  _paramHandler(MemoryManager_NEW ParamHandler())
+  : _app(app)
+  , _kernel(kernel)
+  , _taskPool{}
+  , _paramHandler(MemoryManager_NEW ParamHandler())
+  , _config(MemoryManager_NEW Configuration())         // XML based configuration
+  , _entryData(MemoryManager_NEW XMLEntryData())       // Initial XML data
+  , _debug(MemoryManager_NEW DebugInterface(_kernel))  // Debug Interface
+  , _inputHandler(MemoryManager_NEW Input::InputHandler(_kernel, _app))
+  , _gfx(MemoryManager_NEW GFXDevice(_kernel))         // Video
+  , _gui(MemoryManager_NEW GUI(_kernel))               // Audio
+  , _sfx(MemoryManager_NEW SFXDevice(_kernel))         // Physics
+  , _pfx(MemoryManager_NEW PXDevice(_kernel))          // Graphical User Interface
+  , _client(MemoryManager_NEW LocalClient(_kernel))    // Network client
+  , _server(MemoryManager_NEW Server())                // Network server
   , _editor(Config::Build::ENABLE_EDITOR ? MemoryManager_NEW Editor(*this) : nullptr)
 {
     for (U8 i = 0; i < to_U8(TaskPoolType::COUNT); ++i) {
@@ -53,17 +53,17 @@ void PlatformContext::terminate() {
         MemoryManager::DELETE(_taskPool[i]);
     }
     MemoryManager::SAFE_DELETE(_editor);
+    MemoryManager::DELETE(_server);
+    MemoryManager::DELETE(_client);
+    MemoryManager::DELETE(_pfx);
+    MemoryManager::DELETE(_sfx);
+    MemoryManager::DELETE(_gui);
+    MemoryManager::DELETE(_gfx);
     MemoryManager::DELETE(_inputHandler);
+    MemoryManager::DELETE(_debug);
     MemoryManager::DELETE(_entryData);
     MemoryManager::DELETE(_config);
-    MemoryManager::DELETE(_client);
-    MemoryManager::DELETE(_server);
-    MemoryManager::DELETE(_debug);
-    MemoryManager::DELETE(_gui);
-    MemoryManager::DELETE(_pfx);
     MemoryManager::DELETE(_paramHandler);
-    MemoryManager::DELETE(_sfx);
-    MemoryManager::DELETE(_gfx);
 }
 
 void PlatformContext::beginFrame(const U32 componentMask) {

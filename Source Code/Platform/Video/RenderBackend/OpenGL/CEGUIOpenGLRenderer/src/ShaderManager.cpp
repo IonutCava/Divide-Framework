@@ -75,13 +75,20 @@ namespace CEGUI
         if(!d_shadersInitialised)
         {
             if (OpenGLInfo::getSingleton().isUsingDesktopOpengl())
-                loadShader(SHADER_ID_STANDARDSHADER, StandardShaderVert_Opengl3,
-                           StandardShaderFrag_Opengl3);
-            else // OpenGL ES
-            {
-                loadShader(SHADER_ID_STANDARDSHADER, StandardShaderVert_OpenglEs3,
-                           StandardShaderFrag_OpenglEs3);
-            }
+                loadShader(SHADER_ID_STANDARDSHADER,
+                    StandardShaderVert_Opengl3,
+                    "#version 420 core\n"
+
+                    "layout(binding = 0) uniform sampler2D texture0;\n"
+                    "in vec2 exTexCoord;\n"
+                    "in vec4 exColour;\n"
+                    "out vec4 out0;\n"
+
+                    "void main(void)\n"
+                    "{\n"
+                    "out0 = texture(texture0, exTexCoord) * exColour;\n"
+                    "}");
+
 
             if(!getShader(SHADER_ID_STANDARDSHADER)->isCreatedSuccessfully())
             {

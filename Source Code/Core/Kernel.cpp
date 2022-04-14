@@ -650,6 +650,10 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     Console::printfn(Locale::Get(_ID("START_RENDER_INTERFACE")));
 
     const RenderAPI renderingAPI = static_cast<RenderAPI>(config.runtime.targetRenderingAPI);
+    if (renderingAPI != RenderAPI::OpenGL /*&& renderingAPI != RenderAPI::Vulkan*/) {
+        STUBBED("Add CEGUI renderer for VULKAN backend!");
+        config.gui.cegui.enabled = false;
+    }
 
     WindowManager& winManager = _platformContext.app().windowManager();
     ErrorCode initError = winManager.init(_platformContext,

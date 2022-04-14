@@ -21,8 +21,7 @@ Texture_ptr Texture::s_defaulTexture = nullptr;
 bool Texture::s_useDDSCache = true;
 
 void Texture::OnStartup(GFXDevice& gfx) {
-    ImageTools::OnStartup(gfx.renderAPI() != RenderAPI::OpenGL &&
-                          gfx.renderAPI() != RenderAPI::OpenGLES);
+    ImageTools::OnStartup(gfx.renderAPI() != RenderAPI::OpenGL);
 
     TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D_ARRAY);
     textureDescriptor.srgb(false);

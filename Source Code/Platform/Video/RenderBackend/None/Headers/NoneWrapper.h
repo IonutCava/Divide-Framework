@@ -58,6 +58,12 @@ class NONE_API final : public RenderAPIWrapper {
       [[nodiscard]] U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const noexcept override;
       bool setViewport(const Rect<I32>& newViewport) noexcept override;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
+
+private:
+    GFXDevice& _context;
+    SDL_Renderer* _renderer{ nullptr };
+    SDL_Surface* _background{ nullptr };
+    SDL_Texture* _texture{ nullptr };
 };
 
 };  // namespace Divide

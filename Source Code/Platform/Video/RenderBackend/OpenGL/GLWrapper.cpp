@@ -62,7 +62,7 @@ std::array<size_t, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> GL_API::s_mem
     TO_MEGABYTES(256)
 };
 
-GL_API::GL_API(GFXDevice& context, [[maybe_unused]] const bool glES)
+GL_API::GL_API(GFXDevice& context)
     : RenderAPIWrapper(),
       _context(context),
       _swapBufferTimer(Time::ADD_TIMER("Swap Buffer Timer"))
