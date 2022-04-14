@@ -76,7 +76,6 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
     }
 
     _windowID = SDL_GetWindowID(_sdlWindow);
-    //_drawableSize = getDrawableSize();
     return ErrorCode::NO_ERR;
 }
 
@@ -94,10 +93,6 @@ void DisplayWindow::update([[maybe_unused]] const U64 deltaTimeUS) noexcept {
     }
 }
 
-void DisplayWindow::refreshDrawableSize() {
-    _drawableSize = getDrawableSizeInternal();
-}
-
 void DisplayWindow::notifyListeners(const WindowEvent event, const WindowEventArgs& args) {
     switch (event) {
         case WindowEvent::HIDDEN:
@@ -108,8 +103,6 @@ void DisplayWindow::notifyListeners(const WindowEvent event, const WindowEventAr
         case WindowEvent::RESTORED:
         case WindowEvent::SHOWN:
         case WindowEvent::SIZE_CHANGED:
-            refreshDrawableSize();
-            break;
         default:
             break;
     }
@@ -242,8 +235,7 @@ Rect<I32> DisplayWindow::getBorderSizes() const noexcept {
 }
 
 vec2<U16> DisplayWindow::getDrawableSize() const noexcept {
-    return _drawableSize;
-    //return getDrawableSizeInternal();
+    return getDrawableSizeInternal();
 }
 
 vec2<U16> DisplayWindow::getDrawableSizeInternal() const {

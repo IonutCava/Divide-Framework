@@ -140,12 +140,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
 
-#include <Optick/src/optick.h>
-
 #define HAVE_M_PI
 #define SDL_MAIN_HANDLED
 #include <sdl/include/SDL_mixer.h>
 #include <sdl/include/SDL.h>
+#include <sdl/include/SDL_vulkan.h>
+
+#include <vulkan/vulkan.hpp>
+
+#include <Optick/src/optick.h>
 
 #ifdef _MSC_VER
 #pragma warning (push)

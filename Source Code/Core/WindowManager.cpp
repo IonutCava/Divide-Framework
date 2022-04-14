@@ -10,7 +10,6 @@
 
 namespace Divide {
  
-
 namespace {
     
     SDL_SystemCursor CursorToSDL(const CursorStyle style) noexcept {
@@ -198,9 +197,6 @@ ErrorCode WindowManager::init(PlatformContext& context,
 }
 
 void WindowManager::postInit() {
-    for (DisplayWindow* window : _windows) {
-        window->refreshDrawableSize();
-    }
 }
 
 void WindowManager::close() {

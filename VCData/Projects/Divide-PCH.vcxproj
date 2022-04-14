@@ -223,7 +223,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/;$(VK_SDK_PATH)/include/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -280,7 +280,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/;$(VK_SDK_PATH)/include/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -339,7 +339,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/;$(VK_SDK_PATH)/include/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_RELEASE;NDEBUG</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -392,7 +392,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/;$(VK_SDK_PATH)/include/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_RELEASE;NDEBUG;_START_IN_EDITOR</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -445,7 +445,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/;$(VK_SDK_PATH)/include/</AdditionalIncludeDirectories>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <PreprocessorDefinitions>_PROFILE;NDEBUG</PreprocessorDefinitions>
@@ -498,7 +498,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../Source Code/;$(SolutionDir)/../Source Code/Libs/;$(SolutionDir)/../3rdParty/;$(SolutionDir)/../3rdParty/boost/;$(SolutionDir)/../3rdParty/imgui/;$(SolutionDir)/../3rdParty/sdl/include/;$(SolutionDir)/../3rdParty/DevIL/include/;$(SolutionDir)/../3rdParty/cegui/include/;$(SolutionDir)/../3rdParty/assimp/include/;$(SolutionDir)/../3rdParty/EASTL/include/;$(SolutionDir)/../3rdParty/EABase/include/Common/;$(SolutionDir)/../3rdParty/EntityComponentSystem/include/;$(VK_SDK_PATH)/include/</AdditionalIncludeDirectories>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <PreprocessorDefinitions>_PROFILE;NDEBUG;_START_IN_EDITOR</PreprocessorDefinitions>

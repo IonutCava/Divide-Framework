@@ -88,3 +88,6 @@
 [submodule "3rdParty/imgui-node-editor"]
 	path = 3rdParty/imgui-node-editor
 	url = https://github.com/thedmd/imgui-node-editor.git
+[submodule "3rdParty/vk-bootstrap"]
+	path = 3rdParty/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap.git

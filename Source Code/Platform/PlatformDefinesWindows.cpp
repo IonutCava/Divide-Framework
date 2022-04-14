@@ -27,6 +27,7 @@
 #pragma comment(lib, "PhysXFoundation_64.lib")
 #pragma comment(lib, "PhysXPvdSDK_static_64.lib")
 #pragma comment(lib, "PhysXExtensions_static_64.lib")
+#pragma comment(lib, "vulkan-1.lib")
 
 #ifdef _DEBUG
 #pragma comment(lib, "DbgHelp.lib")
