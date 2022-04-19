@@ -32,7 +32,7 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     ShaderModuleDescriptor fragModule = {};
     fragModule._moduleType = ShaderType::FRAGMENT;
     fragModule._sourceFile = "ScreenSpaceReflections.glsl";
-    fragModule._defines.emplace_back("NO_CAM_BLOCK", true);
+    fragModule._defines.emplace_back("NO_CAM_BLOCK");
 
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
@@ -144,7 +144,7 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     _constantsCmd._constants.set(_ID("invViewMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invViewMatrix);
     _constantsCmd._constants.set(_ID("screenDimensions"), GFX::PushConstantType::VEC2, vec2<F32>(screenAtt.texture()->width(), screenAtt.texture()->height()));
     _constantsCmd._constants.set(_ID("maxScreenMips"), GFX::PushConstantType::UINT, screenMipCount);
-    _constantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+    _constantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });

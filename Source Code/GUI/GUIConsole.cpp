@@ -48,7 +48,7 @@ GUIConsole::~GUIConsole()
     if (_consoleWindow) {
         setVisible(false);
         _init = false;
-        _parent.getCEGUIContext().getRootWindow()->removeChild(_consoleWindow);
+        _parent.getCEGUIContext()->getRootWindow()->removeChild(_consoleWindow);
         CEGUI::WindowManager::getSingletonPtr()->destroyWindow(_consoleWindow);
     }
 
@@ -65,7 +65,7 @@ void GUIConsole::createCEGUIWindow() {
 
     if (_consoleWindow) {
         // Add the Window to the GUI Root Sheet
-        _parent.getCEGUIContext().getRootWindow()->addChild(_consoleWindow);
+        _parent.getCEGUIContext()->getRootWindow()->addChild(_consoleWindow);
         _outputWindow = static_cast<CEGUI::Listbox*>(_consoleWindow->getChild("ChatBox"));
         _editBox = static_cast<CEGUI::Editbox*>(_consoleWindow->getChild("EditBox"));
         // Now register the handlers for the events (Clicking, typing, etc)

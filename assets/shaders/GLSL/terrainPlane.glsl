@@ -3,7 +3,7 @@
 #include "vbInputData.vert"
 
 #if !defined(PRE_PASS)
-layout(location = 0) out vec4 _scrollingUV;
+layout(location = ATTRIB_FREE_START + 0) out vec4 _scrollingUV;
 #endif //!PRE_PASS
 
 void main(void) {
@@ -28,7 +28,7 @@ layout(early_fragment_tests) in;
 #if defined(PRE_PASS)
 #include "prePass.frag"
 #else //PRE_PASS
-layout(location = 0) in vec4 _scrollingUV;
+layout(location = ATTRIB_FREE_START + 0) in vec4 _scrollingUV;
 
 #include "nodeBufferedInput.cmn"
 #include "output.frag"

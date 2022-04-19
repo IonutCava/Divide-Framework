@@ -492,7 +492,7 @@ void ShadowMap::setDebugViewLight(GFXDevice& context, Light* light) {
 
                 ShaderProgramDescriptor shaderDescriptor = {};
                 shaderDescriptor._modules.push_back(vertModule);
-                shaderDescriptor._modules.back()._defines.emplace_back("SPLAT_R_CHANNEL", true);
+                shaderDescriptor._modules.back()._defines.emplace_back("SPLAT_R_CHANNEL");
                 shaderDescriptor._modules.push_back(fragModule);
 
                 ResourceDescriptor shadowPreviewShader("fbPreview.Cube.Shadow");

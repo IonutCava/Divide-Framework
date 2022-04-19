@@ -47,6 +47,9 @@ ResourcePath Paths::Shaders::g_cacheLocation;
 ResourcePath Paths::Shaders::g_cacheLocationText;
 ResourcePath Paths::Shaders::g_cacheLocationBin;
 
+Str8 Paths::Shaders::g_SPIRVExt;
+ResourcePath Paths::Shaders::g_SPIRVShaderLoc;
+
 // these must match the last 4 characters of the atom file
 Str8 Paths::Shaders::GLSL::g_fragAtomExt;
 Str8 Paths::Shaders::GLSL::g_vertAtomExt;
@@ -56,8 +59,7 @@ Str8 Paths::Shaders::GLSL::g_teseAtomExt;
 Str8 Paths::Shaders::GLSL::g_compAtomExt;
 Str8 Paths::Shaders::GLSL::g_comnAtomExt;
 
-// Shader subfolder name that contains shader files for OpenGL
-ResourcePath Paths::Shaders::GLSL::g_parentShaderLoc;
+ResourcePath Paths::Shaders::GLSL::g_GLSLShaderLoc;
 // Atom folder names in parent shader folder
 ResourcePath Paths::Shaders::GLSL::g_fragAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_vertAtomLoc;
@@ -66,8 +68,6 @@ ResourcePath Paths::Shaders::GLSL::g_tescAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_teseAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_compAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_comnAtomLoc;
-
-ResourcePath Paths::Shaders::HLSL::g_parentShaderLoc;
 
 regexNamespace::regex Paths::g_includePattern;
 regexNamespace::regex Paths::g_definePattern;
@@ -113,6 +113,9 @@ void Paths::initPaths(const SysInfo& info) {
     Shaders::g_cacheLocationText = Shaders::g_cacheLocation + "Text/";
     Shaders::g_cacheLocationBin = Shaders::g_cacheLocation + "Binary/";
 
+    Shaders::g_SPIRVExt = "spv";
+    Shaders::g_SPIRVShaderLoc = ResourcePath("SPIRV/");
+
     // these must match the last 4 characters of the atom file
     Shaders::GLSL::g_fragAtomExt = "frag";
     Shaders::GLSL::g_vertAtomExt = "vert";
@@ -120,10 +123,9 @@ void Paths::initPaths(const SysInfo& info) {
     Shaders::GLSL::g_tescAtomExt = "tesc";
     Shaders::GLSL::g_teseAtomExt = "tese";
     Shaders::GLSL::g_compAtomExt = "comp";
-    Shaders::GLSL::g_comnAtomExt = ".cmn";
+    Shaders::GLSL::g_comnAtomExt = "cmn";
 
-    // Shader subfolder name that contains shader files for OpenGL
-    Shaders::GLSL::g_parentShaderLoc = ResourcePath("GLSL/");
+    Shaders::GLSL::g_GLSLShaderLoc = ResourcePath("GLSL/");
     // Atom folder names in parent shader folder
     Shaders::GLSL::g_fragAtomLoc = ResourcePath("fragmentAtoms/");
     Shaders::GLSL::g_vertAtomLoc = ResourcePath("vertexAtoms/");
@@ -132,8 +134,6 @@ void Paths::initPaths(const SysInfo& info) {
     Shaders::GLSL::g_teseAtomLoc = ResourcePath("tessellationEAtoms/");
     Shaders::GLSL::g_compAtomLoc = ResourcePath("computeAtoms/");
     Shaders::GLSL::g_comnAtomLoc = ResourcePath("common/");
-
-    Shaders::HLSL::g_parentShaderLoc = ResourcePath("HLSL/");
 
     g_includePattern = regexNamespace::regex(R"(^\s*#\s*include\s+["<]([^">]+)*[">])");
     g_definePattern = regexNamespace::regex(R"(([#!][A-z]{2,}[\s]{1,}?([A-z]{2,}[\s]{1,}?)?)([\\(]?[^\s\\)]{1,}[\\)]?)?)");

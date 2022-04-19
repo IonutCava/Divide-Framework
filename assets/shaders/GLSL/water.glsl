@@ -4,8 +4,8 @@
 #include "vbInputData.vert"
 #include "lightingDefaults.vert"
 
-layout(location = 0) out flat int _underwater;
-layout(location = 1) out vec4 _vertexWVP;
+layout(location = ATTRIB_FREE_START + 0) out flat int _underwater;
+layout(location = ATTRIB_FREE_START + 1) out vec4 _vertexWVP;
 
 void main(void)
 {
@@ -20,8 +20,8 @@ void main(void)
 
 -- Fragment
 
-layout(location = 0) in flat int _underwater;
-layout(location = 1) in vec4 _vertexWVP;
+layout(location = ATTRIB_FREE_START + 0) in flat int _underwater;
+layout(location = ATTRIB_FREE_START + 1) in vec4 _vertexWVP;
 
 uniform vec3 _refractionTint;
 uniform vec3 _waterDistanceFogColour;

@@ -1,9 +1,9 @@
 -- Fragment.BloomApply
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texScreen;
-layout(binding = TEXTURE_UNIT1) uniform sampler2D texBloom;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D texBloom;
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
 void main() {
     vec3 hdrColour = texture(texScreen, VAR._texCoord).rgb;
@@ -13,13 +13,13 @@ void main() {
 
 -- Fragment.BloomCalc
 
-out vec4 _bloomOut;
+layout(location = 0) out vec4 _bloomOut;
 
 uniform float luminanceThreshold;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
 
-void main() {    
+void main() {
     vec4 screenColour = texture(texScreen, VAR._texCoord);
     if (dot(screenColour.rgb, vec3(0.2126f, 0.7152f, 0.0722f)) > luminanceThreshold) {
         _bloomOut = screenColour;

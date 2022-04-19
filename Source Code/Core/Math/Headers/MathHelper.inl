@@ -812,15 +812,16 @@ constexpr T SecondsToNanoseconds(const U a) noexcept {
 namespace Util {
 
 /// a la Boost
-template <typename T>
-void Hash_combine(size_t& seed, const T& v) {
-    eastl::hash<T> hasher;
-    seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-}
+template<typename T, typename... Rest>
+void Hash_combine(std::size_t& seed, const T& v, const Rest&... rest) {
+    seed ^= std::hash<T>{}(v)+0x9e3779b9 + (seed << 6) + (seed >> 2);
+    (Hash_combine(seed, rest), ...);
+};
 
-template<>
-FORCE_INLINE void Hash_combine(size_t& seed, const size_t& v) noexcept {
+template<typename... Rest>
+FORCE_INLINE void Hash_combine(size_t& seed, const size_t& v, const Rest&... rest) noexcept {
     seed ^= v + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    (Hash_combine(seed, rest), ...);
 }
 
 // U = to data type, T = from data type

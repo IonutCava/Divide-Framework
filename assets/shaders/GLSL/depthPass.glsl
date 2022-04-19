@@ -36,7 +36,7 @@ void main() {
 #include "materialData.frag"
 #endif //USE_ALPHA_DISCARD
 #include "vsm.frag"
-out vec2 _colourOut;
+layout(location = 0) out vec2 _colourOut;
 
 void main() {
 #if defined(USE_ALPHA_DISCARD)
@@ -53,13 +53,13 @@ void main() {
 
 #include "utility.frag"
 
-layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepth;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH) uniform sampler2D texDepth;
 
-//r - ssao, g - linear depth
-out float _output;
+//linear depth
+layout(location = 0) out float _output;
 
-uniform vec2 zPlanes;
+uniform vec2 _zPlanes;
 
 void main() {
-    _output = ToLinearDepth(texture(texDepth, VAR._texCoord).r, zPlanes);
+    _output = ToLinearDepth(texture(texDepth, VAR._texCoord).r, _zPlanes);
 }

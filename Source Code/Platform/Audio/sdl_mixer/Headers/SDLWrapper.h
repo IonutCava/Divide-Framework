@@ -35,6 +35,9 @@
 
 #include "Platform/Audio/Headers/AudioAPIWrapper.h"
 
+typedef struct _Mix_Music Mix_Music;
+struct Mix_Chunk;
+
 namespace Divide {
 
 class SDL_API final : public AudioAPIWrapper {
@@ -48,7 +51,7 @@ public:
     void playSound(const AudioDescriptor_ptr& sound) override;
     void playMusic(const AudioDescriptor_ptr& music) override;
 
-    void stopMusic() noexcept override { Mix_HaltMusic(); }
+    void stopMusic() noexcept override;
     void stopAllSounds() noexcept override {}
     void pauseMusic() noexcept override {}
 

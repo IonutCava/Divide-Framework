@@ -266,24 +266,24 @@ size_t RenderStateBlock::getHash() const {
 
     const size_t previousCache = Hashable::getHash();
     _hash = 59;
-    Util::Hash_combine(_hash, _colourWrite.i);
-    Util::Hash_combine(_hash, to_U32(_cullMode));
-    Util::Hash_combine(_hash, _depthTestEnabled);
-    Util::Hash_combine(_hash, to_U32(_zFunc));
-    Util::Hash_combine(_hash, zBias);
-    Util::Hash_combine(_hash, zUnits);
-    Util::Hash_combine(_hash, _scissorTestEnabled);
-    Util::Hash_combine(_hash, _stencilEnable);
-    Util::Hash_combine(_hash, _stencilRef);
-    Util::Hash_combine(_hash, _stencilMask);
-    Util::Hash_combine(_hash, _stencilWriteMask);
-    Util::Hash_combine(_hash, _frontFaceCCW);
-    Util::Hash_combine(_hash, to_U32(_stencilFailOp));
-    Util::Hash_combine(_hash, to_U32(_stencilZFailOp));
-    Util::Hash_combine(_hash, to_U32(_stencilPassOp));
-    Util::Hash_combine(_hash, to_U32(_stencilFunc));
-    Util::Hash_combine(_hash, to_U32(_fillMode));
-    Util::Hash_combine(_hash, _tessControlPoints);
+    Util::Hash_combine(_hash, _colourWrite.i,
+                              to_U32(_cullMode),
+                              _depthTestEnabled,
+                              to_U32(_zFunc),
+                              zBias,
+                              zUnits,
+                              _scissorTestEnabled,
+                              _stencilEnable,
+                              _stencilRef,
+                              _stencilMask,
+                              _stencilWriteMask,
+                              _frontFaceCCW,
+                              to_U32(_stencilFailOp),
+                              to_U32(_stencilZFailOp),
+                              to_U32(_stencilPassOp),
+                              to_U32(_stencilFunc),
+                              to_U32(_fillMode),
+                              _tessControlPoints);
 
     if (previousCache != _hash) {
         ScopedLock<SharedMutex> w_lock(s_stateBlockMapMutex);

@@ -4,11 +4,11 @@
 #include "vbInputData.vert"
 #include "lightingDefaults.vert"
 
-layout(location = 10) out vec4 vSunDirection; // vSunDirection.a = sunFade
-layout(location = 11) out vec4 vSunColour;  // vSunColour.a = vSunE
-layout(location = 12) out vec3 vAmbient;
-layout(location = 13) out vec3 vBetaR;
-layout(location = 14) out vec3 vBetaM;
+layout(location = ATTRIB_FREE_START + 0) out vec4 vSunDirection; // vSunDirection.a = sunFade
+layout(location = ATTRIB_FREE_START + 1) out vec4 vSunColour;  // vSunColour.a = vSunE
+layout(location = ATTRIB_FREE_START + 2) out vec3 vAmbient;
+layout(location = ATTRIB_FREE_START + 3) out vec3 vBetaR;
+layout(location = ATTRIB_FREE_START + 4) out vec3 vBetaM;
 
 void main(void){
     const NodeTransformData data = fetchInputData();
@@ -46,13 +46,13 @@ uniform float dvd_atmosphereOffset;
 uniform float dvd_MieCoeff;
 uniform float dvd_RayleighScale;
 uniform float dvd_MieScaleHeight;
-uniform bool  dvd_enableClouds;
+uniform uint  dvd_enableClouds;
 
-layout(location = 10) out vec4 vSunDirection; // vSunDirection.a = sunFade
-layout(location = 11) out vec4 vSunColour;  // vSunColour.a = vSunE
-layout(location = 12) out vec3 vAmbient;
-layout(location = 13) out vec3 vBetaR;
-layout(location = 14) out vec3 vBetaM;
+layout(location = ATTRIB_FREE_START + 0) out vec4 vSunDirection; // vSunDirection.a = sunFade
+layout(location = ATTRIB_FREE_START + 1) out vec4 vSunColour;  // vSunColour.a = vSunE
+layout(location = ATTRIB_FREE_START + 2) out vec3 vAmbient;
+layout(location = ATTRIB_FREE_START + 3) out vec3 vBetaR;
+layout(location = ATTRIB_FREE_START + 4) out vec3 vBetaM;
 
 // Mostly Preetham model stuff here
 #define UP_DIR WORLD_Y_AXIS
@@ -246,7 +246,6 @@ void main() {
 
     ray = ray_t(vec3(0.f, dvd_planetRadius + 1.f, 0.f), normalize(vec3(0.4f, 0.1f, 0.f)));
     vAmbient = getIncidentLight(ray, vSunDirection.xyz);
-
     vSunDirection.a = vSunFade;
     vSunColour.a = vSunE;
 }
@@ -259,17 +258,17 @@ layout(early_fragment_tests) in;
 
 #define NO_VELOCITY
 
-layout(location = 10) in vec4 vSunDirection; //vSunDirection.a = sun fade
-layout(location = 11) in vec4 vSunColour; // vSunColour.a = vSunE
-layout(location = 12) in vec3 vAmbient;
-layout(location = 13) in vec3 vBetaR;
-layout(location = 14) in vec3 vBetaM;
+layout(location = ATTRIB_FREE_START + 0) in vec4 vSunDirection; //vSunDirection.a = sun fade
+layout(location = ATTRIB_FREE_START + 1) in vec4 vSunColour; // vSunColour.a = vSunE
+layout(location = ATTRIB_FREE_START + 2) in vec3 vAmbient;
+layout(location = ATTRIB_FREE_START + 3) in vec3 vBetaR;
+layout(location = ATTRIB_FREE_START + 4) in vec3 vBetaM;
 
-layout(binding = TEXTURE_UNIT0)     uniform samplerCubeArray texSky;
-layout(binding = TEXTURE_HEIGHTMAP) uniform sampler2DArray weather;
-layout(binding = TEXTURE_UNIT1)     uniform sampler2DArray curl;
-layout(binding = TEXTURE_SPECULAR)  uniform sampler3D worl;
-layout(binding = TEXTURE_NORMALMAP) uniform sampler3D perlworl;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0)     uniform samplerCubeArray texSky;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_HEIGHTMAP) uniform sampler2DArray weather;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1)     uniform sampler2DArray curl;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SPECULAR)  uniform sampler3D worl;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_NORMALMAP) uniform sampler3D perlworl;
 
 uniform vec3 dvd_nightSkyColour;
 uniform vec3 dvd_moonColour;
@@ -287,7 +286,7 @@ uniform float dvd_atmosphereOffset;
 uniform float dvd_MieCoeff;
 uniform float dvd_RayleighScale;
 uniform float dvd_MieScaleHeight;
-uniform bool  dvd_enableClouds;
+uniform uint  dvd_enableClouds;
 
 #define dvd_useDaySkybox (dvd_useSkyboxes.x == 1)
 #define dvd_useNightSkybox (dvd_useSkyboxes.y == 1)
@@ -313,12 +312,12 @@ float sky_t_radius = 0.f;
 #define ONE_OVER_FOURPI 0.07957747154594767
 
 vec3 U2Tone(const vec3 x) {
-    const float A = 0.15;
-    const float B = 0.50;
-    const float C = 0.10;
-    const float D = 0.20;
-    const float E = 0.02;
-    const float F = 0.30;
+    const float A = 0.15f;
+    const float B = 0.50f;
+    const float C = 0.10f;
+    const float D = 0.20f;
+    const float E = 0.02f;
+    const float F = 0.30f;
 
     return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
 }
@@ -640,6 +639,7 @@ vec3 computeClouds(in vec3 rayDirection, in vec3 skyColour, in float lerpValue) 
         const vec3 end = camPos + rayDirection * intersectSphere(camPos, rayDirection, sky_t_radius);
 
         const float t_dist = sky_t_radius - sky_b_radius;
+
         const float shelldist = (length(end - start));
         const float steps = (mix(96.f, 54.f, dot(rayDirection, UP_DIR)));
         const float dmod = smoothstep(0.f, 1.f, (shelldist / t_dist) / 14.f);
@@ -648,7 +648,7 @@ vec3 computeClouds(in vec3 rayDirection, in vec3 skyColour, in float lerpValue) 
         const vec3 raystep = rayDirection * s_dist;
 
         vec4 volume = march(cloudColour, cloudAmbient, start, end, raystep, int(steps));
-        volume.xyz = sqrt(U2Tone(volume.xyz) * cwhiteScale);
+        volume.xyz = sqrt(abs(U2Tone(volume.xyz) * cwhiteScale));
 
         const vec3 background = volume.a < 0.99f ? skyColour : vec3(0.f);
         return vec3(background * (1.f - volume.a) + volume.xyz * volume.a);
@@ -668,7 +668,7 @@ vec3 getRawAlbedo(in vec3 rayDirection, in float lerpValue) {
 
 vec3 atmosphereColour(in vec3 rayDirection, in float lerpValue) {
     const vec3 skyColour = getSkyColour(rayDirection, lerpValue);
-    return dvd_enableClouds ? computeClouds(rayDirection, skyColour, lerpValue) : skyColour;
+    return dvd_enableClouds != 0u ? computeClouds(rayDirection, skyColour, lerpValue) : skyColour;
 }
 
 void main() {

@@ -18,107 +18,115 @@ GUIButton::GUIButton(const string& name,
 {
     
     static string buttonInfo = guiScheme + "/Button";
+    if (parent != nullptr) {
+        _btnWindow = CEGUI::WindowManager::getSingleton().createWindow(buttonInfo.c_str(), name.c_str());
 
-    _btnWindow = CEGUI::WindowManager::getSingleton().createWindow(buttonInfo.c_str(), name.c_str());
+        _btnWindow->setPosition(offset);
 
-    _btnWindow->setPosition(offset);
+        _btnWindow->setSize(size);
 
-    _btnWindow->setSize(size);
-
-    _btnWindow->setText(text.c_str());
+        _btnWindow->setText(text.c_str());
 
 
-    _connections[to_base(Event::MouseMove)] =
-    _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseMove,
-                               CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
-                                    return onEvent(Event::MouseMove, e);
-                               }));
+        _connections[to_base(Event::MouseMove)] =
+        _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseMove,
+                                   CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
+                                        return onEvent(Event::MouseMove, e);
+                                   }));
 
-    _connections[to_base(Event::HoverEnter)] =
-    _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
-                               CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
-                                    return onEvent(Event::HoverEnter, e);
-                               }));
+        _connections[to_base(Event::HoverEnter)] =
+        _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
+                                   CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
+                                        return onEvent(Event::HoverEnter, e);
+                                   }));
 
-    _connections[to_base(Event::HoverLeave)] =
-    _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
-                               CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
-                                    return onEvent(Event::HoverLeave, e);
-                                }));
+        _connections[to_base(Event::HoverLeave)] =
+        _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
+                                   CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
+                                        return onEvent(Event::HoverLeave, e);
+                                    }));
 
-    _connections[to_base(Event::MouseDown)] =
-    _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseButtonDown,
-                               CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
-                                    return onEvent(Event::MouseDown, e);
-                                }));
+        _connections[to_base(Event::MouseDown)] =
+        _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseButtonDown,
+                                   CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
+                                        return onEvent(Event::MouseDown, e);
+                                    }));
 
-    _connections[to_base(Event::MouseUp)] =
-    _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseButtonUp,
-                               CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
-                                    return onEvent(Event::MouseUp, e);
-                                }));
+        _connections[to_base(Event::MouseUp)] =
+        _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseButtonUp,
+                                   CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
+                                        return onEvent(Event::MouseUp, e);
+                                    }));
 
-    _connections[to_base(Event::MouseClick)] =
-    _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseClick,
-                               CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
-                                    return onEvent(Event::MouseClick, e);
-                                }));
+        _connections[to_base(Event::MouseClick)] =
+        _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseClick,
+                                   CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
+                                        return onEvent(Event::MouseClick, e);
+                                    }));
 
-    _connections[to_base(Event::MouseDoubleClick)] =
-    _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseDoubleClick,
-                               CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
-                                    return onEvent(Event::MouseDoubleClick, e);
-                                }));
+        _connections[to_base(Event::MouseDoubleClick)] =
+        _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseDoubleClick,
+                                   CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
+                                        return onEvent(Event::MouseDoubleClick, e);
+                                    }));
 
-    _connections[to_base(Event::MouseTripleClick)] =
-    _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseDoubleClick,
-                               CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
-                                    return onEvent(Event::MouseTripleClick, e);
-                                }));
-    _parent->addChild(_btnWindow);
-
+        _connections[to_base(Event::MouseTripleClick)] =
+        _btnWindow->subscribeEvent(CEGUI::PushButton::EventMouseDoubleClick,
+                                   CEGUI::Event::Subscriber([this](const CEGUI::EventArgs& e) ->bool {
+                                        return onEvent(Event::MouseTripleClick, e);
+                                    }));
+        _parent->addChild(_btnWindow);
+    }
     active(true);
 }
 
 GUIButton::~GUIButton()
 {
-    _btnWindow->removeAllEvents();
-    _parent->removeChild(_btnWindow);
+    if (_btnWindow != nullptr) {
+        _btnWindow->removeAllEvents();
+        _parent->removeChild(_btnWindow);
+    }
 }
 
 void GUIButton::active(const bool& active) noexcept {
-    if (GUIElement::active() != active) {
+    if (_btnWindow != nullptr && GUIElement::active() != active) {
         GUIElement::active(active);
         _btnWindow->setEnabled(active);
     }
 }
 
 void GUIButton::visible(const bool& visible) noexcept {
-    if (GUIElement::visible() != visible) {
+    if (_btnWindow != nullptr && GUIElement::visible() != visible) {
         GUIElement::visible(visible);
         _btnWindow->setVisible(visible);
     }
 }
 
 void GUIButton::setText(const std::string_view& text) const {
-    _btnWindow->setText(CEGUI::String{ text.data(), text.length() });
+    if (_btnWindow != nullptr) {
+        _btnWindow->setText(CEGUI::String{ text.data(), text.length() });
+    }
 }
 
 void GUIButton::setTooltip(const string& tooltipText) {
-    _btnWindow->setTooltipText(tooltipText.c_str());
+    if (_btnWindow != nullptr) {
+        _btnWindow->setTooltipText(tooltipText.c_str());
+    }
 }
 
 void GUIButton::setFont(const string& fontName,
                         const string& fontFileName, const U32 size) const
 {
-    if (!fontName.empty()) {
-        if (!CEGUI::FontManager::getSingleton().isDefined(fontName.c_str())) {
-             CEGUI::FontManager::getSingleton().createFreeTypeFont(
-                fontName.c_str(), to_F32(size), true, fontFileName.c_str());
-        }
+    if (_btnWindow != nullptr) {
+        if (!fontName.empty()) {
+            if (!CEGUI::FontManager::getSingleton().isDefined(fontName.c_str())) {
+                CEGUI::FontManager::getSingleton().createFreeTypeFont(
+                    fontName.c_str(), to_F32(size), true, fontFileName.c_str());
+            }
 
-        if (CEGUI::FontManager::getSingleton().isDefined(fontName.c_str())) {
-            _btnWindow->setFont(fontName.c_str());
+            if (CEGUI::FontManager::getSingleton().isDefined(fontName.c_str())) {
+                _btnWindow->setFont(fontName.c_str());
+            }
         }
     }
 }

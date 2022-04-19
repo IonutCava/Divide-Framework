@@ -33,18 +33,18 @@ TextLabelStyle::TextLabelStyle(const char* font,
 size_t TextLabelStyle::getHash() const {
     const size_t previousHash = _hash;
     _hash = 17;
-    Util::Hash_combine(_hash, _font);
-    Util::Hash_combine(_hash, _fontSize);
-    Util::Hash_combine(_hash, _width);
-    Util::Hash_combine(_hash, _blurAmount);
-    Util::Hash_combine(_hash, _spacing);
-    Util::Hash_combine(_hash, _alignFlag);
-    Util::Hash_combine(_hash, _colour.r);
-    Util::Hash_combine(_hash, _colour.g);
-    Util::Hash_combine(_hash, _colour.b);
-    Util::Hash_combine(_hash, _colour.a);
-    Util::Hash_combine(_hash, _bold);
-    Util::Hash_combine(_hash, _italic);
+    Util::Hash_combine(_hash, _font,
+                              _fontSize,
+                              _width,
+                              _blurAmount,
+                              _spacing,
+                              _alignFlag,
+                              _colour.r,
+                              _colour.g,
+                              _colour.b,
+                              _colour.a,
+                              _bold,
+                              _italic);
 
     if (previousHash != _hash) {
         ScopedLock<SharedMutex> w_lock(s_textLableStyleMutex);

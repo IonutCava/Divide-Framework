@@ -82,6 +82,11 @@ U16 RenderTarget::getHeight() const noexcept {
 vec2<U16> RenderTarget::getResolution() const noexcept {
     return _descriptor._resolution;
 }
+
+vec2<F32> RenderTarget::getDepthRange() const noexcept {
+    return _descriptor._depthRange;
+}
+
 const Str64& RenderTarget::name() const noexcept {
     return _descriptor._name;
 }

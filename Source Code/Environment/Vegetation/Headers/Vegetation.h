@@ -44,8 +44,7 @@ namespace eastl {
     {
         size_t operator()(const Divide::vec2<Divide::F32>& a) const {
             size_t h = 17;
-            Divide::Util::Hash_combine(h, a.x);
-            Divide::Util::Hash_combine(h, a.y);
+            Divide::Util::Hash_combine(h, a.x, a.y);
             return h;
         }
     };

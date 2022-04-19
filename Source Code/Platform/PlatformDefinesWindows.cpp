@@ -30,6 +30,13 @@
 #pragma comment(lib, "vulkan-1.lib")
 
 #ifdef _DEBUG
+#pragma comment(lib, "SPIRVd.lib")
+#pragma comment(lib, "SPVRemapperd.lib")
+#pragma comment(lib, "glslangd.lib")
+#pragma comment(lib, "MachineIndependentd.lib")
+#pragma comment(lib, "GenericCodeGend.lib")
+#pragma comment(lib, "OSDependentd.lib")
+#pragma comment(lib, "OGLCompilerd.lib")
 #pragma comment(lib, "DbgHelp.lib")
 #pragma comment(lib, "glbindingd.lib")
 #pragma comment(lib, "glbinding-auxd.lib")
@@ -49,6 +56,13 @@
 #pragma comment(lib, "CEGUISTBImageCodec_d.lib")
 #pragma comment(lib, "CEGUITinyXMLParser_d.lib")
 #else  //_DEBUG
+#pragma comment(lib, "SPIRV.lib")
+#pragma comment(lib, "SPVRemapper.lib")
+#pragma comment(lib, "glslang.lib")
+#pragma comment(lib, "MachineIndependent.lib")
+#pragma comment(lib, "GenericCodeGen.lib")
+#pragma comment(lib, "OSDependent.lib")
+#pragma comment(lib, "OGLCompiler.lib")
 #pragma comment(lib, "glbinding.lib")
 #pragma comment(lib, "glbinding-aux.lib")
 #pragma comment(lib, "assimp-vc142-mt.lib")

@@ -8,7 +8,7 @@
 
 uniform mat4 inverseProjectionMatrix;
 uniform ivec4 viewport;
-uniform vec2 zPlanes;
+uniform vec2 _zPlanes;
 
 //Function prototypes
 vec3 screen2View(in vec4 screen);
@@ -31,8 +31,8 @@ float3 lineIntersectionToZPlane(float3 A, float3 B, float zDistance)
 layout(local_size_x = CLUSTERS_X_THREADS, local_size_y = CLUSTERS_Y_THREADS, local_size_z = CLUSTERS_Z_THREADS) in;
 void main() {
     //Shared between all clusters
-    const float zNear = zPlanes.x;
-    const float zFar = zPlanes.y;
+    const float zNear = _zPlanes.x;
+    const float zFar = _zPlanes.y;
 
     const vec3 eyePos = vec3(0.f);
 

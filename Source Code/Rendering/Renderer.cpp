@@ -229,7 +229,7 @@ void Renderer::prepareLighting(const RenderStage stage,
                 GFX::SendPushConstantsCommand pushConstantsCommands{};
                 pushConstantsCommands._constants.set(_ID("inverseProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
                 pushConstantsCommands._constants.set(_ID("viewport"), GFX::PushConstantType::IVEC4, context().gfx().getViewport());
-                pushConstantsCommands._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+                pushConstantsCommands._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
                 GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
                 GFX::EnqueueCommand(bufferInOut, pushConstantsCommands);

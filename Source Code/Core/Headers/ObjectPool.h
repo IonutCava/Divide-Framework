@@ -85,8 +85,7 @@ namespace eastl {
         size_t operator()(const Divide::PoolHandle& x) const noexcept
         {
             size_t h = 17;
-            Divide::Util::Hash_combine(h, x._generation);
-            Divide::Util::Hash_combine(h, x._id);
+            Divide::Util::Hash_combine(h, x._generation, x._id);
             return h;
         }
     };

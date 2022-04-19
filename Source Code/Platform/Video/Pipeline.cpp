@@ -9,10 +9,10 @@ namespace Divide {
 
 size_t GetHash(const PipelineDescriptor& descriptor) {
     size_t hash = descriptor._stateHash;
-    Util::Hash_combine(hash, descriptor._multiSampleCount);
-    Util::Hash_combine(hash, descriptor._shaderProgramHandle._generation);
-    Util::Hash_combine(hash, descriptor._shaderProgramHandle._id);
-    Util::Hash_combine(hash, descriptor._primitiveTopology);
+    Util::Hash_combine(hash, descriptor._multiSampleCount,
+                             descriptor._shaderProgramHandle._generation,
+                             descriptor._shaderProgramHandle._id,
+                             descriptor._primitiveTopology);
 
     for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i) {
         Util::Hash_combine(hash, i);

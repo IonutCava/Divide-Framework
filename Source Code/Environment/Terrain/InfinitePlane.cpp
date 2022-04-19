@@ -59,7 +59,7 @@ bool InfinitePlane::load() {
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
         vertModule._sourceFile = "terrainPlane.glsl";
-        vertModule._defines.emplace_back("UNDERWATER_TILE_SCALE 100", true);
+        vertModule._defines.emplace_back("UNDERWATER_TILE_SCALE 100");
 
         ShaderModuleDescriptor fragModule = {};
         fragModule._moduleType = ShaderType::FRAGMENT;

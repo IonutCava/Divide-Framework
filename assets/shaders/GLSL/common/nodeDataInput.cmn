@@ -41,7 +41,7 @@ out gl_PerVertex
 
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
 
-layout(binding = BUFFER_RENDER_BLOCK, std140) uniform dvd_RenderBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_RENDER_BLOCK, std140) uniform dvd_RenderBlock
 {
     mat4  dvd_PreviousViewMatrix;
     mat4  dvd_PreviousProjectionMatrix;
@@ -57,7 +57,7 @@ layout(binding = BUFFER_RENDER_BLOCK, std140) uniform dvd_RenderBlock
 #define dvd_ClipPlaneCount uint(dvd_renderProperties.w)
 
 #if !defined(NO_CAM_BLOCK)
-layout(binding = BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
 {
     mat4  dvd_ProjectionMatrix;
     mat4  dvd_InverseProjectionMatrix;
@@ -72,9 +72,12 @@ layout(binding = BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
     //x - nearPlane, y - farPlane, z - FoV, w - ortho camera
     vec4  dvd_camProperties;
     vec4  dvd_frustumPlanes[6];
-    vec4 _cam_padding[2];
+    //xy - depth range, zw - unused
+    vec4 dvd_renderTargetInfo;
+    vec4 _cam_padding;
 };
 
+#define DEPTH_RANGE dvd_renderTargetInfo.xy
 #define SHADOW_PASS_TYPE int(dvd_camProperties.w)
 #define CAMERA_FLAG SHADOW_PASS_TYPE
 

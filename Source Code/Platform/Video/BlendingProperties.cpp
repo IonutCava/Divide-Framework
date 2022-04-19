@@ -25,23 +25,24 @@ namespace Divide {
 
     [[nodiscard]] size_t GetHash(const BlendingSettings& properties) {
         size_t hash = 1337;
-        Util::Hash_combine(hash, properties.enabled());
-        Util::Hash_combine(hash, properties.blendSrc());
-        Util::Hash_combine(hash, properties.blendDest());
-        Util::Hash_combine(hash, properties.blendOp());
-        Util::Hash_combine(hash, properties.blendSrcAlpha());
-        Util::Hash_combine(hash, properties.blendDestAlpha());
-        Util::Hash_combine(hash, properties.blendOpAlpha());
+        Util::Hash_combine(hash, properties.enabled(),
+                                 properties.blendSrc(),
+                                 properties.blendDest(),
+                                 properties.blendOp(),
+                                 properties.blendSrcAlpha(),
+                                 properties.blendDestAlpha(),
+                                 properties.blendOpAlpha());
 
         return hash;
     }
 
     [[nodiscard]] size_t GetHash(const RTBlendStates& blendStates) {
         size_t hash = 1333377;
-        Util::Hash_combine(hash, blendStates._blendColour.r);
-        Util::Hash_combine(hash, blendStates._blendColour.g);
-        Util::Hash_combine(hash, blendStates._blendColour.b);
-        Util::Hash_combine(hash, blendStates._blendColour.a);
+        Util::Hash_combine(hash, blendStates._blendColour.r,
+                                 blendStates._blendColour.g,
+                                 blendStates._blendColour.b,
+                                 blendStates._blendColour.a);
+
         for (const BlendingSettings& state : blendStates._settings) {
             Util::Hash_combine(hash, GetHash(state));
         }

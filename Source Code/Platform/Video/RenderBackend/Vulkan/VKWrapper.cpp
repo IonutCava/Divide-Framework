@@ -10,6 +10,8 @@
 
 #include "vk-bootstrap/src/VkBootstrap.h"
 
+#include <sdl/include/SDL_vulkan.h>
+
 // ref (mostly everything): https://vkguide.dev/
 
 namespace vkInit{
@@ -634,14 +636,14 @@ namespace Divide {
 
     void VK_API::initPipelines() {
         VkShaderModule triangleFragShader;
-        if (!loadShaderModule((Paths::g_assetsLocation + Paths::g_shadersLocation + "/SPIRV/triangle.frag.spv").c_str(), &triangleFragShader)) {
+        if (!loadShaderModule((Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::g_SPIRVShaderLoc + "triangle.frag.spv").c_str(), &triangleFragShader)) {
             Console::errorfn("Error when building the triangle fragment shader module");
         } else {
             Console::printfn("Triangle fragment shader successfully loaded");
         }
 
         VkShaderModule triangleVertexShader;
-        if (!loadShaderModule((Paths::g_assetsLocation + Paths::g_shadersLocation + "/SPIRV/triangle.vert.spv").c_str(), &triangleVertexShader)) {
+        if (!loadShaderModule((Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::g_SPIRVShaderLoc + "triangle.vert.spv").c_str(), &triangleVertexShader)) {
             Console::errorfn("Error when building the triangle vertex shader module");
         } else {
             Console::printfn("Triangle vertex shader successfully loaded");

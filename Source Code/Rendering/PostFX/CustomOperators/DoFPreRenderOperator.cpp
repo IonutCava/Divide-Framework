@@ -32,13 +32,13 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     fragModule._moduleType = ShaderType::FRAGMENT;
     fragModule._sourceFile = "DepthOfField.glsl";
     //blur the depth buffer?
-    fragModule._defines.emplace_back("USE_DEPTH_BLUR", true);
+    fragModule._defines.emplace_back("USE_DEPTH_BLUR");
     //use noise instead of pattern for sample dithering
-    fragModule._defines.emplace_back("USER_NOISE", true);
+    fragModule._defines.emplace_back("USER_NOISE");
     //use pentagon as bokeh shape?
-    //fragModule._defines.emplace_back("USE_PENTAGON", true);
-    fragModule._defines.emplace_back(Util::StringFormat("RING_COUNT %d", g_ringCount).c_str(), true);
-    fragModule._defines.emplace_back(Util::StringFormat("FIRST_RING_SAMPLES %d", g_samplesOnFirstRing).c_str(), true);
+    //fragModule._defines.emplace_back("USE_PENTAGON");
+    fragModule._defines.emplace_back(Util::StringFormat("RING_COUNT %d", g_ringCount));
+    fragModule._defines.emplace_back(Util::StringFormat("FIRST_RING_SAMPLES %d", g_samplesOnFirstRing));
 
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
@@ -98,7 +98,7 @@ void DoFPreRenderOperator::reshape(const U16 width, const U16 height) {
 bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
     const vec2<F32>& zPlanes = cameraSnapshot._zPlanes;
     if (_cachedZPlanes != zPlanes) {
-        _constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, zPlanes);
+        _constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, zPlanes);
 
         _cachedZPlanes = zPlanes;
         _constantsDirty = true;

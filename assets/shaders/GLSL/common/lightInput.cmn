@@ -29,7 +29,7 @@ struct Light {
 #define _SHADOW_INDEX _options.y
 #define _SPOT_CONE_SLANT_HEIGHT _options.z
 
-layout(binding = BUFFER_LIGHT_NORMAL, std430) coherent ACCESS_R buffer dvd_LightBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_LIGHT_NORMAL, std430) coherent ACCESS_R buffer dvd_LightBlock
 {
     Light dvd_LightSource[];
     //RenderDoc: vec3 colour; float cosOuterCone; vec3 positionWV; float range; vec3 directionWV; float spotAngle; int lightType; int castsShadows; ivec2 null;
@@ -50,7 +50,7 @@ vec4 getPositionAndRangeForLight(in Light source) {
     return returnValue;
 }
 
-layout(binding = BUFFER_LIGHT_SCENE, std140) uniform dvd_LightSceneDataBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_LIGHT_SCENE, std140) uniform dvd_LightSceneDataBlock
 {
     // x = directional light count, y = point light count, z = spot light count, w = unused
     uvec4 dvd_LightData;
@@ -68,7 +68,7 @@ layout(binding = BUFFER_LIGHT_SCENE, std140) uniform dvd_LightSceneDataBlock
 #define LIGHT_TYPE_COUNT 2
 
 #if defined(FRAG_SHADER) || defined(COMPUTE_SHADER)
-layout(binding = BUFFER_LIGHT_GRID, std430)  COMP_ONLY_W buffer lightGridSSBO
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_LIGHT_GRID, std430)  COMP_ONLY_W buffer lightGridSSBO
 {
     uvec4 lightGrid[];
 };
@@ -79,7 +79,7 @@ layout(binding = BUFFER_LIGHT_GRID, std430)  COMP_ONLY_W buffer lightGridSSBO
 #define _countPoint z
 #define _countSpot w
 
-layout(binding = BUFFER_LIGHT_INDICES, std430) COMP_ONLY_W buffer lightIndexSSBO {
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_LIGHT_INDICES, std430) COMP_ONLY_W buffer lightIndexSSBO {
     uint globalLightIndexList[];
 };
 
@@ -94,14 +94,14 @@ struct VolumeTileAABB
 #else //COMPUTE_LIGHT_CLUSTERS
 #define LIGHT_CLUSTER_ACCESS COMP_ONLY_R
 #endif
-layout(binding = BUFFER_LIGHT_CLUSTER_AABBS, std430) LIGHT_CLUSTER_ACCESS buffer lightClusterAABBsBuffer
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_LIGHT_CLUSTER_AABBS, std430) LIGHT_CLUSTER_ACCESS buffer lightClusterAABBsBuffer
 {
     VolumeTileAABB lightClusterAABBs[];
 };
 
 #if !defined(COMPUTE_SHADER)
 
-float ToLinearDepth(in float depthIn, in vec2 depthRange);
+float ToLinearDepth(in float depthIn, in vec2 depthRangeIn);
 
 // cluster depth index from depth in screen coordinates (gl_FragCoord.z)
 uint GetClusterZIndex(in float screenDepth) {

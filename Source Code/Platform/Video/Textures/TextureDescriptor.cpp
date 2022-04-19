@@ -48,21 +48,21 @@ namespace Divide {
 
     size_t SamplerDescriptor::getHash() const {
         size_t tempHash = 59;
-        Util::Hash_combine(tempHash, to_U32(_cmpFunc));
-        Util::Hash_combine(tempHash, _useRefCompare);
-        Util::Hash_combine(tempHash, to_U32(_wrapU));
-        Util::Hash_combine(tempHash, to_U32(_wrapV));
-        Util::Hash_combine(tempHash, to_U32(_wrapW));
-        Util::Hash_combine(tempHash, to_U32(_minFilter));
-        Util::Hash_combine(tempHash, to_U32(_magFilter));
-        Util::Hash_combine(tempHash, _minLOD);
-        Util::Hash_combine(tempHash, _maxLOD);
-        Util::Hash_combine(tempHash, _biasLOD);
-        Util::Hash_combine(tempHash, _anisotropyLevel);
-        Util::Hash_combine(tempHash, _borderColour.r);
-        Util::Hash_combine(tempHash, _borderColour.g);
-        Util::Hash_combine(tempHash, _borderColour.b);
-        Util::Hash_combine(tempHash, _borderColour.a);
+        Util::Hash_combine(tempHash, to_U32(_cmpFunc),
+                                     _useRefCompare,
+                                     to_U32(_wrapU),
+                                     to_U32(_wrapV),
+                                     to_U32(_wrapW),
+                                     to_U32(_minFilter),
+                                     to_U32(_magFilter),
+                                     _minLOD,
+                                     _maxLOD,
+                                     _biasLOD,
+                                     _anisotropyLevel,
+                                     _borderColour.r,
+                                     _borderColour.g,
+                                     _borderColour.b,
+                                     _borderColour.a);
         if (tempHash != _hash) {
             ScopedLock<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
             insert(s_samplerDescriptorMap, tempHash, *this);
@@ -101,23 +101,23 @@ namespace Divide {
     size_t TextureDescriptor::getHash() const {
         _hash = PropertyDescriptor::getHash();
 
-        Util::Hash_combine(_hash, _layerCount);
-        Util::Hash_combine(_hash, _mipBaseLevel);
-        Util::Hash_combine(_hash, to_base(_mipMappingState));
-        Util::Hash_combine(_hash, _msaaSamples);
-        Util::Hash_combine(_hash, to_U32(_dataType));
-        Util::Hash_combine(_hash, to_U32(_baseFormat));
-        Util::Hash_combine(_hash, to_U32(_texType));
-        Util::Hash_combine(_hash, _srgb);
-        Util::Hash_combine(_hash, _normalized);
-        Util::Hash_combine(_hash, _textureOptions._alphaChannelTransparency);
-        Util::Hash_combine(_hash, _textureOptions._fastCompression);
-        Util::Hash_combine(_hash, _textureOptions._isNormalMap);
-        Util::Hash_combine(_hash, _textureOptions._mipFilter);
-        Util::Hash_combine(_hash, _textureOptions._skipMipMaps);
-        Util::Hash_combine(_hash, _textureOptions._outputFormat);
-        Util::Hash_combine(_hash, _textureOptions._outputSRGB);
-        Util::Hash_combine(_hash, _textureOptions._useDDSCache);
+        Util::Hash_combine(_hash, _layerCount,
+                                  _mipBaseLevel,
+                                  to_base(_mipMappingState),
+                                  _msaaSamples,
+                                  to_U32(_dataType),
+                                  to_U32(_baseFormat),
+                                  to_U32(_texType),
+                                  _srgb,
+                                  _normalized,
+                                  _textureOptions._alphaChannelTransparency,
+                                  _textureOptions._fastCompression,
+                                  _textureOptions._isNormalMap,
+                                  _textureOptions._mipFilter,
+                                  _textureOptions._skipMipMaps,
+                                  _textureOptions._outputFormat,
+                                  _textureOptions._outputSRGB,
+                                  _textureOptions._useDDSCache);
 
         return _hash;
     }

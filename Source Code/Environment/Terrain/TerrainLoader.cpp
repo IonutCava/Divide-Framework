@@ -370,7 +370,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         geomModule._sourceFile = "terrainTess.glsl";
 
         ShaderModuleDescriptor fragModule = {};
-        fragModule._batchSameFile = false;
         fragModule._moduleType = ShaderType::FRAGMENT;
         fragModule._sourceFile = "terrainTess.glsl";
 
@@ -392,24 +391,24 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
             if (wMode != Terrain::WireframeMode::NONE) {
                 if (hasGeometryPass) {
                     shaderPropName += ".DebugView";
-                    shaderModule._defines.emplace_back("TOGGLE_DEBUG", true);
+                    shaderModule._defines.emplace_back("TOGGLE_DEBUG");
                 }
 
                 if (wMode == Terrain::WireframeMode::EDGES) {
                     shaderPropName += ".WireframeView";
-                    shaderModule._defines.emplace_back("TOGGLE_WIREFRAME", true);
+                    shaderModule._defines.emplace_back("TOGGLE_WIREFRAME");
                 } else if (wMode == Terrain::WireframeMode::NORMALS) {
                     shaderPropName += ".PreviewNormals";
-                    shaderModule._defines.emplace_back("TOGGLE_NORMALS", true);
+                    shaderModule._defines.emplace_back("TOGGLE_NORMALS");
                 } else if (wMode == Terrain::WireframeMode::LODS) {
                     shaderPropName += ".PreviewLoDs";
-                    shaderModule._defines.emplace_back("TOGGLE_LODS", true);
+                    shaderModule._defines.emplace_back("TOGGLE_LODS");
                 } else if (wMode == Terrain::WireframeMode::TESS_LEVELS) {
                     shaderPropName += ".PreviewTessLevels";
-                    shaderModule._defines.emplace_back("TOGGLE_TESS_LEVEL", true);
+                    shaderModule._defines.emplace_back("TOGGLE_TESS_LEVEL");
                 } else if (wMode == Terrain::WireframeMode::BLEND_MAP) {
                     shaderPropName += ".PreviewBlendMap";
-                    shaderModule._defines.emplace_back("TOGGLE_BLEND_MAP", true);
+                    shaderModule._defines.emplace_back("TOGGLE_BLEND_MAP");
                 }
             }
 
@@ -423,7 +422,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                 if (shaderModule._moduleType == ShaderType::FRAGMENT) {
                     shaderModule._variant = "Shadow.VSM";
                 }
-                shaderModule._defines.emplace_back("MAX_TESS_LEVEL 32", true);
+                shaderModule._defines.emplace_back("MAX_TESS_LEVEL 32");
             }
             shaderDescriptor._name = "Terrain_ShadowVSM-" + name + propName;
         } else if (stagePass._stage == RenderStage::DISPLAY) {
@@ -432,7 +431,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
             if (hasParallax) {
                 for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
                     if (shaderModule._moduleType == ShaderType::FRAGMENT) {
-                        shaderModule._defines.emplace_back("HAS_PARALLAX", true);
+                        shaderModule._defines.emplace_back("HAS_PARALLAX");
                         break;
                     }
                 }
@@ -442,7 +441,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                     if (shaderModule._moduleType == ShaderType::FRAGMENT) {
                         shaderModule._variant = "PrePass";
                     }
-                    shaderModule._defines.emplace_back("PRE_PASS", true);
+                    shaderModule._defines.emplace_back("PRE_PASS");
                 }
                 shaderDescriptor._name = "Terrain_PrePass-" + name + propName + (hasParallax ? ".Parallax" : "");
             } else {
@@ -453,8 +452,8 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                 shaderDescriptor._modules.pop_back(); //No frag shader
 
                 for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
-                    shaderModule._defines.emplace_back("LOW_QUALITY", true);
-                    shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
+                    shaderModule._defines.emplace_back("LOW_QUALITY");
+                    shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16");
                 }
 
                 shaderDescriptor._name = "Terrain_PrePass_LowQuality-" + name + propName;
@@ -464,10 +463,10 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                         shaderModule._variant = "LQPass";
                     }
 
-                    shaderModule._defines.emplace_back("LOW_QUALITY", true);
-                    shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16", true);
+                    shaderModule._defines.emplace_back("LOW_QUALITY");
+                    shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16");
                     if (stagePass._stage == RenderStage::REFLECTION) {
-                        shaderModule._defines.emplace_back("REFLECTION_PASS", true);
+                        shaderModule._defines.emplace_back("REFLECTION_PASS");
                     }
                 }
                 if (stagePass._stage == RenderStage::REFLECTION) {

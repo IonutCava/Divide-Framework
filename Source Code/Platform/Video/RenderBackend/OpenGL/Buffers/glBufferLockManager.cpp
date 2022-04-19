@@ -11,20 +11,6 @@ namespace {
     constexpr U32 g_LockFrameLifetime = 3u; //(APP->Driver->GPU)
 };
 
-std::atomic_bool glBufferLockManager::s_driverBusy;
-
-void glBufferLockManager::OnStartup() noexcept {
-    std::atomic_init(&s_driverBusy, false);
-}
-
-bool glBufferLockManager::DriverBusy() noexcept {
-    return s_driverBusy.load();
-}
-
-void glBufferLockManager::DriverBusy(const bool state) noexcept {
-    s_driverBusy.store(state);
-}
-
 glBufferLockManager::~glBufferLockManager()
 {
     const SharedLock<SharedMutex> r_lock(_lock);
@@ -41,8 +27,6 @@ bool glBufferLockManager::waitForLockedRange(size_t lockBeginBytes,
     OPTICK_EVENT();
     OPTICK_TAG("BlockClient", blockClient);
     OPTICK_TAG("QuickCheck", quickCheck);
-
-    WAIT_FOR_CONDITION(!(blockClient && DriverBusy()));
 
     const BufferRange testRange{lockBeginBytes, lockLength};
 
@@ -78,8 +62,7 @@ bool glBufferLockManager::waitForLockedRange(size_t lockBeginBytes,
             } break;
             case BufferLockState::ERROR: {
                 //DIVIDE_UNEXPECTED_CALL();
-                // Something is holding OpenGL in a busy state. Trace down the offending calls and surround them
-                // by a DriverBusy(true/false) pair
+                // Something is holding OpenGL in a busy state.
             } break;
         };
     }

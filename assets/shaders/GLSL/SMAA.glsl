@@ -2,10 +2,12 @@
 
 --Vertex.Weight
 
+#include "nodeDataInput.cmn"
+
 uniform int dvd_qualityMultiplier;
 
-layout(location = 0) out vec2 vPixCoord;
-layout(location = 1) out vec4 vOffset[3];
+layout(location = ATTRIB_FREE_START + 0) out vec2 vPixCoord;
+layout(location = ATTRIB_FREE_START + 1) out vec4 vOffset[3];
 
 const float SMAA_STEPS[] = { 4.f, 8.f, 16.f, 32.f, 64.f, 128.f, 256.f };
 
@@ -41,7 +43,9 @@ void main(void)
 
 -- Vertex.Blend
 
-layout(location = 0) out vec4 vOffset;
+#include "nodeDataInput.cmn"
+
+layout(location = ATTRIB_FREE_START + 0) out vec4 vOffset;
 
 void main(void)
 {
@@ -60,6 +64,8 @@ void main(void)
 }
 
 -- Fragment.Weight
+
+#include "nodeDataInput.cmn"
 
 uniform int dvd_qualityMultiplier;
 
@@ -90,14 +96,14 @@ int SMAA_MAX_SEARCH_STEPS_DIAG = 0;
 
 vec4 SMAA_RT_METRICS = vec4(1.0 / dvd_ViewPort.z, 1.0 / dvd_ViewPort.w, dvd_ViewPort.z, dvd_ViewPort.w);
 
-layout(location = 0) in vec2 vPixCoord;
-layout(location = 1) in vec4 vOffset[3];
+layout(location = ATTRIB_FREE_START + 0) in vec2 vPixCoord;
+layout(location = ATTRIB_FREE_START + 1) in vec4 vOffset[3];
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D edgesTex;
-layout(binding = TEXTURE_UNIT1) uniform sampler2D areaTex;
-layout(binding = (TEXTURE_UNIT1 + 1)) uniform sampler2D searchTex;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D edgesTex;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D areaTex;
+DESCRIPTOR_SET_RESOURCE(0, (TEXTURE_UNIT1 + 1)) uniform sampler2D searchTex;
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
 #define SMAARound(v) Round(v)
 #define SMAAOffset(x,y) vec2(x,y)
@@ -512,12 +518,14 @@ void main() {
 
 -- Fragment.Blend
 
-layout(location = 0) in vec4 vOffset;
+#include "nodeDataInput.cmn"
 
-out vec4 _colourOut;
+layout(location = ATTRIB_FREE_START + 0) in vec4 vOffset;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D colourTex;
-layout(binding = TEXTURE_UNIT1) uniform sampler2D blendTex;
+layout(location = 0) out vec4 _colourOut;
+
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D colourTex;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D blendTex;
 
 vec4 SMAA_RT_METRICS = vec4(1.0 / dvd_ViewPort.z, 1.0 / dvd_ViewPort.w, dvd_ViewPort.z, dvd_ViewPort.w);
 

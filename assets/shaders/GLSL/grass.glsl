@@ -12,9 +12,9 @@ VegetationData GrassData(in uint instanceID) {
     return grassData[dvd_terrainChunkOffset * MAX_GRASS_INSTANCES + instanceID];
 }
 
-layout(location = 0) flat out uint  _layer;
-layout(location = 1) flat out uint  _instanceID;
-layout(location = 2)      out float _alphaFactor;
+layout(location = ATTRIB_FREE_START + 0) flat out uint  _layer;
+layout(location = ATTRIB_FREE_START + 1) flat out uint  _instanceID;
+layout(location = ATTRIB_FREE_START + 2)      out float _alphaFactor;
 
 #define GRASS_DISPLACEMENT_DISTANCE 50.0f
 #define GRASS_DISPLACEMENT_MAGNITUDE 0.5f
@@ -96,9 +96,9 @@ layout(early_fragment_tests) in;
 #include "BRDF.frag"
 #include "output.frag"
 
-layout(location = 0) flat in uint  _layer;
-layout(location = 1) flat in uint  _instanceID;
-layout(location = 2)      in float _alphaFactor;
+layout(location = ATTRIB_FREE_START + 0) flat in uint  _layer;
+layout(location = ATTRIB_FREE_START + 1) flat in uint  _instanceID;
+layout(location = ATTRIB_FREE_START + 2)      in float _alphaFactor;
 
 void main (void){
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
@@ -140,9 +140,9 @@ void main (void){
 #include "prePass.frag"
 #include "texturing.frag"
 
-layout(location = 0) flat in uint  _layer;
-layout(location = 1) flat in uint  _instanceID;
-layout(location = 2)      in float _alphaFactor;
+layout(location = ATTRIB_FREE_START + 0) flat in uint  _layer;
+layout(location = ATTRIB_FREE_START + 1) flat in uint  _instanceID;
+layout(location = ATTRIB_FREE_START + 2)      in float _alphaFactor;
 
 void main() {
     if (texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a * _alphaFactor < ALPHA_DISCARD_THRESHOLD) {
@@ -154,14 +154,14 @@ void main() {
 
 --Fragment.Shadow.VSM
 
-layout(location = 0) flat in uint  _layer;
-layout(location = 1) flat in uint  _instanceID;
-layout(location = 2)      in float _alphaFactor;
+layout(location = ATTRIB_FREE_START + 0) flat in uint  _layer;
+layout(location = ATTRIB_FREE_START + 1) flat in uint  _instanceID;
+layout(location = ATTRIB_FREE_START + 2)      in float _alphaFactor;
 
 #include "texturing.frag"
 #include "vsm.frag"
 
-out vec2 _colourOut;
+layout(location = 0) out vec2 _colourOut;
 
 void main(void) {
     // Only discard alpha == 0

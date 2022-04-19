@@ -5,7 +5,7 @@ layout(location = ATTRIB_COLOR)     in vec4 inColourData;
 layout(location = ATTRIB_NORMAL)    in vec4 particleNormalData;
 
 // Output data will be interpolated for each fragment.
-layout(location = 0) out vec4 particleColour;
+layout(location = ATTRIB_FREE_START + 0) out vec4 particleColour;
 
 void main()
 {
@@ -34,10 +34,10 @@ void main()
 #include "nodeDataInput.cmn"
 #ifdef HAS_TEXTURE
 #include "vsm.frag"
-out vec2 _colourOut;
+layout(location = 0) out vec2 _colourOut;
 
-layout(location = 0) in vec4 particleColour;
-layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
+layout(location = ATTRIB_FREE_START + 0) in vec4 particleColour;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 void main() {
     if (texture(texDiffuse0, vec3(VAR._texCoord,0)).a < ALPHA_DISCARD_THRESHOLD) {
@@ -57,13 +57,13 @@ void main() {
 #include "output.frag"
 #endif
 // Interpolated values from the vertex shaders
-layout(location = 0) in vec4 particleColour;
+layout(location = ATTRIB_FREE_START + 0) in vec4 particleColour;
 
 #ifdef HAS_TEXTURE
-layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 #endif
 
-layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH) uniform sampler2D texDepthMap;
 
 void main(){
    

@@ -1108,13 +1108,14 @@ namespace Divide {
                             if (textEditor.empty()) {
                                 Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: No text editor specified!", Time::SecondsToMilliseconds<F32>(3), true);
                             } else {
-                                if (openFile(textEditor.c_str(), (program->assetLocation() + Paths::Shaders::GLSL::g_parentShaderLoc).c_str(), module._sourceFile.data()) != FileError::NONE) {
+                                if (openFile(textEditor.c_str(), (program->assetLocation() + Paths::Shaders::GLSL::g_GLSLShaderLoc).c_str(), module._sourceFile.data()) != FileError::NONE) {
                                     Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "ERROR: Couldn't open specified source file!", Time::SecondsToMilliseconds<F32>(3), true);
                                 }
                             }
                         }
                     }
                 }
+
                 ImGui::Separator();
                 if (ImGui::Button("Rebuild from source") && !readOnly) {
                     Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Rebuilding shader from source ...", Time::SecondsToMilliseconds<F32>(3), false);

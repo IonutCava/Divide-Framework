@@ -99,8 +99,8 @@ namespace Divide {
         switch (type) {
         case GFX::PushConstantType::BOOL:
         {
-            const auto&[size, data] = convertData<GLint, 1, I32>(byteCount, values);
-            glProgramUniform1iv(_programHandle, binding, size, data);
+            const auto&[size, data] = convertData<GLuint, 1, U32>(byteCount, values);
+            glProgramUniform1uiv(_programHandle, binding, size, data);
         } break;
         case GFX::PushConstantType::INT:
         {

@@ -36,9 +36,9 @@ struct PBRMaterial
 #else//!MAIN_DISPLAY_PASS
 #if !defined(PRE_PASS)
 #if defined(MSAA_SCREEN_TARGET)
-layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2DMS texSceneNormals;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SCENE_NORMALS) uniform sampler2DMS texSceneNormals;
 #else//MSAA_SCREEN_TARGET
-layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texSceneNormals;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SCENE_NORMALS) uniform sampler2D texSceneNormals;
 #endif //MSAA_SCREEN_TARGET
 #endif //PRE_PASS
 #endif //!MAIN_DISPLAY_PASS
@@ -51,7 +51,7 @@ layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texSceneNormals;
 #endif //COMPUTE_TBN
 
 #if !defined(NO_SSAO)
-layout(binding = TEXTURE_SSAO_SAMPLE) uniform sampler2D texSSAO;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SSAO_SAMPLE) uniform sampler2D texSSAO;
 #endif //NO_SSAO
 
 #if !defined(PRE_PASS)

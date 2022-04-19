@@ -54,8 +54,7 @@ namespace Divide {
     struct JoystickMapKeyHash {
         std::size_t operator () (const JoystickMapKey& p) const {
             size_t hash = 17;
-            Util::Hash_combine(hash, p._element);
-            Util::Hash_combine(hash, p._id);
+            Util::Hash_combine(hash, p._element, p._id);
 
             return hash;
         }

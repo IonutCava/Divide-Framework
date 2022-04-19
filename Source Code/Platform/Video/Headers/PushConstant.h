@@ -148,12 +148,12 @@ namespace GFX {
             dataSize(0u);
         } else if (count == 1) {
             //fast path
-            const I32 value = *data ? 1 : 0;
+            const U32 value = *data ? 1 : 0;
             set(&value, 1);
         } else {
             //Slooow. Avoid using in the rendering loop. Try caching
-            vector<I32> temp(count);
-            std::transform(data, data + count, std::back_inserter(temp), [](const bool e) noexcept { return e ? 1 : 0; });
+            vector<U32> temp(count);
+            std::transform(data, data + count, std::back_inserter(temp), [](const bool e) noexcept { return e ? 1u : 0u; });
             set(temp.data(), count);
         }
     }

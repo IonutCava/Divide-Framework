@@ -466,6 +466,7 @@ private:
     /// Upload draw related data to the GPU (view & projection matrices, viewport settings, etc)
     void uploadGPUBlock();
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
+    void setDepthRange(const vec2<F32>& depthRange);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
     RenderTarget* newRTInternal(const RenderTargetDescriptor& descriptor);

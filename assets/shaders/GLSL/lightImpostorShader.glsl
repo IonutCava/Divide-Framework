@@ -2,8 +2,8 @@
 
 #include "lightInput.cmn"
 
-layout(location = 0) out flat vec4 colourAndSize;
-layout(location = 1) out flat vec2 texCoordOffset;
+layout(location = ATTRIB_FREE_START + 0) out flat vec4 colourAndSize;
+layout(location = ATTRIB_FREE_START + 1) out flat vec2 texCoordOffset;
 
 void main()
 {
@@ -23,13 +23,15 @@ void main()
 
 -- Geometry
 
+#include "nodeDataInput.cmn"
+
 layout(points) in;
 layout(triangle_strip, max_vertices = 4) out;
 
-layout(location = 0) in flat vec4 colourAndSize[];
-layout(location = 1) in flat vec2 texCoordOffset[];
+layout(location = ATTRIB_FREE_START + 0) in flat vec4 colourAndSize[];
+layout(location = ATTRIB_FREE_START + 1) in flat vec2 texCoordOffset[];
 
-layout(location = 0) out flat vec3 lightColour;
+layout(location = ATTRIB_FREE_START + 0) out flat vec3 lightColour;
 
 void main()
 {
@@ -71,11 +73,9 @@ void main()
 
 -- Fragment
 
-#include "texturing.frag"
+layout(location = ATTRIB_FREE_START + 0) in flat vec3 lightColour;
 
-layout(location = 0) in flat vec3 lightColour;
-
-layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 

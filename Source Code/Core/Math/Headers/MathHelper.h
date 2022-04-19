@@ -512,8 +512,8 @@ struct Circle {
 [[nodiscard]] bool IntersectCircles(const Circle& cA, const Circle& cB, vec2<F32>* pointsOut) noexcept;
 
 /// a la Boost
-template <typename T>
-void Hash_combine(size_t& seed, const T& v);
+template <typename T, typename... Rest>
+void Hash_combine(size_t& seed, const T& v, const Rest&... rest);
 
 // U = to data type, T = from data type
 template <typename U, typename T>

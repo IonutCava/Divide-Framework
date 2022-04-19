@@ -9,7 +9,7 @@ void main(void)
 
 -- Fragment
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
 void main(void){
     _colourOut = vec4(1.0);

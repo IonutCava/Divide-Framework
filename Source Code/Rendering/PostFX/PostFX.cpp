@@ -55,15 +55,15 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     ShaderModuleDescriptor fragModule = {};
     fragModule._moduleType = ShaderType::FRAGMENT;
     fragModule._sourceFile = "postProcessing.glsl";
-    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SCREEN %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN)).c_str(), true);
-    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_NOISE %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_NOISE)).c_str(), true);
-    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_BORDER %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_BORDER)).c_str(), true);
-    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_UNDERWATER %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER)).c_str(), true);
-    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SSR %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SSR)).c_str(), true);
-    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SCENE_DATA %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA)).c_str(), true);
-    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SCENE_VELOCITY %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY)).c_str(), true);
-    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_LINDEPTH %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH)).c_str(), true);
-    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_DEPTH %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH)).c_str(), true);
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SCREEN %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN)));
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_NOISE %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_NOISE)));
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_BORDER %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_BORDER)));
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_UNDERWATER %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER)));
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SSR %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SSR)));
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SCENE_DATA %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA)));
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_SCENE_VELOCITY %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY)));
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_LINDEPTH %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH)));
+    fragModule._defines.emplace_back(Util::StringFormat("TEX_BIND_POINT_DEPTH %d", to_base(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH)));
 
     ShaderProgramDescriptor postFXShaderDescriptor = {};
     postFXShaderDescriptor._modules.push_back(vertModule);

@@ -130,7 +130,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
         fragModule._variant = useTexture ? "WithTexture" : "NoTexture";
 
         if (useTexture) {
-            fragModule._defines.emplace_back("HAS_TEXTURE", true);
+            fragModule._defines.emplace_back("HAS_TEXTURE");
         }
 
         ShaderProgramDescriptor particleShaderDescriptor = {};
@@ -139,7 +139,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
         if (stagePass._stage == RenderStage::DISPLAY) {
             if (IsDepthPass(stagePass)) {
                 fragModule._variant = "PrePass";
-                fragModule._defines.emplace_back("PRE_PASS", true);
+                fragModule._defines.emplace_back("PRE_PASS");
                 particleShaderDescriptor._name = useTexture ? "particles_prePass_WithTexture" : "particles_prePass_NoTexture";
             }
             particleShaderDescriptor._modules.push_back(vertModule);

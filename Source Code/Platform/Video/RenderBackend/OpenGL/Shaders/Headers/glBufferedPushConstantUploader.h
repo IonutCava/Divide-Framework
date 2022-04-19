@@ -34,6 +34,7 @@
 #define _GL_BUFFERED_PUSH_CONSTANT_UPLOADER_H_
 
 #include "glPushConstantUploader.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
     struct glBufferedPushConstantUploaderDescriptor
@@ -41,20 +42,19 @@ namespace Divide {
         eastl::string _uniformBufferName = "";
         eastl::string _parentShaderName = "";
         GLuint _programHandle = 0u;
-        GLuint _blockIndex = 0u;
+        GLuint _bindingIndex = 0u;
+        Reflection::Data _reflectionData{};
     };
 
     struct glBufferedPushConstantUploader final : glPushConstantUploader
     {
         struct BlockMember
         {
-            Str256 _name;
-            U64    _nameHash = 0u;
-            size_t _offset = 0;
-            size_t _size = 0;
-            GLint  _index = -1;
-            GLint  _arraySize = -1;
-            GLenum _type = GL_NONE;
+            Reflection::BlockMember _externalData;
+            U64    _nameHash{ 0u };
+            size_t _size{ 0 };
+            size_t _elementSize{ 0 };
+            GLenum _type{ GL_NONE };
         };
 
         explicit glBufferedPushConstantUploader(const glBufferedPushConstantUploaderDescriptor& descriptor);
@@ -70,10 +70,11 @@ namespace Divide {
         eastl::string _uniformBufferName;
         eastl::string _parentShaderName;
         Byte* _uniformBlockBuffer = nullptr;
-        GLuint _uniformBlockIndex = GLUtil::k_invalidObjectID;
+        GLuint _uniformBlockBindingIndex = GLUtil::k_invalidObjectID;
         GLuint _uniformBlockBufferHandle = GLUtil::k_invalidObjectID;
-        GLint _uniformBlockSize = 0;
+        size_t _uniformBlockSize = 0;
         bool _uniformBlockDirty = false;
+        Reflection::Data _reflectionData{};
     };
 } // namespace Divide
 

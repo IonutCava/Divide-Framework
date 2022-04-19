@@ -142,13 +142,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define HAVE_M_PI
 #define SDL_MAIN_HANDLED
-#include <sdl/include/SDL_mixer.h>
 #include <sdl/include/SDL.h>
-#include <sdl/include/SDL_vulkan.h>
 
-#include <vulkan/vulkan.hpp>
-
+#ifndef VKAPI_PTR
+#define VKAPI_PTR  __stdcall
+#endif //VKAPI_PTR
 #include <Optick/src/optick.h>
+#undef VKAPI_PTR
 
 #ifdef _MSC_VER
 #pragma warning (push)

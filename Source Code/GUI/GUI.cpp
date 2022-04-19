@@ -345,7 +345,7 @@ void GUI::onSizeChange(const SizeChangeParams& params) {
 void GUI::setCursorPosition(const I32 x, const I32 y) {
     const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
     if (guiConfig.cegui.enabled) {
-        getCEGUIContext().injectMousePosition(to_F32(x), to_F32(y));
+        getCEGUIContext()->injectMousePosition(to_F32(x), to_F32(y));
     }
 }
 
@@ -439,14 +439,8 @@ GUIElement* GUI::getGUIElementImpl(const I64 sceneID, const I64 elementID, const
 
     return nullptr;
 }
-CEGUI::GUIContext& GUI::getCEGUIContext() noexcept {
-    assert(_ceguiContext != nullptr);
-    return *_ceguiContext;
-}
-
-const CEGUI::GUIContext& GUI::getCEGUIContext() const noexcept {
-    assert(_ceguiContext != nullptr);
-    return *_ceguiContext;
+CEGUI::GUIContext* GUI::getCEGUIContext() noexcept {
+    return _ceguiContext;
 }
 
 TextureData GUI::getCEGUIRenderTextureData() const {

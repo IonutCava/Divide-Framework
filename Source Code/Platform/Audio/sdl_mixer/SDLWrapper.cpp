@@ -6,6 +6,8 @@
 #include "Utility/Headers/Localization.h"
 #include "Platform/Audio/Headers/SFXDevice.h"
 
+#include <sdl/include/SDL_mixer.h>
+
 namespace Divide {
 
 namespace {
@@ -61,6 +63,10 @@ void SDL_API::beginFrame() noexcept {
 
 void SDL_API::endFrame() noexcept {
     
+}
+
+void SDL_API::stopMusic() noexcept { 
+    Mix_HaltMusic(); 
 }
 
 void SDL_API::musicFinished() noexcept {

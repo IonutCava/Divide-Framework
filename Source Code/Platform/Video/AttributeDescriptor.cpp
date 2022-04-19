@@ -10,12 +10,9 @@ namespace Divide {
         }
 
         size_t hash = 1337;
-        Util::Hash_combine(hash, descriptor._strideInBytes);
-        Util::Hash_combine(hash, descriptor._bindingIndex);
-        Util::Hash_combine(hash, descriptor._componentsPerElement);
-        Util::Hash_combine(hash, descriptor._instanceDivisor);
-        Util::Hash_combine(hash, descriptor._dataType);
-        Util::Hash_combine(hash, descriptor._normalized);
+        Util::Hash_combine(hash, descriptor._strideInBytes,descriptor._bindingIndex,
+                                 descriptor._componentsPerElement, descriptor._instanceDivisor,
+                                 descriptor._dataType, descriptor._normalized);
 
         return hash;
     }

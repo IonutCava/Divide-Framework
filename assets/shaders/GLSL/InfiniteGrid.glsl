@@ -5,8 +5,8 @@
 //ref: http://asliceofrendering.com/scene%20helper/2020/01/05/InfiniteGrid/
 layout(location = ATTRIB_POSITION) in vec3 inVertexData;
 
-layout(location = 10) out vec3 nearPoint;
-layout(location = 11) out vec3 farPoint;
+layout(location = ATTRIB_FREE_START + 0) out vec3 nearPoint;
+layout(location = ATTRIB_FREE_START + 1) out vec3 farPoint;
 
 vec3 UnprojectPoint(in float x, in  float y, in  float z) {
     const vec4 transformedPoint = dvd_InverseViewMatrix * dvd_InverseProjectionMatrix * vec4(x, y, z, 1.f);
@@ -28,8 +28,8 @@ void main()
 
 #include "utility.frag"
 #include "output.frag"
-layout(location = 10) in vec3 nearPoint;
-layout(location = 11) in vec3 farPoint;
+layout(location = ATTRIB_FREE_START + 0) in vec3 nearPoint;
+layout(location = ATTRIB_FREE_START + 1) in vec3 farPoint;
 
 uniform float axisWidth = 2.f;
 uniform float gridScale = 1.f;
@@ -61,8 +61,8 @@ void main()
     float fade_factor = length(dvd_cameraPosition.xz - fragPos3D.xz);
     fade_factor = Saturate(1.f - (fade_factor / dvd_ZPlanes.y));
 
-    vec4 outColour = grid(fragPos3D, gridScale) * float(t > 0);
+    vec4 outColour = grid(fragPos3D, gridScale) * float(t > 0); 
     outColour.a *= fade_factor;
-    gl_FragDepth = computeDepth(dvd_ViewMatrix * vec4(fragPos3D, 1.f));
+    gl_FragDepth = computeDepth(dvd_ViewMatrix * vec4(fragPos3D, 1.f), DEPTH_RANGE);
     writeScreenColour(outColour);
 };

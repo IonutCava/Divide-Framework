@@ -55,20 +55,20 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         geomModule._moduleType = ShaderType::GEOMETRY;
         geomModule._sourceFile = "blur.glsl";
         geomModule._variant = "GaussBlur";
-        geomModule._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT).c_str(), true);
+        geomModule._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
 
         ShaderModuleDescriptor fragModule = {};
         fragModule._moduleType = ShaderType::FRAGMENT;
         fragModule._sourceFile = "blur.glsl";
         fragModule._variant = "GaussBlur.Layered";
-        fragModule._defines.emplace_back("LAYERED", true);
+        fragModule._defines.emplace_back("LAYERED");
 
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(geomModule);
         shaderDescriptor._modules.push_back(fragModule);
 
-        ResourceDescriptor blurDepthMapShader(Util::StringFormat("GaussBlur_%d_invocations", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT).c_str());
+        ResourceDescriptor blurDepthMapShader(Util::StringFormat("GaussBlur_%d_invocations", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
         blurDepthMapShader.waitForReady(true);
         blurDepthMapShader.propertyDescriptor(shaderDescriptor);
 

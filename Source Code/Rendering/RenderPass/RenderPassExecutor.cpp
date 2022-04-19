@@ -417,7 +417,7 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, 
         _transformBuffer._data._gpuData[transformIdx] = transformOut;
         UpdateBufferRangeLocked(_transformBuffer, transformIdx);
 
-        if (_indirectionBuffer._data._gpuData[indirectionIDX][TRANSFORM_IDX] != transformIdx) {
+        if (_indirectionBuffer._data._gpuData[indirectionIDX][TRANSFORM_IDX] != transformIdx || transformIdx == 0u) {
             _indirectionBuffer._data._gpuData[indirectionIDX][TRANSFORM_IDX] = transformIdx;
             UpdateBufferRange(_indirectionBuffer, indirectionIDX);
         }
@@ -511,7 +511,7 @@ void RenderPassExecutor::parseTextureRange(RenderBin::SortedQueue& queue, const 
         DIVIDE_ASSERT(idx != g_invalidTexturesIndex && idx != U32_MAX);
 
         // We are already protected by the atomic boolean for this entry
-        if (_indirectionBuffer._data._gpuData[indirectionIDX][TEXTURES_IDX] != idx) {
+        if (_indirectionBuffer._data._gpuData[indirectionIDX][TEXTURES_IDX] != idx || idx == 0u) {
             _indirectionBuffer._data._gpuData[indirectionIDX][TEXTURES_IDX] = idx;
             UpdateBufferRange(_indirectionBuffer, indirectionIDX);
         }
@@ -602,7 +602,7 @@ void RenderPassExecutor::parseMaterialRange(RenderBin::SortedQueue& queue, const
         const U16 idx = processVisibleNodeMaterial(queue[i], cacheHit);
         DIVIDE_ASSERT(idx != g_invalidMaterialIndex && idx != U32_MAX);
 
-        if (_indirectionBuffer._data._gpuData[indirectionIDX][MATERIAL_IDX] != idx) {
+        if (_indirectionBuffer._data._gpuData[indirectionIDX][MATERIAL_IDX] != idx || idx == 0u) {
             _indirectionBuffer._data._gpuData[indirectionIDX][MATERIAL_IDX] = idx;
             UpdateBufferRange(_indirectionBuffer, indirectionIDX);
         }

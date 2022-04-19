@@ -40,7 +40,7 @@ template <class T>
 class CircularBuffer {
 public:
     explicit CircularBuffer(const size_t bufferSize) :
-        _buffer(std::make_unique<T[]>(bufferSize)),
+        _buffer(eastl::make_unique<T[]>(bufferSize)),
         _maxSize(bufferSize) {
 
     }
@@ -104,7 +104,7 @@ public:
 
 private:
     mutable Mutex _lock;
-    std::unique_ptr<T[]> _buffer;
+    eastl::unique_ptr<T[]> _buffer;
     size_t _head = 0u;
     size_t _tail = 0u;
     const size_t _maxSize;

@@ -13,7 +13,7 @@ See "license.txt" or "http://copyfree.org/licenses/mit/license.txt".
 uniform mat4 projectionMatrix;
 uniform mat4 invProjectionMatrix;
 uniform vec2 SSAO_NOISE_SCALE;
-uniform vec2 zPlanes;
+uniform vec2 _zPlanes;
 uniform float SSAO_RADIUS;
 uniform float SSAO_BIAS;
 uniform float SSAO_INTENSITY;
@@ -22,11 +22,11 @@ uniform float fadeStart;
 uniform vec4 sampleKernel[SSAO_SAMPLE_COUNT];
 
 // Input screen texture
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texNoise;
-layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texNoise;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH) uniform sampler2D texDepthMap;
 
 #if !defined(COMPUTE_HALF_RES)
-layout(binding = TEXTURE_UNIT1) uniform sampler2D texNormals;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D texNormals;
 #define GetNormal(UV) texture(texNormals, UV).rg
 #else //!COMPUTE_HALF_RES
 #define GetNormal(UV) texture(texDepthMap, UV).gb
@@ -37,7 +37,7 @@ layout(binding = TEXTURE_UNIT1) uniform sampler2D texNormals;
 // This constant avoids the influence of fragments, which are too far away.
 #define CAP_MAX_DISTANCE 0.005f
 
-out float _ssaoOut;
+layout(location = 0) out float _ssaoOut;
 
 //ref1: https://github.com/McNopper/OpenGL/blob/master/Example28/shader/ssao.frag.glsl
 //ref2: https://github.com/itoral/vkdf/blob/9622f6a9e6602e06c5a42507202ad5a7daf917a4/data/spirv/ssao.deferred.frag.input
@@ -50,7 +50,7 @@ void main(void) {
     }
 
     const float sceneDepth = texture(texDepthMap, VAR._texCoord).r;
-    const float linDepth = ToLinearDepth(sceneDepth, zPlanes) / zPlanes.y;
+    const float linDepth = ToLinearDepth(sceneDepth, _zPlanes) / _zPlanes.y;
     if (linDepth <= maxRange)
     {
         // Normal gathering.
@@ -100,19 +100,19 @@ void main(void) {
 #include "utility.frag"
 
 //ref: https://github.com/itoral/vkdf/blob/9622f6a9e6602e06c5a42507202ad5a7daf917a4/data/spirv/ssao-blur.deferred.frag.input
-layout(binding = TEXTURE_UNIT0)         uniform sampler2D texSSAO;
-layout(binding = TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
-layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0)         uniform sampler2D texSSAO;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
 
 uniform mat4 invProjectionMatrix;
-uniform vec2 zPlanes;
+uniform vec2 _zPlanes;
 uniform vec2 texelSize;
 uniform float depthThreshold;
 uniform float blurSharpness;
 uniform int blurKernelSize;
 
 //r - ssao
-out vec2 _output;
+layout(location = 0) out vec2 _output;
 #define _colourOut _output.r
 
 /**
@@ -127,7 +127,7 @@ void main() {
 
     int sample_count = 1;
     float result = texture(texSSAO, VAR._texCoord).r;
-    const float depthDelta = depthThreshold * zPlanes.y;
+    const float depthDelta = depthThreshold * _zPlanes.y;
 
     for (int x = -blurKernelSize; x < blurKernelSize; ++x) {
         for (int y = -blurKernelSize; y < blurKernelSize; ++y) {
@@ -182,12 +182,12 @@ void main() {
 #include "utility.frag"
 
 //ref: https://github.com/itoral/vkdf/blob/9622f6a9e6602e06c5a42507202ad5a7daf917a4/data/spirv/ssao-blur.deferred.frag.input
-layout(binding = TEXTURE_UNIT0)         uniform sampler2D texSSAO;
-layout(binding = TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
-layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0)         uniform sampler2D texSSAO;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
 
 uniform mat4 invProjectionMatrix;
-uniform vec2 zPlanes;
+uniform vec2 _zPlanes;
 uniform vec2 texelSize;
 uniform float depthThreshold;
 uniform float blurSharpness;
@@ -195,17 +195,17 @@ uniform int blurKernelSize;
 
 //r - ssao
 #if defined(VERTICAL)
-out vec2 _output;
+layout(location = 0) out vec2 _output;
 #else
-out vec4 _output;
+layout(location = 0) out vec4 _output;
 #endif
 #define _colourOut _output.r
 
 //-------------------------------------------------------------------------
 
 float TestZ(in float depth) {
-    const float zNear = zPlanes.x;
-    const float zFar = zPlanes.y;
+    const float zNear = _zPlanes.x;
+    const float zFar = _zPlanes.y;
     return (zNear * zFar) / (zFar - depth * (zFar - zNear));
 }
 
@@ -215,7 +215,7 @@ float BlurFunction(in vec2 uv, in int r, in float center_c, in float center_d, i
     const float c = texture(texSSAO, uv).r;
     const vec3  n = normalize(unpackNormal(texture(texNormal, uv).rg));
 
-    const float depthDelta = depthThreshold * zPlanes.y;
+    const float depthDelta = depthThreshold * _zPlanes.y;
     if (abs(center_d - d) < depthDelta && dot(center_n, n) > 0.75f) {
         const float BlurSigma = blurKernelSize * 0.5f;
         const float BlurFalloff = 1.f / (2.f * BlurSigma * BlurSigma);
@@ -261,10 +261,10 @@ void main() {
 
 --Fragment.SSAOPassThrough
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texSSAO;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texSSAO;
 
 //r - ssao
-out vec2 _output;
+layout(location = 0) out vec2 _output;
 
 void main() {
 #   define _colourOut (_output.r)
@@ -273,10 +273,10 @@ void main() {
 
 --Fragment.SSAODownsample
 
-layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
-layout(binding = TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
 
-out vec3 _outColour;
+layout(location = 0) out vec3 _outColour;
 
 float most_representative() {
     float samples[] = float[](
@@ -369,12 +369,12 @@ void main()
 
 #include "utility.frag"
 
-layout(binding = TEXTURE_UNIT0)     uniform sampler2D texSSAOLinear;
-layout(binding = TEXTURE_UNIT1)     uniform sampler2D texSSAONearest;
-layout(binding = TEXTURE_NORMALMAP) uniform sampler2D texSSAONormalsDepth;
-layout(binding = TEXTURE_DEPTH)     uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0)     uniform sampler2D texSSAOLinear;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1)     uniform sampler2D texSSAONearest;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_NORMALMAP) uniform sampler2D texSSAONormalsDepth;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH)     uniform sampler2D texDepthMap;
 
-out float _ssaoOut;
+layout(location = 0) out float _ssaoOut;
 
 float nearest_depth_ao() {
     float d[] = float[](

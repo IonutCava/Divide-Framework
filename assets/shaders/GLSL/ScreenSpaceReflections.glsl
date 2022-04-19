@@ -4,16 +4,16 @@
 
 #include "utility.frag"
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texScreen;
-layout(binding = TEXTURE_UNIT1) uniform sampler2D texDepth;
-layout(binding = TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D texDepth;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
 
 uniform mat4 projToPixel; // A projection matrix that maps to pixel coordinates (not [-1, +1] normalized device coordinates)
 uniform mat4 projectionMatrix;
 uniform mat4 invProjectionMatrix;
 uniform mat4 previousViewProjection;
 uniform mat4 invViewMatrix;
-uniform vec2 zPlanes;
+uniform vec2 _zPlanes;
 uniform vec2 screenDimensions;
 uniform uint maxScreenMips = 5u;
 uniform float maxSteps = 256;
@@ -27,12 +27,12 @@ uniform float screenEdgeFadeStart = 0.75f;
 uniform float eyeFadeStart = 0.5f;
 uniform float eyeFadeEnd = 1.f;
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
 #define DistanceSquared(A, B) dot((A-B),(A-B))
 
 float Linear01Depth(in float z) {
-    const float temp = zPlanes.y / zPlanes.x;
+    const float temp = _zPlanes.y / _zPlanes.x;
     return 1.f / ((1.f - temp) * z + temp);
 }
 
@@ -46,8 +46,8 @@ bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be 
                 out float iterations)
 {
     // Clip to the near plane
-    const float rayLength = ((csOrig.z + csDir.z * maxDistance) > -zPlanes.x) 
-                                     ? (-zPlanes.x - csOrig.z) / csDir.z
+    const float rayLength = ((csOrig.z + csDir.z * maxDistance) > -_zPlanes.x)
+                                     ? (-_zPlanes.x - csOrig.z) / csDir.z
                                      : maxDistance;
 
     const vec3 csEndPoint = csOrig + csDir * rayLength;
@@ -112,7 +112,7 @@ bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be 
 
         hitPixel = permute ? pqk.yx : pqk.xy;
         hitPixel = hitPixel / screenDimensions;
-        const float currentZ = Linear01Depth(texture(texDepth, hitPixel).r) * -zPlanes.y;
+        const float currentZ = Linear01Depth(texture(texDepth, hitPixel).r) * -_zPlanes.y;
         intersect = zA >= currentZ - zThickness && zB <= currentZ;
     }
 
@@ -122,23 +122,23 @@ bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be 
         pqk -= dPQK;
         dPQK /= pixelStride;
         float originalStride = pixelStride * 0.5;
-        float stride = originalStride;
+        float strideTemp = originalStride;
         zA = pqk.z / pqk.w;
         zB = zA;
         for (float j = 0; j < binarySearchIterations; j++) {
-            pqk += dPQK * stride;
-            addDQ += stride;
+            pqk += dPQK * strideTemp;
+            addDQ += strideTemp;
 
             zA = zB;
             zB = (dPQK.z * 0.5f + pqk.z) / (dPQK.w * 0.5f + pqk.w);
 
             hitPixel = permute ? pqk.yx : pqk.xy;
             hitPixel = hitPixel / screenDimensions;
-            const float currentZ = Linear01Depth(texture(texDepth, hitPixel).r) * -zPlanes.y;
+            const float currentZ = Linear01Depth(texture(texDepth, hitPixel).r) * -_zPlanes.y;
             bool intersect2 = zA >= currentZ - zThickness && zB <= currentZ;
 
             originalStride *= 0.5f;
-            stride = intersect2 ? -originalStride : originalStride;
+            strideTemp = intersect2 ? -originalStride : originalStride;
         }
     }
 

@@ -64,7 +64,9 @@ struct GFXShaderData {
           //x - nearPlane, y - farPlane, z - FoV, w - camera flag
           vec4<F32> _cameraProperties = { 0.01f, 1.0f, 40.f, 0.f };
           vec4<F32> _frustumPlanes[to_base(FrustumPlane::COUNT)];
-          vec4<F32> _padding[2];
+          //xy - depth range, zw - unused
+          vec4<F32> _renderTargetInfo{0.f, 1.f, 1.f, 1.f};
+          vec4<F32> _padding;
       };
 #pragma pack(pop)
 

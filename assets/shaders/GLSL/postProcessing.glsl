@@ -6,15 +6,15 @@
 #include "sceneData.cmn"
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 
-layout(binding = TEX_BIND_POINT_SCREEN)         uniform sampler2D texScreen;
-layout(binding = TEX_BIND_POINT_NOISE)          uniform sampler2D texNoise;
-layout(binding = TEX_BIND_POINT_BORDER)         uniform sampler2D texVignette;
-layout(binding = TEX_BIND_POINT_UNDERWATER)     uniform sampler2D texWaterNoiseNM;
-layout(binding = TEX_BIND_POINT_LINDEPTH)       uniform sampler2D texLinearDepth;
-layout(binding = TEX_BIND_POINT_DEPTH)          uniform sampler2D texDepth;
-layout(binding = TEX_BIND_POINT_SSR)            uniform sampler2D texSSR;
-layout(binding = TEX_BIND_POINT_SCENE_DATA)     uniform sampler2D texSceneData;
-layout(binding = TEX_BIND_POINT_SCENE_VELOCITY) uniform sampler2D texSceneVelocity;
+DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_SCREEN)         uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_NOISE)          uniform sampler2D texNoise;
+DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_BORDER)         uniform sampler2D texVignette;
+DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_UNDERWATER)     uniform sampler2D texWaterNoiseNM;
+DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_LINDEPTH)       uniform sampler2D texLinearDepth;
+DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_DEPTH)          uniform sampler2D texDepth;
+DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_SSR)            uniform sampler2D texSSR;
+DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_SCENE_DATA)     uniform sampler2D texSceneData;
+DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_SCENE_VELOCITY) uniform sampler2D texSceneVelocity;
 
 uniform vec4 _fadeColour;
 uniform mat4 _invProjectionMatrix;
@@ -24,11 +24,11 @@ uniform float _noiseFactor;
 uniform float randomCoeffNoise;
 uniform float randomCoeffFlash;
 uniform float _fadeStrength;
-uniform bool vignetteEnabled;
-uniform bool noiseEnabled;
-uniform bool underwaterEnabled;
-uniform bool lutCorrectionEnabled;
-uniform bool _fadeActive;
+uniform uint vignetteEnabled;
+uniform uint noiseEnabled;
+uniform uint underwaterEnabled;
+uniform uint lutCorrectionEnabled;
+uniform uint _fadeActive;
 
 vec4 Vignette(in vec4 colourIn){
     const vec4 colourOut = colourIn - (vec4(1.f,1.f,1.f,2.f) - texture(texVignette, VAR._texCoord));
@@ -82,19 +82,19 @@ void main(void){
         return;
     }
 
-    vec4 colour = underwaterEnabled ? Underwater() : texture(texScreen, VAR._texCoord);
+    vec4 colour = underwaterEnabled != 0u? Underwater() : texture(texScreen, VAR._texCoord);
 
-    if (noiseEnabled) {
+    if (noiseEnabled != 0u) {
         colour = Noise(colour);
     }
-    if (vignetteEnabled) {
+    if (vignetteEnabled != 0u) {
         colour = Vignette(colour);
     }
-    if (lutCorrectionEnabled) {
+    if (lutCorrectionEnabled != 0u) {
         colour = LUTCorrect(colour);
     }
 
-    if (_fadeActive) {
+    if (_fadeActive != 0u) {
         colour = mix(colour, _fadeColour, _fadeStrength);
     }
 

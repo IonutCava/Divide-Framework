@@ -44,7 +44,7 @@ layout(location = ATTRIB_FREE_START + 2) in float vtx_tileSize[];
 layout(location = ATTRIB_FREE_START + 3) in flat uint vtx_ringID[];
 
 // Outputs
-layout(vertices = 4) out;
+layout(vertices = TESSELLATION_OUTPUT_VERTICES) out;
 layout(location = ATTRIB_FREE_START + 1) out float tcs_tileSize[];
 layout(location = ATTRIB_FREE_START + 2) out flat uint tcs_ringID[];
 
@@ -588,7 +588,7 @@ void main(void) {
 --Fragment.Shadow.VSM
 
 #include "vsm.frag"
-out vec2 _colourOut;
+layout(location = 0) out vec2 _colourOut;
 
 void main() {
     _colourOut = computeMoments();

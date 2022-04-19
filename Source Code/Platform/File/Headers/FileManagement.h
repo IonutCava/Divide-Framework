@@ -113,6 +113,10 @@ struct Paths {
         static ResourcePath g_cacheLocationText;
         static ResourcePath g_cacheLocationBin;
 
+        static Str8 g_SPIRVExt;
+        // Shader subfolder name that contains SPIRV shader files
+        static ResourcePath g_SPIRVShaderLoc;
+
         struct GLSL {
             // these must match the last 4 characters of the atom file
             static Str8 g_fragAtomExt;
@@ -123,8 +127,8 @@ struct Paths {
             static Str8 g_compAtomExt;
             static Str8 g_comnAtomExt;
 
-            // Shader subfolder name that contains shader files for OpenGL
-            static ResourcePath g_parentShaderLoc;
+            // Shader subfolder name that contains GLSL shader files
+            static ResourcePath g_GLSLShaderLoc;
             // Atom folder names in parent shader folder
             static ResourcePath g_fragAtomLoc;
             static ResourcePath g_vertAtomLoc;
@@ -134,9 +138,6 @@ struct Paths {
             static ResourcePath g_compAtomLoc;
             static ResourcePath g_comnAtomLoc;
         }; //class GLSL
-        struct HLSL {
-            static ResourcePath g_parentShaderLoc;
-        }; //class HLSL
     }; //class Shaders
 
     // include command regex pattern

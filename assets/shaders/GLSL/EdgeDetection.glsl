@@ -4,7 +4,7 @@
 
 #include "nodeDataInput.cmn"
 
-layout(location = 0) out vec4 vOffset[3];
+layout(location = ATTRIB_FREE_START) out vec4 vOffset[3];
 
 void main(void)
 {
@@ -34,19 +34,19 @@ uniform float dvd_edgeThreshold;
 #define DEPTH_THRESHOLD (0.1 * dvd_edgeThreshold)
 #endif
 
-layout(location = 0) in vec4 vOffset[3];
+layout(location = ATTRIB_FREE_START) in vec4 vOffset[3];
 
-out vec2 _colourOut;
+layout(location = 0) out vec2 _colourOut;
 
-layout(binding = TEXTURE_DEPTH) uniform sampler2D texDepth;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH) uniform sampler2D texDepth;
 
 /**
  * Gathers current pixel, and the top-left neighbors.
  */
 vec3 GatherNeighbours(vec2 texcoord, vec4 offset[3], sampler2D tex) {
-    float P = texture2D(tex, texcoord).r;
-    float Pleft = texture2D(tex, offset[0].xy).r;
-    float Ptop = texture2D(tex, offset[0].zw).r;
+    float P = texture(tex, texcoord).r;
+    float Pleft = texture(tex, offset[0].xy).r;
+    float Ptop = texture(tex, offset[0].zw).r;
 
     return vec3(P, Pleft, Ptop);
 }
@@ -70,12 +70,12 @@ void main(){
 #define _LOCAL_CONTRAST_ADAPTATION_FACTOR 2.0
 #endif
 
-layout(location = 0) in vec4 vOffset[3];
+layout(location = ATTRIB_FREE_START) in vec4 vOffset[3];
 uniform float dvd_edgeThreshold;
 
-out vec2 _colourOut;
+layout(location = 0) out vec2 _colourOut;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
 
 void main() {
     vec2 vTexCoord0 = VAR._texCoord;
@@ -128,11 +128,11 @@ uniform float dvd_edgeThreshold;
 #define _LOCAL_CONTRAST_ADAPTATION_FACTOR 2.0
 #endif
 
-layout(location = 0) in vec4 vOffset[3];
+layout(location = ATTRIB_FREE_START) in vec4 vOffset[3];
 
-out vec2 _colourOut;
+layout(location = 0) out vec2 _colourOut;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
 
 void main() {
     // Calculate the threshold:

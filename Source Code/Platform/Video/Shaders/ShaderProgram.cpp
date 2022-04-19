@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/ShaderProgram.h"
+#include "Headers/GLSLToSPIRV.h"
 
 #include "Managers/Headers/SceneManager.h"
 
@@ -69,11 +70,10 @@ std::atomic_int ShaderProgram::s_shaderCount;
 size_t ShaderProgramDescriptor::getHash() const {
     _hash = PropertyDescriptor::getHash();
     for (const ShaderModuleDescriptor& desc : _modules) {
-        Util::Hash_combine(_hash, ShaderProgram::DefinesHash(desc._defines));
-        Util::Hash_combine(_hash, std::string(desc._variant.c_str()));
-        Util::Hash_combine(_hash, desc._sourceFile.data());
-        Util::Hash_combine(_hash, desc._moduleType);
-        Util::Hash_combine(_hash, desc._batchSameFile);
+        Util::Hash_combine(_hash, ShaderProgram::DefinesHash(desc._defines),
+                                  std::string(desc._variant.c_str()),
+                                  desc._sourceFile.data(),
+                                  desc._moduleType);
     }
     return _hash;
 }
@@ -83,6 +83,50 @@ UpdateListener g_sFileWatcherListener(
         ShaderProgram::OnAtomChange(atomName, evt);
     }
 );
+
+namespace {
+ //Note: this doesn't care about arrays so those won't sort properly to reduce wastage
+    const auto g_TypePriority = [](const U64 typeHash) -> I32 {
+        switch (typeHash) {
+            case _ID("dmat4")  :            //128 bytes
+            case _ID("dmat4x3"): return 0;  // 96 bytes
+            case _ID("dmat3")  : return 1;  // 72 bytes
+            case _ID("dmat4x2"):            // 64 bytes
+            case _ID("mat4")   : return 2;  // 64 bytes
+            case _ID("dmat3x2"):            // 48 bytes
+            case _ID("mat4x3") : return 3;  // 48 bytes
+            case _ID("mat3")   : return 4;  // 36 bytes
+            case _ID("dmat2")  :            // 32 bytes
+            case _ID("dvec4")  :            // 32 bytes
+            case _ID("mat4x2") : return 5;  // 32 bytes
+            case _ID("dvec3")  :            // 24 bytes
+            case _ID("mat3x2") : return 6;  // 24 bytes
+            case _ID("mat2")   :            // 16 bytes
+            case _ID("dvec2")  :            // 16 bytes
+            case _ID("bvec4")  :            // 16 bytes
+            case _ID("ivec4")  :            // 16 bytes
+            case _ID("uvec4")  :            // 16 bytes
+            case _ID("vec4")   : return 7;  // 16 bytes
+            case _ID("bvec3")  :            // 12 bytes
+            case _ID("ivec3")  :            // 12 bytes
+            case _ID("uvec3")  :            // 12 bytes
+            case _ID("vec3")   : return 8;  // 12 bytes
+            case _ID("double") :            //  8 bytes
+            case _ID("bvec2")  :            //  8 bytes
+            case _ID("ivec2")  :            //  8 bytes
+            case _ID("uvec2")  :            //  8 bytes
+            case _ID("vec2")   : return 9;  //  8 bytes
+            case _ID("int")    :            //  4 bytes
+            case _ID("uint")   :            //  4 bytes
+            case _ID("float")  : return 10; //  4 bytes
+            // No real reason for this, but generated shader code looks cleaner
+            case _ID("bool")   : return 11; //  4 bytes
+            default: DIVIDE_UNEXPECTED_CALL(); break;
+        }
+
+        return 999;
+    };
+};
 
 namespace Preprocessor{
      //ref: https://stackoverflow.com/questions/14858017/using-boost-wave
@@ -266,11 +310,11 @@ namespace Preprocessor{
 
 } //Preprocessor
 
-void AppendToShaderHeader(const ShaderType type, const string& entry) {
-    glswAddDirectiveToken(type != ShaderType::COUNT ? Names::shaderTypes[to_U8(type)] : "", entry.c_str());
-}
+bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo, const Configuration& config) {
+    const auto AppendToShaderHeader = [](const ShaderType type, const string& entry) {
+        glswAddDirectiveToken(type != ShaderType::COUNT ? Names::shaderTypes[to_U8(type)] : "", entry.c_str());
+    };
 
-bool InitGLSW(const DeviceInformation& deviceInfo, const Configuration& config) {
     constexpr std::pair<const char*, const char*> shaderVaryings[] =
     {
         { "vec4"       , "_vertexW"},          // 16 bytes
@@ -294,6 +338,14 @@ bool InitGLSW(const DeviceInformation& deviceInfo, const Configuration& config) 
         "#define float3x3 mat3\n"
         "#define float4x4 mat4\n"
         "#define lerp mix";
+
+    if (renderingAPI == RenderAPI::OpenGL) {
+
+    } else if (renderingAPI == RenderAPI::Vulkan) {
+
+    } else {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 
     const auto getPassData = [&](const ShaderType type) -> string {
         string baseString = "     _out.%s = _in[index].%s;";
@@ -339,14 +391,25 @@ bool InitGLSW(const DeviceInformation& deviceInfo, const Configuration& config) 
 
     // Add our engine specific defines and various code pieces to every GLSL shader
     // Add version as the first shader statement, followed by copyright notice
-    AppendToShaderHeader(ShaderType::COUNT, "#version 460 core");
+    AppendToShaderHeader(ShaderType::COUNT, renderingAPI == RenderAPI::OpenGL ? "#version 460 core" : "#version 450");
     AppendToShaderHeader(ShaderType::COUNT, "/*Copyright 2009-2022 DIVIDE-Studio*/");
 
-    if (ShaderProgram::s_UseBindlessTextures) {
-        AppendToShaderHeader(ShaderType::COUNT, "#extension  GL_ARB_bindless_texture : require");
+    if (renderingAPI == RenderAPI::OpenGL) {
+        if (ShaderProgram::s_UseBindlessTextures) {
+            AppendToShaderHeader(ShaderType::COUNT, "#extension  GL_ARB_bindless_texture : require");
+        }
+
+        //AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_gpu_shader5 : require");
+        AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET)");
+    } else {
+        AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET) set = SET");
     }
 
-    AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_gpu_shader5 : require");
+    AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(SPECIFY_SET(SET) binding = BINDING)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET(SET, BINDING, OFFSET) layout(SPECIFY_SET(SET) binding = BINDING, offset = OFFSET)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_LAYOUT(SET, BINDING, LAYOUT) layout(SPECIFY_SET(SET) binding = BINDING, LAYOUT)");
+    AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET_LAYOUT(SET, BINDING, OFFSET, LAYOUT) layout(SPECIFY_SET(SET) binding = BINDING, offset = OFFSET, LAYOUT)");
+
     AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_DRAW_ID gl_DrawID");
     AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_VERTEX gl_BaseVertex");
     AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_INSTANCE gl_BaseInstance");
@@ -371,16 +434,6 @@ bool InitGLSW(const DeviceInformation& deviceInfo, const Configuration& config) 
 
     // This line gets replaced in every shader at load with the custom list of defines specified by the material
     AppendToShaderHeader(ShaderType::COUNT, "_CUSTOM_DEFINES__");
-
-    // Add some nVidia specific pragma directives
-    if (GFXDevice::GetDeviceInformation()._vendor == GPUVendor::NVIDIA) {
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(fastmath on)");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(fastprecision on)");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(inline all)");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(ifcvt none)");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(strict on)");
-        AppendToShaderHeader(ShaderType::COUNT, "//#pragma optionNV(unroll all)");
-    }
 
     if_constexpr(Config::USE_COLOURED_WOIT) {
         AppendToShaderHeader(ShaderType::COUNT, "#define USE_COLOURED_WOIT");
@@ -480,12 +533,14 @@ bool InitGLSW(const DeviceInformation& deviceInfo, const Configuration& config) 
     AppendToShaderHeader(ShaderType::FRAGMENT, "#define COMP_ONLY_W readonly");
     AppendToShaderHeader(ShaderType::FRAGMENT, "#define COMP_ONLY_R");
     AppendToShaderHeader(ShaderType::FRAGMENT, "#define COMP_ONLY_RW readonly");
+
     AppendToShaderHeader(ShaderType::COMPUTE, "#define COMP_ONLY_W ACCESS_W");
     AppendToShaderHeader(ShaderType::COMPUTE, "#define COMP_ONLY_R ACCESS_R");
     AppendToShaderHeader(ShaderType::COMPUTE, "#define COMP_ONLY_RW ACCESS_RW");
 
     AppendToShaderHeader(ShaderType::COUNT, "#define AND(a, b) (a * b)");
     AppendToShaderHeader(ShaderType::COUNT, "#define OR(a, b) min(a + b, 1.f)");
+
     AppendToShaderHeader(ShaderType::COUNT, "#define XOR(a, b) ((a + b) % 2)");
     AppendToShaderHeader(ShaderType::COUNT, "#define NOT(X) (1.f - X)");
     AppendToShaderHeader(ShaderType::COUNT, "#define Squared(X) (X * X)");
@@ -496,21 +551,25 @@ bool InitGLSW(const DeviceInformation& deviceInfo, const Configuration& config) 
     AppendToShaderHeader(ShaderType::COUNT, "#define GLOBAL_WATER_BODIES_COUNT " + Util::to_string(GLOBAL_WATER_BODIES_COUNT));
     AppendToShaderHeader(ShaderType::COUNT, "#define GLOBAL_PROBE_COUNT " + Util::to_string(GLOBAL_PROBE_COUNT));
     AppendToShaderHeader(ShaderType::COUNT, "#define MATERIAL_TEXTURE_COUNT " + Util::to_string(MATERIAL_TEXTURE_COUNT));
+
     AppendToShaderHeader(ShaderType::COMPUTE, "#define BUFFER_LUMINANCE_HISTOGRAM " + Util::to_string(to_base(ShaderBufferLocation::LUMINANCE_HISTOGRAM)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define BUFFER_BONE_TRANSFORMS " + Util::to_string(to_base(ShaderBufferLocation::BONE_TRANSFORMS)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define BUFFER_BONE_TRANSFORMS_PREV " + Util::to_string(to_base(ShaderBufferLocation::BONE_TRANSFORMS_PREV)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define MAX_BONE_COUNT_PER_NODE " + Util::to_string(Config::MAX_BONE_COUNT_PER_NODE));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define ATTRIB_POSITION " + Util::to_string(to_base(AttribLocation::POSITION)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define ATTRIB_TEXCOORD " + Util::to_string(to_base(AttribLocation::TEXCOORD)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define ATTRIB_NORMAL " + Util::to_string(to_base(AttribLocation::NORMAL)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define ATTRIB_TANGENT " + Util::to_string(to_base(AttribLocation::TANGENT)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define ATTRIB_COLOR " + Util::to_string(to_base(AttribLocation::COLOR)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define ATTRIB_BONE_WEIGHT " + Util::to_string(to_base(AttribLocation::BONE_WEIGHT)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define ATTRIB_BONE_INDICE " + Util::to_string(to_base(AttribLocation::BONE_INDICE)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define ATTRIB_WIDTH " + Util::to_string(to_base(AttribLocation::WIDTH)));
-    AppendToShaderHeader(ShaderType::VERTEX, "#define ATTRIB_GENERIC " + Util::to_string(to_base(AttribLocation::GENERIC)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define ATTRIB_FREE_START " + Util::to_string(to_base(AttribLocation::COUNT) + 1u));
+
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define BUFFER_BONE_TRANSFORMS " + Util::to_string(to_base(ShaderBufferLocation::BONE_TRANSFORMS)));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define BUFFER_BONE_TRANSFORMS_PREV " + Util::to_string(to_base(ShaderBufferLocation::BONE_TRANSFORMS_PREV)));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define MAX_BONE_COUNT_PER_NODE " + Util::to_string(Config::MAX_BONE_COUNT_PER_NODE));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_POSITION " + Util::to_string(to_base(AttribLocation::POSITION)));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_TEXCOORD " + Util::to_string(to_base(AttribLocation::TEXCOORD)));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_NORMAL " + Util::to_string(to_base(AttribLocation::NORMAL)));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_TANGENT " + Util::to_string(to_base(AttribLocation::TANGENT)));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_COLOR " + Util::to_string(to_base(AttribLocation::COLOR)));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_BONE_WEIGHT " + Util::to_string(to_base(AttribLocation::BONE_WEIGHT)));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_BONE_INDICE " + Util::to_string(to_base(AttribLocation::BONE_INDICE)));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_WIDTH " + Util::to_string(to_base(AttribLocation::WIDTH)));
+    AppendToShaderHeader(ShaderType::VERTEX,   "#define ATTRIB_GENERIC " + Util::to_string(to_base(AttribLocation::GENERIC)));
+    AppendToShaderHeader(ShaderType::COUNT,    "#define ATTRIB_FREE_START 12");
     AppendToShaderHeader(ShaderType::FRAGMENT, "#define MAX_SHININESS " + Util::to_string(Material::MAX_SHININESS));
+
+    const string interfaceLocationString = "layout(location = 0) ";
 
     for (U8 i = 0u; i < to_U8(ShadingMode::COUNT) + 1u; ++i) {
         const ShadingMode mode = static_cast<ShadingMode>(i);
@@ -532,49 +591,57 @@ bool InitGLSW(const DeviceInformation& deviceInfo, const Configuration& config) 
     AppendToShaderHeader(ShaderType::COUNT, "#   define ENABLE_TBN");
     AppendToShaderHeader(ShaderType::COUNT, "#endif //COMPUTE_TBN && !ENABLE_TBN");
 
+    AppendToShaderHeader(ShaderType::GEOMETRY, "#if !defined(INPUT_PRIMITIVE_SIZE)");
+    AppendToShaderHeader(ShaderType::GEOMETRY, "#   define INPUT_PRIMITIVE_SIZE 1");
+    AppendToShaderHeader(ShaderType::GEOMETRY, "#endif //!INPUT_PRIMITIVE_SIZE");
+
+    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#if !defined(TESSELLATION_OUTPUT_VERTICES)");
+    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#   define TESSELLATION_OUTPUT_VERTICES 4");
+    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "#endif //!TESSELLATION_OUTPUT_VERTICES");
+
     // Vertex shader output
-    AppendToShaderHeader(ShaderType::VERTEX, "out Data {");
+    AppendToShaderHeader(ShaderType::VERTEX, interfaceLocationString + "out Data {");
     addVaryings(ShaderType::VERTEX);
     AppendToShaderHeader(ShaderType::VERTEX, "} _out;\n");
 
     // Tessellation Control shader input
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "in Data {");
+    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, interfaceLocationString + "in Data {");
     addVaryings(ShaderType::TESSELLATION_CTRL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "} _in[];\n");
+    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "} _in[gl_MaxPatchVertices];\n");
 
     // Tessellation Control shader output
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "out Data {");
+    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, interfaceLocationString + "out Data {");
     addVaryings(ShaderType::TESSELLATION_CTRL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "} _out[];\n");
+    AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, "} _out[TESSELLATION_OUTPUT_VERTICES];\n");
 
     AppendToShaderHeader(ShaderType::TESSELLATION_CTRL, getPassData(ShaderType::TESSELLATION_CTRL));
 
     // Tessellation Eval shader input
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "in Data {");
+    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, interfaceLocationString + "in Data {");
     addVaryings(ShaderType::TESSELLATION_EVAL);
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "} _in[];\n");
+    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "} _in[gl_MaxPatchVertices];\n");
 
     // Tessellation Eval shader output
-    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "out Data {");
+    AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, interfaceLocationString + "out Data {");
     addVaryings(ShaderType::TESSELLATION_EVAL);
     AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, "} _out;\n");
 
     AppendToShaderHeader(ShaderType::TESSELLATION_EVAL, getPassData(ShaderType::TESSELLATION_EVAL));
 
     // Geometry shader input
-    AppendToShaderHeader(ShaderType::GEOMETRY, "in Data {");
+    AppendToShaderHeader(ShaderType::GEOMETRY, interfaceLocationString + "in Data {");
     addVaryings(ShaderType::GEOMETRY);
-    AppendToShaderHeader(ShaderType::GEOMETRY, "} _in[];\n");
+    AppendToShaderHeader(ShaderType::GEOMETRY, "} _in[INPUT_PRIMITIVE_SIZE];\n");
 
     // Geometry shader output
-    AppendToShaderHeader(ShaderType::GEOMETRY, "out Data {");
+    AppendToShaderHeader(ShaderType::GEOMETRY, interfaceLocationString + "out Data {");
     addVaryings(ShaderType::GEOMETRY);
     AppendToShaderHeader(ShaderType::GEOMETRY, "} _out;\n");
 
     AppendToShaderHeader(ShaderType::GEOMETRY, getPassData(ShaderType::GEOMETRY));
 
     // Fragment shader input
-    AppendToShaderHeader(ShaderType::FRAGMENT, "in Data {");
+    AppendToShaderHeader(ShaderType::FRAGMENT, interfaceLocationString + "in Data {");
     addVaryings(ShaderType::FRAGMENT);
     AppendToShaderHeader(ShaderType::FRAGMENT, "} _in;\n");
 
@@ -584,7 +651,7 @@ bool InitGLSW(const DeviceInformation& deviceInfo, const Configuration& config) 
     AppendToShaderHeader(ShaderType::GEOMETRY, "#define VAR _in");
     AppendToShaderHeader(ShaderType::FRAGMENT, "#define VAR _in");
 
-    AppendToShaderHeader(ShaderType::COUNT, "_CUSTOM_UNIFORMS__");
+    AppendToShaderHeader(ShaderType::COUNT, "//_CUSTOM_UNIFORMS_\\");
 
     // Check initialization status for GLSL and glsl-optimizer
     return glswState == 1;
@@ -613,6 +680,8 @@ ShaderProgram::ShaderProgram(GFXDevice& context,
 
 ShaderProgram::~ShaderProgram()
 {
+    unload();
+
     Console::d_printfn(Locale::Get(_ID("SHADER_PROGRAM_REMOVE")), resourceName().c_str());
     s_shaderCount.fetch_sub(1, std::memory_order_relaxed);
 }
@@ -708,7 +777,7 @@ ErrorCode ShaderProgram::OnStartup(ResourceCache* parentCache) {
         }
     }
 
-    const ResourcePath locPrefix{ Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::GLSL::g_parentShaderLoc };
+    const ResourcePath locPrefix{ Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::GLSL::g_GLSLShaderLoc };
 
     shaderAtomLocationPrefix[to_base(ShaderType::FRAGMENT)]          = locPrefix + Paths::Shaders::GLSL::g_fragAtomLoc;
     shaderAtomLocationPrefix[to_base(ShaderType::VERTEX)]            = locPrefix + Paths::Shaders::GLSL::g_vertAtomLoc;
@@ -724,7 +793,7 @@ ErrorCode ShaderProgram::OnStartup(ResourceCache* parentCache) {
     shaderAtomExtensionName[to_base(ShaderType::TESSELLATION_CTRL)] = Paths::Shaders::GLSL::g_tescAtomExt;
     shaderAtomExtensionName[to_base(ShaderType::TESSELLATION_EVAL)] = Paths::Shaders::GLSL::g_teseAtomExt;
     shaderAtomExtensionName[to_base(ShaderType::COMPUTE)]           = Paths::Shaders::GLSL::g_compAtomExt;
-    shaderAtomExtensionName[to_base(ShaderType::COUNT)]             = Paths::Shaders::GLSL::g_comnAtomExt;
+    shaderAtomExtensionName[to_base(ShaderType::COUNT)]             = "." + Paths::Shaders::GLSL::g_comnAtomExt;
 
     for (U8 i = 0u; i < to_base(ShaderType::COUNT) + 1; ++i) {
         shaderAtomExtensionHash[i] = _ID(shaderAtomExtensionName[i].c_str());
@@ -734,9 +803,12 @@ ErrorCode ShaderProgram::OnStartup(ResourceCache* parentCache) {
     const Configuration& config = ctx.config();
 
     ShaderProgram::s_UseBindlessTextures = config.rendering.useBindlessTextures && ctx.gfx().GetDeviceInformation()._bindlessTexturesSupported;
-    if (!InitGLSW(GFXDevice::GetDeviceInformation(), config)) {
+    if (!InitGLSW(ctx.gfx().renderAPI(), GFXDevice::GetDeviceInformation(), config)) {
         return ErrorCode::GLSL_INIT_ERROR;
     }
+
+    SpirvHelper::Init();
+
     Console::printfn(Locale::Get(_ID("GLSL_BINDLESS_TEXTURES_STATE")), ShaderProgram::s_UseBindlessTextures ? "True" : "False");
 
     return ErrorCode::NO_ERR;
@@ -764,7 +836,7 @@ ErrorCode ShaderProgram::PostInitAPI(ResourceCache* parentCache) {
         assert(s_imShader != nullptr);
     }
     {
-        shaderDescriptor._modules.back()._defines.emplace_back("WORLD_PASS", true);
+        shaderDescriptor._modules.back()._defines.emplace_back("WORLD_PASS");
         ResourceDescriptor immediateModeShader("ImmediateModeEmulation-World");
         immediateModeShader.waitForReady(true);
         immediateModeShader.propertyDescriptor(shaderDescriptor);
@@ -773,7 +845,7 @@ ErrorCode ShaderProgram::PostInitAPI(ResourceCache* parentCache) {
     }
 
     {
-        shaderDescriptor._modules.back()._defines.emplace_back("OIT_PASS", true);
+        shaderDescriptor._modules.back()._defines.emplace_back("OIT_PASS");
         ResourceDescriptor immediateModeShader("ImmediateModeEmulation-OIT");
         immediateModeShader.waitForReady(true);
         immediateModeShader.propertyDescriptor(shaderDescriptor);
@@ -796,6 +868,7 @@ ErrorCode ShaderProgram::PostInitAPI(ResourceCache* parentCache) {
 }
 
 bool ShaderProgram::OnShutdown() {
+    SpirvHelper::Finalize();
     // Make sure we unload all shaders
     s_nullShader.reset();
     s_imShader.reset();
@@ -814,7 +887,7 @@ bool ShaderProgram::OnShutdown() {
 }
 
 bool ShaderProgram::OnThreadCreated(const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID) {
-    return InitGLSW(GFXDevice::GetDeviceInformation(), gfx.context().config());
+    return InitGLSW(gfx.renderAPI(), GFXDevice::GetDeviceInformation(), gfx.context().config());
 }
 
 /// Whenever a new program is created, it's registered with the manager
@@ -934,46 +1007,42 @@ vector<ResourcePath> ShaderProgram::GetAllAtomLocations() {
         // GLSL
         atomLocations.emplace_back(Paths::g_assetsLocation +
                                    Paths::g_shadersLocation +
-                                   Paths::Shaders::GLSL::g_parentShaderLoc);
+                                   Paths::Shaders::GLSL::g_GLSLShaderLoc);
 
         atomLocations.emplace_back(Paths::g_assetsLocation +
                                    Paths::g_shadersLocation +
-                                   Paths::Shaders::GLSL::g_parentShaderLoc +
+                                   Paths::Shaders::GLSL::g_GLSLShaderLoc +
                                    Paths::Shaders::GLSL::g_comnAtomLoc);
 
         atomLocations.emplace_back(Paths::g_assetsLocation +
                                    Paths::g_shadersLocation +
-                                   Paths::Shaders::GLSL::g_parentShaderLoc +
+                                   Paths::Shaders::GLSL::g_GLSLShaderLoc +
                                    Paths::Shaders::GLSL::g_compAtomLoc);
 
         atomLocations.emplace_back(Paths::g_assetsLocation +
                                    Paths::g_shadersLocation +
-                                   Paths::Shaders::GLSL::g_parentShaderLoc +
+                                   Paths::Shaders::GLSL::g_GLSLShaderLoc +
                                    Paths::Shaders::GLSL::g_fragAtomLoc);
 
         atomLocations.emplace_back(Paths::g_assetsLocation +
                                    Paths::g_shadersLocation +
-                                   Paths::Shaders::GLSL::g_parentShaderLoc +
+                                   Paths::Shaders::GLSL::g_GLSLShaderLoc +
                                    Paths::Shaders::GLSL::g_geomAtomLoc);
 
         atomLocations.emplace_back(Paths::g_assetsLocation +
                                    Paths::g_shadersLocation +
-                                   Paths::Shaders::GLSL::g_parentShaderLoc +
+                                   Paths::Shaders::GLSL::g_GLSLShaderLoc +
                                    Paths::Shaders::GLSL::g_tescAtomLoc);
 
         atomLocations.emplace_back(Paths::g_assetsLocation +
                                    Paths::g_shadersLocation +
-                                   Paths::Shaders::GLSL::g_parentShaderLoc +
+                                   Paths::Shaders::GLSL::g_GLSLShaderLoc +
                                    Paths::Shaders::GLSL::g_teseAtomLoc);
 
         atomLocations.emplace_back(Paths::g_assetsLocation +
                                    Paths::g_shadersLocation +
-                                   Paths::Shaders::GLSL::g_parentShaderLoc +
+                                   Paths::Shaders::GLSL::g_GLSLShaderLoc +
                                    Paths::Shaders::GLSL::g_vertAtomLoc);
-        // HLSL
-        atomLocations.emplace_back(Paths::g_assetsLocation +
-                                   Paths::g_shadersLocation +
-                                   Paths::Shaders::HLSL::g_parentShaderLoc);
 
     }
 
@@ -1149,50 +1218,183 @@ eastl::string ShaderProgram::GatherUniformDeclarations(const eastl::string & sou
     return ret;
 }
 
+void ShaderProgram::ParseGLSLSource(Reflection::Data& reflectionDataInOut, LoadData& dataInOut, const bool targetVulkan) {
+    if (dataInOut._codeSource == ShaderProgram::LoadData::SourceCodeSource::SOURCE_FILES) {
+        QueueShaderWriteToFile(dataInOut._sourceCodeGLSL.c_str(), dataInOut._fileName);
+    }
+    if (dataInOut._codeSource != ShaderProgram::LoadData::SourceCodeSource::SOURCE_FILES) {
+        STUBBED("ToDo: Add shader loading from SPIRV sources");
+    }
+
+    vk::ShaderStageFlagBits type = vk::ShaderStageFlagBits::eVertex;
+
+    switch (dataInOut._type) {
+        default:
+        case ShaderType::VERTEX:            type = vk::ShaderStageFlagBits::eVertex;                 break;
+        case ShaderType::TESSELLATION_CTRL: type = vk::ShaderStageFlagBits::eTessellationControl;    break;
+        case ShaderType::TESSELLATION_EVAL: type = vk::ShaderStageFlagBits::eTessellationEvaluation; break;
+        case ShaderType::GEOMETRY:          type = vk::ShaderStageFlagBits::eGeometry;               break;
+        case ShaderType::FRAGMENT:          type = vk::ShaderStageFlagBits::eFragment;               break;
+        case ShaderType::COMPUTE:           type = vk::ShaderStageFlagBits::eCompute;                break;
+    };
+
+    if (!SpirvHelper::GLSLtoSPV(type, dataInOut._sourceCodeGLSL.c_str(), dataInOut._sourceCodeSpirV, targetVulkan, reflectionDataInOut) || dataInOut._sourceCodeSpirV.empty()) {
+        Console::errorfn(Locale::Get(_ID("ERROR_SHADER_CONVERSION_SPIRV_FAILED")), dataInOut._fileName.c_str());
+        dataInOut._sourceCodeSpirV.clear();
+    } else {
+        const ResourcePath spvPath = Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::g_SPIRVShaderLoc;
+        const Str256 spvTarget = DecorateFileName(dataInOut._fileName) + "." + Paths::Shaders::g_SPIRVExt;
+        if (writeFile(spvPath, ResourcePath(spvTarget), dataInOut._sourceCodeSpirV.data(), dataInOut._sourceCodeSpirV.size() * sizeof(U32), FileType::BINARY) != FileError::NONE) {
+            Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_SPIRV_FAILED")), dataInOut._fileName.c_str());
+        }
+    }
+}
+
+bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) {
+    const auto g_cmp = [](const ShaderProgram::UniformDeclaration& lhs, const ShaderProgram::UniformDeclaration& rhs) {
+        const I32 lhsPriority = g_TypePriority(_ID(lhs._type.c_str()));
+        const I32 rhsPriority = g_TypePriority(_ID(rhs._type.c_str()));
+        if (lhsPriority != rhsPriority) {
+            return lhsPriority < rhsPriority;
+        }
+
+        return lhs._name < rhs._name;
+    };
+
+    setGLSWPath(reloadExisting);
+
+    for (const ShaderModuleDescriptor& shaderDescriptor : _descriptor._modules) {
+        const U64 fileHash = _ID(shaderDescriptor._sourceFile.data());
+        fileData[fileHash]._modules.push_back(shaderDescriptor);
+    }
+
+    U32 blockOffset = 0u;
+    for (auto& [fileHash, loadDataPerFile] : fileData) {
+        eastl::set<ShaderProgram::UniformDeclaration, decltype(g_cmp)> stageUniforms(g_cmp);
+
+        assert(!loadDataPerFile._modules.empty());
+
+        for (ShaderModuleDescriptor& data : loadDataPerFile._modules) {
+            const ShaderType type = data._moduleType;
+            assert(type != ShaderType::COUNT);
+
+            ShaderProgram::LoadData& stageData = loadDataPerFile._loadData._data.emplace_back();
+            stageData._type = data._moduleType;
+            stageData._name = Str256(data._sourceFile.substr(0, data._sourceFile.find_first_of(".")));
+            stageData._name.append(".");
+            stageData._name.append(Names::shaderTypes[to_U8(type)]);
+            if (!data._variant.empty()) {
+                stageData._name.append("." + data._variant);
+            }
+            stageData._definesHash = DefinesHash(data._defines);
+            stageData._fileName = Util::StringFormat("%s.%zu.%s", stageData._name, stageData._definesHash, shaderAtomExtensionName[to_U8(type)]);
+            loadSourceCode(data._defines, reloadExisting, stageData);
+
+            if (!loadDataPerFile._programName.empty()) {
+                loadDataPerFile._programName.append("-");
+            }
+            loadDataPerFile._programName.append(stageData._fileName);
+
+            if (!stageData._atomUniformPair._uniforms.empty()) {
+                stageUniforms.insert(begin(stageData._atomUniformPair._uniforms), end(stageData._atomUniformPair._uniforms));
+            }
+
+            stageData._atomUniformPair._atoms.emplace_back(data._sourceFile);
+
+            if (stageData._sourceCodeGLSL.empty() && stageData._sourceCodeSpirV.empty()) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+        }
+
+        loadDataPerFile._loadData._uniformBlockOffset = blockOffset++;
+        loadDataPerFile._loadData._uniformBlockName = Util::StringFormat("dvd_UniformBlock_%lld", loadDataPerFile._loadData._uniformBlockOffset);
+        loadDataPerFile._loadData._uniformBlockOffset += to_U32(ShaderBufferLocation::UNIFORM_BLOCK);
+
+        if (!stageUniforms.empty()) {
+            string& uniformBlock = loadDataPerFile._loadData._uniformBlock;
+
+            uniformBlock = _context.renderAPI() == RenderAPI::OpenGL ? "layout( " : "layout( set = 0, ";
+            uniformBlock.append("binding = %d, std140 ) uniform %s {");
+
+            for (const UniformDeclaration& uniform : stageUniforms) {
+                uniformBlock.append(Util::StringFormat("\n    %s %s;", uniform._type.c_str(), uniform._name.c_str()));
+            }
+            uniformBlock.append(Util::StringFormat("\n} %s;", UNIFORM_BLOCK_NAME));
+
+            for (const UniformDeclaration& uniform : stageUniforms) {
+                const auto rawName = uniform._name.substr(0, uniform._name.find_first_of("[")).to_string();
+                uniformBlock.append(Util::StringFormat("\n#define %s %s.%s", rawName.c_str(), UNIFORM_BLOCK_NAME, rawName.c_str()));
+            }
+
+            uniformBlock = Util::StringFormat(uniformBlock, loadDataPerFile._loadData._uniformBlockOffset, loadDataPerFile._loadData._uniformBlockName.c_str());
+        }
+    }
+
+    return true;
+}
+
 void ShaderProgram::QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName) {
     g_sDumpToFileQueue.enqueue({ fileName, sourceCode });
 }
 
-ShaderProgram::AtomUniformPair ShaderProgram::loadSourceCode(const Str128& stageName,
-                                                             const Str8& extension,
-                                                             const string& header,
-                                                             size_t definesHash,
-                                                             const bool reloadExisting,
-                                                             Str256& fileNameOut,
-                                                             eastl::string& sourceCodeOut) const
-{
-    AtomUniformPair ret = {};
-
-    fileNameOut = definesHash != 0
-                            ? Util::StringFormat("%s.%zu.%s", stageName.c_str(), definesHash, extension.c_str())
-                            : Util::StringFormat("%s.%s", stageName.c_str(), extension.c_str());
+void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut) const {
+    auto& glslCodeOut = loadDataInOut._sourceCodeGLSL;
+    auto& spirvCodeOut = loadDataInOut._sourceCodeSpirV;
 
     sourceCodeOut.resize(0);
+    spirvCodeOut.resize(0);
+
     if (s_useShaderTextCache && !reloadExisting) {
         ShaderFileRead(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText,
-                       ResourcePath(fileNameOut),
-                       sourceCodeOut);
+                       ResourcePath(loadDataInOut._fileName),
+                       glslCodeOut);
+        loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
     }
-
-    if (sourceCodeOut.empty()) {
+    if (glslCodeOut.empty()) {
+        // Read code from SPIRV files
+        loadDataInOut._codeSource = LoadData::SourceCodeSource::SPIRV_CACHE;
+    }
+    if (glslCodeOut.empty() && spirvCodeOut.empty()) {
         // Use GLSW to read the appropriate part of the effect file
         // based on the specified stage and properties
-        const char* sourceCodeStr = glswGetShader(stageName.c_str());
+        const char* sourceCodeStr = glswGetShader(loadDataInOut._name.c_str());
         if (sourceCodeStr != nullptr) {
-            sourceCodeOut = sourceCodeStr;
+            glslCodeOut.append(sourceCodeStr);
         }
 
         // GLSW may fail for various reasons (not a valid effect stage, invalid name, etc)
-        if (!sourceCodeOut.empty()) {
+        if (!glslCodeOut.empty()) {
+
+            string header;
+            for (const auto& [defineString, appendPrefix] : defines) {
+                // Placeholders are ignored
+                if (defineString == "DEFINE_PLACEHOLDER") {
+                    continue;
+                }
+
+                // We manually add define dressing if needed
+                header.append((appendPrefix ? "#define " : "") + defineString + '\n');
+            }
+
+            for (const auto& [defineString, appendPrefix] : defines) {
+                // Placeholders are ignored
+                if (!appendPrefix || defineString == "DEFINE_PLACEHOLDER") {
+                    continue;
+                }
+
+                // We also add a comment so that we can check what defines we have set because
+                // the shader preprocessor strips defines before sending the code to the GPU
+                header.append("/*Engine define: [ " + defineString + " ]*/\n");
+            }
             // And replace in place with our program's headers created earlier
-            Util::ReplaceStringInPlace(sourceCodeOut, "_CUSTOM_DEFINES__", header);
-            sourceCodeOut = PreprocessIncludes(ResourcePath(resourceName()), sourceCodeOut, 0, ret._atoms, true);
-            sourceCodeOut = Preprocessor::PreProcess(sourceCodeOut, fileNameOut.c_str());
-            sourceCodeOut = GatherUniformDeclarations(sourceCodeOut, ret._uniforms);
+            Util::ReplaceStringInPlace(glslCodeOut, "_CUSTOM_DEFINES__", header);
+            glslCodeOut = PreprocessIncludes(ResourcePath(resourceName()), glslCodeOut, 0, loadDataInOut._atomUniformPair._atoms, true);
+            glslCodeOut = Preprocessor::PreProcess(glslCodeOut, loadDataInOut._fileName.c_str());
+            glslCodeOut = GatherUniformDeclarations(glslCodeOut, loadDataInOut._atomUniformPair._uniforms);
+
+            loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
         }
     }
-
-    return ret;
 }
 
 void ShaderProgram::OnAtomChange(const std::string_view atomName, const FileUpdateEvent evt) {
@@ -1229,6 +1431,6 @@ void ShaderProgram::setGLSWPath(const bool clearExisting) {
     if (clearExisting) {
         glswClearCurrentContext();
     }
-    glswSetPath((assetLocation() + "/" + Paths::Shaders::GLSL::g_parentShaderLoc).c_str(), ".glsl");
+    glswSetPath((assetLocation() + "/" + Paths::Shaders::GLSL::g_GLSLShaderLoc).c_str(), ".glsl");
 }
 };

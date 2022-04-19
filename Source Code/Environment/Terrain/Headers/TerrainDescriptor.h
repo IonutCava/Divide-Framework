@@ -79,20 +79,18 @@ class TerrainDescriptor final : public PropertyDescriptor {
     {
         _hash = PropertyDescriptor::getHash();
         for (const auto& it : _variables) {
-            Util::Hash_combine(_hash, it.first);
-            Util::Hash_combine(_hash, it.second);
+            Util::Hash_combine(_hash, it.first, it.second);
         }
         for (hashMap<U64, F32>::value_type it : _variablesf) {
-            Util::Hash_combine(_hash, it.first);
-            Util::Hash_combine(_hash, it.second);
+            Util::Hash_combine(_hash, it.first, it.second);
         }
-        Util::Hash_combine(_hash, _active);
-        Util::Hash_combine(_hash, _textureLayers);
-        Util::Hash_combine(_hash, _altitudeRange.x);
-        Util::Hash_combine(_hash, _altitudeRange.y);
-        Util::Hash_combine(_hash, _dimensions.x);
-        Util::Hash_combine(_hash, _dimensions.y);
-        Util::Hash_combine(_hash, _startWidth);
+        Util::Hash_combine(_hash, _active,
+                                  _textureLayers,
+                                  _altitudeRange.x,
+                                  _altitudeRange.y,
+                                  _dimensions.x,
+                                  _dimensions.y,
+                                  _startWidth);
         for(U8 i = 0; i < ringCount(); ++i) {
             Util::Hash_combine(_hash, _ringTileCount[i]);
         }

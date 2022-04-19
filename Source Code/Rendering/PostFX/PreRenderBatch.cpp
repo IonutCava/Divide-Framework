@@ -196,8 +196,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
             fragModule._defines.emplace_back(
                 Util::StringFormat("%s %d",
                                    TypeUtil::ToneMapFunctionsToString(static_cast<ToneMapParams::MapFunctions>(i)),
-                                   i),
-                true);
+                                   i));
         }
         fragModule._sourceFile = "toneMap.glsl";
 
@@ -210,7 +209,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         toneMap.propertyDescriptor(mapDescriptor1);
         _toneMap = CreateResource<ShaderProgram>(_resCache, toneMap, loadTasks);
 
-        fragModule._defines.emplace_back("USE_ADAPTIVE_LUMINANCE", true);
+        fragModule._defines.emplace_back("USE_ADAPTIVE_LUMINANCE");
 
         ShaderProgramDescriptor toneMapAdaptiveDescriptor{};
         toneMapAdaptiveDescriptor._modules.push_back(vertModule);
@@ -226,9 +225,9 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         ShaderModuleDescriptor computeModule = {};
         computeModule._moduleType = ShaderType::COMPUTE;
         computeModule._sourceFile = "luminanceCalc.glsl";
-        computeModule._defines.emplace_back(Util::StringFormat("GROUP_SIZE %d", GROUP_X_THREADS * GROUP_Y_THREADS), true);
-        computeModule._defines.emplace_back(Util::StringFormat("THREADS_X %d", GROUP_X_THREADS), true);
-        computeModule._defines.emplace_back(Util::StringFormat("THREADS_Y %d", GROUP_Y_THREADS), true);
+        computeModule._defines.emplace_back(Util::StringFormat("GROUP_SIZE %d", GROUP_X_THREADS * GROUP_Y_THREADS));
+        computeModule._defines.emplace_back(Util::StringFormat("THREADS_X %d", GROUP_X_THREADS));
+        computeModule._defines.emplace_back(Util::StringFormat("THREADS_Y %d", GROUP_Y_THREADS));
 
         {
             computeModule._variant = "Create";
@@ -450,7 +449,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         const RTAttachment& depthAtt = screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
         set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
 
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);

@@ -7,8 +7,8 @@ layout(location = ATTRIB_TEXCOORD) in vec2 inTexCoordData;
 layout(location = ATTRIB_COLOR)    in vec4 inColourData;
 layout(location = ATTRIB_GENERIC)  in vec2 inGenericData;
 
-layout(location = 0) out vec2 Frag_UV;
-layout(location = 1) out vec4 Frag_Color;
+layout(location = ATTRIB_FREE_START + 0) out vec2 Frag_UV;
+layout(location = ATTRIB_FREE_START + 1) out vec4 Frag_Color;
 
 void main()
 {
@@ -21,27 +21,27 @@ void main()
 
 #include "utility.frag"
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D Texture;
-layout(binding = TEXTURE_UNIT1) uniform sampler2DArray Texture2;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D Texture;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2DArray Texture2;
 
-layout(location = 0) in vec2 Frag_UV;
-layout(location = 1) in vec4 Frag_Color;
+layout(location = ATTRIB_FREE_START + 0) in vec2 Frag_UV;
+layout(location = ATTRIB_FREE_START + 1) in vec4 Frag_Color;
 
-out vec4 Out_Color;
+layout(location = 0) out vec4 Out_Color;
 
 uniform ivec4 toggleChannel;
 uniform vec2 depthRange;
 uniform uint layer = 0u;
 uniform uint mip = 0u;
 uniform uint textureType = 0u;
-uniform bool depthTexture;
-uniform bool flip = false;
+uniform uint depthTexture;
+uniform uint flip = 0u;
 
 void main()
 {
     Out_Color = Frag_Color;
     vec2 uv = Frag_UV.st;
-    if (flip) {
+    if (flip != 0u) {
         uv.t = 1.f - uv.t;
     }
 
@@ -54,7 +54,7 @@ void main()
         texColor = textureLod(Texture2, vec3(uv, float(layer)), mip * 1.f);
     }
 
-    if (depthTexture) {
+    if (depthTexture != 0u) {
         texColor = vec4((ToLinearDepth(texColor.r, zPlanes) / zPlanes.y) * toggleChannel[0]);
     } else {
         Out_Color.xyz *= toggleChannel.xyz;

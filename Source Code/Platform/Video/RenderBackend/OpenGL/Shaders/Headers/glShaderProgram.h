@@ -53,9 +53,9 @@ struct BinaryDumpEntry
 
 struct ValidationEntry
 {
-    Str256 _name;
-    GLuint _handle = 0u;
-    UseProgramStageMask _stageMask = UseProgramStageMask::GL_NONE_BIT;
+    Str256 _name{};
+    GLuint _handle{0u};
+    UseProgramStageMask _stageMask{ UseProgramStageMask::GL_NONE_BIT };
 };
 
 enum class ShaderResult : U8 {
@@ -70,8 +70,6 @@ namespace Attorney {
 /// OpenGL implementation of the ShaderProgram entity
 class glShaderProgram final : public ShaderProgram, public glObject {
     friend class Attorney::GLAPIShaderProgram;
-   public:
-    static constexpr bool g_useUniformConstantBuffer = true;
 
    public:
     explicit glShaderProgram(GFXDevice& context,
@@ -80,10 +78,9 @@ class glShaderProgram final : public ShaderProgram, public glObject {
                              const Str256& assetName,
                              const ResourcePath& assetLocation,
                              const ShaderProgramDescriptor& descriptor);
-    ~glShaderProgram();
 
-    static void InitStaticData();
-    static void DestroyStaticData();
+    ~glShaderProgram() = default;
+
     static void Idle(PlatformContext& platformContext);
 
 
@@ -95,7 +92,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     void onAtomChangeInternal(std::string_view atomName, FileUpdateEvent evt) override;
 
   protected:
-    ShaderResult rebindStages();
     ShaderResult validatePreBind(bool rebind = true);
     void processValidation();
     
@@ -105,7 +101,7 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     void threadedLoad(bool reloadExisting) override;
 
     /// Returns true if at least one shader linked successfully
-    bool reloadShaders(bool reloadExisting);
+    bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) override;
 
     /// Bind this shader program (returns false if the program failed validation)
     ShaderResult bind();
@@ -118,7 +114,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
 
     bool _validationQueued = false;
     bool _stagesBound = false;
-    bool _hasUniformBlockBuffer = false;
     vector<glShader*> _shaderStage;
 };
 

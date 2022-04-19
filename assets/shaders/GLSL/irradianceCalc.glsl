@@ -8,8 +8,8 @@ uniform vec2 imgSize;
 uniform uint cubeFace;
 uniform uint layerIndex;
 
-layout(binding = 0) uniform samplerCubeArray s_source;
-layout(binding = 1, rgba16f) uniform ACCESS_W image2D s_target;
+DESCRIPTOR_SET_RESOURCE(0, 0) uniform samplerCubeArray s_source;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, 1, rgba16f) uniform ACCESS_W image2D s_target;
 
 
 layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = 1) in;
@@ -45,7 +45,7 @@ void main()
 
 #define THREADS 16
 
-layout(binding = 0, rg16f) uniform ACCESS_W image2D s_target;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, 0, rg16f) uniform ACCESS_W image2D s_target;
 
 // Karis 2014
 vec2 integrateBRDF(float roughness, float NoV)
@@ -117,11 +117,11 @@ uniform vec2 imgSize;
 uniform uint cubeFace;
 uniform uint layerIndex;
 
-layout(binding = 0) uniform samplerCubeArray s_source;
-layout(binding = 1, rgba16f) uniform ACCESS_W image2D s_target;
+DESCRIPTOR_SET_RESOURCE(0, 0) uniform samplerCubeArray s_source;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, 1, rgba16f) uniform ACCESS_W image2D s_target;
 
 // From Karis, 2014
-vec3 prefilterEnvMap(float roughness, vec3 R, float imgSize)
+vec3 prefilterEnvMap(float roughness, vec3 R, float imgDimensions)
 {
     // Isotropic approximation: we lose stretchy reflections :(
     vec3 N = R;
@@ -149,7 +149,7 @@ vec3 prefilterEnvMap(float roughness, vec3 R, float imgSize)
             // Solid angle of current sample -- bigger for less likely samples
             float omegaS = 1.0 / (float(NUM_SAMPLES) * pdf);
             // Solid angle of texel
-            float omegaP = 4.0 * PI / (6.0 * imgSize * imgSize);
+            float omegaP = 4.0 * PI / (6.0 * imgDimensions * imgDimensions);
             // Mip level is determined by the ratio of our sample's solid angle to a texel's solid angle
             float mipLevel = max(0.5 * log2(omegaS / omegaP), 0.0);
             prefilteredColor += textureLod(s_source, vec4(L, layerIndex), mipLevel).rgb * NoL;

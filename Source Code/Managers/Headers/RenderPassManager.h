@@ -137,7 +137,7 @@ private:
     std::array<Task*, MAX_RENDER_PASSES + 1u> _renderTasks = create_array<MAX_RENDER_PASSES + 1u, Task*>(nullptr);
     Task* _skyLightUpdateTask = nullptr;
 
-    std::array<std::unique_ptr<RenderPassExecutor>, to_base(RenderStage::COUNT)> _executors;
+    std::array<eastl::unique_ptr<RenderPassExecutor>, to_base(RenderStage::COUNT)> _executors;
     std::array<Time::ProfileTimer*, to_base(RenderStage::COUNT)> _processCommandBufferTimer = create_array<to_base(RenderStage::COUNT), Time::ProfileTimer*>(nullptr);
     std::array<I32, to_base(RenderStage::COUNT)> _drawCallCount = create_array<to_base(RenderStage::COUNT), I32>(0);
 

@@ -44,13 +44,13 @@ changelog:
 
 -- Fragment
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texScreen;
-layout(binding = TEXTURE_DEPTH) uniform sampler2D texLinearDepth;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH) uniform sampler2D texLinearDepth;
 
 uniform vec2 size;
 // autofocus point on screen (0.0,0.0 - left lower corner, 1.0,1.0 - upper right)
 uniform vec2 focus;
-uniform vec2 zPlanes;
+uniform vec2 _zPlanes;
 //focal distance value in meters, but you may use autofocus option below
 uniform float focalDepth;
 //focal length in mm
@@ -69,15 +69,15 @@ uniform float vignout;
 //vignetting inner border
 uniform float vignin;
 //show debug focus point and focal range (red = focal point, green = focal range)
-uniform bool showFocus;
+uniform uint showFocus;
 //manual dof calculation
-uniform bool manualdof;
+uniform uint manualdof;
 //use optical lens vignetting?
-uniform bool vignetting;
+uniform uint vignetting;
 //use autofocus in shader? disable if you use external focalDepth value
-uniform bool autofocus;
+uniform uint autofocus;
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
 //------------------------------------------
 //user variables
@@ -117,8 +117,8 @@ float width = size.x; //texture width
 float height = size.y; //texture height
 vec2 texel = vec2(1.0f / width, 1.0f / height);
 
-float znear = zPlanes.x;
-float zfar = zPlanes.y;
+float znear = _zPlanes.x;
+float zfar = _zPlanes.y;
 
 #if defined(USE_PENTAGON)
 float penta(in vec2 coords) //pentagonal shape
@@ -250,12 +250,12 @@ void main()
 #endif
 
     //focal plane calculation
-    const float fDepth = autofocus ? texture(texLinearDepth, focus).r : focalDepth;
+    const float fDepth = autofocus != 0u ? texture(texLinearDepth, focus).r : focalDepth;
 
     //dof blur factor calculation
     float blur = 0.0;
 
-    if (manualdof) {
+    if (manualdof != 0u) {
         float a = depth - fDepth; //focal plane
         float b = (a - fdofstart) / fdofdist; //far DoF
         float c = (-a - ndofstart) / ndofdist; //near Dof
@@ -282,7 +282,7 @@ void main()
 
     // calculation of final color
 
-    vec3 col = texture2D(texScreen, VAR._texCoord).rgb;
+    vec3 col = texture(texScreen, VAR._texCoord).rgb;
 
     if (blur >= 0.05f)  { // Hmm ... there used to be a comment here :-"
         float s = 1.0f;
@@ -309,11 +309,11 @@ void main()
         col /= s;  //divide by sample count
     }
 
-    if (showFocus) {
+    if (showFocus != 0u) {
         col = debugFocus(col, blur, depth);
     }
 
-    if (vignetting) {
+    if (vignetting != 0u) {
         col *= vignette(VAR._texCoord);
     }
 

@@ -6,7 +6,7 @@ layout(triangle_strip, max_vertices = 4) out;
 uniform int layerCount;
 uniform int layerOffsetWrite;
 
-layout(location = 0) out flat int layerIndex;
+layout(location = ATTRIB_FREE_START) out flat int layerIndex;
 
 void main() {
     layerIndex = gl_InvocationID;
@@ -40,11 +40,11 @@ void main() {
 
 uniform int layerOffsetRead;
 
-layout(location = 0) in flat int layerIndex;
+layout(location = ATTRIB_FREE_START) in flat int layerIndex;
 
-out vec2 _outColour;
+layout(location = 0) out vec2 _outColour;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDepth;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDepth;
 
 #include "vsm.frag"
 
@@ -61,11 +61,11 @@ uniform vec2 TextureSize;
 uniform int layerOffsetRead;
 uniform int NumSamples;
 
-layout(location = 0) in flat int layerIndex;
+layout(location = ATTRIB_FREE_START) in flat int layerIndex;
 
-out vec2 _outColour;
+layout(location = 0) out vec2 _outColour;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2DMSArray texDepth;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DMSArray texDepth;
 
 #include "vsm.frag"
 

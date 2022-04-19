@@ -26,10 +26,10 @@
 
 //Global sky light layer index: SKY_LIGHT_LAYER_IDX
 // eg: vec4 skyIrradiance = texture(texEnvIrradiance, vec4(coords, SKY_LIGHT_LAYER_IDX);
-layout(binding = TEXTURE_REFLECTION_PREFILTERED) uniform samplerCubeArray texEnvPrefiltered;
-layout(binding = TEXTURE_IRRADIANCE) uniform samplerCubeArray texEnvIrradiance;
-layout(binding = TEXTURE_BRDF_LUT) uniform sampler2D texBRDFLut;
-layout(binding = TEXTURE_SSR_SAMPLE) uniform sampler2D texSSR;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_REFLECTION_PREFILTERED) uniform samplerCubeArray texEnvPrefiltered;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_IRRADIANCE) uniform samplerCubeArray texEnvIrradiance;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_BRDF_LUT) uniform sampler2D texBRDFLut;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SSR_SAMPLE) uniform sampler2D texSSR;
 
 struct ProbeData
 {
@@ -37,7 +37,7 @@ struct ProbeData
     vec4 _halfExtents;
 };
 
-layout(binding = BUFFER_PROBE_DATA, std140) uniform dvd_ProbeBlock {
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_PROBE_DATA, std140) uniform dvd_ProbeBlock {
     ProbeData dvd_Probes[GLOBAL_PROBE_COUNT];
 };
 

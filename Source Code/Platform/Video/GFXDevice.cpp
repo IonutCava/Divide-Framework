@@ -659,7 +659,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     {
         ShaderModuleDescriptor compModule = {};
         compModule._moduleType = ShaderType::COMPUTE;
-        compModule._defines.emplace_back(Util::StringFormat("WORK_GROUP_SIZE %d", GROUP_SIZE_AABB), true);
+        compModule._defines.emplace_back(Util::StringFormat("WORK_GROUP_SIZE %d", GROUP_SIZE_AABB));
         compModule._sourceFile = "HiZOcclusionCull.glsl";
 
         ShaderProgramDescriptor shaderDescriptor = {};
@@ -749,7 +749,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             shaderDescriptorLayered._modules.push_back(blurVertModule);
             shaderDescriptorLayered._modules.push_back(fragModule);
             shaderDescriptorLayered._modules.back()._variant += ".Layered";
-            shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED", true);
+            shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED");
 
             ResourceDescriptor blur("BoxBlur_Layered");
             blur.propertyDescriptor(shaderDescriptorLayered);
@@ -779,9 +779,9 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             ShaderProgramDescriptor shaderDescriptorSingle = {};
             shaderDescriptorSingle._modules.push_back(blurVertModule);
             shaderDescriptorSingle._modules.push_back(geomModule);
-            shaderDescriptorSingle._modules.back()._defines.emplace_back("GS_MAX_INVOCATIONS 1", true);
+            shaderDescriptorSingle._modules.back()._defines.emplace_back("GS_MAX_INVOCATIONS 1");
             shaderDescriptorSingle._modules.push_back(fragModule);
-            shaderDescriptorSingle._modules.back()._defines.emplace_back("GS_MAX_INVOCATIONS 1", true);
+            shaderDescriptorSingle._modules.back()._defines.emplace_back("GS_MAX_INVOCATIONS 1");
 
             ResourceDescriptor blur("GaussBlur_Single");
             blur.propertyDescriptor(shaderDescriptorSingle);
@@ -799,11 +799,11 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             ShaderProgramDescriptor shaderDescriptorLayered = {};
             shaderDescriptorLayered._modules.push_back(blurVertModule);
             shaderDescriptorLayered._modules.push_back(geomModule);
-            shaderDescriptorLayered._modules.back()._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED), true);
+            shaderDescriptorLayered._modules.back()._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
             shaderDescriptorLayered._modules.push_back(fragModule);
-            shaderDescriptorLayered._modules.back()._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED), true);
+            shaderDescriptorLayered._modules.back()._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
             shaderDescriptorLayered._modules.back()._variant += ".Layered";
-            shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED", true);
+            shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED");
 
             ResourceDescriptor blur("GaussBlur_Layered");
             blur.propertyDescriptor(shaderDescriptorLayered);
@@ -851,7 +851,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             });
         }
         {
-            shaderDescriptor._modules.back()._defines.emplace_back("DEPTH_ONLY", true);
+            shaderDescriptor._modules.back()._defines.emplace_back("DEPTH_ONLY");
             descriptor3.propertyDescriptor(shaderDescriptor);
             _depthShader = CreateResource<ShaderProgram>(cache, descriptor3, loadTasks);
             _depthShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
@@ -1557,6 +1557,14 @@ void GFXDevice::setClipPlanes(const FrustumClipPlanes& clipPlanes) {
     }
 }
 
+void GFXDevice::setDepthRange(const vec2<F32>& depthRange) {
+    GFXShaderData::CamData& data = _gpuBlock._camData;
+    if (data._renderTargetInfo.xy != depthRange) {
+        data._renderTargetInfo.xy = depthRange;
+        _gpuBlock._camNeedsUpload = true;
+    }
+}
+
 void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
     OPTICK_EVENT();
 
@@ -1866,6 +1874,12 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                     DIVIDE_UNEXPECTED_CALL();
                 }
             } break;
+            case GFX::CommandType::BEGIN_RENDER_PASS: {
+                const GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(cmd);
+                const vec2<F32> depthRange = renderTargetPool().renderTarget(crtCmd->_target).getDepthRange();
+                setDepthRange(depthRange);
+                [[fallthrough]];
+            }
             case GFX::CommandType::DRAW_TEXT:
             case GFX::CommandType::DRAW_IMGUI:
             case GFX::CommandType::DRAW_COMMANDS:
@@ -2135,7 +2149,7 @@ void GFXDevice::initDebugViews() {
         HiZ->_samplerHash = renderTargetPool().renderTarget(RenderTargetUsage::HI_Z).getAttachment(RTAttachmentType::Depth, 0).samplerHash();
         HiZ->_name = "Hierarchical-Z";
         HiZ->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, 0.f);
-        HiZ->_shaderData.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, vec2<F32>(Camera::s_minNearZ, _context.config().runtime.cameraViewDistance));
+        HiZ->_shaderData.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, vec2<F32>(Camera::s_minNearZ, _context.config().runtime.cameraViewDistance));
         HiZ->_cycleMips = true;
 
         DebugView_ptr DepthPreview = std::make_shared<DebugView>();
@@ -2144,7 +2158,7 @@ void GFXDevice::initDebugViews() {
         DepthPreview->_samplerHash = renderTargetPool().renderTarget(RenderTargetUsage::SCREEN).getAttachment(RTAttachmentType::Depth, 0).samplerHash();
         DepthPreview->_name = "Depth Buffer";
         DepthPreview->_shaderData.set(_ID("lodLevel"), GFX::PushConstantType::FLOAT, 0.0f);
-        DepthPreview->_shaderData.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, vec2<F32>(Camera::s_minNearZ, _context.config().runtime.cameraViewDistance));
+        DepthPreview->_shaderData.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, vec2<F32>(Camera::s_minNearZ, _context.config().runtime.cameraViewDistance));
 
         DebugView_ptr NormalPreview = std::make_shared<DebugView>();
         NormalPreview->_shader = _renderTargetDraw;

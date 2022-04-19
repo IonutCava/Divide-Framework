@@ -1,6 +1,6 @@
 --Compute.ResetCounter
 
-layout(binding = BUFFER_LIGHT_INDEX_COUNT, std430) COMP_ONLY_W buffer globalIndexCountSSBO {
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_LIGHT_INDEX_COUNT, std430) COMP_ONLY_W buffer globalIndexCountSSBO {
     uint globalIndexCount[];
 };
 
@@ -27,7 +27,7 @@ void main()
 #define USE_LIGHT_CLUSTERS
 #include "lightInput.cmn"
 
-layout(binding = BUFFER_LIGHT_INDEX_COUNT, std430) COMP_ONLY_RW buffer globalIndexCountSSBO {
+DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_LIGHT_INDEX_COUNT, std430) COMP_ONLY_RW buffer globalIndexCountSSBO {
     uint globalIndexCount[];
 };
 

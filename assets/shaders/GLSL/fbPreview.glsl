@@ -2,17 +2,17 @@
 
 #include "utility.frag"
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
 uniform uint channelCount;
 uniform uint startChannel;
 uniform float lodLevel;
 uniform float multiplier;
-uniform bool channelsArePacked;
-uniform bool scaleAndBias;
-uniform bool normalizeOutput;
+uniform uint channelsArePacked;
+uniform uint scaleAndBias;
+uniform uint normalizeOutput;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
 
 vec3 error() {
     const float total = floor(VAR._texCoord.x * float(dvd_ScreenDimensions.x)) +
@@ -24,7 +24,7 @@ void main()
 {
     const vec4 colourIn = textureLod(texDiffuse0, VAR._texCoord, lodLevel);
     
-    if (channelsArePacked) {
+    if (channelsArePacked != 0u) {
         if (channelCount == 1) {
             _colourOut.rgb = vec3(unpackVec2(colourIn[startChannel]), 0.f);
         } else if (channelCount == 2) {
@@ -50,10 +50,10 @@ void main()
             _colourOut.rgb = error();
         }
     }
-    if (normalizeOutput) {
+    if (normalizeOutput != 0u) {
         _colourOut.rgb = normalize(_colourOut.rgb);
     }
-    if (scaleAndBias) {
+    if (scaleAndBias != 0u) {
         _colourOut.rgb = 0.5f * _colourOut.rgb + 0.5f;
     }
     _colourOut.rgb *= multiplier;
@@ -63,25 +63,25 @@ void main()
 
 #include "utility.frag"
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
-uniform vec2 zPlanes;
+uniform vec2 _zPlanes;
 uniform float lodLevel;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
 
 void main()
 {
-    const float linearDepth = ToLinearDepth(textureLod(texDiffuse0, VAR._texCoord, lodLevel).r, zPlanes);
+    const float linearDepth = ToLinearDepth(textureLod(texDiffuse0, VAR._texCoord, lodLevel).r, _zPlanes);
     /// Map back to [0 ... 1] range
-    _colourOut = vec4(vec3(linearDepth / zPlanes.y), 1.0);
+    _colourOut = vec4(vec3(linearDepth / _zPlanes.y), 1.0);
 }
 
 -- Fragment.Layered
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 uniform float lodLevel;
 uniform int layer;
@@ -96,9 +96,9 @@ void main()
 
 #include "utility.frag"
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 uniform int layer;
 uniform float lodLevel;
@@ -113,9 +113,9 @@ void main()
 
 #include "utility.frag"
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
-layout(binding = TEXTURE_UNIT0) uniform samplerCubeArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform samplerCubeArray texDiffuse0;
 
 uniform int layer;
 uniform int face;

@@ -24,14 +24,7 @@ size_t ResourceDescriptor::getHash() const {
                                     ? resourceName().c_str()
                                     : Util::ReplaceString((_assetLocation + "/" + _assetName).str(), "//", "/", true);
 
-    Util::Hash_combine(_hash, fullPath);
-    Util::Hash_combine(_hash, _flag);
-    Util::Hash_combine(_hash, _ID);
-    Util::Hash_combine(_hash, _mask.i);
-    Util::Hash_combine(_hash, _enumValue);
-    Util::Hash_combine(_hash, _data.x);
-    Util::Hash_combine(_hash, _data.y);
-    Util::Hash_combine(_hash, _data.z);
+    Util::Hash_combine(_hash, fullPath, _flag, _ID, _mask.i, _enumValue, _data.x, _data.y, _data.z);
     if (_propertyDescriptor) {
         Util::Hash_combine(_hash, _propertyDescriptor->getHash());
     }

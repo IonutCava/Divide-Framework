@@ -153,7 +153,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     { //Calc Full
         fragModule._variant = "SSAOCalc";
         fragModule._defines.resize(0);
-        fragModule._defines.emplace_back(Util::StringFormat("SSAO_SAMPLE_COUNT %d", _kernelSampleCount[0]).c_str(), true);
+        fragModule._defines.emplace_back(Util::StringFormat("SSAO_SAMPLE_COUNT %d", _kernelSampleCount[0]));
 
         ShaderProgramDescriptor ssaoShaderDescriptor = {};
         ssaoShaderDescriptor._modules.push_back(vertModule);
@@ -167,8 +167,8 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     { //Calc Half
         fragModule._variant = "SSAOCalc";
         fragModule._defines.resize(0);
-        fragModule._defines.emplace_back(Util::StringFormat("SSAO_SAMPLE_COUNT %d", _kernelSampleCount[1]).c_str(), true);
-        fragModule._defines.emplace_back("COMPUTE_HALF_RES", true);
+        fragModule._defines.emplace_back(Util::StringFormat("SSAO_SAMPLE_COUNT %d", _kernelSampleCount[1]));
+        fragModule._defines.emplace_back("COMPUTE_HALF_RES");
 
         ShaderProgramDescriptor ssaoShaderDescriptor = {};
         ssaoShaderDescriptor._modules.push_back(vertModule);
@@ -183,19 +183,19 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     { //Blur
         fragModule._variant = "SSAOBlur.Nvidia";
         fragModule._defines.resize(0);
-        fragModule._defines.emplace_back(Util::StringFormat("BLUR_SIZE %d", SSAO_BLUR_SIZE).c_str(), true);
+        fragModule._defines.emplace_back(Util::StringFormat("BLUR_SIZE %d", SSAO_BLUR_SIZE));
 
         ShaderProgramDescriptor ssaoShaderDescriptor = {};
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
 
-        ssaoShaderDescriptor._modules.back()._defines.emplace_back("HORIZONTAL", true);
+        ssaoShaderDescriptor._modules.back()._defines.emplace_back("HORIZONTAL");
         ResourceDescriptor ssaoBlurH("SSAOBlur.Horizontal");
         ssaoBlurH.propertyDescriptor(ssaoShaderDescriptor);
         ssaoBlurH.waitForReady(false);
         _ssaoBlurShaderHorizontal = CreateResource<ShaderProgram>(cache, ssaoBlurH);
 
-        ssaoShaderDescriptor._modules.back()._defines.back() = { "VERTICAL", true };
+        ssaoShaderDescriptor._modules.back()._defines.back() = { "VERTICAL" };
         ResourceDescriptor ssaoBlurV("SSAOBlur.Vertical");
         ssaoBlurV.propertyDescriptor(ssaoShaderDescriptor);
         ssaoBlurV.waitForReady(false);
@@ -500,7 +500,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
         s_passThroughPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
     }
 
-    _ssaoGenerateConstantsCmd._constants.set(_ID("zPlanes"),             GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+    _ssaoGenerateConstantsCmd._constants.set(_ID("_zPlanes"),            GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
     _ssaoGenerateConstantsCmd._constants.set(_ID("projectionMatrix"),    GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
     _ssaoGenerateConstantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
 
@@ -595,7 +595,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
         if (blurResults() && blurKernelSize() > 0) {
             _ssaoBlurConstantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
-            _ssaoBlurConstantsCmd._constants.set(_ID("zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
+            _ssaoBlurConstantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
             _ssaoBlurConstantsCmd._constants.set(_ID("texelSize"), GFX::PushConstantType::VEC2, vec2<F32>{ 1.f / ssaoAtt.texture()->width(), 1.f / ssaoAtt.texture()->height() });
 
             // Blur AO

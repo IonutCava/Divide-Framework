@@ -3,6 +3,7 @@
 #include "Headers/RenderPassManager.h"
 
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -79,13 +80,15 @@ void RenderPassManager::postInit() {
     shaderResDesc.propertyDescriptor(shaderDescriptor);
     _OITCompositionShader = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResDesc);
 
-    shaderDescriptor._modules.back()._defines.emplace_back("USE_MSAA_TARGET", true);
+    shaderDescriptor._modules.back()._defines.emplace_back("USE_MSAA_TARGET");
     ResourceDescriptor shaderResMSDesc("OITCompositionMS");
     shaderResMSDesc.propertyDescriptor(shaderDescriptor);
     _OITCompositionShaderMS = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResMSDesc);
 
+    const Configuration& config = _parent.platformContext().config();
     fragModule._sourceFile = "display.glsl";
     fragModule._variant = "ResolveGBuffer";
+    fragModule._defines.emplace_back(Util::StringFormat("NUM_SAMPLES %d", config.rendering.MSAASamples));
     shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
@@ -344,7 +347,7 @@ RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage,
         item->dependencies(dependencies);
         item->performanceCounters(usePerformanceCounters);
     } else {
-        _executors[to_base(renderStage)] = std::make_unique<RenderPassExecutor>(*this, _context, renderStage);
+        _executors[to_base(renderStage)] = eastl::make_unique<RenderPassExecutor>(*this, _context, renderStage);
         item = MemoryManager_NEW RenderPass(*this, _context, renderStage, dependencies, usePerformanceCounters);
         _renderPasses[to_base(renderStage)] = item;
 

@@ -81,10 +81,6 @@ class glBufferLockManager final : public glLockManager {
    public:
     ~glBufferLockManager();
 
-    static void OnStartup() noexcept;
-    static [[nodiscard]] bool DriverBusy() noexcept;
-    static void DriverBusy(bool state) noexcept;
-
     /// Returns false if we encountered an error
     bool waitForLockedRange(size_t lockBeginBytes, size_t lockLength, bool blockClient, bool quickCheck = false);
 
@@ -95,7 +91,6 @@ class glBufferLockManager final : public glLockManager {
     mutable SharedMutex _lock;
     vector<BufferLock> _bufferLocks;
     vector<BufferLock> _swapLocks;
-    static std::atomic_bool s_driverBusy;
 };
 
 };  // namespace Divide

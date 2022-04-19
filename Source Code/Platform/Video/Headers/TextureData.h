@@ -66,8 +66,7 @@ FORCE_INLINE bool operator!=(const TextureData& lhs, const TextureData& rhs) noe
 
 inline size_t GetHash(const TextureData& data) {
     size_t ret = 11;
-    Util::Hash_combine(ret, data._textureHandle);
-    Util::Hash_combine(ret, to_base(data._textureType));
+    Util::Hash_combine(ret, data._textureHandle, to_base(data._textureType));
     return ret;
 }
 

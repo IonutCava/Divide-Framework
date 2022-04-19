@@ -13,16 +13,16 @@ vec3 overlayVec(in vec3 base, in vec3 blend) {
 
 #define scaledTextureCoords(UV, SCALE) (UV * SCALE)
 
-float ToLinearDepth(in float depth, in vec2 depthRange) {
-    return (2.f * depthRange.y * depthRange.x / (depthRange.y + depthRange.x + (2.f * depth - 1.f) * (depthRange.x - depthRange.y)));
+float ToLinearDepth(in float depth, in vec2 depthRangeIn) {
+    return (2.f * depthRangeIn.y * depthRangeIn.x / (depthRangeIn.y + depthRangeIn.x + (2.f * depth - 1.f) * (depthRangeIn.x - depthRangeIn.y)));
 }
 
 float ToLinearDepth(in float D, in mat4 projMatrix) { 
     return projMatrix[3][2] / (D - projMatrix[2][2]);
 }
 
-float ViewSpaceZ(in float depthIn, in mat4 invProjectionMatrix) {
-    return -1.0f / (invProjectionMatrix[2][3] * (depthIn * 2.f - 1.f) + invProjectionMatrix[3][3]);
+float ViewSpaceZ(in float depthIn, in mat4 invProjMatrix) {
+    return -1.0f / (invProjMatrix[2][3] * (depthIn * 2.f - 1.f) + invProjMatrix[3][3]);
 }
 
 vec3 ClipSpacePos(in vec2 texCoords, in float depthIn) {
@@ -31,13 +31,13 @@ vec3 ClipSpacePos(in vec2 texCoords, in float depthIn) {
                 depthIn     * 2.f - 1.f);
 }
 
-vec3 ViewSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjection) {
-    const vec4 viewSpacePos = invProjection * vec4(ClipSpacePos(texCoords, depthIn), 1.f);
+vec3 ViewSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjMatrix) {
+    const vec4 viewSpacePos = invProjMatrix * vec4(ClipSpacePos(texCoords, depthIn), 1.f);
     return Homogenize(viewSpacePos);
 }
 
-vec3 WorldSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjection, in mat4 invView) {
-    const vec3 viewSpacePos = ViewSpacePos(texCoords, depthIn, invProjection);
+vec3 WorldSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjMatrix, in mat4 invView) {
+    const vec3 viewSpacePos = ViewSpacePos(texCoords, depthIn, invProjMatrix);
     return (invView * vec4(viewSpacePos, 1.f)).xyz;
 }
 
@@ -90,18 +90,14 @@ vec4 ToSRGBAccurate(in vec4 linearCol) {
     return vec4(ToSRGBAccurate(linearCol.rgb), linearCol.a);
 }
 
-float computeDepth(in vec4 posWV, in mat4 projectionMatrix, in vec2 zPlanes) {
-    const vec4 clip_space_pos = projectionMatrix * posWV;
+float computeDepth(in vec4 posWV, in mat4 projMatrix, in vec2 zPlanes) {
+    const vec4 clip_space_pos = projMatrix * posWV;
     return (((zPlanes.y - zPlanes.x) * (clip_space_pos.z / clip_space_pos.w)) + zPlanes.x + zPlanes.y) * 0.5f;
 }
 
 #if !defined(NO_CAM_BLOCK)
 float computeDepth(in vec4 posWV, in vec2 zPlanes) {
     return computeDepth(posWV, dvd_ProjectionMatrix, zPlanes);
-}
-
-float computeDepth(in vec4 posWV) {
-    return computeDepth(posWV, dvd_ProjectionMatrix, vec2(gl_DepthRange.near, gl_DepthRange.far));
 }
 
 #define dvd_screenPositionNormalised (gl_FragCoord.xy / dvd_ViewPort.zw)

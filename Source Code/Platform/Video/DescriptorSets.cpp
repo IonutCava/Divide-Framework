@@ -132,13 +132,7 @@ namespace Divide {
 
     size_t TextureView::getHash() const {
         _hash = GetHash(_textureData);
-
-        Util::Hash_combine(_hash, _targetType);
-        Util::Hash_combine(_hash, _mipLevels.x);
-        Util::Hash_combine(_hash, _mipLevels.y);
-        Util::Hash_combine(_hash, _layerRange.x);
-        Util::Hash_combine(_hash, _layerRange.y);
-
+        Util::Hash_combine(_hash, _targetType, _mipLevels.x, _mipLevels.y, _layerRange.x, _layerRange.y);
         return _hash;
     }
 

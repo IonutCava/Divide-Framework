@@ -4,15 +4,15 @@
 
 //ref: https://github.com/BruOp/bae
 
-layout(binding = TEXTURE_UNIT0) uniform sampler2D texScreen;
-layout(binding = TEXTURE_UNIT1) uniform sampler2D texExposure;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D texExposure;
 
 uniform float manualExposureFactor;
 uniform int mappingFunction;
-uniform bool useAdaptiveExposure;
-uniform bool skipToneMapping;
+uniform uint useAdaptiveExposure;
+uniform uint skipToneMapping;
 
-out vec4 _colourOut;
+layout(location = 0) out vec4 _colourOut;
 
 float Reinhard(float x) {
     return x / (1.0f + x);
@@ -139,10 +139,10 @@ void main() {
 
     vec3 screenColour = inputColour.rgb;
 
-    if (!skipToneMapping && mappingFunction != NONE) {
+    if (skipToneMapping == 0u && mappingFunction != NONE) {
         vec3 Yxy = vec3(0.f);
 
-        if (useAdaptiveExposure) {
+        if (useAdaptiveExposure != 0u) {
             Yxy = convertRGB2Yxy(screenColour);
             const float avgLuminance = texture(texExposure, VAR._texCoord).r;
             Yxy.x = (Yxy.x / (9.6f * avgLuminance + 0.0001f)) * manualExposureFactor;

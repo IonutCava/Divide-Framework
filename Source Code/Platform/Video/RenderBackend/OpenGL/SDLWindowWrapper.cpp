@@ -372,8 +372,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
         }
     );
 
-    // Init any buffer locking mechanism we might need
-    glBufferLockManager::OnStartup();
     // Once OpenGL is ready for rendering, init CEGUI
     _GUIGLrenderer = &CEGUI::OpenGL3Renderer::create();
     _GUIGLrenderer->enableExtraStateSettings(false);
@@ -390,8 +388,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     _performanceQueries[to_base(QueryType::TESSELLATION_PATCHES)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TESS_CONTROL_SHADER_PATCHES, 6);
     _performanceQueries[to_base(QueryType::TESSELLATION_CTRL_INVOCATIONS)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6);
 
-    // Prepare shader headers and various shader related states
-    glShaderProgram::InitStaticData();
     // That's it. Everything should be ready for draw calls
     Console::printfn(Locale::Get(_ID("START_OGL_API_OK")));
     return ErrorCode::NO_ERR;
@@ -399,8 +395,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
 
 /// Clear everything that was setup in initRenderingAPI()
 void GL_API::closeRenderingAPI() {
-    glShaderProgram::DestroyStaticData();
-
     if (_GUIGLrenderer) {
         CEGUI::OpenGL3Renderer::destroy(*_GUIGLrenderer);
         _GUIGLrenderer = nullptr;

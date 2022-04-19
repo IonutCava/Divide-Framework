@@ -209,7 +209,7 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     [[nodiscard]] U16 getWidth()  const noexcept;
     [[nodiscard]] U16 getHeight() const noexcept;
     [[nodiscard]] vec2<U16> getResolution() const noexcept;
-
+    [[nodiscard]] vec2<F32> getDepthRange() const noexcept;
     F32& depthClearValue() noexcept;
 
     [[nodiscard]] const Str64& name() const noexcept;

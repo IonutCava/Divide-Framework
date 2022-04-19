@@ -390,10 +390,10 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     ShaderModuleDescriptor compModule = {};
     compModule._moduleType = ShaderType::COMPUTE;
     compModule._sourceFile = "instanceCullVegetation.glsl";
-    compModule._defines.emplace_back("NO_CAM_BLOCK", true);
-    compModule._defines.emplace_back(Util::StringFormat("WORK_GROUP_SIZE %d", WORK_GROUP_SIZE), true);
-    compModule._defines.emplace_back(Util::StringFormat("MAX_TREE_INSTANCES %d", s_maxTreeInstances).c_str(), true);
-    compModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
+    compModule._defines.emplace_back("NO_CAM_BLOCK");
+    compModule._defines.emplace_back(Util::StringFormat("WORK_GROUP_SIZE %d", WORK_GROUP_SIZE));
+    compModule._defines.emplace_back(Util::StringFormat("MAX_TREE_INSTANCES %d", s_maxTreeInstances));
+    compModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances));
     ShaderProgramDescriptor shaderCompDescriptor = {};
     shaderCompDescriptor._modules.push_back(compModule);
 
@@ -402,7 +402,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     instanceCullShaderGrass.propertyDescriptor(shaderCompDescriptor);
     s_cullShaderGrass = CreateResource<ShaderProgram>(terrain->parentResourceCache(), instanceCullShaderGrass, loadTasks);
 
-    compModule._defines.emplace_back("CULL_TREES", true);
+    compModule._defines.emplace_back("CULL_TREES");
     shaderCompDescriptor = {};
     shaderCompDescriptor._modules.push_back(compModule);
 
@@ -415,17 +415,17 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
 
     vegMaterial->computeShaderCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
         ShaderModuleDescriptor vertModule = {};
-        vertModule._batchSameFile = false;
         vertModule._moduleType = ShaderType::VERTEX;
         vertModule._sourceFile = "grass.glsl";
 
-        vertModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
-        vertModule._defines.emplace_back("ENABLE_TBN", true);
+        vertModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances));
+        vertModule._defines.emplace_back("ENABLE_TBN");
 
         ShaderModuleDescriptor fragModule = {};
         fragModule._moduleType = ShaderType::FRAGMENT;
         fragModule._sourceFile = "grass.glsl";
-        fragModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances).c_str(), true);
+        fragModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances));
+        fragModule._defines.emplace_back("ENABLE_TBN");
 
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);

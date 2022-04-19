@@ -38,6 +38,7 @@
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 #include "Platform/Video/Headers/RenderAPIEnums.h"
+#include "Platform/Video/Headers/PushConstant.h"
 
 namespace FW {
     class FileWatcher;
@@ -65,8 +66,8 @@ namespace Attorney {
 
 struct ModuleDefine {
     ModuleDefine() = default;
-    ModuleDefine(const char* define, const bool addPrefix) : ModuleDefine(string{ define }, addPrefix) {}
-    ModuleDefine(const string& define, const bool addPrefix) : _define(define), _addPrefix(addPrefix) {}
+    ModuleDefine(const char* define, const bool addPrefix = true) : ModuleDefine(string{ define }, addPrefix) {}
+    ModuleDefine(const string& define, const bool addPrefix = true) : _define(define), _addPrefix(addPrefix) {}
 
     string _define;
     bool _addPrefix = true;
@@ -79,9 +80,9 @@ struct ShaderModuleDescriptor {
     Str64 _sourceFile;
     Str64 _variant;
     ShaderType _moduleType = ShaderType::COUNT;
-    bool _batchSameFile = true;
 };
 
+struct PerFileShaderData;
 class ShaderProgramDescriptor final : public PropertyDescriptor {
 public:
     ShaderProgramDescriptor() noexcept
@@ -109,24 +110,71 @@ inline bool operator!=(const ShaderProgramMapEntry& lhs, const ShaderProgramMapE
            lhs._program != rhs._program;
 }
 
+namespace Reflection {
+    struct BlockMember {
+        GFX::PushConstantType _type{ GFX::PushConstantType::COUNT };
+        Str64 _name{};
+        size_t _offset{ 0u };
+        size_t _arrayInnerSize{ 0u }; // array[innerSize][outerSize]
+        size_t _arrayOuterSize{ 0u }; // array[innerSize][outerSize]
+        size_t _vectorDimensions{ 0u };
+        vec2<size_t> _matrixDimensions{ 0u, 0u }; //columns, rows
+    };
+
+    struct Data {
+        string _targetBlockName;
+        size_t _blockSize{ 0u };
+        vector<BlockMember> _blockMembers{};
+    };
+};
+
 class NOINITVTABLE ShaderProgram : public CachedResource,
                                    public GraphicsResource {
     friend class Attorney::ShaderProgramKernel;
    public:
+    static constexpr char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
+
+    struct UniformDeclaration {
+        Str64 _type;
+        Str256 _name;
+    };
+
+    struct AtomUniformPair {
+        vector<ResourcePath> _atoms;
+        vector<UniformDeclaration> _uniforms;
+    };
+
+    // one per shader type!
+    struct LoadData {
+        enum class SourceCodeSource : U8 {
+            SOURCE_FILES,
+            TEXT_CACHE,
+            SPIRV_CACHE,
+            COUNT
+        };
+        AtomUniformPair _atomUniformPair;
+        std::vector<U32> _sourceCodeSpirV;
+        eastl::string _sourceCodeGLSL;
+        Str256 _name = "";
+        Str256 _fileName = "";
+        size_t _definesHash = 0u;
+        ShaderType _type = ShaderType::COUNT;
+        SourceCodeSource _codeSource = SourceCodeSource::COUNT;
+    };
+
+    struct ShaderLoadData {
+        U32 _uniformBlockOffset{ 0u };
+        string _uniformBlock{};
+        string _uniformBlockName{};
+        Reflection::Data _reflectionData{};
+        vector<LoadData> _data;
+    };
+
     using Handle = PoolHandle;
     static constexpr Handle INVALID_HANDLE{ U16_MAX, U8_MAX };
 
     static bool s_UseBindlessTextures;
 
-    struct UniformDeclaration
-    {
-        Str64 _type;
-        Str256 _name;
-    };
-    struct AtomUniformPair {
-        vector<ResourcePath> _atoms;
-        vector<UniformDeclaration> _uniforms;
-    };
     struct TextDumpEntry
     {
         Str256 _name;
@@ -237,6 +285,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "ShaderProgram"; }
 
     static void OnAtomChange(std::string_view atomName, FileUpdateEvent evt);
+    static void ParseGLSLSource(Reflection::Data& reflectionDataInOut, LoadData& dataInOut, bool targetVulkan);
     static void QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName);
 
     template<typename StringType> 
@@ -280,15 +329,9 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 protected:
     virtual void threadedLoad(bool reloadExisting);
     virtual void onAtomChangeInternal(std::string_view atomName, FileUpdateEvent evt);
+    virtual bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting);
             void setGLSWPath(bool clearExisting);
-
-    AtomUniformPair loadSourceCode(const Str128& stageName,
-                                   const Str8& extension,
-                                   const string& header,
-                                   size_t definesHash,
-                                   bool reloadExisting,
-                                   Str256& fileNameOut,
-                                   eastl::string& sourceCodeOut) const;
+   void loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut) const;
 private:
     static const string& ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed);
     static const string& ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed);
@@ -330,6 +373,12 @@ private:
     static ResourcePath shaderAtomLocationPrefix[to_base(ShaderType::COUNT) + 1];
     static Str8 shaderAtomExtensionName[to_base(ShaderType::COUNT) + 1];
     static U64 shaderAtomExtensionHash[to_base(ShaderType::COUNT) + 1];
+};
+
+struct PerFileShaderData {
+    string _programName{};
+    vector<ShaderModuleDescriptor> _modules;
+    ShaderProgram::ShaderLoadData _loadData;
 };
 
 namespace Attorney {

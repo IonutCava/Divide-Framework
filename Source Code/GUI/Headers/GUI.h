@@ -145,8 +145,7 @@ public:
 
     [[nodiscard]] const Scene* activeScene() const noexcept { return _activeScene; }
 
-    [[nodiscard]] CEGUI::GUIContext& getCEGUIContext() noexcept;
-    [[nodiscard]] const CEGUI::GUIContext& getCEGUIContext() const noexcept;
+    [[nodiscard]] CEGUI::GUIContext* getCEGUIContext() noexcept;
 
     void setRenderer(CEGUI::Renderer& renderer);
 

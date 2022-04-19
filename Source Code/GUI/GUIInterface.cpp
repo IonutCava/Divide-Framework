@@ -111,11 +111,13 @@ GUIButton* GUIInterface::addButton(const char* name,
 
     assert(getGUIElement<GUIButton>(guiID) == nullptr);
 
-    CEGUI::Window* parent = _context->getCEGUIContext().getRootWindow();
-    if (!rootSheetID.empty()) {
-        parent = parent->getChild(rootSheetID.c_str());
+    CEGUI::Window* parent = nullptr;
+    if (_context->getCEGUIContext()) {
+        parent = _context->getCEGUIContext()->getRootWindow();
+        if (!rootSheetID.empty()) {
+            parent = parent->getChild(rootSheetID.c_str());
+        }
     }
-
     ResourceDescriptor beepSound("buttonClick");
     beepSound.assetName(ResourcePath("beep.wav"));
     beepSound.assetLocation(Paths::g_assetsLocation + Paths::g_soundsLocation);

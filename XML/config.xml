@@ -58,7 +58,7 @@
 	</runtime>
 	<GUI>
 		<CEGUI>
-			<Enabled>true</Enabled>
+			<Enabled>false</Enabled>
 		</CEGUI>
 		<consoleLayoutFile>console.layout</consoleLayoutFile>
 	</GUI>
@@ -79,7 +79,7 @@
 	<rendering>
 		<MSAASamples>4</MSAASamples>
 		<maxAnisotropicFilteringLevel>16</maxAnisotropicFilteringLevel>
-		<useBindlessTextures>true</useBindlessTextures>
+		<useBindlessTextures>false</useBindlessTextures>
 		<!-- Environment probe resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->
 		<reflectionProbeResolution>128</reflectionProbeResolution>
 		<!-- Planar reflector resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->

@@ -185,7 +185,6 @@ Material::Material(GFXDevice& context, ResourceCache* parentCache, const size_t 
         ShaderModuleDescriptor vertModule = {};
         vertModule._variant = vertVariant;
         vertModule._sourceFile = (vertSource + ".glsl").c_str();
-        vertModule._batchSameFile = false;
         vertModule._moduleType = ShaderType::VERTEX;
         shaderDescriptor._modules.push_back(vertModule);
 
