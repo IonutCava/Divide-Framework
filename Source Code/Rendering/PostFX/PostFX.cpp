@@ -127,6 +127,10 @@ PostFX::PostFX(PlatformContext& context, ResourceCache* cache)
     WAIT_FOR_CONDITION(loadTasks.load() == 0);
 }
 
+PostFX::~PostFX()
+{
+}
+
 void PostFX::updateResolution(const U16 newWidth, const U16 newHeight) {
     if (_resolutionCache.width == newWidth &&
         _resolutionCache.height == newHeight|| 
@@ -154,31 +158,17 @@ void PostFX::prePass(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot
 
 void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut) {
     static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: Apply" };
-    static GFX::BeginRenderPassCommand s_beginRenderPassCmd{};
-    static GFX::BindDescriptorSetsCommand s_descriptorSetCmd{};
-
-    static size_t s_samplerHash = 0u;
-    if (s_samplerHash == 0u) {
-        SamplerDescriptor defaultSampler = {};
-        defaultSampler.wrapUVW(TextureWrap::REPEAT);
-        s_samplerHash = defaultSampler.getHash();
-
-        s_beginRenderPassCmd._target = RenderTargetUsage::SCREEN;
-        s_beginRenderPassCmd._descriptor = _postFXTarget;
-        s_beginRenderPassCmd._name = "DO_POSTFX_PASS";
-
-        TextureDataContainer& textureContainer = s_descriptorSetCmd._set._textureData;
-        textureContainer.add(TextureEntry{ _underwaterTexture->data(),   s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER) });
-        textureContainer.add(TextureEntry{ _noise->data(),               s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE) });
-        textureContainer.add(TextureEntry{ _screenBorder->data(),        s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER) });
-    }
 
     GFX::EnqueueCommand(bufferInOut, s_beginScopeCmd);
     GFX::EnqueueCommand(bufferInOut, _setCameraCmd);
 
     _preRenderBatch.execute(idx, cameraSnapshot, _filterStack | _overrideFilterStack, bufferInOut);
 
-    GFX::EnqueueCommand(bufferInOut, s_beginRenderPassCmd);
+    GFX::BeginRenderPassCommand beginRenderPassCmd{};
+    beginRenderPassCmd._target = RenderTargetUsage::SCREEN;
+    beginRenderPassCmd._descriptor = _postFXTarget;
+    beginRenderPassCmd._name = "DO_POSTFX_PASS";
+    GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _drawPipeline });
 
     if (_filtersDirty) {
@@ -201,14 +191,20 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     const auto& velocityAtt = rtPool.renderTarget(RenderTargetUsage::SCREEN).getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY));
     const auto& depthAtt = rtPool.renderTarget(RenderTargetUsage::SCREEN).getAttachment(RTAttachmentType::Depth, 0);
 
-    TextureDataContainer& textureContainer = s_descriptorSetCmd._set._textureData;
+    SamplerDescriptor defaultSampler = {};
+    defaultSampler.wrapUVW(TextureWrap::REPEAT);
+    const size_t samplerHash = defaultSampler.getHash();
+
+    TextureDataContainer& textureContainer = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData;
     textureContainer.add(TextureEntry{ prbAtt.texture()->data(),           prbAtt.samplerHash(),to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN) });
-    textureContainer.add(TextureEntry{ linDepthDataAtt.texture()->data(),  s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH) });
-    textureContainer.add(TextureEntry{ depthAtt.texture()->data(),         s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH) });
-    textureContainer.add(TextureEntry{ ssrDataAtt.texture()->data(),       s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR) });
-    textureContainer.add(TextureEntry{ sceneDataAtt.texture()->data(),     s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA) });
-    textureContainer.add(TextureEntry{ velocityAtt.texture()->data(),      s_samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY) });
-    GFX::EnqueueCommand(bufferInOut, s_descriptorSetCmd);
+    textureContainer.add(TextureEntry{ linDepthDataAtt.texture()->data(),  samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH) });
+    textureContainer.add(TextureEntry{ depthAtt.texture()->data(),         samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH) });
+    textureContainer.add(TextureEntry{ ssrDataAtt.texture()->data(),       samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR) });
+    textureContainer.add(TextureEntry{ sceneDataAtt.texture()->data(),     samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA) });
+    textureContainer.add(TextureEntry{ velocityAtt.texture()->data(),      samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY) });
+    textureContainer.add(TextureEntry{ _underwaterTexture->data(),         samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER) });
+    textureContainer.add(TextureEntry{ _noise->data(),                     samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE) });
+    textureContainer.add(TextureEntry{ _screenBorder->data(),              samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER) });
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 

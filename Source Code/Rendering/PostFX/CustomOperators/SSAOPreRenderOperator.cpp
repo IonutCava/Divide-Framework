@@ -255,6 +255,37 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     _ssaoBlurConstantsCmd._constants.set(_ID("depthThreshold"), GFX::PushConstantType::FLOAT, blurThreshold());
     _ssaoBlurConstantsCmd._constants.set(_ID("blurSharpness"), GFX::PushConstantType::FLOAT, blurSharpness());
     _ssaoBlurConstantsCmd._constants.set(_ID("blurKernelSize"), GFX::PushConstantType::INT, blurKernelSize());
+
+    WAIT_FOR_CONDITION(ready());
+
+    PipelineDescriptor pipelineDescriptor = {};
+    pipelineDescriptor._stateHash = _context.get2DStateBlock();
+    pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader->handle();
+    pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
+    _downsamplePipeline = _context.newPipeline(pipelineDescriptor);
+
+    pipelineDescriptor._shaderProgramHandle = _ssaoGenerateHalfResShader->handle();
+    _generateHalfResPipeline = _context.newPipeline(pipelineDescriptor);
+
+    pipelineDescriptor._shaderProgramHandle = _ssaoUpSampleShader->handle();
+    _upsamplePipeline = _context.newPipeline(pipelineDescriptor);
+
+    pipelineDescriptor._shaderProgramHandle = _ssaoGenerateShader->handle();
+    _generateFullResPipeline = _context.newPipeline(pipelineDescriptor);
+
+    RenderStateBlock redChannelOnly = RenderStateBlock::Get(_context.get2DStateBlock());
+    redChannelOnly.setColourWrites(true, false, false, false);
+
+    pipelineDescriptor._stateHash = redChannelOnly.getHash();
+    pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderHorizontal->handle();
+    _blurHorizontalPipeline = _context.newPipeline(pipelineDescriptor);
+
+    pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderVertical->handle();
+    _blurVerticalPipeline = _context.newPipeline(pipelineDescriptor);
+
+    pipelineDescriptor._shaderProgramHandle = _ssaoPassThroughShader->handle();
+    _passThroughPipeline = _context.newPipeline(pipelineDescriptor);
 }
 
 SSAOPreRenderOperator::~SSAOPreRenderOperator() 
@@ -458,48 +489,6 @@ void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX:
 bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
     assert(_enabled);
 
-    static GFX::BindPipelineCommand s_downsamplePipelineCmd{};
-    static GFX::BindPipelineCommand s_generateHalfResPipelineCmd{};
-    static GFX::BindPipelineCommand s_upsamplePipelineCmd{};
-    static GFX::BindPipelineCommand s_generateFullResPipelineCmd{};
-    static GFX::BindPipelineCommand s_blurHorizontalPipelineCmd{};
-    static GFX::BindPipelineCommand s_blurVerticalPipelineCmd{};
-    static GFX::BindPipelineCommand s_passThroughPipelineCmd{};
-
-    static bool s_commandsInit = false;
-    if (!s_commandsInit) {
-        s_commandsInit = true;
-
-        PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._stateHash = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader->handle();
-        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-
-        s_downsamplePipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-
-        pipelineDescriptor._shaderProgramHandle = _ssaoGenerateHalfResShader->handle();
-        s_generateHalfResPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-
-        pipelineDescriptor._shaderProgramHandle = _ssaoUpSampleShader->handle();
-        s_upsamplePipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-
-        pipelineDescriptor._shaderProgramHandle = _ssaoGenerateShader->handle();
-        s_generateFullResPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-
-        RenderStateBlock redChannelOnly = RenderStateBlock::get(_context.get2DStateBlock());
-        redChannelOnly.setColourWrites(true, false, false, false);
-
-        pipelineDescriptor._stateHash = redChannelOnly.getHash();
-        pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderHorizontal->handle();
-        s_blurHorizontalPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-
-        pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderVertical->handle();
-        s_blurVerticalPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-
-        pipelineDescriptor._shaderProgramHandle = _ssaoPassThroughShader->handle();
-        s_passThroughPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-    }
-
     _ssaoGenerateConstantsCmd._constants.set(_ID("_zPlanes"),            GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
     _ssaoGenerateConstantsCmd._constants.set(_ID("projectionMatrix"),    GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
     _ssaoGenerateConstantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
@@ -519,7 +508,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             renderPassCmd->_name = "DO_SSAO_DOWNSAMPLE_NORMALS";
             renderPassCmd->_target = _halfDepthAndNormals._targetID;
 
-            GFX::EnqueueCommand(bufferInOut, s_downsamplePipelineCmd);
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _downsamplePipeline;
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
             set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),   TextureUsage::DEPTH });
@@ -533,7 +522,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             renderPassCmd->_name = "DO_SSAO_HALF_RES_CALC";
             renderPassCmd->_target = _ssaoHalfResOutput._targetID;
 
-            GFX::EnqueueCommand(bufferInOut, s_generateHalfResPipelineCmd);
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateHalfResPipeline;
 
             GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
@@ -551,7 +540,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             renderPassCmd->_name = "DO_SSAO_UPSAMPLE_AO";
             renderPassCmd->_target = _ssaoOutput._targetID;
 
-            GFX::EnqueueCommand(bufferInOut, s_upsamplePipelineCmd);
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _upsamplePipeline;
 
             SamplerDescriptor linearSampler = {};
             linearSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
@@ -577,7 +566,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             renderPassCmd->_name = "DO_SSAO_CALC";
             renderPassCmd->_target = _ssaoOutput._targetID;
 
-            GFX::EnqueueCommand(bufferInOut, s_generateFullResPipelineCmd);
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateFullResPipeline;
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
             set._textureData.add(TextureEntry{ _noiseTexture->data(),        _noiseSampler,            TextureUsage::UNIT0 });
@@ -604,7 +593,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 renderPassCmd->_name = "DO_SSAO_BLUR_HORIZONTAL";
                 renderPassCmd->_target = _ssaoBlurBuffer._targetID;
 
-                GFX::EnqueueCommand(bufferInOut, s_blurHorizontalPipelineCmd);
+                GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurHorizontalPipeline;
 
                 GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
 
@@ -621,7 +610,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 renderPassCmd->_name = "DO_SSAO_BLUR_VERTICAL";
                 renderPassCmd->_target = { RenderTargetUsage::SSAO_RESULT };
 
-                GFX::EnqueueCommand(bufferInOut, s_blurVerticalPipelineCmd);
+                GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurVerticalPipeline;
 
                 GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
 
@@ -639,7 +628,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             renderPassCmd->_name = "DO_SSAO_PASS_THROUGH";
             renderPassCmd->_target = { RenderTargetUsage::SSAO_RESULT };
 
-            GFX::EnqueueCommand(bufferInOut, s_passThroughPipelineCmd);
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _passThroughPipeline;
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
             set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(), ssaoAtt.samplerHash(), TextureUsage::UNIT0 });

@@ -82,7 +82,8 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     ~glShaderProgram() = default;
 
     static void Idle(PlatformContext& platformContext);
-
+    static void InitStaticData();
+    static void DestroyStaticData();
 
     /// Make sure this program is ready for deletion
     bool unload() override;

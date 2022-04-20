@@ -44,9 +44,8 @@ namespace {
     }
 }
 
-RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, const RenderStage renderStage, const vector<RenderStage>& dependencies, const bool performanceCounters)
-    : _performanceCounters(performanceCounters),
-      _context(context),
+RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, const RenderStage renderStage, const vector<RenderStage>& dependencies)
+    : _context(context),
       _parent(parent),
       _config(context.context().config()),
       _stageFlag(renderStage),
@@ -59,35 +58,14 @@ RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, const Rend
     }
 }
 
-void RenderPass::performanceCounters(const bool state) {
-    if (performanceCounters() != state) {
-        _performanceCounters = state;
-
-        if (state) {
-            assert(_cullCounter == nullptr);
-            // Atomic counter for occlusion culling
-            ShaderBufferDescriptor bufferDescriptor = {};
-            bufferDescriptor._usage = ShaderBuffer::Usage::ATOMIC_COUNTER;
-            bufferDescriptor._bufferParams._elementCount = 1;
-            bufferDescriptor._bufferParams._elementSize = sizeof(U32);
-            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-            bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-            bufferDescriptor._ringBufferLength = DataBufferRingSize;
-            bufferDescriptor._separateReadWrite = true;
-            bufferDescriptor._name = Util::StringFormat("CULL_COUNTER_%s", TypeUtil::RenderStageToString(_stageFlag));
-            _cullCounter = _context.newSB(bufferDescriptor);
-        } else {
-            assert(_cullCounter != nullptr);
-            MemoryManager::SAFE_DELETE(_cullCounter);
-        }
-    }
+RenderPass::~RenderPass()
+{
 }
 
 RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass stagePass) const noexcept {
     assert(_stageFlag == stagePass._stage);
 
     BufferData ret{};
-    ret._cullCounterBuffer = _cullCounter;
     ret._lastCommandCount = &_lastCmdCount;
     ret._lastNodeCount = &_lastNodeCount;
     return ret;
@@ -100,48 +78,42 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
         case RenderStage::DISPLAY: {
             OPTICK_EVENT("RenderPass - Main");
 
-            static GFX::ClearRenderTargetCommand clearMainTarget = {};
-            static RenderPassParams params = {};
+            RTDrawDescriptor prePassPolicy = {};
+            DisableAll(prePassPolicy._drawMask);
+            SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Depth, 0, true);
+            SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY), true);
+            SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS), true);
+            //prePassPolicy._alphaToCoverage = true;
 
-            static bool initDrawCommands = false;
-            if (!initDrawCommands) {
-                RTClearDescriptor clearDescriptor = {};
-                clearDescriptor._clearColours = true;
-                clearDescriptor._clearDepth = true;
-                //ToDo: Causing issues if disabled with WOIT (e.g. grass) if disabled. Investigate! -Ionut
-                clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::ALBEDO)] = true;
+            RTDrawDescriptor mainPassPolicy = {};
+            SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Depth, 0, false);
+            SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY), false);
+            SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS), false);
 
-                //Not everything gets drawn during the depth PrePass (E.g. sky)
-                clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::VELOCITY)] = true;
-                clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::NORMALS)] =  true;
-                clearMainTarget._descriptor = clearDescriptor;
+            const RTDrawDescriptor oitCompositionPassPolicy = mainPassPolicy;
 
-                RTDrawDescriptor prePassPolicy = {};
-                DisableAll(prePassPolicy._drawMask);
-                SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Depth, 0, true);
-                SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY), true);
-                SetEnabled(prePassPolicy._drawMask, RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS), true);
-                //prePassPolicy._alphaToCoverage = true;
-
-                RTDrawDescriptor mainPassPolicy = {};
-                SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Depth, 0, false);
-                SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY), false);
-                SetEnabled(mainPassPolicy._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS), false);
-
-                const RTDrawDescriptor oitCompositionPassPolicy = mainPassPolicy;
-
-                params._passName = "MainRenderPass";
-                params._stagePass = RenderStagePass{ _stageFlag, RenderPassType::COUNT };
-                params._targetDescriptorPrePass = prePassPolicy;
-                params._targetDescriptorMainPass = mainPassPolicy;
-                params._targetDescriptorComposition = oitCompositionPassPolicy;
-                params._targetHIZ = RenderTargetUsage::HI_Z;
-
-                initDrawCommands = true;
-            }
-
+            RenderPassParams params{};
+            params._passName = "MainRenderPass";
+            params._stagePass = RenderStagePass{ _stageFlag, RenderPassType::COUNT };
+            params._targetDescriptorPrePass = prePassPolicy;
+            params._targetDescriptorMainPass = mainPassPolicy;
+            params._targetDescriptorComposition = oitCompositionPassPolicy;
+            params._targetHIZ = RenderTargetUsage::HI_Z;
             params._targetOIT = _context.renderTargetPool().oitTargetID();
             params._target = _context.renderTargetPool().screenTargetID();
+
+            RTClearDescriptor clearDescriptor = {};
+            clearDescriptor._clearColours = true;
+            clearDescriptor._clearDepth = true;
+            //ToDo: Causing issues if disabled with WOIT (e.g. grass) if disabled. Investigate! -Ionut
+            clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::ALBEDO)] = true;
+
+            //Not everything gets drawn during the depth PrePass (E.g. sky)
+            clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::VELOCITY)] = true;
+            clearDescriptor._clearColourAttachment[to_U8(GFXDevice::ScreenTargets::NORMALS)] = true;
+
+            GFX::ClearRenderTargetCommand clearMainTarget = {};
+            clearMainTarget._descriptor = clearDescriptor;
             clearMainTarget._target = params._target;
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Main Display Pass" });

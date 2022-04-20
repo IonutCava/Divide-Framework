@@ -74,12 +74,16 @@ class Application : public SDLEventListener {
     void      stop();
 
     void idle();
-    bool step();
+    bool step(bool& restartEngineOnClose);
     bool onLoop();
 
     inline void RequestShutdown() noexcept;
     inline void CancelShutdown() noexcept;
     inline bool ShutdownRequested() const noexcept;
+
+    inline void RequestRestart() noexcept;
+    inline void CancelRestart() noexcept;
+    inline bool RestartRequested() const noexcept;
 
     inline Kernel& kernel() const noexcept;
     inline WindowManager& windowManager() noexcept;
@@ -122,6 +126,7 @@ class Application : public SDLEventListener {
     std::atomic_bool _mainLoopActive;
     std::atomic_bool _mainLoopPaused;
     std::atomic_bool _requestShutdown;
+    std::atomic_bool _requestRestart;
     std::atomic_bool _stepLoop;
     bool             _isInitialized = false;
     Kernel* _kernel = nullptr;

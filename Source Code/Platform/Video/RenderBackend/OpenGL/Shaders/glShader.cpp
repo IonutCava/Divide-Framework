@@ -16,7 +16,7 @@
 namespace Divide {
 
 namespace {
-    constexpr bool g_consumeSPIRVInput = false;
+    constexpr bool g_consumeSPIRVInput = true;
     constexpr const char* g_binaryBinExtension = ".bin";
     constexpr const char* g_binaryFmtExtension = ".fmt";
 
@@ -72,6 +72,15 @@ namespace {
 
 SharedMutex glShader::s_shaderNameLock;
 glShader::ShaderMap glShader::s_shaderNameMap;
+
+void glShader::InitStaticData() {
+
+}
+
+void glShader::DestroyStaticData() {
+    ScopedLock<SharedMutex> w_lock(s_shaderNameLock);
+    s_shaderNameMap.clear();
+}
 
 glShader::glShader(GFXDevice& context, const Str256& name)
     : GUIDWrapper(),

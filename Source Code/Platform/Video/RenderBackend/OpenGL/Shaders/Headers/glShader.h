@@ -84,6 +84,9 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
                                 ShaderProgram::ShaderLoadData& data);
 
 
+    static void InitStaticData();
+    static void DestroyStaticData();
+
    private:
     void uploadPushConstants(const PushConstants& constants) const;
 
@@ -109,6 +112,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     vector<GLuint> _shaderIDs;
 
     eastl::unique_ptr<glBufferedPushConstantUploader> _constantUploader = nullptr;
+
    private:
     /// Shader cache
     static ShaderMap s_shaderNameMap;

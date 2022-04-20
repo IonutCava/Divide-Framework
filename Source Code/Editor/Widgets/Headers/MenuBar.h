@@ -63,6 +63,7 @@ namespace Divide {
       protected:
         bool _isMainMenu = true;
         bool _quitPopup = false;
+        bool _restartPopup = false;
         bool _newScenePopup = false;
         bool _closePopup = false;
         bool _savePopup = false;

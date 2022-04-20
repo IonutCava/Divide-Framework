@@ -201,6 +201,26 @@ void MenuBar::draw() {
                 }
                 ImGui::EndPopup();
             }
+        } 
+        if (_restartPopup) {
+            ImGui::OpenPopup("Confirm Restart");
+            if (ImGui::BeginPopupModal("Confirm Restart", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::Text("Are you sure you want to restart the application?");
+                ImGui::Separator();
+
+                if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                    ImGui::CloseCurrentPopup();
+                    _restartPopup = false;
+                }
+                ImGui::SetItemDefaultFocus();
+                ImGui::SameLine();
+                if (ImGui::Button("Yes", ImVec2(120, 0))) {
+                    ImGui::CloseCurrentPopup();
+                    _restartPopup = false;
+                    context().app().RequestRestart();
+                }
+                ImGui::EndPopup();
+            }
         }
         if (_savePopup) {
             ImGui::OpenPopup("Saving Scene");
@@ -493,6 +513,11 @@ void MenuBar::drawFileMenu([[maybe_unused]] const bool modifierPressed) {
             } else {
                 _context.editor().toggle(false);
             }
+        }
+
+        if (ImGui::MenuItem("Restart"))
+        {
+            _restartPopup = true;
         }
 
         if (ImGui::MenuItem("Quit", "Alt+F4"))

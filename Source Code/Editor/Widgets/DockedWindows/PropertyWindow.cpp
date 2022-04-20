@@ -1137,7 +1137,7 @@ namespace Divide {
         } else if (stateHash > 0) {
             renderStateWasOpen = true;
 
-            RenderStateBlock block = RenderStateBlock::get(stateHash);
+            RenderStateBlock block = RenderStateBlock::Get(stateHash);
             bool changed = false;
             {
                 P32 colourWrite = block.colourWrite();
@@ -1151,7 +1151,7 @@ namespace Divide {
                     bool val = colourWrite.b[i] == 1;
                     if (ImGui::Checkbox(names[i], &val)) {
                         RegisterUndo<bool, false>(_parent, GFX::PushConstantType::BOOL, !val, val, "Colour Mask", [stateHash, material, i](const bool& oldVal) {
-                            RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                            RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                             const P32 cw = stateBlock.colourWrite();
                             stateBlock.setColourWrites(
                                 i == 0 ? oldVal : cw.b[0],
@@ -1180,7 +1180,7 @@ namespace Divide {
                 tempField._range = { 0.0f, 1000.0f };
                 const RenderStagePass tempPass = currentStagePass;
                 tempField._dataSetter = [material, stateHash, tempPass, zUnits](const void* data) {
-                    RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                    RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                     stateBlock.setZBias(*static_cast<const F32*>(data), zUnits);
                     material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                 };
@@ -1196,7 +1196,7 @@ namespace Divide {
                 tempField._range = { 0.0f, 65536.0f };
                 const RenderStagePass tempPass = currentStagePass;
                 tempField._dataSetter = [material, stateHash, tempPass, zBias](const void* data) {
-                    RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                    RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                     stateBlock.setZBias(zBias, *static_cast<const F32*>(data));
                     material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                 };
@@ -1222,7 +1222,7 @@ namespace Divide {
                             cullUndo._newVal = to_I32(mode);
                             const RenderStagePass tempPass = currentStagePass;
                             cullUndo._dataSetter = [material, stateHash, tempPass](const I32& data) {
-                                RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                                RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                                 stateBlock.setCullMode(static_cast<CullMode>(data));
                                 material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                             };
@@ -1255,7 +1255,7 @@ namespace Divide {
                             fillUndo._newVal = to_I32(mode);
                             const RenderStagePass tempPass = currentStagePass;
                             fillUndo._dataSetter = [material, stateHash, tempPass](const I32& data) {
-                                RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                                RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                                 stateBlock.setFillMode(static_cast<FillMode>(data));
                                 material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                             };
@@ -1278,7 +1278,7 @@ namespace Divide {
             if (ImGui::InputScalar("Stencil mask", ImGuiDataType_U32, &stencilReadMask, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
                 const RenderStagePass tempPass = currentStagePass;
                 RegisterUndo<U32, false>(_parent, GFX::PushConstantType::UINT, block.stencilMask(), stencilReadMask, "Stencil mask", [material, stateHash, stencilWriteMask, tempPass](const U32& oldVal) {
-                    RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                    RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                     stateBlock.setStencilReadWriteMask(oldVal, stencilWriteMask);
                     material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                 });
@@ -1290,7 +1290,7 @@ namespace Divide {
             if (ImGui::InputScalar("Stencil write mask", ImGuiDataType_U32, &stencilWriteMask, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
                 const RenderStagePass tempPass = currentStagePass;
                 RegisterUndo<U32, false>(_parent, GFX::PushConstantType::UINT, block.stencilWriteMask(), stencilWriteMask, "Stencil write mask", [material, stateHash, stencilReadMask, tempPass](const U32& oldVal) {
-                    RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                    RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                     stateBlock.setStencilReadWriteMask(stencilReadMask, oldVal);
                     material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                 });
@@ -1310,7 +1310,7 @@ namespace Divide {
             if (ImGui::InputScalar("Stencil reference mask", ImGuiDataType_U32, &stencilRef, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
                 const RenderStagePass tempPass = currentStagePass;
                 RegisterUndo<U32, false>(_parent, GFX::PushConstantType::UINT, block.stencilRef(), stencilRef, "Stencil reference mask", [material, stateHash, tempPass, stencilEnabled, sFailOp, sZFailOp, sPassOp, sFunc](const U32& oldVal) {
-                    RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                    RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                     stateBlock.setStencil(stencilEnabled, oldVal, sFailOp, sPassOp, sZFailOp, sFunc);
                     material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                 });
@@ -1333,7 +1333,7 @@ namespace Divide {
                             stencilUndo._newVal = to_I32(func);
                             const RenderStagePass tempPass = currentStagePass;
                             stencilUndo._dataSetter = [material, stateHash, tempPass](const I32& data) {
-                                RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                                RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                                 stateBlock.setZFunc(static_cast<ComparisonFunction>(data));
                                 material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                             };
@@ -1365,7 +1365,7 @@ namespace Divide {
                             stencilUndo._newVal = to_I32(op);
                             const RenderStagePass tempPass = currentStagePass;
                             stencilUndo._dataSetter = [material, stateHash, tempPass, stencilEnabled, stencilRef, sZFailOp, sPassOp, sFunc](const I32& data) {
-                                RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                                RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                                 stateBlock.setStencil(stencilEnabled, stencilRef, static_cast<StencilOperation>(data), sPassOp, sZFailOp, sFunc);
                                 material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                             };
@@ -1396,7 +1396,7 @@ namespace Divide {
                             stencilUndo._newVal = to_I32(op);
                             const RenderStagePass tempPass = currentStagePass;
                             stencilUndo._dataSetter = [material, stateHash, tempPass, stencilEnabled, stencilRef, sFailOp, sPassOp, sFunc](const I32& data) {
-                                RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                                RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                                 stateBlock.setStencil(stencilEnabled, stencilRef, sFailOp, sPassOp, static_cast<StencilOperation>(data), sFunc);
                                 material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                             };
@@ -1428,7 +1428,7 @@ namespace Divide {
                             stencilUndo._newVal = to_I32(op);
                             const RenderStagePass tempPass = currentStagePass;
                             stencilUndo._dataSetter = [material, stateHash, tempPass, stencilEnabled, stencilRef, sFailOp, sZFailOp, sFunc](const I32& data) {
-                                RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                                RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                                 stateBlock.setStencil(stencilEnabled, stencilRef, sFailOp, static_cast<StencilOperation>(data), sZFailOp, sFunc);
                                 material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                             };
@@ -1460,7 +1460,7 @@ namespace Divide {
                             stencilUndo._newVal = to_I32(mode);
                             const RenderStagePass tempPass = currentStagePass;
                             stencilUndo._dataSetter = [material, stateHash, tempPass, stencilEnabled, stencilRef, sFailOp, sZFailOp, sPassOp](const I32& data) {
-                                RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                                RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                                 stateBlock.setStencil(stencilEnabled, stencilRef, sFailOp, sPassOp, sZFailOp,  static_cast<ComparisonFunction>(data));
                                 material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                             };
@@ -1481,7 +1481,7 @@ namespace Divide {
             if (ImGui::Checkbox("CCW front face", &frontFaceCCW)) {
                 const RenderStagePass tempPass = currentStagePass;
                 RegisterUndo<bool, false>(_parent, GFX::PushConstantType::BOOL, !frontFaceCCW, frontFaceCCW, "CCW front face", [material, stateHash, tempPass](const bool& oldVal) {
-                    RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                    RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                     stateBlock.setFrontFaceCCW(oldVal);
                     material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                 });
@@ -1494,7 +1494,7 @@ namespace Divide {
             if (ImGui::Checkbox("Scissor test", &scissorEnabled)) {
                 const RenderStagePass tempPass = currentStagePass;
                 RegisterUndo<bool, false>(_parent, GFX::PushConstantType::BOOL, !scissorEnabled, scissorEnabled, "Scissor test", [material, stateHash, tempPass](const bool& oldVal) {
-                    RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                    RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                     stateBlock.setScissorTest(oldVal);
                     material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                 });
@@ -1507,7 +1507,7 @@ namespace Divide {
             if (ImGui::Checkbox("Depth test", &depthTestEnabled)) {
                 const RenderStagePass tempPass = currentStagePass;
                 RegisterUndo<bool, false>(_parent, GFX::PushConstantType::BOOL, !depthTestEnabled, depthTestEnabled, "Depth test", [material, stateHash, tempPass](const bool& oldVal) {
-                    RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                    RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                     stateBlock.depthTestEnabled(oldVal);
                     material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                 });
@@ -1519,7 +1519,7 @@ namespace Divide {
             if (ImGui::Checkbox("Stencil test", &stencilEnabled)) {
                 const RenderStagePass tempPass = currentStagePass;
                 RegisterUndo<bool, false>(_parent, GFX::PushConstantType::BOOL, !stencilEnabled, stencilEnabled, "Stencil test", [material, stateHash, tempPass, stencilRef, sFailOp, sZFailOp, sPassOp, sFunc](const bool& oldVal) {
-                    RenderStateBlock stateBlock = RenderStateBlock::get(stateHash);
+                    RenderStateBlock stateBlock = RenderStateBlock::Get(stateHash);
                     stateBlock.setStencil(oldVal, stencilRef, sFailOp, sPassOp, sZFailOp,  sFunc);
                     material->setRenderStateBlock(stateBlock.getHash(), tempPass._stage, tempPass._passType, tempPass._variant);
                 });

@@ -26,6 +26,8 @@ std::array<TextureUsage, to_base(ShadowType::COUNT)> LightPool::_shadowLocation 
 namespace {
     constexpr U8 DataBufferRingSize = 4u;
 
+    static size_t s_debugSamplerHash = 0u;
+
     FORCE_INLINE I32 GetMaxLights(const LightType type) noexcept {
         switch (type) {
             case LightType::DIRECTIONAL: return to_I32(Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS);
@@ -66,6 +68,8 @@ LightPool::LightPool(Scene& parentScene, PlatformContext& context)
 
 LightPool::~LightPool()
 {
+    s_debugSamplerHash = 0u;
+
     const SharedLock<SharedMutex> r_lock(_lightLock);
     for (const LightList& lightList : _lights) {
         if (!lightList.empty()) {
@@ -528,19 +532,17 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
     if (!lightImpostorsEnabled()) {
         return;
     }
-
-    static size_t s_samplerHash = 0;
-    if (s_samplerHash == 0) {
+    if (s_debugSamplerHash == 0u) {
         SamplerDescriptor iconSampler = {};
         iconSampler.wrapUVW(TextureWrap::REPEAT);
         iconSampler.minFilter(TextureFilter::LINEAR);
         iconSampler.magFilter(TextureFilter::LINEAR);
         iconSampler.anisotropyLevel(0);
-        s_samplerHash = iconSampler.getHash();
+        s_debugSamplerHash = iconSampler.getHash();
     }
 
     const U32 totalLightCount = _sortedLightPropertiesCount[to_U8(RenderStage::DISPLAY)];
-    if (totalLightCount > 0) {
+    if (totalLightCount > 0u) {
         ShaderBufferBinding bufferLightData;
         bufferLightData._binding = ShaderBufferLocation::LIGHT_NORMAL;
         bufferLightData._buffer = _lightBuffer;
@@ -553,7 +555,7 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _context.gfx().newPipeline(pipelineDescriptor) });
-        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ _lightIconsTexture->data(), s_samplerHash, TextureUsage::UNIT0 });
+        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ _lightIconsTexture->data(), s_debugSamplerHash, TextureUsage::UNIT0 });
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.back()._drawCount = to_U16(totalLightCount);
     }
 }

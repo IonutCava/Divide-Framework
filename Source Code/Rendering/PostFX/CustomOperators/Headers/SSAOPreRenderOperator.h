@@ -93,6 +93,14 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
     ShaderProgram_ptr _ssaoPassThroughShader = nullptr;
     ShaderProgram_ptr _ssaoDownSampleShader = nullptr;
     ShaderProgram_ptr _ssaoUpSampleShader = nullptr;
+    Pipeline* _downsamplePipeline = nullptr;
+    Pipeline* _generateHalfResPipeline = nullptr;
+    Pipeline* _upsamplePipeline = nullptr;
+    Pipeline* _generateFullResPipeline = nullptr;
+    Pipeline* _blurHorizontalPipeline = nullptr;
+    Pipeline* _blurVerticalPipeline = nullptr;
+    Pipeline* _passThroughPipeline = nullptr;
+
     Texture_ptr _noiseTexture = nullptr;
     size_t _noiseSampler = 0;
     RenderTargetHandle _ssaoOutput;

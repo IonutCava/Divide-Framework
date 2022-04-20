@@ -169,10 +169,13 @@ void GUI::update(const U64 deltaTimeUS) {
 }
 
 void GUI::setRenderer(CEGUI::Renderer& renderer) {
-    CEGUI::System::create(renderer, nullptr, nullptr, nullptr, nullptr, "", (Paths::g_logPath + "CEGUI.log").c_str());
+    const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
+    if (guiConfig.cegui.enabled) {
+        CEGUI::System::create(renderer, nullptr, nullptr, nullptr, nullptr, "", (Paths::g_logPath + "CEGUI.log").c_str());
 
-    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
-        CEGUI::Logger::getSingleton().setLoggingLevel(CEGUI::Informative);
+        if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+            CEGUI::Logger::getSingleton().setLoggingLevel(CEGUI::Informative);
+        }
     }
 }
 

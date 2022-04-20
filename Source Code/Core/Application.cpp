@@ -19,6 +19,7 @@ MemoryManager::MemoryTracker MemoryManager::AllocTracer;
 Application::Application() noexcept
 {
     std::atomic_init(&_requestShutdown, false);
+    std::atomic_init(&_requestRestart, false);
     std::atomic_init(&_mainLoopPaused, false);
     std::atomic_init(&_mainLoopActive, false);
 
@@ -103,13 +104,22 @@ void Application::idle() {
     NOP();
 }
 
-bool Application::step() {
+bool Application::step(bool& restartEngineOnClose) {
     if (onLoop()) {
+        if (RestartRequested()) {
+            restartEngineOnClose = true;
+            RequestShutdown();
+        } else {
+            restartEngineOnClose = false;
+        }
+
         OPTICK_FRAME("MainThread");
         Attorney::KernelApplication::onLoop(_kernel);
         return true;
     }
+
     windowManager().hideAll();
+    CancelRestart();
 
     return false;
 }

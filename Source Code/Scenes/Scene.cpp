@@ -1482,7 +1482,7 @@ void Scene::debugDraw(GFX::CommandBuffer& bufferInOut) {
             const size_t regionCount = _octreeBoundingBoxes.size();
             if (regionCount > primitiveCount) {
                 PipelineDescriptor pipeDesc;
-                pipeDesc._stateHash = RenderStateBlock::defaultHash();
+                pipeDesc._stateHash = RenderStateBlock::DefaultHash();
                 pipeDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->handle();
                 const Pipeline* pipeline = _context.gfx().newPipeline(pipeDesc);
 

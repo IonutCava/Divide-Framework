@@ -232,6 +232,18 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             _renderDataBuffer = newSB(bufferDescriptor);
             _renderDataBuffer->bind(ShaderBufferLocation::RENDER_BLOCK);
         }
+        {
+            // Atomic counter for occlusion culling
+            bufferDescriptor._usage = ShaderBuffer::Usage::ATOMIC_COUNTER;
+            bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
+            bufferDescriptor._name = "CULL_COUNTER";
+            bufferDescriptor._bufferParams._elementSize = sizeof(U32);
+            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+            bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_W_CPU_R;
+            bufferDescriptor._separateReadWrite = true;
+            bufferDescriptor._bufferParams._initialData = {};
+            _cullCounter = newSB(bufferDescriptor);
+        }
     }
 
     _shaderComputeQueue = MemoryManager_NEW ShaderComputeQueue(cache);
@@ -255,7 +267,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     // differ from each other at a state hash level
     assert(_stateDepthOnlyRenderingHash != _state2DRenderingHash && "GFXDevice error: Invalid default state hash detected!");
     assert(_state2DRenderingHash != _defaultStateNoDepthHash && "GFXDevice error: Invalid default state hash detected!");
-    assert(_defaultStateNoDepthHash != RenderStateBlock::defaultHash() && "GFXDevice error: Invalid default state hash detected!");
+    assert(_defaultStateNoDepthHash != RenderStateBlock::DefaultHash() && "GFXDevice error: Invalid default state hash detected!");
 
     // We need to create all of our attachments for the default render targets
     // Start with the screen render target: Try a half float, multisampled
@@ -927,7 +939,8 @@ void GFXDevice::closeRenderingAPI() {
     Console::printfn(Locale::Get(_ID("CLOSING_RENDERER")));
     _renderer.reset(nullptr);
 
-    RenderStateBlock::clear();
+    RenderStateBlock::Clear();
+    SamplerDescriptor::Clear();
 
     GFX::DestroyPools();
     MemoryManager::SAFE_DELETE(_rtPool);
@@ -951,6 +964,8 @@ void GFXDevice::closeRenderingAPI() {
     if (!ShaderProgram::OnShutdown()) {
         DIVIDE_UNEXPECTED_CALL();
     }
+
+    RenderPassExecutor::OnShutdown(*this);
     Texture::OnShutdown();
     _gpuObjectArena.clear();
     assert(ShaderProgram::ShaderProgramCount() == 0);
@@ -2008,8 +2023,8 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
                               const Texture_ptr& depthBuffer,
                               const size_t samplerHash,
                               const CameraSnapshot& cameraSnapshot,
-                              GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
-                              GFX::CommandBuffer& bufferInOut) const
+                              const bool countCulledNodes,
+                              GFX::CommandBuffer& bufferInOut)
 {
     OPTICK_EVENT();
 
@@ -2023,41 +2038,54 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._textureData.add(TextureEntry{ depthBuffer->data(), samplerHash, TextureUsage::UNIT0 });
 
-    if (bufferData._cullCounterBuffer != nullptr) {
-        ShaderBufferBinding atomicCount = {};
-        atomicCount._binding = ShaderBufferLocation::ATOMIC_COUNTER_0;
-        atomicCount._buffer = bufferData._cullCounterBuffer;
-        atomicCount._elementRange.set(0, 1);
-        atomicCount._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
-        set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
-    }
+    ShaderBufferBinding atomicCount = {};
+    atomicCount._binding = ShaderBufferLocation::ATOMIC_COUNTER_0;
+    atomicCount._buffer = _cullCounter;
+    atomicCount._elementRange.set(0, 1);
+    atomicCount._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
+    set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
 
     mat4<F32> viewProjectionMatrix;
-    mat4<F32>::Multiply(cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix);;
-    HIZPushConstantsCMDInOut._constants.set(_ID("countCulledItems"), GFX::PushConstantType::UINT, bufferData._cullCounterBuffer != nullptr ? 1u : 0u);
-    HIZPushConstantsCMDInOut._constants.set(_ID("numEntities"), GFX::PushConstantType::UINT, cmdCount);
-    HIZPushConstantsCMDInOut._constants.set(_ID("nearPlane"), GFX::PushConstantType::FLOAT, cameraSnapshot._zPlanes.x);
-    HIZPushConstantsCMDInOut._constants.set(_ID("viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(depthBuffer->width(), depthBuffer->height()));
-    HIZPushConstantsCMDInOut._constants.set(_ID("viewMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._viewMatrix);
-    HIZPushConstantsCMDInOut._constants.set(_ID("viewProjectionMatrix"), GFX::PushConstantType::MAT4, viewProjectionMatrix);
-    HIZPushConstantsCMDInOut._constants.set(_ID("frustumPlanes"), GFX::PushConstantType::VEC4, cameraSnapshot._frustumPlanes);
+    mat4<F32>::Multiply(cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix);
 
-    GFX::EnqueueCommand(bufferInOut, HIZPushConstantsCMDInOut);
+    GFX::SendPushConstantsCommand HIZPushConstantsCMD = {};
+    HIZPushConstantsCMD._constants.set(_ID("countCulledItems"), GFX::PushConstantType::UINT, countCulledNodes ? 1u : 0u);
+    HIZPushConstantsCMD._constants.set(_ID("numEntities"), GFX::PushConstantType::UINT, cmdCount);
+    HIZPushConstantsCMD._constants.set(_ID("nearPlane"), GFX::PushConstantType::FLOAT, cameraSnapshot._zPlanes.x);
+    HIZPushConstantsCMD._constants.set(_ID("viewSize"), GFX::PushConstantType::VEC2, vec2<F32>(depthBuffer->width(), depthBuffer->height()));
+    HIZPushConstantsCMD._constants.set(_ID("viewMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._viewMatrix);
+    HIZPushConstantsCMD._constants.set(_ID("viewProjectionMatrix"), GFX::PushConstantType::MAT4, viewProjectionMatrix);
+    HIZPushConstantsCMD._constants.set(_ID("frustumPlanes"), GFX::PushConstantType::VEC4, cameraSnapshot._frustumPlanes);
+
+    GFX::EnqueueCommand(bufferInOut, HIZPushConstantsCMD);
 
     GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ threadCount, 1, 1 });
 
-    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-}
+    // Occlusion culling barrier
+    GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{
+        to_base(MemoryBarrierType::COMMAND_BUFFER) | //For rendering
+        to_base(MemoryBarrierType::SHADER_STORAGE) | //For updating later on
+        (countCulledNodes ? to_base(MemoryBarrierType::ATOMIC_COUNTER) : 0u)
+        });
 
-void GFXDevice::updateCullCount(const RenderPass::BufferData& bufferData, GFX::CommandBuffer& cmdBufferInOut) {
-    if (queryPerformanceStats() && bufferData._cullCounterBuffer != nullptr) {
-          GFX::ReadBufferDataCommand readAtomicCounter;
-          readAtomicCounter._buffer = bufferData._cullCounterBuffer;
-          readAtomicCounter._target = &_lastCullCount;
-          readAtomicCounter._offsetElementCount = 0;
-          readAtomicCounter._elementCount = 1;
-          EnqueueCommand(cmdBufferInOut, readAtomicCounter);
-      }
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
+
+    if (queryPerformanceStats() && countCulledNodes) {
+        GFX::ReadBufferDataCommand readAtomicCounter;
+        readAtomicCounter._buffer = _cullCounter;
+        readAtomicCounter._target = &_lastCullCount;
+        readAtomicCounter._offsetElementCount = 0;
+        readAtomicCounter._elementCount = 1;
+        EnqueueCommand(bufferInOut, readAtomicCounter);
+
+        _cullCounter->incQueue();
+
+        GFX::ClearBufferDataCommand clearAtomicCounter{};
+        clearAtomicCounter._buffer = _cullCounter;
+        clearAtomicCounter._offsetElementCount = 0;
+        clearAtomicCounter._elementCount = 1;
+        GFX::EnqueueCommand(bufferInOut, clearAtomicCounter);
+    }
 }
 #pragma endregion
 
@@ -3004,7 +3032,7 @@ void GFXDevice::screenshot(const ResourcePath& filename) const {
 
 /// returns the standard state block
 size_t GFXDevice::getDefaultStateBlock(const bool noDepth) const noexcept {
-    return noDepth ? _defaultStateNoDepthHash : RenderStateBlock::defaultHash();
+    return noDepth ? _defaultStateNoDepthHash : RenderStateBlock::DefaultHash();
 }
 
 };

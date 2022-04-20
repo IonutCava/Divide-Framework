@@ -77,6 +77,7 @@ private:
 
 public:
     explicit PostFX(PlatformContext& context, ResourceCache* cache);
+    ~PostFX();
 
     void prePass(PlayerIndex idx, const CameraSnapshot& cameraSnapshot,GFX::CommandBuffer& bufferInOut);
     void apply(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);

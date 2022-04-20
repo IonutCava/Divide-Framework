@@ -67,7 +67,7 @@ namespace TypeUtil {
 RenderStateBlock::RenderStateBlock() noexcept
     : GUIDWrapper()
 {
-    if (defaultHash() == 0) {
+    if (DefaultHash() == 0u) {
         _dirty = true;
         s_defaultHashValue = RenderStateBlock::getHash();
     }
@@ -97,6 +97,32 @@ void RenderStateBlock::from(const RenderStateBlock& other) {
         _hash = other.getHash();
         _dirty = false;
     }
+}
+
+void RenderStateBlock::reset() {
+    _colourWrite = P32_FLAGS_TRUE;
+    _zBias = 0.0f;
+    _zUnits = 0.0f;
+    _tessControlPoints = 3;
+    _stencilRef = 0u;
+    _stencilMask = 0xFFFFFFFF;
+    _stencilWriteMask = 0xFFFFFFFF;
+
+    _zFunc = ComparisonFunction::LEQUAL;
+    _stencilFailOp = StencilOperation::KEEP;
+    _stencilPassOp = StencilOperation::KEEP;
+    _stencilZFailOp = StencilOperation::KEEP;
+    _stencilFunc = ComparisonFunction::NEVER;
+
+    _cullMode = CullMode::BACK;
+    _fillMode = FillMode::SOLID;
+
+    _frontFaceCCW = true;
+    _scissorTestEnabled = false;
+    _depthTestEnabled = true;
+    _stencilEnable = false;
+
+    _dirty = true;
 }
 
 void RenderStateBlock::flipCullMode()  noexcept {
@@ -218,26 +244,26 @@ void RenderStateBlock::setStencil(const bool enable,
     }
 }
 
-void RenderStateBlock::clear() {
+void RenderStateBlock::Clear() {
     ScopedLock<SharedMutex> w_lock(s_stateBlockMapMutex);
     s_stateBlockMap.clear();
 }
 
-size_t RenderStateBlock::defaultHash() noexcept {
+size_t RenderStateBlock::DefaultHash() noexcept {
     return s_defaultHashValue;
 }
 
 /// Return the render state block defined by the specified hash value.
-const RenderStateBlock& RenderStateBlock::get(const size_t renderStateBlockHash) {
+const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash) {
     bool blockFound = false;
-    const RenderStateBlock& block = get(renderStateBlockHash, blockFound);
+    const RenderStateBlock& block = Get(renderStateBlockHash, blockFound);
     // Assert if it doesn't exist. Avoids programming errors.
     DIVIDE_ASSERT(blockFound, "RenderStateBlock error: Invalid render state block hash specified for getRenderStateBlock!");
     // Return the state block's descriptor
     return block;
 }
 
-const RenderStateBlock& RenderStateBlock::get(const size_t renderStateBlockHash, bool& blockFound) {
+const RenderStateBlock& RenderStateBlock::Get(const size_t renderStateBlockHash, bool& blockFound) {
     blockFound = false;
 
     SharedLock<SharedMutex> r_lock(s_stateBlockMapMutex);
@@ -248,11 +274,39 @@ const RenderStateBlock& RenderStateBlock::get(const size_t renderStateBlockHash,
         return it->second;
     }
 
-    return s_stateBlockMap.find(defaultHash())->second;
+    return s_stateBlockMap.find(DefaultHash())->second;
 }
 
 bool RenderStateBlock::cullEnabled() const noexcept {
     return _cullMode != CullMode::NONE;
+}
+
+size_t RenderStateBlock::getHashInternal() const {
+    // Avoid small float rounding errors offsetting the general hash value
+    const U32 zBias = to_U32(std::floor(_zBias * 1000.0f + 0.5f));
+    const U32 zUnits = to_U32(std::floor(_zUnits * 1000.0f + 0.5f));
+
+    size_t hash = 59;
+    Util::Hash_combine(hash, _colourWrite.i,
+                             to_U32(_cullMode),
+                             _depthTestEnabled,
+                             to_U32(_zFunc),
+                             zBias,
+                             zUnits,
+                             _scissorTestEnabled,
+                             _stencilEnable,
+                             _stencilRef,
+                             _stencilMask,
+                             _stencilWriteMask,
+                             _frontFaceCCW,
+                             to_U32(_stencilFailOp),
+                             to_U32(_stencilZFailOp),
+                             to_U32(_stencilPassOp),
+                             to_U32(_stencilFunc),
+                             to_U32(_fillMode),
+                             _tessControlPoints);
+
+    return hash;
 }
 
 size_t RenderStateBlock::getHash() const {
@@ -260,30 +314,8 @@ size_t RenderStateBlock::getHash() const {
         return Hashable::getHash();
     }
 
-    // Avoid small float rounding errors offsetting the general hash value
-    const U32 zBias = to_U32(std::floor(_zBias * 1000.0f + 0.5f));
-    const U32 zUnits = to_U32(std::floor(_zUnits * 1000.0f + 0.5f));
-
     const size_t previousCache = Hashable::getHash();
-    _hash = 59;
-    Util::Hash_combine(_hash, _colourWrite.i,
-                              to_U32(_cullMode),
-                              _depthTestEnabled,
-                              to_U32(_zFunc),
-                              zBias,
-                              zUnits,
-                              _scissorTestEnabled,
-                              _stencilEnable,
-                              _stencilRef,
-                              _stencilMask,
-                              _stencilWriteMask,
-                              _frontFaceCCW,
-                              to_U32(_stencilFailOp),
-                              to_U32(_stencilZFailOp),
-                              to_U32(_stencilPassOp),
-                              to_U32(_stencilFunc),
-                              to_U32(_fillMode),
-                              _tessControlPoints);
+    _hash = getHashInternal();
 
     if (previousCache != _hash) {
         ScopedLock<SharedMutex> w_lock(s_stateBlockMapMutex);
@@ -293,7 +325,7 @@ size_t RenderStateBlock::getHash() const {
     return _hash;
 }
 
-void RenderStateBlock::saveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt) {
+void RenderStateBlock::SaveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt) {
 
     pt.put(entryName + ".colourWrite.<xmlattr>.r", block._colourWrite.b[0] == 1);
     pt.put(entryName + ".colourWrite.<xmlattr>.g", block._colourWrite.b[1] == 1);
@@ -323,7 +355,7 @@ void RenderStateBlock::saveToXML(const RenderStateBlock& block, const string& en
     pt.put(entryName + ".stencilWriteMask", block._stencilWriteMask);
 }
 
-RenderStateBlock RenderStateBlock::loadFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
+RenderStateBlock RenderStateBlock::LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     RenderStateBlock block;
     block.setColourWrites(pt.get(entryName + ".colourWrite.<xmlattr>.r", true),
                           pt.get(entryName + ".colourWrite.<xmlattr>.g", true),

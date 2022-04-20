@@ -186,7 +186,10 @@ class PreRenderBatch {
     std::array<ShaderProgram_ptr, to_base(EdgeDetectionMethod::COUNT)> _edgeDetection = {};
     std::array<Pipeline*, to_base(EdgeDetectionMethod::COUNT)> _edgeDetectionPipelines = {};
     GFX::SendPushConstantsCommand _toneMapConstantsCmd;
-
+    Pipeline* _pipelineLumCalcHistogram = nullptr;
+    Pipeline* _pipelineLumCalcAverage = nullptr;
+    Pipeline* _pipelineToneMap = nullptr;
+    Pipeline* _pipelineToneMapAdaptive = nullptr;
     U64 _lastDeltaTimeUS = 0u;
 };
 

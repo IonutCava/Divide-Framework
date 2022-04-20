@@ -23,6 +23,9 @@ namespace {
     eastl::queue<U16> s_computationQueue;
     eastl::set<U16> s_computationSet;
     U16 s_queuedLayer = 0u;
+
+    static SceneEnvironmentProbePool::ComputationStages s_queuedStage = SceneEnvironmentProbePool::ComputationStages::COUNT;
+    static U8 s_faceID = 0u;
 }
 
 vector<DebugView_ptr> SceneEnvironmentProbePool::s_debugViews;
@@ -38,6 +41,8 @@ ShaderProgram_ptr SceneEnvironmentProbePool::s_previewShader;
 ShaderProgram_ptr SceneEnvironmentProbePool::s_irradianceComputeShader;
 ShaderProgram_ptr SceneEnvironmentProbePool::s_prefilterComputeShader;
 ShaderProgram_ptr SceneEnvironmentProbePool::s_lutComputeShader;
+Pipeline* SceneEnvironmentProbePool::s_pipelineCalcPrefiltered = nullptr;
+Pipeline* SceneEnvironmentProbePool::s_pipelineCalcIrradiance = nullptr;
 bool SceneEnvironmentProbePool::s_debuggingSkyLight = false;
 bool SceneEnvironmentProbePool::s_skyLightNeedsRefresh = true;
 bool SceneEnvironmentProbePool::s_lutTextureDirty = true;
@@ -193,6 +198,18 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
             s_prefilterComputeShader = CreateResource<ShaderProgram>(context.parent().resourceCache(), prefilterShader);
         }
     }
+    {
+        PipelineDescriptor pipelineDescriptor{};
+        pipelineDescriptor._stateHash = context.get2DStateBlock();
+        pipelineDescriptor._shaderProgramHandle = s_prefilterComputeShader->handle();
+        s_pipelineCalcPrefiltered = context.newPipeline(pipelineDescriptor);
+    }
+    {
+        PipelineDescriptor pipelineDescriptor{};
+        pipelineDescriptor._stateHash = context.get2DStateBlock();
+        pipelineDescriptor._shaderProgramHandle = s_irradianceComputeShader->handle();
+        s_pipelineCalcIrradiance = context.newPipeline(pipelineDescriptor);
+    }
 }
 
 void SceneEnvironmentProbePool::OnShutdown(GFXDevice& context) {
@@ -215,6 +232,14 @@ void SceneEnvironmentProbePool::OnShutdown(GFXDevice& context) {
         }
         s_debugViews.clear();
     }
+    s_pipelineCalcPrefiltered = nullptr;
+    s_pipelineCalcIrradiance = nullptr;
+
+    s_computationQueue = {};
+    s_computationSet.clear();
+    s_queuedLayer = 0u;
+    s_queuedStage = SceneEnvironmentProbePool::ComputationStages::COUNT;
+    s_faceID = 0u;
 }
 
 RenderTargetHandle SceneEnvironmentProbePool::ReflectionTarget() noexcept {
@@ -265,20 +290,18 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
 void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
     {
-        static ComputationStages queuedStage = ComputationStages::COUNT;
-
         SharedLock<SharedMutex> r_lock(s_queueLock);
-        if (queuedStage == ComputationStages::COUNT && !s_computationQueue.empty()) {
+        if (s_queuedStage == ComputationStages::COUNT && !s_computationQueue.empty()) {
             s_queuedLayer = s_computationQueue.front();
-            queuedStage = ComputationStages::MIP_MAP_SOURCE;
+            s_queuedStage = ComputationStages::MIP_MAP_SOURCE;
             s_computationQueue.pop();
             s_computationSet.erase(s_queuedLayer);
         }
 
-        if (queuedStage != ComputationStages::COUNT)
+        if (s_queuedStage != ComputationStages::COUNT)
         //while (queuedStage != ComputationStages::COUNT) 
         {
-            ProcessEnvironmentMapInternal(context, s_queuedLayer, queuedStage, bufferInOut);
+            ProcessEnvironmentMapInternal(context, s_queuedLayer, s_queuedStage, bufferInOut);
         }
     }
     if (s_lutTextureDirty) {
@@ -365,8 +388,6 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
     OPTICK_EVENT();
 
     // This entire sequence is based on this awesome blog post by Bruno Opsenica: https://bruop.github.io/ibl/
-    static U8 faceID = 0u;
-
     switch (stage) {
         case ComputationStages::MIP_MAP_SOURCE: {
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Process environment map #%d-MipMapsSource", layerID).c_str()));
@@ -379,21 +400,21 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
 
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
-            faceID = 0u;
+            s_faceID = 0u;
             stage = ComputationStages::PREFILTER_MAP;
         }break;
         case ComputationStages::PREFILTER_MAP: {
-            PrefilterEnvMap(context, layerID, 5u - faceID, bufferInOut);
-            if (++faceID == 6u) {
+            PrefilterEnvMap(context, layerID, 5u - s_faceID, bufferInOut);
+            if (++s_faceID == 6u) {
                 stage = ComputationStages::IRRADIANCE_CALC;
-                faceID = 0u;
+                s_faceID = 0u;
             }
         }break;
         case ComputationStages::IRRADIANCE_CALC: {
-            ComputeIrradianceMap(context, layerID, 5u - faceID, bufferInOut);
-            if (++faceID == 6u) {
+            ComputeIrradianceMap(context, layerID, 5u - s_faceID, bufferInOut);
+            if (++s_faceID == 6u) {
                 stage = ComputationStages::MIP_MAP_PREFILTER;
-                faceID = 0u;
+                s_faceID = 0u;
             }
         }break;
         case ComputationStages::MIP_MAP_PREFILTER: {
@@ -429,14 +450,6 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(GFXDevice& context
 }
 
 void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 layerID, const U8 faceIndex, GFX::CommandBuffer& bufferInOut) {
-    static Pipeline* pipelineCalcPrefiltered = nullptr;
-    if (pipelineCalcPrefiltered == nullptr) {
-        PipelineDescriptor pipelineDescriptor{};
-        pipelineDescriptor._stateHash = context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = s_prefilterComputeShader->handle();
-
-        pipelineCalcPrefiltered = context.newPipeline(pipelineDescriptor);
-    }
 
     const RTAttachment& sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
     const RTAttachment& destinationAtt = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
@@ -444,7 +457,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("PreFilter environment map #%d-%d", layerID, faceIndex).c_str()));
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ pipelineCalcPrefiltered });
+    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcPrefiltered });
 
     // width is the width/length of a single face of our cube map
     const U16 width = sourceTex->width();
@@ -486,20 +499,12 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
 }
 
 void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U16 layerID, const U8 faceIndex, GFX::CommandBuffer& bufferInOut) {
-    static Pipeline* pipelineCalcIrradiance = nullptr;
-    if (pipelineCalcIrradiance == nullptr) {
-        PipelineDescriptor pipelineDescriptor{};
-        pipelineDescriptor._stateHash = context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = s_irradianceComputeShader->handle();
-        pipelineCalcIrradiance = context.newPipeline(pipelineDescriptor);
-    }
-
     const RTAttachment& sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
     const RTAttachment& destinationAtt = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Compute Irradiance #%d-%d", layerID, faceIndex).c_str()));
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ pipelineCalcIrradiance });
+    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcIrradiance });
 
     PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants;
     constants.set(_ID("imgSize"), GFX::PushConstantType::VEC2, vec2<F32>{s_IrradianceTextureSize, s_IrradianceTextureSize});

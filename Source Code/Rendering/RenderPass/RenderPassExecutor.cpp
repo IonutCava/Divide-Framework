@@ -259,6 +259,16 @@ void RenderPassExecutor::OnStartup(const GFXDevice& gfx) {
     Material::OnStartup(s_defaultTextureSamplerAddress);
 }
 
+void RenderPassExecutor::OnShutdown([[maybe_unused]] const GFXDevice& gfx) {
+    s_globalDataInit = false;
+    s_defaultTextureSamplerAddress = 0u;
+    s_OITCompositionPipeline = nullptr;
+    s_OITCompositionMSPipeline = nullptr;
+    s_ResolveGBufferPipeline = nullptr;
+
+    Material::OnShutdown();
+}
+
 void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
                                   const ShaderProgram_ptr& OITCompositionShaderMS,
                                   const ShaderProgram_ptr& ResolveGBufferShaderMS) {
@@ -1028,27 +1038,12 @@ void RenderPassExecutor::occlusionPass(const PlayerIndex idx,
     // Run occlusion culling CS
     RenderPass::BufferData bufferData = _parent.getPassForStage(_stage).getBufferData(stagePass);
 
-    GFX::SendPushConstantsCommand HIZPushConstantsCMDInOut = {};
-    _context.occlusionCull(bufferData, hizTexture, hizSampler, cameraSnapshot, HIZPushConstantsCMDInOut, bufferInOut);
-
-    // Occlusion culling barrier
-    GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{
-        to_base(MemoryBarrierType::COMMAND_BUFFER) | //For rendering
-        to_base(MemoryBarrierType::SHADER_STORAGE) | //For updating later on
-        (bufferData._cullCounterBuffer != nullptr ? to_base(MemoryBarrierType::ATOMIC_COUNTER) : 0u)
-    });
-
-    if (bufferData._cullCounterBuffer != nullptr) {
-        _context.updateCullCount(bufferData, bufferInOut);
-
-        bufferData._cullCounterBuffer->incQueue();
-
-        GFX::ClearBufferDataCommand clearAtomicCounter{};
-        clearAtomicCounter._buffer = bufferData._cullCounterBuffer;
-        clearAtomicCounter._offsetElementCount = 0;
-        clearAtomicCounter._elementCount = 1;
-        GFX::EnqueueCommand(bufferInOut, clearAtomicCounter);
-    }
+    _context.occlusionCull(bufferData,
+                           hizTexture,
+                           hizSampler,
+                           cameraSnapshot,
+                           _stage == RenderStage::DISPLAY,
+                           bufferInOut);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }

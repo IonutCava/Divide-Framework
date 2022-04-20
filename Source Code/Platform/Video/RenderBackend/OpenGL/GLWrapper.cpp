@@ -1191,7 +1191,7 @@ GLuint GL_API::GetSamplerHandle(const size_t samplerHash) {
             if (it == std::cend(s_samplerMap)) {
                 // Cache miss. Create the sampler object now.
                 // Create and store the newly created sample object. GL_API is responsible for deleting these!
-                const GLuint sampler = glSamplerObject::construct(SamplerDescriptor::get(samplerHash));
+                const GLuint sampler = glSamplerObject::construct(SamplerDescriptor::Get(samplerHash));
                 emplace(s_samplerMap, samplerHash, sampler);
                 return sampler;
             }

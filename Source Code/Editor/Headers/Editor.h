@@ -297,6 +297,7 @@ class Editor final : public PlatformContextComponent,
     Pipeline*     _infiniteGridPipeline = nullptr;
     Pipeline* _axisGizmoPipeline = nullptr;
     IMPrimitive* _axisGizmo = nullptr;
+    Pipeline* _editorPipeline = nullptr;
 
     std::pair<bufferPtr, size_t> _memoryEditorData = { nullptr, 0 };
     std::array<ImGuiContext*, to_base(ImGuiContextType::COUNT)> _imguiContexts = {};

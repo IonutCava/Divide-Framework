@@ -1341,7 +1341,7 @@ void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
     auto& glslCodeOut = loadDataInOut._sourceCodeGLSL;
     auto& spirvCodeOut = loadDataInOut._sourceCodeSpirV;
 
-    sourceCodeOut.resize(0);
+    glslCodeOut.resize(0);
     spirvCodeOut.resize(0);
 
     if (s_useShaderTextCache && !reloadExisting) {

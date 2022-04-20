@@ -52,17 +52,17 @@ namespace TypeUtil {
 
 class RenderStateBlock final : public GUIDWrapper, public Hashable {
     public:
-       static void clear();
+       static void Clear();
        /// Retrieve a state block by hash value.
        /// If the hash value does not exist in the state block map, return the default state block
-       static const RenderStateBlock& get(size_t renderStateBlockHash);
+       static const RenderStateBlock& Get(size_t renderStateBlockHash);
        /// Returns false if the specified hash is not found in the map
-       static const RenderStateBlock& get(size_t renderStateBlockHash, bool& blockFound);
-       static void saveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt);
+       static const RenderStateBlock& Get(size_t renderStateBlockHash, bool& blockFound);
+       static void SaveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt);
 
-       static RenderStateBlock loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
+       static RenderStateBlock LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
 
-       static size_t defaultHash() noexcept;
+       static size_t DefaultHash() noexcept;
 
     protected:
         using RenderStateMap = hashMap<size_t, RenderStateBlock, NoHash<size_t>>;
@@ -79,11 +79,13 @@ class RenderStateBlock final : public GUIDWrapper, public Hashable {
         /// Use "from" instead of "operator=" to bypass the GUID restrictions
         void from(const RenderStateBlock& other);
 
-       bool operator==(const RenderStateBlock& rhs) const {
+        void reset();
+
+        bool operator==(const RenderStateBlock& rhs) const {
             return getHash() == rhs.getHash();
         }
 
-       bool operator!=(const RenderStateBlock& rhs) const {
+        bool operator!=(const RenderStateBlock& rhs) const {
             return getHash() != rhs.getHash();
         }
 
@@ -112,6 +114,9 @@ class RenderStateBlock final : public GUIDWrapper, public Hashable {
         bool cullEnabled() const noexcept;
 
         size_t getHash() const override;
+
+    private:
+        size_t getHashInternal() const;
 
     public:
         PROPERTY_R(P32, colourWrite, P32_FLAGS_TRUE);

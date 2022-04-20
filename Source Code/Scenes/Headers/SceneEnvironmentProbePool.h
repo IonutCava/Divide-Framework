@@ -47,6 +47,7 @@ FWD_DECLARE_MANAGED_STRUCT(DebugView);
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 class Camera;
+class Pipeline;
 class EnvironmentProbeComponent;
 using EnvironmentProbeList = vector<EnvironmentProbeComponent*>;
 
@@ -54,6 +55,15 @@ class GFXDevice;
 class SceneRenderState;
 class SceneEnvironmentProbePool final : public SceneComponent {
 public:
+    enum class ComputationStages : U8 {
+        MIP_MAP_SOURCE,
+        PREFILTER_MAP,
+        IRRADIANCE_CALC,
+        MIP_MAP_PREFILTER,
+        MIP_MAP_IRRADIANCE,
+        COUNT
+    };
+
     SceneEnvironmentProbePool(Scene& parentScene) noexcept;
     ~SceneEnvironmentProbePool();
 
@@ -104,14 +114,6 @@ protected:
     static void ProcessEnvironmentMap(GFXDevice& context, U16 layerID, bool highPriority, GFX::CommandBuffer& bufferInOut);
 
 private:
-    enum class ComputationStages : U8 {
-        MIP_MAP_SOURCE,
-        PREFILTER_MAP,
-        IRRADIANCE_CALC,
-        MIP_MAP_PREFILTER,
-        MIP_MAP_IRRADIANCE,
-        COUNT
-    };
     static void ProcessEnvironmentMapInternal(GFXDevice& context, const U16 layerID, ComputationStages& stage, GFX::CommandBuffer& bufferInOut);
     static void PrefilterEnvMap(GFXDevice& context, const U16 layerID, U8 faceIndex, GFX::CommandBuffer& bufferInOut);
     static void ComputeIrradianceMap(GFXDevice& context, const U16 layerID, U8 faceIndex, GFX::CommandBuffer& bufferInOut);
@@ -140,6 +142,8 @@ private:
     static ShaderProgram_ptr s_irradianceComputeShader;
     static ShaderProgram_ptr s_prefilterComputeShader;
     static ShaderProgram_ptr s_lutComputeShader;
+    static Pipeline*         s_pipelineCalcPrefiltered;
+    static Pipeline*         s_pipelineCalcIrradiance;
     static bool s_lutTextureDirty;
 };
 

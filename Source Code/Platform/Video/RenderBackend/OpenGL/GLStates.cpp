@@ -77,7 +77,7 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker& stateTrack
     if (stateTracker.setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
-    if (stateTracker.setStateBlock(RenderStateBlock::defaultHash()) == GLStateTracker::BindResult::FAILED) {
+    if (stateTracker.setStateBlock(RenderStateBlock::DefaultHash()) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
 

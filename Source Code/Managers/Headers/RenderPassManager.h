@@ -110,7 +110,7 @@ public:
     void render(const RenderParams& params);
 
     /// Add a new pass that will run once for each of the RenderStages specified
-    RenderPass& setRenderPass(RenderStage renderStage,  const vector<RenderStage>& dependencies = {}, bool usePerformanceCounters = false);
+    RenderPass& setRenderPass(RenderStage renderStage,  const vector<RenderStage>& dependencies = {});
 
     [[nodiscard]] U32 getLastTotalBinSize(RenderStage renderStage) const noexcept;
     [[nodiscard]] I32 drawCallCount(const RenderStage stage) const noexcept { return _drawCallCount[to_base(stage)]; }

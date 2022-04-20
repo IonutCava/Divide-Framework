@@ -334,9 +334,7 @@ void RenderPassManager::render(const RenderParams& params) {
     }
 }
 
-RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage,
-                                             const vector<RenderStage>& dependencies,
-                                             const bool usePerformanceCounters)
+RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, const vector<RenderStage>& dependencies)
 {
     DIVIDE_ASSERT(Runtime::isMainThread());
 
@@ -345,10 +343,9 @@ RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage,
     if (_executors[to_base(renderStage)] != nullptr) {
         item = _renderPasses[to_base(renderStage)];
         item->dependencies(dependencies);
-        item->performanceCounters(usePerformanceCounters);
     } else {
         _executors[to_base(renderStage)] = eastl::make_unique<RenderPassExecutor>(*this, _context, renderStage);
-        item = MemoryManager_NEW RenderPass(*this, _context, renderStage, dependencies, usePerformanceCounters);
+        item = MemoryManager_NEW RenderPass(*this, _context, renderStage, dependencies);
         _renderPasses[to_base(renderStage)] = item;
 
         //Secondary command buffers. Used in a threaded fashion. Always keep an extra buffer for PostFX

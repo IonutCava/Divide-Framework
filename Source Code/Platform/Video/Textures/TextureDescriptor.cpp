@@ -71,20 +71,20 @@ namespace Divide {
         return _hash;
     }
 
-    void SamplerDescriptor::clear() {
+    void SamplerDescriptor::Clear() {
         ScopedLock<SharedMutex> w_lock(s_samplerDescriptorMapMutex);
         s_samplerDescriptorMap.clear();
     }
 
-    const SamplerDescriptor& SamplerDescriptor::get(const size_t samplerDescriptorHash) {
+    const SamplerDescriptor& SamplerDescriptor::Get(const size_t samplerDescriptorHash) {
         bool descriptorFound = false;
-        const SamplerDescriptor& desc = get(samplerDescriptorHash, descriptorFound);
+        const SamplerDescriptor& desc = Get(samplerDescriptorHash, descriptorFound);
         // Assert if it doesn't exist. Avoids programming errors.
         DIVIDE_ASSERT(descriptorFound, "SamplerDescriptor error: Invalid sampler descriptor hash specified for getSamplerDescriptor!");
         return desc;
     }
    
-    const SamplerDescriptor& SamplerDescriptor::get(const size_t samplerDescriptorHash, bool& descriptorFound) {
+    const SamplerDescriptor& SamplerDescriptor::Get(const size_t samplerDescriptorHash, bool& descriptorFound) {
         descriptorFound = false;
 
         SharedLock<SharedMutex> r_lock(s_samplerDescriptorMapMutex);

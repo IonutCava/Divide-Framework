@@ -412,30 +412,21 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
     if (g_shadowSettings.csm.enableBlurring) {
         _shaderConstantsCmd._constants.set(_ID("layerCount"), GFX::PushConstantType::INT, layerCount);
 
-        static GFX::BeginRenderPassCommand s_beginRenderPassHorizontalCmd{};
-        static GFX::BeginRenderPassCommand s_beginRenderPassVerticalCmd{};
-        static GFX::BindPipelineCommand s_blurPipelineCmd{};
+        GFX::BeginRenderPassCommand beginRenderPassHorizontalCmd{};
+        GFX::BeginRenderPassCommand beginRenderPassVerticalCmd{};
 
-        static bool s_commandsInit = false;
-        if (!s_commandsInit) {
-            s_commandsInit = true;
+        beginRenderPassHorizontalCmd._target = _blurBuffer._targetID;
+        beginRenderPassHorizontalCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
+        beginRenderPassVerticalCmd._target = g_depthMapID;
+        beginRenderPassVerticalCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
 
-            s_beginRenderPassHorizontalCmd._target = _blurBuffer._targetID;
-            s_beginRenderPassHorizontalCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
-
-            s_beginRenderPassVerticalCmd._target = g_depthMapID;
-            s_beginRenderPassVerticalCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
-
-            s_blurPipelineCmd._pipeline = _blurPipeline;
-        }
-        
         // Blur horizontally
         const auto& shadowAtt = shadowMapRT.getAttachment(RTAttachmentType::Colour, 0);
         TextureData texData = shadowAtt.texture()->data();
 
-        GFX::EnqueueCommand(bufferInOut, s_beginRenderPassHorizontalCmd);
+        GFX::EnqueueCommand(bufferInOut, beginRenderPassHorizontalCmd);
 
-        GFX::EnqueueCommand(bufferInOut, s_blurPipelineCmd);
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurPipeline;
 
         GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ texData, shadowAtt.samplerHash(),TextureUsage::UNIT0 });
 
@@ -447,14 +438,14 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
         // Blur vertically
         const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
         texData = blurAtt.texture()->data();
         GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
 
-        GFX::EnqueueCommand(bufferInOut, s_beginRenderPassVerticalCmd);
+        GFX::EnqueueCommand(bufferInOut, beginRenderPassVerticalCmd);
 
         _shaderConstantsCmd._constants.set(_ID("verticalBlur"),     GFX::PushConstantType::BOOL, true);
         _shaderConstantsCmd._constants.set(_ID("layerOffsetRead"),  GFX::PushConstantType::INT,  0);
@@ -464,7 +455,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 
-        GFX::EnqueueCommand(bufferInOut, GFX::EndRenderPassCommand{});
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
 }
 

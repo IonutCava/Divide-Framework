@@ -322,6 +322,30 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
     WAIT_FOR_CONDITION(operatorsReady());
     WAIT_FOR_CONDITION(loadTasks.load() == 0);
+
+    PipelineDescriptor pipelineDescriptor{};
+
+    const size_t stateHash = _context.get2DStateBlock();
+    pipelineDescriptor._stateHash = stateHash;
+    pipelineDescriptor._shaderProgramHandle = _createHistogram->handle();
+    pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
+    _pipelineLumCalcHistogram = _context.newPipeline(pipelineDescriptor);
+
+    pipelineDescriptor._shaderProgramHandle = _averageHistogram->handle();
+    _pipelineLumCalcAverage = _context.newPipeline(pipelineDescriptor);
+
+    pipelineDescriptor._shaderProgramHandle = _toneMapAdaptive->handle();
+    _pipelineToneMapAdaptive = _context.newPipeline(pipelineDescriptor);
+
+    pipelineDescriptor._shaderProgramHandle = _toneMap->handle();
+    _pipelineToneMap = _context.newPipeline(pipelineDescriptor);
+
+    for (U8 i = 0u; i < to_U8(EdgeDetectionMethod::COUNT); ++i) {
+        pipelineDescriptor._shaderProgramHandle = _edgeDetection[i]->handle();
+        _edgeDetectionPipelines[i] = _context.newPipeline(pipelineDescriptor);
+    }
+
 }
 
 PreRenderBatch::~PreRenderBatch()
@@ -480,34 +504,6 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 }
 
 void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut) {
-    static Pipeline* pipelineLumCalcHistogram = nullptr, * pipelineLumCalcAverage = nullptr, * pipelineToneMap = nullptr, * pipelineToneMapAdaptive = nullptr;
-
-    if (pipelineLumCalcHistogram == nullptr) {
-        PipelineDescriptor pipelineDescriptor{};
-
-        const size_t stateHash = _context.get2DStateBlock();
-        pipelineDescriptor._stateHash = stateHash;
-        pipelineDescriptor._shaderProgramHandle = _createHistogram->handle();
-        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-
-        pipelineLumCalcHistogram = _context.newPipeline(pipelineDescriptor);
-
-        pipelineDescriptor._shaderProgramHandle = _averageHistogram->handle();
-        pipelineLumCalcAverage = _context.newPipeline(pipelineDescriptor);
-
-        pipelineDescriptor._shaderProgramHandle = _toneMapAdaptive->handle();
-        pipelineToneMapAdaptive = _context.newPipeline(pipelineDescriptor);
-
-        pipelineDescriptor._shaderProgramHandle = _toneMap->handle();
-        pipelineToneMap = _context.newPipeline(pipelineDescriptor);
-
-        for (U8 i = 0u; i < to_U8(EdgeDetectionMethod::COUNT); ++i) {
-            pipelineDescriptor._shaderProgramHandle = _edgeDetection[i]->handle();
-            _edgeDetectionPipelines[i] = _context.newPipeline(pipelineDescriptor);
-        }
-    }
-
-    
     _screenRTs._swappedHDR = _screenRTs._swappedLDR = false;
     _toneMapParams._width = screenRT()._rt->getWidth();
     _toneMapParams._height = screenRT()._rt->getHeight();
@@ -543,7 +539,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                 to_base(TextureUsage::UNIT0)
             });
 
-            GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ pipelineLumCalcHistogram });
+            GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcHistogram });
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("u_params"), GFX::PushConstantType::VEC4, histogramParams);
 
             const U32 groupsX = to_U32(std::ceil(_toneMapParams._width / to_F32(GROUP_X_THREADS)));
@@ -576,7 +572,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                 0u,
                 to_base(TextureUsage::UNIT0)
             });
-            GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ pipelineLumCalcAverage });
+            GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("u_params"), GFX::PushConstantType::VEC4, avgParams);
             GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1, 1, 1, });
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -658,7 +654,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         renderPassCmd->_name = "DO_TONEMAP_PASS";
         renderPassCmd->_target = getOutput(false)._targetID;
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ adaptiveExposureControl() ? pipelineToneMapAdaptive : pipelineToneMap });
+        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ adaptiveExposureControl() ? _pipelineToneMapAdaptive : _pipelineToneMap });
 
         const auto mappingFunction = to_base(_context.materialDebugFlag() == MaterialDebugFlag::COUNT ? _toneMapParams._function : ToneMapParams::MapFunctions::COUNT);
         _toneMapConstantsCmd._constants.set(_ID("useAdaptiveExposure"),  GFX::PushConstantType::BOOL, adaptiveExposureControl());

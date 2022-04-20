@@ -87,6 +87,14 @@ void glShaderProgram::DumpShaderBinaryCacheToDisk(const BinaryDumpEntry& entry) 
     }
 }
 
+void glShaderProgram::InitStaticData() {
+    glShader::InitStaticData();
+}
+
+void glShaderProgram::DestroyStaticData() {
+    glShader::DestroyStaticData();
+}
+
 void glShaderProgram::Idle(PlatformContext& platformContext) {
     OPTICK_EVENT();
 

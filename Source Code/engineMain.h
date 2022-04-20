@@ -33,26 +33,28 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _ENGINE_MAIN_HEADER_
 #define _ENGINE_MAIN_HEADER_
 
+#include "Core/Headers/Application.h"
+
 namespace Divide {
 
 class Application;
 class StreamBuffer;
 class Engine final : NonCopyable, NonMovable {
 public:
-    Engine();
-    ~Engine();
+    Engine() = default;
+    ~Engine() = default;
 
     // see the ErrorCode enum in Application.h for the returned value
     [[nodiscard]] bool init(int argc, char **argv);
-                  void shutdown();
-    [[nodiscard]] bool step() const;
-
     [[nodiscard]] I32 errorCode() const;
+
+    void run(const int argc, char** argv);
 
 private:
     I32 _errorCode = 0;
     eastl::unique_ptr<Application> _app{};
-    StreamBuffer*_outputStreams[2]{};
+    bool _restartEngineOnClose = false;
+    StreamBuffer* _outputStreams[2] = { nullptr, nullptr };
 };
 
 }

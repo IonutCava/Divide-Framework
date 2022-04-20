@@ -54,9 +54,60 @@ void GLStateTracker::init()
 
     _blendProperties.resize(GFXDevice::GetDeviceInformation()._maxRTColourAttachments, BlendingSettings());
     _blendEnabled.resize(GFXDevice::GetDeviceInformation()._maxRTColourAttachments, GL_FALSE);
+
+    _activeBufferID = create_array<13, GLuint>(GLUtil::k_invalidObjectID);
 }
 
 void GLStateTracker::clear() {
+    _activeState.reset();
+
+    _debugScope.fill(""); _debugScopeDepth = 0u;
+    _activePipeline = nullptr;
+    _activeTopology = PrimitiveTopology::COUNT;
+    _activeRenderTarget = nullptr;
+    _activePixelBuffer = nullptr;
+    _activeVAOID = GLUtil::k_invalidObjectID;
+    for (auto& ID : _activeFBID) {
+        ID = GLUtil::k_invalidObjectID;
+    }
+
+    _activeBufferID = create_array<13, GLuint>(GLUtil::k_invalidObjectID);
+    _activeVAOIB.clear();
+
+    _activePackUnpackAlignments[0] = 1;
+    _activePackUnpackAlignments[1] = 1;
+    _activePackUnpackRowLength[0] = 0;
+    _activePackUnpackRowLength[1] = 0;
+    _activePackUnpackSkipPixels[0] = 0;
+    _activePackUnpackSkipPixels[1] = 0;
+    _activePackUnpackSkipRows[0] = 0;
+    _activePackUnpackSkipRows[1] = 0;
+    _activeShaderProgram = 0; //GLUtil::_invalidObjectID;
+    _activeShaderPipeline = 0;//GLUtil::_invalidObjectID;
+    _depthNearVal = -1.f;
+    _depthFarVal = -1.f;
+    _lowerLeftOrigin = true;
+    _negativeOneToOneDepth = true;
+    _depthWriteEnabled = true;
+    _blendPropertiesGlobal;
+    _blendEnabledGlobal = GL_FALSE;
+    _currentBindConfig = {};
+    _blendProperties.clear();
+    _blendEnabled.clear();
+    _currentCullMode = GL_BACK;
+    _currentFrontFace = GL_CCW;
+    _blendColour.set(0, 0, 0, 0);
+    _activeViewport = Rect<I32>(-1);
+    _activeScissor = Rect<I32>(-1);
+    _activeClearColour = DefaultColours::BLACK_U8;
+    _primitiveRestartEnabled = false;
+    _rasterizationEnabled = true;
+    _textureBoundMap = {};
+    _imageBoundMap = {};
+    _samplerBoundMap = {};
+    _textureTypeBoundMap = {};
+    _vaoBufferData = {};
+    _attributeHashes.clear();
     _vaoCache.clear();
 }
 
@@ -125,13 +176,13 @@ void GLStateTracker::setVertexFormat(const PrimitiveTopology topology, const siz
 
 GLStateTracker::BindResult GLStateTracker::setStateBlock(size_t stateBlockHash) {
     if (stateBlockHash == 0) {
-        stateBlockHash = RenderStateBlock::defaultHash();
+        stateBlockHash = RenderStateBlock::DefaultHash();
     }
 
     // If the new state hash is different from the previous one
     if (stateBlockHash != _activeState.getHash()) {
         bool currentStateValid = false;
-        const RenderStateBlock& currentState = RenderStateBlock::get(stateBlockHash, currentStateValid);
+        const RenderStateBlock& currentState = RenderStateBlock::Get(stateBlockHash, currentStateValid);
 
         DIVIDE_ASSERT(currentStateValid, "GL_API error: Invalid state blocks detected on activation!");
 
@@ -330,8 +381,7 @@ GLStateTracker::BindResult GLStateTracker::bindTextures(const GLushort unitOffse
 
 GLStateTracker::BindResult GLStateTracker::bindTextureImage(const GLushort unit, const GLuint handle, const GLint level,
                                       const bool layered, const GLint layer, const GLenum access, const GLenum format) {
-    static ImageBindSettings tempSettings;
-    tempSettings = {handle, level, layered ? GL_TRUE : GL_FALSE, layer, access, format};
+    ImageBindSettings tempSettings = {handle, level, layered ? GL_TRUE : GL_FALSE, layer, access, format};
 
     ImageBindSettings& settings = _imageBoundMap[unit];
     if (settings != tempSettings) {
@@ -482,7 +532,7 @@ GLStateTracker::BindResult GLStateTracker::setActiveBuffer(const GLenum target, 
 }
 
 GLStateTracker::BindResult GLStateTracker::setActiveBufferIndexRange(const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes, GLuint& previousID) {
-    BindConfig& crtConfig = g_currentBindConfig[GetBufferTargetIndex(target)];
+    BindConfig& crtConfig = _currentBindConfig[GetBufferTargetIndex(target)];
     DIVIDE_ASSERT(bindIndex < crtConfig.size());
 
     BindConfigEntry& entry = crtConfig[bindIndex];
@@ -777,7 +827,7 @@ GLuint GLStateTracker::getBoundBuffer(const GLenum target, const GLuint bindInde
 }
 
 GLuint GLStateTracker::getBoundBuffer(const GLenum target, const GLuint bindIndex, size_t& offsetOut, size_t& rangeOut) const {
-    const BindConfigEntry& entry = g_currentBindConfig[GetBufferTargetIndex(target)][bindIndex];
+    const BindConfigEntry& entry = _currentBindConfig[GetBufferTargetIndex(target)][bindIndex];
     offsetOut = entry._offset;
     rangeOut = entry._range;
     return entry._handle;

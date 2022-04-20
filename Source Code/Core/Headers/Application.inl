@@ -85,6 +85,18 @@ inline bool Application::ShutdownRequested() const noexcept {
     return _requestShutdown;
 }
 
+inline void Application::RequestRestart() noexcept {
+    _requestRestart = true;
+}
+
+inline void Application::CancelRestart() noexcept {
+    _requestRestart = false;
+}
+
+inline bool Application::RestartRequested() const noexcept {
+    return _requestRestart;
+}
+
 inline Kernel& Application::kernel() const noexcept {
     assert(_kernel != nullptr);
     return *_kernel;

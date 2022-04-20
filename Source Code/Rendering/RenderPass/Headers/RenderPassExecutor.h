@@ -152,6 +152,7 @@ public:
     void postRender();
 
     static void OnStartup(const GFXDevice& gfx);
+    static void OnShutdown(const GFXDevice& gfx);
 
 private:
     ShaderBuffer* getCommandBufferForStagePass(RenderStagePass stagePass);

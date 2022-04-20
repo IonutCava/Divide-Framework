@@ -72,12 +72,12 @@ struct SamplerDescriptor final : Hashable {
     PROPERTY_RW(FColour4, borderColour, DefaultColours::BLACK);
 
 public:
-    static void clear();
+    static void Clear();
     /// Retrieve a sampler descriptor by hash value.
     /// If the hash value does not exist in the descriptor map, return the default descriptor
-    static const SamplerDescriptor& get(size_t samplerDescriptorHash);
+    static const SamplerDescriptor& Get(size_t samplerDescriptorHash);
     /// Returns false if the specified hash is not found in the map
-    static const SamplerDescriptor& get(size_t samplerDescriptorHash, bool& descriptorFound);
+    static const SamplerDescriptor& Get(size_t samplerDescriptorHash, bool& descriptorFound);
 
 protected:
     using SamplerDescriptorMap = hashMap<size_t, SamplerDescriptor, NoHash<size_t>>;

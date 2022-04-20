@@ -583,6 +583,7 @@ void Kernel::warmup() {
     Console::printfn(Locale::Get(_ID("START_RENDER_LOOP")));
 
     _timingData.freezeTime(true);
+
     for (U8 i = 0u; i < g_warmupFrameCount; ++i) {
         onLoop();
     }
@@ -721,10 +722,10 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     _inputConsumers[to_base(InputConsumerType::Scene)] = _sceneManager;
 
     // Add our needed app-wide render passes. RenderPassManager is responsible for deleting these!
-    _renderPassManager->setRenderPass(RenderStage::SHADOW,     {   },  false);
-    _renderPassManager->setRenderPass(RenderStage::REFLECTION, { RenderStage::SHADOW },  false);
-    _renderPassManager->setRenderPass(RenderStage::REFRACTION, { RenderStage::SHADOW },  false);
-    _renderPassManager->setRenderPass(RenderStage::DISPLAY,    { RenderStage::REFLECTION, RenderStage::REFRACTION }, true);
+    _renderPassManager->setRenderPass(RenderStage::SHADOW,     {   });
+    _renderPassManager->setRenderPass(RenderStage::REFLECTION, { RenderStage::SHADOW });
+    _renderPassManager->setRenderPass(RenderStage::REFRACTION, { RenderStage::SHADOW });
+    _renderPassManager->setRenderPass(RenderStage::DISPLAY,    { RenderStage::REFLECTION, RenderStage::REFRACTION });
 
     Console::printfn(Locale::Get(_ID("SCENE_ADD_DEFAULT_CAMERA")));
 

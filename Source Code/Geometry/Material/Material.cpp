@@ -103,6 +103,11 @@ void Material::OnStartup(const SamplerAddress defaultTexAddress) {
     s_defaultTextureAddress = defaultTexAddress;
 }
 
+void Material::OnShutdown() {
+    s_shadersDirty = false;
+    s_defaultTextureAddress = 0u;
+}
+
 void Material::RecomputeShaders() {
     s_shadersDirty = true;
 }
@@ -269,7 +274,7 @@ void Material::updateCullState() {
         for (U8 p = 0u; p < to_U8(RenderPassType::COUNT); ++p) {
             for (size_t& hash : perPassStates[p]) {
                 if (hash != g_invalidStateHash) {
-                    RenderStateBlock tempBlock = RenderStateBlock::get(hash);
+                    RenderStateBlock tempBlock = RenderStateBlock::Get(hash);
                     tempBlock.setCullMode(properties().doubleSided() ? CullMode::NONE : CullMode::BACK);
                     hash = tempBlock.getHash();
                 }
@@ -969,8 +974,8 @@ void Material::saveRenderStatesToXML(const string& entryName, boost::property_tr
                     continue;
                 }
                 if (previousHashValues.find(stateHash) == std::cend(previousHashValues)) {
-                    RenderStateBlock::saveToXML(
-                        RenderStateBlock::get(stateHash),
+                    RenderStateBlock::SaveToXML(
+                        RenderStateBlock::Get(stateHash),
                         Util::StringFormat("%s.%u", stateNode.c_str(), blockIndex),
                         pt);
                     previousHashValues[stateHash] = blockIndex++;
@@ -1007,7 +1012,7 @@ void Material::loadRenderStatesFromXML(const string& entryName, const boost::pro
         if (it != cend(previousHashValues)) {
             _defaultRenderStates[s][p][v] = it->second;
         } else {
-            const RenderStateBlock block = RenderStateBlock::loadFromXML(Util::StringFormat("%s.%u", stateNode.c_str(), b), pt);
+            const RenderStateBlock block = RenderStateBlock::LoadFromXML(Util::StringFormat("%s.%u", stateNode.c_str(), b), pt);
             const size_t loadedHash = block.getHash();
             _defaultRenderStates[s][p][v] = loadedHash;
             previousHashValues[b] = loadedHash;
@@ -1035,7 +1040,7 @@ void Material::saveTextureDataToXML(const string& entryName, boost::property_tre
 
             if (previousHashValues.find(samplerHash) == std::cend(previousHashValues)) {
                 samplerCount++;
-                XMLParser::saveToXML(SamplerDescriptor::get(samplerHash), Util::StringFormat("%s.SamplerDescriptors.%u", entryName.c_str(), samplerCount), pt);
+                XMLParser::saveToXML(SamplerDescriptor::Get(samplerHash), Util::StringFormat("%s.SamplerDescriptors.%u", entryName.c_str(), samplerCount), pt);
                 previousHashValues[samplerHash] = samplerCount;
             }
             pt.put(textureNode + ".Sampler.id", previousHashValues[samplerHash]);

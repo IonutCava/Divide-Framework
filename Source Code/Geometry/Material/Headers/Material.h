@@ -224,6 +224,7 @@ class Material final : public CachedResource {
     explicit Material(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str256& name);
 
     static void OnStartup(SamplerAddress defaultTexAddress);
+    static void OnShutdown();
     static void RecomputeShaders();
     static void Update(U64 deltaTimeUS);
 

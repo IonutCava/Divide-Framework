@@ -343,6 +343,8 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
 
     s_textureViewCache.init(256);
 
+    glShaderProgram::InitStaticData();
+
     // FontStash library initialization
     // 512x512 atlas with bottom-left origin
     _fonsContext = glfonsCreate(512, 512, FONS_ZERO_BOTTOMLEFT);
@@ -373,9 +375,11 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     );
 
     // Once OpenGL is ready for rendering, init CEGUI
-    _GUIGLrenderer = &CEGUI::OpenGL3Renderer::create();
-    _GUIGLrenderer->enableExtraStateSettings(false);
-    _context.context().gui().setRenderer(*_GUIGLrenderer);
+    if (config.gui.cegui.enabled) {
+        _GUIGLrenderer = &CEGUI::OpenGL3Renderer::create();
+        _GUIGLrenderer->enableExtraStateSettings(false);
+        _context.context().gui().setRenderer(*_GUIGLrenderer);
+    }
 
     glClearColor(DefaultColours::BLACK.r,
                  DefaultColours::BLACK.g,
@@ -399,6 +403,9 @@ void GL_API::closeRenderingAPI() {
         CEGUI::OpenGL3Renderer::destroy(*_GUIGLrenderer);
         _GUIGLrenderer = nullptr;
     }
+
+    glShaderProgram::DestroyStaticData();
+
     // Destroy sampler objects
     {
         for (auto &sampler : s_samplerMap) {

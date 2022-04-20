@@ -451,13 +451,11 @@ protected:
                        const Texture_ptr& depthBuffer,
                        size_t samplerHash,
                        const CameraSnapshot& cameraSnapshot,
-                       GFX::SendPushConstantsCommand& HIZPushConstantsCMDInOut,
-                       GFX::CommandBuffer& bufferInOut) const;
+                       bool countCulledNodes,
+                       GFX::CommandBuffer& bufferInOut);
 
     // Returns the HiZ texture that can be sent directly to occlusionCull
     std::pair<const Texture_ptr&, size_t> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut);
-
-    void updateCullCount(const RenderPass::BufferData& bufferData, GFX::CommandBuffer& cmdBufferInOut);
 
     RenderAPIWrapper& getAPIImpl() { return *_api; }
     const RenderAPIWrapper& getAPIImpl() const { return *_api; }
@@ -547,7 +545,8 @@ private:
     
     ShaderBuffer* _camDataBuffer = nullptr;
     ShaderBuffer* _renderDataBuffer = nullptr;
-   
+    ShaderBuffer* _cullCounter = nullptr;
+
     Mutex _pipelineCacheLock;
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;
 

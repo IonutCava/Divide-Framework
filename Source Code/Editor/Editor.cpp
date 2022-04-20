@@ -61,6 +61,7 @@ namespace {
 
 
     struct TextureCallbackData {
+        GFXDevice* _gfxDevice = nullptr;
         const Texture* _texture = nullptr;
         vec4<I32> _colourData = { 1, 1, 1, 1 };
         vec2<F32> _depthRange = { 0.002f, 1.f };
@@ -330,6 +331,42 @@ bool Editor::init(const vec2<U16>& renderResolution) {
             _infiniteGridPrimitive->vertex( 1.f,-1.f, 0.f);
         _infiniteGridPrimitive->end();
     _infiniteGridPrimitive->endBatch();
+
+    RenderStateBlock state = {};
+    state.setCullMode(CullMode::NONE);
+    state.depthTestEnabled(false);
+    state.setScissorTest(true);
+
+    PipelineDescriptor pipelineDesc = {};
+    pipelineDesc._stateHash = state.getHash();
+    pipelineDesc._shaderProgramHandle = _imguiProgram->handle();
+    pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
+    AttributeDescriptor& descPos = pipelineDesc._vertexFormat[to_base(AttribLocation::GENERIC)];
+    AttributeDescriptor& descUV = pipelineDesc._vertexFormat[to_base(AttribLocation::TEXCOORD)];
+    AttributeDescriptor& descColour = pipelineDesc._vertexFormat[to_base(AttribLocation::COLOR)];
+
+#   define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
+    descPos._bindingIndex = descUV._bindingIndex = descColour._bindingIndex = 0u;
+    descPos._componentsPerElement = descUV._componentsPerElement = 2u;
+    descPos._dataType = descUV._dataType = GFXDataFormat::FLOAT_32;
+
+    descColour._componentsPerElement = 4u;
+    descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
+    descColour._normalized = true;
+
+    descPos._strideInBytes = to_U32(OFFSETOF(ImDrawVert, pos));
+    descUV._strideInBytes = to_U32(OFFSETOF(ImDrawVert, uv));
+    descColour._strideInBytes = to_U32(OFFSETOF(ImDrawVert, col));
+#   undef OFFSETOF
+
+    BlendingSettings& blend = pipelineDesc._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
+    blend.enabled(true);
+    blend.blendSrc(BlendProperty::SRC_ALPHA);
+    blend.blendDest(BlendProperty::INV_SRC_ALPHA);
+    blend.blendOp(BlendOperation::ADD);
+    _editorPipeline = _context.gfx().newPipeline(pipelineDesc);
+
     ImGui::ResetStyle(_currentTheme);
 
     io.ConfigViewportsNoDecoration = true;
@@ -1049,9 +1086,6 @@ Rect<I32> Editor::scenePreviewRect(const bool globalCoords) const noexcept {
 // Needs to be rendered immediately. *IM*GUI. IMGUI::NewFrame invalidates this data
 void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, GFX::CommandBuffer& bufferInOut) const
 {
-    static bool s_initDrawCmds = false;
-    static GFX::BindPipelineCommand s_pipelineCmd = {};
-    static GFX::SendPushConstantsCommand s_pushConstantsCommand = {};
     static GFX::BeginDebugScopeCommand s_beginDebugScope{ "Render IMGUI" };
 
     if (windowGUID == -1) {
@@ -1070,57 +1104,17 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         return;
     }
 
-    if (!s_initDrawCmds) {
-        RenderStateBlock state = {};
-        state.setCullMode(CullMode::NONE);
-        state.depthTestEnabled(false);
-        state.setScissorTest(true);
-
-        PipelineDescriptor pipelineDesc = {};
-        pipelineDesc._stateHash = state.getHash();
-        pipelineDesc._shaderProgramHandle = _imguiProgram->handle();
-        pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
-
-        AttributeDescriptor& descPos = pipelineDesc._vertexFormat[to_base(AttribLocation::GENERIC)];
-        AttributeDescriptor& descUV = pipelineDesc._vertexFormat[to_base(AttribLocation::TEXCOORD)];
-        AttributeDescriptor& descColour = pipelineDesc._vertexFormat[to_base(AttribLocation::COLOR)];
-
-#   define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
-        descPos._bindingIndex = descUV._bindingIndex = descColour._bindingIndex = 0u;
-        descPos._componentsPerElement = descUV._componentsPerElement = 2u;
-        descPos._dataType = descUV._dataType = GFXDataFormat::FLOAT_32;
-
-        descColour._componentsPerElement = 4u;
-        descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
-        descColour._normalized = true;
-
-        descPos._strideInBytes = to_U32(OFFSETOF(ImDrawVert, pos));
-        descUV._strideInBytes = to_U32(OFFSETOF(ImDrawVert, uv));
-        descColour._strideInBytes = to_U32(OFFSETOF(ImDrawVert, col));
-#   undef OFFSETOF
-
-        BlendingSettings& blend = pipelineDesc._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
-        blend.enabled(true);
-        blend.blendSrc(BlendProperty::SRC_ALPHA);
-        blend.blendDest(BlendProperty::INV_SRC_ALPHA);
-        blend.blendOp(BlendOperation::ADD);
-        s_pipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDesc);
-
-        PushConstants pushConstants = {};
-        pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, vec4<I32>(1, 1, 1, 1));
-        pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::INT, 0);
-        pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, vec2<F32>(0.0f, 1.0f));
-        pushConstants.set(_ID("flip"), GFX::PushConstantType::INT, 0);
-        pushConstants.set(_ID("layer"), GFX::PushConstantType::UINT, 0u);
-        s_pushConstantsCommand._constants = pushConstants;
-
-        s_initDrawCmds = true;
-    }
-
     GFX::EnqueueCommand(bufferInOut, s_beginDebugScope);
 
-    GFX::EnqueueCommand(bufferInOut, s_pipelineCmd);
-    GFX::EnqueueCommand(bufferInOut, s_pushConstantsCommand);
+    GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _editorPipeline;
+
+    PushConstants& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants;
+    pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, vec4<I32>(1, 1, 1, 1));
+    pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::INT, 0);
+    pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, vec2<F32>(0.0f, 1.0f));
+    pushConstants.set(_ID("flip"), GFX::PushConstantType::INT, 0);
+    pushConstants.set(_ID("layer"), GFX::PushConstantType::UINT, 0u);
+
     GFX::EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
 
     const F32 L = pDrawData->DisplayPos.x;
@@ -1636,7 +1630,6 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
     }
 
     static std::array<bool, 4> state = { true, true, true, true };
-    static GFXDevice& gfxDevice = _context.gfx();
 
     const ImDrawCallback toggleColours { []([[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* cmd) -> void {
         static SamplerDescriptor defaultSampler{};
@@ -1680,6 +1673,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
                 }
             }
         }
+
         PushConstants pushConstants = {};
         pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, data._colourData);
         pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::BOOL, data._isDepthTexture);
@@ -1692,7 +1686,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
         GFX::SendPushConstantsCommand pushConstantsCommand = {};
         pushConstantsCommand._constants = pushConstants;
         EnqueueCommand(buffer, pushConstantsCommand);
-        gfxDevice.flushCommandBuffer(buffer);
+        data._gfxDevice->flushCommandBuffer(buffer);
     } };
 
     bool closed = false;
@@ -1709,10 +1703,11 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
         assert(modalName != nullptr);
 
         static TextureCallbackData defaultData{};
-
+        defaultData._gfxDevice = &_context.gfx();
         defaultData._isDepthTexture = false;
         defaultData._flip = false;
 
+        g_modalTextureData._gfxDevice = defaultData._gfxDevice;
         g_modalTextureData._texture = tex;
         g_modalTextureData._isDepthTexture = tex->descriptor().baseFormat() == GFXImageFormat::DEPTH_COMPONENT;
         const U8 numChannels = NumChannels(tex->descriptor().baseFormat());
