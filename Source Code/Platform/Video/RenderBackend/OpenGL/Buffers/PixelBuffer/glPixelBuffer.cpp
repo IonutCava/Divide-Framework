@@ -63,9 +63,9 @@ glPixelBuffer::~glPixelBuffer()
 }
 
 bufferPtr glPixelBuffer::begin() const {
-    GL_API::GetStateTracker().setPixelPackUnpackAlignment();
+    GL_API::GetStateTracker()->setPixelPackUnpackAlignment();
     glNamedBufferSubData(_pixelBufferHandle, 0, _bufferSize, nullptr);
-    if (GL_API::GetStateTracker().setActiveBuffer(GL_PIXEL_UNPACK_BUFFER, _pixelBufferHandle) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker()->setActiveBuffer(GL_PIXEL_UNPACK_BUFFER, _pixelBufferHandle) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
 
@@ -111,7 +111,7 @@ bufferPtr glPixelBuffer::begin() const {
 
 void glPixelBuffer::end() const {
     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);  // release the mapped buffer
-    if (GL_API::GetStateTracker().setActiveBuffer(GL_PIXEL_UNPACK_BUFFER, 0) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker()->setActiveBuffer(GL_PIXEL_UNPACK_BUFFER, 0) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
 }
@@ -175,7 +175,7 @@ bool glPixelBuffer::create(GLushort width, GLushort height, const GLushort depth
     }
 
     const U16 mipLevels = to_U16(std::floor(std::log2(std::max(_width, _height))) + 1);
-    GL_API::GetStateTracker().setPixelPackUnpackAlignment();
+    GL_API::GetStateTracker()->setPixelPackUnpackAlignment();
     switch (_pbtype) {
         case PBType::PB_TEXTURE_1D:
             glTextureStorage1D(_textureID, mipLevels, _internalFormat, _width);

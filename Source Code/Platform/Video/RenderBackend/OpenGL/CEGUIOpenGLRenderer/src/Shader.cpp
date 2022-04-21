@@ -85,7 +85,7 @@ OpenGL3Shader::~OpenGL3Shader()
 //----------------------------------------------------------------------------//
 void OpenGL3Shader::bind() const
 {
-    if (Divide::GL_API::GetStateTracker().setActiveProgram(d_program) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->setActiveProgram(d_program) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
 }
@@ -93,7 +93,7 @@ void OpenGL3Shader::bind() const
 //----------------------------------------------------------------------------//
 void OpenGL3Shader::unbind() const
 {
-    if (Divide::GL_API::GetStateTracker().setActiveProgram(0) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->setActiveProgram(0) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
 }

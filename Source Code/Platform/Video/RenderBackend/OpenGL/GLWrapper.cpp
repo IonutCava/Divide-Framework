@@ -39,7 +39,8 @@ namespace {
     constexpr U8 g_maxTextureResidencyFrameCount = Config::TARGET_FRAME_RATE / 2;
 }
 
-GLStateTracker GL_API::s_stateTracker;
+eastl::unique_ptr<GLStateTracker> GL_API::s_stateTracker = nullptr;
+GLUtil::glVAOCache GL_API::s_vaoCache;
 std::atomic_bool GL_API::s_glFlushQueued;
 GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
 GL_API::IMPrimitivePool GL_API::s_IMPrimitivePool{};
@@ -84,7 +85,7 @@ void GL_API::beginFrame(DisplayWindow& window, const bool global) {
         }
     }
 
-    GLStateTracker& stateTracker = GetStateTracker();
+    GLStateTracker* stateTracker = GetStateTracker();
 
     SDL_GLContext glContext = window.userData()->_glContext;
     const I64 windowGUID = window.getGUID();
@@ -98,7 +99,7 @@ void GL_API::beginFrame(DisplayWindow& window, const bool global) {
     // Clear our buffers
     if (!window.minimized() && !window.hidden()) {
         bool shouldClearColour = false, shouldClearDepth = false, shouldClearStencil = false;
-        stateTracker.setClearColour(window.clearColour(shouldClearColour, shouldClearDepth));
+        stateTracker->setClearColour(window.clearColour(shouldClearColour, shouldClearDepth));
         ClearBufferMask mask = ClearBufferMask::GL_NONE_BIT;
         if (shouldClearColour) {
             mask |= ClearBufferMask::GL_COLOR_BUFFER_BIT;
@@ -279,8 +280,8 @@ void GL_API::drawText(const TextElementBatch& batch) {
     textBlend.blendOpAlpha(BlendOperation::COUNT);
     textBlend.enabled(true);
 
-    GetStateTracker().setBlending(0, textBlend);
-    GetStateTracker().setBlendColour(DefaultColours::BLACK_U8);
+    GetStateTracker()->setBlending(0, textBlend);
+    GetStateTracker()->setBlendColour(DefaultColours::BLACK_U8);
 
     const I32 width = _context.renderingResolution().width;
     const I32 height = _context.renderingResolution().height;
@@ -340,7 +341,7 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
     if (data->Valid) {
         s_maxCommandCount = std::max(s_maxCommandCount, data->CmdListsCount);
 
-        GLStateTracker& stateTracker = GetStateTracker();
+        GLStateTracker* stateTracker = GetStateTracker();
 
         GenericVertexData::IndexBuffer idxBuffer;
         idxBuffer.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
@@ -374,7 +375,7 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
                         pcmd.ClipRect.w - data->DisplayPos.y
                     };
 
-                    const Rect<I32>& viewport = stateTracker._activeViewport;
+                    const Rect<I32>& viewport = stateTracker->_activeViewport;
                     if (clip_rect.x < viewport.z &&
                         clip_rect.y < viewport.w &&
                         clip_rect.z >= 0 &&
@@ -385,10 +386,10 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
                         clip_rect.w -= clip_rect.y;
                         clip_rect.y  = viewport.w - tempW;
 
-                        stateTracker.setScissor(clip_rect);
-                        if (stateTracker.bindTexture(to_U8(TextureUsage::UNIT0),
-                                                     TextureType::TEXTURE_2D,
-                                                     static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd.TextureId))) == GLStateTracker::BindResult::FAILED) {
+                        stateTracker->setScissor(clip_rect);
+                        if (stateTracker->bindTexture(to_U8(TextureUsage::UNIT0),
+                                                      TextureType::TEXTURE_2D,
+                                                      static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd.TextureId))) == GLStateTracker::BindResult::FAILED) {
                             DIVIDE_UNEXPECTED_CALL();
                         }
 
@@ -404,35 +405,35 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
 
 ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     OPTICK_EVENT();
-    GLStateTracker& stateTracker = GetStateTracker();
+    GLStateTracker* stateTracker = GetStateTracker();
 
-    if (stateTracker._activePipeline && *stateTracker._activePipeline == pipeline) {
+    if (stateTracker->_activePipeline && *stateTracker->_activePipeline == pipeline) {
         return ShaderResult::OK;
     }
-    stateTracker._activePipeline = &pipeline;
+    stateTracker->_activePipeline = &pipeline;
 
     const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
     {
         OPTICK_EVENT("Set Vertex Format");
-        stateTracker.setVertexFormat(pipelineDescriptor._primitiveTopology,
-                                     pipeline.vertexFormatHash(),
-                                     pipelineDescriptor._vertexFormat);
+        stateTracker->setVertexFormat(pipelineDescriptor._primitiveTopology,
+                                      pipeline.vertexFormatHash(),
+                                      pipelineDescriptor._vertexFormat);
     }
     {
         OPTICK_EVENT("Set Raster State");
         // Set the proper render states
         const size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
         // Passing 0 is a perfectly acceptable way of enabling the default render state block
-        if (stateTracker.setStateBlock(stateBlockHash) == GLStateTracker::BindResult::FAILED) {
+        if (stateTracker->setStateBlock(stateBlockHash) == GLStateTracker::BindResult::FAILED) {
             DIVIDE_UNEXPECTED_CALL();
         }
     }
     {
         OPTICK_EVENT("Set Blending");
         U16 i = 0u;
-        stateTracker.setBlendColour(pipelineDescriptor._blendStates._blendColour);
+        stateTracker->setBlendColour(pipelineDescriptor._blendStates._blendColour);
         for (const BlendingSettings& blendState : pipelineDescriptor._blendStates._settings) {
-            stateTracker.setBlending(i++, blendState);
+            stateTracker->setBlending(i++, blendState);
         }
     }
 
@@ -448,13 +449,13 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
         }
 
         if (ret != ShaderResult::OK) {
-            if (stateTracker.setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+            if (stateTracker->setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
                 DIVIDE_UNEXPECTED_CALL();
             }
-            if (stateTracker.setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+            if (stateTracker->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
                 DIVIDE_UNEXPECTED_CALL();
             }
-            stateTracker._activePipeline = nullptr;
+            stateTracker->_activePipeline = nullptr;
         }
     }
     return ret;
@@ -465,14 +466,14 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
 
     if (cmd._sourceBuffer._id == 0) {
         U32 indexCount = 0u;
-        switch (GL_API::GetStateTracker()._activeTopology) {
+        switch (GL_API::GetStateTracker()->_activeTopology) {
             case PrimitiveTopology::COUNT     : DIVIDE_UNEXPECTED_CALL();         break;
             case PrimitiveTopology::TRIANGLES : indexCount = cmd._drawCount * 3;  break;
             case PrimitiveTopology::POINTS    : indexCount = cmd._drawCount * 1;  break;
             default                           : indexCount = cmd._cmd.indexCount; break;
         }
 
-        glDrawArrays(GLUtil::glPrimitiveTypeTable[to_base(GL_API::GetStateTracker()._activeTopology)], cmd._cmd.firstIndex, indexCount);
+        glDrawArrays(GLUtil::glPrimitiveTypeTable[to_base(GL_API::GetStateTracker()->_activeTopology)], cmd._cmd.firstIndex, indexCount);
     } else {
         // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
         static VertexDataInterface::Handle s_lastID = { U16_MAX, 0u };
@@ -496,8 +497,8 @@ void GL_API::PushDebugMessage(const char* message) {
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, static_cast<GLuint>(_ID(message)), -1, message);
     }
-    assert(GetStateTracker()._debugScopeDepth < GetStateTracker()._debugScope.size());
-    GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth++] = message;
+    assert(GetStateTracker()->_debugScopeDepth < GetStateTracker()->_debugScope.size());
+    GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth++] = message;
 }
 
 void GL_API::PopDebugMessage() {
@@ -506,7 +507,7 @@ void GL_API::PopDebugMessage() {
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glPopDebugGroup();
     }
-    GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = "";
+    GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = "";
 }
 
 void GL_API::FlushMidBufferLockQueue() {
@@ -570,7 +571,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
             glFramebuffer& rt = static_cast<glFramebuffer&>(_context.renderTargetPool().renderTarget(crtCmd->_target));
             Attorney::GLAPIRenderTarget::begin(rt, crtCmd->_descriptor);
-            GetStateTracker()._activeRenderTarget = &rt;
+            GetStateTracker()->_activeRenderTarget = &rt;
             PushDebugMessage(crtCmd->_name.c_str());
         }break;
         case GFX::CommandType::END_RENDER_PASS: {
@@ -578,9 +579,9 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
             const GFX::EndRenderPassCommand* crtCmd = commandBuffer.get<GFX::EndRenderPassCommand>(entry);
 
-            assert(GL_API::GetStateTracker()._activeRenderTarget != nullptr);
+            assert(GL_API::GetStateTracker()->_activeRenderTarget != nullptr);
             PopDebugMessage();
-            const glFramebuffer& fb = *GetStateTracker()._activeRenderTarget;
+            const glFramebuffer& fb = *GetStateTracker()->_activeRenderTarget;
             Attorney::GLAPIRenderTarget::end(fb, crtCmd->_setDefaultRTState);
         }break;
         case GFX::CommandType::BEGIN_PIXEL_BUFFER: {
@@ -594,25 +595,25 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             if (crtCmd->_command) {
                 crtCmd->_command(data);
             }
-            GetStateTracker()._activePixelBuffer = buffer;
+            GetStateTracker()->_activePixelBuffer = buffer;
         }break;
         case GFX::CommandType::END_PIXEL_BUFFER: {
             OPTICK_EVENT("END_PIXEL_BUFFER");
 
-            assert(GL_API::GetStateTracker()._activePixelBuffer != nullptr);
-            Attorney::GLAPIPixelBuffer::end(*GetStateTracker()._activePixelBuffer);
+            assert(GL_API::GetStateTracker()->_activePixelBuffer != nullptr);
+            Attorney::GLAPIPixelBuffer::end(*GetStateTracker()->_activePixelBuffer);
         }break;
         case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
             OPTICK_EVENT("BEGIN_RENDER_SUB_PASS");
 
             const GFX::BeginRenderSubPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderSubPassCommand>(entry);
 
-            assert(GL_API::GetStateTracker()._activeRenderTarget != nullptr);
+            assert(GL_API::GetStateTracker()->_activeRenderTarget != nullptr);
             for (const RenderTarget::DrawLayerParams& params : crtCmd->_writeLayers) {
-                GetStateTracker()._activeRenderTarget->drawToLayer(params);
+                GetStateTracker()->_activeRenderTarget->drawToLayer(params);
             }
 
-            GetStateTracker()._activeRenderTarget->setMipLevel(crtCmd->_mipWriteLevel);
+            GetStateTracker()->_activeRenderTarget->setMipLevel(crtCmd->_mipWriteLevel);
         }break;
         case GFX::CommandType::END_RENDER_SUB_PASS: {
             OPTICK_EVENT("END_RENDER_SUB_PASS");
@@ -659,7 +660,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                 }
             };
 
-            const Pipeline* activePipeline = GetStateTracker()._activePipeline;
+            const Pipeline* activePipeline = GetStateTracker()->_activePipeline;
             if (activePipeline == nullptr) {
                 dumpLogs();
                 break;
@@ -678,7 +679,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::SET_SCISSOR: {
             OPTICK_EVENT("SET_SCISSOR");
 
-            GetStateTracker().setScissor(commandBuffer.get<GFX::SetScissorCommand>(entry)->_rect);
+            GetStateTracker()->setScissor(commandBuffer.get<GFX::SetScissorCommand>(entry)->_rect);
         }break;
         case GFX::CommandType::SET_TEXTURE_RESIDENCY: {
             OPTICK_EVENT("SET_TEXTURE_RESIDENCY");
@@ -783,7 +784,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::DRAW_TEXT: {
             OPTICK_EVENT("DRAW_TEXT");
 
-            if (GetStateTracker()._activePipeline != nullptr) {
+            if (GetStateTracker()->_activePipeline != nullptr) {
                 const GFX::DrawTextCommand* crtCmd = commandBuffer.get<GFX::DrawTextCommand>(entry);
                 drawText(crtCmd->_batch);
             }
@@ -791,7 +792,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::DRAW_IMGUI: {
             OPTICK_EVENT("DRAW_IMGUI");
 
-            if (GetStateTracker()._activePipeline != nullptr) {
+            if (GetStateTracker()->_activePipeline != nullptr) {
                 const GFX::DrawIMGUICommand* crtCmd = commandBuffer.get<GFX::DrawIMGUICommand>(entry);
                 drawIMGUI(crtCmd->_data, crtCmd->_windowGUID);
             }
@@ -799,12 +800,12 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
         case GFX::CommandType::DRAW_COMMANDS : {
             OPTICK_EVENT("DRAW_COMMANDS");
 
-            const GLStateTracker& stateTracker = GetStateTracker();
+            const GLStateTracker* stateTracker = GetStateTracker();
             const GFX::DrawCommand::CommandContainer& drawCommands = commandBuffer.get<GFX::DrawCommand>(entry)->_drawCommands;
 
             U32 drawCount = 0u;
 
-            DIVIDE_ASSERT(drawCount == 0u || stateTracker._activePipeline != nullptr);
+            DIVIDE_ASSERT(drawCount == 0u || stateTracker->_activePipeline != nullptr);
 
             for (const GenericDrawCommand& currentDrawCommand : drawCommands) {
                 if (draw(currentDrawCommand)) {
@@ -820,7 +821,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
             const GFX::DispatchComputeCommand* crtCmd = commandBuffer.get<GFX::DispatchComputeCommand>(entry);
 
-            if(GetStateTracker()._activePipeline != nullptr) {
+            if(GetStateTracker()->_activePipeline != nullptr) {
                 OPTICK_EVENT("GL: Dispatch Compute");
                 const vec3<U32>& workGroupCount = crtCmd->_computeGroupSize;
                 DIVIDE_ASSERT(workGroupCount.x < GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] &&
@@ -834,7 +835,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
             const GFX::SetClippingStateCommand* crtCmd = commandBuffer.get<GFX::SetClippingStateCommand>(entry);
 
-            GetStateTracker().setClippingPlaneState(crtCmd->_lowerLeftOrigin, crtCmd->_negativeOneToOneDepth);
+            GetStateTracker()->setClippingPlaneState(crtCmd->_lowerLeftOrigin, crtCmd->_negativeOneToOneDepth);
         } break;
         case GFX::CommandType::MEMORY_BARRIER: {
             OPTICK_EVENT("MEMORY_BARRIER");
@@ -969,7 +970,7 @@ GLStateTracker::BindResult GL_API::makeTexturesResidentInternal(TextureDataConta
     // CPU cost is comparable to the multiple glBind calls on some specific driver + GPU combos.
 
     constexpr GLuint k_textureThreshold = 3;
-    GLStateTracker& stateTracker = GetStateTracker();
+    GLStateTracker* stateTracker = GetStateTracker();
 
     const size_t totalTextureCount = textureData.count();
 
@@ -1031,13 +1032,13 @@ GLStateTracker::BindResult GL_API::makeTexturesResidentInternal(TextureDataConta
             
             for (U8 binding = startBinding; binding < endBinding; ++binding) {
                 if (handles[binding] == GLUtil::k_invalidObjectID) {
-                    const TextureType crtType = stateTracker.getBoundTextureType(binding);
-                    samplers[binding] = stateTracker.getBoundSamplerHandle(binding);
-                    handles[binding] = stateTracker.getBoundTextureHandle(binding, crtType);
+                    const TextureType crtType = stateTracker->getBoundTextureType(binding);
+                    samplers[binding] = stateTracker->getBoundSamplerHandle(binding);
+                    handles[binding] = stateTracker->getBoundTextureHandle(binding, crtType);
                 }
             }
 
-            result = stateTracker.bindTextures(startBinding, endBinding - startBinding + 1, targetType, &handles[startBinding], &samplers[startBinding]);
+            result = stateTracker->bindTextures(startBinding, endBinding - startBinding + 1, targetType, &handles[startBinding], &samplers[startBinding]);
         } else {
             matchingTexCount = 1;
             result = makeTexturesResidentInternal(textureData, offset, 1);
@@ -1055,7 +1056,7 @@ GLStateTracker::BindResult GL_API::makeTexturesResidentInternal(TextureDataConta
             assert(IsValid(entry._data));
             const GLuint handle = entry._data._textureHandle;
             const GLuint sampler = GetSamplerHandle(entry._sampler);
-            result = stateTracker.bindTextures(entry._binding, 1, entry._data._textureType, &handle, &sampler);
+            result = stateTracker->bindTextures(entry._binding, 1, entry._data._textureType, &handle, &sampler);
         }
     } else {
         result = GLStateTracker::BindResult::ALREADY_BOUND;
@@ -1100,7 +1101,7 @@ GLStateTracker::BindResult GL_API::makeTextureViewsResidentInternal(const Textur
         }
 
         const GLuint samplerHandle = GetSamplerHandle(it._view._samplerHash);
-        result = GL_API::GetStateTracker().bindTextures(static_cast<GLushort>(it._binding), 1, view._targetType, &textureID, &samplerHandle);
+        result = GL_API::GetStateTracker()->bindTextures(static_cast<GLushort>(it._binding), 1, view._targetType, &textureID, &samplerHandle);
         if (result == GLStateTracker::BindResult::FAILED) {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -1167,7 +1168,7 @@ bool GL_API::MakeTexturesNonResidentInternal(const SamplerAddress address) {
 }
 
 bool GL_API::setViewport(const Rect<I32>& viewport) {
-    return GetStateTracker().setViewport(viewport);
+    return GetStateTracker()->setViewport(viewport);
 }
 
 /// Return the OpenGL sampler object's handle for the given hash value

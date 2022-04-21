@@ -184,7 +184,7 @@ void OpenGL3StateChangeWrapper::bindVertexArray(GLuint vertexArray)
 {
     if(vertexArray != d_vertexArrayObject)
     {
-        if (Divide::GL_API::GetStateTracker().setActiveVAO(vertexArray) == Divide::GLStateTracker::BindResult::FAILED) {
+        if (Divide::GL_API::GetStateTracker()->setActiveVAO(vertexArray) == Divide::GLStateTracker::BindResult::FAILED) {
             Divide::DIVIDE_UNEXPECTED_CALL();
         }
         d_vertexArrayObject = vertexArray;
@@ -202,7 +202,7 @@ void OpenGL3StateChangeWrapper::blendFunc(GLenum sfactor, GLenum dfactor)
         blend.blendDest(Divide::getProperty(dfactor));
         blend.blendOp(Divide::BlendOperation::ADD);
 
-        Divide::GL_API::GetStateTracker().setBlending(blend);
+        Divide::GL_API::GetStateTracker()->setBlending(blend);
     }
 }
 
@@ -219,7 +219,7 @@ void OpenGL3StateChangeWrapper::blendFuncSeparate(GLenum sfactorRGB, GLenum dfac
         blend.blendDestAlpha(Divide::getProperty(dfactorAlpha));
         blend.blendOpAlpha(Divide::BlendOperation::ADD);
 
-        Divide::GL_API::GetStateTracker().setBlending(blend);
+        Divide::GL_API::GetStateTracker()->setBlending(blend);
     }
 }
 
@@ -227,7 +227,7 @@ void OpenGL3StateChangeWrapper::viewport(GLint x, GLint y, GLsizei width, GLsize
 {
     const bool callIsRedundant = d_viewPortParams.equal(x, y, width, height);
     if (!callIsRedundant) {
-        Divide::GL_API::GetStateTracker().setViewport(x, y, width, height);
+        Divide::GL_API::GetStateTracker()->setViewport(x, y, width, height);
     }
 }
 
@@ -235,14 +235,14 @@ void OpenGL3StateChangeWrapper::scissor(GLint x, GLint y, GLsizei width, GLsizei
 {
     const bool callIsRedundant = d_scissorParams.equal(x, y, width, height);
     if (!callIsRedundant) {
-        Divide::GL_API::GetStateTracker().setScissor(x, y, width, height);
+        Divide::GL_API::GetStateTracker()->setScissor(x, y, width, height);
     }
 }
 void OpenGL3StateChangeWrapper::bindBuffer(GLenum target, GLuint buffer)
 {
     const bool callIsRedundant = d_bindBufferParams.equal(target, buffer);
     if (!callIsRedundant) {
-        if (Divide::GL_API::GetStateTracker().setActiveBuffer(target, buffer) == Divide::GLStateTracker::BindResult::FAILED) {
+        if (Divide::GL_API::GetStateTracker()->setActiveBuffer(target, buffer) == Divide::GLStateTracker::BindResult::FAILED) {
             Divide::DIVIDE_UNEXPECTED_CALL();
         }
     }
@@ -250,7 +250,7 @@ void OpenGL3StateChangeWrapper::bindBuffer(GLenum target, GLuint buffer)
 
 void OpenGL3StateChangeWrapper::bindDefaultState(bool scissor)
 {
-    if (Divide::GL_API::GetStateTracker().setStateBlock(scissor ? d_defaultStateHashScissor : d_defaultStateHashNoScissor) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->setStateBlock(scissor ? d_defaultStateHashScissor : d_defaultStateHashNoScissor) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
 }

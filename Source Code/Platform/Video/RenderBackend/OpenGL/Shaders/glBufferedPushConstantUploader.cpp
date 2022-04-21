@@ -1,7 +1,11 @@
 #include "stdafx.h"
 
 #include "Headers/glBufferedPushConstantUploader.h"
+
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
+#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
+#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h"
 
 namespace Divide {
     namespace {
@@ -18,8 +22,9 @@ namespace Divide {
         }
     };
 
-    glBufferedPushConstantUploader::glBufferedPushConstantUploader(const glBufferedPushConstantUploaderDescriptor& descriptor)
+    glBufferedPushConstantUploader::glBufferedPushConstantUploader(GFXDevice& context, const glBufferedPushConstantUploaderDescriptor& descriptor)
         : glPushConstantUploader(descriptor._programHandle)
+        , _context(context)
         , _uniformBufferName(descriptor._uniformBufferName)
         , _parentShaderName(descriptor._parentShaderName)
         , _uniformBlockBindingIndex(descriptor._bindingIndex)
@@ -27,33 +32,24 @@ namespace Divide {
     {
     }
 
-    glBufferedPushConstantUploader::~glBufferedPushConstantUploader() {
-        if (_uniformBlockBuffer != nullptr) {
-            MemoryManager::SAFE_DELETE_ARRAY(_uniformBlockBuffer);
-        }
-        if (_uniformBlockBufferHandle != GLUtil::k_invalidObjectID) {
-            glDeleteBuffers(1, &_uniformBlockBufferHandle);
-            _uniformBlockBufferHandle = GLUtil::k_invalidObjectID;
-        }
-    }
-
     void glBufferedPushConstantUploader::commit() {
-        if (_uniformBlockDirty) {
-            glInvalidateBufferData(_uniformBlockBufferHandle);
-            glNamedBufferData(_uniformBlockBufferHandle, _uniformBlockSize, _uniformBlockBuffer, GL_STATIC_DRAW);
-            _uniformBlockDirty = false;
-
-            assert(GL_API::GetStateTracker().getBoundBuffer(GL_UNIFORM_BUFFER, _uniformBlockBindingIndex) == _uniformBlockBufferHandle);
+        if (!_uniformBlockDirty) {
+            return;
         }
+
+        DIVIDE_ASSERT(_uniformBlockBindingIndex != GLUtil::k_invalidObjectID && _uniformBuffer != nullptr);
+        if (_needsQueueIncrement) {
+            _uniformBuffer->incQueue();
+            _needsQueueIncrement = false;
+        }
+        _uniformBuffer->writeData(_uniformBlockBuffer.data());
+        _needsQueueIncrement = true;
+        _uniformBlockDirty = false;
     }
 
     void glBufferedPushConstantUploader::prepare() {
-        DIVIDE_ASSERT(_uniformBlockBufferHandle != GLUtil::k_invalidObjectID);
-        DIVIDE_ASSERT(_uniformBlockBindingIndex != GLUtil::k_invalidObjectID);
-
-        if (GL_API::GetStateTracker().setActiveBufferIndex(GL_UNIFORM_BUFFER, _uniformBlockBufferHandle, _uniformBlockBindingIndex) == GLStateTracker::BindResult::FAILED) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_ASSERT(_uniformBlockBindingIndex != GLUtil::k_invalidObjectID && _uniformBuffer != nullptr);
+        _uniformBuffer->bind(to_U8(_uniformBlockBindingIndex));
     }
 
     void glBufferedPushConstantUploader::cacheUniforms() {
@@ -63,24 +59,24 @@ namespace Divide {
 
         const GLint activeMembers = (GLint)_reflectionData._blockMembers.size();
         _blockMembers.resize(activeMembers);
-        if (_reflectionData._blockSize != _uniformBlockSize || _uniformBlockSize == 0) {
-            _uniformBlockSize = _reflectionData._blockSize;
-            // Changed uniforms. Can't really hot reload shader so just thrash everything. I guess ...
-            if (_uniformBlockBuffer != nullptr) {
-                MemoryManager::SAFE_DELETE_ARRAY(_uniformBlockBuffer);
-            }
-            _uniformBlockBuffer = MemoryManager_NEW Byte[_uniformBlockSize]();
+        if (_reflectionData._blockSize > _uniformBlockSizeAligned || _uniformBuffer == nullptr) {
+            _uniformBlockSizeAligned = GLUtil::GLMemory::GetAlignmentCorrected(_reflectionData._blockSize, ShaderBuffer::AlignmentRequirement(ShaderBuffer::Usage::CONSTANT_BUFFER));
+            _uniformBlockBuffer.resize(_uniformBlockSizeAligned);
+
+            ShaderBufferDescriptor bufferDescriptor = {};
+            bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
+            bufferDescriptor._bufferParams._elementCount = 1;
+            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+            bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+            bufferDescriptor._ringBufferLength = 3;
+            bufferDescriptor._name = (_uniformBufferName + "_" + _parentShaderName).c_str();
+            bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
+            _uniformBuffer = _context.newSB(bufferDescriptor);
         } else {
-            std::memset(_uniformBlockBuffer, 0, _uniformBlockSize);
+            _uniformBuffer->clearData();
         }
 
-        if (_uniformBlockBufferHandle == GLUtil::k_invalidObjectID) {
-            glCreateBuffers(1, &_uniformBlockBufferHandle);
-            glNamedBufferData(_uniformBlockBufferHandle, _uniformBlockSize, _uniformBlockBuffer, GL_STATIC_DRAW);
-            glObjectLabel(GL_BUFFER, _uniformBlockBufferHandle, -1, (_uniformBufferName + "_"  + _parentShaderName).c_str());
-        } else {
-            glInvalidateBufferData(_uniformBlockBufferHandle);
-        }
+        std::memset(_uniformBlockBuffer.data(), 0, _uniformBlockBuffer.size());
 
         size_t requiredExtraMembers = 0;
         for (GLint member = 0; member < activeMembers; ++member) {
@@ -154,22 +150,18 @@ namespace Divide {
 
     }
 
-
     void glBufferedPushConstantUploader::uploadPushConstant(const GFX::PushConstant& constant, [[maybe_unused]] const bool force) noexcept {
-        if (_uniformBlockBufferHandle == GLUtil::k_invalidObjectID ||
-            constant.type() == GFX::PushConstantType::COUNT ||
-            constant.bindingHash() == 0u)         
-        {
+        if (constant.type() == GFX::PushConstantType::COUNT || constant.bindingHash() == 0u) {
             return;
         }
 
-        assert(_uniformBlockBuffer != nullptr);
+        assert(!_uniformBlockBuffer.empty());
 
         for (BlockMember& member : _blockMembers) {
             if (member._nameHash == constant.bindingHash()) {
                 DIVIDE_ASSERT(constant.dataSize() <= member._size);
 
-                      Byte* dst = &_uniformBlockBuffer[member._externalData._offset];
+                      Byte* dst = &_uniformBlockBuffer.data()[member._externalData._offset];
                 const Byte* src = constant.data();
                 const size_t numBytes = constant.dataSize();
 

@@ -3,6 +3,8 @@
 #include "Headers/GLSLToSPIRV.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
+#include <glslang/SPIRV/GlslangToSpv.h>
+
 namespace {
     Divide::GFX::PushConstantType GetGFXType(const  glslang::TBasicType type) {
         switch (type) {
@@ -129,17 +131,19 @@ void SpirvHelper::InitResources(TBuiltInResource& Resources) {
     Resources.limits.generalConstantMatrixVectorIndexing = 1;
 }
 
-EShLanguage SpirvHelper::FindLanguage(const vk::ShaderStageFlagBits shader_type) {
-    switch (shader_type) {
-    case vk::ShaderStageFlagBits::eVertex: return EShLangVertex;
-    case vk::ShaderStageFlagBits::eTessellationControl: return EShLangTessControl;
-    case vk::ShaderStageFlagBits::eTessellationEvaluation: return EShLangTessEvaluation;
-    case vk::ShaderStageFlagBits::eGeometry: return EShLangGeometry;
-    case vk::ShaderStageFlagBits::eFragment: return EShLangFragment;
-    case vk::ShaderStageFlagBits::eCompute: return EShLangCompute;
-    default: return EShLangVertex;
+namespace {
+    EShLanguage FindLanguage(const vk::ShaderStageFlagBits shader_type) {
+        switch (shader_type) {
+            case vk::ShaderStageFlagBits::eVertex: return EShLangVertex;
+            case vk::ShaderStageFlagBits::eTessellationControl: return EShLangTessControl;
+            case vk::ShaderStageFlagBits::eTessellationEvaluation: return EShLangTessEvaluation;
+            case vk::ShaderStageFlagBits::eGeometry: return EShLangGeometry;
+            case vk::ShaderStageFlagBits::eFragment: return EShLangFragment;
+            case vk::ShaderStageFlagBits::eCompute: return EShLangCompute;
+            default: return EShLangVertex;
+        }
     }
-}
+};
 
 bool SpirvHelper::GLSLtoSPV(const vk::ShaderStageFlagBits shader_type, const char* pshader, std::vector<unsigned int>& spirv, const bool targetVulkan, Divide::Reflection::Data& reflectionDataInOut) {
     const EShLanguage stage = FindLanguage(shader_type);

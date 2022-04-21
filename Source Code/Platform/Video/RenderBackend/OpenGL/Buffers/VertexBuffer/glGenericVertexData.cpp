@@ -48,11 +48,11 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
         }
     }
 
-    if (GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    GL_API::GetStateTracker().togglePrimitiveRestart(primitiveRestartEnabled());
+    GL_API::GetStateTracker()->togglePrimitiveRestart(primitiveRestartEnabled());
 
     // Submit the draw command
     if (renderIndirect()) {
@@ -193,7 +193,7 @@ void glGenericVertexData::bindBufferInternal(const U32 buffer, const  U32 locati
         offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
     }
 
-    const GLStateTracker::BindResult ret = GL_API::GetStateTracker().bindActiveBuffer(location, bufferImpl->memoryBlock()._bufferHandle, bufferImpl->memoryBlock()._offset + offsetInBytes, bufferParams._elementSize);
+    const GLStateTracker::BindResult ret = GL_API::GetStateTracker()->bindActiveBuffer(location, bufferImpl->memoryBlock()._bufferHandle, bufferImpl->memoryBlock()._offset + offsetInBytes, bufferParams._elementSize);
     if (ret == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }

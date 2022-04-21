@@ -37,8 +37,6 @@
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
-#include <Vulkan/vulkan.hpp>
-
 namespace Divide {
 class PipelineBuilder {
 public:

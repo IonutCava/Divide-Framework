@@ -30,6 +30,7 @@ extern "C" {
 #pragma warning(disable:4458)
 #pragma warning(disable:4706)
 #endif
+#include <boost/regex.hpp>
 #include <boost/wave.hpp>
 #include <boost/wave/cpplexer/cpp_lex_iterator.hpp> // lexer class
 #include <boost/wave/cpplexer/cpp_lex_token.hpp>    // token class
@@ -1078,11 +1079,13 @@ eastl::string ShaderProgram::PreprocessIncludes(const ResourcePath& name,
     }
 
     size_t lineNumber = 1;
-    regexNamespace::smatch matches;
+    boost::smatch matches;
 
     string line;
     eastl::string output, includeString;
     istringstream input(source.c_str());
+
+    const boost::regex searchPatern = boost::regex{ Paths::g_includePattern.c_str() };
 
     while (std::getline(input, line)) {
         const std::string_view directive = !line.empty() ? std::string_view{line}.substr(1) : "";
@@ -1096,7 +1099,7 @@ eastl::string ShaderProgram::PreprocessIncludes(const ResourcePath& name,
                                !Util::BeginsWith(directive, "elif", true) &&
                                !Util::BeginsWith(directive, "endif", true) &&
                                !Util::BeginsWith(directive, "pragma", true) &&
-                               regexNamespace::regex_search(line, matches, Paths::g_includePattern);
+                               boost::regex_search(line, matches, searchPatern);
         if (!isInclude) {
             output.append(line.c_str());
         } else {
@@ -1193,17 +1196,17 @@ void ShaderProgram::DumpShaderTextCacheToDisk(const TextDumpEntry& entry) {
 }
 
 eastl::string ShaderProgram::GatherUniformDeclarations(const eastl::string & source, vector<UniformDeclaration>& foundUniforms) {
-    static const regexNamespace::regex uniformPattern { R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
+    static const boost::regex uniformPattern { R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
 
     eastl::string ret;
     ret.reserve(source.size());
 
     string line;
-    regexNamespace::smatch matches;
+    boost::smatch matches;
     istringstream input(source.c_str());
     while (std::getline(input, line)) {
         if (Util::BeginsWith(line, "uniform", true) &&
-            regexNamespace::regex_search(line, matches, uniformPattern))
+            boost::regex_search(line, matches, uniformPattern))
         {
             foundUniforms.push_back(UniformDeclaration{
                 Util::Trim(matches[1].str()), //type

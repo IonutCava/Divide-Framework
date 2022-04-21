@@ -39,7 +39,7 @@ ErrorCode Application::start(const string& entryPoint, const I32 argc, char** ar
 
     _isInitialized = true;
     _timer.reset();
-
+     
     Console::toggleImmediateMode(true);
     Console::printfn(Locale::Get(_ID("START_APPLICATION")));
     Console::printfn(Locale::Get(_ID("START_APPLICATION_CMD_ARGUMENTS")));

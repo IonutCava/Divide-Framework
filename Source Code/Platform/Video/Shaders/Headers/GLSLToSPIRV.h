@@ -33,14 +33,17 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _GLSL_TO_SPIR_V_H_
 #define _GLSL_TO_SPIR_V_H_
 
-#include <glslang/SPIRV/GlslangToSpv.h>
-#include <Vulkan/vulkan.hpp>
-
 namespace Divide {
     namespace Reflection {
         struct Data;
     };
 };
+
+namespace glslang {
+    class TProgram;
+};
+
+struct TBuiltInResource;
 
 struct SpirvHelper
 {
@@ -48,7 +51,6 @@ struct SpirvHelper
 
     static void Finalize();
     static void InitResources(TBuiltInResource& Resources);
-    static EShLanguage FindLanguage(const vk::ShaderStageFlagBits shader_type);
 
     static bool GLSLtoSPV(const vk::ShaderStageFlagBits shader_type, const char* pshader, std::vector<unsigned int>& spirv, const bool targetVulkan, Divide::Reflection::Data& reflectionDataInOut);
     static void BuildReflectionData(glslang::TProgram& program, Divide::Reflection::Data& reflectionDataInOut);

@@ -9,12 +9,10 @@ namespace Divide {
 namespace GLUtil {
 
 namespace GLMemory {
-namespace {
-    [[nodiscard]] ptrdiff_t GetAlignmentCorrected(const ptrdiff_t byteOffset, const size_t alignment) noexcept {
-        return byteOffset % alignment == 0u
-                    ? byteOffset
-                    : ((byteOffset + alignment - 1u) / alignment) * alignment;
-    }
+[[nodiscard]] ptrdiff_t GetAlignmentCorrected(const ptrdiff_t byteOffset, const size_t alignment) noexcept {
+    return byteOffset % alignment == 0u
+                ? byteOffset
+                : ((byteOffset + alignment - 1u) / alignment) * alignment;
 }
 
 Chunk::Chunk(const bool poolAllocations,

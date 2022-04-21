@@ -10,7 +10,7 @@ namespace GLUtil {
 
 glVAOCache::~glVAOCache()
 {
-    clear();
+    DIVIDE_ASSERT(_cache.empty());
 }
 
 void glVAOCache::clear() {

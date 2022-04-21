@@ -271,7 +271,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                 bufferDescriptor._parentShaderName = _name.c_str();
                 bufferDescriptor._bindingIndex = _loadData._uniformBlockOffset;
                 bufferDescriptor._reflectionData = _loadData._reflectionData;
-                _constantUploader = eastl::make_unique<glBufferedPushConstantUploader>(bufferDescriptor);
+                _constantUploader = eastl::make_unique<glBufferedPushConstantUploader>(_context, bufferDescriptor);
                 _constantUploader->cacheUniforms();
             } else {
                 _constantUploader.reset();

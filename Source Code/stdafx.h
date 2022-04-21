@@ -111,14 +111,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <EASTL/include/EASTL/array.h>
 #include <EASTL/include/EASTL/stack.h>
 #include <EASTL/include/EASTL/queue.h>
-#include <EASTL/include/EASTL/deque.h>
-#include <EASTL/include/EASTL/vector_map.h>
+#include <EASTL/include/EASTL/string.h>
 #include <EASTL/include/EASTL/fixed_set.h>
 #include <EASTL/include/EASTL/fixed_vector.h>
-#include <EASTL/include/EASTL/shared_ptr.h>
 #include <EASTL/include/EASTL/weak_ptr.h>
-#include <EASTL/include/EASTL/unique_ptr.h>
-#include <EASTL/include/EASTL/fixed_string.h>
 #include <EASTL/include/EASTL/unordered_set.h>
 
 #include <climits>
@@ -128,7 +124,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <random>
 #include <stack>
 #include <any>
-#include <regex>
 #include <limits>
 #include <execution>
 
@@ -136,13 +131,12 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/functional/factory.hpp>
-#include <boost/regex.hpp>
-
-#include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
 
 #define HAVE_M_PI
 #define SDL_MAIN_HANDLED
 #include <sdl/include/SDL.h>
+
+#include <Vulkan/vulkan.hpp>
 
 #ifndef VKAPI_PTR
 #define VKAPI_PTR  __stdcall
@@ -162,6 +156,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef _MSC_VER
 #pragma warning (pop)
 #endif
+
+#include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
 
 #include <ArenaAllocator/arena_allocator.h>
 

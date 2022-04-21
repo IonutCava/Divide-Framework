@@ -103,7 +103,7 @@ void OpenGL3GeometryBuffer::draw() const
 
             d_glStateChanger->bindDefaultState(currentBatch.clip);
 
-            if (Divide::GL_API::GetStateTracker().bindTexture(0, Divide::TextureType::TEXTURE_2D, currentBatch.texture) == Divide::GLStateTracker::BindResult::FAILED) {
+            if (Divide::GL_API::GetStateTracker()->bindTexture(0, Divide::TextureType::TEXTURE_2D, currentBatch.texture) == Divide::GLStateTracker::BindResult::FAILED) {
                 Divide::DIVIDE_UNEXPECTED_CALL();
             }
 
@@ -146,13 +146,13 @@ void OpenGL3GeometryBuffer::initialiseOpenGLBuffers()
     // This binds and sets up a vbo. The 
     const GLsizei stride = 9 * sizeof(GLfloat);
 
-    if (Divide::GL_API::GetStateTracker().setActiveVAO(d_verticesVAO) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->setActiveVAO(d_verticesVAO) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
-    if (Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, d_verticesVBO) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->setActiveBuffer(GL_ARRAY_BUFFER, d_verticesVBO) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
-    if (Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
 
@@ -166,12 +166,12 @@ void OpenGL3GeometryBuffer::initialiseOpenGLBuffers()
     glEnableVertexAttribArray(d_shaderPosLoc);
 
     // Unbind Vertex Attribute Array (VAO)
-    if (Divide::GL_API::GetStateTracker().setActiveVAO(0) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->setActiveVAO(0) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
 
     // Unbind array and element array buffers
-    if (Divide::GL_API::GetStateTracker().setActiveBuffer(GL_ARRAY_BUFFER, 0) == Divide::GLStateTracker::BindResult::FAILED) {
+    if (Divide::GL_API::GetStateTracker()->setActiveBuffer(GL_ARRAY_BUFFER, 0) == Divide::GLStateTracker::BindResult::FAILED) {
         Divide::DIVIDE_UNEXPECTED_CALL();
     }
 }

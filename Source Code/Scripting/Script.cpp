@@ -9,6 +9,8 @@
 #include "Platform/File/Headers/FileUpdateMonitor.h"
 #include "Platform/File/Headers/FileWatcherManager.h"
 
+#include <boost/regex.hpp>
+
 namespace Divide {
 
 namespace {
@@ -120,12 +122,13 @@ void Script::preprocessIncludes(const string& source, const I32 level /*= 0 */) 
         Console::errorfn(Locale::Get(_ID("ERROR_SCRIPT_INCLUD_LIMIT")));
     }
 
-    regexNamespace::smatch matches;
+    boost::smatch matches;
     string line, include_string;
 
     istringstream input(source);
+    const boost::regex usePatern = boost::regex(Paths::g_usePattern.c_str());
     while (std::getline(input, line)) {
-        if (regexNamespace::regex_search(line, matches, Paths::g_usePattern)) {
+        if (boost::regex_search(line, matches, usePatern)) {
             ResourcePath include_file = ResourcePath{ Util::Trim(matches[1].str()).c_str() };
             _usedAtoms.push_back(include_file);
 

@@ -32,14 +32,17 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #ifndef _PLATFORM_FILE_FILE_WATCHER_MANAGER_H_
 #define _PLATFORM_FILE_FILE_WATCHER_MANAGER_H_
+namespace FW {
+    class FileWatcher;
+}
 
 namespace Divide {
     struct FileWatcher final : GUIDWrapper {
         FW::FileWatcher& operator()() noexcept {
-            return _impl;
+            return *_impl;
         }
 
-        PROPERTY_RW(FW::FileWatcher, impl);
+       eastl::unique_ptr<FW::FileWatcher> _impl = nullptr;
     };
 
     class FileWatcherManager {

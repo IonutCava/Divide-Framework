@@ -116,7 +116,7 @@ OpenGLRendererBase::~OpenGLRendererBase()
 void OpenGLRendererBase::initialiseDisplaySizeWithViewportSize()
 {
     GLint vp[4];
-    Divide::GL_API::GetStateTracker().getActiveViewport(vp);
+    Divide::GL_API::GetStateTracker()->getActiveViewport(vp);
 
     d_displaySize = Sizef(static_cast<float>(vp[2]),
                           static_cast<float>(vp[3]));

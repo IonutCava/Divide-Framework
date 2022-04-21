@@ -148,7 +148,7 @@ void glFramebuffer::toggleAttachment(const RTAttachment& attachment, const Attac
 
     OPTICK_EVENT();
     // It might be cleaner to always use DSA for stuff like this, but we can skip the driver's bookkeeping overhead if we handle it ourselves here
-    const bool useDSA = GL_API::GetStateTracker()._activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] != _framebufferHandle;
+    const bool useDSA = GL_API::GetStateTracker()->_activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] != _framebufferHandle;
     OPTICK_TAG("USE_DSA", useDSA);
 
     const Texture_ptr& tex = attachment.texture(false);
@@ -419,7 +419,7 @@ void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy, const RTA
         }
 
         if (set) {
-            const bool useDSA = GL_API::GetStateTracker()._activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] != _framebufferHandle;
+            const bool useDSA = GL_API::GetStateTracker()->_activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] != _framebufferHandle;
             OPTICK_TAG("USE_DSA", useDSA);
 
             if (useDSA) {
@@ -435,7 +435,7 @@ void glFramebuffer::prepareBuffers(const RTDrawDescriptor& drawPolicy, const RTA
         _activeDepthBuffer = depthAtt && depthAtt->used();
      }
 
-    GL_API::GetStateTracker().setDepthWrite(IsEnabled(drawPolicy._drawMask, RTAttachmentType::Depth));
+    GL_API::GetStateTracker()->setDepthWrite(IsEnabled(drawPolicy._drawMask, RTAttachmentType::Depth));
 }
 
 void glFramebuffer::toggleAttachments() {
@@ -485,7 +485,7 @@ void glFramebuffer::setDefaultState(const RTDrawDescriptor& drawPolicy) {
     prepareBuffers(drawPolicy, colourAttachments);
 
     /// Set the depth range
-    GL_API::GetStateTracker().setDepthRange(_descriptor._depthRange.min, _descriptor._depthRange.max);
+    GL_API::GetStateTracker()->setDepthRange(_descriptor._depthRange.min, _descriptor._depthRange.max);
 
     /// Check that everything is valid
     checkStatus();
@@ -498,7 +498,7 @@ void glFramebuffer::begin(const RTDrawDescriptor& drawPolicy) {
     GL_API::PushDebugMessage(_debugMessage.c_str());
 
     // Activate FBO
-    if (GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker()->setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
 
@@ -528,7 +528,7 @@ void glFramebuffer::end(const bool needsUnbind) const {
     OPTICK_EVENT();
 
     if (needsUnbind) {
-        if (GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, 0) == GLStateTracker::BindResult::FAILED) {
+        if (GL_API::GetStateTracker()->setActiveFB(RenderTargetUsage::RT_WRITE_ONLY, 0) == GLStateTracker::BindResult::FAILED) {
             DIVIDE_UNEXPECTED_CALL();
         }
     }
@@ -574,7 +574,7 @@ void glFramebuffer::QueueMipMapsRecomputation(const RTAttachment& attachment) {
 void glFramebuffer::clear(const RTClearDescriptor& drawPolicy, const RTAttachmentPool::PoolEntry& activeAttachments) const {
     OPTICK_EVENT();
 
-    const bool useDSA = GL_API::GetStateTracker()._activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] != _framebufferHandle;
+    const bool useDSA = GL_API::GetStateTracker()->_activeFBID[to_base(RenderTarget::RenderTargetUsage::RT_READ_ONLY)] != _framebufferHandle;
     OPTICK_TAG("USE_DSA", useDSA);
 
     if (drawPolicy._clearColours && hasColour()) {
@@ -743,8 +743,8 @@ void glFramebuffer::readData(const vec4<U16>& rect,
                              const std::pair<bufferPtr, size_t> outData) const {
     OPTICK_EVENT();
 
-    GL_API::GetStateTracker().setPixelPackUnpackAlignment();
-    if (GL_API::GetStateTracker().setActiveFB(RenderTargetUsage::RT_READ_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED) {
+    GL_API::GetStateTracker()->setPixelPackUnpackAlignment();
+    if (GL_API::GetStateTracker()->setActiveFB(RenderTargetUsage::RT_READ_ONLY, _framebufferHandle) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
     glReadnPixels(

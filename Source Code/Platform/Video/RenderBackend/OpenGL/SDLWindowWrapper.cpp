@@ -203,7 +203,7 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
     // Maximum number of colour attachments per framebuffer
     GLUtil::getGLValue(GL_MAX_COLOR_ATTACHMENTS, deviceInformation._maxRTColourAttachments);
 
-    s_stateTracker.init();
+    s_stateTracker = eastl::make_unique<GLStateTracker>();
 
     glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
     deviceInformation._shaderCompilerThreads = GLUtil::getGLValue(GL_MAX_SHADER_COMPILER_THREADS_ARB);
@@ -427,7 +427,8 @@ void GL_API::closeRenderingAPI() {
         allocator.deallocate();
     }
     g_ContextPool.destroy();
-    s_stateTracker.clear();
+    s_vaoCache.clear();
+    s_stateTracker.reset();
 }
 
 vec2<U16> GL_API::getDrawableSize(const DisplayWindow& window) const noexcept {

@@ -46,6 +46,9 @@ namespace Divide {
     class glBufferLockManager;
 
     struct GLStateTracker {
+        GLStateTracker();
+        ~GLStateTracker();
+
         using AttribHashes = std::array<size_t, to_base(AttribLocation::COUNT)>;
 
         enum class BindResult : U8 {
@@ -54,10 +57,6 @@ namespace Divide {
             FAILED,
             COUNT
         };
-
-        void init();
-        void clear();
-
         /// Enable or disable primitive restart and ensure that the correct index size is used
         void togglePrimitiveRestart(bool state);
         /// Enable or disable primitive rasterization
@@ -219,7 +218,6 @@ namespace Divide {
         TextureTypeBoundMapDef _textureTypeBoundMap = {};
 
         VAOBindings _vaoBufferData;
-        GLUtil::glVAOCache _vaoCache;
         hashMap<GLuint, AttribHashes> _attributeHashes;
     }; //class GLStateTracker
 }; //namespace Divide

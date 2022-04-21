@@ -127,7 +127,7 @@ protected:
     I32 getFont(const Str64& fontName);
 
     /// Reset as much of the GL default state as possible within the limitations given
-    void clearStates(const DisplayWindow& window, GLStateTracker& stateTracker, bool global) const;
+    void clearStates(const DisplayWindow& window, GLStateTracker* stateTracker, bool global) const;
 
     [[nodiscard]] GLStateTracker::BindResult makeTexturesResidentInternal(TextureDataContainer& textureData, U8 offset = 0u, U8 count = U8_MAX) const;
     [[nodiscard]] GLStateTracker::BindResult makeTextureViewsResidentInternal(const TextureViews& textureViews, U8 offset = 0u, U8 count = U8_MAX) const;
@@ -136,9 +136,9 @@ protected:
     ShaderResult bindPipeline(const Pipeline& pipeline) const;
 
 public:
-    static GLStateTracker& GetStateTracker() noexcept;
-    static GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
-    static GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
+    static [[nodiscard]] GLStateTracker* GetStateTracker() noexcept;
+    static [[nodiscard]] GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
+    static [[nodiscard]] GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
 
     static bool MakeTexturesResidentInternal(SamplerAddress address);
     static bool MakeTexturesNonResidentInternal(SamplerAddress address);
@@ -218,12 +218,14 @@ private:
 
     static SharedMutex s_samplerMapLock;
     static SamplerObjectMap s_samplerMap;
-    static GLStateTracker  s_stateTracker;
+    static eastl::unique_ptr<GLStateTracker> s_stateTracker;
 
     static std::array<GLUtil::GLMemory::DeviceAllocator, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> s_memoryAllocators;
     static std::array<size_t, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> s_memoryAllocatorSizes;
 
     static GLUtil::glTextureViewCache s_textureViewCache;
+
+    static GLUtil::glVAOCache s_vaoCache;
 
     static bool s_IsFlushingCommandBuffer;
     static IMPrimitivePool s_IMPrimitivePool;

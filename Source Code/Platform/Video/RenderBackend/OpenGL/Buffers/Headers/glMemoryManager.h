@@ -63,6 +63,8 @@ namespace GLMemory{
                lhs._ptr == rhs._ptr;
     }
 
+    [[nodiscard]] ptrdiff_t GetAlignmentCorrected(const ptrdiff_t byteOffset, const size_t alignment) noexcept;
+
     class Chunk final : NonCopyable, NonMovable
     {
     public:

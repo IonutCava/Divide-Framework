@@ -36,7 +36,7 @@ namespace {
     }
 }; //namespace 
 
-void GLStateTracker::init() 
+GLStateTracker::GLStateTracker()
 {
     _blendPropertiesGlobal.blendSrc(BlendProperty::ONE);
     _blendPropertiesGlobal.blendDest(BlendProperty::ZERO);
@@ -58,57 +58,8 @@ void GLStateTracker::init()
     _activeBufferID = create_array<13, GLuint>(GLUtil::k_invalidObjectID);
 }
 
-void GLStateTracker::clear() {
-    _activeState.reset();
-
-    _debugScope.fill(""); _debugScopeDepth = 0u;
-    _activePipeline = nullptr;
-    _activeTopology = PrimitiveTopology::COUNT;
-    _activeRenderTarget = nullptr;
-    _activePixelBuffer = nullptr;
-    _activeVAOID = GLUtil::k_invalidObjectID;
-    for (auto& ID : _activeFBID) {
-        ID = GLUtil::k_invalidObjectID;
-    }
-
-    _activeBufferID = create_array<13, GLuint>(GLUtil::k_invalidObjectID);
-    _activeVAOIB.clear();
-
-    _activePackUnpackAlignments[0] = 1;
-    _activePackUnpackAlignments[1] = 1;
-    _activePackUnpackRowLength[0] = 0;
-    _activePackUnpackRowLength[1] = 0;
-    _activePackUnpackSkipPixels[0] = 0;
-    _activePackUnpackSkipPixels[1] = 0;
-    _activePackUnpackSkipRows[0] = 0;
-    _activePackUnpackSkipRows[1] = 0;
-    _activeShaderProgram = 0; //GLUtil::_invalidObjectID;
-    _activeShaderPipeline = 0;//GLUtil::_invalidObjectID;
-    _depthNearVal = -1.f;
-    _depthFarVal = -1.f;
-    _lowerLeftOrigin = true;
-    _negativeOneToOneDepth = true;
-    _depthWriteEnabled = true;
-    _blendPropertiesGlobal;
-    _blendEnabledGlobal = GL_FALSE;
-    _currentBindConfig = {};
-    _blendProperties.clear();
-    _blendEnabled.clear();
-    _currentCullMode = GL_BACK;
-    _currentFrontFace = GL_CCW;
-    _blendColour.set(0, 0, 0, 0);
-    _activeViewport = Rect<I32>(-1);
-    _activeScissor = Rect<I32>(-1);
-    _activeClearColour = DefaultColours::BLACK_U8;
-    _primitiveRestartEnabled = false;
-    _rasterizationEnabled = true;
-    _textureBoundMap = {};
-    _imageBoundMap = {};
-    _samplerBoundMap = {};
-    _textureTypeBoundMap = {};
-    _vaoBufferData = {};
-    _attributeHashes.clear();
-    _vaoCache.clear();
+GLStateTracker::~GLStateTracker()
+{
 }
 
 void GLStateTracker::setAttributesInternal(AttribHashes& hashes, const AttributeMap& attributes) {
@@ -159,7 +110,7 @@ void GLStateTracker::setVertexFormat(const PrimitiveTopology topology, const siz
     _activeTopology = topology;
 
     GLuint vao = 0u;
-    if (!_vaoCache.getVAO(attributeHash, vao)) {
+    if (!GL_API::s_vaoCache.getVAO(attributeHash, vao)) {
         NOP(); //cache miss
     }
     if (setActiveVAO(vao) == BindResult::FAILED) {
@@ -380,7 +331,9 @@ GLStateTracker::BindResult GLStateTracker::bindTextures(const GLushort unitOffse
 }
 
 GLStateTracker::BindResult GLStateTracker::bindTextureImage(const GLushort unit, const GLuint handle, const GLint level,
-                                      const bool layered, const GLint layer, const GLenum access, const GLenum format) {
+                                                            const bool layered, const GLint layer, const GLenum access, 
+                                                            const GLenum format)
+{
     ImageBindSettings tempSettings = {handle, level, layered ? GL_TRUE : GL_FALSE, layer, access, format};
 
     ImageBindSettings& settings = _imageBoundMap[unit];

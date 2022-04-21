@@ -37,6 +37,8 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
+    class ShaderBuffer;
+
     struct glBufferedPushConstantUploaderDescriptor
     {
         eastl::string _uniformBufferName = "";
@@ -57,8 +59,8 @@ namespace Divide {
             GLenum _type{ GL_NONE };
         };
 
-        explicit glBufferedPushConstantUploader(const glBufferedPushConstantUploaderDescriptor& descriptor);
-        ~glBufferedPushConstantUploader();
+        explicit glBufferedPushConstantUploader(GFXDevice& context, const glBufferedPushConstantUploaderDescriptor& descriptor);
+        ~glBufferedPushConstantUploader() = default;
 
         void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept override;
         void cacheUniforms() override;
@@ -66,15 +68,18 @@ namespace Divide {
         void prepare() override;
 
     private:
+        GFXDevice& _context;
+
         vector<BlockMember> _blockMembers;
         eastl::string _uniformBufferName;
         eastl::string _parentShaderName;
-        Byte* _uniformBlockBuffer = nullptr;
+        eastl::vector<Byte> _uniformBlockBuffer{};
         GLuint _uniformBlockBindingIndex = GLUtil::k_invalidObjectID;
-        GLuint _uniformBlockBufferHandle = GLUtil::k_invalidObjectID;
-        size_t _uniformBlockSize = 0;
+        size_t _uniformBlockSizeAligned = 0u;
         bool _uniformBlockDirty = false;
+        bool _needsQueueIncrement = false;
         Reflection::Data _reflectionData{};
+        ShaderBuffer* _uniformBuffer = nullptr;
     };
 } // namespace Divide
 

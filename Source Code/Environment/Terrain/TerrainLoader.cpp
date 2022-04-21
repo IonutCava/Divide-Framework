@@ -266,7 +266,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         const TerrainDescriptor::LayerDataEntry& entry = layerTileData[i];
         for (U8 j = 0u; j < 4u; ++j) {
             const vec2<F32>& factors = entry[j];
-            tileFactorStr.append(fmt::sprintf("%*c", 8, ' '));
+            tileFactorStr.append(Util::StringFormat("%*c", 8, ' '));
             tileFactorStr.append(Util::StringFormat("vec2(%3.2f, %3.2f),\n", factors.s, factors.t));
         }
     }

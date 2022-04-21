@@ -11,6 +11,7 @@ namespace Divide {
 
     FileWatcher& FileWatcherManager::allocateWatcher() {
         s_fileWatchers.emplace_back(std::make_pair(eastl::make_unique<FileWatcher>(), g_updateFrameInterval));
+        s_fileWatchers.back().first->_impl = eastl::make_unique<FW::FileWatcher>();
         return *s_fileWatchers.back().first;
     }
 

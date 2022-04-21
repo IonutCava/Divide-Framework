@@ -55,9 +55,6 @@ class glUniformBuffer final : public ShaderBuffer {
 
         POINTER_R_IW(glBufferImpl, bufferImpl, nullptr);
         PROPERTY_R(ptrdiff_t, alignedBufferSize, 0);
-
-    protected:
-        ptrdiff_t getAlignmentCorrected(ptrdiff_t byteOffset) const noexcept;
 };
 
 };  // namespace Divide

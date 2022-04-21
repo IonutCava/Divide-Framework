@@ -664,16 +664,16 @@ void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
 {
     // OpenGL rendering is not thread-safe anyway, so this works
     static HardwareQueryContext context;
-    GLStateTracker& stateTracker = GL_API::GetStateTracker();
+    GLStateTracker* stateTracker = GL_API::GetStateTracker();
 
-    stateTracker.toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
+    stateTracker->toggleRasterization(!isEnabledOption(drawCommand, CmdRenderOptions::RENDER_NO_RASTERIZE));
 
     if (isEnabledOption(drawCommand, CmdRenderOptions::RENDER_GEOMETRY)) {
         context._queryLookupId = drawCommand._sourceBuffer._id;
         context._cmdOptions = drawCommand._renderOptions;
 
         BeginHardwareQueries(context);
-        SubmitRenderCommand(glPrimitiveTypeTable[to_base(stateTracker._activeTopology)], drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
+        SubmitRenderCommand(glPrimitiveTypeTable[to_base(stateTracker->_activeTopology)], drawCommand, useIndirectBuffer, internalFormat, countData, indexData);
         EndHardwareQueries(context);
     }
 
