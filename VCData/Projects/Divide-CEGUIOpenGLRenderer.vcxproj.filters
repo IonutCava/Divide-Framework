@@ -154,6 +154,9 @@
     <Filter Include="imgui-node-editor">
       <UniqueIdentifier>{4d068bfc-0c20-4a5e-a006-a75e55938723}</UniqueIdentifier>
     </Filter>
+    <Filter Include="vk-bootstrap">
+      <UniqueIdentifier>{8b21d486-fa2b-47c9-91e7-ce3ff83f453d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Text\Headers\fontstash.h">
@@ -509,6 +512,12 @@
     </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\glsw\Headers\glsw.h">
       <Filter>glsw\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrap.h">
+      <Filter>vk-bootstrap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrapDispatch.h">
+      <Filter>vk-bootstrap</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -886,6 +895,9 @@
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\glsw\glsw.c">
       <Filter>glsw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrap.cpp">
+      <Filter>vk-bootstrap</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

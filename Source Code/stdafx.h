@@ -137,12 +137,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sdl/include/SDL.h>
 
 #include <Vulkan/vulkan.hpp>
-
-#ifndef VKAPI_PTR
-#define VKAPI_PTR  __stdcall
-#endif //VKAPI_PTR
+#include <vk-bootstrap/src/VkBootstrap.h>
 #include <Optick/src/optick.h>
-#undef VKAPI_PTR
 
 #ifdef _MSC_VER
 #pragma warning (push)

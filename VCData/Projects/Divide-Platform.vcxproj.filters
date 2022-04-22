@@ -337,12 +337,6 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\glVAOCache.h">
       <Filter>Video\RenderBackend\OpenGL\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrap.h">
-      <Filter>Video\RenderBackend\Vulkan\vk-bootstrap</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrapDispatch.h">
-      <Filter>Video\RenderBackend\Vulkan\vk-bootstrap</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\GLSLToSPIRV.h">
       <Filter>Video\Shaders\Headers</Filter>
     </ClInclude>
@@ -621,9 +615,6 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glVAOCache.cpp">
       <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrap.cpp">
-      <Filter>Video\RenderBackend\Vulkan\vk-bootstrap</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\GLSLToSPIRV.cpp">
       <Filter>Video\Shaders</Filter>
     </ClCompile>
@@ -823,9 +814,6 @@
     </Filter>
     <Filter Include="Video\ShaderSource\GLSL\computeAtoms">
       <UniqueIdentifier>{8d3e72da-846d-4d38-ae70-fd9185511aef}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\RenderBackend\Vulkan\vk-bootstrap">
-      <UniqueIdentifier>{cb9146c7-81a2-453b-93a3-c8dfb3e5a179}</UniqueIdentifier>
     </Filter>
     <Filter Include="Video\ShaderSource\SPIRV">
       <UniqueIdentifier>{29c35389-f894-4287-a3ee-acf12af7afbb}</UniqueIdentifier>

@@ -5,6 +5,7 @@
 #include "Core/Headers/StringHelper.h"
 #include "Platform/File/Headers/FileManagement.h"
 
+#include <boost/regex.hpp>
 
 namespace Divide {
 
@@ -12,13 +13,13 @@ namespace Divide {
 // We are using third party string libraries (STL, Boost, EASTL) that went through proper testing
 // This list of tests only verifies utility functions
 
-vector<string> getFiles(const string& input, const regexNamespace::regex& pattern) {
-    regexNamespace::smatch matches;
+vector<string> getFiles(const string& input, const boost::regex& pattern) {
+    boost::smatch matches;
     istringstream inputStream(input);
     string line;
     vector<string> include_file;
     while (std::getline(inputStream, line)) {
-        if (regexNamespace::regex_search(line, matches, pattern)) {
+        if (boost::regex_search(line, matches, pattern)) {
             include_file.emplace_back(Util::Trim(matches[1].str()));
         }
     }
@@ -36,25 +37,25 @@ TEST(RegexSuccessTest)
             const string& inputInclude4("   #include <  blaBla.h>");
             const string& resultInclude("blaBla.h");
 
-            vector<string> temp1 = getFiles(inputInclude1, Paths::g_includePattern);
+            vector<string> temp1 = getFiles(inputInclude1, boost::regex{ Paths::g_includePattern.c_str() });
             CHECK_TRUE(temp1.size() == 1);
             if (!temp1.empty()) {
                 CHECK_EQUAL(resultInclude, temp1.front());
             }
 
-            vector<string> temp2 = getFiles(inputInclude2, Paths::g_includePattern);
+            vector<string> temp2 = getFiles(inputInclude2, boost::regex{ Paths::g_includePattern.c_str() });
             CHECK_TRUE(temp2.size() == 1);
             if (!temp2.empty()) {
                 CHECK_EQUAL(resultInclude, temp2.front());
             }
 
-            vector<string> temp3 = getFiles(inputInclude3, Paths::g_includePattern);
+            vector<string> temp3 = getFiles(inputInclude3, boost::regex{ Paths::g_includePattern.c_str() });
             CHECK_TRUE(temp3.size() == 1);
             if (!temp3.empty()) {
                 CHECK_EQUAL(resultInclude, temp3.front());
             }
 
-            vector<string> temp4 = getFiles(inputInclude4, Paths::g_includePattern);
+            vector<string> temp4 = getFiles(inputInclude4, boost::regex{ Paths::g_includePattern.c_str() });
             CHECK_TRUE(temp4.size() == 1);
             if (!temp4.empty()) {
                 CHECK_EQUAL(resultInclude, temp4.front());
@@ -68,25 +69,25 @@ TEST(RegexSuccessTest)
             const string& inputUse4("use(\"blaBla.h\"         )");
             const string& resultUse("blaBla.h");
 
-            vector<string> temp1 = getFiles(inputUse1, Paths::g_usePattern);
+            vector<string> temp1 = getFiles(inputUse1, boost::regex{ Paths::g_usePattern.c_str() });
             CHECK_TRUE(temp1.size() == 1);
             if (!temp1.empty()) {
                 CHECK_EQUAL(resultUse, temp1.front());
             }
 
-            vector<string> temp2 = getFiles(inputUse2, Paths::g_usePattern);
+            vector<string> temp2 = getFiles(inputUse2, boost::regex{ Paths::g_usePattern.c_str() });
             CHECK_TRUE(temp2.size() == 1);
             if (!temp2.empty()) {
                 CHECK_EQUAL(resultUse, temp2.front());
             }
 
-            vector<string> temp3 = getFiles(inputUse3, Paths::g_usePattern);
+            vector<string> temp3 = getFiles(inputUse3, boost::regex{ Paths::g_usePattern.c_str() });
             CHECK_TRUE(temp3.size() == 1);
             if (!temp3.empty()) {
                 CHECK_EQUAL(resultUse, temp3.front());
             }
 
-            vector<string> temp4 = getFiles(inputUse4, Paths::g_usePattern);
+            vector<string> temp4 = getFiles(inputUse4, boost::regex{ Paths::g_usePattern.c_str() });
             CHECK_TRUE(temp4.size() == 1);
             if (!temp4.empty()) {
                 CHECK_EQUAL(resultUse, temp4.front());
@@ -103,13 +104,13 @@ TEST(RegexFailTest)
         const string& inputInclude3("# include \"blaBla.h");
         const string& inputInclude4("   include <  blaBla.h>");
 
-        const vector<string> temp1 = getFiles(inputInclude1, Paths::g_includePattern);
+        const vector<string> temp1 = getFiles(inputInclude1, boost::regex{ Paths::g_includePattern.c_str() });
         CHECK_FALSE(temp1.size() == 1);
-        const vector<string> temp2 = getFiles(inputInclude2, Paths::g_includePattern);
+        const vector<string> temp2 = getFiles(inputInclude2, boost::regex{ Paths::g_includePattern.c_str() });
         CHECK_FALSE(temp2.size() == 1);
-        const vector<string> temp3 = getFiles(inputInclude3, Paths::g_includePattern);
+        const vector<string> temp3 = getFiles(inputInclude3, boost::regex{ Paths::g_includePattern.c_str() });
         CHECK_FALSE(temp3.size() == 1);
-        const vector<string> temp4 = getFiles(inputInclude4, Paths::g_includePattern);
+        const vector<string> temp4 = getFiles(inputInclude4, boost::regex{ Paths::g_includePattern.c_str() });
         CHECK_FALSE(temp4.size() == 1);
     }
     {
@@ -117,11 +118,11 @@ TEST(RegexFailTest)
         const string& inputUse2("usadfse( \"blaBla.h\")");
         const string& inputUse3("      use    ---   (\"blaBla.h\")");
 
-        const vector<string> temp1 = getFiles(inputUse1, Paths::g_usePattern);
+        const vector<string> temp1 = getFiles(inputUse1, boost::regex{ Paths::g_usePattern.c_str() });
         CHECK_FALSE(temp1.size() == 1);
-        const vector<string> temp2 = getFiles(inputUse2, Paths::g_usePattern);
+        const vector<string> temp2 = getFiles(inputUse2, boost::regex{ Paths::g_usePattern.c_str() });
         CHECK_FALSE(temp2.size() == 1);
-        const vector<string> temp3 = getFiles(inputUse3, Paths::g_usePattern);
+        const vector<string> temp3 = getFiles(inputUse3, boost::regex{ Paths::g_usePattern.c_str() });
         CHECK_FALSE(temp3.size() == 1);
     }
 }
