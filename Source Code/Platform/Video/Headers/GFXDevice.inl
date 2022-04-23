@@ -65,6 +65,21 @@ GFXDevice::gpuState() noexcept {
     return _state;
 }
 
+inline ShaderProgram*
+GFXDevice::defaultIMShader() const {
+    return _imShader.get();
+}
+
+inline ShaderProgram*
+GFXDevice::defaultIMShaderWorld() const {
+    return _imWorldShader.get();
+}
+
+inline ShaderProgram*
+GFXDevice::defaultIMShaderOIT() const {
+    return _imWorldOITShader.get();
+}
+
 inline size_t
 GFXDevice::get2DStateBlock() const noexcept {
     return _state2DRenderingHash;

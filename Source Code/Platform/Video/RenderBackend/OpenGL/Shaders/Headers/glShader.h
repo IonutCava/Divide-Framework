@@ -39,7 +39,6 @@
 namespace Divide {
 
 enum class ShaderResult : U8;
-struct glBufferedPushConstantUploader;
 
 /// glShader represents one of a program's rendering stages (vertex, geometry, fragment, etc)
 /// It can be used simultaneously in multiple programs/pipelines
@@ -56,16 +55,17 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
     [[nodiscard]] bool load(ShaderProgram::ShaderLoadData& data);
 
-    [[nodiscard]] U32 getProgramHandle() const noexcept { return _programHandle; }
-
     void AddRef() noexcept { _refCount.fetch_add(1); }
     /// Returns true if ref count reached 0
     bool SubRef() noexcept { return _refCount.fetch_sub(1) == 1; }
+
     [[nodiscard]] size_t GetRef() const noexcept { return _refCount.load(); }
 
     PROPERTY_R(Str256, name);
     PROPERTY_R(bool, valid, false);
     PROPERTY_R(bool, loadedFromBinary, false);
+    PROPERTY_R_IW(UseProgramStageMask, stageMask, UseProgramStageMask::GL_NONE_BIT);
+    PROPERTY_R_IW(GLuint, handle, GLUtil::k_invalidObjectID);
 
    public:
     // ======================= static data ========================= //
@@ -79,27 +79,18 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
                                 const Str256& name,
                                 ShaderProgram::ShaderLoadData& data);
 
-    static glShader* LoadShader(glShader* shader,
-                                bool isNew,
-                                ShaderProgram::ShaderLoadData& data);
-
 
     static void InitStaticData();
     static void DestroyStaticData();
 
    private:
-    void uploadPushConstants(const PushConstants& constants) const;
-
     friend class glShaderProgram;
     [[nodiscard]] bool loadFromBinary();
     [[nodiscard]] ShaderResult uploadToGPU(GLuint parentProgramHandle);
 
-    void prepare() const;
     void onParentValidation();
-    [[nodiscard]] UseProgramStageMask stageMask() const noexcept { return _stageMask;  }
 
    private:
-
     static bool DumpBinary(GLuint handle, const Str256& name);
 
   private:
@@ -107,11 +98,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     /// A list of preprocessor defines (if the bool in the pair is true, #define is automatically added
     vector<ModuleDefine> _definesList;
     std::atomic_size_t _refCount;
-    UseProgramStageMask _stageMask;
-    GLuint _programHandle = GLUtil::k_invalidObjectID;
     vector<GLuint> _shaderIDs;
-
-    eastl::unique_ptr<glBufferedPushConstantUploader> _constantUploader = nullptr;
 
    private:
     /// Shader cache

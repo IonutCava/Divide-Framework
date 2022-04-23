@@ -111,6 +111,7 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     FORCE_INLINE bool bindRange(ShaderBufferLocation bindIndex, U32 offsetElementCount, U32 rangeElementCount) { return bindRange(to_U8(bindIndex), offsetElementCount, rangeElementCount); }
 
     [[nodiscard]] static size_t AlignmentRequirement(Usage usage) noexcept;
+
     PROPERTY_R(string, name);
 
    protected:

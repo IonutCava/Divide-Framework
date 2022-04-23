@@ -195,11 +195,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     ResourceCache* cache = parent().resourceCache();
     const Configuration& config = _parent.platformContext().config();
 
-    const ErrorCode err = ShaderProgram::PostInitAPI(cache);
-    if (err != ErrorCode::NO_ERR) {
-        return err;
-    }
-
     Texture::OnStartup(*this);
     RenderPassExecutor::OnStartup(*this);
     GFX::InitPools();
@@ -777,57 +772,98 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         }
     }
     {
-        ShaderModuleDescriptor geomModule = {};
-        geomModule._moduleType = ShaderType::GEOMETRY;
-        geomModule._sourceFile = "blur.glsl";
-        geomModule._variant = "GaussBlur";
-
-        ShaderModuleDescriptor fragModule = {};
-        fragModule._moduleType = ShaderType::FRAGMENT;
-        fragModule._sourceFile = "blur.glsl";
-        fragModule._variant = "GaussBlur";
-
         {
-            ShaderProgramDescriptor shaderDescriptorSingle = {};
-            shaderDescriptorSingle._modules.push_back(blurVertModule);
-            shaderDescriptorSingle._modules.push_back(geomModule);
-            shaderDescriptorSingle._modules.back()._defines.emplace_back("GS_MAX_INVOCATIONS 1");
-            shaderDescriptorSingle._modules.push_back(fragModule);
-            shaderDescriptorSingle._modules.back()._defines.emplace_back("GS_MAX_INVOCATIONS 1");
+            ShaderModuleDescriptor geomModule = {};
+            geomModule._moduleType = ShaderType::GEOMETRY;
+            geomModule._sourceFile = "blur.glsl";
+            geomModule._variant = "GaussBlur";
 
-            ResourceDescriptor blur("GaussBlur_Single");
-            blur.propertyDescriptor(shaderDescriptorSingle);
-            _blurGaussianShaderSingle = CreateResource<ShaderProgram>(cache, blur, loadTasks);
-            _blurGaussianShaderSingle->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
-                const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
-                PipelineDescriptor pipelineDescriptor;
-                pipelineDescriptor._stateHash = get2DStateBlock();
-                pipelineDescriptor._shaderProgramHandle = blurShader->handle();
-                pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
-                _blurGaussianPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
-            });
+            ShaderModuleDescriptor fragModule = {};
+            fragModule._moduleType = ShaderType::FRAGMENT;
+            fragModule._sourceFile = "blur.glsl";
+            fragModule._variant = "GaussBlur";
+
+            {
+                ShaderProgramDescriptor shaderDescriptorSingle = {};
+                shaderDescriptorSingle._modules.push_back(blurVertModule);
+                shaderDescriptorSingle._modules.push_back(geomModule);
+                shaderDescriptorSingle._modules.back()._defines.emplace_back("GS_MAX_INVOCATIONS 1");
+                shaderDescriptorSingle._modules.push_back(fragModule);
+                shaderDescriptorSingle._modules.back()._defines.emplace_back("GS_MAX_INVOCATIONS 1");
+
+                ResourceDescriptor blur("GaussBlur_Single");
+                blur.propertyDescriptor(shaderDescriptorSingle);
+                _blurGaussianShaderSingle = CreateResource<ShaderProgram>(cache, blur, loadTasks);
+                _blurGaussianShaderSingle->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
+                    const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
+                    PipelineDescriptor pipelineDescriptor;
+                    pipelineDescriptor._stateHash = get2DStateBlock();
+                    pipelineDescriptor._shaderProgramHandle = blurShader->handle();
+                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+                    _blurGaussianPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
+                    });
+            }
+            {
+                ShaderProgramDescriptor shaderDescriptorLayered = {};
+                shaderDescriptorLayered._modules.push_back(blurVertModule);
+                shaderDescriptorLayered._modules.push_back(geomModule);
+                shaderDescriptorLayered._modules.back()._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
+                shaderDescriptorLayered._modules.push_back(fragModule);
+                shaderDescriptorLayered._modules.back()._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
+                shaderDescriptorLayered._modules.back()._variant += ".Layered";
+                shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED");
+
+                ResourceDescriptor blur("GaussBlur_Layered");
+                blur.propertyDescriptor(shaderDescriptorLayered);
+                _blurGaussianShaderLayered = CreateResource<ShaderProgram>(cache, blur, loadTasks);
+                _blurGaussianShaderLayered->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
+                    const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
+                    PipelineDescriptor pipelineDescriptor;
+                    pipelineDescriptor._stateHash = get2DStateBlock();
+                    pipelineDescriptor._shaderProgramHandle = blurShader->handle();
+                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+                    _blurGaussianPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
+                    });
+            }
         }
         {
-            ShaderProgramDescriptor shaderDescriptorLayered = {};
-            shaderDescriptorLayered._modules.push_back(blurVertModule);
-            shaderDescriptorLayered._modules.push_back(geomModule);
-            shaderDescriptorLayered._modules.back()._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
-            shaderDescriptorLayered._modules.push_back(fragModule);
-            shaderDescriptorLayered._modules.back()._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
-            shaderDescriptorLayered._modules.back()._variant += ".Layered";
-            shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED");
+            ShaderModuleDescriptor vertModule = {};
+            vertModule._moduleType = ShaderType::VERTEX;
+            vertModule._sourceFile = "ImmediateModeEmulation.glsl";
 
-            ResourceDescriptor blur("GaussBlur_Layered");
-            blur.propertyDescriptor(shaderDescriptorLayered);
-            _blurGaussianShaderLayered = CreateResource<ShaderProgram>(cache, blur, loadTasks);
-            _blurGaussianShaderLayered->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource* res) {
-                const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
-                PipelineDescriptor pipelineDescriptor;
-                pipelineDescriptor._stateHash = get2DStateBlock();
-                pipelineDescriptor._shaderProgramHandle = blurShader->handle();
-                pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
-                _blurGaussianPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
-            });
+            ShaderModuleDescriptor fragModule = {};
+            fragModule._moduleType = ShaderType::FRAGMENT;
+            fragModule._sourceFile = "ImmediateModeEmulation.glsl";
+
+            ShaderProgramDescriptor shaderDescriptor = {};
+            shaderDescriptor._modules.push_back(vertModule);
+            shaderDescriptor._modules.push_back(fragModule);
+
+            // Create an immediate mode rendering shader that simulates the fixed function pipeline
+            {
+                ResourceDescriptor immediateModeShader("ImmediateModeEmulation");
+                immediateModeShader.waitForReady(true);
+                immediateModeShader.propertyDescriptor(shaderDescriptor);
+                _imShader = CreateResource<ShaderProgram>(cache, immediateModeShader);
+                assert(_imShader != nullptr);
+            }
+            {
+                shaderDescriptor._modules.back()._defines.emplace_back("WORLD_PASS");
+                ResourceDescriptor immediateModeShader("ImmediateModeEmulation-World");
+                immediateModeShader.waitForReady(true);
+                immediateModeShader.propertyDescriptor(shaderDescriptor);
+                _imWorldShader = CreateResource<ShaderProgram>(cache, immediateModeShader);
+                assert(_imWorldShader != nullptr);
+            }
+
+            {
+                shaderDescriptor._modules.back()._defines.emplace_back("OIT_PASS");
+                ResourceDescriptor immediateModeShader("ImmediateModeEmulation-OIT");
+                immediateModeShader.waitForReady(true);
+                immediateModeShader.propertyDescriptor(shaderDescriptor);
+                _imWorldOITShader = CreateResource<ShaderProgram>(cache, immediateModeShader);
+                assert(_imWorldOITShader != nullptr);
+            }
         }
     }
     {
@@ -882,7 +918,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         RenderStateBlock primitiveStateBlock{};
 
         PipelineDescriptor pipelineDesc;
-        pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->handle();
+        pipelineDesc._shaderProgramHandle = _imWorldShader->handle();
 
         pipelineDesc._stateHash = primitiveStateBlock.getHash();
         _debugGizmoPipeline = newPipeline(pipelineDesc);
@@ -916,7 +952,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     }
 
     // Everything is ready from the rendering point of view
-    return err;
+    return ErrorCode::NO_ERR;
 }
 
 
@@ -958,6 +994,9 @@ void GFXDevice::closeRenderingAPI() {
     _blurBoxShaderLayered = nullptr;
     _blurGaussianShaderSingle = nullptr;
     _blurGaussianShaderLayered = nullptr;
+    _imShader = nullptr;
+    _imWorldShader = nullptr;
+    _imWorldOITShader = nullptr;
 
     // Close the shader manager
     MemoryManager::DELETE(_shaderComputeQueue);

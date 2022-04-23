@@ -57,10 +57,6 @@ ResourcePath ShaderProgram::shaderAtomLocationPrefix[to_base(ShaderType::COUNT) 
 U64 ShaderProgram::shaderAtomExtensionHash[to_base(ShaderType::COUNT) + 1];
 Str8 ShaderProgram::shaderAtomExtensionName[to_base(ShaderType::COUNT) + 1];
 
-ShaderProgram_ptr ShaderProgram::s_imShader = nullptr;
-ShaderProgram_ptr ShaderProgram::s_imWorldShader = nullptr;
-ShaderProgram_ptr ShaderProgram::s_imWorldOITShader = nullptr;
-ShaderProgram_ptr ShaderProgram::s_nullShader = nullptr;
 ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
 ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
 ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
@@ -658,9 +654,164 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     return glswState == 1;
 }
 
-bool DeInitGLSW() noexcept {
-    // Shutdown GLSW
-    return glswShutdown() == 1;
+ ShaderProgram::UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const ShaderProgram::UniformBlockUploaderDescriptor& descriptor) 
+ {
+    _descriptor = descriptor;
+
+    const auto GetSizeOf = [](const GFX::PushConstantType type) noexcept -> size_t {
+        switch (type) {
+            case GFX::PushConstantType::INT: return sizeof(I32);
+            case GFX::PushConstantType::UINT: return sizeof(U32);
+            case GFX::PushConstantType::FLOAT: return sizeof(F32);
+            case GFX::PushConstantType::DOUBLE: return sizeof(D64);
+        };
+
+        DIVIDE_UNEXPECTED_CALL_MSG("Unexpected push constant type");
+        return 0u;
+    };
+
+    if (_descriptor._reflectionData._blockMembers.empty()) {
+        return;
+    }
+
+    const size_t activeMembers = _descriptor._reflectionData._blockMembers.size();
+    _blockMembers.resize(activeMembers);
+    if (_descriptor._reflectionData._blockSize > _uniformBlockSizeAligned || _buffer == nullptr) {
+        _uniformBlockSizeAligned = Util::GetAlignmentCorrected(_descriptor._reflectionData._blockSize, ShaderBuffer::AlignmentRequirement(ShaderBuffer::Usage::CONSTANT_BUFFER));
+        _localDataCopy.resize(_uniformBlockSizeAligned);
+
+        ShaderBufferDescriptor bufferDescriptor{};
+        bufferDescriptor._name = _descriptor._reflectionData._targetBlockName.c_str();
+        bufferDescriptor._name.append("_");
+        bufferDescriptor._name.append(_descriptor._parentShaderName.c_str());
+        bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
+        bufferDescriptor._bufferParams._elementCount = 1;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+        bufferDescriptor._ringBufferLength = 3;
+        bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
+        _buffer = context.newSB(bufferDescriptor);
+    } else {
+        _buffer->clearData();
+    }
+
+    std::memset(_localDataCopy.data(), 0, _localDataCopy.size());
+
+    size_t requiredExtraMembers = 0;
+    for (size_t member = 0; member < activeMembers; ++member) {
+        BlockMember& bMember = _blockMembers[member];
+        bMember._externalData = _descriptor._reflectionData._blockMembers[member];
+        bMember._nameHash = _ID(bMember._externalData._name.c_str());
+        bMember._elementSize = GetSizeOf(bMember._externalData._type);
+        if (bMember._externalData._matrixDimensions.x > 0 || bMember._externalData._matrixDimensions.y > 0) {
+            bMember._elementSize = bMember._externalData._matrixDimensions.x * bMember._externalData._matrixDimensions.y * bMember._elementSize;
+        } else {
+            bMember._elementSize = bMember._externalData._vectorDimensions * bMember._elementSize;
+        }
+
+        bMember._size = bMember._elementSize;
+        if (bMember._externalData._arrayInnerSize > 0) {
+            bMember._size *= bMember._externalData._arrayInnerSize;
+        }
+        if (bMember._externalData._arrayOuterSize > 0) {
+            bMember._size *= bMember._externalData._arrayOuterSize;
+        }
+
+        requiredExtraMembers += (bMember._externalData._arrayInnerSize * bMember._externalData._arrayOuterSize);
+    }
+
+    vector<BlockMember> arrayMembers;
+    arrayMembers.reserve(requiredExtraMembers);
+
+    for (size_t member = 0; member < activeMembers; ++member) {
+        const BlockMember& bMember = _blockMembers[member];
+        size_t offset = 0u;
+        if (bMember._externalData._arrayInnerSize > 0) {
+            for (size_t i = 0; i < bMember._externalData._arrayOuterSize; ++i) {
+                for (size_t j = 0; j < bMember._externalData._arrayInnerSize; ++j) {
+                    BlockMember newMember = bMember;
+                    newMember._externalData._name = Util::StringFormat("%s[%d][%d]", bMember._externalData._name.c_str(), i, j);
+                    newMember._nameHash = _ID(newMember._externalData._name.c_str());
+                    newMember._externalData._arrayOuterSize -= i;
+                    newMember._externalData._arrayInnerSize -= j;
+                    newMember._size -= offset;
+                    newMember._externalData._offset = offset;
+                    offset += bMember._elementSize;
+                    arrayMembers.push_back(newMember);
+                }
+            }
+            for (size_t i = 0; i < bMember._externalData._arrayOuterSize; ++i) {
+                BlockMember newMember = bMember;
+                newMember._externalData._name = Util::StringFormat("%s[%d]", bMember._externalData._name.c_str(), i);
+                newMember._nameHash = _ID(newMember._externalData._name.c_str());
+                newMember._externalData._arrayOuterSize -= i;
+                newMember._size -= i * (bMember._externalData._arrayInnerSize * bMember._elementSize);
+                newMember._externalData._offset = i * (bMember._externalData._arrayInnerSize * bMember._elementSize);
+                arrayMembers.push_back(newMember);
+            }
+        } else if (bMember._externalData._arrayOuterSize > 0) {
+            for (size_t i = 0; i < bMember._externalData._arrayOuterSize; ++i) {
+                BlockMember newMember = bMember;
+                newMember._externalData._name = Util::StringFormat("%s[%d]", bMember._externalData._name.c_str(), i);
+                newMember._nameHash = _ID(newMember._externalData._name.c_str());
+                newMember._externalData._arrayOuterSize -= i;
+                newMember._size -= offset;
+                newMember._externalData._offset = offset;
+                offset += bMember._elementSize;
+                arrayMembers.push_back(newMember);
+            }
+        }
+    }
+
+    if (!arrayMembers.empty()) {
+        _blockMembers.insert(end(_blockMembers), begin(arrayMembers), end(arrayMembers));
+    }
+}
+
+void ShaderProgram::UniformBlockUploader::uploadPushConstant(const GFX::PushConstant& constant, bool force) noexcept {
+    if (constant.type() == GFX::PushConstantType::COUNT || constant.bindingHash() == 0u) {
+        return;
+    }
+
+    if (_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
+        for (BlockMember& member : _blockMembers) {
+            if (member._nameHash == constant.bindingHash()) {
+                DIVIDE_ASSERT(constant.dataSize() <= member._size);
+
+                      Byte* dst = &_localDataCopy.data()[member._externalData._offset];
+                const Byte* src = constant.data();
+                const size_t numBytes = constant.dataSize();
+
+                if (std::memcmp(dst, src, numBytes) != 0) {
+                    std::memcpy(dst, src, numBytes);
+                    _uniformBlockDirty = true;
+                }
+
+                return;
+            }
+        }
+    }
+}
+
+void ShaderProgram::UniformBlockUploader::commit() {
+    if (!_uniformBlockDirty) {
+        return;
+    }
+
+    DIVIDE_ASSERT(_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr);
+    if (_needsQueueIncrement) {
+        _buffer->incQueue();
+        _needsQueueIncrement = false;
+    }
+    _buffer->writeData(_localDataCopy.data());
+    _needsQueueIncrement = true;
+    _uniformBlockDirty = false;
+}
+
+void ShaderProgram::UniformBlockUploader::prepare() {
+    if (_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
+        _buffer->bind(to_U8(_descriptor._reflectionData._targetBlockBindingIndex));
+    }
 }
 
 ShaderProgram::ShaderProgram(GFXDevice& context, 
@@ -698,6 +849,8 @@ bool ShaderProgram::load() {
 }
 
 bool ShaderProgram::unload() {
+    // Our GPU Arena will clean up the memory, but we should still destroy these
+    _uniformBlockBuffers.clear();
     // Unregister the program from the manager
     return UnregisterShaderProgram(handle());
 }
@@ -815,66 +968,9 @@ ErrorCode ShaderProgram::OnStartup(ResourceCache* parentCache) {
     return ErrorCode::NO_ERR;
 }
 
-ErrorCode ShaderProgram::PostInitAPI(ResourceCache* parentCache) {
-    ShaderModuleDescriptor vertModule = {};
-    vertModule._moduleType = ShaderType::VERTEX;
-    vertModule._sourceFile = "ImmediateModeEmulation.glsl";
-
-    ShaderModuleDescriptor fragModule = {};
-    fragModule._moduleType = ShaderType::FRAGMENT;
-    fragModule._sourceFile = "ImmediateModeEmulation.glsl";
-
-    ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
-
-    // Create an immediate mode rendering shader that simulates the fixed function pipeline
-    {
-        ResourceDescriptor immediateModeShader("ImmediateModeEmulation");
-        immediateModeShader.waitForReady(true);
-        immediateModeShader.propertyDescriptor(shaderDescriptor);
-        s_imShader = CreateResource<ShaderProgram>(parentCache, immediateModeShader);
-        assert(s_imShader != nullptr);
-    }
-    {
-        shaderDescriptor._modules.back()._defines.emplace_back("WORLD_PASS");
-        ResourceDescriptor immediateModeShader("ImmediateModeEmulation-World");
-        immediateModeShader.waitForReady(true);
-        immediateModeShader.propertyDescriptor(shaderDescriptor);
-        s_imWorldShader = CreateResource<ShaderProgram>(parentCache, immediateModeShader);
-        assert(s_imWorldShader != nullptr);
-    }
-
-    {
-        shaderDescriptor._modules.back()._defines.emplace_back("OIT_PASS");
-        ResourceDescriptor immediateModeShader("ImmediateModeEmulation-OIT");
-        immediateModeShader.waitForReady(true);
-        immediateModeShader.propertyDescriptor(shaderDescriptor);
-        s_imWorldOITShader = CreateResource<ShaderProgram>(parentCache, immediateModeShader);
-        assert(s_imWorldOITShader != nullptr);
-    }
-    shaderDescriptor._modules.clear();
-    ResourceDescriptor shaderDesc("NULL");
-    shaderDesc.waitForReady(true);
-    shaderDesc.propertyDescriptor(shaderDescriptor);
-    // Create a null shader (basically telling the API to not use any shaders when bound)
-    s_nullShader = CreateResource<ShaderProgram>(parentCache, shaderDesc);
-
-    // The null shader should never be nullptr!!!!
-    if (s_nullShader == nullptr) {  // LoL -Ionut
-        return ErrorCode::GLSL_INIT_ERROR;
-    }
-
-    return ErrorCode::NO_ERR;
-}
-
 bool ShaderProgram::OnShutdown() {
     SpirvHelper::Finalize();
-    // Make sure we unload all shaders
-    s_nullShader.reset();
-    s_imShader.reset();
-    s_imWorldShader.reset();
-    s_imWorldOITShader.reset();
+
     while (!s_recompileQueue.empty()) {
         s_recompileQueue.pop();
     }
@@ -884,7 +980,7 @@ bool ShaderProgram::OnShutdown() {
     FileWatcherManager::deallocateWatcher(s_shaderFileWatcherID);
     s_shaderFileWatcherID = -1;
 
-    return DeInitGLSW();
+    return glswShutdown() == 1;
 }
 
 bool ShaderProgram::OnThreadCreated(const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID) {
@@ -970,26 +1066,6 @@ ShaderProgram* ShaderProgram::FindShaderProgram(const Handle shaderHandle) {
     return nullptr;
 }
 
-const ShaderProgram_ptr& ShaderProgram::DefaultShader() noexcept {
-    return s_imShader;
-}
-
-const ShaderProgram_ptr& ShaderProgram::DefaultShaderWorld() noexcept {
-    return s_imWorldShader;
-}
-
-const ShaderProgram_ptr& ShaderProgram::DefaultShaderOIT() noexcept {
-    return s_imWorldOITShader;
-}
-
-const ShaderProgram_ptr& ShaderProgram::NullShader() noexcept {
-    return s_nullShader;
-}
-
-const I64 ShaderProgram::NullShaderGUID() noexcept {
-    return s_nullShader == nullptr ? 0 : s_nullShader->getGUID();
-}
-
 void ShaderProgram::RebuildAllShaders() {
     ScopedLock<Mutex> lock(s_programLock);
     for (const ShaderProgramMapEntry& entry : s_shaderPrograms) {
@@ -1064,15 +1140,15 @@ size_t ShaderProgram::DefinesHash(const ModuleDefines& defines) {
 }
 
 
-const string& ShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed) {
+const string& ShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<U64>& foundAtomIDsInOut, bool& wasParsed) {
     ScopedLock<SharedMutex> w_lock(s_atomLock);
-    return ShaderFileReadLocked(filePath, atomName, recurse, foundAtoms, wasParsed);
+    return ShaderFileReadLocked(filePath, atomName, recurse, foundAtomIDsInOut, wasParsed);
 }
 
 eastl::string ShaderProgram::PreprocessIncludes(const ResourcePath& name,
                                                 const eastl::string& source,
                                                 const I32 level,
-                                                vector<ResourcePath>& foundAtoms,
+                                                vector<U64>& foundAtomIDsInOut,
                                                 const bool lock) {
     if (level > s_maxHeaderRecursionLevel) {
         Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INCLUD_LIMIT")));
@@ -1104,7 +1180,7 @@ eastl::string ShaderProgram::PreprocessIncludes(const ResourcePath& name,
             output.append(line.c_str());
         } else {
             const ResourcePath includeFile = ResourcePath(Util::Trim(matches[1].str()));
-            foundAtoms.push_back(includeFile);
+            foundAtomIDsInOut.push_back(_ID(includeFile.c_str()));
 
             ShaderType typeIndex = ShaderType::COUNT;
             bool found = false;
@@ -1121,9 +1197,9 @@ eastl::string ShaderProgram::PreprocessIncludes(const ResourcePath& name,
             DIVIDE_ASSERT(found, "Invalid shader include type");
             bool wasParsed = false;
             if (lock) {
-                includeString = ShaderFileRead(shaderAtomLocationPrefix[to_U32(typeIndex)], includeFile, true, foundAtoms, wasParsed).c_str();
+                includeString = ShaderFileRead(shaderAtomLocationPrefix[to_U32(typeIndex)], includeFile, true, foundAtomIDsInOut, wasParsed).c_str();
             } else {
-                includeString = ShaderFileReadLocked(shaderAtomLocationPrefix[to_U32(typeIndex)], includeFile, true, foundAtoms, wasParsed).c_str();
+                includeString = ShaderFileReadLocked(shaderAtomLocationPrefix[to_U32(typeIndex)], includeFile, true, foundAtomIDsInOut, wasParsed).c_str();
             }
             if (includeString.empty()) {
                 Console::errorfn(Locale::Get(_ID("ERROR_GLSL_NO_INCLUDE_FILE")), name.c_str(), lineNumber, includeFile.c_str());
@@ -1131,7 +1207,7 @@ eastl::string ShaderProgram::PreprocessIncludes(const ResourcePath& name,
             if (wasParsed) {
                 output.append(includeString);
             } else {
-                output.append(PreprocessIncludes(name, includeString, level + 1, foundAtoms, lock));
+                output.append(PreprocessIncludes(name, includeString, level + 1, foundAtomIDsInOut, lock));
             }
         }
 
@@ -1143,7 +1219,7 @@ eastl::string ShaderProgram::PreprocessIncludes(const ResourcePath& name,
 }
 
 /// Open the file found at 'filePath' matching 'atomName' and return it's source code
-const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed) {
+const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<U64>& foundAtomIDsInOut, bool& wasParsed) {
     const U64 atomNameHash = _ID(atomName.c_str());
     // See if the atom was previously loaded and still in cache
     const AtomMap::iterator it = s_atoms.find(atomNameHash);
@@ -1151,7 +1227,9 @@ const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, 
     // If that's the case, return the code from cache
     if (it != std::cend(s_atoms)) {
         const auto& atoms = s_atomIncludes[atomNameHash];
-        foundAtoms.insert(end(foundAtoms), begin(atoms), end(atoms));
+        for (const auto& atom : atoms) {
+            foundAtomIDsInOut.push_back(_ID(atom.c_str()));
+        }
         wasParsed = true;
         return it->second;
     }
@@ -1169,10 +1247,13 @@ const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, 
     vector<ResourcePath> atoms = {};
     vector<UniformDeclaration> uniforms = {};
     if (recurse) {
-        output = PreprocessIncludes(atomName, output, 0, atoms, false);
+        output = PreprocessIncludes(atomName, output, 0, foundAtomIDsInOut, false);
     }
 
-    foundAtoms.insert(end(foundAtoms), begin(atoms), end(atoms));
+    for (const auto& atom : atoms) {
+        foundAtomIDsInOut.push_back(_ID(atom.c_str()));
+    }
+
     const auto&[entry, result] = s_atoms.insert({ atomNameHash, output.c_str() });
     assert(result);
     s_atomIncludes.insert({atomNameHash, atoms});
@@ -1265,6 +1346,8 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
     };
 
     setGLSWPath(reloadExisting);
+    _uniformBlockBuffers.clear();
+    _usedAtomIDs.resize(0);
 
     for (const ShaderModuleDescriptor& shaderDescriptor : _descriptor._modules) {
         const U64 fileHash = _ID(shaderDescriptor._sourceFile.data());
@@ -1298,20 +1381,20 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
             }
             loadDataPerFile._programName.append(stageData._fileName);
 
-            if (!stageData._atomUniformPair._uniforms.empty()) {
-                stageUniforms.insert(begin(stageData._atomUniformPair._uniforms), end(stageData._atomUniformPair._uniforms));
+            if (!stageData._uniforms.empty()) {
+                stageUniforms.insert(begin(stageData._uniforms), end(stageData._uniforms));
             }
 
-            stageData._atomUniformPair._atoms.emplace_back(data._sourceFile);
+            _usedAtomIDs.emplace_back(_ID(data._sourceFile.c_str()));
 
             if (stageData._sourceCodeGLSL.empty() && stageData._sourceCodeSpirV.empty()) {
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
 
-        loadDataPerFile._loadData._uniformBlockOffset = blockOffset++;
-        loadDataPerFile._loadData._uniformBlockName = Util::StringFormat("dvd_UniformBlock_%lld", loadDataPerFile._loadData._uniformBlockOffset);
-        loadDataPerFile._loadData._uniformBlockOffset += to_U32(ShaderBufferLocation::UNIFORM_BLOCK);
+        loadDataPerFile._loadData._reflectionData._targetBlockBindingIndex = blockOffset++;
+        loadDataPerFile._loadData._reflectionData._targetBlockName = Util::StringFormat("dvd_UniformBlock_%lld", loadDataPerFile._loadData._reflectionData._targetBlockBindingIndex);
+        loadDataPerFile._loadData._reflectionData._targetBlockBindingIndex += to_U32(ShaderBufferLocation::UNIFORM_BLOCK);
 
         if (!stageUniforms.empty()) {
             string& uniformBlock = loadDataPerFile._loadData._uniformBlock;
@@ -1329,18 +1412,55 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
                 uniformBlock.append(Util::StringFormat("\n#define %s %s.%s", rawName.c_str(), UNIFORM_BLOCK_NAME, rawName.c_str()));
             }
 
-            uniformBlock = Util::StringFormat(uniformBlock, loadDataPerFile._loadData._uniformBlockOffset, loadDataPerFile._loadData._uniformBlockName.c_str());
+            uniformBlock = Util::StringFormat(uniformBlock, loadDataPerFile._loadData._reflectionData._targetBlockBindingIndex, loadDataPerFile._loadData._reflectionData._targetBlockName.c_str());
         }
+
+        for (LoadData& it : loadDataPerFile._loadData._data) {
+            if (it._codeSource == ShaderProgram::LoadData::SourceCodeSource::SOURCE_FILES) {
+                Util::ReplaceStringInPlace(it._sourceCodeGLSL, "//_CUSTOM_UNIFORMS_\\", loadDataPerFile._loadData._uniformBlock);
+            }
+            ParseGLSLSource(loadDataPerFile._loadData._reflectionData, it, false);
+        }
+
+        initUniformUploader(loadDataPerFile);
     }
 
     return true;
+}
+
+void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData) {
+    const ShaderLoadData& loadData = shaderFileData._loadData;
+
+    if (!loadData._reflectionData._blockMembers.empty()) {
+        UniformBlockUploaderDescriptor descriptor{};
+        descriptor._parentShaderName = shaderFileData._programName.c_str();
+        descriptor._reflectionData = loadData._reflectionData;
+        _uniformBlockBuffers.emplace_back(_context, descriptor);
+    }
+}
+
+void ShaderProgram::uploadPushConstants(const PushConstants& constants) {
+    OPTICK_EVENT()
+
+    for (auto& blockBuffer : _uniformBlockBuffers) {
+        for (const GFX::PushConstant& constant : constants.data()) {
+            blockBuffer.uploadPushConstant(constant);
+        }
+        blockBuffer.commit();
+    }
+}
+
+void ShaderProgram::preparePushConstants() {
+    for (auto& blockBuffer : _uniformBlockBuffers) {
+        blockBuffer.prepare();
+    }
 }
 
 void ShaderProgram::QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName) {
     g_sDumpToFileQueue.enqueue({ fileName, sourceCode });
 }
 
-void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut) const {
+void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut) {
     auto& glslCodeOut = loadDataInOut._sourceCodeGLSL;
     auto& spirvCodeOut = loadDataInOut._sourceCodeSpirV;
 
@@ -1391,9 +1511,9 @@ void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
             }
             // And replace in place with our program's headers created earlier
             Util::ReplaceStringInPlace(glslCodeOut, "_CUSTOM_DEFINES__", header);
-            glslCodeOut = PreprocessIncludes(ResourcePath(resourceName()), glslCodeOut, 0, loadDataInOut._atomUniformPair._atoms, true);
+            glslCodeOut = PreprocessIncludes(ResourcePath(resourceName()), glslCodeOut, 0, _usedAtomIDs, true);
             glslCodeOut = Preprocessor::PreProcess(glslCodeOut, loadDataInOut._fileName.c_str());
-            glslCodeOut = GatherUniformDeclarations(glslCodeOut, loadDataInOut._atomUniformPair._uniforms);
+            glslCodeOut = GatherUniformDeclarations(glslCodeOut, loadDataInOut._uniforms);
 
             loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
         }
@@ -1426,7 +1546,14 @@ void ShaderProgram::OnAtomChange(const std::string_view atomName, const FileUpda
 }
 
 void ShaderProgram::onAtomChangeInternal(const std::string_view atomName, const FileUpdateEvent evt) {
-    NOP();
+    const U64 atomNameHash = _ID(string{ atomName }.c_str());
+
+    for (const U64 atomID : _usedAtomIDs) {
+        if (atomID == atomNameHash) {
+            s_recompileQueue.push(this);
+            break;
+        }
+    }
 }
 
 void ShaderProgram::setGLSWPath(const bool clearExisting) {

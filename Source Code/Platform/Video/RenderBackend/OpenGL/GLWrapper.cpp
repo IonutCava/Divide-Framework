@@ -674,7 +674,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             }
 
             const PushConstants& pushConstants = commandBuffer.get<GFX::SendPushConstantsCommand>(entry)->_constants;
-            static_cast<glShaderProgram*>(program)->uploadPushConstants(pushConstants);
+            program->uploadPushConstants(pushConstants);
         } break;
         case GFX::CommandType::SET_SCISSOR: {
             OPTICK_EVENT("SET_SCISSOR");

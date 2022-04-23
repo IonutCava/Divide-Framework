@@ -459,7 +459,7 @@ ShaderProgram::Handle Material::computeAndGetProgramHandle(const RenderStagePass
         }
     }
 
-    return ShaderProgram::DefaultShader()->handle();
+    return _context.defaultIMShader()->handle();
 }
 
 ShaderProgram::Handle Material::getProgramHandle(const RenderStagePass renderStagePass) const {
@@ -472,7 +472,7 @@ ShaderProgram::Handle Material::getProgramHandle(const RenderStagePass renderSta
     }
     DIVIDE_UNEXPECTED_CALL();
 
-    return ShaderProgram::DefaultShader()->handle();
+    return _context.defaultIMShader()->handle();
 }
 
 bool Material::canDraw(const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading) {

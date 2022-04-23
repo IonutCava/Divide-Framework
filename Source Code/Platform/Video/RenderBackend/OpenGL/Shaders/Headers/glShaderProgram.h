@@ -88,10 +88,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     /// Make sure this program is ready for deletion
     bool unload() override;
 
-    void uploadPushConstants(const PushConstants& constants);
-
-    void onAtomChangeInternal(std::string_view atomName, FileUpdateEvent evt) override;
-
   protected:
     ShaderResult validatePreBind(bool rebind = true);
     void processValidation();

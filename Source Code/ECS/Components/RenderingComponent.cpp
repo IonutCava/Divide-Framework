@@ -402,7 +402,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
                 }
             } else {
                 pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
-                pipelineDescriptor._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->handle();
+                pipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();
             }
             if (renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS) {
                 BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];

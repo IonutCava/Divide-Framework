@@ -111,6 +111,8 @@ inline bool operator!=(const ShaderProgramMapEntry& lhs, const ShaderProgramMapE
 }
 
 namespace Reflection {
+    static constexpr U32 INVALID_BINDING_INDEX = std::numeric_limits<U32>::max();
+
     struct BlockMember {
         GFX::PushConstantType _type{ GFX::PushConstantType::COUNT };
         Str64 _name{};
@@ -122,6 +124,7 @@ namespace Reflection {
     };
 
     struct Data {
+        U32 _targetBlockBindingIndex = INVALID_BINDING_INDEX;
         string _targetBlockName;
         size_t _blockSize{ 0u };
         vector<BlockMember> _blockMembers{};
@@ -139,11 +142,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
         Str256 _name;
     };
 
-    struct AtomUniformPair {
-        vector<ResourcePath> _atoms;
-        vector<UniformDeclaration> _uniforms;
-    };
-
     // one per shader type!
     struct LoadData {
         enum class SourceCodeSource : U8 {
@@ -152,7 +150,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
             SPIRV_CACHE,
             COUNT
         };
-        AtomUniformPair _atomUniformPair;
+        vector<UniformDeclaration> _uniforms;
         std::vector<U32> _sourceCodeSpirV;
         eastl::string _sourceCodeGLSL;
         Str256 _name = "";
@@ -163,11 +161,41 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     };
 
     struct ShaderLoadData {
-        U32 _uniformBlockOffset{ 0u };
         string _uniformBlock{};
-        string _uniformBlockName{};
         Reflection::Data _reflectionData{};
         vector<LoadData> _data;
+    };
+
+    struct UniformBlockUploaderDescriptor {
+        eastl::string _parentShaderName = "";
+        Reflection::Data _reflectionData{};
+    };
+
+    struct UniformBlockUploader {
+        struct BlockMember
+        {
+            Reflection::BlockMember _externalData;
+            U64    _nameHash{ 0u };
+            size_t _size{ 0 };
+            size_t _elementSize{ 0 };
+        };
+
+
+        explicit UniformBlockUploader(GFXDevice& context, const UniformBlockUploaderDescriptor& descriptor);
+
+        void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept;
+        void commit();
+        void prepare();
+
+    private:
+        vector<Byte> _localDataCopy;
+        vector<BlockMember> _blockMembers;
+        ShaderBuffer* _buffer = nullptr;
+        UniformBlockUploaderDescriptor _descriptor;
+        size_t _uniformBlockSizeAligned = 0u;
+        bool _uniformBlockDirty = false;
+        bool _needsQueueIncrement = false;
+
     };
 
     using Handle = PoolHandle;
@@ -207,47 +235,12 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     virtual bool recompile(bool& skipped);
 
-    /** ------ BEGIN EXPERIMENTAL CODE ----- **/
-    size_t getFunctionCount(const ShaderType shader) noexcept {
-        return _functionIndex[to_U32(shader)].size();
-    }
-
-    void setFunctionCount(const ShaderType shader, const size_t count) {
-        _functionIndex[to_U32(shader)].resize(count, 0);
-    }
-
-    void setFunctionIndex(const ShaderType shader, const U32 index, const U32 functionEntry) {
-        const U32 shaderTypeValue = to_U32(shader);
-
-        if (_functionIndex[shaderTypeValue].empty()) {
-            return;
-        }
-
-        DIVIDE_ASSERT(index < _functionIndex[shaderTypeValue].size(),
-                      "ShaderProgram error: Invalid function index specified "
-                      "for update!");
-        if (_availableFunctionIndex[shaderTypeValue].empty()) {
-            return;
-        }
-
-        DIVIDE_ASSERT(
-            functionEntry < _availableFunctionIndex[shaderTypeValue].size(),
-            "ShaderProgram error: Specified function entry does not exist!");
-        _functionIndex[shaderTypeValue][index] = _availableFunctionIndex[shaderTypeValue][functionEntry];
-    }
-
-    U32 addFunctionIndex(const ShaderType shader, const U32 index) {
-        const U32 shaderTypeValue = to_U32(shader);
-
-        _availableFunctionIndex[shaderTypeValue].push_back(index);
-        return to_U32(_availableFunctionIndex[shaderTypeValue].size() - 1);
-    }
-    /** ------ END EXPERIMENTAL CODE ----- **/
+    void uploadPushConstants(const PushConstants& constants);
+    void preparePushConstants();
 
     //==================== static methods ===============================//
     static void Idle(PlatformContext& platformContext);
     [[nodiscard]] static ErrorCode OnStartup(ResourceCache* parentCache);
-    [[nodiscard]] static ErrorCode PostInitAPI(ResourceCache* parentCache);
     [[nodiscard]] static bool OnShutdown();
     [[nodiscard]] static bool OnThreadCreated(const GFXDevice& gfx, const std::thread::id& threadID);
     /// Queue a shaderProgram recompile request
@@ -258,16 +251,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     static void RegisterShaderProgram(ShaderProgram* shaderProgram);
     /// Find a specific shader program by handle.
     [[nodiscard]] static ShaderProgram* FindShaderProgram(Handle shaderHandle);
-
-    /// Return a default shader used for general purpose rendering
-    [[nodiscard]] static const ShaderProgram_ptr& DefaultShader() noexcept;
-    /// Return a default shader used for general purpose rendering in the main rendering pass
-    [[nodiscard]] static const ShaderProgram_ptr& DefaultShaderWorld() noexcept;
-    /// Return a default shader used for general purpose rendering in the main OIT pass
-    [[nodiscard]] static const ShaderProgram_ptr& DefaultShaderOIT() noexcept;
-
-    [[nodiscard]] static const ShaderProgram_ptr& NullShader() noexcept;
-    [[nodiscard]] const I64 NullShaderGUID() noexcept;
 
     static void RebuildAllShaders();
 
@@ -307,13 +290,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
      static void UseShaderBinaryCache(const bool state) noexcept { s_useShaderBinaryCache = state; if (state) { UseShaderTextCache(false); } }
 
    protected:
-    /// Used to render geometry without valid materials.
-    /// Should emulate the basic fixed pipeline functions (no lights, just colour and texture)
-    static ShaderProgram_ptr s_imShader;
-    static ShaderProgram_ptr s_imWorldShader;
-    static ShaderProgram_ptr s_imWorldOITShader;
-    /// Pointer to a shader that we will perform operations on
-    static ShaderProgram_ptr s_nullShader;
     /// Only 1 shader program per frame should be recompiled to avoid a lot of stuttering
     static ShaderQueue s_recompileQueue;
     /// Shader program cache
@@ -328,13 +304,17 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
 protected:
     virtual void threadedLoad(bool reloadExisting);
-    virtual void onAtomChangeInternal(std::string_view atomName, FileUpdateEvent evt);
     virtual bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting);
             void setGLSWPath(bool clearExisting);
-   void loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut) const;
+
+    void onAtomChangeInternal(std::string_view atomName, FileUpdateEvent evt);
+
+    void loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut);
+
+    void initUniformUploader(const PerFileShaderData& loadData);
 private:
-    static const string& ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed);
-    static const string& ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<ResourcePath>& foundAtoms, bool& wasParsed);
+    static const string& ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<U64>& foundAtomIDsInOut, bool& wasParsed);
+    static const string& ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, vector<U64>& foundAtomIDsInOut, bool& wasParsed);
 
     static bool ShaderFileRead(const ResourcePath& filePath, const ResourcePath& fileName, eastl::string& sourceCodeOut);
     static bool ShaderFileWrite(const ResourcePath& filePath, const ResourcePath& fileName, const char* sourceCode);
@@ -346,18 +326,19 @@ private:
     static eastl::string PreprocessIncludes(const ResourcePath& name,
                                         const eastl::string& source,
                                         I32 level,
-                                        vector<ResourcePath>& foundAtoms,
+                                        vector<U64>& foundAtomIDsInOut,
                                         bool lock);
-   private:
-    std::array<vector<U32>, to_base(ShaderType::COUNT)> _functionIndex;
-    std::array<vector<U32>, to_base(ShaderType::COUNT)> _availableFunctionIndex;
-
    protected:
     template <typename T>
     friend class ImplResourceLoader;
 
     const ShaderProgramDescriptor _descriptor;
 
+   protected:
+    vector<UniformBlockUploader> _uniformBlockBuffers;
+    vector<U64> _usedAtomIDs;
+
+   protected:
     static bool s_useShaderTextCache;
     static bool s_useShaderBinaryCache;
     static std::atomic_int s_shaderCount;

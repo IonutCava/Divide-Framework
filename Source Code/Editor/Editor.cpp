@@ -316,7 +316,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 
         PipelineDescriptor pipelineDesc;
         pipelineDesc._stateHash = _context.gfx().getDefaultStateBlock(true);
-        pipelineDesc._shaderProgramHandle = ShaderProgram::DefaultShaderWorld()->handle();
+        pipelineDesc._shaderProgramHandle = _context.gfx().defaultIMShaderWorld()->handle();
         _axisGizmoPipeline = _context.gfx().newPipeline(pipelineDesc);
     }
 

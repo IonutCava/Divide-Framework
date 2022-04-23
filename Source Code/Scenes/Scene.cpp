@@ -90,7 +90,7 @@ Scene::Scene(PlatformContext& context, ResourceCache* cache, SceneManager& paren
 
     PipelineDescriptor pipeDesc;
     pipeDesc._stateHash = primitiveDescriptor.getHash();
-    pipeDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->handle();
+    pipeDesc._shaderProgramHandle = _context.gfx().defaultIMShader()->handle();
     _linesPrimitive->pipeline(*_context.gfx().newPipeline(pipeDesc));
 }
 
@@ -1483,7 +1483,7 @@ void Scene::debugDraw(GFX::CommandBuffer& bufferInOut) {
             if (regionCount > primitiveCount) {
                 PipelineDescriptor pipeDesc;
                 pipeDesc._stateHash = RenderStateBlock::DefaultHash();
-                pipeDesc._shaderProgramHandle = ShaderProgram::DefaultShader()->handle();
+                pipeDesc._shaderProgramHandle = _context.gfx().defaultIMShader()->handle();
                 const Pipeline* pipeline = _context.gfx().newPipeline(pipeDesc);
 
                 const size_t diff = regionCount - primitiveCount;

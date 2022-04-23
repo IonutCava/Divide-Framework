@@ -9,12 +9,6 @@ namespace Divide {
 namespace GLUtil {
 
 namespace GLMemory {
-[[nodiscard]] ptrdiff_t GetAlignmentCorrected(const ptrdiff_t byteOffset, const size_t alignment) noexcept {
-    return byteOffset % alignment == 0u
-                ? byteOffset
-                : ((byteOffset + alignment - 1u) / alignment) * alignment;
-}
-
 Chunk::Chunk(const bool poolAllocations,
              const size_t size,
              const size_t alignment,
@@ -28,7 +22,7 @@ Chunk::Chunk(const bool poolAllocations,
       _poolAllocations(poolAllocations)
 {
     Block block;
-    block._size = GetAlignmentCorrected(size, alignment);// Code for the worst case?
+    block._size = Util::GetAlignmentCorrected(size, alignment);// Code for the worst case?
 
     if (_poolAllocations) {
         static U32 g_bufferIndex = 0u;
@@ -68,7 +62,7 @@ void Chunk::deallocate(const Block &block) {
 }
 
 bool Chunk::allocate(const size_t size, const char* name, const std::pair<bufferPtr, size_t> initialData, Block &blockOut) {
-    const size_t requestedSize = GetAlignmentCorrected(size, _alignment);
+    const size_t requestedSize = Util::GetAlignmentCorrected(size, _alignment);
 
     if (requestedSize > _blocks.back()._size) {
         return false;

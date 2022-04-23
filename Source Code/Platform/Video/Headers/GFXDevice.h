@@ -300,6 +300,11 @@ public:  // GPU interface
     const ShaderComputeQueue& shaderComputeQueue() const noexcept;
 
 public:  // Accessors and Mutators
+
+    [[nodiscard]] ShaderProgram* defaultIMShader() const;
+    [[nodiscard]] ShaderProgram* defaultIMShaderWorld() const;
+    [[nodiscard]] ShaderProgram* defaultIMShaderOIT() const;
+
     inline Renderer& getRenderer() const;
     inline const GPUState& gpuState() const noexcept;
     inline GPUState& gpuState() noexcept;
@@ -515,7 +520,10 @@ private:
     ShaderProgram_ptr _blurBoxShaderLayered = nullptr;
     ShaderProgram_ptr _blurGaussianShaderSingle = nullptr;
     ShaderProgram_ptr _blurGaussianShaderLayered = nullptr;
-    
+    ShaderProgram_ptr _imShader = nullptr;
+    ShaderProgram_ptr _imWorldShader = nullptr;
+    ShaderProgram_ptr _imWorldOITShader = nullptr;
+
     Pipeline* _HIZPipeline = nullptr;
     Pipeline* _HIZCullPipeline = nullptr;
     Pipeline* _debugGizmoPipeline = nullptr;
