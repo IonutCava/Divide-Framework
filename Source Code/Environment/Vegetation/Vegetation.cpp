@@ -18,7 +18,6 @@
 #include "Geometry/Material/Headers/Material.h"
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Environment/Terrain/Headers/TerrainChunk.h"
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 #include "Platform/Video/Headers/CommandBufferPool.h"
 
@@ -51,8 +50,8 @@ Material_ptr Vegetation::s_vegetationMaterial = nullptr;
 
 eastl::unordered_set<vec2<F32>> Vegetation::s_treePositions;
 eastl::unordered_set<vec2<F32>> Vegetation::s_grassPositions;
-ShaderBuffer* Vegetation::s_treeData = nullptr;
-ShaderBuffer* Vegetation::s_grassData = nullptr;
+ShaderBuffer_uptr Vegetation::s_treeData = nullptr;
+ShaderBuffer_uptr Vegetation::s_grassData = nullptr;
 VertexBuffer* Vegetation::s_buffer = nullptr;
 ShaderProgram_ptr Vegetation::s_cullShaderGrass = nullptr;
 ShaderProgram_ptr Vegetation::s_cullShaderTrees = nullptr;
@@ -193,6 +192,8 @@ void Vegetation::destroyStaticData() {
     s_vegetationMaterial.reset();
     s_cullShaderGrass.reset();
     s_cullShaderTrees.reset();
+    s_treeData.reset();
+    s_grassData.reset();
 }
 
 void Vegetation::precomputeStaticData(GFXDevice& gfxDevice, const U32 chunkSize, const U32 maxChunkCount) {
@@ -698,7 +699,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         if (s_grassData) {
             ShaderBufferBinding bufferGrass;
             bufferGrass._binding = ShaderBufferLocation::GRASS_DATA;
-            bufferGrass._buffer = s_grassData;
+            bufferGrass._buffer = s_grassData.get();
             bufferGrass._elementRange = { 0u, s_grassData->getPrimitiveCount() };
             bufferGrass._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
             set._buffers.add(bufferGrass);
@@ -706,7 +707,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         if (s_treeData) {
             ShaderBufferBinding bufferTrees;
             bufferTrees._binding = ShaderBufferLocation::TREE_DATA;
-            bufferTrees._buffer = s_treeData;
+            bufferTrees._buffer = s_treeData.get();
             bufferTrees._elementRange = { 0u, s_treeData->getPrimitiveCount() };
             bufferTrees._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 

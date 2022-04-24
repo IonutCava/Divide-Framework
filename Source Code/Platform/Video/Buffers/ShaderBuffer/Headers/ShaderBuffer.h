@@ -131,5 +131,8 @@ struct ShaderBufferDescriptor {
     ShaderBuffer::Usage _usage = ShaderBuffer::Usage::COUNT;
     bool _separateReadWrite = false; ///< Use a separate read/write index based on queue length
 };
+
+FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
+
 };  // namespace Divide
 #endif //_SHADER_BUFFER_H_

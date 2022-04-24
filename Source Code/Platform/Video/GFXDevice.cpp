@@ -24,7 +24,6 @@
 #include "Geometry/Material/Headers/ShaderComputeQueue.h"
 
 #include "Platform/Headers/PlatformRuntime.h"
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -997,6 +996,9 @@ void GFXDevice::closeRenderingAPI() {
     _imShader = nullptr;
     _imWorldShader = nullptr;
     _imWorldOITShader = nullptr;
+    _camDataBuffer.reset();
+    _renderDataBuffer.reset();
+    _cullCounter.reset();
 
     // Close the shader manager
     MemoryManager::DELETE(_shaderComputeQueue);
@@ -2079,7 +2081,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
 
     ShaderBufferBinding atomicCount = {};
     atomicCount._binding = ShaderBufferLocation::ATOMIC_COUNTER_0;
-    atomicCount._buffer = _cullCounter;
+    atomicCount._buffer = _cullCounter.get();
     atomicCount._elementRange.set(0, 1);
     atomicCount._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
     set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
@@ -2111,7 +2113,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
 
     if (queryPerformanceStats() && countCulledNodes) {
         GFX::ReadBufferDataCommand readAtomicCounter;
-        readAtomicCounter._buffer = _cullCounter;
+        readAtomicCounter._buffer = _cullCounter.get();
         readAtomicCounter._target = &_lastCullCount;
         readAtomicCounter._offsetElementCount = 0;
         readAtomicCounter._elementCount = 1;
@@ -2120,7 +2122,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
         _cullCounter->incQueue();
 
         GFX::ClearBufferDataCommand clearAtomicCounter{};
-        clearAtomicCounter._buffer = _cullCounter;
+        clearAtomicCounter._buffer = _cullCounter.get();
         clearAtomicCounter._offsetElementCount = 0;
         clearAtomicCounter._elementCount = 1;
         GFX::EnqueueCommand(bufferInOut, clearAtomicCounter);
@@ -3002,31 +3004,22 @@ ShaderProgram* GFXDevice::newShaderProgramLocked(const size_t descriptorHash,
     return temp;
 }
 
-ShaderBuffer* GFXDevice::newSB(const ShaderBufferDescriptor& descriptor) {
+ShaderBuffer_uptr GFXDevice::newSB(const ShaderBufferDescriptor& descriptor) {
 
-    ScopedLock<Mutex> w_lock(objectArenaMutex());
-
-    ShaderBuffer* temp = nullptr;
     switch (renderAPI()) {
         case RenderAPI::OpenGL: {
-            temp = new (objectArena()) glUniformBuffer(*this, descriptor);
+            return eastl::make_unique<glUniformBuffer>(*this, descriptor);
         } break;
         case RenderAPI::Vulkan: {
-            temp = new (objectArena()) vkUniformBuffer(*this, descriptor);
+            return eastl::make_unique<vkUniformBuffer>(*this, descriptor);
         } break;
         case RenderAPI::None: {
-            temp = new (objectArena()) noUniformBuffer(*this, descriptor);
-        } break;
-        default: {
-            DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
+            return eastl::make_unique<noUniformBuffer>(*this, descriptor);
         } break;
     };
 
-    if (temp != nullptr) {
-        objectArena().DTOR(temp);
-    }
-
-    return temp;
+    DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
+    return {};
 }
 #pragma endregion
 

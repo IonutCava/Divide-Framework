@@ -49,7 +49,6 @@ namespace Divide {
 class Kernel;
 class Camera;
 class Material;
-class ShaderBuffer;
 class ResourceCache;
 class ShaderProgramDescriptor;
 
@@ -58,6 +57,7 @@ struct Configuration;
 
 enum class FileUpdateEvent : U8;
 
+FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 namespace Attorney {
@@ -190,7 +190,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     private:
         vector<Byte> _localDataCopy;
         vector<BlockMember> _blockMembers;
-        ShaderBuffer* _buffer = nullptr;
+        ShaderBuffer_uptr _buffer = nullptr;
         UniformBlockUploaderDescriptor _descriptor;
         size_t _uniformBlockSizeAligned = 0u;
         bool _uniformBlockDirty = false;

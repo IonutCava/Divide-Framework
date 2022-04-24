@@ -230,7 +230,6 @@ RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& con
 {
     const U8 passCount = TotalPassCountForStage(stage);
 
-    _cmdBuffers.resize(passCount, nullptr);
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
@@ -241,13 +240,13 @@ RenderPassExecutor::RenderPassExecutor(RenderPassManager& parent, GFXDevice& con
     const char* stageName = TypeUtil::RenderStageToString(stage);
     for (U8 i = 0u; i < passCount; ++i) {
         bufferDescriptor._name = Util::StringFormat("CMD_DATA_%s_%d", stageName, i);
-        _cmdBuffers[i] = _context.newSB(bufferDescriptor);
+        _cmdBuffers.emplace_back(MOV(_context.newSB(bufferDescriptor)));
     }
 }
 
 ShaderBuffer* RenderPassExecutor::getCommandBufferForStagePass(const RenderStagePass stagePass) {
     const U16 idx = IndexForStage(stagePass);
-    return _cmdBuffers[idx];
+    return _cmdBuffers[idx].get();
 }
 
 void RenderPassExecutor::OnStartup(const GFXDevice& gfx) {
@@ -789,25 +788,25 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
 
     ShaderBufferBinding materialBufferBinding{};
     materialBufferBinding._elementRange = { 0u, _materialBuffer._highWaterMark };
-    materialBufferBinding._buffer = _materialBuffer._gpuBuffer;
+    materialBufferBinding._buffer = _materialBuffer._gpuBuffer.get();
     materialBufferBinding._binding = ShaderBufferLocation::NODE_MATERIAL_DATA;
     materialBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding transformBufferBinding{};
     transformBufferBinding._elementRange = { 0u, _transformBuffer._highWaterMark };
-    transformBufferBinding._buffer = _transformBuffer._gpuBuffer;
+    transformBufferBinding._buffer = _transformBuffer._gpuBuffer.get();
     transformBufferBinding._binding = ShaderBufferLocation::NODE_TRANSFORM_DATA;
     transformBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding indirectionBufferBinding{};
     indirectionBufferBinding._elementRange = { 0u, _indirectionBuffer._highWaterMark };
-    indirectionBufferBinding._buffer = _indirectionBuffer._gpuBuffer;
+    indirectionBufferBinding._buffer = _indirectionBuffer._gpuBuffer.get();
     indirectionBufferBinding._binding = ShaderBufferLocation::NODE_INDIRECTION_DATA;
     indirectionBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding texturesBufferBinding{};
     texturesBufferBinding._elementRange = { 0u, _texturesBuffer._highWaterMark };
-    texturesBufferBinding._buffer = _texturesBuffer._gpuBuffer;
+    texturesBufferBinding._buffer = _texturesBuffer._gpuBuffer.get();
     texturesBufferBinding._binding = ShaderBufferLocation::NODE_TEXTURE_DATA;
     texturesBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
     {

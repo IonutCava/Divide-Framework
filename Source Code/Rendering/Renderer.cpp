@@ -195,25 +195,25 @@ void Renderer::prepareLighting(const RenderStage stage,
         bufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
         bufferBinding._binding = ShaderBufferLocation::LIGHT_INDICES;
-        bufferBinding._buffer = data._lightIndexBuffer;
+        bufferBinding._buffer = data._lightIndexBuffer.get();
         bufferBinding._elementRange = { 0u, data._lightIndexBuffer->getPrimitiveCount() };
 
         bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
 
         bufferBinding._binding = ShaderBufferLocation::LIGHT_CLUSTER_AABBS;
-        bufferBinding._buffer = data._lightClusterAABBsBuffer;
+        bufferBinding._buffer = data._lightClusterAABBsBuffer.get();
         bufferBinding._elementRange = { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() };
 
         bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
 
         bufferBinding._binding = ShaderBufferLocation::LIGHT_GRID;
-        bufferBinding._buffer = data._lightGridBuffer;
+        bufferBinding._buffer = data._lightGridBuffer.get();
         bufferBinding._elementRange = { 0u, data._lightGridBuffer->getPrimitiveCount() };
 
         bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
 
         bufferBinding._binding = ShaderBufferLocation::LIGHT_INDEX_COUNT;
-        bufferBinding._buffer = data._globalIndexCountBuffer;
+        bufferBinding._buffer = data._globalIndexCountBuffer.get();
         bufferBinding._elementRange = { 0u, data._globalIndexCountBuffer->getPrimitiveCount() };
 
         bindDescriptorSetsCommand._set._buffers.add(bufferBinding);

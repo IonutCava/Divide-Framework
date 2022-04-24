@@ -253,23 +253,21 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
     return _valid ? ShaderResult::OK : ShaderResult::Failed;
 }
 
-bool glShader::load(ShaderProgram::ShaderLoadData& data) {
+bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
     _valid = false;
     _stageMask = UseProgramStageMask::GL_NONE_BIT;
     _loadData = data;
 
-    bool hasData = false;
-    for (ShaderProgram::LoadData& it : _loadData._data) {
+    for (const ShaderProgram::LoadData& it : _loadData._data) {
         if (it._type == ShaderType::COUNT) {
             continue;
         }
-        _stageMask |= GetStageMask(it._type);
         if (!it._sourceCodeGLSL.empty() || !it._sourceCodeSpirV.empty()) {
-            hasData = true;
+            _stageMask |= GetStageMask(it._type);
         }
     }
 
-    if (!hasData) {
+    if (_stageMask == UseProgramStageMask::GL_NONE_BIT) {
         Console::errorfn(Locale::Get(_ID("ERROR_GLSL_NOT_FOUND")), name().c_str());
         return false;
     }

@@ -15,7 +15,6 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/glsw/Headers/glsw.h"
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/File/Headers/FileUpdateMonitor.h"

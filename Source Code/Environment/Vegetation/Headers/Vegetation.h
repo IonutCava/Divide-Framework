@@ -55,7 +55,6 @@ namespace Divide {
 class SceneState;
 class VertexBuffer;
 class RenderTarget;
-class ShaderBuffer;
 class TerrainChunk;
 class SceneGraphNode;
 class PlatformContext;
@@ -66,9 +65,8 @@ enum class RenderStage : U8;
 FWD_DECLARE_MANAGED_CLASS(Mesh);
 FWD_DECLARE_MANAGED_CLASS(Texture);
 FWD_DECLARE_MANAGED_CLASS(Terrain);
+FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
-
-
 
 struct VegetationDetails {
     U16 billboardCount = 0;
@@ -164,8 +162,8 @@ class Vegetation final : public SceneNode {
     static ShaderProgram_ptr s_cullShaderTrees;
     static std::atomic_uint s_bufferUsage;
     static VertexBuffer* s_buffer;
-    static ShaderBuffer* s_treeData;
-    static ShaderBuffer* s_grassData;
+    static ShaderBuffer_uptr s_treeData;
+    static ShaderBuffer_uptr s_grassData;
     static vector<Mesh_ptr> s_treeMeshes;
 
     static eastl::unordered_set<vec2<F32>> s_treePositions;

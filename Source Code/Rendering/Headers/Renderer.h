@@ -63,10 +63,10 @@ class Renderer final : public PlatformContextComponent {
   private:
       struct PerRenderStageData {
           mat4<F32>     _previousProjMatrix;
-          ShaderBuffer* _lightIndexBuffer = nullptr;
-          ShaderBuffer* _lightGridBuffer = nullptr;
-          ShaderBuffer* _globalIndexCountBuffer = nullptr;
-          ShaderBuffer* _lightClusterAABBsBuffer = nullptr;
+          ShaderBuffer_uptr _lightIndexBuffer = nullptr;
+          ShaderBuffer_uptr _lightGridBuffer = nullptr;
+          ShaderBuffer_uptr _globalIndexCountBuffer = nullptr;
+          ShaderBuffer_uptr _lightClusterAABBsBuffer = nullptr;
       };
     // No shadow stage
     std::array<PerRenderStageData, to_base(RenderStage::COUNT) - 1> _lightDataPerStage;

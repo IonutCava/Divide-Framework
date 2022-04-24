@@ -39,7 +39,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 class GFXDevice;
-class ShaderBuffer;
+
+FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 constexpr U8 GLOBAL_WATER_BODIES_COUNT = 2u;
 constexpr U16 GLOBAL_PROBE_COUNT = 512u;
@@ -151,8 +152,8 @@ class SceneShaderData {
       SceneShaderBufferData _sceneBufferData;
       ProbeBufferData _probeData = {};
       /// Generic scene data that doesn't change per shader
-      ShaderBuffer* _sceneShaderData = nullptr;
-      ShaderBuffer* _probeShaderData = nullptr;
+      ShaderBuffer_uptr _sceneShaderData = nullptr;
+      ShaderBuffer_uptr _probeShaderData = nullptr;
 };
 } //namespace Divide
 

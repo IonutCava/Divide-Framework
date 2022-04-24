@@ -68,7 +68,8 @@ do {                                                \
     using T ## _wptr  = std::weak_ptr<T>;        \
     using T ## _ptr   = std::shared_ptr<T>;      \
     using T ## _cwptr = std::weak_ptr<const T>;  \
-    using T ## _cptr  = std::shared_ptr<const T>;
+    using T ## _cptr  = std::shared_ptr<const T>;\
+    using T ## _uptr  = eastl::unique_ptr<T>;
 
 
 #define FWD_DECLARE_MANAGED_CLASS(T)      \

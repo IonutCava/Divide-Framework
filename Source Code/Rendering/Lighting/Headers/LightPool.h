@@ -47,9 +47,11 @@ namespace Time {
     class ProfileTimer;
 };
 
-class ShaderBuffer;
+
 class SceneGraphNode;
 class SceneRenderState;
+
+FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 class LightPool final : public FrameListener, 
                         public SceneComponent,
@@ -237,9 +239,9 @@ class LightPool final : public FrameListener,
 
     Texture_ptr _lightIconsTexture = nullptr;
     ShaderProgram_ptr _lightImpostorShader = nullptr;
-    ShaderBuffer* _lightBuffer = nullptr;
-    ShaderBuffer* _sceneBuffer = nullptr;
-    ShaderBuffer* _shadowBuffer = nullptr;
+    ShaderBuffer_uptr _lightBuffer = nullptr;
+    ShaderBuffer_uptr _sceneBuffer = nullptr;
+    ShaderBuffer_uptr _shadowBuffer = nullptr;
     Time::ProfileTimer& _shadowPassTimer;
     U32              _totalLightCount = 0u;
     bool _shadowBufferDirty = false;

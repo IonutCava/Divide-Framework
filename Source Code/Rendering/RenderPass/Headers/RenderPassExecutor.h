@@ -55,6 +55,8 @@ namespace GFX {
     class CommandBuffer;
 }
 
+FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
+
 class RenderPassExecutor
 {
 public:
@@ -130,7 +132,7 @@ public:
     template<typename DataContainer>
     struct ExecutorBuffer {
         U32 _highWaterMark = 0u;
-        ShaderBuffer* _gpuBuffer = nullptr;
+        ShaderBuffer_uptr _gpuBuffer = nullptr;
         Mutex _lock;
         DataContainer _data;
         BufferUpdateRange _bufferUpdateRange;
@@ -237,7 +239,7 @@ private:
     DrawCommandContainer _drawCommands{};
     RenderQueuePackages _renderQueuePackages{};
 
-    vector<ShaderBuffer*> _cmdBuffers;
+    vector<ShaderBuffer_uptr> _cmdBuffers;
 
     eastl::set<SamplerAddress> _uniqueTextureAddresses{};
 

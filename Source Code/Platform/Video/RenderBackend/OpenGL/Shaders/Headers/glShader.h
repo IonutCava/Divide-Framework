@@ -53,7 +53,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     explicit glShader(GFXDevice& context, const Str256& name);
     ~glShader();
 
-    [[nodiscard]] bool load(ShaderProgram::ShaderLoadData& data);
+    [[nodiscard]] bool load(const ShaderProgram::ShaderLoadData& data);
 
     void AddRef() noexcept { _refCount.fetch_add(1); }
     /// Returns true if ref count reached 0

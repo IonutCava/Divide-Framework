@@ -11,7 +11,6 @@
 #include "Editor/Headers/Editor.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/SceneManager.h"
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Headers/CommandBufferPool.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Rendering/Headers/Renderer.h"

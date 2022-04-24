@@ -6,7 +6,6 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Managers/Headers/SceneManager.h"
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -156,7 +155,9 @@ bool LightPool::clear() noexcept {
     if (!_init) {
         return true;
     }
-
+    _lightBuffer.reset();
+    _shadowBuffer.reset();
+    _sceneBuffer.reset();
     return _lights.empty();
 }
 
@@ -456,19 +457,19 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
 
     ShaderBufferBinding bufferLightData;
     bufferLightData._binding = ShaderBufferLocation::LIGHT_NORMAL;
-    bufferLightData._buffer = _lightBuffer;
+    bufferLightData._buffer = _lightBuffer.get();
     bufferLightData._elementRange = { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount };
     bufferLightData._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding bufferLightScene;
     bufferLightScene._binding = ShaderBufferLocation::LIGHT_SCENE;
-    bufferLightScene._buffer = _sceneBuffer;
+    bufferLightScene._buffer = _sceneBuffer.get();
     bufferLightScene._elementRange = { bufferOffset, 1u };
     bufferLightScene._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding bufferShadow;
     bufferShadow._binding = ShaderBufferLocation::LIGHT_SHADOW;
-    bufferShadow._buffer = _shadowBuffer;
+    bufferShadow._buffer = _shadowBuffer.get();
     bufferShadow._elementRange = { 0u, 1u };
     bufferShadow._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
@@ -545,7 +546,7 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
     if (totalLightCount > 0u) {
         ShaderBufferBinding bufferLightData;
         bufferLightData._binding = ShaderBufferLocation::LIGHT_NORMAL;
-        bufferLightData._buffer = _lightBuffer;
+        bufferLightData._buffer = _lightBuffer.get();
         bufferLightData._elementRange = { to_size(LightBufferIndex(RenderStage::DISPLAY)) * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount };
         bufferLightData._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 

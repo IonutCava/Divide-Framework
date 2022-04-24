@@ -41,8 +41,10 @@
 #include <assimp/anim.h>
 
 namespace Divide {
+
 class ByteBuffer;
-class ShaderBuffer;
+
+FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 struct AnimationChannel {
     vector<aiVectorKey> _positionKeys;
@@ -132,8 +134,7 @@ class AnimEvaluator {
     PROPERTY_R_IW(D64, duration, 0.0);
     PROPERTY_R_IW(string, name, "");
 
-    /// GPU buffer to hold bone transforms
-    POINTER_R_IW(ShaderBuffer, boneBuffer, nullptr);
+    [[nodiscard]] inline ShaderBuffer* boneBuffer() const { return _boneBuffer.get(); }
 
    protected:
     /// Array to return transformations results inside.
@@ -141,6 +142,8 @@ class AnimEvaluator {
     vector<vec3<U32>> _lastPositions;
     /// vector that holds all bone channels
     vector<AnimationChannel> _channels;
+    /// GPU buffer to hold bone transforms
+    ShaderBuffer_uptr _boneBuffer = nullptr;
     D64 _lastTime = 0.0;
 };
 

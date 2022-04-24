@@ -5,7 +5,6 @@
 #include "Headers/AnimationEvaluator.h"
 #include "Headers/AnimationUtils.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
 #include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
@@ -92,7 +91,7 @@ bool AnimEvaluator::initBuffers(GFXDevice& context) {
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
     bufferDescriptor._bufferParams._initialData = { (Byte*)animationData.data(), animationData.size()* bufferDescriptor._bufferParams._elementSize };
 
-    boneBuffer(context.newSB(bufferDescriptor));
+    _boneBuffer = context.newSB(bufferDescriptor);
 
     return numberOfFrames > 0;
 }

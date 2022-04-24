@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "Headers/Commands.h"
 
-
 #include "Headers/Pipeline.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 

@@ -50,6 +50,7 @@
 #include "Platform/Video/Headers/PushConstants.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
+#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
 #include "Rendering/Camera/Headers/Frustum.h"
 #include "Rendering/PostFX/CustomOperators/Headers/BloomPreRenderOperator.h"
@@ -385,8 +386,7 @@ public:
     /// Create and return a new shader buffer. 
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false
     /// or a 'Shader Storage Block Object' otherwise
-    /// The shader buffer can also be persistently mapped, if requested
-    ShaderBuffer*      newSB(const ShaderBufferDescriptor& descriptor);
+    ShaderBuffer_uptr  newSB(const ShaderBufferDescriptor& descriptor);
     /// Create and return a new graphics pipeline. This is only used for caching and doesn't use the object arena
     Pipeline*          newPipeline(const PipelineDescriptor& descriptor);
 
@@ -551,9 +551,9 @@ private:
     mutable Mutex _debugViewLock;
     vector<DebugView_ptr> _debugViews;
     
-    ShaderBuffer* _camDataBuffer = nullptr;
-    ShaderBuffer* _renderDataBuffer = nullptr;
-    ShaderBuffer* _cullCounter = nullptr;
+    ShaderBuffer_uptr _camDataBuffer = nullptr;
+    ShaderBuffer_uptr _renderDataBuffer = nullptr;
+    ShaderBuffer_uptr _cullCounter = nullptr;
 
     Mutex _pipelineCacheLock;
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;

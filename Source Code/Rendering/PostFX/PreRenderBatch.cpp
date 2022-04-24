@@ -3,7 +3,6 @@
 #include "Headers/PreRenderBatch.h"
 #include "Headers/PreRenderOperator.h"
 
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
 #include "Core/Headers/Configuration.h"
@@ -519,7 +518,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         };
         const ShaderBufferBinding shaderBuffer{
             { 0u, _histogramBuffer->getPrimitiveCount() },
-            _histogramBuffer,
+            _histogramBuffer.get(),
             ShaderBufferLocation::LUMINANCE_HISTOGRAM,
             ShaderBufferLockType::AFTER_DRAW_COMMANDS
         };

@@ -7,6 +7,8 @@
 namespace Divide {
 
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
+FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
+
 class PostFX;
 
 struct ToneMapParams
@@ -155,7 +157,7 @@ class PreRenderBatch {
     PostFX&    _parent;
     ResourceCache* _resCache = nullptr;
 
-    ShaderBuffer*      _histogramBuffer = nullptr;
+    ShaderBuffer_uptr _histogramBuffer = nullptr;
 
     RenderTargetHandle _sceneEdges;
 

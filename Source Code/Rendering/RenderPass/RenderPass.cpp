@@ -19,8 +19,6 @@
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "Headers/NodeBufferedData.h"
 
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
-
 namespace Divide {
 
 namespace {

@@ -1,7 +1,6 @@
 #include "stdafx.h"
 
 #include "Headers/SceneShaderData.h"
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
 namespace Divide {
