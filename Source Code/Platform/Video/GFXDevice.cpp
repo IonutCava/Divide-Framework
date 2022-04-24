@@ -2836,19 +2836,8 @@ bool GFXDevice::destroyIMP(IMPrimitive*& primitive) {
     return false;
 }
 
-VertexBuffer* GFXDevice::newVB() {
-    ScopedLock<Mutex> w_lock(objectArenaMutex());
-    return newVBLocked();
-}
-
-VertexBuffer* GFXDevice::newVBLocked() {
-
-    VertexBuffer* temp =  temp = new (objectArena()) VertexBuffer(*this);
-    if (temp != nullptr) {
-        objectArena().DTOR(temp);
-    }
-
-    return temp;
+VertexBuffer_ptr GFXDevice::newVB() {
+    return std::make_shared<VertexBuffer>(*this);
 }
 
 PixelBuffer* GFXDevice::newPB(const PBType type, const char* name) {

@@ -65,6 +65,7 @@ enum class RenderStage : U8;
 FWD_DECLARE_MANAGED_CLASS(Mesh);
 FWD_DECLARE_MANAGED_CLASS(Texture);
 FWD_DECLARE_MANAGED_CLASS(Terrain);
+FWD_DECLARE_MANAGED_CLASS(VertexBuffer);
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
@@ -161,7 +162,7 @@ class Vegetation final : public SceneNode {
     static ShaderProgram_ptr s_cullShaderGrass;
     static ShaderProgram_ptr s_cullShaderTrees;
     static std::atomic_uint s_bufferUsage;
-    static VertexBuffer* s_buffer;
+    static VertexBuffer_ptr s_buffer;
     static ShaderBuffer_uptr s_treeData;
     static ShaderBuffer_uptr s_grassData;
     static vector<Mesh_ptr> s_treeMeshes;

@@ -52,7 +52,7 @@ eastl::unordered_set<vec2<F32>> Vegetation::s_treePositions;
 eastl::unordered_set<vec2<F32>> Vegetation::s_grassPositions;
 ShaderBuffer_uptr Vegetation::s_treeData = nullptr;
 ShaderBuffer_uptr Vegetation::s_grassData = nullptr;
-VertexBuffer* Vegetation::s_buffer = nullptr;
+VertexBuffer_ptr Vegetation::s_buffer = nullptr;
 ShaderProgram_ptr Vegetation::s_cullShaderGrass = nullptr;
 ShaderProgram_ptr Vegetation::s_cullShaderTrees = nullptr;
 vector<Mesh_ptr> Vegetation::s_treeMeshes;
@@ -194,6 +194,7 @@ void Vegetation::destroyStaticData() {
     s_cullShaderTrees.reset();
     s_treeData.reset();
     s_grassData.reset();
+    s_buffer.reset();
 }
 
 void Vegetation::precomputeStaticData(GFXDevice& gfxDevice, const U32 chunkSize, const U32 maxChunkCount) {

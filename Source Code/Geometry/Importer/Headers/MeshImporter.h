@@ -151,7 +151,7 @@ namespace Divide {
             // Was it loaded from file, or just created?
             PROPERTY_RW(bool, loadedFromFile, false);
             // Geometry
-            POINTER_RW(VertexBuffer, vertexBuffer, nullptr);
+            VertexBuffer_ptr _vertexBuffer = nullptr;
             // Animations
             PROPERTY_RW(bool, hasAnimations, false);
 

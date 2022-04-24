@@ -94,9 +94,7 @@ void ResourceCache::clear() {
         assert(!it->second.expired());
 
         const CachedResource_ptr res = it->second.lock();
-        if (res->resourceType() != ResourceType::GPU_OBJECT) {
-            Console::warnfn(Locale::Get(_ID("WARN_RESOURCE_LEAKED")), res->resourceName().c_str(), res->getGUID());
-        }
+        Console::warnfn(Locale::Get(_ID("WARN_RESOURCE_LEAKED")), res->resourceName().c_str(), res->getGUID());
     }
 
     _resDB.clear();

@@ -307,7 +307,7 @@ namespace Import {
         }
 
         mesh->renderState().drawState(true);
-        mesh->geometryBuffer()->fromBuffer(*dataIn.vertexBuffer());
+        mesh->geometryBuffer()->fromBuffer(*dataIn._vertexBuffer);
         mesh->geometryDirty(true);
 
         std::atomic_uint taskCounter;

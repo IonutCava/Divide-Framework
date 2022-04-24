@@ -313,8 +313,9 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
 namespace detail {
 
 void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) {
-    target.vertexBuffer(context.gfx().newVB());
-    VertexBuffer* vb = target.vertexBuffer();
+    target._vertexBuffer = context.gfx().newVB();
+
+    VertexBuffer* vb = target._vertexBuffer.get();
 
     size_t indexCount = 0u, vertexCount = 0u;
     for (U8 lod = 0u; lod < Import::MAX_LOD_LEVELS; ++lod) {

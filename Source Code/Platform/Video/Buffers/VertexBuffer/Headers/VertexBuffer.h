@@ -399,5 +399,7 @@ class VertexBuffer final : public VertexDataInterface {
     bool _keepData = false;
 };
 
+FWD_DECLARE_MANAGED_CLASS(VertexBuffer);
+
 };  // namespace Divide
 #endif

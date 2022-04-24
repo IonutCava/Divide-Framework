@@ -62,7 +62,7 @@ void Object3D::rebuildInternal() {
     NOP();
 }
 
-VertexBuffer* Object3D::geometryBuffer() {
+const VertexBuffer_ptr& Object3D::geometryBuffer() {
     if (geometryDirty()) {
         geometryDirty(false);
         rebuildInternal();
@@ -114,7 +114,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
         return true;
     }
 
-    VertexBuffer* geometry = geometryBuffer();
+    auto& geometry = geometryBuffer();
 
     DIVIDE_ASSERT(geometry != nullptr,
         "Object3D error: Please specify a valid VertexBuffer before "

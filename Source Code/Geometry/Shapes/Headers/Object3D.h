@@ -115,8 +115,9 @@ class Object3D : public SceneNode {
         return _geometryFlagMask;
     }
 
-    [[nodiscard]] VertexBuffer* geometryBuffer();
-    inline void geometryBuffer(VertexBuffer* vb) { _geometryBuffer = vb; }
+    [[nodiscard]] const VertexBuffer_ptr& geometryBuffer();
+
+    inline void geometryBuffer(const VertexBuffer_ptr& vb) { _geometryBuffer = vb; }
 
     virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] I32 newIndex) {}
 
@@ -192,7 +193,7 @@ class Object3D : public SceneNode {
     /// used, for example, for cooking collision meshes
     /// We keep separate triangle lists per partition
     vector<vector<vec3<U32>>> _geometryTriangles;
-    VertexBuffer* _geometryBuffer = nullptr;
+    VertexBuffer_ptr _geometryBuffer = nullptr;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Object3D);

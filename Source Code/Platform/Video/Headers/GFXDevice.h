@@ -76,7 +76,6 @@ class Object3D;
 class Renderer;
 class IMPrimitive;
 class PixelBuffer;
-class VertexBuffer;
 class SceneGraphNode;
 class SceneRenderState;
 class GenericVertexData;
@@ -89,6 +88,7 @@ struct ShaderBufferDescriptor;
 enum class ShadowType : U8;
 
 FWD_DECLARE_MANAGED_CLASS(Texture);
+FWD_DECLARE_MANAGED_CLASS(VertexBuffer);
 
 namespace Time {
     class ProfileTimer;
@@ -351,8 +351,7 @@ public:
     bool               destroyIMP(IMPrimitive*& primitive);
 
     /// Create and return a new vertex array (VAO + VB + IB).
-    VertexBuffer*      newVB();
-    VertexBuffer*      newVBLocked();
+    VertexBuffer_ptr  newVB();
     /// Create and return a new pixel buffer using the requested format.
     PixelBuffer*       newPB(PBType type = PBType::PB_TEXTURE_2D, const char* name = nullptr);
     PixelBuffer*       newPBLocked(PBType type = PBType::PB_TEXTURE_2D, const char* name = nullptr);

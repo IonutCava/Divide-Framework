@@ -50,7 +50,7 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
 
     const vector<BoneTransform>& currentAnimation = animComp->getAnimationByIndex(animationIndex).transforms();
 
-    VertexBuffer* parentVB = _parentMesh->geometryBuffer();
+    auto& parentVB = _parentMesh->geometryBuffer();
     const size_t partitionOffset = parentVB->getPartitionOffset(_geometryPartitionIDs[0]);
     const size_t partitionCount = parentVB->getPartitionIndexCount(_geometryPartitionIDs[0]);
 
