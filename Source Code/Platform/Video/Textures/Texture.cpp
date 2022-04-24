@@ -77,18 +77,20 @@ Texture::Texture(GFXDevice& context,
                  const Str256& name,
                  const ResourcePath& assetNames,
                  const ResourcePath& assetLocations,
-                 const TextureDescriptor& texDescriptor)
+                 const TextureDescriptor& texDescriptor,
+                 ResourceCache& parentCache)
     : CachedResource(ResourceType::GPU_OBJECT, descriptorHash, name, assetNames, assetLocations),
       GraphicsResource(context, Type::TEXTURE, getGUID(), _ID(name.c_str())),
       _descriptor(texDescriptor),
       _data{0u, TextureType::COUNT},
-      _numLayers(texDescriptor.layerCount())
+      _numLayers(texDescriptor.layerCount()),
+      _parentCache(parentCache)
 {
 }
 
 Texture::~Texture()
 {
-    unload();
+    _parentCache.remove(this);
 }
 
 bool Texture::load() {

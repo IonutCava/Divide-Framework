@@ -110,26 +110,34 @@ glShaderProgram::glShaderProgram(GFXDevice& context,
                                  const Str256& name,
                                  const Str256& assetName,
                                  const ResourcePath& assetLocation,
-                                 const ShaderProgramDescriptor& descriptor)
-    : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor),
+                                 const ShaderProgramDescriptor& descriptor,
+                                 ResourceCache& parentCache)
+    : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, parentCache),
       glObject(glObjectType::TYPE_SHADER_PROGRAM, context)
 {
 }
 
+glShaderProgram::~glShaderProgram()
+{
+    unload();
+}
+
 bool glShaderProgram::unload() {
-    {
-        ScopedLock<SharedMutex> w_lock(g_deletionSetLock);
-        g_deletionSet.insert(_handle);
-    }
-
-    if (GL_API::GetStateTracker()->_activeShaderPipeline == _handle) {
-        if (GL_API::GetStateTracker()->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
-            DIVIDE_UNEXPECTED_CALL();
+    if (_handle != GLUtil::k_invalidObjectID) {
+        {
+            ScopedLock<SharedMutex> w_lock(g_deletionSetLock);
+            g_deletionSet.insert(_handle);
         }
-    }
 
-    glDeleteProgramPipelines(1, &_handle);
-    _handle = GLUtil::k_invalidObjectID;
+        if (GL_API::GetStateTracker()->_activeShaderPipeline == _handle) {
+            if (GL_API::GetStateTracker()->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+        }
+
+        glDeleteProgramPipelines(1, &_handle);
+        _handle = GLUtil::k_invalidObjectID;
+    }
 
     // Remove every shader attached to this program
     eastl::for_each(begin(_shaderStage),

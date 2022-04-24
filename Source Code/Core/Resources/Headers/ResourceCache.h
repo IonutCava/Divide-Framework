@@ -131,8 +131,6 @@ public:
 
     void printContents() const;
 
-protected:
-    friend struct DeleteResource;
     /// unload a single resource and pend deletion
     void remove(CachedResource* resource);
 

@@ -117,8 +117,9 @@ namespace Divide {
                   const Str256& name,
                   const ResourcePath& assetNames,
                   const ResourcePath& assetLocations,
-                  const TextureDescriptor& texDescriptor)
-            : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor)
+                  const TextureDescriptor& texDescriptor,
+                  ResourceCache& parentCache)
+            : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor, parentCache)
         {
             static std::atomic_uint s_textureHandle = 1u;
             _data._textureType = _descriptor.texType();
@@ -156,8 +157,9 @@ namespace Divide {
                         const Str256& name,
                         const Str256& assetName,
                         const ResourcePath& assetLocation,
-                        const ShaderProgramDescriptor& descriptor)
-            : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor)
+                        const ShaderProgramDescriptor& descriptor,
+                        ResourceCache& parentCache)
+            : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, parentCache)
         {}
     };
 

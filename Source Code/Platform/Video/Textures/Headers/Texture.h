@@ -44,6 +44,7 @@
 namespace Divide {
 
 class Kernel;
+
 namespace Attorney {
     class TextureKernel;
 };
@@ -77,7 +78,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
                      const Str256& name,
                      const ResourcePath& assetNames,
                      const ResourcePath& assetLocations,
-                     const TextureDescriptor& texDescriptor);
+                     const TextureDescriptor& texDescriptor,
+                     ResourceCache& parentCache);
 
     virtual ~Texture();
 
@@ -132,6 +134,9 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     virtual void threadedLoad();
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Texture"; }
+
+  protected:
+    ResourceCache& _parentCache;
 
   protected:
     static bool s_useDDSCache;

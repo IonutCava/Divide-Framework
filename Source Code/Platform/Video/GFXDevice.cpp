@@ -2911,44 +2911,29 @@ GenericVertexData* GFXDevice::newGVDLocked(const U32 ringBufferLength, const cha
     return temp;
 }
 
-Texture* GFXDevice::newTexture(const size_t descriptorHash,
-                               const Str256& resourceName,
-                               const ResourcePath& assetNames,
-                               const ResourcePath& assetLocations,
-                               const TextureDescriptor& texDescriptor) {
-    ScopedLock<Mutex> w_lock(objectArenaMutex());
-    return newTextureLocked(descriptorHash, resourceName, assetNames, assetLocations, texDescriptor);
-}
-
-Texture* GFXDevice::newTextureLocked(const size_t descriptorHash,
-                                     const Str256& resourceName,
-                                     const ResourcePath& assetNames,
-                                     const ResourcePath& assetLocations,
-                                     const TextureDescriptor& texDescriptor) {
-
-    // Texture is a resource! Do not use object arena!
-    Texture* temp = nullptr;
+Texture_ptr GFXDevice::newTexture(const size_t descriptorHash,
+                                  const Str256& resourceName,
+                                  const ResourcePath& assetNames,
+                                  const ResourcePath& assetLocations,
+                                  const TextureDescriptor& texDescriptor,
+                                  ResourceCache& parentCache) 
+{
     switch (renderAPI()) {
         case RenderAPI::OpenGL: {
-            temp = new (objectArena()) glTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor);
+            return std::make_shared<glTexture>(*this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache);
         } break;
         case RenderAPI::Vulkan: {
-            temp = new (objectArena()) vkTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor);
+            return std::make_shared<vkTexture>(*this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache);
         } break;
         case RenderAPI::None: {
-            temp = new (objectArena()) noTexture(*this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor);
-        } break;
-        default: {
-            DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
+            return std::make_shared<noTexture>(*this, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache);
         } break;
     };
 
-    if (temp != nullptr) {
-        objectArena().DTOR(temp);
-    }
-
-    return temp;
+    DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
+    return {};
 }
+
 
 Pipeline* GFXDevice::newPipeline(const PipelineDescriptor& descriptor) {
     // Pipeline with no shader is no pipeline at all
@@ -2965,43 +2950,27 @@ Pipeline* GFXDevice::newPipeline(const PipelineDescriptor& descriptor) {
     return &it->second;
 }
 
-ShaderProgram* GFXDevice::newShaderProgram(const size_t descriptorHash,
-                                           const Str256& resourceName,
-                                           const Str256& assetName,
-                                           const ResourcePath& assetLocation,
-                                           const ShaderProgramDescriptor& descriptor) {
-    ScopedLock<Mutex> w_lock(objectArenaMutex());
-    return newShaderProgramLocked(descriptorHash, resourceName, assetName, assetLocation, descriptor);
-}
-
-ShaderProgram* GFXDevice::newShaderProgramLocked(const size_t descriptorHash,
-                                                 const Str256& resourceName,
-                                                 const Str256& assetName,
-                                                 const ResourcePath& assetLocation,
-                                                 const ShaderProgramDescriptor& descriptor)
-{
-
-    ShaderProgram* temp = nullptr;
+ShaderProgram_ptr GFXDevice::newShaderProgram(const size_t descriptorHash,
+                                              const Str256& resourceName,
+                                              const Str256& assetName,
+                                              const ResourcePath& assetLocation,
+                                              const ShaderProgramDescriptor& descriptor,
+                                              ResourceCache& parentCache) {
     switch (renderAPI()) {
         case RenderAPI::OpenGL: {
-            temp = new (objectArena()) glShaderProgram(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor);
+            return std::make_shared<glShaderProgram>(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache);
         } break;
         case RenderAPI::Vulkan: {
-            temp = new (objectArena()) vkShaderProgram(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor);
+            return std::make_shared<vkShaderProgram>(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache);
         } break;
         case RenderAPI::None: {
-            temp = new (objectArena()) noShaderProgram(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor);
-        } break;
-        default: {
-            DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
+            return std::make_shared<noShaderProgram>(*this, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache);
         } break;
     };
 
-    if (temp != nullptr) {
-        objectArena().DTOR(temp);
-    }
+    DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
 
-    return temp;
+    return {};
 }
 
 ShaderBuffer_uptr GFXDevice::newSB(const ShaderBufferDescriptor& descriptor) {

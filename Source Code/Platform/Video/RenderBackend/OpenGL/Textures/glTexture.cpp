@@ -33,18 +33,25 @@ namespace {
         return GetSizeFactor(format) * NumChannels(baseFormat) * 8;
     }
 };
+
 glTexture::glTexture(GFXDevice& context,
                      const size_t descriptorHash,
                      const Str256& name,
                      const ResourcePath& resourceName,
                      const ResourcePath& resourceLocation,
-                     const TextureDescriptor& texDescriptor)
+                     const TextureDescriptor& texDescriptor,
+                     ResourceCache& parentCache)
 
-    : Texture(context, descriptorHash, name, resourceName, resourceLocation, texDescriptor),
+    : Texture(context, descriptorHash, name, resourceName, resourceLocation, texDescriptor, parentCache),
       glObject(glObjectType::TYPE_TEXTURE, context),
      _type(GL_NONE),
      _loadingData(_data)
 {
+}
+
+glTexture::~glTexture()
+{
+    unload();
 }
 
 SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
@@ -68,8 +75,6 @@ SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
 }
 
 bool glTexture::unload() {
-    assert(_data._textureType != TextureType::COUNT);
-
     if (_data._textureHandle > 0u) {
         glDeleteTextures(1, &_data._textureHandle);
         _data._textureHandle = 0u;

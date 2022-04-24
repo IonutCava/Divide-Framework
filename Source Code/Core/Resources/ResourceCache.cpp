@@ -61,14 +61,7 @@ void DeleteResource::operator()(CachedResource* res) const
     WAIT_FOR_CONDITION(res->getState() == ResourceState::RES_LOADED, false);
 
     _context->remove(res);
-
-    if (res) {
-        if (res->resourceType() != ResourceType::GPU_OBJECT) {
-            MemoryManager::DELETE(res);
-        } else {
-            //?
-        }
-    }
+     MemoryManager::SAFE_DELETE(res);
 }
 
 ResourceCache::ResourceCache(PlatformContext& context)

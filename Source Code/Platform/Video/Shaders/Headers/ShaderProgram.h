@@ -222,7 +222,9 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
                            const Str256& shaderName,
                            const Str256& shaderFileName,
                            const ResourcePath& shaderFileLocation,
-                           ShaderProgramDescriptor descriptor);
+                           ShaderProgramDescriptor descriptor,
+                           ResourceCache& parentCache);
+
     virtual ~ShaderProgram();
 
     bool load() override;
@@ -332,6 +334,7 @@ private:
     template <typename T>
     friend class ImplResourceLoader;
 
+    ResourceCache& _parentCache;
     const ShaderProgramDescriptor _descriptor;
 
    protected:

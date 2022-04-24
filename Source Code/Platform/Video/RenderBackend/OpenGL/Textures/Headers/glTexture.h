@@ -46,7 +46,10 @@ class glTexture final : public Texture,
                        const Str256& name,
                        const ResourcePath& resourceName,
                        const ResourcePath& resourceLocation,
-                       const TextureDescriptor& texDescriptor);
+                       const TextureDescriptor& texDescriptor,
+                       ResourceCache& parentCache);
+
+    ~glTexture();
 
     [[nodiscard]] SamplerAddress getGPUAddress(size_t samplerHash) override;
 

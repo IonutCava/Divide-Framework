@@ -51,12 +51,12 @@ CachedResource_ptr ImplResourceLoader<Texture>::operator()() {
         _descriptor.assetLocation(ResourcePath(resourceLocation));
     }
 
-    Texture_ptr ptr(_context.gfx().newTexture(_loadingDescriptorHash,
-                                              _descriptor.resourceName(),
-                                              _descriptor.assetName(),
-                                              _descriptor.assetLocation(),
-                                              *texDescriptor),
-                    DeleteResource(_cache));
+    Texture_ptr ptr = _context.gfx().newTexture(_loadingDescriptorHash,
+                                                _descriptor.resourceName(),
+                                                _descriptor.assetName(),
+                                                _descriptor.assetLocation(),
+                                                *texDescriptor,
+                                                *_cache);
 
     if (!Load(ptr)) {
         Console::errorfn(Locale::Get(_ID("ERROR_TEXTURE_LOADER_FILE")),

@@ -360,29 +360,19 @@ public:
     GenericVertexData* newGVD(U32 ringBufferLength, const char* name = nullptr);
     GenericVertexData* newGVDLocked(U32 ringBufferLength, const char* name = nullptr);
     /// Create and return a new texture.
-    Texture*           newTexture(size_t descriptorHash,
+    Texture_ptr        newTexture(size_t descriptorHash,
                                   const Str256& resourceName,
                                   const ResourcePath& assetNames,
                                   const ResourcePath& assetLocations,
-                                  const TextureDescriptor& texDescriptor);
-
-    Texture*           newTextureLocked(size_t descriptorHash,
-                                        const Str256& resourceName,
-                                        const ResourcePath& assetNames,
-                                        const ResourcePath& assetLocations,
-                                        const TextureDescriptor& texDescriptor);
-
+                                  const TextureDescriptor& texDescriptor,
+                                  ResourceCache& parentCache);
     /// Create and return a new shader program.
-    ShaderProgram*     newShaderProgram(size_t descriptorHash,
+    ShaderProgram_ptr  newShaderProgram(size_t descriptorHash,
                                         const Str256& resourceName,
                                         const Str256& assetName,
                                         const ResourcePath& assetLocation,
-                                        const ShaderProgramDescriptor& descriptor);
-    ShaderProgram*     newShaderProgramLocked(size_t descriptorHash,
-                                              const Str256& resourceName,
-                                              const Str256& assetName,
-                                              const ResourcePath& assetLocation,
-                                              const ShaderProgramDescriptor& descriptor);
+                                        const ShaderProgramDescriptor& descriptor,
+                                        ResourceCache& parentCache);
     /// Create and return a new shader buffer. 
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false
     /// or a 'Shader Storage Block Object' otherwise

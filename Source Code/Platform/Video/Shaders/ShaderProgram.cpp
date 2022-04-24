@@ -818,10 +818,12 @@ ShaderProgram::ShaderProgram(GFXDevice& context,
                              const Str256& shaderName,
                              const Str256& shaderFileName,
                              const ResourcePath& shaderFileLocation,
-                             ShaderProgramDescriptor descriptor)
+                             ShaderProgramDescriptor descriptor,
+                             ResourceCache& parentCache)
     : CachedResource(ResourceType::GPU_OBJECT, descriptorHash, shaderName, ResourcePath(shaderFileName), shaderFileLocation),
       GraphicsResource(context, Type::SHADER_PROGRAM, getGUID(), _ID(shaderName.c_str())),
-      _descriptor(MOV(descriptor))
+      _descriptor(MOV(descriptor)),
+      _parentCache(parentCache)
 {
     if (shaderFileName.empty()) {
         assetName(ResourcePath(resourceName().c_str()));
@@ -831,8 +833,7 @@ ShaderProgram::ShaderProgram(GFXDevice& context,
 
 ShaderProgram::~ShaderProgram()
 {
-    unload();
-
+    _parentCache.remove(this);
     Console::d_printfn(Locale::Get(_ID("SHADER_PROGRAM_REMOVE")), resourceName().c_str());
     s_shaderCount.fetch_sub(1, std::memory_order_relaxed);
 }
@@ -851,7 +852,11 @@ bool ShaderProgram::unload() {
     // Our GPU Arena will clean up the memory, but we should still destroy these
     _uniformBlockBuffers.clear();
     // Unregister the program from the manager
-    return UnregisterShaderProgram(handle());
+    if (UnregisterShaderProgram(handle())) {
+        handle(INVALID_HANDLE);
+    }
+
+    return true;
 }
 
 /// Rebuild the specified shader stages from source code

@@ -22,13 +22,12 @@ CachedResource_ptr ImplResourceLoader<ShaderProgram>::operator()() {
     const std::shared_ptr<ShaderProgramDescriptor>& shaderDescriptor = _descriptor.propertyDescriptor<ShaderProgramDescriptor>();
     assert(shaderDescriptor != nullptr);
 
-    ShaderProgram_ptr ptr(_context.gfx().newShaderProgram(_loadingDescriptorHash,
-                                                          _descriptor.resourceName(),
-                                                          _descriptor.assetName().str(),
-                                                          _descriptor.assetLocation(),
-                                                          *shaderDescriptor),
-                          DeleteResource(_cache));
-
+    ShaderProgram_ptr ptr = _context.gfx().newShaderProgram(_loadingDescriptorHash,
+                                                            _descriptor.resourceName(),
+                                                            _descriptor.assetName().str(),
+                                                            _descriptor.assetLocation(),
+                                                            *shaderDescriptor,
+                                                            *_cache);
 
     if (!Load(ptr)) {
         ptr.reset();
