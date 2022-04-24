@@ -969,6 +969,7 @@ void GFXDevice::closeRenderingAPI() {
     _debugCones.reset();
     _debugSpheres.reset();
     _debugViews.clear();
+    _IMGUIBuffers.clear();
 
     // Delete the renderer implementation
     Console::printfn(Locale::Get(_ID("CLOSING_RENDERER")));
@@ -1008,7 +1009,6 @@ void GFXDevice::closeRenderingAPI() {
 
     RenderPassExecutor::OnShutdown(*this);
     Texture::OnShutdown();
-    _gpuObjectArena.clear();
     assert(ShaderProgram::ShaderProgramCount() == 0);
     // Close the rendering API
     _api->closeRenderingAPI();
@@ -2690,14 +2690,6 @@ void GFXDevice::debugDraw(const SceneRenderState& sceneRenderState, GFX::Command
 #pragma endregion
 
 #pragma region GPU Object instantiation
-Mutex& GFXDevice::objectArenaMutex() noexcept {
-    return _gpuObjectArenaMutex;
-}
-
-GFXDevice::ObjectArena& GFXDevice::objectArena() noexcept {
-    return _gpuObjectArena;
-}
-
 GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const I32 maxCommandCount) {
     const U32 newSize = to_U32(maxCommandCount * RenderPass::DataBufferRingSize);
 
@@ -2707,17 +2699,18 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
     if (it != eastl::cend(_IMGUIBuffers)) {
         // If we need more space, skip this and just create a new, larger, buffer.
         if (it->second->queueLength() >= newSize) {
-            return it->second;
+            return it->second.get();
         } else {
-            ret = it->second;
+            ret = it->second.get();
             ret->reset();
             ret->resize(newSize);
         }
     }
 
     if (ret == nullptr) {
-        ret = newGVD(newSize);
-        _IMGUIBuffers[windowGUID] = ret;
+        GenericVertexData_ptr newBuffer = newGVD(newSize);
+        _IMGUIBuffers[windowGUID] = newBuffer;
+        ret = newBuffer.get();
     }
 
     GenericVertexData::IndexBuffer idxBuff;
@@ -2744,48 +2737,26 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
     return ret;
 }
 
-RenderTarget* GFXDevice::newRTInternal(const RenderTargetDescriptor& descriptor) {
-    RenderTarget* temp = nullptr;
-    {
-        switch (renderAPI()) {
-            case RenderAPI::OpenGL: {
-                temp = new (objectArena()) glFramebuffer(*this, descriptor);
-            } break;
-            case RenderAPI::Vulkan: {
-                temp = new (objectArena()) vkRenderTarget(*this, descriptor);
-            } break;
-            case RenderAPI::None: {
-                temp = new (objectArena()) noRenderTarget(*this, descriptor);
-            } break;
-            default: {
-                DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
-            } break;
-        };
+RenderTarget_ptr GFXDevice::newRTInternal(const RenderTargetDescriptor& descriptor) {
+    switch (renderAPI()) {
+        case RenderAPI::OpenGL: {
+            return std::make_shared<glFramebuffer>(*this, descriptor);
+        } break;
+        case RenderAPI::Vulkan: {
+            return std::make_shared<vkRenderTarget>(*this, descriptor);
+        } break;
+        case RenderAPI::None: {
+            return std::make_shared<noRenderTarget>(*this, descriptor);
+        } break;
+    };
 
-        if (temp != nullptr) {
-            objectArena().DTOR(temp);
-        }
-    }
-    return temp;
+    DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
+
+    return {};
 }
 
-RenderTarget* GFXDevice::newRT(const RenderTargetDescriptor& descriptor) {
-    RenderTarget* temp = nullptr;
-    {
-        ScopedLock<Mutex> w_lock(objectArenaMutex());
-        temp = newRTInternal(descriptor);
-    }
-    bool valid = false;
-    if (temp != nullptr) {
-        valid = temp->create();
-        assert(valid);
-    }
-
-    return valid ? temp : nullptr;
-}
-
-RenderTarget* GFXDevice::newRTLocked(const RenderTargetDescriptor& descriptor) {
-    RenderTarget* temp = newRTInternal(descriptor);
+RenderTarget_ptr GFXDevice::newRT(const RenderTargetDescriptor& descriptor) {
+    RenderTarget_ptr temp = newRTInternal(descriptor);
 
     bool valid = false;
     if (temp != nullptr) {
@@ -2840,64 +2811,41 @@ VertexBuffer_ptr GFXDevice::newVB() {
     return std::make_shared<VertexBuffer>(*this);
 }
 
-PixelBuffer* GFXDevice::newPB(const PBType type, const char* name) {
-    ScopedLock<Mutex> w_lock(objectArenaMutex());
-    return newPBLocked(type, name);
-}
-
-PixelBuffer* GFXDevice::newPBLocked(const PBType type, const char* name) {
-
-    PixelBuffer* temp = nullptr;
+PixelBuffer_ptr GFXDevice::newPB(const PBType type, const char* name) {
     switch (renderAPI()) {
         case RenderAPI::OpenGL: {
-            temp = new (objectArena()) glPixelBuffer(*this, type, name);
+            return std::make_shared<glPixelBuffer>(*this, type, name);
         } break;
         case RenderAPI::Vulkan: {
-            temp = new (objectArena()) vkPixelBuffer(*this, type, name);
+            return std::make_shared<vkPixelBuffer>(*this, type, name);
         } break;
         case RenderAPI::None: {
-            temp = new (objectArena()) noPixelBuffer(*this, type, name);
-        } break;
-        default: {
-            DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
+            return std::make_shared<noPixelBuffer>(*this, type, name);
         } break;
     };
 
-    if (temp != nullptr) {
-        objectArena().DTOR(temp);
-    }
+    DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
 
-    return temp;
+    return {};
 }
 
-GenericVertexData* GFXDevice::newGVD(const U32 ringBufferLength, const char* name) {
-    ScopedLock<Mutex> w_lock(objectArenaMutex());
-    return newGVDLocked(ringBufferLength, name);
-}
+GenericVertexData_ptr GFXDevice::newGVD(const U32 ringBufferLength, const char* name) {
 
-GenericVertexData* GFXDevice::newGVDLocked(const U32 ringBufferLength, const char* name) {
-
-    GenericVertexData* temp = nullptr;
     switch (renderAPI()) {
         case RenderAPI::OpenGL: {
-            temp = new (objectArena()) glGenericVertexData(*this, ringBufferLength, name);
+            return std::make_shared<glGenericVertexData>(*this, ringBufferLength, name);
         } break;
         case RenderAPI::Vulkan: {
-            temp = new (objectArena()) vkGenericVertexData(*this, ringBufferLength, name);
+            return std::make_shared<vkGenericVertexData>(*this, ringBufferLength, name);
         } break;
         case RenderAPI::None: {
-            temp = new (objectArena()) noGenericVertexData(*this, ringBufferLength, name);
-        } break;
-        default: {
-            DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
+            return std::make_shared<noGenericVertexData>(*this, ringBufferLength, name);
         } break;
     };
 
-    if (temp != nullptr) {
-        objectArena().DTOR(temp);
-    }
+    DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
 
-    return temp;
+    return {};
 }
 
 Texture_ptr GFXDevice::newTexture(const size_t descriptorHash,

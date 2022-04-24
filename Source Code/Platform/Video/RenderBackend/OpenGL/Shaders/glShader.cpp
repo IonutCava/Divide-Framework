@@ -286,9 +286,11 @@ void glShader::RemoveShader(glShader* s) {
     const ShaderMap::iterator it = s_shaderNameMap.find(nameHash);
     if (it != std::end(s_shaderNameMap)) {
         // Subtract one reference from it.
-        if (s->SubRef()) {
+        const size_t newRefCount = s->SubRef();
+        if (newRefCount == 0) {
             // If the new reference count is 0, delete the shader (as in leave it in the object arena)
             s_shaderNameMap.erase(nameHash);
+            MemoryManager::DELETE(s);
         }
     }
 }
@@ -314,17 +316,12 @@ glShader* glShader::LoadShader(GFXDevice& context,
 
     // If we do, and don't need a recompile, just return it
     if (shader == nullptr) {
-        {
-            // If we can't find it, we create a new one
-            ScopedLock<Mutex> w_lock(context.objectArenaMutex());
-            shader = new (context.objectArena()) glShader(context, name);
-            context.objectArena().DTOR(shader);
-        }
-        {
-            // If we loaded the source code successfully,  register it
-            ScopedLock<SharedMutex> w_lock(s_shaderNameLock);
-            s_shaderNameMap.insert({ shader->nameHash(), shader });
-        }
+        shader = MemoryManager_NEW glShader(context, name);
+
+        // If we loaded the source code successfully,  register it
+        ScopedLock<SharedMutex> w_lock(s_shaderNameLock);
+        s_shaderNameMap.insert({ shader->nameHash(), shader });
+
     } else {
         shader->AddRef();
         Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader->name().c_str(), shader->GetRef());

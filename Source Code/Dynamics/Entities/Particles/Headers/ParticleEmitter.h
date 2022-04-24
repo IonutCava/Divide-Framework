@@ -41,9 +41,9 @@
 /// https://github.com/fenbf/particles/blob/public/particlesCode
 namespace Divide {
 
-class GenericVertexData;
-
 FWD_DECLARE_MANAGED_CLASS(Texture);
+FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
+
 /// A Particle emitter scene node. Nothing smarter to say, sorry :"> - Ionut
 class ParticleEmitter final : public SceneNode {
    public:
@@ -105,7 +105,7 @@ class ParticleEmitter final : public SceneNode {
     /// draw the impostor?
     bool _drawImpostor = false;
 
-    using BuffersPerStage = std::array<GenericVertexData*, to_base(RenderStage::COUNT)>;
+    using BuffersPerStage = std::array<GenericVertexData_ptr, to_base(RenderStage::COUNT)>;
     using BuffersPerPlayer = std::array<BuffersPerStage, s_MaxPlayerBuffers>;
     BuffersPerPlayer _particleGPUBuffers{};
     std::array<bool, to_base(RenderStage::COUNT)> _buffersDirty{};

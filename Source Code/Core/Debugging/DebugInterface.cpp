@@ -50,20 +50,6 @@ void DebugInterface::idle() {
             _output.append("\n");
             _output.append(Time::ProfileTimer::printAll());
         }
-
-        Arena::Statistics stats = gfx.getObjectAllocStats();
-        const F32 gpuAllocatedKB = to_F32(stats.bytes_allocated_) / 1024.0f;
-
-        _output.append("\n");
-        _output.append(Util::StringFormat("GPU Objects: %5.2f Kb (%5.2f Mb),\n"
-            "             %d allocs,\n"
-            "             %d blocks,\n"
-            "             %d destructors",
-            gpuAllocatedKB,
-            gpuAllocatedKB / 1024,
-            stats.num_of_allocs_,
-            stats.num_of_blocks_,
-            stats.num_of_dtros_));
     }
 }
 

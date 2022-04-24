@@ -23,6 +23,11 @@ RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& des
     assert(_colourAttachmentCount < RT_MAX_COLOUR_ATTACHMENTS);
 }
 
+RenderTarget::~RenderTarget()
+{
+    destroy();
+}
+
 bool RenderTarget::create() {
     if (_attachmentPool != nullptr) {
         return false;

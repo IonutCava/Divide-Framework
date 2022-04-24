@@ -12,15 +12,6 @@ namespace Divide {
 namespace {
     constexpr U8 g_defaultTargetIndex = U8_MAX;
 
-    // Used to delete resources
-    struct DeleteRT {
-        void operator()(RenderTarget* res) const {
-            if (res != nullptr) {
-                res->destroy();
-            }
-        }
-    };
-
     U32 g_maxAdditionalRenderTargets = 128;
 };
 
@@ -126,8 +117,7 @@ RenderTargetHandle GFXRTPool::allocateRT(const RenderTargetUsage targetUsage, co
 }
 
 RenderTargetHandle GFXRTPool::allocateRT(const RenderTargetUsage targetUsage, const RenderTargetDescriptor& descriptor, const U8 index) {
-    const std::shared_ptr<RenderTarget> rt(Attorney::GFXDeviceGFXRTPool::newRT(_parent, descriptor), DeleteRT());
-    return add(targetUsage, rt, index);
+    return add(targetUsage, Attorney::GFXDeviceGFXRTPool::newRT(_parent, descriptor), index);
 }
 
 RenderTargetID GFXRTPool::screenTargetID() const noexcept

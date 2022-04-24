@@ -57,7 +57,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
     void AddRef() noexcept { _refCount.fetch_add(1); }
     /// Returns true if ref count reached 0
-    bool SubRef() noexcept { return _refCount.fetch_sub(1) == 1; }
+    size_t SubRef() noexcept { return _refCount.fetch_sub(1); }
 
     [[nodiscard]] size_t GetRef() const noexcept { return _refCount.load(); }
 

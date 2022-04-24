@@ -181,7 +181,7 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     explicit RenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
 
    public:
-    virtual ~RenderTarget() = default;
+    virtual ~RenderTarget();
 
     /// Init all attachments. Returns false if already called
     [[nodiscard]] virtual bool create();
@@ -221,6 +221,8 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     RenderTargetDescriptor _descriptor;
     eastl::unique_ptr<RTAttachmentPool> _attachmentPool;
 };
+
+FWD_DECLARE_MANAGED_CLASS(RenderTarget);
 
 };  // namespace Divide
 

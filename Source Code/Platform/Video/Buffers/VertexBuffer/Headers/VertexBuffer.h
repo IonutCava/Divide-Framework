@@ -39,7 +39,7 @@
 
 namespace Divide {
 class ByteBuffer;
-class GenericVertexData;
+FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 /// Vertex Buffer interface class to allow API-independent implementation of data
 /// This class does NOT represent an API-level VB, such as: GL_ARRAY_BUFFER / D3DVERTEXBUFFER
 /// It is only a "buffer" for "vertex info" abstract of implementation. (e.g.: OGL uses a vertex array object for this)
@@ -392,7 +392,7 @@ class VertexBuffer final : public VertexDataInterface {
     AttribValues _attribOffsets;
     AttribFlags _useAttribute{};
     size_t _effectiveEntrySize = 0u;
-    GenericVertexData* _internalGVD = nullptr;
+    GenericVertexData_ptr _internalGVD = nullptr;
     bool _refreshQueued = false;
     bool _dataLayoutChanged = false;
     bool _indicesChanged = true;

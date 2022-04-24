@@ -103,7 +103,7 @@ void FillSmallData(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, co
 
 VertexBuffer::VertexBuffer(GFXDevice& context)
     : VertexDataInterface(context)
-    , _internalGVD(context.newGVDLocked(1u))
+    , _internalGVD(context.newGVD(1u))
 {
     _internalGVD->create();
 }

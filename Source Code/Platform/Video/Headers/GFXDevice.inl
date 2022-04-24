@@ -100,11 +100,6 @@ GFXDevice::getRTPreviewShader(const bool depthOnly) const noexcept {
     return depthOnly ? _previewRenderTargetDepth : _previewRenderTargetColour;
 }
 
-inline Arena::Statistics
-GFXDevice::getObjectAllocStats() const noexcept {
-    return _gpuObjectArena.statistics_;
-}
-
 inline void
 GFXDevice::registerDrawCall() noexcept {
     registerDrawCalls(1);

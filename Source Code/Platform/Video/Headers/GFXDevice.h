@@ -75,10 +75,8 @@ class Texture;
 class Object3D;
 class Renderer;
 class IMPrimitive;
-class PixelBuffer;
 class SceneGraphNode;
 class SceneRenderState;
-class GenericVertexData;
 class ShaderComputeQueue;
 
 struct SizeChangeParams;
@@ -88,7 +86,9 @@ struct ShaderBufferDescriptor;
 enum class ShadowType : U8;
 
 FWD_DECLARE_MANAGED_CLASS(Texture);
+FWD_DECLARE_MANAGED_CLASS(PixelBuffer);
 FWD_DECLARE_MANAGED_CLASS(VertexBuffer);
+FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 
 namespace Time {
     class ProfileTimer;
@@ -224,8 +224,6 @@ public:
         REVEALAGE = VELOCITY,
     };
 
-    using ObjectArena = MyArena<Config::REQUIRED_RAM_SIZE_IN_BYTES / 4>;
-
 public:  // GPU interface
     explicit GFXDevice(Kernel& parent);
     ~GFXDevice();
@@ -315,7 +313,6 @@ public:  // Accessors and Mutators
     inline GFXRTPool& renderTargetPool() noexcept;
     inline const GFXRTPool& renderTargetPool() const noexcept;
     inline const ShaderProgram_ptr& getRTPreviewShader(bool depthOnly) const noexcept;
-    inline Arena::Statistics getObjectAllocStats() const noexcept;
     inline void registerDrawCall() noexcept;
     inline void registerDrawCalls(U32 count) noexcept;
     inline const Rect<I32>& getCurrentViewport() const noexcept;
@@ -341,9 +338,6 @@ public:  // Accessors and Mutators
     static void OverrideDeviceInformation(const DeviceInformation& info) noexcept;
 
 public:
-    Mutex&       objectArenaMutex() noexcept;
-    ObjectArena& objectArena() noexcept;
-
     GenericVertexData* getOrCreateIMGUIBuffer(I64 windowGUID, I32 maxCommandCount);
 
     /// Create and return a new immediate mode emulation primitive.
@@ -353,11 +347,9 @@ public:
     /// Create and return a new vertex array (VAO + VB + IB).
     VertexBuffer_ptr  newVB();
     /// Create and return a new pixel buffer using the requested format.
-    PixelBuffer*       newPB(PBType type = PBType::PB_TEXTURE_2D, const char* name = nullptr);
-    PixelBuffer*       newPBLocked(PBType type = PBType::PB_TEXTURE_2D, const char* name = nullptr);
+    PixelBuffer_ptr    newPB(PBType type = PBType::PB_TEXTURE_2D, const char* name = nullptr);
     /// Create and return a new generic vertex data object
-    GenericVertexData* newGVD(U32 ringBufferLength, const char* name = nullptr);
-    GenericVertexData* newGVDLocked(U32 ringBufferLength, const char* name = nullptr);
+    GenericVertexData_ptr newGVD(U32 ringBufferLength, const char* name = nullptr);
     /// Create and return a new texture.
     Texture_ptr        newTexture(size_t descriptorHash,
                                   const Str256& resourceName,
@@ -410,8 +402,7 @@ protected:
     void setShadowMSAASampleCountInternal(ShadowType type, U8 sampleCount);
 
     /// Create and return a new framebuffer.
-    RenderTarget* newRT(const RenderTargetDescriptor& descriptor);
-    RenderTarget* newRTLocked(const RenderTargetDescriptor& descriptor);
+    RenderTarget_ptr newRT(const RenderTargetDescriptor& descriptor);
 
     // returns true if the window and the viewport have different aspect ratios
     bool fitViewportInWindow(U16 w, U16 h);
@@ -461,7 +452,7 @@ private:
     void setDepthRange(const vec2<F32>& depthRange);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
-    RenderTarget* newRTInternal(const RenderTargetDescriptor& descriptor);
+    RenderTarget_ptr newRTInternal(const RenderTargetDescriptor& descriptor);
     ErrorCode createAPIInstance(RenderAPI api);
 
 private:
@@ -551,13 +542,10 @@ private:
 
     std::array<CameraSnapshot, Config::MAX_LOCAL_PLAYER_COUNT> _cameraSnapshotHistory;
 
-    hashMap<I64, GenericVertexData*> _IMGUIBuffers;
+    hashMap<I64, GenericVertexData_ptr> _IMGUIBuffers;
 
     std::stack<Rect<I32>> _viewportStack;
-    Mutex _gpuObjectArenaMutex;
     Mutex _imprimitiveMutex;
-
-    ObjectArena _gpuObjectArena;
 
     static D64 s_interpolationFactor;
     static U32 s_frameCount;
@@ -615,7 +603,7 @@ namespace Attorney {
     };
 
     class GFXDeviceGFXRTPool {
-        static RenderTarget* newRT(GFXDevice& device, const RenderTargetDescriptor& descriptor) {
+        static RenderTarget_ptr newRT(GFXDevice& device, const RenderTargetDescriptor& descriptor) {
             return device.newRT(descriptor);
         };
 
