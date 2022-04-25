@@ -62,14 +62,8 @@ RenderPassManager::~RenderPassManager()
 }
 
 void RenderPassManager::postInit() {
-    ShaderModuleDescriptor vertModule = {};
-    vertModule._moduleType = ShaderType::VERTEX;
-    vertModule._sourceFile = "baseVertexShaders.glsl";
-    vertModule._variant = "FullScreenQuad";
-
-    ShaderModuleDescriptor fragModule = {};
-    fragModule._moduleType = ShaderType::FRAGMENT;
-    fragModule._sourceFile = "OITComposition.glsl";
+    ShaderModuleDescriptor vertModule{ ShaderType::VERTEX, "baseVertexShaders.glsl", "FullScreenQuad" };
+    ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "OITComposition.glsl" };
 
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);

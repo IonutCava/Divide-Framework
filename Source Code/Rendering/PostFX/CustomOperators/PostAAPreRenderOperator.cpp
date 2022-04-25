@@ -43,17 +43,11 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         _smaaWeights = _context.renderTargetPool().allocateRT(desc);
     }
     { //FXAA Shader
-        ShaderModuleDescriptor vertModule = {};
-        vertModule._moduleType = ShaderType::VERTEX;
-        vertModule._sourceFile = "baseVertexShaders.glsl";
-        vertModule._variant = "FullScreenQuad";
-
-        ShaderModuleDescriptor fragModule = {};
-        fragModule._moduleType = ShaderType::FRAGMENT;
-        fragModule._sourceFile = "FXAA.glsl";
-
         ShaderProgramDescriptor aaShaderDescriptor = {};
-        aaShaderDescriptor._modules = { vertModule, fragModule };
+        aaShaderDescriptor._modules = { 
+            ShaderModuleDescriptor{ ShaderType::VERTEX, "baseVertexShaders.glsl", "FullScreenQuad" },
+            ShaderModuleDescriptor{ ShaderType::FRAGMENT, "FXAA.glsl" } 
+        };
 
         ResourceDescriptor fxaa("FXAA");
         fxaa.propertyDescriptor(aaShaderDescriptor);

@@ -39,12 +39,11 @@
 
 #include "Bone.h"
 #include <assimp/anim.h>
+#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
 namespace Divide {
 
 class ByteBuffer;
-
-FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 struct AnimationChannel {
     vector<aiVectorKey> _positionKeys;

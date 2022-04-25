@@ -207,8 +207,7 @@ bool WaterPlane::load() {
         if (IsDepthPass(stagePass)) {
             if (stagePass._stage == RenderStage::DISPLAY) {
                 shaderDescriptor._name = "waterPrePass";
-                vertModule._defines.emplace_back("PRE_PASS");
-                fragModule._defines.emplace_back("PRE_PASS");
+                shaderDescriptor._globalDefines.emplace_back("PRE_PASS");
                 shaderDescriptor._modules.push_back(vertModule);
                 shaderDescriptor._modules.push_back(fragModule);
             } else {

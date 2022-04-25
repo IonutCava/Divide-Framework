@@ -416,22 +416,12 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     WAIT_FOR_CONDITION(loadTasks.load() == 0u);
 
     vegMaterial->computeShaderCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
-        ShaderModuleDescriptor vertModule = {};
-        vertModule._moduleType = ShaderType::VERTEX;
-        vertModule._sourceFile = "grass.glsl";
-
-        vertModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances));
-        vertModule._defines.emplace_back("ENABLE_TBN");
-
-        ShaderModuleDescriptor fragModule = {};
-        fragModule._moduleType = ShaderType::FRAGMENT;
-        fragModule._sourceFile = "grass.glsl";
-        fragModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances));
-        fragModule._defines.emplace_back("ENABLE_TBN");
-
         ShaderProgramDescriptor shaderDescriptor = {};
-        shaderDescriptor._modules.push_back(vertModule);
+        shaderDescriptor._modules.emplace_back(ShaderType::VERTEX, "grass.glsl");
+        shaderDescriptor._globalDefines.emplace_back("ENABLE_TBN");
+        shaderDescriptor._globalDefines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances));
 
+        ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "grass.glsl" };
         if (IsDepthPass(stagePass)) {
             if (stagePass._stage == RenderStage::DISPLAY) {
                 fragModule._variant = "PrePass";

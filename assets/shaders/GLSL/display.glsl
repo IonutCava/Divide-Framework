@@ -5,10 +5,11 @@
 #endif
 
 DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D tex;
-#if !defined(DEPTH_ONLY)
+#if defined(DEPTH_ONLY)
+#else //DEPTH_ONLY
 uniform uint convertToSRGB;
 layout(location = 0) out vec4 _colourOut;
-#endif
+#endif//DEPTH_ONLY
 
 void main(void){
 #if !defined(DEPTH_ONLY)

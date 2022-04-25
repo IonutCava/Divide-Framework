@@ -76,6 +76,12 @@ struct ModuleDefine {
 using ModuleDefines = vector<ModuleDefine>;
 
 struct ShaderModuleDescriptor {
+    ShaderModuleDescriptor() = default;
+    explicit ShaderModuleDescriptor(ShaderType type, const Str64& file, const Str64& variant = "")
+        : _moduleType(type), _sourceFile(file), _variant(variant)
+    {
+    }
+
     ModuleDefines _defines;
     Str64 _sourceFile;
     Str64 _variant;
@@ -92,6 +98,7 @@ public:
 
     size_t getHash() const override;
     Str256 _name;
+    ModuleDefines _globalDefines;
     vector<ShaderModuleDescriptor> _modules;
 };
 
@@ -270,7 +277,9 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "ShaderProgram"; }
 
     static void OnAtomChange(std::string_view atomName, FileUpdateEvent evt);
-    static void ParseGLSLSource(Reflection::Data& reflectionDataInOut, LoadData& dataInOut, bool targetVulkan);
+    static void ParseGLSLSource(Reflection::Data& reflectionDataInOut, LoadData& dataInOut, bool targetVulkan, bool reloadExisting);
+    static bool SaveReflectionData(const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn);
+    static bool LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut);
     static void QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName);
 
     template<typename StringType> 

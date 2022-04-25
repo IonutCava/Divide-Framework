@@ -257,8 +257,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     stateDepthOnlyRendering.setZFunc(ComparisonFunction::ALWAYS);
     _stateDepthOnlyRenderingHash = stateDepthOnlyRendering.getHash();
 
-    // The general purpose render state blocks are both mandatory and must
-    // differ from each other at a state hash level
+    // The general purpose render state blocks are both mandatory and must different from each other at a state hash level
     assert(_stateDepthOnlyRenderingHash != _state2DRenderingHash && "GFXDevice error: Invalid default state hash detected!");
     assert(_state2DRenderingHash != _defaultStateNoDepthHash && "GFXDevice error: Invalid default state hash detected!");
     assert(_defaultStateNoDepthHash != RenderStateBlock::DefaultHash() && "GFXDevice error: Invalid default state hash detected!");
@@ -786,9 +785,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 ShaderProgramDescriptor shaderDescriptorSingle = {};
                 shaderDescriptorSingle._modules.push_back(blurVertModule);
                 shaderDescriptorSingle._modules.push_back(geomModule);
-                shaderDescriptorSingle._modules.back()._defines.emplace_back("GS_MAX_INVOCATIONS 1");
                 shaderDescriptorSingle._modules.push_back(fragModule);
-                shaderDescriptorSingle._modules.back()._defines.emplace_back("GS_MAX_INVOCATIONS 1");
+                shaderDescriptorSingle._globalDefines.emplace_back("GS_MAX_INVOCATIONS 1");
 
                 ResourceDescriptor blur("GaussBlur_Single");
                 blur.propertyDescriptor(shaderDescriptorSingle);
@@ -806,11 +804,10 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 ShaderProgramDescriptor shaderDescriptorLayered = {};
                 shaderDescriptorLayered._modules.push_back(blurVertModule);
                 shaderDescriptorLayered._modules.push_back(geomModule);
-                shaderDescriptorLayered._modules.back()._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
                 shaderDescriptorLayered._modules.push_back(fragModule);
-                shaderDescriptorLayered._modules.back()._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
                 shaderDescriptorLayered._modules.back()._variant += ".Layered";
                 shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED");
+                shaderDescriptorLayered._globalDefines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
 
                 ResourceDescriptor blur("GaussBlur_Layered");
                 blur.propertyDescriptor(shaderDescriptorLayered);
@@ -2032,7 +2029,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
             // Update the viewport with the new resolution
             GFX::EnqueueCommand<GFX::SetViewportCommand>(cmdBufferInOut)->_viewport.set(0, 0, twidth, theight);
             PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(cmdBufferInOut)->_constants;
-            constants.set(_ID("depthInfo"),   GFX::PushConstantType::IVEC2, vec2<I32>(level - 1, wasEven ? 1 : 0));
+            constants.set(_ID("depthInfo"), GFX::PushConstantType::IVEC2, vec2<I32>(level - 1, wasEven ? 1 : 0));
 
             // Dummy draw command as the full screen quad is generated completely in the vertex shader
             GFX::EnqueueCommand<GFX::DrawCommand>(cmdBufferInOut);

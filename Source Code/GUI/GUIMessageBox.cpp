@@ -34,8 +34,8 @@ GUIMessageBox::~GUIMessageBox()
 {
     if (_parent != nullptr) {
         _parent->removeChild(_msgBoxWindow);
+        CEGUI::WindowManager::getSingletonPtr()->destroyWindow(_msgBoxWindow);
     }
-    CEGUI::WindowManager::getSingletonPtr()->destroyWindow(_msgBoxWindow);
 }
 
 bool GUIMessageBox::onConfirm(const CEGUI::EventArgs& /*e*/) noexcept {

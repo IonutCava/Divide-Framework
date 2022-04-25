@@ -45,18 +45,17 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         geomModule._moduleType = ShaderType::GEOMETRY;
         geomModule._sourceFile = "blur.glsl";
         geomModule._variant = "GaussBlur";
-        geomModule._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS));
 
         ShaderModuleDescriptor fragModule = {};
         fragModule._moduleType = ShaderType::FRAGMENT;
         fragModule._sourceFile = "blur.glsl";
         fragModule._variant = "GaussBlur.Layered";
-        fragModule._defines.emplace_back("LAYERED");
 
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(geomModule);
         shaderDescriptor._modules.push_back(fragModule);
+        shaderDescriptor._globalDefines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS));
 
         ResourceDescriptor blurDepthMapShader(Util::StringFormat("GaussBlur_%d_invocations", Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS).c_str());
         blurDepthMapShader.waitForReady(true);

@@ -15,7 +15,7 @@
 namespace Divide {
 
 namespace {
-    constexpr bool g_consumeSPIRVInput = true;
+    constexpr bool g_consumeSPIRVInput = false;
     constexpr const char* g_binaryBinExtension = ".bin";
     constexpr const char* g_binaryFmtExtension = ".fmt";
 

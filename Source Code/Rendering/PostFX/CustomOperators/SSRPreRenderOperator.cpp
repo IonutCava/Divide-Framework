@@ -24,14 +24,8 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     screenSampler.magFilter(TextureFilter::LINEAR);
     screenSampler.anisotropyLevel(0);
 
-    ShaderModuleDescriptor vertModule = {};
-    vertModule._moduleType = ShaderType::VERTEX;
-    vertModule._sourceFile = "baseVertexShaders.glsl";
-    vertModule._variant = "FullScreenQuad";
-
-    ShaderModuleDescriptor fragModule = {};
-    fragModule._moduleType = ShaderType::FRAGMENT;
-    fragModule._sourceFile = "ScreenSpaceReflections.glsl";
+    ShaderModuleDescriptor vertModule{ ShaderType::VERTEX, "baseVertexShaders.glsl", "FullScreenQuad" };
+    ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "ScreenSpaceReflections.glsl" };
     fragModule._defines.emplace_back("NO_CAM_BLOCK");
 
     ShaderProgramDescriptor shaderDescriptor = {};

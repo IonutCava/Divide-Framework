@@ -119,15 +119,8 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     });
 
     mat->computeShaderCBK([useTexture]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
-        ShaderModuleDescriptor vertModule = {};
-        vertModule._moduleType = ShaderType::VERTEX;
-        vertModule._sourceFile = "particles.glsl";
-        vertModule._variant = useTexture ? "WithTexture" : "NoTexture";
-
-        ShaderModuleDescriptor fragModule = {};
-        fragModule._moduleType = ShaderType::FRAGMENT;
-        fragModule._sourceFile = "particles.glsl";
-        fragModule._variant = useTexture ? "WithTexture" : "NoTexture";
+        ShaderModuleDescriptor vertModule{ ShaderType::VERTEX, "particles.glsl", useTexture ? "WithTexture" : "NoTexture" };
+        ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "particles.glsl", useTexture ? "WithTexture" : "NoTexture" };
 
         if (useTexture) {
             fragModule._defines.emplace_back("HAS_TEXTURE");
@@ -135,6 +128,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
 
         ShaderProgramDescriptor particleShaderDescriptor = {};
         particleShaderDescriptor._name = useTexture ? "particles_WithTexture" : "particles_NoTexture";
+        particleShaderDescriptor._modules.push_back(vertModule);
 
         if (stagePass._stage == RenderStage::DISPLAY) {
             if (IsDepthPass(stagePass)) {
@@ -142,10 +136,8 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
                 fragModule._defines.emplace_back("PRE_PASS");
                 particleShaderDescriptor._name = useTexture ? "particles_prePass_WithTexture" : "particles_prePass_NoTexture";
             }
-            particleShaderDescriptor._modules.push_back(vertModule);
             particleShaderDescriptor._modules.push_back(fragModule);
         } else if (IsDepthPass(stagePass)) {
-            particleShaderDescriptor._modules.push_back(vertModule);
             if (stagePass._stage == RenderStage::SHADOW) {
                 fragModule._variant = "Shadow.VSM";
                 particleShaderDescriptor._modules.push_back(fragModule);

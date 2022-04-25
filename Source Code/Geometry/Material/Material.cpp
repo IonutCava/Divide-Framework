@@ -532,23 +532,21 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     DIVIDE_ASSERT(properties().shadingMode() != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!");
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> moduleDefines = {};
 
-    ModuleDefines globalDefines = {};
-
     const bool msaaScreenTarget = _context.renderTargetPool().screenTargetID()._usage == RenderTargetUsage::SCREEN_MS;
     if (msaaScreenTarget) {
-        globalDefines.emplace_back("MSAA_SCREEN_TARGET", true);
+        shaderDescriptor._globalDefines.emplace_back("MSAA_SCREEN_TARGET", true);
     }
 
     if (renderStagePass._stage == RenderStage::SHADOW) {
-        globalDefines.emplace_back("SHADOW_PASS", true);
+        shaderDescriptor._globalDefines.emplace_back("SHADOW_PASS", true);
     } else if (isDepthPass) {
-        globalDefines.emplace_back("PRE_PASS", true);
+        shaderDescriptor._globalDefines.emplace_back("PRE_PASS", true);
     }
     if (renderStagePass._stage == RenderStage::REFLECTION && to_U8(renderStagePass._variant) != to_base(ReflectorType::CUBE)) {
-        globalDefines.emplace_back("REFLECTION_PASS", true);
+        shaderDescriptor._globalDefines.emplace_back("REFLECTION_PASS", true);
     }
     if (renderStagePass._stage == RenderStage::DISPLAY) {
-        globalDefines.emplace_back("MAIN_DISPLAY_PASS", true);
+        shaderDescriptor._globalDefines.emplace_back("MAIN_DISPLAY_PASS", true);
     }
     if (renderStagePass._passType == RenderPassType::OIT_PASS) {
         moduleDefines[to_base(ShaderType::FRAGMENT)].emplace_back("OIT_PASS", true);
@@ -557,19 +555,19 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     }
     switch (properties().shadingMode()) {
         case ShadingMode::FLAT: {
-            globalDefines.emplace_back("SHADING_MODE_FLAT", true);
+            shaderDescriptor._globalDefines.emplace_back("SHADING_MODE_FLAT", true);
         } break;
         case ShadingMode::TOON: {
-            globalDefines.emplace_back("SHADING_MODE_TOON", true);
+            shaderDescriptor._globalDefines.emplace_back("SHADING_MODE_TOON", true);
         } break;
         case ShadingMode::BLINN_PHONG: {
-            globalDefines.emplace_back("SHADING_MODE_BLINN_PHONG", true);
+            shaderDescriptor._globalDefines.emplace_back("SHADING_MODE_BLINN_PHONG", true);
         } break;
         case ShadingMode::PBR_MR: {
-            globalDefines.emplace_back("SHADING_MODE_PBR_MR", true);
+            shaderDescriptor._globalDefines.emplace_back("SHADING_MODE_PBR_MR", true);
         } break; 
         case ShadingMode::PBR_SG: {
-            globalDefines.emplace_back("SHADING_MODE_PBR_SG", true);
+            shaderDescriptor._globalDefines.emplace_back("SHADING_MODE_PBR_SG", true);
         } break;
         default: DIVIDE_UNEXPECTED_CALL(); break;
     }
@@ -579,7 +577,7 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
         properties().bumpMethod() != BumpMethod::NONE) 
     {
         // Bump mapping?
-        globalDefines.emplace_back("COMPUTE_TBN", true);
+        shaderDescriptor._globalDefines.emplace_back("COMPUTE_TBN", true);
     }
 
     if (hasTransparency()) {
@@ -607,10 +605,10 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
         }
     }
 
-    globalDefines.emplace_back(properties().isStatic() ? "NODE_STATIC" : "NODE_DYNAMIC", true);
+    shaderDescriptor._globalDefines.emplace_back(properties().isStatic() ? "NODE_STATIC" : "NODE_DYNAMIC", true);
 
     if (properties().isInstanced()) {
-        globalDefines.emplace_back("OVERRIDE_DATA_IDX", true);
+        shaderDescriptor._globalDefines.emplace_back("OVERRIDE_DATA_IDX", true);
     }
 
     if (properties().hardwareSkinning()) {
@@ -618,11 +616,9 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     }
 
     for (ShaderModuleDescriptor& module : shaderDescriptor._modules) {
-        module._defines.insert(eastl::end(module._defines), eastl::begin(globalDefines), eastl::end(globalDefines));
         module._defines.insert(eastl::end(module._defines), eastl::begin(moduleDefines[to_base(module._moduleType)]), eastl::end(moduleDefines[to_base(module._moduleType)]));
         module._defines.insert(eastl::end(module._defines), eastl::begin(_extraShaderDefines[to_base(module._moduleType)]), eastl::end(_extraShaderDefines[to_base(module._moduleType)]));
         module._defines.emplace_back("DEFINE_PLACEHOLDER", false);
-        shaderDescriptor._name.append(Util::StringFormat("_%zu", ShaderProgram::DefinesHash(module._defines)));
     }
 }
 

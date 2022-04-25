@@ -38,6 +38,7 @@ extern "C" {
 #endif
 
 namespace Divide {
+constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 constexpr I8 s_maxHeaderRecursionLevel = 64;
 
@@ -798,6 +799,7 @@ void ShaderProgram::UniformBlockUploader::commit() {
     }
 
     DIVIDE_ASSERT(_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr);
+    const bool rebind = _needsQueueIncrement;
     if (_needsQueueIncrement) {
         _buffer->incQueue();
         _needsQueueIncrement = false;
@@ -805,6 +807,9 @@ void ShaderProgram::UniformBlockUploader::commit() {
     _buffer->writeData(_localDataCopy.data());
     _needsQueueIncrement = true;
     _uniformBlockDirty = false;
+    if (rebind) {
+        prepare();
+    }
 }
 
 void ShaderProgram::UniformBlockUploader::prepare() {
@@ -1132,7 +1137,7 @@ vector<ResourcePath> ShaderProgram::GetAllAtomLocations() {
 
 size_t ShaderProgram::DefinesHash(const ModuleDefines& defines) {
     if (defines.empty()) {
-        return 0;
+        return 0u;
     }
 
     size_t hash = 7919;
@@ -1142,8 +1147,6 @@ size_t ShaderProgram::DefinesHash(const ModuleDefines& defines) {
     }
     return hash;
 }
-
-
 const string& ShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<U64>& foundAtomIDsInOut, bool& wasParsed) {
     ScopedLock<SharedMutex> w_lock(s_atomLock);
     return ShaderFileReadLocked(filePath, atomName, recurse, foundAtomIDsInOut, wasParsed);
@@ -1306,7 +1309,7 @@ eastl::string ShaderProgram::GatherUniformDeclarations(const eastl::string & sou
     return ret;
 }
 
-void ShaderProgram::ParseGLSLSource(Reflection::Data& reflectionDataInOut, LoadData& dataInOut, const bool targetVulkan) {
+void ShaderProgram::ParseGLSLSource(Reflection::Data& reflectionDataInOut, LoadData& dataInOut, const bool targetVulkan, const bool reloadExisting) {
     if (dataInOut._codeSource == ShaderProgram::LoadData::SourceCodeSource::SOURCE_FILES) {
         QueueShaderWriteToFile(dataInOut._sourceCodeGLSL.c_str(), dataInOut._fileName);
     }
@@ -1325,17 +1328,88 @@ void ShaderProgram::ParseGLSLSource(Reflection::Data& reflectionDataInOut, LoadD
         case ShaderType::FRAGMENT:          type = vk::ShaderStageFlagBits::eFragment;               break;
         case ShaderType::COMPUTE:           type = vk::ShaderStageFlagBits::eCompute;                break;
     };
+    const ResourcePath spvPath = Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::g_SPIRVShaderLoc;
+    const ResourcePath spvTarget{ DecorateFileName(dataInOut._fileName) + "." + Paths::Shaders::g_SPIRVExt };
+    const ResourcePath spvTargetReflect{ spvTarget + ".refl" };
 
-    if (!SpirvHelper::GLSLtoSPV(type, dataInOut._sourceCodeGLSL.c_str(), dataInOut._sourceCodeSpirV, targetVulkan, reflectionDataInOut) || dataInOut._sourceCodeSpirV.empty()) {
-        Console::errorfn(Locale::Get(_ID("ERROR_SHADER_CONVERSION_SPIRV_FAILED")), dataInOut._fileName.c_str());
-        dataInOut._sourceCodeSpirV.clear();
-    } else {
-        const ResourcePath spvPath = Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::g_SPIRVShaderLoc;
-        const Str256 spvTarget = DecorateFileName(dataInOut._fileName) + "." + Paths::Shaders::g_SPIRVExt;
-        if (writeFile(spvPath, ResourcePath(spvTarget), dataInOut._sourceCodeSpirV.data(), dataInOut._sourceCodeSpirV.size() * sizeof(U32), FileType::BINARY) != FileError::NONE) {
-            Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_SPIRV_FAILED")), dataInOut._fileName.c_str());
+    bool usedCache = false;
+    if (!reloadExisting && LoadReflectionData(spvPath, spvTargetReflect, reflectionDataInOut)) {
+        vector<Byte> tempData;
+        if (readFile(spvPath, spvTarget, tempData, FileType::BINARY) == FileError::NONE) {
+            dataInOut._sourceCodeSpirV.resize(tempData.size() / sizeof(U32));
+            memcpy(dataInOut._sourceCodeSpirV.data(), tempData.data(), tempData.size());
+            usedCache = true;
         }
     }
+   
+    if (!usedCache) {
+        if (!SpirvHelper::GLSLtoSPV(type, dataInOut._sourceCodeGLSL.c_str(), dataInOut._sourceCodeSpirV, targetVulkan, reflectionDataInOut) || dataInOut._sourceCodeSpirV.empty()) {
+            Console::errorfn(Locale::Get(_ID("ERROR_SHADER_CONVERSION_SPIRV_FAILED")), dataInOut._fileName.c_str());
+            dataInOut._sourceCodeSpirV.clear();
+        } else {
+            if (SaveReflectionData(spvPath, spvTargetReflect, reflectionDataInOut)) {
+                if (writeFile(spvPath, ResourcePath(spvTarget), dataInOut._sourceCodeSpirV.data(), dataInOut._sourceCodeSpirV.size() * sizeof(U32), FileType::BINARY) != FileError::NONE) {
+                    Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_SPIRV_FAILED")), dataInOut._fileName.c_str());
+                }
+            }
+        }
+    }
+}
+
+bool ShaderProgram::SaveReflectionData(const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn) {
+    ByteBuffer buffer;
+    buffer << BYTE_BUFFER_VERSION;
+    buffer << reflectionDataIn._targetBlockName;
+    buffer << reflectionDataIn._blockSize;
+    buffer << reflectionDataIn._blockMembers.size();
+    for (const auto& member : reflectionDataIn._blockMembers) {
+        buffer << std::string(member._name.c_str());
+        buffer << to_base(member._type);
+        buffer << member._offset;
+        buffer << member._arrayInnerSize;
+        buffer << member._arrayOuterSize;
+        buffer << member._vectorDimensions;
+        buffer << member._matrixDimensions.x;
+        buffer << member._matrixDimensions.y;
+    }
+
+    return buffer.dumpToFile(path.c_str(), file.c_str());
+}
+
+bool ShaderProgram::LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut) {
+    ByteBuffer buffer;
+    if (buffer.loadFromFile(path.c_str(), file.c_str())) {
+        auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
+        buffer >> tempVer;
+        if (tempVer == BYTE_BUFFER_VERSION) {
+            buffer >> reflectionDataOut._targetBlockName;
+            buffer >> reflectionDataOut._blockSize;
+
+            size_t memberCount = 0u;
+            buffer >> memberCount;
+            reflectionDataOut._blockMembers.reserve(memberCount);
+
+            std::string tempStr;
+            std::underlying_type_t<GFX::PushConstantType> tempType{0u};
+            
+            for (size_t i = 0; i < memberCount; ++i) {
+                Reflection::BlockMember& tempMember = reflectionDataOut._blockMembers.emplace_back();
+                buffer >> tempStr;
+                tempMember._name = tempStr.c_str();
+                buffer >> tempType;
+                tempMember._type = static_cast<GFX::PushConstantType>(tempType);
+                buffer >> tempMember._offset;
+                buffer >> tempMember._arrayInnerSize;
+                buffer >> tempMember._arrayOuterSize;
+                buffer >> tempMember._vectorDimensions;
+                buffer >> tempMember._matrixDimensions.x;
+                buffer >> tempMember._matrixDimensions.y;
+            }
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) {
@@ -1356,6 +1430,8 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
     for (const ShaderModuleDescriptor& shaderDescriptor : _descriptor._modules) {
         const U64 fileHash = _ID(shaderDescriptor._sourceFile.data());
         fileData[fileHash]._modules.push_back(shaderDescriptor);
+        ShaderModuleDescriptor& newDescriptor = fileData[fileHash]._modules.back();
+        newDescriptor._defines.insert(end(newDescriptor._defines), begin(_descriptor._globalDefines), end(_descriptor._globalDefines));
     }
 
     U32 blockOffset = 0u;
@@ -1364,7 +1440,7 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
 
         assert(!loadDataPerFile._modules.empty());
 
-        for (ShaderModuleDescriptor& data : loadDataPerFile._modules) {
+        for (const ShaderModuleDescriptor& data : loadDataPerFile._modules) {
             const ShaderType type = data._moduleType;
             assert(type != ShaderType::COUNT);
 
@@ -1378,16 +1454,16 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
             }
             stageData._definesHash = DefinesHash(data._defines);
             stageData._fileName = Util::StringFormat("%s.%zu.%s", stageData._name, stageData._definesHash, shaderAtomExtensionName[to_U8(type)]);
+
             loadSourceCode(data._defines, reloadExisting, stageData);
+            if (!stageData._uniforms.empty()) {
+                stageUniforms.insert(begin(stageData._uniforms), end(stageData._uniforms));
+            }
 
             if (!loadDataPerFile._programName.empty()) {
                 loadDataPerFile._programName.append("-");
             }
             loadDataPerFile._programName.append(stageData._fileName);
-
-            if (!stageData._uniforms.empty()) {
-                stageUniforms.insert(begin(stageData._uniforms), end(stageData._uniforms));
-            }
 
             _usedAtomIDs.emplace_back(_ID(data._sourceFile.c_str()));
 
@@ -1423,7 +1499,7 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
             if (it._codeSource == ShaderProgram::LoadData::SourceCodeSource::SOURCE_FILES) {
                 Util::ReplaceStringInPlace(it._sourceCodeGLSL, "//_CUSTOM_UNIFORMS_\\", loadDataPerFile._loadData._uniformBlock);
             }
-            ParseGLSLSource(loadDataPerFile._loadData._reflectionData, it, false);
+            ParseGLSLSource(loadDataPerFile._loadData._reflectionData, it, false, reloadExisting);
         }
 
         initUniformUploader(loadDataPerFile);

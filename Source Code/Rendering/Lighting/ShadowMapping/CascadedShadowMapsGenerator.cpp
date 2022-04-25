@@ -46,27 +46,17 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
 
     g_shadowSettings = context.context().config().rendering.shadowMapping;
     {
-        ShaderModuleDescriptor vertModule = {};
-        vertModule._moduleType = ShaderType::VERTEX;
-        vertModule._sourceFile = "baseVertexShaders.glsl";
-        vertModule._variant = "FullScreenQuad";
+        ShaderModuleDescriptor vertModule{ ShaderType::VERTEX,   "baseVertexShaders.glsl", "FullScreenQuad" };
+        ShaderModuleDescriptor geomModule{ ShaderType::GEOMETRY, "blur.glsl",              "GaussBlur" };
+        ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "blur.glsl",              "GaussBlur.Layered" };
 
-        ShaderModuleDescriptor geomModule = {};
-        geomModule._moduleType = ShaderType::GEOMETRY;
-        geomModule._sourceFile = "blur.glsl";
-        geomModule._variant = "GaussBlur";
-        geomModule._defines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
-
-        ShaderModuleDescriptor fragModule = {};
-        fragModule._moduleType = ShaderType::FRAGMENT;
-        fragModule._sourceFile = "blur.glsl";
-        fragModule._variant = "GaussBlur.Layered";
         fragModule._defines.emplace_back("LAYERED");
 
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(geomModule);
         shaderDescriptor._modules.push_back(fragModule);
+        shaderDescriptor._globalDefines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
 
         ResourceDescriptor blurDepthMapShader(Util::StringFormat("GaussBlur_%d_invocations", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT));
         blurDepthMapShader.waitForReady(true);

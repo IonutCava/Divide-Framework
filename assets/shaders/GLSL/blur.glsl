@@ -2,10 +2,6 @@
 
 #include "nodeDataInput.cmn"
 
-#if !defined(GS_MAX_INVOCATIONS)
-#define GS_MAX_INVOCATIONS 1
-#endif //!GS_MAX_INVOCATIONS
-
 layout(points, invocations = GS_MAX_INVOCATIONS) in;
 layout(triangle_strip, max_vertices = 4) out;
 
@@ -17,15 +13,11 @@ uniform int layerOffsetWrite;
 uniform uint verticalBlur;
 
 layout(location = ATTRIB_FREE_START) out flat int _blurred;
-#if GS_MAX_INVOCATIONS > 1
 layout(location = ATTRIB_FREE_START + 1) out vec3 _blurCoords[7];
-#else
-layout(location = ATTRIB_FREE_START + 1) out vec2 _blurCoords[7];
-#endif
 
 void computeCoordsH(in float texCoordX, in float texCoordY, in int layer){
     vec2 blurSize = blurSizes[layer];
-#if GS_MAX_INVOCATIONS > 1
+
     _blurCoords[0] = vec3(texCoordX, texCoordY - 3.0 * blurSize.y, layer);
     _blurCoords[1] = vec3(texCoordX, texCoordY - 2.0 * blurSize.y, layer);
     _blurCoords[2] = vec3(texCoordX, texCoordY - 1.0 * blurSize.y, layer);
@@ -33,21 +25,13 @@ void computeCoordsH(in float texCoordX, in float texCoordY, in int layer){
     _blurCoords[4] = vec3(texCoordX, texCoordY + 1.0 * blurSize.y, layer);
     _blurCoords[5] = vec3(texCoordX, texCoordY + 2.0 * blurSize.y, layer);
     _blurCoords[6] = vec3(texCoordX, texCoordY + 3.0 * blurSize.y, layer);
-#else
-    _blurCoords[0] = vec2(texCoordX, texCoordY - 3.0 * blurSize.y);
-    _blurCoords[1] = vec2(texCoordX, texCoordY - 2.0 * blurSize.y);
-    _blurCoords[2] = vec2(texCoordX, texCoordY - 1.0 * blurSize.y);
-    _blurCoords[3] = vec2(texCoordX, texCoordY);
-    _blurCoords[4] = vec2(texCoordX, texCoordY + 1.0 * blurSize.y);
-    _blurCoords[5] = vec2(texCoordX, texCoordY + 2.0 * blurSize.y);
-    _blurCoords[6] = vec2(texCoordX, texCoordY + 3.0 * blurSize.y);
-#endif
+
     _blurred = 1;
 }
 
 void computeCoordsV(in float texCoordX, in float texCoordY, in int layer){
     vec2 blurSize = blurSizes[layer];
-#if GS_MAX_INVOCATIONS > 1
+
     _blurCoords[0] = vec3(texCoordX - 3.0 * blurSize.x, texCoordY, layer);
     _blurCoords[1] = vec3(texCoordX - 2.0 * blurSize.x, texCoordY, layer);
     _blurCoords[2] = vec3(texCoordX - 1.0 * blurSize.x, texCoordY, layer);
@@ -55,21 +39,11 @@ void computeCoordsV(in float texCoordX, in float texCoordY, in int layer){
     _blurCoords[4] = vec3(texCoordX + 1.0 * blurSize.x, texCoordY, layer);
     _blurCoords[5] = vec3(texCoordX + 2.0 * blurSize.x, texCoordY, layer);
     _blurCoords[6] = vec3(texCoordX + 3.0 * blurSize.x, texCoordY, layer);
-#else
-    _blurCoords[0] = vec2(texCoordX - 3.0 * blurSize.x, texCoordY);
-    _blurCoords[1] = vec2(texCoordX - 2.0 * blurSize.x, texCoordY);
-    _blurCoords[2] = vec2(texCoordX - 1.0 * blurSize.x, texCoordY);
-    _blurCoords[3] = vec2(texCoordX, texCoordY);
-    _blurCoords[4] = vec2(texCoordX + 1.0 * blurSize.x, texCoordY);
-    _blurCoords[5] = vec2(texCoordX + 2.0 * blurSize.x, texCoordY);
-    _blurCoords[6] = vec2(texCoordX + 3.0 * blurSize.x, texCoordY);
-#endif
 
     _blurred = 1;
 }
 
 void passThrough(in float texCoordX, in float texCoordY, in int layer) {
-#if GS_MAX_INVOCATIONS > 1
     _blurCoords[0] = vec3(texCoordX, texCoordY, layer);
     _blurCoords[1] = vec3(1.0, 1.0, layer);
     _blurCoords[2] = vec3(1.0, 1.0, layer);
@@ -77,15 +51,7 @@ void passThrough(in float texCoordX, in float texCoordY, in int layer) {
     _blurCoords[4] = vec3(1.0, 1.0, layer);
     _blurCoords[5] = vec3(1.0, 1.0, layer);
     _blurCoords[6] = vec3(1.0, 1.0, layer);
-#else
-    _blurCoords[0] = vec2(texCoordX, texCoordY);
-    _blurCoords[1] = vec2(1.0, 1.0);
-    _blurCoords[2] = vec2(1.0, 1.0);
-    _blurCoords[3] = vec2(1.0, 1.0);
-    _blurCoords[4] = vec2(1.0, 1.0);
-    _blurCoords[5] = vec2(1.0, 1.0);
-    _blurCoords[6] = vec2(1.0, 1.0);
-#endif
+
     _blurred = 0;
 }
 
@@ -151,11 +117,13 @@ void main() {
 
 layout(location = ATTRIB_FREE_START) in flat int _blurred;
 
-#if defined(LAYERED)
 layout(location = ATTRIB_FREE_START + 1) in vec3 _blurCoords[7];
+
+#if defined(LAYERED)
+#define COORDS(X) _blurCoords[X]
 DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texScreen;
 #else
-layout(location = ATTRIB_FREE_START + 1) in vec2 _blurCoords[7];
+#define COORDS(X) _blurCoords[X].xy
 DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
 #endif
 
@@ -164,15 +132,15 @@ layout(location = 0) out vec4 _outColour;
 void main(void)
 {
     if (_blurred == 1) {
-        _outColour  = texture(texScreen, _blurCoords[0]) * 0.015625f; //(1.0  / 64.0);
-        _outColour += texture(texScreen, _blurCoords[1]) * 0.09375f;  //(6.0  / 64.0);
-        _outColour += texture(texScreen, _blurCoords[2]) * 0.234375f; //(15.0 / 64.0);
-        _outColour += texture(texScreen, _blurCoords[3]) * 0.3125f;   //(20.0 / 64.0);
-        _outColour += texture(texScreen, _blurCoords[4]) * 0.234375f; //(15.0 / 64.0);
-        _outColour += texture(texScreen, _blurCoords[5]) * 0.09375f;  //(6.0  / 64.0);
-        _outColour += texture(texScreen, _blurCoords[6]) * 0.015625f; //(1.0  / 64.0);
+        _outColour  = texture(texScreen, COORDS(0)) * 0.015625f; //(1.0  / 64.0);
+        _outColour += texture(texScreen, COORDS(1)) * 0.09375f;  //(6.0  / 64.0);
+        _outColour += texture(texScreen, COORDS(2)) * 0.234375f; //(15.0 / 64.0);
+        _outColour += texture(texScreen, COORDS(3)) * 0.3125f;   //(20.0 / 64.0);
+        _outColour += texture(texScreen, COORDS(4)) * 0.234375f; //(15.0 / 64.0);
+        _outColour += texture(texScreen, COORDS(5)) * 0.09375f;  //(6.0  / 64.0);
+        _outColour += texture(texScreen, COORDS(6)) * 0.015625f; //(1.0  / 64.0);
     } else {
-        _outColour = texture(texScreen, _blurCoords[0]);
+        _outColour = texture(texScreen, COORDS(0));
     }
 }
 

@@ -1114,6 +1114,13 @@ namespace Divide {
                             }
                         }
                     }
+                    if (!descriptor._globalDefines.empty()) {
+                        ImGui::Text("Global Defines: ");
+                        ImGui::Separator();
+                        for (const auto& [text, appendPrefix] : descriptor._globalDefines) {
+                            ImGui::Text(text.c_str());
+                        }
+                    }
                 }
 
                 ImGui::Separator();
