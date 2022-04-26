@@ -245,7 +245,7 @@ bool glShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, c
         for (auto& [fileHash, loadDataPerFile] : fileData) {
             assert(!loadDataPerFile._modules.empty());
 
-            glShader* shader = glShader::LoadShader(_context, loadDataPerFile._programName, loadDataPerFile._loadData);
+            glShader* shader = glShader::LoadShader(_context, loadDataPerFile._programName, reloadExisting, loadDataPerFile._loadData);
             _shaderStage.push_back(shader);
         }
 

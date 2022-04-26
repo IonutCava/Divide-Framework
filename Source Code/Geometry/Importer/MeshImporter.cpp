@@ -136,6 +136,7 @@ namespace Import {
         dataOut << _partitionIDs;
         dataOut << _minPos;
         dataOut << _maxPos;
+        dataOut << _worldOffset;
         for (const auto& triangle : _triangles) {
             dataOut << triangle;
         }
@@ -149,6 +150,7 @@ namespace Import {
         dataIn >> _partitionIDs;
         dataIn >> _minPos;
         dataIn >> _maxPos;
+        dataIn >> _worldOffset;
         for (auto& triangle : _triangles) {
             dataIn >> triangle;
         }
@@ -313,7 +315,6 @@ namespace Import {
         std::atomic_uint taskCounter;
         std::atomic_init(&taskCounter, 0u);
 
-        mat4<F32> invGeometryTransform;
         for (const Import::SubMeshData& subMeshData : dataIn._subMeshData) {
             // Submesh is created as a resource when added to the scenegraph
             SubMesh_ptr tempSubMesh = CreateResource<SubMesh>(cache, ResourceDescriptor(subMeshData.name()));
@@ -333,18 +334,14 @@ namespace Import {
                         ++j;
                     }
                 }
-                Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh,
-                                                              subMeshData.minPos(),
-                                                              subMeshData.maxPos());
-                //ToDo: Undo vert transform (verts should be in unit space) and use this matrix to get the correct positions/scales/etc back
-                invGeometryTransform.identity();
+                Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh, subMeshData.minPos(), subMeshData.maxPos(), subMeshData.worldOffset());
 
                 if (!tempSubMesh->getMaterialTpl()) {
                     tempSubMesh->setMaterialTpl(loadSubMeshMaterial(cache, subMeshData._material, loadedFromCache, subMeshData.boneCount() > 0, taskCounter));
                 }
             }
 
-            Attorney::MeshImporter::addSubMesh(*mesh, tempSubMesh, invGeometryTransform);
+            Attorney::MeshImporter::addSubMesh(*mesh, tempSubMesh);
         }
 
         mesh->geometryBuffer()->create(true, true);

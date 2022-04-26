@@ -126,8 +126,10 @@ class SubMeshMesh {
 class SubMeshMeshImporter {
     static void setBoundingBox(SubMesh& subMesh,
                                const vec3<F32>& min,
-                               const vec3<F32>& max) noexcept {
+                               const vec3<F32>& max,
+                               const vec3<F32>& worldOffset) noexcept {
         subMesh._boundingBox.set(min, max);
+        subMesh._worldOffset.set(worldOffset);
     }
 
     friend class Divide::MeshImporter;

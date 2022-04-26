@@ -24,9 +24,9 @@ Mesh::Mesh(GFXDevice& context,
     setBounds(_boundingBox);
 }
 
-void Mesh::addSubMesh(const SubMesh_ptr& subMesh, const mat4<F32>& localTransform) {
+void Mesh::addSubMesh(const SubMesh_ptr& subMesh) {
     // Hold a reference to the SubMesh by ID
-    _subMeshList.emplace_back(MeshData{ localTransform, subMesh, subMesh->id() });
+    _subMeshList.emplace_back(MeshData{subMesh, subMesh->id() });
     Attorney::SubMeshMesh::setParentMesh(*subMesh, this);
 }
 
@@ -61,7 +61,7 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshI
     const MeshData& meshData = _subMeshList[meshIndex];
     DIVIDE_ASSERT(meshData._index == meshIndex);
     const SubMesh_ptr& subMesh = meshData._mesh;
-
+    
     SceneGraphNodeDescriptor subMeshDescriptor;
     subMeshDescriptor._usageContext = parentNode->usageContext();
     subMeshDescriptor._instanceCount = parentNode->instanceCount();
@@ -75,7 +75,10 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshI
 
     subMeshDescriptor._name = Util::StringFormat("%s_%d", parentNode->name().c_str(), meshIndex);
 
-    return parentNode->addChildNode(subMeshDescriptor);
+    SceneGraphNode* sgn = parentNode->addChildNode(subMeshDescriptor);
+    sgn->get<TransformComponent>()->setPosition(subMesh->getWorldOffset());
+
+    return sgn;
 }
 
 void Mesh::processNode(SceneGraphNode* parentNode, const MeshNodeData& node) {

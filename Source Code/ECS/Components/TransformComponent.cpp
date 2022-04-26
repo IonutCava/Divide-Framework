@@ -129,7 +129,7 @@ namespace Divide {
     void TransformComponent::setScale(const vec3<F32>& amount) {
         {
             ScopedLock<SharedMutex> w_lock(_lock);
-            if (scalingMode() == ScalingMode::UNIFORM) {
+            if (scalingMode() != ScalingMode::UNIFORM) {
                 _transformInterface.setScale(amount);
                 _uniformScaled = amount.isUniform();
             } else {
@@ -179,7 +179,7 @@ namespace Divide {
 
     void TransformComponent::scale(const vec3<F32>& axisFactors) {
         ScopedLock<SharedMutex> w_lock(_lock);
-        if (scalingMode() == ScalingMode::UNIFORM) {
+        if (scalingMode() != ScalingMode::UNIFORM) {
             _transformInterface.scale(axisFactors);
         } else {
             _transformInterface.scale(vec3<F32>(axisFactors.x, axisFactors.x, axisFactors.x));
@@ -443,7 +443,7 @@ namespace Divide {
         return ret;
     }
 
-    void TransformComponent::getLocalMatrix(mat4<F32>& matOut) {
+    void TransformComponent::getLocalMatrix(mat4<F32>& matOut) const {
         {
             SharedLock<SharedMutex> r_lock(_lock);
             matOut.set(mat4<F32>

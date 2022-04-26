@@ -193,6 +193,7 @@ namespace Divide {
                 camField._readOnly = false;
                 camField._tooltip = "Change camera speed factor.\nT = Turn speed, M = Move speed, Z = Zoom speed";
                 camField._data = speed._v;
+                camField._resetValue = 50.f;
                 camField._dataSetter = [flyCam](const void* e) noexcept {
                     const vec3<F32> speed = *static_cast<const vec3<F32>*>(e);
                     flyCam->setMoveSpeedFactor(speed.move);

@@ -12,6 +12,8 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     : BaseComponentType<BoundsComponent, ComponentType::BOUNDS>(sgn, context)
 {
     _refBoundingBox.set(sgn->getNode().getBounds());
+    _worldOffset.set(sgn->getNode().getWorldOffset());
+
     _boundingBox.set(_refBoundingBox);
     _boundingSphere.fromBoundingBox(_boundingBox);
 
@@ -179,11 +181,14 @@ void BoundsComponent::appendChildRefBBs() {
 
     SharedLock<SharedMutex> w_lock(children._lock);
     const U32 childCount = children._count;
+    BoundingBox temp{};
     for (U32 i = 0u; i < childCount; ++i) {
         BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
         if (bComp) {
             bComp->appendChildRefBBs();
-            _refBoundingBox.add(bComp->_refBoundingBox);
+            temp = bComp->_refBoundingBox;
+            temp.translate(bComp->_worldOffset);
+            _refBoundingBox.add(temp);
         }
     }
 }

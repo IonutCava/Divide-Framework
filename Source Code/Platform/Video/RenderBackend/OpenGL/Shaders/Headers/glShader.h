@@ -70,13 +70,14 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
    public:
     // ======================= static data ========================= //
     /// Remove a shader from the cache
-    static void RemoveShader(glShader* s);
+    static void RemoveShader(glShader*& s, bool force = false);
     /// Return a new shader reference
     static glShader* GetShader(const Str256& name);
 
     /// Add or refresh a shader from the cache
     static glShader* LoadShader(GFXDevice& context,
                                 const Str256& name,
+                                bool overwriteExisting,
                                 ShaderProgram::ShaderLoadData& data);
 
 

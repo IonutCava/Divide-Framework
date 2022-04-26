@@ -78,6 +78,9 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      [[nodiscard]] mat4<F32> getWorldMatrix() const;
      [[nodiscard]] mat4<F32> getWorldMatrix(D64 interpolationFactor) const;
 
+     void getLocalMatrix(mat4<F32>& matOut) const;
+     void getLocalMatrix(D64 interpolationFactor, mat4<F32>& matOut) const;
+
      /// Component <-> Transform interface
      void setPosition(const vec3<F32>& position) override;
      void setPosition(F32 x, F32 y, F32 z) override;
@@ -189,9 +192,6 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
      void onParentTransformDirty(U32 transformMask) noexcept;
      void onParentUsageChanged(NodeUsageContext context) noexcept;
-
-     void getLocalMatrix(mat4<F32>& matOut);
-     void getLocalMatrix(D64 interpolationFactor, mat4<F32>& matOut) const;
 
      //Called only when then transform changed in the main update loop!
      void updateLocalMatrix();

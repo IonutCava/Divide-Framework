@@ -38,8 +38,8 @@ namespace ImGuizmo {
 namespace Divide {
     namespace {
         constexpr U8 g_maxSelectedNodes = 12;
-        using TransformCache = std::array<TransformValues, g_maxSelectedNodes>;
-        using NodeCache = std::array<SceneGraphNode*, g_maxSelectedNodes>;
+        using TransformCache = std::array<TransformValues, g_maxSelectedNodes + 1>;
+        using NodeCache = std::array<SceneGraphNode*, g_maxSelectedNodes + 1>;
 
         TransformCache g_transformCache;
         NodeCache g_selectedNodesCache;
@@ -90,21 +90,7 @@ namespace Divide {
     }
 
     void Gizmo::render(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {
-        if (!active() || _selectedNodes.empty()) {
-            return;
-        }
-
-        assert(_selectedNodes.front().tComp != nullptr);
-
-        ImGui::SetCurrentContext(_imguiContext);
-        ImGui::NewFrame();
-        ImGuizmo::BeginFrame();
-
-        const DisplayWindow* mainWindow = static_cast<DisplayWindow*>(ImGui::GetMainViewport()->PlatformHandle);
-        const vec2<U16> size = mainWindow->getDrawableSize();
-        ImGuizmo::SetRect(0.f, 0.f, to_F32(size.width), to_F32(size.height));
-
-        const auto getSnapValues = [](const TransformSettings& settings) -> const F32* {
+        const auto GetSnapValues = [](const TransformSettings& settings) -> const F32* {
             if (settings.useSnap) {
                 if (IsTranslationOperation(settings)) {
                     return &settings.snapTranslation[0];
@@ -118,74 +104,136 @@ namespace Divide {
             return nullptr;
         };
 
-        Manipulate(camera->viewMatrix(),
-                   camera->projectionMatrix(),
-                   _transformSettings.currentGizmoOperation,
-                   _transformSettings.currentGizmoMode,
-                   _workMatrix,
-                   _deltaMatrix,
-                   getSnapValues(_transformSettings));
-
-        if (ImGuizmo::IsUsing()) {
-            if (!_wasUsed) {
-                U32 selectionCounter = 0;
-                for (const SelectedNode& node : _selectedNodes) {
-                    g_transformCache[selectionCounter] = node._initialValues;
-                    g_selectedNodesCache[selectionCounter] = node.tComp->parentSGN();
-                    if (++selectionCounter == g_maxSelectedNodes) {
-                        break;
-                    }
-                }
-                
-                g_undoEntry._oldVal = { g_transformCache, g_selectedNodesCache };
-            }
-
-            static vec3<F32> position, euler, scale;
-            if (Util::decomposeMatrix(_deltaMatrix, position, scale, euler)) {
-                U32 selectionCounter = 0u;
-                for (const SelectedNode& node : _selectedNodes) {
-                    switch (_transformSettings.currentGizmoOperation) {
-                        case ImGuizmo::TRANSLATE   : node.tComp->translate(position); break;
-                        case ImGuizmo::TRANSLATE_X : node.tComp->translateX(position.x); break;
-                        case ImGuizmo::TRANSLATE_Y : node.tComp->translateY(position.y); break;
-                        case ImGuizmo::TRANSLATE_Z : node.tComp->translateZ(position.z); break;
-                        case ImGuizmo::SCALE       : node.tComp->scale(Max(scale, vec3<F32>(EPSILON_F32))); break;
-                        case ImGuizmo::SCALE_X     : node.tComp->scaleX(std::max(scale.x, EPSILON_F32)); break;
-                        case ImGuizmo::SCALE_Y     : node.tComp->scaleY(std::max(scale.y, EPSILON_F32)); break;
-                        case ImGuizmo::SCALE_Z     : node.tComp->scaleZ(std::max(scale.z, EPSILON_F32)); break;
-                        case ImGuizmo::ROTATE      : node.tComp->rotate(-Angle::to_DEGREES(euler)); break;
-                        case ImGuizmo::ROTATE_X    : node.tComp->rotateX(-Angle::to_DEGREES(euler.x)); break;
-                        case ImGuizmo::ROTATE_Y    : node.tComp->rotateY(-Angle::to_DEGREES(euler.y)); break;
-                        case ImGuizmo::ROTATE_Z    : node.tComp->rotateZ(-Angle::to_DEGREES(euler.z)); break;
-                    }
-                    Console::printfn("Delta: pos[%.2f - %.2f - %.2f] scale[%.2f - %.2f - %.2f] rot[%.2f - %.2f - %.2f]",
-                        position.x, position.y, position.z, scale.x, scale.y, scale.z, -Angle::to_DEGREES(euler.x), -Angle::to_DEGREES(euler.y), -Angle::to_DEGREES(euler.z));
-                    g_transformCache[selectionCounter++] = node.tComp->getLocalValues();
-                }
-                _wasUsed = true;
-            }
-
-            g_undoEntry._newVal = { g_transformCache, g_selectedNodesCache };
-            g_undoEntry._dataSetter = [](const std::pair<TransformCache, NodeCache>& data) {
-                for (U8 i = 0; i < g_maxSelectedNodes; ++i) {
-                    const SceneGraphNode* node = data.second[i];
-                    if (node != nullptr) {
-                        TransformComponent* tComp = node->get<TransformComponent>();
-                        if (tComp != nullptr) {
-                            tComp->setTransform(data.first[i]);
-                        }
-                    }
-                }
-            };
+        if (!active() || _selectedNodes.empty()) {
+            return;
         }
+
+        ImGui::SetCurrentContext(_imguiContext);
+        ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
+        ImGuizmo::SetGizmoSizeClipSpace(0.2f);
+
+        const DisplayWindow* mainWindow = static_cast<DisplayWindow*>(ImGui::GetMainViewport()->PlatformHandle);
+        const vec2<U16> size = mainWindow->getDrawableSize();
+        ImGuizmo::SetRect(0.f, 0.f, to_F32(size.width), to_F32(size.height));
+
+        const bool dirty = Manipulate(camera->viewMatrix(),
+                                      camera->projectionMatrix(),
+                                      _transformSettings.currentGizmoOperation,
+                                      _transformSettings.currentGizmoMode,
+                                      _workMatrix,
+                                      _deltaMatrix,
+                                      GetSnapValues(_transformSettings));
+
+        if (dirty && ImGuizmo::IsUsing()) {
+            if (_selectedNodes.size() == 1) {
+                renderSingleSelection(camera);
+            } else {
+                renderMultipleSelections(camera);
+            }
+        }
+
 
         ImGui::Render();
         Attorney::EditorGizmo::renderDrawList(_parent, ImGui::GetDrawData(), targetViewport, -1, bufferInOut);
     }
 
+    void Gizmo::applyTransforms(const SelectedNode& node, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& euler, const vec3<F32>& scale) {
+        switch (_transformSettings.currentGizmoOperation) {
+            case ImGuizmo::TRANSLATE   : node.tComp->translate(position); break;
+            case ImGuizmo::TRANSLATE_X : node.tComp->translateX(position.x); break;
+            case ImGuizmo::TRANSLATE_Y : node.tComp->translateY(position.y); break;
+            case ImGuizmo::TRANSLATE_Z : node.tComp->translateZ(position.z); break;
+            case ImGuizmo::SCALE       : node.tComp->scale(Max(scale, vec3<F32>(EPSILON_F32))); break;
+            case ImGuizmo::SCALE_X     : node.tComp->scaleX(std::max(scale.x, EPSILON_F32)); break;
+            case ImGuizmo::SCALE_Y     : node.tComp->scaleY(std::max(scale.y, EPSILON_F32)); break;
+            case ImGuizmo::SCALE_Z     : node.tComp->scaleZ(std::max(scale.z, EPSILON_F32)); break;
+            case ImGuizmo::ROTATE      : node.tComp->rotate(-euler); break;
+            case ImGuizmo::ROTATE_X    : node.tComp->rotateX(-euler.x); break;
+            case ImGuizmo::ROTATE_Y    : node.tComp->rotateY(-euler.y); break;
+            case ImGuizmo::ROTATE_Z    : node.tComp->rotateZ(-euler.z); break;
+        }
+    }
+
+    void Gizmo::renderSingleSelection(const Camera* camera) {
+        const SelectedNode& node = _selectedNodes.front();
+        if (!_wasUsed) {
+            g_transformCache.back() = node._initialValues;
+            g_selectedNodesCache.back() = node.tComp->parentSGN();
+            g_undoEntry._oldVal = { g_transformCache, g_selectedNodesCache };
+        }
+
+        static vec3<F32> position, euler, scale;
+        ImGuizmo::DecomposeMatrixToComponents(_deltaMatrix, position._v, euler._v, scale._v);
+        
+        position = (_localToWorldMatrix * vec4<F32>(position, 1.f)).xyz;
+
+        applyTransforms(node, position, euler, scale);
+
+        g_transformCache.back() = node.tComp->getLocalValues();
+        _wasUsed = true;
+
+        g_undoEntry._newVal = { g_transformCache, g_selectedNodesCache };
+        g_undoEntry._dataSetter = [](const std::pair<TransformCache, NodeCache>& data) {
+            const SceneGraphNode* node = data.second.back();
+            assert(node != nullptr);
+            TransformComponent* tComp = node->get<TransformComponent>();
+            tComp->setTransform(data.first.back());
+        };
+    }
+
+    void Gizmo::renderMultipleSelections(const Camera* camera) {
+        //ToDo: This is still very buggy! -Ionut
+
+        assert(_selectedNodes.front().tComp != nullptr);
+
+        if (!_wasUsed) {
+            U32 selectionCounter = 0u;
+            for (const SelectedNode& node : _selectedNodes) {
+                g_transformCache[selectionCounter] = node._initialValues;
+                g_selectedNodesCache[selectionCounter] = node.tComp->parentSGN();
+                if (++selectionCounter == g_maxSelectedNodes) {
+                    break;
+                }
+            }
+
+            g_undoEntry._oldVal = { g_transformCache, g_selectedNodesCache };
+        }
+
+        static vec3<F32> position, euler, scale;
+        ImGuizmo::DecomposeMatrixToComponents(_deltaMatrix, position._v, euler._v, scale._v);
+        position = (_localToWorldMatrix * vec4<F32>(position, 1.f)).xyz;
+
+        U32 selectionCounter = 0u;
+        for (const SelectedNode& node : _selectedNodes) {
+            applyTransforms(node, position, euler, scale);
+
+            g_transformCache[selectionCounter] = node.tComp->getLocalValues();
+            if (++selectionCounter == g_maxSelectedNodes) {
+                break;
+            }
+        }
+        _wasUsed = true;
+        
+
+        g_undoEntry._newVal = { g_transformCache, g_selectedNodesCache };
+        g_undoEntry._dataSetter = [](const std::pair<TransformCache, NodeCache>& data) {
+            for (U32 i = 0u; i < g_maxSelectedNodes; ++i) {
+                const SceneGraphNode* node = data.second[i];
+                if (node != nullptr) {
+                    TransformComponent* tComp = node->get<TransformComponent>();
+                    if (tComp != nullptr) {
+                        tComp->setTransform(data.first[i]);
+                    }
+                }
+            }
+        };
+    }
+
     void Gizmo::updateSelections(const vector<SceneGraphNode*>& nodes) {
          _selectedNodes.resize(0);
          _workMatrix.identity();
+         _localToWorldMatrix.identity();
          _deltaMatrix.identity();
 
          U32 selectionCounter = 0u;
@@ -202,13 +250,17 @@ namespace Divide {
          if (selectionCounter == 1u) {
              const TransformComponent* tComp = _selectedNodes.front().tComp;
              _workMatrix = tComp->getWorldMatrix();
+             SceneGraphNode* parent = tComp->parentSGN()->parent();
+             if (parent != nullptr) {
+                 parent->get<TransformComponent>()->getWorldMatrix().getInverse(_localToWorldMatrix);
+             }
              const BoundsComponent* bComp = tComp->parentSGN()->get<BoundsComponent>();
              if (bComp != nullptr) {
                  _workMatrix.setTranslation(bComp->getBoundingSphere().getCenter());
              }
          } else {
              BoundingBox nodesBB = {};
-             for (const auto& node : _selectedNodes) {
+             for (const SelectedNode& node : _selectedNodes) {
                  const TransformComponent* tComp = node.tComp;
                  const BoundsComponent* bComp = tComp->parentSGN()->get<BoundsComponent>();
                  if (bComp != nullptr) {

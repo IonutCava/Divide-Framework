@@ -194,6 +194,7 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
                             aiProcess_FindInvalidData |
                             (Config::Build::IS_DEBUG_BUILD ? aiProcess_ValidateDataStructure : 0u) |
                             aiProcess_OptimizeMeshes |
+                            aiProcess_GenBoundingBoxes |
                             aiProcess_TransformUVCoords;// Preprocess UV transformations (scaling, translation ...)
 
     const aiScene* aiScenePointer = importer.ReadFile((filePath.str() + "/" + fileName.str()).c_str(), ppSteps);
@@ -365,7 +366,6 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
             const bool hasTexCoord = !IS_ZERO(vertices[0].texcoord.z);
             const bool hasTangent = !IS_ZERO(vertices[0].tangent.w);
 
-            BoundingBox importBB = {};
             for (U32 i = 0; i < vertCount; ++i) {
                 const U32 targetIdx = i + previousOffset;
 
@@ -379,9 +379,6 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
                 }
                 if (hasTangent) {
                     vb->modifyTangentValue(targetIdx, vert.tangent.xyz);
-                }
-                if (lod == 0) {
-                    importBB.add(vert.position);
                 }
             }//vertCount
 
@@ -398,11 +395,6 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
                     vb->modifyBoneIndices(targetIdx, boneIndices);
                     vb->modifyBoneWeights(targetIdx, vert.weights);
                 }
-            }
-
-            if (lod == 0) {
-                data.minPos(importBB.getMin());
-                data.maxPos(importBB.getMax());
             }
 
             subMeshBoneOffset += data.boneCount();
@@ -424,8 +416,15 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData)
 
     vector<Import::SubMeshData::Vertex> vertices(source->mNumVertices);
 
+    subMeshData.maxPos({ source->mAABB.mMax.x, source->mAABB.mMax.y, source->mAABB.mMax.z });
+    subMeshData.minPos({ source->mAABB.mMin.x, source->mAABB.mMin.y, source->mAABB.mMin.z });
+    const vec3<F32> worldOffset = (subMeshData.maxPos() + subMeshData.minPos()) * 0.5f;
+    subMeshData.worldOffset(worldOffset);
+    subMeshData.maxPos(subMeshData.maxPos() - worldOffset);
+    subMeshData.minPos(subMeshData.minPos() - worldOffset);
+
     for (U32 j = 0; j < source->mNumVertices; ++j) {
-        vertices[j].position.set(source->mVertices[j].x, source->mVertices[j].y, source->mVertices[j].z);
+        vertices[j].position.set(vec3<F32>{ source->mVertices[j].x, source->mVertices[j].y, source->mVertices[j].z } - worldOffset);
         vertices[j].normal.set(source->mNormals[j].x, source->mNormals[j].y, source->mNormals[j].z);
     }
 

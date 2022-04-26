@@ -65,9 +65,10 @@ void SceneNode::postLoad(SceneGraphNode* sgn) {
     sgn->postLoad();
 }
 
-void SceneNode::setBounds(const BoundingBox& aabb) {
+void SceneNode::setBounds(const BoundingBox& aabb, const vec3<F32>& worldOffset) {
     _boundsChanged = true;
     _boundingBox.set(aabb);
+    _worldOffset.set(worldOffset);
 }
 
 const Material_ptr& SceneNode::getMaterialTpl() const {

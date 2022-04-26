@@ -77,10 +77,6 @@ class Mesh final : public Object3D {
 
    public:
     struct MeshData {
-        // The local transform matrix is usually set to identity unless the vertices where pre-transformed
-        // and we undid  that on load. The localTransform should be concatenated with the local transform of 
-        // every parent node that references this mesh
-        mat4<F32> _localTransform;
         SubMesh_ptr _mesh;
         U32 _index = 0u;
 };
@@ -111,7 +107,7 @@ class Mesh final : public Object3D {
 
    protected:
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Mesh"; }
-    void addSubMesh(const SubMesh_ptr& subMesh, const mat4<F32>& localTransform);
+    void addSubMesh(const SubMesh_ptr& subMesh);
     void processNode(SceneGraphNode* parentNode, const MeshNodeData& node);
     SceneGraphNode* addSubMeshNode(SceneGraphNode* parentNode, const U32 meshIndex);
     void setNodeData(const MeshNodeData& nodeStructure);
@@ -130,8 +126,8 @@ namespace Attorney {
             parentMesh.setNodeData(nodeStructure);
         }
 
-        static void addSubMesh(Mesh& parentMesh, const SubMesh_ptr& subMesh, const mat4<F32>& localTransform) {
-            parentMesh.addSubMesh(subMesh, localTransform);
+        static void addSubMesh(Mesh& parentMesh, const SubMesh_ptr& subMesh) {
+            parentMesh.addSubMesh(subMesh);
         }
 
         friend class Divide::MeshImporter;

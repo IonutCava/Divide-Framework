@@ -127,6 +127,7 @@ namespace Divide {
             PROPERTY_RW(U8, boneCount, 0u);
             PROPERTY_RW(vec3<F32>, minPos);
             PROPERTY_RW(vec3<F32>, maxPos);
+            PROPERTY_RW(vec3<F32>, worldOffset);
 
             std::array<U16, MAX_LOD_LEVELS> _partitionIDs = {0u, 0u, 0u};
             vector<vec3<U32>> _triangles[MAX_LOD_LEVELS];

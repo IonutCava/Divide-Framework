@@ -76,7 +76,7 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
 
 void SubMesh::updateBB(const I32 animIndex) {
     SharedLock<SharedMutex> r_lock(_bbLock);
-    setBounds(_boundingBoxes[animIndex]);
+    setBounds(_boundingBoxes[animIndex], _worldOffset);
 }
 
 void SubMesh::computeBBForAnimation(SceneGraphNode* const sgn, const I32 animIndex) {

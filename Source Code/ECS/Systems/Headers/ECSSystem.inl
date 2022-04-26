@@ -57,24 +57,7 @@ namespace Divide {
     }
 
     template<class T, class U>
-    void ECSSystem<T, U>::PreUpdate(const F32 dt) {
-        OPTICK_EVENT();
-
-        bool expected = true;
-        if (ECS::ComponentMonitor<U>::s_ComponentsChanged.compare_exchange_strong(expected, false)) {
-            const auto container = _engine.GetComponentManager()->GetComponentContainer<U>();
-            const size_t compCount = container->size();
-            // Keep memory in order to avoid mid-frame allocs
-            if (_componentCache.size() < compCount) {
-                _componentCache.resize(compCount);
-            }
-
-            auto iterBegin = container->begin();
-            for (size_t idx = 0u; idx < compCount; ++idx) {
-                _componentCache[idx] = &*iterBegin;
-                ++iterBegin;
-            }
-        }
+    void ECSSystem<T, U>::PreUpdate([[maybe_unused]] const F32 dt) {
     }
 
     template<class T, class U>
@@ -89,7 +72,18 @@ namespace Divide {
 
     template<class T, class U>
     void ECSSystem<T, U>::OnFrameStart() {
+        bool expected = true;
+        if (ECS::ComponentMonitor<U>::s_ComponentsChanged.compare_exchange_strong(expected, false)) {
+            const auto container = _engine.GetComponentManager()->GetComponentContainer<U>();
+            const size_t compCount = container->size();
+            _componentCache.resize(compCount);
 
+            auto iterBegin = container->begin();
+            for (size_t idx = 0u; idx < compCount; ++idx) {
+                _componentCache[idx] = &*iterBegin;
+                ++iterBegin;
+            }
+        }
     }
 
     template<class T, class U>

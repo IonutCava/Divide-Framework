@@ -165,12 +165,14 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
         size_t _definesHash = 0u;
         ShaderType _type = ShaderType::COUNT;
         SourceCodeSource _codeSource = SourceCodeSource::COUNT;
+        bool _compiled = false;
     };
 
     struct ShaderLoadData {
         string _uniformBlock{};
         Reflection::Data _reflectionData{};
         vector<LoadData> _data;
+        bool _linked = false;
     };
 
     struct UniformBlockUploaderDescriptor {

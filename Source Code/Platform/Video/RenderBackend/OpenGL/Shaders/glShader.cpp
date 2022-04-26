@@ -109,6 +109,8 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                 _handle = glCreateProgram();
                 glProgramParameteri(_handle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
                 glProgramParameteri(_handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+            } else {
+                DebugBreak();
             }
             if (_handle == 0u || _handle == GLUtil::k_invalidObjectID) {
                 Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
@@ -119,7 +121,9 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
             bool shouldLink = false;
 
             bool usingSPIRv = false;
-            for (const ShaderProgram::LoadData& data : _loadData._data) {
+            for (ShaderProgram::LoadData& data : _loadData._data) {
+                assert(!data._compiled);
+
                 vector<const char*> sourceCodeCstr{ data._sourceCodeGLSL.c_str() };
 
                 if (!sourceCodeCstr.empty()) {
@@ -172,6 +176,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
                         timingData._stageCompileLogRetrievalTime[to_base(data._type)] += getTimerAndReset(timers[1]);
                     }
+                    data._compiled = true;
                 }
             }
 
@@ -179,7 +184,9 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
                 timers[1].start();
             }
             if (shouldLink) {
+                assert(!_loadData._linked);
                 glLinkProgram(_handle);
+                _loadData._linked = true;
             }   
             if_constexpr(Config::ENABLE_GPU_VALIDATION) {
                 timingData._linkTime = getTimerAndReset(timers[1]);
@@ -242,7 +249,7 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
 
         Console::printfn(Locale::Get(_ID("SHADER_TIMING_INFO")),
                          name().c_str(),
-                         parentProgramHandle,
+                         _handle,
                          Time::MicrosecondsToMilliseconds<F32>(timingData._totalTime),
                          Time::MicrosecondsToMilliseconds<F32>(timingData._linkTime),
                          Time::MicrosecondsToMilliseconds<F32>(timingData._linkLogRetrievalTime),
@@ -257,6 +264,9 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
     _valid = false;
     _stageMask = UseProgramStageMask::GL_NONE_BIT;
     _loadData = data;
+    if (_handle != GLUtil::k_invalidObjectID) {
+        GL_API::DeleteShaderPrograms(1, &_handle);
+    }
 
     for (const ShaderProgram::LoadData& it : _loadData._data) {
         if (it._type == ShaderType::COUNT) {
@@ -277,7 +287,7 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
 
 // ============================ static data =========================== //
 /// Remove a shader entity. The shader is deleted only if it isn't referenced by a program
-void glShader::RemoveShader(glShader* s) {
+void glShader::RemoveShader(glShader*& s, const bool force) {
     assert(s != nullptr);
 
     // Try to find it
@@ -287,7 +297,7 @@ void glShader::RemoveShader(glShader* s) {
     if (it != std::end(s_shaderNameMap)) {
         // Subtract one reference from it.
         const size_t newRefCount = s->SubRef();
-        if (newRefCount == 0) {
+        if (force || newRefCount == 0) {
             // If the new reference count is 0, delete the shader (as in leave it in the object arena)
             s_shaderNameMap.erase(nameHash);
             MemoryManager::DELETE(s);
@@ -310,9 +320,13 @@ glShader* glShader::GetShader(const Str256& name) {
 /// Load a shader by name, source code and stage
 glShader* glShader::LoadShader(GFXDevice& context,
                                const Str256& name,
+                               const bool overwriteExisting,
                                ShaderProgram::ShaderLoadData& data) {
     // See if we have the shader already loaded
     glShader* shader = GetShader(name);
+    if (overwriteExisting && shader != nullptr) {
+        RemoveShader(shader, true);
+    }
 
     // If we do, and don't need a recompile, just return it
     if (shader == nullptr) {
@@ -322,15 +336,14 @@ glShader* glShader::LoadShader(GFXDevice& context,
         ScopedLock<SharedMutex> w_lock(s_shaderNameLock);
         s_shaderNameMap.insert({ shader->nameHash(), shader });
 
+        // At this stage, we have a valid Shader object, so load the source code
+        if (!shader->load(data)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     } else {
         shader->AddRef();
         Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader->name().c_str(), shader->GetRef());
     }
-
-    // At this stage, we have a valid Shader object, so load the source code
-    if (!shader->load(data)) {
-        DIVIDE_UNEXPECTED_CALL();
-    }//else ignore. it's somewhere in the object arena
 
     return shader;
 }

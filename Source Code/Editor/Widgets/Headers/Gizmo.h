@@ -102,6 +102,8 @@ namespace Divide {
     protected:
         void update(U64 deltaTimeUS);
         void render(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
+        void renderSingleSelection(const Camera* camera);
+        void renderMultipleSelections(const Camera* camera);
         void updateSelections(const vector<SceneGraphNode*>& nodes);
         void setTransformSettings(const TransformSettings& settings) noexcept;
         [[nodiscard]] const TransformSettings& getTransformSettings() const noexcept;
@@ -112,7 +114,9 @@ namespace Divide {
             TransformComponent* tComp = nullptr;
             TransformValues _initialValues;
         };
+        void applyTransforms(const SelectedNode& node, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& euler, const vec3<F32>& scale);
 
+    private:
         Editor& _parent;
         bool _enabled = false;
         bool _wasUsed = false;
@@ -122,6 +126,7 @@ namespace Divide {
         TransformSettings _transformSettings;
 
         mat4<F32> _workMatrix;
+        mat4<F32> _localToWorldMatrix;
         mat4<F32> _deltaMatrix;
     };
 

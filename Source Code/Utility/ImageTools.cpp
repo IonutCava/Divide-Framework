@@ -260,8 +260,7 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
     }
 
     // If TRUE: flip the image vertically, so the first pixel in the output array is the bottom left
-    // By default, STB images are loaded with the origin in the top(upper) left. So don't flip if s_useUpperLeftOrigin is TRUE as that is our loading default
-    stbi_set_flip_vertically_on_load_thread(UseUpperLeftOrigin() ? FALSE : TRUE);
+    stbi_set_flip_vertically_on_load_thread(UseUpperLeftOrigin() ? TRUE : FALSE);
 
     I32 width = 0, height = 0, comp = 0;
     U8* dataLDR = nullptr;
