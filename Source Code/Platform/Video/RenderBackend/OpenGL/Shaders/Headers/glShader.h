@@ -63,7 +63,6 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
     PROPERTY_R(Str256, name);
     PROPERTY_R(bool, valid, false);
-    PROPERTY_R(bool, loadedFromBinary, false);
     PROPERTY_R_IW(UseProgramStageMask, stageMask, UseProgramStageMask::GL_NONE_BIT);
     PROPERTY_R_IW(GLuint, handle, GLUtil::k_invalidObjectID);
 
@@ -86,13 +85,9 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
    private:
     friend class glShaderProgram;
-    [[nodiscard]] bool loadFromBinary();
     [[nodiscard]] ShaderResult uploadToGPU(GLuint parentProgramHandle);
 
     void onParentValidation();
-
-   private:
-    static bool DumpBinary(GLuint handle, const Str256& name);
 
   private:
     ShaderProgram::ShaderLoadData _loadData;
@@ -100,6 +95,7 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
     vector<ModuleDefine> _definesList;
     std::atomic_size_t _refCount;
     vector<GLuint> _shaderIDs;
+    bool _linked = false;
 
    private:
     /// Shader cache

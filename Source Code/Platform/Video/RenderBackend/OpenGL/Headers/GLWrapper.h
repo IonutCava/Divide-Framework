@@ -227,7 +227,6 @@ private:
 
     static GLUtil::glVAOCache s_vaoCache;
 
-    static bool s_IsFlushingCommandBuffer;
     static IMPrimitivePool s_IMPrimitivePool;
     static eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> s_bufferLockQueueMidFlush;
     static eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> s_bufferLockQueueEndOfBuffer;

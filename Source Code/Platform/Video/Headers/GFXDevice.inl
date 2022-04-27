@@ -49,123 +49,101 @@ void DebugPrimitiveHandler<Data, N>::reset() {
     }
 }
 
-inline Renderer& 
-GFXDevice::getRenderer() const {
+inline Renderer& GFXDevice::getRenderer() const {
     assert(_renderer != nullptr);
     return *_renderer;
 }
 
-inline const GPUState&
-GFXDevice::gpuState() const noexcept {
+inline const GPUState& GFXDevice::gpuState() const noexcept {
     return _state;
 }
 
-inline GPUState&
-GFXDevice::gpuState() noexcept {
+inline GPUState& GFXDevice::gpuState() noexcept {
     return _state;
 }
 
-inline ShaderProgram*
-GFXDevice::defaultIMShader() const {
+inline ShaderProgram* GFXDevice::defaultIMShader() const {
     return _imShader.get();
 }
 
-inline ShaderProgram*
-GFXDevice::defaultIMShaderWorld() const {
+inline ShaderProgram* GFXDevice::defaultIMShaderWorld() const {
     return _imWorldShader.get();
 }
 
-inline ShaderProgram*
-GFXDevice::defaultIMShaderOIT() const {
+inline ShaderProgram* GFXDevice::defaultIMShaderOIT() const {
     return _imWorldOITShader.get();
 }
 
-inline size_t
-GFXDevice::get2DStateBlock() const noexcept {
+inline size_t GFXDevice::get2DStateBlock() const noexcept {
     return _state2DRenderingHash;
 }
 
-inline GFXRTPool&
-GFXDevice::renderTargetPool() noexcept {
+inline GFXRTPool& GFXDevice::renderTargetPool() noexcept {
     return *_rtPool;
 }
 
-inline const GFXRTPool&
-GFXDevice::renderTargetPool() const noexcept {
+inline const GFXRTPool& GFXDevice::renderTargetPool() const noexcept {
     return *_rtPool;
 }
 
-inline const ShaderProgram_ptr&
-GFXDevice::getRTPreviewShader(const bool depthOnly) const noexcept {
+inline const ShaderProgram_ptr& GFXDevice::getRTPreviewShader(const bool depthOnly) const noexcept {
     return depthOnly ? _previewRenderTargetDepth : _previewRenderTargetColour;
 }
 
-inline void
-GFXDevice::registerDrawCall() noexcept {
+inline void GFXDevice::registerDrawCall() noexcept {
     registerDrawCalls(1);
 }
 
-inline void
-GFXDevice::registerDrawCalls(const U32 count) noexcept {
+inline void GFXDevice::registerDrawCalls(const U32 count) noexcept {
     frameDrawCalls(frameDrawCalls() + count);
 }
 
-inline const Rect<I32>&
-GFXDevice::getCurrentViewport() const noexcept {
-    return _viewport;
-}
-
-inline const PerformanceMetrics&
-GFXDevice::getPerformanceMetrics() const noexcept {
+inline const PerformanceMetrics& GFXDevice::getPerformanceMetrics() const noexcept {
     return _api->getPerformanceMetrics();
 }
 
-inline const DeviceInformation&
-GFXDevice::GetDeviceInformation() noexcept {
+inline const DeviceInformation& GFXDevice::GetDeviceInformation() noexcept {
     return s_deviceInformation;
 }
 
-inline void
-GFXDevice::OverrideDeviceInformation(const DeviceInformation& info) noexcept {
+inline void GFXDevice::OverrideDeviceInformation(const DeviceInformation& info) noexcept {
     s_deviceInformation = info;
 }
 
-inline vec2<U16>
-GFXDevice::getDrawableSize(const DisplayWindow& window) const {
+inline vec2<U16> GFXDevice::getDrawableSize(const DisplayWindow& window) const {
     return _api->getDrawableSize(window);
 }
 
-inline U32
-GFXDevice::getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const {
+inline U32 GFXDevice::getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const {
     return _api->getHandleFromCEGUITexture(textureIn);
 }
 
-inline void
-GFXDevice::onThreadCreated(const std::thread::id& threadID) const {
+inline void GFXDevice::onThreadCreated(const std::thread::id& threadID) const {
     _api->onThreadCreated(threadID);
     if (!ShaderProgram::OnThreadCreated(*this, threadID)) {
         DIVIDE_UNEXPECTED_CALL();
     }
 }
 
-inline const vec2<U16>& 
-GFXDevice::renderingResolution() const noexcept {
+inline const vec2<U16>&  GFXDevice::renderingResolution() const noexcept {
     return _renderingResolution;
 }
 
-inline F32
-GFXDevice::renderingAspectRatio() const noexcept {
+inline F32 GFXDevice::renderingAspectRatio() const noexcept {
     return to_F32(_renderingResolution.width) / _renderingResolution.height;
 }
 
-inline bool
-GFXDevice::setViewport(const I32 x, const I32 y, const I32 width, const I32 height) {
+inline bool GFXDevice::setViewport(const I32 x, const I32 y, const I32 width, const I32 height) {
     return setViewport({ x, y, width, height });
 }
 
-inline const Rect<I32>&
-GFXDevice::getViewport() const noexcept {
-    return _viewport;
+inline Rect<I32> GFXDevice::getViewport() const noexcept {
+    return {
+        to_I32(_gpuBlock._camData._ViewPort.x),
+        to_I32(_gpuBlock._camData._ViewPort.y),
+        to_I32(_gpuBlock._camData._ViewPort.z),
+        to_I32(_gpuBlock._camData._ViewPort.w)
+    };
 }
 
 };  // namespace Divide

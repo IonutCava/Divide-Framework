@@ -30,6 +30,7 @@ ResourcePath Paths::g_fontsPath;
 ResourcePath Paths::g_soundsLocation;
 ResourcePath Paths::g_localisationPath;
 ResourcePath Paths::g_cacheLocation;
+ResourcePath Paths::g_buildTypeLocation;
 ResourcePath Paths::g_terrainCacheLocation;
 ResourcePath Paths::g_geometryCacheLocation;
 ResourcePath Paths::g_collisionMeshCacheLocation;
@@ -45,8 +46,9 @@ ResourcePath Paths::Textures::g_metadataLocation;
 
 ResourcePath Paths::Shaders::g_cacheLocation;
 ResourcePath Paths::Shaders::g_cacheLocationText;
-ResourcePath Paths::Shaders::g_cacheLocationBin;
+ResourcePath Paths::Shaders::g_cacheLocationSpv;
 
+Str8 Paths::Shaders::g_ReflectionExt;
 Str8 Paths::Shaders::g_SPIRVExt;
 ResourcePath Paths::Shaders::g_SPIRVShaderLoc;
 
@@ -96,6 +98,13 @@ void Paths::initPaths(const SysInfo& info) {
     g_soundsLocation = ResourcePath("sounds/");
     g_localisationPath = ResourcePath("localisation/");
     g_cacheLocation = ResourcePath("cache/");
+    if_constexpr(Config::Build::IS_DEBUG_BUILD) {
+        g_buildTypeLocation = ResourcePath("Debug/");
+    } else if_constexpr(Config::Build::IS_PROFILE_BUILD) {
+        g_buildTypeLocation = ResourcePath("Profile/");
+    } else {
+        g_buildTypeLocation = ResourcePath("Release/");
+    }
     g_terrainCacheLocation = ResourcePath("terrain/");
     g_geometryCacheLocation = ResourcePath("geometry/");
     g_collisionMeshCacheLocation = ResourcePath("collisionMeshes/");
@@ -111,8 +120,9 @@ void Paths::initPaths(const SysInfo& info) {
 
     Shaders::g_cacheLocation = ResourcePath("shaders/");
     Shaders::g_cacheLocationText = Shaders::g_cacheLocation + "Text/";
-    Shaders::g_cacheLocationBin = Shaders::g_cacheLocation + "Binary/";
+    Shaders::g_cacheLocationSpv = Shaders::g_cacheLocation + "SPV/";
 
+    Shaders::g_ReflectionExt = "refl";
     Shaders::g_SPIRVExt = "spv";
     Shaders::g_SPIRVShaderLoc = ResourcePath("SPIRV/");
 

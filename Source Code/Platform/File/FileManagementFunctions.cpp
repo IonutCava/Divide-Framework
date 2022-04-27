@@ -380,7 +380,7 @@ bool clearCache(const CacheType type) {
     ResourcePath cache;
     switch (type) {
         case CacheType::SHADER_TEXT: cache = Paths::Shaders::g_cacheLocationText; break;
-        case CacheType::SHADER_BIN : cache = Paths::Shaders::g_cacheLocationBin; break;
+        case CacheType::SHADER_SPV : cache = Paths::Shaders::g_cacheLocationSpv; break;
         case CacheType::TERRAIN    : cache = Paths::g_terrainCacheLocation; break;
         case CacheType::MODELS     : cache = Paths::g_geometryCacheLocation; break;
         case CacheType::COLLISION  : cache = Paths::g_collisionMeshCacheLocation; break;

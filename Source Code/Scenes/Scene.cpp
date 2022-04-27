@@ -1550,7 +1550,7 @@ void Scene::findHoverTarget(PlayerIndex idx, const vec2<I32>& aimPos) {
     const Camera* crtCamera = playerCamera(idx);
 
     const vec2<F32>& zPlanes = crtCamera->getZPlanes();
-    const Rect<I32>& viewport = _context.gfx().getCurrentViewport();
+    const Rect<I32>& viewport = _context.gfx().getViewport();
 
     const vec3<F32> startRay = crtCamera->getEye();
     const vec3<F32> direction = crtCamera->unProject(to_F32(aimPos.x), viewport.w - to_F32(aimPos.y), viewport);
@@ -1738,7 +1738,7 @@ void Scene::beginDragSelection(const PlayerIndex idx, const vec2<I32>& mousePos)
     }
 
     DragSelectData& data = _dragSelectData[idx];
-    data._sourceViewport = editorRunning ? _context.gfx().getCurrentViewport() : _context.mainWindow().renderingViewport();
+    data._sourceViewport = editorRunning ? _context.gfx().getViewport() : _context.mainWindow().renderingViewport();
     if (data._sourceViewport.contains(mousePos)) {
         const vec2<U16>& resolution = _context.gfx().renderingResolution();
         data._targetViewport.set(0, 0, resolution.width, resolution.height);
@@ -1767,7 +1767,7 @@ void Scene::updateSelectionData(PlayerIndex idx, DragSelectData& data, bool rema
             }
             if (!remapped) {
                 const Rect<I32> previewRect = _context.editor().scenePreviewRect(false);
-                data._endDragPos = COORD_REMAP(previewRect.clamp(data._endDragPos), previewRect, _context.gfx().getCurrentViewport());
+                data._endDragPos = COORD_REMAP(previewRect.clamp(data._endDragPos), previewRect, _context.gfx().getViewport());
             }
         }
     }

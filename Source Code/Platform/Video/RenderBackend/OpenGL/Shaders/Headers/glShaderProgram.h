@@ -45,12 +45,6 @@ class GL_API;
 class glShader;
 class glLockManager;
 
-struct BinaryDumpEntry
-{
-    Str256 _name;
-    GLuint _handle = 0u;
-};
-
 struct ValidationEntry
 {
     Str256 _name{};
@@ -105,7 +99,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     ShaderResult bind();
 
     static void ProcessValidationQueue();
-    static void DumpShaderBinaryCacheToDisk(const BinaryDumpEntry& entry);
 
    private:
     GLuint _handle = GLUtil::k_invalidObjectID;

@@ -42,11 +42,17 @@ namespace Divide {
 
 struct ShaderBufferDescriptor;
 
+namespace Attorney {
+    class ShaderBufferBind;
+};
+
 class ShaderProgram;
 class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
                                   public GraphicsResource,
                                   public RingBufferSeparateWrite
 {
+    friend class Attorney::ShaderBufferBind;
+
    public:
        enum class Usage : U8 {
            CONSTANT_BUFFER = 0,
@@ -83,14 +89,6 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
                            ptrdiff_t rangeInBytes,
                            bufferPtr result) const = 0;
 
-    virtual bool bindByteRange(U8 bindIndex,
-                               ptrdiff_t offsetInBytes,
-                               ptrdiff_t rangeInBytes) = 0;
-
-    bool bindRange(U8 bindIndex,
-                   U32 offsetElementCount,
-                   U32 rangeElementCount);
-
     virtual bool lockByteRange(ptrdiff_t offsetInBytes,
                                ptrdiff_t rangeInBytes,
                                ShaderBufferLockType lockType) = 0;
@@ -103,8 +101,6 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     [[nodiscard]] FORCE_INLINE size_t getPrimitiveSize()  const noexcept { return _params._elementSize; }
     [[nodiscard]] FORCE_INLINE Usage  getUsage()          const noexcept { return _usage;  }
 
-    /// Bind return false if the buffer was already bound
-    FORCE_INLINE bool bind(U8 bindIndex) { return bindRange(bindIndex, 0, _params._elementCount); }
     FORCE_INLINE void writeData(bufferPtr data) { writeData(0, _params._elementCount, data); }
     FORCE_INLINE void clearData() { clearData(0, _params._elementCount); }
     FORCE_INLINE bool bind(ShaderBufferLocation bindIndex) { return bind(to_U8(bindIndex)); }
@@ -113,6 +109,18 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     [[nodiscard]] static size_t AlignmentRequirement(Usage usage) noexcept;
 
     PROPERTY_R(string, name);
+
+  protected:
+    virtual bool bindByteRange(U8 bindIndex,
+                               ptrdiff_t offsetInBytes,
+                               ptrdiff_t rangeInBytes) = 0;
+
+    bool bindRange(U8 bindIndex,
+                   U32 offsetElementCount,
+                   U32 rangeElementCount);
+
+    /// Bind return false if the buffer was already bound
+    FORCE_INLINE bool bind(U8 bindIndex) { return bindRange(bindIndex, 0, _params._elementCount); }
 
    protected:
     BufferParams _params;
@@ -133,6 +141,26 @@ struct ShaderBufferDescriptor {
 };
 
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
+
+namespace Attorney {
+    class ShaderBufferBind {
+        static bool bindByteRange(ShaderBuffer& buf, U8 bindIndex, ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes) {
+            return buf.bindByteRange(bindIndex, offsetInBytes, rangeInBytes);
+        }
+
+        static bool bindRange(ShaderBuffer& buf, U8 bindIndex, U32 offsetElementCount, U32 rangeElementCount) {
+            return buf.bindRange(bindIndex, offsetElementCount, rangeElementCount);
+        }
+
+        /// Bind return false if the buffer was already bound
+        static bool bind(ShaderBuffer& buf, U8 bindIndex) {
+            return buf.bind(bindIndex);
+        }
+
+        friend class GFXDevice;
+        friend class ShaderProgram;
+    };
+};
 
 };  // namespace Divide
 #endif //_SHADER_BUFFER_H_

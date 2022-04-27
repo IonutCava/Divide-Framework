@@ -13,8 +13,6 @@ namespace Divide {
 
 namespace {
     constexpr size_t g_validationBufferMaxSize = 64 * 1024;
-
-    moodycamel::BlockingConcurrentQueue<BinaryDumpEntry> g_sShaderBinaryDumpQueue;
     moodycamel::BlockingConcurrentQueue<ValidationEntry> g_sValidationQueue;
 
     SharedMutex      g_deletionSetLock;
@@ -35,12 +33,6 @@ void glShaderProgram::Idle(PlatformContext& platformContext) {
 
     // One validation per Idle call
     ProcessValidationQueue();
-
-    // Schedule all of the shader "dump to binary file" operations
-    static BinaryDumpEntry binaryOutputCache;
-    if (g_sShaderBinaryDumpQueue.try_dequeue(binaryOutputCache)) {
-        DumpShaderBinaryCacheToDisk(binaryOutputCache);
-    }
 }
 
 void glShaderProgram::ProcessValidationQueue() {
@@ -88,20 +80,6 @@ void glShaderProgram::ProcessValidationQueue() {
         } else {
             Console::d_printfn(Locale::Get(_ID("GLSL_VALIDATING_PROGRAM")), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ OK! ]");
         }
-    }
-}
-
-
-void glShaderProgram::DumpShaderBinaryCacheToDisk(const BinaryDumpEntry& entry) {
-    {
-        SharedLock<SharedMutex> w_lock(g_deletionSetLock);
-        if (g_deletionSet.find(entry._handle) != std::cend(g_deletionSet)) {
-            return;
-        }
-    }
-
-    if (!glShader::DumpBinary(entry._handle, entry._name)) {
-        Console::errorfn(Locale::Get(_ID("ERROR_GLSL_DUMP_BINARY"), entry._name.c_str()));
     }
 }
 
@@ -166,12 +144,7 @@ void glShaderProgram::processValidation() {
             continue;
         }
 
-        if (!shader->loadedFromBinary()) {
-            g_sShaderBinaryDumpQueue.enqueue(BinaryDumpEntry{ shader->name(), shader->handle() });
-        }
-
         shader->onParentValidation();
-
         stageMask |= shader->stageMask();
     }
 

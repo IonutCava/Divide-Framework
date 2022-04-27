@@ -96,8 +96,6 @@ GFXDevice::GFXDevice(Kernel & parent)
     : KernelComponent(parent),
       PlatformContextComponent(parent.platformContext())
 {
-    _viewport.set(-1);
-
     _queuedShadowSampleChange.fill(s_invalidQueueSampleCount);
 }
 
@@ -215,7 +213,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
 
             _camDataBuffer = newSB(bufferDescriptor);
-            _camDataBuffer->bind(ShaderBufferLocation::CAM_BLOCK);
         }
         {
             bufferDescriptor._ringBufferLength = TargetBufferSizeRender;
@@ -224,7 +221,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._renderData, bufferDescriptor._bufferParams._elementSize };
 
             _renderDataBuffer = newSB(bufferDescriptor);
-            _renderDataBuffer->bind(ShaderBufferLocation::RENDER_BLOCK);
         }
         {
             // Atomic counter for occlusion culling
@@ -1563,28 +1559,39 @@ bool GFXDevice::fitViewportInWindow(const U16 w, const U16 h) {
 #pragma endregion
 
 #pragma region GPU State
-void GFXDevice::uploadGPUBlock() {
+const DescriptorSet& GFXDevice::uploadGPUBlock() {
+    static DescriptorSet bindSet{};
+
     OPTICK_EVENT();
 
     if (_gpuBlock._camNeedsUpload) {
-        _gpuBlock._camNeedsUpload = false;
-
-        _camDataBuffer->lockRange(ShaderBufferLockType::IMMEDIATE);
         _camDataBuffer->incQueue();
         _camDataBuffer->writeData(&_gpuBlock._camData);
-        _camDataBuffer->bind(ShaderBufferLocation::CAM_BLOCK);
     }
 
     if (_gpuBlock._renderNeedsUpload) {
-        _gpuBlock._renderNeedsUpload = false;
-
-        _gpuBlock._renderData._renderProperties.z = to_F32(materialDebugFlag());
-
-        _renderDataBuffer->lockRange(ShaderBufferLockType::IMMEDIATE);
         _renderDataBuffer->incQueue();
         _renderDataBuffer->writeData(&_gpuBlock._renderData);
-        _renderDataBuffer->bind(ShaderBufferLocation::RENDER_BLOCK);
     }
+
+    ShaderBufferBinding camBufferBinding;
+    camBufferBinding._binding = ShaderBufferLocation::CAM_BLOCK;
+    camBufferBinding._buffer = _camDataBuffer.get();
+    camBufferBinding._elementRange = { 0, 1 };
+    camBufferBinding._lockType = _gpuBlock._camNeedsUpload ? ShaderBufferLockType::AFTER_DRAW_COMMANDS : ShaderBufferLockType::COUNT;
+    bindSet._buffers.add(camBufferBinding);
+
+    ShaderBufferBinding renderBufferBinding;
+    renderBufferBinding._binding = ShaderBufferLocation::RENDER_BLOCK;
+    renderBufferBinding._buffer = _renderDataBuffer.get();
+    renderBufferBinding._elementRange = { 0, 1 };
+    renderBufferBinding._lockType = _gpuBlock._renderNeedsUpload ? ShaderBufferLockType::AFTER_DRAW_COMMANDS : ShaderBufferLockType::COUNT;
+    bindSet._buffers.add(renderBufferBinding);
+
+    _gpuBlock._camNeedsUpload = false;
+    _gpuBlock._renderNeedsUpload = false;
+
+    return bindSet;
 }
 
 /// set a new list of clipping planes. The old one is discarded
@@ -1711,6 +1718,12 @@ void GFXDevice::setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix,
     }
 }
 
+void GFXDevice::materialDebugFlag(const MaterialDebugFlag flag) {
+    if (to_U32(flag) != to_U32(_gpuBlock._renderData._renderProperties.z)) {
+        _gpuBlock._renderData._renderProperties.z = to_F32(materialDebugFlag());
+        _gpuBlock._renderNeedsUpload = true;
+    }
+}
 /// Update the rendering viewport
 bool GFXDevice::setViewport(const Rect<I32>& viewport) {
     OPTICK_EVENT();
@@ -1724,10 +1737,10 @@ bool GFXDevice::setViewport(const Rect<I32>& viewport) {
         const F32 clustersX = std::ceil(to_F32(viewport.z) / Renderer::CLUSTER_SIZE.x);
         const F32 clustersY = std::ceil(to_F32(viewport.w) / Renderer::CLUSTER_SIZE.y);
         const U32 clustersPacked = Util::PACK_HALF2x16(clustersX, clustersY);
-        _gpuBlock._renderData._renderProperties.y = to_F32(clustersPacked);
-        _gpuBlock._renderNeedsUpload = true;
-
-        _viewport.set(viewport);
+        if (clustersPacked != to_U32(_gpuBlock._renderData._renderProperties.y)) {
+            _gpuBlock._renderData._renderProperties.y = to_F32(clustersPacked);
+            _gpuBlock._renderNeedsUpload = true;
+        }
 
         return true;
     }
@@ -1775,6 +1788,34 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
         DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("GFXDevice::flushCommandBuffer error [ %s ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base(error)]).c_str());
         return;
     }
+
+    const auto bindDescriptorSet = [&](const DescriptorSet& set) {
+        for (U8 i = 0u; i < set._buffers.count(); ++i) {
+            const ShaderBufferBinding& binding = set._buffers._entries[i];
+            if (binding._binding == ShaderBufferLocation::COUNT) {
+                // might be leftover from a batching call
+                continue;
+            }
+
+            assert(binding._buffer != nullptr);
+            Attorney::ShaderBufferBind::bindRange(*binding._buffer, 
+                                                  to_U8(binding._binding),
+                                                  binding._elementRange.min,
+                                                  binding._elementRange.max);
+
+            if (binding._lockType != ShaderBufferLockType::COUNT) {
+                if (!binding._buffer->lockRange(binding._elementRange.min,
+                                                binding._elementRange.max,
+                                                binding._lockType))
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            }
+        }
+        if (!makeImagesResident(set._images)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    };
 
     _api->preFlushCommandBuffer(commandBuffer);
 
@@ -1855,7 +1896,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 OPTICK_EVENT("PUSH_VIEWPORT");
 
                 const GFX::PushViewportCommand* crtCmd = commandBuffer.get<GFX::PushViewportCommand>(cmd);
-                _viewportStack.push(_viewport);
+                _viewportStack.push(_gpuBlock._camData._ViewPort);
                 setViewport(crtCmd->_viewport);
             } break;
             case GFX::CommandType::POP_VIEWPORT: {
@@ -1894,52 +1935,25 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
             case GFX::CommandType::EXTERNAL: {
                 OPTICK_EVENT("EXTERNAL");
 
-                uploadGPUBlock();
+                bindDescriptorSet(uploadGPUBlock());
                 commandBuffer.get<GFX::ExternalCommand>(cmd)->_cbk();
             } break;
 
             case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
                 OPTICK_EVENT("BIND_DESCRIPTOR_SETS");
-
-                GFX::BindDescriptorSetsCommand* crtCmd = commandBuffer.get<GFX::BindDescriptorSetsCommand>(cmd);
-                DescriptorSet& set = crtCmd->_set;
-                for (U8 i = 0u; i < set._buffers.count(); ++i) {
-                    const ShaderBufferBinding& binding = set._buffers._entries[i];
-                    if (binding._binding == ShaderBufferLocation::COUNT) {
-                        // might be leftover from a batching call
-                        continue;
-                    }
-
-                    assert(binding._buffer != nullptr);
-                    binding._buffer->bindRange(binding._binding,
-                                               binding._elementRange.min,
-                                               binding._elementRange.max);
-                    if (binding._lockType != ShaderBufferLockType::COUNT) {
-                        if (!binding._buffer->lockRange(binding._elementRange.min,
-                                                        binding._elementRange.max,
-                                                        binding._lockType))
-                        {
-                            DIVIDE_UNEXPECTED_CALL();
-                        }
-                    }
-                }
-                if (!makeImagesResident(set._images)) {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                bindDescriptorSet(commandBuffer.get<GFX::BindDescriptorSetsCommand>(cmd)->_set);
             } break;
             case GFX::CommandType::BEGIN_RENDER_PASS: {
                 const GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(cmd);
                 const vec2<F32> depthRange = renderTargetPool().renderTarget(crtCmd->_target).getDepthRange();
                 setDepthRange(depthRange);
-                [[fallthrough]];
-            }
+            } [[fallthrough]];
             case GFX::CommandType::DRAW_TEXT:
             case GFX::CommandType::DRAW_IMGUI:
             case GFX::CommandType::DRAW_COMMANDS:
-            case GFX::CommandType::DISPATCH_COMPUTE:
-                uploadGPUBlock(); 
-                [[fallthrough]];
-            
+            case GFX::CommandType::DISPATCH_COMPUTE: {
+                bindDescriptorSet(uploadGPUBlock());
+            } [[fallthrough]];
             default: break;
         }
 
@@ -1965,7 +1979,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     U16 dim = width > height ? width : height;
 
     // Store the current width and height of each mip
-    const Rect<I32> previousViewport(_viewport);
+    const Rect<I32> previousViewport(_gpuBlock._camData._ViewPort);
 
     GFX::EnqueueCommand(cmdBufferInOut, GFX::BeginDebugScopeCommand{ "Construct Hi-Z" });
 
@@ -2364,7 +2378,12 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
     pipelineDesc._shaderProgramHandle = ShaderProgram::INVALID_HANDLE;
     pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-    const Rect<I32> previousViewport(_viewport);
+    const Rect<I32> previousViewport{
+        to_I32(_gpuBlock._camData._ViewPort.x),
+        to_I32(_gpuBlock._camData._ViewPort.y),
+        to_I32(_gpuBlock._camData._ViewPort.z),
+        to_I32(_gpuBlock._camData._ViewPort.w)
+    };
 
     Pipeline* crtPipeline = nullptr;
     U16 idx = 0u;

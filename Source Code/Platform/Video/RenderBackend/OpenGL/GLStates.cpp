@@ -11,8 +11,6 @@ namespace Divide {
 
 vector<GL_API::ResidentTexture> GL_API::s_residentTextures;
 
-bool GL_API::s_IsFlushingCommandBuffer = false;
-
 SharedMutex GL_API::s_samplerMapLock;
 GL_API::SamplerObjectMap GL_API::s_samplerMap;
 glHardwareQueryPool* GL_API::s_hardwareQueryPool = nullptr;

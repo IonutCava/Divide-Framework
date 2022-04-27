@@ -512,7 +512,7 @@ void GL_API::PopDebugMessage() {
 
 void GL_API::FlushMidBufferLockQueue() {
     OPTICK_EVENT();
-    
+
     for (const BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
         if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, GFXDevice::FrameCount())) {
             DIVIDE_UNEXPECTED_CALL();
@@ -534,8 +534,6 @@ void GL_API::FlushEndBufferLockQueue() {
 
 void GL_API::preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) {
     OPTICK_EVENT();
-
-    s_IsFlushingCommandBuffer = true;
 
     _bufferFlushPoints.resize(0);
     GFX::CommandType prevCmdType = GFX::CommandType::COUNT;
@@ -766,13 +764,13 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
                 {
                     OPTICK_EVENT("GL: cache miss  - Image");
                     glTextureView(handle,
-                                    GLUtil::glTextureTypeTable[to_base(view._targetType)],
-                                    view._textureData._textureHandle,
-                                    glInternalFormat,
-                                    static_cast<GLuint>(view._mipLevels.x),
-                                    static_cast<GLuint>(view._mipLevels.y),
-                                    static_cast<GLuint>(view._layerRange.x),
-                                    static_cast<GLuint>(view._layerRange.y));
+                                  GLUtil::glTextureTypeTable[to_base(view._targetType)],
+                                  view._textureData._textureHandle,
+                                  glInternalFormat,
+                                  static_cast<GLuint>(view._mipLevels.x),
+                                  static_cast<GLuint>(view._mipLevels.y),
+                                  static_cast<GLuint>(view._layerRange.x),
+                                  static_cast<GLuint>(view._layerRange.y));
                 }
                 if (view._mipLevels.x != 0u || view._mipLevels.y != 0u) {
                     OPTICK_EVENT("GL: In-place computation - Image");
@@ -951,8 +949,6 @@ void GL_API::RegisterBufferLock(const BufferLockEntry&& data, const ShaderBuffer
 
 void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     OPTICK_EVENT();
-
-    s_IsFlushingCommandBuffer = false;
 
     FlushMidBufferLockQueue();
     FlushEndBufferLockQueue();

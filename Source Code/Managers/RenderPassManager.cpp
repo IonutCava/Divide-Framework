@@ -178,8 +178,10 @@ void RenderPassManager::render(const RenderParams& params) {
        {
            OPTICK_EVENT("RenderPassManager::update sky light");
            _skyLightUpdateTask = CreateTask(nullptr, 
-               [&gfx = _context, &buf = _skyLightRenderBuffer](const Task&) {
+               [sceneManager , &gfx = _context, &buf = _skyLightRenderBuffer](const Task&) {
                    buf->clear(false);
+                   GFX::BindDescriptorSetsCommand bindSceneData{Attorney::SceneManagerRenderPass::sceneDescriptorSet(sceneManager)};
+                   GFX::EnqueueCommand<>(*buf, bindSceneData);
                    SceneEnvironmentProbePool::UpdateSkyLight(gfx, *buf);
                }, false);
            // ToDo: Figure out how to make this multithreaded and properly resolve dependencies with MAIN, REFLECTION and REFRACTION passes -Ionut

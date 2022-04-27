@@ -239,6 +239,8 @@ protected:
     SceneNode_ptr createNode(SceneNodeType type, const ResourceDescriptor& descriptor);
     std::pair<Texture_ptr, size_t/*sampler*/> getSkyTexture() const;
 
+    [[nodiscard]] const DescriptorSet& sceneDescriptorSet() const;
+
 private:
     bool _init = false;
     bool _processInput = false;
@@ -424,6 +426,9 @@ class SceneManagerRenderPass {
         return mgr->getActiveScene().state()->renderState();
     }
 
+    static const DescriptorSet& sceneDescriptorSet(Divide::SceneManager* mgr) {
+        return mgr->sceneDescriptorSet();
+    }
     friend class Divide::RenderPass;
     friend class Divide::RenderPassManager;
     friend class Divide::RenderPassExecutor;

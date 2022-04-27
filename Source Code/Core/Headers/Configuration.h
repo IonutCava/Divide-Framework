@@ -42,9 +42,9 @@ struct Configuration final : XML::IXMLSerializable {
         bool enableRenderAPIDebugging = false;
         bool useGeometryCache = true;
         bool useVegetationCache = true;
-        bool useShaderBinaryCache = true;
-        bool useTextureDDSCache = true;
         bool useShaderTextCache = true;
+        bool useShaderSpirVCache = true;
+        bool useTextureDDSCache = true;
         bool enableTreeInstances = true;
         bool enableGrassInstances = true;
         struct RenderFilter {

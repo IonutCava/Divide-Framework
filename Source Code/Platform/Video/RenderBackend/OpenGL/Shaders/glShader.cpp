@@ -15,7 +15,6 @@
 namespace Divide {
 
 namespace {
-    constexpr bool g_consumeSPIRVInput = false;
     constexpr const char* g_binaryBinExtension = ".bin";
     constexpr const char* g_binaryFmtExtension = ".fmt";
 
@@ -104,95 +103,86 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
             timers[0].start();
         }
 
-        if (!loadFromBinary()) {
-            if (_handle == GLUtil::k_invalidObjectID) {
-                _handle = glCreateProgram();
-                glProgramParameteri(_handle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
-                glProgramParameteri(_handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
-            } else {
-                DebugBreak();
-            }
-            if (_handle == 0u || _handle == GLUtil::k_invalidObjectID) {
-                Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
-                _valid = false;
-                return ShaderResult::Failed;
-            }
+        if (_handle == GLUtil::k_invalidObjectID) {
+            _handle = glCreateProgram();
+            glProgramParameteri(_handle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_FALSE);
+            glProgramParameteri(_handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        } else {
+            DebugBreak();
+        }
+        if (_handle == 0u || _handle == GLUtil::k_invalidObjectID) {
+            Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
+            _valid = false;
+            return ShaderResult::Failed;
+        }
 
-            bool shouldLink = false;
-
-            bool usingSPIRv = false;
-            for (ShaderProgram::LoadData& data : _loadData._data) {
-                assert(!data._compiled);
-
-                vector<const char*> sourceCodeCstr{ data._sourceCodeGLSL.c_str() };
-
-                if (!sourceCodeCstr.empty()) {
-                    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                        timers[1].start();
-                    }
-                    const GLuint shader = glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
-                    DIVIDE_ASSERT(shader != 0u);
-                    if (!g_consumeSPIRVInput || data._sourceCodeSpirV.empty()) {
-                        DIVIDE_ASSERT(!usingSPIRv, "glShader::uploadToGPU ERROR. Either all shader stages use SPIRV or non of them do!");
-
-                        glShaderSource(shader, static_cast<GLsizei>(sourceCodeCstr.size()), sourceCodeCstr.data(), nullptr);
-                        glCompileShader(shader);
-                    } else {
-                        usingSPIRv = true;
-                        glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V_ARB, data._sourceCodeSpirV.data(), (GLsizei)(data._sourceCodeSpirV.size() * sizeof(U32)));
-                        glSpecializeShader(shader, "main", 0, nullptr, nullptr);
-                    }
-                    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                        timingData._stageCompileTime[to_base(data._type)] += getTimerAndReset(timers[1]);
-                    }
-                    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                        timers[1].start();
-                    }
-                    GLboolean compiled = 0;
-                    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-                    if (compiled == GL_FALSE) {
-                        // error
-                        GLint logSize = 0;
-                        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
-                        string validationBuffer;
-                        validationBuffer.resize(logSize);
-
-                        glGetShaderInfoLog(shader, logSize, &logSize, &validationBuffer[0]);
-                        if (validationBuffer.size() > g_validationBufferMaxSize) {
-                            // On some systems, the program's disassembly is printed, and that can get quite large
-                            validationBuffer.resize(std::strlen(Locale::Get(_ID("ERROR_GLSL_COMPILE"))) * 2 + g_validationBufferMaxSize);
-                            // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
-                            validationBuffer.append(" ... ");
-                        }
-
-                        Console::errorfn(Locale::Get(_ID("ERROR_GLSL_COMPILE")), _name.c_str(), shader, Names::shaderTypes[to_base(data._type)], validationBuffer.c_str());
-
-                        glDeleteShader(shader);
-                    } else {
-                        _shaderIDs.push_back(shader);
-                        glAttachShader(_handle, shader);
-                        shouldLink = true;
-                    }
-                    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                        timingData._stageCompileLogRetrievalTime[to_base(data._type)] += getTimerAndReset(timers[1]);
-                    }
-                    data._compiled = true;
-                }
-            }
+        bool shouldLink = false;
+        for (ShaderProgram::LoadData& data : _loadData) {
+            assert(!data._compiled);
 
             if_constexpr(Config::ENABLE_GPU_VALIDATION) {
                 timers[1].start();
             }
-            if (shouldLink) {
-                assert(!_loadData._linked);
-                glLinkProgram(_handle);
-                _loadData._linked = true;
-            }   
-            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-                timingData._linkTime = getTimerAndReset(timers[1]);
+            const GLuint shader = glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
+            DIVIDE_ASSERT(shader != 0u);
+            if (!data._sourceCodeSpirV.empty()) {
+                glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V_ARB, data._sourceCodeSpirV.data(), (GLsizei)(data._sourceCodeSpirV.size() * sizeof(U32)));
+                glSpecializeShader(shader, "main", 0, nullptr, nullptr);
+            } else if (!data._sourceCodeGLSL.empty()) {
+                vector<const char*> sourceCodeCstr{ data._sourceCodeGLSL.c_str() };
+                glShaderSource(shader, static_cast<GLsizei>(sourceCodeCstr.size()), sourceCodeCstr.data(), nullptr);
+                glCompileShader(shader);
+            } else {
+                DIVIDE_UNEXPECTED_CALL();
             }
+            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                timingData._stageCompileTime[to_base(data._type)] += getTimerAndReset(timers[1]);
+            }
+            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                timers[1].start();
+            }
+            GLboolean compiled = 0;
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+            if (compiled == GL_FALSE) {
+                // error
+                GLint logSize = 0;
+                glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
+                string validationBuffer;
+                validationBuffer.resize(logSize);
+
+                glGetShaderInfoLog(shader, logSize, &logSize, &validationBuffer[0]);
+                if (validationBuffer.size() > g_validationBufferMaxSize) {
+                    // On some systems, the program's disassembly is printed, and that can get quite large
+                    validationBuffer.resize(std::strlen(Locale::Get(_ID("ERROR_GLSL_COMPILE"))) * 2 + g_validationBufferMaxSize);
+                    // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
+                    validationBuffer.append(" ... ");
+                }
+
+                Console::errorfn(Locale::Get(_ID("ERROR_GLSL_COMPILE")), _name.c_str(), shader, Names::shaderTypes[to_base(data._type)], validationBuffer.c_str());
+
+                glDeleteShader(shader);
+            } else {
+                _shaderIDs.push_back(shader);
+                glAttachShader(_handle, shader);
+                shouldLink = true;
+            }
+            if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+                timingData._stageCompileLogRetrievalTime[to_base(data._type)] += getTimerAndReset(timers[1]);
+            }
+            data._compiled = true;
         }
+
         if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+            timers[1].start();
+        }
+        if (shouldLink) {
+            assert(!_linked);
+            glLinkProgram(_handle);
+            _linked = true;
+        }
+
+        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+            timingData._linkTime = getTimerAndReset(timers[1]);
             timers[1].start();
         }
         // And check the result
@@ -261,20 +251,21 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
 }
 
 bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
-    _valid = false;
-    _stageMask = UseProgramStageMask::GL_NONE_BIT;
     _loadData = data;
+
+    _valid = false; _linked = false; 
+
     if (_handle != GLUtil::k_invalidObjectID) {
         GL_API::DeleteShaderPrograms(1, &_handle);
     }
 
-    for (const ShaderProgram::LoadData& it : _loadData._data) {
+    _stageMask = UseProgramStageMask::GL_NONE_BIT;
+    for (const ShaderProgram::LoadData& it : _loadData) {
         if (it._type == ShaderType::COUNT) {
             continue;
         }
-        if (!it._sourceCodeGLSL.empty() || !it._sourceCodeSpirV.empty()) {
-            _stageMask |= GetStageMask(it._type);
-        }
+        assert(!it._sourceCodeGLSL.empty() || !it._sourceCodeSpirV.empty());
+        _stageMask |= GetStageMask(it._type);
     }
 
     if (_stageMask == UseProgramStageMask::GL_NONE_BIT) {
@@ -346,89 +337,6 @@ glShader* glShader::LoadShader(GFXDevice& context,
     }
 
     return shader;
-}
-
-bool glShader::loadFromBinary() {
-    _loadedFromBinary = false;
-
-    // Load the program from the binary file, if available and allowed, to avoid linking.
-    if (ShaderProgram::UseShaderBinaryCache()) {
-
-        const Str256 decoratedName{ ShaderProgram::DecorateFileName(_name) };
-        const ResourcePath formatPath{ decoratedName + g_binaryFmtExtension };
-        const ResourcePath cachePath{ Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin };
-
-        // Load the program's binary format from file
-        vector<Byte> data;
-        FileError err = readFile(cachePath, formatPath, data, FileType::BINARY);
-        if (err == FileError::NONE && !data.empty()) {
-
-            const GLenum binaryFormat = *reinterpret_cast<GLenum*>(data.data());
-            if (binaryFormat != GL_NONE) {
-                return false;
-            }
-
-            const ResourcePath binaryPath{ decoratedName + g_binaryBinExtension };
-            err = readFile(cachePath, binaryPath, data, FileType::BINARY);
-            if (err == FileError::NONE && !data.empty()) {
-
-                // Load binary code on the GPU
-                _handle = glCreateProgram();
-                glProgramBinary(_handle, binaryFormat, (bufferPtr)data.data(), static_cast<GLint>(data.size()));
-                // Check if the program linked successfully on load
-                GLboolean success = GL_FALSE;
-                glGetProgramiv(_handle, GL_LINK_STATUS, &success);
-                // If it loaded properly set all appropriate flags (this also prevents low level access to the program's shaders)
-                _loadedFromBinary = _valid = success == GL_TRUE;
-            }
-        }
-    }
-
-    return _loadedFromBinary;
-}
-
-bool glShader::DumpBinary(const GLuint handle, const Str256& name) {
-    static eastl::set<GLuint> s_dumpedBinaries;
-    static Mutex s_dumpedBinariesLock;
-    {
-        UniqueLock<Mutex> w_lock(s_dumpedBinariesLock);
-        if (!s_dumpedBinaries.insert(handle).second) {
-            //Already dumped!
-            return true;
-        }
-    }
-
-    bool ret = false;
-    // Get the size of the binary code
-    GLsizei binaryLength = 0;
-    glGetProgramiv(handle, GL_PROGRAM_BINARY_LENGTH, &binaryLength);
-    // allocate a big enough buffer to hold it
-    Byte* binary = MemoryManager_NEW Byte[binaryLength];
-    DIVIDE_ASSERT(binary != nullptr, "glShader error: could not allocate memory for the program binary!");
-    SCOPE_EXIT{
-        // delete our local code buffer
-        MemoryManager::DELETE(binary);
-    };
-
-    // and fill the buffer with the binary code
-    GLenum binaryFormat = GL_NONE;
-    glGetProgramBinary(handle, binaryLength, nullptr, &binaryFormat, binary);
-    if (binaryFormat != GL_NONE) {
-        const Str256 decoratedName{ glShaderProgram::DecorateFileName(name) };
-        const ResourcePath cachePath  { Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationBin };
-
-        // dump the buffer to file
-        const ResourcePath binaryPath{ decoratedName + g_binaryBinExtension };
-        FileError err = writeFile(cachePath, binaryPath, binary, to_size(binaryLength), FileType::BINARY);
-        if (err == FileError::NONE) {
-            const ResourcePath formatPath{ decoratedName + g_binaryFmtExtension };
-            // dump the format to a separate file (highly non-optimised. Should dump formats to a database instead)
-            err = writeFile(cachePath, formatPath, &binaryFormat, sizeof(GLenum), FileType::BINARY);
-            ret = err == FileError::NONE;
-        }
-    }
-
-    return ret;
 }
 
 void glShader::onParentValidation() {

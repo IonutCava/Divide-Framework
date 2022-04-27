@@ -42,13 +42,13 @@ constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 constexpr I8 s_maxHeaderRecursionLevel = 64;
 
-moodycamel::BlockingConcurrentQueue<ShaderProgram::TextDumpEntry> g_sDumpToFileQueue;
-
 bool ShaderProgram::s_useShaderTextCache = false;
-bool ShaderProgram::s_useShaderBinaryCache = false;
+bool ShaderProgram::s_useShaderSpvCache = false;
 bool ShaderProgram::s_UseBindlessTextures = false;
 
 SharedMutex ShaderProgram::s_atomLock;
+Mutex ShaderProgram::g_textDumpLock;
+Mutex ShaderProgram::g_binaryDumpLock;
 ShaderProgram::AtomMap ShaderProgram::s_atoms;
 ShaderProgram::AtomInclusionMap ShaderProgram::s_atomIncludes;
 
@@ -81,47 +81,57 @@ UpdateListener g_sFileWatcherListener(
     }
 );
 
-namespace {
- //Note: this doesn't care about arrays so those won't sort properly to reduce wastage
-    const auto g_TypePriority = [](const U64 typeHash) -> I32 {
-        switch (typeHash) {
-            case _ID("dmat4")  :            //128 bytes
-            case _ID("dmat4x3"): return 0;  // 96 bytes
-            case _ID("dmat3")  : return 1;  // 72 bytes
-            case _ID("dmat4x2"):            // 64 bytes
-            case _ID("mat4")   : return 2;  // 64 bytes
-            case _ID("dmat3x2"):            // 48 bytes
-            case _ID("mat4x3") : return 3;  // 48 bytes
-            case _ID("mat3")   : return 4;  // 36 bytes
-            case _ID("dmat2")  :            // 32 bytes
-            case _ID("dvec4")  :            // 32 bytes
-            case _ID("mat4x2") : return 5;  // 32 bytes
-            case _ID("dvec3")  :            // 24 bytes
-            case _ID("mat3x2") : return 6;  // 24 bytes
-            case _ID("mat2")   :            // 16 bytes
-            case _ID("dvec2")  :            // 16 bytes
-            case _ID("bvec4")  :            // 16 bytes
-            case _ID("ivec4")  :            // 16 bytes
-            case _ID("uvec4")  :            // 16 bytes
-            case _ID("vec4")   : return 7;  // 16 bytes
-            case _ID("bvec3")  :            // 12 bytes
-            case _ID("ivec3")  :            // 12 bytes
-            case _ID("uvec3")  :            // 12 bytes
-            case _ID("vec3")   : return 8;  // 12 bytes
-            case _ID("double") :            //  8 bytes
-            case _ID("bvec2")  :            //  8 bytes
-            case _ID("ivec2")  :            //  8 bytes
-            case _ID("uvec2")  :            //  8 bytes
-            case _ID("vec2")   : return 9;  //  8 bytes
-            case _ID("int")    :            //  4 bytes
-            case _ID("uint")   :            //  4 bytes
-            case _ID("float")  : return 10; //  4 bytes
-            // No real reason for this, but generated shader code looks cleaner
-            case _ID("bool")   : return 11; //  4 bytes
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+namespace Reflection {
+    bool UniformCompare::operator()(const UniformDeclaration& lhs, const UniformDeclaration& rhs) const {
+        //Note: this doesn't care about arrays so those won't sort properly to reduce wastage
+        const auto g_TypePriority = [](const U64 typeHash) -> I32 {
+            switch (typeHash) {
+                case _ID("dmat4"):              //128 bytes
+                case _ID("dmat4x3"): return 0;  // 96 bytes
+                case _ID("dmat3")  : return 1;  // 72 bytes
+                case _ID("dmat4x2"):            // 64 bytes
+                case _ID("mat4")   : return 2;  // 64 bytes
+                case _ID("dmat3x2"):            // 48 bytes
+                case _ID("mat4x3") : return 3;  // 48 bytes
+                case _ID("mat3")   : return 4;  // 36 bytes
+                case _ID("dmat2"):              // 32 bytes
+                case _ID("dvec4"):              // 32 bytes
+                case _ID("mat4x2") : return 5;  // 32 bytes
+                case _ID("dvec3"):              // 24 bytes
+                case _ID("mat3x2") : return 6;  // 24 bytes
+                case _ID("mat2"):               // 16 bytes
+                case _ID("dvec2"):              // 16 bytes
+                case _ID("bvec4"):              // 16 bytes
+                case _ID("ivec4"):              // 16 bytes
+                case _ID("uvec4"):              // 16 bytes
+                case _ID("vec4")   : return 7;  // 16 bytes
+                case _ID("bvec3"):              // 12 bytes
+                case _ID("ivec3"):              // 12 bytes
+                case _ID("uvec3"):              // 12 bytes
+                case _ID("vec3")   : return 8;  // 12 bytes
+                case _ID("double"):             //  8 bytes
+                case _ID("bvec2"):              //  8 bytes
+                case _ID("ivec2"):              //  8 bytes
+                case _ID("uvec2"):              //  8 bytes
+                case _ID("vec2")   : return 9;  //  8 bytes
+                case _ID("int"):                //  4 bytes
+                case _ID("uint"):               //  4 bytes
+                case _ID("float")  : return 10; //  4 bytes
+                // No real reason for this, but generated shader code looks cleaner
+                case _ID("bool")   : return 11; //  4 bytes
+                default: DIVIDE_UNEXPECTED_CALL(); break;
+            }
+
+            return 999;
+        };
+
+        const I32 lhsPriority = g_TypePriority(lhs._typeHash);
+        const I32 rhsPriority = g_TypePriority(rhs._typeHash);
+        if (lhsPriority != rhsPriority) {
+            return lhsPriority < rhsPriority;
         }
 
-        return 999;
+        return lhs._name < rhs._name;
     };
 };
 
@@ -814,7 +824,7 @@ void ShaderProgram::UniformBlockUploader::commit() {
 
 void ShaderProgram::UniformBlockUploader::prepare() {
     if (_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
-        _buffer->bind(to_U8(_descriptor._reflectionData._targetBlockBindingIndex));
+        Attorney::ShaderBufferBind::bind(*_buffer, to_U8(_descriptor._reflectionData._targetBlockBindingIndex));
     }
 }
 
@@ -883,14 +893,6 @@ void ShaderProgram::Idle(PlatformContext& platformContext) {
             Console::errorfn(Locale::Get(_ID("ERROR_SHADER_RECOMPILE_FAILED")), program->resourceName().c_str());
         }
         s_recompileQueue.pop();
-    }
-
-
-    // Schedule all of the shader "dump to text file" operations
-    static TextDumpEntry textOutputCache;
-    while (g_sDumpToFileQueue.try_dequeue(textOutputCache)) {
-        DIVIDE_ASSERT(!textOutputCache._name.empty() && !textOutputCache._sourceCode.empty());
-        Start(*CreateTask([cache = MOV(textOutputCache)](const Task&) { DumpShaderTextCacheToDisk(cache); }), platformContext.taskPool(TaskPoolType::LOW_PRIORITY));
     }
 }
 
@@ -1147,7 +1149,7 @@ size_t ShaderProgram::DefinesHash(const ModuleDefines& defines) {
     }
     return hash;
 }
-const string& ShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<U64>& foundAtomIDsInOut, bool& wasParsed) {
+const string& ShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed) {
     ScopedLock<SharedMutex> w_lock(s_atomLock);
     return ShaderFileReadLocked(filePath, atomName, recurse, foundAtomIDsInOut, wasParsed);
 }
@@ -1155,7 +1157,7 @@ const string& ShaderProgram::ShaderFileRead(const ResourcePath& filePath, const 
 eastl::string ShaderProgram::PreprocessIncludes(const ResourcePath& name,
                                                 const eastl::string& source,
                                                 const I32 level,
-                                                vector<U64>& foundAtomIDsInOut,
+                                                eastl::set<U64>& foundAtomIDsInOut,
                                                 const bool lock) {
     if (level > s_maxHeaderRecursionLevel) {
         Console::errorfn(Locale::Get(_ID("ERROR_GLSL_INCLUD_LIMIT")));
@@ -1187,7 +1189,7 @@ eastl::string ShaderProgram::PreprocessIncludes(const ResourcePath& name,
             output.append(line.c_str());
         } else {
             const ResourcePath includeFile = ResourcePath(Util::Trim(matches[1].str()));
-            foundAtomIDsInOut.push_back(_ID(includeFile.c_str()));
+            foundAtomIDsInOut.insert(_ID(includeFile.c_str()));
 
             ShaderType typeIndex = ShaderType::COUNT;
             bool found = false;
@@ -1226,7 +1228,7 @@ eastl::string ShaderProgram::PreprocessIncludes(const ResourcePath& name,
 }
 
 /// Open the file found at 'filePath' matching 'atomName' and return it's source code
-const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, vector<U64>& foundAtomIDsInOut, bool& wasParsed) {
+const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed) {
     const U64 atomNameHash = _ID(atomName.c_str());
     // See if the atom was previously loaded and still in cache
     const AtomMap::iterator it = s_atoms.find(atomNameHash);
@@ -1235,7 +1237,7 @@ const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, 
     if (it != std::cend(s_atoms)) {
         const auto& atoms = s_atomIncludes[atomNameHash];
         for (const auto& atom : atoms) {
-            foundAtomIDsInOut.push_back(_ID(atom.c_str()));
+            foundAtomIDsInOut.insert(_ID(atom.c_str()));
         }
         wasParsed = true;
         return it->second;
@@ -1252,13 +1254,12 @@ const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, 
     }
 
     vector<ResourcePath> atoms = {};
-    vector<UniformDeclaration> uniforms = {};
     if (recurse) {
         output = PreprocessIncludes(atomName, output, 0, foundAtomIDsInOut, false);
     }
 
     for (const auto& atom : atoms) {
-        foundAtomIDsInOut.push_back(_ID(atom.c_str()));
+        foundAtomIDsInOut.insert(_ID(atom.c_str()));
     }
 
     const auto&[entry, result] = s_atoms.insert({ atomNameHash, output.c_str() });
@@ -1270,20 +1271,10 @@ const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, 
 }
 
 bool ShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& fileName, eastl::string& sourceCodeOut) {
-    return readFile(filePath, ResourcePath(DecorateFileName(fileName.str())), sourceCodeOut, FileType::TEXT) == FileError::NONE;
+    return readFile(filePath, ResourcePath(fileName.str()), sourceCodeOut, FileType::TEXT) == FileError::NONE;
 }
 
-bool ShaderProgram::ShaderFileWrite(const ResourcePath& filePath, const ResourcePath& fileName, const char* sourceCode) {
-    return writeFile(filePath, ResourcePath(DecorateFileName(fileName.str())), sourceCode, strlen(sourceCode), FileType::TEXT) == FileError::NONE;
-}
-
-void ShaderProgram::DumpShaderTextCacheToDisk(const TextDumpEntry& entry) {
-    if (!ShaderFileWrite(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText, ResourcePath(entry._name), entry._sourceCode.c_str())) {
-        DIVIDE_UNEXPECTED_CALL();
-    }
-}
-
-eastl::string ShaderProgram::GatherUniformDeclarations(const eastl::string & source, vector<UniformDeclaration>& foundUniforms) {
+eastl::string ShaderProgram::GatherUniformDeclarations(const eastl::string & source, UniformsSet& foundUniforms) {
     static const boost::regex uniformPattern { R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
 
     eastl::string ret;
@@ -1296,8 +1287,11 @@ eastl::string ShaderProgram::GatherUniformDeclarations(const eastl::string & sou
         if (Util::BeginsWith(line, "uniform", true) &&
             boost::regex_search(line, matches, uniformPattern))
         {
-            foundUniforms.push_back(UniformDeclaration{
-                Util::Trim(matches[1].str()), //type
+            const auto type = Util::Trim(matches[1].str());
+
+            foundUniforms.insert(Reflection::UniformDeclaration{
+                type, //type
+                _ID(type.c_str()), //type hash
                 Util::Trim(matches[2].str())  //name
             });
         } else {
@@ -1309,13 +1303,58 @@ eastl::string ShaderProgram::GatherUniformDeclarations(const eastl::string & sou
     return ret;
 }
 
-void ShaderProgram::ParseGLSLSource(Reflection::Data& reflectionDataInOut, LoadData& dataInOut, const bool targetVulkan, const bool reloadExisting) {
-    if (dataInOut._codeSource == ShaderProgram::LoadData::SourceCodeSource::SOURCE_FILES) {
-        QueueShaderWriteToFile(dataInOut._sourceCodeGLSL.c_str(), dataInOut._fileName);
+namespace {
+    const ResourcePath SpvCacheLocation() {
+        return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationSpv + Paths::g_buildTypeLocation;
     }
-    if (dataInOut._codeSource != ShaderProgram::LoadData::SourceCodeSource::SOURCE_FILES) {
-        STUBBED("ToDo: Add shader loading from SPIRV sources");
+
+    ResourcePath GetTargetName(const ShaderProgram::LoadData& dataIn) {
+        return ResourcePath{ dataIn._fileName + "." + Paths::Shaders::g_SPIRVExt };
     }
+};
+
+bool ShaderProgram::LoadSPIRVFromCache(LoadData& dataInOut, eastl::set<U64>& atomIDsOut) {
+    const ResourcePath spvTarget{ GetTargetName(dataInOut) };
+    const ResourcePath spvTargetReflect{ spvTarget + "." + Paths::Shaders::g_ReflectionExt };
+
+    if (LoadReflectionData(SpvCacheLocation(), spvTargetReflect, dataInOut._reflectionData, atomIDsOut)) {
+        vector<Byte> tempData;
+        if (readFile(SpvCacheLocation(), spvTarget, tempData, FileType::BINARY) == FileError::NONE) {
+            dataInOut._sourceCodeSpirV.resize(tempData.size() / sizeof(U32));
+            memcpy(dataInOut._sourceCodeSpirV.data(), tempData.data(), tempData.size());
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool ShaderProgram::SaveSPIRVToCache(const LoadData& dataIn, const eastl::set<U64>& atomIDsIn){
+    const ResourcePath spvTarget{ GetTargetName(dataIn) };
+    const ResourcePath spvTargetReflect{ spvTarget + "." + Paths::Shaders::g_ReflectionExt };
+    const ResourcePath spvCacheLocation = SpvCacheLocation();
+
+    if (SaveReflectionData(spvCacheLocation, spvTargetReflect, dataIn._reflectionData, atomIDsIn)) {
+        ScopedLock<Mutex> w_lock(g_binaryDumpLock);
+        if (writeFile(spvCacheLocation, spvTarget, (bufferPtr)dataIn._sourceCodeSpirV.data(), dataIn._sourceCodeSpirV.size() * sizeof(U32), FileType::BINARY) == FileError::NONE) {
+            return true;
+        } else {
+            // Cache file and reflection file are out of sync so (attempt to) remove both.
+            if (deleteFile(spvCacheLocation, spvTarget) != FileError::NONE) {
+                NOP();
+            }
+            if (deleteFile(spvCacheLocation, spvTargetReflect) != FileError::NONE) {
+                NOP();
+            }
+        }
+    }
+
+    Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_SPIRV_FAILED")), dataIn._fileName.c_str());
+    return false;
+}
+
+bool ShaderProgram::GLSLToSPIRV(LoadData& dataInOut, const bool targetVulkan) {
+    DIVIDE_ASSERT(!dataInOut._sourceCodeGLSL.empty());
 
     vk::ShaderStageFlagBits type = vk::ShaderStageFlagBits::eVertex;
 
@@ -1328,37 +1367,20 @@ void ShaderProgram::ParseGLSLSource(Reflection::Data& reflectionDataInOut, LoadD
         case ShaderType::FRAGMENT:          type = vk::ShaderStageFlagBits::eFragment;               break;
         case ShaderType::COMPUTE:           type = vk::ShaderStageFlagBits::eCompute;                break;
     };
-    const ResourcePath spvPath = Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::g_SPIRVShaderLoc;
-    const ResourcePath spvTarget{ DecorateFileName(dataInOut._fileName) + "." + Paths::Shaders::g_SPIRVExt };
-    const ResourcePath spvTargetReflect{ spvTarget + ".refl" };
 
-    bool usedCache = false;
-    if (!reloadExisting && LoadReflectionData(spvPath, spvTargetReflect, reflectionDataInOut)) {
-        vector<Byte> tempData;
-        if (readFile(spvPath, spvTarget, tempData, FileType::BINARY) == FileError::NONE) {
-            dataInOut._sourceCodeSpirV.resize(tempData.size() / sizeof(U32));
-            memcpy(dataInOut._sourceCodeSpirV.data(), tempData.data(), tempData.size());
-            usedCache = true;
-        }
+    if (!SpirvHelper::GLSLtoSPV(type, dataInOut._sourceCodeGLSL.c_str(), dataInOut._sourceCodeSpirV, targetVulkan, dataInOut._reflectionData) || dataInOut._sourceCodeSpirV.empty()) {
+        Console::errorfn(Locale::Get(_ID("ERROR_SHADER_CONVERSION_SPIRV_FAILED")), dataInOut._fileName.c_str());
+        dataInOut._sourceCodeSpirV.clear();
+        return false;
     }
-   
-    if (!usedCache) {
-        if (!SpirvHelper::GLSLtoSPV(type, dataInOut._sourceCodeGLSL.c_str(), dataInOut._sourceCodeSpirV, targetVulkan, reflectionDataInOut) || dataInOut._sourceCodeSpirV.empty()) {
-            Console::errorfn(Locale::Get(_ID("ERROR_SHADER_CONVERSION_SPIRV_FAILED")), dataInOut._fileName.c_str());
-            dataInOut._sourceCodeSpirV.clear();
-        } else {
-            if (SaveReflectionData(spvPath, spvTargetReflect, reflectionDataInOut)) {
-                if (writeFile(spvPath, ResourcePath(spvTarget), dataInOut._sourceCodeSpirV.data(), dataInOut._sourceCodeSpirV.size() * sizeof(U32), FileType::BINARY) != FileError::NONE) {
-                    Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_SPIRV_FAILED")), dataInOut._fileName.c_str());
-                }
-            }
-        }
-    }
+
+    return true;
 }
 
-bool ShaderProgram::SaveReflectionData(const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn) {
+bool ShaderProgram::SaveReflectionData(const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn) {
     ByteBuffer buffer;
     buffer << BYTE_BUFFER_VERSION;
+    buffer << reflectionDataIn._targetBlockBindingIndex;
     buffer << reflectionDataIn._targetBlockName;
     buffer << reflectionDataIn._blockSize;
     buffer << reflectionDataIn._blockMembers.size();
@@ -1372,27 +1394,33 @@ bool ShaderProgram::SaveReflectionData(const ResourcePath& path, const ResourceP
         buffer << member._matrixDimensions.x;
         buffer << member._matrixDimensions.y;
     }
+    
+    buffer << atomIDsIn.size();
+    for (const U64 id : atomIDsIn) {
+        buffer << id;
+    }
 
     return buffer.dumpToFile(path.c_str(), file.c_str());
 }
 
-bool ShaderProgram::LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut) {
+bool ShaderProgram::LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut, eastl::set<U64>& atomIDsOut) {
     ByteBuffer buffer;
     if (buffer.loadFromFile(path.c_str(), file.c_str())) {
         auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         buffer >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {
+            buffer >> reflectionDataOut._targetBlockBindingIndex;
             buffer >> reflectionDataOut._targetBlockName;
             buffer >> reflectionDataOut._blockSize;
 
-            size_t memberCount = 0u;
-            buffer >> memberCount;
-            reflectionDataOut._blockMembers.reserve(memberCount);
+            size_t sizeTemp = 0u;
+            buffer >> sizeTemp;
+            reflectionDataOut._blockMembers.reserve(sizeTemp);
 
             std::string tempStr;
             std::underlying_type_t<GFX::PushConstantType> tempType{0u};
             
-            for (size_t i = 0; i < memberCount; ++i) {
+            for (size_t i = 0u; i < sizeTemp; ++i) {
                 Reflection::BlockMember& tempMember = reflectionDataOut._blockMembers.emplace_back();
                 buffer >> tempStr;
                 tempMember._name = tempStr.c_str();
@@ -1405,6 +1433,14 @@ bool ShaderProgram::LoadReflectionData(const ResourcePath& path, const ResourceP
                 buffer >> tempMember._matrixDimensions.x;
                 buffer >> tempMember._matrixDimensions.y;
             }
+
+            buffer >> sizeTemp;
+            U64 tempID = 0u;
+            for (size_t i = 0u; i < sizeTemp; ++i) {
+                buffer >> tempID;
+                atomIDsOut.insert(tempID);
+            }
+
             return true;
         }
     }
@@ -1413,38 +1449,29 @@ bool ShaderProgram::LoadReflectionData(const ResourcePath& path, const ResourceP
 }
 
 bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) {
-    const auto g_cmp = [](const ShaderProgram::UniformDeclaration& lhs, const ShaderProgram::UniformDeclaration& rhs) {
-        const I32 lhsPriority = g_TypePriority(_ID(lhs._type.c_str()));
-        const I32 rhsPriority = g_TypePriority(_ID(rhs._type.c_str()));
-        if (lhsPriority != rhsPriority) {
-            return lhsPriority < rhsPriority;
-        }
-
-        return lhs._name < rhs._name;
-    };
-
     setGLSWPath(reloadExisting);
-    _uniformBlockBuffers.clear();
-    _usedAtomIDs.resize(0);
+
+    _usedAtomIDs.clear();
 
     for (const ShaderModuleDescriptor& shaderDescriptor : _descriptor._modules) {
         const U64 fileHash = _ID(shaderDescriptor._sourceFile.data());
         fileData[fileHash]._modules.push_back(shaderDescriptor);
         ShaderModuleDescriptor& newDescriptor = fileData[fileHash]._modules.back();
         newDescriptor._defines.insert(end(newDescriptor._defines), begin(_descriptor._globalDefines), end(_descriptor._globalDefines));
+        _usedAtomIDs.insert(_ID(shaderDescriptor._sourceFile.c_str()));
     }
 
     U32 blockOffset = 0u;
+
+    UniformsSet previousUniforms;
+
+    _uniformBlockBuffers.clear();
     for (auto& [fileHash, loadDataPerFile] : fileData) {
-        eastl::set<ShaderProgram::UniformDeclaration, decltype(g_cmp)> stageUniforms(g_cmp);
-
-        assert(!loadDataPerFile._modules.empty());
-
         for (const ShaderModuleDescriptor& data : loadDataPerFile._modules) {
             const ShaderType type = data._moduleType;
             assert(type != ShaderType::COUNT);
 
-            ShaderProgram::LoadData& stageData = loadDataPerFile._loadData._data.emplace_back();
+            ShaderProgram::LoadData& stageData = loadDataPerFile._loadData.emplace_back();
             stageData._type = data._moduleType;
             stageData._name = Str256(data._sourceFile.substr(0, data._sourceFile.find_first_of(".")));
             stageData._name.append(".");
@@ -1455,51 +1482,12 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
             stageData._definesHash = DefinesHash(data._defines);
             stageData._fileName = Util::StringFormat("%s.%zu.%s", stageData._name, stageData._definesHash, shaderAtomExtensionName[to_U8(type)]);
 
-            loadSourceCode(data._defines, reloadExisting, stageData);
-            if (!stageData._uniforms.empty()) {
-                stageUniforms.insert(begin(stageData._uniforms), end(stageData._uniforms));
-            }
+            loadSourceCode(data._defines, reloadExisting, stageData, previousUniforms, blockOffset);
 
             if (!loadDataPerFile._programName.empty()) {
                 loadDataPerFile._programName.append("-");
             }
             loadDataPerFile._programName.append(stageData._fileName);
-
-            _usedAtomIDs.emplace_back(_ID(data._sourceFile.c_str()));
-
-            if (stageData._sourceCodeGLSL.empty() && stageData._sourceCodeSpirV.empty()) {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-        }
-
-        loadDataPerFile._loadData._reflectionData._targetBlockBindingIndex = blockOffset++;
-        loadDataPerFile._loadData._reflectionData._targetBlockName = Util::StringFormat("dvd_UniformBlock_%lld", loadDataPerFile._loadData._reflectionData._targetBlockBindingIndex);
-        loadDataPerFile._loadData._reflectionData._targetBlockBindingIndex += to_U32(ShaderBufferLocation::UNIFORM_BLOCK);
-
-        if (!stageUniforms.empty()) {
-            string& uniformBlock = loadDataPerFile._loadData._uniformBlock;
-
-            uniformBlock = _context.renderAPI() == RenderAPI::OpenGL ? "layout( " : "layout( set = 0, ";
-            uniformBlock.append("binding = %d, std140 ) uniform %s {");
-
-            for (const UniformDeclaration& uniform : stageUniforms) {
-                uniformBlock.append(Util::StringFormat("\n    %s %s;", uniform._type.c_str(), uniform._name.c_str()));
-            }
-            uniformBlock.append(Util::StringFormat("\n} %s;", UNIFORM_BLOCK_NAME));
-
-            for (const UniformDeclaration& uniform : stageUniforms) {
-                const auto rawName = uniform._name.substr(0, uniform._name.find_first_of("[")).to_string();
-                uniformBlock.append(Util::StringFormat("\n#define %s %s.%s", rawName.c_str(), UNIFORM_BLOCK_NAME, rawName.c_str()));
-            }
-
-            uniformBlock = Util::StringFormat(uniformBlock, loadDataPerFile._loadData._reflectionData._targetBlockBindingIndex, loadDataPerFile._loadData._reflectionData._targetBlockName.c_str());
-        }
-
-        for (LoadData& it : loadDataPerFile._loadData._data) {
-            if (it._codeSource == ShaderProgram::LoadData::SourceCodeSource::SOURCE_FILES) {
-                Util::ReplaceStringInPlace(it._sourceCodeGLSL, "//_CUSTOM_UNIFORMS_\\", loadDataPerFile._loadData._uniformBlock);
-            }
-            ParseGLSLSource(loadDataPerFile._loadData._reflectionData, it, false, reloadExisting);
         }
 
         initUniformUploader(loadDataPerFile);
@@ -1509,13 +1497,15 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
 }
 
 void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData) {
-    const ShaderLoadData& loadData = shaderFileData._loadData;
+    const ShaderLoadData& programLoadData = shaderFileData._loadData;
 
-    if (!loadData._reflectionData._blockMembers.empty()) {
-        UniformBlockUploaderDescriptor descriptor{};
-        descriptor._parentShaderName = shaderFileData._programName.c_str();
-        descriptor._reflectionData = loadData._reflectionData;
-        _uniformBlockBuffers.emplace_back(_context, descriptor);
+    for (const LoadData& stageData : programLoadData) {
+        if (!stageData._reflectionData._blockMembers.empty()) {
+            UniformBlockUploaderDescriptor descriptor{};
+            descriptor._parentShaderName = shaderFileData._programName.c_str();
+            descriptor._reflectionData = stageData._reflectionData;
+            _uniformBlockBuffers.emplace_back(_context, descriptor);
+        }
     }
 }
 
@@ -1536,67 +1526,149 @@ void ShaderProgram::preparePushConstants() {
     }
 }
 
-void ShaderProgram::QueueShaderWriteToFile(const string& sourceCode, const Str256& fileName) {
-    g_sDumpToFileQueue.enqueue({ fileName, sourceCode });
+void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, UniformsSet& previousUniformsInOut, U32& blockIndexInOut) {
+    // Clear existing code
+    loadDataInOut._sourceCodeGLSL.resize(0);
+    loadDataInOut._sourceCodeSpirV.resize(0);
+
+    const ResourcePath cachePath = Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText + Paths::g_buildTypeLocation;
+    const ResourcePath textTarget{ loadDataInOut._fileName };
+    const ResourcePath textTargetReflect{ textTarget + "." + Paths::Shaders::g_ReflectionExt };
+
+    eastl::set<U64> atomIDs;
+    if (reloadExisting) {
+        // Hot reloading will always reparse GLSL source files!
+        loadAndParseGLSL(defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs);
+        if (GLSLToSPIRV(loadDataInOut, false)) {
+            SaveSPIRVToCache(loadDataInOut, atomIDs);
+        }
+    } else {
+        // Try and load from the spir-v cache
+        if (s_useShaderSpvCache && LoadSPIRVFromCache(loadDataInOut, atomIDs)) {
+            loadDataInOut._codeSource = LoadData::SourceCodeSource::SPIRV_CACHE;
+        } else {
+            // Try and load from the text cache
+            if (s_useShaderTextCache && LoadReflectionData(cachePath, textTargetReflect, loadDataInOut._reflectionData, atomIDs)) {
+                if (ShaderFileRead(cachePath, textTarget, loadDataInOut._sourceCodeGLSL)) {
+                    loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
+                } else {
+                    // Cache file and reflection file are out of sync so (attempt to) remove both.
+                    if (deleteFile(cachePath, textTarget) != FileError::NONE) {
+                        NOP();
+                    }
+                    if (deleteFile(cachePath, textTargetReflect) != FileError::NONE) {
+                        NOP();
+                    }
+                }
+            }
+
+            // If that fails, parse the entire glsl source data
+            if (loadDataInOut._codeSource != LoadData::SourceCodeSource::TEXT_CACHE) {
+                loadAndParseGLSL(defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs);
+            }
+
+            if (GLSLToSPIRV(loadDataInOut, false)) {
+                SaveSPIRVToCache(loadDataInOut, atomIDs);
+            }
+
+            SaveReflectionData(cachePath, textTargetReflect, loadDataInOut._reflectionData, atomIDs);
+        }
+    }
+
+    _usedAtomIDs.insert(begin(atomIDs), end(atomIDs));
+
+    if (loadDataInOut._sourceCodeGLSL.empty() && loadDataInOut._sourceCodeSpirV.empty()) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
-void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut) {
+void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
+                                     bool reloadExisting,
+                                     LoadData& loadDataInOut,
+                                     UniformsSet& previousUniformsInOut,
+                                     U32& blockIndexInOut,
+                                     eastl::set<U64>& atomIDsInOut)
+{
     auto& glslCodeOut = loadDataInOut._sourceCodeGLSL;
-    auto& spirvCodeOut = loadDataInOut._sourceCodeSpirV;
-
     glslCodeOut.resize(0);
-    spirvCodeOut.resize(0);
 
-    if (s_useShaderTextCache && !reloadExisting) {
-        ShaderFileRead(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText,
-                       ResourcePath(loadDataInOut._fileName),
-                       glslCodeOut);
-        loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
+    // Use GLSW to read the appropriate part of the effect file
+    // based on the specified stage and properties
+    const char* sourceCodeStr = glswGetShader(loadDataInOut._name.c_str());
+    if (sourceCodeStr != nullptr) {
+        glslCodeOut.append(sourceCodeStr);
     }
-    if (glslCodeOut.empty()) {
-        // Read code from SPIRV files
-        loadDataInOut._codeSource = LoadData::SourceCodeSource::SPIRV_CACHE;
-    }
-    if (glslCodeOut.empty() && spirvCodeOut.empty()) {
-        // Use GLSW to read the appropriate part of the effect file
-        // based on the specified stage and properties
-        const char* sourceCodeStr = glswGetShader(loadDataInOut._name.c_str());
-        if (sourceCodeStr != nullptr) {
-            glslCodeOut.append(sourceCodeStr);
-        }
 
-        // GLSW may fail for various reasons (not a valid effect stage, invalid name, etc)
-        if (!glslCodeOut.empty()) {
+    // GLSW may fail for various reasons (not a valid effect stage, invalid name, etc)
+    if (!glslCodeOut.empty()) {
 
-            string header;
-            for (const auto& [defineString, appendPrefix] : defines) {
-                // Placeholders are ignored
-                if (defineString == "DEFINE_PLACEHOLDER") {
-                    continue;
-                }
-
-                // We manually add define dressing if needed
-                header.append((appendPrefix ? "#define " : "") + defineString + '\n');
+        string header;
+        for (const auto& [defineString, appendPrefix] : defines) {
+            // Placeholders are ignored
+            if (defineString == "DEFINE_PLACEHOLDER") {
+                continue;
             }
 
-            for (const auto& [defineString, appendPrefix] : defines) {
-                // Placeholders are ignored
-                if (!appendPrefix || defineString == "DEFINE_PLACEHOLDER") {
-                    continue;
-                }
-
-                // We also add a comment so that we can check what defines we have set because
-                // the shader preprocessor strips defines before sending the code to the GPU
-                header.append("/*Engine define: [ " + defineString + " ]*/\n");
-            }
-            // And replace in place with our program's headers created earlier
-            Util::ReplaceStringInPlace(glslCodeOut, "_CUSTOM_DEFINES__", header);
-            glslCodeOut = PreprocessIncludes(ResourcePath(resourceName()), glslCodeOut, 0, _usedAtomIDs, true);
-            glslCodeOut = Preprocessor::PreProcess(glslCodeOut, loadDataInOut._fileName.c_str());
-            glslCodeOut = GatherUniformDeclarations(glslCodeOut, loadDataInOut._uniforms);
-
-            loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
+            // We manually add define dressing if needed
+            header.append((appendPrefix ? "#define " : "") + defineString + '\n');
         }
+
+        for (const auto& [defineString, appendPrefix] : defines) {
+            // Placeholders are ignored
+            if (!appendPrefix || defineString == "DEFINE_PLACEHOLDER") {
+                continue;
+            }
+
+            // We also add a comment so that we can check what defines we have set because
+            // the shader preprocessor strips defines before sending the code to the GPU
+            header.append("/*Engine define: [ " + defineString + " ]*/\n");
+        }
+        // And replace in place with our program's headers created earlier
+        Util::ReplaceStringInPlace(glslCodeOut, "_CUSTOM_DEFINES__", header);
+        glslCodeOut = PreprocessIncludes(ResourcePath(resourceName()), glslCodeOut, 0, atomIDsInOut, true);
+        glslCodeOut = Preprocessor::PreProcess(glslCodeOut, loadDataInOut._fileName.c_str());
+        glslCodeOut = GatherUniformDeclarations(glslCodeOut, loadDataInOut._uniforms);
+    }
+
+    if (!loadDataInOut._uniforms.empty()) {
+        if (previousUniformsInOut.empty() || previousUniformsInOut != loadDataInOut._uniforms) {
+            ++blockIndexInOut;
+        }
+
+        loadDataInOut._reflectionData._targetBlockBindingIndex = blockIndexInOut;
+        loadDataInOut._reflectionData._targetBlockName = Util::StringFormat("dvd_UniformBlock_%lld", loadDataInOut._reflectionData._targetBlockBindingIndex);
+        loadDataInOut._reflectionData._targetBlockBindingIndex += to_U32(ShaderBufferLocation::UNIFORM_BLOCK);
+
+        string& uniformBlock = loadDataInOut._uniformBlock;
+        uniformBlock = _context.renderAPI() == RenderAPI::OpenGL ? "layout( " : "layout( set = 0, ";
+        uniformBlock.append("binding = %d, std140 ) uniform %s {");
+
+        for (const Reflection::UniformDeclaration& uniform : loadDataInOut._uniforms) {
+            uniformBlock.append(Util::StringFormat("\n    %s %s;", uniform._type.c_str(), uniform._name.c_str()));
+        }
+        uniformBlock.append(Util::StringFormat("\n} %s;", UNIFORM_BLOCK_NAME));
+
+        for (const Reflection::UniformDeclaration& uniform : loadDataInOut._uniforms) {
+            const auto rawName = uniform._name.substr(0, uniform._name.find_first_of("[")).to_string();
+            uniformBlock.append(Util::StringFormat("\n#define %s %s.%s", rawName.c_str(), UNIFORM_BLOCK_NAME, rawName.c_str()));
+        }
+
+        uniformBlock = Util::StringFormat(uniformBlock, loadDataInOut._reflectionData._targetBlockBindingIndex, loadDataInOut._reflectionData._targetBlockName.c_str());
+    }
+    previousUniformsInOut = loadDataInOut._uniforms;
+
+    Util::ReplaceStringInPlace(loadDataInOut._sourceCodeGLSL, "//_CUSTOM_UNIFORMS_\\", loadDataInOut._uniformBlock);
+
+    loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
+
+    ScopedLock<Mutex> w_lock(g_textDumpLock);
+    if (writeFile(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText + Paths::g_buildTypeLocation,
+                  ResourcePath(loadDataInOut._fileName),
+                  loadDataInOut._sourceCodeGLSL.c_str(),
+                  loadDataInOut._sourceCodeGLSL.length(),
+                  FileType::TEXT) != FileError::NONE)
+    {
+        DIVIDE_UNEXPECTED_CALL();
     }
 }
 

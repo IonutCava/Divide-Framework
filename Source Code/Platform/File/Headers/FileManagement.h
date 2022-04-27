@@ -37,7 +37,7 @@ namespace Divide {
 
 enum class CacheType : U8 {
     SHADER_TEXT = 0,
-    SHADER_BIN,
+    SHADER_SPV,
     TERRAIN,
     MODELS,
     COLLISION,
@@ -81,6 +81,7 @@ struct Paths {
     static ResourcePath g_fontsPath;
     static ResourcePath g_localisationPath;
     static ResourcePath g_cacheLocation;
+    static ResourcePath g_buildTypeLocation;
     static ResourcePath g_terrainCacheLocation;
     static ResourcePath g_geometryCacheLocation;
     static ResourcePath g_collisionMeshCacheLocation;
@@ -103,8 +104,9 @@ struct Paths {
     struct Shaders {
         static ResourcePath g_cacheLocation;
         static ResourcePath g_cacheLocationText;
-        static ResourcePath g_cacheLocationBin;
+        static ResourcePath g_cacheLocationSpv;
 
+        static Str8 g_ReflectionExt;
         static Str8 g_SPIRVExt;
         // Shader subfolder name that contains SPIRV shader files
         static ResourcePath g_SPIRVShaderLoc;

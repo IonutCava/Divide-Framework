@@ -496,17 +496,15 @@ vector<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& scre
     return ret;
 }
 
+const DescriptorSet& SceneManager::sceneDescriptorSet() const {
+    return  _sceneData->getDescriptorSet();
+}
+
 bool SceneManager::frameStarted(const FrameEvent& evt) {
-    OPTICK_EVENT();
-
-    _sceneData->uploadToGPU();
-
     return Attorney::SceneManager::frameStarted(getActiveScene());
 }
 
 bool SceneManager::frameEnded(const FrameEvent& evt) {
-    OPTICK_EVENT();
-
     return Attorney::SceneManager::frameEnded(getActiveScene());
 }
 
@@ -611,6 +609,8 @@ void SceneManager::currentPlayerPass(const U64 deltaTimeUS, const PlayerIndex id
 }
 
 void SceneManager::moveCameraToNode(const SceneGraphNode* targetNode) const {
+    OPTICK_EVENT();
+
     vec3<F32> targetPos = VECTOR3_ZERO;
 
     /// Root node just means a teleport to (0,0,0)
@@ -643,6 +643,7 @@ bool SceneManager::loadNode(SceneGraphNode* targetNode) const {
 
 void SceneManager::getSortedReflectiveNodes(const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut) const {
     OPTICK_EVENT();
+
     ScopedLock<Mutex> w_lock(s_searchNodesLock);
 
     static vector<SceneGraphNode*> allNodes = {};
@@ -670,6 +671,7 @@ void SceneManager::getSortedReflectiveNodes(const Camera* camera, const RenderSt
 
 void SceneManager::getSortedRefractiveNodes(const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut) const {
     OPTICK_EVENT();
+
     ScopedLock<Mutex> w_lock(s_searchNodesLock);
 
     static vector<SceneGraphNode*> allNodes = {};
@@ -720,6 +722,8 @@ VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params, co
 }
 
 void SceneManager::prepareLightData(const RenderStage stage, const CameraSnapshot& cameraSnapshot) {
+    OPTICK_EVENT();
+
     if (stage != RenderStage::SHADOW) {
         getActiveScene().lightPool()->sortLightData(stage, cameraSnapshot);
         getActiveScene().lightPool()->uploadLightData(stage, cameraSnapshot);
@@ -730,10 +734,13 @@ void SceneManager::onChangeFocus(const bool hasFocus) {
     if (!_init) {
         return;
     }
+
     getActiveScene().onChangeFocus(hasFocus);
 }
 
 bool SceneManager::resetSelection(const PlayerIndex idx, const bool resetIfLocked) {
+    OPTICK_EVENT();
+
     if (Attorney::SceneManager::resetSelection(getActiveScene(), idx, resetIfLocked)) {
         for (auto& cbk : _selectionChangeCallbacks) {
             cbk.second(idx, {});
@@ -745,6 +752,8 @@ bool SceneManager::resetSelection(const PlayerIndex idx, const bool resetIfLocke
 }
 
 void SceneManager::setSelected(const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive) {
+    OPTICK_EVENT();
+
     Attorney::SceneManager::setSelected(getActiveScene(), idx, SGNs, recursive);
     for (auto& cbk : _selectionChangeCallbacks) {
         cbk.second(idx, SGNs);

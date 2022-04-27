@@ -40,6 +40,8 @@ namespace Divide {
 
 class GFXDevice;
 
+struct DescriptorSet;
+
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 constexpr U8 GLOBAL_WATER_BODIES_COUNT = 2u;
@@ -141,7 +143,7 @@ class SceneShaderData {
         return false;
     }
 
-    void uploadToGPU();
+    const DescriptorSet& getDescriptorSet();
 
   private:
       using ProbeBufferData = std::array<ProbeData, GLOBAL_PROBE_COUNT>;

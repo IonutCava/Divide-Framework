@@ -668,6 +668,10 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
         return initError;
     }
 
+    Attorney::ShaderProgramKernel::UseShaderTextCache(config.debug.useShaderTextCache);
+    Attorney::ShaderProgramKernel::UseShaderSpirVCache(config.debug.useShaderSpirVCache);
+    Attorney::TextureKernel::UseTextureDDSCache(config.debug.useTextureDDSCache);
+
     Camera::initPool();
     initError = _platformContext.gfx().initRenderingAPI(_argc, _argv, renderingAPI);
 
@@ -728,10 +732,6 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
     _renderPassManager->setRenderPass(RenderStage::DISPLAY,    { RenderStage::REFLECTION, RenderStage::REFRACTION });
 
     Console::printfn(Locale::Get(_ID("SCENE_ADD_DEFAULT_CAMERA")));
-
-    Attorney::ShaderProgramKernel::UseShaderTextCache(config.debug.useShaderTextCache);
-    Attorney::ShaderProgramKernel::UseShaderBinaryCache(config.debug.useShaderBinaryCache);
-    Attorney::TextureKernel::UseTextureDDSCache(config.debug.useTextureDDSCache);
 
     winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _sceneManager](const DisplayWindow::WindowEventArgs& ) {
         mgr->onChangeFocus(false);
@@ -862,7 +862,7 @@ vec2<I32> Kernel::remapMouseCoords(const vec2<I32>& absPositionIn, bool& remappe
             const Rect<I32>& sceneRect = editor.scenePreviewRect(false);
             if (sceneRect.contains(absPositionIn)) {
                 remappedOut = true;
-                const Rect<I32>& viewport = _platformContext.gfx().getCurrentViewport();
+                const Rect<I32>& viewport = _platformContext.gfx().getViewport();
                 return COORD_REMAP(absPositionIn, sceneRect, viewport);
             }
         }

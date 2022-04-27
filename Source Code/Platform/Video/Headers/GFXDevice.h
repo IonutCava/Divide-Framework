@@ -271,7 +271,7 @@ public:  // GPU interface
     /// Returns true if the viewport was changed
            bool setViewport(const Rect<I32>& viewport);
     inline bool setViewport(I32 x, I32 y, I32 width, I32 height);
-    inline const Rect<I32>& getViewport() const noexcept;
+    inline Rect<I32> getViewport() const noexcept;
 
     void setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix);
 
@@ -315,7 +315,6 @@ public:  // Accessors and Mutators
     inline const ShaderProgram_ptr& getRTPreviewShader(bool depthOnly) const noexcept;
     inline void registerDrawCall() noexcept;
     inline void registerDrawCalls(U32 count) noexcept;
-    inline const Rect<I32>& getCurrentViewport() const noexcept;
 
     DebugView* addDebugView(const std::shared_ptr<DebugView>& view);
     bool removeDebugView(DebugView* view);
@@ -388,7 +387,9 @@ public:
                     U8 layerCount,
                     GFX::CommandBuffer& bufferInOut);
 
-    PROPERTY_RW(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
+    void materialDebugFlag(MaterialDebugFlag flag);
+
+    PROPERTY_R(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
     PROPERTY_RW(RenderAPI, renderAPI, RenderAPI::COUNT);
     PROPERTY_RW(bool, queryPerformanceStats, false);
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
@@ -447,7 +448,7 @@ protected:
 
 private:
     /// Upload draw related data to the GPU (view & projection matrices, viewport settings, etc)
-    void uploadGPUBlock();
+    const DescriptorSet& uploadGPUBlock();
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
     void setDepthRange(const vec2<F32>& depthRange);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
