@@ -668,8 +668,6 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
         return initError;
     }
 
-    Attorney::ShaderProgramKernel::UseShaderTextCache(config.debug.useShaderTextCache);
-    Attorney::ShaderProgramKernel::UseShaderSpirVCache(config.debug.useShaderSpirVCache);
     Attorney::TextureKernel::UseTextureDDSCache(config.debug.useTextureDDSCache);
 
     Camera::initPool();

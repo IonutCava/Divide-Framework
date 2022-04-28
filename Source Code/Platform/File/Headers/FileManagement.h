@@ -158,15 +158,19 @@ using asPath = std::filesystem::path;
 [[nodiscard]] bool pathExists(const ResourcePath& filePath);
 [[nodiscard]] bool fileExists(const char* filePathAndName);
 [[nodiscard]] bool fileExists(const ResourcePath& filePathAndName);
-[[nodiscard]] bool fileExists(const char* filePath, const char* filename);
+[[nodiscard]] bool fileExists(const char* filePath, const char* fileName);
 [[nodiscard]] bool fileIsEmpty(const char* filePathAndName);
 [[nodiscard]] bool fileIsEmpty(const ResourcePath& filePathAndName);
-[[nodiscard]] bool fileIsEmpty(const char* filePath, const char* filename);
+[[nodiscard]] bool fileIsEmpty(const char* filePath, const char* fileName);
 [[nodiscard]] bool createDirectory(const char* path);
 [[nodiscard]] bool createDirectory(const ResourcePath& path);
 [[nodiscard]] bool createFile(const char* filePathAndName, bool overwriteExisting);
 [[nodiscard]] bool deleteAllFiles(const char* filePath, const char* extension = nullptr);
 [[nodiscard]] bool deleteAllFiles(const ResourcePath& filePath, const char* extension = nullptr);
+
+[[nodiscard]] FileError fileLastWriteTime(const char* filePathAndName, U64& timeOutSec);
+[[nodiscard]] FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec);
+[[nodiscard]] FileError fileLastWriteTime(const char* filePath, const char* fileName, U64& timeOutSec);
 
 template<typename T,
 typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true_type>::value, bool>::type* = nullptr>

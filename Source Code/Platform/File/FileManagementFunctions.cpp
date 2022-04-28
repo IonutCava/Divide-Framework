@@ -105,7 +105,13 @@ bool pathExists(const ResourcePath& filePath) {
 }
 
 bool pathExists(const char* filePath) {
-    return is_directory(std::filesystem::path(filePath));
+    std::error_code ec;
+    const bool ret = is_directory(std::filesystem::path(filePath), ec);
+    if (ec) {
+        return false;
+    }
+
+    return ret;
 }
 
 bool createDirectory(const ResourcePath& path) {
@@ -115,8 +121,12 @@ bool createDirectory(const ResourcePath& path) {
 bool createDirectory(const char* path) {
     if (!pathExists(path)) {
         const auto targetPath = std::filesystem::path(path);
-        std::error_code ec = {};
+        std::error_code ec;
         const bool ret = create_directories(targetPath, ec);
+        if (ec) {
+            return false;
+        }
+
         if (!ret) {
             return pathExists(path);
         }
@@ -131,11 +141,23 @@ bool fileExists(const ResourcePath& filePathAndName) {
 }
 
 bool fileExists(const char* filePathAndName) {
-    return is_regular_file(std::filesystem::path(filePathAndName));
+    std::error_code ec;
+    const bool result = is_regular_file(std::filesystem::path(filePathAndName), ec);
+    if (ec) {
+        return false;
+    }
+
+    return result;
 }
 
 bool fileExists(const char* filePath, const char* fileName) {
-    return is_regular_file(std::filesystem::path(string{ filePath } + fileName));
+    std::error_code ec;
+    const bool result = is_regular_file(std::filesystem::path(string{ filePath } + fileName), ec);
+    if (ec) {
+        return false;
+    }
+
+    return result;
 }
 
 bool fileIsEmpty(const ResourcePath& filePathAndName) {
@@ -143,11 +165,47 @@ bool fileIsEmpty(const ResourcePath& filePathAndName) {
 }
 
 bool fileIsEmpty(const char* filePathAndName) {
-    return std::filesystem::is_empty(std::filesystem::path(filePathAndName));
+    std::error_code ec;
+    const bool result = std::filesystem::is_empty(std::filesystem::path(filePathAndName), ec);
+    if (ec) {
+        return true;
+    }
+
+    return result;
 }
 
 bool fileIsEmpty(const char* filePath, const char* fileName) {
-    return std::filesystem::is_empty(std::filesystem::path(string{ filePath } + fileName));
+    std::error_code ec;
+    const bool result = std::filesystem::is_empty(std::filesystem::path(string{ filePath } + fileName), ec);
+    if (ec) {
+        return true;
+    }
+
+    return result;
+}
+
+FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec) {
+    return fileLastWriteTime(filePathAndName.c_str(), timeOutSec);
+}
+
+FileError fileLastWriteTime(const char* filePathAndName, U64& timeOutSec) {
+    if (Util::IsEmptyOrNull(filePathAndName) || !fileExists(filePathAndName)) {
+        return FileError::FILE_NOT_FOUND;
+    }
+
+    std::error_code ec;
+    const auto timeStamp = std::filesystem::last_write_time(std::filesystem::path(filePathAndName), ec).time_since_epoch();
+    if (ec) {
+        return FileError::FILE_READ_ERROR;
+    }
+
+    timeOutSec = std::chrono::duration_cast<std::chrono::seconds>(timeStamp).count();
+
+    return FileError::NONE;
+}
+
+FileError fileLastWriteTime(const char* filePath, const char* fileName, U64& timeOutSec) {
+    return fileLastWriteTime((string{ filePath } + "/" + fileName).c_str(), timeOutSec);
 }
 
 bool createFile(const char* filePathAndName, const bool overwriteExisting) {
@@ -207,8 +265,13 @@ FileError deleteFile(const char* filePath, const char* fileName) {
     if (Util::IsEmptyOrNull(fileName)) {
         return FileError::FILE_NOT_FOUND;
     }
-    const std::filesystem::path file(string{ filePath } +fileName);
-    if (std::filesystem::remove(file)) {
+    const string fullPath{string{ filePath } + fileName};
+    if (!fileExists(fullPath.c_str())) {
+        return FileError::FILE_NOT_FOUND;
+    }
+
+    std::error_code ec;
+    if (std::filesystem::remove(std::filesystem::path(fullPath), ec) && !ec) {
         return FileError::NONE;
     }
 
@@ -238,9 +301,11 @@ FileError copyFile(const char* sourcePath, const char* sourceName, const char* t
         return FileError::FILE_OVERWRITE_ERROR;
     }
 
+    std::error_code ec;
     if (copy_file(std::filesystem::path(source),
                   std::filesystem::path(target),
-                  std::filesystem::copy_options::overwrite_existing)) {
+                  std::filesystem::copy_options::overwrite_existing,
+                  ec) && !ec) {
         return FileError::NONE;
     }
 
@@ -257,20 +322,15 @@ FileError copyDirectory(const char* sourcePath, const char* targetPath, bool rec
     if (!overwrite && pathExists(targetPath)) {
         return FileError::FILE_OVERWRITE_ERROR;
     }
-    try
-    {
-        std::filesystem::copy(sourcePath, 
-                              targetPath,
-                              (overwrite ? std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none) | 
-                               (recursively ? std::filesystem::copy_options::recursive : std::filesystem::copy_options::none));
-    }
-    catch (const std::exception& e)
-    {
-        std::cout << e.what();
-        return FileError::FILE_COPY_ERROR;
-    }
+    
+    std::error_code ec;
+    std::filesystem::copy(sourcePath, 
+                            targetPath,
+                            (overwrite ? std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none) | 
+                            (recursively ? std::filesystem::copy_options::recursive : std::filesystem::copy_options::none),
+                          ec);
 
-    return FileError::NONE;
+    return ec ? FileError::FILE_COPY_ERROR: FileError::NONE;
 }
 
 FileError copyDirectory(const ResourcePath& sourcePath, const ResourcePath& targetPath, bool recursively, bool overwrite) {
@@ -287,10 +347,10 @@ FileError findFile(const char* filePath, const char* fileName, string& foundPath
 
     const std::filesystem::recursive_directory_iterator end;
     const auto it = std::find_if(std::filesystem::recursive_directory_iterator(dir_path), end,
-        [&file_name](const std::filesystem::directory_entry& e) {
-        const bool ret = e.path().filename() == file_name;
-        return ret;
-    });
+                                    [&file_name](const std::filesystem::directory_entry& e) {
+                                        const bool ret = e.path().filename() == file_name;
+                                        return ret;
+                                    });
     if (it == end) {
         return FileError::FILE_NOT_FOUND;
     }

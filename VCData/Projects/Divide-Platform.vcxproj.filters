@@ -334,6 +334,9 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\GLSLToSPIRV.h">
       <Filter>Video\Shaders\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\ShaderDataUploader.h">
+      <Filter>Video\Shaders\Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../../Source Code/Platform\Input\AutoKeyRepeat.cpp">
@@ -601,6 +604,9 @@
       <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\GLSLToSPIRV.cpp">
+      <Filter>Video\Shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\ShaderDataUploader.cpp">
       <Filter>Video\Shaders</Filter>
     </ClCompile>
   </ItemGroup>

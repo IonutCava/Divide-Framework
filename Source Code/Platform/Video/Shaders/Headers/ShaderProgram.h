@@ -33,12 +33,13 @@
 #ifndef _SHADER_PROGRAM_H_
 #define _SHADER_PROGRAM_H_
 
+#include "ShaderDataUploader.h"
+
 #include "Core/Headers/ObjectPool.h"
 #include "Core/Resources/Headers/Resource.h"
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 #include "Platform/Video/Headers/RenderAPIEnums.h"
-#include "Platform/Video/Headers/PushConstant.h"
 
 namespace FW {
     class FileWatcher;
@@ -57,12 +58,7 @@ struct Configuration;
 
 enum class FileUpdateEvent : U8;
 
-FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
-
-namespace Attorney {
-    class ShaderProgramKernel;
-}
 
 struct ModuleDefine {
     ModuleDefine() = default;
@@ -117,54 +113,10 @@ inline bool operator!=(const ShaderProgramMapEntry& lhs, const ShaderProgramMapE
            lhs._program != rhs._program;
 }
 
-namespace Reflection {
-    static constexpr U32 INVALID_BINDING_INDEX = std::numeric_limits<U32>::max();
-
-    struct BlockMember {
-        GFX::PushConstantType _type{ GFX::PushConstantType::COUNT };
-        Str64 _name{};
-        size_t _offset{ 0u };
-        size_t _arrayInnerSize{ 0u }; // array[innerSize][outerSize]
-        size_t _arrayOuterSize{ 0u }; // array[innerSize][outerSize]
-        size_t _vectorDimensions{ 0u };
-        vec2<size_t> _matrixDimensions{ 0u, 0u }; //columns, rows
-    };
-
-    struct Data {
-        U32 _targetBlockBindingIndex = INVALID_BINDING_INDEX;
-        string _targetBlockName;
-        size_t _blockSize{ 0u };
-        vector<BlockMember> _blockMembers{};
-    };
-
-
-    struct UniformDeclaration {
-        Str64 _type;
-        U64 _typeHash = 0u;
-        Str256 _name;
-    };
-
-    inline bool operator!=(const UniformDeclaration& lhs, const UniformDeclaration& rhs) noexcept {
-        return lhs._typeHash != rhs._typeHash ||
-               lhs._name != rhs._name;
-    }
-
-    inline bool operator==(const UniformDeclaration& lhs, const UniformDeclaration& rhs) noexcept {
-        return lhs._typeHash == rhs._typeHash &&
-               lhs._name == rhs._name;
-    }
-    struct UniformCompare {
-        bool operator()(const UniformDeclaration& lhs, const UniformDeclaration& rhs) const;
-    }; 
-};
-
 class NOINITVTABLE ShaderProgram : public CachedResource,
                                    public GraphicsResource {
-    friend class Attorney::ShaderProgramKernel;
    public:
     static constexpr char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
-
-    using UniformsSet = eastl::set<Reflection::UniformDeclaration, Reflection::UniformCompare>;
 
     // one per shader type!
     struct LoadData {
@@ -175,11 +127,12 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
             COUNT
         };
 
-        UniformsSet _uniforms;
+        Reflection::UniformsSet _uniforms;
         std::vector<U32> _sourceCodeSpirV;
         eastl::string _sourceCodeGLSL;
         Str256 _name = "";
         Str256 _fileName = "";
+        Str256 _sourceFile = "";
         size_t _definesHash = 0u;
         ShaderType _type = ShaderType::COUNT;
         SourceCodeSource _codeSource = SourceCodeSource::COUNT;
@@ -189,38 +142,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     };
 
     using ShaderLoadData = vector<LoadData>;
-
-    struct UniformBlockUploaderDescriptor {
-        eastl::string _parentShaderName = "";
-        Reflection::Data _reflectionData{};
-    };
-
-    struct UniformBlockUploader {
-        struct BlockMember
-        {
-            Reflection::BlockMember _externalData;
-            U64    _nameHash{ 0u };
-            size_t _size{ 0 };
-            size_t _elementSize{ 0 };
-        };
-
-
-        explicit UniformBlockUploader(GFXDevice& context, const UniformBlockUploaderDescriptor& descriptor);
-
-        void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept;
-        void commit();
-        void prepare();
-
-    private:
-        vector<Byte> _localDataCopy;
-        vector<BlockMember> _blockMembers;
-        ShaderBuffer_uptr _buffer = nullptr;
-        UniformBlockUploaderDescriptor _descriptor;
-        size_t _uniformBlockSizeAligned = 0u;
-        bool _uniformBlockDirty = false;
-        bool _needsQueueIncrement = false;
-
-    };
 
     using Handle = PoolHandle;
     static constexpr Handle INVALID_HANDLE{ U16_MAX, U8_MAX };
@@ -276,11 +197,6 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     [[nodiscard]] static vector<ResourcePath> GetAllAtomLocations();
 
-    [[nodiscard]] static bool UseShaderTexCache() noexcept { return s_useShaderTextCache; }
-    [[nodiscard]] static bool UseShaderSpirVCache() noexcept { return s_useShaderSpvCache; }
-
-    [[nodiscard]] static size_t DefinesHash(const ModuleDefines& defines);
-
     [[nodiscard]] static I32 ShaderProgramCount() noexcept { return s_shaderCount.load(std::memory_order_relaxed); }
 
     [[nodiscard]] const ShaderProgramDescriptor& descriptor() const noexcept { return _descriptor; }
@@ -293,17 +209,14 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
     PROPERTY_R_IW(Handle, handle, INVALID_HANDLE);
 
    protected:
-     static void UseShaderTextCache(bool state) noexcept { s_useShaderTextCache = state; }
-     static void UseShaderSpirVCache(const bool state) noexcept { s_useShaderSpvCache = state; }
 
-     static bool GLSLToSPIRV(LoadData& dataInOut, bool targetVulkan);
+     static bool GLSLToSPIRV(LoadData& dataInOut, bool targetVulkan, const eastl::set<U64>& atomIDsIn);
 
      static bool SaveSPIRVToCache(const LoadData& dataIn, const eastl::set<U64>& atomIDsIn);
      static bool LoadSPIRVFromCache(LoadData& dataInOut, eastl::set<U64>& atomIDsOut);
 
-     static bool SaveReflectionData(const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn);
-     static bool LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut, eastl::set<U64>& atomIDsOut);
-
+     static bool SaveTextToCache(const LoadData& dataIn, const eastl::set<U64>& atomIDsIn);
+     static bool LoadTextFromCache(LoadData& dataInOut, eastl::set<U64>& atomIDsOut);
    protected:
     /// Only 1 shader program per frame should be recompiled to avoid a lot of stuttering
     static ShaderQueue s_recompileQueue;
@@ -320,20 +233,17 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 protected:
     virtual void threadedLoad(bool reloadExisting);
     virtual bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting);
-            void setGLSWPath(bool clearExisting);
-
-    void onAtomChangeInternal(std::string_view atomName, FileUpdateEvent evt);
 
     void loadSourceCode(const ModuleDefines& defines,
                         bool reloadExisting,
                         LoadData& loadDataInOut,
-                        UniformsSet& previousUniformsInOut,
+                        Reflection::UniformsSet& previousUniformsInOut,
                         U32& blockIndexInOut);
 
     void loadAndParseGLSL(const ModuleDefines& defines,
                           bool reloadExisting,
                           LoadData& loadDataInOut,
-                          UniformsSet& previousUniformsInOut,
+                          Reflection::UniformsSet& previousUniformsInOut,
                           U32& blockIndexInOut,
                           eastl::set<U64>& atomIDsInOut);
 
@@ -341,10 +251,6 @@ protected:
 private:
     static const string& ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed);
     static const string& ShaderFileReadLocked(const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed);
-
-    static bool ShaderFileRead(const ResourcePath& filePath, const ResourcePath& fileName, eastl::string& sourceCodeOut);
-
-    static eastl::string GatherUniformDeclarations(const eastl::string& source, UniformsSet& foundUniforms);
 
     static eastl::string PreprocessIncludes(const ResourcePath& name,
                                         const eastl::string& source,
@@ -363,14 +269,12 @@ private:
     eastl::set<U64> _usedAtomIDs;
 
    protected:
-    static bool s_useShaderTextCache;
-    static bool s_useShaderSpvCache;
     static std::atomic_int s_shaderCount;
 
     static I64 s_shaderFileWatcherID;
 
     /// Shaders loaded from files are kept as atoms
-    static SharedMutex s_atomLock;
+    static Mutex s_atomLock;
     static Mutex g_textDumpLock;
     static Mutex g_binaryDumpLock;
     static AtomMap s_atoms;
@@ -387,21 +291,6 @@ struct PerFileShaderData {
     vector<ShaderModuleDescriptor> _modules;
     ShaderProgram::ShaderLoadData _loadData;
 };
-
-namespace Attorney {
-    class ShaderProgramKernel {
-      protected:
-        static void UseShaderTextCache(const bool state) noexcept {
-            ShaderProgram::UseShaderTextCache(state);
-        }
-
-        static void UseShaderSpirVCache(const bool state) noexcept {
-            ShaderProgram::UseShaderSpirVCache(state);
-        }
-
-        friend class Kernel;
-    };
-}
 
 };  // namespace Divide
 #endif //_SHADER_PROGRAM_H_

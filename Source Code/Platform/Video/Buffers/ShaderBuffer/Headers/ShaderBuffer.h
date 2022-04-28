@@ -158,7 +158,7 @@ namespace Attorney {
         }
 
         friend class GFXDevice;
-        friend class ShaderProgram;
+        friend class UniformBlockUploader;
     };
 };
 

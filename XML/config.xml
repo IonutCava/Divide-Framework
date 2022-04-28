@@ -16,9 +16,6 @@
 			<sky>true</sky>
 			<particles>true</particles>
 		</renderFilter>
-		<!-- this is only taken into consideration if binary cache is disabled-->
-		<useShaderTextCache>true</useShaderTextCache>
-		<useShaderSpirVCache>true</useShaderSpirVCache>
 		<useTextureDDSCache>true</useTextureDDSCache>
 		<!-- memFile: file name that the application should use to write  memory allocation info. Leave empty for none! -->
 		<memFile>mem.log</memFile>

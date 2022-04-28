@@ -38,15 +38,14 @@ extern "C" {
 #endif
 
 namespace Divide {
+
 constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 constexpr I8 s_maxHeaderRecursionLevel = 64;
 
-bool ShaderProgram::s_useShaderTextCache = false;
-bool ShaderProgram::s_useShaderSpvCache = false;
 bool ShaderProgram::s_UseBindlessTextures = false;
 
-SharedMutex ShaderProgram::s_atomLock;
+Mutex ShaderProgram::s_atomLock;
 Mutex ShaderProgram::g_textDumpLock;
 Mutex ShaderProgram::g_binaryDumpLock;
 ShaderProgram::AtomMap ShaderProgram::s_atoms;
@@ -64,76 +63,11 @@ ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram =
 Mutex ShaderProgram::s_programLock;
 std::atomic_int ShaderProgram::s_shaderCount;
 
-size_t ShaderProgramDescriptor::getHash() const {
-    _hash = PropertyDescriptor::getHash();
-    for (const ShaderModuleDescriptor& desc : _modules) {
-        Util::Hash_combine(_hash, ShaderProgram::DefinesHash(desc._defines),
-                                  std::string(desc._variant.c_str()),
-                                  desc._sourceFile.data(),
-                                  desc._moduleType);
-    }
-    return _hash;
-}
-
 UpdateListener g_sFileWatcherListener(
     [](const std::string_view atomName, const FileUpdateEvent evt) {
         ShaderProgram::OnAtomChange(atomName, evt);
     }
 );
-
-namespace Reflection {
-    bool UniformCompare::operator()(const UniformDeclaration& lhs, const UniformDeclaration& rhs) const {
-        //Note: this doesn't care about arrays so those won't sort properly to reduce wastage
-        const auto g_TypePriority = [](const U64 typeHash) -> I32 {
-            switch (typeHash) {
-                case _ID("dmat4"):              //128 bytes
-                case _ID("dmat4x3"): return 0;  // 96 bytes
-                case _ID("dmat3")  : return 1;  // 72 bytes
-                case _ID("dmat4x2"):            // 64 bytes
-                case _ID("mat4")   : return 2;  // 64 bytes
-                case _ID("dmat3x2"):            // 48 bytes
-                case _ID("mat4x3") : return 3;  // 48 bytes
-                case _ID("mat3")   : return 4;  // 36 bytes
-                case _ID("dmat2"):              // 32 bytes
-                case _ID("dvec4"):              // 32 bytes
-                case _ID("mat4x2") : return 5;  // 32 bytes
-                case _ID("dvec3"):              // 24 bytes
-                case _ID("mat3x2") : return 6;  // 24 bytes
-                case _ID("mat2"):               // 16 bytes
-                case _ID("dvec2"):              // 16 bytes
-                case _ID("bvec4"):              // 16 bytes
-                case _ID("ivec4"):              // 16 bytes
-                case _ID("uvec4"):              // 16 bytes
-                case _ID("vec4")   : return 7;  // 16 bytes
-                case _ID("bvec3"):              // 12 bytes
-                case _ID("ivec3"):              // 12 bytes
-                case _ID("uvec3"):              // 12 bytes
-                case _ID("vec3")   : return 8;  // 12 bytes
-                case _ID("double"):             //  8 bytes
-                case _ID("bvec2"):              //  8 bytes
-                case _ID("ivec2"):              //  8 bytes
-                case _ID("uvec2"):              //  8 bytes
-                case _ID("vec2")   : return 9;  //  8 bytes
-                case _ID("int"):                //  4 bytes
-                case _ID("uint"):               //  4 bytes
-                case _ID("float")  : return 10; //  4 bytes
-                // No real reason for this, but generated shader code looks cleaner
-                case _ID("bool")   : return 11; //  4 bytes
-                default: DIVIDE_UNEXPECTED_CALL(); break;
-            }
-
-            return 999;
-        };
-
-        const I32 lhsPriority = g_TypePriority(lhs._typeHash);
-        const I32 rhsPriority = g_TypePriority(rhs._typeHash);
-        if (lhsPriority != rhsPriority) {
-            return lhsPriority < rhsPriority;
-        }
-
-        return lhs._name < rhs._name;
-    };
-};
 
 namespace Preprocessor{
      //ref: https://stackoverflow.com/questions/14858017/using-boost-wave
@@ -316,6 +250,82 @@ namespace Preprocessor{
     }
 
 } //Preprocessor
+
+namespace {
+    [[nodiscard]] size_t DefinesHash(const ModuleDefines& defines) {
+        if (defines.empty()) {
+            return 0u;
+        }
+
+        size_t hash = 7919;
+        for (const auto& [defineString, appendPrefix] : defines) {
+            Util::Hash_combine(hash, _ID(defineString.c_str()));
+            Util::Hash_combine(hash, appendPrefix);
+        }
+        return hash;
+    }
+
+    [[nodiscard]] ResourcePath SpvCacheLocation() {
+        return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationSpv + Paths::g_buildTypeLocation;
+    }
+
+    [[nodiscard]] ResourcePath SpvTargetName(const Str256& fileName) {
+        return ResourcePath{ fileName + "." + Paths::Shaders::g_SPIRVExt };
+    }
+
+    [[nodiscard]] ResourcePath TxtCacheLocation() {
+        return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText + Paths::g_buildTypeLocation;
+    }
+
+    [[nodiscard]] bool ValidateCache(const bool validateSPV, const Str256& sourceFileName, const Str256& targetFileName) {
+        //"There are only two hard things in Computer Science: cache invalidation and naming things" - Phil Karlton
+        //"There are two hard things in computer science: cache invalidation, naming things, and off-by-one errors." - Leon Bambrick
+
+        // Get our source file's "last written" timestamp
+        U64 lastWriteTime = 0u, lastWriteTimeCache = 0u;
+
+        const ResourcePath sourceShaderFullPath = Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::GLSL::g_GLSLShaderLoc + sourceFileName;
+        if (fileLastWriteTime(sourceShaderFullPath, lastWriteTime) != FileError::NONE) {
+            return false;
+        }
+
+        if (validateSPV) {
+            const ResourcePath spvCacheFullPath = SpvCacheLocation() + SpvTargetName(targetFileName);
+
+            // Check agains SPV cache file's timestamps;
+            if (fileLastWriteTime(spvCacheFullPath, lastWriteTimeCache) != FileError::NONE || lastWriteTimeCache < lastWriteTime) {
+                return false;
+            }
+        } else {
+            const ResourcePath texCacheFullPath = TxtCacheLocation() + targetFileName;
+
+            // Do the same for the text cache
+            if (fileLastWriteTime(texCacheFullPath, lastWriteTimeCache) != FileError::NONE || lastWriteTimeCache < lastWriteTime) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void DeleteSPIRVCache(const Str256& sourceFileName) {
+        if (deleteFile(SpvCacheLocation(), ResourcePath{ SpvTargetName(sourceFileName) }) != FileError::NONE) {
+            NOP();
+        }
+        if (deleteFile(SpvCacheLocation(), ResourcePath{ SpvTargetName(sourceFileName) + "." + Paths::Shaders::g_ReflectionExt }) != FileError::NONE) {
+            NOP();
+        }
+    }
+    
+    void DeleteTextCache(const Str256& sourceFileName) {
+        // Cache file and reflection file are out of sync so (attempt to) remove both.
+        if (deleteFile(TxtCacheLocation(), ResourcePath{ sourceFileName }) != FileError::NONE) {
+            NOP();
+        }
+        if (deleteFile(TxtCacheLocation(), ResourcePath{ sourceFileName + "." + Paths::Shaders::g_ReflectionExt }) != FileError::NONE) {
+            NOP();
+        }
+    }
+};
 
 bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo, const Configuration& config) {
     const auto AppendToShaderHeader = [](const ShaderType type, const string& entry) {
@@ -664,168 +674,15 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     return glswState == 1;
 }
 
- ShaderProgram::UniformBlockUploader::UniformBlockUploader(GFXDevice& context, const ShaderProgram::UniformBlockUploaderDescriptor& descriptor) 
- {
-    _descriptor = descriptor;
-
-    const auto GetSizeOf = [](const GFX::PushConstantType type) noexcept -> size_t {
-        switch (type) {
-            case GFX::PushConstantType::INT: return sizeof(I32);
-            case GFX::PushConstantType::UINT: return sizeof(U32);
-            case GFX::PushConstantType::FLOAT: return sizeof(F32);
-            case GFX::PushConstantType::DOUBLE: return sizeof(D64);
-        };
-
-        DIVIDE_UNEXPECTED_CALL_MSG("Unexpected push constant type");
-        return 0u;
-    };
-
-    if (_descriptor._reflectionData._blockMembers.empty()) {
-        return;
+size_t ShaderProgramDescriptor::getHash() const {
+    _hash = PropertyDescriptor::getHash();
+    for (const ShaderModuleDescriptor& desc : _modules) {
+        Util::Hash_combine(_hash, DefinesHash(desc._defines),
+                                    std::string(desc._variant.c_str()),
+                                    desc._sourceFile.data(),
+                                    desc._moduleType);
     }
-
-    const size_t activeMembers = _descriptor._reflectionData._blockMembers.size();
-    _blockMembers.resize(activeMembers);
-    if (_descriptor._reflectionData._blockSize > _uniformBlockSizeAligned || _buffer == nullptr) {
-        _uniformBlockSizeAligned = Util::GetAlignmentCorrected(_descriptor._reflectionData._blockSize, ShaderBuffer::AlignmentRequirement(ShaderBuffer::Usage::CONSTANT_BUFFER));
-        _localDataCopy.resize(_uniformBlockSizeAligned);
-
-        ShaderBufferDescriptor bufferDescriptor{};
-        bufferDescriptor._name = _descriptor._reflectionData._targetBlockName.c_str();
-        bufferDescriptor._name.append("_");
-        bufferDescriptor._name.append(_descriptor._parentShaderName.c_str());
-        bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
-        bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-        bufferDescriptor._ringBufferLength = 3;
-        bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
-        _buffer = context.newSB(bufferDescriptor);
-    } else {
-        _buffer->clearData();
-    }
-
-    std::memset(_localDataCopy.data(), 0, _localDataCopy.size());
-
-    size_t requiredExtraMembers = 0;
-    for (size_t member = 0; member < activeMembers; ++member) {
-        BlockMember& bMember = _blockMembers[member];
-        bMember._externalData = _descriptor._reflectionData._blockMembers[member];
-        bMember._nameHash = _ID(bMember._externalData._name.c_str());
-        bMember._elementSize = GetSizeOf(bMember._externalData._type);
-        if (bMember._externalData._matrixDimensions.x > 0 || bMember._externalData._matrixDimensions.y > 0) {
-            bMember._elementSize = bMember._externalData._matrixDimensions.x * bMember._externalData._matrixDimensions.y * bMember._elementSize;
-        } else {
-            bMember._elementSize = bMember._externalData._vectorDimensions * bMember._elementSize;
-        }
-
-        bMember._size = bMember._elementSize;
-        if (bMember._externalData._arrayInnerSize > 0) {
-            bMember._size *= bMember._externalData._arrayInnerSize;
-        }
-        if (bMember._externalData._arrayOuterSize > 0) {
-            bMember._size *= bMember._externalData._arrayOuterSize;
-        }
-
-        requiredExtraMembers += (bMember._externalData._arrayInnerSize * bMember._externalData._arrayOuterSize);
-    }
-
-    vector<BlockMember> arrayMembers;
-    arrayMembers.reserve(requiredExtraMembers);
-
-    for (size_t member = 0; member < activeMembers; ++member) {
-        const BlockMember& bMember = _blockMembers[member];
-        size_t offset = 0u;
-        if (bMember._externalData._arrayInnerSize > 0) {
-            for (size_t i = 0; i < bMember._externalData._arrayOuterSize; ++i) {
-                for (size_t j = 0; j < bMember._externalData._arrayInnerSize; ++j) {
-                    BlockMember newMember = bMember;
-                    newMember._externalData._name = Util::StringFormat("%s[%d][%d]", bMember._externalData._name.c_str(), i, j);
-                    newMember._nameHash = _ID(newMember._externalData._name.c_str());
-                    newMember._externalData._arrayOuterSize -= i;
-                    newMember._externalData._arrayInnerSize -= j;
-                    newMember._size -= offset;
-                    newMember._externalData._offset = offset;
-                    offset += bMember._elementSize;
-                    arrayMembers.push_back(newMember);
-                }
-            }
-            for (size_t i = 0; i < bMember._externalData._arrayOuterSize; ++i) {
-                BlockMember newMember = bMember;
-                newMember._externalData._name = Util::StringFormat("%s[%d]", bMember._externalData._name.c_str(), i);
-                newMember._nameHash = _ID(newMember._externalData._name.c_str());
-                newMember._externalData._arrayOuterSize -= i;
-                newMember._size -= i * (bMember._externalData._arrayInnerSize * bMember._elementSize);
-                newMember._externalData._offset = i * (bMember._externalData._arrayInnerSize * bMember._elementSize);
-                arrayMembers.push_back(newMember);
-            }
-        } else if (bMember._externalData._arrayOuterSize > 0) {
-            for (size_t i = 0; i < bMember._externalData._arrayOuterSize; ++i) {
-                BlockMember newMember = bMember;
-                newMember._externalData._name = Util::StringFormat("%s[%d]", bMember._externalData._name.c_str(), i);
-                newMember._nameHash = _ID(newMember._externalData._name.c_str());
-                newMember._externalData._arrayOuterSize -= i;
-                newMember._size -= offset;
-                newMember._externalData._offset = offset;
-                offset += bMember._elementSize;
-                arrayMembers.push_back(newMember);
-            }
-        }
-    }
-
-    if (!arrayMembers.empty()) {
-        _blockMembers.insert(end(_blockMembers), begin(arrayMembers), end(arrayMembers));
-    }
-}
-
-void ShaderProgram::UniformBlockUploader::uploadPushConstant(const GFX::PushConstant& constant, bool force) noexcept {
-    if (constant.type() == GFX::PushConstantType::COUNT || constant.bindingHash() == 0u) {
-        return;
-    }
-
-    if (_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
-        for (BlockMember& member : _blockMembers) {
-            if (member._nameHash == constant.bindingHash()) {
-                DIVIDE_ASSERT(constant.dataSize() <= member._size);
-
-                      Byte* dst = &_localDataCopy.data()[member._externalData._offset];
-                const Byte* src = constant.data();
-                const size_t numBytes = constant.dataSize();
-
-                if (std::memcmp(dst, src, numBytes) != 0) {
-                    std::memcpy(dst, src, numBytes);
-                    _uniformBlockDirty = true;
-                }
-
-                return;
-            }
-        }
-    }
-}
-
-void ShaderProgram::UniformBlockUploader::commit() {
-    if (!_uniformBlockDirty) {
-        return;
-    }
-
-    DIVIDE_ASSERT(_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr);
-    const bool rebind = _needsQueueIncrement;
-    if (_needsQueueIncrement) {
-        _buffer->incQueue();
-        _needsQueueIncrement = false;
-    }
-    _buffer->writeData(_localDataCopy.data());
-    _needsQueueIncrement = true;
-    _uniformBlockDirty = false;
-    if (rebind) {
-        prepare();
-    }
-}
-
-void ShaderProgram::UniformBlockUploader::prepare() {
-    if (_descriptor._reflectionData._targetBlockBindingIndex != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr) {
-        Attorney::ShaderBufferBind::bind(*_buffer, to_U8(_descriptor._reflectionData._targetBlockBindingIndex));
-    }
+    return _hash;
 }
 
 ShaderProgram::ShaderProgram(GFXDevice& context, 
@@ -859,7 +716,11 @@ void ShaderProgram::threadedLoad([[maybe_unused]] const bool reloadExisting) {
 };
 
 bool ShaderProgram::load() {
-    Start(*CreateTask([this](const Task&) {threadedLoad(false); }), _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
+    Start(*CreateTask([this](const Task&) { 
+                            threadedLoad(false);
+                      }),
+          _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
+
     return true;
 }
 
@@ -880,7 +741,6 @@ bool ShaderProgram::recompile(bool& skipped) {
     return getState() == ResourceState::RES_LOADED;
 }
 
-//================================ static methods ========================================
 void ShaderProgram::Idle(PlatformContext& platformContext) {
     OPTICK_EVENT();
 
@@ -896,8 +756,7 @@ void ShaderProgram::Idle(PlatformContext& platformContext) {
     }
 }
 
-/// Calling this will force a recompilation of all shader stages for the program
-/// that matches the name specified
+/// Calling this will force a recompilation of all shader stages for the program that matches the name specified
 bool ShaderProgram::RecompileShaderProgram(const Str256& name) {
     bool state = false;
 
@@ -1131,26 +990,13 @@ vector<ResourcePath> ShaderProgram::GetAllAtomLocations() {
                                    Paths::g_shadersLocation +
                                    Paths::Shaders::GLSL::g_GLSLShaderLoc +
                                    Paths::Shaders::GLSL::g_vertAtomLoc);
-
     }
 
     return atomLocations;
 }
 
-size_t ShaderProgram::DefinesHash(const ModuleDefines& defines) {
-    if (defines.empty()) {
-        return 0u;
-    }
-
-    size_t hash = 7919;
-    for (const auto& [defineString, appendPrefix] : defines) {
-        Util::Hash_combine(hash, _ID(defineString.c_str()));
-        Util::Hash_combine(hash, appendPrefix);
-    }
-    return hash;
-}
 const string& ShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed) {
-    ScopedLock<SharedMutex> w_lock(s_atomLock);
+    ScopedLock<Mutex> w_lock(s_atomLock);
     return ShaderFileReadLocked(filePath, atomName, recurse, foundAtomIDsInOut, wasParsed);
 }
 
@@ -1270,90 +1116,119 @@ const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, 
     return entry->second;
 }
 
-bool ShaderProgram::ShaderFileRead(const ResourcePath& filePath, const ResourcePath& fileName, eastl::string& sourceCodeOut) {
-    return readFile(filePath, ResourcePath(fileName.str()), sourceCodeOut, FileType::TEXT) == FileError::NONE;
-}
-
-eastl::string ShaderProgram::GatherUniformDeclarations(const eastl::string & source, UniformsSet& foundUniforms) {
-    static const boost::regex uniformPattern { R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+))" };
-
-    eastl::string ret;
-    ret.reserve(source.size());
-
-    string line;
-    boost::smatch matches;
-    istringstream input(source.c_str());
-    while (std::getline(input, line)) {
-        if (Util::BeginsWith(line, "uniform", true) &&
-            boost::regex_search(line, matches, uniformPattern))
+bool ShaderProgram::LoadTextFromCache(LoadData& dataInOut, eastl::set<U64>& atomIDsOut) {
+    if (ValidateCache(false, dataInOut._sourceFile, dataInOut._fileName)) {
+        if (Reflection::LoadReflectionData(TxtCacheLocation(), 
+                                           ResourcePath{ dataInOut._fileName + "." + Paths::Shaders::g_ReflectionExt },
+                                           dataInOut._reflectionData,
+                                           atomIDsOut))
         {
-            const auto type = Util::Trim(matches[1].str());
+            FileError err = FileError::FILE_EMPTY;
+            {
+                ScopedLock<Mutex> w_lock(g_textDumpLock);
+                err = readFile(TxtCacheLocation(), ResourcePath{ dataInOut._fileName }, dataInOut._sourceCodeGLSL, FileType::TEXT);
+            }
 
-            foundUniforms.insert(Reflection::UniformDeclaration{
-                type, //type
-                _ID(type.c_str()), //type hash
-                Util::Trim(matches[2].str())  //name
-            });
-        } else {
-            ret.append(line.c_str());
-            ret.append("\n");
+            if (err == FileError::NONE) {
+                return true;
+            }
         }
     }
 
-    return ret;
+    // Cache file and reflection file are out of sync so (attempt to) remove both.
+    DeleteTextCache(dataInOut._fileName);
+    return false;
 }
 
-namespace {
-    const ResourcePath SpvCacheLocation() {
-        return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationSpv + Paths::g_buildTypeLocation;
-    }
+bool ShaderProgram::SaveTextToCache(const LoadData& dataIn, const eastl::set<U64>& atomIDsIn) {
 
-    ResourcePath GetTargetName(const ShaderProgram::LoadData& dataIn) {
-        return ResourcePath{ dataIn._fileName + "." + Paths::Shaders::g_SPIRVExt };
-    }
-};
-
-bool ShaderProgram::LoadSPIRVFromCache(LoadData& dataInOut, eastl::set<U64>& atomIDsOut) {
-    const ResourcePath spvTarget{ GetTargetName(dataInOut) };
-    const ResourcePath spvTargetReflect{ spvTarget + "." + Paths::Shaders::g_ReflectionExt };
-
-    if (LoadReflectionData(SpvCacheLocation(), spvTargetReflect, dataInOut._reflectionData, atomIDsOut)) {
-        vector<Byte> tempData;
-        if (readFile(SpvCacheLocation(), spvTarget, tempData, FileType::BINARY) == FileError::NONE) {
-            dataInOut._sourceCodeSpirV.resize(tempData.size() / sizeof(U32));
-            memcpy(dataInOut._sourceCodeSpirV.data(), tempData.data(), tempData.size());
+    if (Reflection::SaveReflectionData(TxtCacheLocation(),
+                                       ResourcePath{ dataIn._fileName + "." + Paths::Shaders::g_ReflectionExt },
+                                       dataIn._reflectionData,
+                                       atomIDsIn))
+    {
+        FileError err = FileError::FILE_EMPTY;
+        {
+            ScopedLock<Mutex> w_lock(g_textDumpLock);
+            err = writeFile(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText + Paths::g_buildTypeLocation,
+                            ResourcePath(dataIn._fileName),
+                            dataIn._sourceCodeGLSL.c_str(),
+                            dataIn._sourceCodeGLSL.length(),
+                            FileType::TEXT);
+        }
+        if (err == FileError::NONE) {
             return true;
         }
     }
 
+    // Cache file and reflection file are out of sync so (attempt to) remove both.
+    DeleteTextCache(dataIn._fileName);
+    Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_TEXT_FAILED")), dataIn._fileName.c_str());
+    return false;
+}
+
+
+bool ShaderProgram::LoadSPIRVFromCache(LoadData& dataInOut, eastl::set<U64>& atomIDsOut) {
+    if (ValidateCache(true, dataInOut._sourceFile, dataInOut._fileName)) {
+        const ResourcePath spvTarget{ SpvTargetName(dataInOut._fileName) };
+
+        vector<Byte> tempData;
+        if (Reflection::LoadReflectionData(SpvCacheLocation(),
+                                           ResourcePath{ spvTarget + "." + Paths::Shaders::g_ReflectionExt },
+                                           dataInOut._reflectionData,
+                                           atomIDsOut)) {
+            FileError err = FileError::FILE_EMPTY;
+            {
+                ScopedLock<Mutex> w_lock(g_binaryDumpLock);
+                err = readFile(SpvCacheLocation(),
+                               spvTarget,
+                               tempData,
+                               FileType::BINARY);
+            }
+
+            if (err == FileError::NONE)
+            {
+                dataInOut._sourceCodeSpirV.resize(tempData.size() / sizeof(U32));
+                memcpy(dataInOut._sourceCodeSpirV.data(), tempData.data(), tempData.size());
+                return true;
+            }
+        }
+    }
+
+    // Cache file and reflection file are out of sync so (attempt to) remove both.
+    DeleteSPIRVCache(dataInOut._fileName);
     return false;
 }
 
 bool ShaderProgram::SaveSPIRVToCache(const LoadData& dataIn, const eastl::set<U64>& atomIDsIn){
-    const ResourcePath spvTarget{ GetTargetName(dataIn) };
-    const ResourcePath spvTargetReflect{ spvTarget + "." + Paths::Shaders::g_ReflectionExt };
-    const ResourcePath spvCacheLocation = SpvCacheLocation();
+    const ResourcePath spvTarget{ SpvTargetName(dataIn._fileName) };
+    if (Reflection::SaveReflectionData(SpvCacheLocation(),
+                                       ResourcePath{ spvTarget + "." + Paths::Shaders::g_ReflectionExt },
+                                       dataIn._reflectionData,
+                                       atomIDsIn)) 
+    {
+        FileError err = FileError::FILE_EMPTY;
+        {
+            ScopedLock<Mutex> w_lock(g_binaryDumpLock);
+            err = writeFile(SpvCacheLocation(),
+                            spvTarget,
+                            (bufferPtr)dataIn._sourceCodeSpirV.data(),
+                            dataIn._sourceCodeSpirV.size() * sizeof(U32),
+                            FileType::BINARY);
+        }
 
-    if (SaveReflectionData(spvCacheLocation, spvTargetReflect, dataIn._reflectionData, atomIDsIn)) {
-        ScopedLock<Mutex> w_lock(g_binaryDumpLock);
-        if (writeFile(spvCacheLocation, spvTarget, (bufferPtr)dataIn._sourceCodeSpirV.data(), dataIn._sourceCodeSpirV.size() * sizeof(U32), FileType::BINARY) == FileError::NONE) {
+        if (err == FileError::NONE) {
             return true;
-        } else {
-            // Cache file and reflection file are out of sync so (attempt to) remove both.
-            if (deleteFile(spvCacheLocation, spvTarget) != FileError::NONE) {
-                NOP();
-            }
-            if (deleteFile(spvCacheLocation, spvTargetReflect) != FileError::NONE) {
-                NOP();
-            }
         }
     }
 
+    // Cache file and reflection file are out of sync so (attempt to) remove both.
+    DeleteSPIRVCache(dataIn._fileName);
     Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_SPIRV_FAILED")), dataIn._fileName.c_str());
     return false;
 }
 
-bool ShaderProgram::GLSLToSPIRV(LoadData& dataInOut, const bool targetVulkan) {
+bool ShaderProgram::GLSLToSPIRV(LoadData& dataInOut, const bool targetVulkan, const eastl::set<U64>& atomIDsIn) {
     DIVIDE_ASSERT(!dataInOut._sourceCodeGLSL.empty());
 
     vk::ShaderStageFlagBits type = vk::ShaderStageFlagBits::eVertex;
@@ -1374,82 +1249,16 @@ bool ShaderProgram::GLSLToSPIRV(LoadData& dataInOut, const bool targetVulkan) {
         return false;
     }
 
+    SaveSPIRVToCache(dataInOut, atomIDsIn);
     return true;
 }
 
-bool ShaderProgram::SaveReflectionData(const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn) {
-    ByteBuffer buffer;
-    buffer << BYTE_BUFFER_VERSION;
-    buffer << reflectionDataIn._targetBlockBindingIndex;
-    buffer << reflectionDataIn._targetBlockName;
-    buffer << reflectionDataIn._blockSize;
-    buffer << reflectionDataIn._blockMembers.size();
-    for (const auto& member : reflectionDataIn._blockMembers) {
-        buffer << std::string(member._name.c_str());
-        buffer << to_base(member._type);
-        buffer << member._offset;
-        buffer << member._arrayInnerSize;
-        buffer << member._arrayOuterSize;
-        buffer << member._vectorDimensions;
-        buffer << member._matrixDimensions.x;
-        buffer << member._matrixDimensions.y;
-    }
-    
-    buffer << atomIDsIn.size();
-    for (const U64 id : atomIDsIn) {
-        buffer << id;
-    }
-
-    return buffer.dumpToFile(path.c_str(), file.c_str());
-}
-
-bool ShaderProgram::LoadReflectionData(const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut, eastl::set<U64>& atomIDsOut) {
-    ByteBuffer buffer;
-    if (buffer.loadFromFile(path.c_str(), file.c_str())) {
-        auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
-        buffer >> tempVer;
-        if (tempVer == BYTE_BUFFER_VERSION) {
-            buffer >> reflectionDataOut._targetBlockBindingIndex;
-            buffer >> reflectionDataOut._targetBlockName;
-            buffer >> reflectionDataOut._blockSize;
-
-            size_t sizeTemp = 0u;
-            buffer >> sizeTemp;
-            reflectionDataOut._blockMembers.reserve(sizeTemp);
-
-            std::string tempStr;
-            std::underlying_type_t<GFX::PushConstantType> tempType{0u};
-            
-            for (size_t i = 0u; i < sizeTemp; ++i) {
-                Reflection::BlockMember& tempMember = reflectionDataOut._blockMembers.emplace_back();
-                buffer >> tempStr;
-                tempMember._name = tempStr.c_str();
-                buffer >> tempType;
-                tempMember._type = static_cast<GFX::PushConstantType>(tempType);
-                buffer >> tempMember._offset;
-                buffer >> tempMember._arrayInnerSize;
-                buffer >> tempMember._arrayOuterSize;
-                buffer >> tempMember._vectorDimensions;
-                buffer >> tempMember._matrixDimensions.x;
-                buffer >> tempMember._matrixDimensions.y;
-            }
-
-            buffer >> sizeTemp;
-            U64 tempID = 0u;
-            for (size_t i = 0u; i < sizeTemp; ++i) {
-                buffer >> tempID;
-                atomIDsOut.insert(tempID);
-            }
-
-            return true;
-        }
-    }
-
-    return false;
-}
-
 bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) {
-    setGLSWPath(reloadExisting);
+    // The context is thread_local so each call to this should be thread safe
+    if (reloadExisting) {
+        glswClearCurrentContext();
+    }
+    glswSetPath((Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::GLSL::g_GLSLShaderLoc).c_str(), ".glsl");
 
     _usedAtomIDs.clear();
 
@@ -1463,7 +1272,7 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
 
     U32 blockOffset = 0u;
 
-    UniformsSet previousUniforms;
+    Reflection::UniformsSet previousUniforms;
 
     _uniformBlockBuffers.clear();
     for (auto& [fileHash, loadDataPerFile] : fileData) {
@@ -1473,6 +1282,7 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
 
             ShaderProgram::LoadData& stageData = loadDataPerFile._loadData.emplace_back();
             stageData._type = data._moduleType;
+            stageData._sourceFile = data._sourceFile;
             stageData._name = Str256(data._sourceFile.substr(0, data._sourceFile.find_first_of(".")));
             stageData._name.append(".");
             stageData._name.append(Names::shaderTypes[to_U8(type)]);
@@ -1525,53 +1335,31 @@ void ShaderProgram::preparePushConstants() {
         blockBuffer.prepare();
     }
 }
-
-void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, UniformsSet& previousUniformsInOut, U32& blockIndexInOut) {
+void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, Reflection::UniformsSet& previousUniformsInOut, U32& blockIndexInOut) {
     // Clear existing code
     loadDataInOut._sourceCodeGLSL.resize(0);
     loadDataInOut._sourceCodeSpirV.resize(0);
 
-    const ResourcePath cachePath = Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText + Paths::g_buildTypeLocation;
-    const ResourcePath textTarget{ loadDataInOut._fileName };
-    const ResourcePath textTargetReflect{ textTarget + "." + Paths::Shaders::g_ReflectionExt };
-
     eastl::set<U64> atomIDs;
+    const auto ParseAndSaveSource = [&]() {
+        loadAndParseGLSL(defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs);
+        GLSLToSPIRV(loadDataInOut, false, atomIDs);
+    };
+
     if (reloadExisting) {
         // Hot reloading will always reparse GLSL source files!
-        loadAndParseGLSL(defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs);
-        if (GLSLToSPIRV(loadDataInOut, false)) {
-            SaveSPIRVToCache(loadDataInOut, atomIDs);
-        }
+        ParseAndSaveSource();
+        loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
     } else {
         // Try and load from the spir-v cache
-        if (s_useShaderSpvCache && LoadSPIRVFromCache(loadDataInOut, atomIDs)) {
+        if (LoadSPIRVFromCache(loadDataInOut, atomIDs)) {
             loadDataInOut._codeSource = LoadData::SourceCodeSource::SPIRV_CACHE;
+        } else if (LoadTextFromCache(loadDataInOut, atomIDs)) {
+            loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
+            GLSLToSPIRV(loadDataInOut, false, atomIDs);
         } else {
-            // Try and load from the text cache
-            if (s_useShaderTextCache && LoadReflectionData(cachePath, textTargetReflect, loadDataInOut._reflectionData, atomIDs)) {
-                if (ShaderFileRead(cachePath, textTarget, loadDataInOut._sourceCodeGLSL)) {
-                    loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
-                } else {
-                    // Cache file and reflection file are out of sync so (attempt to) remove both.
-                    if (deleteFile(cachePath, textTarget) != FileError::NONE) {
-                        NOP();
-                    }
-                    if (deleteFile(cachePath, textTargetReflect) != FileError::NONE) {
-                        NOP();
-                    }
-                }
-            }
-
-            // If that fails, parse the entire glsl source data
-            if (loadDataInOut._codeSource != LoadData::SourceCodeSource::TEXT_CACHE) {
-                loadAndParseGLSL(defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs);
-            }
-
-            if (GLSLToSPIRV(loadDataInOut, false)) {
-                SaveSPIRVToCache(loadDataInOut, atomIDs);
-            }
-
-            SaveReflectionData(cachePath, textTargetReflect, loadDataInOut._reflectionData, atomIDs);
+            ParseAndSaveSource();
+            loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
         }
     }
 
@@ -1585,7 +1373,7 @@ void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
 void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
                                      bool reloadExisting,
                                      LoadData& loadDataInOut,
-                                     UniformsSet& previousUniformsInOut,
+                                     Reflection::UniformsSet& previousUniformsInOut,
                                      U32& blockIndexInOut,
                                      eastl::set<U64>& atomIDsInOut)
 {
@@ -1627,7 +1415,7 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
         Util::ReplaceStringInPlace(glslCodeOut, "_CUSTOM_DEFINES__", header);
         glslCodeOut = PreprocessIncludes(ResourcePath(resourceName()), glslCodeOut, 0, atomIDsInOut, true);
         glslCodeOut = Preprocessor::PreProcess(glslCodeOut, loadDataInOut._fileName.c_str());
-        glslCodeOut = GatherUniformDeclarations(glslCodeOut, loadDataInOut._uniforms);
+        glslCodeOut = Reflection::GatherUniformDeclarations(glslCodeOut, loadDataInOut._uniforms);
     }
 
     if (!loadDataInOut._uniforms.empty()) {
@@ -1658,18 +1446,6 @@ void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
     previousUniformsInOut = loadDataInOut._uniforms;
 
     Util::ReplaceStringInPlace(loadDataInOut._sourceCodeGLSL, "//_CUSTOM_UNIFORMS_\\", loadDataInOut._uniformBlock);
-
-    loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
-
-    ScopedLock<Mutex> w_lock(g_textDumpLock);
-    if (writeFile(Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText + Paths::g_buildTypeLocation,
-                  ResourcePath(loadDataInOut._fileName),
-                  loadDataInOut._sourceCodeGLSL.c_str(),
-                  loadDataInOut._sourceCodeGLSL.length(),
-                  FileType::TEXT) != FileError::NONE)
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
 }
 
 void ShaderProgram::OnAtomChange(const std::string_view atomName, const FileUpdateEvent evt) {
@@ -1679,11 +1455,14 @@ void ShaderProgram::OnAtomChange(const std::string_view atomName, const FileUpda
     if (evt == FileUpdateEvent::DELETE) {
         return;
     }
+
+    const U64 atomNameHash = _ID(string{ atomName }.c_str());
+
     // ADD and MODIFY events should get processed as usual
     {
         // Clear the atom from the cache
-        ScopedLock<SharedMutex> w_lock(s_atomLock);
-        if (s_atoms.erase(_ID(string{ atomName }.c_str())) == 1) {
+        ScopedLock<Mutex> w_lock(s_atomLock);
+        if (s_atoms.erase(atomNameHash) == 1) {
             NOP();
         }
     }
@@ -1691,28 +1470,15 @@ void ShaderProgram::OnAtomChange(const std::string_view atomName, const FileUpda
     //Get list of shader programs that use the atom and rebuild all shaders in list;
     ScopedLock<Mutex> lock(s_programLock);
     for (const ShaderProgramMapEntry& entry : s_shaderPrograms) {
-        if (entry._program != nullptr) {
-            entry._program->onAtomChangeInternal(atomName, evt);
+        DIVIDE_ASSERT(entry._program != nullptr);
+
+        for (const U64 atomID : entry._program->_usedAtomIDs) {
+            if (atomID == atomNameHash) {
+                s_recompileQueue.push(entry._program);
+                break;
+            }
         }
     }
 }
 
-void ShaderProgram::onAtomChangeInternal(const std::string_view atomName, const FileUpdateEvent evt) {
-    const U64 atomNameHash = _ID(string{ atomName }.c_str());
-
-    for (const U64 atomID : _usedAtomIDs) {
-        if (atomID == atomNameHash) {
-            s_recompileQueue.push(this);
-            break;
-        }
-    }
-}
-
-void ShaderProgram::setGLSWPath(const bool clearExisting) {
-    // The context is thread_local so each call to this should be thread safe
-    if (clearExisting) {
-        glswClearCurrentContext();
-    }
-    glswSetPath((assetLocation() + "/" + Paths::Shaders::GLSL::g_GLSLShaderLoc).c_str(), ".glsl");
-}
 };
