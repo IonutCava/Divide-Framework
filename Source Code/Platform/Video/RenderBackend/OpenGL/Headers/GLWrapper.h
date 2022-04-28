@@ -85,6 +85,10 @@ class GL_API final : public RenderAPIWrapper {
     friend struct GLStateTracker;
 
 public:
+    // Auto-delete locks older than this number of frames
+    static constexpr U32 g_LockFrameLifetime = 3u; //(APP->Driver->GPU)
+
+public:
     GL_API(GFXDevice& context);
 
 protected:
@@ -145,8 +149,11 @@ public:
 
     static void QueueFlush() noexcept;
 
-    static void FlushMidBufferLockQueue();
-    static void FlushEndBufferLockQueue();
+    static SyncObject_uptr& CreateSyncObject(bool isRetry = false);
+    static void FlushMidBufferLockQueue(SyncObject_uptr& syncObj);
+    static void FlushEndBufferLockQueue(SyncObject_uptr& syncObj);
+
+
     static void PushDebugMessage(const char* message);
     static void PopDebugMessage();
 
@@ -168,7 +175,7 @@ public:
 
     static glHardwareQueryPool* s_hardwareQueryPool;
 
-    static U32 s_fenceSyncCounter;
+    static U32 s_fenceSyncCounter[g_LockFrameLifetime];
 
 private:
     void endFrameLocal(const DisplayWindow& window);
@@ -204,6 +211,9 @@ private:
     eastl::fixed_vector<GFX::CommandBuffer::CommandEntry, 512, true> _bufferFlushPoints;
 
 private:
+    using BufferLockPool = eastl::fixed_vector<SyncObject_uptr, 1024, true>;
+    static BufferLockPool s_bufferLockPool;
+
     static std::atomic_bool s_glFlushQueued;
 
     struct ResidentTexture {

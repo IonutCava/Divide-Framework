@@ -187,7 +187,7 @@ namespace Divide {
 
         // 32 buffer bindings for now
         using BindConfig = std::array<BindConfigEntry, 32>;
-        using PerBufferConfig = std::array<BindConfig, 13>;
+        using PerBufferConfig = std::array<BindConfig, 14>;
         PerBufferConfig _currentBindConfig;
 
         vector<BlendingSettings> _blendProperties;

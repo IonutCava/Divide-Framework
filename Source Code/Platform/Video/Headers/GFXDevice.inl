@@ -98,10 +98,6 @@ inline void GFXDevice::registerDrawCalls(const U32 count) noexcept {
     frameDrawCalls(frameDrawCalls() + count);
 }
 
-inline const PerformanceMetrics& GFXDevice::getPerformanceMetrics() const noexcept {
-    return _api->getPerformanceMetrics();
-}
-
 inline const DeviceInformation& GFXDevice::GetDeviceInformation() noexcept {
     return s_deviceInformation;
 }

@@ -25,9 +25,10 @@ namespace {
             case GL_PIXEL_PACK_BUFFER: return 8;
             case GL_TRANSFORM_FEEDBACK_BUFFER: return 9;
             case GL_COPY_READ_BUFFER: return 10;
-            case GL_QUERY_BUFFER: return 11;
-            case GL_ATOMIC_COUNTER_BUFFER: return 12;
-            case GL_NONE: return 13;
+            case GL_COPY_WRITE_BUFFER: return 11;
+            case GL_QUERY_BUFFER: return 12;
+            case GL_ATOMIC_COUNTER_BUFFER: return 13;
+            case GL_NONE: return 14;
             default: break;
         };
 

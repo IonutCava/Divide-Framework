@@ -176,6 +176,7 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind) {
             for (glShader* shader : _shaderStage) {
                 ret = shader->uploadToGPU(_handle);
                 if (ret != ShaderResult::OK) {
+                    _stagesBound = true;
                     break;
                 }
 

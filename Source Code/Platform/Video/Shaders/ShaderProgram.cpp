@@ -1292,7 +1292,10 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
             stageData._definesHash = DefinesHash(data._defines);
             stageData._fileName = Util::StringFormat("%s.%zu.%s", stageData._name, stageData._definesHash, shaderAtomExtensionName[to_U8(type)]);
 
-            loadSourceCode(data._defines, reloadExisting, stageData, previousUniforms, blockOffset);
+            if (!loadSourceCode(data._defines, reloadExisting, stageData, previousUniforms, blockOffset)) {
+                //ToDo: Add an error message here! -Ionut
+                NOP();
+            }
 
             if (!loadDataPerFile._programName.empty()) {
                 loadDataPerFile._programName.append("-");
@@ -1335,7 +1338,8 @@ void ShaderProgram::preparePushConstants() {
         blockBuffer.prepare();
     }
 }
-void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, Reflection::UniformsSet& previousUniformsInOut, U32& blockIndexInOut) {
+
+bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, Reflection::UniformsSet& previousUniformsInOut, U32& blockIndexInOut) {
     // Clear existing code
     loadDataInOut._sourceCodeGLSL.resize(0);
     loadDataInOut._sourceCodeSpirV.resize(0);
@@ -1343,7 +1347,9 @@ void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
     eastl::set<U64> atomIDs;
     const auto ParseAndSaveSource = [&]() {
         loadAndParseGLSL(defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs);
-        GLSLToSPIRV(loadDataInOut, false, atomIDs);
+        if (!GLSLToSPIRV(loadDataInOut, false, atomIDs)) {
+            NOP();
+        }
     };
 
     if (reloadExisting) {
@@ -1356,18 +1362,21 @@ void ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
             loadDataInOut._codeSource = LoadData::SourceCodeSource::SPIRV_CACHE;
         } else if (LoadTextFromCache(loadDataInOut, atomIDs)) {
             loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
-            GLSLToSPIRV(loadDataInOut, false, atomIDs);
+            if (!GLSLToSPIRV(loadDataInOut, false, atomIDs)) {
+                NOP();
+            }
         } else {
             ParseAndSaveSource();
             loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
         }
     }
 
-    _usedAtomIDs.insert(begin(atomIDs), end(atomIDs));
-
-    if (loadDataInOut._sourceCodeGLSL.empty() && loadDataInOut._sourceCodeSpirV.empty()) {
-        DIVIDE_UNEXPECTED_CALL();
+    if (!loadDataInOut._sourceCodeGLSL.empty() && !loadDataInOut._sourceCodeSpirV.empty()) {
+        _usedAtomIDs.insert(begin(atomIDs), end(atomIDs));
+        return true;
     }
+
+    return false;
 }
 
 void ShaderProgram::loadAndParseGLSL(const ModuleDefines& defines,
@@ -1470,12 +1479,12 @@ void ShaderProgram::OnAtomChange(const std::string_view atomName, const FileUpda
     //Get list of shader programs that use the atom and rebuild all shaders in list;
     ScopedLock<Mutex> lock(s_programLock);
     for (const ShaderProgramMapEntry& entry : s_shaderPrograms) {
-        DIVIDE_ASSERT(entry._program != nullptr);
-
-        for (const U64 atomID : entry._program->_usedAtomIDs) {
-            if (atomID == atomNameHash) {
-                s_recompileQueue.push(entry._program);
-                break;
+        if(entry._program != nullptr) {
+            for (const U64 atomID : entry._program->_usedAtomIDs) {
+                if (atomID == atomNameHash) {
+                    s_recompileQueue.push(entry._program);
+                    break;
+                }
             }
         }
     }

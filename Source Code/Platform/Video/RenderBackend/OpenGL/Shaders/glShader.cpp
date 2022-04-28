@@ -103,13 +103,14 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
             timers[0].start();
         }
 
-        if (_handle == GLUtil::k_invalidObjectID) {
-            _handle = glCreateProgram();
-            glProgramParameteri(_handle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_FALSE);
-            glProgramParameteri(_handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
-        } else {
-            DebugBreak();
+        if (_handle != GLUtil::k_invalidObjectID) {
+            GL_API::DeleteShaderPrograms(1, &_handle);
         }
+
+        _handle = glCreateProgram();
+        glProgramParameteri(_handle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_FALSE);
+        glProgramParameteri(_handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+
         if (_handle == 0u || _handle == GLUtil::k_invalidObjectID) {
             Console::errorfn(Locale::Get(_ID("ERROR_GLSL_CREATE_PROGRAM")), _name.c_str());
             _valid = false;
@@ -123,53 +124,56 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
             if_constexpr(Config::ENABLE_GPU_VALIDATION) {
                 timers[1].start();
             }
-            const GLuint shader = glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
+            GLuint shader = GLUtil::k_invalidObjectID;
             DIVIDE_ASSERT(shader != 0u);
             if (!data._sourceCodeSpirV.empty()) {
+                shader = glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
                 glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V_ARB, data._sourceCodeSpirV.data(), (GLsizei)(data._sourceCodeSpirV.size() * sizeof(U32)));
                 glSpecializeShader(shader, "main", 0, nullptr, nullptr);
             } else if (!data._sourceCodeGLSL.empty()) {
+                shader = glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
                 vector<const char*> sourceCodeCstr{ data._sourceCodeGLSL.c_str() };
                 glShaderSource(shader, static_cast<GLsizei>(sourceCodeCstr.size()), sourceCodeCstr.data(), nullptr);
                 glCompileShader(shader);
-            } else {
-                DIVIDE_UNEXPECTED_CALL();
             }
+
             if_constexpr(Config::ENABLE_GPU_VALIDATION) {
                 timingData._stageCompileTime[to_base(data._type)] += getTimerAndReset(timers[1]);
             }
             if_constexpr(Config::ENABLE_GPU_VALIDATION) {
                 timers[1].start();
             }
-            GLboolean compiled = 0;
-            glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-            if (compiled == GL_FALSE) {
-                // error
-                GLint logSize = 0;
-                glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
-                string validationBuffer;
-                validationBuffer.resize(logSize);
+            if (shader != GLUtil::k_invalidObjectID) {
+                GLboolean compiled = 0;
+                glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+                if (compiled == GL_FALSE) {
+                    // error
+                    GLint logSize = 0;
+                    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
+                    string validationBuffer;
+                    validationBuffer.resize(logSize);
 
-                glGetShaderInfoLog(shader, logSize, &logSize, &validationBuffer[0]);
-                if (validationBuffer.size() > g_validationBufferMaxSize) {
-                    // On some systems, the program's disassembly is printed, and that can get quite large
-                    validationBuffer.resize(std::strlen(Locale::Get(_ID("ERROR_GLSL_COMPILE"))) * 2 + g_validationBufferMaxSize);
-                    // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
-                    validationBuffer.append(" ... ");
+                    glGetShaderInfoLog(shader, logSize, &logSize, &validationBuffer[0]);
+                    if (validationBuffer.size() > g_validationBufferMaxSize) {
+                        // On some systems, the program's disassembly is printed, and that can get quite large
+                        validationBuffer.resize(std::strlen(Locale::Get(_ID("ERROR_GLSL_COMPILE"))) * 2 + g_validationBufferMaxSize);
+                        // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
+                        validationBuffer.append(" ... ");
+                    }
+
+                    Console::errorfn(Locale::Get(_ID("ERROR_GLSL_COMPILE")), _name.c_str(), shader, Names::shaderTypes[to_base(data._type)], validationBuffer.c_str());
+
+                    glDeleteShader(shader);
+                } else {
+                    _shaderIDs.push_back(shader);
+                    glAttachShader(_handle, shader);
+                    shouldLink = true;
+                    data._compiled = true;
                 }
-
-                Console::errorfn(Locale::Get(_ID("ERROR_GLSL_COMPILE")), _name.c_str(), shader, Names::shaderTypes[to_base(data._type)], validationBuffer.c_str());
-
-                glDeleteShader(shader);
-            } else {
-                _shaderIDs.push_back(shader);
-                glAttachShader(_handle, shader);
-                shouldLink = true;
             }
             if_constexpr(Config::ENABLE_GPU_VALIDATION) {
                 timingData._stageCompileLogRetrievalTime[to_base(data._type)] += getTimerAndReset(timers[1]);
             }
-            data._compiled = true;
         }
 
         if_constexpr(Config::ENABLE_GPU_VALIDATION) {

@@ -330,6 +330,7 @@ namespace Divide {
         }ImGui::PopItemWidth();
 
         static bool performanceStatsWereEnabled = false;
+        static U32 s_maxLocksInFlight = 0u;
         if (ImGui::CollapsingHeader(ICON_FK_TACHOMETER" Performance Stats")) {
             OPTICK_EVENT("Get/Print Performance Stats");
             performanceStatsWereEnabled = context().gfx().queryPerformanceStats();
@@ -387,7 +388,24 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Text("Tessellation Invocations: %s", Util::commaprint(perfMetrics._tessellationInvocations));
             ImGui::NewLine();
-            ImGui::Text("Sync objects in flight: %d", perfMetrics._syncObjectsInFlight);
+
+            if (s_maxLocksInFlight < perfMetrics._syncObjectsInFlight[2]) {
+                s_maxLocksInFlight = perfMetrics._syncObjectsInFlight[2];
+            }
+
+            ImGui::Text("Sync objects in flight : %d / %d / %d   Max: %d",
+                        perfMetrics._syncObjectsInFlight[0],
+                        perfMetrics._syncObjectsInFlight[1],
+                        perfMetrics._syncObjectsInFlight[2],
+                        s_maxLocksInFlight);
+
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("[ Current Frame - 2 ] / [ Current Frame - 1] / [ Current Frame ]");
+            }
+            ImGui::Text("Cam Buffer Writes: %d | Render Buffer Writes: %d",
+                         perfMetrics._scratchBufferQueueUsage[0],
+                         perfMetrics._scratchBufferQueueUsage[1]);
+            ImGui::NewLine();
             ImGui::Separator();
             ImGui::NewLine();
 
@@ -399,6 +417,7 @@ namespace Divide {
             if (!performanceStatsWereEnabled && context().gfx().queryPerformanceStats()) {
                 context().gfx().queryPerformanceStats(false);
             }
+            s_maxLocksInFlight = 0u;
         }
 
         static string dayNightText = Util::StringFormat("%s/%s Day/Night Settings", ICON_FK_SUN_O, ICON_FK_MOON_O).c_str();

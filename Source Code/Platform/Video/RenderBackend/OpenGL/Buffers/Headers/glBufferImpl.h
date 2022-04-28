@@ -60,7 +60,7 @@ public:
     virtual ~glBufferImpl();
 
     // Returns false if we encounter an error
-    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, U32 frameID);
+    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, SyncObject_uptr& syncObject);
     [[nodiscard]] bool waitByteRange(size_t offsetInBytes, size_t rangeInBytes, bool blockClient);
 
     void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool zeroMem);
@@ -74,6 +74,7 @@ public:
 protected:
     GFXDevice& _context;
 
+    GLuint _copyBufferTarget = GLUtil::k_invalidObjectID;
     glBufferLockManager _lockManager;
 };
 }; //namespace Divide

@@ -323,7 +323,7 @@ public:  // Accessors and Mutators
     bool getDebugGroupState(I16 groupID) const;
     void getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& namesOut);
 
-    [[nodiscard]] inline const PerformanceMetrics& getPerformanceMetrics() const noexcept;
+    [[nodiscard]] PerformanceMetrics getPerformanceMetrics() const noexcept;
 
     inline vec2<U16> getDrawableSize(const DisplayWindow& window) const;
     inline U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const;
@@ -532,9 +532,15 @@ private:
     mutable Mutex _debugViewLock;
     vector<DebugView_ptr> _debugViews;
     
-    ShaderBuffer_uptr _camDataBuffer = nullptr;
-    ShaderBuffer_uptr _renderDataBuffer = nullptr;
-    ShaderBuffer_uptr _cullCounter = nullptr;
+    static constexpr U8 s_perFrameBufferCount = 3u;
+    struct PerFrameBuffers {
+        ShaderBuffer_uptr _camDataBuffer = nullptr;
+        ShaderBuffer_uptr _renderDataBuffer = nullptr;
+        ShaderBuffer_uptr _cullCounter = nullptr;
+        size_t _camWritesThisFrame = 0u;
+        size_t _renderWritesThisFrame = 0u;
+    } _perFrameBuffers[s_perFrameBufferCount];
+    size_t _perFrameBufferIndex = 0u;
 
     Mutex _pipelineCacheLock;
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;

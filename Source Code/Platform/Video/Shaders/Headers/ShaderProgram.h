@@ -234,7 +234,7 @@ protected:
     virtual void threadedLoad(bool reloadExisting);
     virtual bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting);
 
-    void loadSourceCode(const ModuleDefines& defines,
+    bool loadSourceCode(const ModuleDefines& defines,
                         bool reloadExisting,
                         LoadData& loadDataInOut,
                         Reflection::UniformsSet& previousUniformsInOut,

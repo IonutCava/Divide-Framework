@@ -60,19 +60,30 @@ inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept 
 enum class BufferLockState : U8 {
     ACTIVE = 0,
     EXPIRED,
+    DELETED,
     ERROR
 };
 
+struct SyncObject {
+    ~SyncObject();
+    void reset();
+    
+    Mutex _fenceLock;
+    GLsync _fence = nullptr;
+    U32 _frameID = 0u;
+};
+
+FWD_DECLARE_MANAGED_STRUCT(SyncObject);
+
 struct BufferLock {
     BufferLock() = default;
-    explicit BufferLock(const BufferRange range, const GLsync syncObj, const U32 frameID) noexcept
-        : _range(range), _syncObj(syncObj), _frameID(frameID)
+    explicit BufferLock(const BufferRange range, SyncObject* syncObj) noexcept
+        : _range(range), _syncObj(syncObj)
     {
     }
 
     BufferRange _range{};
-    GLsync _syncObj = nullptr;
-    U32 _frameID = 0;
+    SyncObject* _syncObj = nullptr;
     BufferLockState _state = BufferLockState::ACTIVE;
 };
 
@@ -85,7 +96,7 @@ class glBufferLockManager final : public glLockManager {
     bool waitForLockedRange(size_t lockBeginBytes, size_t lockLength, bool blockClient, bool quickCheck = false);
 
     /// Returns false if we encountered an error
-    bool lockRange(size_t lockBeginBytes, size_t lockLength, U32 frameID);
+    bool lockRange(size_t lockBeginBytes, size_t lockLength, SyncObject_uptr& syncObj);
 
    private:
     mutable SharedMutex _lock;

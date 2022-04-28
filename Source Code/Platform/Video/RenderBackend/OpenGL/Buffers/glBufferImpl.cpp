@@ -23,7 +23,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
     if (_params._bufferParams._updateUsage == BufferUpdateUsage::GPU_R_GPU_W || _params._bufferParams._updateFrequency == BufferUpdateFrequency::ONCE) {
         GLenum usage = GL_NONE;
         if (_params._target == GL_ATOMIC_COUNTER_BUFFER) {
-            usage = GL_STREAM_READ;
+            usage = GL_STREAM_COPY;
         } else {
             switch (_params._bufferParams._updateFrequency) {
                 case BufferUpdateFrequency::ONCE:
@@ -65,6 +65,14 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
         _memoryBlock._offset = 0u;
         _memoryBlock._size = _params._dataSize;
         _memoryBlock._free = false;
+
+        const string copyBufferName = _params._name != nullptr ? string{ _params._name } + "_copy" 
+                                                               : Util::StringFormat("COPY_BUFFER_%d", _memoryBlock._bufferHandle);
+        GLUtil::createAndAllocBuffer(_params._dataSize, 
+                                     GL_STREAM_READ,
+                                     _copyBufferTarget,
+                                     {nullptr, 0u},
+                                     copyBufferName.c_str());
     } else {
         const BufferStorageMask storageMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
         const MapBufferAccessMask accessMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
@@ -99,15 +107,18 @@ glBufferImpl::~glBufferImpl()
             const GLUtil::GLMemory::DeviceAllocator& allocator = GL_API::GetMemoryAllocator(GL_API::GetMemoryTypeForUsage(_params._target));
             allocator.deallocate(_memoryBlock);
         } else {
-            GLUtil::freeBuffer(_memoryBlock._bufferHandle, nullptr);
+            GLUtil::freeBuffer(_memoryBlock._bufferHandle);
+            if (_copyBufferTarget != GLUtil::k_invalidObjectID) {
+                GLUtil::freeBuffer(_copyBufferTarget);
+            }
         }
     }
 }
 
 
-bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, const U32 frameID) {
+bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, SyncObject_uptr& syncObject) {
     if (_memoryBlock._ptr != nullptr) {
-        return _lockManager.lockRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, frameID);
+        return _lockManager.lockRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, syncObject);
     }
 
     return true;
@@ -156,10 +167,6 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
 
 void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInBytes, bufferPtr data) {
 
-    if (_params._target == GL_ATOMIC_COUNTER_BUFFER) {
-        glMemoryBarrier(MemoryBarrierMask::GL_ATOMIC_COUNTER_BARRIER_BIT);
-    }
-
     if (!waitByteRange(offsetInBytes, rangeInBytes, true)) {
         DIVIDE_UNEXPECTED_CALL();
     }
@@ -170,11 +177,13 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
         }
         memcpy(data, _memoryBlock._ptr + offsetInBytes, rangeInBytes);
     } else {
-        const Byte* bufferData = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, MapBufferAccessMask::GL_MAP_READ_BIT);
+        glCopyNamedBufferSubData(_memoryBlock._bufferHandle, _copyBufferTarget, _memoryBlock._offset + offsetInBytes, _memoryBlock._offset + offsetInBytes, rangeInBytes);
+
+        const Byte* bufferData = (Byte*)glMapNamedBufferRange(_copyBufferTarget, _memoryBlock._offset + offsetInBytes, rangeInBytes, MapBufferAccessMask::GL_MAP_READ_BIT);
         if (bufferData != nullptr) {
             memcpy(data, bufferData, rangeInBytes);
         }
-        glUnmapNamedBuffer(_memoryBlock._bufferHandle);
+        glUnmapNamedBuffer(_copyBufferTarget);
     }
 }
 

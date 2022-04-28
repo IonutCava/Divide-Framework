@@ -35,6 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "config.h"
 #include "Rendering/Camera/Headers/Frustum.h"
+#include "Geometry/Material/Headers/MaterialEnums.h"
 
 namespace Divide {
 
@@ -47,7 +48,7 @@ struct GFXShaderData {
           mat4<F32> _PreviousProjectionMatrix = MAT4_IDENTITY;
           mat4<F32> _PreviousViewProjectionMatrix = MAT4_IDENTITY;
           //x - elapsed time (ms), y - light cluster size XY packed, z = material debug flag, w - clip plane count
-          vec4<F32> _renderProperties = {0.f, 120.f, 100.f, 0.f};
+          vec4<F32> _renderProperties = { 0.f, 120.f, to_F32(to_base(MaterialDebugFlag::COUNT)), 0.f };
           vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
       };
       struct CamData {

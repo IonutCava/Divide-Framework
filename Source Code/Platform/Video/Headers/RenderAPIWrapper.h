@@ -79,7 +79,9 @@ struct PerformanceMetrics
     /// Number of times the tessellation control shader has been invoked
     U64 _tessellationInvocations = 0u;
     /// Number of active sync objects
-    U32 _syncObjectsInFlight = 0u;
+    U32 _syncObjectsInFlight[3] = {};
+    /// Scratch buffer queue usage
+    U32 _scratchBufferQueueUsage[2] = {};
 };
 
 struct DeviceInformation

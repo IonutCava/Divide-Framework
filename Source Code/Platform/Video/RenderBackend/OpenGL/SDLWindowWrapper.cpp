@@ -429,6 +429,8 @@ void GL_API::closeRenderingAPI() {
     g_ContextPool.destroy();
     s_vaoCache.clear();
     s_stateTracker.reset();
+
+    s_bufferLockPool.clear();
 }
 
 vec2<U16> GL_API::getDrawableSize(const DisplayWindow& window) const noexcept {
