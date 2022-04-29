@@ -353,8 +353,8 @@ bool WarScene::load() {
     setDayNightCycleTimeFactor(24);
 
     // Position camera
-    Camera::utilityCamera(Camera::UtilityCamera::DEFAULT)->setEye(vec3<F32>(43.13f, 147.09f, -4.41f));
-    Camera::utilityCamera(Camera::UtilityCamera::DEFAULT)->setGlobalRotation(-90.0f /*yaw*/, 59.21f /*pitch*/);
+    Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setEye(vec3<F32>(43.13f, 147.09f, -4.41f));
+    Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setGlobalRotation(-90.0f /*yaw*/, 59.21f /*pitch*/);
 
     // Add some obstacles
 
@@ -602,7 +602,7 @@ bool WarScene::load() {
         }
     }
     
-    Camera::utilityCamera(Camera::UtilityCamera::DEFAULT)->setHorizontalFoV(110);
+    Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setHorizontalFoV(110);
 
     _sceneReady = true;
     if (loadState) {
@@ -687,7 +687,7 @@ void WarScene::toggleCamera(const InputParams param) {
     static Camera* tpsCamera = nullptr;
 
     if (!tpsCamera) {
-        tpsCamera = Camera::findCamera(_ID("tpsCamera"));
+        tpsCamera = Camera::FindCamera(_ID("tpsCamera"));
     }
 
     const PlayerIndex idx = getPlayerIndexForDevice(param._deviceIndex);
@@ -770,15 +770,15 @@ void WarScene::postLoadMainThread() {
 
     // Add a first person camera
     {
-        FreeFlyCamera* cam = Camera::createCamera<FreeFlyCamera>("fpsCamera");
-        cam->fromCamera(*Camera::utilityCamera(Camera::UtilityCamera::DEFAULT));
+        FreeFlyCamera* cam = Camera::CreateCamera<FreeFlyCamera>("fpsCamera");
+        cam->fromCamera(*Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT));
         cam->setMoveSpeedFactor(10.0f);
         cam->setTurnSpeedFactor(10.0f);
     }
     // Add a third person camera
     {
-        ThirdPersonCamera* cam = Camera::createCamera<ThirdPersonCamera>("tpsCamera");
-        cam->fromCamera(*Camera::utilityCamera(Camera::UtilityCamera::DEFAULT));
+        ThirdPersonCamera* cam = Camera::CreateCamera<ThirdPersonCamera>("tpsCamera");
+        cam->fromCamera(*Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT));
         cam->setMoveSpeedFactor(0.02f);
         cam->setTurnSpeedFactor(0.01f);
     }

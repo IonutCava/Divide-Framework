@@ -62,7 +62,7 @@ void main() {
         largetScaleMotion(VAR._vertexW, dvd_Vertex, dvd_Vertex.y * 0.075f, timeGrass);
 
 #       if 1
-            const vec2 viewDirection = normalize(VAR._vertexW.xz - dvd_cameraPosition.xz);
+            const vec2 viewDirection = normalize(VAR._vertexW.xz - dvd_CameraPosition.xz);
 #       else
             const vec2 viewDirection = normalize(mat3(dvd_InverseViewMatrix) * vec3(0.f, 0.f, -1.f)).xz;
 #       endif

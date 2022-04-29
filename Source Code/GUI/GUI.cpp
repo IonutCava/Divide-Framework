@@ -104,7 +104,7 @@ void GUI::draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer
     EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Render GUI" });
 
     //Set a 2D camera for rendering
-    EnqueueCommand(bufferInOut, GFX::SetCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    EnqueueCommand(bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
 
     EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ viewport });
 

@@ -9,6 +9,9 @@
 #include "Platform/File/Headers/FileManagement.h"
 
 #include <sdl/include/SDL_vulkan.h>
+
+#include <vk-bootstrap/src/VkBootstrap.h>
+
 #define VMA_HEAVY_ASSERT(expr) DIVIDE_ASSERT(expr)
 //#define VMA_DEDICATED_ALLOCATION 0
 //#define VMA_DEBUG_MARGIN 16

@@ -13,7 +13,7 @@ layout(location = ATTRIB_FREE_START + 4) out vec3 vBetaM;
 void main(void){
     const NodeTransformData data = fetchInputData();
     VAR._vertexW = data._worldMatrix * dvd_Vertex;
-    VAR._vertexW.xyz += dvd_cameraPosition.xyz;
+    VAR._vertexW.xyz += dvd_CameraPosition;
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     computeLightVectors(data);
@@ -212,13 +212,14 @@ float sunIntensity(float zenithAngleCos) {
 #define TotalMie(T) (0.434f * ((0.2f * T) * 10E-18) * MieConst)
 
 void main() {
+
     const float rayleigh = 1.f;
     const float turbidity = 2.f;
     const float mieCoefficient = 0.005f;
 
     const NodeTransformData data = fetchInputData();
     VAR._vertexW = data._worldMatrix * dvd_Vertex;
-    VAR._vertexW.xyz += dvd_cameraPosition.xyz;
+    VAR._vertexW.xyz += dvd_CameraPosition;
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     computeLightVectors(data);
@@ -677,7 +678,7 @@ void main() {
 
     // Guess work based on what "look right"
     const float lerpValue = Saturate(2.95f * (GetSunDirection().y + 0.15f));
-    const vec3 rayDirection = normalize(VAR._vertexW.xyz - dvd_cameraPosition.xyz);
+    const vec3 rayDirection = normalize(VAR._vertexW.xyz - dvd_CameraPosition);
 #if defined(MAIN_DISPLAY_PASS)
     vec3 ret = vec3(0.f);
     switch (dvd_MaterialDebugFlag) {
@@ -705,6 +706,7 @@ void main() {
         case DEBUG_SHADING_MODE:  ret = vec3(0.0f); break;
         default:                  ret = atmosphereColour(rayDirection, lerpValue); break;
     }
+
 #else //MAIN_DISPLAY_PASS
     const vec3 ret = atmosphereColour(rayDirection, lerpValue);
 #endif //MAIN_DISPLAY_PASS

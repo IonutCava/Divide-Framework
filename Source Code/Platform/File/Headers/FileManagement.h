@@ -35,16 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-enum class CacheType : U8 {
-    SHADER_TEXT = 0,
-    SHADER_SPV,
-    TERRAIN,
-    MODELS,
-    COLLISION,
-    TEXTURES,
-    COUNT
-};
-
 enum class FileError : U8 {
     NONE = 0,
     FILE_NOT_FOUND,
@@ -103,6 +93,8 @@ struct Paths {
 
     struct Shaders {
         static ResourcePath g_cacheLocation;
+        static ResourcePath g_cacheLocationGL;
+        static ResourcePath g_cacheLocationVK;
         static ResourcePath g_cacheLocationText;
         static ResourcePath g_cacheLocationSpv;
 
@@ -219,9 +211,6 @@ typename std::enable_if<std::is_same<decltype(has_assign<T>(nullptr)), std::true
 
 [[nodiscard]] FileAndPath splitPathToNameAndLocation(const char* input);
 [[nodiscard]] FileAndPath splitPathToNameAndLocation(const ResourcePath& input);
-
-[[nodiscard]] bool clearCache();
-[[nodiscard]] bool clearCache(CacheType type);
 
 [[nodiscard]] std::string extractFilePathAndName(char* argv0);
 

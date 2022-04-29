@@ -2,6 +2,7 @@
 
 #include "Headers/TransformComponent.h"
 
+#include "Core/Headers/ByteBuffer.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {

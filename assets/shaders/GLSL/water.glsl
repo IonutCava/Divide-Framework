@@ -14,7 +14,7 @@ void main(void)
     setClipPlanes();
     computeLightVectors(data);
 
-    _underwater = dvd_cameraPosition.y < VAR._vertexW.y ? 1 : 0;
+    _underwater = dvd_CameraPosition.y < VAR._vertexW.y ? 1 : 0;
     gl_Position = _vertexWVP;
 }
 
@@ -72,7 +72,7 @@ void main()
 
 #if !defined(PRE_PASS)
     const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
-    const vec3 incident = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
+    const vec3 incident = normalize(dvd_CameraPosition - VAR._vertexW.xyz);
 
     const vec2 waterUV = clamp(0.5f * Homogenize(_vertexWVP).xy + 0.5f, vec2(0.001f), vec2(0.999f));
     const vec3 refractionColour = overlayVec(texture(texRefractPlanar, waterUV).rgb, _refractionTint);

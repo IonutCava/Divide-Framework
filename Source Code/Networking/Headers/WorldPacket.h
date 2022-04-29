@@ -3,6 +3,8 @@
 
 #include "OPCodesTpl.h"
 
+#include "Core/Headers/ByteBuffer.h"
+
 #include <boost/serialization/vector.hpp>
 #include <boost/asio/ip/tcp.hpp>
 

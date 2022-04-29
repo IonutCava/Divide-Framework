@@ -5,6 +5,7 @@
 #include "Headers/RenderPassManager.h"
 
 #include "AI/PathFinding/Headers/DivideRecast.h"
+#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/Kernel.h"
@@ -288,7 +289,7 @@ void SceneManager::onSizeChange(const SizeChangeParams& params) {
             }
         }
 
-        Camera::utilityCamera(Camera::UtilityCamera::DEFAULT)->setProjection(aspectRatio, vFoV, zPlanes);
+        Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setProjection(aspectRatio, vFoV, zPlanes);
     }
 }
 
@@ -318,7 +319,7 @@ void SceneManager::addPlayerInternal(Scene& parentScene, SceneGraphNode* playerN
 
     if (i < Config::MAX_LOCAL_PLAYER_COUNT) {
         const Player_ptr player = std::make_shared<Player>(to_U8(i));
-        player->camera()->fromCamera(*Camera::utilityCamera(Camera::UtilityCamera::DEFAULT));
+        player->camera()->fromCamera(*Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT));
         player->camera()->setFixedYawAxis(true);
 
         {
@@ -565,7 +566,7 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
 
 void SceneManager::drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) {
     //Set a 2D camera for rendering
-    EnqueueCommand(bufferInOut, GFX::SetCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    EnqueueCommand(bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
     EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
 
     Attorney::SceneManager::drawCustomUI(getActiveScene(), targetViewport, bufferInOut);

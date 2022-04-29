@@ -1,6 +1,8 @@
 #include "stdafx.h"
 
 #include "Headers/ShaderDataUploader.h"
+
+#include "Core/Headers/ByteBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
 #ifdef _MSC_VER

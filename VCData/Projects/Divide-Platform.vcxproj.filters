@@ -369,9 +369,6 @@
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glResources.cpp">
       <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLStates.cpp">
-      <Filter>Video\RenderBackend\OpenGL</Filter>
-    </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLWrapper.cpp">
       <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
@@ -418,9 +415,6 @@
       <Filter>Video\Buffers\ShaderBuffer</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\glLockManager.cpp">
-      <Filter>Video\RenderBackend\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\SDLWindowWrapper.cpp">
       <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\PlatformDefines.cpp" />

@@ -82,7 +82,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
     SkyLightNeedsRefresh(true);
 
     for (U32 i = 0; i < 6; ++i) {
-        s_probeCameras.emplace_back(Camera::createCamera<FreeFlyCamera>(Util::StringFormat("ProbeCamera_%d", i)));
+        s_probeCameras.emplace_back(Camera::CreateCamera<FreeFlyCamera>(Util::StringFormat("ProbeCamera_%d", i)));
     }
 
     s_availableSlices.fill({});
@@ -222,7 +222,7 @@ void SceneEnvironmentProbePool::OnShutdown(GFXDevice& context) {
     context.renderTargetPool().deallocateRT(s_irradiance);
     context.renderTargetPool().deallocateRT(s_brdfLUT);
     for (auto& camera : s_probeCameras) {
-        Camera::destroyCamera(camera);
+        Camera::DestroyCamera(camera);
     }
     s_probeCameras.clear();
     // Remove old views

@@ -449,6 +449,7 @@ protected:
 private:
     /// Upload draw related data to the GPU (view & projection matrices, viewport settings, etc)
     const DescriptorSet& uploadGPUBlock();
+    void resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeRender, size_t targetSizeCullCounter);
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
     void setDepthRange(const vec2<F32>& depthRange);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
@@ -532,15 +533,48 @@ private:
     mutable Mutex _debugViewLock;
     vector<DebugView_ptr> _debugViews;
     
-    static constexpr U8 s_perFrameBufferCount = 3u;
-    struct PerFrameBuffers {
-        ShaderBuffer_uptr _camDataBuffer = nullptr;
-        ShaderBuffer_uptr _renderDataBuffer = nullptr;
-        ShaderBuffer_uptr _cullCounter = nullptr;
-        size_t _camWritesThisFrame = 0u;
-        size_t _renderWritesThisFrame = 0u;
-    } _perFrameBuffers[s_perFrameBufferCount];
-    size_t _perFrameBufferIndex = 0u;
+    struct GFXBuffers {
+        static constexpr U8 PerFrameBufferCount = 3u;
+
+        struct PerFrameBuffers {
+            ShaderBuffer_uptr _camDataBuffer = nullptr;
+            ShaderBuffer_uptr _renderDataBuffer = nullptr;
+            ShaderBuffer_uptr _cullCounter = nullptr;
+            size_t _camWritesThisFrame = 0u;
+            size_t _renderWritesThisFrame = 0u;
+        } _perFrameBuffers[PerFrameBufferCount];
+        size_t _perFrameBufferIndex = 0u;
+        size_t _currentSizeCam = 0u;
+        size_t _currentSizeRender = 0u;
+        size_t _currentSizeCullCounter = 0u;
+        bool _needsResizeCam = false;
+        bool _needsResizeRender = false;
+        inline [[nodiscard]] PerFrameBuffers& crtBuffers() { return _perFrameBuffers[_perFrameBufferIndex]; }
+        inline [[nodiscard]] const PerFrameBuffers& crtBuffers() const { return _perFrameBuffers[_perFrameBufferIndex]; }
+
+        inline void reset(const bool camBuffer, const bool renderBuffer, const bool cullBuffer) {
+            for (U8 i = 0u; i < PerFrameBufferCount; ++i) {
+                if (camBuffer) {
+                    _perFrameBuffers[i]._camDataBuffer.reset();
+                }
+                if (renderBuffer) {
+                    _perFrameBuffers[i]._renderDataBuffer.reset();
+                }
+                if (cullBuffer) {
+                    _perFrameBuffers[i]._cullCounter.reset();
+                }
+            }
+            crtBuffers()._camWritesThisFrame = 0u;
+            crtBuffers()._renderWritesThisFrame = 0u;
+        }
+
+        inline void onEndFrame() { 
+            _perFrameBufferIndex = (_perFrameBufferIndex + 1u) % PerFrameBufferCount;
+            crtBuffers()._camWritesThisFrame = 0u;
+            crtBuffers()._renderWritesThisFrame = 0u;
+        }
+
+    } _gfxBuffers;
 
     Mutex _pipelineCacheLock;
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;

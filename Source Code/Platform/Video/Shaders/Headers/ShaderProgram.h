@@ -212,11 +212,12 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
      static bool GLSLToSPIRV(LoadData& dataInOut, bool targetVulkan, const eastl::set<U64>& atomIDsIn);
 
-     static bool SaveSPIRVToCache(const LoadData& dataIn, const eastl::set<U64>& atomIDsIn);
-     static bool LoadSPIRVFromCache(LoadData& dataInOut, eastl::set<U64>& atomIDsOut);
+     static bool SaveSPIRVToCache(const LoadData& dataIn, bool targetVulkan, const eastl::set<U64>& atomIDsIn);
+     static bool LoadSPIRVFromCache(LoadData& dataInOut, bool targetVulkan, eastl::set<U64>& atomIDsOut);
 
-     static bool SaveTextToCache(const LoadData& dataIn, const eastl::set<U64>& atomIDsIn);
-     static bool LoadTextFromCache(LoadData& dataInOut, eastl::set<U64>& atomIDsOut);
+     static bool SaveTextToCache(const LoadData& dataIn, bool targetVulkan, const eastl::set<U64>& atomIDsIn);
+     static bool LoadTextFromCache(LoadData& dataInOut, bool targetVulkan, eastl::set<U64>& atomIDsOut);
+
    protected:
     /// Only 1 shader program per frame should be recompiled to avoid a lot of stuttering
     static ShaderQueue s_recompileQueue;

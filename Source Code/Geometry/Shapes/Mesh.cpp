@@ -3,6 +3,7 @@
 #include "Headers/Mesh.h"
 #include "Headers/SubMesh.h"
 
+#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/StringHelper.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "ECS/Components/Headers/RigidBodyComponent.h"

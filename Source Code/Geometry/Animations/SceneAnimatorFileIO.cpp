@@ -2,6 +2,7 @@
 
 #include "Headers/SceneAnimator.h"
 
+#include "Core/Headers/ByteBuffer.h"
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {

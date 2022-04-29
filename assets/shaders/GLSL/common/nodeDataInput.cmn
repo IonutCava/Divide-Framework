@@ -46,13 +46,12 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_RENDER_BLOCK, std140) uniform dvd_Rende
     mat4  dvd_PreviousViewMatrix;
     mat4  dvd_PreviousProjectionMatrix;
     mat4  dvd_PreviousViewProjectionMatrix;
-    //x - elapsed time (ms), y - light cluster size XY packed, z = material debug flag, w - clip plane count
+    //x - elapsed time (ms), y - unused, z = material debug flag, w - clip plane count
     vec4  dvd_renderProperties;
     vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
 };
 
 #define dvd_TimeMS int(dvd_renderProperties.x)
-#define dvd_ClusterSizes unpackHalf2x16(uint(dvd_renderProperties.y))
 #define dvd_MaterialDebugFlag int(dvd_renderProperties.z)
 #define dvd_ClipPlaneCount uint(dvd_renderProperties.w)
 
@@ -64,26 +63,25 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
     mat4  dvd_ViewMatrix;
     mat4  dvd_InverseViewMatrix;
     mat4  dvd_ViewProjectionMatrix;
-    //xyz - position, w - aspect ratio
-    vec4  dvd_cameraPosition; 
     vec4  dvd_ViewPort;
     //x - scale, y - bias, z - light bleed bias, w - min shadow variance
     vec4 dvd_lightingTweakValues;
     //x - nearPlane, y - farPlane, z - FoV, w - ortho camera
     vec4  dvd_camProperties;
-    vec4  dvd_frustumPlanes[6];
-    //xy - depth range, zw - unused
+    //xy - depth range, zw - light cluster size X / Y
     vec4 dvd_renderTargetInfo;
-    vec4 _cam_padding;
+    vec4 dvd_frustumPlanes[6];
+    vec4 _cam_padding[2];
 };
 
 #define DEPTH_RANGE dvd_renderTargetInfo.xy
 #define SHADOW_PASS_TYPE int(dvd_camProperties.w)
 #define CAMERA_FLAG SHADOW_PASS_TYPE
 
+#define dvd_ClusterSizes vec2(uint(_renderTargetInfo.z), uint(_renderTargetInfo.w))
 #define dvd_ScreenDimensions dvd_ViewPort.zw
-#define dvd_InvScreenDimensions (1.f / dvd_ScreenDimensions)
-#define dvd_AspectRatio dvd_cameraPosition.w
+#define dvd_CameraPosition (dvd_InverseViewMatrix[3].xyz)
+#define dvd_AspectRatio (dvd_ViewPort.z / dvd_ViewPort.w)
 #define dvd_ZPlanes dvd_camProperties.xy
 #define dvd_FieldOfView dvd_camProperties.z
 

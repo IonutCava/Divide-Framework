@@ -70,7 +70,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
         const U8 cameraCount = type == ShadowType::SINGLE ? 1 : type == ShadowType::CUBEMAP ? 6 : Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT;
 
         for (U32 i = 0; i < cameraCount; ++i) {
-            s_shadowCameras[t].emplace_back(Camera::createCamera<FreeFlyCamera>(Util::StringFormat("ShadowCamera_%s_%d", Names::shadowType[t], i)));
+            s_shadowCameras[t].emplace_back(Camera::CreateCamera<FreeFlyCamera>(Util::StringFormat("ShadowCamera_%s_%d", Names::shadowType[t], i)));
         }
     }
 
@@ -208,9 +208,9 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
 }
 
 void ShadowMap::destroyShadowMaps(GFXDevice& context) {
-    for (U8 t = 0; t < to_base(ShadowType::COUNT); ++t) {
+    for (U8 t = 0u; t < to_base(ShadowType::COUNT); ++t) {
         for (auto& camera : s_shadowCameras[t]) {
-            Camera::destroyCamera(camera);
+            Camera::DestroyCamera(camera);
         }
         s_shadowCameras[t].clear();
     }

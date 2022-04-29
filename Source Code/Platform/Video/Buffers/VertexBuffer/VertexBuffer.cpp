@@ -1,6 +1,8 @@
 #include "stdafx.h"
 
 #include "Headers/VertexBuffer.h"
+
+#include "Core/Headers/ByteBuffer.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"

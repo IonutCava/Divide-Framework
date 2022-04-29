@@ -17,7 +17,7 @@ bool ThirdPersonCamera::rotateRelative(const vec3<F32>& relRotation) {
     if (relRotation.lengthSquared() != 0) {
         vec3<F32> rotation(relRotation.pitch, relRotation.yaw, relRotation.roll);
 
-        rotation.set(rotation / _mouseSensitivity * _speed.turn);
+        rotation.set(rotation / (getTurnSpeedFactor() * s_lastFrameTimeSec));
 
         if (!IS_ZERO(rotation.yaw)) {
             const F32 targetYaw = _cameraRotation.yaw - rotation.yaw;

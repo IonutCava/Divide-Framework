@@ -2,6 +2,7 @@
 
 #include "Headers/SceneNode.h"
 
+#include "Core/Headers/ByteBuffer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Geometry/Material/Headers/Material.h"

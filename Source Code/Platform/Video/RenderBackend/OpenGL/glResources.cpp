@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/glResources.h"
+#include "Headers/glHardwareQueryPool.h"
 
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
@@ -619,21 +620,21 @@ void BeginHardwareQueries(HardwareQueryContext& context) {
     }
 
     if (BitCompare(context._cmdOptions, CmdRenderOptions::QUERY_PRIMITIVE_COUNT)) {
-        context._primitiveQuery = &GL_API::s_hardwareQueryPool->allocate(GL_PRIMITIVES_GENERATED);
+        context._primitiveQuery = &GL_API::GetHardwareQueryPool()->allocate(GL_PRIMITIVES_GENERATED);
         context._primitiveQuery->begin();
     } else {
         context._primitiveQuery = nullptr;
     }
 
     if (BitCompare(context._cmdOptions, CmdRenderOptions::QUERY_SAMPLE_COUNT)) {
-        context._sampleCountQuery = &GL_API::s_hardwareQueryPool->allocate(GL_SAMPLES_PASSED);
+        context._sampleCountQuery = &GL_API::GetHardwareQueryPool()->allocate(GL_SAMPLES_PASSED);
         context._sampleCountQuery->begin();
     } else {
         context._sampleCountQuery = nullptr;
     }
 
     if (BitCompare(context._cmdOptions, CmdRenderOptions::QUERY_ANY_SAMPLE_RENDERED)) {
-        context._anySamplesQuery = &GL_API::s_hardwareQueryPool->allocate(GL_ANY_SAMPLES_PASSED);
+        context._anySamplesQuery = &GL_API::GetHardwareQueryPool()->allocate(GL_ANY_SAMPLES_PASSED);
         context._anySamplesQuery->begin();
     } else {
         context._anySamplesQuery = nullptr;

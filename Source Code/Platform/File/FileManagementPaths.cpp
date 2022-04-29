@@ -45,6 +45,8 @@ ResourcePath Paths::Scripts::g_scriptsAtomsLocation;
 ResourcePath Paths::Textures::g_metadataLocation;
 
 ResourcePath Paths::Shaders::g_cacheLocation;
+ResourcePath Paths::Shaders::g_cacheLocationGL;
+ResourcePath Paths::Shaders::g_cacheLocationVK;
 ResourcePath Paths::Shaders::g_cacheLocationText;
 ResourcePath Paths::Shaders::g_cacheLocationSpv;
 
@@ -119,8 +121,10 @@ void Paths::initPaths(const SysInfo& info) {
     Textures::g_metadataLocation = ResourcePath("textureData/");
 
     Shaders::g_cacheLocation = ResourcePath("shaders/");
-    Shaders::g_cacheLocationText = Shaders::g_cacheLocation + "Text/";
-    Shaders::g_cacheLocationSpv = Shaders::g_cacheLocation + "SPV/";
+    Shaders::g_cacheLocationGL = ResourcePath("OpenGL/");
+    Shaders::g_cacheLocationVK = ResourcePath("Vulkan/");
+    Shaders::g_cacheLocationText = ResourcePath("Text/");
+    Shaders::g_cacheLocationSpv = ResourcePath("SPV/");
 
     Shaders::g_ReflectionExt = "refl";
     Shaders::g_SPIRVExt = "spv";

@@ -2,6 +2,7 @@
 
 #include "Headers/NavMeshLoader.h"
 
+#include "Core/Headers/ByteBuffer.h"
 #include "Managers/Headers/SceneManager.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Environment/Terrain/Headers/Terrain.h"

@@ -10,7 +10,6 @@ namespace Divide {
 OrbitCamera::OrbitCamera(const Str256& name, const CameraType& type, const vec3<F32>& eye)
     : FreeFlyCamera(name, type, eye)
 {
-    setMouseSensitivity(0.5f);
 }
 
 void OrbitCamera::fromCamera(const Camera& camera) {
@@ -39,8 +38,8 @@ void OrbitCamera::setTarget(TransformComponent* tComp, const vec3<F32>& offsetDi
     _offsetDir = Normalized(offsetDirection);
 }
 
-void OrbitCamera::update(const F32 deltaTimeMS) noexcept {
-    FreeFlyCamera::update(deltaTimeMS);
+void OrbitCamera::update() noexcept {
+    FreeFlyCamera::update();
 
     if (!_targetTransform) {
         return;
@@ -62,7 +61,7 @@ void OrbitCamera::update(const F32 deltaTimeMS) noexcept {
 
 bool OrbitCamera::zoom(const F32 zoomFactor) noexcept {
     if (!IS_ZERO(zoomFactor)) {
-        curRadius(_curRadius += zoomFactor * _speed.zoom * -0.01f);
+        curRadius(_curRadius += zoomFactor * getZoomSpeedFactor() * s_lastFrameTimeSec * -0.01f);
     }
 
     return FreeFlyCamera::zoom(zoomFactor);

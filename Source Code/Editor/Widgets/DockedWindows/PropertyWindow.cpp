@@ -137,7 +137,7 @@ namespace Divide {
         const U64 camID = _ID(camName);
         ImGui::PushID(to_I32(camID) * 54321);
 
-        if (ImGui::CollapsingHeader(camName)) {
+        if (ImGui::CollapsingHeader(camName, ImGuiTreeNodeFlags_DefaultOpen)) {
             Util::PushNarrowLabelWidth();
             {
                 vec3<F32> eye = cam->getEye();
@@ -191,9 +191,9 @@ namespace Divide {
                 camField._basicType = GFX::PushConstantType::VEC3;
                 camField._type = EditorComponentFieldType::SLIDER_TYPE;
                 camField._readOnly = false;
-                camField._tooltip = "Change camera speed factor.\nT = Turn speed, M = Move speed, Z = Zoom speed";
+                camField._tooltip = "Change camera speed factor. (units / second) \nT = Turn speed, M = Move speed, Z = Zoom speed";
                 camField._data = speed._v;
-                camField._resetValue = 50.f;
+                camField._resetValue = 5.f;
                 camField._dataSetter = [flyCam](const void* e) noexcept {
                     const vec3<F32> speed = *static_cast<const vec3<F32>*>(e);
                     flyCam->setMoveSpeedFactor(speed.move);
@@ -347,6 +347,9 @@ namespace Divide {
             isLockedField = true;
         }
 
+        // always keep transforms open by default for convenience
+        const bool fieldAlwaysOpen = comp->parentComponentType() == ComponentType::TRANSFORM;
+
         const string fieldNameStr = fieldWasOpen ? Util::StringFormat("%s (%s)", comp->name().c_str(), _lockedComponent._parentSGN->name().c_str()) : comp->name().c_str();
         const char* fieldName = fieldNameStr.c_str();
         const U64 fieldHash = _ID(fieldName);
@@ -363,7 +366,7 @@ namespace Divide {
             ImGui::CollapsingHeader(fieldName, ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet);
             PopReadOnly();
         } else {
-            if (ImGui::CollapsingHeader(fieldName, ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | (fieldWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u))) {
+            if (ImGui::CollapsingHeader(fieldName, ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ((fieldWasOpen || fieldAlwaysOpen) ? ImGuiTreeNodeFlags_DefaultOpen : 0u))) {
                 if (!fieldWasOpen) {
                     for (U64& p : s_openProperties) {
                         if (p == 0u) {

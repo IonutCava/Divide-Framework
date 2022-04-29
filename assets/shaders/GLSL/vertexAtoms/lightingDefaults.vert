@@ -13,7 +13,7 @@ mat3 computeTBN(in mat3 normalMatrixW) {
 #endif //COMPUTE_TBN
 
 void computeViewDirectionWV(in NodeTransformData data) {
-    const vec3 cameraDirection = normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
+    const vec3 cameraDirection = normalize(dvd_CameraPosition - VAR._vertexW.xyz);
     VAR._viewDirectionWV = normalize(mat3(dvd_ViewMatrix) * cameraDirection);
 }
 

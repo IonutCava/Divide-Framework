@@ -32,9 +32,7 @@ SyncObject::~SyncObject()
 
 void SyncObject::reset() {
     if (_fence != nullptr) {
-        glDeleteSync(_fence);
-        GL_API::s_fenceSyncCounter[GL_API::g_LockFrameLifetime - 1u] -= 1u;
-        _fence = nullptr;
+        GL_API::DestroyFenceSync(_fence);
     }
 }
 
@@ -115,7 +113,7 @@ bool glBufferLockManager::lockRange(const size_t lockBeginBytes, const size_t lo
         // This should avoid any lock leaks, since any fences we haven't waited on will be considered "signaled" eventually
         for (BufferLock& lock : _bufferLocks) {
             ScopedLock<Mutex> w_lock_sync(lock._syncObj->_fenceLock);
-            if (lock._syncObj->_frameID < syncObj->_frameID && syncObj->_frameID - lock._syncObj->_frameID >= GL_API::g_LockFrameLifetime) {
+            if (lock._syncObj->_frameID < syncObj->_frameID && syncObj->_frameID - lock._syncObj->_frameID >= GL_API::s_LockFrameLifetime) {
                 lock._state = BufferLockState::EXPIRED;
             }
         }

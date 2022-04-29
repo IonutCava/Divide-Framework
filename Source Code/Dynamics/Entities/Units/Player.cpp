@@ -12,12 +12,12 @@ Player::Player(const U8 index)
     : Character(CharacterType::CHARACTER_TYPE_PLAYER),
       _index(index)
 {
-     _camera = Camera::createCamera<FreeFlyCamera>(Util::StringFormat("Player_Cam_%d", _index));
+     _camera = Camera::CreateCamera<FreeFlyCamera>(Util::StringFormat("Player_Cam_%d", _index));
 }
 
 Player::~Player()
 {
-    Camera::destroyCamera(_camera);
+    Camera::DestroyCamera(_camera);
 }
 
 void Player::setParentNode(SceneGraphNode* node) {

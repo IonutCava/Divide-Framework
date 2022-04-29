@@ -142,7 +142,7 @@ WaterPlane::WaterPlane(ResourceCache* parentCache, size_t descriptorHash, const 
 
 WaterPlane::~WaterPlane()
 {
-    Camera::destroyCamera(_reflectionCam);
+    Camera::DestroyCamera(_reflectionCam);
 }
 
 void WaterPlane::onEditorChange(std::string_view) noexcept {
@@ -160,7 +160,7 @@ bool WaterPlane::load() {
 
     setState(ResourceState::RES_LOADING);
 
-    _reflectionCam = Camera::createCamera<StaticCamera>(resourceName() + "_reflectionCam");
+    _reflectionCam = Camera::CreateCamera<StaticCamera>(resourceName() + "_reflectionCam");
 
     const Str256& name = resourceName();
 

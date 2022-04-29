@@ -105,23 +105,17 @@ float ToLinearDepth(in float depthIn, in vec2 depthRangeIn);
 
 // cluster depth index from depth in screen coordinates (gl_FragCoord.z)
 uint GetClusterZIndex(in float screenDepth) {
-    const float scale = dvd_LightScale;
-    const float bias  = dvd_LightBias;
-
     const float eyeDepth = ToLinearDepth(screenDepth, dvd_ZPlanes);
-    const uint zIndex = uint(max(log(eyeDepth) * scale + bias, 0.f));
-
-    return zIndex;
+    return uint(max(log(eyeDepth) * dvd_LightScale + dvd_LightBias, 0.f));
 }
 
 uint GetClusterIndex(in vec4 fragCoord) {
     const uint zIndex = GetClusterZIndex(fragCoord.z);
     const uvec3 indices = uvec3(uvec2(fragCoord.xy / dvd_ClusterSizes.xy), zIndex);
 
-    const uint cluster =  (CLUSTERS_X * CLUSTERS_Y) * indices.z +
-                          CLUSTERS_X * indices.y +
-                          indices.x;
-    return cluster;
+    return (CLUSTERS_X * CLUSTERS_Y) * indices.z +
+            CLUSTERS_X * indices.y +
+            indices.x;
 }
 
 #endif //COMPUTE_SHADER

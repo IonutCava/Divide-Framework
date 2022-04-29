@@ -83,7 +83,7 @@ vec2 getScaledCoords(vec2 uv, in vec4 amnt) {
     if (VAR._LoDLevel == 0u) {
         const uint bumpMethod = dvd_BumpMethod(MATERIAL_IDX);
         if (bumpMethod == BUMP_PARALLAX || bumpMethod == BUMP_PARALLAX_OCCLUSION) {
-            const vec3 viewDirT = transpose(getTBNW()) * normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
+            const vec3 viewDirT = transpose(getTBNW()) * normalize(dvd_CameraPosition - VAR._vertexW.xyz);
             const float currentHeight = getDisplacementValueFromCoords(scaledCoords, amnt);
             if (bumpMethod == BUMP_PARALLAX) {
                 //ref: https://learnopengl.com/Advanced-Lighting/Parallax-Mapping

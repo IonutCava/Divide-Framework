@@ -142,7 +142,7 @@ void PostFX::updateResolution(const U16 newWidth, const U16 newHeight) {
     _resolutionCache.set(newWidth, newHeight);
 
     _preRenderBatch.reshape(newWidth, newHeight);
-    _setCameraCmd._cameraSnapshot = Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot();
+    _setCameraCmd._cameraSnapshot = Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot();
 }
 
 void PostFX::prePass(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut) {

@@ -137,7 +137,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sdl/include/SDL.h>
 
 #include <Vulkan/vulkan.hpp>
-#include <vk-bootstrap/src/VkBootstrap.h>
 #include <Optick/src/optick.h>
 
 #ifdef _MSC_VER
@@ -194,6 +193,5 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Math/Headers/Quaternion.h"
 #include "Core/Headers/TaskPool.h"
 #include "Core/Headers/Console.h"
-#include "Core/Headers/ByteBuffer.h"
 
 #endif //_DIVIDE_PCH_

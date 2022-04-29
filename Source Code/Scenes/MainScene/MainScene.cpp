@@ -130,7 +130,7 @@ void MainScene::processTasks(const U64 deltaTimeUS) {
 bool MainScene::load() {
     // Load scene resources
     const bool loadState = Scene::load();
-    FreeFlyCamera* baseCamera = Camera::utilityCamera<FreeFlyCamera>(Camera::UtilityCamera::DEFAULT);
+    FreeFlyCamera* baseCamera = Camera::GetUtilityCamera<FreeFlyCamera>(Camera::UtilityCamera::DEFAULT);
     baseCamera->setMoveSpeedFactor(10.0f);
 
     ResourceDescriptor infiniteWater("waterEntity");
@@ -293,8 +293,8 @@ void MainScene::postLoadMainThread() {
                   UColour4(164, 64, 64, 255),
         Util::StringFormat("Number of items in Render Bin: %d", 0));
 
-    const vec3<F32>& eyePos = Camera::utilityCamera(Camera::UtilityCamera::DEFAULT)->getEye();
-    const vec3<F32>& euler = Camera::utilityCamera(Camera::UtilityCamera::DEFAULT)->getEuler();
+    const vec3<F32>& eyePos = Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->getEye();
+    const vec3<F32>& euler = Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->getEuler();
     _GUI->addText("camPosition", pixelPosition(60, 100), Font::DIVIDE_DEFAULT,
                   UColour4(64, 200, 64, 255),
         Util::StringFormat("Position [ X: %5.0f | Y: %5.0f | Z: %5.0f ] [Pitch: %5.2f | Yaw: %5.2f]",

@@ -374,9 +374,6 @@
     <ClCompile Include="../../Source Code/Geometry\Material\ShaderComputeQueue.cpp">
       <Filter>Geometry\Material</Filter>
     </ClCompile>
-    <ClCompile Include="../../Source Code/Rendering\Camera\CameraPool.cpp">
-      <Filter>Rendering\Camera</Filter>
-    </ClCompile>
     <ClCompile Include="../../Source Code/Core\Kernel.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -424,9 +421,6 @@
     </ClCompile>
     <ClCompile Include="../../Source Code\Rendering\Lighting\Light.cpp">
       <Filter>Rendering\Lighting</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Rendering\Camera\CameraSnapshot.cpp">
-      <Filter>Rendering\Camera</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Rendering\Lighting\ShadowMapping\CascadedShadowMapsGenerator.cpp">
       <Filter>Rendering\Lighting\ShadowMapping</Filter>

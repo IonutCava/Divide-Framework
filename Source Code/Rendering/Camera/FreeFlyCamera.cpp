@@ -7,26 +7,19 @@ namespace Divide {
 FreeFlyCamera::FreeFlyCamera(const Str256& name, const CameraType type, const vec3<F32>& eye)
     : Camera(name, type, eye)
 {
-    _speedFactor.set(35.0f);
-    _speed.set(35.0f);
+    _speedFactor.set(5.0f);
 }
 
 void FreeFlyCamera::fromCamera(const Camera& camera) {
     if (camera.type() == Type()) {
         const FreeFlyCamera& cam = static_cast<const FreeFlyCamera&>(camera);
         _speedFactor = cam._speedFactor;
-        _speed = cam._speed;
         setFixedYawAxis(cam._yawFixed, cam._fixedYawAxis);
-        _mouseSensitivity = cam._mouseSensitivity;
         lockRotation(cam._rotationLocked);
         lockMovement(cam._movementLocked);
     }
 
     Camera::fromCamera(camera);
-}
-
-void FreeFlyCamera::update(const F32 deltaTimeMS) noexcept {
-    _speed = _speedFactor * Time::MillisecondsToSeconds(deltaTimeMS);
 }
 
 void FreeFlyCamera::setGlobalRotation(const F32 yaw, const F32 pitch, const F32 roll) noexcept {
@@ -57,7 +50,7 @@ void FreeFlyCamera::rotate(Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> pitch, A
         return;
     }
 
-    const F32 turnSpeed = _speed.turn;
+    const F32 turnSpeed = getTurnSpeedFactor() * s_lastFrameTimeSec;
     yaw = -yaw * turnSpeed;
     pitch = -pitch * turnSpeed;
     roll = -roll * turnSpeed;
@@ -99,15 +92,15 @@ void FreeFlyCamera::rotate(Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> pitch, A
 }
 
 void FreeFlyCamera::rotateYaw(const Angle::DEGREES<F32> angle) {
-    rotate(Quaternion<F32>(_yawFixed ? _fixedYawAxis : _data._orientation * WORLD_Y_AXIS, -angle * _speed.turn));
+    rotate(Quaternion<F32>(_yawFixed ? _fixedYawAxis : _data._orientation * WORLD_Y_AXIS, -angle * getTurnSpeedFactor() * s_lastFrameTimeSec));
 }
 
 void FreeFlyCamera::rotateRoll(const Angle::DEGREES<F32> angle) {
-    rotate(Quaternion<F32>(_data._orientation * WORLD_Z_AXIS, -angle * _speed.turn));
+    rotate(Quaternion<F32>(_data._orientation * WORLD_Z_AXIS, -angle * getTurnSpeedFactor() * s_lastFrameTimeSec));
 }
 
 void FreeFlyCamera::rotatePitch(const Angle::DEGREES<F32> angle) {
-    rotate(Quaternion<F32>(_data._orientation * WORLD_X_AXIS, -angle * _speed.turn));
+    rotate(Quaternion<F32>(_data._orientation * WORLD_X_AXIS, -angle * getTurnSpeedFactor() * s_lastFrameTimeSec));
 }
 
 void FreeFlyCamera::move(F32 dx, F32 dy, F32 dz) noexcept {
@@ -115,7 +108,7 @@ void FreeFlyCamera::move(F32 dx, F32 dy, F32 dz) noexcept {
         return;
     }
 
-    const F32 moveSpeed = _speed.move;
+    const F32 moveSpeed = getMoveSpeedFactor() * s_lastFrameTimeSec;
     dx *= moveSpeed;
     dy *= moveSpeed;
     dz *= moveSpeed;
@@ -148,7 +141,7 @@ bool FreeFlyCamera::moveRelative(const vec3<F32>& relMovement) {
 
 bool FreeFlyCamera::rotateRelative(const vec3<F32>& relRotation) {
     if (relRotation.lengthSquared() > 0) {
-        const F32 turnSpeed = _speed.turn;
+        const F32 turnSpeed = getTurnSpeedFactor() * s_lastFrameTimeSec;
         rotate(Quaternion<F32>(_yawFixed ? _fixedYawAxis : _data._orientation * WORLD_Y_AXIS, -relRotation.yaw * turnSpeed) *
                Quaternion<F32>(_data._orientation * WORLD_X_AXIS, -relRotation.pitch * turnSpeed) *
                Quaternion<F32>(_data._orientation * WORLD_Z_AXIS, -relRotation.roll * turnSpeed));

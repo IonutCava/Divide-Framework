@@ -247,8 +247,8 @@ bool Editor::init(const vec2<U16>& renderResolution) {
 
     _mainWindow = &_context.app().windowManager().getWindow(0u);
 
-    _editorCamera = Camera::createCamera<FreeFlyCamera>("Editor Camera");
-    _editorCamera->fromCamera(*Camera::utilityCamera(Camera::UtilityCamera::DEFAULT));
+    _editorCamera = Camera::CreateCamera<FreeFlyCamera>("Editor Camera");
+    _editorCamera->fromCamera(*Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT));
     _editorCamera->setFixedYawAxis(true);
     _editorCamera->setEye(60.f, 45.f, 60.f);
     _editorCamera->setEuler(-15.f, 40.f, 0.f);
@@ -666,7 +666,7 @@ void Editor::close() {
         ImGui::DestroyContext(context);
     }
     _imguiContexts.fill(nullptr);
-    Camera::destroyCamera<FreeFlyCamera>(_editorCamera);
+    Camera::DestroyCamera<FreeFlyCamera>(_editorCamera);
 }
 
 void Editor::onPreviewFocus(const bool state) const {
@@ -1130,7 +1130,7 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     };
 
     GFX::SetCameraCommand cameraCmd{};
-    cameraCmd._cameraSnapshot = Camera::utilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->snapshot();
+    cameraCmd._cameraSnapshot = Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->snapshot();
     memcpy(cameraCmd._cameraSnapshot._projectionMatrix.m, ortho_projection, sizeof(F32) * 16);
     GFX::EnqueueCommand(bufferInOut, cameraCmd);
 

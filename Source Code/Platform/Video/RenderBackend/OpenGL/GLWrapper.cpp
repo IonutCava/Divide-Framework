@@ -1,34 +1,46 @@
 ﻿#include "stdafx.h"
 
 #include "Headers/GLWrapper.h"
+#include "Headers/glIMPrimitive.h"
 
-#include "CEGUIOpenGLRenderer/include/Texture.h"
-#include "Headers/glHardwareQuery.h"
-
+#include "Platform/Headers/PlatformRuntime.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
 
-#include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Textures/Headers/Texture.h"
+#include "Core/Headers/Kernel.h"
+#include "Core/Headers/Configuration.h"
+#include "Core/Time/Headers/ProfileTimer.h"
+
+#include "Utility/Headers/Localization.h"
+
+#include "GUI/Headers/GUI.h"
+
+#include "CEGUIOpenGLRenderer/include/Texture.h"
+
+#include "Platform/Video/RenderBackend/OpenGL/CEGUIOpenGLRenderer/include/GL3Renderer.h"
+
+#include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h"
+
+#include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glTexture.h"
+#include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glSamplerObject.h"
+
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h"
+#include "Platform/Video/RenderBackend/OpenGL/Buffers/PixelBuffer/Headers/glPixelBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/RenderTarget/Headers/glFramebuffer.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/ShaderBuffer/Headers/glUniformBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/VertexBuffer/Headers/glGenericVertexData.h"
 
-#include "Core/Headers/Application.h"
-#include "Core/Headers/Configuration.h"
-#include "Rendering/Headers/Renderer.h"
-#include "Core/Time/Headers/ProfileTimer.h"
-#include "Geometry/Material/Headers/Material.h"
-#include "GUI/Headers/GUIText.h"
-#include "Platform/Headers/PlatformRuntime.h"
-#include "Utility/Headers/Localization.h"
-#include "Scenes/Headers/SceneEnvironmentProbePool.h"
+#include "Platform/Video/GLIM/glim.h"
 
-#include <SDL_video.h>
+#ifndef GLFONTSTASH_IMPLEMENTATION
+#define GLFONTSTASH_IMPLEMENTATION
+#define FONTSTASH_IMPLEMENTATION
+#include "Text/Headers/fontstash.h"
+#include "Text/Headers/glfontstash.h"
+#endif
 
 #include <glbinding-aux/Meta.h>
-
-#include "Text/Headers/fontstash.h"
+#include <glbinding-aux/ContextInfo.h>
+#include <glbinding/Binding.h>
 
 namespace Divide {
 
@@ -45,9 +57,13 @@ GLUtil::glVAOCache GL_API::s_vaoCache;
 std::atomic_bool GL_API::s_glFlushQueued;
 GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
 GL_API::IMPrimitivePool GL_API::s_IMPrimitivePool{};
-U32 GL_API::s_fenceSyncCounter[g_LockFrameLifetime] = {};
-eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> GL_API::s_bufferLockQueueMidFlush;
-eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> GL_API::s_bufferLockQueueEndOfBuffer;
+U32 GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
+GL_API::BufferLockQueue GL_API::s_bufferLockQueueMidFlush{};
+GL_API::BufferLockQueue GL_API::s_bufferLockQueueEndOfBuffer{};
+vector<GL_API::ResidentTexture> GL_API::s_residentTextures{};
+SharedMutex GL_API::s_samplerMapLock;
+GL_API::SamplerObjectMap GL_API::s_samplerMap{};
+glHardwareQueryPool* GL_API::s_hardwareQueryPool = nullptr;
 
 std::array<GLUtil::GLMemory::DeviceAllocator, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> GL_API::s_memoryAllocators = {
     GLUtil::GLMemory::DeviceAllocator(GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER),
@@ -64,12 +80,416 @@ std::array<size_t, to_base(GLUtil::GLMemory::GLMemoryType::COUNT)> GL_API::s_mem
     TO_MEGABYTES(256)
 };
 
+namespace {
+    struct SDLContextEntry {
+        SDL_GLContext _context = nullptr;
+        bool _inUse = false;
+    };
+
+    struct ContextPool {
+        bool init(const size_t size, const DisplayWindow& window) {
+            SDL_Window* raw = window.getRawWindow();
+            _contexts.resize(size);
+            for (SDLContextEntry& contextEntry : _contexts) {
+                contextEntry._context = SDL_GL_CreateContext(raw);
+            }
+            return true;
+        }
+
+        bool destroy() noexcept {
+            for (const SDLContextEntry& contextEntry : _contexts) {
+                SDL_GL_DeleteContext(contextEntry._context);
+            }
+            _contexts.clear();
+            return true;
+        }
+
+        bool getAvailableContext(SDL_GLContext& ctx) noexcept {
+            assert(!_contexts.empty());
+            for (SDLContextEntry& contextEntry : _contexts) {
+                if (!contextEntry._inUse) {
+                    ctx = contextEntry._context;
+                    contextEntry._inUse = true;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        vector<SDLContextEntry> _contexts;
+    } g_ContextPool;
+};
+
 GL_API::GL_API(GFXDevice& context)
     : RenderAPIWrapper(),
-      _context(context),
-      _swapBufferTimer(Time::ADD_TIMER("Swap Buffer Timer"))
+    _context(context),
+    _swapBufferTimer(Time::ADD_TIMER("Swap Buffer Timer"))
 {
     std::atomic_init(&s_glFlushQueued, false);
+}
+
+/// Try and create a valid OpenGL context taking in account the specified resolution and command line arguments
+ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]] char** argv, Configuration& config) {
+    // Fill our (abstract API <-> openGL) enum translation tables with proper values
+    GLUtil::fillEnumTables();
+
+    const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
+    g_ContextPool.init(_context.parent().totalThreadCount(), window);
+
+    SDL_GL_MakeCurrent(window.getRawWindow(), window.userData()->_glContext);
+    GLUtil::s_glMainRenderWindow = &window;
+    _currentContext._windowGUID = window.getGUID();
+    _currentContext._context = window.userData()->_glContext;
+
+    glbinding::Binding::initialize([](const char *proc) noexcept  {
+                                        return (glbinding::ProcAddress)SDL_GL_GetProcAddress(proc);
+                                  }, true);
+
+    if (SDL_GL_GetCurrentContext() == nullptr) {
+        return ErrorCode::GLBINGING_INIT_ERROR;
+    }
+
+    glbinding::Binding::useCurrentContext();
+
+    // Query GPU vendor to enable/disable vendor specific features
+    GPUVendor vendor = GPUVendor::COUNT;
+    const char* gpuVendorStr = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+    if (gpuVendorStr != nullptr) {
+        if (strstr(gpuVendorStr, "Intel") != nullptr) {
+            vendor = GPUVendor::INTEL;
+        } else if (strstr(gpuVendorStr, "NVIDIA") != nullptr) {
+            vendor = GPUVendor::NVIDIA;
+        } else if (strstr(gpuVendorStr, "ATI") != nullptr || strstr(gpuVendorStr, "AMD") != nullptr) {
+            vendor = GPUVendor::AMD;
+        } else if (strstr(gpuVendorStr, "Microsoft") != nullptr) {
+            vendor = GPUVendor::MICROSOFT;
+        } else {
+            vendor = GPUVendor::OTHER;
+        }
+    } else {
+        gpuVendorStr = "Unknown GPU Vendor";
+        vendor = GPUVendor::OTHER;
+    }
+    GPURenderer renderer = GPURenderer::COUNT;
+    const char* gpuRendererStr = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+    if (gpuRendererStr != nullptr) {
+        if (strstr(gpuRendererStr, "Tegra") || strstr(gpuRendererStr, "GeForce") || strstr(gpuRendererStr, "NV")) {
+            renderer = GPURenderer::GEFORCE;
+        } else if (strstr(gpuRendererStr, "PowerVR") || strstr(gpuRendererStr, "Apple")) {
+            renderer = GPURenderer::POWERVR;
+            vendor = GPUVendor::IMAGINATION_TECH;
+        } else if (strstr(gpuRendererStr, "Mali")) {
+            renderer = GPURenderer::MALI;
+            vendor = GPUVendor::ARM;
+        } else if (strstr(gpuRendererStr, "Adreno")) {
+            renderer = GPURenderer::ADRENO;
+            vendor = GPUVendor::QUALCOMM;
+        } else if (strstr(gpuRendererStr, "AMD") || strstr(gpuRendererStr, "ATI")) {
+            renderer = GPURenderer::RADEON;
+        } else if (strstr(gpuRendererStr, "Intel")) {
+            renderer = GPURenderer::INTEL;
+        } else if (strstr(gpuRendererStr, "Vivante")) {
+            renderer = GPURenderer::VIVANTE;
+            vendor = GPUVendor::VIVANTE;
+        } else if (strstr(gpuRendererStr, "VideoCore")) {
+            renderer = GPURenderer::VIDEOCORE;
+            vendor = GPUVendor::ALPHAMOSAIC;
+        } else if (strstr(gpuRendererStr, "WebKit") || strstr(gpuRendererStr, "Mozilla") || strstr(gpuRendererStr, "ANGLE")) {
+            renderer = GPURenderer::WEBGL;
+            vendor = GPUVendor::WEBGL;
+        } else if (strstr(gpuRendererStr, "GDI Generic")) {
+            renderer = GPURenderer::GDI;
+        } else {
+            renderer = GPURenderer::UNKNOWN;
+        }
+    } else {
+        gpuRendererStr = "Unknown GPU Renderer";
+        renderer = GPURenderer::UNKNOWN;
+    }
+    // GPU info, including vendor, gpu and driver
+    Console::printfn(Locale::Get(_ID("GL_VENDOR_STRING")), gpuVendorStr, gpuRendererStr, glGetString(GL_VERSION));
+
+    DeviceInformation deviceInformation{};
+    deviceInformation._vendor = vendor;
+    deviceInformation._renderer = renderer;
+
+    // Not supported in RenderDoc (as of 2021). Will always return false when using it to debug the app
+    deviceInformation._bindlessTexturesSupported = glbinding::aux::ContextInfo::supported({ GLextension::GL_ARB_bindless_texture });
+    Console::printfn(Locale::Get(_ID("GL_BINDLESS_TEXTURE_EXTENSION_STATE")), deviceInformation._bindlessTexturesSupported ? "True" : "False");
+
+    if (s_hardwareQueryPool == nullptr) {
+        s_hardwareQueryPool = MemoryManager_NEW glHardwareQueryPool(_context);
+    }
+
+    // OpenGL has a nifty error callback system, available in every build configuration if required
+    if (Config::ENABLE_GPU_VALIDATION && config.debug.enableRenderAPIDebugging) {
+        // GL_DEBUG_OUTPUT_SYNCHRONOUS is essential for debugging gl commands in the IDE
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        // hard-wire our debug callback function with OpenGL's implementation
+        glDebugMessageCallback((GLDEBUGPROC)GLUtil::DebugCallback, nullptr);
+    }
+
+    // If we got here, let's figure out what capabilities we have available
+    // Maximum addressable texture image units in the fragment shader
+    deviceInformation._maxTextureUnits = to_U8(CLAMPED(GLUtil::getGLValue(GL_MAX_TEXTURE_IMAGE_UNITS), 16u, 255u));
+    s_residentTextures.resize(to_size(deviceInformation._maxTextureUnits) * (1 << 4));
+
+    GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings);
+    GLUtil::getGLValue(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS, deviceInformation._maxAtomicBufferBindingIndices);
+    Console::printfn(Locale::Get(_ID("GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS")), deviceInformation._maxAtomicBufferBindingIndices);
+
+    if (to_base(TextureUsage::COUNT) >= deviceInformation._maxTextureUnits) {
+        Console::errorfn(Locale::Get(_ID("ERROR_INSUFFICIENT_TEXTURE_UNITS")));
+        return ErrorCode::GFX_NOT_SUPPORTED;
+    }
+
+    if (to_base(AttribLocation::COUNT) >= deviceInformation._maxVertAttributeBindings) {
+        Console::errorfn(Locale::Get(_ID("ERROR_INSUFFICIENT_ATTRIB_BINDS")));
+        return ErrorCode::GFX_NOT_SUPPORTED;
+    }
+
+    deviceInformation._versionInfo._major = to_U8(GLUtil::getGLValue(GL_MAJOR_VERSION));
+    deviceInformation._versionInfo._minor = to_U8(GLUtil::getGLValue(GL_MINOR_VERSION));
+    Console::printfn(Locale::Get(_ID("GL_MAX_VERSION")), deviceInformation._versionInfo._major, deviceInformation._versionInfo._minor);
+
+    if (deviceInformation._versionInfo._major < 4 || (deviceInformation._versionInfo._major == 4 && deviceInformation._versionInfo._minor < 6)) {
+        Console::errorfn(Locale::Get(_ID("ERROR_OPENGL_VERSION_TO_OLD")));
+        return ErrorCode::GFX_NOT_SUPPORTED;
+    }
+
+    // Maximum number of colour attachments per framebuffer
+    GLUtil::getGLValue(GL_MAX_COLOR_ATTACHMENTS, deviceInformation._maxRTColourAttachments);
+
+    s_stateTracker = eastl::make_unique<GLStateTracker>();
+
+    glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
+    deviceInformation._shaderCompilerThreads = GLUtil::getGLValue(GL_MAX_SHADER_COMPILER_THREADS_ARB);
+    Console::printfn(Locale::Get(_ID("GL_SHADER_THREADS")), deviceInformation._shaderCompilerThreads);
+
+    glEnable(GL_MULTISAMPLE);
+    // Line smoothing should almost always be used
+    glEnable(GL_LINE_SMOOTH);
+
+    // GL_FALSE causes a conflict here. Thanks glbinding ...
+    glClampColor(GL_CLAMP_READ_COLOR, GL_NONE);
+
+    // Cap max anisotropic level to what the hardware supports
+    CLAMP(config.rendering.maxAnisotropicFilteringLevel,
+          to_U8(0),
+          to_U8(GLUtil::getGLValue(GL_MAX_TEXTURE_MAX_ANISOTROPY)));
+
+    deviceInformation._maxAnisotropy = config.rendering.maxAnisotropicFilteringLevel;
+
+    // Number of sample buffers associated with the framebuffer & MSAA sample count
+    const U8 maxGLSamples = to_U8(std::min(254, GLUtil::getGLValue(GL_MAX_SAMPLES)));
+    // If we do not support MSAA on a hardware level for whatever reason, override user set MSAA levels
+    config.rendering.MSAASamples = std::min(config.rendering.MSAASamples, maxGLSamples);
+
+    config.rendering.shadowMapping.csm.MSAASamples = std::min(config.rendering.shadowMapping.csm.MSAASamples, maxGLSamples);
+    config.rendering.shadowMapping.spot.MSAASamples = std::min(config.rendering.shadowMapping.spot.MSAASamples, maxGLSamples);
+    _context.gpuState().maxMSAASampleCount(maxGLSamples);
+
+    // Print all of the OpenGL functionality info to the console and log
+    // How many uniforms can we send to fragment shaders
+    Console::printfn(Locale::Get(_ID("GL_MAX_UNIFORM")), GLUtil::getGLValue(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS));
+    // How many uniforms can we send to vertex shaders
+    Console::printfn(Locale::Get(_ID("GL_MAX_VERT_UNIFORM")), GLUtil::getGLValue(GL_MAX_VERTEX_UNIFORM_COMPONENTS));
+    // How many uniforms can we send to vertex + fragment shaders at the same time
+    Console::printfn(Locale::Get(_ID("GL_MAX_FRAG_AND_VERT_UNIFORM")), GLUtil::getGLValue(GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS));
+    // How many attributes can we send to a vertex shader
+    deviceInformation._maxVertAttributes = GLUtil::getGLValue(GL_MAX_VERTEX_ATTRIBS);
+    Console::printfn(Locale::Get(_ID("GL_MAX_VERT_ATTRIB")), deviceInformation._maxVertAttributes);
+        
+    // How many workgroups can we have per compute dispatch
+    for (U8 i = 0u; i < 3; ++i) {
+        GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorgroupCount[i], i);
+        GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_SIZE,  deviceInformation._maxWorgroupSize[i], i);
+    }
+
+    deviceInformation._maxWorgroupInvocations = GLUtil::getGLValue(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
+    deviceInformation._maxComputeSharedMemoryBytes = GLUtil::getGLValue(GL_MAX_COMPUTE_SHARED_MEMORY_SIZE);
+
+    Console::printfn(Locale::Get(_ID("GL_MAX_COMPUTE_WORK_GROUP_INFO")),
+                     deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
+                     deviceInformation._maxWorgroupSize[0],  deviceInformation._maxWorgroupSize[1],  deviceInformation._maxWorgroupSize[2],
+                     deviceInformation._maxWorgroupInvocations);
+    Console::printfn(Locale::Get(_ID("GL_MAX_COMPUTE_SHARED_MEMORY_SIZE")), deviceInformation._maxComputeSharedMemoryBytes / 1024);
+    
+    // Maximum number of texture units we can address in shaders
+    Console::printfn(Locale::Get(_ID("GL_MAX_TEX_UNITS")),
+                     GLUtil::getGLValue(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS),
+                     deviceInformation._maxTextureUnits);
+    // Maximum number of varying components supported as outputs in the vertex shader
+    deviceInformation._maxVertOutputComponents = GLUtil::getGLValue(GL_MAX_VERTEX_OUTPUT_COMPONENTS);
+    Console::printfn(Locale::Get(_ID("GL_MAX_VERTEX_OUTPUT_COMPONENTS")), deviceInformation._maxVertOutputComponents);
+
+    // Query shading language version support
+    Console::printfn(Locale::Get(_ID("GL_GLSL_SUPPORT")),
+                     glGetString(GL_SHADING_LANGUAGE_VERSION));
+    // In order: Maximum number of uniform buffer binding points,
+    //           maximum size in basic machine units of a uniform block and
+    //           minimum required alignment for uniform buffer sizes and offset
+    GLUtil::getGLValue(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, deviceInformation._UBOffsetAlignmentBytes);
+    GLUtil::getGLValue(GL_MAX_UNIFORM_BLOCK_SIZE, deviceInformation._UBOMaxSizeBytes);
+    const bool UBOSizeOver1Mb = deviceInformation._UBOMaxSizeBytes / 1024 > 1024;
+    Console::printfn(Locale::Get(_ID("GL_UBO_INFO")),
+                     GLUtil::getGLValue(GL_MAX_UNIFORM_BUFFER_BINDINGS),
+                     (deviceInformation._UBOMaxSizeBytes / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
+                     UBOSizeOver1Mb ? "Mb" : "Kb",
+                     deviceInformation._UBOffsetAlignmentBytes);
+
+    // In order: Maximum number of shader storage buffer binding points,
+    //           maximum size in basic machine units of a shader storage block,
+    //           maximum total number of active shader storage blocks that may
+    //           be accessed by all active shaders and
+    //           minimum required alignment for shader storage buffer sizes and
+    //           offset.
+    GLUtil::getGLValue(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, deviceInformation._SSBOffsetAlignmentBytes);
+    GLUtil::getGLValue(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, deviceInformation._SSBOMaxSizeBytes);
+    deviceInformation._maxSSBOBufferBindings = GLUtil::getGLValue(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS);
+    Console::printfn(
+        Locale::Get(_ID("GL_SSBO_INFO")),
+        deviceInformation._maxSSBOBufferBindings,
+        deviceInformation._SSBOMaxSizeBytes / 1024 / 1024,
+        GLUtil::getGLValue(GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS),
+        deviceInformation._SSBOffsetAlignmentBytes);
+
+    // Maximum number of subroutines and maximum number of subroutine uniform
+    // locations usable in a shader
+    Console::printfn(Locale::Get(_ID("GL_SUBROUTINE_INFO")),
+                     GLUtil::getGLValue(GL_MAX_SUBROUTINES),
+                     GLUtil::getGLValue(GL_MAX_SUBROUTINE_UNIFORM_LOCATIONS));
+
+    GLint range[2];
+    GLUtil::getGLValue(GL_SMOOTH_LINE_WIDTH_RANGE, range);
+    Console::printfn(Locale::Get(_ID("GL_LINE_WIDTH_INFO")), range[0], range[1]);
+
+    const I32 clipDistanceCount = std::max(GLUtil::getGLValue(GL_MAX_CLIP_DISTANCES), 0);
+    const I32 cullDistanceCount = std::max(GLUtil::getGLValue(GL_MAX_CULL_DISTANCES), 0);
+
+    deviceInformation._maxClipAndCullDistances = to_U8(GLUtil::getGLValue(GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES));
+    deviceInformation._maxClipDistances = to_U8(clipDistanceCount);
+    deviceInformation._maxCullDistances = to_U8(cullDistanceCount);
+    DIVIDE_ASSERT(Config::MAX_CLIP_DISTANCES <= deviceInformation._maxClipDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
+    DIVIDE_ASSERT(Config::MAX_CULL_DISTANCES <= deviceInformation._maxCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
+    DIVIDE_ASSERT(Config::MAX_CULL_DISTANCES + Config::MAX_CLIP_DISTANCES <= deviceInformation._maxClipAndCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts");
+
+    DIVIDE_ASSERT(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < deviceInformation._maxWorgroupSize[0] &&
+                  Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < deviceInformation._maxWorgroupSize[1] &&
+                  Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < deviceInformation._maxWorgroupSize[2]);
+
+    DIVIDE_ASSERT(to_U32(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS) *
+                         Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
+                         Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < deviceInformation._maxWorgroupInvocations);
+
+    GFXDevice::OverrideDeviceInformation(deviceInformation);
+    // Seamless cubemaps are a nice feature to have enabled (core since 3.2)
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+    //glEnable(GL_FRAMEBUFFER_SRGB);
+    // Culling is enabled by default, but RenderStateBlocks can toggle it on a per-draw call basis
+    glEnable(GL_CULL_FACE);
+
+    // Enable all clip planes, I guess
+    for (U8 i = 0u; i < Config::MAX_CLIP_DISTANCES; ++i) {
+        glEnable(static_cast<GLenum>(static_cast<U32>(GL_CLIP_DISTANCE0) + i));
+    }
+
+    for (U8 i = 0u; i < to_base(GLUtil::GLMemory::GLMemoryType::COUNT); ++i) {
+        s_memoryAllocators[i].init(s_memoryAllocatorSizes[i]);
+    }
+
+    s_textureViewCache.init(256);
+
+    glShaderProgram::InitStaticData();
+
+    // FontStash library initialization
+    // 512x512 atlas with bottom-left origin
+    _fonsContext = glfonsCreate(512, 512, FONS_ZERO_BOTTOMLEFT);
+    if (_fonsContext == nullptr) {
+        Console::errorfn(Locale::Get(_ID("ERROR_FONT_INIT")));
+        return ErrorCode::FONT_INIT_ERROR;
+    }
+
+    // Prepare immediate mode emulation rendering
+    NS_GLIM::glim.SetVertexAttribLocation(to_base(AttribLocation::POSITION));
+
+    // Initialize our query pool
+    s_hardwareQueryPool->init(
+        {
+            { GL_TIME_ELAPSED, 9 },
+            { GL_TRANSFORM_FEEDBACK_OVERFLOW, 6 },
+            { GL_VERTICES_SUBMITTED, 6 },
+            { GL_PRIMITIVES_SUBMITTED, 6 },
+            { GL_VERTEX_SHADER_INVOCATIONS, 6 },
+            { GL_SAMPLES_PASSED, 6 },
+            { GL_ANY_SAMPLES_PASSED, 6 },
+            { GL_PRIMITIVES_GENERATED, 6 },
+            { GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, 6 },
+            { GL_ANY_SAMPLES_PASSED_CONSERVATIVE, 6 },
+            { GL_TESS_CONTROL_SHADER_PATCHES, 6},
+            { GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6}
+        }
+    );
+
+    // Once OpenGL is ready for rendering, init CEGUI
+    if (config.gui.cegui.enabled) {
+        _GUIGLrenderer = &CEGUI::OpenGL3Renderer::create();
+        _GUIGLrenderer->enableExtraStateSettings(false);
+        _context.context().gui().setRenderer(*_GUIGLrenderer);
+    }
+
+    glClearColor(DefaultColours::BLACK.r,
+                 DefaultColours::BLACK.g,
+                 DefaultColours::BLACK.b,
+                 DefaultColours::BLACK.a);
+
+    _performanceQueries[to_base(QueryType::GPU_TIME)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TIME_ELAPSED, 6);
+    _performanceQueries[to_base(QueryType::VERTICES_SUBMITTED)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_VERTICES_SUBMITTED, 6);
+    _performanceQueries[to_base(QueryType::PRIMITIVES_GENERATED)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_PRIMITIVES_GENERATED, 6);
+    _performanceQueries[to_base(QueryType::TESSELLATION_PATCHES)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TESS_CONTROL_SHADER_PATCHES, 6);
+    _performanceQueries[to_base(QueryType::TESSELLATION_CTRL_INVOCATIONS)] = eastl::make_unique<glHardwareQueryRing>(_context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6);
+
+    // That's it. Everything should be ready for draw calls
+    Console::printfn(Locale::Get(_ID("START_OGL_API_OK")));
+    return ErrorCode::NO_ERR;
+}
+
+/// Clear everything that was setup in initRenderingAPI()
+void GL_API::closeRenderingAPI() {
+    if (_GUIGLrenderer) {
+        CEGUI::OpenGL3Renderer::destroy(*_GUIGLrenderer);
+        _GUIGLrenderer = nullptr;
+    }
+
+    glShaderProgram::DestroyStaticData();
+
+    // Destroy sampler objects
+    {
+        for (auto &sampler : s_samplerMap) {
+            glSamplerObject::destruct(sampler.second);
+        }
+        s_samplerMap.clear();
+    }
+    // Destroy the text rendering system
+    glfonsDelete(_fonsContext);
+    _fonsContext = nullptr;
+
+    _fonts.clear();
+    s_textureViewCache.destroy();
+    if (s_hardwareQueryPool != nullptr) {
+        s_hardwareQueryPool->destroy();
+        MemoryManager::DELETE(s_hardwareQueryPool);
+    }
+    for (GLUtil::GLMemory::DeviceAllocator& allocator : s_memoryAllocators) {
+        allocator.deallocate();
+    }
+    g_ContextPool.destroy();
+    s_vaoCache.clear();
+    s_stateTracker.reset();
+
+    s_bufferLockPool.clear();
 }
 
 /// Prepare the GPU for rendering a frame
@@ -169,7 +589,7 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
     }
     _swapBufferTimer.stop();
 
-    for (U32 i = 0u; i < GL_API::g_LockFrameLifetime - 1; ++i) {
+    for (U32 i = 0u; i < GL_API::s_LockFrameLifetime - 1; ++i) {
         s_fenceSyncCounter[i] = s_fenceSyncCounter[i + 1];
     }
 
@@ -234,46 +654,10 @@ void GL_API::endFrame(DisplayWindow& window, const bool global) {
     }
 }
 
-const PerformanceMetrics& GL_API::getPerformanceMetrics() const noexcept {
-    return _perfMetrics;
-}
-
 void GL_API::idle([[maybe_unused]] const bool fast) {
     glShaderProgram::Idle(_context.context());
 }
 
-/// Try to find the requested font in the font cache. Load on cache miss.
-I32 GL_API::getFont(const Str64& fontName) {
-    if (_fontCache.first.compare(fontName) != 0) {
-        _fontCache.first = fontName;
-        const U64 fontNameHash = _ID(fontName.c_str());
-        // Search for the requested font by name
-        const auto& it = _fonts.find(fontNameHash);
-        // If we failed to find it, it wasn't loaded yet
-        if (it == std::cend(_fonts)) {
-            // Fonts are stored in the general asset directory -> in the GUI
-            // subfolder -> in the fonts subfolder
-            ResourcePath fontPath(Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath);
-            fontPath += fontName.c_str();
-            // We use FontStash to load the font file
-            _fontCache.second = fonsAddFont(_fonsContext, fontName.c_str(), fontPath.c_str());
-            // If the font is invalid, inform the user, but map it anyway, to avoid
-            // loading an invalid font file on every request
-            if (_fontCache.second == FONS_INVALID) {
-                Console::errorfn(Locale::Get(_ID("ERROR_FONT_FILE")), fontName.c_str());
-            }
-            // Save the font in the font cache
-            hashAlg::insert(_fonts, fontNameHash, _fontCache.second);
-            
-        } else {
-            _fontCache.second = it->second;
-        }
-
-    }
-
-    // Return the font
-    return _fontCache.second;
-}
 
 /// Text rendering is handled exclusively by Mikko Mononen's FontStash library (https://github.com/memononen/fontstash)
 /// with his OpenGL frontend adapted for core context profiles
@@ -412,63 +796,6 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
     }
 }
 
-ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
-    OPTICK_EVENT();
-    GLStateTracker* stateTracker = GetStateTracker();
-
-    if (stateTracker->_activePipeline && *stateTracker->_activePipeline == pipeline) {
-        return ShaderResult::OK;
-    }
-    stateTracker->_activePipeline = &pipeline;
-
-    const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
-    {
-        OPTICK_EVENT("Set Vertex Format");
-        stateTracker->setVertexFormat(pipelineDescriptor._primitiveTopology,
-                                      pipeline.vertexFormatHash(),
-                                      pipelineDescriptor._vertexFormat);
-    }
-    {
-        OPTICK_EVENT("Set Raster State");
-        // Set the proper render states
-        const size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
-        // Passing 0 is a perfectly acceptable way of enabling the default render state block
-        if (stateTracker->setStateBlock(stateBlockHash) == GLStateTracker::BindResult::FAILED) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-    }
-    {
-        OPTICK_EVENT("Set Blending");
-        U16 i = 0u;
-        stateTracker->setBlendColour(pipelineDescriptor._blendStates._blendColour);
-        for (const BlendingSettings& blendState : pipelineDescriptor._blendStates._settings) {
-            stateTracker->setBlending(i++, blendState);
-        }
-    }
-
-    ShaderResult ret = ShaderResult::Failed;
-    {
-        OPTICK_EVENT("Set Shader Program");
-        ShaderProgram* program = ShaderProgram::FindShaderProgram(pipelineDescriptor._shaderProgramHandle);
-        if (program != nullptr) {
-            glShaderProgram& glProgram = static_cast<glShaderProgram&>(*program);
-            // We need a valid shader as no fixed function pipeline is available
-            // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
-            ret = Attorney::GLAPIShaderProgram::bind(glProgram);
-        }
-
-        if (ret != ShaderResult::OK) {
-            if (stateTracker->setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-            if (stateTracker->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-            stateTracker->_activePipeline = nullptr;
-        }
-    }
-    return ret;
-}
 
 bool GL_API::draw(const GenericDrawCommand& cmd) const {
     OPTICK_EVENT();
@@ -498,88 +825,6 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
     }
 
     return true;
-}
-
-void GL_API::PushDebugMessage(const char* message) {
-    OPTICK_EVENT();
-
-    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, static_cast<GLuint>(_ID(message)), -1, message);
-    }
-    assert(GetStateTracker()->_debugScopeDepth < GetStateTracker()->_debugScope.size());
-    GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth++] = message;
-}
-
-void GL_API::PopDebugMessage() {
-    OPTICK_EVENT();
-
-    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-        glPopDebugGroup();
-    }
-    GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = "";
-}
-
-SyncObject_uptr& GL_API::CreateSyncObject(const bool isRetry) {
-    if (isRetry) {
-        const U32 frameID = GFXDevice::FrameCount();
-
-        for (SyncObject_uptr& syncObject : s_bufferLockPool) {
-            if (syncObject->_fence != nullptr) {
-                ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
-                // Check again to avoid race conditions
-                if (syncObject->_fence != nullptr &&
-                    syncObject->_frameID < frameID && 
-                    frameID - syncObject->_frameID >= GL_API::g_LockFrameLifetime) 
-                {
-                    syncObject->reset();
-                }
-            }
-        }
-    }
-
-    for (SyncObject_uptr& syncObject : s_bufferLockPool) {
-        if (syncObject->_fence == nullptr) {
-            ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
-            // Check again to avoid race conditions
-            if (syncObject->_fence == nullptr) {
-                syncObject->_fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-                syncObject->_frameID = GFXDevice::FrameCount();
-                GL_API::s_fenceSyncCounter[g_LockFrameLifetime - 1u] += 1u;
-                return syncObject;
-            }
-        }
-    }
-
-    if (!isRetry) {
-        return CreateSyncObject(true);
-    }
-
-    s_bufferLockPool.emplace_back(MOV(eastl::make_unique<SyncObject>()));
-    return CreateSyncObject(false);
-}
-
-void GL_API::FlushMidBufferLockQueue(SyncObject_uptr& syncObj) {
-    OPTICK_EVENT();
-
-    for (const BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
-        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, syncObj)) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-    }
-    s_bufferLockQueueMidFlush.resize(0);
-}
-
-void GL_API::FlushEndBufferLockQueue(SyncObject_uptr& syncObj) {
-    OPTICK_EVENT();
-
-    FlushMidBufferLockQueue(syncObj);
-
-    for (const BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
-        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, syncObj)) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-    }
-    s_bufferLockQueueEndOfBuffer.resize(0);
 }
 
 void GL_API::preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) {
@@ -970,33 +1215,6 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
     }
 }
 
-void GL_API::RegisterBufferLock(const BufferLockEntry&& data, const ShaderBufferLockType lockType) {
-    assert(Runtime::isMainThread());
-    if (lockType == ShaderBufferLockType::IMMEDIATE) {
-        if (!data._buffer->lockByteRange(data._offset, data._length, CreateSyncObject())) {
-            NOP();
-        }
-    } else if (lockType == ShaderBufferLockType::AFTER_DRAW_COMMANDS) {
-        for (BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
-            if (lockEntry._buffer->getGUID() == data._buffer->getGUID()) {
-                lockEntry._offset = std::min(lockEntry._offset, data._offset);
-                lockEntry._length = std::max(lockEntry._length, data._length);
-                return;
-            }
-        }
-        s_bufferLockQueueMidFlush.push_back(data);
-    } else /* if (lockType == ShaderBufferLockType::LockType::AFTER_COMMAND_BUFFER_FLUSH*/ {
-        for (BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
-            if (lockEntry._buffer->getGUID() == data._buffer->getGUID()) {
-                lockEntry._offset = std::min(lockEntry._offset, data._offset);
-                lockEntry._length = std::max(lockEntry._length, data._length);
-                return;
-            }
-        }
-        s_bufferLockQueueEndOfBuffer.push_back(data);
-    }
-}
-
 void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     OPTICK_EVENT();
 
@@ -1007,6 +1225,119 @@ void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& c
         OPTICK_EVENT("GL_FLUSH");
         glFlush();
     }
+}
+
+vec2<U16> GL_API::getDrawableSize(const DisplayWindow& window) const noexcept {
+    int w = 1, h = 1;
+    SDL_GL_GetDrawableSize(window.getRawWindow(), &w, &h);
+    return vec2<U16>(w, h);
+}
+
+U32 GL_API::getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const {
+    return to_U32(static_cast<const CEGUI::OpenGLTexture&>(textureIn).getOpenGLTexture());
+}
+
+void GL_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) {
+    // Double check so that we don't run into a race condition!
+    ScopedLock<Mutex> lock(GLUtil::s_glSecondaryContextMutex);
+    assert(SDL_GL_GetCurrentContext() == NULL);
+
+    // This also makes the context current
+    assert(GLUtil::s_glSecondaryContext == nullptr && "GL_API::syncToThread: double init context for current thread!");
+    [[maybe_unused]] const bool ctxFound = g_ContextPool.getAvailableContext(GLUtil::s_glSecondaryContext);
+    assert(ctxFound && "GL_API::syncToThread: context not found for current thread!");
+
+    SDL_GL_MakeCurrent(GLUtil::s_glMainRenderWindow->getRawWindow(), GLUtil::s_glSecondaryContext);
+    glbinding::Binding::initialize([](const char* proc) noexcept {
+        return (glbinding::ProcAddress)SDL_GL_GetProcAddress(proc);
+    });
+    
+    // Enable OpenGL debug callbacks for this context as well
+    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        // Debug callback in a separate thread requires a flag to distinguish it from the main thread's callbacks
+        glDebugMessageCallback((GLDEBUGPROC)GLUtil::DebugCallback, GLUtil::s_glSecondaryContext);
+    }
+
+    glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
+}
+
+/// Try to find the requested font in the font cache. Load on cache miss.
+I32 GL_API::getFont(const Str64& fontName) {
+    if (_fontCache.first.compare(fontName) != 0) {
+        _fontCache.first = fontName;
+        const U64 fontNameHash = _ID(fontName.c_str());
+        // Search for the requested font by name
+        const auto& it = _fonts.find(fontNameHash);
+        // If we failed to find it, it wasn't loaded yet
+        if (it == std::cend(_fonts)) {
+            // Fonts are stored in the general asset directory -> in the GUI
+            // subfolder -> in the fonts subfolder
+            ResourcePath fontPath(Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath);
+            fontPath += fontName.c_str();
+            // We use FontStash to load the font file
+            _fontCache.second = fonsAddFont(_fonsContext, fontName.c_str(), fontPath.c_str());
+            // If the font is invalid, inform the user, but map it anyway, to avoid
+            // loading an invalid font file on every request
+            if (_fontCache.second == FONS_INVALID) {
+                Console::errorfn(Locale::Get(_ID("ERROR_FONT_FILE")), fontName.c_str());
+            }
+            // Save the font in the font cache
+            hashAlg::insert(_fonts, fontNameHash, _fontCache.second);
+            
+        } else {
+            _fontCache.second = it->second;
+        }
+
+    }
+
+    // Return the font
+    return _fontCache.second;
+}
+
+/// Reset as much of the GL default state as possible within the limitations given
+void GL_API::clearStates(const DisplayWindow& window, GLStateTracker* stateTracker, const bool global) const {
+    if (global) {
+        if (stateTracker->bindTextures(0, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, TextureType::COUNT, nullptr, nullptr) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+        stateTracker->setPixelPackUnpackAlignment();
+        stateTracker->_activePixelBuffer = nullptr;
+    }
+
+    if (stateTracker->setActiveVAO(0) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    if (stateTracker->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, 0) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    if (stateTracker->setActiveFB(RenderTarget::RenderTargetUsage::RT_READ_WRITE, 0) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    stateTracker->_activeClearColour.set(window.clearColour());
+    const U8 blendCount = to_U8(stateTracker->_blendEnabled.size());
+    for (U8 i = 0u; i < blendCount; ++i) {
+        stateTracker->setBlending(i, {});
+    }
+    stateTracker->setBlendColour({ 0u, 0u, 0u, 0u });
+
+    const vec2<U16>& drawableSize = _context.getDrawableSize(window);
+    stateTracker->setScissor({ 0, 0, drawableSize.width, drawableSize.height });
+
+    stateTracker->_activePipeline = nullptr;
+    stateTracker->_activeRenderTarget = nullptr;
+    if (stateTracker->setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    if (stateTracker->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+    if (stateTracker->setStateBlock(RenderStateBlock::DefaultHash()) == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+
+    stateTracker->setDepthWrite(true);
 }
 
 GLStateTracker::BindResult GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, const U8 offset, U8 count) const {
@@ -1157,6 +1488,97 @@ GLStateTracker::BindResult GL_API::makeTextureViewsResidentInternal(const Textur
     return result;
 }
 
+bool GL_API::setViewport(const Rect<I32>& viewport) {
+    return GetStateTracker()->setViewport(viewport);
+}
+
+ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
+    OPTICK_EVENT();
+    GLStateTracker* stateTracker = GetStateTracker();
+
+    if (stateTracker->_activePipeline && *stateTracker->_activePipeline == pipeline) {
+        return ShaderResult::OK;
+    }
+    stateTracker->_activePipeline = &pipeline;
+
+    const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
+    {
+        OPTICK_EVENT("Set Vertex Format");
+        stateTracker->setVertexFormat(pipelineDescriptor._primitiveTopology,
+                                      pipeline.vertexFormatHash(),
+                                      pipelineDescriptor._vertexFormat);
+    }
+    {
+        OPTICK_EVENT("Set Raster State");
+        // Set the proper render states
+        const size_t stateBlockHash = pipelineDescriptor._stateHash == 0u ? _context.getDefaultStateBlock(false) : pipelineDescriptor._stateHash;
+        // Passing 0 is a perfectly acceptable way of enabling the default render state block
+        if (stateTracker->setStateBlock(stateBlockHash) == GLStateTracker::BindResult::FAILED) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    }
+    {
+        OPTICK_EVENT("Set Blending");
+        U16 i = 0u;
+        stateTracker->setBlendColour(pipelineDescriptor._blendStates._blendColour);
+        for (const BlendingSettings& blendState : pipelineDescriptor._blendStates._settings) {
+            stateTracker->setBlending(i++, blendState);
+        }
+    }
+
+    ShaderResult ret = ShaderResult::Failed;
+    {
+        OPTICK_EVENT("Set Shader Program");
+        ShaderProgram* program = ShaderProgram::FindShaderProgram(pipelineDescriptor._shaderProgramHandle);
+        if (program != nullptr) {
+            glShaderProgram& glProgram = static_cast<glShaderProgram&>(*program);
+            // We need a valid shader as no fixed function pipeline is available
+            // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
+            ret = Attorney::GLAPIShaderProgram::bind(glProgram);
+        }
+
+        if (ret != ShaderResult::OK) {
+            if (stateTracker->setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+            if (stateTracker->setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+            stateTracker->_activePipeline = nullptr;
+        }
+    }
+    return ret;
+}
+
+/******************************************************************************************************************************/
+/****************************************************STATIC METHODS************************************************************/
+/******************************************************************************************************************************/
+
+GLStateTracker* GL_API::GetStateTracker() noexcept {
+    DIVIDE_ASSERT(s_stateTracker != nullptr);
+
+    return s_stateTracker.get();
+}
+
+GLUtil::GLMemory::GLMemoryType GL_API::GetMemoryTypeForUsage(const GLenum usage) noexcept {
+    assert(usage != GL_NONE);
+    switch (usage) {
+        case GL_UNIFORM_BUFFER:
+        case GL_SHADER_STORAGE_BUFFER:
+            return GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER;
+        case GL_ELEMENT_ARRAY_BUFFER:
+            return GLUtil::GLMemory::GLMemoryType::INDEX_BUFFER;
+        case GL_ARRAY_BUFFER:
+            return GLUtil::GLMemory::GLMemoryType::VERTEX_BUFFER;
+    };
+
+    return GLUtil::GLMemory::GLMemoryType::OTHER;
+}
+
+GLUtil::GLMemory::DeviceAllocator& GL_API::GetMemoryAllocator(const GLUtil::GLMemory::GLMemoryType memoryType) noexcept {
+    return s_memoryAllocators[to_base(memoryType)];
+}
+
 bool GL_API::MakeTexturesResidentInternal(const SamplerAddress address) {
     if (!ShaderProgram::s_UseBindlessTextures) {
         return true;
@@ -1211,9 +1633,259 @@ bool GL_API::MakeTexturesNonResidentInternal(const SamplerAddress address) {
 
     return true;
 }
+void GL_API::QueueFlush() noexcept {
+    s_glFlushQueued.store(true);
+}
 
-bool GL_API::setViewport(const Rect<I32>& viewport) {
-    return GetStateTracker()->setViewport(viewport);
+SyncObject_uptr& GL_API::CreateSyncObject(const bool isRetry) {
+    if (isRetry) {
+        const U32 frameID = GFXDevice::FrameCount();
+
+        for (SyncObject_uptr& syncObject : s_bufferLockPool) {
+            if (syncObject->_fence != nullptr) {
+                ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
+                // Check again to avoid race conditions
+                if (syncObject->_fence != nullptr &&
+                    syncObject->_frameID < frameID && 
+                    frameID - syncObject->_frameID >= GL_API::s_LockFrameLifetime) 
+                {
+                    syncObject->reset();
+                }
+            }
+        }
+    }
+
+    for (SyncObject_uptr& syncObject : s_bufferLockPool) {
+        if (syncObject->_fence == nullptr) {
+            ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
+            // Check again to avoid race conditions
+            if (syncObject->_fence == nullptr) {
+                syncObject->_frameID = GFXDevice::FrameCount();
+                syncObject->_fence = GL_API::CreateFenceSync();
+                return syncObject;
+            }
+        }
+    }
+
+    if (!isRetry) {
+        return CreateSyncObject(true);
+    }
+
+    s_bufferLockPool.emplace_back(MOV(eastl::make_unique<SyncObject>()));
+    return CreateSyncObject(false);
+}
+
+void GL_API::FlushMidBufferLockQueue(SyncObject_uptr& syncObj) {
+    OPTICK_EVENT();
+
+    for (const BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
+        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, syncObj)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    }
+    s_bufferLockQueueMidFlush.resize(0);
+}
+
+void GL_API::FlushEndBufferLockQueue(SyncObject_uptr& syncObj) {
+    OPTICK_EVENT();
+
+    FlushMidBufferLockQueue(syncObj);
+
+    for (const BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
+        if (!lockEntry._buffer->lockByteRange(lockEntry._offset, lockEntry._length, syncObj)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    }
+    s_bufferLockQueueEndOfBuffer.resize(0);
+}
+
+void GL_API::PushDebugMessage(const char* message) {
+    OPTICK_EVENT();
+
+    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, static_cast<GLuint>(_ID(message)), -1, message);
+    }
+    assert(GetStateTracker()->_debugScopeDepth < GetStateTracker()->_debugScope.size());
+    GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth++] = message;
+}
+
+void GL_API::PopDebugMessage() {
+    OPTICK_EVENT();
+
+    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+        glPopDebugGroup();
+    }
+    GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = "";
+}
+
+bool GL_API::DeleteShaderPrograms(const GLuint count, GLuint* programs) {
+    if (count > 0 && programs != nullptr) {
+        for (GLuint i = 0; i < count; ++i) {
+            if (GetStateTracker()->_activeShaderProgram == programs[i]) {
+                if (GetStateTracker()->setActiveProgram(0u) == GLStateTracker::BindResult::FAILED) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            }
+            glDeleteProgram(programs[i]);
+        }
+        
+        memset(programs, 0, count * sizeof(GLuint));
+        return true;
+    }
+    return false;
+}
+
+bool GL_API::DeleteTextures(const GLuint count, GLuint* textures, const TextureType texType) {
+    if (count > 0 && textures != nullptr) {
+        
+        for (GLuint i = 0; i < count; ++i) {
+            const GLuint crtTex = textures[i];
+            if (crtTex != 0) {
+                GLStateTracker* stateTracker = GetStateTracker();
+
+                auto bindingIt = stateTracker->_textureBoundMap[to_base(texType)];
+                for (GLuint& handle : bindingIt) {
+                    if (handle == crtTex) {
+                        handle = 0u;
+                    }
+                }
+
+                for (ImageBindSettings& settings : stateTracker->_imageBoundMap) {
+                    if (settings._texture == crtTex) {
+                        settings.reset();
+                    }
+                }
+            }
+        }
+        glDeleteTextures(count, textures);
+        memset(textures, 0, count * sizeof(GLuint));
+        return true;
+    }
+
+    return false;
+}
+
+bool GL_API::DeleteSamplers(const GLuint count, GLuint* samplers) {
+    if (count > 0 && samplers != nullptr) {
+
+        for (GLuint i = 0; i < count; ++i) {
+            const GLuint crtSampler = samplers[i];
+            if (crtSampler != 0) {
+                for (GLuint& boundSampler : GetStateTracker()->_samplerBoundMap) {
+                    if (boundSampler == crtSampler) {
+                        boundSampler = 0;
+                    }
+                }
+            }
+        }
+        glDeleteSamplers(count, samplers);
+        memset(samplers, 0, count * sizeof(GLuint));
+        return true;
+    }
+
+    return false;
+}
+
+
+bool GL_API::DeleteBuffers(const GLuint count, GLuint* buffers) {
+    if (count > 0 && buffers != nullptr) {
+        for (GLuint i = 0; i < count; ++i) {
+            const GLuint crtBuffer = buffers[i];
+            GLStateTracker* stateTracker = GetStateTracker();
+            for (GLuint& boundBuffer : stateTracker->_activeBufferID) {
+                if (boundBuffer == crtBuffer) {
+                    boundBuffer = GLUtil::k_invalidObjectID;
+                }
+            }
+            for (auto& boundBuffer : stateTracker->_activeVAOIB) {
+                if (boundBuffer.second == crtBuffer) {
+                    boundBuffer.second = GLUtil::k_invalidObjectID;
+                }
+            }
+        }
+
+        glDeleteBuffers(count, buffers);
+        memset(buffers, 0, count * sizeof(GLuint));
+        return true;
+    }
+
+    return false;
+}
+
+bool GL_API::DeleteVAOs(const GLuint count, GLuint* vaos) {
+    if (count > 0u && vaos != nullptr) {
+        for (GLuint i = 0u; i < count; ++i) {
+            if (GetStateTracker()->_activeVAOID == vaos[i]) {
+                GetStateTracker()->_activeVAOID = GLUtil::k_invalidObjectID;
+                break;
+            }
+        }
+
+        glDeleteVertexArrays(count, vaos);
+        memset(vaos, 0, count * sizeof(GLuint));
+        return true;
+    }
+    return false;
+}
+
+bool GL_API::DeleteFramebuffers(const GLuint count, GLuint* framebuffers) {
+    if (count > 0 && framebuffers != nullptr) {
+        for (GLuint i = 0; i < count; ++i) {
+            const GLuint crtFB = framebuffers[i];
+            for (GLuint& activeFB : GetStateTracker()->_activeFBID) {
+                if (activeFB == crtFB) {
+                    activeFB = GLUtil::k_invalidObjectID;
+                }
+            }
+        }
+        glDeleteFramebuffers(count, framebuffers);
+        memset(framebuffers, 0, count * sizeof(GLuint));
+        return true;
+    }
+    return false;
+}
+
+void GL_API::RegisterBufferLock(const BufferLockEntry&& data, const ShaderBufferLockType lockType) {
+    assert(Runtime::isMainThread());
+    if (lockType == ShaderBufferLockType::IMMEDIATE) {
+        if (!data._buffer->lockByteRange(data._offset, data._length, CreateSyncObject())) {
+            NOP();
+        }
+    } else if (lockType == ShaderBufferLockType::AFTER_DRAW_COMMANDS) {
+        for (BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
+            if (lockEntry._buffer->getGUID() == data._buffer->getGUID()) {
+                lockEntry._offset = std::min(lockEntry._offset, data._offset);
+                lockEntry._length = std::max(lockEntry._length, data._length);
+                return;
+            }
+        }
+        s_bufferLockQueueMidFlush.push_back(data);
+    } else /* if (lockType == ShaderBufferLockType::LockType::AFTER_COMMAND_BUFFER_FLUSH*/ {
+        for (BufferLockEntry& lockEntry : s_bufferLockQueueEndOfBuffer) {
+            if (lockEntry._buffer->getGUID() == data._buffer->getGUID()) {
+                lockEntry._offset = std::min(lockEntry._offset, data._offset);
+                lockEntry._length = std::max(lockEntry._length, data._length);
+                return;
+            }
+        }
+        s_bufferLockQueueEndOfBuffer.push_back(data);
+    }
+}
+
+IMPrimitive* GL_API::NewIMP(Mutex& lock, GFXDevice& parent) {
+    ScopedLock<Mutex> w_lock(lock);
+    return s_IMPrimitivePool.newElement(parent);
+}
+
+bool GL_API::DestroyIMP(Mutex& lock, IMPrimitive*& primitive) {
+    if (primitive != nullptr) {
+        ScopedLock<Mutex> w_lock(lock);
+        s_IMPrimitivePool.deleteElement(static_cast<glIMPrimitive*>(primitive));
+        primitive = nullptr;
+        return true;
+    }
+
+    return false;
 }
 
 /// Return the OpenGL sampler object's handle for the given hash value
@@ -1247,24 +1919,26 @@ GLuint GL_API::GetSamplerHandle(const size_t samplerHash) {
     return 0u;
 }
 
-U32 GL_API::getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const {
-    return to_U32(static_cast<const CEGUI::OpenGLTexture&>(textureIn).getOpenGLTexture());
+glHardwareQueryPool* GL_API::GetHardwareQueryPool() noexcept {
+    return s_hardwareQueryPool;
 }
 
-IMPrimitive* GL_API::NewIMP(Mutex& lock, GFXDevice& parent) {
-    ScopedLock<Mutex> w_lock(lock);
-    return s_IMPrimitivePool.newElement(parent);
+GLsync GL_API::CreateFenceSync() {
+    OPTICK_EVENT("Create Sync");
+
+    DIVIDE_ASSERT(s_fenceSyncCounter[s_LockFrameLifetime - 1u] < std::numeric_limits<U32>::max());
+
+    ++s_fenceSyncCounter[s_LockFrameLifetime - 1u];
+    return glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 }
 
-bool GL_API::DestroyIMP(Mutex& lock, IMPrimitive*& primitive) {
-    if (primitive != nullptr) {
-        ScopedLock<Mutex> w_lock(lock);
-        s_IMPrimitivePool.deleteElement(static_cast<glIMPrimitive*>(primitive));
-        primitive = nullptr;
-        return true;
-    }
+void GL_API::DestroyFenceSync(GLsync& sync) {
+    OPTICK_EVENT("Delete Sync");
 
-    return false;
+    DIVIDE_ASSERT(s_fenceSyncCounter[s_LockFrameLifetime - 1u] > 0u);
+
+    --s_fenceSyncCounter[s_LockFrameLifetime - 1u];
+    glDeleteSync(sync);
+    sync = nullptr;
 }
-
 };

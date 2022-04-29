@@ -2,6 +2,7 @@
 
 #include "Headers/EditorComponent.h"
 
+#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Editor/Headers/Editor.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"

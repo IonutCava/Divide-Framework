@@ -32,6 +32,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #ifndef _ECS_SYSTEM_INL_
 #define _ECS_SYSTEM_INL_
+
+#include "Core/Headers/ByteBuffer.h"
+
 namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION_ECS_MANAGER = 1u;
 

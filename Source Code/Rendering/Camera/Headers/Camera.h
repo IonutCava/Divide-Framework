@@ -211,7 +211,7 @@ class Camera : public Resource {
    protected:
     virtual bool updateViewMatrix() noexcept;
     virtual bool updateProjection() noexcept;
-    virtual void update(F32 deltaTimeMS) noexcept;
+    virtual void update() noexcept;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Camera"; }
 
@@ -237,7 +237,6 @@ class Camera : public Resource {
 
     U32 _updateCameraId = 0u;
     CameraType _type = CameraType::COUNT;
-
     // Since quaternion reflection is complicated and not really needed now, 
     // handle reflections a-la Ogre -Ionut
     bool _reflectionActive = false;
@@ -246,16 +245,18 @@ class Camera : public Resource {
     bool _frustumLocked = false;
     bool _frustumDirty = true;
 
+    static F32 s_lastFrameTimeSec;
+
    // Camera pool
    public:
-    static void update(U64 deltaTimeUS);
-    static void initPool();
-    static void destroyPool();
+    static void Update(U64 deltaTimeUS);
+    static void InitPool();
+    static void DestroyPool();
 
     template <typename T>
     typename std::enable_if<std::is_base_of<Camera, T>::value, bool>::type
-    static destroyCamera(T*& camera) {
-        if (destroyCameraInternal(camera)) {
+    static DestroyCamera(T*& camera) {
+        if (DestroyCameraInternal(camera)) {
             camera = nullptr;
             return true;
         }
@@ -265,29 +266,29 @@ class Camera : public Resource {
 
     template <typename T = Camera>
     typename std::enable_if<std::is_base_of<Camera, T>::value, T*>::type
-    static utilityCamera(const UtilityCamera type) {
-        return static_cast<T*>(utilityCameraInternal(type));
+    static GetUtilityCamera(const UtilityCamera type) {
+        return static_cast<T*>(GetUtilityCameraInternal(type));
     }
 
     template <typename T>
-    static T* createCamera(const Str256& cameraName) {
-        return static_cast<T*>(createCameraInternal(cameraName, T::Type()));
+    static T* CreateCamera(const Str256& cameraName) {
+        return static_cast<T*>(CreateCameraInternal(cameraName, T::Type()));
     }
 
     template <typename T = Camera>
     typename std::enable_if<std::is_base_of<Camera, T>::value, T*>::type
-    static findCamera(const U64 nameHash) {
-        return static_cast<T*>(findCameraInternal(nameHash));
+    static FindCamera(const U64 nameHash) {
+        return static_cast<T*>(FindCameraInternal(nameHash));
     }
 
-    static bool removeChangeListener(U32 id);
-    static U32  addChangeListener(const CameraListener& f);
+    static bool RemoveChangeListener(U32 id);
+    static U32  AddChangeListener(const CameraListener& f);
 
    private:
-     static bool    destroyCameraInternal(Camera* camera);
-     static Camera* utilityCameraInternal(UtilityCamera type);
-     static Camera* createCameraInternal(const Str256& cameraName, CameraType type);
-     static Camera* findCameraInternal(U64 nameHash);
+     static bool    DestroyCameraInternal(Camera* camera);
+     static Camera* GetUtilityCameraInternal(UtilityCamera type);
+     static Camera* CreateCameraInternal(const Str256& cameraName, CameraType type);
+     static Camera* FindCameraInternal(U64 nameHash);
 
    private:
     using CameraPool = vector<Camera*>;
@@ -296,7 +297,6 @@ class Camera : public Resource {
 
     static U32 s_changeCameraId;
     static ListenerMap s_changeCameraListeners;
-
     static CameraPool s_cameraPool;
     static SharedMutex s_cameraPoolLock;
 };
@@ -311,7 +311,6 @@ protected:
         : Camera(name, Type(), eye)
     {
     }
-    bool unload() noexcept override { return Camera::unload(); }
 
 public:
     static constexpr CameraType Type() noexcept { return CameraType::STATIC; }

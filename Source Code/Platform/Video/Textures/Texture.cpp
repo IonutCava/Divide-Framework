@@ -2,6 +2,7 @@
 
 #include "Headers/Texture.h"
 
+#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/PlatformContext.h"

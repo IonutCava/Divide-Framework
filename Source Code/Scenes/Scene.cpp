@@ -3,6 +3,7 @@
 #include "Headers/Scene.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
+#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/ParamHandler.h"
@@ -53,8 +54,8 @@
 namespace Divide {
 
 namespace {
-    constexpr F32 DEFAULT_CAMERA_MOVE_SPEED = 40.f;
-    constexpr F32 DEFAULT_CAMERA_TURN_SPEED = 50.f;
+    constexpr F32 DEFAULT_CAMERA_MOVE_SPEED = 4.f;
+    constexpr F32 DEFAULT_CAMERA_TURN_SPEED = 5.f;
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
     constexpr const char* const g_defaultPlayerName = "Player_%d";
 }
@@ -674,7 +675,7 @@ void Scene::toggleFlashlight(const PlayerIndex idx) {
 
 SceneGraphNode* Scene::addSky(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName) {
     ResourceDescriptor skyDescriptor("DefaultSky_"+ nodeName);
-    skyDescriptor.ID(to_U32(std::floor(Camera::utilityCamera(Camera::UtilityCamera::DEFAULT)->getZPlanes().y * 2)));
+    skyDescriptor.ID(to_U32(std::floor(Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->getZPlanes().y * 2)));
 
     std::shared_ptr<Sky> skyItem = CreateResource<Sky>(resourceCache(), skyDescriptor);
     DIVIDE_ASSERT(skyItem != nullptr, "Scene::addSky error: Could not create sky resource!");
@@ -725,7 +726,7 @@ void Scene::addWater(SceneGraphNode* parentNode, const boost::property_tree::ptr
 SceneGraphNode* Scene::addInfPlane(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str64& nodeName) {
     ResourceDescriptor planeDescriptor("InfPlane_" + nodeName);
 
-    const Camera* baseCamera = Camera::utilityCamera(Camera::UtilityCamera::DEFAULT);
+    const Camera* baseCamera = Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT);
 
     const U32 cameraFarPlane = to_U32(baseCamera->getZPlanes().max);
     planeDescriptor.data().set(cameraFarPlane, cameraFarPlane, 0u);
@@ -1010,7 +1011,7 @@ bool Scene::load() {
     setState(ResourceState::RES_LOADING);
     std::atomic_init(&_loadingTasks, 0u);
 
-    FreeFlyCamera* baseCamera = Camera::utilityCamera<FreeFlyCamera>(Camera::UtilityCamera::DEFAULT);
+    FreeFlyCamera* baseCamera = Camera::GetUtilityCamera<FreeFlyCamera>(Camera::UtilityCamera::DEFAULT);
     const F32 hFoV = _context.config().runtime.horizontalFOV;
     const F32 vFoV = Angle::to_VerticalFoV(hFoV, to_D64(baseCamera->getAspectRatio()));
     baseCamera->setProjection(vFoV, { Camera::s_minNearZ, _context.config().runtime.cameraViewDistance });
@@ -1293,19 +1294,17 @@ bool Scene::updateCameraControls(const U64 deltaTimeUS, const PlayerIndex idx) c
         return false;
     }
 
-    const F32 timeFactor = Time::MicrosecondsToSeconds<F32>(deltaTimeUS) * 0.01f;
-
     FreeFlyCamera* cam = static_cast<FreeFlyCamera*>(camIn);
     SceneStatePerPlayer& playerState = state()->playerState(idx);
     bool updated = false;
     updated = cam->moveRelative(vec3<F32>(to_base(playerState.moveFB()),
                                           to_base(playerState.moveLR()),
-                                          to_base(playerState.moveUD())) * timeFactor) || updated;
+                                          to_base(playerState.moveUD()))) || updated;
 
     updated = cam->rotateRelative(vec3<F32>(to_base(playerState.angleUD()), //pitch
                                             to_base(playerState.angleLR()), //yaw
-                                            to_base(playerState.roll())) * timeFactor) || updated; //roll
-    updated = cam->zoom(to_base(playerState.zoom()) * timeFactor) || updated;
+                                            to_base(playerState.roll()))) || updated; //roll
+    updated = cam->zoom(to_base(playerState.zoom())) || updated;
 
     playerState.cameraUpdated(updated);
     if (updated) {

@@ -92,7 +92,7 @@ void main(void) {
     vec3 dvd_Normal = UnpackVec3(inNormalData);
     VAR._vertexW = dvd_WorldMatrixOverride * vec4(inVertexData, 1.0);
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
-    VAR._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_cameraPosition.xyz - VAR._vertexW.xyz);
+    VAR._viewDirectionWV = mat3(dvd_ViewMatrix) * normalize(dvd_CameraPosition - VAR._vertexW.xyz);
     NodeTransformData nodeData = dvd_Transforms[DVD_GL_BASE_INSTANCE];
     mat3 normalMatrixWV = mat3(dvd_ViewMatrix) * dvd_NormalMatrixW(nodeData);
     VAR._normalWV = normalize(normalMatrixWV * dvd_Normal);

@@ -649,7 +649,6 @@
     <ClCompile Include="../../Source Code/Physics\PhysX\PhysXSceneInterface.cpp" />
     <ClCompile Include="../../Source Code/Physics\PhysX\pxShapeScaling.cpp" />
     <ClCompile Include="../../Source Code/Physics\PXDevice.cpp" />
-    <ClCompile Include="../../Source Code/Rendering\Camera\CameraPool.cpp" />
     <ClCompile Include="../../Source Code/Rendering\Camera\FirstPersonCamera.cpp" />
     <ClCompile Include="../../Source Code/Rendering\Camera\FreeFlyCamera.cpp" />
     <ClCompile Include="../../Source Code/Rendering\Camera\Frustum.cpp" />
@@ -687,7 +686,6 @@
     <ClCompile Include="../../Source Code/Scripting\GameScript.cpp" />
     <ClCompile Include="../../Source Code/Scripting\Script.cpp" />
     <ClCompile Include="../../Source Code/Scripting\ScriptBindings.cpp" />
-    <ClCompile Include="../../Source Code/Rendering\Camera\CameraSnapshot.cpp" />
     <ClCompile Include="../../Source Code\Rendering\Lighting\Light.cpp" />
     <ClCompile Include="..\..\Source Code\ECS\Components\AnimationComponent.cpp" />
     <ClCompile Include="..\..\Source Code\ECS\Components\BoundsComponent.cpp" />

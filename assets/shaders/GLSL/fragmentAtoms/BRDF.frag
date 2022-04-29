@@ -17,9 +17,9 @@ vec3 ApplyFog(in vec3 rgb) // original color of the pixel
     const float b = dvd_fogDetails._colourAndDensity.a;
     if (b > M_EPSILON) {
         const float c = dvd_fogDetails._colourSunScatter.a;
-        const float rayDir = normalize(VAR._vertexW.xyz - dvd_cameraPosition.xyz).y;  // camera to point vector
-        const float distance = distance(VAR._vertexW.xyz, dvd_cameraPosition.xyz);    // camera to point distance
-        const float fogAmount = c * exp(-dvd_cameraPosition.y * b) * (1.f - exp(-distance * rayDir * b)) / (rayDir + M_EPSILON);
+        const float rayDir = normalize(VAR._vertexW.xyz - dvd_CameraPosition).y;  // camera to point vector
+        const float distance = distance(VAR._vertexW.xyz, dvd_CameraPosition);    // camera to point distance
+        const float fogAmount = c * exp(-dvd_CameraPosition.y * b) * (1.f - exp(-distance * rayDir * b)) / (rayDir + M_EPSILON);
         return mix(rgb, dvd_fogDetails._colourAndDensity.rgb, fogAmount);
     }
 

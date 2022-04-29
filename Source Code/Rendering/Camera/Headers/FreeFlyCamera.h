@@ -43,8 +43,6 @@ class FreeFlyCamera : public Camera {
     friend class Camera;
     explicit FreeFlyCamera(const Str256& name, CameraType type = Type(), const vec3<F32>& eye = VECTOR3_ZERO);
 
-    void update(F32 deltaTimeMS) noexcept override;
-
   public:
     void fromCamera(const Camera& camera) override;
 
@@ -60,7 +58,7 @@ class FreeFlyCamera : public Camera {
     /// to change
     /// the orientation
     void rotate(const vec3<F32>& axis, const Angle::DEGREES<F32> angle) {
-        rotate(Quaternion<F32>(axis, angle * _speed.turn));
+        rotate(Quaternion<F32>(axis, angle * getTurnSpeedFactor() * s_lastFrameTimeSec));
     }
     /// Yaw, Pitch and Roll call "rotate" with a appropriate quaternion for  each
     /// rotation.
@@ -92,11 +90,6 @@ class FreeFlyCamera : public Camera {
     void moveUp(const F32 factor) noexcept {
         move(0.0f, factor, 0.0f);
     }
-    /// Mouse sensitivity: amount of pixels per radian (this should be moved out
-    /// of the camera class)
-    void setMouseSensitivity(const F32 sensitivity) noexcept {
-        _mouseSensitivity = sensitivity;
-    }
 
     void setMoveSpeedFactor(const F32 moveSpeedFactor) noexcept {
         _speedFactor.move = moveSpeedFactor;
@@ -116,9 +109,9 @@ class FreeFlyCamera : public Camera {
         _fixedYawAxis = fixedAxis;
     }
 
-    F32 getTurnSpeedFactor() const noexcept { return _speedFactor.turn; }
-    F32 getMoveSpeedFactor() const noexcept { return _speedFactor.move; }
-    F32 getZoomSpeedFactor() const noexcept { return _speedFactor.zoom; }
+    inline [[nodiscard]] F32 getTurnSpeedFactor() const noexcept { return _speedFactor.turn; }
+    inline [[nodiscard]] F32 getMoveSpeedFactor() const noexcept { return _speedFactor.move; }
+    inline [[nodiscard]] F32 getZoomSpeedFactor() const noexcept { return _speedFactor.zoom; }
 
     void lockMovement(const bool state) noexcept { _movementLocked = state; }
 
@@ -136,10 +129,8 @@ class FreeFlyCamera : public Camera {
     void loadFromXML(const boost::property_tree::ptree& pt, string prefix = "") override;
 
    protected:
-     vec4<F32> _speedFactor = VECTOR4_UNIT;
-     vec4<F32> _speed = VECTOR4_ZERO;
+     vec3<F32> _speedFactor = VECTOR3_UNIT;
      vec3<F32> _fixedYawAxis = WORLD_Y_AXIS;
-     F32 _mouseSensitivity = 1.0f;
      bool _rotationLocked = false;
      bool _movementLocked = false;
      bool _yawFixed = false;

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/glShader.h"
+#include "Headers/glShaderProgram.h"
 
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"

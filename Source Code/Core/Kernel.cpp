@@ -295,7 +295,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
         Time::ScopedTimer timer2(_cameraMgrTimer);
         // Update cameras. Always use app timing as pausing time would freeze the cameras in place
         // ToDo: add a speed slider in the editor -Ionut
-        Camera::update(_timingData.appTimeDeltaUS());
+        Camera::Update(_timingData.appTimeDeltaUS());
     }
 
     if (_platformContext.mainWindow().minimized()) {
@@ -670,7 +670,7 @@ ErrorCode Kernel::initialize(const string& entryPoint) {
 
     Attorney::TextureKernel::UseTextureDDSCache(config.debug.useTextureDDSCache);
 
-    Camera::initPool();
+    Camera::InitPool();
     initError = _platformContext.gfx().initRenderingAPI(_argc, _argv, renderingAPI);
 
     // If we could not initialize the graphics device, exit
@@ -825,7 +825,7 @@ void Kernel::shutdown() {
 
     SceneEnvironmentProbePool::OnShutdown(_platformContext.gfx());
     _platformContext.terminate();
-    Camera::destroyPool();
+    Camera::DestroyPool();
     resourceCache()->clear();
     MemoryManager::SAFE_DELETE(_resourceCache);
 

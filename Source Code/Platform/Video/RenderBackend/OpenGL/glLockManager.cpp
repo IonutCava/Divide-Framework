@@ -27,10 +27,7 @@ void glLockManager::wait(const bool blockClient) {
     if (_defaultSync != nullptr) {
         U8 retryCount = 0u;
         Wait(_defaultSync, blockClient, false, retryCount);
-        OPTICK_EVENT("Delete Sync");
-        glDeleteSync(_defaultSync);
-        GL_API::s_fenceSyncCounter[GL_API::g_LockFrameLifetime - 1u] -= 1u;
-        _defaultSync = nullptr;
+        GL_API::DestroyFenceSync(_defaultSync);
     }
 }
  
@@ -39,8 +36,7 @@ void glLockManager::lock() {
 
     ScopedLock<SharedMutex> lock(_syncMutex);
     assert(_defaultSync == nullptr);
-    _defaultSync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-    GL_API::s_fenceSyncCounter[GL_API::g_LockFrameLifetime - 1u] += 1u;
+    _defaultSync = GL_API::CreateFenceSync();
 }
 
 bool glLockManager::Wait(const GLsync syncObj, const bool blockClient, const bool quickCheck, U8& retryCount) {

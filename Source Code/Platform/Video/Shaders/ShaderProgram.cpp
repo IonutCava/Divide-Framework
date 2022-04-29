@@ -265,19 +265,27 @@ namespace {
         return hash;
     }
 
-    [[nodiscard]] ResourcePath SpvCacheLocation() {
-        return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationSpv + Paths::g_buildTypeLocation;
+    [[nodiscard]] ResourcePath SpvCacheLocation(const bool targetVulkan) {
+        return Paths::g_cacheLocation + 
+               Paths::Shaders::g_cacheLocation + 
+               (targetVulkan ? Paths::Shaders::g_cacheLocationVK : Paths::Shaders::g_cacheLocationGL) +
+               Paths::Shaders::g_cacheLocationSpv +
+               Paths::g_buildTypeLocation;
     }
 
     [[nodiscard]] ResourcePath SpvTargetName(const Str256& fileName) {
         return ResourcePath{ fileName + "." + Paths::Shaders::g_SPIRVExt };
     }
 
-    [[nodiscard]] ResourcePath TxtCacheLocation() {
-        return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocationText + Paths::g_buildTypeLocation;
+    [[nodiscard]] ResourcePath TxtCacheLocation(const bool targetVulkan) {
+        return Paths::g_cacheLocation +
+               Paths::Shaders::g_cacheLocation +
+               (targetVulkan ? Paths::Shaders::g_cacheLocationVK : Paths::Shaders::g_cacheLocationGL) +
+               Paths::Shaders::g_cacheLocationText +
+               Paths::g_buildTypeLocation;
     }
 
-    [[nodiscard]] bool ValidateCache(const bool validateSPV, const Str256& sourceFileName, const Str256& targetFileName) {
+    [[nodiscard]] bool ValidateCache(const bool validateSPV, const Str256& sourceFileName, const Str256& targetFileName, const bool targetVulkan) {
         //"There are only two hard things in Computer Science: cache invalidation and naming things" - Phil Karlton
         //"There are two hard things in computer science: cache invalidation, naming things, and off-by-one errors." - Leon Bambrick
 
@@ -290,14 +298,14 @@ namespace {
         }
 
         if (validateSPV) {
-            const ResourcePath spvCacheFullPath = SpvCacheLocation() + SpvTargetName(targetFileName);
+            const ResourcePath spvCacheFullPath = SpvCacheLocation(targetVulkan) + SpvTargetName(targetFileName);
 
             // Check agains SPV cache file's timestamps;
             if (fileLastWriteTime(spvCacheFullPath, lastWriteTimeCache) != FileError::NONE || lastWriteTimeCache < lastWriteTime) {
                 return false;
             }
         } else {
-            const ResourcePath texCacheFullPath = TxtCacheLocation() + targetFileName;
+            const ResourcePath texCacheFullPath = TxtCacheLocation(targetVulkan) + targetFileName;
 
             // Do the same for the text cache
             if (fileLastWriteTime(texCacheFullPath, lastWriteTimeCache) != FileError::NONE || lastWriteTimeCache < lastWriteTime) {
@@ -307,21 +315,21 @@ namespace {
         return true;
     }
 
-    void DeleteSPIRVCache(const Str256& sourceFileName) {
-        if (deleteFile(SpvCacheLocation(), ResourcePath{ SpvTargetName(sourceFileName) }) != FileError::NONE) {
+    void DeleteSPIRVCache(const Str256& sourceFileName, const bool targetVulkan) {
+        if (deleteFile(SpvCacheLocation(targetVulkan), ResourcePath{ SpvTargetName(sourceFileName) }) != FileError::NONE) {
             NOP();
         }
-        if (deleteFile(SpvCacheLocation(), ResourcePath{ SpvTargetName(sourceFileName) + "." + Paths::Shaders::g_ReflectionExt }) != FileError::NONE) {
+        if (deleteFile(SpvCacheLocation(targetVulkan), ResourcePath{ SpvTargetName(sourceFileName) + "." + Paths::Shaders::g_ReflectionExt }) != FileError::NONE) {
             NOP();
         }
     }
     
-    void DeleteTextCache(const Str256& sourceFileName) {
+    void DeleteTextCache(const Str256& sourceFileName, const bool targetVulkan) {
         // Cache file and reflection file are out of sync so (attempt to) remove both.
-        if (deleteFile(TxtCacheLocation(), ResourcePath{ sourceFileName }) != FileError::NONE) {
+        if (deleteFile(TxtCacheLocation(targetVulkan), ResourcePath{ sourceFileName }) != FileError::NONE) {
             NOP();
         }
-        if (deleteFile(TxtCacheLocation(), ResourcePath{ sourceFileName + "." + Paths::Shaders::g_ReflectionExt }) != FileError::NONE) {
+        if (deleteFile(TxtCacheLocation(targetVulkan), ResourcePath{ sourceFileName + "." + Paths::Shaders::g_ReflectionExt }) != FileError::NONE) {
             NOP();
         }
     }
@@ -418,8 +426,10 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
 
         //AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_gpu_shader5 : require");
         AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET)");
+        AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_OPENGL");
     } else {
         AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET) set = SET");
+        AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_VULKAN");
     }
 
     AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(SPECIFY_SET(SET) binding = BINDING)");
@@ -1116,9 +1126,9 @@ const string& ShaderProgram::ShaderFileReadLocked(const ResourcePath& filePath, 
     return entry->second;
 }
 
-bool ShaderProgram::LoadTextFromCache(LoadData& dataInOut, eastl::set<U64>& atomIDsOut) {
-    if (ValidateCache(false, dataInOut._sourceFile, dataInOut._fileName)) {
-        if (Reflection::LoadReflectionData(TxtCacheLocation(), 
+bool ShaderProgram::LoadTextFromCache(LoadData& dataInOut, const bool targetVulkan, eastl::set<U64>& atomIDsOut) {
+    if (ValidateCache(false, dataInOut._sourceFile, dataInOut._fileName, targetVulkan)) {
+        if (Reflection::LoadReflectionData(TxtCacheLocation(targetVulkan), 
                                            ResourcePath{ dataInOut._fileName + "." + Paths::Shaders::g_ReflectionExt },
                                            dataInOut._reflectionData,
                                            atomIDsOut))
@@ -1126,7 +1136,9 @@ bool ShaderProgram::LoadTextFromCache(LoadData& dataInOut, eastl::set<U64>& atom
             FileError err = FileError::FILE_EMPTY;
             {
                 ScopedLock<Mutex> w_lock(g_textDumpLock);
-                err = readFile(TxtCacheLocation(), ResourcePath{ dataInOut._fileName }, dataInOut._sourceCodeGLSL, FileType::TEXT);
+                err = readFile(TxtCacheLocation(targetVulkan),
+                               ResourcePath{ dataInOut._fileName },
+                               dataInOut._sourceCodeGLSL, FileType::TEXT);
             }
 
             if (err == FileError::NONE) {
@@ -1136,13 +1148,13 @@ bool ShaderProgram::LoadTextFromCache(LoadData& dataInOut, eastl::set<U64>& atom
     }
 
     // Cache file and reflection file are out of sync so (attempt to) remove both.
-    DeleteTextCache(dataInOut._fileName);
+    DeleteTextCache(dataInOut._fileName, targetVulkan);
     return false;
 }
 
-bool ShaderProgram::SaveTextToCache(const LoadData& dataIn, const eastl::set<U64>& atomIDsIn) {
+bool ShaderProgram::SaveTextToCache(const LoadData& dataIn, const bool targetVulkan, const eastl::set<U64>& atomIDsIn) {
 
-    if (Reflection::SaveReflectionData(TxtCacheLocation(),
+    if (Reflection::SaveReflectionData(TxtCacheLocation(targetVulkan),
                                        ResourcePath{ dataIn._fileName + "." + Paths::Shaders::g_ReflectionExt },
                                        dataIn._reflectionData,
                                        atomIDsIn))
@@ -1162,25 +1174,25 @@ bool ShaderProgram::SaveTextToCache(const LoadData& dataIn, const eastl::set<U64
     }
 
     // Cache file and reflection file are out of sync so (attempt to) remove both.
-    DeleteTextCache(dataIn._fileName);
+    DeleteTextCache(dataIn._fileName, targetVulkan);
     Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_TEXT_FAILED")), dataIn._fileName.c_str());
     return false;
 }
 
 
-bool ShaderProgram::LoadSPIRVFromCache(LoadData& dataInOut, eastl::set<U64>& atomIDsOut) {
-    if (ValidateCache(true, dataInOut._sourceFile, dataInOut._fileName)) {
+bool ShaderProgram::LoadSPIRVFromCache(LoadData& dataInOut, const bool targetVulkan, eastl::set<U64>& atomIDsOut) {
+    if (ValidateCache(true, dataInOut._sourceFile, dataInOut._fileName, targetVulkan)) {
         const ResourcePath spvTarget{ SpvTargetName(dataInOut._fileName) };
 
         vector<Byte> tempData;
-        if (Reflection::LoadReflectionData(SpvCacheLocation(),
+        if (Reflection::LoadReflectionData(SpvCacheLocation(targetVulkan),
                                            ResourcePath{ spvTarget + "." + Paths::Shaders::g_ReflectionExt },
                                            dataInOut._reflectionData,
                                            atomIDsOut)) {
             FileError err = FileError::FILE_EMPTY;
             {
                 ScopedLock<Mutex> w_lock(g_binaryDumpLock);
-                err = readFile(SpvCacheLocation(),
+                err = readFile(SpvCacheLocation(targetVulkan),
                                spvTarget,
                                tempData,
                                FileType::BINARY);
@@ -1196,13 +1208,13 @@ bool ShaderProgram::LoadSPIRVFromCache(LoadData& dataInOut, eastl::set<U64>& ato
     }
 
     // Cache file and reflection file are out of sync so (attempt to) remove both.
-    DeleteSPIRVCache(dataInOut._fileName);
+    DeleteSPIRVCache(dataInOut._fileName, targetVulkan);
     return false;
 }
 
-bool ShaderProgram::SaveSPIRVToCache(const LoadData& dataIn, const eastl::set<U64>& atomIDsIn){
+bool ShaderProgram::SaveSPIRVToCache(const LoadData& dataIn, const bool targetVulkan, const eastl::set<U64>& atomIDsIn){
     const ResourcePath spvTarget{ SpvTargetName(dataIn._fileName) };
-    if (Reflection::SaveReflectionData(SpvCacheLocation(),
+    if (Reflection::SaveReflectionData(SpvCacheLocation(targetVulkan),
                                        ResourcePath{ spvTarget + "." + Paths::Shaders::g_ReflectionExt },
                                        dataIn._reflectionData,
                                        atomIDsIn)) 
@@ -1210,7 +1222,7 @@ bool ShaderProgram::SaveSPIRVToCache(const LoadData& dataIn, const eastl::set<U6
         FileError err = FileError::FILE_EMPTY;
         {
             ScopedLock<Mutex> w_lock(g_binaryDumpLock);
-            err = writeFile(SpvCacheLocation(),
+            err = writeFile(SpvCacheLocation(targetVulkan),
                             spvTarget,
                             (bufferPtr)dataIn._sourceCodeSpirV.data(),
                             dataIn._sourceCodeSpirV.size() * sizeof(U32),
@@ -1223,7 +1235,7 @@ bool ShaderProgram::SaveSPIRVToCache(const LoadData& dataIn, const eastl::set<U6
     }
 
     // Cache file and reflection file are out of sync so (attempt to) remove both.
-    DeleteSPIRVCache(dataIn._fileName);
+    DeleteSPIRVCache(dataIn._fileName, targetVulkan);
     Console::errorfn(Locale::Get(_ID("ERROR_SHADER_SAVE_SPIRV_FAILED")), dataIn._fileName.c_str());
     return false;
 }
@@ -1249,7 +1261,7 @@ bool ShaderProgram::GLSLToSPIRV(LoadData& dataInOut, const bool targetVulkan, co
         return false;
     }
 
-    SaveSPIRVToCache(dataInOut, atomIDsIn);
+    SaveSPIRVToCache(dataInOut, targetVulkan, atomIDsIn);
     return true;
 }
 
@@ -1357,12 +1369,14 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
         ParseAndSaveSource();
         loadDataInOut._codeSource = LoadData::SourceCodeSource::SOURCE_FILES;
     } else {
+        const bool targetVulkan = _context.renderAPI() == RenderAPI::Vulkan;
+
         // Try and load from the spir-v cache
-        if (LoadSPIRVFromCache(loadDataInOut, atomIDs)) {
+        if (LoadSPIRVFromCache(loadDataInOut, targetVulkan, atomIDs)) {
             loadDataInOut._codeSource = LoadData::SourceCodeSource::SPIRV_CACHE;
-        } else if (LoadTextFromCache(loadDataInOut, atomIDs)) {
+        } else if (LoadTextFromCache(loadDataInOut, targetVulkan, atomIDs)) {
             loadDataInOut._codeSource = LoadData::SourceCodeSource::TEXT_CACHE;
-            if (!GLSLToSPIRV(loadDataInOut, false, atomIDs)) {
+            if (!GLSLToSPIRV(loadDataInOut, targetVulkan, atomIDs)) {
                 NOP();
             }
         } else {
@@ -1371,7 +1385,7 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
         }
     }
 
-    if (!loadDataInOut._sourceCodeGLSL.empty() && !loadDataInOut._sourceCodeSpirV.empty()) {
+    if (!loadDataInOut._sourceCodeGLSL.empty() || !loadDataInOut._sourceCodeSpirV.empty()) {
         _usedAtomIDs.insert(begin(atomIDs), end(atomIDs));
         return true;
     }

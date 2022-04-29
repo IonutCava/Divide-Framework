@@ -80,7 +80,8 @@ namespace TypeUtil {
 
 namespace {
     /// How many writes we can basically issue per frame to our scratch buffers before we have to sync
-    constexpr size_t TargetBufferSize = 2048u;
+    constexpr size_t TargetBufferSizeCam = 128u;
+    constexpr size_t TargetBufferSizeRender = 8u;
 
     constexpr U32 GROUP_SIZE_AABB = 64;
     constexpr U32 MAX_INVOCATIONS_BLUR_SHADER_LAYERED = 4;
@@ -187,6 +188,73 @@ ErrorCode GFXDevice::initRenderingAPI(const I32 argc, char** argv, const RenderA
     return ShaderProgram::OnStartup(parent().resourceCache());
 }
 
+void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeRender, size_t targetSizeCullCounter) {
+    if (targetSizeCam == 0u) { targetSizeCam = 1u; }
+    if (targetSizeRender == 0u) { targetSizeRender = 1u; }
+    if (targetSizeCullCounter == 0u) { targetSizeCullCounter = 1u; }
+
+    const bool resizeCamBuffer = _gfxBuffers._currentSizeCam != targetSizeCam;
+    const bool resizeRenderBuffer = _gfxBuffers._currentSizeRender != targetSizeRender;
+    const bool resizeCullCounter = _gfxBuffers._currentSizeCullCounter != targetSizeCullCounter;
+
+    if (!resizeCamBuffer && !resizeRenderBuffer && !resizeCullCounter) {
+        return;
+    }
+
+    DIVIDE_ASSERT(ValidateGPUDataStructure());
+
+    _gfxBuffers.reset(resizeCamBuffer, resizeRenderBuffer, resizeCullCounter);
+    _gfxBuffers._currentSizeCam = targetSizeCam;
+    _gfxBuffers._currentSizeRender = targetSizeRender;
+    _gfxBuffers._currentSizeCullCounter = targetSizeCullCounter;
+
+    if (resizeCamBuffer || resizeRenderBuffer) {
+        ShaderBufferDescriptor bufferDescriptor = {};
+        bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
+        bufferDescriptor._bufferParams._elementCount = 1;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+
+        if (resizeCamBuffer) {
+            bufferDescriptor._ringBufferLength = to_U32(targetSizeCam);
+            bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::CamData);
+            bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
+
+            for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
+                bufferDescriptor._name = Util::StringFormat("DVD_GPU_CAM_DATA_%d", i);
+                _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newSB(bufferDescriptor);
+            }
+        }
+        if (resizeRenderBuffer) {
+            bufferDescriptor._ringBufferLength = to_U32(targetSizeRender);
+            bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::RenderData);
+            bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._renderData, bufferDescriptor._bufferParams._elementSize };
+
+            for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
+                bufferDescriptor._name = Util::StringFormat("DVD_GPU_RENDER_DATA_%d", i);
+                _gfxBuffers._perFrameBuffers[i]._renderDataBuffer = newSB(bufferDescriptor);
+            }
+        }
+    }
+
+    if (resizeCullCounter) {
+        // Atomic counter for occlusion culling
+        ShaderBufferDescriptor bufferDescriptor = {};
+        bufferDescriptor._bufferParams._elementCount = 1;
+        bufferDescriptor._usage = ShaderBuffer::Usage::ATOMIC_COUNTER;
+        bufferDescriptor._ringBufferLength = to_U32(targetSizeCullCounter);
+        bufferDescriptor._name = "CULL_COUNTER";
+        bufferDescriptor._bufferParams._elementSize = sizeof(U32);
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_W_CPU_R;
+        bufferDescriptor._separateReadWrite = true;
+        bufferDescriptor._bufferParams._initialData = {};
+        for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
+            _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB(bufferDescriptor);
+        }
+    }
+}
+
 ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     std::atomic_uint loadTasks = 0;
     ResourceCache* cache = parent().resourceCache();
@@ -196,50 +264,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     RenderPassExecutor::OnStartup(*this);
     GFX::InitPools();
 
-    // Create a shader buffer to store the GFX rendering info (matrices, options, etc)
-    {
-        DIVIDE_ASSERT(ValidateGPUDataStructure());
-
-        ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
-        bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-        bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-        bufferDescriptor._ringBufferLength = TargetBufferSize;
-
-        {
-            bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::CamData);
-            bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
-
-            for (U8 i = 0u; i < s_perFrameBufferCount; ++i) {
-                bufferDescriptor._name = Util::StringFormat("DVD_GPU_CAM_DATA_%d", i);
-                _perFrameBuffers[i]._camDataBuffer = newSB(bufferDescriptor);
-            }
-        }
-        {
-            bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::RenderData);
-            bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._renderData, bufferDescriptor._bufferParams._elementSize };
-
-            for (U8 i = 0u; i < s_perFrameBufferCount; ++i) {
-                bufferDescriptor._name = Util::StringFormat("DVD_GPU_RENDER_DATA_%d", i);
-                _perFrameBuffers[i]._renderDataBuffer = newSB(bufferDescriptor);
-            }
-        }
-        {
-            // Atomic counter for occlusion culling
-            bufferDescriptor._usage = ShaderBuffer::Usage::ATOMIC_COUNTER;
-            bufferDescriptor._ringBufferLength = RenderPass::DataBufferRingSize;
-            bufferDescriptor._name = "CULL_COUNTER";
-            bufferDescriptor._bufferParams._elementSize = sizeof(U32);
-            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-            bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_W_CPU_R;
-            bufferDescriptor._separateReadWrite = true;
-            bufferDescriptor._bufferParams._initialData = {};
-            for (U8 i = 0u; i < s_perFrameBufferCount; ++i) {
-                _perFrameBuffers[i]._cullCounter = newSB(bufferDescriptor);
-            }
-        }
-    }
+    resizeGPUBlocks(TargetBufferSizeCam, TargetBufferSizeRender, RenderPass::DataBufferRingSize);
 
     _shaderComputeQueue = MemoryManager_NEW ShaderComputeQueue(cache);
 
@@ -995,11 +1020,7 @@ void GFXDevice::closeRenderingAPI() {
     _imShader = nullptr;
     _imWorldShader = nullptr;
     _imWorldOITShader = nullptr;
-    for (U8 i = 0u; i < s_perFrameBufferCount; ++i) {
-        _perFrameBuffers[i]._camDataBuffer.reset();
-        _perFrameBuffers[i]._renderDataBuffer.reset();
-        _perFrameBuffers[i]._cullCounter.reset();
-    }
+    _gfxBuffers.reset(true, true, true);
 
     // Close the shader manager
     MemoryManager::DELETE(_shaderComputeQueue);
@@ -1121,11 +1142,13 @@ void GFXDevice::endFrame(DisplayWindow& window, const bool global) {
     DIVIDE_ASSERT(_viewportStack.empty(), "Not all viewports have been cleared properly! Check command buffers for missmatched push/pop!");
     // Activate the default render states
     _api->endFrame(window, global);
-    _perFrameBufferIndex = (_perFrameBufferIndex + 1u) % s_perFrameBufferCount;
-
-    PerFrameBuffers& frameBuffers = _perFrameBuffers[_perFrameBufferIndex];
-    frameBuffers._camWritesThisFrame = 0u;
-    frameBuffers._renderWritesThisFrame = 0u;
+    if (_gfxBuffers._needsResizeCam || _gfxBuffers._needsResizeRender) {
+        resizeGPUBlocks(_gfxBuffers._needsResizeCam ? _gfxBuffers._currentSizeCam + TargetBufferSizeCam : _gfxBuffers._currentSizeCam,
+                        _gfxBuffers._needsResizeRender ? _gfxBuffers._currentSizeRender + TargetBufferSizeRender : _gfxBuffers._currentSizeRender,
+                        _gfxBuffers._currentSizeCullCounter);
+        _gfxBuffers._needsResizeCam = _gfxBuffers._needsResizeRender = false;
+    }
+    _gfxBuffers.onEndFrame();
 }
 
 #pragma endregion
@@ -1215,7 +1238,7 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
 
         Camera* camera = cameras[i];
         if (camera == nullptr) {
-            camera = Camera::utilityCamera(Camera::UtilityCamera::CUBE);
+            camera = Camera::GetUtilityCamera(Camera::UtilityCamera::CUBE);
         }
 
         // Set a 90 degree horizontal FoV perspective projection
@@ -1283,7 +1306,7 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
     for (U8 i = 0u; i < 2u; ++i) {
         Camera* camera = cameras[i];
         if (!camera) {
-            camera = Camera::utilityCamera(Camera::UtilityCamera::DUAL_PARABOLOID);
+            camera = Camera::GetUtilityCamera(Camera::UtilityCamera::DUAL_PARABOLOID);
         }
 
         params._layerParams._layer = i + arrayOffset;
@@ -1507,12 +1530,12 @@ bool GFXDevice::onSizeChange(const SizeChangeParams& params) {
         _renderingResolution.set(w, h);
 
         // Update the 2D camera so it matches our new rendering viewport
-        if (Camera::utilityCamera(Camera::UtilityCamera::_2D)->setProjection(vec4<F32>(0, to_F32(w), 0, to_F32(h)), vec2<F32>(-1, 1))) {
-            Camera::utilityCamera(Camera::UtilityCamera::_2D)->updateFrustum();
+        if (Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->setProjection(vec4<F32>(0, to_F32(w), 0, to_F32(h)), vec2<F32>(-1, 1))) {
+            Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->updateFrustum();
         }
 
-        if (Camera::utilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->setProjection(vec4<F32>(0, to_F32(w), to_F32(h), 0), vec2<F32>(-1, 1))) {
-            Camera::utilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->updateFrustum();
+        if (Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->setProjection(vec4<F32>(0, to_F32(w), to_F32(h), 0), vec2<F32>(-1, 1))) {
+            Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->updateFrustum();
         }
 
         // Update render targets with the new resolution
@@ -1574,9 +1597,8 @@ bool GFXDevice::fitViewportInWindow(const U16 w, const U16 h) {
 #pragma region GPU State
 PerformanceMetrics GFXDevice::getPerformanceMetrics() const noexcept {
     PerformanceMetrics ret = _api->getPerformanceMetrics();
-    const PerFrameBuffers& frameBuffers = _perFrameBuffers[_perFrameBufferIndex];
-    ret._scratchBufferQueueUsage[0] = to_U32(frameBuffers._camWritesThisFrame);
-    ret._scratchBufferQueueUsage[1] = to_U32(frameBuffers._renderWritesThisFrame);
+    ret._scratchBufferQueueUsage[0] = to_U32(_gfxBuffers.crtBuffers()._camWritesThisFrame);
+    ret._scratchBufferQueueUsage[1] = to_U32(_gfxBuffers.crtBuffers()._renderWritesThisFrame);
     return ret;
 }
 
@@ -1585,22 +1607,24 @@ const DescriptorSet& GFXDevice::uploadGPUBlock() {
 
     OPTICK_EVENT();
 
-    PerFrameBuffers& frameBuffers = _perFrameBuffers[_perFrameBufferIndex];
+    GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
 
     if (_gpuBlock._camNeedsUpload) {
         frameBuffers._camDataBuffer->incQueue();
-        if (++frameBuffers._camWritesThisFrame >= TargetBufferSize) {
+        if (++frameBuffers._camWritesThisFrame >= _gfxBuffers._currentSizeCam) {
             //We've wrapped around this buffer inside of a single frame so sync performance will degrade
-            NOP();
+            //unless we increase our buffer size
+            _gfxBuffers._needsResizeCam = true;
         }
         frameBuffers._camDataBuffer->writeData(&_gpuBlock._camData);
     }
 
     if (_gpuBlock._renderNeedsUpload) {
         frameBuffers._renderDataBuffer->incQueue();
-        if (++frameBuffers._renderWritesThisFrame >= TargetBufferSize) {
+        if (++frameBuffers._renderWritesThisFrame >= _gfxBuffers._currentSizeRender) {
             //We've wrapped around this buffer inside of a single frame so sync performance will degrade
-            NOP();
+            //unless we increase our buffer size
+            _gfxBuffers._needsResizeRender = true;
         }
         frameBuffers._renderDataBuffer->writeData(&_gpuBlock._renderData);
     }
@@ -1683,12 +1707,6 @@ void GFXDevice::renderFromCamera(const CameraSnapshot& cameraSnapshot) {
         needsUpdate = true;
     }
 
-    const vec4<F32> cameraPos(cameraSnapshot._eye, cameraSnapshot._aspectRatio);
-    if (cameraPos != data._cameraPosition) {
-        data._cameraPosition.set(cameraPos);
-        needsUpdate = true;
-    }
-
     const vec4<F32> cameraProperties(cameraSnapshot._zPlanes, cameraSnapshot._FoV, data._cameraProperties.w);
     if (data._cameraProperties != cameraProperties) {
         data._cameraProperties.set(cameraProperties);
@@ -1766,12 +1784,14 @@ bool GFXDevice::setViewport(const Rect<I32>& viewport) {
         _gpuBlock._camData._ViewPort.set(viewport.x, viewport.y, viewport.z, viewport.w);
         _gpuBlock._camNeedsUpload = true;
 
-        const F32 clustersX = std::ceil(to_F32(viewport.z) / Renderer::CLUSTER_SIZE.x);
-        const F32 clustersY = std::ceil(to_F32(viewport.w) / Renderer::CLUSTER_SIZE.y);
-        const U32 clustersPacked = Util::PACK_HALF2x16(clustersX, clustersY);
-        if (clustersPacked != to_U32(_gpuBlock._renderData._renderProperties.y)) {
-            _gpuBlock._renderData._renderProperties.y = to_F32(clustersPacked);
-            _gpuBlock._renderNeedsUpload = true;
+        const U32 clustersX = to_U32(std::ceil(to_F32(viewport.z) / Renderer::CLUSTER_SIZE.x));
+        const U32 clustersY = to_U32(std::ceil(to_F32(viewport.w) / Renderer::CLUSTER_SIZE.y));
+        if (clustersX != to_U32(_gpuBlock._camData._renderTargetInfo.z) ||
+            clustersY != to_U32(_gpuBlock._camData._renderTargetInfo.w))
+        {
+            _gpuBlock._camData._renderTargetInfo.z = to_F32(clustersX);
+            _gpuBlock._camData._renderTargetInfo.w = to_F32(clustersY);
+            _gpuBlock._camNeedsUpload = true;
         }
 
         return true;
@@ -2051,7 +2071,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     DisableAll(beginRenderPassCmd->_descriptor._drawMask);
     SetEnabled(beginRenderPassCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, true);
 
-    GFX::EnqueueCommand(cmdBufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    GFX::EnqueueCommand(cmdBufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
 
     GFX::EnqueueCommand(cmdBufferInOut, GFX::BindPipelineCommand{ _HIZPipeline });
 
@@ -2111,6 +2131,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
                               GFX::CommandBuffer& bufferInOut)
 {
     OPTICK_EVENT();
+    ShaderBuffer* cullBuffer = _gfxBuffers.crtBuffers()._cullCounter.get();
 
     const U32 cmdCount = *bufferData._lastCommandCount;
     const U32 threadCount = (cmdCount + GROUP_SIZE_AABB - 1) / GROUP_SIZE_AABB;
@@ -2124,7 +2145,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
 
     ShaderBufferBinding atomicCount = {};
     atomicCount._binding = ShaderBufferLocation::ATOMIC_COUNTER_0;
-    atomicCount._buffer = _perFrameBuffers[_perFrameBufferIndex]._cullCounter.get();
+    atomicCount._buffer = cullBuffer;
     atomicCount._elementRange.set(0, 1);
     atomicCount._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
     set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
@@ -2156,16 +2177,16 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
 
     if (queryPerformanceStats() && countCulledNodes) {
         GFX::ReadBufferDataCommand readAtomicCounter;
-        readAtomicCounter._buffer = _perFrameBuffers[_perFrameBufferIndex]._cullCounter.get();
+        readAtomicCounter._buffer = cullBuffer;
         readAtomicCounter._target = &_lastCullCount;
         readAtomicCounter._offsetElementCount = 0;
         readAtomicCounter._elementCount = 1;
         EnqueueCommand(bufferInOut, readAtomicCounter);
 
-        _perFrameBuffers[_perFrameBufferIndex]._cullCounter->incQueue();
+        cullBuffer->incQueue();
 
         GFX::ClearBufferDataCommand clearAtomicCounter{};
-        clearAtomicCounter._buffer = _perFrameBuffers[_perFrameBufferIndex]._cullCounter.get();
+        clearAtomicCounter._buffer = cullBuffer;
         clearAtomicCounter._offsetElementCount = 0;
         clearAtomicCounter._elementCount = 1;
         GFX::EnqueueCommand(bufferInOut, clearAtomicCounter);
@@ -2180,7 +2201,7 @@ void GFXDevice::drawText(const TextElementBatch& batch, GFX::CommandBuffer& buff
 
 void GFXDevice::drawText(const GFX::DrawTextCommand& cmd, GFX::CommandBuffer& bufferInOut, const bool pushCamera) const {
     if (pushCamera) {
-        EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+        EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
     }
     EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _textRenderPipeline });
     EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _textRenderConstants });
@@ -2196,7 +2217,7 @@ void GFXDevice::drawTextureInViewport(const TextureData data, const size_t sampl
     static GFX::SendPushConstantsCommand s_pushConstantsSRGBFalse{ PushConstants{{_ID("convertToSRGB"), GFX::PushConstantType::BOOL, false}}};
 
     GFX::EnqueueCommand(bufferInOut, s_beginDebugScopeCmd);
-    GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
     GFX::EnqueueCommand(bufferInOut, drawToDepthOnly ? _drawFSDepthPipelineCmd : drawBlend ? _drawFSTexturePipelineBlendCmd : _drawFSTexturePipelineCmd);
     GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ data, samplerHash, TextureUsage::UNIT0 });
     GFX::EnqueueCommand(bufferInOut, GFX::PushViewportCommand{ viewport });
@@ -2464,7 +2485,7 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
         }
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::utilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
+    GFX::EnqueueCommand(bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->snapshot() });
     // Draw labels at the end to reduce number of state changes
     TextElement text(labelStyleHash, RelativePosition2D(RelativeValue(0.1f, 0.0f), RelativeValue(0.1f, 0.0f)));
     for (const auto& [labelText, viewportOffsetY, viewportIn] : labelStack) {

@@ -33,20 +33,10 @@
 #ifndef _GL_WRAPPER_H_
 #define _GL_WRAPPER_H_
 
-#include "glHardwareQueryPool.h"
-#include "glIMPrimitive.h"
 #include "GLStateTracker.h"
-#include "Platform/Video/Headers/IMPrimitive.h"
+#include "glHardwareQueryPool.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/PixelBuffer/Headers/glPixelBuffer.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferLockManager.h"
-#include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShader.h"
-#include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h"
-#include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glSamplerObject.h"
-#include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glTexture.h"
-#include "Rendering/Camera/Headers/Frustum.h"
 
-struct glslopt_ctx;
 struct FONScontext;
 struct ImDrawData;
 
@@ -60,16 +50,17 @@ namespace Time {
     class ProfileTimer;
 };
 
-enum class WindowType : U8;
+enum class ShaderResult : U8;
 enum class ShaderBufferLockType : U8;
 
+class IMPrimitive;
 class DisplayWindow;
-class PlatformContext;
-class RenderStateBlock;
-class GenericVertexData;
 class glHardwareQueryRing;
+class glHardwareQueryPool;
+
 struct BufferLockEntry;
 
+FWD_DECLARE_MANAGED_STRUCT(SyncObject);
 
 /// OpenGL implementation of the RenderAPIWrapper
 class GL_API final : public RenderAPIWrapper {
@@ -86,7 +77,7 @@ class GL_API final : public RenderAPIWrapper {
 
 public:
     // Auto-delete locks older than this number of frames
-    static constexpr U32 g_LockFrameLifetime = 3u; //(APP->Driver->GPU)
+    static constexpr U32 s_LockFrameLifetime = 3u; //(APP->Driver->GPU)
 
 public:
     GL_API(GFXDevice& context);
@@ -118,7 +109,7 @@ protected:
 
     void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
 
-    [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept override;
+    [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept override { return _perfMetrics; }
 
     /// Return the size in pixels that we can render to. This differs from the window size on Retina displays
     vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
@@ -139,17 +130,21 @@ protected:
     bool setViewport(const Rect<I32>& viewport) override;
     ShaderResult bindPipeline(const Pipeline& pipeline) const;
 
+private:
+    void endFrameLocal(const DisplayWindow& window);
+    void endFrameGlobal(const DisplayWindow& window);
+
 public:
     static [[nodiscard]] GLStateTracker* GetStateTracker() noexcept;
     static [[nodiscard]] GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(GLenum usage) noexcept;
     static [[nodiscard]] GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
 
-    static bool MakeTexturesResidentInternal(SamplerAddress address);
-    static bool MakeTexturesNonResidentInternal(SamplerAddress address);
+    static [[nodiscard]] bool MakeTexturesResidentInternal(SamplerAddress address);
+    static [[nodiscard]] bool MakeTexturesNonResidentInternal(SamplerAddress address);
 
     static void QueueFlush() noexcept;
 
-    static SyncObject_uptr& CreateSyncObject(bool isRetry = false);
+    static [[nodiscard]] SyncObject_uptr& CreateSyncObject(bool isRetry = false);
     static void FlushMidBufferLockQueue(SyncObject_uptr& syncObj);
     static void FlushEndBufferLockQueue(SyncObject_uptr& syncObj);
 
@@ -157,33 +152,47 @@ public:
     static void PushDebugMessage(const char* message);
     static void PopDebugMessage();
 
-    static bool DeleteShaderPrograms(GLuint count, GLuint * programs);
-    static bool DeleteTextures(GLuint count, GLuint* textures, TextureType texType);
-    static bool DeleteSamplers(GLuint count, GLuint* samplers);
-    static bool DeleteBuffers(GLuint count, GLuint* buffers);
-    static bool DeleteVAOs(GLuint count, GLuint* vaos);
-    static bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
+    static [[nodiscard]] bool DeleteShaderPrograms(GLuint count, GLuint * programs);
+    static [[nodiscard]] bool DeleteTextures(GLuint count, GLuint* textures, TextureType texType);
+    static [[nodiscard]] bool DeleteSamplers(GLuint count, GLuint* samplers);
+    static [[nodiscard]] bool DeleteBuffers(GLuint count, GLuint* buffers);
+    static [[nodiscard]] bool DeleteVAOs(GLuint count, GLuint* vaos);
+    static [[nodiscard]] bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
 
     static void RegisterBufferLock(const BufferLockEntry&& data, ShaderBufferLockType lockType);
-    using IMPrimitivePool = MemoryPool<glIMPrimitive, 2048>;
 
-    static IMPrimitive* NewIMP(Mutex& lock, GFXDevice& parent);
-    static bool DestroyIMP(Mutex& lock, IMPrimitive*& primitive);
+    static [[nodiscard]] IMPrimitive* NewIMP(Mutex& lock, GFXDevice& parent);
+    static [[nodiscard]] bool DestroyIMP(Mutex& lock, IMPrimitive*& primitive);
 
-    /// Return the OpenGL sampler object's handle for the given hash value
-    static GLuint GetSamplerHandle(size_t samplerHash);
+    static [[nodiscard]] GLuint GetSamplerHandle(size_t samplerHash);
 
-    static glHardwareQueryPool* s_hardwareQueryPool;
+    static [[nodiscard]] glHardwareQueryPool* GetHardwareQueryPool() noexcept;
 
-    static U32 s_fenceSyncCounter[g_LockFrameLifetime];
+    static [[nodiscard]] GLsync CreateFenceSync();
+    static void DestroyFenceSync(GLsync& sync);
 
 private:
-    void endFrameLocal(const DisplayWindow& window);
-    void endFrameGlobal(const DisplayWindow& window);
+    struct WindowGLContext {
+        I64 _windowGUID = -1;
+        SDL_GLContext _context = nullptr;
+    };
+
+    struct ResidentTexture {
+        SamplerAddress _address = 0u;
+        U8  _frameCount = 0u;
+    };
+
+    /// /*sampler hash value*/ /*sampler object*/
+    using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
+    using IMPrimitivePool = MemoryPool<glIMPrimitive, 2048>;
+    using BufferLockPool = eastl::fixed_vector<SyncObject_uptr, 1024, true>;
+    using BufferLockQueue = eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator>;
 
 private:
     GFXDevice& _context;
     Time::ProfileTimer& _swapBufferTimer;
+
+    eastl::fixed_vector<GFX::CommandBuffer::CommandEntry, 512, true> _bufferFlushPoints;
 
     /// A cache of all fonts used
     hashMap<U64, I32> _fonts;
@@ -192,39 +201,24 @@ private:
     /// Hardware query objects used for performance measurements
     std::array<eastl::unique_ptr<glHardwareQueryRing>, to_base(QueryType::COUNT)> _performanceQueries;
     PerformanceMetrics _perfMetrics{};
-    //Because GFX::queryPerfStats can change mid-frame, we need to cache that value and apply in beginFrame() properly
-    bool _runQueries = false;
-    U8 _queryIdxForCurrentFrame = 0u;
+
+    WindowGLContext _currentContext{};
 
     /// FontStash's context
     FONScontext* _fonsContext = nullptr;
 
     CEGUI::OpenGL3Renderer* _GUIGLrenderer = nullptr;
 
-    struct WindowGLContext {
-        I64 _windowGUID = -1;
-        SDL_GLContext _context = nullptr;
-    };
-
-    WindowGLContext _currentContext{};
-
-    eastl::fixed_vector<GFX::CommandBuffer::CommandEntry, 512, true> _bufferFlushPoints;
+    //Because GFX::queryPerfStats can change mid-frame, we need to cache that value and apply in beginFrame() properly
+    U8 _queryIdxForCurrentFrame = 0u;
+    bool _runQueries = false;
 
 private:
-    using BufferLockPool = eastl::fixed_vector<SyncObject_uptr, 1024, true>;
+
     static BufferLockPool s_bufferLockPool;
 
     static std::atomic_bool s_glFlushQueued;
-
-    struct ResidentTexture {
-        SamplerAddress _address = 0u;
-        U8  _frameCount = 0u;
-    };
-
     static vector<ResidentTexture> s_residentTextures;
-
-    /// /*sampler hash value*/ /*sampler object*/
-    using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
 
     static SharedMutex s_samplerMapLock;
     static SamplerObjectMap s_samplerMap;
@@ -238,8 +232,14 @@ private:
     static GLUtil::glVAOCache s_vaoCache;
 
     static IMPrimitivePool s_IMPrimitivePool;
-    static eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> s_bufferLockQueueMidFlush;
-    static eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator> s_bufferLockQueueEndOfBuffer;
+
+    static BufferLockQueue s_bufferLockQueueMidFlush;
+    static BufferLockQueue s_bufferLockQueueEndOfBuffer;
+
+    static glHardwareQueryPool* s_hardwareQueryPool;
+
+    static U32 s_fenceSyncCounter[s_LockFrameLifetime];
+
 };
 
 };  // namespace Divide

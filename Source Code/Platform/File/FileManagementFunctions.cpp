@@ -427,32 +427,6 @@ bool deleteAllFiles(const char* filePath, const char* extension) {
     return ret;
 }
 
-bool clearCache() {
-    for (U8 i = 0; i < to_U8(CacheType::COUNT); ++i) {
-        if (!clearCache(static_cast<CacheType>(i))) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool clearCache(const CacheType type) {
-    ResourcePath cache;
-    switch (type) {
-        case CacheType::SHADER_TEXT: cache = Paths::Shaders::g_cacheLocationText; break;
-        case CacheType::SHADER_SPV : cache = Paths::Shaders::g_cacheLocationSpv; break;
-        case CacheType::TERRAIN    : cache = Paths::g_terrainCacheLocation; break;
-        case CacheType::MODELS     : cache = Paths::g_geometryCacheLocation; break;
-        case CacheType::COLLISION  : cache = Paths::g_collisionMeshCacheLocation; break;
-        case CacheType::TEXTURES   : cache = Paths::Textures::g_metadataLocation; break;
-
-        case CacheType::COUNT:
-        default: return false;
-    }
-
-    return deleteAllFiles(Paths::g_cacheLocation + cache);
-}
-
 std::string extractFilePathAndName(char* argv0) {
     auto currentPath = std::filesystem::current_path();
     currentPath.append(argv0);
