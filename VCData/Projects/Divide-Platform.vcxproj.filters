@@ -337,6 +337,15 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\ShaderDataUploader.h">
       <Filter>Video\Shaders\Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKDevice.h">
+      <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKSwapChain.h">
+      <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKCommon.h">
+      <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../../Source Code/Platform\Input\AutoKeyRepeat.cpp">
@@ -602,6 +611,12 @@
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\ShaderDataUploader.cpp">
       <Filter>Video\Shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\VKDevice.cpp">
+      <Filter>Video\RenderBackend\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\VKSwapChain.cpp">
+      <Filter>Video\RenderBackend\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

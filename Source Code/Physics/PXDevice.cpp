@@ -46,7 +46,6 @@ ErrorCode PXDevice::initPhysicsAPI(const U8 targetFrameRate, const F32 simSpeed)
 
 bool PXDevice::closePhysicsAPI() { 
     if (_api == nullptr) {
-        Console::errorfn(Locale::Get(_ID("ERROR_PFX_DEVICE_NO_INIT")));
         return false;
     }
 

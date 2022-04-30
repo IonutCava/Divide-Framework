@@ -104,7 +104,6 @@ public:
 
     [[nodiscard]] bool anyWindowFocus() const noexcept;
 
-    inline DisplayWindow* createWindow(const WindowDescriptor& descriptor);
     inline DisplayWindow* createWindow(const WindowDescriptor& descriptor, ErrorCode& err);
 
     DisplayWindow* createWindow(const WindowDescriptor& descriptor, ErrorCode& err, U32& windowIndex);

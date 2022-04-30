@@ -191,6 +191,11 @@ constexpr bool ENABLE_LOCALE_FILE_WATCHER = !Build::IS_SHIPPING_BUILD && Build::
 
 constexpr auto DEFAULT_SCENE_NAME = "DefaultScene";
 
+constexpr auto ENGINE_NAME = "Divide Framework";
+constexpr auto ENGINE_VERSION_MAJOR = 0u;
+constexpr auto ENGINE_VERSION_MINOR = 1u;
+constexpr auto ENGINE_VERSION_PATCH = 0u;
+
 }  // namespace Config
 }  // namespace Divide
 

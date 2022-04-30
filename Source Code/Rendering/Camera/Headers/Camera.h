@@ -152,10 +152,7 @@ class Camera : public Resource {
     [[nodiscard]] Angle::DEGREES<F32> getVerticalFoV() const noexcept { return _data._FoV; }
 
     void setHorizontalFoV(Angle::DEGREES<F32> horizontalFoV) noexcept;
-    [[nodiscard]] Angle::DEGREES<F32> getHorizontalFoV() const noexcept {
-        const Angle::RADIANS<F32> halfFoV = Angle::to_RADIANS(_data._FoV) * 0.5f;
-        return Angle::to_DEGREES(2.0f * std::atan(tan(halfFoV) * _data._aspectRatio));
-    }
+    [[nodiscard]] Angle::DEGREES<F32> getHorizontalFoV() const noexcept;
 
     [[nodiscard]] const CameraType& type()                    const noexcept { return _type; }
     [[nodiscard]] const vec3<F32>& getEye()                   const noexcept { return _data._eye; }
@@ -217,8 +214,8 @@ class Camera : public Resource {
 
     [[nodiscard]] bool dirty() const noexcept { return _projectionDirty || _viewMatrixDirty || _frustumDirty; }
 
-
     [[nodiscard]] string xmlSavePath(const string& prefix) const;
+
    protected:
     SET_DELETE_FRIEND
     SET_DELETE_HASHMAP_FRIEND
@@ -237,8 +234,7 @@ class Camera : public Resource {
 
     U32 _updateCameraId = 0u;
     CameraType _type = CameraType::COUNT;
-    // Since quaternion reflection is complicated and not really needed now, 
-    // handle reflections a-la Ogre -Ionut
+    // Since quaternion reflection is complicated and not really needed now, handle reflections a-la Ogre -Ionut
     bool _reflectionActive = false;
     bool _projectionDirty = true;
     bool _viewMatrixDirty = false;
@@ -266,20 +262,14 @@ class Camera : public Resource {
 
     template <typename T = Camera>
     typename std::enable_if<std::is_base_of<Camera, T>::value, T*>::type
-    static GetUtilityCamera(const UtilityCamera type) {
-        return static_cast<T*>(GetUtilityCameraInternal(type));
-    }
+    static GetUtilityCamera(const UtilityCamera type) { return static_cast<T*>(GetUtilityCameraInternal(type)); }
 
     template <typename T>
-    static T* CreateCamera(const Str256& cameraName) {
-        return static_cast<T*>(CreateCameraInternal(cameraName, T::Type()));
-    }
+    static T* CreateCamera(const Str256& cameraName) { return static_cast<T*>(CreateCameraInternal(cameraName, T::Type())); }
 
     template <typename T = Camera>
     typename std::enable_if<std::is_base_of<Camera, T>::value, T*>::type
-    static FindCamera(const U64 nameHash) {
-        return static_cast<T*>(FindCameraInternal(nameHash));
-    }
+    static FindCamera(const U64 nameHash) { return static_cast<T*>(FindCameraInternal(nameHash)); }
 
     static bool RemoveChangeListener(U32 id);
     static U32  AddChangeListener(const CameraListener& f);

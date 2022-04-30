@@ -382,8 +382,8 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;        // We can honor io.WantSetMousePos requests (optional, rarely used)
     io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;  // We can create multi-viewports on the Platform side (optional)
 
-    io.BackendPlatformName = "Divide Framework";
-
+    io.BackendPlatformName = Config::ENGINE_NAME;
+    io.BackendRendererName = _context.gfx().renderAPI() == RenderAPI::Vulkan ? "Vulkan" : "OpenGL";
     io.ConfigWindowsMoveFromTitleBarOnly = true;
 
     InitBasicImGUIState(io);

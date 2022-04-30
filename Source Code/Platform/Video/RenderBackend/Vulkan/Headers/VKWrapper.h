@@ -34,6 +34,8 @@
 #define _VK_WRAPPER_H_
 
 #include "VKPlaceholderObjects.h"
+#include "VKDevice.h"
+#include "VKSwapChain.h"
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
@@ -75,16 +77,10 @@ class VK_API final : public RenderAPIWrapper {
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
 
 private:
-    void initSwapChains(const DisplayWindow& window);
-    void initCommands();
-    void initDefaultRenderpass();
-    void initFramebuffers(const DisplayWindow& window);
-    void initSyncStructures();
     void initPipelines();
+    void destroyPipelines();
 
     void recreateSwapChain(const DisplayWindow& window);
-    void cleanupSwapChain();
-
 
     //loads a shader module from a spir-v file. Returns false if it errors
     [[nodiscard]] bool loadShaderModule(const char* filePath, VkShaderModule* outShaderModule);
@@ -92,31 +88,28 @@ private:
 private:
     GFXDevice& _context;
 
-    VkInstance _instance{ nullptr }; // Vulkan library handle
-    VkDebugUtilsMessengerEXT _debugMessenger{ nullptr }; // Vulkan debug output handle
-    VkPhysicalDevice _chosenGPU{ nullptr }; // GPU chosen as the default device
-    VkDevice _device{ nullptr }; // Vulkan device for commands
-    VkSurfaceKHR _surface{ nullptr }; // Vulkan window surface
-    VkSemaphore _presentSemaphore{ nullptr }, _renderSemaphore{ nullptr };
-    VkFence _renderFence{ nullptr };
+    eastl::unique_ptr<VKDevice> _device = nullptr;
+    eastl::unique_ptr<VKSwapChain> _swapChain = nullptr;
 
-    VkQueue _graphicsQueue{ nullptr };
+    vkb::Instance _vkbInstance;
+
+    VkDebugUtilsMessengerEXT _debugMessenger{ VK_NULL_HANDLE }; // Vulkan debug output handle
+
+    VkSurfaceKHR _surface{ VK_NULL_HANDLE }; // Vulkan window surface
+
+    VKDevice::Queue _graphicsQueue{};
+    VKDevice::Queue _computeQueue{};
+    VKDevice::Queue _transferQueue{};
+
     U32 _graphicsQueueFamily{0u};
 
-    VkCommandPool _commandPool{ nullptr };
-    VkCommandBuffer _mainCommandBuffer{ nullptr };
+    VkCommandPool _commandPool{ VK_NULL_HANDLE };
+    VkCommandBuffer _mainCommandBuffer{ VK_NULL_HANDLE };
 
-    VkRenderPass _renderPass{nullptr};
-    VkPipelineLayout _trianglePipelineLayout{ nullptr };
-    VkPipeline _trianglePipeline{nullptr};
-    VkSwapchainKHR _swapchain{ nullptr };
-    VkFormat _swapchainImageFormat;
+    VkPipelineLayout _trianglePipelineLayout{ VK_NULL_HANDLE };
+    VkPipeline _trianglePipeline{VK_NULL_HANDLE};
     VkExtent2D _windowExtents{};
-    vector<VkFramebuffer> _framebuffers;
-    vector<VkImage> _swapchainImages;
-    vector<VkImageView> _swapchainImageViews;
 
-    U32 _swapchainImageIndex{0u};
     bool _skipEndFrame{ false };
 };
 

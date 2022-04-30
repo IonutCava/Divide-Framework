@@ -71,14 +71,14 @@ void Engine::run(const int argc, char** argv) {
             const auto done = std::chrono::high_resolution_clock::now();
 
             std::cout << "Divide engine shutdown after "
-                << stepCount
-                << " engine steps and " 
-                << iterationCount
-                << " restart(s). "
-                << "Total time: "
-                << std::chrono::duration_cast<std::chrono::seconds>(done - started).count()
-                << " seconds."
-                << std::endl;
+                      << stepCount
+                      << " engine steps and " 
+                      << iterationCount
+                      << " restart(s). "
+                      << "Total time: "
+                      << std::chrono::duration_cast<std::chrono::seconds>(done - started).count()
+                      << " seconds."
+                      << std::endl;
 
         } while (_restartEngineOnClose && errorCode() == 0);
     }
@@ -94,7 +94,7 @@ void Engine::run(const int argc, char** argv) {
 }
 
 int Engine::errorCode() const {
-    return to_I32(_errorCode);
+    return to_I32(_errorCode) * -1;
 }
 
 }

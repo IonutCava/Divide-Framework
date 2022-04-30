@@ -430,7 +430,7 @@ ErrorCode WindowManager::applyAPISettings(const RenderAPI api, DisplayWindow* wi
         Console::errorfn(Locale::Get(_ID("ERROR_GFX_DEVICE")), SDL_GetError());
         Console::printfn(Locale::Get(_ID("WARN_SWITCH_API")));
         Console::printfn(Locale::Get(_ID("WARN_APPLICATION_CLOSE")));
-        return ErrorCode::OGL_OLD_HARDWARE;
+        return ErrorCode::GL_OLD_HARDWARE;
     }
 
     if (api == RenderAPI::OpenGL) {

@@ -860,7 +860,7 @@ bool ShaderProgram::OnShutdown() {
     FileWatcherManager::deallocateWatcher(s_shaderFileWatcherID);
     s_shaderFileWatcherID = -1;
 
-    return glswShutdown() == 1;
+    return glswGetCurrentContext() == nullptr || glswShutdown() == 1;
 }
 
 bool ShaderProgram::OnThreadCreated(const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID) {

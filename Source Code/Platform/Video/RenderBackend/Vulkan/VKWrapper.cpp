@@ -5,12 +5,13 @@
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+
+#include "Utility/Headers/Localization.h"
+
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
 
 #include <sdl/include/SDL_vulkan.h>
-
-#include <vk-bootstrap/src/VkBootstrap.h>
 
 #define VMA_HEAVY_ASSERT(expr) DIVIDE_ASSERT(expr)
 //#define VMA_DEDICATED_ALLOCATION 0
@@ -228,52 +229,7 @@ namespace {
         Divide::DIVIDE_UNEXPECTED_CALL();
         return VK_FALSE; // Applications must return false here
     }
-
-    //ref:  SaschaWillems / Vulkan / VulkanTools
-    std::string errorString(VkResult errorCode)
-    {
-        switch (errorCode)
-        {
-#define STR(r) case VK_ ##r: return #r
-            STR(NOT_READY);
-            STR(TIMEOUT);
-            STR(EVENT_SET);
-            STR(EVENT_RESET);
-            STR(INCOMPLETE);
-            STR(ERROR_OUT_OF_HOST_MEMORY);
-            STR(ERROR_OUT_OF_DEVICE_MEMORY);
-            STR(ERROR_INITIALIZATION_FAILED);
-            STR(ERROR_DEVICE_LOST);
-            STR(ERROR_MEMORY_MAP_FAILED);
-            STR(ERROR_LAYER_NOT_PRESENT);
-            STR(ERROR_EXTENSION_NOT_PRESENT);
-            STR(ERROR_FEATURE_NOT_PRESENT);
-            STR(ERROR_INCOMPATIBLE_DRIVER);
-            STR(ERROR_TOO_MANY_OBJECTS);
-            STR(ERROR_FORMAT_NOT_SUPPORTED);
-            STR(ERROR_SURFACE_LOST_KHR);
-            STR(ERROR_NATIVE_WINDOW_IN_USE_KHR);
-            STR(SUBOPTIMAL_KHR);
-            STR(ERROR_OUT_OF_DATE_KHR);
-            STR(ERROR_INCOMPATIBLE_DISPLAY_KHR);
-            STR(ERROR_VALIDATION_FAILED_EXT);
-            STR(ERROR_INVALID_SHADER_NV);
-#undef STR
-        default:
-            return "UNKNOWN_ERROR";
-        }
-    }
 }
-#define VK_CHECK(x)                                                                     \
-    do                                                                                  \
-    {                                                                                   \
-        VkResult err = x;                                                               \
-        if (err)                                                                        \
-        {                                                                               \
-            Console::errorfn("Detected Vulkan error: %s\n", errorString(err).c_str());  \
-            DIVIDE_UNEXPECTED_CALL();                                                   \
-        }                                                                               \
-    } while (0)
 
 namespace VKUtil {
     void fillEnumTables() {
@@ -358,21 +314,19 @@ namespace Divide {
             return;
         }
 
-        //wait until the GPU has finished rendering the last frame.
-        VK_CHECK(vkWaitForFences(_device, 1, &_renderFence, true, std::numeric_limits<uint64_t>::max()));
-        VK_CHECK(vkResetFences(_device, 1, &_renderFence));
-        //request image from the swapchain, one second timeout
-        const VkResult result = vkAcquireNextImageKHR(_device, _swapchain, std::numeric_limits<uint64_t>::max(), _presentSemaphore, nullptr, &_swapchainImageIndex);
+        const VkResult result = _swapChain->beginFrame();
+
         if (result != VK_SUCCESS) {
-            if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
                 recreateSwapChain(window);
                 _skipEndFrame = true;
                 return;
             } else {
-                Console::errorfn("Detected Vulkan error: %s\n", errorString(result).c_str());
+                Console::errorfn("Detected Vulkan error: %s\n", VKErrorString(result).c_str());
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
+
         //now that we are sure that the commands finished executing, we can safely reset the command buffer to begin recording again.
         VK_CHECK(vkResetCommandBuffer(_mainCommandBuffer, 0));
 
@@ -399,11 +353,11 @@ namespace Divide {
         rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rpInfo.pNext = nullptr;
 
-        rpInfo.renderPass = _renderPass;
+        rpInfo.renderPass = _swapChain->getRenderPass();
         rpInfo.renderArea.offset.x = 0;
         rpInfo.renderArea.offset.y = 0;
         rpInfo.renderArea.extent = windowExtents;
-        rpInfo.framebuffer = _framebuffers[_swapchainImageIndex];
+        rpInfo.framebuffer = _swapChain->getCurrentFrameBuffer();
 
         //connect clear values
         rpInfo.clearValueCount = 1;
@@ -435,256 +389,111 @@ namespace Divide {
         //finalize the command buffer (we can no longer add commands, but it can now be executed)
         VK_CHECK(vkEndCommandBuffer(cmd));
 
-        //prepare the submission to the queue.
-        //we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
-        //we will signal the _renderSemaphore, to signal that rendering has finished
-
-        VkSubmitInfo submit = {};
-        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit.pNext = nullptr;
-
-        VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-        submit.pWaitDstStageMask = &waitStage;
-
-        submit.waitSemaphoreCount = 1;
-        submit.pWaitSemaphores = &_presentSemaphore;
-
-        submit.signalSemaphoreCount = 1;
-        submit.pSignalSemaphores = &_renderSemaphore;
-
-        submit.commandBufferCount = 1;
-        submit.pCommandBuffers = &cmd;
-
-        //submit command buffer to the queue and execute it.
-        // _renderFence will now block until the graphic commands finish execution
-        VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit, _renderFence));
-
-        // this will put the image we just rendered into the visible window.
-        // we want to wait on the _renderSemaphore for that,
-        // as it's necessary that drawing commands have finished before the image is displayed to the user
-        VkPresentInfoKHR presentInfo = {};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.pNext = nullptr;
-
-        presentInfo.pSwapchains = &_swapchain;
-        presentInfo.swapchainCount = 1;
-
-        presentInfo.pWaitSemaphores = &_renderSemaphore;
-        presentInfo.waitSemaphoreCount = 1;
-
-        presentInfo.pImageIndices = &_swapchainImageIndex;
-
-        VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
+        const VkResult result = _swapChain->endFrame(_graphicsQueue._queue, cmd);
+        
+        if (result != VK_SUCCESS) {
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+                recreateSwapChain(window);
+            } else {
+                Console::errorfn("Detected Vulkan error: %s\n", VKErrorString(result).c_str());
+                DIVIDE_UNEXPECTED_CALL();
+            }
+        }
     }
 
     ErrorCode VK_API::initRenderingAPI([[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, [[maybe_unused]] Configuration& config) noexcept {
-        vkb::InstanceBuilder builder;
-
         VKUtil::fillEnumTables();
 
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
 
+        auto systemInfoRet = vkb::SystemInfo::get_system_info();
+        if (!systemInfoRet) {
+            Console::errorfn(Locale::Get(_ID("ERROR_VK_INIT")), systemInfoRet.error().message().c_str());
+            return ErrorCode::VK_OLD_HARDWARE;
+        }
+
         //make the Vulkan instance, with basic debug features
-        auto inst_ret = builder.set_app_name(window.title())
-            .request_validation_layers(Config::ENABLE_GPU_VALIDATION)
-            .require_api_version(1, 2, 0)
-            .set_debug_callback(divide_debug_callback)
-            .set_debug_callback_user_data_pointer(this)
-            .build();
+        vkb::InstanceBuilder builder{};
+        builder.set_app_name(window.title())
+               .set_engine_name(Config::ENGINE_NAME)
+               .set_engine_version(Config::ENGINE_VERSION_MAJOR, Config::ENGINE_VERSION_MINOR, Config::ENGINE_VERSION_PATCH)
+               .request_validation_layers(Config::ENABLE_GPU_VALIDATION)
+               .require_api_version(1, 2, 0)
+               .set_debug_callback(divide_debug_callback)
+               .set_debug_callback_user_data_pointer(this);
 
-        vkb::Instance vkb_inst = inst_ret.value();
+        auto systemInfo = systemInfoRet.value();
+        /*if (systemInfo.is_extension_available("VK....")) {
+            builder.enable_extension("VK....");
+        }*/
 
-        //store the instance
-        _instance = vkb_inst.instance;
+        if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+            if (systemInfo.validation_layers_available) {
+                builder.enable_validation_layers();
+            }
+        }
+
+        auto instanceRet = builder.build();
+        if (!instanceRet) {
+            Console::errorfn(Locale::Get(_ID("ERROR_VK_INIT")), instanceRet.error().message().c_str());
+            return ErrorCode::VK_OLD_HARDWARE;
+        }
+
+        _vkbInstance = instanceRet.value();
+
         //store the debug messenger
-        _debugMessenger = vkb_inst.debug_messenger;
+        _debugMessenger = _vkbInstance.debug_messenger;
 
         // get the surface of the window we opened with SDL
-        SDL_Vulkan_CreateSurface(window.getRawWindow(), _instance, &_surface);
+        SDL_Vulkan_CreateSurface(window.getRawWindow(), _vkbInstance.instance, &_surface);
+        if (_surface == nullptr) {
+            return ErrorCode::VK_SURFACE_CREATE;
+        }
 
-        //use vkbootstrap to select a GPU.
-        //We want a GPU that can write to the SDL surface and supports Vulkan 1.2
-        vkb::PhysicalDeviceSelector selector{ vkb_inst };
-        vkb::PhysicalDevice physicalDevice = selector
-            .set_minimum_version(1, 2)
-            .set_surface(_surface)
-            .select()
-            .value();
+        _device = eastl::make_unique<VKDevice>(_vkbInstance, _surface);
+        if (_device->getVKDevice() == nullptr) {
+            return ErrorCode::VK_DEVICE_CREATE_FAILED;
+        }
 
-        //create the final Vulkan device
-        vkb::DeviceBuilder deviceBuilder{ physicalDevice };
+        _graphicsQueue = _device->getQueue(vkb::QueueType::graphics);
+        if (_graphicsQueue._queue == nullptr) {
+            return ErrorCode::VK_NO_GRAHPICS_QUEUE;
+        }
 
-        vkb::Device vkbDevice = deviceBuilder.build().value();
-
-        // Get the VkDevice handle used in the rest of a Vulkan application
-        _device = vkbDevice.device;
-        _chosenGPU = physicalDevice.physical_device;
-
-        // use vkbootstrap to get a Graphics queue
-        _graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
-        _graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+        _computeQueue = _device->getQueue(vkb::QueueType::compute);
+        _transferQueue = _device->getQueue(vkb::QueueType::transfer);
+        _swapChain = eastl::make_unique<VKSwapChain>(*_device, window);
 
         recreateSwapChain(window);
-        initCommands();
-        initSyncStructures();
+
+        //create a command pool for commands submitted to the graphics queue.
+        //we also want the pool to allow for resetting of individual command buffers
+        VkCommandPoolCreateInfo commandPoolInfo = vkInit::command_pool_create_info(_graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+        VK_CHECK(vkCreateCommandPool(_device->getVKDevice(), &commandPoolInfo, nullptr, &_commandPool));
+
+        //allocate the default command buffer that we will use for rendering
+        VkCommandBufferAllocateInfo cmdAllocInfo = vkInit::command_buffer_allocate_info(_commandPool, 1);
+
+        VK_CHECK(vkAllocateCommandBuffers(_device->getVKDevice(), &cmdAllocInfo, &_mainCommandBuffer));
 
         return ErrorCode::NO_ERR;
     }
 
     void VK_API::recreateSwapChain(const DisplayWindow& window) {
-        cleanupSwapChain();
+        const ErrorCode err = _swapChain->create(_surface);
+        DIVIDE_ASSERT(err == ErrorCode::NO_ERR);
 
-        initSwapChains(window);
-        initDefaultRenderpass();
-        initFramebuffers(window);
+        const auto& windowDimensions = window.getDrawableSize();
+        _windowExtents = VkExtent2D{ windowDimensions.width, windowDimensions.height };
+
         initPipelines();
     }
 
-    void VK_API::initSwapChains(const DisplayWindow& window) {
-        const auto& windowDimensions = window.getDrawableSize();
-        const VkExtent2D windowExtents{ windowDimensions.width, windowDimensions.height };
-
-        vkb::SwapchainBuilder swapchainBuilder{ _chosenGPU,_device,_surface };
-
-        vkb::Swapchain vkbSwapchain = swapchainBuilder
-            .use_default_format_selection()
-            //use vsync present mode
-            .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
-            .set_desired_extent(windowExtents.width, windowExtents.height)
-            .build()
-            .value();
-
-        //store swapchain and its related images
-        _swapchain = vkbSwapchain.swapchain;
-        {
-            auto images = vkbSwapchain.get_images().value();
-            _swapchainImages.resize(0);
-            _swapchainImages.reserve(images.size());
-            for (const auto& image : images) {
-                _swapchainImages.push_back(image);
-            }
-        }
-        {
-            auto imageViews = vkbSwapchain.get_image_views().value();
-            _swapchainImageViews.resize(0);
-            _swapchainImageViews.reserve(imageViews.size());
-            for (const auto& imageView : imageViews) {
-                _swapchainImageViews.push_back(imageView);
-            }
-        }
-        _swapchainImageFormat = vkbSwapchain.image_format;
-        _windowExtents = windowExtents;
-    }
-
-    void VK_API::initCommands() {
-        //create a command pool for commands submitted to the graphics queue.
-        //we also want the pool to allow for resetting of individual command buffers
-        VkCommandPoolCreateInfo commandPoolInfo = vkInit::command_pool_create_info(_graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-
-        VK_CHECK(vkCreateCommandPool(_device, &commandPoolInfo, nullptr, &_commandPool));
-
-        //allocate the default command buffer that we will use for rendering
-        VkCommandBufferAllocateInfo cmdAllocInfo = vkInit::command_buffer_allocate_info(_commandPool, 1);
-
-        VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &_mainCommandBuffer));
-    }
-
-    void VK_API::initDefaultRenderpass() {
-        // the renderpass will use this color attachment.
-        VkAttachmentDescription color_attachment = {};
-        //the attachment will have the format needed by the swapchain
-        color_attachment.format = _swapchainImageFormat;
-        //1 sample, we won't be doing MSAA
-        color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        // we Clear when this attachment is loaded
-        color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        // we keep the attachment stored when the renderpass ends
-        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        //we don't care about stencil
-        color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-        //we don't know or care about the starting layout of the attachment
-        color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-        //after the renderpass ends, the image has to be on a layout ready for display
-        color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkAttachmentReference color_attachment_ref = {};
-        //attachment number will index into the pAttachments array in the parent renderpass itself
-        color_attachment_ref.attachment = 0;
-        color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        //we are going to create 1 subpass, which is the minimum you can do
-        VkSubpassDescription subpass = {};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &color_attachment_ref;
-
-        VkRenderPassCreateInfo render_pass_info = {};
-        render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-
-        //connect the color attachment to the info
-        render_pass_info.attachmentCount = 1;
-        render_pass_info.pAttachments = &color_attachment;
-        //connect the subpass to the info
-        render_pass_info.subpassCount = 1;
-        render_pass_info.pSubpasses = &subpass;
-
-        VK_CHECK(vkCreateRenderPass(_device, &render_pass_info, nullptr, &_renderPass));
-    }
-
-    void VK_API::initFramebuffers(const DisplayWindow& window) {
-        const auto& windowDimensions = window.getDrawableSize();
-        const VkExtent2D windowExtents{ windowDimensions.width, windowDimensions.height };
-
-        //create the framebuffers for the swapchain images. This will connect the render-pass to the images for rendering
-        VkFramebufferCreateInfo fb_info = {};
-        fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fb_info.pNext = nullptr;
-
-        fb_info.renderPass = _renderPass;
-        fb_info.attachmentCount = 1;
-        fb_info.width = windowExtents.width;
-        fb_info.height = windowExtents.height;
-        fb_info.layers = 1;
-
-        //grab how many images we have in the swapchain
-        const size_t swapchain_imagecount = _swapchainImages.size();
-        _framebuffers.resize(swapchain_imagecount);
-
-        //create framebuffers for each of the swapchain image views
-        for (size_t i = 0; i < swapchain_imagecount; i++) {
-
-            fb_info.pAttachments = &_swapchainImageViews[i];
-            VK_CHECK(vkCreateFramebuffer(_device, &fb_info, nullptr, &_framebuffers[i]));
-        }
-    }
-
-    void VK_API::initSyncStructures() {
-        //create synchronization structures
-
-        VkFenceCreateInfo fenceCreateInfo = {};
-        fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceCreateInfo.pNext = nullptr;
-
-        //we want to create the fence with the Create Signaled flag, so we can wait on it before using it on a GPU command (for the first frame)
-        fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        VK_CHECK(vkCreateFence(_device, &fenceCreateInfo, nullptr, &_renderFence));
-
-        //for the semaphores we don't need any flags
-        VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-        semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semaphoreCreateInfo.pNext = nullptr;
-        semaphoreCreateInfo.flags = 0;
-
-        VK_CHECK(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr, &_presentSemaphore));
-        VK_CHECK(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr, &_renderSemaphore));
-    }
-
     void VK_API::initPipelines() {
+
+        destroyPipelines();
+
         VkShaderModule triangleFragShader;
         if (!loadShaderModule((Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::g_SPIRVShaderLoc + "triangle.frag.spv").c_str(), &triangleFragShader)) {
             Console::errorfn("Error when building the triangle fragment shader module");
@@ -703,17 +512,14 @@ namespace Divide {
         //we are not using descriptor sets or other systems yet, so no need to use anything other than empty default
         VkPipelineLayoutCreateInfo pipeline_layout_info = vkInit::pipeline_layout_create_info();
 
-        VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr, &_trianglePipelineLayout));
+        VK_CHECK(vkCreatePipelineLayout(_device->getVKDevice(), &pipeline_layout_info, nullptr, &_trianglePipelineLayout));
 
         //build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
         PipelineBuilder pipelineBuilder;
 
-        pipelineBuilder._shaderStages.push_back(
-            vkInit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, triangleVertexShader));
+        pipelineBuilder._shaderStages.push_back(vkInit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, triangleVertexShader));
 
-        pipelineBuilder._shaderStages.push_back(
-            vkInit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, triangleFragShader));
-
+        pipelineBuilder._shaderStages.push_back(vkInit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, triangleFragShader));
 
         //vertex input controls how to read vertices from vertex buffers. We aren't using it yet
         pipelineBuilder._vertexInputInfo = vkInit::vertex_input_state_create_info();
@@ -746,49 +552,36 @@ namespace Divide {
         pipelineBuilder._pipelineLayout = _trianglePipelineLayout;
 
         //finally build the pipeline
-        _trianglePipeline = pipelineBuilder.build_pipeline(_device, _renderPass);
+        _trianglePipeline = pipelineBuilder.build_pipeline(_device->getVKDevice(), _swapChain->getRenderPass());
 
-        vkDestroyShaderModule(_device, triangleVertexShader, nullptr);
-        vkDestroyShaderModule(_device, triangleFragShader, nullptr);
+        vkDestroyShaderModule(_device->getVKDevice(), triangleVertexShader, nullptr);
+        vkDestroyShaderModule(_device->getVKDevice(), triangleFragShader, nullptr);
     }
 
-    void VK_API::cleanupSwapChain() {
-        vkDeviceWaitIdle(_device);
-
-        vkDestroyPipeline(_device, _trianglePipeline, nullptr);
-        vkDestroyPipelineLayout(_device, _trianglePipelineLayout, nullptr);
-
-        if (_swapchain != nullptr) {
-            vkDestroySwapchainKHR(_device, _swapchain, nullptr);
-            _swapchain = nullptr;
-
-            //destroy the main renderpass
-            vkDestroyRenderPass(_device, _renderPass, nullptr);
-            _renderPass = nullptr;
-
-            //destroy swapchain resources
-            for (size_t i = 0; i < _framebuffers.size(); i++) {
-                vkDestroyFramebuffer(_device, _framebuffers[i], nullptr);
-                vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
-            }
-            _framebuffers.clear();
-            _swapchainImageViews.clear();
+    void VK_API::destroyPipelines() {
+        if (_trianglePipeline != VK_NULL_HANDLE) {
+            _device->waitIdle();
+            vkDestroyPipeline(_device->getVKDevice(), _trianglePipeline, nullptr);
+            vkDestroyPipelineLayout(_device->getVKDevice(), _trianglePipelineLayout, nullptr);
         }
+        _trianglePipeline = VK_NULL_HANDLE;
+        _trianglePipelineLayout = VK_NULL_HANDLE;
     }
 
     void VK_API::closeRenderingAPI() {
-        cleanupSwapChain();
-
-        vkDestroySemaphore(_device, _presentSemaphore, nullptr);
-        vkDestroySemaphore(_device, _renderSemaphore, nullptr);
-        vkDestroyFence(_device, _renderFence, nullptr);
-
-        vkDestroyCommandPool(_device, _commandPool, nullptr);
-
-        vkDestroyDevice(_device, nullptr);
-        vkDestroySurfaceKHR(_instance, _surface, nullptr);
-        vkb::destroy_debug_utils_messenger(_instance, _debugMessenger);
-        vkDestroyInstance(_instance, nullptr);
+        if (_device != nullptr) {
+            destroyPipelines();
+            if (_commandPool != VK_NULL_HANDLE) {
+                vkDestroyCommandPool(_device->getVKDevice(), _commandPool, nullptr);
+            }
+            _swapChain.reset();
+            _device.reset();
+        }
+        if (_vkbInstance.instance != nullptr) {
+            vkDestroySurfaceKHR(_vkbInstance.instance, _surface, nullptr);
+        }
+        vkb::destroy_instance(_vkbInstance);
+        _vkbInstance = {};
     }
 
     bool VK_API::loadShaderModule(const char* filePath, VkShaderModule* outShaderModule) {
@@ -827,13 +620,11 @@ namespace Divide {
 
         //check that the creation goes well.
         VkShaderModule shaderModule;
-        if (vkCreateShaderModule(_device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+        if (vkCreateShaderModule(_device->getVKDevice(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
             return false;
         }
         *outShaderModule = shaderModule;
         return true;
-
-
     }
 
     const PerformanceMetrics& VK_API::getPerformanceMetrics() const noexcept {

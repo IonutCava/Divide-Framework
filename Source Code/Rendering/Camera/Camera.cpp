@@ -400,6 +400,11 @@ void Camera::setHorizontalFoV(const Angle::DEGREES<F32> horizontalFoV) noexcept 
     _projectionDirty = true;
 }
 
+Angle::DEGREES<F32> Camera::getHorizontalFoV() const noexcept {
+    const Angle::RADIANS<F32> halfFoV = Angle::to_RADIANS(_data._FoV) * 0.5f;
+    return Angle::to_DEGREES(2.0f * std::atan(tan(halfFoV) * _data._aspectRatio));
+}
+
 void Camera::setRotation(const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> roll) noexcept {
     setRotation(Quaternion<F32>(pitch, yaw, roll)); 
 }

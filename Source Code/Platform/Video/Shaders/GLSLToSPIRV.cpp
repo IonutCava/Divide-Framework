@@ -19,12 +19,19 @@ namespace {
     }
 };
 
+bool SpirvHelper::s_isInit = false;
 void SpirvHelper::Init() {
+    assert(!s_isInit);
+
     glslang::InitializeProcess();
+    s_isInit = true;
 }
 
 void SpirvHelper::Finalize() {
-    glslang::FinalizeProcess();
+    if (s_isInit) {
+        glslang::FinalizeProcess();
+        s_isInit = false;
+    }
 }
 
 void SpirvHelper::InitResources(TBuiltInResource& Resources) {
