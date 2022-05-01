@@ -130,7 +130,7 @@ protected:
     friend class GFXDevice;
 
     /// Clear buffers, set default states, etc
-    virtual void beginFrame(DisplayWindow& window, bool global = false) = 0;
+    virtual [[nodiscard]] bool beginFrame(DisplayWindow& window, bool global = false) = 0;
     /// Clear shaders, restore active texture units, etc
     virtual void endFrame(DisplayWindow& window, bool global = false) = 0;
     virtual void idle(bool fast) = 0;

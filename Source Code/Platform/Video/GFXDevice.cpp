@@ -1103,10 +1103,9 @@ void GFXDevice::beginFrame(DisplayWindow& window, const bool global) {
         _resolutionChangeQueued.second = false;
     }
 
-    _api->beginFrame(window, global);
-
-    const vec2<U16>& drawableSize = window.getDrawableSize();
-    setViewport(0, 0, drawableSize.width, drawableSize.height);
+    if (!_api->beginFrame(window, global)) {
+        NOP();
+    }
 }
 
 namespace {

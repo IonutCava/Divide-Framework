@@ -89,7 +89,7 @@ protected:
     void closeRenderingAPI() override;
 
     /// Prepare the GPU for rendering a frame
-    void beginFrame(DisplayWindow& window, bool global = false) override;
+    [[nodiscard]] bool beginFrame(DisplayWindow& window, bool global = false) override;
     /// Finish rendering the current frame
     void endFrame(DisplayWindow& window, bool global = false) override;
     void idle(bool fast) override;

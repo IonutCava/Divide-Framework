@@ -36,6 +36,7 @@
 #include <vk-bootstrap/src/VkBootstrap.h>
 
 namespace Divide {
+
 //ref:  SaschaWillems / Vulkan / VulkanTools
 inline std::string VKErrorString(VkResult errorCode)
 {

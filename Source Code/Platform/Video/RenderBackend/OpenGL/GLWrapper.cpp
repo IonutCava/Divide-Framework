@@ -493,7 +493,7 @@ void GL_API::closeRenderingAPI() {
 }
 
 /// Prepare the GPU for rendering a frame
-void GL_API::beginFrame(DisplayWindow& window, const bool global) {
+bool GL_API::beginFrame(DisplayWindow& window, const bool global) {
     OPTICK_EVENT();
     // Start a duration query in debug builds
     if (global && _runQueries) {
@@ -540,6 +540,11 @@ void GL_API::beginFrame(DisplayWindow& window, const bool global) {
     _context.registerDrawCall();
 
     clearStates(window, stateTracker, global);
+
+    const vec2<U16>& drawableSize = window.getDrawableSize();
+    _context.setViewport(0, 0, drawableSize.width, drawableSize.height);
+
+    return true;
 }
 
 void GL_API::endFrameLocal(const DisplayWindow& window) {

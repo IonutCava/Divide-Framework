@@ -45,7 +45,7 @@ class NONE_API final : public RenderAPIWrapper {
 
   protected:
       void idle(bool fast) noexcept override;
-      void beginFrame(DisplayWindow& window, bool global = false) noexcept override;
+      [[nodiscard]] bool beginFrame(DisplayWindow& window, bool global = false) noexcept override;
       void endFrame(DisplayWindow& window, bool global = false) noexcept override;
 
       ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;

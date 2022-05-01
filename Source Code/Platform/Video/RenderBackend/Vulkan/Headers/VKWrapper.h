@@ -40,6 +40,7 @@
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
 namespace Divide {
+
 class PipelineBuilder {
 public:
 
@@ -56,6 +57,11 @@ public:
     VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
 };
 
+struct VKStateTracker {
+    std::array<Str64, 32> _debugScope;
+    U8 _debugScopeDepth = 0u;
+};
+
 class VK_API final : public RenderAPIWrapper {
   public:
     VK_API(GFXDevice& context) noexcept;
@@ -64,7 +70,7 @@ class VK_API final : public RenderAPIWrapper {
 
   protected:
       void idle(bool fast) noexcept override;
-      void beginFrame(DisplayWindow& window, bool global = false) noexcept override;
+      [[nodiscard]] bool beginFrame(DisplayWindow& window, bool global = false) noexcept override;
       void endFrame(DisplayWindow& window, bool global = false) noexcept override;
 
       [[nodiscard]] ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;
@@ -83,9 +89,20 @@ private:
     void destroyPipelines();
 
     void recreateSwapChain(const DisplayWindow& window);
+    void drawText(const TextElementBatch& batch);
+    void drawIMGUI(const ImDrawData* data, I64 windowGUID);
+    bool draw(const GenericDrawCommand& cmd) const;
 
     //loads a shader module from a spir-v file. Returns false if it errors
     [[nodiscard]] bool loadShaderModule(const char* filePath, VkShaderModule* outShaderModule);
+
+public:
+    static VKStateTracker* GetStateTracker() noexcept;
+
+private:
+    static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message);
+    static void PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message);
+    static void PopDebugMessage(VkCommandBuffer cmdBuffer);
 
 private:
     GFXDevice& _context;
@@ -114,6 +131,10 @@ private:
     VkExtent2D _windowExtents{};
 
     bool _skipEndFrame{ false };
+
+private:
+    static eastl::unique_ptr<VKStateTracker> s_stateTracker;
+    static bool s_hasDebugMarkerSupport;
 };
 
 };  // namespace Divide

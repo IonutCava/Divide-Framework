@@ -16,8 +16,11 @@ namespace Divide {
     void NONE_API::idle([[maybe_unused]] const bool fast) noexcept {
     }
 
-    void NONE_API::beginFrame([[maybe_unused]] DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
+    [[nodiscard]] bool NONE_API::beginFrame(DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
         SDL_RenderClear(_renderer);
+        const vec2<U16>& drawableSize = window.getDrawableSize();
+        _context.setViewport(0, 0, drawableSize.width, drawableSize.height);
+        return true;
     }
 
     void NONE_API::endFrame(DisplayWindow& window, [[maybe_unused]] bool global) noexcept {

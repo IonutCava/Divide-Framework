@@ -8,6 +8,7 @@
 
 #include "Utility/Headers/Localization.h"
 
+#include "Platform/Headers/SDLEventManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
 
@@ -49,8 +50,15 @@
 #pragma warning(pop)
 #endif
 
-// ref (mostly everything): https://vkguide.dev/
+namespace Debug {
+    PFN_vkDebugMarkerSetObjectTagEXT vkDebugMarkerSetObjectTag = VK_NULL_HANDLE;
+    PFN_vkDebugMarkerSetObjectNameEXT vkDebugMarkerSetObjectName = VK_NULL_HANDLE;
+    PFN_vkCmdDebugMarkerBeginEXT vkCmdDebugMarkerBegin = VK_NULL_HANDLE;
+    PFN_vkCmdDebugMarkerEndEXT vkCmdDebugMarkerEnd = VK_NULL_HANDLE;
+    PFN_vkCmdDebugMarkerInsertEXT vkCmdDebugMarkerInsert = VK_NULL_HANDLE;
+};
 
+// ref (mostly everything): https://vkguide.dev/
 namespace vkInit{
     VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info(VkShaderStageFlagBits stage, VkShaderModule shaderModule) {
 
@@ -193,11 +201,20 @@ namespace {
 }
 
 namespace VKUtil {
-    void fillEnumTables() {
-
+    void fillEnumTables(VkDevice device) {
+        // The debug marker extension is not part of the core, so function pointers need to be loaded manually
+        Debug::vkDebugMarkerSetObjectTag = (PFN_vkDebugMarkerSetObjectTagEXT)vkGetDeviceProcAddr(device, "vkDebugMarkerSetObjectTagEXT");
+        Debug::vkDebugMarkerSetObjectName = (PFN_vkDebugMarkerSetObjectNameEXT)vkGetDeviceProcAddr(device, "vkDebugMarkerSetObjectNameEXT");
+        Debug::vkCmdDebugMarkerBegin = (PFN_vkCmdDebugMarkerBeginEXT)vkGetDeviceProcAddr(device, "vkCmdDebugMarkerBeginEXT");
+        Debug::vkCmdDebugMarkerEnd = (PFN_vkCmdDebugMarkerEndEXT)vkGetDeviceProcAddr(device, "vkCmdDebugMarkerEndEXT");
+        Debug::vkCmdDebugMarkerInsert = (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr(device, "vkCmdDebugMarkerInsertEXT");
     };
 };
 namespace Divide {
+
+    bool VK_API::s_hasDebugMarkerSupport = false;
+    eastl::unique_ptr<VKStateTracker> VK_API::s_stateTracker = nullptr;
+
     VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass) {
         //make viewport state from our stored viewport and scissor.
         //at the moment we won't support multiple viewports or scissors
@@ -221,12 +238,27 @@ namespace Divide {
         colorBlending.attachmentCount = 1;
         colorBlending.pAttachments = &_colorBlendAttachment;
 
+        const VkDynamicState dynamicStates[] = {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR,
+            //VK_DYNAMIC_STATE_DEPTH_BIAS,
+            //VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+            //VK_DYNAMIC_STATE_CULL_MODE,
+            //VK_DYNAMIC_STATE_FRONT_FACE,
+            //VK_DYNAMIC_STATE_LINE_WIDTH
+        };
+        constexpr U32 stateCount = to_U32(std::size(dynamicStates));
+        VkPipelineDynamicStateCreateInfo dynamicState = {};
+        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.dynamicStateCount = stateCount;
+        dynamicState.pDynamicStates = dynamicStates;
+
         //build the actual pipeline
         //we now use all of the info structs we have been writing into into this one to create the pipeline
         VkGraphicsPipelineCreateInfo pipelineInfo = {};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.pNext = nullptr;
-
+        pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.stageCount = to_U32(_shaderStages.size());
         pipelineInfo.pStages = _shaderStages.data();
         pipelineInfo.pVertexInputState = &_vertexInputInfo;
@@ -265,14 +297,12 @@ namespace Divide {
     void VK_API::idle([[maybe_unused]] const bool fast) noexcept {
     }
 
-    void VK_API::beginFrame(DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
+    bool VK_API::beginFrame(DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
         const auto& windowDimensions = window.getDrawableSize();
         const VkExtent2D windowExtents{ windowDimensions.width, windowDimensions.height };
 
         if (_windowExtents.width != windowExtents.width || _windowExtents.height != windowExtents.height) {
             recreateSwapChain(window);
-            _skipEndFrame = true;
-            return;
         }
 
         const VkResult result = _swapChain->beginFrame();
@@ -281,7 +311,7 @@ namespace Divide {
             if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
                 recreateSwapChain(window);
                 _skipEndFrame = true;
-                return;
+                return false;
             } else {
                 Console::errorfn("Detected Vulkan error: %s\n", VKErrorString(result).c_str());
                 DIVIDE_UNEXPECTED_CALL();
@@ -289,7 +319,7 @@ namespace Divide {
         }
 
         //naming it cmd for shorter writing
-        VkCommandBuffer cmd = getCurrentCommandBuffer();
+        VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
 
         //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
         VkCommandBufferBeginInfo cmdBeginInfo = {};
@@ -298,12 +328,11 @@ namespace Divide {
         cmdBeginInfo.pInheritanceInfo = nullptr;
         cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-        VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+        VK_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo));
 
         //make a clear-color from frame number. This will flash with a 120*pi frame period.
-        VkClearValue clearValue;
-        float flash = abs(sin(GFXDevice::FrameCount() / 120.f));
-        clearValue.color = { { 0.0f, 0.0f, flash, 1.0f } };
+        VkClearValue clearValue{};
+        clearValue.color = { { 0.0f, 0.0f, abs(sin(GFXDevice::FrameCount() / 120.f)), 1.0f } };
 
         //start the main renderpass.
         //We will use the clear color from above, and the framebuffer of the index the swapchain gave us
@@ -321,13 +350,22 @@ namespace Divide {
         rpInfo.clearValueCount = 1;
         rpInfo.pClearValues = &clearValue;
 
-        vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBeginRenderPass(cmdBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
         //once we start adding rendering commands, they will go here
 
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline);
-        vkCmdDraw(cmd, 3, 1, 0, 0);
+        vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline);
+        // Set dynamic state to default
+        if (setViewport({ 0, 0, windowDimensions.width, windowDimensions.height })) {
+            const VkOffset2D offset{ 0, 0 };
+            const VkExtent2D extent{ to_U32(windowDimensions.width),to_U32(windowDimensions.height) };
+            const VkRect2D scissor{ offset, extent };
+            vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
+            vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
+        }
+
+        return true;
     }
 
     void VK_API::endFrame([[maybe_unused]] DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
@@ -359,7 +397,7 @@ namespace Divide {
     }
 
     ErrorCode VK_API::initRenderingAPI([[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, [[maybe_unused]] Configuration& config) noexcept {
-        VKUtil::fillEnumTables();
+        s_stateTracker = eastl::make_unique<VKStateTracker>();
 
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
 
@@ -381,9 +419,12 @@ namespace Divide {
                .set_debug_callback_user_data_pointer(this);
 
         auto systemInfo = systemInfoRet.value();
-        /*if (systemInfo.is_extension_available("VK....")) {
-            builder.enable_extension("VK....");
-        }*/
+        if (Config::ENABLE_GPU_VALIDATION && systemInfo.is_extension_available(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
+            builder.enable_extension(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+            s_hasDebugMarkerSupport = true;
+        } else {
+            s_hasDebugMarkerSupport = false;
+        }
 
         if_constexpr(Config::ENABLE_GPU_VALIDATION) {
             if (systemInfo.validation_layers_available) {
@@ -412,6 +453,7 @@ namespace Divide {
         if (_device->getVKDevice() == nullptr) {
             return ErrorCode::VK_DEVICE_CREATE_FAILED;
         }
+        VKUtil::fillEnumTables(_device->getVKDevice());
 
         _graphicsQueue = _device->getQueue(vkb::QueueType::graphics);
         if (_graphicsQueue._queue == nullptr) {
@@ -448,6 +490,11 @@ namespace Divide {
     }
 
     void VK_API::recreateSwapChain(const DisplayWindow& window) {
+        while (window.minimized()) {
+            idle(false);
+            SDLEventManager::pollEvents();
+        }
+
         const ErrorCode err = _swapChain->create(BitCompare(window.flags(), WindowFlags::VSYNC),
                                                  _context.context().config().runtime.adaptiveSync,
                                                  _surface);
@@ -539,6 +586,8 @@ namespace Divide {
     }
 
     void VK_API::closeRenderingAPI() {
+        s_stateTracker.reset();
+
         if (_device != nullptr) {
             destroyPipelines();
             if (_commandPool != VK_NULL_HANDLE) {
@@ -598,12 +647,254 @@ namespace Divide {
         return true;
     }
 
+    void VK_API::drawText(const TextElementBatch& batch) {
+        OPTICK_EVENT();
+
+        BlendingSettings textBlend{};
+        textBlend.blendSrc(BlendProperty::SRC_ALPHA);
+        textBlend.blendDest(BlendProperty::INV_SRC_ALPHA);
+        textBlend.blendOp(BlendOperation::ADD);
+        textBlend.blendSrcAlpha(BlendProperty::ONE);
+        textBlend.blendDestAlpha(BlendProperty::ZERO);
+        textBlend.blendOpAlpha(BlendOperation::COUNT);
+        textBlend.enabled(true);
+
+        [[maybe_unused]] const I32 width = _context.renderingResolution().width;
+        [[maybe_unused]] const I32 height = _context.renderingResolution().height;
+
+        size_t drawCount = 0;
+        size_t previousStyle = 0;
+
+        for (const TextElement& entry : batch.data())
+        {
+            if (previousStyle != entry.textLabelStyleHash()) {
+                previousStyle = entry.textLabelStyleHash();
+            }
+
+            const TextElement::TextType& text = entry.text();
+            const size_t lineCount = text.size();
+            for (size_t i = 0; i < lineCount; ++i) {
+            }
+            drawCount += lineCount;
+
+            // Register each label rendered as a draw call
+            _context.registerDrawCalls(to_U32(drawCount));
+        }
+    }
+
+    void VK_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
+        static I32 s_maxCommandCount = 8u;
+
+        OPTICK_EVENT();
+
+        assert(data != nullptr);
+        if (data->Valid) {
+            s_maxCommandCount = std::max(s_maxCommandCount, data->CmdListsCount);
+
+            GenericVertexData::IndexBuffer idxBuffer;
+            idxBuffer.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
+
+            GenericDrawCommand cmd = {};
+
+            GenericVertexData* buffer = _context.getOrCreateIMGUIBuffer(windowGUID, s_maxCommandCount);
+            assert(buffer != nullptr);
+            for (I32 n = 0; n < data->CmdListsCount; ++n) {
+
+                const ImDrawList* cmd_list = data->CmdLists[n];
+
+                idxBuffer.count = to_U32(cmd_list->IdxBuffer.Size);
+                idxBuffer.data = cmd_list->IdxBuffer.Data;
+
+                buffer->incQueue();
+                buffer->updateBuffer(0u, 0u, to_U32(cmd_list->VtxBuffer.size()), cmd_list->VtxBuffer.Data);
+                buffer->updateIndexBuffer(idxBuffer);
+
+                for (const ImDrawCmd& pcmd : cmd_list->CmdBuffer) {
+
+                    if (pcmd.UserCallback) {
+                        // User callback (registered via ImDrawList::AddCallback)
+                        pcmd.UserCallback(cmd_list, &pcmd);
+                    } else {
+                        Rect<I32> clip_rect = {
+                            pcmd.ClipRect.x - data->DisplayPos.x,
+                            pcmd.ClipRect.y - data->DisplayPos.y,
+                            pcmd.ClipRect.z - data->DisplayPos.x,
+                            pcmd.ClipRect.w - data->DisplayPos.y
+                        };
+
+                        /*const Rect<I32>& viewport = stateTracker->_activeViewport;
+                        if (clip_rect.x < viewport.z &&
+                            clip_rect.y < viewport.w &&
+                            clip_rect.z >= 0 &&
+                            clip_rect.w >= 0)
+                        {
+                            const I32 tempW = clip_rect.w;
+                            clip_rect.z -= clip_rect.x;
+                            clip_rect.w -= clip_rect.y;
+                            clip_rect.y  = viewport.w - tempW;
+
+                            stateTracker->setScissor(clip_rect);
+                            if (stateTracker->bindTexture(to_U8(TextureUsage::UNIT0),
+                                                          TextureType::TEXTURE_2D,
+                                                          static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd.TextureId))) == GLStateTracker::BindResult::FAILED) {
+                                DIVIDE_UNEXPECTED_CALL();
+                            }
+
+                            cmd._cmd.indexCount = pcmd.ElemCount;
+                            cmd._cmd.firstIndex = pcmd.IdxOffset;
+                            buffer->draw(cmd);
+                         }*/
+                    }
+                }
+            }
+        }
+    }
+
+    bool VK_API::draw(const GenericDrawCommand& cmd) const {
+        OPTICK_EVENT();
+
+        if (cmd._sourceBuffer._id == 0) {
+
+        } else {
+            // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
+            static VertexDataInterface::Handle s_lastID = { U16_MAX, 0u };
+            static VertexDataInterface* s_lastBuffer = nullptr;
+
+            if (s_lastID != cmd._sourceBuffer) {
+                s_lastID = cmd._sourceBuffer;
+                s_lastBuffer = VertexDataInterface::s_VDIPool.find(s_lastID);
+            }
+
+            DIVIDE_ASSERT(s_lastBuffer != nullptr);
+            s_lastBuffer->draw(cmd);
+        }
+
+        return true;
+    }
+
     const PerformanceMetrics& VK_API::getPerformanceMetrics() const noexcept {
         static PerformanceMetrics perf;
         return perf;
     }
 
     void VK_API::flushCommand([[maybe_unused]] const GFX::CommandBuffer::CommandEntry& entry, [[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
+        OPTICK_EVENT();
+
+        VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
+        const GFX::CommandType cmdType = static_cast<GFX::CommandType>(entry._typeIndex);
+        OPTICK_TAG("Type", to_base(cmdType));
+
+
+        switch (cmdType) {
+            case GFX::CommandType::BEGIN_RENDER_PASS: {
+                OPTICK_EVENT("BEGIN_RENDER_PASS");
+
+                const GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(entry);
+                PushDebugMessage(cmdBuffer, crtCmd->_name.c_str());
+            }break;
+            case GFX::CommandType::END_RENDER_PASS: {
+                OPTICK_EVENT("END_RENDER_PASS");
+                PopDebugMessage(cmdBuffer);
+            }break;
+            case GFX::CommandType::BEGIN_PIXEL_BUFFER: {
+                OPTICK_EVENT("BEGIN_PIXEL_BUFFER");
+            }break;
+            case GFX::CommandType::END_PIXEL_BUFFER: {
+                OPTICK_EVENT("END_PIXEL_BUFFER");
+            }break;
+            case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
+                OPTICK_EVENT("BEGIN_RENDER_SUB_PASS");
+            }break;
+            case GFX::CommandType::END_RENDER_SUB_PASS: {
+                OPTICK_EVENT("END_RENDER_SUB_PASS");
+            }break;
+            case GFX::CommandType::COPY_TEXTURE: {
+                OPTICK_EVENT("COPY_TEXTURE");
+            }break;
+            case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
+                OPTICK_EVENT("BIND_DESCRIPTOR_SETS");
+            }break;
+            case GFX::CommandType::BIND_PIPELINE: {
+                OPTICK_EVENT("BIND_PIPELINE");
+            } break;
+            case GFX::CommandType::SEND_PUSH_CONSTANTS: {
+                OPTICK_EVENT("SEND_PUSH_CONSTANTS");
+            } break;
+            case GFX::CommandType::SET_SCISSOR: {
+                OPTICK_EVENT("SET_SCISSOR");
+
+                const Rect<I32>& rect = commandBuffer.get<GFX::SetScissorCommand>(entry)->_rect;
+
+                const VkOffset2D offset{ rect.offsetX, rect.offsetY };
+                const VkExtent2D extent{ to_U32(rect.sizeX),to_U32(rect.sizeY) };
+                const VkRect2D scissor{offset, extent};
+                vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+            }break;
+            case GFX::CommandType::SET_TEXTURE_RESIDENCY: {
+                OPTICK_EVENT("SET_TEXTURE_RESIDENCY");
+            }break;
+            case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
+                OPTICK_EVENT("BEGIN_DEBUG_SCOPE");
+                 const GFX::BeginDebugScopeCommand* crtCmd = commandBuffer.get<GFX::BeginDebugScopeCommand>(entry);
+                 PushDebugMessage(cmdBuffer, crtCmd->_scopeName.c_str());
+            } break;
+            case GFX::CommandType::END_DEBUG_SCOPE: {
+                OPTICK_EVENT("END_DEBUG_SCOPE");
+
+                 PopDebugMessage(cmdBuffer);
+            } break;
+            case GFX::CommandType::ADD_DEBUG_MESSAGE: {
+                OPTICK_EVENT("ADD_DEBUG_MESSAGE");
+                const GFX::AddDebugMessageCommand* crtCmd = commandBuffer.get<GFX::AddDebugMessageCommand>(entry);
+                InsertDebugMessage(cmdBuffer, crtCmd->_msg.c_str());
+            }break;
+            case GFX::CommandType::COMPUTE_MIPMAPS: {
+                OPTICK_EVENT("COMPUTE_MIPMAPS");
+
+                const GFX::ComputeMipMapsCommand* crtCmd = commandBuffer.get<GFX::ComputeMipMapsCommand>(entry);
+
+                if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
+                    OPTICK_EVENT("VK: In-place computation - Full");
+                } else {
+                    OPTICK_EVENT("VK: View - based computation");
+                }
+            }break;
+            case GFX::CommandType::DRAW_TEXT: {
+                OPTICK_EVENT("DRAW_TEXT");
+                const GFX::DrawTextCommand* crtCmd = commandBuffer.get<GFX::DrawTextCommand>(entry);
+                drawText(crtCmd->_batch);
+            }break;
+            case GFX::CommandType::DRAW_IMGUI: {
+                OPTICK_EVENT("DRAW_IMGUI");
+                const GFX::DrawIMGUICommand* crtCmd = commandBuffer.get<GFX::DrawIMGUICommand>(entry);
+                drawIMGUI(crtCmd->_data, crtCmd->_windowGUID);
+            }break;
+            case GFX::CommandType::DRAW_COMMANDS : {
+                OPTICK_EVENT("DRAW_COMMANDS");
+                const GFX::DrawCommand::CommandContainer& drawCommands = commandBuffer.get<GFX::DrawCommand>(entry)->_drawCommands;
+
+                U32 drawCount = 0u;
+                for (const GenericDrawCommand& currentDrawCommand : drawCommands) {
+                    if (draw(currentDrawCommand)) {
+                        drawCount += isEnabledOption(currentDrawCommand, CmdRenderOptions::RENDER_WIREFRAME) 
+                                           ? 2 
+                                           : isEnabledOption(currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY) ? 1 : 0;
+                    }
+                }
+                _context.registerDrawCalls(drawCount);
+            }break;
+            case GFX::CommandType::DISPATCH_COMPUTE: {
+                OPTICK_EVENT("DISPATCH_COMPUTE");
+            }break;
+            case GFX::CommandType::SET_CLIPING_STATE: {
+                OPTICK_EVENT("SET_CLIPING_STATE");
+            } break;
+            case GFX::CommandType::MEMORY_BARRIER: {
+                OPTICK_EVENT("MEMORY_BARRIER");
+            } break;
+            default: break;
+        }
     }
 
     void VK_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
@@ -622,11 +913,59 @@ namespace Divide {
         return 0u;
     }
 
-    bool VK_API::setViewport([[maybe_unused]] const Rect<I32>& newViewport) noexcept {
+    bool VK_API::setViewport(const Rect<I32>& newViewport) noexcept {
+        VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
+        const VkViewport viewport{to_F32(newViewport.offsetX),
+                                  to_F32(newViewport.offsetY),
+                                  to_F32(newViewport.sizeX),
+                                  to_F32(newViewport.sizeY),
+                                  0.f,
+                                  1.f};
+        vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
         return true;
     }
 
     void VK_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) noexcept {
     }
 
+    VKStateTracker* VK_API::GetStateTracker() noexcept {
+        DIVIDE_ASSERT(s_stateTracker != nullptr);
+
+        return s_stateTracker.get();
+    }
+
+    void VK_API::InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message) {
+        if (s_hasDebugMarkerSupport) {
+            static F32 color[4] = { 0.0f, 1.0f, 0.0f, 1.f };
+
+            VkDebugMarkerMarkerInfoEXT markerInfo = {};
+            markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
+            memcpy(markerInfo.color, &color[0], sizeof(F32) * 4);
+            markerInfo.pMarkerName = message;
+            Debug::vkCmdDebugMarkerInsert(cmdBuffer, &markerInfo);
+        }
+    }
+
+    void VK_API::PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message) {
+        if (s_hasDebugMarkerSupport) {
+            static F32 color[4] = {0.5f, 0.5f, 0.5f, 1.f};
+
+            VkDebugMarkerMarkerInfoEXT markerInfo = {};
+            markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
+            memcpy(markerInfo.color, &color[0], sizeof(F32) * 4);
+            markerInfo.pMarkerName = "Set primary viewport";
+            Debug::vkCmdDebugMarkerBegin(cmdBuffer, &markerInfo);
+        }
+        
+        assert(GetStateTracker()->_debugScopeDepth < GetStateTracker()->_debugScope.size());
+        GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth++] = message;
+    }
+
+    void VK_API::PopDebugMessage(VkCommandBuffer cmdBuffer) {
+        if (s_hasDebugMarkerSupport) {
+            Debug::vkCmdDebugMarkerEnd(cmdBuffer);
+        }
+
+        GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = "";
+    }
 }; //namespace Divide
