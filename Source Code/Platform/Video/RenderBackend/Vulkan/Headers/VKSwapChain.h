@@ -38,13 +38,17 @@
 namespace Divide {
     class DisplayWindow;
     class VKDevice;
+    class GFXDevice;
 
     class VKSwapChain final : NonCopyable, NonMovable {
+    public:
+        static constexpr U8 MAX_FRAMES_IN_FLIGHT = 3u;
+
     public:
         VKSwapChain(const VKDevice& device, const DisplayWindow& window);
         ~VKSwapChain();
 
-        ErrorCode create(VkSurfaceKHR targetSurface);
+        ErrorCode create(bool vSync, bool adaptiveSync, VkSurfaceKHR targetSurface);
         void destroy();
 
         [[nodiscard]] VkResult beginFrame();
@@ -55,10 +59,8 @@ namespace Divide {
         [[nodiscard]] VkFramebuffer  getCurrentFrameBuffer() const noexcept;
 
     private:
-        [[nodiscard]] ErrorCode createSwapChainInternal(VkExtent2D windowExtents, VkSurfaceKHR targetSurface);
+        [[nodiscard]] ErrorCode createSwapChainInternal(bool vSync, bool adaptiveSync, VkExtent2D windowExtents, VkSurfaceKHR targetSurface);
         [[nodiscard]] ErrorCode createFramebuffersInternal(VkExtent2D windowExtents, VkSurfaceKHR targetSurface);
-
-        [[nodiscard]] VkResult acquireNextImage();
 
     private:
         const VKDevice& _device;
@@ -66,14 +68,18 @@ namespace Divide {
 
         vkb::Swapchain _swapChain{};
         VkRenderPass _renderPass{ nullptr };
-        VkSemaphore _presentSemaphore{ nullptr }, _renderSemaphore{ nullptr };
-        VkFence _renderFence{ nullptr };
+
+        vector<VkSemaphore> _imageAvailableSemaphores;
+        vector<VkSemaphore> _renderFinishedSemaphores;
+        vector<VkFence> _inFlightFences;
+        vector<VkFence> _imagesInFlight;
 
         vector<VkFramebuffer> _framebuffers;
         std::vector<VkImage> _swapchainImages;
         std::vector<VkImageView> _swapchainImageViews;
 
         U32 _swapchainImageIndex{ 0u };
+        U8 _currentFrameIdx{ 0u };
     };
 }; //namespace Divide
 #endif //_VK_SWAP_CHAIN_H_

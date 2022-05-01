@@ -27,7 +27,6 @@ namespace Divide {
        
         vkb::destroy_swapchain(_swapChain);
         _swapChain.swapchain = VK_NULL_HANDLE;
-
         //destroy swapchain resources
         _swapChain.destroy_image_views(_swapchainImageViews);
         _swapchainImages.clear();
@@ -39,17 +38,21 @@ namespace Divide {
         }
 
         _framebuffers.clear();
-
-        vkDestroySemaphore(device, _presentSemaphore, nullptr);
-        vkDestroySemaphore(device, _renderSemaphore, nullptr);
-        vkDestroyFence(device, _renderFence, nullptr);
+        if (!_inFlightFences.empty()) {
+            for (U8 i = 0u; i < MAX_FRAMES_IN_FLIGHT; i++) {
+                vkDestroySemaphore(device, _renderFinishedSemaphores[i], nullptr);
+                vkDestroySemaphore(device, _imageAvailableSemaphores[i], nullptr);
+                vkDestroyFence(device, _inFlightFences[i], nullptr);
+            }
+        }
+        _imagesInFlight.clear();
     }
 
-    ErrorCode VKSwapChain::create(VkSurfaceKHR targetSurface) {
+    ErrorCode VKSwapChain::create(const bool vSync, const bool adaptiveSync, VkSurfaceKHR targetSurface) {
         const auto& windowDimensions = _window.getDrawableSize();
         const VkExtent2D windowExtents{ windowDimensions.width, windowDimensions.height };
 
-        const ErrorCode err = createSwapChainInternal(windowExtents, targetSurface);
+        const ErrorCode err = createSwapChainInternal(vSync, adaptiveSync, windowExtents, targetSurface);
         if (err != ErrorCode::NO_ERR) {
             return err;
         }
@@ -57,14 +60,18 @@ namespace Divide {
         return createFramebuffersInternal(windowExtents, targetSurface);
     }
 
-    ErrorCode VKSwapChain::createSwapChainInternal(VkExtent2D windowExtents, VkSurfaceKHR targetSurface) {
+    ErrorCode VKSwapChain::createSwapChainInternal(const bool vSync, const bool adaptiveSync, VkExtent2D windowExtents, VkSurfaceKHR targetSurface) {
         vkb::SwapchainBuilder swapchainBuilder{ _device.getDevice(), targetSurface };
         if (_swapChain.swapchain != VK_NULL_HANDLE) {
             swapchainBuilder.set_old_swapchain(_swapChain);
         }
+
+        // adaptiveSync not supported yet
+        const VkPresentModeKHR presentMode = vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
+
         auto vkbSwapchain = swapchainBuilder.use_default_format_selection()
                                             //use vsync present mode
-                                            .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+                                            .set_desired_present_mode(presentMode)
                                             .set_desired_extent(windowExtents.width, windowExtents.height)
                                             .build();
 
@@ -155,34 +162,45 @@ namespace Divide {
             VK_CHECK(vkCreateFramebuffer(device, &fb_info, nullptr, &_framebuffers[i]));
         }
 
+        _imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        _renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        _inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+        _imagesInFlight.resize(swapchain_imagecount, VK_NULL_HANDLE);
+
         //create synchronization structures
-        VkFenceCreateInfo fenceCreateInfo = {};
-        fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceCreateInfo.pNext = nullptr;
-
-        //we want to create the fence with the Create Signaled flag, so we can wait on it before using it on a GPU command (for the first frame)
-        fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &_renderFence));
-
         //for the semaphores we don't need any flags
         VkSemaphoreCreateInfo semaphoreCreateInfo = {};
         semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semaphoreCreateInfo.pNext = nullptr;
-        semaphoreCreateInfo.flags = 0;
 
-        VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &_presentSemaphore));
-        VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &_renderSemaphore));
+        //we want to create the fence with the Create Signaled flag, so we can wait on it before using it on a GPU command (for the first frame)
+        VkFenceCreateInfo fenceCreateInfo = {};
+        fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+        for (U8 i = 0u; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &_imageAvailableSemaphores[i]));
+            VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &_renderFinishedSemaphores[i]));
+            VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &_inFlightFences[i]));
+        }
 
         return ErrorCode::NO_ERR;
     }
 
     VkResult VKSwapChain::beginFrame() {
         //wait until the GPU has finished rendering the last frame.
-        VK_CHECK(vkWaitForFences(_device.getVKDevice(), 1, &_renderFence, true, std::numeric_limits<uint64_t>::max()));
-        VK_CHECK(vkResetFences(_device.getVKDevice(), 1, &_renderFence));
+        VK_CHECK(vkWaitForFences(_device.getVKDevice(),
+                                 1,
+                                 &_inFlightFences[_currentFrameIdx],
+                                 VK_TRUE,
+                                 std::numeric_limits<uint64_t>::max()));
 
-        return acquireNextImage();
+        //request image from the swapchain, one second timeout
+        return vkAcquireNextImageKHR(_device.getVKDevice(),
+                                     _swapChain.swapchain,
+                                     std::numeric_limits<uint64_t>::max(),
+                                     _imageAvailableSemaphores[_currentFrameIdx],
+                                     nullptr,
+                                     &_swapchainImageIndex);
     }
 
     VkResult VKSwapChain::endFrame(VkQueue queue, VkCommandBuffer& cmdBuffer) {
@@ -190,43 +208,53 @@ namespace Divide {
         //we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
         //we will signal the _renderSemaphore, to signal that rendering has finished
 
+        if (_imagesInFlight[_swapchainImageIndex] != VK_NULL_HANDLE) {
+            vkWaitForFences(_device.getVKDevice(),
+                            1,
+                            &_imagesInFlight[_swapchainImageIndex],
+                            VK_TRUE,
+                            std::numeric_limits<U64>::max());
+        }
+        _imagesInFlight[_swapchainImageIndex] = _inFlightFences[_currentFrameIdx];
+
         VkSubmitInfo submit = {};
         submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit.pNext = nullptr;
 
-        VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-        submit.pWaitDstStageMask = &waitStage;
+        VkSemaphore waitSemaphores[] = { _imageAvailableSemaphores[_currentFrameIdx] };
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
         submit.waitSemaphoreCount = 1;
-        submit.pWaitSemaphores = &_presentSemaphore;
+        submit.pWaitSemaphores = waitSemaphores;
+        submit.pWaitDstStageMask = waitStages;
 
+        VkSemaphore signalSemaphores[] = { _renderFinishedSemaphores[_currentFrameIdx] };
         submit.signalSemaphoreCount = 1;
-        submit.pSignalSemaphores = &_renderSemaphore;
+        submit.pSignalSemaphores = signalSemaphores;
 
         submit.commandBufferCount = 1;
         submit.pCommandBuffers = &cmdBuffer;
 
+        VK_CHECK(vkResetFences(_device.getVKDevice(), 1, &_inFlightFences[_currentFrameIdx]));
         //submit command buffer to the queue and execute it.
         // _renderFence will now block until the graphic commands finish execution
-        VK_CHECK(vkQueueSubmit(queue, 1, &submit, _renderFence));
+        VK_CHECK(vkQueueSubmit(queue, 1, &submit, _inFlightFences[_currentFrameIdx]));
 
         // this will put the image we just rendered into the visible window.
         // we want to wait on the _renderSemaphore for that,
         // as it's necessary that drawing commands have finished before the image is displayed to the user
         VkPresentInfoKHR presentInfo = {};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.pNext = nullptr;
-
         presentInfo.pSwapchains = &_swapChain.swapchain;
         presentInfo.swapchainCount = 1;
-
-        presentInfo.pWaitSemaphores = &_renderSemaphore;
+        presentInfo.pWaitSemaphores = signalSemaphores;
         presentInfo.waitSemaphoreCount = 1;
-
         presentInfo.pImageIndices = &_swapchainImageIndex;
 
-        return vkQueuePresentKHR(queue, &presentInfo);
+        const VkResult result = vkQueuePresentKHR(queue, &presentInfo);
+
+        _currentFrameIdx = (_currentFrameIdx + 1) % MAX_FRAMES_IN_FLIGHT;
+
+        return result;
     }
 
     vkb::Swapchain VKSwapChain::getSwapChain() const noexcept {
@@ -235,16 +263,6 @@ namespace Divide {
     
     VkRenderPass VKSwapChain::getRenderPass() const noexcept {
         return _renderPass;
-    }
-
-    VkResult VKSwapChain::acquireNextImage() {
-        //request image from the swapchain, one second timeout
-        return vkAcquireNextImageKHR(_device.getVKDevice(),
-                                     _swapChain.swapchain,
-                                     std::numeric_limits<uint64_t>::max(),
-                                     _presentSemaphore,
-                                     nullptr,
-                                     &_swapchainImageIndex);
     }
 
     VkFramebuffer VKSwapChain::getCurrentFrameBuffer() const noexcept {

@@ -14,20 +14,6 @@
 #include <sdl/include/SDL_vulkan.h>
 
 #define VMA_HEAVY_ASSERT(expr) DIVIDE_ASSERT(expr)
-//#define VMA_DEDICATED_ALLOCATION 0
-//#define VMA_DEBUG_MARGIN 16
-//#define VMA_DEBUG_DETECT_CORRUPTION 1
-//#define VMA_DEBUG_MIN_BUFFER_IMAGE_GRANULARITY 256
-//#define VMA_USE_STL_SHARED_MUTEX 0
-//#define VMA_MEMORY_BUDGET 0
-//#define VMA_STATS_STRING_ENABLED 0
-//#define VMA_MAPPING_HYSTERESIS_ENABLED 0
-
-//#define VMA_VULKAN_VERSION 1003000 // Vulkan 1.3
-#define VMA_VULKAN_VERSION 1002000 // Vulkan 1.2
-//#define VMA_VULKAN_VERSION 1001000 // Vulkan 1.1
-//#define VMA_VULKAN_VERSION 1000000 // Vulkan 1.0
-
 
 #define VMA_DEBUG_LOG(format, ...) do { \
         Console::printfn(format, __VA_ARGS__); \
@@ -66,29 +52,6 @@
 // ref (mostly everything): https://vkguide.dev/
 
 namespace vkInit{
-    VkCommandPoolCreateInfo command_pool_create_info(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags flags = 0)
-    {
-        VkCommandPoolCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        info.pNext = nullptr;
-
-        info.queueFamilyIndex = queueFamilyIndex;
-        info.flags = flags;
-        return info;
-    }
-
-    VkCommandBufferAllocateInfo command_buffer_allocate_info(VkCommandPool pool, uint32_t count = 1, VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-    {
-        VkCommandBufferAllocateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        info.pNext = nullptr;
-
-        info.commandPool = pool;
-        info.commandBufferCount = count;
-        info.level = level;
-        return info;
-    }
-
     VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info(VkShaderStageFlagBits stage, VkShaderModule shaderModule) {
 
         VkPipelineShaderStageCreateInfo info{};
@@ -191,8 +154,6 @@ namespace vkInit{
 }; //namespace vkInit
 
 namespace {
-    static bool s_FrameInFlight = false;
-
     inline VKAPI_ATTR VkBool32 VKAPI_CALL divide_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                                                 VkDebugUtilsMessageTypeFlagsEXT messageType,
                                                                 const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -297,14 +258,14 @@ namespace Divide {
     {
     }
 
+    VkCommandBuffer VK_API::getCurrentCommandBuffer() const {
+        return _commandBuffers[_currentFrameIndex];
+    }
+
     void VK_API::idle([[maybe_unused]] const bool fast) noexcept {
     }
 
     void VK_API::beginFrame(DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
-        assert(s_FrameInFlight == false);
-
-        s_FrameInFlight = true;
-
         const auto& windowDimensions = window.getDrawableSize();
         const VkExtent2D windowExtents{ windowDimensions.width, windowDimensions.height };
 
@@ -327,19 +288,16 @@ namespace Divide {
             }
         }
 
-        //now that we are sure that the commands finished executing, we can safely reset the command buffer to begin recording again.
-        VK_CHECK(vkResetCommandBuffer(_mainCommandBuffer, 0));
-
         //naming it cmd for shorter writing
-        VkCommandBuffer cmd = _mainCommandBuffer;
+        VkCommandBuffer cmd = getCurrentCommandBuffer();
 
         //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
         VkCommandBufferBeginInfo cmdBeginInfo = {};
         cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         cmdBeginInfo.pNext = nullptr;
-
         cmdBeginInfo.pInheritanceInfo = nullptr;
         cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
         VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
         //make a clear-color from frame number. This will flash with a 120*pi frame period.
@@ -373,16 +331,13 @@ namespace Divide {
     }
 
     void VK_API::endFrame([[maybe_unused]] DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
-        assert(s_FrameInFlight == true);
-        s_FrameInFlight = false;
-
         if (_skipEndFrame) {
             _skipEndFrame = false;
             return;
         }
 
         //naming it cmd for shorter writing
-        VkCommandBuffer cmd = _mainCommandBuffer;
+        VkCommandBuffer cmd = getCurrentCommandBuffer();
 
         //finalize the render pass
         vkCmdEndRenderPass(cmd);
@@ -399,6 +354,8 @@ namespace Divide {
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
+
+        _currentFrameIndex = ++_currentFrameIndex % VKSwapChain::MAX_FRAMES_IN_FLIGHT;
     }
 
     ErrorCode VK_API::initRenderingAPI([[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, [[maybe_unused]] Configuration& config) noexcept {
@@ -418,7 +375,8 @@ namespace Divide {
                .set_engine_name(Config::ENGINE_NAME)
                .set_engine_version(Config::ENGINE_VERSION_MAJOR, Config::ENGINE_VERSION_MINOR, Config::ENGINE_VERSION_PATCH)
                .request_validation_layers(Config::ENABLE_GPU_VALIDATION)
-               .require_api_version(1, 2, 0)
+               .require_api_version(1, Config::MINIMUM_VULKAN_MINOR_VERSION, 0)
+               .desire_api_version(1, Config::DESIRED_VULKAN_MINOR_VERSION, 0)
                .set_debug_callback(divide_debug_callback)
                .set_debug_callback_user_data_pointer(this);
 
@@ -468,20 +426,32 @@ namespace Divide {
 
         //create a command pool for commands submitted to the graphics queue.
         //we also want the pool to allow for resetting of individual command buffers
-        VkCommandPoolCreateInfo commandPoolInfo = vkInit::command_pool_create_info(_graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+        VkCommandPoolCreateInfo commandPoolInfo = {};
+        commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolInfo.queueFamilyIndex = _graphicsQueueFamily;
+        commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
         VK_CHECK(vkCreateCommandPool(_device->getVKDevice(), &commandPoolInfo, nullptr, &_commandPool));
 
-        //allocate the default command buffer that we will use for rendering
-        VkCommandBufferAllocateInfo cmdAllocInfo = vkInit::command_buffer_allocate_info(_commandPool, 1);
+        _commandBuffers.resize(VKSwapChain::MAX_FRAMES_IN_FLIGHT);
 
-        VK_CHECK(vkAllocateCommandBuffers(_device->getVKDevice(), &cmdAllocInfo, &_mainCommandBuffer));
+        //allocate the default command buffer that we will use for rendering
+        VkCommandBufferAllocateInfo cmdAllocInfo = {};
+        cmdAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cmdAllocInfo.commandPool = _commandPool;
+        cmdAllocInfo.commandBufferCount = VKSwapChain::MAX_FRAMES_IN_FLIGHT;
+        cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+        VK_CHECK(vkAllocateCommandBuffers(_device->getVKDevice(), &cmdAllocInfo, _commandBuffers.data()));
 
         return ErrorCode::NO_ERR;
     }
 
     void VK_API::recreateSwapChain(const DisplayWindow& window) {
-        const ErrorCode err = _swapChain->create(_surface);
+        const ErrorCode err = _swapChain->create(BitCompare(window.flags(), WindowFlags::VSYNC),
+                                                 _context.context().config().runtime.adaptiveSync,
+                                                 _surface);
+
         DIVIDE_ASSERT(err == ErrorCode::NO_ERR);
 
         const auto& windowDimensions = window.getDrawableSize();
@@ -574,6 +544,7 @@ namespace Divide {
             if (_commandPool != VK_NULL_HANDLE) {
                 vkDestroyCommandPool(_device->getVKDevice(), _commandPool, nullptr);
             }
+            _commandBuffers.clear();
             _swapChain.reset();
             _device.reset();
         }

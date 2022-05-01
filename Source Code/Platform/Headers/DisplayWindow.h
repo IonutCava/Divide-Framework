@@ -220,6 +220,8 @@ public:
 
     /// The display on which this window was initially created on
     PROPERTY_R(U32, initialDisplay, 0u);
+    PROPERTY_R(U32, flags, 0u);
+
 private:
     void restore() noexcept;
     /// Changing from one window type to another
@@ -238,7 +240,6 @@ private:
 
     vec2<U16> _prevDimensions;
     vec2<U16> _drawableSize;
-    U32 _flags = 0;
     Uint32 _windowID = 0u;
 
     WindowManager& _parent;

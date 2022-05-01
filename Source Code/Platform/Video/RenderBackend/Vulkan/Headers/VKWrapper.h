@@ -60,12 +60,14 @@ class VK_API final : public RenderAPIWrapper {
   public:
     VK_API(GFXDevice& context) noexcept;
 
+    [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const;
+
   protected:
       void idle(bool fast) noexcept override;
       void beginFrame(DisplayWindow& window, bool global = false) noexcept override;
       void endFrame(DisplayWindow& window, bool global = false) noexcept override;
 
-      ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;
+      [[nodiscard]] ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;
       void closeRenderingAPI() override;
       [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept override;
       void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
@@ -73,7 +75,7 @@ class VK_API final : public RenderAPIWrapper {
       void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
       [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
       [[nodiscard]] U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const noexcept override;
-      bool setViewport(const Rect<I32>& newViewport) noexcept override;
+      [[nodiscard]] bool setViewport(const Rect<I32>& newViewport) noexcept override;
       void onThreadCreated(const std::thread::id& threadID) noexcept override;
 
 private:
@@ -104,7 +106,8 @@ private:
     U32 _graphicsQueueFamily{0u};
 
     VkCommandPool _commandPool{ VK_NULL_HANDLE };
-    VkCommandBuffer _mainCommandBuffer{ VK_NULL_HANDLE };
+    vector<VkCommandBuffer> _commandBuffers{};
+    U8 _currentFrameIndex{ 0u };
 
     VkPipelineLayout _trianglePipelineLayout{ VK_NULL_HANDLE };
     VkPipeline _trianglePipeline{VK_NULL_HANDLE};
