@@ -98,6 +98,7 @@ class Object3D : public SceneNode {
 
     virtual ~Object3D() = default;
 
+    virtual void setMaterialTpl(const Material_ptr& material);
 
     void setObjectFlag(const ObjectFlag flag) noexcept {
         SetBit(_geometryFlagMask, flag);
@@ -120,10 +121,6 @@ class Object3D : public SceneNode {
     inline void geometryBuffer(const VertexBuffer_ptr& vb) { _geometryBuffer = vb; }
 
     virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] I32 newIndex) {}
-
-    /// Use playAnimations() to toggle animation playback for the current object
-    /// (and all subobjects) on or off
-    virtual void playAnimations(SceneGraphNode* sgn, bool state);
 
     [[nodiscard]] U8 getGeometryPartitionCount() const noexcept {
         U8 ret = 0;
@@ -174,6 +171,7 @@ class Object3D : public SceneNode {
 
     PROPERTY_RW(bool, geometryDirty, true);
     PROPERTY_R(ObjectType, geometryType, ObjectType::COUNT);
+    PROPERTY_R_IW(bool, playAnimationsOverride, false);
 
    protected:
     // Create a list of triangles from the vertices + indices lists based on primitive type
@@ -181,9 +179,11 @@ class Object3D : public SceneNode {
 
     virtual void rebuildInternal();
 
-    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Object3D"; }
+
+    void editorFieldChanged(std::string_view field) override;
 
    protected:
     GFXDevice& _context;

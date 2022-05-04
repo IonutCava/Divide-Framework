@@ -75,7 +75,7 @@ namespace Divide {
         /// Some may be redundant, so we check each one individually
         void activateStateBlock(const RenderStateBlock& newBlock);
 
-        void setVertexFormat(PrimitiveTopology topology, const size_t attributeHash, const AttributeMap& attributes);
+        void setVertexFormat(PrimitiveTopology topology, const AttributeMap& attributes, const size_t attributeHash);
 
         /// Switch the currently active vertex array object
         [[nodiscard]] BindResult setActiveVAO(GLuint ID);

@@ -52,6 +52,8 @@ namespace Attorney {
 
 /// Calculates the global transformation matrix for the given internal node
 void CalculateBoneToWorldTransform(Bone* pInternalNode) noexcept;
+
+class Mesh;
 class ByteBuffer;
 class MeshImporter;
 class PlatformContext;
@@ -197,6 +199,8 @@ class SceneAnimator {
 
    private:
     bool init(PlatformContext& context);
+    void buildBuffers(GFXDevice& gfxDevice);
+
     /// I/O operations
     void saveSkeleton(ByteBuffer& dataOut, Bone* parent) const;
     Bone* loadSkeleton(ByteBuffer& dataIn, Bone* parent);
@@ -235,6 +239,11 @@ namespace Attorney {
             }
         }
 
+        static void buildBuffers(SceneAnimator& animator, GFXDevice& gfxDevice) {
+            animator.buildBuffers(gfxDevice);
+        }
+
+        friend class Divide::Mesh;
         friend class Divide::MeshImporter;
     };
 };

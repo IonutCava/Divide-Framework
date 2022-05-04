@@ -224,6 +224,7 @@ bool WaterPlane::load() {
 
 
     waterMat->properties().roughness(0.01f);
+    waterMat->setPipelineLayout(PrimitiveTopology::TRIANGLE_STRIP, _plane->geometryBuffer()->generateAttributeMap());
 
     setMaterialTpl(waterMat);
     
@@ -333,11 +334,7 @@ bool WaterPlane::PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& poi
     return sgn->get<BoundsComponent>()->getBoundingBox().containsPoint(point);
 }
 
-void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
-
-    topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
-    _plane->geometryBuffer()->populateAttributeMap(vertexFormatInOut);
-
+void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
     GenericDrawCommand cmd = {};
     cmd._cmd.indexCount = to_U32(_plane->geometryBuffer()->getIndexCount());
     cmd._sourceBuffer = _plane->geometryBuffer()->handle();
@@ -345,7 +342,7 @@ void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCom
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
     _editorDataDirtyState.fill(EditorDataState::CHANGED);
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 /// update water refraction

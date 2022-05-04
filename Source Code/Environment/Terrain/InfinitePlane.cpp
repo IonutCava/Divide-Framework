@@ -77,6 +77,7 @@ bool InfinitePlane::load() {
 
         return shaderDescriptor;
     });
+    planeMaterial->setPipelineLayout(PrimitiveTopology::TRIANGLE_STRIP, _plane->geometryBuffer()->generateAttributeMap());
 
     setMaterialTpl(planeMaterial);
 
@@ -117,10 +118,7 @@ void InfinitePlane::sceneUpdate(const U64 deltaTimeUS, SceneGraphNode* sgn, Scen
     }
 }
 
-void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
-    topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
-    _plane->geometryBuffer()->populateAttributeMap(vertexFormatInOut);
-
+void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
     //infinite plane
     GenericDrawCommand planeCmd = {};
     planeCmd._cmd.firstIndex = 0u;
@@ -128,7 +126,7 @@ void InfinitePlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::Draw
     planeCmd._sourceBuffer = _plane->geometryBuffer()->handle();
     cmdsOut.emplace_back(GFX::DrawCommand{ planeCmd });
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 } //namespace Divide

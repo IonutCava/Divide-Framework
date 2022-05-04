@@ -14,9 +14,8 @@ void RenderingComponent::toggleRenderOption(RenderOptions option, bool state, bo
             SharedLock<SharedMutex> w_lock(children._lock);
             const U32 childCount = children._count;
             for (U32 i = 0u; i < childCount; ++i) {
-                RenderingComponent* const renderable = children._data[i]->get<RenderingComponent>();
-                if (renderable) {
-                    renderable->toggleRenderOption(option, state, recursive);
+                if (children._data[i]->HasComponents(ComponentType::RENDERING)) {
+                    children._data[i]->get<RenderingComponent>()->toggleRenderOption(option, state, recursive);
                 }
             }
         }
@@ -48,9 +47,8 @@ void RenderingComponent::toggleBoundsDraw(const bool showAABB, const bool showBS
         SharedLock<SharedMutex> w_lock(children._lock);
         const U32 childCount = children._count;
         for (U32 i = 0u; i < childCount; ++i) {
-            RenderingComponent* const renderable = children._data[i]->get<RenderingComponent>();
-            if (renderable) {
-                renderable->toggleBoundsDraw(showAABB, showBS, showOBB, recursive);
+            if (children._data[i]->HasComponents(ComponentType::RENDERING)) {
+                children._data[i]->get<RenderingComponent>()->toggleBoundsDraw(showAABB, showBS, showOBB, recursive);
             }
         }
     }

@@ -46,17 +46,34 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
     _geometryType(type)
 {
     _editorComponent.name(getTypeName().c_str());
+
     _geometryPartitionIDs.fill(VertexBuffer::INVALID_PARTITION_ID);
     _geometryPartitionIDs[0] = 0u;
 
     if (!getObjectFlag(ObjectFlag::OBJECT_FLAG_NO_VB)) {
         _geometryBuffer = context.newVB();
     }
+
+    if (getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED)) {
+        EditorComponentField playAnimationsField = {};
+        playAnimationsField._name = "Toogle Animation Playback";
+        playAnimationsField._data = &_playAnimationsOverride;
+        playAnimationsField._type = EditorComponentFieldType::SWITCH_TYPE;
+        playAnimationsField._basicType = GFX::PushConstantType::BOOL;
+        playAnimationsField._readOnly = false;
+        _editorComponent.registerField(MOV(playAnimationsField));
+    }
 }
 
 Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str256& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, const ObjectType type, const ObjectFlag flag)
     : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, type, to_U32(flag))
 {
+}
+
+void Object3D::editorFieldChanged(const std::string_view field) {
+    if (field == "Toogle Animation Playback") {
+        DebugBreak();
+    }
 }
 
 void Object3D::rebuildInternal() {
@@ -72,14 +89,19 @@ const VertexBuffer_ptr& Object3D::geometryBuffer() {
     return _geometryBuffer;
 }
 
-void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
+void Object3D::setMaterialTpl(const Material_ptr& material) {
+    SceneNode::setMaterialTpl(material);
+
+    if (_materialTemplate != nullptr && geometryBuffer() != nullptr) {
+        _materialTemplate->setPipelineLayout(GetGeometryBufferType(geometryType()), geometryBuffer()->generateAttributeMap());
+    }
+}
+
+void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
     OPTICK_EVENT();
 
     if (geometryBuffer() != nullptr) {
         if (cmdsOut.size() == 0u) {
-            topologyOut = GetGeometryBufferType(geometryType());
-            geometryBuffer()->populateAttributeMap(vertexFormatInOut);
-
             const U16 partitionID = _geometryPartitionIDs[0];
             GenericDrawCommand cmd;
             cmd._sourceBuffer = geometryBuffer()->handle();
@@ -106,7 +128,7 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawComma
         }
     }
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 // Create a list of triangles from the vertices + indices lists based on primitive type
@@ -197,24 +219,6 @@ vector<SceneGraphNode*> Object3D::filterByType(const vector<SceneGraphNode*>& no
     };
 
     return result;
-}
-
-void Object3D::playAnimations(SceneGraphNode* sgn, const bool state) {
-    AnimationComponent* animComp = sgn->get<AnimationComponent>();
-    if (animComp != nullptr) {
-        animComp->playAnimations(state);
-
-        const SceneGraphNode::ChildContainer& children = sgn->getChildren();
-        SharedLock<SharedMutex> w_lock(children._lock);
-        const U32 childCount = children._count;
-        for (U32 i = 0u; i < childCount; ++i) {
-            AnimationComponent* animCompInner = children._data[i]->get<AnimationComponent>();
-            // Not all submeshes are necessarily animated. (e.g. flag on the back of a character)
-            if (animCompInner != nullptr) {
-                animCompInner->playAnimations(state && animCompInner->playAnimations());
-            }
-        }
-    }
 }
 
 bool Object3D::saveCache(ByteBuffer& outputBuffer) const {

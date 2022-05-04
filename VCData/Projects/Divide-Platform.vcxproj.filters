@@ -618,6 +618,9 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\VKSwapChain.cpp">
       <Filter>Video\RenderBackend\Vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\ImGUITestCode.cpp">
+      <Filter>Video\RenderBackend\Vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Audio">

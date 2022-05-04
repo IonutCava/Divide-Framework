@@ -63,32 +63,39 @@ RenderPassManager::~RenderPassManager()
 
 void RenderPassManager::postInit() {
     ShaderModuleDescriptor vertModule{ ShaderType::VERTEX, "baseVertexShaders.glsl", "FullScreenQuad" };
-    ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "OITComposition.glsl" };
 
-    ShaderProgramDescriptor shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
+    {
+        ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "OITComposition.glsl" };
 
-    ResourceDescriptor shaderResDesc("OITComposition");
-    shaderResDesc.propertyDescriptor(shaderDescriptor);
-    _OITCompositionShader = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResDesc);
+        ShaderProgramDescriptor shaderDescriptor = {};
+        shaderDescriptor._modules.push_back(vertModule);
+        shaderDescriptor._modules.push_back(fragModule);
+        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-    shaderDescriptor._modules.back()._defines.emplace_back("USE_MSAA_TARGET");
-    ResourceDescriptor shaderResMSDesc("OITCompositionMS");
-    shaderResMSDesc.propertyDescriptor(shaderDescriptor);
-    _OITCompositionShaderMS = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResMSDesc);
+        ResourceDescriptor shaderResDesc("OITComposition");
+        shaderResDesc.propertyDescriptor(shaderDescriptor);
+        _OITCompositionShader = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResDesc);
 
-    const Configuration& config = _parent.platformContext().config();
-    fragModule._sourceFile = "display.glsl";
-    fragModule._variant = "ResolveGBuffer";
-    fragModule._defines.emplace_back(Util::StringFormat("NUM_SAMPLES %d", config.rendering.MSAASamples));
-    shaderDescriptor = {};
-    shaderDescriptor._modules.push_back(vertModule);
-    shaderDescriptor._modules.push_back(fragModule);
+        shaderDescriptor._modules.back()._defines.emplace_back("USE_MSAA_TARGET");
+        ResourceDescriptor shaderResMSDesc("OITCompositionMS");
+        shaderResMSDesc.propertyDescriptor(shaderDescriptor);
+        _OITCompositionShaderMS = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResMSDesc);
+    }
+    {
+        const Configuration& config = _parent.platformContext().config();
 
-    ResourceDescriptor shaderResolveDesc("GBufferResolveShader");
-    shaderResolveDesc.propertyDescriptor(shaderDescriptor);
-    _gbufferResolveShader = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResolveDesc);
+        ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "display.glsl", "ResolveGBuffer"};
+        fragModule._defines.emplace_back(Util::StringFormat("NUM_SAMPLES %d", config.rendering.MSAASamples));
+
+        ShaderProgramDescriptor shaderDescriptor = {};
+        shaderDescriptor._modules.push_back(vertModule);
+        shaderDescriptor._modules.push_back(fragModule);
+        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
+        ResourceDescriptor shaderResolveDesc("GBufferResolveShader");
+        shaderResolveDesc.propertyDescriptor(shaderDescriptor);
+        _gbufferResolveShader = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResolveDesc);
+    }
 
     for (auto& executor : _executors) {
         if (executor != nullptr) {

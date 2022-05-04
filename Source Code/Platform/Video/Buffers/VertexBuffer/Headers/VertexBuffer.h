@@ -358,7 +358,7 @@ class VertexBuffer final : public VertexDataInterface {
         return getPartitionOffset(to_U16(_partitions.size() - 1));
     }
 
-    void populateAttributeMap(AttributeMap& mapInOut);
+    [[nodiscard]] AttributeMap generateAttributeMap();
 
     void reset();
 
@@ -380,7 +380,7 @@ class VertexBuffer final : public VertexDataInterface {
 
     bool getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
     /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer
-    void populateAttributeSize();
+    [[nodiscard]] AttributeOffsets getAttributeOffsets(size_t& totalDataSizeOut) const;
     void draw(const GenericDrawCommand& command) override;
 
    protected:
@@ -389,8 +389,7 @@ class VertexBuffer final : public VertexDataInterface {
     vector<Vertex> _data;
     /// Used for creating an "IB". If it's empty, then an outside source should provide the indices
     vector<U32> _indices;
-    AttribValues _attribOffsets;
-    AttribFlags _useAttribute{};
+    AttributeFlags _useAttribute{};
     size_t _effectiveEntrySize = 0u;
     GenericVertexData_ptr _internalGVD = nullptr;
     bool _refreshQueued = false;

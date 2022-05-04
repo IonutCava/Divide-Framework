@@ -78,7 +78,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
 #define SHADOW_PASS_TYPE int(dvd_camProperties.w)
 #define CAMERA_FLAG SHADOW_PASS_TYPE
 
-#define dvd_ClusterSizes vec2(uint(_renderTargetInfo.z), uint(_renderTargetInfo.w))
+#define dvd_ClusterSizes vec2(uint(dvd_renderTargetInfo.z), uint(dvd_renderTargetInfo.w))
 #define dvd_ScreenDimensions dvd_ViewPort.zw
 #define dvd_CameraPosition (dvd_InverseViewMatrix[3].xyz)
 #define dvd_AspectRatio (dvd_ViewPort.z / dvd_ViewPort.w)

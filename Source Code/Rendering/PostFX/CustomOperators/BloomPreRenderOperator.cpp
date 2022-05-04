@@ -37,6 +37,7 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
+    shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     ResourceDescriptor bloomCalc("BloomCalc");
     bloomCalc.propertyDescriptor(shaderDescriptor);
@@ -47,13 +48,13 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _bloomCalc->handle();
-        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _bloomCalcPipeline = _context.newPipeline(pipelineDescriptor);
     });
 
     fragModule._variant = "BloomApply";
     shaderDescriptor = {};
+    shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
 
@@ -65,7 +66,6 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _bloomApply->handle();
-        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _bloomApplyPipeline = _context.newPipeline(pipelineDescriptor);
     });

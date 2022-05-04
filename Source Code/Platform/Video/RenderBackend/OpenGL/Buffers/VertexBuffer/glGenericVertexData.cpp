@@ -119,7 +119,7 @@ void glGenericVertexData::updateIndexBuffer(const IndexBuffer& indices) {
     } else {
         const size_t offset = indices.offsetCount * elementSize;
         const size_t count = indices.count * elementSize;
-        DIVIDE_ASSERT(offset + count < _indexBufferSize);
+        DIVIDE_ASSERT(offset + count <= _indexBufferSize);
 
         glInvalidateBufferSubData(_indexBuffer, offset, count);
         glNamedBufferSubData(_indexBuffer, offset, count, data);

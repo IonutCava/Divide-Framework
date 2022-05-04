@@ -141,10 +141,9 @@ void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool r
     if (recursive) {
         const SceneGraphNode* parent = _parentSGN->parent();
         if (parent != nullptr) {
-            BoundsComponent* bounds = parent->get<BoundsComponent>();
             // We stop if the parent sgn doesn't have a bounds component.
-            if (bounds != nullptr) {
-                bounds->flagBoundingBoxDirty(transformMask, true);
+            if (parent->HasComponents(ComponentType::BOUNDS)) {
+                parent->get<BoundsComponent>()->flagBoundingBoxDirty(transformMask, true);
             }
         }
     }
@@ -183,8 +182,8 @@ void BoundsComponent::appendChildRefBBs() {
     const U32 childCount = children._count;
     BoundingBox temp{};
     for (U32 i = 0u; i < childCount; ++i) {
-        BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
-        if (bComp) {
+        if (children._data[i]->HasComponents(ComponentType::BOUNDS)) {
+            BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
             bComp->appendChildRefBBs();
             temp = bComp->_refBoundingBox;
             temp.translate(bComp->_worldOffset);
@@ -205,8 +204,8 @@ void BoundsComponent::appendChildBBs() {
     SharedLock<SharedMutex> w_lock(children._lock);
     const U32 childCount = children._count;
     for (U32 i = 0u; i < childCount; ++i) {
-        BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
-        if (bComp) {
+        if (children._data[i]->HasComponents(ComponentType::BOUNDS)) {
+            BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
             // This will also clear our transform flag so subsequent calls will be fast
             bComp->appendChildBBs();
             _boundingBox.add(bComp->_boundingBox);

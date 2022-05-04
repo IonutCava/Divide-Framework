@@ -672,6 +672,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
+        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         // Initialized our HierarchicalZ construction shader (takes a depth attachment and down-samples it for every mip level)
         ResourceDescriptor descriptor1("HiZConstruct");
@@ -682,7 +683,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             PipelineDescriptor pipelineDesc;
             pipelineDesc._stateHash = _stateDepthOnlyRenderingHash;
             pipelineDesc._shaderProgramHandle = _HIZConstructProgram->handle();
-            pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
             _HIZPipeline = newPipeline(pipelineDesc);
         });
@@ -719,7 +719,8 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
-
+        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+        
         ResourceDescriptor previewRTShader("fbPreview");
         previewRTShader.waitForReady(true);
         previewRTShader.propertyDescriptor(shaderDescriptor);
@@ -762,6 +763,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             ShaderProgramDescriptor shaderDescriptorSingle = {};
             shaderDescriptorSingle._modules.push_back(blurVertModule);
             shaderDescriptorSingle._modules.push_back(fragModule);
+            shaderDescriptorSingle._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
             ResourceDescriptor blur("BoxBlur_Single");
             blur.propertyDescriptor(shaderDescriptorSingle);
@@ -771,7 +773,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->handle();
-                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _blurBoxPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
@@ -781,6 +782,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
             shaderDescriptorLayered._modules.push_back(fragModule);
             shaderDescriptorLayered._modules.back()._variant += ".Layered";
             shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED");
+            shaderDescriptorLayered._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
             ResourceDescriptor blur("BoxBlur_Layered");
             blur.propertyDescriptor(shaderDescriptorLayered);
@@ -790,7 +792,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor;
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = blurShader->handle();
-                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _blurBoxPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
@@ -813,6 +814,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 shaderDescriptorSingle._modules.push_back(geomModule);
                 shaderDescriptorSingle._modules.push_back(fragModule);
                 shaderDescriptorSingle._globalDefines.emplace_back("GS_MAX_INVOCATIONS 1");
+                shaderDescriptorSingle._primitiveTopology = PrimitiveTopology::POINTS;
 
                 ResourceDescriptor blur("GaussBlur_Single");
                 blur.propertyDescriptor(shaderDescriptorSingle);
@@ -822,7 +824,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                     PipelineDescriptor pipelineDescriptor;
                     pipelineDescriptor._stateHash = get2DStateBlock();
                     pipelineDescriptor._shaderProgramHandle = blurShader->handle();
-                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
                     _blurGaussianPipelineSingleCmd._pipeline = newPipeline(pipelineDescriptor);
                     });
             }
@@ -834,6 +835,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 shaderDescriptorLayered._modules.back()._variant += ".Layered";
                 shaderDescriptorLayered._modules.back()._defines.emplace_back("LAYERED");
                 shaderDescriptorLayered._globalDefines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED));
+                shaderDescriptorLayered._primitiveTopology = PrimitiveTopology::POINTS;
 
                 ResourceDescriptor blur("GaussBlur_Layered");
                 blur.propertyDescriptor(shaderDescriptorLayered);
@@ -843,7 +845,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                     PipelineDescriptor pipelineDescriptor;
                     pipelineDescriptor._stateHash = get2DStateBlock();
                     pipelineDescriptor._shaderProgramHandle = blurShader->handle();
-                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+
                     _blurGaussianPipelineLayeredCmd._pipeline = newPipeline(pipelineDescriptor);
                     });
             }
@@ -902,6 +904,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
+        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
         descriptor3.propertyDescriptor(shaderDescriptor);
         {
             _displayShader = CreateResource<ShaderProgram>(cache, descriptor3, loadTasks);
@@ -909,7 +912,6 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor = {};
                 pipelineDescriptor._stateHash = get2DStateBlock();
                 pipelineDescriptor._shaderProgramHandle = _displayShader->handle();
-                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 _drawFSTexturePipelineCmd._pipeline = newPipeline(pipelineDescriptor);
 
                 BlendingSettings& blendState = pipelineDescriptor._blendStates._settings[0];
@@ -928,7 +930,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
                 PipelineDescriptor pipelineDescriptor = {};
                 pipelineDescriptor._stateHash = _stateDepthOnlyRenderingHash;
                 pipelineDescriptor._shaderProgramHandle = _depthShader->handle();
-                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
                 _drawFSDepthPipelineCmd._pipeline = newPipeline(pipelineDescriptor);
             });
         }
@@ -2428,7 +2430,6 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
     PipelineDescriptor pipelineDesc{};
     pipelineDesc._stateHash = _state2DRenderingHash;
     pipelineDesc._shaderProgramHandle = ShaderProgram::INVALID_HANDLE;
-    pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     const Rect<I32> previousViewport{
         to_I32(_gpuBlock._camData._ViewPort.x),

@@ -52,7 +52,7 @@ void Octree::handleIntersection(const IntersectionRecord& intersection) const {
 
 bool Octree::addNode(SceneGraphNode* node) {
     const U16 nodeType = 1 << to_U16(node->getNode<>().type());
-    if (node && !BitCompare(_nodeExclusionMask, nodeType) && node->get<BoundsComponent>()) {
+    if (node && !BitCompare(_nodeExclusionMask, nodeType) && node->HasComponents(ComponentType::BOUNDS)) {
         ScopedLock<Mutex> w_lock(_pendingInsertLock);
         _pendingInsertion.push(node);
         _treeReady = false;

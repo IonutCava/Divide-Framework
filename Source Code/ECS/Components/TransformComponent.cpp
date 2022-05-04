@@ -486,14 +486,14 @@ namespace Divide {
         // This tries to keep the object's global transform intact when switching from one parent to another
         mat4<F32> localTransform;
         // Step 1: Embed parrent transform into ourselves
-        if (oldParent != nullptr && oldParent->get<TransformComponent>()) {
+        if (oldParent != nullptr && oldParent->HasComponents(ComponentType::TRANSFORM)) {
             getLocalMatrix(localTransform);
             const mat4<F32> parentTransform = oldParent->get<TransformComponent>()->getWorldMatrix();
             setTransforms(parentTransform * localTransform);
         }
         // Step 2: Undo the new parent transform internally so we don't change transforms when we request the world matrix
         // Ignore root node as that node's transform should be set to identity anyway
-        if (newParent != nullptr && newParent->parent() != nullptr && newParent->get<TransformComponent>()) {
+        if (newParent != nullptr && newParent->parent() != nullptr && newParent->HasComponents(ComponentType::TRANSFORM)) {
             getLocalMatrix(localTransform);
             const mat4<F32> parentTransform = newParent->get<TransformComponent>()->getWorldMatrix();
             setTransforms(GetInverse(parentTransform) * localTransform);

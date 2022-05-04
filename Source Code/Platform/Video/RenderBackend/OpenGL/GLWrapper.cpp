@@ -1504,15 +1504,10 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     if (stateTracker->_activePipeline && *stateTracker->_activePipeline == pipeline) {
         return ShaderResult::OK;
     }
+
     stateTracker->_activePipeline = &pipeline;
 
     const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
-    {
-        OPTICK_EVENT("Set Vertex Format");
-        stateTracker->setVertexFormat(pipelineDescriptor._primitiveTopology,
-                                      pipeline.vertexFormatHash(),
-                                      pipelineDescriptor._vertexFormat);
-    }
     {
         OPTICK_EVENT("Set Raster State");
         // Set the proper render states
@@ -1532,10 +1527,17 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
     }
 
     ShaderResult ret = ShaderResult::Failed;
+    ShaderProgram* program = ShaderProgram::FindShaderProgram(pipelineDescriptor._shaderProgramHandle);
+    if (program != nullptr)
     {
-        OPTICK_EVENT("Set Shader Program");
-        ShaderProgram* program = ShaderProgram::FindShaderProgram(pipelineDescriptor._shaderProgramHandle);
-        if (program != nullptr) {
+        {
+            OPTICK_EVENT("Set Vertex Format");
+            stateTracker->setVertexFormat(program->descriptor()._primitiveTopology,
+                                          program->descriptor()._vertexFormat,
+                                          program->vertexFormatHash());
+        }
+        {
+            OPTICK_EVENT("Set Shader Program");
             glShaderProgram& glProgram = static_cast<glShaderProgram&>(*program);
             // We need a valid shader as no fixed function pipeline is available
             // Try to bind the shader program. If it failed to load, or isn't loaded yet, cancel the draw request for this frame
@@ -1552,6 +1554,7 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
             stateTracker->_activePipeline = nullptr;
         }
     }
+
     return ret;
 }
 

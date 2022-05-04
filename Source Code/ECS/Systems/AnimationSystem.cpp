@@ -16,15 +16,16 @@ namespace Divide {
     }
 
     void AnimationSystem::PreUpdate(const F32 dt) {
-        Parent::PreUpdate(dt);
         OPTICK_EVENT();
 
-        Parent::Update(dt);
+        Parent::PreUpdate(dt);
 
         for (AnimationComponent* comp : _componentCache) {
-            if (comp->playAnimations()) {
-                comp->_parentTimeStamp += dt * comp->animationSpeed();
+            if (comp->_currentAnimIndex == -1) {
+                comp->playAnimation(0);
             }
+
+            comp->_parentTimeStamp += comp->playAnimations() ? dt * comp->animationSpeed() : 0.0;
         }
     }
 
@@ -44,10 +45,6 @@ namespace Divide {
             const D64 timeStampS = Time::MillisecondsToSeconds<D64>(comp->_currentTimeStamp);
 
             if (comp->playAnimations()) {
-                if (comp->_currentAnimIndex == -1) {
-                    comp->playAnimation(0);
-                }
-
                 // Update Animations
                 comp->_frameIndex = animator->frameIndexForTimeStamp(comp->_currentAnimIndex, timeStampS);
 

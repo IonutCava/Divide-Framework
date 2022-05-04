@@ -5,7 +5,6 @@
 
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Headers/Mesh.h"
 
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Graphs/Headers/SceneGraphNode.h"
@@ -60,7 +59,7 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
     for (const BoneTransform& transforms : currentAnimation) {
         const BoneTransform::Container& matrices = transforms.matrices();
         // loop through all vertex weights of all bones
-        for (U32 j = 0; j < partitionCount; ++j) {
+        for (U32 j = 0u; j < partitionCount; ++j) {
             const U32 idx = parentVB->getIndex(j + partitionOffset);
             const P32 ind = parentVB->getBoneIndices(idx);
             const vec4<F32>& wgh = parentVB->getBoneWeights(idx);

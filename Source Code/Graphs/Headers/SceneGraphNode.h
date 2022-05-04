@@ -231,7 +231,8 @@ public:
 
     void AddComponents(U32 componentMask, bool allowDuplicates);
     void RemoveComponents(U32 componentMask);
-
+    [[nodiscard]] bool HasComponents(ComponentType componentType) const;
+    [[nodiscard]] bool HasComponents(U32 componentMask) const;
     /// Serialization: save to XML file
     void saveToXML(const Str256& sceneLocation, DELEGATE<void, std::string_view> msgCallback = {}) const;
     void loadFromXML(const Str256& sceneLocation);

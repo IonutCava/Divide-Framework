@@ -52,6 +52,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         fragModule._variant = "GaussBlur.Layered";
 
         ShaderProgramDescriptor shaderDescriptor = {};
+        shaderDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(geomModule);
         shaderDescriptor._modules.push_back(fragModule);
@@ -66,7 +67,6 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._stateHash = _context.get2DStateBlock();
             pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->handle();
-            pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 
             _blurPipeline = _context.newPipeline(pipelineDescriptor);
         });

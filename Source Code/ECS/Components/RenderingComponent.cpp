@@ -229,9 +229,8 @@ void RenderingComponent::rebuildMaterial() {
     SharedLock<SharedMutex> r_lock(children._lock);
     const U32 childCount = children._count;
     for (U32 i = 0u; i < childCount; ++i) {
-        RenderingComponent* const renderable = children._data[i]->get<RenderingComponent>();
-        if (renderable) {
-            renderable->rebuildMaterial();
+        if (children._data[i]->HasComponents(ComponentType::RENDERING)) {
+            children._data[i]->get<RenderingComponent>()->rebuildMaterial();
         }
     }
 }
@@ -298,9 +297,8 @@ void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, co
     SceneGraphNode* parent = _parentSGN->parent();
     if (parent != nullptr && !parent->hasFlag(SceneGraphNode::Flags::PARENT_POST_RENDERED)) {
         parent->setFlag(SceneGraphNode::Flags::PARENT_POST_RENDERED);
-        RenderingComponent* rComp = parent->get<RenderingComponent>();
-        if (rComp != nullptr) {
-            rComp->postRender(sceneRenderState, renderStagePass, bufferInOut);
+        if (parent->HasComponents(ComponentType::RENDERING)) {
+            parent->get<RenderingComponent>()->postRender(sceneRenderState, renderStagePass, bufferInOut);
         }
     }
 }
@@ -347,7 +345,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
 
         if (!hasCommands) {
             ScopedLock<SharedMutex> w_lock(_drawCommands._dataLock);
-            _parentSGN->getNode().buildDrawCommands(_parentSGN, _drawCommands._data, _primitiveTopology, _vertexFormat);
+            _parentSGN->getNode().buildDrawCommands(_parentSGN, _drawCommands._data);
             for (GFX::DrawCommand& drawCmd : _drawCommands._data) {
                 for (GenericDrawCommand& cmd : drawCmd._drawCommands) {
                     hasCommands = true;
@@ -367,7 +365,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
         }
 
         if (hasCommands) {
-            const BoundsComponent* bComp = static_cast<BoundsComponent*>(_parentSGN->get<BoundsComponent>());
+            const BoundsComponent* bComp = _parentSGN->get<BoundsComponent>();
             const vec3<F32>& cameraEye = cameraSnapshot._eye;
             const SceneNodeRenderState& renderState = _parentSGN->getNode<>().renderState();
             if (renderState.lod0OnCollision() && bComp->getBoundingBox().containsPoint(cameraEye)) {
@@ -391,12 +389,10 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
                 }
             }
             PipelineDescriptor pipelineDescriptor = {};
-            pipelineDescriptor._primitiveTopology = _primitiveTopology;
-            pipelineDescriptor._vertexFormat = _vertexFormat;
 
             if (_materialInstance != nullptr) {
                 pipelineDescriptor._stateHash = _materialInstance->getOrCreateRenderStateBlock(renderStagePass);
-                pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramHandle (renderStagePass);
+                pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramHandle(renderStagePass);
                 if (!_materialInstance->getTextureData(renderStagePass, pkg.descriptorSetCmd()._set._textureData)) {
                     NOP();
                 }
@@ -663,7 +659,7 @@ void RenderingComponent::drawSelectionGizmo() {
             }
         }
         //draw something else (at some point ...)
-        BoundsComponent* bComp = static_cast<BoundsComponent*>(_parentSGN->get<BoundsComponent>());
+        BoundsComponent* bComp = _parentSGN->get<BoundsComponent>();
         DIVIDE_ASSERT(bComp != nullptr);
         _selectionGizmoDescriptor.box = bComp->getOBB();
         _selectionGizmoDescriptor.colour = colour;
@@ -714,10 +710,9 @@ void RenderingComponent::drawSkeleton() {
     }
 
     // Get the animation component of any submesh. They should be synced anyway.
-    const AnimationComponent* animComp = _parentSGN->get<AnimationComponent>();
-    if (animComp != nullptr) {
+    if (_parentSGN->HasComponents(ComponentType::ANIMATION)) {
         // Get the skeleton lines from the submesh's animation component
-        _skeletonLinesDescriptor._lines = animComp->skeletonLines();
+        _skeletonLinesDescriptor._lines = _parentSGN->get<AnimationComponent>()->skeletonLines();
         _skeletonLinesDescriptor.worldMatrix.set(_parentSGN->get<TransformComponent>()->getWorldMatrix());
         // Submit the skeleton lines to the GPU for rendering
         _context.debugDrawLines(_parentSGN->getGUID() + 213, _skeletonLinesDescriptor);

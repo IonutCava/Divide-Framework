@@ -35,18 +35,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Core/Headers/Hashable.h"
 #include "Platform/Video/Headers/BlendingProperties.h"
-#include "Platform/Video/Headers/AttributeDescriptor.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
 
 struct PipelineDescriptor {
-    AttributeMap _vertexFormat;
     RTBlendStates _blendStates;
     size_t _stateHash = 0;
     ShaderProgram::Handle _shaderProgramHandle = ShaderProgram::INVALID_HANDLE;
     U8 _multiSampleCount = 0u;
-    PrimitiveTopology _primitiveTopology = PrimitiveTopology::COUNT;
 }; //struct PipelineDescriptor
 
 size_t GetHash(const PipelineDescriptor& descriptor);
@@ -59,7 +56,6 @@ public:
 
     PROPERTY_R_IW(PipelineDescriptor, descriptor);
     PROPERTY_R_IW(size_t, hash, 0u);
-    PROPERTY_R_IW(size_t, vertexFormatHash, 0u);
 }; //class Pipeline
 
 inline bool operator==(const Pipeline& lhs, const Pipeline& rhs) noexcept {

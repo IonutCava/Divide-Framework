@@ -217,9 +217,11 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
     cloneMat->_computeRenderStateCBK = this->_computeRenderStateCBK;
     cloneMat->_shaderInfo = this->_shaderInfo;
     cloneMat->_defaultRenderStates = this->_defaultRenderStates;
+    cloneMat->_topology = this->_topology;
+    cloneMat->_shaderAttributes = this->_shaderAttributes;
+    cloneMat->_shaderAttributesHash = this->_shaderAttributesHash;
     cloneMat->ignoreXMLData(this->ignoreXMLData());
     cloneMat->updatePriorirty(this->updatePriorirty());
-
     for (U8 i = 0u; i < to_U8(this->_textures.size()); ++i) {
         const TextureInfo& texInfo = this->_textures[i];
         if (texInfo._ptr != nullptr) {
@@ -280,6 +282,20 @@ void Material::updateCullState() {
                 }
             }
         }
+    }
+}
+
+void Material::setPipelineLayout(const PrimitiveTopology topology, const AttributeMap& shaderAttributes) {
+    if (topology != _topology) {
+        _topology = topology;
+        properties()._needsNewShader = true;
+    }
+
+    const size_t newHash = GetHash(shaderAttributes);
+    if (_shaderAttributesHash == 0u || _shaderAttributesHash != newHash) {
+        _shaderAttributes = shaderAttributes;
+        _shaderAttributesHash = newHash;
+        properties()._needsNewShader = true;
     }
 }
 
@@ -390,9 +406,6 @@ void Material::setShaderProgramInternal(const ShaderProgramDescriptor& shaderDes
 
     ShaderProgramDescriptor shaderDescriptorRef = shaderDescriptor;
     computeAndAppendShaderDefines(shaderDescriptorRef, stagePass);
-
-    ResourceDescriptor shaderResDescriptor{ shaderDescriptorRef._name };
-    shaderResDescriptor.propertyDescriptor(shaderDescriptorRef);
 
     ShaderProgramInfo& info = shaderInfo(stagePass);
     // if we already have a different shader assigned ...
@@ -527,6 +540,9 @@ bool Material::canDraw(const RenderStagePass renderStagePass, bool& shaderJustFi
 void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDescriptor, const RenderStagePass renderStagePass) const {
     OPTICK_EVENT();
 
+    shaderDescriptor._primitiveTopology = _topology;
+    shaderDescriptor._vertexFormat = _shaderAttributes;
+
     const bool isDepthPass = IsDepthPass(renderStagePass);
 
     DIVIDE_ASSERT(properties().shadingMode() != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!");
@@ -578,6 +594,32 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     {
         // Bump mapping?
         shaderDescriptor._globalDefines.emplace_back("COMPUTE_TBN", true);
+    }
+
+    switch (_topology) {
+        case PrimitiveTopology::POINTS:                   shaderDescriptor._globalDefines.emplace_back("GEOMETRY_POINTS", true);    break;
+        case PrimitiveTopology::LINES:                                                                                              break;
+        case PrimitiveTopology::LINE_LOOP:                                                                                          break;
+        case PrimitiveTopology::LINE_STRIP:                                                                                         break;
+        case PrimitiveTopology::LINES_ADJANCENCY:                                                                                   break;
+        case PrimitiveTopology::LINE_STRIP_ADJACENCY:     shaderDescriptor._globalDefines.emplace_back("GEOMETRY_LINES", true);     break;
+        case PrimitiveTopology::TRIANGLES:                                                                                          break;
+        case PrimitiveTopology::TRIANGLE_STRIP:                                                                                     break;
+        case PrimitiveTopology::TRIANGLE_FAN:                                                                                       break;
+        case PrimitiveTopology::TRIANGLES_ADJACENCY:                                                                                break;
+        case PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY: shaderDescriptor._globalDefines.emplace_back("GEOMETRY_TRIANGLES", true); break;
+        case PrimitiveTopology::QUADS:                                                                                              break;
+        case PrimitiveTopology::QUAD_STRIP:               shaderDescriptor._globalDefines.emplace_back("GEOMETRY_QUADS", true);     break;
+        case PrimitiveTopology::POLYGON:                  shaderDescriptor._globalDefines.emplace_back("GEOMETRY_POLYGON", true);   break;
+        case PrimitiveTopology::PATCH:                    shaderDescriptor._globalDefines.emplace_back("GEOMETRY_PATCH", true);     break;
+        default: DIVIDE_UNEXPECTED_CALL();
+    }
+
+    for (U8 i = 0u; i < to_U8(AttribLocation::COUNT); ++i) {
+        const AttributeDescriptor& descriptor = _shaderAttributes[i];
+        if (descriptor._dataType != GFXDataFormat::COUNT) {
+            shaderDescriptor._globalDefines.emplace_back(Util::StringFormat("HAS_%s_ATTRIBUTE", Names::attribLocation[i]).c_str(), true);
+        }
     }
 
     if (hasTransparency()) {

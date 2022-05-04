@@ -62,34 +62,30 @@ bool AnimEvaluator::initBuffers(GFXDevice& context) {
         "AnimEvaluator error: Too many bones for current node! "
         "Increase MAX_BONE_COUNT_PER_NODE in Config!");
 
-    const size_t boneCount = _transforms.front().count();
-    const U32 numberOfFrames = frameCount();
-
     using FrameData = std::array<mat4<F32>, Config::MAX_BONE_COUNT_PER_NODE>;
     using TempContainer = vector<FrameData>;
 
-    TempContainer animationData;
+    const U32 numberOfFrames = frameCount();
+    TempContainer animationData(numberOfFrames, { MAT4_IDENTITY });
 
-    animationData.resize(numberOfFrames, {MAT4_IDENTITY});
-
-    for (U32 i = 0; i < numberOfFrames; ++i) {
+    for (U32 i = 0u; i < numberOfFrames; ++i) {
         FrameData& anim = animationData[i];
         const BoneTransform& frameTransforms = _transforms[i];
         const size_t numberOfTransforms = frameTransforms.count();
-        for (U32 j = 0; j < numberOfTransforms; ++j) {
+        for (U32 j = 0u; j < numberOfTransforms; ++j) {
             anim[j].set(frameTransforms.matrices()[j]);
         }
     }
 
-    ShaderBufferDescriptor bufferDescriptor = {};
+    ShaderBufferDescriptor bufferDescriptor{};
     bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
     bufferDescriptor._ringBufferLength = 1;
-    bufferDescriptor._name = Util::StringFormat("BONE_%d_BONES", boneCount);
-    bufferDescriptor._bufferParams._elementCount = frameCount();
-    bufferDescriptor._bufferParams._elementSize = sizeof(mat4<F32>) * Config::MAX_BONE_COUNT_PER_NODE;
+    bufferDescriptor._name = Util::StringFormat("BONE_%d_BONES", _transforms.front().count());
+    bufferDescriptor._bufferParams._elementCount = numberOfFrames;
+    bufferDescriptor._bufferParams._elementSize = sizeof(FrameData);
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
     bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
-    bufferDescriptor._bufferParams._initialData = { (Byte*)animationData.data(), animationData.size()* bufferDescriptor._bufferParams._elementSize };
+    bufferDescriptor._bufferParams._initialData = { animationData.data(), animationData.size() * sizeof(FrameData) };
 
     _boneBuffer = context.newSB(bufferDescriptor);
 

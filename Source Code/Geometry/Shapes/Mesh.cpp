@@ -9,6 +9,7 @@
 #include "ECS/Components/Headers/RigidBodyComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "Geometry/Material/Headers/Material.h"
+#include "Geometry/Animations/Headers/SceneAnimator.h"
 #include "Managers/Headers/SceneManager.h"
 
 namespace Divide {
@@ -109,6 +110,9 @@ void Mesh::processNode(SceneGraphNode* parentNode, const MeshNodeData& node) {
 void Mesh::postLoad(SceneGraphNode* sgn) {
     sgn->get<TransformComponent>()->setTransforms(_nodeStructure._transform);
     processNode(sgn, _nodeStructure);
+    if (_animator) {
+        Attorney::SceneAnimatorMeshImporter::buildBuffers(*_animator, _context);
+    }
     Object3D::postLoad(sgn);
 }
 

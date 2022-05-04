@@ -71,17 +71,17 @@ namespace Divide {
                     case ObjectType::DECAL: return ICON_FK_STICKY_NOTE;
                 };
                 case SceneNodeType::TYPE_TRANSFORM:{
-                    if (sgn->GetComponent<DirectionalLightComponent>()) {
+                    if (sgn->HasComponents(ComponentType::DIRECTIONAL_LIGHT)) {
                         return ICON_FK_SUN;
-                    } else if (sgn->GetComponent<PointLightComponent>()) {
+                    } else if (sgn->HasComponents(ComponentType::POINT_LIGHT)) {
                         return ICON_FK_LIGHTBULB_O;
-                    } else if (sgn->GetComponent<SpotLightComponent>()) {
+                    } else if (sgn->HasComponents(ComponentType::SPOT_LIGHT)) {
                         return ICON_FK_DOT_CIRCLE_O;
-                    } else if (sgn->GetComponent<ScriptComponent>()) {
+                    } else if (sgn->HasComponents(ComponentType::SCRIPT)) {
                         return ICON_FK_FILE_TEXT;
-                    } else if (sgn->GetComponent<EnvironmentProbeComponent>()) {
+                    } else if (sgn->HasComponents(ComponentType::ENVIRONMENT_PROBE)) {
                         return ICON_FK_GLOBE;
-                    } else if (sgn->GetComponent<UnitComponent>()) {
+                    } else if (sgn->HasComponents(ComponentType::UNIT)) {
                         const UnitComponent* comp = sgn->GetComponent<UnitComponent>();
                         if (comp->getUnit() != nullptr) {
                             switch(comp->getUnit()->type()) {

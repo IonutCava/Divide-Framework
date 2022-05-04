@@ -185,6 +185,14 @@ void SceneGraphNode::RemoveComponents(const U32 componentMask) {
     }
 }
 
+bool SceneGraphNode::HasComponents(const ComponentType componentType) const {
+    return HasComponents(to_base(componentType));
+}
+
+bool SceneGraphNode::HasComponents(const U32 componentMaskIn) const {
+    return BitCompare(componentMask(), componentMaskIn);
+}
+
 void SceneGraphNode::setTransformDirty(const U32 transformMask) {
     SharedLock<SharedMutex> r_lock(_children._lock);
     const U32 childCount = _children._count;
@@ -436,7 +444,7 @@ bool SceneGraphNode::intersect(const Ray& intersectionRay, const vec2<F32>& rang
         }
     } else {
         // If we hit a bounding sphere, we proceed to the more expensive OBB test
-        if (get<BoundsComponent>() && get<BoundsComponent>()->getBoundingSphere().intersect(intersectionRay, range.min, range.max).hit) {
+        if (HasComponents(ComponentType::BOUNDS) && get<BoundsComponent>()->getBoundingSphere().intersect(intersectionRay, range.min, range.max).hit) {
             const RayResult result = get<BoundsComponent>()->getOBB().intersect(intersectionRay, range.min, range.max);
             if (result.hit) {
                 intersections.push_back({ getGUID(), result.dist, name().c_str() });
@@ -547,27 +555,27 @@ void SceneGraphNode::processEvents() {
 void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStagePass renderStagePass, const CameraSnapshot& cameraSnapshot, const bool refreshData) {
     OPTICK_EVENT();
 
-    const AnimationComponent* aComp = get<AnimationComponent>();
-    if (aComp) {
+    if (HasComponents(ComponentType::ANIMATION)) {
+        DescriptorSet& set = rComp.getDescriptorSet(renderStagePass);
+        const AnimationComponent::AnimData data = get<AnimationComponent>()->getAnimationData();
+        // We always bind a bone buffer if we have animation data available as the shaders will expect the data to be there
+        DIVIDE_ASSERT(data._boneBuffer != nullptr);
+        DIVIDE_ASSERT(data._prevBoneBufferRange.max > 0);
         {
-            DescriptorSet& set = rComp.getDescriptorSet(renderStagePass);
-            const AnimationComponent::AnimData data = aComp->getAnimationData();
-            if (data._boneBuffer != nullptr) {
-                ShaderBufferBinding bufferBinding;
-                bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS;
-                bufferBinding._buffer = data._boneBuffer;
-                bufferBinding._elementRange = data._boneBufferRange;
-                bufferBinding._lockType = ShaderBufferLockType::AFTER_DRAW_COMMANDS;
-                set._buffers.add(bufferBinding);
-            }
-            if (data._prevBoneBufferRange.max > 0) {
-                ShaderBufferBinding bufferBinding;
-                bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS_PREV;
-                bufferBinding._buffer = data._boneBuffer;
-                bufferBinding._elementRange = data._prevBoneBufferRange;
-                bufferBinding._lockType = ShaderBufferLockType::AFTER_DRAW_COMMANDS;
-                set._buffers.add(bufferBinding);
-            }
+            ShaderBufferBinding bufferBinding;
+            bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS;
+            bufferBinding._buffer = data._boneBuffer;
+            bufferBinding._elementRange = data._boneBufferRange;
+            bufferBinding._lockType = ShaderBufferLockType::AFTER_DRAW_COMMANDS;
+            set._buffers.add(bufferBinding);
+        }
+        {
+            ShaderBufferBinding bufferBinding;
+            bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS_PREV;
+            bufferBinding._buffer = data._boneBuffer;
+            bufferBinding._elementRange = data._prevBoneBufferRange;
+            bufferBinding._lockType = ShaderBufferLockType::AFTER_DRAW_COMMANDS;
+            set._buffers.add(bufferBinding);
         }
     }
 

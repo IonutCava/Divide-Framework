@@ -31,6 +31,7 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
+    shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     ResourceDescriptor ssr("ScreenSpaceReflections");
     ssr.waitForReady(false);
@@ -40,7 +41,6 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
         pipelineDescriptor._shaderProgramHandle = _ssrShader->handle();
-        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         _pipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
     });

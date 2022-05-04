@@ -128,7 +128,7 @@ class SceneNode : public CachedResource {
                                const CameraSnapshot& cameraSnapshot,
                                bool refreshData);
 
-    virtual void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut);
+    virtual void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut);
 
     bool unload() override;
     virtual void setMaterialTpl(const Material_ptr& material);
@@ -177,6 +177,7 @@ class SceneNode : public CachedResource {
 
    protected:
     EditorComponent _editorComponent;
+    Material_ptr _materialTemplate = nullptr;
 
     ResourceCache* _parentCache = nullptr;
     /// The various states needed for rendering
@@ -187,9 +188,7 @@ class SceneNode : public CachedResource {
     vec3<F32> _worldOffset{};
     bool _boundsChanged = false;
 
-   private:
-    Material_ptr _materialTemplate = nullptr;
-
+private:
     U32 _requiredComponentMask = to_U32(ComponentType::TRANSFORM);
 };
 

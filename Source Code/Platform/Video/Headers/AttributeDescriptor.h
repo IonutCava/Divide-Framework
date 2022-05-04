@@ -53,6 +53,17 @@ namespace Divide {
 
     using AttributeMap = std::array<AttributeDescriptor, to_base(AttribLocation::COUNT)>;
 
+    inline size_t GetHash(const AttributeMap& attributes) {
+        size_t vertexFormatHash = 1337;
+        for (const AttributeDescriptor& attrDescriptor : attributes) {
+            if (attrDescriptor._dataType != GFXDataFormat::COUNT) {
+                Util::Hash_combine(vertexFormatHash, GetHash(attrDescriptor));
+            }
+        }
+
+        return vertexFormatHash;
+    }
+
 }; //namespace Divide
 
 #endif //_ATTRIBUTE_DESCRIPTOR_H_

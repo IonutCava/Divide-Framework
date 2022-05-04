@@ -239,6 +239,8 @@ class Material final : public CachedResource {
     void clearRenderStates();
     void updateCullState();
 
+    void setPipelineLayout(PrimitiveTopology topology, const AttributeMap& shaderAttributes);
+
     bool setSampler(TextureUsage textureUsageSlot, size_t samplerHash);
     bool setTexture(TextureUsage textureUsageSlot,
                     const Texture_ptr& texture,
@@ -350,6 +352,10 @@ class Material final : public CachedResource {
 
     mutable SharedMutex _instanceLock;
     vector<Material*> _instances{};
+
+    PrimitiveTopology _topology = PrimitiveTopology::COUNT;
+    AttributeMap _shaderAttributes;
+    size_t _shaderAttributesHash = 0u;
 
     static SamplerAddress s_defaultTextureAddress;
     static bool s_shadersDirty;

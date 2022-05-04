@@ -389,6 +389,7 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     vegMaterial->properties().doubleSided(true);
     vegMaterial->properties().isStatic(false);
     vegMaterial->properties().isInstanced(true);
+    vegMaterial->setPipelineLayout(PrimitiveTopology::TRIANGLE_STRIP, s_buffer->generateAttributeMap());
 
     ShaderModuleDescriptor compModule = {};
     compModule._moduleType = ShaderType::COMPUTE;
@@ -778,10 +779,7 @@ void Vegetation::sceneUpdate(const U64 deltaTimeUS,
 }
 
 
-void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
-
-    topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
-    s_buffer->populateAttributeMap(vertexFormatInOut);
+void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
 
     const U16 partitionID = s_lodPartitions[0];
 
@@ -805,7 +803,7 @@ void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCom
         prevID = id;
     }
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 namespace {

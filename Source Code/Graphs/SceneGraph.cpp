@@ -155,7 +155,7 @@ void SceneGraph::onNodeAdd(SceneGraphNode* newNode) {
 
     if (_loadComplete) {
         WAIT_FOR_CONDITION(!_octreeUpdating);
-        if (newNode->get<BoundsComponent>()) {
+        if (newNode->HasComponents(ComponentType::BOUNDS)) {
             _octreeChanged = _octree->addNode(newNode) || _octreeChanged;
         }
     }
@@ -372,7 +372,7 @@ void SceneGraph::postLoad() {
     SharedLock<SharedMutex> r_lock(_nodesByTypeLock);
     for (const auto& nodes : _nodesByType) {
         for (SceneGraphNode* node : nodes) {
-            if (node->get<BoundsComponent>()) {
+            if (node->HasComponents(ComponentType::BOUNDS)) {
                 if (!_octree->addNode(node)) {
                     NOP();
                 }

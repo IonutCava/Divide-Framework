@@ -33,7 +33,7 @@
 		<!-- 0 = windowed, 1 = borderless window, 2 = fullscreen (has some issues)-->
 		<windowedMode>0</windowedMode>
 		<!-- do we allow window resizing if running in windowed mode? -->
-		<windowResizable>false</windowResizable>
+		<windowResizable>true</windowResizable>
 		<!-- start maximized or use the provided window dimensions? -->
 		<maximizeOnStart>true</maximizeOnStart>
 		<!-- cap framerate. Set to 0 or less to disable -->

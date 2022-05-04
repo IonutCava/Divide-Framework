@@ -577,6 +577,7 @@ bool Sky::load() {
     skyMat->updatePriorirty(Material::UpdatePriority::High);
     skyMat->properties().shadingMode(ShadingMode::BLINN_PHONG);
     skyMat->properties().roughness(0.01f);
+    skyMat->setPipelineLayout(PrimitiveTopology::TRIANGLE_STRIP, _sky->geometryBuffer()->generateAttributeMap());
 
     skyMat->computeShaderCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
         ShaderModuleDescriptor vertModule = {};
@@ -808,11 +809,7 @@ void Sky::prepareRender(SceneGraphNode* sgn,
     SceneNode::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
-void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
-    topologyOut = PrimitiveTopology::TRIANGLE_STRIP;
-
-    _sky->geometryBuffer()->populateAttributeMap(vertexFormatInOut);
-
+void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
     GenericDrawCommand cmd = {};
     cmd._sourceBuffer = _sky->geometryBuffer()->handle();
     cmd._cmd.indexCount = to_U32(_sky->geometryBuffer()->getIndexCount());
@@ -823,7 +820,7 @@ void Sky::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& 
 
     _atmosphereChanged.fill(EditorDataState::QUEUED);
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 }

@@ -118,8 +118,8 @@ struct DeviceInformation
     bool _bindlessTexturesSupported = false;
 };
 
-using AttribFlags = std::array<bool, to_base(AttribLocation::COUNT)>;
-using AttribValues = std::array<size_t, to_base(AttribLocation::COUNT)>;
+using AttributeFlags = std::array<bool, to_base(AttribLocation::COUNT)>;
+using AttributeOffsets = std::array<size_t, to_base(AttribLocation::COUNT)>;
 
 /// Renderer Programming Interface
 class NOINITVTABLE RenderAPIWrapper : NonCopyable {

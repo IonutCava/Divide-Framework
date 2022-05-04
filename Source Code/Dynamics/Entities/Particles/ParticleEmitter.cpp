@@ -100,8 +100,35 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
         return false;
     }
 
+    const PrimitiveTopology topology = _particles->particleGeometryType();
+    AttributeMap vertexFormat{};
+    {
+        AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::POSITION)];
+        desc._bindingIndex = g_particleGeometryBuffer;
+        desc._componentsPerElement = 3u;
+        desc._dataType = GFXDataFormat::FLOAT_32;
+    }
+    {
+        AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::NORMAL)];
+        desc._bindingIndex = g_particlePositionBuffer;
+        desc._componentsPerElement = 4u;
+        desc._dataType = GFXDataFormat::FLOAT_32;
+        desc._normalized = false;
+        desc._strideInBytes = 0u;
+        desc._instanceDivisor = 1u;
+    }
+    {
+        AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::COLOR)];
+        desc._bindingIndex = g_particleColourBuffer;
+        desc._componentsPerElement = 4u;
+        desc._dataType = GFXDataFormat::UNSIGNED_BYTE;
+        desc._normalized = true;
+        desc._strideInBytes = 0u;
+    }
+
     const bool useTexture = _particleTexture != nullptr;
     Material_ptr mat = CreateResource<Material>(_parentCache, ResourceDescriptor(useTexture ? "Material_particles_Texture" : "Material_particles"));
+    mat->setPipelineLayout(topology, vertexFormat);
 
     mat->computeRenderStateCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass) {
         // Generate a render state
@@ -213,32 +240,7 @@ bool ParticleEmitter::unload() {
     return SceneNode::unload();
 }
 
-void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) {
-    topologyOut = _particles->particleGeometryType();
-    {
-        AttributeDescriptor& desc = vertexFormatInOut[to_base(AttribLocation::POSITION)];
-        desc._bindingIndex = g_particleGeometryBuffer;
-        desc._componentsPerElement = 3u;
-        desc._dataType = GFXDataFormat::FLOAT_32;
-    }
-    {
-        AttributeDescriptor& desc = vertexFormatInOut[to_base(AttribLocation::NORMAL)];
-        desc._bindingIndex = g_particlePositionBuffer;
-        desc._componentsPerElement = 4u;
-        desc._dataType = GFXDataFormat::FLOAT_32;
-        desc._normalized = false;
-        desc._strideInBytes = 0u;
-        desc._instanceDivisor = 1u;
-    }
-    {
-        AttributeDescriptor& desc = vertexFormatInOut[to_base(AttribLocation::COLOR)];
-        desc._bindingIndex = g_particleColourBuffer;
-        desc._componentsPerElement = 4u;
-        desc._dataType = GFXDataFormat::UNSIGNED_BYTE;
-        desc._normalized = true;
-        desc._strideInBytes = 0u;
-    }
-
+void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
     GenericDrawCommand cmd = {};
     cmd._cmd.indexCount = to_U32(_particles->particleGeometryIndices().size());
     if (cmd._cmd.indexCount == 0) {
@@ -246,7 +248,7 @@ void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::Dr
     }
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 void ParticleEmitter::prepareRender(SceneGraphNode* sgn,

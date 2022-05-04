@@ -692,6 +692,9 @@ size_t ShaderProgramDescriptor::getHash() const {
                                     desc._sourceFile.data(),
                                     desc._moduleType);
     }
+    for (const AttributeDescriptor& attrDescriptor : _vertexFormat) {
+        Util::Hash_combine(_hash, GetHash(attrDescriptor));
+    }
     return _hash;
 }
 
@@ -711,6 +714,8 @@ ShaderProgram::ShaderProgram(GFXDevice& context,
         assetName(ResourcePath(resourceName().c_str()));
     }
     s_shaderCount.fetch_add(1, std::memory_order_relaxed);
+
+    _vertexFormatHash = GetHash(descriptor._vertexFormat);
 }
 
 ShaderProgram::~ShaderProgram()

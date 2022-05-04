@@ -280,6 +280,25 @@ bool Editor::init(const vec2<U16>& renderResolution) {
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
 
+        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+        AttributeDescriptor& descPos = shaderDescriptor._vertexFormat[to_base(AttribLocation::GENERIC)];
+        AttributeDescriptor& descUV = shaderDescriptor._vertexFormat[to_base(AttribLocation::TEXCOORD)];
+        AttributeDescriptor& descColour = shaderDescriptor._vertexFormat[to_base(AttribLocation::COLOR)];
+
+#   define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
+        descPos._bindingIndex = descUV._bindingIndex = descColour._bindingIndex = 0u;
+        descPos._componentsPerElement = descUV._componentsPerElement = 2u;
+        descPos._dataType = descUV._dataType = GFXDataFormat::FLOAT_32;
+
+        descColour._componentsPerElement = 4u;
+        descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
+        descColour._normalized = true;
+
+        descPos._strideInBytes = to_U32(OFFSETOF(ImDrawVert, pos));
+        descUV._strideInBytes = to_U32(OFFSETOF(ImDrawVert, uv));
+        descColour._strideInBytes = to_U32(OFFSETOF(ImDrawVert, col));
+#   undef OFFSETOF
+
         ResourceDescriptor shaderResDescriptor("IMGUI");
         shaderResDescriptor.propertyDescriptor(shaderDescriptor);
         _imguiProgram = CreateResource<ShaderProgram>(parentCache, shaderResDescriptor);
@@ -340,25 +359,6 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     PipelineDescriptor pipelineDesc = {};
     pipelineDesc._stateHash = state.getHash();
     pipelineDesc._shaderProgramHandle = _imguiProgram->handle();
-    pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
-
-    AttributeDescriptor& descPos = pipelineDesc._vertexFormat[to_base(AttribLocation::GENERIC)];
-    AttributeDescriptor& descUV = pipelineDesc._vertexFormat[to_base(AttribLocation::TEXCOORD)];
-    AttributeDescriptor& descColour = pipelineDesc._vertexFormat[to_base(AttribLocation::COLOR)];
-
-#   define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
-    descPos._bindingIndex = descUV._bindingIndex = descColour._bindingIndex = 0u;
-    descPos._componentsPerElement = descUV._componentsPerElement = 2u;
-    descPos._dataType = descUV._dataType = GFXDataFormat::FLOAT_32;
-
-    descColour._componentsPerElement = 4u;
-    descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
-    descColour._normalized = true;
-
-    descPos._strideInBytes = to_U32(OFFSETOF(ImDrawVert, pos));
-    descUV._strideInBytes = to_U32(OFFSETOF(ImDrawVert, uv));
-    descColour._strideInBytes = to_U32(OFFSETOF(ImDrawVert, col));
-#   undef OFFSETOF
 
     BlendingSettings& blend = pipelineDesc._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
     blend.enabled(true);

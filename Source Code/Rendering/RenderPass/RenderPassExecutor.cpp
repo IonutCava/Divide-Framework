@@ -279,7 +279,6 @@ void RenderPassExecutor::postInit(const ShaderProgram_ptr& OITCompositionShader,
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
 
         pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS->handle();
-        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
         s_ResolveGBufferPipeline = _context.newPipeline(pipelineDescriptor);
 
         BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8(GFXDevice::ScreenTargets::ALBEDO)];
@@ -380,10 +379,10 @@ void RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, 
     U8 boneCount = 0u;
     U8 frameTicked = 0u;
     { //Animation
-        const AnimationComponent* animComp = node->get<AnimationComponent>();
-        if (animComp && animComp->playAnimations()) {
+        if (node->HasComponents(ComponentType::ANIMATION)) {
+            const AnimationComponent* animComp = node->get<AnimationComponent>();
             boneCount = animComp->boneCount();
-            if (animComp->frameTicked()) {
+            if (animComp->playAnimations() && animComp->frameTicked()) {
                 frameTicked = 1u;
             }
         }

@@ -92,10 +92,13 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(Util::StringFormat("Primitive topology : %s\n", Divide::Names::primitiveType[to_base(cmd._pipeline->descriptor()._primitiveTopology)]));
-    ret.append("    ");
-    for (U16 j = 0; j < indent; ++j) {
+    ShaderProgram* shader = ShaderProgram::FindShaderProgram(cmd._pipeline->descriptor()._shaderProgramHandle);
+    if (shader) {
+        ret.append(Util::StringFormat("Primitive topology : %s\n", Divide::Names::primitiveType[to_base(shader->descriptor()._primitiveTopology)]));
         ret.append("    ");
+        for (U16 j = 0; j < indent; ++j) {
+            ret.append("    ");
+        }
     }
     {
         ret.append("Blending states: \n");
@@ -112,10 +115,10 @@ string ToString(const BindPipelineCommand& cmd, const U16 indent) {
             ret.append(Util::StringFormat("%d: %s\n", idx++, blendStateToString(state)));
         }
     }
-    {
+    if (shader) {
         ret.append("Vertex format: \n");
         U8 idx = 0u;
-        for (const AttributeDescriptor& desc : cmd._pipeline->descriptor()._vertexFormat) {
+        for (const AttributeDescriptor& desc : shader->descriptor()._vertexFormat) {
             ret.append("    ");
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");

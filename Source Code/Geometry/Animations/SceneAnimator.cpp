@@ -50,7 +50,6 @@ bool SceneAnimator::init(PlatformContext& context) {
 
     constexpr D64 timeStep = 1. / ANIMATION_TICKS_PER_SECOND;
     BoneTransform::Container transforms = {};
-    
 
     const size_t animationCount = _animations.size();
     _skeletonLines.resize(animationCount);
@@ -77,14 +76,16 @@ bool SceneAnimator::init(PlatformContext& context) {
         _skeletonLines[i].resize(_maximumAnimationFrames, -1);
     }
 
-    // pay the cost upfront
-    for(AnimEvaluator* crtAnimation : _animations) {
-        crtAnimation->initBuffers(context.gfx());
-    }
-
-     Console::d_printfn(Locale::Get(_ID("LOAD_ANIMATIONS_END")), _skeletonDepthCache);
+    Console::d_printfn(Locale::Get(_ID("LOAD_ANIMATIONS_END")), _skeletonDepthCache);
 
     return _skeletonDepthCache > 0;
+}
+
+void SceneAnimator::buildBuffers(GFXDevice& gfxDevice) {
+    // pay the cost upfront
+    for (AnimEvaluator* crtAnimation : _animations) {
+        crtAnimation->initBuffers(gfxDevice);
+    }
 }
 
 /// This will build the skeleton based on the scene passed to it and CLEAR EVERYTHING

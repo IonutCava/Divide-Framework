@@ -107,7 +107,7 @@ void GLStateTracker::setAttributesInternal(AttribHashes& hashes, const Attribute
     }
 }
 
-void GLStateTracker::setVertexFormat(const PrimitiveTopology topology, const size_t attributeHash, const AttributeMap& attributes) {
+void GLStateTracker::setVertexFormat(const PrimitiveTopology topology, const AttributeMap& attributes, const size_t attributeHash) {
     _activeTopology = topology;
 
     GLuint vao = 0u;

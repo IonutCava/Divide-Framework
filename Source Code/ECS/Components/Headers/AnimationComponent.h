@@ -76,7 +76,6 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
 
     void resetTimers() noexcept;
 
-    [[nodiscard]] D64 animationTimeStamp() const noexcept { return _currentTimeStamp; }
     [[nodiscard]] AnimEvaluator::FrameIndex frameIndex() const noexcept { return _frameIndex; }
     [[nodiscard]] I32 frameCount() const { return frameCount(_currentAnimIndex); }
 
@@ -100,7 +99,7 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     I32 _currentAnimIndex = -1;
     AnimEvaluator::FrameIndex _frameIndex = {};
     /// Current animation timestamp for the current SGN
-    D64 _currentTimeStamp = 0.0;
+    D64 _currentTimeStamp = -1.0;
     /// Previous animation index
     I32 _previousAnimationIndex = -1;
     /// Parent time stamp (e.g. Mesh). 

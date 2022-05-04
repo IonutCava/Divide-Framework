@@ -38,6 +38,7 @@ GUISplash::GUISplash(ResourceCache* cache,
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
+    shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     ResourceDescriptor splashShader("fbPreview");
     splashShader.propertyDescriptor(shaderDescriptor);
@@ -57,7 +58,6 @@ void GUISplash::render(GFXDevice& context) const {
     PipelineDescriptor pipelineDescriptor;
     pipelineDescriptor._stateHash = context.get2DStateBlock();
     pipelineDescriptor._shaderProgramHandle = _splashShader->handle();
-    pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
     GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
     GFX::CommandBuffer& buffer = sBuffer();
@@ -79,7 +79,7 @@ void GUISplash::render(GFXDevice& context) const {
     EnqueueCommand(buffer, viewportCommand);
 
     _splashImage->waitForReady();
-    GFX::BindDescriptorSetsCommand descriptorSetCmd;
+    GFX::BindDescriptorSetsCommand descriptorSetCmd{};
     descriptorSetCmd._set._textureData.add(TextureEntry{ _splashImage->data(), splashSampler.getHash(), TextureUsage::UNIT0 });
     EnqueueCommand(buffer, descriptorSetCmd);
 

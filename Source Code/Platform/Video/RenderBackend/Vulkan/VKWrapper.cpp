@@ -210,6 +210,7 @@ namespace VKUtil {
         Debug::vkCmdDebugMarkerInsert = (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr(device, "vkCmdDebugMarkerInsertEXT");
     };
 };
+
 namespace Divide {
 
     bool VK_API::s_hasDebugMarkerSupport = false;

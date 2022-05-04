@@ -52,15 +52,15 @@ AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContex
 
 
     _editorComponent.onChangedCbk([this]([[maybe_unused]] std::string_view field) {
-        RenderingComponent* const rComp = _parentSGN->get<RenderingComponent>();
-        if (rComp != nullptr) {
-            rComp->toggleRenderOption(RenderingComponent::RenderOptions::RENDER_SKELETON, showSkeleton());
+        if (_parentSGN->HasComponents(ComponentType::RENDERING)) {
+            _parentSGN->get<RenderingComponent>()->toggleRenderOption(RenderingComponent::RenderOptions::RENDER_SKELETON, showSkeleton());
         }
     });
 }
 
 void AnimationComponent::resetTimers() noexcept {
-    _currentTimeStamp = _parentTimeStamp = 0UL;
+    _currentTimeStamp = -1.0;
+    _parentTimeStamp = 0.0;
     _frameIndex = {};
 }
 
@@ -135,7 +135,7 @@ bool AnimationComponent::playPreviousAnimation() noexcept {
 const vector<Line>& AnimationComponent::skeletonLines() const {
     assert(_animator != nullptr);
 
-    const D64 animTimeStamp = Time::MillisecondsToSeconds<D64>(_currentTimeStamp);
+    const D64 animTimeStamp = Time::MillisecondsToSeconds<D64>(std::max(_currentTimeStamp, 0.0));
     // update possible animation
     return  _animator->skeletonLines(_currentAnimIndex, animTimeStamp);
 }
@@ -143,29 +143,27 @@ const vector<Line>& AnimationComponent::skeletonLines() const {
 AnimationComponent::AnimData AnimationComponent::getAnimationData() const {
     AnimData ret = {};
 
-    if (playAnimations()) {
-        if (_previousAnimationIndex != -1) {
-            const AnimEvaluator& anim = getAnimationByIndex(_previousAnimationIndex);
+    const AnimEvaluator& anim = getAnimationByIndex(std::max(_previousAnimationIndex, 0));
 
-            ret._boneBufferRange.set(_frameIndex._curr, 1);
-            ret._boneBuffer = anim.boneBuffer();
-            ret._prevBoneBufferRange.set(_frameIndex._prev, 1);
-        }
-    }
+    ret._boneBufferRange.set(_frameIndex._curr, 1);
+    ret._boneBuffer = anim.boneBuffer();
+    ret._prevBoneBufferRange.set(_frameIndex._prev, 1);
 
     return ret;
 }
 
 I32 AnimationComponent::frameCount(const U32 animationID) const {
-    return _animator != nullptr ? _animator->frameCount(animationID) : -1;
+    assert(_animator != nullptr);
+    return _animator->frameCount(animationID);
 }
 
 U8 AnimationComponent::boneCount() const {
-    return _animator != nullptr ? _animator->boneCount() : to_U8(0);
+    assert(_animator != nullptr);
+    return  _animator->boneCount();
 }
 
 bool AnimationComponent::frameTicked() const noexcept {
-    return _frameIndex._prev != _frameIndex._curr;
+    return _playAnimations ? _frameIndex._prev != _frameIndex._curr : false;
 }
 
 AnimEvaluator& AnimationComponent::getAnimationByIndex(const I32 animationID) const {

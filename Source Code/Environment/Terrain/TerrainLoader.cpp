@@ -497,6 +497,26 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
         return terrainRenderState.getHash();
     });
+    AttributeMap vertexFormat{};
+    {
+        AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::POSITION)];
+        desc._bindingIndex = 0u;
+        desc._componentsPerElement = 4u;
+        desc._dataType = GFXDataFormat::FLOAT_32;
+        desc._normalized = false;
+        desc._strideInBytes = 0u * sizeof(F32);
+        desc._instanceDivisor = 1u;
+    }
+    {
+        AttributeDescriptor& desc = vertexFormat[to_base(AttribLocation::COLOR)];
+        desc._bindingIndex = 0u;
+        desc._componentsPerElement = 4u;
+        desc._dataType = GFXDataFormat::FLOAT_32;
+        desc._normalized = false;
+        desc._strideInBytes = 4u * sizeof(F32);
+        desc._instanceDivisor = 1u;
+    }
+    terrainMaterial->setPipelineLayout(PrimitiveTopology::PATCH, vertexFormat);
 
     terrain->setMaterialTpl(terrainMaterial);
 

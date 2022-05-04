@@ -96,7 +96,7 @@ class Vegetation final : public SceneNode {
     explicit Vegetation(GFXDevice& context, TerrainChunk& parentChunk, const VegetationDetails& details);
     ~Vegetation();
 
-    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
 
     void getStats(U32& maxGrassInstances, U32& maxTreeInstances) const;
 

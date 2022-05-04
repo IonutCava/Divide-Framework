@@ -297,8 +297,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     std::array<std::pair<size_t, size_t>, 4> _lodIndexOffsets{};
 
     DrawCommands _drawCommands;
-    PrimitiveTopology _primitiveTopology = PrimitiveTopology::COUNT;
-    AttributeMap _vertexFormat;
 
     static hashMap<U32, DebugView*> s_debugViews[2];
 END_COMPONENT(Rendering);

@@ -292,7 +292,7 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
         subMeshTemp.name(fullName.length() >= maxMeshNameLength ? fullName.substr(0, maxMeshNameLength - 1u) : fullName);
         subMeshTemp.index(to_U32(n));
         subMeshTemp.boneCount(to_U8(currentMesh->mNumBones));
-        detail::LoadSubMeshGeometry(currentMesh, subMeshTemp);
+        detail::LoadSubMeshGeometry(currentMesh, subMeshTemp, target.hasAnimations());
 
         const string& modelFolderName = getTopLevelFolderName(filePath.c_str());
         detail::LoadSubMeshMaterial(subMeshTemp._material,
@@ -404,7 +404,7 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
     } //lod
 }
 
-void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData) {
+void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData, const bool isAnimated) {
     vector<U32> input_indices;
     input_indices.reserve(to_size(source->mNumFaces) * 3);
     for (U32 k = 0u; k < source->mNumFaces; k++) {
@@ -418,7 +418,9 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData)
 
     subMeshData.maxPos({ source->mAABB.mMax.x, source->mAABB.mMax.y, source->mAABB.mMax.z });
     subMeshData.minPos({ source->mAABB.mMin.x, source->mAABB.mMin.y, source->mAABB.mMin.z });
-    const vec3<F32> worldOffset = (subMeshData.maxPos() + subMeshData.minPos()) * 0.5f;
+
+    const vec3<F32> worldOffset = isAnimated ? VECTOR3_ZERO : ((subMeshData.maxPos() + subMeshData.minPos()) * 0.5f);
+    
     subMeshData.worldOffset(worldOffset);
     subMeshData.maxPos(subMeshData.maxPos() - worldOffset);
     subMeshData.minPos(subMeshData.minPos() - worldOffset);

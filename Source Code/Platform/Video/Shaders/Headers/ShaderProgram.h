@@ -40,6 +40,7 @@
 #include "Core/Resources/Headers/ResourceDescriptor.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 #include "Platform/Video/Headers/RenderAPIEnums.h"
+#include "Platform/Video/Headers/AttributeDescriptor.h"
 
 namespace FW {
     class FileWatcher;
@@ -88,14 +89,16 @@ struct PerFileShaderData;
 class ShaderProgramDescriptor final : public PropertyDescriptor {
 public:
     ShaderProgramDescriptor() noexcept
-        : PropertyDescriptor(DescriptorType::DESCRIPTOR_SHADER) {
-
+        : PropertyDescriptor(DescriptorType::DESCRIPTOR_SHADER) 
+    {
     }
 
     size_t getHash() const override;
     Str256 _name;
     ModuleDefines _globalDefines;
     vector<ShaderModuleDescriptor> _modules;
+    PrimitiveTopology _primitiveTopology = PrimitiveTopology::COUNT;
+    AttributeMap _vertexFormat;
 };
 
 struct ShaderProgramMapEntry {
@@ -207,6 +210,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     PROPERTY_RW(bool, highPriority, true);
     PROPERTY_R_IW(Handle, handle, INVALID_HANDLE);
+    PROPERTY_R_IW(size_t, vertexFormatHash, 0u);
 
    protected:
 

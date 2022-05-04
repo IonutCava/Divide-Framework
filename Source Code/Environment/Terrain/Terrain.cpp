@@ -323,29 +323,8 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     Object3D::prepareRender(sgn, rComp, renderStagePass, cameraSnapshot, refreshData);
 }
 
-void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut, PrimitiveTopology& topologyOut, AttributeMap& vertexFormatInOut)
+void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut)
 {
-    topologyOut = PrimitiveTopology::PATCH;
-
-    {
-        AttributeDescriptor& desc = vertexFormatInOut[to_base(AttribLocation::POSITION)];
-        desc._bindingIndex = 0u;
-        desc._componentsPerElement = 4u;
-        desc._dataType = GFXDataFormat::FLOAT_32;
-        desc._normalized = false;
-        desc._strideInBytes = 0u * sizeof(F32);
-        desc._instanceDivisor = 1u;
-    }
-    {
-        AttributeDescriptor& desc = vertexFormatInOut[to_base(AttribLocation::COLOR)];
-        desc._bindingIndex = 0u;
-        desc._componentsPerElement = 4u;
-        desc._dataType = GFXDataFormat::FLOAT_32;
-        desc._normalized = false;
-        desc._strideInBytes = 4u * sizeof(F32);
-        desc._instanceDivisor = 1u;
-    }
-
     GenericDrawCommand cmd = {};
     cmd._sourceBuffer = _terrainBuffer->handle();
     cmd._cmd.indexCount = to_U32(TessellationParams::QUAD_LIST_INDEX_COUNT);
@@ -364,7 +343,7 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawComman
     }
     
 
-    Object3D::buildDrawCommands(sgn, cmdsOut, topologyOut, vertexFormatInOut);
+    Object3D::buildDrawCommands(sgn, cmdsOut);
 }
 
 const vector<VertexBuffer::Vertex>& Terrain::getVerts() const noexcept {
