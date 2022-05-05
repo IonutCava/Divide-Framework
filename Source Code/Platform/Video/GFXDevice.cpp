@@ -33,7 +33,6 @@
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/PixelBuffer/Headers/glPixelBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/RenderTarget/Headers/glFramebuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/ShaderBuffer/Headers/glUniformBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/VertexBuffer/Headers/glGenericVertexData.h"
@@ -2878,24 +2877,6 @@ bool GFXDevice::destroyIMP(IMPrimitive*& primitive) {
 
 VertexBuffer_ptr GFXDevice::newVB() {
     return std::make_shared<VertexBuffer>(*this);
-}
-
-PixelBuffer_ptr GFXDevice::newPB(const PBType type, const char* name) {
-    switch (renderAPI()) {
-        case RenderAPI::OpenGL: {
-            return std::make_shared<glPixelBuffer>(*this, type, name);
-        } break;
-        case RenderAPI::Vulkan: {
-            return std::make_shared<vkPixelBuffer>(*this, type, name);
-        } break;
-        case RenderAPI::None: {
-            return std::make_shared<noPixelBuffer>(*this, type, name);
-        } break;
-    };
-
-    DIVIDE_UNEXPECTED_CALL_MSG(Locale::Get(_ID("ERROR_GFX_DEVICE_API")));
-
-    return {};
 }
 
 GenericVertexData_ptr GFXDevice::newGVD(const U32 ringBufferLength, const char* name) {

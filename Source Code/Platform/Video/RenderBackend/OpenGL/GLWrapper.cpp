@@ -25,7 +25,6 @@
 #include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glSamplerObject.h"
 
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/PixelBuffer/Headers/glPixelBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/RenderTarget/Headers/glFramebuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/VertexBuffer/Headers/glGenericVertexData.h"
 
@@ -886,25 +885,6 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
             const glFramebuffer& fb = *GetStateTracker()->_activeRenderTarget;
             Attorney::GLAPIRenderTarget::end(fb, crtCmd->_setDefaultRTState);
         }break;
-        case GFX::CommandType::BEGIN_PIXEL_BUFFER: {
-            OPTICK_EVENT("BEGIN_PIXEL_BUFFER");
-
-            const GFX::BeginPixelBufferCommand* crtCmd = commandBuffer.get<GFX::BeginPixelBufferCommand>(entry);
-
-            assert(crtCmd->_buffer != nullptr);
-            glPixelBuffer* buffer = static_cast<glPixelBuffer*>(crtCmd->_buffer);
-            const bufferPtr data = Attorney::GLAPIPixelBuffer::begin(*buffer);
-            if (crtCmd->_command) {
-                crtCmd->_command(data);
-            }
-            GetStateTracker()->_activePixelBuffer = buffer;
-        }break;
-        case GFX::CommandType::END_PIXEL_BUFFER: {
-            OPTICK_EVENT("END_PIXEL_BUFFER");
-
-            assert(GL_API::GetStateTracker()->_activePixelBuffer != nullptr);
-            Attorney::GLAPIPixelBuffer::end(*GetStateTracker()->_activePixelBuffer);
-        }break;
         case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
             OPTICK_EVENT("BEGIN_RENDER_SUB_PASS");
 
@@ -1312,7 +1292,6 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker* stateTrack
             DIVIDE_UNEXPECTED_CALL();
         }
         stateTracker->setPixelPackUnpackAlignment();
-        stateTracker->_activePixelBuffer = nullptr;
     }
 
     if (stateTracker->setActiveVAO(0) == GLStateTracker::BindResult::FAILED) {

@@ -39,7 +39,6 @@ class GFXDevice;
 class GraphicsResource : NonCopyable, NonMovable {
 public:
     enum class Type : U8 {
-        PIXEL_BUFFER,
         RENDER_TARGET,
         SHADER_BUFFER,
         VERTEX_BUFFER,
@@ -68,7 +67,7 @@ private:
 
 namespace Names {
     static const char* resourceTypes[] = {
-        "PIXEL_BUFFER", "RENDER_TARGET", "SHADER_BUFFER", "VERTEX_BUFFER", "SHADER", "SHADER_PROGRAM", "TEXTURE", "UNKNOWN"
+        "RENDER_TARGET", "SHADER_BUFFER", "VERTEX_BUFFER", "SHADER", "SHADER_PROGRAM", "TEXTURE", "UNKNOWN"
     };
 };
 

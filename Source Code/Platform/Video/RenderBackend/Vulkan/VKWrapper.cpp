@@ -797,12 +797,6 @@ namespace Divide {
                 OPTICK_EVENT("END_RENDER_PASS");
                 PopDebugMessage(cmdBuffer);
             }break;
-            case GFX::CommandType::BEGIN_PIXEL_BUFFER: {
-                OPTICK_EVENT("BEGIN_PIXEL_BUFFER");
-            }break;
-            case GFX::CommandType::END_PIXEL_BUFFER: {
-                OPTICK_EVENT("END_PIXEL_BUFFER");
-            }break;
             case GFX::CommandType::BEGIN_RENDER_SUB_PASS: {
                 OPTICK_EVENT("BEGIN_RENDER_SUB_PASS");
             }break;

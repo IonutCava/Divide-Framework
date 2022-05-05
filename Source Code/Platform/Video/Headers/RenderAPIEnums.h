@@ -144,6 +144,13 @@ enum class TextureUsage : U8 {
     COUNT
 };
 
+enum class DescriptorSetUsage {
+    FRAME_DATA = 0,
+    PASS_DATA,
+    SUBPASS_DATA,
+    DRAW_DATA
+};
+
 static_assert(to_base(TextureUsage::COUNT) <= 32);
 
 namespace Names {

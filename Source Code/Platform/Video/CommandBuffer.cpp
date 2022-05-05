@@ -198,7 +198,6 @@ void CommandBuffer::batch() {
             case CommandType::BLIT_RT:
             case CommandType::RESET_RT:
             case CommandType::SEND_PUSH_CONSTANTS:
-            case CommandType::BEGIN_PIXEL_BUFFER:
             case CommandType::SET_CAMERA:
             case CommandType::PUSH_CAMERA:
             case CommandType::POP_CAMERA:
@@ -359,7 +358,7 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
         OPTICK_EVENT();
 
         size_t cmdIndex = 0u;
-        bool pushedPass = false, pushedSubPass = false, pushedPixelBuffer = false;
+        bool pushedPass = false, pushedSubPass = false;
         bool hasPipeline = false, hasDescriptorSets = false;
         I32 pushedDebugScope = 0, pushedCamera = 0, pushedViewport = 0;
 
@@ -399,18 +398,6 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
                     }
                     --pushedDebugScope;
                 } break;
-                case CommandType::BEGIN_PIXEL_BUFFER: {
-                    if (pushedPixelBuffer) {
-                        return { ErrorType::MISSING_END_PIXEL_BUFFER, cmdIndex };
-                    }
-                    pushedPixelBuffer = true;
-                }break;
-                case CommandType::END_PIXEL_BUFFER: {
-                    if (!pushedPixelBuffer) {
-                        return { ErrorType::MISSING_BEGIN_PIXEL_BUFFER, cmdIndex };
-                    }
-                    pushedPixelBuffer = false;
-                }break;
                 case CommandType::PUSH_CAMERA: {
                     ++pushedCamera;
                 }break;
@@ -449,9 +436,6 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
         if (pushedSubPass) {
             return { ErrorType::MISSING_END_RENDER_SUB_PASS, cmdIndex };
         }
-        if (pushedPixelBuffer) {
-            return { ErrorType::MISSING_END_PIXEL_BUFFER, cmdIndex };
-        }
         if (pushedDebugScope != 0) {
             return { ErrorType::MISSING_POP_DEBUG_SCOPE, cmdIndex };
         }
@@ -480,14 +464,12 @@ void CommandBuffer::ToString(const CommandBase& cmd, const CommandType type, I32
 
     switch (type) {
         case CommandType::BEGIN_RENDER_PASS:
-        case CommandType::BEGIN_PIXEL_BUFFER:
         case CommandType::BEGIN_RENDER_SUB_PASS: 
         case CommandType::BEGIN_DEBUG_SCOPE : {
             append(out, GFX::ToString(cmd, to_U16(crtIndent)), crtIndent);
             ++crtIndent;
         }break;
         case CommandType::END_RENDER_PASS:
-        case CommandType::END_PIXEL_BUFFER:
         case CommandType::END_RENDER_SUB_PASS:
         case CommandType::END_DEBUG_SCOPE: {
             --crtIndent;

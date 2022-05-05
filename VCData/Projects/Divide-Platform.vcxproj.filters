@@ -46,9 +46,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\Headers\RenderStateBlock.h">
       <Filter>Video\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\Buffers\PixelBuffer\Headers\PixelBuffer.h">
-      <Filter>Video\Buffers\PixelBuffer\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\ShaderBuffer\Headers\ShaderBuffer.h">
       <Filter>Video\Buffers\ShaderBuffer\Headers</Filter>
     </ClInclude>
@@ -57,9 +54,6 @@
     </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\VertexBuffer\Headers\VertexBuffer.h">
       <Filter>Video\Buffers\VertexBuffer\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\PixelBuffer\Headers\glPixelBuffer.h">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\PixelBuffer\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\ShaderBuffer\Headers\glUniformBuffer.h">
       <Filter>Video\RenderBackend\OpenGL\Buffers\ShaderBuffer\Headers</Filter>
@@ -375,9 +369,6 @@
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLWrapper.cpp">
       <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\PixelBuffer\glPixelBuffer.cpp">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\PixelBuffer</Filter>
-    </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\ShaderBuffer\glUniformBuffer.cpp">
       <Filter>Video\RenderBackend\OpenGL\Buffers\ShaderBuffer</Filter>
     </ClCompile>
@@ -656,12 +647,6 @@
     <Filter Include="Video\Buffers">
       <UniqueIdentifier>{0782e885-5863-40f1-b891-67a64761b65c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Video\Buffers\PixelBuffer">
-      <UniqueIdentifier>{ffb1b492-b24b-462d-ae7c-af5e36c30427}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\Buffers\PixelBuffer\Headers">
-      <UniqueIdentifier>{cfc36eec-c7d1-4b75-90ad-423cebd09ecc}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Video\Buffers\ShaderBuffer">
       <UniqueIdentifier>{9df0d669-3170-49cb-b709-f3a42d033da5}</UniqueIdentifier>
     </Filter>
@@ -742,12 +727,6 @@
     </Filter>
     <Filter Include="Video\RenderBackend\OpenGL\Buffers\Headers">
       <UniqueIdentifier>{db2775a7-106d-4722-8b8b-e508340d902b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\Buffers\PixelBuffer">
-      <UniqueIdentifier>{fc5ea83e-71c8-44e4-9fe5-4d5e0a7a6505}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\Buffers\PixelBuffer\Headers">
-      <UniqueIdentifier>{570abb12-972d-4f25-9d60-b29fa1ca4582}</UniqueIdentifier>
     </Filter>
     <Filter Include="Video\RenderBackend\OpenGL\Buffers\ShaderBuffer">
       <UniqueIdentifier>{2b7979ac-71c9-4fed-a3e9-abebbcc8bac8}</UniqueIdentifier>

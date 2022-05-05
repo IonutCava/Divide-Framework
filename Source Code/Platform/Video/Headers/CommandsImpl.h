@@ -47,15 +47,12 @@ struct ImDrawData;
 namespace Divide {
 class Pipeline;
 class ShaderBuffer;
-class PixelBuffer;
 
 namespace GFX {
 
 enum class CommandType : U8 {
     BEGIN_RENDER_PASS,
     END_RENDER_PASS,
-    BEGIN_PIXEL_BUFFER,
-    END_PIXEL_BUFFER,
     BEGIN_RENDER_SUB_PASS,
     END_RENDER_SUB_PASS,
     SET_VIEWPORT,
@@ -95,7 +92,7 @@ enum class CommandType : U8 {
 
 namespace Names {
     static const char* commandType[] = {
-        "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_PIXEL_BUFFER", "END_PIXEL_BUFFER", "BEGIN_RENDER_SUB_PASS",
+        "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_RENDER_SUB_PASS",
         "END_RENDER_SUB_PASS", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT", "SET_SCISSOR", "CLEAR_RT",
         "RESET_RT", "RESET_AND_CLEAR_RT", "BLIT_RT", "COPY_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS", "SET_CAMERA",
         "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_DESCRIPTOR_SETS", "SEND_PUSH_CONSTANTS",
@@ -155,13 +152,6 @@ DEFINE_COMMAND_END(BeginRenderPassCommand);
 DEFINE_COMMAND_BEGIN(EndRenderPassCommand, CommandType::END_RENDER_PASS);
     bool _setDefaultRTState = true;
 DEFINE_COMMAND_END(EndRenderPassCommand);
-
-DEFINE_COMMAND_BEGIN(BeginPixelBufferCommand, CommandType::BEGIN_PIXEL_BUFFER);
-    PixelBuffer* _buffer = nullptr;
-    DELEGATE<void, bufferPtr> _command;
-DEFINE_COMMAND_END(BeginPixelBufferCommand);
-
-DEFINE_COMMAND(EndPixelBufferCommand, CommandType::END_PIXEL_BUFFER);
 
 DEFINE_COMMAND_BEGIN(BeginRenderSubPassCommand, CommandType::BEGIN_RENDER_SUB_PASS);
     U16 _mipWriteLevel = 0u;

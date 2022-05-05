@@ -86,7 +86,6 @@ struct ShaderBufferDescriptor;
 enum class ShadowType : U8;
 
 FWD_DECLARE_MANAGED_CLASS(Texture);
-FWD_DECLARE_MANAGED_CLASS(PixelBuffer);
 FWD_DECLARE_MANAGED_CLASS(VertexBuffer);
 FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 
@@ -345,8 +344,6 @@ public:
 
     /// Create and return a new vertex array (VAO + VB + IB).
     VertexBuffer_ptr  newVB();
-    /// Create and return a new pixel buffer using the requested format.
-    PixelBuffer_ptr    newPB(PBType type = PBType::PB_TEXTURE_2D, const char* name = nullptr);
     /// Create and return a new generic vertex data object
     GenericVertexData_ptr newGVD(U32 ringBufferLength, const char* name = nullptr);
     /// Create and return a new texture.

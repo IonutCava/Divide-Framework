@@ -15,8 +15,6 @@ IMPLEMENT_COMMAND(PushViewportCommand);
 IMPLEMENT_COMMAND(PopViewportCommand);
 IMPLEMENT_COMMAND(BeginRenderPassCommand);
 IMPLEMENT_COMMAND(EndRenderPassCommand);
-IMPLEMENT_COMMAND(BeginPixelBufferCommand);
-IMPLEMENT_COMMAND(EndPixelBufferCommand);
 IMPLEMENT_COMMAND(BeginRenderSubPassCommand);
 IMPLEMENT_COMMAND(EndRenderSubPassCommand);
 IMPLEMENT_COMMAND(BlitRenderTargetCommand);

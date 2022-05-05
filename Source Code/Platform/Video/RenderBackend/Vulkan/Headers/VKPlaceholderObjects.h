@@ -33,7 +33,6 @@
 #ifndef _VK_PLACEHOLDER_OBJECTS_H_
 #define _VK_PLACEHOLDER_OBJECTS_H_
 
-#include "Platform/Video/Buffers/PixelBuffer/Headers/PixelBuffer.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
@@ -62,27 +61,6 @@ namespace Divide {
         void blitFrom([[maybe_unused]] const RTBlitParams& params) noexcept override {
         }
     };
-
-    class vkPixelBuffer final : public PixelBuffer {
-    public:
-        vkPixelBuffer(GFXDevice& context, const PBType type, const char* name)
-            : PixelBuffer(context, type, name)
-        {}
-
-        bool create([[maybe_unused]] U16 width,
-                    [[maybe_unused]] U16 height,
-                    [[maybe_unused]] U16 depth = 0,
-                    [[maybe_unused]] GFXImageFormat formatEnum = GFXImageFormat::RGBA,
-                    [[maybe_unused]] GFXDataFormat dataTypeEnum = GFXDataFormat::FLOAT_32,
-                    [[maybe_unused]]  bool normalized = true) noexcept override
-        {
-            return true;
-        }
-
-        void updatePixels([[maybe_unused]] const F32* pixels, [[maybe_unused]] U32 pixelCount) noexcept override {
-        }
-    };
-
 
     class vkGenericVertexData final : public GenericVertexData {
     public:
