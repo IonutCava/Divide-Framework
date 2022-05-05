@@ -37,7 +37,7 @@
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 namespace Divide {
-class glLockManager;
+
 class glTexture final : public Texture,
                         public glObject {
    public:

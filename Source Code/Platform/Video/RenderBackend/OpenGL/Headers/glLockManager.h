@@ -34,16 +34,78 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "glResources.h"
 
+// https://github.com/nvMcJohn/apitest
+// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
+
+
 namespace Divide {
 
 constexpr U8 g_MaxLockWaitRetries = 5u;
 
+struct BufferRange {
+    size_t _startOffset = 0u;
+    size_t _length = 0u;
+};
+
+inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept {
+    return lhs._startOffset == rhs._startOffset &&
+        lhs._length == rhs._length;
+}
+
+[[nodiscard]] inline bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept {
+    return lhs._startOffset < (rhs._startOffset + rhs._length) && rhs._startOffset < (lhs._startOffset + lhs._length);
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+enum class BufferLockState : U8 {
+    ACTIVE = 0,
+    EXPIRED,
+    DELETED,
+    ERROR
+};
+
+struct SyncObject {
+    ~SyncObject();
+    void reset();
+
+    Mutex _fenceLock;
+    GLsync _fence = nullptr;
+    U32 _frameID = 0u;
+};
+
+FWD_DECLARE_MANAGED_STRUCT(SyncObject);
+
+struct BufferLock {
+    BufferLock() = default;
+    explicit BufferLock(const BufferRange range, SyncObject* syncObj) noexcept
+        : _range(range), _syncObj(syncObj)
+    {
+    }
+
+    BufferRange _range{};
+    SyncObject* _syncObj = nullptr;
+    BufferLockState _state = BufferLockState::ACTIVE;
+};
+
 class glLockManager : public GUIDWrapper {
+   public:
+    using BufferLockPool = eastl::fixed_vector<SyncObject_uptr, 1024, true>;
+
+    static [[nodiscard]] SyncObject* CreateSyncObject(bool isRetry = false);
+    static void Clear();
+
    public:
     virtual ~glLockManager();
 
     void wait(bool blockClient);
     void lock();
+
+    /// Returns false if we encountered an error
+    bool waitForLockedRange(size_t lockBeginBytes, size_t lockLength, bool blockClient, bool quickCheck = false);
+    /// Returns false if we encountered an error
+    bool lockRange(size_t lockBeginBytes, size_t lockLength, SyncObject* syncObj);
 
   protected:
     /// Returns true if the sync object was signaled. retryCount is the number of retries it took to wait for the object
@@ -51,8 +113,11 @@ class glLockManager : public GUIDWrapper {
     static bool Wait(GLsync syncObj, bool blockClient, bool quickCheck, U8& retryCount);
 
    protected:
-    SharedMutex _syncMutex;
-    GLsync _defaultSync = nullptr;
+     mutable SharedMutex _lock;
+     vector<BufferLock> _bufferLocks;
+     vector<BufferLock> _swapLocks;
+
+     static BufferLockPool s_bufferLockPool;
 };
 
 };  // namespace Divide

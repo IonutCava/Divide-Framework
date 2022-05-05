@@ -82,7 +82,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\Headers\RenderStateBlock.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Headers\TextureData.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glBufferImpl.h" />
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glBufferLockManager.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glMemoryManager.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\PixelBuffer\Headers\glPixelBuffer.h" />
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\RenderTarget\Headers\glFramebuffer.h" />
@@ -136,7 +135,6 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\Texture.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\TextureTarget.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\include\ViewportTarget.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\glVAOCache.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKCommon.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKDevice.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKSwapChain.h" />
@@ -178,7 +176,6 @@
     <ClCompile Include="../../Source Code/Platform\Video\GraphicsResource.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\IMPrimitive.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\glBufferImpl.cpp" />
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\glBufferLockManager.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\glMemoryManager.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\PixelBuffer\glPixelBuffer.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\RenderTarget\glFramebuffer.cpp" />
@@ -233,7 +230,6 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\Texture_.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\TextureTarget.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\ViewportTarget.cpp" />
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glVAOCache.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Shaders\glShaderProgramInit.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\ImGUITestCode.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\VKDevice.cpp" />

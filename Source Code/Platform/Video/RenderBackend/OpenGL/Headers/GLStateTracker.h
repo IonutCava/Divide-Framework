@@ -33,7 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _GL_STATE_TRACKER_H_
 #define _GL_STATE_TRACKER_H_
 
-#include "glVAOCache.h"
+#include "glResources.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 
@@ -43,11 +43,10 @@ namespace Divide {
     class glFramebuffer;
     class glPixelBuffer;
     class RenderStateBlock;
-    class glBufferLockManager;
 
     struct GLStateTracker {
         GLStateTracker();
-        ~GLStateTracker();
+        ~GLStateTracker() = default;
 
         using AttribHashes = std::array<size_t, to_base(AttribLocation::COUNT)>;
 
@@ -141,7 +140,8 @@ namespace Divide {
         void getActiveViewport(GLint* vp) const noexcept;
 
       private:
-        void setAttributesInternal(AttribHashes& hashes, const AttributeMap& attributes);
+        void setAttributesInternal(GLuint vaoID, const AttributeMap& attributes);
+        bool getOrCreateVAO(const size_t attributeHash, GLuint& vaoOut);
 
       public:
           struct BindConfigEntry
@@ -218,7 +218,6 @@ namespace Divide {
         TextureTypeBoundMapDef _textureTypeBoundMap = {};
 
         VAOBindings _vaoBufferData;
-        hashMap<GLuint, AttribHashes> _attributeHashes;
     }; //class GLStateTracker
 }; //namespace Divide
 

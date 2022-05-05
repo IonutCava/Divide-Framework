@@ -52,8 +52,7 @@ namespace {
 }
 
 eastl::unique_ptr<GLStateTracker> GL_API::s_stateTracker = nullptr;
-GL_API::BufferLockPool GL_API::s_bufferLockPool;
-GLUtil::glVAOCache GL_API::s_vaoCache;
+GL_API::VAOMap GL_API::s_vaoCache;
 std::atomic_bool GL_API::s_glFlushQueued;
 GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
 GL_API::IMPrimitivePool GL_API::s_IMPrimitivePool{};
@@ -486,10 +485,15 @@ void GL_API::closeRenderingAPI() {
         allocator.deallocate();
     }
     g_ContextPool.destroy();
+
+    for (VAOMap::value_type& value : s_vaoCache) {
+        if (value.second != GLUtil::k_invalidObjectID) {
+            GL_API::DeleteVAOs(1, &value.second);
+        }
+    }
     s_vaoCache.clear();
     s_stateTracker.reset();
-
-    s_bufferLockPool.clear();
+    glLockManager::Clear();
 }
 
 /// Prepare the GPU for rendering a frame
@@ -1213,7 +1217,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
     if (!s_bufferLockQueueMidFlush.empty()) {
         for (const GFX::CommandBuffer::CommandEntry flushPoint : _bufferFlushPoints) {
             if (entry == flushPoint) {
-                FlushMidBufferLockQueue(CreateSyncObject());
+                FlushMidBufferLockQueue(glLockManager::CreateSyncObject());
                 break;
             }
         }
@@ -1223,7 +1227,7 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 void GL_API::postFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {
     OPTICK_EVENT();
 
-    FlushEndBufferLockQueue(CreateSyncObject());
+    FlushEndBufferLockQueue(glLockManager::CreateSyncObject());
 
     bool expected = true;
     if (s_glFlushQueued.compare_exchange_strong(expected, false)) {
@@ -1645,45 +1649,7 @@ void GL_API::QueueFlush() noexcept {
     s_glFlushQueued.store(true);
 }
 
-SyncObject_uptr& GL_API::CreateSyncObject(const bool isRetry) {
-    if (isRetry) {
-        const U32 frameID = GFXDevice::FrameCount();
-
-        for (SyncObject_uptr& syncObject : s_bufferLockPool) {
-            if (syncObject->_fence != nullptr) {
-                ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
-                // Check again to avoid race conditions
-                if (syncObject->_fence != nullptr &&
-                    syncObject->_frameID < frameID && 
-                    frameID - syncObject->_frameID >= GL_API::s_LockFrameLifetime) 
-                {
-                    syncObject->reset();
-                }
-            }
-        }
-    }
-
-    for (SyncObject_uptr& syncObject : s_bufferLockPool) {
-        if (syncObject->_fence == nullptr) {
-            ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
-            // Check again to avoid race conditions
-            if (syncObject->_fence == nullptr) {
-                syncObject->_frameID = GFXDevice::FrameCount();
-                syncObject->_fence = GL_API::CreateFenceSync();
-                return syncObject;
-            }
-        }
-    }
-
-    if (!isRetry) {
-        return CreateSyncObject(true);
-    }
-
-    s_bufferLockPool.emplace_back(MOV(eastl::make_unique<SyncObject>()));
-    return CreateSyncObject(false);
-}
-
-void GL_API::FlushMidBufferLockQueue(SyncObject_uptr& syncObj) {
+void GL_API::FlushMidBufferLockQueue(SyncObject* syncObj) {
     OPTICK_EVENT();
 
     for (const BufferLockEntry& lockEntry : s_bufferLockQueueMidFlush) {
@@ -1694,7 +1660,7 @@ void GL_API::FlushMidBufferLockQueue(SyncObject_uptr& syncObj) {
     s_bufferLockQueueMidFlush.resize(0);
 }
 
-void GL_API::FlushEndBufferLockQueue(SyncObject_uptr& syncObj) {
+void GL_API::FlushEndBufferLockQueue(SyncObject* syncObj) {
     OPTICK_EVENT();
 
     FlushMidBufferLockQueue(syncObj);
@@ -1856,7 +1822,7 @@ bool GL_API::DeleteFramebuffers(const GLuint count, GLuint* framebuffers) {
 void GL_API::RegisterBufferLock(const BufferLockEntry&& data, const ShaderBufferLockType lockType) {
     assert(Runtime::isMainThread());
     if (lockType == ShaderBufferLockType::IMMEDIATE) {
-        if (!data._buffer->lockByteRange(data._offset, data._length, CreateSyncObject())) {
+        if (!data._buffer->lockByteRange(data._offset, data._length, glLockManager::CreateSyncObject())) {
             NOP();
         }
     } else if (lockType == ShaderBufferLockType::AFTER_DRAW_COMMANDS) {

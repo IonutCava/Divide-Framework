@@ -1,11 +1,11 @@
 #include "stdafx.h"
 
 #include "Headers/glBufferImpl.h"
-#include "Headers/glBufferLockManager.h"
 #include "Headers/glMemoryManager.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
 
 #include "Utility/Headers/Localization.h"
 
@@ -115,8 +115,7 @@ glBufferImpl::~glBufferImpl()
     }
 }
 
-
-bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, SyncObject_uptr& syncObject) {
+bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, SyncObject* syncObject) {
     if (_memoryBlock._ptr != nullptr) {
         return _lockManager.lockRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, syncObject);
     }

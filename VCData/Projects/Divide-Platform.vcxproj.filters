@@ -58,9 +58,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\VertexBuffer\Headers\VertexBuffer.h">
       <Filter>Video\Buffers\VertexBuffer\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glBufferLockManager.h">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\PixelBuffer\Headers\glPixelBuffer.h">
       <Filter>Video\RenderBackend\OpenGL\Buffers\PixelBuffer\Headers</Filter>
     </ClInclude>
@@ -328,9 +325,6 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\Headers\AttributeDescriptor.h">
       <Filter>Video\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\glVAOCache.h">
-      <Filter>Video\RenderBackend\OpenGL\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\Headers\GLSLToSPIRV.h">
       <Filter>Video\Shaders\Headers</Filter>
     </ClInclude>
@@ -389,9 +383,6 @@
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\glGenericVertexData.cpp">
       <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\glBufferLockManager.cpp">
-      <Filter>Video\RenderBackend\OpenGL\Buffers</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Textures\glSamplerOject.cpp">
       <Filter>Video\RenderBackend\OpenGL\Textures</Filter>
@@ -602,9 +593,6 @@
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\AttributeDescriptor.cpp">
       <Filter>Video</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\glVAOCache.cpp">
-      <Filter>Video\RenderBackend\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\Shaders\GLSLToSPIRV.cpp">
       <Filter>Video\Shaders</Filter>

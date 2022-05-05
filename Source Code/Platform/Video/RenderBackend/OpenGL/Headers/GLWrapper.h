@@ -144,9 +144,8 @@ public:
 
     static void QueueFlush() noexcept;
 
-    static [[nodiscard]] SyncObject_uptr& CreateSyncObject(bool isRetry = false);
-    static void FlushMidBufferLockQueue(SyncObject_uptr& syncObj);
-    static void FlushEndBufferLockQueue(SyncObject_uptr& syncObj);
+    static void FlushMidBufferLockQueue(SyncObject* syncObj);
+    static void FlushEndBufferLockQueue(SyncObject* syncObj);
 
 
     static void PushDebugMessage(const char* message);
@@ -185,7 +184,6 @@ private:
     /// /*sampler hash value*/ /*sampler object*/
     using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
     using IMPrimitivePool = MemoryPool<glIMPrimitive, 2048>;
-    using BufferLockPool = eastl::fixed_vector<SyncObject_uptr, 1024, true>;
     using BufferLockQueue = eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator>;
 
 private:
@@ -215,8 +213,6 @@ private:
 
 private:
 
-    static BufferLockPool s_bufferLockPool;
-
     static std::atomic_bool s_glFlushQueued;
     static vector<ResidentTexture> s_residentTextures;
 
@@ -229,7 +225,8 @@ private:
 
     static GLUtil::glTextureViewCache s_textureViewCache;
 
-    static GLUtil::glVAOCache s_vaoCache;
+    using VAOMap = hashMap<size_t, GLuint>;
+    static VAOMap s_vaoCache;
 
     static IMPrimitivePool s_IMPrimitivePool;
 

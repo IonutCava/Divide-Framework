@@ -2,10 +2,13 @@
 
 #include "Headers/GLStateTracker.h"
 
-#include "Headers/glLockManager.h"
 #include "Headers/GLWrapper.h"
+
+#include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+
+#include "Utility/Headers/Localization.h"
 
 namespace Divide {
     
@@ -35,6 +38,7 @@ namespace {
         DIVIDE_UNEXPECTED_CALL();
         return -1;
     }
+
 }; //namespace 
 
 GLStateTracker::GLStateTracker()
@@ -59,70 +63,81 @@ GLStateTracker::GLStateTracker()
     _activeBufferID = create_array<13, GLuint>(GLUtil::k_invalidObjectID);
 }
 
-GLStateTracker::~GLStateTracker()
-{
-}
-
-void GLStateTracker::setAttributesInternal(AttribHashes& hashes, const AttributeMap& attributes) {
+void GLStateTracker::setAttributesInternal(const GLuint vaoID, const AttributeMap& attributes) {
     // Update vertex attributes if needed (e.g. if offsets changed)
     for(U8 idx = 0u; idx < to_base(AttribLocation::COUNT); ++idx) {
         const AttributeDescriptor& descriptor = attributes[idx];
 
-        const size_t hash = GetHash(descriptor);
-        if (hashes[idx] == hash) {
-            continue;
-        }
-        hashes[idx] = hash;
-
-        if (descriptor._dataType != GFXDataFormat::COUNT) {
-            glEnableVertexArrayAttrib(_activeVAOID, idx);
-            glVertexArrayAttribBinding(_activeVAOID, idx, descriptor._bindingIndex);
+        if (descriptor._dataType == GFXDataFormat::COUNT) {
+            glDisableVertexArrayAttrib(vaoID, idx);
+        } else {
+            glEnableVertexArrayAttrib(vaoID, idx);
+            glVertexArrayAttribBinding(vaoID, idx, descriptor._bindingIndex);
             const bool isIntegerType = descriptor._dataType != GFXDataFormat::FLOAT_16 &&
                                        descriptor._dataType != GFXDataFormat::FLOAT_32;
 
             if (!isIntegerType || descriptor._normalized) {
-                glVertexArrayAttribFormat(_activeVAOID,
-                    idx,
-                    descriptor._componentsPerElement,
-                    GLUtil::glDataFormat[to_U32(descriptor._dataType)],
-                    descriptor._normalized ? GL_TRUE : GL_FALSE,
-                    static_cast<GLuint>(descriptor._strideInBytes));
+                glVertexArrayAttribFormat(vaoID,
+                                          idx,
+                                          descriptor._componentsPerElement,
+                                          GLUtil::glDataFormat[to_U32(descriptor._dataType)],
+                                          descriptor._normalized ? GL_TRUE : GL_FALSE,
+                                          static_cast<GLuint>(descriptor._strideInBytes));
             } else {
-                glVertexArrayAttribIFormat(_activeVAOID,
-                    idx,
-                    descriptor._componentsPerElement,
-                    GLUtil::glDataFormat[to_U32(descriptor._dataType)],
-                    static_cast<GLuint>(descriptor._strideInBytes));
+                glVertexArrayAttribIFormat(vaoID,
+                                           idx,
+                                           descriptor._componentsPerElement,
+                                           GLUtil::glDataFormat[to_U32(descriptor._dataType)],
+                                           static_cast<GLuint>(descriptor._strideInBytes));
             }
 
             const GLuint instanceDivisor = descriptor._instanceDivisor;
-            if (_vaoBufferData.instanceDivisor(_activeVAOID, idx) != instanceDivisor) {
-                glVertexArrayBindingDivisor(_activeVAOID, idx, instanceDivisor);
-                _vaoBufferData.instanceDivisor(_activeVAOID, idx, instanceDivisor);
+            if (_vaoBufferData.instanceDivisor(vaoID, idx) != instanceDivisor) {
+                glVertexArrayBindingDivisor(vaoID, idx, instanceDivisor);
+                _vaoBufferData.instanceDivisor(vaoID, idx, instanceDivisor);
             }
 
-        } else {
-            glDisableVertexArrayAttrib(_activeVAOID, idx);
         }
     }
+}
+
+bool GLStateTracker::getOrCreateVAO(const size_t attributeHash, GLuint& vaoOut) {
+    static U32 s_VAOidx = 0u;
+
+    DIVIDE_ASSERT(Runtime::isMainThread());
+
+    vaoOut = GLUtil::k_invalidObjectID;
+
+    // See if we already have a matching VAO
+    const auto it = GL_API::s_vaoCache.find(attributeHash);
+    if (it != std::cend(GL_API::s_vaoCache)) {
+        // Remember it if we do
+        vaoOut = it->second;
+        // Return true on a cache hit;
+        return true;
+    }
+
+    // Otherwise allocate a new VAO and save it in the cache
+    glCreateVertexArrays(1, &vaoOut);
+    DIVIDE_ASSERT(vaoOut != GLUtil::k_invalidObjectID, Locale::Get(_ID("ERROR_VAO_INIT")));
+    if_constexpr(Config::ENABLE_GPU_VALIDATION) {
+        glObjectLabel(GL_VERTEX_ARRAY, vaoOut, -1, Util::StringFormat("GENERIC_VAO_%d", s_VAOidx++).c_str());
+    }
+    insert(GL_API::s_vaoCache, attributeHash, vaoOut);
+    return false;
 }
 
 void GLStateTracker::setVertexFormat(const PrimitiveTopology topology, const AttributeMap& attributes, const size_t attributeHash) {
     _activeTopology = topology;
 
     GLuint vao = 0u;
-    if (!GL_API::s_vaoCache.getVAO(attributeHash, vao)) {
-        NOP(); //cache miss
-    }
-    if (setActiveVAO(vao) == BindResult::FAILED) {
-        DIVIDE_UNEXPECTED_CALL();
+    if (!getOrCreateVAO(attributeHash, vao)) {
+        // cache miss
+        setAttributesInternal(vao, attributes);
     }
 
-    const auto& activeHashes = _attributeHashes.find(vao);
-    if (activeHashes == _attributeHashes.end()) {
-        setAttributesInternal(hashAlg::insert(_attributeHashes, vao, {}).first->second, attributes);
-    } else {
-        setAttributesInternal(activeHashes->second, attributes);
+    if (setActiveVAO(vao) == BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
     }
 }
 

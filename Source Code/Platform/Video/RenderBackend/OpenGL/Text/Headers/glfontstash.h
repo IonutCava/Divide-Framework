@@ -22,8 +22,9 @@
 #define GL3COREFONTSTASH_H
 
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferLockManager.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -58,13 +59,13 @@ struct GLFONScontext {
 using GLFONScontext = struct GLFONScontext;
 
 namespace {
-    Divide::glBufferLockManager* g_lockManager = nullptr;
+    Divide::glLockManager* g_lockManager = nullptr;
 };
 
 static int glfons__renderCreate(void* userPtr, int width, int height)
 {
     GLFONScontext* gl = (GLFONScontext*)userPtr;
-    g_lockManager = MemoryManager_NEW Divide::glBufferLockManager();
+    g_lockManager = MemoryManager_NEW Divide::glLockManager();
 	// Create may be called multiple times, delete existing texture.
 	if (gl->tex != 0) {
 		glDeleteTextures(1, &gl->tex);

@@ -34,7 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _GL_BUFFER_IMPL_H_
 
 #include "glMemoryManager.h"
-#include "glBufferLockManager.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLStateTracker.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 
@@ -60,7 +60,7 @@ public:
     virtual ~glBufferImpl();
 
     // Returns false if we encounter an error
-    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, SyncObject_uptr& syncObject);
+    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, SyncObject* syncObject);
     [[nodiscard]] bool waitByteRange(size_t offsetInBytes, size_t rangeInBytes, bool blockClient);
 
     void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool zeroMem);
@@ -75,7 +75,7 @@ protected:
     GFXDevice& _context;
 
     GLuint _copyBufferTarget = GLUtil::k_invalidObjectID;
-    glBufferLockManager _lockManager;
+    glLockManager _lockManager;
 };
 }; //namespace Divide
 

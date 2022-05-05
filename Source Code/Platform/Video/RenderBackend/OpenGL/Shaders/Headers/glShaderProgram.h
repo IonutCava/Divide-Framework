@@ -43,7 +43,6 @@ namespace Divide {
 class PlatformContext;
 class GL_API;
 class glShader;
-class glLockManager;
 
 struct ValidationEntry
 {
