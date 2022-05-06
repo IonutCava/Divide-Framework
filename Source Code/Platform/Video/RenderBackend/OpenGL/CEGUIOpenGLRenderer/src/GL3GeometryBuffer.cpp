@@ -205,10 +205,12 @@ void OpenGL3GeometryBuffer::updateOpenGLBuffers()
 
     if(needNewBuffer)
     {
+        glInvalidateBufferData(d_verticesVBO);
         glNamedBufferData(d_verticesVBO, dataSize, data, GL_DYNAMIC_DRAW);
     }
     else
     {
+        glInvalidateBufferSubData(d_verticesVBO, 0, dataSize);
         glNamedBufferSubData(d_verticesVBO, 0, dataSize, data);
     }
 }

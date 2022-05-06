@@ -45,6 +45,8 @@ void glShaderProgram::ProcessValidationQueue() {
                 return;
             }
         }
+        assert(s_validationOutputCache._handle != GLUtil::k_invalidObjectID);
+
         glValidateProgramPipeline(s_validationOutputCache._handle);
 
         GLint status = 1;

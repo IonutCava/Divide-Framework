@@ -40,7 +40,7 @@ glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescripto
     implParams._name = _name.empty() ? nullptr : _name.c_str();
     implParams._useChunkAllocation = _usage != Usage::COMMAND_BUFFER && _usage != Usage::ATOMIC_COUNTER;
 
-    _bufferImpl = MemoryManager_NEW glBufferImpl(context, implParams);
+    _bufferImpl = eastl::make_unique<glBufferImpl>(context, implParams);
 
     // Just to avoid issues with reading undefined or zero-initialised memory.
     // This is quite fast so far so worth it for now.
@@ -49,11 +49,6 @@ glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescripto
             bufferImpl()->writeOrClearBytes(_alignedBufferSize * i, descriptor._bufferParams._initialData.second, descriptor._bufferParams._initialData.first, false);
         }
     }
-}
-
-glUniformBuffer::~glUniformBuffer() 
-{
-    MemoryManager::DELETE(_bufferImpl);
 }
 
 void glUniformBuffer::clearBytes(ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes) {

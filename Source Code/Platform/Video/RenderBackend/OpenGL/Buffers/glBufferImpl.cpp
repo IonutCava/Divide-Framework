@@ -90,7 +90,7 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
 
 glBufferImpl::~glBufferImpl()
 {
-    if (_memoryBlock._bufferHandle > 0) {
+    if (_memoryBlock._bufferHandle != GLUtil::k_invalidObjectID) {
         if (!waitByteRange(0u, _memoryBlock._size, true)) {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -100,9 +100,7 @@ glBufferImpl::~glBufferImpl()
             allocator.deallocate(_memoryBlock);
         } else {
             GLUtil::freeBuffer(_memoryBlock._bufferHandle);
-            if (_copyBufferTarget != GLUtil::k_invalidObjectID) {
-                GLUtil::freeBuffer(_copyBufferTarget);
-            }
+            GLUtil::freeBuffer(_copyBufferTarget);
         }
     }
 }
@@ -129,12 +127,12 @@ bool glBufferImpl::waitByteRange(const size_t offsetInBytes, const size_t rangeI
 
 void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data, const bool zeroMem) {
 
+    assert(rangeInBytes > 0u && offsetInBytes + rangeInBytes <= _memoryBlock._size);
+
     OPTICK_EVENT();
     OPTICK_TAG("Mapped", static_cast<bool>(_memoryBlock._ptr != nullptr));
     OPTICK_TAG("Offset", to_U32(offsetInBytes));
     OPTICK_TAG("Range", to_U32(rangeInBytes));
-    assert(rangeInBytes > 0);
-    assert(offsetInBytes + rangeInBytes <= _memoryBlock._size);
 
     if (!waitByteRange(offsetInBytes, rangeInBytes, true)) {
         Console::errorfn(Locale::Get(_ID("ERROR_BUFFER_LOCK_MANAGER_WAIT")));
@@ -149,8 +147,7 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
     } else {
         DIVIDE_ASSERT(zeroMem, "glBufferImpl: trying to write to a buffer create with BufferUpdateFrequency::ONCE");
 
-        const MapBufferAccessMask accessMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
-        Byte* ptr = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, accessMask);
+        Byte* ptr = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
         memset(ptr, 0, rangeInBytes);
         glUnmapNamedBuffer(_memoryBlock._bufferHandle);
     }
@@ -168,21 +165,22 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
         }
         memcpy(data, _memoryBlock._ptr + offsetInBytes, rangeInBytes);
     } else {
-        if (_copyBufferTarget == GLUtil::k_invalidObjectID) {
+        if (_copyBufferTarget == GLUtil::k_invalidObjectID || _copyBufferSize < rangeInBytes) {
+            GLUtil::freeBuffer(_copyBufferTarget);
+            _copyBufferSize = rangeInBytes;
             const string copyBufferName = _params._name != nullptr ? string{ _params._name } + "_copy" 
                                                                    : Util::StringFormat("COPY_BUFFER_%d", _memoryBlock._bufferHandle);
-            GLUtil::createAndAllocBuffer(_params._dataSize, 
+            GLUtil::createAndAllocBuffer(_copyBufferSize,
                                          GL_STREAM_READ,
                                          _copyBufferTarget,
                                          {nullptr, 0u},
                                          copyBufferName.c_str());
         }
-        glCopyNamedBufferSubData(_memoryBlock._bufferHandle, _copyBufferTarget, _memoryBlock._offset + offsetInBytes, _memoryBlock._offset + offsetInBytes, rangeInBytes);
+        glCopyNamedBufferSubData(_memoryBlock._bufferHandle, _copyBufferTarget, _memoryBlock._offset + offsetInBytes, 0u, rangeInBytes);
 
-        const Byte* bufferData = (Byte*)glMapNamedBufferRange(_copyBufferTarget, _memoryBlock._offset + offsetInBytes, rangeInBytes, MapBufferAccessMask::GL_MAP_READ_BIT);
-        if (bufferData != nullptr) {
-            memcpy(data, bufferData, rangeInBytes);
-        }
+        const Byte* bufferData = (Byte*)glMapNamedBufferRange(_copyBufferTarget, 0u, rangeInBytes, MapBufferAccessMask::GL_MAP_READ_BIT);
+        assert(bufferData != nullptr);
+        memcpy(data, bufferData, rangeInBytes);
         glUnmapNamedBuffer(_copyBufferTarget);
     }
 }

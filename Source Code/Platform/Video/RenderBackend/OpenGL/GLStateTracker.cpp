@@ -130,7 +130,7 @@ bool GLStateTracker::getOrCreateVAO(const size_t attributeHash, GLuint& vaoOut) 
 void GLStateTracker::setVertexFormat(const PrimitiveTopology topology, const AttributeMap& attributes, const size_t attributeHash) {
     _activeTopology = topology;
 
-    GLuint vao = 0u;
+    GLuint vao = GLUtil::k_invalidObjectID;
     if (!getOrCreateVAO(attributeHash, vao)) {
         // cache miss
         setAttributesInternal(vao, attributes);
@@ -462,6 +462,8 @@ GLStateTracker::BindResult GLStateTracker::setActiveVAO(const GLuint ID) {
 
 /// Switch the currently active vertex array object
 GLStateTracker::BindResult GLStateTracker::setActiveVAO(const GLuint ID, GLuint& previousID) {
+    assert(ID != GLUtil::k_invalidObjectID);
+
     previousID = _activeVAOID;
     // Prevent double bind
     if (_activeVAOID != ID) {

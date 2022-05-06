@@ -68,9 +68,6 @@ namespace Divide {
             : GenericVertexData(context, ringBufferLength, name)
         {}
 
-        void create([[maybe_unused]] U8 numBuffers = 1) noexcept override {
-        }
-
         void reset() override {
 
         }

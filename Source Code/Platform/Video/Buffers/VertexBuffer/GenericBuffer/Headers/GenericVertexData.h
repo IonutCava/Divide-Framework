@@ -46,7 +46,6 @@ namespace Divide {
 class NOINITVTABLE GenericVertexData : public VertexDataInterface,
                                        public RingBuffer {
    public:
-     
      struct IndexBuffer {
          size_t count = 0u;
          size_t offsetCount = 0u;
@@ -67,9 +66,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
     virtual ~GenericVertexData() = default;
 
     virtual void setIndexBuffer(const IndexBuffer& indices);
-    virtual void updateIndexBuffer(const IndexBuffer& indices);
 
-    virtual void create(U8 numBuffers = 1) = 0;
     virtual void reset() = 0; //< Also clears GPU memory
 
     /// When reading and writing to the same buffer, we use a round-robin approach and
@@ -90,9 +87,8 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
 };
 
 inline bool AreCompatible(const GenericVertexData::IndexBuffer& lhs, const GenericVertexData::IndexBuffer& rhs) noexcept {
-    return lhs.count == rhs.count &&
+    return lhs.count >= rhs.count &&
            lhs.indicesNeedCast == rhs.indicesNeedCast &&
-           lhs.offsetCount == rhs.offsetCount &&
            lhs.smallIndices == rhs.smallIndices &&
            lhs.dynamic == rhs.dynamic;
 }

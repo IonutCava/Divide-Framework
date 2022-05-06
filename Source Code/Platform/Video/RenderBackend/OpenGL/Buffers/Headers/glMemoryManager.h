@@ -51,7 +51,7 @@ namespace GLMemory{
         Byte* _ptr = nullptr;
         size_t _offset = 0u;
         size_t _size = 0u;
-        GLuint _bufferHandle = 0u;
+        GLuint _bufferHandle = GLUtil::k_invalidObjectID;
         bool _free = true;
     };
 
@@ -133,6 +133,10 @@ namespace GLMemory{
         vector_fast<Chunk*> _chunks;
     };
 } // namespace GLMemory
+
+void createBuffer(size_t bufferSize,
+                  GLuint& bufferIdOut,
+                  const char* name = nullptr);
 
 void createAndAllocBuffer(size_t bufferSize,
                           GLenum usageMask,

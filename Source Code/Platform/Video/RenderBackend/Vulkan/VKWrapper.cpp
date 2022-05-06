@@ -694,6 +694,7 @@ namespace Divide {
 
             GenericVertexData::IndexBuffer idxBuffer;
             idxBuffer.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
+            idxBuffer.dynamic = true;
 
             GenericDrawCommand cmd = {};
 
@@ -708,7 +709,7 @@ namespace Divide {
 
                 buffer->incQueue();
                 buffer->updateBuffer(0u, 0u, to_U32(cmd_list->VtxBuffer.size()), cmd_list->VtxBuffer.Data);
-                buffer->updateIndexBuffer(idxBuffer);
+                buffer->setIndexBuffer(idxBuffer);
 
                 for (const ImDrawCmd& pcmd : cmd_list->CmdBuffer) {
 

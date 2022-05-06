@@ -61,7 +61,8 @@ glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& d
       _debugMessage("Render Target: [ " + name() + " ]")
 {
     glCreateFramebuffers(1, &_framebufferHandle);
-    assert(_framebufferHandle != 0 && "glFramebuffer error: Tried to bind an invalid framebuffer!");
+    assert((_framebufferHandle != 0 && _framebufferHandle != GLUtil::k_invalidObjectID) &&
+           "glFramebuffer error: Tried to bind an invalid framebuffer!");
 
     _isLayeredDepth = false;
 

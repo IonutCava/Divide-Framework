@@ -86,9 +86,7 @@ static int glfons__renderCreate(void* userPtr, int width, int height)
             glCreateBuffers(1, &gl->glfons_vboID);
         }
 
-        if (!gl->glfons_vboID) {
-            return 0;
-        }
+        assert(gl->glfons_vboID != 0u);
 
         const BufferStorageMask storageMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
         const MapBufferAccessMask accessMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;

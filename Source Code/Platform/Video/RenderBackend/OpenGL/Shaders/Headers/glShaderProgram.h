@@ -47,7 +47,7 @@ class glShader;
 struct ValidationEntry
 {
     Str256 _name{};
-    GLuint _handle{0u};
+    GLuint _handle{ GLUtil::k_invalidObjectID };
     UseProgramStageMask _stageMask{ UseProgramStageMask::GL_NONE_BIT };
 };
 

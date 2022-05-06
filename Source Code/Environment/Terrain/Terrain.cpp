@@ -232,11 +232,6 @@ void Terrain::postBuild() {
             params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
 
             _terrainBuffer = _context.newGVD(1);
-            if_constexpr(USE_BASE_VERTEX_OFFSETS) {
-                _terrainBuffer->create(1);
-            } else {
-                _terrainBuffer->create(ringCount);
-            }
             _terrainBuffer->setIndexBuffer(idxBuff);
             if_constexpr(USE_BASE_VERTEX_OFFSETS) {
                 vector<TileRing::InstanceData> vbData;

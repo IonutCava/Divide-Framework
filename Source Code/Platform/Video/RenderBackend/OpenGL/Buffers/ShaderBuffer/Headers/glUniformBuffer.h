@@ -38,13 +38,13 @@
 
 namespace Divide {
 
-class glBufferImpl;
+FWD_DECLARE_MANAGED_CLASS(glBufferImpl);
 
 /// Base class for shader uniform blocks
 class glUniformBuffer final : public ShaderBuffer {
     public:
         glUniformBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
-        ~glUniformBuffer();
+        ~glUniformBuffer() = default;
 
         void clearBytes(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes) override;
         void readBytes(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes, bufferPtr result) const override;
@@ -53,8 +53,12 @@ class glUniformBuffer final : public ShaderBuffer {
         bool lockByteRange(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes, ShaderBufferLockType lockType) override;
         bool bindByteRange(U8 bindIndex, ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes) override;
 
-        POINTER_R_IW(glBufferImpl, bufferImpl, nullptr);
+        [[nodiscard]] inline glBufferImpl* bufferImpl() const { return _bufferImpl.get(); }
+
         PROPERTY_R(ptrdiff_t, alignedBufferSize, 0);
+
+    private:
+        glBufferImpl_uptr _bufferImpl = nullptr;
 };
 
 };  // namespace Divide

@@ -2747,7 +2747,6 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
     idxBuff.count = (1 << 16) * 3;
     idxBuff.dynamic = true;
 
-    ret->create(1);
     ret->renderIndirect(false);
 
     GenericVertexData::SetBufferParams params = {};

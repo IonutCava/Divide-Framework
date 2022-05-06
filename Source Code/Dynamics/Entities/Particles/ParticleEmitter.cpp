@@ -67,11 +67,9 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     const vector<vec3<F32>>& geometry = particleData->particleGeometryVertices();
     const vector<U32>& indices = particleData->particleGeometryIndices();
 
-    for (U8 i = 0; i < s_MaxPlayerBuffers; ++i) {
-        for (U8 j = 0; j < to_base(RenderStage::COUNT); ++j) {
+    for (U8 i = 0u; i < s_MaxPlayerBuffers; ++i) {
+        for (U8 j = 0u; j < to_base(RenderStage::COUNT); ++j) {
             GenericVertexData& buffer = getDataBuffer(static_cast<RenderStage>(j), i);
-
-            buffer.create(3);
 
             GenericVertexData::SetBufferParams params = {};
             params._buffer = g_particleGeometryBuffer;

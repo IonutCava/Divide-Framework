@@ -380,8 +380,9 @@ class VertexBuffer final : public VertexDataInterface {
 
     bool getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
     /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer
-    [[nodiscard]] AttributeOffsets getAttributeOffsets(size_t& totalDataSizeOut) const;
     void draw(const GenericDrawCommand& command) override;
+
+    static [[nodiscard]] AttributeOffsets GetAttributeOffsets(const AttributeFlags& usedAttributes, size_t& totalDataSizeOut);
 
    protected:
     // first: offset, second: count

@@ -107,11 +107,10 @@ VertexBuffer::VertexBuffer(GFXDevice& context)
     : VertexDataInterface(context)
     , _internalGVD(context.newGVD(1u))
 {
-    _internalGVD->create();
 }
 
 bool VertexBuffer::create(const bool staticDraw, const bool keepData) {
-    const AttributeOffsets offsets = getAttributeOffsets(_effectiveEntrySize);
+    const AttributeOffsets offsets = GetAttributeOffsets(_useAttribute, _effectiveEntrySize);
     DIVIDE_ASSERT(!_data.empty() && _effectiveEntrySize > 0u, Locale::Get(_ID("ERROR_VB_POSITION")));
 
     _staticBuffer = staticDraw;
@@ -122,53 +121,18 @@ bool VertexBuffer::create(const bool staticDraw, const bool keepData) {
     return true;
 }
 
-AttributeOffsets VertexBuffer::getAttributeOffsets(size_t& totalDataSizeOut) const {
-    AttributeOffsets offsets{};
-
-    totalDataSizeOut = sizeof(vec3<F32>);
-
-    if (_useAttribute[to_base(AttribLocation::TEXCOORD)]) {
-        offsets[to_base(AttribLocation::TEXCOORD)] = to_U32(totalDataSizeOut);
-        totalDataSizeOut += sizeof(vec2<F32>);
-    }
-
-    if (_useAttribute[to_base(AttribLocation::NORMAL)]) {
-        offsets[to_base(AttribLocation::NORMAL)] = to_U32(totalDataSizeOut);
-        totalDataSizeOut += sizeof(F32);
-    }
-
-    if (_useAttribute[to_base(AttribLocation::TANGENT)]) {
-        offsets[to_base(AttribLocation::TANGENT)] = to_U32(totalDataSizeOut);
-        totalDataSizeOut += sizeof(F32);
-    }
-
-    if (_useAttribute[to_base(AttribLocation::COLOR)]) {
-        offsets[to_base(AttribLocation::COLOR)] = to_U32(totalDataSizeOut);
-        totalDataSizeOut += sizeof(UColour4);
-    }
-
-    if (_useAttribute[to_base(AttribLocation::BONE_INDICE)]) {
-        offsets[to_base(AttribLocation::BONE_WEIGHT)] = to_U32(totalDataSizeOut);
-        totalDataSizeOut += sizeof(U32);
-        offsets[to_base(AttribLocation::BONE_INDICE)] = to_U32(totalDataSizeOut);
-        totalDataSizeOut += sizeof(U32);
-    }
-
-    return offsets;
-}
-
 /// Trim down the Vertex vector to only upload the minimal amount of data to the GPU
 bool VertexBuffer::getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, const size_t dataOutBufferLength) {
     assert(dataOut != nullptr);
 
     if (dataOutBufferLength >= dataIn.size() * _effectiveEntrySize) {
         FillSmallData(dataIn,
-            dataOut,
-            _useAttribute[to_base(AttribLocation::TEXCOORD)],
-            _useAttribute[to_base(AttribLocation::NORMAL)],
-            _useAttribute[to_base(AttribLocation::TANGENT)],
-            _useAttribute[to_base(AttribLocation::COLOR)],
-            _useAttribute[to_base(AttribLocation::BONE_INDICE)]);
+                     dataOut,
+                     _useAttribute[to_base(AttribLocation::TEXCOORD)],
+                     _useAttribute[to_base(AttribLocation::NORMAL)],
+                     _useAttribute[to_base(AttribLocation::TANGENT)],
+                     _useAttribute[to_base(AttribLocation::COLOR)],
+                     _useAttribute[to_base(AttribLocation::BONE_INDICE)]);
         return true;
     }
 
@@ -219,14 +183,15 @@ void VertexBuffer::refresh() {
         idxBuffer.indicesNeedCast = idxBuffer.smallIndices;
         idxBuffer.data = _indices.data();
         idxBuffer.dynamic = !_staticBuffer;
-
-        if (!AreCompatible(_internalGVD->idxBuffer(), idxBuffer)) {
-            _internalGVD->setIndexBuffer(idxBuffer);
-        } else {
-            _internalGVD->updateIndexBuffer(idxBuffer);
-        }
+        _internalGVD->setIndexBuffer(idxBuffer);
         _indicesChanged = false;
     }
+}
+
+void VertexBuffer::draw(const GenericDrawCommand& command) {
+    // Check if we have a refresh request queued up
+    refresh();
+    _internalGVD->draw(command);
 }
 
 /// Activate and set all of the required vertex attributes.
@@ -241,12 +206,12 @@ AttributeMap VertexBuffer::generateAttributeMap() {
     constexpr U32 boneWeightLoc = to_base(AttribLocation::BONE_WEIGHT);
     constexpr U32 boneIndiceLoc = to_base(AttribLocation::BONE_INDICE);
 
-    size_t totalDataSize = 0u;
-    const AttributeOffsets offsets = getAttributeOffsets(totalDataSize);
-
-    for (auto& desc : retMap) {
+    for (AttributeDescriptor& desc : retMap) {
         desc._dataType = GFXDataFormat::COUNT;
     }
+
+    size_t totalDataSize = 0u;
+    const AttributeOffsets offsets = GetAttributeOffsets(_useAttribute, totalDataSize);
     {
         AttributeDescriptor& desc = retMap[to_base(AttribLocation::POSITION)];
         desc._bindingIndex = 0u;
@@ -315,12 +280,6 @@ AttributeMap VertexBuffer::generateAttributeMap() {
     return retMap;
 }
 
-void VertexBuffer::draw(const GenericDrawCommand& command) {
-    // Check if we have a refresh request queued up
-    refresh();
-    _internalGVD->draw(command);
-}
-
 //ref: https://www.iquilezles.org/www/articles/normals/normals.htm
 void VertexBuffer::computeNormals() {
     const size_t vertCount = getVertexCount();
@@ -352,7 +311,7 @@ void VertexBuffer::computeNormals() {
         normalBuffer[idx2] += no;
     }
 
-    for (U32 i = 0; i < vertCount; ++i) {
+    for (U32 i = 0u; i < vertCount; ++i) {
         modifyNormalValue(i, Normalized(normalBuffer[i]));
     }
 }
@@ -367,7 +326,7 @@ void VertexBuffer::computeTangents() {
     vec2<F32> deltaUV1, deltaUV2;
     vec3<F32> tangent;
 
-    for (U32 i = 0; i < indexCount; i += 3) {
+    for (U32 i = 0u; i < indexCount; i += 3) {
         // get the three vertices that make the faces
         const U32 idx0 = getIndex(i + 0);
         if (idx0 == PRIMITIVE_RESTART_INDEX_L || idx0 == PRIMITIVE_RESTART_INDEX_S) {
@@ -474,6 +433,41 @@ bool VertexBuffer::serialize(ByteBuffer& dataOut) const {
         return true;
     }
     return false;
+}
+
+AttributeOffsets VertexBuffer::GetAttributeOffsets(const AttributeFlags& usedAttributes, size_t& totalDataSizeOut) {
+    AttributeOffsets offsets{};
+
+    totalDataSizeOut = sizeof(vec3<F32>);
+
+    if (usedAttributes[to_base(AttribLocation::TEXCOORD)]) {
+        offsets[to_base(AttribLocation::TEXCOORD)] = to_U32(totalDataSizeOut);
+        totalDataSizeOut += sizeof(vec2<F32>);
+    }
+
+    if (usedAttributes[to_base(AttribLocation::NORMAL)]) {
+        offsets[to_base(AttribLocation::NORMAL)] = to_U32(totalDataSizeOut);
+        totalDataSizeOut += sizeof(F32);
+    }
+
+    if (usedAttributes[to_base(AttribLocation::TANGENT)]) {
+        offsets[to_base(AttribLocation::TANGENT)] = to_U32(totalDataSizeOut);
+        totalDataSizeOut += sizeof(F32);
+    }
+
+    if (usedAttributes[to_base(AttribLocation::COLOR)]) {
+        offsets[to_base(AttribLocation::COLOR)] = to_U32(totalDataSizeOut);
+        totalDataSizeOut += sizeof(UColour4);
+    }
+
+    if (usedAttributes[to_base(AttribLocation::BONE_INDICE)]) {
+        offsets[to_base(AttribLocation::BONE_WEIGHT)] = to_U32(totalDataSizeOut);
+        totalDataSizeOut += sizeof(U32);
+        offsets[to_base(AttribLocation::BONE_INDICE)] = to_U32(totalDataSizeOut);
+        totalDataSizeOut += sizeof(U32);
+    }
+
+    return offsets;
 }
 
 };

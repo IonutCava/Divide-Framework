@@ -226,12 +226,11 @@ Byte* createAndAllocPersistentBuffer(const size_t bufferSize,
     return ptr;
 }
 
-void createAndAllocBuffer(const size_t bufferSize,
-                          const GLenum usageMask,
-                          GLuint& bufferIdOut,
-                          const std::pair<bufferPtr, size_t> initialData,
-                          const char* name)
+void createBuffer(size_t bufferSize,
+                  GLuint& bufferIdOut,
+                  const char* name)
 {
+
     glCreateBuffers(1, &bufferIdOut);
 
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
@@ -243,9 +242,19 @@ void createAndAllocBuffer(const size_t bufferSize,
                            : Util::StringFormat("DVD_GENERAL_BUFFER_%d", bufferIdOut).c_str());
     }
 
+}
+
+void createAndAllocBuffer(const size_t bufferSize,
+                          const GLenum usageMask,
+                          GLuint& bufferIdOut,
+                          const std::pair<bufferPtr, size_t> initialData,
+                          const char* name)
+{
+    createBuffer(bufferSize, bufferIdOut, name);
+
     assert(bufferIdOut != 0 && "GLUtil::allocBuffer error: buffer creation failed");
     glNamedBufferData(bufferIdOut, bufferSize, initialData.second >= bufferSize ? initialData.first : nullptr, usageMask);
-    if (initialData.second < bufferSize) {
+    if (initialData.second <= bufferSize) {
         const MapBufferAccessMask accessMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
         // We don't want undefined, we want zero as a default. Performance considerations be damned!
         Byte* ptr = (Byte*)glMapNamedBufferRange(bufferIdOut, 0, bufferSize, accessMask);
@@ -260,14 +269,14 @@ void createAndAllocBuffer(const size_t bufferSize,
 }
 
 void freeBuffer(GLuint& bufferId, bufferPtr mappedPtr) {
-    if (bufferId > 0) {
+    if (bufferId != GLUtil::k_invalidObjectID && bufferId != 0u) {
         if (mappedPtr != nullptr) {
             [[maybe_unused]] const GLboolean result = glUnmapNamedBuffer(bufferId);
             assert(result != GL_FALSE && "GLUtil::freeBuffer error: buffer unmapping failed");
             mappedPtr = nullptr;
         }
         GL_API::DeleteBuffers(1, &bufferId);
-        bufferId = 0;
+        bufferId = GLUtil::k_invalidObjectID;
     }
 }
 

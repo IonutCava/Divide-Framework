@@ -388,6 +388,8 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Text("Tessellation Invocations: %s", Util::commaprint(perfMetrics._tessellationInvocations));
             ImGui::NewLine();
+            ImGui::Text("Generated Render Targets: %d", perfMetrics._generatedRenderTargetCount);
+            ImGui::NewLine();
 
             if (s_maxLocksInFlight < perfMetrics._syncObjectsInFlight[2]) {
                 s_maxLocksInFlight = perfMetrics._syncObjectsInFlight[2];

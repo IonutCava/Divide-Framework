@@ -121,7 +121,7 @@ protected:
 
     Rect<I32> _prevViewport;
     Str128 _debugMessage;
-    GLuint _framebufferHandle = 0u;
+    GLuint _framebufferHandle = GLUtil::k_invalidObjectID;
 
     bool _isLayeredDepth = false;
     bool _statusCheckQueued = false;

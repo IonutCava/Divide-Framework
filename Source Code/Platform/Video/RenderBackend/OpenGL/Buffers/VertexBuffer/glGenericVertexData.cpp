@@ -20,21 +20,9 @@ glGenericVertexData::~glGenericVertexData()
     reset();
 }
 
-/// Create the specified number of buffers and queries and attach them to this vertex data container
-void glGenericVertexData::create(const U8 numBuffers) {
-    // Prevent double create
-    assert(_bufferObjects.empty() && "glGenericVertexData error: create called with no buffers specified!");
-    // Create our buffer objects
-    _bufferObjects.resize(numBuffers, {});
-}
-
 void glGenericVertexData::reset() {
-    for (genericBufferImpl& it : _bufferObjects) {
-        MemoryManager::DELETE(it._buffer);
-    }
-    _bufferObjects.resize(0);
-
-    GLUtil::freeBuffer(_indexBuffer);
+    _bufferObjects.clear();
+    GLUtil::freeBuffer(_indexBufferHandle);
 }
 
 /// Submit a draw command to the GPU using this object and the specified command
@@ -42,13 +30,16 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
     // Update buffer bindings
     if (!_bufferObjects.empty()) {
         if (command._bufferIndex == GenericDrawCommand::INVALID_BUFFER_INDEX) {
-            bindBuffersInternal();
+            const size_t bufferCount = _bufferObjects.size();
+            for (U32 i = 0u; i < bufferCount; ++i) {
+                bindBufferInternal(i, i);
+            }
         } else {
             bindBufferInternal(command._bufferIndex, 0u);
         }
     }
 
-    if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer) == GLStateTracker::BindResult::FAILED) {
+    if (GL_API::GetStateTracker()->setActiveBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBufferHandle) == GLStateTracker::BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
 
@@ -58,102 +49,92 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
     if (renderIndirect()) {
         GLUtil::SubmitRenderCommand(command,
                                     true,
-                                    _indexDataType);
+                                    _idxBuffer.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
     } else {
         rebuildCountAndIndexData(command._drawCount, command._cmd.indexCount, command._cmd.firstIndex, idxBuffer().count);
         GLUtil::SubmitRenderCommand(command,
                                     false,
-                                    _indexDataType,
+                                    _idxBuffer.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
                                     _indexInfo._countData.data(),
                                     (bufferPtr)_indexInfo._indexOffsetData.data());
     }
 }
 
 void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
+    if (!AreCompatible(_idxBuffer, indices) || indices.count == 0u) {
+        GLUtil::freeBuffer(_indexBufferHandle);
+    }
+
+    const size_t oldCount = _idxBuffer.count;
     GenericVertexData::setIndexBuffer(indices);
+    _idxBuffer.count = std::max(oldCount, _idxBuffer.count);
 
-    if (_indexBuffer != 0) {
-        GLUtil::freeBuffer(_indexBuffer);
-        _indexDataType = GL_NONE;
-    }
+    if (indices.count > 0u) {
+        const size_t elementSize = indices.smallIndices ? sizeof(GLushort) : sizeof(GLuint);
 
-    _indexBufferUsage = indices.dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW;
+        vector_fast<U16> smallIndicesTemp;
+        bufferPtr data = indices.data;
 
-    if (indices.count > 0) {
-        updateIndexBuffer(indices);
-    }
-}
-
-void glGenericVertexData::updateIndexBuffer(const IndexBuffer& indices) {
-    GenericVertexData::updateIndexBuffer(indices);
-
-    DIVIDE_ASSERT(indices.count > 0, "glGenericVertexData::UpdateIndexBuffer error: Invalid index buffer data!");
-
-    const size_t elementSize = indices.smallIndices ? sizeof(GLushort) : sizeof(GLuint);
-
-    _indexDataType = indices.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
-
-    vector_fast<U16> smallIndicesTemp;
-    bufferPtr data = indices.data;
-
-    if (indices.indicesNeedCast) {
-        smallIndicesTemp.resize(indices.count);
-        const U32* const dataIn = reinterpret_cast<U32*>(data);
-        for (size_t i = 0u; i < indices.count; ++i) {
-            smallIndicesTemp[i] = to_U16(dataIn[i]);
+        if (indices.indicesNeedCast) {
+            smallIndicesTemp.resize(indices.count);
+            const U32* const dataIn = reinterpret_cast<U32*>(data);
+            for (size_t i = 0u; i < indices.count; ++i) {
+                smallIndicesTemp[i] = to_U16(dataIn[i]);
+            }
+            data = smallIndicesTemp.data();
         }
-        data = smallIndicesTemp.data();
-    }
 
-    if (_indexBuffer == 0u) {
-        _indexBufferSize = static_cast<GLuint>(indices.count * elementSize);
+        if (_indexBufferHandle == GLUtil::k_invalidObjectID) {
+            const GLuint newDataSize = static_cast<GLuint>(indices.count * elementSize);
+            _indexBufferSize = std::max(newDataSize, _indexBufferSize);
 
-        assert(indices.offsetCount == 0u);
+            assert(indices.offsetCount == 0u);
+            GLUtil::createBuffer(_indexBufferSize,
+                                 _indexBufferHandle,
+                                 _name.empty() ? nullptr : (_name + "_index").c_str());
+        }
 
-        GLUtil::createAndAllocBuffer(
-            _indexBufferSize,
-            _indexBufferUsage,
-            _indexBuffer,
-            { data, _indexBufferSize },
-            _name.empty() ? nullptr : (_name + "_index").c_str());
-    } else {
         const size_t offset = indices.offsetCount * elementSize;
-        const size_t count = indices.count * elementSize;
-        DIVIDE_ASSERT(offset + count <= _indexBufferSize);
+        const size_t range = indices.count * elementSize;
+        DIVIDE_ASSERT(offset + range <= _indexBufferSize);
 
-        glInvalidateBufferSubData(_indexBuffer, offset, count);
-        glNamedBufferSubData(_indexBuffer, offset, count, data);
+        if (offset == 0u && range == _indexBufferSize) {
+            glNamedBufferData(_indexBufferHandle, range, data, indices.dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW);
+        } else {
+            glInvalidateBufferSubData(_indexBufferHandle, offset, range);
+            glNamedBufferSubData(_indexBufferHandle, offset, range, data);
+        }
     }
 }
 
 /// Specify the structure and data of the given buffer
 void glGenericVertexData::setBuffer(const SetBufferParams& params) {
-    const U32 buffer = params._buffer;
-    // Make sure the buffer exists
-    DIVIDE_ASSERT(buffer >= 0 && buffer < _bufferObjects.size() && "glGenericVertexData error: set buffer called for invalid buffer index!");
+    // Make sure we specify buffers in order.
+    while (params._buffer >= _bufferObjects.size()) {
+        _bufferObjects.emplace_back();
+    }
 
-    MemoryManager::SAFE_DELETE(_bufferObjects[buffer]._buffer);
+    auto& bufferObject = _bufferObjects[params._buffer];
 
     const size_t ringSizeFactor = params._useRingBuffer ? queueLength() : 1;
     const size_t bufferSizeInBytes = params._bufferParams._elementCount * params._bufferParams._elementSize;
-    const size_t totalSizeInBytes = bufferSizeInBytes * ringSizeFactor;
 
     BufferImplParams implParams;
     implParams._bufferParams = params._bufferParams;
-    implParams._dataSize = totalSizeInBytes;
+    implParams._dataSize = bufferSizeInBytes * ringSizeFactor;
     implParams._target = GL_ARRAY_BUFFER;
     implParams._name = _name.empty() ? nullptr : _name.c_str();
     implParams._useChunkAllocation = true;
 
-    _bufferObjects[buffer]._buffer = MemoryManager_NEW glBufferImpl(_context, implParams);
-    _bufferObjects[buffer]._ringSizeFactor = ringSizeFactor;
+    bufferObject._buffer = eastl::make_unique<glBufferImpl>(_context, implParams);
+    bufferObject._ringSizeFactor = ringSizeFactor;
 
     if (params._bufferParams._initialData.second > 0u) {
         for (U32 i = 1u; i < ringSizeFactor; ++i) {
-            _bufferObjects[buffer]._buffer->writeOrClearBytes(i * bufferSizeInBytes, params._bufferParams._initialData.second, params._bufferParams._initialData.first, false);
+            bufferObject._buffer->writeOrClearBytes(i * bufferSizeInBytes, params._bufferParams._initialData.second, params._bufferParams._initialData.first, false);
         }
     }
-    _bufferObjects[buffer]._wasWritten = true;
+    bufferObject._wasWritten = true;
 }
 
 /// Update the elementCount worth of data contained in the buffer starting from elementCountOffset size offset
@@ -161,7 +142,9 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
                                        const U32 elementCountOffset,
                                        const U32 elementCountRange,
                                        const bufferPtr data) {
-    glBufferImpl* bufferImpl = _bufferObjects[buffer]._buffer;
+    DIVIDE_ASSERT(buffer < _bufferObjects.size() && "glGenericVertexData error: set buffer called for invalid buffer index!");
+
+    auto& bufferImpl = _bufferObjects[buffer]._buffer;
     const BufferParams& bufferParams = bufferImpl->params()._bufferParams;
 
     // Calculate the size of the data that needs updating
@@ -177,15 +160,12 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
     _bufferObjects[buffer]._wasWritten = true;
 }
 
-void glGenericVertexData::bindBuffersInternal() {
-    const size_t bufferCount = _bufferObjects.size();
-    for (U32 i = 0u; i < bufferCount; ++i) {
-       bindBufferInternal(i, i);
-    }
-}
-
 void glGenericVertexData::bindBufferInternal(const U32 buffer, const  U32 location) {
-    glBufferImpl* bufferImpl = _bufferObjects[buffer]._buffer;
+    auto& bufferImpl = _bufferObjects[buffer]._buffer;
+    if (bufferImpl == nullptr) {
+        return;
+    }
+
     const BufferParams& bufferParams = bufferImpl->params()._bufferParams;
     size_t offsetInBytes = 0u;
 
@@ -201,7 +181,7 @@ void glGenericVertexData::bindBufferInternal(const U32 buffer, const  U32 locati
     if (_bufferObjects[buffer]._wasWritten) {
         const size_t rangeInBytes = bufferParams._elementCount * bufferParams._elementSize;
         // Register the bind even if we get GLStateTracker::BindResult::ALREADY_BOUND so that we know that the data is still being used by the GPU
-        GL_API::RegisterBufferLock({ bufferImpl, offsetInBytes,  rangeInBytes }, ShaderBufferLockType::AFTER_DRAW_COMMANDS);
+        GL_API::RegisterBufferLock({ bufferImpl.get(), offsetInBytes,  rangeInBytes}, ShaderBufferLockType::AFTER_DRAW_COMMANDS);
         _bufferObjects[buffer]._wasWritten = false;
     }
 }

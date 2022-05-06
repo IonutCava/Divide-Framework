@@ -648,6 +648,7 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
         _perfMetrics._syncObjectsInFlight[i] = i < fenceSize ? s_fenceSyncCounter[i] : 0u;
     }
 
+    _perfMetrics._generatedRenderTargetCount = to_U32(_context.renderTargetPool().getRenderTargets().size());
     _runQueries = _context.queryPerformanceStats();
 }
 
@@ -746,6 +747,7 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
 
         GenericVertexData::IndexBuffer idxBuffer;
         idxBuffer.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
+        idxBuffer.dynamic = true;
 
         GenericDrawCommand cmd = {};
 
@@ -761,7 +763,7 @@ void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
 
             buffer->incQueue();
             buffer->updateBuffer(0u, 0u, to_U32(cmd_list->VtxBuffer.size()), cmd_list->VtxBuffer.Data);
-            buffer->updateIndexBuffer(idxBuffer);
+            buffer->setIndexBuffer(idxBuffer);
 
             for (const ImDrawCmd& pcmd : cmd_list->CmdBuffer) {
 

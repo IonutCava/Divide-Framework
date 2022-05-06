@@ -75,8 +75,12 @@ protected:
     GFXDevice& _context;
 
     GLuint _copyBufferTarget = GLUtil::k_invalidObjectID;
+    size_t _copyBufferSize = 0u;
     glLockManager _lockManager;
 };
+
+FWD_DECLARE_MANAGED_CLASS(glBufferImpl);
+
 }; //namespace Divide
 
 #endif //_GL_BUFFER_IMPL_H_

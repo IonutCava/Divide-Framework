@@ -17,7 +17,4 @@ void GenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
     _idxBuffer = indices;
 }
 
-void GenericVertexData::updateIndexBuffer(const IndexBuffer& indices) {
-    _idxBuffer = indices;
-}
 }; //namespace Divide
