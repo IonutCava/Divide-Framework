@@ -23,8 +23,6 @@
 namespace Divide {
 
 namespace {
-    const RenderTargetID g_depthMapID(RenderTargetUsage::SHADOW, to_base(ShadowType::SINGLE));
-    const RenderTargetID g_depthMapCacheID(RenderTargetUsage::SHADOW_CACHE, to_base(ShadowType::SINGLE));
     Configuration::Rendering::ShadowMapping g_shadowSettings;
 };
 
@@ -90,13 +88,13 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
     sampler.anisotropyLevel(0);
     const size_t samplerHash = sampler.getHash();
 
-    const RenderTarget& rt = _context.renderTargetPool().renderTarget(g_depthMapID);
-    const TextureDescriptor& texDescriptor = rt.getAttachment(RTAttachmentType::Colour, 0).texture()->descriptor();
+    const RenderTarget* rt = ShadowMap::getShadowMap(_type)._rt;
+    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::Colour, 0).texture()->descriptor();
 
     //Draw FBO
     {
         RenderTargetDescriptor desc = {};
-        desc._resolution = rt.getResolution();
+        desc._resolution = rt->getResolution();
 
         TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D_MS, texDescriptor.baseFormat(), texDescriptor.dataType());
         colourDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
@@ -131,7 +129,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
         RenderTargetDescriptor desc = {};
         desc._name = "Single_Blur";
-        desc._resolution = rt.getResolution();
+        desc._resolution = rt->getResolution();
         desc._attachmentCount = to_U8(att.size());
         desc._attachments = att.data();
 
@@ -143,7 +141,9 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
 SingleShadowMapGenerator::~SingleShadowMapGenerator()
 {
-    _context.renderTargetPool().deallocateRT(_drawBufferDepth);
+    if (!_context.renderTargetPool().deallocateRT(_drawBufferDepth)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) {
@@ -196,15 +196,17 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
 
-    const RenderTarget& shadowMapRT = _context.renderTargetPool().renderTarget(g_depthMapID);
-    const auto& shadowAtt = shadowMapRT.getAttachment(RTAttachmentType::Colour, 0);
+    const RenderTargetHandle& handle = ShadowMap::getShadowMap(_type);
+
+    const RenderTarget* shadowMapRT = handle._rt;
+    const auto& shadowAtt = shadowMapRT->getAttachment(RTAttachmentType::Colour, 0);
 
     const U16 layerOffset = light.getShadowArrayOffset();
     constexpr I32 layerCount = 1;
 
     GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
     blitRenderTargetCommand._source = _drawBufferDepth._targetID;
-    blitRenderTargetCommand._destination = g_depthMapID;
+    blitRenderTargetCommand._destination = handle._targetID;
     blitRenderTargetCommand._blitColours[0].set(0u, 0u, 0u, layerOffset);
     EnqueueCommand(bufferInOut, blitRenderTargetCommand);
 
@@ -245,7 +247,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         descriptorSetCmd._set._textureData.add(TextureEntry{ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
         GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
 
-        beginRenderPassCmd._target = g_depthMapID;
+        beginRenderPassCmd._target = handle._targetID;
         beginRenderPassCmd._descriptor = {};
         beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);

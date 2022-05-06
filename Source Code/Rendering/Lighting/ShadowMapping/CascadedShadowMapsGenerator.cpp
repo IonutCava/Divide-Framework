@@ -25,16 +25,6 @@
 namespace Divide {
 
 namespace{
-    const RenderTargetID g_depthMapID {
-        RenderTargetUsage::SHADOW,
-        to_base(ShadowType::LAYERED)
-    }; 
-    
-    const RenderTargetID g_depthMapCacheID {
-        RenderTargetUsage::SHADOW_CACHE,
-        to_base(ShadowType::LAYERED)
-    };
-
     Configuration::Rendering::ShadowMapping g_shadowSettings;
 }
 
@@ -42,7 +32,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
     : ShadowMapGenerator(context, ShadowType::LAYERED) {
     Console::printfn(Locale::Get(_ID("LIGHT_CREATE_SHADOW_FB")), "EVCSM");
 
-    const RenderTarget& rt = _context.renderTargetPool().renderTarget(g_depthMapID);
+    const RenderTarget* rt = ShadowMap::getShadowMap(_type)._rt;
 
     g_shadowSettings = context.context().config().rendering.shadowMapping;
     {
@@ -93,7 +83,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
     sampler.anisotropyLevel(0);
     const size_t samplerHash = sampler.getHash();
 
-    const TextureDescriptor& texDescriptor = rt.getAttachment(RTAttachmentType::Colour, 0).texture()->descriptor();
+    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::Colour, 0).texture()->descriptor();
     // Draw FBO
     {
         // MSAA rendering is supported
@@ -113,7 +103,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         };
 
         RenderTargetDescriptor desc = {};
-        desc._resolution = rt.getResolution();
+        desc._resolution = rt->getResolution();
         desc._name = "CSM_ShadowMap_Draw";
         desc._attachmentCount = to_U8(att.size());
         desc._attachments = att.data();
@@ -134,7 +124,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
 
         RenderTargetDescriptor desc = {};
         desc._name = "CSM_Blur";
-        desc._resolution = rt.getResolution();
+        desc._resolution = rt->getResolution();
         desc._attachmentCount = to_U8(att.size());
         desc._attachments = att.data();
 
@@ -146,8 +136,11 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
 
 CascadedShadowMapsGenerator::~CascadedShadowMapsGenerator()
 {
-    _context.renderTargetPool().deallocateRT(_blurBuffer);
-    _context.renderTargetPool().deallocateRT(_drawBufferDepth);
+    if (!_context.renderTargetPool().deallocateRT(_blurBuffer) ||
+        !_context.renderTargetPool().deallocateRT(_drawBufferDepth))
+    {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateSplitDepths(DirectionalLightComponent& light, const vec2<F32>& nearFarPlanes) const noexcept {
@@ -386,14 +379,14 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
 void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& light, GFX::CommandBuffer& bufferInOut) {
     OPTICK_EVENT();
 
-    const RenderTarget& shadowMapRT = _context.renderTargetPool().renderTarget(g_depthMapID);
-
     const I32 layerOffset = to_I32(light.getShadowArrayOffset());
     const I32 layerCount = to_I32(light.csmSplitCount());
 
+    const RenderTargetHandle& rtHandle = ShadowMap::getShadowMap(_type);
+
     GFX::BlitRenderTargetCommand* blitRenderTargetCommand = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>(bufferInOut);
     blitRenderTargetCommand->_source = _drawBufferDepth._targetID;
-    blitRenderTargetCommand->_destination = g_depthMapID;
+    blitRenderTargetCommand->_destination = rtHandle._targetID;
     for (U8 i = 0u; i < light.csmSplitCount(); ++i) {
         blitRenderTargetCommand->_blitColours[i].set(0u, 0u, i, to_U16(layerOffset + i));
     }
@@ -407,11 +400,11 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
 
         beginRenderPassHorizontalCmd._target = _blurBuffer._targetID;
         beginRenderPassHorizontalCmd._name = "DO_CSM_BLUR_PASS_HORIZONTAL";
-        beginRenderPassVerticalCmd._target = g_depthMapID;
+        beginRenderPassVerticalCmd._target = rtHandle._targetID;
         beginRenderPassVerticalCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
 
         // Blur horizontally
-        const auto& shadowAtt = shadowMapRT.getAttachment(RTAttachmentType::Colour, 0);
+        const auto& shadowAtt = rtHandle._rt->getAttachment(RTAttachmentType::Colour, 0);
         TextureData texData = shadowAtt.texture()->data();
 
         GFX::EnqueueCommand(bufferInOut, beginRenderPassHorizontalCmd);

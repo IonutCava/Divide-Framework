@@ -110,6 +110,9 @@ class NOINITVTABLE ShadowMap {
     static const RenderTargetHandle& getShadowMap(LightType type);
     static const RenderTargetHandle& getShadowMapCache(LightType type);
 
+    static const RenderTargetHandle& getShadowMap(ShadowType type);
+    static const RenderTargetHandle& getShadowMapCache(ShadowType type);
+
     static void setDebugViewLight(GFXDevice& context, Light* light);
 
     static void setMSAASampleCount(ShadowType type, U8 sampleCount);

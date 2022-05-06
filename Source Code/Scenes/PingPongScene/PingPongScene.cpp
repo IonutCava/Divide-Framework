@@ -357,7 +357,7 @@ U16 PingPongScene::registerInputActions() {
 }
 
 void PingPongScene::postLoadMainThread() {
-    const vec2<U16> screenResolution = _context.gfx().renderTargetPool().screenTarget().getResolution();
+    const vec2<U16> screenResolution = _context.gfx().renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getResolution();
     const Rect<U16> targetRenderViewport = { 0u, 0u, screenResolution.width, screenResolution.height };
 
     // Buttons and text labels

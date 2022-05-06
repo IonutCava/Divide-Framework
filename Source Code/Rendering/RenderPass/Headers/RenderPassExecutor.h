@@ -43,7 +43,6 @@
 
 namespace Divide {
 struct PerPassData;
-struct RenderTargetID;
 struct RenderStagePass;
 struct RenderPassParams;
 

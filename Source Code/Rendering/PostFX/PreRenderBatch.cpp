@@ -61,8 +61,8 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
     
     // We only work with the resolved screen target
-    _screenRTs._hdr._screenRef._targetID = RenderTargetUsage::SCREEN;
-    _screenRTs._hdr._screenRef._rt = &context.renderTargetPool().renderTarget(_screenRTs._hdr._screenRef._targetID);
+    _screenRTs._hdr._screenRef._targetID = RenderTargetNames::SCREEN;
+    _screenRTs._hdr._screenRef._rt = context.renderTargetPool().getRenderTarget(_screenRTs._hdr._screenRef._targetID);
 
     SamplerDescriptor screenSampler = {};
     screenSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
@@ -120,6 +120,26 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         _currentLuminance->loadData((Byte*)&val, 1u * sizeof(F32), vec2<U16>(1u));
     }
 
+    {
+        SamplerDescriptor defaultSampler = {};
+        defaultSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
+        defaultSampler.minFilter(TextureFilter::NEAREST);
+        defaultSampler.magFilter(TextureFilter::NEAREST);
+        defaultSampler.anisotropyLevel(0);
+        const size_t samplerHash = defaultSampler.getHash();
+
+        TextureDescriptor linearDepthDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
+        linearDepthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+
+        RTAttachmentDescriptors attachments = {
+            { linearDepthDescriptor, samplerHash, RTAttachmentType::Colour, 0u, VECTOR4_ZERO }
+        };
+
+        desc._name = "Linear Depth";
+        desc._attachments = attachments.data();
+        desc._msaaSamples = 0u;
+        _linearDepthRT = _context.renderTargetPool().allocateRT(desc);
+    }
     // Order is very important!
     OperatorBatch& hdrBatch = _operators[to_base(FilterSpace::FILTER_SPACE_HDR)];
     for (U16 i = 0u; i < to_base(FilterType::FILTER_COUNT); ++i) {
@@ -357,10 +377,14 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
 PreRenderBatch::~PreRenderBatch()
 {
-    _context.renderTargetPool().deallocateRT(_screenRTs._hdr._screenCopy);
-    _context.renderTargetPool().deallocateRT(_screenRTs._ldr._temp[0]);
-    _context.renderTargetPool().deallocateRT(_screenRTs._ldr._temp[1]);
-    _context.renderTargetPool().deallocateRT(_sceneEdges);
+    if (!_context.renderTargetPool().deallocateRT(_screenRTs._hdr._screenCopy) ||
+        !_context.renderTargetPool().deallocateRT(_screenRTs._ldr._temp[0]) ||
+        !_context.renderTargetPool().deallocateRT(_screenRTs._ldr._temp[1]) ||
+        !_context.renderTargetPool().deallocateRT(_sceneEdges) ||
+        !_context.renderTargetPool().deallocateRT(_linearDepthRT))
+    {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 bool PreRenderBatch::operatorsReady() const noexcept {
@@ -381,6 +405,10 @@ RenderTargetHandle PreRenderBatch::getTarget(const bool hdr, const bool swapped)
     }
 
     return _screenRTs._ldr._temp[swapped ? 0 : 1];
+}
+
+RenderTargetHandle PreRenderBatch::getLinearDepthRT() const noexcept {
+    return _linearDepthRT;
 }
 
 RenderTargetHandle PreRenderBatch::getInput(const bool hdr) const {
@@ -454,14 +482,14 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 
     { //Linearise depth buffer
         GFX::ClearRenderTargetCommand clearLinearDepthCmd{};
-        clearLinearDepthCmd._target = { RenderTargetUsage::LINEAR_DEPTH };
+        clearLinearDepthCmd._target = _linearDepthRT._targetID;
         clearLinearDepthCmd._descriptor._clearDepth = false;
         clearLinearDepthCmd._descriptor._clearColours = true;
         clearLinearDepthCmd._descriptor._resetToDefault = true;
 
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         beginRenderPassCmd._name = "LINEARISE_DEPTH_BUFFER";
-        beginRenderPassCmd._target = { RenderTargetUsage::LINEAR_DEPTH };
+        beginRenderPassCmd._target = _linearDepthRT._targetID;
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateHash = _context.get2DStateBlock();
@@ -487,8 +515,8 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     }
 
     const RenderTargetHandle prevScreenHandle{
-        RenderTargetUsage::SCREEN_PREV,
-        & _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN_PREV)
+        _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV),
+        RenderTargetNames::SCREEN_PREV
     };
 
     for (auto& op : _operators[to_base(FilterSpace::FILTER_SPACE_HDR)]) {
@@ -501,8 +529,8 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     }
 
     // Always bind these even if we haven't ran the appropriate operatos!
-    const RTAttachment& ssrDataAtt = _context.renderTargetPool().renderTarget(RenderTargetUsage::SSR_RESULT).getAttachment(RTAttachmentType::Colour, 0);
-    const RTAttachment& ssaoDataAtt = _context.renderTargetPool().renderTarget(RenderTargetUsage::SSAO_RESULT).getAttachment(RTAttachmentType::Colour, 0u);
+    const RTAttachment& ssrDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSR_RESULT)->getAttachment(RTAttachmentType::Colour, 0);
+    const RTAttachment& ssaoDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSAO_RESULT)->getAttachment(RTAttachmentType::Colour, 0u);
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._textureData.add(TextureEntry{ ssrDataAtt.texture()->data(),  ssrDataAtt.samplerHash(),  TextureUsage::SSR_SAMPLE });
@@ -626,13 +654,13 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;
-    blitScreenColourCmd._destination = RenderTargetUsage::SCREEN_PREV;
+    blitScreenColourCmd._destination = RenderTargetNames::SCREEN_PREV;
     blitScreenColourCmd._blitColours[0].set(to_U16(GFXDevice::ScreenTargets::ALBEDO), 0u, 0u, 0u);
     GFX::EnqueueCommand(bufferInOut, blitScreenColourCmd);
 
-    RenderTarget& prevScreenRT = _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN_PREV);
+    RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
     GFX::ComputeMipMapsCommand computeMipMapsCommand{};
-    computeMipMapsCommand._texture = prevScreenRT.getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO)).texture().get();
+    computeMipMapsCommand._texture = prevScreenRT->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO)).texture().get();
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
@@ -729,5 +757,6 @@ void PreRenderBatch::reshape(const U16 width, const U16 height) {
     _screenRTs._ldr._temp[0]._rt->resize(width, height);
     _screenRTs._ldr._temp[1]._rt->resize(width, height);
     _sceneEdges._rt->resize(width, height);
+    _linearDepthRT._rt->resize(width, height);
 }
 };

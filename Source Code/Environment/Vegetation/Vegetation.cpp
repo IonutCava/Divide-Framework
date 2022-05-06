@@ -656,12 +656,12 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
 
     // Culling lags one full frame
     if (_instanceCountGrass > 0 || _instanceCountTrees > 0) {
-        const RenderTargetUsage hiZSourceTarget = renderStagePass._stage == RenderStage::REFLECTION
-                                                                         ? RenderTargetUsage::HI_Z_REFLECT
-                                                                         : RenderTargetUsage::HI_Z;
+        const RenderTargetID hiZSourceTarget = renderStagePass._stage == RenderStage::REFLECTION
+                                                                        ? RenderTargetNames::HI_Z_REFLECT
+                                                                        : RenderTargetNames::HI_Z;
 
-        const RenderTarget& hizTarget = _context.renderTargetPool().renderTarget(RenderTargetID(hiZSourceTarget));
-        const RTAttachment& hizAttachment = hizTarget.getAttachment(RTAttachmentType::Depth, 0u);
+        const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget(hiZSourceTarget);
+        const RTAttachment& hizAttachment = hizTarget->getAttachment(RTAttachmentType::Depth, 0u);
         const Texture_ptr& hizTexture = hizAttachment.texture();
 
         const PlayerIndex currentPlayerPass = _context.context().kernel().sceneManager()->playerPass();

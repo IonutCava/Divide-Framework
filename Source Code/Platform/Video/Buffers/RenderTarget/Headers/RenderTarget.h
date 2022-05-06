@@ -40,35 +40,6 @@
 namespace Divide {
 class GFXRTPool;
 
-struct RenderTargetID {
-    RenderTargetID() noexcept : RenderTargetID(RenderTargetUsage::COUNT , 0u)
-    {
-    }
-
-    RenderTargetID(const RenderTargetUsage usage) noexcept : RenderTargetID(usage, 0u)
-    {
-    }
-
-    RenderTargetID(const RenderTargetUsage usage, const U16 index) noexcept
-        : _index(index),
-          _usage(usage)
-    {
-    }
-
-    U16 _index = 0u;
-    RenderTargetUsage _usage = RenderTargetUsage::COUNT;
-
-    bool operator==(const RenderTargetID& other) const noexcept {
-        return _index == other._index &&
-               _usage == other._usage;
-    }
-
-    bool operator!=(const RenderTargetID& other) const noexcept {
-        return _index != other._index ||
-               _usage != other._usage;
-    }
-};
-
 constexpr I16 INVALID_COLOUR_LAYER = std::numeric_limits<I16>::lowest();
 
 struct BlitIndex {
@@ -121,19 +92,8 @@ struct DepthBlitEntry {
 
 class RenderTarget;
 struct RenderTargetHandle {
-    RenderTargetHandle() noexcept
-        : RenderTargetHandle(RenderTargetID(), nullptr)
-    {
-    }
-
-    RenderTargetHandle(const RenderTargetID targetID, RenderTarget* rt) noexcept
-        : _rt(rt),
-        _targetID(targetID)
-    {
-    }
-
     RenderTarget* _rt = nullptr;
-    RenderTargetID _targetID;
+    RenderTargetID _targetID = INVALID_RENDER_TARGET_ID;
 };
 
 struct RenderTargetDescriptor {

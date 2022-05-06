@@ -144,7 +144,7 @@ DEFINE_COMMAND_END(PushViewportCommand);
 DEFINE_COMMAND(PopViewportCommand, CommandType::POP_VIEWPORT);
 
 DEFINE_COMMAND_BEGIN(BeginRenderPassCommand, CommandType::BEGIN_RENDER_PASS);
-    RenderTargetID _target;
+    RenderTargetID _target = INVALID_RENDER_TARGET_ID;
     RTDrawDescriptor _descriptor;
     Str64 _name = "";
 DEFINE_COMMAND_END(BeginRenderPassCommand);
@@ -165,24 +165,24 @@ DEFINE_COMMAND_BEGIN(BlitRenderTargetCommand, CommandType::BLIT_RT);
     DepthBlitEntry _blitDepth;
     // List of colours + colour layer to blit
     std::array<ColourBlitEntry, RT_MAX_COLOUR_ATTACHMENTS> _blitColours;
-    RenderTargetID _source;
-    RenderTargetID _destination;
+    RenderTargetID _source = INVALID_RENDER_TARGET_ID;
+    RenderTargetID _destination = INVALID_RENDER_TARGET_ID;
 DEFINE_COMMAND_END(BlitRenderTargetCommand);
 
 DEFINE_COMMAND_BEGIN(ClearRenderTargetCommand, CommandType::CLEAR_RT);
     ClearRenderTargetCommand() noexcept = default;
     ClearRenderTargetCommand(const RenderTargetID& target, const RTClearDescriptor& descriptor) noexcept : _target(target), _descriptor(descriptor) {}
-    RenderTargetID _target;
+    RenderTargetID _target = INVALID_RENDER_TARGET_ID;
     RTClearDescriptor _descriptor;
 DEFINE_COMMAND_END(ClearRenderTargetCommand);
 
 DEFINE_COMMAND_BEGIN(ResetRenderTargetCommand, CommandType::RESET_RT);
-    RenderTargetID _source;
+    RenderTargetID _source = INVALID_RENDER_TARGET_ID;
     RTDrawDescriptor _descriptor;
 DEFINE_COMMAND_END(ResetRenderTargetCommand);
 
 DEFINE_COMMAND_BEGIN(ResetAndClearRenderTargetCommand, CommandType::RESET_AND_CLEAR_RT);
-    RenderTargetID _source;
+    RenderTargetID _source = INVALID_RENDER_TARGET_ID;
     RTDrawDescriptor _drawDescriptor;
     RTClearDescriptor _clearDescriptor;
 DEFINE_COMMAND_END(ResetAndClearRenderTargetCommand);

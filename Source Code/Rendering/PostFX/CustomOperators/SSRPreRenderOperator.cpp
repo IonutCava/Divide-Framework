@@ -106,7 +106,7 @@ void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::
         clearDescriptor._resetToDefault = true;
 
         GFX::ClearRenderTargetCommand clearMainTarget = {};
-        clearMainTarget._target = { RenderTargetUsage::SSR_RESULT };
+        clearMainTarget._target = RenderTargetNames::SSR_RESULT;
         clearMainTarget._descriptor = clearDescriptor;
         EnqueueCommand(bufferInOut, clearMainTarget);
     }
@@ -146,7 +146,7 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     set._textureData.add(TextureEntry{ normalsTex, normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
 
     GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-    renderPassCmd->_target = { RenderTargetUsage::SSR_RESULT };
+    renderPassCmd->_target = RenderTargetNames::SSR_RESULT;
     renderPassCmd->_descriptor = _screenOnlyDraw;
     renderPassCmd->_name = "DO_SSR_PASS";
 

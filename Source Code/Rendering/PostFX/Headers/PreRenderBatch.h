@@ -118,6 +118,8 @@ class PreRenderBatch {
 
     void toneMapParams(ToneMapParams params) noexcept;
 
+    [[nodiscard]] RenderTargetHandle getLinearDepthRT() const noexcept;
+
    private:
 
     [[nodiscard]] static FilterSpace GetOperatorSpace(const FilterType type) noexcept {
@@ -193,6 +195,8 @@ class PreRenderBatch {
     Pipeline* _pipelineToneMap = nullptr;
     Pipeline* _pipelineToneMapAdaptive = nullptr;
     U64 _lastDeltaTimeUS = 0u;
+
+    RenderTargetHandle _linearDepthRT{};
 };
 
 }  // namespace Divide

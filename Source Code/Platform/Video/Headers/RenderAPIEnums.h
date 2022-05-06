@@ -39,6 +39,9 @@ constexpr U32 RT_MAX_COLOUR_ATTACHMENTS = 6;
 
 using SamplerAddress = U64;
 
+using RenderTargetID = U32;
+constexpr RenderTargetID INVALID_RENDER_TARGET_ID = std::numeric_limits<RenderTargetID>::max();
+
 enum class RenderAPI : U8 {
     None,      ///< No rendering. Used for testing or server code
     OpenGL,    ///< 4.x+
@@ -53,65 +56,6 @@ namespace Names {
 };
 
 static_assert(std::size(Names::renderAPI) == to_base(RenderAPI::COUNT) + 1);
-
-enum class RenderTargetUsage : U8 {
-    SCREEN = 0,
-    SCREEN_MS,
-    SCREEN_PREV,
-    OIT,
-    OIT_MS,
-    OIT_REFLECT,
-    SSAO_RESULT,
-    LINEAR_DEPTH,
-    SSR_RESULT,
-    HI_Z,
-    HI_Z_REFLECT,
-    REFLECTION_PLANAR,
-    REFLECTION_PLANAR_BLUR,
-    REFRACTION_PLANAR,
-    REFLECTION_CUBE,
-    ENVIRONMENT,
-    IBL,
-    SHADOW,
-    SHADOW_CACHE,
-    EDITOR,
-    OTHER,
-    COUNT
-};
-
-namespace Names {
-    static constexpr char* renderTargetUsage[] = {
-        "SCREEN",
-        "SCREEN_MS",
-        "SCREEN_PREV",
-        "OIT",
-        "OIT_MS",
-        "OIT_REFLECT",
-        "SSAO_RESULT",
-        "LINEAR_DEPTH",
-        "SSR_RESULT",
-        "HI_Z",
-        "HI_Z_REFLECT",
-        "REFLECTION_PLANAR",
-        "REFLECTION_PLANAR_BLUR",
-        "REFRACTION_PLANAR",
-        "REFLECTION_CUBE",
-        "ENVIRONMENT",
-        "IBL",
-        "SHADOW",
-        "SHADOW_CACHE",
-        "EDITOR",
-        "OTHER",
-        "NONE"
-    };
-};
-
-static_assert(to_base(RenderTargetUsage::COUNT) + 1 == std::size(Names::renderTargetUsage));
-
-namespace TypeUtil {
-    const char* RenderTargetUsageToString(RenderTargetUsage usage) noexcept;
-    RenderTargetUsage StringToRenderTargetUsage(const char* name) noexcept;
-}
 
 /// A list of built-in sampler slots. Use these if possible and keep them sorted by how often they are used
 enum class TextureUsage : U8 {
@@ -142,13 +86,6 @@ enum class TextureUsage : U8 {
     TRANSMITANCE,
     SCENE_NORMALS,
     COUNT
-};
-
-enum class DescriptorSetUsage {
-    FRAME_DATA = 0,
-    PASS_DATA,
-    SUBPASS_DATA,
-    DRAW_DATA
 };
 
 static_assert(to_base(TextureUsage::COUNT) <= 32);

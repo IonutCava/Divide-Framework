@@ -638,6 +638,27 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     descriptor.flags = 0;
     _dockedWindows[to_base(WindowType::SceneView)] = MemoryManager_NEW SceneViewWindow(*this, descriptor);
 
+    SamplerDescriptor editorSampler = {};
+    editorSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
+    editorSampler.magFilter(TextureFilter::LINEAR);
+    editorSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
+    editorSampler.anisotropyLevel(0);
+
+    TextureDescriptor editorDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
+    editorDescriptor.layerCount(1u);
+    editorDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+
+    RTAttachmentDescriptors attachments = {
+        { editorDescriptor, editorSampler.getHash(), RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO), DefaultColours::DIVIDE_BLUE }
+    };
+
+    RenderTargetDescriptor editorDesc = {};
+    editorDesc._name = "Editor";
+    editorDesc._resolution = renderResolution;
+    editorDesc._attachmentCount = to_U8(attachments.size());
+    editorDesc._attachments = attachments.data();
+    _editorRTHandle = _context.gfx().renderTargetPool().allocateRT(editorDesc);
+    
     return loadFromXML();
 }
 
@@ -666,6 +687,10 @@ void Editor::close() {
         ImGui::DestroyContext(context);
     }
     _imguiContexts.fill(nullptr);
+
+    if (!_context.gfx().renderTargetPool().deallocateRT(_editorRTHandle)) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
     Camera::DestroyCamera<FreeFlyCamera>(_editorCamera);
 }
 
@@ -985,9 +1010,8 @@ void Editor::postRender(const CameraSnapshot& cameraSnapshot, const RenderTarget
         }
 
         // Apply the inverse view matrix so that it cancels out in the shader
-        // Submit the draw command, rendering it in a tiny viewport in the lower
-        // right corner
-        const U16 windowWidth = _context.gfx().renderTargetPool().renderTarget(target).getWidth();
+        // Submit the draw command, rendering it in a tiny viewport in the lower right corner
+        const U16 windowWidth = _context.gfx().renderTargetPool().getRenderTarget(target)->getWidth();
         _axisGizmo->viewport(Rect<I32>(windowWidth - 250, 6, 256, 256));
 
         // We need to transform the gizmo so that it always remains axis aligned
@@ -1554,6 +1578,10 @@ void Editor::onSizeChange(const SizeChangeParams& params) {
             io.DisplayFramebufferScale = ImVec2(params.width > 0u ? to_F32(displaySize.width) / params.width : 0.f,
                                                 params.height > 0u ? to_F32(displaySize.height) / params.height : 0.f);
         }
+
+        const U16 w = params.width;
+        const U16 h = params.height;
+        _editorRTHandle._rt->resize(w, h);
     }
 }
 

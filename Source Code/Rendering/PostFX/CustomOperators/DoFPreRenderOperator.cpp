@@ -103,11 +103,9 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
         _cachedZPlanes = zPlanes;
         _constantsDirty = true;
     }
-
-    const RenderTarget& postFXTarget = _context.renderTargetPool().renderTarget(RenderTargetUsage::LINEAR_DEPTH);
-
+    
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const auto& extraAtt = postFXTarget.getAttachment(RTAttachmentType::Colour, 0u);
+    const auto& extraAtt = _parent.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::Colour, 0u);
     const TextureData screenTex = screenAtt.texture()->data();
     const TextureData extraTex = extraAtt.texture()->data();
 

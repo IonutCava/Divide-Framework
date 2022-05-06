@@ -203,6 +203,24 @@ struct DebugPrimitiveHandler
     eastl::fixed_vector<DataEntry, N, true> _debugData;
 };
 
+struct RenderTargetNames {
+    static RenderTargetID SCREEN;
+    static RenderTargetID SCREEN_MS;
+    static RenderTargetID SCREEN_PREV;
+    static RenderTargetID OIT;
+    static RenderTargetID OIT_MS;
+    static RenderTargetID OIT_REFLECT;
+    static RenderTargetID SSAO_RESULT;
+    static RenderTargetID SSR_RESULT;
+    static RenderTargetID HI_Z;
+    static RenderTargetID HI_Z_REFLECT;
+    static RenderTargetID REFLECTION_PLANAR_BLUR;
+    static RenderTargetID REFLECTION_CUBE;
+
+    static std::array<RenderTargetID, Config::MAX_REFLECTIVE_NODES_IN_VIEW> REFLECTION_PLANAR;
+    static std::array<RenderTargetID, Config::MAX_REFRACTIVE_NODES_IN_VIEW> REFRACTION_PLANAR;
+};
+
 /// Rough around the edges Adapter pattern abstracting the actual rendering API and access to the GPU
 class GFXDevice final : public KernelComponent, public PlatformContextComponent {
     friend class Attorney::GFXDeviceAPI;
@@ -400,7 +418,7 @@ protected:
     void setShadowMSAASampleCountInternal(ShadowType type, U8 sampleCount);
 
     /// Create and return a new framebuffer.
-    RenderTarget_ptr newRT(const RenderTargetDescriptor& descriptor);
+    RenderTarget_uptr newRT(const RenderTargetDescriptor& descriptor);
 
     // returns true if the window and the viewport have different aspect ratios
     bool fitViewportInWindow(U16 w, U16 h);
@@ -451,7 +469,7 @@ private:
     void setDepthRange(const vec2<F32>& depthRange);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
-    RenderTarget_ptr newRTInternal(const RenderTargetDescriptor& descriptor);
+    RenderTarget_uptr newRTInternal(const RenderTargetDescriptor& descriptor);
     ErrorCode createAPIInstance(RenderAPI api);
 
 private:
@@ -641,7 +659,7 @@ namespace Attorney {
     };
 
     class GFXDeviceGFXRTPool {
-        static RenderTarget_ptr newRT(GFXDevice& device, const RenderTargetDescriptor& descriptor) {
+        static RenderTarget_uptr newRT(GFXDevice& device, const RenderTargetDescriptor& descriptor) {
             return device.newRT(descriptor);
         };
 

@@ -158,8 +158,8 @@ namespace Divide {
         if (play) {
             PopReadOnly();
         }
-        const RenderTarget& rt = _parent.context().gfx().renderTargetPool().renderTarget(RenderTargetUsage::EDITOR);
-        const Texture_ptr& gameView = rt.getAttachment(RTAttachmentType::Colour, 0).texture();
+        const RenderTarget* rt = _parent.getRenderTargetHandle()._rt;
+        const Texture_ptr& gameView = rt->getAttachment(RTAttachmentType::Colour, 0).texture();
 
         const I32 w = to_I32(gameView->width());
         const I32 h = to_I32(gameView->height());

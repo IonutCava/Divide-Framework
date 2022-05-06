@@ -139,6 +139,7 @@ void glFramebuffer::initAttachment(const RTAttachmentType type, const U8 index) 
     }
 
     attachment->clearChanged();
+    setAttachmentState(static_cast<GLenum>(attachment->binding()), {});
 }
 
 void glFramebuffer::toggleAttachment(const RTAttachment& attachment, const AttachmentState state, bool layeredRendering) {

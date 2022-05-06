@@ -634,47 +634,27 @@ void MenuBar::drawToolsMenu([[maybe_unused]] const bool modifierPressed) {
         if (ImGui::BeginMenu("Render Targets"))
         {
             const GFXRTPool& pool = _context.gfx().renderTargetPool();
-            for (U8 i = 0; i < to_U8(RenderTargetUsage::COUNT); ++i) {
-                const RenderTargetUsage usage = static_cast<RenderTargetUsage>(i);
-                const auto& rTargets = pool.renderTargets(usage);
+            for (auto& rt : pool.getRenderTargets()) {
+                if (ImGui::BeginMenu(rt->name().c_str()))
+                {
+                    for (U8 j = 0; j < to_U8(RTAttachmentType::COUNT); ++j) {
+                        const RTAttachmentType type = static_cast<RTAttachmentType>(j);
+                        const U8 count = rt->getAttachmentCount(type);
 
-                if (rTargets.empty()) {
-                    if (ImGui::MenuItem(TypeUtil::RenderTargetUsageToString(usage), "", false, false))
-                    {
-                    }
-                } else {
-                    if (ImGui::BeginMenu(TypeUtil::RenderTargetUsageToString(usage)))
-                    {
-                        for (const auto& rt : rTargets) {
-                            if (rt == nullptr) {
+                        for (U8 k = 0; k < count; ++k) {
+                            const RTAttachment& attachment = rt->getAttachment(type, k);
+                            const Texture_ptr& tex = attachment.texture();
+                            if (tex == nullptr) {
                                 continue;
                             }
 
-                            if (ImGui::BeginMenu(rt->name().c_str()))
+                            if (ImGui::MenuItem(tex->resourceName().c_str()))
                             {
-                                for (U8 j = 0; j < to_U8(RTAttachmentType::COUNT); ++j) {
-                                    const RTAttachmentType type = static_cast<RTAttachmentType>(j);
-                                    const U8 count = rt->getAttachmentCount(type);
-
-                                    for (U8 k = 0; k < count; ++k) {
-                                        const RTAttachment& attachment = rt->getAttachment(type, k);
-                                        const Texture_ptr& tex = attachment.texture();
-                                        if (tex == nullptr) {
-                                            continue;
-                                        }
-
-                                        if (ImGui::MenuItem(tex->resourceName().c_str()))
-                                        {
-                                            _previewTextures.push_back(tex);
-                                        }
-                                    }
-                                }
-
-                                ImGui::EndMenu();
+                                _previewTextures.push_back(tex);
                             }
                         }
-                        ImGui::EndMenu();
                     }
+                    ImGui::EndMenu();
                 }
             }
             ImGui::EndMenu();
@@ -692,7 +672,6 @@ void MenuBar::drawWindowsMenu([[maybe_unused]] const bool modifierPressed) const
         }
         ImGui::EndMenu();
     }
-
 }
 
 void MenuBar::drawPostFXMenu([[maybe_unused]] const bool modifierPressed) const {

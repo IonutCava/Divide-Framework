@@ -553,14 +553,14 @@ bool RenderingComponent::updateReflection(const U16 reflectionIndex,
     //Target texture: the opposite of what we bind during the regular passes
     if (_reflectorType != ReflectorType::COUNT && _reflectionCallback && inBudget) {
         const RenderTargetID reflectRTID(_reflectorType == ReflectorType::PLANAR 
-                                                         ? RenderTargetUsage::REFLECTION_PLANAR
-                                                         : RenderTargetUsage::REFLECTION_CUBE,
-                                         reflectionIndex);
+                                                         ? RenderTargetNames::REFLECTION_PLANAR[reflectionIndex]
+                                                         : RenderTargetNames::REFLECTION_CUBE);
+
         RenderPassManager* passManager = _context.parent().renderPassManager();
         RenderCbkParams params{ _context, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8(_reflectorType), camera };
         _reflectionCallback(passManager, params, bufferInOut);
 
-        const RTAttachment& targetAtt = _context.renderTargetPool().renderTarget(reflectRTID).getAttachment(RTAttachmentType::Colour, 0u);
+        const RTAttachment& targetAtt = _context.renderTargetPool().getRenderTarget(reflectRTID)->getAttachment(RTAttachmentType::Colour, 0u);
         _materialInstance->setTexture(
             _reflectorType == ReflectorType::PLANAR ? TextureUsage::REFLECTION_PLANAR : TextureUsage::REFLECTION_CUBE,
             targetAtt.texture(),
@@ -586,7 +586,7 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
 
     // no default refraction system!
     if (_refractorType != RefractorType::COUNT && _refractionCallback && inBudget) {
-        const RenderTargetID refractRTID(RenderTargetUsage::REFRACTION_PLANAR, refractionIndex);
+        const RenderTargetID refractRTID(RenderTargetNames::REFRACTION_PLANAR[refractionIndex]);
 
         // Only planar for now
         assert(_refractorType == RefractorType::PLANAR);
@@ -595,7 +595,7 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
         RenderCbkParams params{ _context, _parentSGN, renderState, refractRTID, refractionIndex, 0u, camera };
         _refractionCallback(passManager, params, bufferInOut);
 
-        const RTAttachment& targetAtt = _context.renderTargetPool().renderTarget(refractRTID).getAttachment(RTAttachmentType::Colour, 0u);
+        const RTAttachment& targetAtt = _context.renderTargetPool().getRenderTarget(refractRTID)->getAttachment(RTAttachmentType::Colour, 0u);
         _materialInstance->setTexture(
             TextureUsage::REFRACTION_PLANAR,
             targetAtt.texture(),

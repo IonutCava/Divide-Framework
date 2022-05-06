@@ -97,7 +97,6 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
     shadowMapSamplerCache.minFilter(TextureFilter::NEAREST);
     shadowMapSamplerCache.anisotropyLevel(0u);
 
-    RenderTargetHandle crtTarget, crtTargetCache;
     for (U8 i = 0; i < to_U8(ShadowType::COUNT); ++i) {
         switch (static_cast<ShadowType>(i)) {
             case ShadowType::LAYERED:
@@ -130,7 +129,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                     desc._name = isCSM ? "CSM_ShadowMap" : "Single_ShadowMap";
                     desc._attachmentCount = to_U8(att.size());
                     desc._attachments = att.data();
-                    crtTarget = context.renderTargetPool().allocateRT(RenderTargetUsage::SHADOW, desc, isCSM ? to_base(ShadowType::LAYERED) : to_base(ShadowType::SINGLE));
+                    s_shadowMaps[i] = context.renderTargetPool().allocateRT(desc);
                 }
                 {
                     TextureDescriptor shadowMapCacheDescriptor = shadowMapDescriptor;
@@ -143,7 +142,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                     desc._name = isCSM ? "CSM_ShadowMap_StaticCache" : "Single_ShadowMap_StaticCache";
                     desc._attachmentCount = to_U8(attCache.size());
                     desc._attachments = attCache.data();
-                    crtTargetCache = context.renderTargetPool().allocateRT(RenderTargetUsage::SHADOW_CACHE, desc, isCSM ? to_base(ShadowType::LAYERED) : to_base(ShadowType::SINGLE));
+                    s_shadowMapCaches[i] = context.renderTargetPool().allocateRT(desc);
                 }
                 if (isCSM) {
                     s_shadowMapGenerators[i] = MemoryManager_NEW CascadedShadowMapsGenerator(context);
@@ -180,7 +179,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                     desc._name = "Cube_ShadowMap";
                     desc._attachmentCount = to_U8(att.size());
                     desc._attachments = att.data();
-                    crtTarget = context.renderTargetPool().allocateRT(RenderTargetUsage::SHADOW, desc, to_base(ShadowType::CUBEMAP));
+                    s_shadowMaps[i] = context.renderTargetPool().allocateRT(desc);
                 }
                 {
                     TextureDescriptor shadowMapCacheDescriptor = colourMapDescriptor;
@@ -194,7 +193,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                     desc._name = "Cube_ShadowMap_StaticCache";
                     desc._attachmentCount = to_U8(attCache.size());
                     desc._attachments = attCache.data();
-                    crtTargetCache = context.renderTargetPool().allocateRT(RenderTargetUsage::SHADOW_CACHE, desc, to_base(ShadowType::CUBEMAP));
+                    s_shadowMapCaches[i] = context.renderTargetPool().allocateRT(desc);
                 }
 
                 s_shadowMapGenerators[i] = MemoryManager_NEW CubeShadowMapGenerator(context);
@@ -202,8 +201,6 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
             } break;
             case ShadowType::COUNT: break;
         }
-        s_shadowMaps[i] = crtTarget;
-        s_shadowMapCaches[i] = crtTargetCache;
     }
 }
 
@@ -218,12 +215,16 @@ void ShadowMap::destroyShadowMaps(GFXDevice& context) {
     s_debugViews.clear();
 
     for (RenderTargetHandle& handle : s_shadowMaps) {
-        context.renderTargetPool().deallocateRT(handle);
+        if (!context.renderTargetPool().deallocateRT(handle)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
         handle._rt = nullptr;
     }
 
     for (RenderTargetHandle& handle : s_shadowMapCaches) {
-        context.renderTargetPool().deallocateRT(handle);
+        if (!context.renderTargetPool().deallocateRT(handle)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
         handle._rt = nullptr;
     }
 
@@ -397,11 +398,18 @@ bool ShadowMap::generateShadowMaps(const Camera& playerCamera, Light& light, GFX
 }
 
 const RenderTargetHandle& ShadowMap::getShadowMap(const LightType type) {
-    return s_shadowMaps[to_base(getShadowTypeForLightType(type))];
+    return getShadowMap(getShadowTypeForLightType(type));
 }
 
 const RenderTargetHandle& ShadowMap::getShadowMapCache(const LightType type) {
-    return s_shadowMapCaches[to_base(getShadowTypeForLightType(type))];
+    return getShadowMapCache(getShadowTypeForLightType(type));
+}
+const RenderTargetHandle& ShadowMap::getShadowMap(const ShadowType type) {
+    return s_shadowMaps[to_base(type)];
+}
+
+const RenderTargetHandle& ShadowMap::getShadowMapCache(const ShadowType type) {
+    return s_shadowMapCaches[to_base(type)];
 }
 
 void ShadowMap::setMSAASampleCount(const ShadowType type, const U8 sampleCount) {

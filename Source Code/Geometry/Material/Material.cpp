@@ -548,11 +548,9 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     DIVIDE_ASSERT(properties().shadingMode() != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!");
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> moduleDefines = {};
 
-    const bool msaaScreenTarget = _context.renderTargetPool().screenTargetID()._usage == RenderTargetUsage::SCREEN_MS;
-    if (msaaScreenTarget) {
+    if (_context.context().config().rendering.MSAASamples > 0u) {
         shaderDescriptor._globalDefines.emplace_back("MSAA_SCREEN_TARGET", true);
     }
-
     if (renderStagePass._stage == RenderStage::SHADOW) {
         shaderDescriptor._globalDefines.emplace_back("SHADOW_PASS", true);
     } else if (isDepthPass) {

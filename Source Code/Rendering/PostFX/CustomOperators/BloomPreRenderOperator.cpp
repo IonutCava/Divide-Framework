@@ -106,10 +106,14 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     luminanceThreshold(_context.context().config().rendering.postFX.bloom.threshold);
 }
 
-BloomPreRenderOperator::~BloomPreRenderOperator() {
-    _context.renderTargetPool().deallocateRT(_bloomOutput);
-    _context.renderTargetPool().deallocateRT(_bloomBlurBuffer[0]);
-    _context.renderTargetPool().deallocateRT(_bloomBlurBuffer[1]);
+BloomPreRenderOperator::~BloomPreRenderOperator()
+{
+    if (!_context.renderTargetPool().deallocateRT(_bloomOutput) ||
+        !_context.renderTargetPool().deallocateRT(_bloomBlurBuffer[0]) ||
+        !_context.renderTargetPool().deallocateRT(_bloomBlurBuffer[1]))
+    {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 bool BloomPreRenderOperator::ready() const noexcept {

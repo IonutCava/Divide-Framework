@@ -75,6 +75,10 @@ inline void Editor::toggleMemoryEditor(const bool state) noexcept {
     _showMemoryEditor = state;
 }
 
+inline const RenderTargetHandle& Editor::getRenderTargetHandle() const noexcept {
+    return _editorRTHandle;
+}
+
 } //namespace Divide
 
 #endif //_DIVIDE_EDITOR_INL_

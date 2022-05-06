@@ -165,7 +165,7 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     _preRenderBatch.execute(idx, cameraSnapshot, _filterStack | _overrideFilterStack, bufferInOut);
 
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
-    beginRenderPassCmd._target = RenderTargetUsage::SCREEN;
+    beginRenderPassCmd._target = RenderTargetNames::SCREEN;
     beginRenderPassCmd._descriptor = _postFXTarget;
     beginRenderPassCmd._name = "DO_POSTFX_PASS";
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
@@ -185,11 +185,11 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     GFX::EnqueueCommand(bufferInOut, _drawConstantsCmd);
     const auto& rtPool = context().gfx().renderTargetPool();
     const auto& prbAtt = _preRenderBatch.getOutput(false)._rt->getAttachment(RTAttachmentType::Colour, 0);
-    const auto& linDepthDataAtt = rtPool.renderTarget(RenderTargetUsage::LINEAR_DEPTH).getAttachment(RTAttachmentType::Colour, 0);
-    const auto& ssrDataAtt = rtPool.renderTarget(RenderTargetUsage::SSR_RESULT).getAttachment(RTAttachmentType::Colour, 0);
-    const auto& sceneDataAtt = rtPool.renderTarget(RenderTargetUsage::SCREEN).getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
-    const auto& velocityAtt = rtPool.renderTarget(RenderTargetUsage::SCREEN).getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY));
-    const auto& depthAtt = rtPool.renderTarget(RenderTargetUsage::SCREEN).getAttachment(RTAttachmentType::Depth, 0);
+    const auto& linDepthDataAtt =_preRenderBatch.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::Colour, 0);
+    const auto& ssrDataAtt = rtPool.getRenderTarget(RenderTargetNames::SSR_RESULT)->getAttachment(RTAttachmentType::Colour, 0);
+    const auto& sceneDataAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
+    const auto& velocityAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY));
+    const auto& depthAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Depth, 0);
 
     SamplerDescriptor defaultSampler = {};
     defaultSampler.wrapUVW(TextureWrap::REPEAT);

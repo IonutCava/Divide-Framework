@@ -182,6 +182,8 @@ class Editor final : public PlatformContextComponent,
 
     void showStatusMessage(const string& message, F32 durationMS, bool error) const;
 
+    [[nodiscard]] inline const RenderTargetHandle& getRenderTargetHandle() const noexcept;
+
   protected: //frame listener
     [[nodiscard]] bool framePostRender(const FrameEvent& evt) override;
     [[nodiscard]] bool frameEnded(const FrameEvent& evt) noexcept override;
@@ -315,6 +317,8 @@ class Editor final : public PlatformContextComponent,
     bool           _isScenePaused = false;
     bool           _gridSettingsDirty = true;
     CircularBuffer<Str256> _recentSceneList;
+
+    RenderTargetHandle _editorRTHandle{};
 }; //Editor
 
 namespace Attorney {

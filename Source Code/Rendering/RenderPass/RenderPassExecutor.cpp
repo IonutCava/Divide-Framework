@@ -1053,7 +1053,7 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
 
     GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - MainPass" });
 
-    if (params._target._usage != RenderTargetUsage::COUNT) {
+    if (params._target != INVALID_RENDER_TARGET_ID) {
         const bool layeredRendering = params._layerParams._layer > 0;
 
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
@@ -1065,17 +1065,16 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
             GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
         }
 
-        const RenderTarget& screenTarget = _context.renderTargetPool().screenTarget();
-        const RTAttachment& normalsAtt = screenTarget.getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
+        const RenderTarget* screenTarget = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
+        const RTAttachment& normalsAtt = screenTarget->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
 
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         Texture_ptr hizTex = nullptr;
         if (hasHiZ) {
-            const RenderTarget& hizTarget = _context.renderTargetPool().renderTarget(params._targetHIZ);
-            const RTAttachment& hizAtt = hizTarget.getAttachment(RTAttachmentType::Depth, 0);
+            const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget(params._targetHIZ);
+            const RTAttachment& hizAtt = hizTarget->getAttachment(RTAttachmentType::Depth, 0);
             set._textureData.add(TextureEntry{ hizAtt.texture()->data(), hizAtt.samplerHash(), TextureUsage::DEPTH });
-        }
-        else if (prePassExecuted) {
+        } else if (prePassExecuted) {
             const RTAttachment& depthAtt = target.getAttachment(RTAttachmentType::Depth, 0);
             set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
         }
@@ -1117,17 +1116,17 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     SetEnabled(beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
     //beginRenderPassOitCmd->_descriptor._alphaToCoverage = true;
     {
-        const RenderTarget& nonMSTarget = _context.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN);
-        const auto& colourAtt = nonMSTarget.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+        const RenderTarget* nonMSTarget = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
+        const auto& colourAtt = nonMSTarget->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
         GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ colourAtt.texture()->data(), colourAtt.samplerHash(), TextureUsage::TRANSMITANCE });
     }
 
     prepareRenderQueues(params, nodes, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut);
 
     // We're gonna do a new bind soon enough
-    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut)->_setDefaultRTState = params._targetOIT._usage == RenderTargetUsage::OIT_MS;
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut)->_setDefaultRTState = params._targetOIT == INVALID_RENDER_TARGET_ID;
 
-    const bool useMSAA = params._target == RenderTargetUsage::SCREEN_MS;
+    const bool useMSAA = params._target == RenderTargetNames::SCREEN_MS;
 
     // Step2: Composition pass
     // Don't clear depth & colours and do not write to the depth buffer
@@ -1145,9 +1144,9 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline });
 
-    RenderTarget& oitRT = _context.renderTargetPool().renderTarget(params._targetOIT);
-    const auto& accumAtt = oitRT.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ACCUMULATION));
-    const auto& revAtt = oitRT.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::REVEALAGE));
+    RenderTarget* oitRT = _context.renderTargetPool().getRenderTarget(params._targetOIT);
+    const auto& accumAtt = oitRT->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ACCUMULATION));
+    const auto& revAtt = oitRT->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::REVEALAGE));
 
     const TextureData accum = accumAtt.texture()->data();
     const TextureData revealage = revAtt.texture()->data();
@@ -1210,14 +1209,14 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
     OPTICK_EVENT();
 
     // If we rendered to the multisampled screen target, we can now copy the colour to our regular buffer as we are done with it at this point
-    if (params._target._usage == RenderTargetUsage::SCREEN_MS) {
+    if (params._target == RenderTargetNames::SCREEN_MS) {
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ " - Resolve Screen Targets" });
 
         if (resolveDepth || resolveColourBuffer) {
             // If we rendered to the multisampled screen target, we can now blit the depth buffer to our resolved target
             GFX::BlitRenderTargetCommand* blitCmd = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>(bufferInOut);
-            blitCmd->_source = { RenderTargetUsage::SCREEN_MS, params._target._index };
-            blitCmd->_destination = { RenderTargetUsage::SCREEN, params._target._index };
+            blitCmd->_source = RenderTargetNames::SCREEN_MS;
+            blitCmd->_destination = RenderTargetNames::SCREEN;
             if (resolveDepth) {
                 blitCmd->_blitDepth._inputLayer = 0u;
                 blitCmd->_blitDepth._outputLayer = 0u;
@@ -1228,16 +1227,16 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
         }
         if (resolveGBuffer) {
             GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-            beginRenderPassCommand->_target = { RenderTargetUsage::SCREEN, 0u };
+            beginRenderPassCommand->_target = RenderTargetNames::SCREEN;
             SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO), false);
             SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
             beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_ResolveGBufferPipeline });
 
-            const RenderTarget& MSSource = _context.renderTargetPool().renderTarget(params._target);
-            const RTAttachment& velocityAtt = MSSource.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY));
-            const RTAttachment& normalsAtt = MSSource.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
+            const RenderTarget* MSSource = _context.renderTargetPool().getRenderTarget(params._target);
+            const RTAttachment& velocityAtt = MSSource->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY));
+            const RTAttachment& normalsAtt = MSSource->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
             set._textureData.add(TextureEntry{ velocityAtt.texture()->data(), velocityAtt.samplerHash(), to_base(TextureUsage::UNIT0) });
@@ -1287,7 +1286,7 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
 
     GFX::EnqueueCommand(bufferInOut, GFX::SetClipPlanesCommand{ params._clippingPlanes });
 
-    RenderTarget& target = _context.renderTargetPool().renderTarget(params._target);
+    RenderTarget* target = _context.renderTargetPool().getRenderTarget(params._target);
 
     // Cull the scene and grab the visible nodes
     I64 ignoreGUID = params._sourceNode == nullptr ? -1 : params._sourceNode->getGUID();
@@ -1320,10 +1319,10 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
     constexpr bool doMainPass = true;
     // PrePass requires a depth buffer
     const bool doPrePass = _stage != RenderStage::SHADOW &&
-                           params._target._usage != RenderTargetUsage::COUNT &&
-                           target.usesAttachment(RTAttachmentType::Depth, 0);
-    const bool doOITPass = params._targetOIT._usage != RenderTargetUsage::COUNT;
-    const bool doOcclusionPass = doPrePass && params._targetHIZ._usage != RenderTargetUsage::COUNT;
+                           params._target != INVALID_RENDER_TARGET_ID &&
+                           target->usesAttachment(RTAttachmentType::Depth, 0);
+    const bool doOITPass = params._targetOIT != INVALID_RENDER_TARGET_ID;
+    const bool doOcclusionPass = doPrePass && params._targetHIZ != INVALID_RENDER_TARGET_ID;
 
     bool hasInvalidNodes = false;
     {
@@ -1368,12 +1367,11 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
 #   pragma endregion
 
     resolveMainScreenTarget(params, true, true, false, bufferInOut);
-    const RenderTargetID sourceID = { RenderTargetUsage::SCREEN, params._target._index };
 
 #   pragma region HI_Z
     if (doOcclusionPass) {
         // This also renders into our HiZ texture that we may want to use later in PostFX
-        occlusionPass(playerIdx, visibleNodes, camSnapshot, visibleNodeCount, params._stagePass, sourceID, params._targetHIZ, bufferInOut);
+        occlusionPass(playerIdx, visibleNodes, camSnapshot, visibleNodeCount, params._stagePass, RenderTargetNames::SCREEN, params._targetHIZ, bufferInOut);
     }
 #   pragma endregion
 
@@ -1388,7 +1386,7 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
         _context.getRenderer().postFX().prePass(playerIdx, camSnapshot, bufferInOut);
     }
     if (doMainPass) {
-        mainPass(visibleNodes, params, camSnapshot, target, doPrePass, doOcclusionPass, bufferInOut);
+        mainPass(visibleNodes, params, camSnapshot, *target, doPrePass, doOcclusionPass, bufferInOut);
     } else {
         DIVIDE_UNEXPECTED_CALL();
     }
@@ -1431,7 +1429,6 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
     resolveMainScreenTarget(params, false, false, true, bufferInOut);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
-
 }
 
 void RenderPassExecutor::postRender() {

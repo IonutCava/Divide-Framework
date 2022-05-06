@@ -381,10 +381,10 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
     passManager->doCustomPass(renderParams._camera, params, bufferInOut);
 
     const PlatformContext& context = passManager->parent().platformContext();
-    const RenderTarget& rt = context.gfx().renderTargetPool().renderTarget(params._target);
+    const RenderTarget* rt = context.gfx().renderTargetPool().getRenderTarget(params._target);
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-    computeMipMapsCommand._texture = rt.getAttachment(RTAttachmentType::Colour, 0).texture().get();
+    computeMipMapsCommand._texture = rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
     EnqueueCommand(bufferInOut, computeMipMapsCommand);
 }
 
@@ -417,8 +417,8 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
 
     RenderPassParams params = {};
     params._sourceNode = renderParams._sgn;
-    params._targetHIZ = RenderTargetUsage::HI_Z_REFLECT;
-    params._targetOIT = RenderTargetUsage::OIT_REFLECT;
+    params._targetHIZ = RenderTargetNames::HI_Z_REFLECT;
+    params._targetOIT = RenderTargetNames::OIT_REFLECT;
     params._minExtents.set(1.5f);
     params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, renderParams._passIndex, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR) };
     params._target = renderParams._renderTarget;
@@ -434,11 +434,17 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
     passManager->doCustomPass(_reflectionCam, params, bufferInOut);
 
     if (_blurReflections) {
-        RenderTarget& reflectTarget = renderParams._context.renderTargetPool().renderTarget(renderParams._renderTarget);
-        RenderTargetHandle reflectionTargetHandle(renderParams._renderTarget, &reflectTarget);
+        RenderTarget* reflectTarget = renderParams._context.renderTargetPool().getRenderTarget(renderParams._renderTarget);
+        RenderTargetHandle reflectionTargetHandle{
+            reflectTarget,
+            renderParams._renderTarget
+        };
 
-        RenderTarget& reflectBlurTarget = renderParams._context.renderTargetPool().renderTarget(RenderTargetUsage::REFLECTION_PLANAR_BLUR);
-        RenderTargetHandle reflectionBlurBuffer(RenderTargetUsage::REFLECTION_PLANAR_BLUR, &reflectBlurTarget);
+        RenderTarget* reflectBlurTarget = renderParams._context.renderTargetPool().getRenderTarget(RenderTargetNames::REFLECTION_PLANAR_BLUR);
+        RenderTargetHandle reflectionBlurBuffer{
+            reflectBlurTarget,
+            RenderTargetNames::REFLECTION_PLANAR_BLUR
+        };
 
         renderParams._context.blurTarget(reflectionTargetHandle,
                                          reflectionBlurBuffer,
@@ -452,10 +458,10 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
     }
 
     const PlatformContext& context = passManager->parent().platformContext();
-    const RenderTarget& rt = context.gfx().renderTargetPool().renderTarget(params._target);
+    const RenderTarget* rt = context.gfx().renderTargetPool().getRenderTarget(params._target);
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-    computeMipMapsCommand._texture = rt.getAttachment(RTAttachmentType::Colour, 0).texture().get();
+    computeMipMapsCommand._texture = rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
     EnqueueCommand(bufferInOut, computeMipMapsCommand);
 }
 

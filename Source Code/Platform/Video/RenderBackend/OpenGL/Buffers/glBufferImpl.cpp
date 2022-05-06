@@ -65,14 +65,6 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
         _memoryBlock._offset = 0u;
         _memoryBlock._size = _params._dataSize;
         _memoryBlock._free = false;
-
-        const string copyBufferName = _params._name != nullptr ? string{ _params._name } + "_copy" 
-                                                               : Util::StringFormat("COPY_BUFFER_%d", _memoryBlock._bufferHandle);
-        GLUtil::createAndAllocBuffer(_params._dataSize, 
-                                     GL_STREAM_READ,
-                                     _copyBufferTarget,
-                                     {nullptr, 0u},
-                                     copyBufferName.c_str());
     } else {
         const BufferStorageMask storageMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
         const MapBufferAccessMask accessMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
@@ -176,6 +168,15 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
         }
         memcpy(data, _memoryBlock._ptr + offsetInBytes, rangeInBytes);
     } else {
+        if (_copyBufferTarget == GLUtil::k_invalidObjectID) {
+            const string copyBufferName = _params._name != nullptr ? string{ _params._name } + "_copy" 
+                                                                   : Util::StringFormat("COPY_BUFFER_%d", _memoryBlock._bufferHandle);
+            GLUtil::createAndAllocBuffer(_params._dataSize, 
+                                         GL_STREAM_READ,
+                                         _copyBufferTarget,
+                                         {nullptr, 0u},
+                                         copyBufferName.c_str());
+        }
         glCopyNamedBufferSubData(_memoryBlock._bufferHandle, _copyBufferTarget, _memoryBlock._offset + offsetInBytes, _memoryBlock._offset + offsetInBytes, rangeInBytes);
 
         const Byte* bufferData = (Byte*)glMapNamedBufferRange(_copyBufferTarget, _memoryBlock._offset + offsetInBytes, rangeInBytes, MapBufferAccessMask::GL_MAP_READ_BIT);

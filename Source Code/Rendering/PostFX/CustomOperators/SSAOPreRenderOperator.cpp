@@ -292,10 +292,13 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
 
 SSAOPreRenderOperator::~SSAOPreRenderOperator() 
 {
-    _context.renderTargetPool().deallocateRT(_ssaoOutput);
-    _context.renderTargetPool().deallocateRT(_halfDepthAndNormals);
-    _context.renderTargetPool().deallocateRT(_ssaoHalfResOutput);
-    _context.renderTargetPool().deallocateRT(_ssaoBlurBuffer);
+    if (!_context.renderTargetPool().deallocateRT(_ssaoOutput) ||
+        !_context.renderTargetPool().deallocateRT(_halfDepthAndNormals) ||
+        !_context.renderTargetPool().deallocateRT(_ssaoHalfResOutput) ||
+        !_context.renderTargetPool().deallocateRT(_ssaoBlurBuffer))
+    {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 }
 
 bool SSAOPreRenderOperator::ready() const noexcept {
@@ -480,7 +483,7 @@ void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX:
         clearDescriptor._resetToDefault = true;
 
         GFX::ClearRenderTargetCommand clearMainTarget = {};
-        clearMainTarget._target = { RenderTargetUsage::SSAO_RESULT };
+        clearMainTarget._target = RenderTargetNames::SSAO_RESULT;
         clearMainTarget._descriptor = clearDescriptor;
         EnqueueCommand(bufferInOut, clearMainTarget);
     }
@@ -610,7 +613,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             { //Vertical
                 GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
                 renderPassCmd->_name = "DO_SSAO_BLUR_VERTICAL";
-                renderPassCmd->_target = { RenderTargetUsage::SSAO_RESULT };
+                renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurVerticalPipeline;
 
@@ -628,7 +631,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
         } else {
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = "DO_SSAO_PASS_THROUGH";
-            renderPassCmd->_target = { RenderTargetUsage::SSAO_RESULT };
+            renderPassCmd->_target = RenderTargetNames::SSAO_RESULT;
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _passThroughPipeline;
 

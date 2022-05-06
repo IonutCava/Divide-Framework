@@ -199,15 +199,15 @@ void RenderPassManager::render(const RenderParams& params) {
 
        if (params._editorRunning) {
            GFX::BeginRenderPassCommand beginRenderPassCmd{};
-           beginRenderPassCmd._target = RenderTargetUsage::EDITOR;
+           beginRenderPassCmd._target = context.editor().getRenderTargetHandle()._targetID;
            beginRenderPassCmd._name = "BLIT_TO_RENDER_TARGET";
            EnqueueCommand(buf, beginRenderPassCmd);
        }
 
        GFX::EnqueueCommand(buf, GFX::BeginDebugScopeCommand{ "Flush Display" });
 
-       RenderTarget& resolvedScreenTarget = gfx.renderTargetPool().renderTarget(RenderTargetUsage::SCREEN);
-       const auto& screenAtt = resolvedScreenTarget.getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+       RenderTarget* resolvedScreenTarget = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
+       const auto& screenAtt = resolvedScreenTarget->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
        const TextureData texData = screenAtt.texture()->data();
        const Rect<I32>& targetViewport = params._targetViewport;
        // Apply gamma correction here as PostFX requires everything in linear space

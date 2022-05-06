@@ -116,7 +116,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         desc._attachmentCount = to_U8(att.size());
         desc._attachments = att.data();
         desc._resolution.set(reflectRes, reflectRes);
-        s_reflection = context.renderTargetPool().allocateRT(RenderTargetUsage::ENVIRONMENT, desc, 0u);
+        s_reflection = context.renderTargetPool().allocateRT(desc);
     }
     {
         TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
@@ -130,10 +130,10 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         desc._attachmentCount = to_U8(att.size());
         desc._attachments = att.data();
         desc._resolution.set(reflectRes, reflectRes);
-        s_prefiltered = context.renderTargetPool().allocateRT(RenderTargetUsage::IBL, desc, 0u);
+        s_prefiltered = context.renderTargetPool().allocateRT(desc);
         desc._name = "IrradianceEnvMap";
         desc._resolution.set(s_IrradianceTextureSize, s_IrradianceTextureSize);
-        s_irradiance = context.renderTargetPool().allocateRT(RenderTargetUsage::IBL, desc, 1u);
+        s_irradiance = context.renderTargetPool().allocateRT(desc);
     }
     {
         TextureDescriptor environmentDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
@@ -146,7 +146,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         desc._attachmentCount = to_U8(att.size());
         desc._attachments = att.data();
         desc._resolution.set(s_LUTTextureSize, s_LUTTextureSize);
-        s_brdfLUT = context.renderTargetPool().allocateRT(RenderTargetUsage::IBL, desc, 2u);
+        s_brdfLUT = context.renderTargetPool().allocateRT(desc);
     }
     {
         ShaderModuleDescriptor vertModule = {};
@@ -217,10 +217,13 @@ void SceneEnvironmentProbePool::OnShutdown(GFXDevice& context) {
     s_irradianceComputeShader.reset();
     s_prefilterComputeShader.reset();
     s_lutComputeShader.reset();
-    context.renderTargetPool().deallocateRT(s_reflection);
-    context.renderTargetPool().deallocateRT(s_prefiltered);
-    context.renderTargetPool().deallocateRT(s_irradiance);
-    context.renderTargetPool().deallocateRT(s_brdfLUT);
+    if (!context.renderTargetPool().deallocateRT(s_reflection) ||
+        !context.renderTargetPool().deallocateRT(s_prefiltered) ||
+        !context.renderTargetPool().deallocateRT(s_irradiance) ||
+        !context.renderTargetPool().deallocateRT(s_brdfLUT)) 
+    {
+        DIVIDE_UNEXPECTED_CALL();
+    }
     for (auto& camera : s_probeCameras) {
         Camera::DestroyCamera(camera);
     }

@@ -73,14 +73,14 @@ struct RenderPassParams
     const SceneGraphNode* _sourceNode = nullptr;
     Str64 _passName = "";
     I32 _maxLoD = -1; //-1 = all
-    RenderTargetID _target = {};
 
     RTDrawDescriptor _targetDescriptorPrePass = {};
     RTDrawDescriptor _targetDescriptorMainPass = {};
     RTDrawDescriptor _targetDescriptorComposition= {};
 
-    RenderTargetID _targetHIZ = {};
-    RenderTargetID _targetOIT = {};
+    RenderTargetID _target = INVALID_RENDER_TARGET_ID;
+    RenderTargetID _targetHIZ = INVALID_RENDER_TARGET_ID;
+    RenderTargetID _targetOIT = INVALID_RENDER_TARGET_ID;
     RenderStagePass _stagePass = {};
 
     RenderTarget::DrawLayerParams _layerParams = {};

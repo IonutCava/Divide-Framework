@@ -870,9 +870,9 @@ void GL_API::flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const G
 
             const GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(entry);
 
-            glFramebuffer& rt = static_cast<glFramebuffer&>(_context.renderTargetPool().renderTarget(crtCmd->_target));
-            Attorney::GLAPIRenderTarget::begin(rt, crtCmd->_descriptor);
-            GetStateTracker()->_activeRenderTarget = &rt;
+            glFramebuffer* rt = static_cast<glFramebuffer*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
+            Attorney::GLAPIRenderTarget::begin(*rt, crtCmd->_descriptor);
+            GetStateTracker()->_activeRenderTarget = rt;
             PushDebugMessage(crtCmd->_name.c_str());
         }break;
         case GFX::CommandType::END_RENDER_PASS: {

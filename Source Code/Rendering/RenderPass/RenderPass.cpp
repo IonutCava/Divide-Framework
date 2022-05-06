@@ -96,9 +96,14 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
             params._targetDescriptorPrePass = prePassPolicy;
             params._targetDescriptorMainPass = mainPassPolicy;
             params._targetDescriptorComposition = oitCompositionPassPolicy;
-            params._targetHIZ = RenderTargetUsage::HI_Z;
-            params._targetOIT = _context.renderTargetPool().oitTargetID();
-            params._target = _context.renderTargetPool().screenTargetID();
+            params._targetHIZ = RenderTargetNames::HI_Z;
+            if (_config.rendering.MSAASamples > 0u) {
+                params._targetOIT = RenderTargetNames::OIT_MS;
+                params._target = RenderTargetNames::SCREEN_MS;
+            } else {
+                params._targetOIT = RenderTargetNames::OIT;
+                params._target = RenderTargetNames::SCREEN;
+            }
 
             RTClearDescriptor clearDescriptor = {};
             clearDescriptor._clearColours = true;

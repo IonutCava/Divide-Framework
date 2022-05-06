@@ -711,7 +711,7 @@ void WarScene::toggleCamera(const InputParams param) {
 }
 
 void WarScene::postLoadMainThread() {
-    const vec2<U16> screenResolution = _context.gfx().renderTargetPool().screenTarget().getResolution();
+    const vec2<U16> screenResolution = _context.gfx().renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getResolution();
     const Rect<U16> targetRenderViewport = { 0u, 0u, screenResolution.width, screenResolution.height };
 
     GUIButton* btn = _GUI->addButton("Simulate",
