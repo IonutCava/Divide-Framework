@@ -415,7 +415,6 @@ namespace Divide {
                .set_engine_version(Config::ENGINE_VERSION_MAJOR, Config::ENGINE_VERSION_MINOR, Config::ENGINE_VERSION_PATCH)
                .request_validation_layers(Config::ENABLE_GPU_VALIDATION)
                .require_api_version(1, Config::MINIMUM_VULKAN_MINOR_VERSION, 0)
-               .desire_api_version(1, Config::DESIRED_VULKAN_MINOR_VERSION, 0)
                .set_debug_callback(divide_debug_callback)
                .set_debug_callback_user_data_pointer(this);
 

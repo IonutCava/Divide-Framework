@@ -236,7 +236,7 @@ bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, Image
 
 bool Texture::checkTransparency(const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData) {
 
-    if (fileData.ignoreAlphaChannelTransparency()) {
+    if (fileData.ignoreAlphaChannelTransparency() || fileData.hasDummyAlphaChannel()) {
         _hasTransparency = false;
         _hasTranslucency = false;
         return true;

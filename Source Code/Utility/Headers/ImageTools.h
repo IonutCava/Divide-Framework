@@ -199,7 +199,10 @@ struct ImageData final : NonCopyable {
     [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
     [[nodiscard]] bool loadFromFile(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, ImportOptions options);
 
+    /// If true, then the source image's alpha channel is used for data and not opacity (so skip mip-filtering for example)
     PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);
+    /// If true, then the source image was probably RGB and we loaded it as RGBA
+    PROPERTY_RW(bool, hasDummyAlphaChannel, false);
 
   protected:
     friend class ImageDataInterface;
@@ -210,22 +213,22 @@ struct ImageData final : NonCopyable {
     //Each entry is a separate mip map.
     vector<ImageLayer> _layers{};
     vector<U8> _decompressedData{};
-    /// 16bit data
-    bool _16Bit = false;
-    /// HDR data
-    bool _isHDR = false;
+    /// the image path
+    ResourcePath _path{};
+    /// the actual image filename
+    ResourcePath _name{};
     /// the image format
     GFXImageFormat _format = GFXImageFormat::COUNT;
     /// the image data type
     GFXDataFormat _dataType = GFXDataFormat::COUNT;
     /// the image requested data type. COUNT == AUTO
     GFXDataFormat _requestedDataFormat = GFXDataFormat::COUNT;
-    /// the image path
-    ResourcePath _path{};
-    /// the actual image filename
-    ResourcePath _name{};
     /// image's bits per pixel
     U8 _bpp = 0;
+    /// 16bit data
+    bool _16Bit = false;
+    /// HDR data
+    bool _isHDR = false;
 };
 
 enum class SaveImageFormat : U8 {

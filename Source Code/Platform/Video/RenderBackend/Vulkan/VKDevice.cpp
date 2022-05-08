@@ -8,8 +8,7 @@ namespace Divide {
     VKDevice::VKDevice(vkb::Instance& instance, VkSurfaceKHR targetSurface)
     {
         vkb::PhysicalDeviceSelector selector{ instance };
-        auto physicalDeviceSelection = selector.set_minimum_version(1, 2)
-                                               .set_desired_version(1, 3)
+        auto physicalDeviceSelection = selector.set_minimum_version(1, Config::MINIMUM_VULKAN_MINOR_VERSION)
                                                .set_surface(targetSurface)
                                                .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
                                                .select();

@@ -269,6 +269,16 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
     _isHDR = (stbi_is_hdr_from_file(f) == TRUE);
     _16Bit = _isHDR ? false : (stbi_is_16_bit_from_file(f) == TRUE);
 
+
+    _hasDummyAlphaChannel = false;
+    {
+        I32 x, y, n;
+        if (stbi_info_from_file(f, &x, &y, &n) && n == 3) {
+            _hasDummyAlphaChannel = true;
+            Console::warnfn(Locale::Get(_ID("WARN_IMAGETOOLS_RGB_FORMAT")), fullPath.c_str());
+        }
+    }
+
     if (!_isHDR && !_16Bit) {
         if (Texture::UseTextureDDSCache() && !_isHDR && !_16Bit) {
             const ResourcePath cachePath = Texture::GetCachePath(_path);
@@ -375,20 +385,25 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
         }
     }
 
+    const I32 req_comp = _hasDummyAlphaChannel ? 4 : 0;
     if (_isHDR) {
-        dataHDR = stbi_loadf_from_file(f, &width, &height, &comp, 0);
+        dataHDR = stbi_loadf_from_file(f, &width, &height, &comp, req_comp);
         _dataType = GFXDataFormat::FLOAT_32;
     } else if (_16Bit) {
-        data16Bit = stbi_load_from_file_16(f, &width, &height, &comp, 0);
+        data16Bit = stbi_load_from_file_16(f, &width, &height, &comp, req_comp);
         _dataType = GFXDataFormat::UNSIGNED_SHORT;
     } else {
-        dataLDR = stbi_load_from_file(f, &width, &height, &comp, 0);
+        dataLDR = stbi_load_from_file(f, &width, &height, &comp, req_comp);
         _dataType = GFXDataFormat::UNSIGNED_BYTE;
     }
 
     if (dataHDR == nullptr && data16Bit == nullptr && dataLDR == nullptr) {
         Console::errorfn(Locale::Get(_ID("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE")), fullPath.c_str());
         return false;
+    }
+
+    if (_hasDummyAlphaChannel) {
+        comp = req_comp;
     }
 
     ImageLayer& layer = _layers.emplace_back();
@@ -431,11 +446,11 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
             } break;
         };
     }
+    DIVIDE_ASSERT(comp != 3, "RGB textures (e.g. 24bit) not supported due to Vulkan limitations");
 
     switch (comp) {
         case 1 : _format = GFXImageFormat::RED;  break;
         case 2 : _format = GFXImageFormat::RG;   break;
-        case 3 : _format = GFXImageFormat::RGB;  break;
         case 4 : _format = GFXImageFormat::RGBA; break;
         default:
             DIVIDE_UNEXPECTED_CALL();
