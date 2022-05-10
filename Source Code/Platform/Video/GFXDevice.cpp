@@ -202,52 +202,47 @@ ErrorCode GFXDevice::initRenderingAPI(const I32 argc, char** argv, const RenderA
     return ShaderProgram::OnStartup(parent().resourceCache());
 }
 
-void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeRender, size_t targetSizeCullCounter) {
+void GFXDevice::updateDescriptorSet(const U32 resourceSlot, const GFX::DescriptorSetBindingData& data) {
+    /*for (auto& binding : _perFrameSet._bindings) {
+        if (binding._resourceSlot == resourceSlot) {
+            binding._data = data;
+            return;
+        }
+    }
+
+    DIVIDE_UNEXPECTED_CALL();*/
+}
+
+void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCounter) {
     if (targetSizeCam == 0u) { targetSizeCam = 1u; }
-    if (targetSizeRender == 0u) { targetSizeRender = 1u; }
     if (targetSizeCullCounter == 0u) { targetSizeCullCounter = 1u; }
 
     const bool resizeCamBuffer = _gfxBuffers._currentSizeCam != targetSizeCam;
-    const bool resizeRenderBuffer = _gfxBuffers._currentSizeRender != targetSizeRender;
     const bool resizeCullCounter = _gfxBuffers._currentSizeCullCounter != targetSizeCullCounter;
 
-    if (!resizeCamBuffer && !resizeRenderBuffer && !resizeCullCounter) {
+    if (!resizeCamBuffer && !resizeCullCounter) {
         return;
     }
 
     DIVIDE_ASSERT(ValidateGPUDataStructure());
 
-    _gfxBuffers.reset(resizeCamBuffer, resizeRenderBuffer, resizeCullCounter);
+    _gfxBuffers.reset(resizeCamBuffer, resizeCullCounter);
     _gfxBuffers._currentSizeCam = targetSizeCam;
-    _gfxBuffers._currentSizeRender = targetSizeRender;
     _gfxBuffers._currentSizeCullCounter = targetSizeCullCounter;
 
-    if (resizeCamBuffer || resizeRenderBuffer) {
+    if (resizeCamBuffer) {
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._usage = ShaderBuffer::Usage::CONSTANT_BUFFER;
         bufferDescriptor._bufferParams._elementCount = 1;
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
+        bufferDescriptor._ringBufferLength = to_U32(targetSizeCam);
+        bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::CamData);
+        bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
 
-        if (resizeCamBuffer) {
-            bufferDescriptor._ringBufferLength = to_U32(targetSizeCam);
-            bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::CamData);
-            bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
-
-            for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
-                bufferDescriptor._name = Util::StringFormat("DVD_GPU_CAM_DATA_%d", i);
-                _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newSB(bufferDescriptor);
-            }
-        }
-        if (resizeRenderBuffer) {
-            bufferDescriptor._ringBufferLength = to_U32(targetSizeRender);
-            bufferDescriptor._bufferParams._elementSize = sizeof(GFXShaderData::RenderData);
-            bufferDescriptor._bufferParams._initialData = { (Byte*)&_gpuBlock._renderData, bufferDescriptor._bufferParams._elementSize };
-
-            for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
-                bufferDescriptor._name = Util::StringFormat("DVD_GPU_RENDER_DATA_%d", i);
-                _gfxBuffers._perFrameBuffers[i]._renderDataBuffer = newSB(bufferDescriptor);
-            }
+        for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
+            bufferDescriptor._name = Util::StringFormat("DVD_GPU_CAM_DATA_%d", i);
+            _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newSB(bufferDescriptor);
         }
     }
 
@@ -278,7 +273,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     RenderPassExecutor::OnStartup(*this);
     GFX::InitPools();
 
-    resizeGPUBlocks(TargetBufferSizeCam, TargetBufferSizeRender, RenderPass::DataBufferRingSize);
+    resizeGPUBlocks(TargetBufferSizeCam, RenderPass::DataBufferRingSize);
 
     _shaderComputeQueue = MemoryManager_NEW ShaderComputeQueue(cache);
 
@@ -936,7 +931,89 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     if (context().app().onSizeChange(params)) {
         NOP();
     }
-
+    /*
+    _perFrameSet._usage = DescriptorSetUsage::PER_FRAME_SET;
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::UNIFORM_BUFFER; //Cam block
+        binding._resourceSlot = to_U32(ShaderBufferLocation::CAM_BLOCK);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::UNIFORM_BUFFER; //Scene data
+        binding._resourceSlot = to_U32(ShaderBufferLocation::SCENE_DATA);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::UNIFORM_BUFFER; //Light scene data
+        binding._resourceSlot = to_U32(ShaderBufferLocation::LIGHT_SCENE);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::UNIFORM_BUFFER; //Probe block
+        binding._resourceSlot = to_U32(ShaderBufferLocation::PROBE_DATA);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::SHADER_STORAGE_BUFFER; //Light block
+        binding._resourceSlot = to_U32(ShaderBufferLocation::LIGHT_NORMAL);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::SHADER_STORAGE_BUFFER; //Light grid
+        binding._resourceSlot = to_U32(ShaderBufferLocation::LIGHT_GRID);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::SHADER_STORAGE_BUFFER; //Light indices
+        binding._resourceSlot = to_U32(ShaderBufferLocation::LIGHT_INDICES);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::SHADER_STORAGE_BUFFER; //Light cluster AABBs
+        binding._resourceSlot = to_U32(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::SHADER_STORAGE_BUFFER; //Shadow block
+        binding._resourceSlot = to_U32(ShaderBufferLocation::LIGHT_SHADOW);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER; //Single shadow maps
+        binding._resourceSlot = to_U32(TextureUsage::SHADOW_SINGLE);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER; //Layered shadow maps
+        binding._resourceSlot = to_U32(TextureUsage::SHADOW_LAYERED);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER; //Cube shadow maps
+        binding._resourceSlot = to_U32(TextureUsage::SHADOW_CUBE);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER; //Prefiltered env map
+        binding._resourceSlot = to_U32(TextureUsage::REFLECTION_PREFILTERED);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER; //Irradiance env map
+        binding._resourceSlot = to_U32(TextureUsage::IRRADIANCE);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER; //BRDF LUT map
+        binding._resourceSlot = to_U32(TextureUsage::BRDF_LUT);
+    }
+    {
+        auto& binding = _perFrameSet._bindings.emplace_back();
+        binding._type = GFX::DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER; //SSR Tex
+        binding._resourceSlot = to_U32(TextureUsage::SSR_SAMPLE);
+    }
+    */
     // Everything is ready from the rendering point of view
     return ErrorCode::NO_ERR;
 }
@@ -984,7 +1061,7 @@ void GFXDevice::closeRenderingAPI() {
     _imShader = nullptr;
     _imWorldShader = nullptr;
     _imWorldOITShader = nullptr;
-    _gfxBuffers.reset(true, true, true);
+    _gfxBuffers.reset(true, true);
 
     // Close the shader manager
     MemoryManager::DELETE(_shaderComputeQueue);
@@ -1034,8 +1111,8 @@ void GFXDevice::idle(const bool fast) {
 
 void GFXDevice::update(const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
     getRenderer().postFX().update(deltaTimeUSFixed, deltaTimeUSApp);
-    _gpuBlock._renderData._renderProperties.x += Time::MicrosecondsToMilliseconds<F32>(deltaTimeUSFixed);
-    _gpuBlock._renderNeedsUpload = true;
+    _gpuBlock._camData._renderProperties.x += Time::MicrosecondsToMilliseconds<F32>(deltaTimeUSFixed);
+    _gpuBlock._camNeedsUpload = true;
 }
 
 void GFXDevice::beginFrame(DisplayWindow& window, const bool global) {
@@ -1105,11 +1182,10 @@ void GFXDevice::endFrame(DisplayWindow& window, const bool global) {
     DIVIDE_ASSERT(_viewportStack.empty(), "Not all viewports have been cleared properly! Check command buffers for missmatched push/pop!");
     // Activate the default render states
     _api->endFrame(window, global);
-    if (_gfxBuffers._needsResizeCam || _gfxBuffers._needsResizeRender) {
+    if (_gfxBuffers._needsResizeCam) {
         resizeGPUBlocks(_gfxBuffers._needsResizeCam ? _gfxBuffers._currentSizeCam + TargetBufferSizeCam : _gfxBuffers._currentSizeCam,
-                        _gfxBuffers._needsResizeRender ? _gfxBuffers._currentSizeRender + TargetBufferSizeRender : _gfxBuffers._currentSizeRender,
                         _gfxBuffers._currentSizeCullCounter);
-        _gfxBuffers._needsResizeCam = _gfxBuffers._needsResizeRender = false;
+        _gfxBuffers._needsResizeCam = false;
     }
     _gfxBuffers.onEndFrame();
 }
@@ -1123,6 +1199,7 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
                                 const vec3<F32>& pos,
                                 const vec2<F32>& zPlanes,
                                 GFX::CommandBuffer& commandsInOut,
+                                GFX::MemoryBarrierCommand& memCmdInOut,
                                 std::array<Camera*, 6>& cameras) {
     OPTICK_EVENT();
 
@@ -1210,7 +1287,7 @@ void GFXDevice::generateCubeMap(RenderPassParams& params,
         camera->lookAt(pos, pos + CameraDirections[i].first * zPlanes.max, -CameraDirections[i].second);
         params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
         // Pass our render function to the renderer
-        passMgr->doCustomPass(camera, params, commandsInOut);
+        passMgr->doCustomPass(camera, params, commandsInOut, memCmdInOut);
     }
 }
 
@@ -1219,6 +1296,7 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
                                           const vec3<F32>& pos,
                                           const vec2<F32>& zPlanes,
                                           GFX::CommandBuffer& bufferInOut,
+                                          GFX::MemoryBarrierCommand& memCmdInOut,
                                           std::array<Camera*, 2>& cameras)
 {
     OPTICK_EVENT();
@@ -1290,7 +1368,7 @@ void GFXDevice::generateDualParaboloidMap(RenderPassParams& params,
         // Pass our render function to the renderer
         params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
 
-        passMgr->doCustomPass(camera, params, bufferInOut);
+        passMgr->doCustomPass(camera, params, bufferInOut, memCmdInOut);
     }
 }
 
@@ -1571,39 +1649,27 @@ const DescriptorSet& GFXDevice::uploadGPUBlock() {
     if (_gpuBlock._camNeedsUpload) {
         frameBuffers._camDataBuffer->incQueue();
         if (++frameBuffers._camWritesThisFrame >= _gfxBuffers._currentSizeCam) {
-            //We've wrapped around this buffer inside of a single frame so sync performance will degrade
-            //unless we increase our buffer size
+            //We've wrapped around this buffer inside of a single frame so sync performance will degrade unless we increase our buffer size
             _gfxBuffers._needsResizeCam = true;
+            //Because we are now overwriting existing data, we need to make sure that any fences that could possibly protect us have been flushed
+            DIVIDE_ASSERT(frameBuffers._writeMemCmd._bufferLocks.empty());
         }
-        frameBuffers._camDataBuffer->writeData(&_gpuBlock._camData);
-    }
-
-    if (_gpuBlock._renderNeedsUpload) {
-        frameBuffers._renderDataBuffer->incQueue();
-        if (++frameBuffers._renderWritesThisFrame >= _gfxBuffers._currentSizeRender) {
-            //We've wrapped around this buffer inside of a single frame so sync performance will degrade
-            //unless we increase our buffer size
-            _gfxBuffers._needsResizeRender = true;
-        }
-        frameBuffers._renderDataBuffer->writeData(&_gpuBlock._renderData);
+        frameBuffers._writeMemCmd._bufferLocks.push_back(frameBuffers._camDataBuffer->writeData(&_gpuBlock._camData));
+        _gpuBlock._camNeedsUpload = false;
     }
 
     ShaderBufferBinding camBufferBinding;
     camBufferBinding._binding = ShaderBufferLocation::CAM_BLOCK;
     camBufferBinding._buffer = frameBuffers._camDataBuffer.get();
     camBufferBinding._elementRange = { 0, 1 };
-    camBufferBinding._lockType = _gpuBlock._camNeedsUpload ? ShaderBufferLockType::AFTER_DRAW_COMMANDS : ShaderBufferLockType::COUNT;
     bindSet._buffers.add(camBufferBinding);
 
-    ShaderBufferBinding renderBufferBinding;
-    renderBufferBinding._binding = ShaderBufferLocation::RENDER_BLOCK;
-    renderBufferBinding._buffer = frameBuffers._renderDataBuffer.get();
-    renderBufferBinding._elementRange = { 0, 1 };
-    renderBufferBinding._lockType = _gpuBlock._renderNeedsUpload ? ShaderBufferLockType::AFTER_DRAW_COMMANDS : ShaderBufferLockType::COUNT;
-    bindSet._buffers.add(renderBufferBinding);
-
-    _gpuBlock._camNeedsUpload = false;
-    _gpuBlock._renderNeedsUpload = false;
+    {
+        GFX::DescriptorSetBindingData camData{};
+        camData._buffer = _gfxBuffers.crtBuffers()._camDataBuffer.get();
+        camData._range = { 0, 1 };
+        updateDescriptorSet(to_U32(ShaderBufferLocation::CAM_BLOCK), camData);
+    }
 
     return bindSet;
 }
@@ -1619,15 +1685,15 @@ void GFXDevice::setClipPlanes(const FrustumClipPlanes& clipPlanes) {
         U8 count = 0u;
         for (U8 i = 0u; i < to_U8(ClipPlaneIndex::COUNT); ++i) {
             if (states[i]) {
-                _gpuBlock._renderData._clipPlanes[count++].set(planes[i]._equation);
+                _gpuBlock._camData._clipPlanes[count++].set(planes[i]._equation);
                 if (count == Config::MAX_CLIP_DISTANCES) {
                     break;
                 }
             }
         }
 
-        _gpuBlock._renderData._renderProperties.w = to_F32(count);
-        _gpuBlock._renderNeedsUpload = true;
+        _gpuBlock._camData._renderProperties.w = to_F32(count);
+        _gpuBlock._camNeedsUpload = true;
     }
 }
 
@@ -1711,26 +1777,26 @@ void GFXDevice::shadowingSettings(const F32 lightBleedBias, const F32 minShadowV
 
 void GFXDevice::setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix) {
     bool projectionDirty = false, viewDirty = false;
-    if (_gpuBlock._renderData._PreviousViewMatrix != prevViewMatrix) {
-        _gpuBlock._renderData._PreviousViewMatrix = prevViewMatrix;
+    if (_gpuBlock._camData._PreviousViewMatrix != prevViewMatrix) {
+        _gpuBlock._camData._PreviousViewMatrix = prevViewMatrix;
         viewDirty = true;
     }
-    if (_gpuBlock._renderData._PreviousProjectionMatrix != prevProjectionMatrix) {
-        _gpuBlock._renderData._PreviousProjectionMatrix = prevProjectionMatrix;
+    if (_gpuBlock._camData._PreviousProjectionMatrix != prevProjectionMatrix) {
+        _gpuBlock._camData._PreviousProjectionMatrix = prevProjectionMatrix;
         projectionDirty = true;
     }
 
     if (projectionDirty || viewDirty) {
-        mat4<F32>::Multiply(_gpuBlock._renderData._PreviousViewMatrix, _gpuBlock._renderData._PreviousProjectionMatrix, _gpuBlock._renderData._PreviousViewProjectionMatrix);
-        _gpuBlock._renderNeedsUpload = true;
+        mat4<F32>::Multiply(_gpuBlock._camData._PreviousViewMatrix, _gpuBlock._camData._PreviousProjectionMatrix, _gpuBlock._camData._PreviousViewProjectionMatrix);
+        _gpuBlock._camNeedsUpload = true;
     }
 }
 
 void GFXDevice::materialDebugFlag(const MaterialDebugFlag flag) {
     if (_materialDebugFlag != flag) {
         _materialDebugFlag = flag;
-        _gpuBlock._renderData._renderProperties.z = to_F32(materialDebugFlag());
-        _gpuBlock._renderNeedsUpload = true;
+        _gpuBlock._camData._renderProperties.z = to_F32(materialDebugFlag());
+        _gpuBlock._camNeedsUpload = true;
     }
 }
 /// Update the rendering viewport
@@ -1771,10 +1837,6 @@ const CameraSnapshot& GFXDevice::getCameraSnapshot(const PlayerIndex index) cons
     return _cameraSnapshotHistory[index];
 }
 
-const GFXShaderData::RenderData& GFXDevice::renderingData() const noexcept {
-    return _gpuBlock._renderData;
-}
-
 const GFXShaderData::CamData& GFXDevice::cameraData() const noexcept {
     return _gpuBlock._camData;
 }
@@ -1791,6 +1853,8 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     if (batch) {
         commandBuffer.batch();
     }
+
+    static GFX::MemoryBarrierCommand gpuBlockMemCommand{};
 
     const auto[error, lastCmdIndex] = commandBuffer.validate();
     if (error != GFX::ErrorType::NONE) {
@@ -1811,17 +1875,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
             assert(binding._buffer != nullptr);
             Attorney::ShaderBufferBind::bindRange(*binding._buffer, 
                                                   to_U8(binding._binding),
-                                                  binding._elementRange.min,
-                                                  binding._elementRange.max);
-
-            if (binding._lockType != ShaderBufferLockType::COUNT) {
-                if (!binding._buffer->lockRange(binding._elementRange.min,
-                                                binding._elementRange.max,
-                                                binding._lockType))
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-            }
+                                                  binding._elementRange);
         }
         if (!makeImagesResident(set._images)) {
             DIVIDE_UNEXPECTED_CALL();
@@ -1887,7 +1941,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
 
                 const GFX::ReadBufferDataCommand& crtCmd = *commandBuffer.get<GFX::ReadBufferDataCommand>(cmd);
                 if (crtCmd._buffer != nullptr && crtCmd._target != nullptr) {
-                    crtCmd._buffer->readData(crtCmd._offsetElementCount, crtCmd._elementCount, crtCmd._target);
+                    crtCmd._buffer->readData({ crtCmd._offsetElementCount, crtCmd._elementCount }, crtCmd._target);
                 }
             } break;
             case GFX::CommandType::CLEAR_BUFFER_DATA: {
@@ -1895,7 +1949,9 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
 
                 const GFX::ClearBufferDataCommand& crtCmd = *commandBuffer.get<GFX::ClearBufferDataCommand>(cmd);
                 if (crtCmd._buffer != nullptr) {
-                    crtCmd._buffer->clearData(crtCmd._offsetElementCount, crtCmd._elementCount);
+                    GFX::MemoryBarrierCommand memCmd{};
+                    memCmd._bufferLocks.push_back(crtCmd._buffer->clearData({ crtCmd._offsetElementCount, crtCmd._elementCount }));
+                    _api->flushCommand(&memCmd);
                 }
             } break;
             case GFX::CommandType::SET_VIEWPORT: {
@@ -1945,7 +2001,6 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
             } break;
             case GFX::CommandType::EXTERNAL: {
                 OPTICK_EVENT("EXTERNAL");
-
                 bindDescriptorSet(uploadGPUBlock());
                 commandBuffer.get<GFX::ExternalCommand>(cmd)->_cbk();
             } break;
@@ -1967,11 +2022,16 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
             } [[fallthrough]];
             default: break;
         }
-
-        _api->flushCommand(cmd, commandBuffer);
+        _api->flushCommand(commandBuffer.get<GFX::CommandBase>(cmd));
     }
 
     _api->postFlushCommandBuffer(commandBuffer);
+
+    GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
+    if (!frameBuffers._writeMemCmd._bufferLocks.empty()) {
+        _api->flushCommand(&frameBuffers._writeMemCmd);
+        frameBuffers._writeMemCmd._bufferLocks.resize(0);
+    }
 }
 
 /// Transform our depth buffer to a HierarchicalZ buffer (for occlusion queries and screen space reflections)
@@ -2105,8 +2165,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
     ShaderBufferBinding atomicCount = {};
     atomicCount._binding = ShaderBufferLocation::ATOMIC_COUNTER_0;
     atomicCount._buffer = cullBuffer;
-    atomicCount._elementRange.set(0, 1);
-    atomicCount._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
+    atomicCount._elementRange = { 0, 1 };
     set._buffers.add(atomicCount); // Atomic counter should be cleared by this point
 
     mat4<F32> viewProjectionMatrix;
@@ -2228,6 +2287,7 @@ void GFXDevice::initDebugViews() {
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
+        shaderDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         // The LinearDepth variant converts the depth values to linear values between the 2 scene z-planes
         ResourceDescriptor fbPreview("fbPreviewLinearDepth");
@@ -2719,7 +2779,7 @@ void GFXDevice::debugDraw(const SceneRenderState& sceneRenderState, GFX::Command
 #pragma endregion
 
 #pragma region GPU Object instantiation
-GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const I32 maxCommandCount) {
+GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const I32 maxCommandCount, const U32 maxVertices) {
     const U32 newSize = to_U32(maxCommandCount * RenderPass::DataBufferRingSize);
 
     GenericVertexData* ret = nullptr;
@@ -2744,7 +2804,7 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
 
     GenericVertexData::IndexBuffer idxBuff;
     idxBuff.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
-    idxBuff.count = (1 << 16) * 3;
+    idxBuff.count = maxVertices * 3;
     idxBuff.dynamic = true;
 
     ret->renderIndirect(false);
@@ -2752,8 +2812,9 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
     GenericVertexData::SetBufferParams params = {};
     params._buffer = 0;
     params._useRingBuffer = true;
+    params._useAutoSyncObjects = false; // we manually call sync after all draw commands are submitted
 
-    params._bufferParams._elementCount = 1 << 16;
+    params._bufferParams._elementCount = maxVertices;
     params._bufferParams._elementSize = sizeof(ImDrawVert);
     params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
     params._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;

@@ -497,8 +497,8 @@ vector<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& scre
     return ret;
 }
 
-const DescriptorSet& SceneManager::sceneDescriptorSet() const {
-    return  _sceneData->getDescriptorSet();
+GFX::MemoryBarrierCommand SceneManager::bindSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) const {
+    return _sceneData->bindSceneDescriptorSet(bufferInOut);
 }
 
 bool SceneManager::frameStarted(const FrameEvent& evt) {
@@ -722,12 +722,12 @@ VisibleNodeList<>& SceneManager::cullSceneGraph(const NodeCullParams& params, co
     return _renderPassCuller->frustumCull(params, cullFlags, *activeScene.sceneGraph(), *activeScene.state(), _parent.platformContext());
 }
 
-void SceneManager::prepareLightData(const RenderStage stage, const CameraSnapshot& cameraSnapshot) {
+void SceneManager::prepareLightData(const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
 
     if (stage != RenderStage::SHADOW) {
         getActiveScene().lightPool()->sortLightData(stage, cameraSnapshot);
-        getActiveScene().lightPool()->uploadLightData(stage, cameraSnapshot);
+        getActiveScene().lightPool()->uploadLightData(stage, cameraSnapshot, memCmdInOut);
     }
 }
 

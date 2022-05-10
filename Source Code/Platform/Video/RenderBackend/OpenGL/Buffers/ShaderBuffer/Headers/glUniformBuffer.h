@@ -46,16 +46,16 @@ class glUniformBuffer final : public ShaderBuffer {
         glUniformBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
         ~glUniformBuffer() = default;
 
-        void clearBytes(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes) override;
-        void readBytes(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes, bufferPtr result) const override;
-        void writeBytes(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes, bufferPtr data) override;
+        BufferLock clearBytes(BufferRange range) override;
+        void readBytes(BufferRange range, bufferPtr result) const override;
+        BufferLock writeBytes(BufferRange range, bufferPtr data) override;
 
-        bool lockByteRange(ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes, ShaderBufferLockType lockType) override;
-        bool bindByteRange(U8 bindIndex, ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes) override;
+        [[nodiscard]] bool lockByteRange(BufferRange range, SyncObject* sync) const override;
+        [[nodiscard]] bool bindByteRange(U8 bindIndex, BufferRange range) override;
 
         [[nodiscard]] inline glBufferImpl* bufferImpl() const { return _bufferImpl.get(); }
 
-        PROPERTY_R(ptrdiff_t, alignedBufferSize, 0);
+        PROPERTY_R(size_t, alignedBufferSize, 0u);
 
     private:
         glBufferImpl_uptr _bufferImpl = nullptr;

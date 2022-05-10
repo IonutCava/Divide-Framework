@@ -84,6 +84,8 @@ class glGenericVertexData final : public GenericVertexData {
 
     void setBuffer(const SetBufferParams& params) override;
 
+    void insertFencesIfNeeded() override;
+
     void updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) override;
 
    protected:
@@ -93,6 +95,8 @@ class glGenericVertexData final : public GenericVertexData {
 
    protected:
     void bindBufferInternal(U32 buffer, U32 location);
+
+    void lockBuffersInternal(bool force);
 
     void rebuildCountAndIndexData(U32 drawCount,
                                   U32 indexCount,
@@ -106,13 +110,15 @@ class glGenericVertexData final : public GenericVertexData {
         genericBufferImpl(genericBufferImpl&& other) 
             : _buffer(MOV(other._buffer)),
               _ringSizeFactor(other._ringSizeFactor),
-              _wasWritten(other._wasWritten)
+              _writtenRange(other._writtenRange)
         {
         }
 
         glBufferImpl_uptr _buffer = nullptr;
         size_t _ringSizeFactor = 1u;
-        bool _wasWritten = true;
+        BufferRange _writtenRange{};
+        bool _usedAfterWrite = false;
+        bool _useAutoSyncObjects = true;
     };
     glVertexDataIndexContainer _indexInfo;
     vector<genericBufferImpl> _bufferObjects;

@@ -394,7 +394,6 @@ void Vegetation::createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_pt
     ShaderModuleDescriptor compModule = {};
     compModule._moduleType = ShaderType::COMPUTE;
     compModule._sourceFile = "instanceCullVegetation.glsl";
-    compModule._defines.emplace_back("NO_CAM_BLOCK");
     compModule._defines.emplace_back(Util::StringFormat("WORK_GROUP_SIZE %d", WORK_GROUP_SIZE));
     compModule._defines.emplace_back(Util::StringFormat("MAX_TREE_INSTANCES %d", s_maxTreeInstances));
     compModule._defines.emplace_back(Util::StringFormat("MAX_GRASS_INSTANCES %d", s_maxGrassInstances));
@@ -641,7 +640,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
                                RenderingComponent& rComp,
                                RenderStagePass renderStagePass,
                                const CameraSnapshot& cameraSnapshot,
-                               bool refreshData) 
+                               bool refreshData)
 {
     rComp.getPushConstants(renderStagePass).set(_ID("dvd_terrainChunkOffset"), GFX::PushConstantType::UINT, _terrainChunk.ID());
     rComp.addAdditionalCommands(renderStagePass, nullptr);
@@ -689,23 +688,24 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull Vegetation" });
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._textureData.add(TextureEntry{ hizTexture->data(), hizAttachment.samplerHash(), TextureUsage::UNIT0 });
+
+        GFX::MemoryBarrierCommand memCmd{};
         if (s_grassData) {
             ShaderBufferBinding bufferGrass;
             bufferGrass._binding = ShaderBufferLocation::GRASS_DATA;
             bufferGrass._buffer = s_grassData.get();
             bufferGrass._elementRange = { 0u, s_grassData->getPrimitiveCount() };
-            bufferGrass._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
             set._buffers.add(bufferGrass);
         }
+
         if (s_treeData) {
             ShaderBufferBinding bufferTrees;
             bufferTrees._binding = ShaderBufferLocation::TREE_DATA;
             bufferTrees._buffer = s_treeData.get();
             bufferTrees._elementRange = { 0u, s_treeData->getPrimitiveCount() };
-            bufferTrees._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
-
             set._buffers.add(bufferTrees);
         }
+
         GFX::DispatchComputeCommand computeCmd = {};
         if (_instanceCountGrass > 0) {
             computeCmd._computeGroupSize.set((_instanceCountGrass + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1);
@@ -723,7 +723,6 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             EnqueueCommand(bufferInOut, computeCmd);
         }
 
-        GFX::MemoryBarrierCommand memCmd = {};
         memCmd._barrierMask = to_base(MemoryBarrierType::SHADER_STORAGE);
         EnqueueCommand(bufferInOut, memCmd);
 

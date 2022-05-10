@@ -75,6 +75,12 @@ namespace Divide {
             });
     }
 
+    template<typename T, typename A1, typename A2>
+    void insert(eastl::vector<T, A1>& target, const eastl::vector<T, A2>& source)
+    {
+        target.insert(end(target), begin(source), end(source));
+    }
+
     template <typename T, typename A, class Predicate>
     bool dvd_erase_if(eastl::vector<T, A>& vec, Predicate&& pred) {
         const size_t size = vec.size();

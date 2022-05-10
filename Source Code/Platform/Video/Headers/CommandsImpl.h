@@ -39,6 +39,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenericDrawCommand.h"
 #include "PushConstants.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Utility/Headers/TextLabel.h"
 
@@ -289,6 +290,7 @@ DEFINE_COMMAND_BEGIN(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);
     MemoryBarrierCommand(const U32 mask) noexcept : _barrierMask(mask) {}
 
     U32 _barrierMask = 0u;
+    BufferLocks _bufferLocks;
 DEFINE_COMMAND_END(MemoryBarrierCommand);
 
 DEFINE_COMMAND_BEGIN(ReadBufferDataCommand, CommandType::READ_BUFFER_DATA);

@@ -247,7 +247,10 @@ private:
     FrustumCollision clippingCullNode(const NodeCullParams& params) const;
     FrustumCollision frustumCullNode(const NodeCullParams& params, const U16 cullFlags,F32& distanceToClosestPointSQ) const;
     /// Called after preRender and after we rebuild our command buffers. Useful for modifying the command buffer that's going to be used for this RenderStagePass
-    void prepareRender(RenderingComponent& rComp, RenderStagePass renderStagePass, const CameraSnapshot& cameraSnapshot, bool refreshData);
+    void prepareRender(RenderingComponent& rComp,
+                       RenderStagePass renderStagePass,
+                       const CameraSnapshot& cameraSnapshot,
+                       bool refreshData);
     /// Called whenever we send a networking packet from our NetworkingComponent (if any). FrameCount is the frame ID sent with the packet.
     void onNetworkSend(U32 frameCount) const;
     /// Returns a bottom-up list(leafs -> root) of all of the nodes parented under the current one.

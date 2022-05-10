@@ -811,7 +811,7 @@ constexpr T SecondsToNanoseconds(const U a) noexcept {
 
 namespace Util {
 
-inline ptrdiff_t GetAlignmentCorrected(const ptrdiff_t value, const size_t alignment) noexcept {
+inline size_t GetAlignmentCorrected(const size_t value, const size_t alignment) noexcept {
     return value % alignment == 0u
                              ? value
                              : ((value + alignment - 1u) / alignment) * alignment;

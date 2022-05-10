@@ -532,7 +532,9 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
     }
 
     if (editorRunning) {
-        ComputeViewports(_platformContext.editor().targetViewport(), _editorViewports, playerCount);
+        const vec2<U16> editorRTSize = _platformContext.editor().getRenderTargetHandle()._rt->getResolution();
+        const Rect<I32> targetViewport{ 0, 0, to_I32(editorRTSize.width), to_I32(editorRTSize.height) };
+        ComputeViewports(targetViewport, _editorViewports, playerCount);
     }
 
     RenderPassManager::RenderParams renderParams = {};

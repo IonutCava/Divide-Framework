@@ -511,7 +511,7 @@ struct Circle {
 
 [[nodiscard]] bool IntersectCircles(const Circle& cA, const Circle& cB, vec2<F32>* pointsOut) noexcept;
 
-[[nodiscard]] ptrdiff_t GetAlignmentCorrected(const ptrdiff_t value, const size_t alignment) noexcept;
+[[nodiscard]] ptrdiff_t size_tGetAlignmentCorrected(const size_t value, const size_t alignment) noexcept;
 
 /// a la Boost
 template <typename T, typename... Rest>

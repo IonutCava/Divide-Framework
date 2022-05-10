@@ -42,7 +42,7 @@ namespace Divide {
     [[nodiscard]] bool Matches(const Item&, const SearchType&) noexcept { return false; }
 
     template<>
-    [[nodiscard]] inline bool Condition(const ShaderBufferBinding& entry) noexcept { return entry._elementRange.max > 0u; }
+    [[nodiscard]] inline bool Condition(const ShaderBufferBinding& entry) noexcept { return entry._elementRange._length > 0u; }
     template<>
     [[nodiscard]] inline bool Matches(const ShaderBufferBinding& lhs, const ShaderBufferBinding& rhs) noexcept { return lhs._binding == rhs._binding; }
     template<>

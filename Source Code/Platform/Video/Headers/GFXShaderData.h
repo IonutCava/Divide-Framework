@@ -43,21 +43,15 @@ enum class RenderStage : U8;
 
 struct GFXShaderData {
 #pragma pack(push, 1)
-      struct RenderData {
-          mat4<F32> _PreviousViewMatrix = MAT4_IDENTITY;
-          mat4<F32> _PreviousProjectionMatrix = MAT4_IDENTITY;
-          mat4<F32> _PreviousViewProjectionMatrix = MAT4_IDENTITY;
-          //x - elapsed time (ms), y - unused, z = material debug flag, w - clip plane count
-          vec4<F32> _renderProperties = { 0.f, 0.f, to_F32(to_base(MaterialDebugFlag::COUNT)), 0.f };
-          vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
-      };
-
       struct CamData {
           mat4<F32> _ProjectionMatrix = MAT4_IDENTITY;
           mat4<F32> _InvProjectionMatrix = MAT4_IDENTITY;
           mat4<F32> _ViewMatrix = MAT4_IDENTITY;
           mat4<F32> _InvViewMatrix = MAT4_IDENTITY;
           mat4<F32> _ViewProjectionMatrix = MAT4_IDENTITY;
+          mat4<F32> _PreviousViewMatrix = MAT4_IDENTITY;
+          mat4<F32> _PreviousProjectionMatrix = MAT4_IDENTITY;
+          mat4<F32> _PreviousViewProjectionMatrix = MAT4_IDENTITY;
           vec4<F32> _ViewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
           // x - scale, y - bias, z - light bleed bias, w - min shadow variance
           vec4<F32> _lightingTweakValues = { 1.f, 1.f, 0.2f, 0.001f};
@@ -65,16 +59,17 @@ struct GFXShaderData {
           vec4<F32> _cameraProperties = { 0.01f, 1.0f, 40.f, 0.f };
           //xy - depth range, zw - light cluster size X / Y
           vec4<F32> _renderTargetInfo{0.f, 1.f, 1.f, 1.f};
+          //x - elapsed time (ms), y - unused, z = material debug flag, w - clip plane count
+          vec4<F32> _renderProperties = { 0.f, 0.f, to_F32(to_base(MaterialDebugFlag::COUNT)), 0.f };
+          vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
           vec4<F32> _frustumPlanes[6];
           vec4<F32> _padding[2];
       };
 #pragma pack(pop)
 
     CamData _camData{};
-    RenderData _renderData{};
 
     bool _camNeedsUpload = true;
-    bool _renderNeedsUpload = true;
 };
 
 [[nodiscard]] F32 AspectRatio(const GFXShaderData::CamData& dataIn) noexcept;

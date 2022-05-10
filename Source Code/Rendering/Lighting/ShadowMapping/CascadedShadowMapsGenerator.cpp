@@ -320,7 +320,7 @@ void CascadedShadowMapsGenerator::applyFrustumSplits(DirectionalLightComponent& 
     }
 }
 
-void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) {
+void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
 
     auto& dirLight = static_cast<DirectionalLightComponent&>(light);
@@ -368,7 +368,7 @@ void CascadedShadowMapsGenerator::render(const Camera& playerCamera, Light& ligh
             params._feedBackContainer->resize(0);
         }
 
-        rpm->doCustomPass(ShadowMap::shadowCameras(ShadowType::LAYERED)[i], params, bufferInOut);
+        rpm->doCustomPass(ShadowMap::shadowCameras(ShadowType::LAYERED)[i], params, bufferInOut, memCmdInOut);
     }
 
     postRender(dirLight, bufferInOut);

@@ -124,7 +124,7 @@ namespace {
     }
 
     template<typename DataContainer>
-    void WriteToGPUBufferInternal(ExecutorBuffer<DataContainer>& executorBuffer, BufferUpdateRange target) {
+    void WriteToGPUBufferInternal(ExecutorBuffer<DataContainer>& executorBuffer, BufferUpdateRange target, GFX::MemoryBarrierCommand& memCmdInOut) {
         if (target.range() == 0u) {
             return;
         }
@@ -143,11 +143,11 @@ namespace {
             }
         }
 
-        executorBuffer._gpuBuffer->writeData(target._firstIDX, target.range(), &executorBuffer._data._gpuData[target._firstIDX]);
+        memCmdInOut._bufferLocks.push_back(executorBuffer._gpuBuffer->writeData({ target._firstIDX, target.range() }, &executorBuffer._data._gpuData[target._firstIDX]));
     }
 
     template<typename DataContainer>
-    void WriteToGPUBuffer(ExecutorBuffer<DataContainer>& executorBuffer) {
+    void WriteToGPUBuffer(ExecutorBuffer<DataContainer>& executorBuffer, GFX::MemoryBarrierCommand& memCmdInOut) {
         BufferUpdateRange writeRange, prevWriteRange;
         {
             ScopedLock<Mutex> r_lock(executorBuffer._lock);
@@ -166,9 +166,9 @@ namespace {
             }
         }
 
-        WriteToGPUBufferInternal(executorBuffer, writeRange);
+        WriteToGPUBufferInternal(executorBuffer, writeRange, memCmdInOut);
         if_constexpr(RenderPass::DataBufferRingSize > 1u) {
-            WriteToGPUBufferInternal(executorBuffer, prevWriteRange);
+            WriteToGPUBufferInternal(executorBuffer, prevWriteRange, memCmdInOut);
         }
     }
 
@@ -617,7 +617,7 @@ void RenderPassExecutor::parseMaterialRange(RenderBin::SortedQueue& queue, const
     }
 }
 
-U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut) {
+U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
 
     constexpr bool doMainPass = true;
@@ -752,62 +752,57 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
     const U32 cmdCount = to_U32(_drawCommands.size());
     *bufferData._lastCommandCount = cmdCount;
 
-    {
+    if (cmdCount > 0u) {
         OPTICK_EVENT("buildDrawCommands - update command buffer");
-        cmdBuffer->writeData(0u, cmdCount, _drawCommands.data());
+        memCmdInOut._bufferLocks.push_back(cmdBuffer->writeData({ 0u, cmdCount }, _drawCommands.data()));
     }
     {
         OPTICK_EVENT("buildDrawCommands - update material buffer");
-        WriteToGPUBuffer(_materialBuffer);
+        WriteToGPUBuffer(_materialBuffer, memCmdInOut);
     }
     {
         OPTICK_EVENT("buildDrawCommands - update transform buffer");
-        WriteToGPUBuffer(_transformBuffer);
+        WriteToGPUBuffer(_transformBuffer, memCmdInOut);
     }
     {
         OPTICK_EVENT("buildDrawCommands - update texture buffer");
-        WriteToGPUBuffer(_texturesBuffer);
+        WriteToGPUBuffer(_texturesBuffer, memCmdInOut);
     }
     {
         OPTICK_EVENT("buildDrawCommands - update indirection buffer");
-        WriteToGPUBuffer(_indirectionBuffer);
+        WriteToGPUBuffer(_indirectionBuffer, memCmdInOut);
     }
 
     ShaderBufferBinding cmdBufferBinding{};
     cmdBufferBinding._binding = ShaderBufferLocation::CMD_BUFFER;
     cmdBufferBinding._buffer = cmdBuffer;
     cmdBufferBinding._elementRange = { 0u, cmdCount };
-    cmdBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding gpuCmdBinding{};
     gpuCmdBinding._binding = ShaderBufferLocation::GPU_COMMANDS;
     gpuCmdBinding._buffer = cmdBuffer;
     gpuCmdBinding._elementRange = { 0u, cmdBuffer->getPrimitiveCount()};
-    gpuCmdBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding materialBufferBinding{};
     materialBufferBinding._elementRange = { 0u, _materialBuffer._highWaterMark };
     materialBufferBinding._buffer = _materialBuffer._gpuBuffer.get();
     materialBufferBinding._binding = ShaderBufferLocation::NODE_MATERIAL_DATA;
-    materialBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding transformBufferBinding{};
     transformBufferBinding._elementRange = { 0u, _transformBuffer._highWaterMark };
     transformBufferBinding._buffer = _transformBuffer._gpuBuffer.get();
     transformBufferBinding._binding = ShaderBufferLocation::NODE_TRANSFORM_DATA;
-    transformBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding indirectionBufferBinding{};
     indirectionBufferBinding._elementRange = { 0u, _indirectionBuffer._highWaterMark };
     indirectionBufferBinding._buffer = _indirectionBuffer._gpuBuffer.get();
     indirectionBufferBinding._binding = ShaderBufferLocation::NODE_INDIRECTION_DATA;
-    indirectionBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding texturesBufferBinding{};
     texturesBufferBinding._elementRange = { 0u, _texturesBuffer._highWaterMark };
     texturesBufferBinding._buffer = _texturesBuffer._gpuBuffer.get();
     texturesBufferBinding._binding = ShaderBufferLocation::NODE_TEXTURE_DATA;
-    texturesBufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
+
     {
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._buffers.add(cmdBufferBinding);
@@ -847,7 +842,8 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes,
                                         const bool hasInvalidNodes,
                                         const bool doPrePass,
                                         const bool doOITPass,
-                                        GFX::CommandBuffer& bufferInOut)
+                                        GFX::CommandBuffer& bufferInOut,
+                                        GFX::MemoryBarrierCommand& memCmdInOut)
 {
     OPTICK_EVENT();
 
@@ -899,7 +895,7 @@ U16 RenderPassExecutor::prepareNodeData(VisibleNodeList<>& nodes,
     queueParams._filterByBinType = false;
     _renderQueue.populateRenderQueues(queueParams, _renderQueuePackages);
 
-    return buildDrawCommands(params, doPrePass, doOITPass, bufferInOut);
+    return buildDrawCommands(params, doPrePass, doOITPass, bufferInOut, memCmdInOut);
 }
 
 void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params, 
@@ -1263,7 +1259,7 @@ bool RenderPassExecutor::validateNodesForStagePass(VisibleNodeList<>& nodes, con
     return ret;
 }
 
-void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut) {
+void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
     assert(params._stagePass._stage == _stage);
 
@@ -1281,7 +1277,7 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
 
     const bool layeredRendering = params._layerParams._layer > 0;
     if (!layeredRendering) {
-        Attorney::SceneManagerRenderPass::prepareLightData(_parent.parent().sceneManager(), _stage, camSnapshot);
+        Attorney::SceneManagerRenderPass::prepareLightData(_parent.parent().sceneManager(), _stage, camSnapshot, memCmdInOut);
     }
 
     GFX::EnqueueCommand(bufferInOut, GFX::SetClipPlanesCommand{ params._clippingPlanes });
@@ -1356,7 +1352,7 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
     }
     // We prepare all nodes for the MAIN_PASS rendering. PRE_PASS and OIT_PASS are support passes only. Their order and sorting are less important.
     params._stagePass._passType = RenderPassType::MAIN_PASS;
-    const U32 visibleNodeCount = prepareNodeData(visibleNodes, params, camSnapshot, hasInvalidNodes, doPrePass, doOITPass, bufferInOut);
+    const U32 visibleNodeCount = prepareNodeData(visibleNodes, params, camSnapshot, hasInvalidNodes, doPrePass, doOITPass, bufferInOut, memCmdInOut);
 
 #   pragma region PRE_PASS
     // We need the pass to be PRE_PASS even if we skip the prePass draw stage as it is the default state subsequent operations expect

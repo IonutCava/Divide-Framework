@@ -6,15 +6,15 @@
 #include "sceneData.cmn"
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 
-DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_SCREEN)         uniform sampler2D texScreen;
-DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_NOISE)          uniform sampler2D texNoise;
-DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_BORDER)         uniform sampler2D texVignette;
-DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_UNDERWATER)     uniform sampler2D texWaterNoiseNM;
-DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_LINDEPTH)       uniform sampler2D texLinearDepth;
-DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_DEPTH)          uniform sampler2D texDepth;
-DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_SSR)            uniform sampler2D texSSR;
-DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_SCENE_DATA)     uniform sampler2D texSceneData;
-DESCRIPTOR_SET_RESOURCE(0, TEX_BIND_POINT_SCENE_VELOCITY) uniform sampler2D texSceneVelocity;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEX_BIND_POINT_SCREEN)         uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEX_BIND_POINT_NOISE)          uniform sampler2D texNoise;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEX_BIND_POINT_BORDER)         uniform sampler2D texVignette;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEX_BIND_POINT_UNDERWATER)     uniform sampler2D texWaterNoiseNM;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEX_BIND_POINT_LINDEPTH)       uniform sampler2D texLinearDepth;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEX_BIND_POINT_DEPTH)          uniform sampler2D texDepth;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEX_BIND_POINT_SSR)            uniform sampler2D texSSR;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEX_BIND_POINT_SCENE_DATA)     uniform sampler2D texSceneData;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEX_BIND_POINT_SCENE_VELOCITY) uniform sampler2D texSceneVelocity;
 
 uniform vec4 _fadeColour;
 uniform mat4 _invProjectionMatrix;

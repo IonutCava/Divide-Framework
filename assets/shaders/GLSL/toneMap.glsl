@@ -4,8 +4,8 @@
 
 //ref: https://github.com/BruOp/bae
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D texExposure;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform sampler2D texExposure;
 
 uniform float manualExposureFactor;
 uniform int mappingFunction;

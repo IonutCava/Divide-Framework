@@ -100,7 +100,7 @@ namespace Divide {
         return perf;
     }
 
-    void NONE_API::flushCommand([[maybe_unused]] const GFX::CommandBuffer::CommandEntry& entry, [[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
+    void NONE_API::flushCommand([[maybe_unused]] GFX::CommandBase* cmd) noexcept {
     }
 
     void NONE_API::preFlushCommandBuffer([[maybe_unused]] const GFX::CommandBuffer& commandBuffer) {

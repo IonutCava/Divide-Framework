@@ -60,6 +60,7 @@ enum class LightType : U8;
 
 namespace GFX {
     class CommandBuffer;
+    struct MemoryBarrierCommand;
 }
 
 class SceneState;
@@ -75,7 +76,7 @@ protected:
     explicit ShadowMapGenerator(GFXDevice& context, ShadowType type) noexcept;
 
     friend class ShadowMap;
-    virtual void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) = 0;
+    virtual void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) = 0;
 
     virtual void updateMSAASampleCount([[maybe_unused]] const U8 sampleCount) { }
 
@@ -102,7 +103,7 @@ class NOINITVTABLE ShadowMap {
     static U32  getLightLayerRequirements(const Light& light);
     static bool freeShadowMapOffset(const Light& light);
     static bool markShadowMapsUsed(Light& light);
-    static bool generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut);
+    static bool generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
 
     static ShadowType getShadowTypeForLightType(LightType type) noexcept;
     static LightType getLightTypeForShadowType(ShadowType type) noexcept;

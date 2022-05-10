@@ -40,7 +40,8 @@ namespace Divide {
 class SceneGraphNode;
 
 namespace GFX {
-class CommandBuffer;
+    class CommandBuffer;
+    struct MemoryBarrierCommand;
 }
 
 FWD_DECLARE_MANAGED_STRUCT(DebugView);
@@ -68,7 +69,7 @@ public:
     ~SceneEnvironmentProbePool();
 
     static void Prepare(GFX::CommandBuffer& bufferInOut);
-    static void UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut);
+    static void UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
     static void OnStartup(GFXDevice& context);
     static void OnShutdown(GFXDevice& context);
     static RenderTargetHandle ReflectionTarget() noexcept;

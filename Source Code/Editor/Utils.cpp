@@ -200,5 +200,19 @@ namespace Divide {
 
             return colourInput3(parent, field._name.c_str(), val, field._readOnly, setter);
         }
+
+        void CenterNextWindow() {
+            const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+            const ImVec2 workPos = main_viewport->WorkPos;
+            const ImVec2 workSize = main_viewport->WorkSize;
+            const ImVec2 targetPos = workPos + ImVec2(workSize.x *0.5f, workSize.y * 0.5f);
+
+            ImGui::SetNextWindowPos(targetPos, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        }
+
+        void OpenCenteredPopup(const char* name, const ImGuiPopupFlags popup_flags) {
+            CenterNextWindow();
+            ImGui::OpenPopup(name, popup_flags);
+        }
     } //namespace Util
 } //namespace Divide

@@ -214,12 +214,12 @@ bool SpirvHelper::GLSLtoSPV(const vk::ShaderStageFlagBits shader_type, const cha
 
     glslang::GlslangToSpv(*program.getIntermediate(stage), spirv);
 
-    BuildReflectionData(program, reflectionDataInOut);
+    BuildReflectionData(program, shader_type, reflectionDataInOut);
 
     return true;
 }
 
-void SpirvHelper::BuildReflectionData(glslang::TProgram& program, Divide::Reflection::Data& reflectionDataInOut) {
+void SpirvHelper::BuildReflectionData(glslang::TProgram& program, const vk::ShaderStageFlagBits shader_type, Divide::Reflection::Data& reflectionDataInOut) {
     if (reflectionDataInOut._blockSize != 0u) {
         return;
     }
@@ -227,7 +227,7 @@ void SpirvHelper::BuildReflectionData(glslang::TProgram& program, Divide::Reflec
     Divide::DIVIDE_ASSERT(reflectionDataInOut._blockMembers.empty());
 
     if (program.buildReflection()) {
-        const int numUniformBlocks = program.getNumUniformBlocks();
+        const int numUniformBlocks = program.getNumLiveUniformBlocks();
         for (int i = 0; i < numUniformBlocks; ++i) {
             const auto& block = program.getUniformBlock(i);
 
@@ -255,6 +255,19 @@ void SpirvHelper::BuildReflectionData(glslang::TProgram& program, Divide::Reflec
                     }
                 }
             }
+        }
+
+        if (shader_type == vk::ShaderStageFlagBits::eVertex) {
+            reflectionDataInOut._enabledAttributes.fill(false);
+            const int numAttribInputs = program.getNumLiveUniformBlocks();
+            for (int i = 0; i < numAttribInputs; ++i) {
+                const auto& attrib = program.getPipeInput(i);
+                const int binding = attrib.getBinding();
+                if (binding != -1) {
+                    reflectionDataInOut._enabledAttributes[binding] = true;
+                }
+            }
+            Divide::NOP();
         }
     }
 }

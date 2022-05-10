@@ -60,11 +60,27 @@ public:
     virtual ~glBufferImpl();
 
     // Returns false if we encounter an error
-    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, SyncObject* syncObject);
+    [[nodiscard]] bool lockByteRange(size_t offsetInBytes, size_t rangeInBytes, SyncObject* sync);
     [[nodiscard]] bool waitByteRange(size_t offsetInBytes, size_t rangeInBytes, bool blockClient);
+
+    [[nodiscard]] inline bool lockByteRange(const BufferRange range, SyncObject* sync) {
+        return lockByteRange(range._startOffset, range._length, sync);
+    }
+
+    [[nodiscard]] inline bool waitByteRange(const BufferRange range, bool blockClient) {
+        return waitByteRange(range._startOffset, range._length, blockClient);
+    }
 
     void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool zeroMem);
     void readBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data);
+
+    inline void writeOrClearBytes(const BufferRange range, bufferPtr data, bool zeroMem) {
+        writeOrClearBytes(range._startOffset, range._length, data, zeroMem);
+    }
+
+    inline void readBytes(const BufferRange range, bufferPtr data) {
+        readBytes(range._startOffset, range._length, data);
+    }
 
 public:
     PROPERTY_R(BufferImplParams, params);

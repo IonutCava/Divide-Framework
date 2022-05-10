@@ -228,7 +228,7 @@ protected:
 
     void drawCustomUI(const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut);
     void debugDraw(GFX::CommandBuffer& bufferInOut);
-    void prepareLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
+    void prepareLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut);
 
     [[nodiscard]] Camera* playerCamera(bool skipOverride = false) const noexcept;
     [[nodiscard]] Camera* playerCamera(PlayerIndex idx, bool skipOverride = false) const noexcept;
@@ -239,7 +239,7 @@ protected:
     SceneNode_ptr createNode(SceneNodeType type, const ResourceDescriptor& descriptor);
     std::pair<Texture_ptr, size_t/*sampler*/> getSkyTexture() const;
 
-    [[nodiscard]] const DescriptorSet& sceneDescriptorSet() const;
+    [[nodiscard]] GFX::MemoryBarrierCommand bindSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) const;
 
 private:
     bool _init = false;
@@ -398,8 +398,8 @@ class SceneManagerRenderPass {
         mgr->initDefaultCullValues(stage, cullParamsInOut);
     }
 
-    static void prepareLightData(Divide::SceneManager* mgr, const RenderStage stage, const CameraSnapshot& cameraSnapshot) {
-        mgr->prepareLightData(stage, cameraSnapshot);
+    static void prepareLightData(Divide::SceneManager* mgr, const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut) {
+        mgr->prepareLightData(stage, cameraSnapshot, memCmdInOut);
     }
 
     static void debugDraw(Divide::SceneManager* mgr, GFX::CommandBuffer& bufferInOut) {
@@ -426,8 +426,8 @@ class SceneManagerRenderPass {
         return mgr->getActiveScene().state()->renderState();
     }
 
-    static const DescriptorSet& sceneDescriptorSet(Divide::SceneManager* mgr) {
-        return mgr->sceneDescriptorSet();
+    static GFX::MemoryBarrierCommand bindSceneDescriptorSet(Divide::SceneManager* mgr, GFX::CommandBuffer& bufferInOut) {
+        return mgr->bindSceneDescriptorSet(bufferInOut);
     }
     friend class Divide::RenderPass;
     friend class Divide::RenderPassManager;

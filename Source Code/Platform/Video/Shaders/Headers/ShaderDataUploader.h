@@ -39,6 +39,9 @@ namespace Divide {
 
     class GFXDevice;
     FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
+    namespace GFX {
+        struct MemoryBarrierCommand;
+    };
 
     namespace Reflection {
         static constexpr U32 INVALID_BINDING_INDEX = std::numeric_limits<U32>::max();
@@ -58,6 +61,7 @@ namespace Divide {
             string _targetBlockName;
             size_t _blockSize{ 0u };
             vector<BlockMember> _blockMembers{};
+            std::array<bool, 16> _enabledAttributes;
         };
 
 
@@ -69,12 +73,12 @@ namespace Divide {
 
         inline bool operator!=(const UniformDeclaration& lhs, const UniformDeclaration& rhs) noexcept {
             return lhs._typeHash != rhs._typeHash ||
-                lhs._name != rhs._name;
+                   lhs._name != rhs._name;
         }
 
         inline bool operator==(const UniformDeclaration& lhs, const UniformDeclaration& rhs) noexcept {
             return lhs._typeHash == rhs._typeHash &&
-                lhs._name == rhs._name;
+                   lhs._name == rhs._name;
         }
         struct UniformCompare {
             bool operator()(const UniformDeclaration& lhs, const UniformDeclaration& rhs) const;
@@ -106,7 +110,7 @@ namespace Divide {
         explicit UniformBlockUploader(GFXDevice& context, const UniformBlockUploaderDescriptor& descriptor);
 
         void uploadPushConstant(const GFX::PushConstant& constant, bool force = false) noexcept;
-        void commit();
+        void commit(GFX::MemoryBarrierCommand& memCmdInOut);
         void prepare();
 
     private:

@@ -146,7 +146,7 @@ SingleShadowMapGenerator::~SingleShadowMapGenerator()
     }
 }
 
-void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) {
+void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
 
     const SpotLightComponent& spotLight = static_cast<SpotLightComponent&>(light);
@@ -185,7 +185,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     clearMainTarget._descriptor = clearDescriptor;
     GFX::EnqueueCommand(bufferInOut, clearMainTarget);
 
-    _context.parent().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut);
+    _context.parent().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
 
     postRender(spotLight, bufferInOut);
 

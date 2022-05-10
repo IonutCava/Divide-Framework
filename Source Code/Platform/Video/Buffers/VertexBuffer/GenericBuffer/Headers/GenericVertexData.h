@@ -59,6 +59,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
          BufferParams _bufferParams;
          U32 _buffer = 0u;
          bool _useRingBuffer = false;
+         bool _useAutoSyncObjects = true;
      };
 
    public:
@@ -72,12 +73,14 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
     /// When reading and writing to the same buffer, we use a round-robin approach and
     /// offset the reading and writing to multiple copies of the data
     virtual void setBuffer(const SetBufferParams& params) = 0;
+    /// Will manually insert a fence at call site (for buffers that were written to only!) 
+    /// and clear any dirty flags associated with that write
+    virtual void insertFencesIfNeeded() = 0u;
 
     virtual void updateBuffer(U32 buffer,
                               U32 elementCountOffset,
                               U32 elementCountRange,
                               bufferPtr data) = 0;
-   
 
     PROPERTY_RW(bool, renderIndirect, true);
     PROPERTY_R(IndexBuffer, idxBuffer);

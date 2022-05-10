@@ -7,7 +7,7 @@
 uniform uint numEntities;
 uniform uint countCulledItems;
 
-DESCRIPTOR_SET_RESOURCE_OFFSET(0, BUFFER_ATOMIC_COUNTER_0, 0) uniform atomic_uint culledCount;
+DESCRIPTOR_SET_RESOURCE_OFFSET(PER_PASS_SET, BUFFER_ATOMIC_COUNTER_0, 0) uniform atomic_uint culledCount;
 
 //ref: http://malideveloper.arm.com/resources/sample-code/occlusion-culling-hierarchical-z/
 
@@ -19,17 +19,17 @@ struct IndirectDrawCommand {
     uint baseInstance;
 };
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_NODE_INDIRECTION_DATA, std430) coherent COMP_ONLY_R buffer dvd_IndirectionBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS_SET, BUFFER_NODE_INDIRECTION_DATA, std430) coherent COMP_ONLY_R buffer dvd_IndirectionBlock
 {
     NodeIndirectionData dvd_IndirectionData[];
 };
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_NODE_TRANSFORM_DATA, std430) coherent COMP_ONLY_R buffer dvd_TransformBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS_SET, BUFFER_NODE_TRANSFORM_DATA, std430) coherent COMP_ONLY_R buffer dvd_TransformBlock
 {
     NodeTransformData dvd_Transforms[];
 };
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_GPU_COMMANDS, std430) coherent COMP_ONLY_RW buffer dvd_GPUCmds
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS_SET, BUFFER_GPU_COMMANDS, std430) coherent COMP_ONLY_RW buffer dvd_GPUCmds
 {
     IndirectDrawCommand dvd_drawCommands[];
 };

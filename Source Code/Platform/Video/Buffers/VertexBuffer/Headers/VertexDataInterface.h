@@ -53,6 +53,73 @@ struct BufferParams
     BufferUpdateUsage _updateUsage = BufferUpdateUsage::COUNT;
 };
 
+enum class BufferLockState : U8 {
+    ACTIVE = 0,
+    EXPIRED,
+    DELETED,
+    ERROR
+};
+
+struct SyncObject {
+    ~SyncObject();
+    void reset();
+
+    Mutex _fenceLock;
+    std::any _fenceObject;
+    U32 _frameID = 0u;
+};
+
+FWD_DECLARE_MANAGED_STRUCT(SyncObject);
+
+struct BufferRange {
+    size_t _startOffset = 0u;
+    size_t _length = 0u;
+};
+
+inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept {
+    return lhs._startOffset == rhs._startOffset &&
+           lhs._length == rhs._length;
+}
+
+inline bool operator!=(const BufferRange& lhs, const BufferRange& rhs) noexcept {
+    return lhs._startOffset != rhs._startOffset ||
+           lhs._length == rhs._length;
+}
+
+[[nodiscard]] inline bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept {
+    return lhs._startOffset < (rhs._startOffset + rhs._length) && rhs._startOffset < (lhs._startOffset + lhs._length);
+}
+
+inline void Merge(BufferRange& lhs, const BufferRange& rhs) {
+    lhs._startOffset = std::min(lhs._startOffset, rhs._startOffset);
+    lhs._length = std::max(lhs._length, rhs._length);
+}
+
+struct BufferLockInstance {
+    BufferLockInstance() = default;
+    explicit BufferLockInstance(const BufferRange range, SyncObject* syncObj) noexcept
+        : _range(range), _syncObj(syncObj)
+    {
+    }
+
+    BufferRange _range{};
+    SyncObject* _syncObj = nullptr;
+    BufferLockState _state = BufferLockState::ACTIVE;
+};
+
+class LockableDataRangeBuffer;
+struct BufferLock {
+    const LockableDataRangeBuffer* _targetBuffer = nullptr;
+    BufferRange _range{};
+};
+
+using BufferLocks = eastl::fixed_vector<BufferLock, 3, true, eastl::dvd_allocator>;
+
+class LockableDataRangeBuffer : public GUIDWrapper {
+public:
+    [[nodiscard]] virtual bool lockByteRange(BufferRange range, SyncObject* sync) const = 0;
+};
+
 class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsResource {
    public:
     using Handle = PoolHandle;

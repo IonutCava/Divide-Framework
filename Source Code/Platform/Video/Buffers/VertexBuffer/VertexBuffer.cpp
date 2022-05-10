@@ -162,7 +162,6 @@ void VertexBuffer::refresh() {
             setBufferParams._bufferParams._updateUsage = BufferUpdateUsage::CPU_W_GPU_R;
             setBufferParams._bufferParams._initialData = { smallData.data(), smallData.size() };
             _internalGVD->setBuffer(setBufferParams);
-            _dataLayoutChanged = false;
         } else {
             assert(!_staticBuffer);
             _internalGVD->updateBuffer(0u, 0u, to_U32(_data.size()), smallData.data());
@@ -191,6 +190,7 @@ void VertexBuffer::refresh() {
 void VertexBuffer::draw(const GenericDrawCommand& command) {
     // Check if we have a refresh request queued up
     refresh();
+    
     _internalGVD->draw(command);
 }
 

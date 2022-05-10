@@ -489,7 +489,7 @@ namespace Divide {
             return;
         }
 
-        ImGui::OpenPopup("Confirm Remove");
+        Util::OpenCenteredPopup("Confirm Remove");
 
         if (ImGui::BeginPopupModal("Confirm Remove", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("Are you sure you want remove the selected node [ %zu ]?", _nodeToRemove);
@@ -516,7 +516,7 @@ namespace Divide {
             return;
         }
 
-        ImGui::OpenPopup("Confirm Re-parent");
+        Util::OpenCenteredPopup("Confirm Re-parent");
 
         if (ImGui::BeginPopupModal("Confirm Re-parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("Are you sure you want change the selected node's [ %s ] parent?", _childNode->name().c_str());
@@ -546,7 +546,7 @@ namespace Divide {
             return;
         }
 
-        ImGui::OpenPopup("Create New Node");
+        Util::OpenCenteredPopup("Create New Node");
 
         if (ImGui::BeginPopupModal("Create New Node", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("Creating a child node for SGN [ %d ][ %s ]?", _parentNode->getGUID(), _parentNode->name().c_str());
@@ -781,7 +781,7 @@ namespace Divide {
 
     void SolutionExplorerWindow::drawChangeParentWindow() {
         if (_reparentSelectRequested) {
-            ImGui::OpenPopup("Select New Parent");
+            Util::OpenCenteredPopup("Select New Parent");
 
             if (ImGui::BeginPopupModal("Select New Parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 SceneManager* sceneManager = context().kernel().sceneManager();

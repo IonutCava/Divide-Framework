@@ -44,51 +44,7 @@ namespace Divide {
 
 constexpr U8 g_MaxLockWaitRetries = 5u;
 
-struct BufferRange {
-    size_t _startOffset = 0u;
-    size_t _length = 0u;
-};
-
-inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept {
-    return lhs._startOffset == rhs._startOffset &&
-        lhs._length == rhs._length;
-}
-
-[[nodiscard]] inline bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept {
-    return lhs._startOffset < (rhs._startOffset + rhs._length) && rhs._startOffset < (lhs._startOffset + lhs._length);
-}
-
 // --------------------------------------------------------------------------------------------------------------------
-enum class BufferLockState : U8 {
-    ACTIVE = 0,
-    EXPIRED,
-    DELETED,
-    ERROR
-};
-
-struct SyncObject {
-    ~SyncObject();
-    void reset();
-
-    Mutex _fenceLock;
-    GLsync _fence = nullptr;
-    U32 _frameID = 0u;
-};
-
-FWD_DECLARE_MANAGED_STRUCT(SyncObject);
-
-struct BufferLock {
-    BufferLock() = default;
-    explicit BufferLock(const BufferRange range, SyncObject* syncObj) noexcept
-        : _range(range), _syncObj(syncObj)
-    {
-    }
-
-    BufferRange _range{};
-    SyncObject* _syncObj = nullptr;
-    BufferLockState _state = BufferLockState::ACTIVE;
-};
-
 class glLockManager : public GUIDWrapper {
    public:
     using BufferLockPool = eastl::fixed_vector<SyncObject_uptr, 1024, true>;
@@ -114,8 +70,8 @@ class glLockManager : public GUIDWrapper {
 
    protected:
      mutable SharedMutex _lock;
-     vector<BufferLock> _bufferLocks;
-     vector<BufferLock> _swapLocks;
+     vector<BufferLockInstance> _bufferLocks;
+     vector<BufferLockInstance> _swapLocks;
 
      static BufferLockPool s_bufferLockPool;
 };

@@ -1,7 +1,7 @@
 -- Fragment.BloomApply
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D texBloom;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform sampler2D texBloom;
 
 layout(location = 0) out vec4 _colourOut;
 
@@ -17,7 +17,7 @@ layout(location = 0) out vec4 _bloomOut;
 
 uniform float luminanceThreshold;
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
 
 void main() {
     vec4 screenColour = texture(texScreen, VAR._texCoord);

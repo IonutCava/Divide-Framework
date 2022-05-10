@@ -61,6 +61,11 @@ enum class FileUpdateEvent : U8;
 
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
+namespace TypeUtil {
+    const char* DescriptorSetUsageToString(DescriptorSetUsage setUsage) noexcept;
+    DescriptorSetUsage StringToDescriptorSetUsage(const string& name);
+};
+
 struct ModuleDefine {
     ModuleDefine() = default;
     ModuleDefine(const char* define, const bool addPrefix = true) : ModuleDefine(string{ define }, addPrefix) {}
@@ -179,7 +184,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     virtual bool recompile(bool& skipped);
 
-    void uploadPushConstants(const PushConstants& constants);
+    void uploadPushConstants(const PushConstants& constants, GFX::MemoryBarrierCommand& memCmdInOut);
     void preparePushConstants();
 
     //==================== static methods ===============================//

@@ -268,7 +268,8 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
                             RenderingComponent& rComp,
                             const RenderStagePass renderStagePass,
                             const CameraSnapshot& cameraSnapshot,
-                            const bool refreshData) {
+                            const bool refreshData)
+{
     if (renderStagePass._stage == RenderStage::DISPLAY && renderStagePass._passType == RenderPassType::MAIN_PASS) {
         _terrainQuadtree.drawBBox(sgn->context().gfx());
     }

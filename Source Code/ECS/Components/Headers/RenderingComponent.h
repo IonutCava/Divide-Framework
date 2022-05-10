@@ -103,7 +103,7 @@ struct RenderCbkParams {
     U8  _passVariant;
 };
 
-using RenderCallback = DELEGATE<void, RenderPassManager*, RenderCbkParams&, GFX::CommandBuffer&>;
+using RenderCallback = DELEGATE<void, RenderPassManager*, RenderCbkParams&, GFX::CommandBuffer&, GFX::MemoryBarrierCommand&>;
 
 using DrawCommandContainer = eastl::fixed_vector<IndirectDrawCommand, Config::MAX_VISIBLE_NODES, false>;
 
@@ -217,13 +217,15 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
                                         bool inBudget,
                                         Camera* camera,
                                         const SceneRenderState& renderState,
-                                        GFX::CommandBuffer& bufferInOut);
+                                        GFX::CommandBuffer& bufferInOut,
+                                        GFX::MemoryBarrierCommand& memCmdInOut);
 
     [[nodiscard]] bool updateRefraction(U16 refractionIndex,
                                         bool inBudget,
                                         Camera* camera,
                                         const SceneRenderState& renderState,
-                                        GFX::CommandBuffer& bufferInOut);
+                                        GFX::CommandBuffer& bufferInOut,
+                                        GFX::MemoryBarrierCommand& memCmdInOut);
 
     void updateNearestProbes(const vec3<F32>& position);
  
@@ -311,9 +313,10 @@ class RenderingCompRenderPass {
                                                const bool inBudget,
                                                Camera* camera,
                                                const SceneRenderState& renderState,
-                                               GFX::CommandBuffer& bufferInOut)
+                                               GFX::CommandBuffer& bufferInOut,
+                                               GFX::MemoryBarrierCommand& memCmdInOut)
         {
-            return renderable.updateReflection(reflectionIndex, inBudget, camera, renderState, bufferInOut);
+            return renderable.updateReflection(reflectionIndex, inBudget, camera, renderState, bufferInOut, memCmdInOut);
         }
 
         /// Return true if we executed an external render pass (e.g. water planar refraction)
@@ -323,9 +326,10 @@ class RenderingCompRenderPass {
                                                    const bool inBudget,
                                                    Camera* camera,
                                                    const SceneRenderState& renderState,
-                                                   GFX::CommandBuffer& bufferInOut)
+                                                   GFX::CommandBuffer& bufferInOut,
+                                                   GFX::MemoryBarrierCommand& memCmdInOut)
         {
-            return renderable.updateRefraction(refractionIndex, inBudget, camera, renderState, bufferInOut);
+            return renderable.updateRefraction(refractionIndex, inBudget, camera, renderState, bufferInOut, memCmdInOut);
         }
 
         static bool prepareDrawPackage(RenderingComponent& renderable,

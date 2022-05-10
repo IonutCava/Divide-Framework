@@ -22,11 +22,11 @@ uniform float fadeStart;
 uniform vec4 sampleKernel[SSAO_SAMPLE_COUNT];
 
 // Input screen texture
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texNoise;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH) uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texNoise;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH) uniform sampler2D texDepthMap;
 
 #if !defined(COMPUTE_HALF_RES)
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D texNormals;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform sampler2D texNormals;
 #define GetNormal(UV) texture(texNormals, UV).rg
 #else //!COMPUTE_HALF_RES
 #define GetNormal(UV) texture(texDepthMap, UV).gb
@@ -100,9 +100,9 @@ void main(void) {
 #include "utility.frag"
 
 //ref: https://github.com/itoral/vkdf/blob/9622f6a9e6602e06c5a42507202ad5a7daf917a4/data/spirv/ssao-blur.deferred.frag.input
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0)         uniform sampler2D texSSAO;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0)         uniform sampler2D texSSAO;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
 
 uniform mat4 invProjectionMatrix;
 uniform vec2 _zPlanes;
@@ -182,9 +182,9 @@ void main() {
 #include "utility.frag"
 
 //ref: https://github.com/itoral/vkdf/blob/9622f6a9e6602e06c5a42507202ad5a7daf917a4/data/spirv/ssao-blur.deferred.frag.input
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0)         uniform sampler2D texSSAO;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0)         uniform sampler2D texSSAO;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
 
 uniform mat4 invProjectionMatrix;
 uniform vec2 _zPlanes;
@@ -261,7 +261,7 @@ void main() {
 
 --Fragment.SSAOPassThrough
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texSSAO;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texSSAO;
 
 //r - ssao
 layout(location = 0) out vec2 _output;
@@ -273,8 +273,8 @@ void main() {
 
 --Fragment.SSAODownsample
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_SCENE_NORMALS) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH)         uniform sampler2D texDepthMap;
 
 layout(location = 0) out vec3 _outColour;
 
@@ -369,10 +369,10 @@ void main()
 
 #include "utility.frag"
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0)     uniform sampler2D texSSAOLinear;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1)     uniform sampler2D texSSAONearest;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_NORMALMAP) uniform sampler2D texSSAONormalsDepth;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH)     uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0)     uniform sampler2D texSSAOLinear;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1)     uniform sampler2D texSSAONearest;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_NORMALMAP) uniform sampler2D texSSAONormalsDepth;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH)     uniform sampler2D texDepthMap;
 
 layout(location = 0) out float _ssaoOut;
 

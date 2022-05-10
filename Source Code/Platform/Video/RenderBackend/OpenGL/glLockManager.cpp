@@ -12,11 +12,11 @@ glLockManager::BufferLockPool glLockManager::s_bufferLockPool;
 constexpr GLuint64 kOneSecondInNanoSeconds = 1000000000;
 
 namespace {
-    void DeleteSyncLocked(BufferLock& lock) {
+    void DeleteSyncLocked(BufferLockInstance& lock) {
         OPTICK_EVENT("Delete Sync Expired");
 
         if (lock._state == BufferLockState::DELETED) {
-            DIVIDE_ASSERT(lock._syncObj->_fence == nullptr);
+            DIVIDE_ASSERT(std::any_cast<GLsync>(lock._syncObj->_fenceObject) == nullptr);
             return;
         }
 
@@ -24,7 +24,7 @@ namespace {
         lock._state = BufferLockState::DELETED;
     }
 
-    void DeleteSync(BufferLock& lock) {
+    void DeleteSync(BufferLockInstance& lock) {
         ScopedLock<Mutex> w_lock(lock._syncObj->_fenceLock);
         DeleteSyncLocked(lock);
     }
@@ -36,8 +36,10 @@ SyncObject::~SyncObject()
 }
 
 void SyncObject::reset() {
-    if (_fence != nullptr) {
-        GL_API::DestroyFenceSync(_fence);
+    if (_fenceObject.has_value()) {
+        GLsync sync = std::any_cast<GLsync>(_fenceObject);
+        GL_API::DestroyFenceSync(sync);
+        _fenceObject.reset();
     }
 }
 
@@ -46,7 +48,7 @@ glLockManager::~glLockManager()
     wait(true);
 
     const SharedLock<SharedMutex> r_lock(_lock);
-    for (BufferLock& lock : _bufferLocks) {
+    for (BufferLockInstance& lock : _bufferLocks) {
         DeleteSync(lock);
     }
 }
@@ -56,10 +58,11 @@ SyncObject* glLockManager::CreateSyncObject(const bool isRetry) {
         const U32 frameID = GFXDevice::FrameCount();
 
         for (SyncObject_uptr& syncObject : s_bufferLockPool) {
-            if (syncObject->_fence != nullptr) {
+            if (syncObject->_fenceObject.has_value() && std::any_cast<GLsync>(syncObject->_fenceObject) != nullptr) {
                 ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
                 // Check again to avoid race conditions
-                if (syncObject->_fence != nullptr &&
+                if (syncObject->_fenceObject.has_value() && 
+                    std::any_cast<GLsync>(syncObject->_fenceObject) != nullptr &&
                     syncObject->_frameID < frameID &&
                     frameID - syncObject->_frameID >= GL_API::s_LockFrameLifetime)
                 {
@@ -70,12 +73,12 @@ SyncObject* glLockManager::CreateSyncObject(const bool isRetry) {
     }
 
     for (SyncObject_uptr& syncObject : s_bufferLockPool) {
-        if (syncObject->_fence == nullptr) {
+        if (!syncObject->_fenceObject.has_value() || std::any_cast<GLsync>(syncObject->_fenceObject) == nullptr) {
             ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
             // Check again to avoid race conditions
-            if (syncObject->_fence == nullptr) {
+            if (!syncObject->_fenceObject.has_value() || std::any_cast<GLsync>(syncObject->_fenceObject) == nullptr) {
                 syncObject->_frameID = GFXDevice::FrameCount();
-                syncObject->_fence = GL_API::CreateFenceSync();
+                syncObject->_fenceObject = GL_API::CreateFenceSync();
                 return syncObject.get();
             }
         }
@@ -165,7 +168,7 @@ bool glLockManager::waitForLockedRange(size_t lockBeginBytes,
     bool error = false;
     ScopedLock<SharedMutex> w_lock(_lock);
     _swapLocks.resize(0);
-    for (BufferLock& lock : _bufferLocks) {
+    for (BufferLockInstance& lock : _bufferLocks) {
         switch (lock._state) {
         case BufferLockState::ACTIVE: {
             if (!Overlaps(testRange, lock._range)) {
@@ -175,8 +178,8 @@ bool glLockManager::waitForLockedRange(size_t lockBeginBytes,
                 U8 retryCount = 0u;
 
                 ScopedLock<Mutex> w_lock_sync(lock._syncObj->_fenceLock);
-                if (lock._syncObj->_fence != nullptr) {
-                    if (Wait(lock._syncObj->_fence, blockClient, quickCheck, retryCount)) {
+                if (lock._syncObj->_fenceObject.has_value() && std::any_cast<GLsync>(lock._syncObj->_fenceObject) != nullptr) {
+                    if (Wait(std::any_cast<GLsync>(lock._syncObj->_fenceObject), blockClient, quickCheck, retryCount)) {
                         DeleteSyncLocked(lock);
 
                         if (retryCount > g_MaxLockWaitRetries - 1) {
@@ -221,7 +224,7 @@ bool glLockManager::lockRange(const size_t lockBeginBytes, const size_t lockLeng
     {
         OPTICK_EVENT("Attempt reuse");
         // This should avoid any lock leaks, since any fences we haven't waited on will be considered "signaled" eventually
-        for (BufferLock& lock : _bufferLocks) {
+        for (BufferLockInstance& lock : _bufferLocks) {
             ScopedLock<Mutex> w_lock_sync(lock._syncObj->_fenceLock);
             if (lock._syncObj->_frameID < syncObj->_frameID && syncObj->_frameID - lock._syncObj->_frameID >= GL_API::s_LockFrameLifetime) {
                 lock._state = BufferLockState::EXPIRED;
@@ -229,7 +232,7 @@ bool glLockManager::lockRange(const size_t lockBeginBytes, const size_t lockLeng
         }
 
         // See if we can reuse an old lock. Ignore the old fence since the new one will guard the same mem region. (Right?)
-        for (BufferLock& lock : _bufferLocks) {
+        for (BufferLockInstance& lock : _bufferLocks) {
             if (Overlaps(testRange, lock._range)) {
                 if (lock._state == BufferLockState::EXPIRED) {
                     DeleteSync(lock);
@@ -243,7 +246,7 @@ bool glLockManager::lockRange(const size_t lockBeginBytes, const size_t lockLeng
             }
         }
 
-        for (BufferLock& lock : _bufferLocks) {
+        for (BufferLockInstance& lock : _bufferLocks) {
             if (lock._state == BufferLockState::DELETED || lock._state == BufferLockState::EXPIRED) {
                 if (lock._state == BufferLockState::EXPIRED) {
                     DeleteSync(lock);

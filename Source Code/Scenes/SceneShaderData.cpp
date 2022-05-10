@@ -28,36 +28,35 @@ SceneShaderData::SceneShaderData(GFXDevice& context)
     }
 }
 
-const DescriptorSet& SceneShaderData::getDescriptorSet() {
-    static DescriptorSet bindSet{};
+GFX::MemoryBarrierCommand SceneShaderData::bindSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) {
+    DescriptorSet& bindSet = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
 
+    GFX::MemoryBarrierCommand memBarrier{};
     if (_sceneDataDirty) {
         _sceneShaderData->incQueue();
-        _sceneShaderData->writeData(&_sceneBufferData);
+        memBarrier._bufferLocks.push_back(_sceneShaderData->writeData(&_sceneBufferData));
+        _sceneDataDirty = false;
     }
 
     if (_probeDataDirty) {
         _probeShaderData->incQueue();
-        _probeShaderData->writeData(_probeData.data());
+        memBarrier._bufferLocks.push_back(_probeShaderData->writeData(_probeData.data()));
+        _sceneDataDirty = false;
     }
 
     ShaderBufferBinding sceneBufferBinding;
     sceneBufferBinding._binding = ShaderBufferLocation::SCENE_DATA;
     sceneBufferBinding._buffer = _sceneShaderData.get();
     sceneBufferBinding._elementRange = { 0, 1 };
-    sceneBufferBinding._lockType = _sceneDataDirty ? ShaderBufferLockType::AFTER_DRAW_COMMANDS : ShaderBufferLockType::COUNT;
     bindSet._buffers.add(sceneBufferBinding);
 
     ShaderBufferBinding probeBufferBinding;
     probeBufferBinding._binding = ShaderBufferLocation::PROBE_DATA;
     probeBufferBinding._buffer = _probeShaderData.get();
     probeBufferBinding._elementRange = { 0, GLOBAL_PROBE_COUNT };
-    probeBufferBinding._lockType = _probeDataDirty ? ShaderBufferLockType::AFTER_DRAW_COMMANDS : ShaderBufferLockType::COUNT;
     bindSet._buffers.add(probeBufferBinding);
 
-    _sceneDataDirty = false;
-    _probeDataDirty = false;
-    return bindSet;
+    return memBarrier;
 }
 
 } //namespace Divide

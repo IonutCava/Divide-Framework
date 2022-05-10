@@ -312,7 +312,7 @@ void UniformBlockUploader::uploadPushConstant(const GFX::PushConstant& constant,
     }
 }
 
-void UniformBlockUploader::commit() {
+void UniformBlockUploader::commit(GFX::MemoryBarrierCommand& memCmdInOut) {
     if (!_uniformBlockDirty) {
         return;
     }
@@ -323,7 +323,7 @@ void UniformBlockUploader::commit() {
         _buffer->incQueue();
         _needsQueueIncrement = false;
     }
-    _buffer->writeData(_localDataCopy.data());
+    memCmdInOut._bufferLocks.push_back(_buffer->writeData(_localDataCopy.data()));
     _needsQueueIncrement = true;
     _uniformBlockDirty = false;
     if (rebind) {

@@ -270,12 +270,12 @@ void WaterPlane::postLoad(SceneGraphNode* sgn) {
         renderable->lockLoD(0u);
     }
 
-    renderable->setReflectionCallback([this](RenderPassManager* passManager, RenderCbkParams& params, GFX::CommandBuffer& commandsInOut) {
-        updateReflection(passManager, params, commandsInOut);
+    renderable->setReflectionCallback([this](RenderPassManager* passManager, RenderCbkParams& params, GFX::CommandBuffer& commandsInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
+        updateReflection(passManager, params, commandsInOut, memCmdInOut);
     }, ReflectorType::PLANAR);
 
-    renderable->setRefractionCallback([this](RenderPassManager* passManager, RenderCbkParams& params, GFX::CommandBuffer& commandsInOut) {
-        updateRefraction(passManager, params, commandsInOut);
+    renderable->setRefractionCallback([this](RenderPassManager* passManager, RenderCbkParams& params, GFX::CommandBuffer& commandsInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
+        updateRefraction(passManager, params, commandsInOut, memCmdInOut);
     }, RefractorType::PLANAR);
 
     renderable->toggleRenderOption(RenderingComponent::RenderOptions::CAST_SHADOWS, false);
@@ -311,8 +311,8 @@ void WaterPlane::prepareRender(SceneGraphNode* sgn,
                                RenderingComponent& rComp,
                                const RenderStagePass renderStagePass,
                                const CameraSnapshot& cameraSnapshot,
-                               const bool refreshData) {
-
+                               const bool refreshData)
+{
     EditorDataState& state = _editorDataDirtyState[to_base(renderStagePass._stage)];
     if (state == EditorDataState::CHANGED || state == EditorDataState::PROCESSED) {
         PushConstants& constants = rComp.getPushConstants(renderStagePass);
@@ -346,7 +346,7 @@ void WaterPlane::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCom
 }
 
 /// update water refraction
-void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut) const {
+void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const {
     static RTClearColourDescriptor clearColourDescriptor;
     clearColourDescriptor._customClearColour[0] = DefaultColours::BLUE;
 
@@ -378,7 +378,7 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
     clearMainTarget._descriptor = clearDescriptor;
     EnqueueCommand(bufferInOut, clearMainTarget);
 
-    passManager->doCustomPass(renderParams._camera, params, bufferInOut);
+    passManager->doCustomPass(renderParams._camera, params, bufferInOut, memCmdInOut);
 
     const PlatformContext& context = passManager->parent().platformContext();
     const RenderTarget* rt = context.gfx().renderTargetPool().getRenderTarget(params._target);
@@ -389,7 +389,7 @@ void WaterPlane::updateRefraction(RenderPassManager* passManager, RenderCbkParam
 }
 
 /// Update water reflections
-void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut) const {
+void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const {
     static RTClearColourDescriptor clearColourDescriptor;
     clearColourDescriptor._customClearColour[0] = DefaultColours::BLUE;
 
@@ -431,7 +431,7 @@ void WaterPlane::updateReflection(RenderPassManager* passManager, RenderCbkParam
     clearMainTarget._descriptor = clearDescriptor;
     EnqueueCommand(bufferInOut, clearMainTarget);
 
-    passManager->doCustomPass(_reflectionCam, params, bufferInOut);
+    passManager->doCustomPass(_reflectionCam, params, bufferInOut, memCmdInOut);
 
     if (_blurReflections) {
         RenderTarget* reflectTarget = renderParams._context.renderTargetPool().getRenderTarget(renderParams._renderTarget);

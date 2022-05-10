@@ -4,7 +4,7 @@
 //Ref: https://github.com/urho3d/Urho3D/blob/master/bin/CoreData/Shaders/GLSL/PBRLitSolid.glsl
 #include "nodeDataDefinition.cmn"
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_NODE_TRANSFORM_DATA, std430) coherent ACCESS_R buffer dvd_TransformBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH_SET, BUFFER_NODE_TRANSFORM_DATA, std430) coherent ACCESS_R buffer dvd_TransformBlock
 {
     NodeTransformData dvd_Transforms[];
 };
@@ -16,7 +16,7 @@ uniform uint INDIRECT_DATA_IDX;
 #define INDIRECT_DATA_IDX (DVD_GL_BASE_INSTANCE - 1u)
 #endif //OVERRIDE_DATA_IDX
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_NODE_INDIRECTION_DATA, std430) coherent ACCESS_R buffer dvd_IndirectionBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH_SET, BUFFER_NODE_INDIRECTION_DATA, std430) coherent ACCESS_R buffer dvd_IndirectionBlock
 {
     NodeIndirectionData dvd_IndirectionData[];
 };
@@ -36,7 +36,7 @@ void ComputeIndirectionData() {
 #endif //!NEED_TEXTURE_DATA && FRAG_SHADER
 
 #if defined(FRAG_SHADER)
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_NODE_MATERIAL_DATA, std430) coherent ACCESS_R buffer dvd_MaterialBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH_SET, BUFFER_NODE_MATERIAL_DATA, std430) coherent ACCESS_R buffer dvd_MaterialBlock
 {
     NodeMaterialData dvd_Materials[];
 };
@@ -44,7 +44,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_NODE_MATERIAL_DATA, std430) coherent AC
 
 #if defined(NEED_TEXTURE_DATA)
 #if defined(BINDLESS_TEXTURES_ENABLED)
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_NODE_TEXTURE_DATA, std430) coherent ACCESS_R buffer dvd_textureBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH_SET, BUFFER_NODE_TEXTURE_DATA, std430) coherent ACCESS_R buffer dvd_textureBlock
 {
     uvec2 dvd_Textures[];
 };
@@ -70,20 +70,20 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_NODE_TEXTURE_DATA, std430) coherent ACC
 
 #else //BINDLESS_TEXTURES_ENABLED
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0)             uniform sampler2DArray texDiffuse0;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_OPACITY)           uniform sampler2DArray texOpacityMap;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_NORMALMAP)         uniform sampler2DArray texNormalMap;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_HEIGHTMAP)         uniform sampler2DArray texHeight;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_SPECULAR)          uniform sampler2DArray texSpecular;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_METALNESS)         uniform sampler2DArray texMetalness;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_ROUGHNESS)         uniform sampler2DArray texRoughness;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_OCCLUSION)         uniform sampler2DArray texOcclusion;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_EMISSIVE)          uniform sampler2DArray texEmissive;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1)             uniform sampler2DArray texDiffuse1;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_PROJECTION)        uniform sampler2DArray texProjected;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_REFLECTION_PLANAR) uniform sampler2D      texReflectPlanar;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_REFRACTION_PLANAR) uniform sampler2D      texRefractPlanar;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_REFLECTION_CUBE)   uniform samplerCube    texReflectCube;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0)             uniform sampler2DArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_OPACITY)           uniform sampler2DArray texOpacityMap;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_NORMALMAP)         uniform sampler2DArray texNormalMap;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_HEIGHTMAP)         uniform sampler2DArray texHeight;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_SPECULAR)          uniform sampler2DArray texSpecular;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_METALNESS)         uniform sampler2DArray texMetalness;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_ROUGHNESS)         uniform sampler2DArray texRoughness;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_OCCLUSION)         uniform sampler2DArray texOcclusion;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_EMISSIVE)          uniform sampler2DArray texEmissive;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1)             uniform sampler2DArray texDiffuse1;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_PROJECTION)        uniform sampler2DArray texProjected;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_REFLECTION_PLANAR) uniform sampler2D      texReflectPlanar;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_REFRACTION_PLANAR) uniform sampler2D      texRefractPlanar;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_REFLECTION_CUBE)   uniform samplerCube    texReflectCube;
 
 #endif //BINDLESS_TEXTURES_ENABLED
 

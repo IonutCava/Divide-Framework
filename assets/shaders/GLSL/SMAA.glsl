@@ -99,9 +99,9 @@ vec4 SMAA_RT_METRICS = vec4(1.0 / dvd_ViewPort.z, 1.0 / dvd_ViewPort.w, dvd_View
 layout(location = ATTRIB_FREE_START + 0) in vec2 vPixCoord;
 layout(location = ATTRIB_FREE_START + 1) in vec4 vOffset[3];
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D edgesTex;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D areaTex;
-DESCRIPTOR_SET_RESOURCE(0, (TEXTURE_UNIT1 + 1)) uniform sampler2D searchTex;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D edgesTex;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform sampler2D areaTex;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, (TEXTURE_UNIT1 + 1)) uniform sampler2D searchTex;
 
 layout(location = 0) out vec4 _colourOut;
 
@@ -524,8 +524,8 @@ layout(location = ATTRIB_FREE_START + 0) in vec4 vOffset;
 
 layout(location = 0) out vec4 _colourOut;
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D colourTex;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D blendTex;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D colourTex;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform sampler2D blendTex;
 
 vec4 SMAA_RT_METRICS = vec4(1.0 / dvd_ViewPort.z, 1.0 / dvd_ViewPort.w, dvd_ViewPort.z, dvd_ViewPort.w);
 

@@ -47,8 +47,8 @@ FWD_DECLARE_MANAGED_CLASS(SceneAnimator);
 BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
    public:
       struct AnimData {
-          vec2<U32> _boneBufferRange = { 0u, 0u };
-          vec2<U32> _prevBoneBufferRange = { 0u, 0u };
+          BufferRange _boneBufferRange = { 0u, 0u };
+          BufferRange _prevBoneBufferRange = { 0u, 0u };
           ShaderBuffer* _boneBuffer = nullptr;
       };
       

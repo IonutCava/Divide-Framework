@@ -51,75 +51,63 @@ glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescripto
     }
 }
 
-void glUniformBuffer::clearBytes(ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes) {
-    if (rangeInBytes > 0) {
-        OPTICK_EVENT();
+BufferLock glUniformBuffer::clearBytes(BufferRange range) {
+    DIVIDE_ASSERT(range._length > 0);
+    OPTICK_EVENT();
 
-        DIVIDE_ASSERT(offsetInBytes == Util::GetAlignmentCorrected((offsetInBytes), AlignmentRequirement(_usage)));
-        assert(offsetInBytes + rangeInBytes <= _alignedBufferSize && "glUniformBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
+    DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected((range._startOffset), AlignmentRequirement(_usage)));
+    assert(range._startOffset + range._length <= _alignedBufferSize && "glUniformBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
 
-        offsetInBytes += queueWriteIndex() * _alignedBufferSize;
+    range._startOffset += queueWriteIndex() * _alignedBufferSize;
 
-        bufferImpl()->writeOrClearBytes(offsetInBytes, rangeInBytes, nullptr, true);
-    }
+    bufferImpl()->writeOrClearBytes(range._startOffset, range._length, nullptr, true);
+    return { this, range };
 }
 
-void glUniformBuffer::readBytes(ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes, bufferPtr result) const {
-    if (rangeInBytes > 0) {
+void glUniformBuffer::readBytes(BufferRange range, bufferPtr result) const {
+    if (range._length > 0) {
         OPTICK_EVENT();
         
-        DIVIDE_ASSERT(offsetInBytes == Util::GetAlignmentCorrected(offsetInBytes, AlignmentRequirement(_usage)));
-        offsetInBytes += queueReadIndex() * _alignedBufferSize;
+        DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
+        range._startOffset += queueReadIndex() * _alignedBufferSize;
 
-        bufferImpl()->readBytes(offsetInBytes, rangeInBytes, result);
+        bufferImpl()->readBytes(range._startOffset, range._length, result);
     }
 }
 
-void glUniformBuffer::writeBytes(ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes, bufferPtr data) {
-    if (rangeInBytes > 0) {
+BufferLock glUniformBuffer::writeBytes(BufferRange range, bufferPtr data) {
+    DIVIDE_ASSERT(range._length > 0);
+    OPTICK_EVENT();
+
+    DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
+    range._startOffset += queueWriteIndex() * _alignedBufferSize;
+
+    bufferImpl()->writeOrClearBytes(range._startOffset, range._length, data, false);
+    return { this, range };
+}
+
+bool glUniformBuffer::lockByteRange(const BufferRange range, SyncObject* sync) const {
+    DIVIDE_ASSERT(sync != nullptr);
+    DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
+    return bufferImpl()->lockByteRange(range._startOffset, range._length, sync);
+}
+
+bool glUniformBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
+    if (range._length > 0) {
         OPTICK_EVENT();
 
-        DIVIDE_ASSERT(offsetInBytes == Util::GetAlignmentCorrected(offsetInBytes, AlignmentRequirement(_usage)));
-        offsetInBytes += queueWriteIndex() * _alignedBufferSize;
-
-        bufferImpl()->writeOrClearBytes(offsetInBytes, rangeInBytes, data, false);
-    }
-}
-
-bool glUniformBuffer::lockByteRange(const ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes, const ShaderBufferLockType lockType) {
-    if (rangeInBytes > 0 && lockType != ShaderBufferLockType::COUNT) {
-        DIVIDE_ASSERT(offsetInBytes == Util::GetAlignmentCorrected(offsetInBytes, AlignmentRequirement(_usage)));
-
-        GL_API::RegisterBufferLock(
-            {
-                bufferImpl(),
-                to_size(offsetInBytes + queueReadIndex() * _alignedBufferSize),
-                to_size(Util::GetAlignmentCorrected(rangeInBytes, AlignmentRequirement(_usage)))
-            },
-            lockType);
-
-        return true;
-    }
-
-    return false;
-}
-
-bool glUniformBuffer::bindByteRange(const U8 bindIndex, ptrdiff_t offsetInBytes, const ptrdiff_t rangeInBytes) {
-    if (rangeInBytes > 0) {
-        OPTICK_EVENT();
-
-        DIVIDE_ASSERT(to_size(rangeInBytes) <= _maxSize && "glUniformBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
-        DIVIDE_ASSERT(offsetInBytes == Util::GetAlignmentCorrected(offsetInBytes, AlignmentRequirement(_usage)));
-        offsetInBytes += queueReadIndex() * _alignedBufferSize;
+        DIVIDE_ASSERT(to_size(range._length) <= _maxSize && "glUniformBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
+        DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
+        range._startOffset += queueReadIndex() * _alignedBufferSize;
 
         GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
         if (bindIndex == to_base(ShaderBufferLocation::CMD_BUFFER)) {
             result = GL_API::GetStateTracker()->setActiveBuffer(GL_DRAW_INDIRECT_BUFFER, bufferImpl()->memoryBlock()._bufferHandle);
         } else {
-            const size_t offset = bufferImpl()->memoryBlock()._offset + offsetInBytes;
+            const size_t offset = bufferImpl()->memoryBlock()._offset + range._startOffset;
             // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
-            const size_t range = Util::GetAlignmentCorrected((offset == 0u && to_size(rangeInBytes) == bufferImpl()->memoryBlock()._size) ? 0u : rangeInBytes, AlignmentRequirement(_usage));
-            result = GL_API::GetStateTracker()->setActiveBufferIndexRange(bufferImpl()->params()._target, bufferImpl()->memoryBlock()._bufferHandle, bindIndex, offset, range);
+            const size_t bindRange = Util::GetAlignmentCorrected((offset == 0u && to_size(range._length) == bufferImpl()->memoryBlock()._size) ? 0u : range._length, AlignmentRequirement(_usage));
+            result = GL_API::GetStateTracker()->setActiveBufferIndexRange(bufferImpl()->params()._target, bufferImpl()->memoryBlock()._bufferHandle, bindIndex, offset, bindRange);
         }
 
         if (result == GLStateTracker::BindResult::FAILED) {

@@ -37,9 +37,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/TemplateLibraries/Headers/PolyContainer.h"
 
 namespace Divide {
-    struct GenericDrawCommand;
+struct GenericDrawCommand;
 
-    namespace GFX {
+namespace GFX {
 
 void DELETE_CMD(CommandBase*& cmd);
 [[nodiscard]] size_t RESERVE_CMD(U8 typeIndex) noexcept;
@@ -163,6 +163,7 @@ class CommandBuffer final : GUIDWrapper, NonCopyable, NonMovable {
 };
 
 [[nodiscard]] bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand);
+[[nodiscard]] bool Merge(MemoryBarrierCommand* lhs, MemoryBarrierCommand* rhs);
 [[nodiscard]] bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept;
 
 template<typename T>

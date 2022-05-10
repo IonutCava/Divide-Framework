@@ -52,7 +52,7 @@ class NONE_API final : public RenderAPIWrapper {
       void closeRenderingAPI() noexcept override;
       [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept override;
       void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
-      void flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const GFX::CommandBuffer& commandBuffer) noexcept override;
+      void flushCommand(GFX::CommandBase* cmd) noexcept override;
       void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
       [[nodiscard]] vec2<U16> getDrawableSize(const DisplayWindow& window) const noexcept override;
       [[nodiscard]] U32 getHandleFromCEGUITexture(const CEGUI::Texture& textureIn) const noexcept override;

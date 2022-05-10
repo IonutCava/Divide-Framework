@@ -12,7 +12,7 @@ uniform uint channelsArePacked;
 uniform uint scaleAndBias;
 uniform uint normalizeOutput;
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
 
 vec3 error() {
     const float total = floor(VAR._texCoord.x * float(dvd_ScreenDimensions.x)) +
@@ -68,7 +68,7 @@ layout(location = 0) out vec4 _colourOut;
 uniform vec2 _zPlanes;
 uniform float lodLevel;
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
 
 void main()
 {
@@ -81,7 +81,7 @@ void main()
 
 layout(location = 0) out vec4 _colourOut;
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 uniform float lodLevel;
 uniform int layer;
@@ -98,7 +98,7 @@ void main()
 
 layout(location = 0) out vec4 _colourOut;
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 uniform int layer;
 uniform float lodLevel;
@@ -115,7 +115,7 @@ void main()
 
 layout(location = 0) out vec4 _colourOut;
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform samplerCubeArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform samplerCubeArray texDiffuse0;
 
 uniform int layer;
 uniform int face;

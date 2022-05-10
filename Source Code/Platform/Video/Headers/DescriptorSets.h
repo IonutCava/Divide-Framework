@@ -36,6 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureData.h"
 #include "Core/Headers/Hashable.h"
 #include "Platform/Video/Textures/Headers/TextureDescriptor.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 
 namespace Divide {
     // Can be anything really, but we can just have a series of Bind commands in a row as well
@@ -48,32 +49,31 @@ namespace Divide {
     class ShaderBuffer;
     struct ShaderBufferBinding
     {
-        vec2<U32>     _elementRange{};
-        ShaderBuffer* _buffer = nullptr;
-        ShaderBufferLocation _binding = ShaderBufferLocation::COUNT;
-        ShaderBufferLockType _lockType = ShaderBufferLockType::COUNT;
+        BufferRange   _elementRange{};
+        ShaderBuffer* _buffer{ nullptr };
+        ShaderBufferLocation _binding{ ShaderBufferLocation::COUNT };
 
         bool set(const ShaderBufferBinding& other) noexcept;
-        bool set(ShaderBufferLocation binding, ShaderBuffer* buffer, const vec2<U32>& elementRange, ShaderBufferLockType lockType) noexcept;
+        bool set(ShaderBufferLocation binding, ShaderBuffer* buffer, const BufferRange& elementRange) noexcept;
     };
 
     class Texture;
     struct TextureView final : Hashable
     {
-        TextureData _textureData = {};
-        TextureType _targetType = TextureType::COUNT;
-        size_t _samplerHash = 0u;
-        vec2<U16> _mipLevels = {};
-        vec2<U16> _layerRange = {};
+        TextureData _textureData{};
+        TextureType _targetType{ TextureType::COUNT };
+        size_t _samplerHash{ 0u };
+        vec2<U16> _mipLevels{};
+        vec2<U16> _layerRange{};
 
         size_t getHash() const override;
     };
 
     struct TextureViewEntry final : Hashable
     {
-        TextureView _view = {};
-        U8 _binding = 0u;
-        TextureDescriptor _descriptor;
+        TextureView _view{};
+        U8 _binding{ 0u };
+        TextureDescriptor _descriptor{};
 
         [[nodiscard]] bool isValid() const noexcept { return IsValid(_view._textureData); }
 
@@ -91,12 +91,12 @@ namespace Divide {
             READ_WRITE
         };
 
-        Texture* _texture = nullptr;
-        Flag _flag = Flag::READ;
-        bool _layered = false;
-        U8 _layer = 0u;
-        U8 _level = 0u;
-        U8 _binding = 0u;
+        Texture* _texture{ nullptr };
+        Flag _flag{ Flag::READ };
+        bool _layered{ false };
+        U8 _layer{ 0u };
+        U8 _level{ 0u };
+        U8 _binding{ 0u };
     };
 
     template<typename Item, size_t Count, typename SearchType, bool CanExpand = false>
@@ -167,6 +167,40 @@ namespace Divide {
 
     bool operator==(const TextureDataContainer & lhs, const TextureDataContainer & rhs) noexcept;
     bool operator!=(const TextureDataContainer & lhs, const TextureDataContainer & rhs) noexcept;
+
+
+    namespace GFX {
+        enum class DescriptorSetBindingType : U8 {
+            COMBINED_IMAGE_SAMPLER,
+            UNIFORM_BUFFER,
+            SHADER_STORAGE_BUFFER,
+            IMAGE,
+            COUNT
+        };
+
+        struct DescriptorSetBindingRange {
+            size_t _offset{ 0u };
+            size_t _range{ 0u };
+        };
+
+        struct DescriptorSetBindingData {
+            ShaderBuffer* _buffer{ nullptr };
+            Texture* _combinedImageSampler{ nullptr };
+            Image* _image{ nullptr };
+            DescriptorSetBindingRange _range{};
+        };
+
+        struct DescriptorSetBindings {
+            DescriptorSetBindingData _data{};
+            U32 _resourceSlot{ 0u };
+            DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
+        };
+
+        struct DescriptorSetNew {
+            DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
+            eastl::fixed_vector<DescriptorSetBindings, 16, false> _bindings{};
+        };
+    }; //namespace GFX
 }; //namespace Divide
 
 #endif //_DESCRIPTOR_SETS_H_

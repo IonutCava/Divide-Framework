@@ -53,7 +53,7 @@ void main() {
 
 #include "utility.frag"
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH) uniform sampler2D texDepth;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH) uniform sampler2D texDepth;
 
 //linear depth
 layout(location = 0) out float _output;

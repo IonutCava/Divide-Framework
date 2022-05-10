@@ -51,13 +51,18 @@ void glGenericVertexData::draw(const GenericDrawCommand& command) {
                                     true,
                                     _idxBuffer.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
     } else {
-        rebuildCountAndIndexData(command._drawCount, command._cmd.indexCount, command._cmd.firstIndex, idxBuffer().count);
+        if (command._cmd.primCount == 1u && command._drawCount > 1u) {
+            rebuildCountAndIndexData(command._drawCount, command._cmd.indexCount, command._cmd.firstIndex, idxBuffer().count);
+        }
+
         GLUtil::SubmitRenderCommand(command,
                                     false,
                                     _idxBuffer.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
                                     _indexInfo._countData.data(),
                                     (bufferPtr)_indexInfo._indexOffsetData.data());
     }
+
+    lockBuffersInternal(false);
 }
 
 void glGenericVertexData::setIndexBuffer(const IndexBuffer& indices) {
@@ -128,13 +133,15 @@ void glGenericVertexData::setBuffer(const SetBufferParams& params) {
 
     bufferObject._buffer = eastl::make_unique<glBufferImpl>(_context, implParams);
     bufferObject._ringSizeFactor = ringSizeFactor;
+    bufferObject._useAutoSyncObjects = params._useAutoSyncObjects;
 
     if (params._bufferParams._initialData.second > 0u) {
         for (U32 i = 1u; i < ringSizeFactor; ++i) {
             bufferObject._buffer->writeOrClearBytes(i * bufferSizeInBytes, params._bufferParams._initialData.second, params._bufferParams._initialData.first, false);
         }
     }
-    bufferObject._wasWritten = true;
+
+    bufferObject._writtenRange = { 0u, implParams._dataSize };
 }
 
 /// Update the elementCount worth of data contained in the buffer starting from elementCountOffset size offset
@@ -144,7 +151,7 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
                                        const bufferPtr data) {
     DIVIDE_ASSERT(buffer < _bufferObjects.size() && "glGenericVertexData error: set buffer called for invalid buffer index!");
 
-    auto& bufferImpl = _bufferObjects[buffer]._buffer;
+    const auto& bufferImpl = _bufferObjects[buffer]._buffer;
     const BufferParams& bufferParams = bufferImpl->params()._bufferParams;
 
     // Calculate the size of the data that needs updating
@@ -157,11 +164,11 @@ void glGenericVertexData::updateBuffer(const U32 buffer,
     }
 
     bufferImpl->writeOrClearBytes(offsetInBytes, dataCurrentSizeInBytes, data, false);
-    _bufferObjects[buffer]._wasWritten = true;
+    Merge(_bufferObjects[buffer]._writtenRange, {offsetInBytes, dataCurrentSizeInBytes});
 }
 
 void glGenericVertexData::bindBufferInternal(const U32 buffer, const  U32 location) {
-    auto& bufferImpl = _bufferObjects[buffer]._buffer;
+    const auto& bufferImpl = _bufferObjects[buffer]._buffer;
     if (bufferImpl == nullptr) {
         return;
     }
@@ -178,11 +185,34 @@ void glGenericVertexData::bindBufferInternal(const U32 buffer, const  U32 locati
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    if (_bufferObjects[buffer]._wasWritten) {
-        const size_t rangeInBytes = bufferParams._elementCount * bufferParams._elementSize;
-        // Register the bind even if we get GLStateTracker::BindResult::ALREADY_BOUND so that we know that the data is still being used by the GPU
-        GL_API::RegisterBufferLock({ bufferImpl.get(), offsetInBytes,  rangeInBytes}, ShaderBufferLockType::AFTER_DRAW_COMMANDS);
-        _bufferObjects[buffer]._wasWritten = false;
+    _bufferObjects[buffer]._usedAfterWrite = _bufferObjects[buffer]._writtenRange._length > 0u;
+}
+
+void glGenericVertexData::insertFencesIfNeeded() {
+    lockBuffersInternal(true);
+}
+
+void glGenericVertexData::lockBuffersInternal(const bool force) {
+    SyncObject* sync = nullptr;
+    for (const auto& buffer : _bufferObjects) {
+        if ((buffer._useAutoSyncObjects || force) && buffer._usedAfterWrite) {
+            sync = glLockManager::CreateSyncObject();
+            break;
+        }
+    }
+
+    if (sync != nullptr) {
+        for (auto& buffer : _bufferObjects) {
+            if ((buffer._useAutoSyncObjects || force) && buffer._usedAfterWrite) {
+                DIVIDE_ASSERT(buffer._writtenRange._length > 0u);
+
+                if (!buffer._buffer->lockByteRange(buffer._writtenRange, sync)) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+                buffer._writtenRange = {};
+                buffer._usedAfterWrite = false;
+            }
+        }
     }
 }
 
@@ -215,7 +245,6 @@ void glGenericVertexData::rebuildCountAndIndexData(const U32 drawCount, const  U
         }
         _lastFirstIndex = firstIndex;
     }
-
 }
 
 };

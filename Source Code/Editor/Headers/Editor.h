@@ -237,7 +237,6 @@ class Editor final : public PlatformContextComponent,
     PROPERTY_R_IW(bool, scenePreviewHovered, false);
     POINTER_R_IW(Camera, selectedCamera, nullptr);
     POINTER_R_IW(FreeFlyCamera, editorCamera, nullptr);
-    PROPERTY_R(Rect<I32>, targetViewport, Rect<I32>(0, 0, 1, 1));
     PROPERTY_RW(bool, infiniteGridEnabled, true);
     PROPERTY_R(F32, infiniteGridAxisWidth, 2.f);
     PROPERTY_R(F32, infiniteGridScale, 1.f);

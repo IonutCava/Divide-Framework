@@ -42,6 +42,7 @@ namespace ImGui {
     bool InputDouble2(const char* label, double v[2], const char* display_format, ImGuiInputTextFlags extra_flags);
     bool InputDouble3(const char* label, double v[3], const char* display_format, ImGuiInputTextFlags extra_flags);
     bool InputDouble4(const char* label, double v[4], const char* display_format, ImGuiInputTextFlags extra_flags);
+    typedef int ImGuiPopupFlags;
 } // namespace ImGui
 
 namespace Divide {
@@ -148,6 +149,10 @@ namespace Util {
     void PopTooltip();
     [[nodiscard]] bool IsPushedTooltip();
     const char* PushedToolTip();
+
+    void CenterNextWindow();
+    void OpenCenteredPopup(const char* name, ImGui::ImGuiPopupFlags popup_flags = 0);
+
 } //namespace Util
 } //namespace Divide
 

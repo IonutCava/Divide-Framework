@@ -192,7 +192,6 @@ void Renderer::prepareLighting(const RenderStage stage,
         GFX::BindDescriptorSetsCommand bindDescriptorSetsCommand{};
 
         ShaderBufferBinding bufferBinding{};
-        bufferBinding._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
         bufferBinding._binding = ShaderBufferLocation::LIGHT_INDICES;
         bufferBinding._buffer = data._lightIndexBuffer.get();
@@ -219,7 +218,6 @@ void Renderer::prepareLighting(const RenderStage stage,
         bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
 
         GFX::EnqueueCommand(bufferInOut, bindDescriptorSetsCommand);
-
 
         if (data._previousProjMatrix != cameraSnapshot._projectionMatrix)  {
             data._previousProjMatrix = cameraSnapshot._projectionMatrix;

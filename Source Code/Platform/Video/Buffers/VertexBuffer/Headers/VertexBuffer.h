@@ -397,6 +397,7 @@ class VertexBuffer final : public VertexDataInterface {
     bool _dataLayoutChanged = false;
     bool _indicesChanged = true;
     bool _keepData = false;
+
 };
 
 FWD_DECLARE_MANAGED_CLASS(VertexBuffer);

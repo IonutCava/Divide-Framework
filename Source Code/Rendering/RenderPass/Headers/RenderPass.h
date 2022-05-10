@@ -66,9 +66,9 @@ class RenderPass final : NonCopyable {
   public:
     // passStageFlags: the first stage specified will determine the data format used by the additional stages in the list
     explicit RenderPass(RenderPassManager& parent, GFXDevice& context, RenderStage renderStage, const vector<RenderStage>& dependencies);
-    ~RenderPass();
+    ~RenderPass() = default;
 
-    void render(PlayerIndex idx, const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut) const;
+    void render(PlayerIndex idx, const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
 
     [[nodiscard]] inline U32 getLastTotalBinSize() const noexcept { return _lastNodeCount; }
     [[nodiscard]] inline const Str64& name() const noexcept { return _name; }

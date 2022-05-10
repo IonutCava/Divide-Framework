@@ -632,7 +632,7 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::SameLine(xOffset);
             if (ImGui::Button(ICON_FK_PLUS" ADD NEW", ImVec2(buttonWidth, 15))) {
-                ImGui::OpenPopup("COMP_SELECTION_GROUP");
+                Util::OpenCenteredPopup("COMP_SELECTION_GROUP");
             }
             static ComponentType selectedType = ComponentType::COUNT;
 
@@ -651,7 +651,7 @@ namespace Divide {
                 ImGui::EndPopup();
             }
             if (selectedType != ComponentType::COUNT) {
-                ImGui::OpenPopup("Add new component");
+                Util::OpenCenteredPopup("Add new component");
             }
 
             if (ImGui::BeginPopupModal("Add new component", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {

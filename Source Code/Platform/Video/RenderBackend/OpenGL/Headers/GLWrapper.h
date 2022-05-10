@@ -51,7 +51,6 @@ namespace Time {
 };
 
 enum class ShaderResult : U8;
-enum class ShaderBufferLockType : U8;
 
 class IMPrimitive;
 class DisplayWindow;
@@ -105,7 +104,7 @@ protected:
 
     void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
 
-    void flushCommand(const GFX::CommandBuffer::CommandEntry& entry, const GFX::CommandBuffer& commandBuffer) override;
+    void flushCommand(GFX::CommandBase* cmd) override;
 
     void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
 
@@ -144,10 +143,6 @@ public:
 
     static void QueueFlush() noexcept;
 
-    static void FlushMidBufferLockQueue(SyncObject* syncObj);
-    static void FlushEndBufferLockQueue(SyncObject* syncObj);
-
-
     static void PushDebugMessage(const char* message);
     static void PopDebugMessage();
 
@@ -157,8 +152,6 @@ public:
     static [[nodiscard]] bool DeleteBuffers(GLuint count, GLuint* buffers);
     static [[nodiscard]] bool DeleteVAOs(GLuint count, GLuint* vaos);
     static [[nodiscard]] bool DeleteFramebuffers(GLuint count, GLuint* framebuffers);
-
-    static void RegisterBufferLock(const BufferLockEntry&& data, ShaderBufferLockType lockType);
 
     static [[nodiscard]] IMPrimitive* NewIMP(Mutex& lock, GFXDevice& parent);
     static [[nodiscard]] bool DestroyIMP(Mutex& lock, IMPrimitive*& primitive);
@@ -189,8 +182,6 @@ private:
 private:
     GFXDevice& _context;
     Time::ProfileTimer& _swapBufferTimer;
-
-    eastl::fixed_vector<GFX::CommandBuffer::CommandEntry, 512, true> _bufferFlushPoints;
 
     /// A cache of all fonts used
     hashMap<U64, I32> _fonts;
@@ -229,9 +220,6 @@ private:
     static VAOMap s_vaoCache;
 
     static IMPrimitivePool s_IMPrimitivePool;
-
-    static BufferLockQueue s_bufferLockQueueMidFlush;
-    static BufferLockQueue s_bufferLockQueueEndOfBuffer;
 
     static glHardwareQueryPool* s_hardwareQueryPool;
 

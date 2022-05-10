@@ -121,10 +121,10 @@ layout(location = ATTRIB_FREE_START + 1) in vec3 _blurCoords[7];
 
 #if defined(LAYERED)
 #define COORDS(X) _blurCoords[X]
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2DArray texScreen;
 #else
 #define COORDS(X) _blurCoords[X].xy
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
 #endif
 
 layout(location = 0) out vec4 _outColour;
@@ -152,9 +152,9 @@ layout(location = 0) out vec4 _colourOut;
 
 #if defined(LAYERED)
 uniform int layer;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2DArray texScreen;
 #else
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
 #endif
 
 uniform vec2 size;
@@ -237,8 +237,8 @@ void main() {
 #include "utility.frag"
 
 //ref: http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texScreen;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT1) uniform sampler2D texVelocity;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texScreen;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform sampler2D texVelocity;
 
 uniform float dvd_velocityScale;
 uniform int dvd_maxSamples;

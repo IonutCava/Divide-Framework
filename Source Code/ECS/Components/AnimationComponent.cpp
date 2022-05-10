@@ -144,10 +144,9 @@ AnimationComponent::AnimData AnimationComponent::getAnimationData() const {
     AnimData ret = {};
 
     const AnimEvaluator& anim = getAnimationByIndex(std::max(_previousAnimationIndex, 0));
-
-    ret._boneBufferRange.set(_frameIndex._curr, 1);
     ret._boneBuffer = anim.boneBuffer();
-    ret._prevBoneBufferRange.set(_frameIndex._prev, 1);
+    ret._boneBufferRange = { to_size(std::max(0, _frameIndex._curr)), 1u};
+    ret._prevBoneBufferRange = { to_size(std::max(0, _frameIndex._prev)), 1u};
 
     return ret;
 }

@@ -94,8 +94,8 @@ class WaterPlane : public SceneNode {
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "WaterPlane"; }
 
    private:
-    void updateReflection(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut) const;
-    void updateRefraction(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut) const;
+    void updateReflection(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
+    void updateRefraction(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
 
    private:
     vec3<U16> _dimensions;

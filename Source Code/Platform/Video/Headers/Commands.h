@@ -87,6 +87,11 @@ struct CommandBase
 
     [[nodiscard]] CommandType Type() const noexcept { return EType; }
 
+    template<typename T>
+    FORCE_INLINE [[nodiscard]] 
+    typename std::enable_if<std::is_base_of<CommandBase, T>::value, T*>::type
+    As() { return static_cast<T*>(this); }
+
 protected:
     friend void DELETE_CMD(CommandBase*& cmd);
     [[nodiscard]] virtual Deleter& getDeleter() const noexcept = 0;

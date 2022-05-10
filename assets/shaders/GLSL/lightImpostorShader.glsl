@@ -75,7 +75,7 @@ void main()
 
 layout(location = ATTRIB_FREE_START + 0) in flat vec3 lightColour;
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 

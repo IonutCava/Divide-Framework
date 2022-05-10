@@ -273,6 +273,7 @@ public:  // GPU interface
                          const vec3<F32>& pos,
                          const vec2<F32>& zPlanes,
                          GFX::CommandBuffer& commandsInOut,
+                         GFX::MemoryBarrierCommand& memCmdInOut,
                          std::array<Camera*, 6>& cameras);
 
     void generateDualParaboloidMap(RenderPassParams& params,
@@ -280,9 +281,9 @@ public:  // GPU interface
                                    const vec3<F32>& pos,
                                    const vec2<F32>& zPlanes,
                                    GFX::CommandBuffer& bufferInOut,
+                                   GFX::MemoryBarrierCommand& memCmdInOut,
                                    std::array<Camera*, 2>& cameras);
 
-    const GFXShaderData::RenderData& renderingData() const noexcept;
     const GFXShaderData::CamData& cameraData() const noexcept;
 
     /// Returns true if the viewport was changed
@@ -354,7 +355,7 @@ public:  // Accessors and Mutators
     static void OverrideDeviceInformation(const DeviceInformation& info) noexcept;
 
 public:
-    GenericVertexData* getOrCreateIMGUIBuffer(I64 windowGUID, I32 maxCommandCount);
+    GenericVertexData* getOrCreateIMGUIBuffer(I64 windowGUID, I32 maxCommandCount, U32 maxVertices);
 
     /// Create and return a new immediate mode emulation primitive.
     IMPrimitive*       newIMP();
@@ -404,12 +405,15 @@ public:
 
     void materialDebugFlag(MaterialDebugFlag flag);
 
+    void updateDescriptorSet(U32 resourceSlot, const GFX::DescriptorSetBindingData& data);
+
     PROPERTY_R(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
     PROPERTY_RW(RenderAPI, renderAPI, RenderAPI::COUNT);
     PROPERTY_RW(bool, queryPerformanceStats, false);
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
     PROPERTY_R_IW(U32, lastCullCount, 0u);
+    //PROPERTY_R_IW(GFX::DescriptorSet, perFrameSet);
 
 protected:
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
@@ -464,7 +468,7 @@ protected:
 private:
     /// Upload draw related data to the GPU (view & projection matrices, viewport settings, etc)
     const DescriptorSet& uploadGPUBlock();
-    void resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeRender, size_t targetSizeCullCounter);
+    void resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCounter);
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
     void setDepthRange(const vec2<F32>& depthRange);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
@@ -552,28 +556,23 @@ private:
         static constexpr U8 PerFrameBufferCount = 3u;
 
         struct PerFrameBuffers {
+            GFX::MemoryBarrierCommand _writeMemCmd{};
             ShaderBuffer_uptr _camDataBuffer = nullptr;
-            ShaderBuffer_uptr _renderDataBuffer = nullptr;
             ShaderBuffer_uptr _cullCounter = nullptr;
             size_t _camWritesThisFrame = 0u;
             size_t _renderWritesThisFrame = 0u;
         } _perFrameBuffers[PerFrameBufferCount];
         size_t _perFrameBufferIndex = 0u;
         size_t _currentSizeCam = 0u;
-        size_t _currentSizeRender = 0u;
         size_t _currentSizeCullCounter = 0u;
         bool _needsResizeCam = false;
-        bool _needsResizeRender = false;
         inline [[nodiscard]] PerFrameBuffers& crtBuffers() { return _perFrameBuffers[_perFrameBufferIndex]; }
         inline [[nodiscard]] const PerFrameBuffers& crtBuffers() const { return _perFrameBuffers[_perFrameBufferIndex]; }
 
-        inline void reset(const bool camBuffer, const bool renderBuffer, const bool cullBuffer) {
+        inline void reset(const bool camBuffer, const bool cullBuffer) {
             for (U8 i = 0u; i < PerFrameBufferCount; ++i) {
                 if (camBuffer) {
                     _perFrameBuffers[i]._camDataBuffer.reset();
-                }
-                if (renderBuffer) {
-                    _perFrameBuffers[i]._renderDataBuffer.reset();
                 }
                 if (cullBuffer) {
                     _perFrameBuffers[i]._cullCounter.reset();

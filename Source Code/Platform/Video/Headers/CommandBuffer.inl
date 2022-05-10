@@ -197,6 +197,9 @@ CommandBuffer::tryMergeCommands(const CommandType type, T* prevCommand, T* crtCo
         case CommandType::DRAW_COMMANDS:        {
             ret = Merge(static_cast<DrawCommand*>(prevCommand), static_cast<DrawCommand*>(crtCommand));
         } break;
+        case CommandType::MEMORY_BARRIER: {
+            ret = Merge(reinterpret_cast<MemoryBarrierCommand*>(prevCommand), reinterpret_cast<MemoryBarrierCommand*>(crtCommand));
+        } break;
         case CommandType::BIND_DESCRIPTOR_SETS: {
             bool partial = false;
             ret = Merge(reinterpret_cast<BindDescriptorSetsCommand*>(prevCommand)->_set, reinterpret_cast<BindDescriptorSetsCommand*>(crtCommand)->_set, partial);

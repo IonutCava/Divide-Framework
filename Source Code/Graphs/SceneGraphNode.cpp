@@ -552,21 +552,23 @@ void SceneGraphNode::processEvents() {
     }
 }
 
-void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStagePass renderStagePass, const CameraSnapshot& cameraSnapshot, const bool refreshData) {
+void SceneGraphNode::prepareRender(RenderingComponent& rComp,
+                                   const RenderStagePass renderStagePass,
+                                   const CameraSnapshot& cameraSnapshot,
+                                   const bool refreshData)
+{
     OPTICK_EVENT();
 
     if (HasComponents(ComponentType::ANIMATION)) {
         DescriptorSet& set = rComp.getDescriptorSet(renderStagePass);
         const AnimationComponent::AnimData data = get<AnimationComponent>()->getAnimationData();
         // We always bind a bone buffer if we have animation data available as the shaders will expect the data to be there
-        DIVIDE_ASSERT(data._boneBuffer != nullptr);
-        DIVIDE_ASSERT(data._prevBoneBufferRange.max > 0);
+        DIVIDE_ASSERT(data._boneBuffer != nullptr && data._prevBoneBufferRange._length > 0);
         {
             ShaderBufferBinding bufferBinding;
             bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS;
             bufferBinding._buffer = data._boneBuffer;
             bufferBinding._elementRange = data._boneBufferRange;
-            bufferBinding._lockType = ShaderBufferLockType::AFTER_DRAW_COMMANDS;
             set._buffers.add(bufferBinding);
         }
         {
@@ -574,7 +576,6 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp, const RenderStageP
             bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS_PREV;
             bufferBinding._buffer = data._boneBuffer;
             bufferBinding._elementRange = data._prevBoneBufferRange;
-            bufferBinding._lockType = ShaderBufferLockType::AFTER_DRAW_COMMANDS;
             set._buffers.add(bufferBinding);
         }
     }

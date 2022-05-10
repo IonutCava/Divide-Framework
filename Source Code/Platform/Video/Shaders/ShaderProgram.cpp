@@ -39,6 +39,22 @@ extern "C" {
 
 namespace Divide {
 
+namespace TypeUtil {
+    const char* DescriptorSetUsageToString(const DescriptorSetUsage setUsage) noexcept {
+        return Names::descriptorSetUsage[to_base(setUsage)];
+    }
+
+    DescriptorSetUsage StringToDescriptorSetUsage(const string& name) {
+        for (U8 i = 0; i < to_U8(DescriptorSetUsage::COUNT); ++i) {
+            if (strcmp(name.c_str(), Names::descriptorSetUsage[i]) == 0) {
+                return static_cast<DescriptorSetUsage>(i);
+            }
+        }
+
+        return DescriptorSetUsage::COUNT;
+    }
+};
+
 constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 constexpr I8 s_maxHeaderRecursionLevel = 64;
@@ -491,7 +507,6 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_REVEALAGE " + Util::to_string(to_base(GFXDevice::ScreenTargets::REVEALAGE)));
     AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_MODULATE " + Util::to_string(to_base(GFXDevice::ScreenTargets::MODULATE)));
     AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_CAM_BLOCK " + Util::to_string(to_base(ShaderBufferLocation::CAM_BLOCK)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_RENDER_BLOCK " + Util::to_string(to_base(ShaderBufferLocation::RENDER_BLOCK)));
     AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_ATOMIC_COUNTER_0 " + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_0)));
     AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_ATOMIC_COUNTER_1 " + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_1)));
     AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_ATOMIC_COUNTER_2 " + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_2)));
@@ -525,10 +540,13 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     AppendToShaderHeader(ShaderType::COUNT, "#define MAX_LIGHTS_PER_CLUSTER " + Util::to_string(config.rendering.numLightsPerCluster));
     AppendToShaderHeader(ShaderType::COUNT, "#define REFLECTION_PROBE_RESOLUTION " + Util::to_string(reflectionProbeRes));
     AppendToShaderHeader(ShaderType::COUNT, "#define REFLECTION_PROBE_MIP_COUNT " + Util::to_string(to_U32(std::log2(reflectionProbeRes))));
-    for (U8 i = 0; i < to_base(TextureUsage::COUNT); ++i) {
+    for (U8 i = 0u; i < to_base(TextureUsage::COUNT); ++i) {
         AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define TEXTURE_%s %d", TypeUtil::TextureUsageToString(static_cast<TextureUsage>(i)), i).c_str());
     }
-    for (U8 i = 0; i < to_base(TextureOperation::COUNT); ++i) {
+    for (U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i) {
+        AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s %d", TypeUtil::DescriptorSetUsageToString(static_cast<DescriptorSetUsage>(i)), i).c_str());
+    }
+    for (U8 i = 0u; i < to_base(TextureOperation::COUNT); ++i) {
         AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define TEX_%s %d", TypeUtil::TextureOperationToString(static_cast<TextureOperation>(i)), i).c_str());
     }
     AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define WORLD_X_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_X_AXIS.x, WORLD_X_AXIS.y, WORLD_X_AXIS.z));
@@ -1339,14 +1357,14 @@ void ShaderProgram::initUniformUploader(const PerFileShaderData& shaderFileData)
     }
 }
 
-void ShaderProgram::uploadPushConstants(const PushConstants& constants) {
+void ShaderProgram::uploadPushConstants(const PushConstants& constants, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT()
 
     for (auto& blockBuffer : _uniformBlockBuffers) {
         for (const GFX::PushConstant& constant : constants.data()) {
             blockBuffer.uploadPushConstant(constant);
         }
-        blockBuffer.commit();
+        blockBuffer.commit(memCmdInOut);
     }
 }
 

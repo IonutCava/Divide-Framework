@@ -7,7 +7,7 @@ vec4 transformVector(in vec4 vectorIn, in mat4[4] transformMatrix) {
 }
 
 #if defined(HAS_VELOCITY)
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_BONE_TRANSFORMS_PREV, std140) uniform dvd_BoneTransformsPrev
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW_SET, BUFFER_BONE_TRANSFORMS_PREV, std140) uniform dvd_BoneTransformsPrev
 {
     mat4 boneTransformsPrev[MAX_BONE_COUNT_PER_NODE];
 };
@@ -24,7 +24,7 @@ vec4 applyPrevBoneTransforms(in vec4 vertex) {
 }
 #endif //HAS_VELOCITY
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_BONE_TRANSFORMS, std140) uniform dvd_BoneTransforms {
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW_SET, BUFFER_BONE_TRANSFORMS, std140) uniform dvd_BoneTransforms {
     mat4 boneTransforms[MAX_BONE_COUNT_PER_NODE];
 };
 

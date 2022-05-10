@@ -105,9 +105,9 @@ glBufferImpl::~glBufferImpl()
     }
 }
 
-bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, SyncObject* syncObject) {
+bool glBufferImpl::lockByteRange(const size_t offsetInBytes, const size_t rangeInBytes, SyncObject* sync) {
     if (_memoryBlock._ptr != nullptr) {
-        return _lockManager.lockRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, syncObject);
+        return _lockManager.lockRange(_memoryBlock._offset + offsetInBytes, rangeInBytes, sync);
     }
 
     return true;

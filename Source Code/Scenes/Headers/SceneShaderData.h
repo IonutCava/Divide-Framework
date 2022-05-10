@@ -42,6 +42,11 @@ class GFXDevice;
 
 struct DescriptorSet;
 
+namespace GFX {
+    class CommandBuffer;
+    struct MemoryBarrierCommand;
+};
+
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 constexpr U8 GLOBAL_WATER_BODIES_COUNT = 2u;
@@ -143,7 +148,7 @@ class SceneShaderData {
         return false;
     }
 
-    const DescriptorSet& getDescriptorSet();
+    GFX::MemoryBarrierCommand bindSceneDescriptorSet(GFX::CommandBuffer& bufferInOut);
 
   private:
       using ProbeBufferData = std::array<ProbeData, GLOBAL_PROBE_COUNT>;

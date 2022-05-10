@@ -544,6 +544,9 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
     // We usually want accurate data when debugging material properties, so tonemapping should probably be disabled
     if (adaptiveExposureControl()) {
+        GFX::MemoryBarrierCommand memBarrier{};
+        memBarrier._barrierMask = to_base(MemoryBarrierType::SHADER_IMAGE) | to_base(MemoryBarrierType::SHADER_STORAGE);
+
         const F32 logLumRange = _toneMapParams._maxLogLuminance - _toneMapParams._minLogLuminance;
         const F32 histogramParams[4] = {
                 _toneMapParams._minLogLuminance,
@@ -551,11 +554,11 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                 to_F32(_toneMapParams._width),
                 to_F32(_toneMapParams._height),
         };
+
         const ShaderBufferBinding shaderBuffer{
             { 0u, _histogramBuffer->getPrimitiveCount() },
             _histogramBuffer.get(),
-            ShaderBufferLocation::LUMINANCE_HISTOGRAM,
-            ShaderBufferLockType::AFTER_DRAW_COMMANDS
+            ShaderBufferLocation::LUMINANCE_HISTOGRAM
         };
 
         { // Histogram Pass
@@ -611,8 +614,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1, 1, 1, });
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         }
-
-        GFX::EnqueueCommand(bufferInOut, GFX::MemoryBarrierCommand{ to_base(MemoryBarrierType::SHADER_IMAGE) | to_base(MemoryBarrierType::SHADER_STORAGE) });
+        GFX::EnqueueCommand(bufferInOut, memBarrier);
     }
 
     // We handle SSR between the Pre and Main render passes

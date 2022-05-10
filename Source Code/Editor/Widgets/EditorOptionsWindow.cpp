@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/UndoManager.h"
+#include "Headers/Utils.h"
 
 #include "Editor/Headers/Editor.h"
 #include "Headers/EditorOptionsWindow.h"
@@ -13,7 +14,6 @@ namespace Divide {
         : PlatformContextComponent(context),
           _fileOpenDialog(false, true)
     {
-        //ImGuiFs::Dialog::ExtraWindowFlags |= ImGuiWindowFlags_Tooltip;
     }
 
     void EditorOptionsWindow::update([[maybe_unused]] const U64 deltaTimeUS) {
@@ -26,20 +26,13 @@ namespace Divide {
 
         OPTICK_EVENT();
 
-        const ImVec2 CenterPos(ImGui::GetMainViewport()->Pos.x + ImGui::GetIO().DisplaySize.x * 0.5f,
-                               ImGui::GetMainViewport()->Pos.y + ImGui::GetIO().DisplaySize.y * 0.5f);
-        const ImVec2 FileDialogPos(ImGui::GetMainViewport()->Pos.x + 20, 
-                                   ImGui::GetMainViewport()->Pos.y + 20);
+        const U32 flags = ImGuiWindowFlags_NoResize |
+                          ImGuiWindowFlags_NoCollapse |
+                          ImGuiWindowFlags_AlwaysAutoResize |
+                          ImGuiWindowFlags_NoDocking |
+                          (_openDialog ? ImGuiWindowFlags_NoBringToFrontOnFocus : ImGuiWindowFlags_Tooltip);
 
-        ImGui::SetNextWindowPos(CenterPos, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-
-        U32 flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking;
-        if (!_openDialog) {
-            flags |= ImGuiWindowFlags_Tooltip;
-        } else {
-            flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
-        }
-
+        Util::CenterNextWindow();
         if (!ImGui::Begin("Editor options", nullptr, flags))
         {
             ImGui::End();
@@ -86,8 +79,8 @@ namespace Divide {
         ImGui::SameLine();
         const bool openDialog = ImGui::Button("Select");
         if (openDialog) {
-            ImGuiFs::Dialog::WindowLTRBOffsets.x = FileDialogPos.x;
-            ImGuiFs::Dialog::WindowLTRBOffsets.y = FileDialogPos.y;
+            ImGuiFs::Dialog::WindowLTRBOffsets.x = 20;
+            ImGuiFs::Dialog::WindowLTRBOffsets.y = 20;
             _openDialog = true;
         }
         ImGui::Separator();
@@ -121,7 +114,8 @@ namespace Divide {
         ImGui::End();
 
         if (_openDialog) {
-            const char* chosenPath = _fileOpenDialog.chooseFileDialog(openDialog, nullptr, nullptr, "Choose text editor", ImVec2(-1, -1), FileDialogPos);
+            Util::CenterNextWindow();
+            const char* chosenPath = _fileOpenDialog.chooseFileDialog(openDialog, nullptr, nullptr, "Choose text editor", ImVec2(-1, -1), ImGui::GetMainViewport()->WorkPos);
             if (strlen(chosenPath) > 0) {
                 Attorney::EditorOptionsWindow::externalTextEditorPath(_context.editor(), chosenPath);
             }

@@ -47,9 +47,10 @@ namespace Attorney {
 };
 
 class ShaderProgram;
-class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
+class NOINITVTABLE ShaderBuffer : public LockableDataRangeBuffer,
                                   public GraphicsResource,
                                   public RingBufferSeparateWrite
+                                  
 {
     friend class Attorney::ShaderBufferBind;
 
@@ -67,60 +68,38 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
 
     virtual ~ShaderBuffer() = default;
 
-    virtual void clearData(U32 offsetElementCount,
-                           U32 rangeElementCount);
+    virtual BufferLock clearData(BufferRange range);
 
-    virtual void writeData(U32 offsetElementCount,
-                           U32 rangeElementCount,
-                           bufferPtr data);
+    virtual BufferLock writeData(BufferRange range, bufferPtr data);
 
-    virtual void readData(U32 offsetElementCount,
-                          U32 rangeElementCount,
-                          bufferPtr result) const;
+    virtual void readData(BufferRange range, bufferPtr result) const;
 
-    virtual void clearBytes(ptrdiff_t offsetInBytes,
-                            ptrdiff_t rangeInBytes) = 0;
+    virtual BufferLock clearBytes(BufferRange range) = 0;
 
-    virtual void writeBytes(ptrdiff_t offsetInBytes,
-                            ptrdiff_t rangeInBytes,
-                            bufferPtr data) = 0;
+    virtual BufferLock writeBytes(BufferRange range, bufferPtr data) = 0;
 
-    virtual void readBytes(ptrdiff_t offsetInBytes,
-                           ptrdiff_t rangeInBytes,
-                           bufferPtr result) const = 0;
-
-    virtual bool lockByteRange(ptrdiff_t offsetInBytes,
-                               ptrdiff_t rangeInBytes,
-                               ShaderBufferLockType lockType) = 0;
-
-    bool lockRange(ShaderBufferLockType lockType);
-
-    bool lockRange(U32 offsetElementCount, U32 rangeElementCount, ShaderBufferLockType lockType);
+    virtual void readBytes(BufferRange range, bufferPtr result) const = 0;
 
     [[nodiscard]] FORCE_INLINE U32    getPrimitiveCount() const noexcept { return _params._elementCount; }
     [[nodiscard]] FORCE_INLINE size_t getPrimitiveSize()  const noexcept { return _params._elementSize; }
     [[nodiscard]] FORCE_INLINE Usage  getUsage()          const noexcept { return _usage;  }
 
-    FORCE_INLINE void writeData(bufferPtr data) { writeData(0, _params._elementCount, data); }
-    FORCE_INLINE void clearData() { clearData(0, _params._elementCount); }
+    FORCE_INLINE BufferLock writeData(bufferPtr data) { return writeData({ 0u, _params._elementCount }, data); }
+    FORCE_INLINE BufferLock clearData() { return clearData({ 0u, _params._elementCount }); }
     FORCE_INLINE bool bind(ShaderBufferLocation bindIndex) { return bind(to_U8(bindIndex)); }
-    FORCE_INLINE bool bindRange(ShaderBufferLocation bindIndex, U32 offsetElementCount, U32 rangeElementCount) { return bindRange(to_U8(bindIndex), offsetElementCount, rangeElementCount); }
+    FORCE_INLINE bool bindRange(ShaderBufferLocation bindIndex, BufferRange range) { return bindRange(to_U8(bindIndex), range); }
 
     [[nodiscard]] static size_t AlignmentRequirement(Usage usage) noexcept;
 
     PROPERTY_R(string, name);
 
   protected:
-    virtual bool bindByteRange(U8 bindIndex,
-                               ptrdiff_t offsetInBytes,
-                               ptrdiff_t rangeInBytes) = 0;
+    virtual bool bindByteRange(U8 bindIndex, BufferRange range) = 0;
 
-    bool bindRange(U8 bindIndex,
-                   U32 offsetElementCount,
-                   U32 rangeElementCount);
+    bool bindRange(U8 bindIndex, BufferRange range);
 
     /// Bind return false if the buffer was already bound
-    FORCE_INLINE bool bind(U8 bindIndex) { return bindRange(bindIndex, 0, _params._elementCount); }
+    FORCE_INLINE bool bind(U8 bindIndex) { return bindRange(bindIndex, { 0u, _params._elementCount }); }
 
    protected:
     BufferParams _params;
@@ -144,12 +123,12 @@ FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 namespace Attorney {
     class ShaderBufferBind {
-        static bool bindByteRange(ShaderBuffer& buf, U8 bindIndex, ptrdiff_t offsetInBytes, ptrdiff_t rangeInBytes) {
-            return buf.bindByteRange(bindIndex, offsetInBytes, rangeInBytes);
+        static bool bindByteRange(ShaderBuffer& buf, U8 bindIndex, BufferRange range) {
+            return buf.bindByteRange(bindIndex, range);
         }
 
-        static bool bindRange(ShaderBuffer& buf, U8 bindIndex, U32 offsetElementCount, U32 rangeElementCount) {
-            return buf.bindRange(bindIndex, offsetElementCount, rangeElementCount);
+        static bool bindRange(ShaderBuffer& buf, U8 bindIndex, const BufferRange range) {
+            return buf.bindRange(bindIndex, range);
         }
 
         /// Bind return false if the buffer was already bound

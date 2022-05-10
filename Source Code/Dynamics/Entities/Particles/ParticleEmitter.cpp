@@ -262,6 +262,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
             GenericVertexData& buffer = getDataBuffer(renderStagePass._stage, 0);
             buffer.updateBuffer(g_particlePositionBuffer, 0u, to_U32(_particles->_renderingPositions.size()), _particles->_renderingPositions.data());
             buffer.updateBuffer(g_particleColourBuffer, 0u, to_U32(_particles->_renderingColours.size()), _particles->_renderingColours.data());
+
             buffer.incQueue();
             _buffersDirty[to_U32(renderStagePass._stage)] = false;
         }

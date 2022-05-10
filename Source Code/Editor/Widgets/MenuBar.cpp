@@ -106,7 +106,7 @@ void MenuBar::draw() {
         }
 
         if (_closePopup) {
-            ImGui::OpenPopup("Confirm Close");
+            Util::OpenCenteredPopup("Confirm Close");
 
             if (ImGui::BeginPopupModal("Confirm Close", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 ImGui::Text("Are you sure you want to close the editor? You have unsaved items!");
@@ -129,7 +129,7 @@ void MenuBar::draw() {
         }
 
         if (!_errorMsg.empty()) {
-            ImGui::OpenPopup("Error!");
+            Util::OpenCenteredPopup("Error!");
             if (ImGui::BeginPopupModal("Error!", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 ImGui::Text(_errorMsg.c_str());
                 if (ImGui::Button("Ok")) {
@@ -141,7 +141,7 @@ void MenuBar::draw() {
         }
 
         if (_newScenePopup) {
-            ImGui::OpenPopup("Create New Scene");
+            Util::OpenCenteredPopup("Create New Scene");
             if (ImGui::BeginPopupModal("Create New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 static char buf[256];
                 ImGui::Text("WARNING: All unsaved changes will be lost!");
@@ -183,7 +183,7 @@ void MenuBar::draw() {
         }
 
         if (_quitPopup) {
-            ImGui::OpenPopup("Confirm Quit");
+            Util::OpenCenteredPopup("Confirm Quit");
             if (ImGui::BeginPopupModal("Confirm Quit", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 ImGui::Text("Are you sure you want to quit?");
                 ImGui::Separator();
@@ -203,7 +203,7 @@ void MenuBar::draw() {
             }
         } 
         if (_restartPopup) {
-            ImGui::OpenPopup("Confirm Restart");
+            Util::OpenCenteredPopup("Confirm Restart");
             if (ImGui::BeginPopupModal("Confirm Restart", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 ImGui::Text("Are you sure you want to restart the application?");
                 ImGui::Separator();
@@ -223,7 +223,7 @@ void MenuBar::draw() {
             }
         }
         if (_savePopup) {
-            ImGui::OpenPopup("Saving Scene");
+            Util::OpenCenteredPopup("Saving Scene");
             if (ImGui::BeginPopupModal("Saving Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
             {
                 constexpr U32 maxSize = 40u;
@@ -322,7 +322,7 @@ void MenuBar::draw() {
             if (modifierPressed) {
                 createPrimitive();
             } else {
-                ImGui::OpenPopup("Create Primitive");
+                Util::OpenCenteredPopup("Create Primitive");
                 if (ImGui::BeginPopupModal("Create Primitive", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                     ImGui::Text(Util::StringFormat("Create a new [ %s ]?", TypeUtil::ObjectTypeToString(_newPrimitiveType)).c_str());
                     ImGui::Separator();
@@ -528,6 +528,7 @@ void MenuBar::drawFileMenu([[maybe_unused]] const bool modifierPressed) {
         ImGui::EndMenu();
     }
 
+    Util::CenterNextWindow();
     const char* sceneOpenPath = _sceneOpenDialog.chooseFolderDialog(showSceneOpenDialog, g_scenePath.c_str());
     if (strlen(sceneOpenPath) > 0) {
         Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), Util::StringFormat("Chosen scene load directory: \"%s\"", sceneOpenPath), Time::SecondsToMilliseconds<F32>(3.0f), false);

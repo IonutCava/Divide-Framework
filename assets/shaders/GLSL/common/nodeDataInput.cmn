@@ -41,42 +41,37 @@ out gl_PerVertex
 
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_RENDER_BLOCK, std140) uniform dvd_RenderBlock
-{
-    mat4  dvd_PreviousViewMatrix;
-    mat4  dvd_PreviousProjectionMatrix;
-    mat4  dvd_PreviousViewProjectionMatrix;
-    //x - elapsed time (ms), y - unused, z = material debug flag, w - clip plane count
-    vec4  dvd_renderProperties;
-    vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
-};
-
-#define dvd_TimeMS int(dvd_renderProperties.x)
-#define dvd_MaterialDebugFlag int(dvd_renderProperties.z)
-#define dvd_ClipPlaneCount uint(dvd_renderProperties.w)
-
-#if !defined(NO_CAM_BLOCK)
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME_SET, BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
 {
     mat4  dvd_ProjectionMatrix;
     mat4  dvd_InverseProjectionMatrix;
     mat4  dvd_ViewMatrix;
     mat4  dvd_InverseViewMatrix;
     mat4  dvd_ViewProjectionMatrix;
+    mat4  dvd_PreviousViewMatrix;
+    mat4  dvd_PreviousProjectionMatrix;
+    mat4  dvd_PreviousViewProjectionMatrix;
     vec4  dvd_ViewPort;
     //x - scale, y - bias, z - light bleed bias, w - min shadow variance
-    vec4 dvd_lightingTweakValues;
+    vec4  dvd_lightingTweakValues;
     //x - nearPlane, y - farPlane, z - FoV, w - ortho camera
     vec4  dvd_camProperties;
     //xy - depth range, zw - light cluster size X / Y
-    vec4 dvd_renderTargetInfo;
-    vec4 dvd_frustumPlanes[6];
+    vec4  dvd_renderTargetInfo;
+    //x - elapsed time (ms), y - unused, z = material debug flag, w - clip plane count
+    vec4  dvd_renderProperties;
+    vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
+    vec4  dvd_frustumPlanes[6];
     vec4 _cam_padding[2];
 };
 
 #define DEPTH_RANGE dvd_renderTargetInfo.xy
 #define SHADOW_PASS_TYPE int(dvd_camProperties.w)
 #define CAMERA_FLAG SHADOW_PASS_TYPE
+
+#define dvd_TimeMS int(dvd_renderProperties.x)
+#define dvd_MaterialDebugFlag int(dvd_renderProperties.z)
+#define dvd_ClipPlaneCount uint(dvd_renderProperties.w)
 
 #define dvd_ClusterSizes vec2(uint(dvd_renderTargetInfo.z), uint(dvd_renderTargetInfo.w))
 #define dvd_ScreenDimensions dvd_ViewPort.zw
@@ -90,8 +85,6 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
 #define dvd_LightBleedBias dvd_lightingTweakValues.z
 #define dvd_MinVariance dvd_lightingTweakValues.w
 #define dvd_IsOrthoCamera  (uint(dvd_camProperties.w) == 1u)
-
-#endif //!NO_CAM_BLOCK
 
 #if !defined(COMPUTE_SHADER) && !defined(FRAG_SHADER)
 

@@ -11,14 +11,14 @@ struct VegetationData {
 };
 
 #if defined(MAX_TREE_INSTANCES)
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_TREE_DATA, std430) coherent COMP_ONLY_RW buffer dvd_treeTransformBlock {
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS_SET, BUFFER_TREE_DATA, std430) coherent COMP_ONLY_RW buffer dvd_treeTransformBlock {
     VegetationData treeData[];
 };
 
 #endif //MAX_TREE_INSTANCES
 
 #if defined(MAX_GRASS_INSTANCES)
-DESCRIPTOR_SET_RESOURCE_LAYOUT(0, BUFFER_GRASS_DATA, std430) coherent COMP_ONLY_RW buffer dvd_grassTransformBlock {
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS_SET, BUFFER_GRASS_DATA, std430) coherent COMP_ONLY_RW buffer dvd_grassTransformBlock {
     VegetationData grassData[];
 };
 

@@ -16,9 +16,9 @@ size_t ShaderBuffer::AlignmentRequirement(const Usage usage) noexcept {
     return sizeof(U32);
 }
 
-ShaderBuffer::ShaderBuffer(GFXDevice& context,
-                           const ShaderBufferDescriptor& descriptor)
-      : GraphicsResource(context, Type::SHADER_BUFFER, getGUID(), _ID(descriptor._name.c_str())),
+ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor)
+      : LockableDataRangeBuffer(),
+        GraphicsResource(context, Type::SHADER_BUFFER, getGUID(), _ID(descriptor._name.c_str())),
         RingBufferSeparateWrite(descriptor._ringBufferLength, descriptor._separateReadWrite),
         _params(descriptor._bufferParams),
         _usage(descriptor._usage),
@@ -28,41 +28,42 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context,
     assert(descriptor._bufferParams._elementSize * descriptor._bufferParams._elementCount > 0 && "ShaderBuffer::Create error: Invalid buffer size!");
 }
 
-void ShaderBuffer::clearData(const U32 offsetElementCount, const U32 rangeElementCount) {
-    clearBytes(static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),
-               static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize));
+BufferLock ShaderBuffer::clearData(const BufferRange range) {
+    return clearBytes(
+               {
+                   range._startOffset * _params._elementSize,
+                   range._length * _params._elementSize
+               });
 }
 
-void ShaderBuffer::writeData(const U32 offsetElementCount, const U32 rangeElementCount, const bufferPtr data) {
-    writeBytes(static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),
-               static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize),
+BufferLock ShaderBuffer::writeData(const BufferRange range, const bufferPtr data) {
+    return writeBytes(
+               {
+                   range._startOffset * _params._elementSize,
+                   range._length * _params._elementSize
+               },
                data);
 }
 
-void ShaderBuffer::readData(const U32 offsetElementCount, const U32 rangeElementCount, const bufferPtr result) const {
-    readBytes(static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),
-              static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize),
-              result);
+void ShaderBuffer::readData(const BufferRange range, const bufferPtr result) const {
+    readBytes(
+        {
+            range._startOffset * _params._elementSize,
+            range._length * _params._elementSize
+        },
+        result);
 }
 
 bool ShaderBuffer::bindRange(const U8 bindIndex,
-                             const U32 offsetElementCount,
-                             const U32 rangeElementCount) {
-    assert(rangeElementCount > 0);
+                             const BufferRange range) {
+    assert(range._length > 0);
 
-    return bindByteRange(bindIndex,
-                         static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),
-                         static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize));
-}
-
-bool ShaderBuffer::lockRange(const ShaderBufferLockType lockType) {
-    return lockRange(0u, _params._elementCount, lockType);
-}
-
-bool ShaderBuffer::lockRange(const U32 offsetElementCount, const U32 rangeElementCount, const ShaderBufferLockType lockType) {
-    return lockByteRange(static_cast<ptrdiff_t>(offsetElementCount * _params._elementSize),
-                         static_cast<ptrdiff_t>(rangeElementCount * _params._elementSize),
-                         lockType);
+    return bindByteRange(
+        bindIndex,
+        {
+            range._startOffset * _params._elementSize,
+            range._length * _params._elementSize
+        });
 }
 
 } //namespace Divide;

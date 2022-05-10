@@ -218,7 +218,7 @@ void LightPool::onVolumeMoved(const BoundingSphere& volume, const bool staticSou
 }
 
 //ToDo: Generate shadow maps in parallel - Ionut
-void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut) {
+void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
 
     Time::ScopedTimer timer(_shadowPassTimer);
@@ -273,7 +273,7 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
         light->shadowPropertyIndex(shadowIndex);
 
         // ... and update the shadow map
-        if (!ShadowMap::generateShadowMaps(playerCamera, *light, bufferInOut)) {
+        if (!ShadowMap::generateShadowMaps(playerCamera, *light, bufferInOut, memCmdInOut)) {
             continue;
         }
 
@@ -313,7 +313,7 @@ void LightPool::generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffe
         EnqueueCommand(bufferInOut, computeMipMapsCommand);
     }
 
-    _shadowBuffer->writeData(_shadowBufferData.data());
+    memCmdInOut._bufferLocks.push_back(_shadowBuffer->writeData(_shadowBufferData.data()));
     _shadowBufferDirty = true;
 
     ShadowMap::bindShadowMaps(bufferInOut);
@@ -415,7 +415,7 @@ void LightPool::sortLightData(const RenderStage stage, const CameraSnapshot& cam
 
 }
 
-void LightPool::uploadLightData(const RenderStage stage, const CameraSnapshot& cameraSnapshot) {
+void LightPool::uploadLightData(const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
 
     const U8 stageIndex = to_U8(stage);
@@ -440,14 +440,14 @@ void LightPool::uploadLightData(const RenderStage stage, const CameraSnapshot& c
 
     {
         OPTICK_EVENT("LightPool::UploadLightDataToGPU");
-        _lightBuffer->writeData(bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME,
-                                totalLightCount,
-                                &_sortedLightProperties[stageIndex]);
+        memCmdInOut._bufferLocks.push_back(
+            _lightBuffer->writeData({ bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount },
+                                    &_sortedLightProperties[stageIndex]));
     }
 
     {
         OPTICK_EVENT("LightPool::UploadSceneDataToGPU");
-        _sceneBuffer->writeData(bufferOffset, 1, &_sortedSceneProperties[stageIndex]);
+        memCmdInOut._bufferLocks.push_back(_sceneBuffer->writeData({ bufferOffset, 1 }, &_sortedSceneProperties[stageIndex]));
     }
 }
 
@@ -460,19 +460,16 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
     bufferLightData._binding = ShaderBufferLocation::LIGHT_NORMAL;
     bufferLightData._buffer = _lightBuffer.get();
     bufferLightData._elementRange = { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount };
-    bufferLightData._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding bufferLightScene;
     bufferLightScene._binding = ShaderBufferLocation::LIGHT_SCENE;
     bufferLightScene._buffer = _sceneBuffer.get();
     bufferLightScene._elementRange = { bufferOffset, 1u };
-    bufferLightScene._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     ShaderBufferBinding bufferShadow;
     bufferShadow._binding = ShaderBufferLocation::LIGHT_SHADOW;
     bufferShadow._buffer = _shadowBuffer.get();
     bufferShadow._elementRange = { 0u, 1u };
-    bufferShadow._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._buffers.add(bufferLightData);
@@ -549,7 +546,6 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
         bufferLightData._binding = ShaderBufferLocation::LIGHT_NORMAL;
         bufferLightData._buffer = _lightBuffer.get();
         bufferLightData._elementRange = { to_size(LightBufferIndex(RenderStage::DISPLAY)) * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount };
-        bufferLightData._lockType = ShaderBufferLockType::AFTER_COMMAND_BUFFER_FLUSH;
 
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateHash = _context.gfx().getDefaultStateBlock(false);

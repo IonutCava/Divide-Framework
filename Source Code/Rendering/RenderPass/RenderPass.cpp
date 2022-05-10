@@ -56,10 +56,6 @@ RenderPass::RenderPass(RenderPassManager& parent, GFXDevice& context, const Rend
     }
 }
 
-RenderPass::~RenderPass()
-{
-}
-
 RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass stagePass) const noexcept {
     assert(_stageFlag == stagePass._stage);
 
@@ -69,7 +65,7 @@ RenderPass::BufferData RenderPass::getBufferData(const RenderStagePass stagePass
     return ret;
 }
 
-void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut) const {
+void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& parentTask, const SceneRenderState& renderState, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const {
     OPTICK_EVENT();
 
     switch(_stageFlag) {
@@ -125,7 +121,7 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
             GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
             Camera* playerCamera = Attorney::SceneManagerCameraAccessor::playerCamera(_parent.parent().sceneManager());
-            _parent.doCustomPass(playerCamera, params, bufferInOut);
+            _parent.doCustomPass(playerCamera, params, bufferInOut, memCmdInOut);
 
             GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = true;
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -141,8 +137,8 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
 
                 GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Shadow Render Stage" });
                 lightPool.sortLightData(RenderStage::SHADOW, camera->snapshot());
-                lightPool.generateShadowMaps(*camera, bufferInOut);
-                
+                lightPool.generateShadowMaps(*camera, bufferInOut, memCmdInOut);
+
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
             }
         } break;
@@ -162,7 +158,7 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
                 const EnvironmentProbeList& probes = envProbPool->sortAndGetLocked(camera->getEye());
                 U32 probeIdx = 0u;
                 for (const auto& probe : probes) {
-                    if (probe->refresh(bufferInOut) && ++probeIdx == Config::MAX_REFLECTIVE_PROBES_PER_PASS) {
+                    if (probe->refresh(bufferInOut, memCmdInOut) && ++probeIdx == Config::MAX_REFLECTIVE_PROBES_PER_PASS) {
                         break;
                     }
                 }
@@ -185,7 +181,8 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
                                                                             ReflectionUtil::isInBudget(),
                                                                             camera,
                                                                             renderState,
-                                                                            bufferInOut))
+                                                                            bufferInOut,
+                                                                            memCmdInOut))
                     {
                         ReflectionUtil::updateBudget();
                     }
@@ -218,7 +215,8 @@ void RenderPass::render(const PlayerIndex idx, [[maybe_unused]] const Task& pare
                                                                             RefractionUtil::isInBudget(),
                                                                             camera,
                                                                             renderState,
-                                                                            bufferInOut))
+                                                                            bufferInOut,
+                                                                            memCmdInOut))
                     {
                         RefractionUtil::updateBudget();
                     }

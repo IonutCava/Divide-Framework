@@ -30,7 +30,7 @@ void main(){
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 #endif //WORLD_PASS
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
 
 uniform mat4 dvd_WorldMatrix;
 uniform uint useTexture;
@@ -71,7 +71,7 @@ void main() {
 
 -- Fragment.GUI
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2D texDiffuse0;
 
 layout(location = ATTRIB_FREE_START + 0) in  vec4 _colour;
 
@@ -108,7 +108,7 @@ void main(void) {
 uniform mat4 dvd_WorldMatrixOverride;
 uniform uint dvd_LayerIndex;
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_REFLECTION_CUBE) uniform samplerCube texEnvironmentCube;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_REFLECTION_CUBE) uniform samplerCube texEnvironmentCube;
 
 void main() {
     vec3 reflectDirection = reflect(-VAR._viewDirectionWV, VAR._normalWV);

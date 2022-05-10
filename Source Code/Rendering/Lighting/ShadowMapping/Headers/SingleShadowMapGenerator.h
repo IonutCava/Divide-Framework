@@ -46,7 +46,7 @@ class SingleShadowMapGenerator final : public ShadowMapGenerator {
     explicit SingleShadowMapGenerator(GFXDevice& context);
     ~SingleShadowMapGenerator();
 
-    void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut) override;
+    void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) override;
 
     void updateMSAASampleCount(U8 sampleCount) override;
 

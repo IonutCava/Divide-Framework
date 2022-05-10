@@ -77,7 +77,7 @@ public:
     ~EnvironmentProbeComponent();
 
     /// Returns true if the probe was updated, false if skipped
-    bool refresh(GFX::CommandBuffer& bufferInOut);
+    bool refresh(GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
     /// Checks if the given bounding sphere has collided with the probe's AABB and if so, mark it for update if required
     bool checkCollisionAndQueueUpdate(const BoundingSphere& sphere) noexcept;
 

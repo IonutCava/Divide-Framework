@@ -163,7 +163,7 @@ bool EnvironmentProbeComponent::checkCollisionAndQueueUpdate(const BoundingSpher
     return dirty();
 }
 
-bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut) {
+bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     if (!dirty()) {
         return false;
     }
@@ -197,6 +197,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut) {
                                    _aabb.getCenter(),
                                    vec2<F32>(0.1f, _aabb.getHalfExtent().length()),
                                    bufferInOut,
+                                   memCmdInOut,
                                    cameras);
  
     SceneEnvironmentProbePool::ProcessEnvironmentMap(_context.gfx(), rtLayerIndex(), updateType() == UpdateType::ALWAYS, bufferInOut);

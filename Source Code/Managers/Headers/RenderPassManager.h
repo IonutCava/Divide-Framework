@@ -115,7 +115,7 @@ public:
     [[nodiscard]] U32 getLastTotalBinSize(RenderStage renderStage) const noexcept;
     [[nodiscard]] I32 drawCallCount(const RenderStage stage) const noexcept { return _drawCallCount[to_base(stage)]; }
 
-    void doCustomPass(Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut);
+    void doCustomPass(Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
     void postInit();
 
 private:
@@ -132,10 +132,16 @@ private:
     ShaderProgram_ptr _OITCompositionShaderMS = nullptr;
     ShaderProgram_ptr _gbufferResolveShader = nullptr;
 
-    std::array<RenderPass*, MAX_RENDER_PASSES> _renderPasses = create_array<MAX_RENDER_PASSES, RenderPass*>(nullptr);
-    std::array<GFX::CommandBuffer*, MAX_RENDER_PASSES + 1u> _renderPassCommandBuffer = create_array<MAX_RENDER_PASSES + 1u, GFX::CommandBuffer*>(nullptr);
-    std::array<Task*, MAX_RENDER_PASSES + 1u> _renderTasks = create_array<MAX_RENDER_PASSES + 1u, Task*>(nullptr);
-    Task* _skyLightUpdateTask = nullptr;
+    struct RenderPassData {
+        Task* _workTask{ nullptr };
+        RenderPass* _pass{nullptr};
+        GFX::CommandBuffer* _cmdBuffer{ nullptr };
+        GFX::MemoryBarrierCommand _memCmd{};
+    };
+    std::array<RenderPassData, MAX_RENDER_PASSES> _renderPassData{};
+
+    Task* _postFXWorkTask{ nullptr };
+    GFX::CommandBuffer* _postFXCmdBuffer{ nullptr };
 
     std::array<eastl::unique_ptr<RenderPassExecutor>, to_base(RenderStage::COUNT)> _executors;
     std::array<Time::ProfileTimer*, to_base(RenderStage::COUNT)> _processCommandBufferTimer = create_array<to_base(RenderStage::COUNT), Time::ProfileTimer*>(nullptr);

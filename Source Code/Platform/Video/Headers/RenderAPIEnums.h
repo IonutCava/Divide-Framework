@@ -124,6 +124,22 @@ namespace Names {
 
 static_assert(std::size(Names::textureUsage) == to_base(TextureUsage::COUNT) + 1);
 
+enum class DescriptorSetUsage : U8 {
+    PER_FRAME_SET = 0,
+    PER_PASS_SET,
+    PER_BATCH_SET,
+    PER_DRAW_SET,
+    COUNT
+};
+
+namespace Names {
+    static constexpr char* descriptorSetUsage[] = {
+         "PER_FRAME_SET", "PER_PASS_SET", "PER_BATCH_SET", "PER_DRAW_SET", "NONE"
+    };
+};
+
+static_assert(std::size(Names::descriptorSetUsage) == to_base(DescriptorSetUsage::COUNT) + 1);
+
 enum class ReflectorType : U8
 {
     PLANAR = 0,
@@ -254,7 +270,6 @@ static_assert(std::size(Names::attribLocation) == to_base(AttribLocation::COUNT)
 
 enum class ShaderBufferLocation : U8 {
     CAM_BLOCK = 0,
-    RENDER_BLOCK,
     GPU_COMMANDS,
     LIGHT_NORMAL,
     LIGHT_SCENE,
@@ -287,7 +302,7 @@ enum class ShaderBufferLocation : U8 {
 
 namespace Names {
     static const char* shaderBufferLocation[] = {
-        "CAM_BLOCK", "RENDER_BLOCK", "GPU_COMMANDS", "LIGHT_NORMAL",
+        "CAM_BLOCK", "GPU_COMMANDS", "LIGHT_NORMAL",
         "LIGHT_SCENE", "LIGHT_SHADOW", "LIGHT_INDICES", "LIGHT_GRID",
         "LIGHT_INDEX_COUNT", "LIGHT_CLUSTER_AABBS", "NODE_TRANSFORM_DATA", "NODE_MATERIAL_DATA",
         "NODE_TEXTURE_DATA", "NODE_INDIRECTION_DATA", "BONE_TRANSFORMS", "BONE_TRANSFORMS_PREV",
@@ -297,21 +312,6 @@ namespace Names {
 };
 
 static_assert(std::size(Names::shaderBufferLocation) == to_base(ShaderBufferLocation::COUNT) + 1);
-
-enum class ShaderBufferLockType : U8 {
-    IMMEDIATE = 0,
-    AFTER_DRAW_COMMANDS,
-    AFTER_COMMAND_BUFFER_FLUSH,
-    COUNT
-};
-
-namespace Names {
-    static const char* shaderBufferLockType[] = {
-        "IMMEDIATE", "AFTER_DRAW_COMMANDS", "AFTER_COMMAND_BUFFER_FLUSH", "NONE"
-    };
-};
-
-static_assert(std::size(Names::shaderBufferLockType) == to_base(ShaderBufferLockType::COUNT) + 1);
 
 enum class RenderStage : U8 {
     SHADOW = 0,

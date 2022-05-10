@@ -137,7 +137,7 @@ class LightPool final : public FrameListener,
     [[nodiscard]] Light* getLight(I64 lightGUID, LightType type) const;
 
     void sortLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
-    void uploadLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
+    void uploadLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut);
 
     void uploadLightData(RenderStage stage, GFX::CommandBuffer& bufferInOut);
 
@@ -183,7 +183,7 @@ class LightPool final : public FrameListener,
     using LightShadowProperties = std::array<Light::ShadowProperties, Config::Lighting::MAX_SHADOW_CASTING_LIGHTS>;
 
     friend class RenderPass;
-    void generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut);
+    void generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
 
     friend class SceneManager;
     [[nodiscard]] LightList::const_iterator findLight(const I64 GUID, const LightType type) const {

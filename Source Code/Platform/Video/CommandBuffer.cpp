@@ -287,6 +287,11 @@ void CommandBuffer::clean() {
                     erase = true;
                 }
             }break;
+            case CommandType::MEMORY_BARRIER: {
+                auto memCmd = get<MemoryBarrierCommand>(cmd);
+
+                erase = memCmd->_barrierMask == 0u && memCmd->_bufferLocks.empty();
+            } break;
             case CommandType::DRAW_TEXT: {
                 OPTICK_EVENT("Clean Draw Text");
 
@@ -548,6 +553,26 @@ bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand) {
                 }
             }
         } while (RemoveEmptyDrawCommands(commands));
+    }
+
+    return true;
+}
+
+bool Merge(GFX::MemoryBarrierCommand* lhs, GFX::MemoryBarrierCommand* rhs) {
+    BitMaskSet(lhs->_barrierMask, rhs->_barrierMask);
+
+    for (const BufferLock& otherLock : rhs->_bufferLocks) {
+        bool found = false;
+        for (BufferLock& ourLock : lhs->_bufferLocks) {
+            if (ourLock._targetBuffer->getGUID() == otherLock._targetBuffer->getGUID()) {
+                Merge(ourLock._range, otherLock._range);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            lhs->_bufferLocks.push_back(otherLock);
+        }
     }
 
     return true;

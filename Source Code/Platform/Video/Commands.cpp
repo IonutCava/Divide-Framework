@@ -209,7 +209,7 @@ string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
             ret.append("    ");
         }
         
-        ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%d - %d] ]\n", to_base(it._binding), it._buffer->getGUID(), it._elementRange.x, it._elementRange.y));
+        ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] ]\n", to_base(it._binding), it._buffer->getGUID(), it._elementRange._startOffset, it._elementRange._length));
     }
     for (const TextureEntry& entry : cmd._set._textureData._entries) {
         if (entry._binding == INVALID_TEXTURE_BINDING) {
@@ -290,7 +290,17 @@ string ToString(const DispatchComputeCommand& cmd, U16 indent) {
 }
 
 string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
-    return Util::StringFormat(" [ Mask: %d ]", cmd._barrierMask);
+    string ret = Util::StringFormat(" [ Mask: %d ] [ Buffer locks: %zu ]", cmd._barrierMask, cmd._bufferLocks.size());
+ 
+    for (auto it : cmd._bufferLocks) {
+        ret.append("    ");
+        for (U16 j = 0; j < indent; ++j) {
+            ret.append("    ");
+        }
+        ret.append(Util::StringFormat("Buffer lock: [ %d - [%zu - %zu] ]", it._targetBuffer->getGUID(), it._range._startOffset, it._range._length));
+    }
+
+    return ret;
 }
 
 string ToString(const SetClippingStateCommand& cmd, U16 indent) {

@@ -1,7 +1,7 @@
 //ref: https://github.com/nvpro-samples/gl_occlusion_culling
 -- Fragment
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH) uniform sampler2D depthTex;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH) uniform sampler2D depthTex;
 
 uniform ivec2 depthInfo;
 

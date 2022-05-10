@@ -290,7 +290,7 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
     }
 }
 
-void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut) {
+void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     OPTICK_EVENT();
     {
         SharedLock<SharedMutex> r_lock(s_queueLock);
@@ -370,6 +370,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
                             VECTOR3_ZERO,
                             vec2<F32>(0.1f, 10000.f),
                             bufferInOut,
+                            memCmdInOut,
                             cameras);
 
     ProcessEnvironmentMap(context, SkyProbeLayerIndex(), false, bufferInOut);

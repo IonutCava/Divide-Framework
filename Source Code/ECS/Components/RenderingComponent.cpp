@@ -544,7 +544,8 @@ bool RenderingComponent::updateReflection(const U16 reflectionIndex,
                                           const bool inBudget,
                                           Camera* camera,
                                           const SceneRenderState& renderState,
-                                          GFX::CommandBuffer& bufferInOut)
+                                          GFX::CommandBuffer& bufferInOut,
+                                          GFX::MemoryBarrierCommand& memCmdInOut)
 {
     if (_materialInstance == nullptr) {
         return false;
@@ -558,7 +559,7 @@ bool RenderingComponent::updateReflection(const U16 reflectionIndex,
 
         RenderPassManager* passManager = _context.parent().renderPassManager();
         RenderCbkParams params{ _context, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8(_reflectorType), camera };
-        _reflectionCallback(passManager, params, bufferInOut);
+        _reflectionCallback(passManager, params, bufferInOut, memCmdInOut);
 
         const RTAttachment& targetAtt = _context.renderTargetPool().getRenderTarget(reflectRTID)->getAttachment(RTAttachmentType::Colour, 0u);
         _materialInstance->setTexture(
@@ -578,7 +579,8 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
                                           const bool inBudget,
                                           Camera* camera,
                                           const SceneRenderState& renderState,
-                                          GFX::CommandBuffer& bufferInOut)
+                                          GFX::CommandBuffer& bufferInOut,
+                                          GFX::MemoryBarrierCommand& memCmdInOut)
 {
     if (_materialInstance == nullptr) {
         return false;
@@ -593,7 +595,7 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
 
         RenderPassManager* passManager = _context.parent().renderPassManager();
         RenderCbkParams params{ _context, _parentSGN, renderState, refractRTID, refractionIndex, 0u, camera };
-        _refractionCallback(passManager, params, bufferInOut);
+        _refractionCallback(passManager, params, bufferInOut, memCmdInOut);
 
         const RTAttachment& targetAtt = _context.renderTargetPool().getRenderTarget(refractRTID)->getAttachment(RTAttachmentType::Colour, 0u);
         _materialInstance->setTexture(

@@ -95,13 +95,11 @@ float computeDepth(in vec4 posWV, in mat4 projMatrix, in vec2 zPlanes) {
     return (((zPlanes.y - zPlanes.x) * (clip_space_pos.z / clip_space_pos.w)) + zPlanes.x + zPlanes.y) * 0.5f;
 }
 
-#if !defined(NO_CAM_BLOCK)
 float computeDepth(in vec4 posWV, in vec2 zPlanes) {
     return computeDepth(posWV, dvd_ProjectionMatrix, zPlanes);
 }
 
 #define dvd_screenPositionNormalised (gl_FragCoord.xy / dvd_ViewPort.zw)
-#endif //!NO_CAM_BLOCK
 
 bool isInScreenRect(in vec2 coords) {
     return all(bvec4(coords.x >= 0.f, coords.x <= 1.f, coords.y >= 0.f, coords.y <= 1.f));

@@ -15,13 +15,12 @@ namespace Divide {
     }
 
     bool ShaderBufferBinding::set(const ShaderBufferBinding& other) noexcept {
-        return set(other._binding, other._buffer, other._elementRange, other._lockType);
+        return set(other._binding, other._buffer, other._elementRange);
     }
 
     bool ShaderBufferBinding::set(const ShaderBufferLocation binding,
                                   ShaderBuffer* buffer,
-                                  const vec2<U32>& elementRange,
-                                  const ShaderBufferLockType lockType) noexcept {
+                                  const BufferRange& elementRange) noexcept {
         bool ret = false;
         if (_binding != binding) {
             _binding = binding;
@@ -32,11 +31,7 @@ namespace Divide {
             ret = true;
         }
         if (_elementRange != elementRange) {
-            _elementRange.set(elementRange);
-            ret = true;
-        }
-        if (_lockType != lockType) {
-            _lockType = lockType;
+            _elementRange = elementRange;
             ret = true;
         }
 
@@ -274,15 +269,13 @@ namespace Divide {
     }
 
     bool operator==(const ShaderBufferBinding& lhs, const ShaderBufferBinding &rhs) noexcept {
-        return lhs._lockType == rhs._lockType &&
-               lhs._binding == rhs._binding &&
+        return lhs._binding == rhs._binding &&
                lhs._elementRange == rhs._elementRange &&
                BufferCompare(lhs._buffer, rhs._buffer);
     }
 
     bool operator!=(const ShaderBufferBinding& lhs, const ShaderBufferBinding &rhs) noexcept {
-        return lhs._lockType != rhs._lockType ||
-               lhs._binding != rhs._binding ||
+        return lhs._binding != rhs._binding ||
                lhs._elementRange != rhs._elementRange ||
                !BufferCompare(lhs._buffer, rhs._buffer);
     }

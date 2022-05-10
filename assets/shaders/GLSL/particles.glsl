@@ -37,7 +37,7 @@ void main()
 layout(location = 0) out vec2 _colourOut;
 
 layout(location = ATTRIB_FREE_START + 0) in vec4 particleColour;
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 
 void main() {
     if (texture(texDiffuse0, vec3(VAR._texCoord,0)).a < ALPHA_DISCARD_THRESHOLD) {
@@ -60,10 +60,10 @@ void main() {
 layout(location = ATTRIB_FREE_START + 0) in vec4 particleColour;
 
 #ifdef HAS_TEXTURE
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform sampler2DArray texDiffuse0;
 #endif
 
-DESCRIPTOR_SET_RESOURCE(0, TEXTURE_DEPTH) uniform sampler2D texDepthMap;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_DEPTH) uniform sampler2D texDepthMap;
 
 void main(){
    

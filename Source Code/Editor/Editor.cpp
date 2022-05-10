@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Headers/Editor.h"
+#include "Headers/Utils.h"
 
 #include "Editor/Widgets/Headers/EditorOptionsWindow.h"
 #include "Editor/Widgets/Headers/MenuBar.h"
@@ -149,6 +150,8 @@ Editor::Editor(PlatformContext& context, const ImGuiStyleEnum theme)
     ImGui::SetAllocatorFunctions(ImGuiCustom::g_ImAllocatorAllocFunc,
                                  ImGuiCustom::g_ImAllocatorFreeFunc,
                                  &ImGuiCustom::g_ImAllocatorUserData);
+
+    ImGuiFs::Dialog::ExtraWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
 
     _menuBar = eastl::make_unique<MenuBar>(context, true);
     _statusBar = eastl::make_unique<StatusBar>(context);
@@ -378,6 +381,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
 
     io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport;
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
     io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;        // We can honor io.WantSetMousePos requests (optional, rarely used)
     io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;  // We can create multi-viewports on the Platform side (optional)
@@ -1562,13 +1566,11 @@ bool Editor::onUTF8(const Input::UTF8Event& arg) {
 }
 
 void Editor::onSizeChange(const SizeChangeParams& params) {
-    if (!params.isWindowResize) {
-        _targetViewport.set(0, 0, params.width, params.height);
-    } else if (_mainWindow != nullptr && params.winGUID == _mainWindow->getGUID()) {
-        if (!isInit()) {
-            return;
-        }
+    if (!isInit()) {
+        return;
+    }
 
+    if (_mainWindow != nullptr && params.winGUID == _mainWindow->getGUID() && params.isWindowResize) {
         const vec2<U16> displaySize = _mainWindow->getDrawableSize();
 
         for (U8 i = 0u; i < to_U8(ImGuiContextType::COUNT); ++i) {
@@ -1719,10 +1721,12 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
 
     bool closed = false;
     bool opened = false;
+
     if (useModal) {
-        ImGui::OpenPopup(modalName);
+        Util::OpenCenteredPopup(modalName);
         opened = ImGui::BeginPopupModal(modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     } else {
+        Util::CenterNextWindow();
         opened = ImGui::Begin(modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     }
 
@@ -1857,7 +1861,8 @@ bool Editor::modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const 
             return true;
         }
     }
-    ImGui::OpenPopup(modalName);
+
+    Util::OpenCenteredPopup(modalName);
     if (ImGui::BeginPopupModal(modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         if (wasClosed) {
             wasClosed = false;

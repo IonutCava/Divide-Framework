@@ -697,7 +697,7 @@ namespace Divide {
 
             GenericDrawCommand cmd = {};
 
-            GenericVertexData* buffer = _context.getOrCreateIMGUIBuffer(windowGUID, s_maxCommandCount);
+            GenericVertexData* buffer = _context.getOrCreateIMGUIBuffer(windowGUID, s_maxCommandCount, 1 << 16);
             assert(buffer != nullptr);
             for (I32 n = 0; n < data->CmdListsCount; ++n) {
 
@@ -778,19 +778,18 @@ namespace Divide {
         return perf;
     }
 
-    void VK_API::flushCommand([[maybe_unused]] const GFX::CommandBuffer::CommandEntry& entry, [[maybe_unused]] const GFX::CommandBuffer& commandBuffer) noexcept {
+    void VK_API::flushCommand(GFX::CommandBase* cmd) noexcept {
         OPTICK_EVENT();
 
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
-        const GFX::CommandType cmdType = static_cast<GFX::CommandType>(entry._typeIndex);
-        OPTICK_TAG("Type", to_base(cmdType));
+        OPTICK_TAG("Type", to_base(cmd->Type()));
 
 
-        switch (cmdType) {
+        switch (cmd->Type()) {
             case GFX::CommandType::BEGIN_RENDER_PASS: {
                 OPTICK_EVENT("BEGIN_RENDER_PASS");
 
-                const GFX::BeginRenderPassCommand* crtCmd = commandBuffer.get<GFX::BeginRenderPassCommand>(entry);
+                const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
                 PushDebugMessage(cmdBuffer, crtCmd->_name.c_str());
             }break;
             case GFX::CommandType::END_RENDER_PASS: {
@@ -818,7 +817,7 @@ namespace Divide {
             case GFX::CommandType::SET_SCISSOR: {
                 OPTICK_EVENT("SET_SCISSOR");
 
-                const Rect<I32>& rect = commandBuffer.get<GFX::SetScissorCommand>(entry)->_rect;
+                const Rect<I32>& rect = cmd->As<GFX::SetScissorCommand>()->_rect;
 
                 const VkOffset2D offset{ rect.offsetX, rect.offsetY };
                 const VkExtent2D extent{ to_U32(rect.sizeX),to_U32(rect.sizeY) };
@@ -831,7 +830,7 @@ namespace Divide {
             }break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
                 OPTICK_EVENT("BEGIN_DEBUG_SCOPE");
-                 const GFX::BeginDebugScopeCommand* crtCmd = commandBuffer.get<GFX::BeginDebugScopeCommand>(entry);
+                 const GFX::BeginDebugScopeCommand* crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
                  PushDebugMessage(cmdBuffer, crtCmd->_scopeName.c_str());
             } break;
             case GFX::CommandType::END_DEBUG_SCOPE: {
@@ -841,13 +840,13 @@ namespace Divide {
             } break;
             case GFX::CommandType::ADD_DEBUG_MESSAGE: {
                 OPTICK_EVENT("ADD_DEBUG_MESSAGE");
-                const GFX::AddDebugMessageCommand* crtCmd = commandBuffer.get<GFX::AddDebugMessageCommand>(entry);
+                const GFX::AddDebugMessageCommand* crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
                 InsertDebugMessage(cmdBuffer, crtCmd->_msg.c_str());
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS: {
                 OPTICK_EVENT("COMPUTE_MIPMAPS");
 
-                const GFX::ComputeMipMapsCommand* crtCmd = commandBuffer.get<GFX::ComputeMipMapsCommand>(entry);
+                const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
 
                 if (crtCmd->_layerRange.x == 0 && crtCmd->_layerRange.y == crtCmd->_texture->descriptor().layerCount()) {
                     OPTICK_EVENT("VK: In-place computation - Full");
@@ -857,17 +856,17 @@ namespace Divide {
             }break;
             case GFX::CommandType::DRAW_TEXT: {
                 OPTICK_EVENT("DRAW_TEXT");
-                const GFX::DrawTextCommand* crtCmd = commandBuffer.get<GFX::DrawTextCommand>(entry);
+                const GFX::DrawTextCommand* crtCmd = cmd->As<GFX::DrawTextCommand>();
                 drawText(crtCmd->_batch);
             }break;
             case GFX::CommandType::DRAW_IMGUI: {
                 OPTICK_EVENT("DRAW_IMGUI");
-                const GFX::DrawIMGUICommand* crtCmd = commandBuffer.get<GFX::DrawIMGUICommand>(entry);
+                const GFX::DrawIMGUICommand* crtCmd = cmd->As<GFX::DrawIMGUICommand>();
                 drawIMGUI(crtCmd->_data, crtCmd->_windowGUID);
             }break;
             case GFX::CommandType::DRAW_COMMANDS : {
                 OPTICK_EVENT("DRAW_COMMANDS");
-                const GFX::DrawCommand::CommandContainer& drawCommands = commandBuffer.get<GFX::DrawCommand>(entry)->_drawCommands;
+                const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
                 U32 drawCount = 0u;
                 for (const GenericDrawCommand& currentDrawCommand : drawCommands) {
@@ -911,9 +910,9 @@ namespace Divide {
     bool VK_API::setViewport(const Rect<I32>& newViewport) noexcept {
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
         const VkViewport viewport{to_F32(newViewport.offsetX),
-                                  to_F32(newViewport.offsetY),
+                                  to_F32(newViewport.sizeY) - to_F32(newViewport.offsetY),
                                   to_F32(newViewport.sizeX),
-                                  to_F32(newViewport.sizeY),
+                                  -to_F32(newViewport.sizeY),
                                   0.f,
                                   1.f};
         vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);

@@ -145,7 +145,7 @@ public:
 public:
     explicit RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, RenderStage stage);
 
-    void doCustomPass(PlayerIndex idx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut);
+    void doCustomPass(PlayerIndex idx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
     void postInit(const ShaderProgram_ptr& OITCompositionShader, 
                   const ShaderProgram_ptr& OITCompositionShaderMS,
                   const ShaderProgram_ptr& ResolveGBufferShaderMS);
@@ -203,14 +203,15 @@ private:
     [[nodiscard]] U32 processVisibleNodeTextures(RenderingComponent* rComp, bool& cacheHit);
     [[nodiscard]] U16 processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit);
 
-    U16 buildDrawCommands(const RenderPassParams& params, bool doPrePass, bool doOITPass, GFX::CommandBuffer& bufferInOut);
+    U16 buildDrawCommands(const RenderPassParams& params, bool doPrePass, bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
     U16 prepareNodeData(VisibleNodeList<>& nodes,
                         const RenderPassParams& params,
                         const CameraSnapshot& cameraSnapshot,
                         bool hasInvalidNodes,
                         const bool doPrePass,
                         const bool doOITPass,
-                        GFX::CommandBuffer& bufferInOut);
+                        GFX::CommandBuffer& bufferInOut,
+                        GFX::MemoryBarrierCommand& memCmdInOut);
 
     [[nodiscard]] U32 renderQueueSize() const;
 

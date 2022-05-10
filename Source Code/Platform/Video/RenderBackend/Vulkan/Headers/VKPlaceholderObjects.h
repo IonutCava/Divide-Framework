@@ -78,6 +78,8 @@ namespace Divide {
         void setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept override {
         }
 
+        void insertFencesIfNeeded() override {
+        }
         void updateBuffer([[maybe_unused]] U32 buffer,
                           [[maybe_unused]] U32 elementCountOffset,
                           [[maybe_unused]] U32 elementCountRange,
@@ -147,20 +149,22 @@ namespace Divide {
             : ShaderBuffer(context, descriptor)
         {}
 
-        void clearBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes) noexcept override {
+        BufferLock clearBytes([[maybe_unused]] BufferRange range) noexcept override {
+            return {};
         }
 
-        void writeBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes, [[maybe_unused]] bufferPtr data) noexcept override {
+        BufferLock writeBytes([[maybe_unused]] BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override {
+            return {};
         }
 
-        void readBytes([[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes, [[maybe_unused]] bufferPtr result) const noexcept override {
+        void readBytes([[maybe_unused]] BufferRange range, [[maybe_unused]] bufferPtr result) const noexcept override {
         }
 
-        bool bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] ptrdiff_t offsetInBytes, [[maybe_unused]] ptrdiff_t rangeInBytes) noexcept override {
+        bool bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept override {
             return true; 
         }
 
-        bool lockByteRange([[maybe_unused]] const ptrdiff_t offsetInBytes, [[maybe_unused]] const ptrdiff_t rangeInBytes, [[maybe_unused]] const ShaderBufferLockType lockType) override {
+        bool lockByteRange([[maybe_unused]] BufferRange range, [[maybe_unused]] SyncObject* sync) const override {
             return true;
         }
     };
