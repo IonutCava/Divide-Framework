@@ -1,0 +1,26 @@
+<?php $this->layout(config('view.layout')) ?>
+
+<?php $this->start('page') ?>
+<div class="section row justify-content-center align-items-center">
+    <h3 class="title">Chỉnh sửa thành phố</h3>
+    <div class="row col-6 mt-5">
+        <div class="col-10 row align-items-start ">
+            <div class="col-8 mt-5 ">
+                <a href="<?= request()->baseUrl() ?>/city/list" class="btn btn-primary">Đi tới danh sách thành phố</a>
+            </div>
+        </div>
+        <form action="/city/edit" method="POST">
+            <div class="form-row">
+                <input type="text" id="city_id" name="city_id" readonly value="<?= $city->id ?>" class="form-control form-input">
+            </div>
+            <div class="form-row">
+                <input type="text" name="name_city" class="form-control form-input " placeholder="City name" value="<?= $city->name ?? null ?>" />
+            </div>
+            <button type="submit" name="submit" value="submit" class="btn btn-primary fs-5">Lưu</button>
+        </form>
+    </div>
+</div>
+
+
+
+<?php $this->stop(); ?>
