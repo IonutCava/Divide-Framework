@@ -730,7 +730,7 @@ template <typename Ret, typename... Args >
 using DELEGATE_STD = std::function< Ret(Args...) >;
 
 template <typename Ret, typename... Args >
-using DELEGATE = DELEGATE_EASTL<Ret, Args...>;
+using DELEGATE = DELEGATE_STD<Ret, Args...>;
 
 [[nodiscard]] U32 HardwareThreadCount() noexcept;
 
