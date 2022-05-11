@@ -188,36 +188,40 @@ void Renderer::prepareLighting(const RenderStage stage,
     {
         context().kernel().sceneManager()->getActiveScene().lightPool()->uploadLightData(stage, bufferInOut);
         PerRenderStageData& data = _lightDataPerStage[GetIndexForStage(stage)];
-
-        GFX::BindDescriptorSetsCommand bindDescriptorSetsCommand{};
-
-        ShaderBufferBinding bufferBinding{};
-
-        bufferBinding._binding = ShaderBufferLocation::LIGHT_INDICES;
-        bufferBinding._buffer = data._lightIndexBuffer.get();
-        bufferBinding._elementRange = { 0u, data._lightIndexBuffer->getPrimitiveCount() };
-
-        bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
-
-        bufferBinding._binding = ShaderBufferLocation::LIGHT_CLUSTER_AABBS;
-        bufferBinding._buffer = data._lightClusterAABBsBuffer.get();
-        bufferBinding._elementRange = { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() };
-
-        bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
-
-        bufferBinding._binding = ShaderBufferLocation::LIGHT_GRID;
-        bufferBinding._buffer = data._lightGridBuffer.get();
-        bufferBinding._elementRange = { 0u, data._lightGridBuffer->getPrimitiveCount() };
-
-        bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
-
-        bufferBinding._binding = ShaderBufferLocation::LIGHT_INDEX_COUNT;
-        bufferBinding._buffer = data._globalIndexCountBuffer.get();
-        bufferBinding._elementRange = { 0u, data._globalIndexCountBuffer->getPrimitiveCount() };
-
-        bindDescriptorSetsCommand._set._buffers.add(bufferBinding);
-
-        GFX::EnqueueCommand(bufferInOut, bindDescriptorSetsCommand);
+        {
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._usage = DescriptorSetUsage::PER_FRAME_SET;
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_INDICES);
+                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                binding._data._buffer = data._lightIndexBuffer.get();
+                binding._data._range = { 0u, data._lightIndexBuffer->getPrimitiveCount() };
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
+                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                binding._data._buffer = data._lightClusterAABBsBuffer.get();
+                binding._data._range = { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() };
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_GRID);
+                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                binding._data._buffer = data._lightGridBuffer.get();
+                binding._data._range = { 0u, data._lightGridBuffer->getPrimitiveCount() };
+            }
+        }
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        {
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+            binding._resourceSlot = to_U8(ShaderBufferLocation::LIGHT_INDEX_COUNT);
+            binding._data._buffer = data._globalIndexCountBuffer.get();
+            binding._data._range = { 0u, data._globalIndexCountBuffer->getPrimitiveCount() };
+        }
 
         if (data._previousProjMatrix != cameraSnapshot._projectionMatrix)  {
             data._previousProjMatrix = cameraSnapshot._projectionMatrix;

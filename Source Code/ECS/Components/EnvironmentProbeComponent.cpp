@@ -210,14 +210,14 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
 
 void EnvironmentProbeComponent::enabled(const bool state) {
     Parent::enabled(state);
-    const auto sceneData = _context.kernel().sceneManager()->sceneData();
+    const auto sceneData = _context.gfx().sceneData();
     if (sceneData != nullptr) {
         sceneData->probeState(poolIndex(), state);
     }
 }
 
 void EnvironmentProbeComponent::updateProbeData() const noexcept {
-    const auto sceneData = _context.kernel().sceneManager()->sceneData();
+    const auto sceneData = _context.gfx().sceneData();
     sceneData->probeData(poolIndex(), _aabb.getCenter(), _aabb.getHalfExtent());
 }
 

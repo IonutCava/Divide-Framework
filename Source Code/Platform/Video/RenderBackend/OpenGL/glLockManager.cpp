@@ -53,23 +53,25 @@ glLockManager::~glLockManager()
     }
 }
 
-SyncObject* glLockManager::CreateSyncObject(const bool isRetry) {
-    if (isRetry) {
-        const U32 frameID = GFXDevice::FrameCount();
-
-        for (SyncObject_uptr& syncObject : s_bufferLockPool) {
-            if (syncObject->_fenceObject.has_value() && std::any_cast<GLsync>(syncObject->_fenceObject) != nullptr) {
-                ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
-                // Check again to avoid race conditions
-                if (syncObject->_fenceObject.has_value() && 
-                    std::any_cast<GLsync>(syncObject->_fenceObject) != nullptr &&
-                    syncObject->_frameID < frameID &&
-                    frameID - syncObject->_frameID >= GL_API::s_LockFrameLifetime)
-                {
-                    syncObject->reset();
-                }
+void glLockManager::CleanExpiredSyncObjects(const U32 frameID) {
+    for (SyncObject_uptr& syncObject : s_bufferLockPool) {
+        if (syncObject->_fenceObject.has_value() && std::any_cast<GLsync>(syncObject->_fenceObject) != nullptr) {
+            ScopedLock<Mutex> w_lock(syncObject->_fenceLock);
+            // Check again to avoid race conditions
+            if (syncObject->_fenceObject.has_value() &&
+                std::any_cast<GLsync>(syncObject->_fenceObject) != nullptr &&
+                syncObject->_frameID < frameID &&
+                frameID - syncObject->_frameID >= GL_API::s_LockFrameLifetime)
+            {
+                syncObject->reset();
             }
         }
+    }
+}
+
+SyncObject* glLockManager::CreateSyncObject(const bool isRetry) {
+    if (isRetry) {
+        CleanExpiredSyncObjects(GFXDevice::FrameCount());
     }
 
     for (SyncObject_uptr& syncObject : s_bufferLockPool) {
@@ -155,10 +157,10 @@ bool glLockManager::Wait(const GLsync syncObj, const bool blockClient, const boo
     return false;
 }
 
-bool glLockManager::waitForLockedRange(size_t lockBeginBytes,
-    size_t lockLength,
-    const bool blockClient,
-    const bool quickCheck) {
+bool glLockManager::waitForLockedRange(const size_t lockBeginBytes,
+                                       const size_t lockLength,
+                                       const bool blockClient,
+                                       const bool quickCheck) {
     OPTICK_EVENT();
     OPTICK_TAG("BlockClient", blockClient);
     OPTICK_TAG("QuickCheck", quickCheck);
@@ -173,8 +175,7 @@ bool glLockManager::waitForLockedRange(size_t lockBeginBytes,
         case BufferLockState::ACTIVE: {
             if (!Overlaps(testRange, lock._range)) {
                 _swapLocks.push_back(lock);
-            }
-            else {
+            } else {
                 U8 retryCount = 0u;
 
                 ScopedLock<Mutex> w_lock_sync(lock._syncObj->_fenceLock);

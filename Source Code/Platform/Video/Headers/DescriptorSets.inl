@@ -34,75 +34,62 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _DESCRIPTOR_SETS_INL_
 
 namespace Divide {
-    template<typename Item>
-    [[nodiscard]] bool Condition(const Item&) noexcept { return true; }
-    template<typename Item>
-    [[nodiscard]] bool Matches(const Item& lhs, const Item& rhs) noexcept { return lhs == rhs; }
-    template<typename Item, typename SearchType>
-    [[nodiscard]] bool Matches(const Item&, const SearchType&) noexcept { return false; }
-
-    template<>
-    [[nodiscard]] inline bool Condition(const ShaderBufferBinding& entry) noexcept { return entry._elementRange._length > 0u; }
-    template<>
-    [[nodiscard]] inline bool Matches(const ShaderBufferBinding& lhs, const ShaderBufferBinding& rhs) noexcept { return lhs._binding == rhs._binding; }
-    template<>
-    [[nodiscard]] inline bool Matches(const ShaderBufferBinding& entry, const ShaderBufferLocation& binding) noexcept { return entry._binding == binding; }
-    template<>
-    [[nodiscard]] inline bool Matches(const TextureViewEntry& lhs, const TextureViewEntry& rhs) noexcept { return lhs._binding == rhs._binding; }
-    template<>
-    [[nodiscard]] inline bool Matches(const TextureViewEntry& entry, const U8& binding) noexcept { return entry._binding == binding; }
-    template<>
-    [[nodiscard]] inline bool Matches(const Image& lhs, const Image& rhs) noexcept { return lhs._binding == rhs._binding; }
-    template<>
-    [[nodiscard]] inline bool Matches(const Image& entry, const U8& binding) noexcept { return entry._binding == binding; }
-
-    template<typename Item, size_t Count, typename SearchType, bool CanExpand>
-    const Item* SetContainerStorage<Item, Count, SearchType, CanExpand>::find(const SearchType search) const {
-        for (auto it = begin(_entries); it != end(_entries); ++it) {
-            if (Matches(it, search)) {
-                return it;
-            }
-        }
-        return nullptr;
+    FORCE_INLINE bool operator==(const TextureView& lhs, const TextureView &rhs) noexcept {
+        return lhs._samplerHash == rhs._samplerHash &&
+               lhs._targetType == rhs._targetType &&
+               lhs._mipLevels == rhs._mipLevels &&
+               lhs._layerRange == rhs._layerRange &&
+               lhs._textureData == rhs._textureData;
     }
 
-    template<typename Item, size_t Count, typename SearchType, bool CanExpand>
-    bool SetContainer<Item, Count, SearchType, CanExpand>::add(const Item& entry) {
-        if (Condition(entry)) {
-            for (auto& it : _entries) {
-                if (Matches(it, entry)) {
-                    it = entry;
-                    return true;
-                }
-            }
-
-            _entries.push_back(entry);
-            return true;
-        }
-
-        return false;
+    FORCE_INLINE bool operator!=(const TextureView& lhs, const TextureView &rhs) noexcept {
+        return lhs._samplerHash != rhs._samplerHash ||
+               lhs._targetType != rhs._targetType ||
+               lhs._mipLevels != rhs._mipLevels ||
+               lhs._layerRange != rhs._layerRange ||
+               lhs._textureData != rhs._textureData;
     }
 
-    template<typename Item, size_t Count, typename SearchType, bool CanExpand>
-    bool SetContainer<Item, Count, SearchType, CanExpand>::remove(const SearchType search) {
-        for (auto it = begin(_entries); it != end(_entries); ++it) {
-            if (Matches(it, search)) {
-                _entries.erase(it);
-                return true;
-            }
-        }
-
-        return false;
-    }
-    template<typename Item, size_t Count, typename SearchType>
-    bool operator==(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs) noexcept {
-        return lhs._entries == rhs._entries;
-    }
-    template<typename Item, size_t Count, typename SearchType>
-    bool operator!=(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs) noexcept {
-        return lhs._entries != rhs._entries;
+    inline bool operator==(const TextureViewEntry& lhs, const TextureViewEntry &rhs) noexcept {
+        return lhs._view == rhs._view &&
+               lhs._descriptor == rhs._descriptor;
     }
 
+    inline bool operator!=(const TextureViewEntry& lhs, const TextureViewEntry &rhs) noexcept {
+        return lhs._view != rhs._view ||
+               lhs._descriptor != rhs._descriptor;
+    }
 
+    FORCE_INLINE bool operator==(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept {
+        return lhs._image == rhs._image &&
+               lhs._samplerHash == rhs._samplerHash;
+    }
+
+    FORCE_INLINE bool operator!=(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept {
+        return lhs._image != rhs._image ||
+               lhs._samplerHash != rhs._samplerHash;
+    }
+
+    inline bool operator==(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept {
+        return lhs._resourceSlot == rhs._resourceSlot &&
+               lhs._type == rhs._type &&
+               lhs._data == rhs._data;
+    }
+
+    inline bool operator!=(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept {
+        return lhs._resourceSlot != rhs._resourceSlot ||
+               lhs._type != rhs._type ||
+               lhs._data != rhs._data;
+    }
+
+    inline bool operator==(const DescriptorSet& lhs, const DescriptorSet& rhs) noexcept {
+        return lhs._usage == rhs._usage &&
+               lhs._bindings == rhs._bindings;
+    }
+
+    inline bool operator!=(const DescriptorSet& lhs, const DescriptorSet& rhs) noexcept {
+        return lhs._usage != rhs._usage ||
+               lhs._bindings != rhs._bindings;
+    }
 } //namespace Divide
 #endif //_DESCRIPTOR_SETS_INL_

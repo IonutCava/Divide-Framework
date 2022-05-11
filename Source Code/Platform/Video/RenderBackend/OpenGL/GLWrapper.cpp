@@ -224,6 +224,9 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         // hard-wire our debug callback function with OpenGL's implementation
+        glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_MARKER, GL_DONT_CARE, 0, NULL, GL_FALSE);
+        glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PUSH_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE);
+        glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_POP_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE);
         glDebugMessageCallback((GLDEBUGPROC)GLUtil::DebugCallback, nullptr);
     }
 
@@ -602,6 +605,8 @@ void GL_API::endFrameGlobal(const DisplayWindow& window) {
     OPTICK_EVENT("GL_API: Post-Swap cleanup");
     s_textureViewCache.onFrameEnd();
     s_glFlushQueued.store(false);
+    glLockManager::CleanExpiredSyncObjects(GFXDevice::FrameCount());
+
     if (ShaderProgram::s_UseBindlessTextures) {
         for (ResidentTexture& texture : s_residentTextures) {
             if (texture._address == 0u) {
@@ -664,7 +669,6 @@ void GL_API::endFrame(DisplayWindow& window, const bool global) {
 void GL_API::idle([[maybe_unused]] const bool fast) {
     glShaderProgram::Idle(_context.context());
 }
-
 
 /// Text rendering is handled exclusively by Mikko Mononen's FontStash library (https://github.com/memononen/fontstash)
 /// with his OpenGL frontend adapted for core context profiles
@@ -925,16 +929,38 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
             OPTICK_EVENT("BIND_DESCRIPTOR_SETS");
 
-            GFX::BindDescriptorSetsCommand* crtCmd = cmd->As<GFX::BindDescriptorSetsCommand>();
-            if (!crtCmd->_set._textureViews.empty() &&
-                makeTextureViewsResidentInternal(crtCmd->_set._textureViews, 0u, U8_MAX) == GLStateTracker::BindResult::FAILED)
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-            if (!crtCmd->_set._textureData.empty() &&
-                makeTexturesResidentInternal(crtCmd->_set._textureData, 0u, U8_MAX) == GLStateTracker::BindResult::FAILED)
-            {
-                DIVIDE_UNEXPECTED_CALL();
+            const DescriptorSet& set = cmd->As<GFX::BindDescriptorSetsCommand>()->_set;
+            for (auto& binding : set._bindings) {
+                const U8 bindingSlot = binding._resourceSlot;
+                const DescriptorSetBindingData& data = binding._data;
+
+                switch (binding._type) {
+                    case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
+                        if (bindingSlot != INVALID_TEXTURE_BINDING) {
+                            const TextureData& texData = data._combinedImageSampler._image;
+                            const GLuint handle = texData._textureHandle;
+                            const GLuint sampler = GetSamplerHandle(data._combinedImageSampler._samplerHash);
+                            if (GetStateTracker()->bindTextures(bindingSlot, 1, texData._textureType, &handle, &sampler) == GLStateTracker::BindResult::FAILED) {
+                                DIVIDE_UNEXPECTED_CALL();
+                            }
+                        }
+                    } break;
+                    case DescriptorSetBindingType::IMAGE_VIEW: {
+                        if (bindingSlot != INVALID_TEXTURE_BINDING) {
+                            const TextureViewEntry& texData = data._imageView;
+                            if (makeTextureViewResidentInternal(texData, bindingSlot) == GLStateTracker::BindResult::FAILED) {
+                                DIVIDE_UNEXPECTED_CALL();
+                            }
+                        }
+                    } break;
+                    default:
+                    case DescriptorSetBindingType::IMAGE:
+                    case DescriptorSetBindingType::UNIFORM_BUFFER:
+                    case DescriptorSetBindingType::ATOMIC_BUFFER:
+                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
+                        //Should be handled by GFXDevice
+                    } break;
+                };
             }
         }break;
         case GFX::CommandType::BIND_PIPELINE: {
@@ -1263,6 +1289,9 @@ void GL_API::onThreadCreated([[maybe_unused]] const std::thread::id& threadID) {
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_MARKER, GL_DONT_CARE, 0, NULL, GL_FALSE);
+        glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PUSH_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE);
+        glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_POP_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE);
         // Debug callback in a separate thread requires a flag to distinguish it from the main thread's callbacks
         glDebugMessageCallback((GLDEBUGPROC)GLUtil::DebugCallback, GLUtil::s_glSecondaryContext);
     }
@@ -1346,7 +1375,7 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker* stateTrack
     stateTracker->setDepthWrite(true);
 }
 
-GLStateTracker::BindResult GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, const U8 offset, U8 count) const {
+/*GLStateTracker::BindResult GL_API::makeTexturesResidentInternal(TextureDataContainer& textureData, const U8 offset, U8 count) const {
     // All of the complicate and fragile code bellow does actually provide a measurable performance increase 
     // (micro second range for a typical scene, nothing amazing, but still ...)
     // CPU cost is comparable to the multiple glBind calls on some specific driver + GPU combos.
@@ -1445,55 +1474,62 @@ GLStateTracker::BindResult GL_API::makeTexturesResidentInternal(TextureDataConta
     }
 
     return result;
-}
+}*/
 
+GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const TextureViewEntry& textureView, const U8 bindingSlot) const {
+    const size_t viewHash = textureView.getHash();
+    TextureView view = textureView._view;
+    if (view._targetType == TextureType::COUNT) {
+        view._targetType = view._textureData._textureType;
+    }
+    const TextureData& data = view._textureData;
+    assert(IsValid(data));
+
+    auto [textureID, cacheHit] = s_textureViewCache.allocate(viewHash);
+    DIVIDE_ASSERT(textureID != 0u);
+
+    if (!cacheHit)
+    {
+        const GLenum glInternalFormat = GLUtil::internalFormat(textureView._descriptor.baseFormat(),
+                                                               textureView._descriptor.dataType(),
+                                                               textureView._descriptor.srgb(),
+                                                               textureView._descriptor.normalized());
+
+        if (IsCubeTexture(view._targetType)) {
+            view._layerRange *= 6;
+        }
+
+        glTextureView(textureID,
+            GLUtil::glTextureTypeTable[to_base(view._targetType)],
+            data._textureHandle,
+            glInternalFormat,
+            static_cast<GLuint>(textureView._view._mipLevels.x),
+            static_cast<GLuint>(textureView._view._mipLevels.y),
+            view._layerRange.min,
+            view._layerRange.max);
+    }
+
+    // Self delete after 3 frames unless we use it again
+    s_textureViewCache.deallocate(textureID, 3u);
+    const GLuint samplerHandle = GetSamplerHandle(textureView._view._samplerHash);
+    return GL_API::GetStateTracker()->bindTextures(static_cast<GLushort>(bindingSlot), 1, view._targetType, &textureID, &samplerHandle);
+}
+/*
 GLStateTracker::BindResult GL_API::makeTextureViewsResidentInternal(const TextureViews& textureViews, const U8 offset, U8 count) const {
     count = std::min(count, to_U8(textureViews.count()));
 
     GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
     for (U8 i = offset; i < count + offset; ++i) {
         const auto& it = textureViews._entries[i];
-        const size_t viewHash = it.getHash();
-        TextureView view = it._view;
-        if (view._targetType == TextureType::COUNT) {
-            view._targetType = view._textureData._textureType;
-        }
-        const TextureData& data = view._textureData;
-        assert(IsValid(data));
-
-        auto [textureID, cacheHit] = s_textureViewCache.allocate(viewHash);
-        DIVIDE_ASSERT(textureID != 0u);
-
-        if (!cacheHit)
-        {
-            const GLenum glInternalFormat = GLUtil::internalFormat(it._descriptor.baseFormat(), it._descriptor.dataType(), it._descriptor.srgb(), it._descriptor.normalized());
-
-            if (IsCubeTexture(view._targetType)) {
-                view._layerRange *= 6;
-            }
-
-            glTextureView(textureID,
-                GLUtil::glTextureTypeTable[to_base(view._targetType)],
-                data._textureHandle,
-                glInternalFormat,
-                static_cast<GLuint>(it._view._mipLevels.x),
-                static_cast<GLuint>(it._view._mipLevels.y),
-                view._layerRange.min,
-                view._layerRange.max);
-        }
-
-        const GLuint samplerHandle = GetSamplerHandle(it._view._samplerHash);
-        result = GL_API::GetStateTracker()->bindTextures(static_cast<GLushort>(it._binding), 1, view._targetType, &textureID, &samplerHandle);
+        result = makeTextureViewResidentInternal(it, offset);
         if (result == GLStateTracker::BindResult::FAILED) {
-            DIVIDE_UNEXPECTED_CALL();
+            return result;
         }
-        // Self delete after 3 frames unless we use it again
-        s_textureViewCache.deallocate(textureID, 3u);
     }
 
     return result;
 }
-
+*/
 bool GL_API::setViewport(const Rect<I32>& viewport) {
     return GetStateTracker()->setViewport(viewport);
 }

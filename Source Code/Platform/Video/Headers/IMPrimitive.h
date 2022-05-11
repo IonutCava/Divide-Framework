@@ -229,7 +229,7 @@ class NOINITVTABLE IMPrimitive : public VertexDataInterface {
     const Pipeline* _pipeline = nullptr;
     // render in wireframe mode
     bool _forceWireframe = false;
-    TextureEntry _textureEntry;
+    DescriptorSet _descriptorSet{};
     Rect<I32> _viewport = {-1, -1, -1, -1};
 
    private:

@@ -316,7 +316,7 @@ class Editor final : public PlatformContextComponent,
     bool           _isScenePaused = false;
     bool           _gridSettingsDirty = true;
     CircularBuffer<Str256> _recentSceneList;
-
+    CameraSnapshot _render2DSnapshot{};
     RenderTargetHandle _editorRTHandle{};
 }; //Editor
 

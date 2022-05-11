@@ -140,9 +140,28 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     _constantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });
-    set._textureData.add(TextureEntry{ depthTex, depthAtt.samplerHash(),TextureUsage::UNIT1 });
-    set._textureData.add(TextureEntry{ normalsTex, normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
+    set._usage = DescriptorSetUsage::PER_DRAW_SET;
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._data._combinedImageSampler._image = screenTex;
+        binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+        binding._data._combinedImageSampler._image = depthTex;
+        binding._data._combinedImageSampler._samplerHash = depthAtt.samplerHash();
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
+        binding._data._combinedImageSampler._image = normalsTex;
+        binding._data._combinedImageSampler._samplerHash = normalsAtt.samplerHash();
+    }
 
     GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     renderPassCmd->_target = RenderTargetNames::SSR_RESULT;

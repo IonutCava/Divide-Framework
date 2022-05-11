@@ -73,8 +73,21 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     const F32 velocityFactor = fps / Config::TARGET_FRAME_RATE * velocityScale;
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._textureData.add(TextureEntry{ screenAtt.texture()->data(),   screenAtt.samplerHash(),   TextureUsage::UNIT0 });
-    set._textureData.add(TextureEntry{ velocityAtt.texture()->data(), velocityAtt.samplerHash(), TextureUsage::UNIT1 });
+    set._usage = DescriptorSetUsage::PER_DRAW_SET;
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._data._combinedImageSampler._image = screenAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+        binding._data._combinedImageSampler._image = velocityAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = velocityAtt.samplerHash();
+    }
 
     GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     beginRenderPassCmd->_name = "DO_MOTION_BLUR_PASS";

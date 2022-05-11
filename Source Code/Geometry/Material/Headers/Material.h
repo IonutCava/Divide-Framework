@@ -277,7 +277,7 @@ class Material final : public CachedResource {
     [[nodiscard]] size_t getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
     [[nodiscard]] Texture_wptr getTexture(TextureUsage textureUsage) const;
 
-    [[nodiscard]] bool getTextureData(RenderStagePass renderStagePass, TextureDataContainer& textureData);
+    [[nodiscard]] DescriptorSet& getTextureData(const RenderStagePass& renderStagePass);
     [[nodiscard]] ShaderProgram::Handle getProgramHandle(RenderStagePass renderStagePass) const;
     [[nodiscard]] ShaderProgram::Handle computeAndGetProgramHandle(RenderStagePass renderStagePass);
 
@@ -339,6 +339,8 @@ class Material final : public CachedResource {
     POINTER_R_IW(Material, baseMaterial, nullptr);
     PROPERTY_RW(bool, ignoreXMLData, false);
     PROPERTY_RW(UpdatePriority, updatePriorirty, UpdatePriority::Default);
+    PROPERTY_R_IW(DescriptorSet, descriptorSetMainPass);
+    PROPERTY_R_IW(DescriptorSet, descriptorSetPrePass);
 
     template<typename T> using StatesPerVariant     = eastl::array<T,                       to_base(RenderStagePass::VariantType::COUNT)>;
     template<typename T> using StateVariantsPerPass = eastl::array<StatesPerVariant<T>,     to_base(RenderPassType::COUNT)>;

@@ -195,16 +195,71 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     defaultSampler.wrapUVW(TextureWrap::REPEAT);
     const size_t samplerHash = defaultSampler.getHash();
 
-    TextureDataContainer& textureContainer = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData;
-    textureContainer.add(TextureEntry{ prbAtt.texture()->data(),           prbAtt.samplerHash(),to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN) });
-    textureContainer.add(TextureEntry{ linDepthDataAtt.texture()->data(),  samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH) });
-    textureContainer.add(TextureEntry{ depthAtt.texture()->data(),         samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH) });
-    textureContainer.add(TextureEntry{ ssrDataAtt.texture()->data(),       samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR) });
-    textureContainer.add(TextureEntry{ sceneDataAtt.texture()->data(),     samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA) });
-    textureContainer.add(TextureEntry{ velocityAtt.texture()->data(),      samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY) });
-    textureContainer.add(TextureEntry{ _underwaterTexture->data(),         samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER) });
-    textureContainer.add(TextureEntry{ _noise->data(),                     samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE) });
-    textureContainer.add(TextureEntry{ _screenBorder->data(),              samplerHash,       to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER) });
+    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+    set._usage = DescriptorSetUsage::PER_DRAW_SET;
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN);
+        binding._data._combinedImageSampler._image = prbAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = prbAtt.samplerHash();
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH);
+        binding._data._combinedImageSampler._image = depthAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = samplerHash;
+    }   
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH);
+        binding._data._combinedImageSampler._image = linDepthDataAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = samplerHash;
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR);
+        binding._data._combinedImageSampler._image = ssrDataAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = samplerHash;
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA);
+        binding._data._combinedImageSampler._image = sceneDataAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = samplerHash;
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY);
+        binding._data._combinedImageSampler._image = velocityAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = samplerHash;
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER);
+        binding._data._combinedImageSampler._image = _underwaterTexture->data();
+        binding._data._combinedImageSampler._samplerHash = samplerHash;
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE);
+        binding._data._combinedImageSampler._image = _noise->data();
+        binding._data._combinedImageSampler._samplerHash = samplerHash;
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER);
+        binding._data._combinedImageSampler._image = _screenBorder->data();
+        binding._data._combinedImageSampler._samplerHash = samplerHash;
+    }
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 

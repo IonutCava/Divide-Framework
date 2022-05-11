@@ -59,6 +59,23 @@ class GUIDWrapper {
     const I64 _GUID;
 };
 
+FORCE_INLINE bool operator==(const GUIDWrapper& lhs, const GUIDWrapper& rhs) noexcept {
+    return lhs.getGUID() == rhs.getGUID();
+}
+
+FORCE_INLINE bool operator!=(const GUIDWrapper& lhs, const GUIDWrapper& rhs) noexcept {
+    return lhs.getGUID() != rhs.getGUID();
+}
+
+FORCE_INLINE [[nodiscard]] bool Compare(GUIDWrapper* const lhs, GUIDWrapper* const rhs) noexcept {
+    if (lhs != nullptr && rhs != nullptr) {
+        return lhs->getGUID() == rhs->getGUID();
+    }
+
+    return (lhs == nullptr && rhs == nullptr);
+}
+
+
 }  // namespace Divide
 
 #endif

@@ -93,31 +93,33 @@ bool glUniformBuffer::lockByteRange(const BufferRange range, SyncObject* sync) c
 }
 
 bool glUniformBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
-    if (range._length > 0) {
-        OPTICK_EVENT();
+    OPTICK_EVENT();
 
+    GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
+    if (bindIndex == to_base(ShaderBufferLocation::CMD_BUFFER)) {
+        result = GL_API::GetStateTracker()->setActiveBuffer(GL_DRAW_INDIRECT_BUFFER,
+                                                            bufferImpl()->memoryBlock()._bufferHandle);
+    } else if (range._length > 0) {
         DIVIDE_ASSERT(to_size(range._length) <= _maxSize && "glUniformBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
         DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
-        range._startOffset += queueReadIndex() * _alignedBufferSize;
 
-        GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
-        if (bindIndex == to_base(ShaderBufferLocation::CMD_BUFFER)) {
-            result = GL_API::GetStateTracker()->setActiveBuffer(GL_DRAW_INDIRECT_BUFFER, bufferImpl()->memoryBlock()._bufferHandle);
-        } else {
-            const size_t offset = bufferImpl()->memoryBlock()._offset + range._startOffset;
-            // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
-            const size_t bindRange = Util::GetAlignmentCorrected((offset == 0u && to_size(range._length) == bufferImpl()->memoryBlock()._size) ? 0u : range._length, AlignmentRequirement(_usage));
-            result = GL_API::GetStateTracker()->setActiveBufferIndexRange(bufferImpl()->params()._target, bufferImpl()->memoryBlock()._bufferHandle, bindIndex, offset, bindRange);
-        }
+        const size_t offset = bufferImpl()->memoryBlock()._offset + range._startOffset + (queueReadIndex() * _alignedBufferSize);
 
-        if (result == GLStateTracker::BindResult::FAILED) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
+        const size_t bindRange = Util::GetAlignmentCorrected((offset == 0u && to_size(range._length) == bufferImpl()->memoryBlock()._size) ? 0u : range._length, AlignmentRequirement(_usage));
 
-        return result == GLStateTracker::BindResult::JUST_BOUND;
+        result = GL_API::GetStateTracker()->setActiveBufferIndexRange(bufferImpl()->params()._target,
+                                                                      bufferImpl()->memoryBlock()._bufferHandle,
+                                                                      bindIndex,
+                                                                      offset,
+                                                                      bindRange);
     }
 
-    return false;
+    if (result == GLStateTracker::BindResult::FAILED) {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+
+    return result == GLStateTracker::BindResult::JUST_BOUND;
 }
 
 }  // namespace Divide

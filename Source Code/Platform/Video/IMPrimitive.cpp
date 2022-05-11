@@ -24,7 +24,7 @@ IMPrimitive::~IMPrimitive()
 void IMPrimitive::reset() {
     resetWorldMatrix();
     resetViewport();
-    _textureEntry = {};
+    _descriptorSet = {};
     _cmdBufferDirty = true;
     clearBatch();
 }
@@ -372,13 +372,25 @@ void IMPrimitive::pipeline(const Pipeline& pipeline) noexcept {
 }
 
 void IMPrimitive::texture(const Texture& texture, const size_t samplerHash) {
-    TextureEntry tempEntry{};
+    TextureEntry tempEntry{}, existingEntry{};
     tempEntry._data = texture.data();
     tempEntry._sampler = samplerHash;
     tempEntry._binding = to_U8(TextureUsage::UNIT0);
 
-    if (_textureEntry != tempEntry) {
-        _textureEntry = tempEntry;
+    if (_descriptorSet._bindings.empty()) {
+        _descriptorSet._bindings.emplace_back();
+    } else {
+        auto& existingBinding = _descriptorSet._bindings.front();
+        existingEntry._binding = existingBinding._resourceSlot;
+        existingEntry._data = existingBinding._data._combinedImageSampler._image;
+        existingEntry._sampler = existingBinding._data._combinedImageSampler._samplerHash;
+    }
+
+     if (existingEntry != tempEntry) {
+         auto& existingBinding = _descriptorSet._bindings.front();
+         existingBinding._resourceSlot = tempEntry._binding;
+         existingBinding._data._combinedImageSampler._image = tempEntry._data;
+         existingBinding._data._combinedImageSampler._samplerHash = tempEntry._sampler;
         _cmdBufferDirty = true;
     }
 }
@@ -388,13 +400,15 @@ GFX::CommandBuffer& IMPrimitive::toCommandBuffer() const {
     {
         _cmdBuffer->clear();
 
+        const bool hasTexture = !_descriptorSet._bindings.empty();
+
         DIVIDE_ASSERT(_pipeline != nullptr && _pipeline->descriptor()._shaderProgramHandle != ShaderProgram::INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
 
         GFX::EnqueueCommand(*_cmdBuffer, GFX::BindPipelineCommand{ _pipeline });
 
         PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(*_cmdBuffer)->_constants;
         // Inform the shader if we have (or don't have) a texture
-        constants.set(_ID("useTexture"), GFX::PushConstantType::BOOL, IsValid(_textureEntry));
+        constants.set(_ID("useTexture"), GFX::PushConstantType::BOOL, hasTexture);
         // Upload the primitive's world matrix to the shader
         constants.set(_ID("dvd_WorldMatrix"), GFX::PushConstantType::MAT4, worldMatrix());
 
@@ -403,8 +417,8 @@ GFX::CommandBuffer& IMPrimitive::toCommandBuffer() const {
             Merge(constants, _additionalConstats, partial);
         }
 
-        if (IsValid(_textureEntry)) {
-            GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(*_cmdBuffer)->_set._textureData.add(_textureEntry);
+        if (hasTexture) {
+            GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(*_cmdBuffer, { _descriptorSet });
         }
 
         if (_viewport != Rect<I32>(-1)) {

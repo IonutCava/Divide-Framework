@@ -53,6 +53,20 @@ namespace TypeUtil {
 
         return DescriptorSetUsage::COUNT;
     }
+
+    const char* ShaderBufferLocationToString(const ShaderBufferLocation bufferLocation) noexcept {
+        return Names::shaderBufferLocation[to_base(bufferLocation)];
+    }
+
+    ShaderBufferLocation StringToShaderBufferLocation(const string& name) {
+        for (U8 i = 0u; i < to_U8(ShaderBufferLocation::COUNT); ++i) {
+            if (strcmp(name.c_str(), Names::shaderBufferLocation[i]) == 0) {
+                return static_cast<ShaderBufferLocation>(i);
+            }
+        }
+
+        return ShaderBufferLocation::COUNT;
+    }
 };
 
 constexpr U16 BYTE_BUFFER_VERSION = 1u;
@@ -76,7 +90,7 @@ ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
 ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
 ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
 
-Mutex ShaderProgram::s_programLock;
+SharedMutex ShaderProgram::s_programLock;
 std::atomic_int ShaderProgram::s_shaderCount;
 
 UpdateListener g_sFileWatcherListener(
@@ -356,6 +370,18 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
         glswAddDirectiveToken(type != ShaderType::COUNT ? Names::shaderTypes[to_U8(type)] : "", entry.c_str());
     };
 
+    const auto AppendResourceBindingSlots = [&AppendToShaderHeader]([[maybe_unused]] const bool targetOpenGL) {
+        STUBBED("Find a way to map slots differentely between Vulkan and OpenGL. -Ionut");
+
+        AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_ATOMIC_COUNTER 0");
+
+        for (U8 i = 0u; i < to_base(ShaderBufferLocation::COUNT); ++i) {
+            AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define BUFFER_%s %d", TypeUtil::ShaderBufferLocationToString(static_cast<ShaderBufferLocation>(i)), i).c_str());
+        }
+        for (U8 i = 0u; i < to_base(TextureUsage::COUNT); ++i) {
+            AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define TEXTURE_%s %d", TypeUtil::TextureUsageToString(static_cast<TextureUsage>(i)), i).c_str());
+        }
+    };
     constexpr std::pair<const char*, const char*> shaderVaryings[] =
     {
         { "vec4"       , "_vertexW"},          // 16 bytes
@@ -506,30 +532,6 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_NORMALS " + Util::to_string(to_base(GFXDevice::ScreenTargets::NORMALS)));
     AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_REVEALAGE " + Util::to_string(to_base(GFXDevice::ScreenTargets::REVEALAGE)));
     AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_MODULATE " + Util::to_string(to_base(GFXDevice::ScreenTargets::MODULATE)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_CAM_BLOCK " + Util::to_string(to_base(ShaderBufferLocation::CAM_BLOCK)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_ATOMIC_COUNTER_0 " + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_0)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_ATOMIC_COUNTER_1 " + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_1)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_ATOMIC_COUNTER_2 " + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_2)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_ATOMIC_COUNTER_3 " + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_3)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_ATOMIC_COUNTER_4 " + Util::to_string(to_base(ShaderBufferLocation::ATOMIC_COUNTER_4)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_GPU_COMMANDS " + Util::to_string(to_base(ShaderBufferLocation::GPU_COMMANDS)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_LIGHT_NORMAL " + Util::to_string(to_base(ShaderBufferLocation::LIGHT_NORMAL)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_LIGHT_SCENE " + Util::to_string(to_base(ShaderBufferLocation::LIGHT_SCENE)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_LIGHT_SHADOW " + Util::to_string(to_base(ShaderBufferLocation::LIGHT_SHADOW)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_LIGHT_INDICES " + Util::to_string(to_base(ShaderBufferLocation::LIGHT_INDICES)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_LIGHT_GRID " + Util::to_string(to_base(ShaderBufferLocation::LIGHT_GRID)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_LIGHT_INDEX_COUNT " + Util::to_string(to_base(ShaderBufferLocation::LIGHT_INDEX_COUNT)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_LIGHT_CLUSTER_AABBS " + Util::to_string(to_base(ShaderBufferLocation::LIGHT_CLUSTER_AABBS)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_NODE_TRANSFORM_DATA " + Util::to_string(to_base(ShaderBufferLocation::NODE_TRANSFORM_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_NODE_TEXTURE_DATA " + Util::to_string(to_base(ShaderBufferLocation::NODE_TEXTURE_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_NODE_MATERIAL_DATA " + Util::to_string(to_base(ShaderBufferLocation::NODE_MATERIAL_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_NODE_INDIRECTION_DATA " + Util::to_string(to_base(ShaderBufferLocation::NODE_INDIRECTION_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_SCENE_DATA " + Util::to_string(to_base(ShaderBufferLocation::SCENE_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_PROBE_DATA " + Util::to_string(to_base(ShaderBufferLocation::PROBE_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_COMMANDS " + Util::to_string(to_base(ShaderBufferLocation::CMD_BUFFER)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_GRASS_DATA " + Util::to_string(to_base(ShaderBufferLocation::GRASS_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_TREE_DATA " + Util::to_string(to_base(ShaderBufferLocation::TREE_DATA)));
-    AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_UNIFORM_BLOCK " + Util::to_string(to_base(ShaderBufferLocation::UNIFORM_BLOCK)));
     AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_X_THREADS " + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS));
     AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_Y_THREADS " + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS));
     AppendToShaderHeader(ShaderType::COUNT, "#define CLUSTERS_Z_THREADS " + Util::to_string(Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS));
@@ -540,9 +542,9 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     AppendToShaderHeader(ShaderType::COUNT, "#define MAX_LIGHTS_PER_CLUSTER " + Util::to_string(config.rendering.numLightsPerCluster));
     AppendToShaderHeader(ShaderType::COUNT, "#define REFLECTION_PROBE_RESOLUTION " + Util::to_string(reflectionProbeRes));
     AppendToShaderHeader(ShaderType::COUNT, "#define REFLECTION_PROBE_MIP_COUNT " + Util::to_string(to_U32(std::log2(reflectionProbeRes))));
-    for (U8 i = 0u; i < to_base(TextureUsage::COUNT); ++i) {
-        AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define TEXTURE_%s %d", TypeUtil::TextureUsageToString(static_cast<TextureUsage>(i)), i).c_str());
-    }
+
+    AppendResourceBindingSlots(renderingAPI == RenderAPI::OpenGL);
+
     for (U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i) {
         AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define %s %d", TypeUtil::DescriptorSetUsageToString(static_cast<DescriptorSetUsage>(i)), i).c_str());
     }
@@ -793,7 +795,7 @@ void ShaderProgram::Idle(PlatformContext& platformContext) {
 bool ShaderProgram::RecompileShaderProgram(const Str256& name) {
     bool state = false;
 
-    ScopedLock<Mutex> lock(s_programLock);
+    SharedLock<SharedMutex> lock(s_programLock);
 
     // Find the shader program
     for (const ShaderProgramMapEntry& entry: s_shaderPrograms) {
@@ -898,7 +900,7 @@ void ShaderProgram::RegisterShaderProgram(ShaderProgram* shaderProgram) {
 
     assert(shaderProgram != nullptr);
 
-    ScopedLock<Mutex> lock(s_programLock);
+    ScopedLock<SharedMutex> lock(s_programLock);
     if (shaderProgram->handle() != INVALID_HANDLE) {
         const ShaderProgramMapEntry& existingEntry = s_shaderPrograms[shaderProgram->handle()._id];
         if (existingEntry._generation == shaderProgram->handle()._generation) {
@@ -932,7 +934,7 @@ void ShaderProgram::RegisterShaderProgram(ShaderProgram* shaderProgram) {
 bool ShaderProgram::UnregisterShaderProgram(const Handle shaderHandle) {
 
     if (shaderHandle != INVALID_HANDLE) {
-        ScopedLock<Mutex> lock(s_programLock);
+        ScopedLock<SharedMutex> lock(s_programLock);
         ShaderProgramMapEntry& entry = s_shaderPrograms[shaderHandle._id];
         if (entry._generation == shaderHandle._generation) {
             if (entry._program && entry._program == s_lastRequestedShaderProgram._program) {
@@ -951,7 +953,7 @@ bool ShaderProgram::UnregisterShaderProgram(const Handle shaderHandle) {
 }
 
 ShaderProgram* ShaderProgram::FindShaderProgram(const Handle shaderHandle) {
-    ScopedLock<Mutex> lock(s_programLock);
+    SharedLock<SharedMutex> lock(s_programLock);
 
     if (shaderHandle == s_lastRequestedShaderProgram._handle) {
         return s_lastRequestedShaderProgram._program;
@@ -970,7 +972,7 @@ ShaderProgram* ShaderProgram::FindShaderProgram(const Handle shaderHandle) {
 }
 
 void ShaderProgram::RebuildAllShaders() {
-    ScopedLock<Mutex> lock(s_programLock);
+    SharedLock<SharedMutex> lock(s_programLock);
     for (const ShaderProgramMapEntry& entry : s_shaderPrograms) {
         if (entry._program != nullptr) {
             s_recompileQueue.push(entry._program);
@@ -1514,7 +1516,7 @@ void ShaderProgram::OnAtomChange(const std::string_view atomName, const FileUpda
     }
 
     //Get list of shader programs that use the atom and rebuild all shaders in list;
-    ScopedLock<Mutex> lock(s_programLock);
+    SharedLock<SharedMutex> lock(s_programLock);
     for (const ShaderProgramMapEntry& entry : s_shaderPrograms) {
         if(entry._program != nullptr) {
             for (const U64 atomID : entry._program->_usedAtomIDs) {

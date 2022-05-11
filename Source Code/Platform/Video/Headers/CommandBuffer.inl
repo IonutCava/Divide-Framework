@@ -200,10 +200,6 @@ CommandBuffer::tryMergeCommands(const CommandType type, T* prevCommand, T* crtCo
         case CommandType::MEMORY_BARRIER: {
             ret = Merge(reinterpret_cast<MemoryBarrierCommand*>(prevCommand), reinterpret_cast<MemoryBarrierCommand*>(crtCommand));
         } break;
-        case CommandType::BIND_DESCRIPTOR_SETS: {
-            bool partial = false;
-            ret = Merge(reinterpret_cast<BindDescriptorSetsCommand*>(prevCommand)->_set, reinterpret_cast<BindDescriptorSetsCommand*>(crtCommand)->_set, partial);
-        } break;
         case CommandType::SEND_PUSH_CONSTANTS:  {
             bool partial = false;
             ret = Merge(reinterpret_cast<SendPushConstantsCommand*>(prevCommand)->_constants, reinterpret_cast<SendPushConstantsCommand*>(crtCommand)->_constants, partial);

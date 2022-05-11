@@ -204,6 +204,9 @@ Material::Material(GFXDevice& context, ResourceCache* parentCache, const size_t 
 
         return shaderDescriptor;
     };
+
+    _descriptorSetMainPass._usage = DescriptorSetUsage::PER_DRAW_SET;
+    _descriptorSetPrePass._usage = DescriptorSetUsage::PER_DRAW_SET;
 }
 
 Material_ptr Material::clone(const Str256& nameSuffix) {
@@ -220,6 +223,7 @@ Material_ptr Material::clone(const Str256& nameSuffix) {
     cloneMat->_topology = this->_topology;
     cloneMat->_shaderAttributes = this->_shaderAttributes;
     cloneMat->_shaderAttributesHash = this->_shaderAttributesHash;
+
     cloneMat->ignoreXMLData(this->ignoreXMLData());
     cloneMat->updatePriorirty(this->updatePriorirty());
     for (U8 i = 0u; i < to_U8(this->_textures.size()); ++i) {
@@ -314,6 +318,10 @@ bool Material::setSampler(const TextureUsage textureUsageSlot, const size_t samp
 
 bool Material::setTexture(const TextureUsage textureUsageSlot, const Texture_ptr& texture, const size_t samplerHash, const TextureOperation op, const TexturePrePassUsage prePassUsage)
 {
+    // Invalidate our descriptor sets
+    _descriptorSetMainPass._bindings.resize(0);
+    _descriptorSetPrePass._bindings.resize(0);
+
     const U32 slot = to_U32(textureUsageSlot);
 
     TextureInfo& texInfo = _textures[slot];
@@ -875,83 +883,82 @@ void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTex
     }
 }
 
-bool Material::getTextureData(const RenderStagePass renderStagePass, TextureDataContainer& textureData) {
+DescriptorSet& Material::getTextureData(const RenderStagePass& renderStagePass) {
     OPTICK_EVENT();
-    // We only need to actually bind NON-RESIDENT textures. 
-    if (ShaderProgram::s_UseBindlessTextures) {
-        return true;
-    }
 
     const bool isPrePass = (renderStagePass._passType == RenderPassType::PRE_PASS);
-    const auto addTexture = [&](const U8 slot) {
-        const Texture_ptr& crtTexture = _textures[slot]._ptr;
-        if (crtTexture != nullptr) {
-            textureData.add(TextureEntry{ crtTexture->data(), _textures[slot]._sampler, slot });
-            return true;
-        }
-        return false;
-    };
+    DescriptorSet& set = isPrePass ? _descriptorSetPrePass : _descriptorSetMainPass;
+    if (set._bindings.empty()) {
+        SharedLock<SharedMutex> r_lock(_textureLock);
+        // Check again
+        if (set._bindings.empty()) {
+            const auto addTexture = [&](const U8 slot) {
+                const Texture_ptr& crtTexture = _textures[slot]._ptr;
+                if (crtTexture != nullptr) {
+                    auto& texBinding = set._bindings.emplace_back();
+                    texBinding._resourceSlot = slot;
+                    texBinding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                    texBinding._data._combinedImageSampler._image = crtTexture->data();
+                    texBinding._data._combinedImageSampler._samplerHash = _textures[slot]._sampler;
+                }
+            };
 
-    SharedLock<SharedMutex> r_lock(_textureLock);
-    bool ret = false;
-    if (!isPrePass) {
-        for (const U8 slot : g_materialTextureSlots) {
-            if (addTexture(slot)) {
-                ret = true;
-            }
-        }
-    } else {
-        for (U8 i = 0u; i < to_U8(TextureUsage::COUNT); ++i) {
-            bool add = false;
-            switch (_textures[i]._useForPrePass) {
-                case TexturePrePassUsage::ALWAYS: {
-                    // Always add
-                    add = true;
-                } break;
-                case TexturePrePassUsage::NEVER: {
-                    //Skip
-                    add = false;
-                } break;
-                case TexturePrePassUsage::AUTO: {
-                    // Some best-fit heuristics that will surely break at one point
-                    switch (static_cast<TextureUsage>(i)) {
-                        case TextureUsage::UNIT0: {
-                            add = hasTransparency() && properties().translucencySource() == TranslucencySource::ALBEDO_TEX;
-                        } break;
-                        case TextureUsage::NORMALMAP: {
-                            add = renderStagePass._stage == RenderStage::DISPLAY;
-                        } break;
-                        case TextureUsage::SPECULAR: {
-                            add = renderStagePass._stage == RenderStage::DISPLAY && 
-                                  (properties().shadingMode() != ShadingMode::PBR_MR && properties().shadingMode() != ShadingMode::PBR_SG);
-                        } break;
-                        case TextureUsage::METALNESS: {
-                            add = renderStagePass._stage == RenderStage::DISPLAY && properties().usePackedOMR();
-                        } break;
-                        case TextureUsage::ROUGHNESS: {
-                            add = renderStagePass._stage == RenderStage::DISPLAY && !properties().usePackedOMR();
-                        } break;
-                        case TextureUsage::HEIGHTMAP: {
+            if (!isPrePass) {
+                for (const U8 slot : g_materialTextureSlots) {
+                    addTexture(slot);
+                }
+            } else {
+                for (U8 i = 0u; i < to_U8(TextureUsage::COUNT); ++i) {
+                    bool add = false;
+                    switch (_textures[i]._useForPrePass) {
+                        case TexturePrePassUsage::ALWAYS: {
+                            // Always add
                             add = true;
                         } break;
-                        case TextureUsage::OPACITY: {
-                            add = hasTransparency() &&
-                                (properties().translucencySource() == TranslucencySource::OPACITY_MAP_A ||
-                                 properties().translucencySource() == TranslucencySource::OPACITY_MAP_R);
+                        case TexturePrePassUsage::NEVER: {
+                            //Skip
+                            add = false;
                         } break;
-                    };
-                } break;
+                        case TexturePrePassUsage::AUTO: {
+                            // Some best-fit heuristics that will surely break at one point
+                            switch (static_cast<TextureUsage>(i)) {
+                                case TextureUsage::UNIT0: {
+                                    add = hasTransparency() && properties().translucencySource() == TranslucencySource::ALBEDO_TEX;
+                                } break;
+                                case TextureUsage::NORMALMAP: {
+                                    add = renderStagePass._stage == RenderStage::DISPLAY;
+                                } break;
+                                case TextureUsage::SPECULAR: {
+                                    add = renderStagePass._stage == RenderStage::DISPLAY &&
+                                        (properties().shadingMode() != ShadingMode::PBR_MR && properties().shadingMode() != ShadingMode::PBR_SG);
+                                } break;
+                                case TextureUsage::METALNESS: {
+                                    add = renderStagePass._stage == RenderStage::DISPLAY && properties().usePackedOMR();
+                                } break;
+                                case TextureUsage::ROUGHNESS: {
+                                    add = renderStagePass._stage == RenderStage::DISPLAY && !properties().usePackedOMR();
+                                } break;
+                                case TextureUsage::HEIGHTMAP: {
+                                    add = true;
+                                } break;
+                                case TextureUsage::OPACITY: {
+                                    add = hasTransparency() &&
+                                        (properties().translucencySource() == TranslucencySource::OPACITY_MAP_A ||
+                                         properties().translucencySource() == TranslucencySource::OPACITY_MAP_R);
+                                } break;
+                            };
+                        } break;
+                    }
 
-
-            }
-
-            if (add && addTexture(i)) {
-                ret = true;
+                    if (add) {
+                        addTexture(i);
+                    }
+                }
             }
         }
     }
 
-    return ret;
+    return set;
 }
 
 void Material::rebuild() {

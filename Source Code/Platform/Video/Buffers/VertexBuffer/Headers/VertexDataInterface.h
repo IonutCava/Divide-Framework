@@ -90,7 +90,7 @@ inline bool operator!=(const BufferRange& lhs, const BufferRange& rhs) noexcept 
     return lhs._startOffset < (rhs._startOffset + rhs._length) && rhs._startOffset < (lhs._startOffset + lhs._length);
 }
 
-inline void Merge(BufferRange& lhs, const BufferRange& rhs) {
+inline void Merge(BufferRange& lhs, const BufferRange& rhs) noexcept {
     lhs._startOffset = std::min(lhs._startOffset, rhs._startOffset);
     lhs._length = std::max(lhs._length, rhs._length);
 }

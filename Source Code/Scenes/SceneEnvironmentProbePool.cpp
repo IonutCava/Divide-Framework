@@ -317,15 +317,14 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ pipelineCalcLut });
 
         Texture* brdfLutTexture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
-        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._images.add(Image
-            {
-                SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get(),
-                Image::Flag::WRITE,
-                false,
-                0u,
-                0u,
-                0u
-            });
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+
+        auto& binding = set._bindings.emplace_back();
+        binding._resourceSlot = to_base(TextureUsage::UNIT0);
+        binding._type = DescriptorSetBindingType::IMAGE;
+        binding._data._image._texture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
+        binding._data._image._flag = Image::Flag::WRITE;
 
         const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
         const U32 groupsY = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
@@ -342,9 +341,28 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         const RTAttachment& brdfLut = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0);
 
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._textureData.add(TextureEntry{ prefiltered.texture()->data(), prefiltered.samplerHash(), TextureUsage::REFLECTION_PREFILTERED });
-        set._textureData.add(TextureEntry{ irradiance.texture()->data(), irradiance.samplerHash(), TextureUsage::IRRADIANCE });
-        set._textureData.add(TextureEntry{ brdfLut.texture()->data(), brdfLut.samplerHash(), TextureUsage::BRDF_LUT });
+        set._usage = DescriptorSetUsage::PER_FRAME_SET;
+        {
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_base(TextureUsage::REFLECTION_PREFILTERED);
+            binding._data._combinedImageSampler._image = prefiltered.texture()->data();
+            binding._data._combinedImageSampler._samplerHash = prefiltered.samplerHash();
+        }
+        {
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_base(TextureUsage::IRRADIANCE);
+            binding._data._combinedImageSampler._image = irradiance.texture()->data();
+            binding._data._combinedImageSampler._samplerHash = irradiance.samplerHash();
+        }
+        {
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_base(TextureUsage::BRDF_LUT);
+            binding._data._combinedImageSampler._image = brdfLut.texture()->data();
+            binding._data._combinedImageSampler._samplerHash = brdfLut.samplerHash();
+        }
     }
 
     if (!SkyLightNeedsRefresh() || s_queuedLayer == SkyProbeLayerIndex()) {
@@ -467,9 +485,15 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
     const U16 width = sourceTex->width();
     const F32 fWidth = to_F32(width);
 
-    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._textureData.add(TextureEntry{ sourceTex->data(), sourceAtt.samplerHash(), 0u });
-
+    {
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._data._combinedImageSampler._image = sourceTex->data();
+        binding._data._combinedImageSampler._samplerHash = sourceAtt.samplerHash();
+    }
     {
         PushConstants& constants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants;
         constants.set(_ID("cubeFace"), GFX::PushConstantType::UINT, to_U32(faceIndex));
@@ -483,7 +507,6 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         false
     };
     destinationImage._layer = to_U8((layerID * 6) + faceIndex);
-    destinationImage._binding = 1u;
 
     const F32 maxMipLevel = to_F32(std::log2(fWidth));
     for (F32 mipLevel = 0u; mipLevel <= maxMipLevel; ++mipLevel) {
@@ -492,7 +515,13 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("u_params"), GFX::PushConstantType::VEC2, vec2<F32>{ roughness, mipLevel });
 
         destinationImage._level = to_U8(mipLevel);
-        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._images.add(destinationImage);
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::IMAGE;
+        binding._resourceSlot = 1u;
+        binding._data._image = destinationImage;
 
         // Dispatch enough groups to cover the entire _mipped_ face
         GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ std::max(1u, mipWidth / 8u), std::max(1u, mipWidth / 8u), 1 });
@@ -522,12 +551,23 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
         false
     };
     destinationImage._layer = to_U8((layerID * 6) + faceIndex);
-    destinationImage._binding = 1u;
     destinationImage._level = 0u;
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._textureData.add(TextureEntry{ sourceAtt.texture()->data(), sourceAtt.samplerHash(), 0u });
-    set._images.add(destinationImage);
+    set._usage = DescriptorSetUsage::PER_DRAW_SET;
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._data._combinedImageSampler._image = sourceAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = sourceAtt.samplerHash();
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::IMAGE;
+        binding._resourceSlot = 1u;
+        binding._data._image = destinationImage;
+    }
     const U32 groupsX = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     const U32 groupsY = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ groupsX, groupsY, 1 });

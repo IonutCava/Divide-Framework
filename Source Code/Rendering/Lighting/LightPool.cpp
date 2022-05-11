@@ -456,25 +456,29 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
     const U32 lightCount = _sortedLightPropertiesCount[stageIndex];
     const size_t bufferOffset = to_size(LightBufferIndex(stage));
 
-    ShaderBufferBinding bufferLightData;
-    bufferLightData._binding = ShaderBufferLocation::LIGHT_NORMAL;
-    bufferLightData._buffer = _lightBuffer.get();
-    bufferLightData._elementRange = { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount };
-
-    ShaderBufferBinding bufferLightScene;
-    bufferLightScene._binding = ShaderBufferLocation::LIGHT_SCENE;
-    bufferLightScene._buffer = _sceneBuffer.get();
-    bufferLightScene._elementRange = { bufferOffset, 1u };
-
-    ShaderBufferBinding bufferShadow;
-    bufferShadow._binding = ShaderBufferLocation::LIGHT_SHADOW;
-    bufferShadow._buffer = _shadowBuffer.get();
-    bufferShadow._elementRange = { 0u, 1u };
-
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._buffers.add(bufferLightData);
-    set._buffers.add(bufferLightScene);
-    set._buffers.add(bufferShadow);
+    set._usage = DescriptorSetUsage::PER_FRAME_SET;
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_NORMAL);
+        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        binding._data._buffer = _lightBuffer.get();
+        binding._data._range = { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount };
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_SCENE);
+        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        binding._data._buffer = _sceneBuffer.get();
+        binding._data._range = { bufferOffset, 1u };
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_SHADOW);
+        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        binding._data._buffer = _shadowBuffer.get();
+        binding._data._range = { 0u, 1u };
+    }
 }
 
 [[nodiscard]] bool LightPool::isShadowCacheInvalidated(const vec3<F32>& cameraPosition, Light* const light) {
@@ -552,7 +556,15 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
         pipelineDescriptor._shaderProgramHandle = _lightImpostorShader->handle();
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _context.gfx().newPipeline(pipelineDescriptor) });
-        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ _lightIconsTexture->data(), s_debugSamplerHash, TextureUsage::UNIT0 });
+
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._data._combinedImageSampler._image = _lightIconsTexture->data();
+        binding._data._combinedImageSampler._samplerHash = s_debugSamplerHash;
+
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.back()._drawCount = to_U16(totalLightCount);
     }
 }

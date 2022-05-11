@@ -250,7 +250,9 @@ void ShadowMap::resetShadowMaps(GFX::CommandBuffer& bufferInOut) {
 }
 
 void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
-    GFX::BindDescriptorSetsCommand descriptorSetCmd{};
+    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+    set._usage = DescriptorSetUsage::PER_FRAME_SET;
+
     for (U8 i = 0u; i < to_base(ShadowType::COUNT); ++i) {
         RenderTargetHandle& sm = s_shadowMaps[i];
         if (sm._rt == nullptr) {
@@ -260,9 +262,12 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
         const ShadowType shadowType = static_cast<ShadowType>(i);
         const U8 bindSlot = LightPool::GetShadowBindSlotOffset(shadowType);
         const RTAttachment& shadowTexture = sm._rt->getAttachment(RTAttachmentType::Colour, 0);
-        descriptorSetCmd._set._textureData.add(TextureEntry{ shadowTexture.texture()->data(), shadowTexture.samplerHash(), bindSlot });
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = bindSlot;
+        binding._data._combinedImageSampler._image = shadowTexture.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = shadowTexture.samplerHash();
     }
-    EnqueueCommand(bufferInOut, descriptorSetCmd);
 }
 
 bool ShadowMap::freeShadowMapOffset(const Light& light) {

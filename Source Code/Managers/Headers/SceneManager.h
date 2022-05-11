@@ -66,7 +66,6 @@ namespace AI {
 class Editor;
 class ScenePool;
 class UnitComponent;
-class SceneShaderData;
 class ShaderComputeQueue;
 class SSRPreRenderOperator;
 class DirectionalLightSystem;
@@ -195,7 +194,6 @@ public:  /// Input
     void mouseMovedExternally(const Input::MouseMoveEvent& arg);
 
     PROPERTY_RW(bool, wantsMouse, false);
-    POINTER_R(SceneShaderData, sceneData, nullptr);
 // networking
 protected:
     bool networkUpdate(U32 frameCount);
@@ -238,8 +236,6 @@ protected:
     bool loadNode(SceneGraphNode* targetNode) const;
     SceneNode_ptr createNode(SceneNodeType type, const ResourceDescriptor& descriptor);
     std::pair<Texture_ptr, size_t/*sampler*/> getSkyTexture() const;
-
-    [[nodiscard]] GFX::MemoryBarrierCommand bindSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) const;
 
 private:
     bool _init = false;
@@ -426,9 +422,6 @@ class SceneManagerRenderPass {
         return mgr->getActiveScene().state()->renderState();
     }
 
-    static GFX::MemoryBarrierCommand bindSceneDescriptorSet(Divide::SceneManager* mgr, GFX::CommandBuffer& bufferInOut) {
-        return mgr->bindSceneDescriptorSet(bufferInOut);
-    }
     friend class Divide::RenderPass;
     friend class Divide::RenderPassManager;
     friend class Divide::RenderPassExecutor;

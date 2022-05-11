@@ -39,14 +39,26 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
 
 namespace Divide {
-    // Can be anything really, but we can just have a series of Bind commands in a row as well
-
-    constexpr U8 MAX_BUFFERS_PER_SET = 4u;
-    constexpr U8 MAX_TEXTURE_VIEWS_PER_SET = 3u;
-    constexpr U8 MAX_IMAGES_PER_SET = 2u;
-    constexpr U8 MAX_TEXTURES_PER_SET = to_base(TextureUsage::COUNT) / 2;
-
+    class Texture;
     class ShaderBuffer;
+
+    enum class DescriptorSetBindingType : U8 {
+        COMBINED_IMAGE_SAMPLER,
+        UNIFORM_BUFFER,
+        SHADER_STORAGE_BUFFER,
+        ATOMIC_BUFFER,
+        IMAGE,
+        IMAGE_VIEW,
+        COUNT
+    };
+
+    enum class DescriptorUpdateResult : U8 {
+        NEW_ENTRY_ADDED = 0u,
+        OVERWRITTEN_EXISTING,
+        NO_UPDATE,
+        COUNT
+    };
+
     struct ShaderBufferBinding
     {
         BufferRange   _elementRange{};
@@ -57,7 +69,6 @@ namespace Divide {
         bool set(ShaderBufferLocation binding, ShaderBuffer* buffer, const BufferRange& elementRange) noexcept;
     };
 
-    class Texture;
     struct TextureView final : Hashable
     {
         TextureData _textureData{};
@@ -72,12 +83,11 @@ namespace Divide {
     struct TextureViewEntry final : Hashable
     {
         TextureView _view{};
-        U8 _binding{ 0u };
         TextureDescriptor _descriptor{};
 
         [[nodiscard]] bool isValid() const noexcept { return IsValid(_view._textureData); }
 
-        void reset() noexcept { _view = {}; _binding = 0u; _descriptor = {}; }
+        void reset() noexcept { _view = {}; _descriptor = {}; }
 
         size_t getHash() const override;
     };
@@ -93,114 +103,54 @@ namespace Divide {
 
         Texture* _texture{ nullptr };
         Flag _flag{ Flag::READ };
-        bool _layered{ false };
         U8 _layer{ 0u };
         U8 _level{ 0u };
-        U8 _binding{ 0u };
+        bool _layered{ false };
     };
 
-    template<typename Item, size_t Count, typename SearchType, bool CanExpand = false>
-    struct SetContainerStorage
-    {
-        template<bool Dynamic>
-        using vector_allocator = typename std::conditional<Dynamic, eastl::dvd_allocator, eastl::aligned_allocator>::type;
-
-        eastl::fixed_vector<Item, Count, CanExpand, vector_allocator<CanExpand>> _entries;
-
-        [[nodiscard]] const Item* find(SearchType search) const;
-
-        [[nodiscard]] FORCE_INLINE bool   empty() const noexcept { return _entries.empty(); }
-        [[nodiscard]] FORCE_INLINE size_t count() const noexcept { return _entries.size(); }
+    struct DescriptorCombinedImageSampler {
+        TextureData _image{};
+        size_t _samplerHash{ 0u };
     };
 
-    template<typename Item, size_t Count, typename SearchType, bool CanExpand = false>
-    struct SetContainer : SetContainerStorage<Item, Count, SearchType, CanExpand>
-    {
-        bool add(const Item& entry);
-        bool remove( SearchType search);
+    struct DescriptorSetBindingData {
+        ShaderBuffer* _buffer{ nullptr };
+        DescriptorCombinedImageSampler _combinedImageSampler{};
+        Image _image{};
+        TextureViewEntry _imageView{};
+        BufferRange _range{};
     };
 
-    using ShaderBuffers = SetContainer<ShaderBufferBinding, MAX_BUFFERS_PER_SET, ShaderBufferLocation>;
-    using TextureViews = SetContainer<TextureViewEntry, MAX_TEXTURE_VIEWS_PER_SET, U8>;
-    using Images = SetContainer<Image, MAX_IMAGES_PER_SET, U8>;
-
-    struct TextureDataContainer final : SetContainerStorage<TextureEntry, MAX_TEXTURES_PER_SET, U8, true>
-    {
-        TextureUpdateState add(const TextureEntry& entry);
-        bool remove(U8 binding);
-
-        void sortByBinding();
-        PROPERTY_RW(bool, hasBindlessTextures, false);
+    struct DescriptorSetBinding {
+        DescriptorSetBindingData _data{};
+        U8 _resourceSlot{ 0u };
+        DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
     };
 
     struct DescriptorSet {
-        //This needs a lot more work!
-        TextureDataContainer _textureData = {};
-        ShaderBuffers _buffers = {};
-        TextureViews _textureViews = {};
-        Images _images = {};
+        DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
+        eastl::fixed_vector<DescriptorSetBinding, 16, false> _bindings{};
     };
 
+    bool operator==(const TextureView& lhs, const TextureView& rhs) noexcept;
+    bool operator!=(const TextureView& lhs, const TextureView& rhs) noexcept;
+    bool operator==(const TextureViewEntry& lhs, const TextureViewEntry& rhs) noexcept;
+    bool operator!=(const TextureViewEntry& lhs, const TextureViewEntry& rhs) noexcept;
+    bool operator==(const ShaderBufferBinding& lhs, const ShaderBufferBinding& rhs) noexcept;
+    bool operator!=(const ShaderBufferBinding& lhs, const ShaderBufferBinding& rhs) noexcept;
+    bool operator==(const Image& lhs, const Image& rhs) noexcept;
+    bool operator!=(const Image& lhs, const Image& rhs) noexcept;
+    bool operator==(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept;
+    bool operator!=(const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs) noexcept;
+    bool operator==(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept;
+    bool operator!=(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept;
+    bool operator==(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept;
+    bool operator!=(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept;
+    bool operator==(const DescriptorSet& lhs, const DescriptorSet& rhs) noexcept;
+    bool operator!=(const DescriptorSet& lhs, const DescriptorSet& rhs) noexcept;
+    /// Returns true if we don't have any bindings set
     [[nodiscard]] bool IsEmpty(const DescriptorSet& set) noexcept;
-    [[nodiscard]] bool Merge(const DescriptorSet &lhs, DescriptorSet &rhs, bool& partial);
-    [[nodiscard]] bool BufferCompare(const ShaderBuffer* a, const ShaderBuffer* b) noexcept;
-
-    template<typename Item, size_t Count, typename SearchType>
-    bool operator==(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs) noexcept;
-    template<typename Item, size_t Count, typename SearchType>
-    bool operator!=(const SetContainer<Item, Count, SearchType> &lhs, const SetContainer<Item, Count, SearchType> &rhs) noexcept;
-
-    bool operator==(const DescriptorSet &lhs, const DescriptorSet &rhs) noexcept;
-    bool operator!=(const DescriptorSet &lhs, const DescriptorSet &rhs) noexcept;
-
-    bool operator==(const TextureView& lhs, const TextureView &rhs) noexcept;
-    bool operator!=(const TextureView& lhs, const TextureView &rhs) noexcept;
-
-    bool operator==(const TextureViewEntry& lhs, const TextureViewEntry &rhs) noexcept;
-    bool operator!=(const TextureViewEntry& lhs, const TextureViewEntry &rhs) noexcept;
-
-    bool operator==(const ShaderBufferBinding& lhs, const ShaderBufferBinding &rhs) noexcept;
-    bool operator!=(const ShaderBufferBinding& lhs, const ShaderBufferBinding &rhs) noexcept;
-
-    bool operator==(const Image& lhs, const Image &rhs) noexcept;
-    bool operator!=(const Image& lhs, const Image &rhs) noexcept;
-
-    bool operator==(const TextureDataContainer & lhs, const TextureDataContainer & rhs) noexcept;
-    bool operator!=(const TextureDataContainer & lhs, const TextureDataContainer & rhs) noexcept;
-
-
-    namespace GFX {
-        enum class DescriptorSetBindingType : U8 {
-            COMBINED_IMAGE_SAMPLER,
-            UNIFORM_BUFFER,
-            SHADER_STORAGE_BUFFER,
-            IMAGE,
-            COUNT
-        };
-
-        struct DescriptorSetBindingRange {
-            size_t _offset{ 0u };
-            size_t _range{ 0u };
-        };
-
-        struct DescriptorSetBindingData {
-            ShaderBuffer* _buffer{ nullptr };
-            Texture* _combinedImageSampler{ nullptr };
-            Image* _image{ nullptr };
-            DescriptorSetBindingRange _range{};
-        };
-
-        struct DescriptorSetBindings {
-            DescriptorSetBindingData _data{};
-            U32 _resourceSlot{ 0u };
-            DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
-        };
-
-        struct DescriptorSetNew {
-            DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
-            eastl::fixed_vector<DescriptorSetBindings, 16, false> _bindings{};
-        };
-    }; //namespace GFX
+    [[nodiscard]] DescriptorUpdateResult UpdateBinding(DescriptorSet& set, const DescriptorSetBinding& binding);
 }; //namespace Divide
 
 #endif //_DESCRIPTOR_SETS_H_

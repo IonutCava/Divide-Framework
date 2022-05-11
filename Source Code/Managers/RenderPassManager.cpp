@@ -123,21 +123,16 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
     { //PostFX should be pretty fast
         PostFX& postFX = _context.getRenderer().postFX();
         _postFXWorkTask = CreateTask(nullptr,
-                                     [player = params._playerPass,
-                                      buf = _postFXCmdBuffer,
-                                      sceneManager = parent().sceneManager(),
-                                      &postFX,
-                                      cameraSnapshot,
-                                      timer = _postFxRenderTimer](const Task& /*parentTask*/)
-                                      {
+                                     [&](const Task& /*parentTask*/)
+                                     {
                                           OPTICK_EVENT("PostFX: BuildCommandBuffer");
                                  
-                                          buf->clear(false);
+                                          _postFXCmdBuffer->clear(false);
                                  
-                                          Time::ScopedTimer time(*timer);
-                                          postFX.apply(player, cameraSnapshot, *buf);
+                                          Time::ScopedTimer time(*_postFxRenderTimer);
+                                          postFX.apply(params._playerPass, cameraSnapshot, *_postFXCmdBuffer);
                                  
-                                          buf->batch();
+                                          _postFXCmdBuffer->batch();
                                      },
                                      false);
         Start(*_postFXWorkTask, pool, GetTaskPriority(to_I8(RenderStage::COUNT)));
@@ -147,12 +142,15 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
     { //All of our render passes should run in parallel
         RenderPassData& passData = _renderPassData[i];
         passData._workTask = CreateTask(nullptr,
-                                        [i, player = params._playerPass, &passData, sceneRenderState = params._sceneRenderState](const Task& parentTask) {
+                                        [&](const Task& parentTask) {
                                            OPTICK_EVENT("RenderPass: BuildCommandBuffer");
                                            OPTICK_TAG("Pass IDX", i);
+
                                            passData._cmdBuffer->clear(false);
+
                                            passData._memCmd = {};
-                                           passData._pass->render(player, parentTask, *sceneRenderState, *passData._cmdBuffer, passData._memCmd);
+                                           passData._pass->render(params._playerPass, parentTask, *params._sceneRenderState, *passData._cmdBuffer, passData._memCmd);
+
                                            passData._cmdBuffer->batch();
                                        },
                                        false);
@@ -189,7 +187,7 @@ void RenderPassManager::render(const RenderParams& params) {
        {
            OPTICK_EVENT("RenderPassManager::update sky light");
             _skyLightRenderBuffer->clear(false);
-            sceneBufferLocks = Attorney::SceneManagerRenderPass::bindSceneDescriptorSet(sceneManager, *_skyLightRenderBuffer);
+            sceneBufferLocks = gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer);
             SceneEnvironmentProbePool::UpdateSkyLight(gfx, *_skyLightRenderBuffer, sceneBufferLocks);
        }
        GFX::CommandBuffer& buf = *_postRenderBuffer;

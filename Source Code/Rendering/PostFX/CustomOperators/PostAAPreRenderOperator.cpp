@@ -195,15 +195,33 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
 
             SamplerDescriptor samplerDescriptor = {};
 
-            GFX::BindDescriptorSetsCommand descriptorSetCmd{};
-            descriptorSetCmd._set._textureData.add(TextureEntry{ edgesTex, att.samplerHash(),TextureUsage::UNIT0 });
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._data._combinedImageSampler._image = edgesTex;
+                binding._data._combinedImageSampler._samplerHash = att.samplerHash();
+            }
             samplerDescriptor.minFilter(TextureFilter::LINEAR);
             samplerDescriptor.magFilter(TextureFilter::LINEAR);
-            descriptorSetCmd._set._textureData.add(TextureEntry{ areaTex, samplerDescriptor.getHash(), TextureUsage::UNIT1 });
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+                binding._data._combinedImageSampler._image = areaTex;
+                binding._data._combinedImageSampler._samplerHash = samplerDescriptor.getHash();
+            }
             samplerDescriptor.minFilter(TextureFilter::NEAREST);
             samplerDescriptor.magFilter(TextureFilter::NEAREST);
-            descriptorSetCmd._set._textureData.add(TextureEntry{ searchTex, samplerDescriptor.getHash(), to_U8(TextureUsage::UNIT1) + 1 });
-            GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT1) + 1u;
+                binding._data._combinedImageSampler._image = searchTex;
+                binding._data._combinedImageSampler._samplerHash = samplerDescriptor.getHash();
+            }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaWeightPipeline });
             GFX::EnqueueCommand(bufferInOut, _pushConstantsCommand);
@@ -221,10 +239,22 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             const auto& att = _smaaWeights._rt->getAttachment(RTAttachmentType::Colour, 0);
             const TextureData blendTex = att.texture()->data();
 
-            GFX::BindDescriptorSetsCommand descriptorSetCmd{};
-            descriptorSetCmd._set._textureData.add(TextureEntry{screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0});
-            descriptorSetCmd._set._textureData.add(TextureEntry{blendTex, att.samplerHash(),TextureUsage::UNIT1 });
-            GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._data._combinedImageSampler._image = screenTex;
+                binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+                binding._data._combinedImageSampler._image = blendTex;
+                binding._data._combinedImageSampler._samplerHash = att.samplerHash();
+            }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaBlendPipeline });
             GFX::EnqueueCommand(bufferInOut, _pushConstantsCommand);
@@ -243,9 +273,15 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _fxaaPipeline });
         GFX::EnqueueCommand(bufferInOut, _pushConstantsCommand);
 
-        GFX::BindDescriptorSetsCommand descriptorSetCmd{};
-        descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
-        GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        {
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._data._combinedImageSampler._image = screenTex;
+            binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+        }
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);

@@ -516,8 +516,21 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _downsamplePipeline;
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),   TextureUsage::DEPTH });
-            set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                binding._data._combinedImageSampler._image = depthAtt.texture()->data();
+                binding._data._combinedImageSampler._samplerHash = depthAtt.samplerHash();
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
+                binding._data._combinedImageSampler._image = normalsAtt.texture()->data();
+                binding._data._combinedImageSampler._samplerHash = normalsAtt.samplerHash();
+            }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -534,8 +547,21 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             const auto& halfDepthAtt  = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::Colour, 0);
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._textureData.add(TextureEntry{ _noiseTexture->data(),         _noiseSampler,              TextureUsage::UNIT0 });
-            set._textureData.add(TextureEntry{ halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash(),TextureUsage::DEPTH });
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._data._combinedImageSampler._image = _noiseTexture->data();
+                binding._data._combinedImageSampler._samplerHash = _noiseSampler;
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                binding._data._combinedImageSampler._image = halfDepthAtt.texture()->data();
+                binding._data._combinedImageSampler._samplerHash = halfDepthAtt.samplerHash();
+            }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -557,11 +583,35 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             const auto& halfDepthAtt = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::Colour, 0);
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._textureData.add(TextureEntry{ halfResAOAtt.texture()->data(), linearSampler.getHash(),    TextureUsage::UNIT0 });
-            set._textureData.add(TextureEntry{ halfResAOAtt.texture()->data(), halfResAOAtt.samplerHash(), TextureUsage::UNIT1 });
-            set._textureData.add(TextureEntry{ halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash(), TextureUsage::NORMALMAP });
-            set._textureData.add(TextureEntry{ depthAtt.texture()->data(),     depthAtt.samplerHash(),     TextureUsage::DEPTH });
-
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._data._combinedImageSampler._image = halfResAOAtt.texture()->data();
+                binding._data._combinedImageSampler._samplerHash = linearSampler.getHash();
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+                binding._data._combinedImageSampler._image = halfResAOAtt.texture()->data();
+                binding._data._combinedImageSampler._samplerHash = halfResAOAtt.samplerHash();
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::NORMALMAP);
+                binding._data._combinedImageSampler._image = halfDepthAtt.texture()->data();
+                binding._data._combinedImageSampler._samplerHash = halfDepthAtt.samplerHash();
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                binding._data._combinedImageSampler._image = depthAtt.texture()->data();
+                binding._data._combinedImageSampler._samplerHash = depthAtt.samplerHash();
+            }
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
@@ -574,9 +624,28 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateFullResPipeline;
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._textureData.add(TextureEntry{ _noiseTexture->data(),        _noiseSampler,            TextureUsage::UNIT0 });
-            set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::UNIT1 });
-            set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),   TextureUsage::DEPTH });
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._data._combinedImageSampler._image = _noiseTexture->data();
+                binding._data._combinedImageSampler._samplerHash = _noiseSampler;
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+                binding._data._combinedImageSampler._image = normalsAtt.texture()->data();
+                binding._data._combinedImageSampler._samplerHash = normalsAtt.samplerHash();
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                binding._data._combinedImageSampler._image = depthAtt.texture()->data();
+                binding._data._combinedImageSampler._samplerHash = depthAtt.samplerHash();
+            }
 
             GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
@@ -603,9 +672,28 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
 
                 DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-                set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),  TextureUsage::DEPTH });
-                set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
-                set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(),    ssaoAtt.samplerHash(),   TextureUsage::UNIT0 });
+                set._usage = DescriptorSetUsage::PER_DRAW_SET;
+                {
+                    auto& binding = set._bindings.emplace_back();
+                    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                    binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                    binding._data._combinedImageSampler._image = depthAtt.texture()->data();
+                    binding._data._combinedImageSampler._samplerHash = depthAtt.samplerHash();
+                }
+                {
+                    auto& binding = set._bindings.emplace_back();
+                    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                    binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
+                    binding._data._combinedImageSampler._image = normalsAtt.texture()->data();
+                    binding._data._combinedImageSampler._samplerHash = normalsAtt.samplerHash();
+                }
+                {
+                    auto& binding = set._bindings.emplace_back();
+                    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                    binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                    binding._data._combinedImageSampler._image = ssaoAtt.texture()->data();
+                    binding._data._combinedImageSampler._samplerHash = ssaoAtt.samplerHash();
+                }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
                 GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -621,9 +709,28 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
                 const auto& horizBlur = _ssaoBlurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
                 DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-                set._textureData.add(TextureEntry{ depthAtt.texture()->data(),   depthAtt.samplerHash(),  TextureUsage::DEPTH });
-                set._textureData.add(TextureEntry{ normalsAtt.texture()->data(), normalsAtt.samplerHash(), TextureUsage::SCENE_NORMALS });
-                set._textureData.add(TextureEntry{ horizBlur.texture()->data(),  ssaoAtt.samplerHash(),   TextureUsage::UNIT0 });
+                set._usage = DescriptorSetUsage::PER_DRAW_SET;
+                {
+                    auto& binding = set._bindings.emplace_back();
+                    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                    binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                    binding._data._combinedImageSampler._image = depthAtt.texture()->data();
+                    binding._data._combinedImageSampler._samplerHash = depthAtt.samplerHash();
+                }
+                {
+                    auto& binding = set._bindings.emplace_back();
+                    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                    binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
+                    binding._data._combinedImageSampler._image = normalsAtt.texture()->data();
+                    binding._data._combinedImageSampler._samplerHash = normalsAtt.samplerHash();
+                }
+                {
+                    auto& binding = set._bindings.emplace_back();
+                    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                    binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                    binding._data._combinedImageSampler._image = horizBlur.texture()->data();
+                    binding._data._combinedImageSampler._samplerHash = ssaoAtt.samplerHash();
+                }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
                 GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -636,8 +743,14 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _passThroughPipeline;
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._textureData.add(TextureEntry{ ssaoAtt.texture()->data(), ssaoAtt.samplerHash(), TextureUsage::UNIT0 });
-
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._data._combinedImageSampler._image = ssaoAtt.texture()->data();
+                binding._data._combinedImageSampler._samplerHash = ssaoAtt.samplerHash();
+            }
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }

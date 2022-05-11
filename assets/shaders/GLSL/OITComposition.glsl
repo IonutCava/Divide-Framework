@@ -11,9 +11,9 @@
 #endif //USE_MSAA_TARGET
 
 /* sum(rgb * a, a) */
-DESCRIPTOR_SET_RESOURCE(PER_PASS_SET, TEXTURE_UNIT0) uniform SamplerType accumTexture;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT0) uniform SamplerType accumTexture;
 /* prod(1 - a) */
-DESCRIPTOR_SET_RESOURCE(PER_PASS_SET, TEXTURE_UNIT1) uniform SamplerType revealageTexture;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW_SET, TEXTURE_UNIT1) uniform SamplerType revealageTexture;
 
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 

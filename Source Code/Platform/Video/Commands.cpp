@@ -199,45 +199,74 @@ string ToString(const SetCameraCommand& cmd, U16 indent) {
 }
 
 string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
-    string ret = Util::StringFormat(" [ Buffers: %d, Textures: %d ]\n", cmd._set._buffers.count(), cmd._set._textureData.count());
-
-    for (U8 i = 0; i < cmd._set._buffers.count(); ++i) {
-        const auto& it = cmd._set._buffers._entries[i];
-
-        ret.append("    ");
-        for (U16 j = 0; j < indent; ++j) {
-            ret.append("    ");
+    U8 bufferCount = 0u;
+    U8 imageCount = 0u;
+    const DescriptorSet& set = cmd._set;
+    for (const auto& binding : set._bindings) {
+        if (binding._type == DescriptorSetBindingType::ATOMIC_BUFFER ||
+            binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER ||
+            binding._type == DescriptorSetBindingType::UNIFORM_BUFFER) {
+            ++bufferCount;
+        } else if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER ||
+                   binding._type == DescriptorSetBindingType::IMAGE) {
+            ++imageCount;
         }
-        
-        ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] ]\n", to_base(it._binding), it._buffer->getGUID(), it._elementRange._startOffset, it._elementRange._length));
     }
-    for (const TextureEntry& entry : cmd._set._textureData._entries) {
-        if (entry._binding == INVALID_TEXTURE_BINDING) {
-            continue;
-        }
+    string ret = Util::StringFormat(" [ Buffers: %d, Images: %d ]\n", bufferCount, imageCount);
 
-        ret.append("    ");
-        for (U16 j = 0; j < indent; ++j) {
+    for (const auto& binding : set._bindings) {
+        if (binding._type == DescriptorSetBindingType::ATOMIC_BUFFER ||
+            binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER ||
+            binding._type == DescriptorSetBindingType::UNIFORM_BUFFER)
+        {
             ret.append("    ");
+            for (U16 j = 0; j < indent; ++j) {
+                ret.append("    ");
+            }
+            const auto& data = binding._data;
+            ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] ]\n",
+                       binding._resourceSlot,
+                       data._buffer->getGUID(),
+                       data._range._startOffset,
+                       data._range._length));
         }
-        ret.append(Util::StringFormat("Texture [ %d - %d - %zu ]\n", entry._binding, entry._data._textureHandle, entry._sampler));
+    }
+    for (const auto& binding : set._bindings) {
+        if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER ||
+            binding._type == DescriptorSetBindingType::IMAGE_VIEW ||
+            binding._type == DescriptorSetBindingType::IMAGE)
+        {
+            if (binding._resourceSlot == INVALID_TEXTURE_BINDING) {
+                continue;
+            }
+            
+            ret.append("    ");
+            for (U16 j = 0; j < indent; ++j) {
+                ret.append("    ");
+            }
+            if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER) {
+                ret.append(Util::StringFormat("Texture [ %d - %d - %zu ]\n",
+                           binding._resourceSlot,
+                           binding._data._combinedImageSampler._image._textureHandle,
+                           binding._data._combinedImageSampler._samplerHash));
+            } else if (binding._type == DescriptorSetBindingType::IMAGE_VIEW) {
+                ret.append(Util::StringFormat("Texture layers [ %d - [%d - %d ]]\n",
+                           binding._resourceSlot,
+                           binding._data._imageView._view._layerRange.min,
+                           binding._data._imageView._view._layerRange.max));
+            } else {
+                ret.append(Util::StringFormat("Image binds: [ %d - [%d - %d - %s]",
+                           binding._resourceSlot,
+                           binding._data._image._layer,
+                           binding._data._image._level,
+                           binding._data._image._flag == Image::Flag::READ
+                                                       ? "READ" 
+                                                       : binding._data._image._flag == Image::Flag::WRITE
+                                                                                     ? "WRITE" : "READ_WRITE"));
+            }
+        }
     }
 
-    for (const auto& it : cmd._set._textureViews._entries) {
-        ret.append("    ");
-        for (U16 j = 0; j < indent; ++j) {
-            ret.append("    ");
-        }
-        ret.append(Util::StringFormat("Texture layers [ %d - [%d - %d ]]\n", it._binding, it._view._layerRange.min, it._view._layerRange.max));
-    }
-
-    for (auto it : cmd._set._images._entries) {
-        ret.append("    ");
-        for (U16 j = 0; j < indent; ++j) {
-            ret.append("    ");
-        }
-        ret.append(Util::StringFormat("Image binds: [ %d - [%d - %d - %s]", it._binding, it._layer, it._level, it._flag == Image::Flag::READ ? "READ" : it._flag == Image::Flag::WRITE ? "WRITE" : "READ_WRITE"));
-    }
     return ret;
 }
 

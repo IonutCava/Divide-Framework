@@ -502,10 +502,16 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand(bufferInOut, clearLinearDepthCmd);
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
         GFX::EnqueueCommand(bufferInOut, bindPipelineCmd);
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
 
         const RTAttachment& depthAtt = screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
-        set._textureData.add(TextureEntry{ depthAtt.texture()->data(), depthAtt.samplerHash(), TextureUsage::DEPTH });
+
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+        binding._data._combinedImageSampler._image = depthAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = depthAtt.samplerHash();
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
@@ -533,8 +539,21 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     const RTAttachment& ssaoDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SSAO_RESULT)->getAttachment(RTAttachmentType::Colour, 0u);
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-    set._textureData.add(TextureEntry{ ssrDataAtt.texture()->data(),  ssrDataAtt.samplerHash(),  TextureUsage::SSR_SAMPLE });
-    set._textureData.add(TextureEntry{ ssaoDataAtt.texture()->data(), ssaoDataAtt.samplerHash(), TextureUsage::SSAO_SAMPLE });
+    set._usage = DescriptorSetUsage::PER_PASS_SET;
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_base(TextureUsage::SSR_SAMPLE);
+        binding._data._combinedImageSampler._image = ssrDataAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = ssrDataAtt.samplerHash();
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_base(TextureUsage::SSAO_SAMPLE);
+        binding._data._combinedImageSampler._image = ssaoDataAtt.texture()->data();
+        binding._data._combinedImageSampler._samplerHash = ssaoDataAtt.samplerHash();
+    }
 }
 
 void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut) {
@@ -555,26 +574,26 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                 to_F32(_toneMapParams._height),
         };
 
-        const ShaderBufferBinding shaderBuffer{
-            { 0u, _histogramBuffer->getPrimitiveCount() },
-            _histogramBuffer.get(),
-            ShaderBufferLocation::LUMINANCE_HISTOGRAM
-        };
-
         { // Histogram Pass
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "CreateLuminanceHistogram" });
 
             const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO)).texture();
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._buffers.add(shaderBuffer);
-            set._images.add(Image{
-                screenColour.get(),
-                Image::Flag::READ,
-                false,
-                0u,
-                0u,
-                to_base(TextureUsage::UNIT0)
-            });
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                binding._resourceSlot = to_U8(ShaderBufferLocation::LUMINANCE_HISTOGRAM);
+                binding._data._buffer = _histogramBuffer.get();
+                binding._data._range = { 0u, _histogramBuffer->getPrimitiveCount() };
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::IMAGE;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._data._image._texture = screenColour.get();
+                binding._data._image._flag = Image::Flag::READ;
+            }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcHistogram });
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("u_params"), GFX::PushConstantType::VEC4, histogramParams);
@@ -600,15 +619,22 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
             GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "AverageLuminanceHistogram" });
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-            set._buffers.add(shaderBuffer);
-            set._images.add(Image{
-                _currentLuminance.get(),
-                Image::Flag::READ_WRITE,
-                false,
-                0u,
-                0u,
-                to_base(TextureUsage::UNIT0)
-            });
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                binding._resourceSlot = to_U8(ShaderBufferLocation::LUMINANCE_HISTOGRAM);
+                binding._data._buffer = _histogramBuffer.get();
+                binding._data._range = { 0u, _histogramBuffer->getPrimitiveCount() };
+            }
+            {
+                auto& binding = set._bindings.emplace_back();
+                binding._type = DescriptorSetBindingType::IMAGE;
+                binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._data._image._texture = _currentLuminance.get();
+                binding._data._image._flag = Image::Flag::READ_WRITE;
+            }
+
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("u_params"), GFX::PushConstantType::VEC4, avgParams);
             GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1, 1, 1, });
@@ -682,9 +708,28 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "PostFX: tone map" });
 
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._textureData.add(TextureEntry{ screenAtt.texture()->data(),      screenAtt.samplerHash(),      TextureUsage::UNIT0 });
-        set._textureData.add(TextureEntry{ _currentLuminance->data(),        lumaSamplerHash,              TextureUsage::UNIT1 });
-        set._textureData.add(TextureEntry{ screenDepthAtt.texture()->data(), screenDepthAtt.samplerHash(), TextureUsage::DEPTH });
+        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        {
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._data._combinedImageSampler._image = screenAtt.texture()->data();
+            binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+        }
+        {
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+            binding._data._combinedImageSampler._image = _currentLuminance->data();
+            binding._data._combinedImageSampler._samplerHash = lumaSamplerHash;
+        }
+        {
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+            binding._data._combinedImageSampler._image = screenDepthAtt.texture()->data();
+            binding._data._combinedImageSampler._samplerHash = screenDepthAtt.samplerHash();
+        }
 
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_TONEMAP_PASS";
@@ -712,7 +757,15 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
         const auto& screenAtt = getInput(false)._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
 
-        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ screenAtt.texture()->data(), screenAtt.samplerHash(),TextureUsage::UNIT0 });
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        {
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._data._combinedImageSampler._image = screenAtt.texture()->data();
+            binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+        }
 
         RTClearDescriptor clearTarget = {};
         clearTarget._clearColours = true;

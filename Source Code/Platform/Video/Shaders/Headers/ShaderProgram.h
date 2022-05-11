@@ -64,6 +64,9 @@ FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 namespace TypeUtil {
     const char* DescriptorSetUsageToString(DescriptorSetUsage setUsage) noexcept;
     DescriptorSetUsage StringToDescriptorSetUsage(const string& name);
+
+    const char* ShaderBufferLocationToString(ShaderBufferLocation bufferLocation) noexcept;
+    ShaderBufferLocation StringToShaderBufferLocation(const string& name);
 };
 
 struct ModuleDefine {
@@ -238,7 +241,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
         Handle _handle = INVALID_HANDLE;
     };
     static LastRequestedShader s_lastRequestedShaderProgram;
-    static Mutex s_programLock;
+    static SharedMutex s_programLock;
 
 protected:
     virtual void threadedLoad(bool reloadExisting);

@@ -76,6 +76,7 @@ class Object3D;
 class Renderer;
 class IMPrimitive;
 class SceneGraphNode;
+class SceneShaderData;
 class SceneRenderState;
 class ShaderComputeQueue;
 
@@ -300,7 +301,7 @@ public:  // GPU interface
     inline F32 renderingAspectRatio() const noexcept;
     inline const vec2<U16>& renderingResolution() const noexcept;
 
-    bool makeImagesResident(const Images& images) const;
+    bool makeImageResident(const Image& images) const;
 
     /// Switch between fullscreen rendering
     void toggleFullScreen() const;
@@ -405,7 +406,7 @@ public:
 
     void materialDebugFlag(MaterialDebugFlag flag);
 
-    void updateDescriptorSet(U32 resourceSlot, const GFX::DescriptorSetBindingData& data);
+    [[nodiscard]] GFX::MemoryBarrierCommand updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) const;
 
     PROPERTY_R(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
     PROPERTY_RW(RenderAPI, renderAPI, RenderAPI::COUNT);
@@ -413,9 +414,29 @@ public:
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
     PROPERTY_R_IW(U32, lastCullCount, 0u);
-    //PROPERTY_R_IW(GFX::DescriptorSet, perFrameSet);
+
+
+    struct GFXDescriptorSet {
+        PROPERTY_RW(DescriptorSet, set);
+        PROPERTY_RW(bool, dirty, true);
+        void update(U8 resourceSlot, const DescriptorSetBindingData& data);
+    };
+
+    struct GFXDescriptorSets {
+        PROPERTY_RW(GFXDescriptorSet, perFrameSet);
+        PROPERTY_RW(GFXDescriptorSet, perPassSet);
+        PROPERTY_RW(GFXDescriptorSet, perBatchSet);
+        void init();
+    };
+
+    PROPERTY_RW(GFXDescriptorSets, descriptorSets);
+    
+    POINTER_R(SceneShaderData, sceneData, nullptr);
 
 protected:
+
+    void updateDescriptorSet(DescriptorSetUsage usage, U8 resourceSlot, const DescriptorSetBindingData& data);
+
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
 
     void setScreenMSAASampleCountInternal(U8 sampleCount);
@@ -467,7 +488,7 @@ protected:
 
 private:
     /// Upload draw related data to the GPU (view & projection matrices, viewport settings, etc)
-    const DescriptorSet& uploadGPUBlock();
+    bool uploadGPUBlock();
     void resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCounter);
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
     void setDepthRange(const vec2<F32>& depthRange);
@@ -566,8 +587,8 @@ private:
         size_t _currentSizeCam = 0u;
         size_t _currentSizeCullCounter = 0u;
         bool _needsResizeCam = false;
-        inline [[nodiscard]] PerFrameBuffers& crtBuffers() { return _perFrameBuffers[_perFrameBufferIndex]; }
-        inline [[nodiscard]] const PerFrameBuffers& crtBuffers() const { return _perFrameBuffers[_perFrameBufferIndex]; }
+        inline [[nodiscard]] PerFrameBuffers& crtBuffers() noexcept { return _perFrameBuffers[_perFrameBufferIndex]; }
+        inline [[nodiscard]] const PerFrameBuffers& crtBuffers() const noexcept { return _perFrameBuffers[_perFrameBufferIndex]; }
 
         inline void reset(const bool camBuffer, const bool cullBuffer) {
             for (U8 i = 0u; i < PerFrameBufferCount; ++i) {

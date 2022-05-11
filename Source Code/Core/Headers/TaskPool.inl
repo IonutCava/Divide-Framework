@@ -38,14 +38,14 @@ namespace Divide {
     template<class Predicate>
     Task* CreateTask(Task* parentTask, Predicate&& threadedFunction, const bool allowedInIdle) {
         Task* task = TaskPool::AllocateTask(parentTask, allowedInIdle);
-        task->_callback = threadedFunction;
+        task->_callback = MOV(threadedFunction);
         return task;
     }
 
     template<class Predicate>
     Task* CreateTask(Predicate&& threadedFunction, const bool allowedInIdle) {
         Task* task = TaskPool::AllocateTask(nullptr, allowedInIdle);
-        task->_callback = threadedFunction;
+        task->_callback = MOV(threadedFunction);
         return task;
     }
 } //namespace Divide

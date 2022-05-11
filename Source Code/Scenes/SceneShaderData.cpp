@@ -28,34 +28,38 @@ SceneShaderData::SceneShaderData(GFXDevice& context)
     }
 }
 
-GFX::MemoryBarrierCommand SceneShaderData::bindSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) {
-    DescriptorSet& bindSet = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-
+GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) {
     GFX::MemoryBarrierCommand memBarrier{};
-    if (_sceneDataDirty) {
-        _sceneShaderData->incQueue();
-        memBarrier._bufferLocks.push_back(_sceneShaderData->writeData(&_sceneBufferData));
-        _sceneDataDirty = false;
+    if (_sceneDataDirty || _probeDataDirty) {
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._usage = DescriptorSetUsage::PER_FRAME_SET;
+
+        if (_sceneDataDirty) {
+            _sceneShaderData->incQueue();
+            memBarrier._bufferLocks.push_back(_sceneShaderData->writeData(&_sceneBufferData));
+
+             auto& binding = set._bindings.emplace_back();
+            binding._resourceSlot = to_base(ShaderBufferLocation::SCENE_DATA);
+            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+            binding._data._buffer = _sceneShaderData.get();
+            binding._data._range = { 0u, 1u };
+
+            _sceneDataDirty = false;
+        }
+
+        if (_probeDataDirty) {
+            _probeShaderData->incQueue();
+            memBarrier._bufferLocks.push_back(_probeShaderData->writeData(_probeData.data()));
+
+            auto& binding = set._bindings.emplace_back();
+            binding._resourceSlot = to_base(ShaderBufferLocation::PROBE_DATA);
+            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+            binding._data._buffer = _probeShaderData.get();
+            binding._data._range = { 0u, GLOBAL_PROBE_COUNT };
+
+            _probeDataDirty = false;
+        }
     }
-
-    if (_probeDataDirty) {
-        _probeShaderData->incQueue();
-        memBarrier._bufferLocks.push_back(_probeShaderData->writeData(_probeData.data()));
-        _sceneDataDirty = false;
-    }
-
-    ShaderBufferBinding sceneBufferBinding;
-    sceneBufferBinding._binding = ShaderBufferLocation::SCENE_DATA;
-    sceneBufferBinding._buffer = _sceneShaderData.get();
-    sceneBufferBinding._elementRange = { 0, 1 };
-    bindSet._buffers.add(sceneBufferBinding);
-
-    ShaderBufferBinding probeBufferBinding;
-    probeBufferBinding._binding = ShaderBufferLocation::PROBE_DATA;
-    probeBufferBinding._buffer = _probeShaderData.get();
-    probeBufferBinding._elementRange = { 0, GLOBAL_PROBE_COUNT };
-    bindSet._buffers.add(probeBufferBinding);
-
     return memBarrier;
 }
 

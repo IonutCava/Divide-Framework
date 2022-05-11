@@ -41,7 +41,7 @@ out gl_PerVertex
 
 #endif //!COMPUTE_SHADER && !FRAG_SHADER
 
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME_SET, BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH_SET, BUFFER_CAM_BLOCK, std140) uniform dvd_CamBlock
 {
     mat4  dvd_ProjectionMatrix;
     mat4  dvd_InverseProjectionMatrix;

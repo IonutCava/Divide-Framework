@@ -193,7 +193,7 @@ void RenderingComponent::clearDrawPackages() {
     }
 }
 
-bool RenderingComponent::canDraw(const RenderStagePass renderStagePass) {
+bool RenderingComponent::canDraw(const RenderStagePass& renderStagePass) {
     OPTICK_EVENT();
     OPTICK_TAG("Node", (_parentSGN->name().c_str()));
 
@@ -264,7 +264,7 @@ void RenderingComponent::getMaterialTextures(NodeMaterialTextures& texturesOut, 
 }
 
 /// Called after the current node was rendered
-void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, const RenderStagePass renderStagePass, GFX::CommandBuffer& bufferInOut) {
+void RenderingComponent::postRender(const SceneRenderState& sceneRenderState, const RenderStagePass& renderStagePass, GFX::CommandBuffer& bufferInOut) {
     if (renderStagePass._stage != RenderStage::DISPLAY ||
         renderStagePass._passType != RenderPassType::MAIN_PASS) 
     {
@@ -331,7 +331,7 @@ U8 RenderingComponent::getLoDLevelInternal(const F32 distSQtoCenter, const Rende
 
 bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot,
                                             const SceneRenderState& sceneRenderState,
-                                            const RenderStagePass renderStagePass,
+                                            const RenderStagePass& renderStagePass,
                                             const bool refreshData)
 {
     OPTICK_EVENT();
@@ -393,9 +393,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
             if (_materialInstance != nullptr) {
                 pipelineDescriptor._stateHash = _materialInstance->getOrCreateRenderStateBlock(renderStagePass);
                 pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramHandle(renderStagePass);
-                if (!_materialInstance->getTextureData(renderStagePass, pkg.descriptorSetCmd()._set._textureData)) {
-                    NOP();
-                }
+                pkg.descriptorSetCmd()._set = _materialInstance->getTextureData(renderStagePass);
             } else {
                 pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
                 pipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();
@@ -437,7 +435,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
     return hasCommands;
 }
 
-void RenderingComponent::retrieveDrawCommands(const RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
+void RenderingComponent::retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
     OPTICK_EVENT();
 
     const U32 iBufferEntry = _indirectionBufferEntry;
@@ -495,24 +493,24 @@ void RenderingComponent::getCommandBuffer(RenderPackage* const pkg, GFX::Command
     }
 }
 
-DescriptorSet& RenderingComponent::getDescriptorSet(const RenderStagePass renderStagePass) {
+DescriptorSet& RenderingComponent::getDescriptorSet(const RenderStagePass& renderStagePass) {
     return getDrawPackage(renderStagePass).descriptorSetCmd()._set;
 }
 
-PushConstants& RenderingComponent::getPushConstants(const RenderStagePass renderStagePass) {
+PushConstants& RenderingComponent::getPushConstants(const RenderStagePass& renderStagePass) {
     return getDrawPackage(renderStagePass).pushConstantsCmd()._constants;
 }
 
-void RenderingComponent::addAdditionalCommands(const RenderStagePass renderStagePass, GFX::CommandBuffer* cmdBuffer) {
+void RenderingComponent::addAdditionalCommands(const RenderStagePass& renderStagePass, GFX::CommandBuffer* cmdBuffer) {
     getDrawPackage(renderStagePass).additionalCommands(cmdBuffer);
 }
 
-size_t RenderingComponent::getPipelineHash(const RenderStagePass renderStagePass) {
+size_t RenderingComponent::getPipelineHash(const RenderStagePass& renderStagePass) {
     const Pipeline* pipeline = getDrawPackage(renderStagePass).pipelineCmd()._pipeline;
     return (pipeline != nullptr ? pipeline->hash() : 0u);
 }
 
-RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass renderStagePass) {
+RenderPackage& RenderingComponent::getDrawPackage(const RenderStagePass& renderStagePass) {
     PackagesPerPassType&  packagesPerPassType  = _renderPackages[to_base(renderStagePass._stage)];
     PackagesPerVariant&   packagesPerVariant   = packagesPerPassType[to_base(renderStagePass._passType)];
     PackagesPerPassIndex& packagesPerPassIndex = packagesPerVariant[to_base(renderStagePass._variant)];

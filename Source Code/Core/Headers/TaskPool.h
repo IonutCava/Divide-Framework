@@ -109,7 +109,7 @@ public:
     void waitAndJoin() const;
 
   private:
-     hashMap<U32, vector<DELEGATE<void>>> _taskCallbacks{};
+     hashMap<U32, eastl::fixed_vector<DELEGATE<void>, 8, true, eastl::dvd_allocator>> _taskCallbacks{};
      DELEGATE<void, const std::thread::id&> _threadCreateCbk{};
      moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
      Mutex _taskFinishedMutex;

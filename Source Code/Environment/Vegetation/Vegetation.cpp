@@ -686,24 +686,34 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
         bufferInOut.clear(false);
 
         GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull Vegetation" });
-        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
-        set._textureData.add(TextureEntry{ hizTexture->data(), hizAttachment.samplerHash(), TextureUsage::UNIT0 });
 
-        GFX::MemoryBarrierCommand memCmd{};
-        if (s_grassData) {
-            ShaderBufferBinding bufferGrass;
-            bufferGrass._binding = ShaderBufferLocation::GRASS_DATA;
-            bufferGrass._buffer = s_grassData.get();
-            bufferGrass._elementRange = { 0u, s_grassData->getPrimitiveCount() };
-            set._buffers.add(bufferGrass);
+        {
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._data._combinedImageSampler._image = hizTexture->data();
+            binding._data._combinedImageSampler._samplerHash = hizAttachment.samplerHash();
         }
+        if (s_grassData || s_treeData) {
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._usage = DescriptorSetUsage::PER_PASS_SET;
+            if (s_grassData) {
+                auto& binding = set._bindings.emplace_back();
+                binding._resourceSlot = to_base(ShaderBufferLocation::GRASS_DATA);
+                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                binding._data._buffer = s_grassData.get();
+                binding._data._range = { 0u, s_grassData->getPrimitiveCount() };
+            }
 
-        if (s_treeData) {
-            ShaderBufferBinding bufferTrees;
-            bufferTrees._binding = ShaderBufferLocation::TREE_DATA;
-            bufferTrees._buffer = s_treeData.get();
-            bufferTrees._elementRange = { 0u, s_treeData->getPrimitiveCount() };
-            set._buffers.add(bufferTrees);
+            if (s_treeData) {
+                auto& binding = set._bindings.emplace_back();
+                binding._resourceSlot = to_base(ShaderBufferLocation::TREE_DATA);
+                binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                binding._data._buffer = s_treeData.get();
+                binding._data._range = { 0u, s_treeData->getPrimitiveCount() };
+            }
         }
 
         GFX::DispatchComputeCommand computeCmd = {};
@@ -723,8 +733,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             EnqueueCommand(bufferInOut, computeCmd);
         }
 
-        memCmd._barrierMask = to_base(MemoryBarrierType::SHADER_STORAGE);
-        EnqueueCommand(bufferInOut, memCmd);
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_barrierMask = to_base(MemoryBarrierType::SHADER_STORAGE);
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
         rComp.addAdditionalCommands(renderStagePass, _cullVegetationCmds);

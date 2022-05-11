@@ -405,14 +405,19 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
 
         // Blur horizontally
         const auto& shadowAtt = rtHandle._rt->getAttachment(RTAttachmentType::Colour, 0);
-        TextureData texData = shadowAtt.texture()->data();
 
         GFX::EnqueueCommand(bufferInOut, beginRenderPassHorizontalCmd);
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurPipeline;
-
-        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ texData, shadowAtt.samplerHash(),TextureUsage::UNIT0 });
-
+        {
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._data._combinedImageSampler._image = shadowAtt.texture()->data();
+            binding._data._combinedImageSampler._samplerHash = shadowAtt.samplerHash();
+        }
         _shaderConstantsCmd._constants.set(_ID("verticalBlur"),     GFX::PushConstantType::BOOL, false);
         _shaderConstantsCmd._constants.set(_ID("layerOffsetRead"),  GFX::PushConstantType::INT,  layerOffset);
         _shaderConstantsCmd._constants.set(_ID("layerOffsetWrite"), GFX::PushConstantType::INT,  0);
@@ -425,8 +430,15 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
 
         // Blur vertically
         const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
-        texData = blurAtt.texture()->data();
-        GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set._textureData.add(TextureEntry{ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
+        {
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._data._combinedImageSampler._image = blurAtt.texture()->data();
+            binding._data._combinedImageSampler._samplerHash = blurAtt.samplerHash();
+        }
 
         GFX::EnqueueCommand(bufferInOut, beginRenderPassVerticalCmd);
 

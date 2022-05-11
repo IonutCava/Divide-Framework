@@ -560,23 +560,25 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp,
     OPTICK_EVENT();
 
     if (HasComponents(ComponentType::ANIMATION)) {
-        DescriptorSet& set = rComp.getDescriptorSet(renderStagePass);
         const AnimationComponent::AnimData data = get<AnimationComponent>()->getAnimationData();
         // We always bind a bone buffer if we have animation data available as the shaders will expect the data to be there
         DIVIDE_ASSERT(data._boneBuffer != nullptr && data._prevBoneBufferRange._length > 0);
-        {
-            ShaderBufferBinding bufferBinding;
-            bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS;
-            bufferBinding._buffer = data._boneBuffer;
-            bufferBinding._elementRange = data._boneBufferRange;
-            set._buffers.add(bufferBinding);
+        DescriptorSet& set = rComp.getDescriptorSet(renderStagePass);
+
+        DescriptorSetBinding bufferBinding{};
+        bufferBinding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
+        bufferBinding._data._buffer = data._boneBuffer;
+
+        bufferBinding._resourceSlot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS);
+        bufferBinding._data._range = data._boneBufferRange;
+        if (UpdateBinding(set, bufferBinding) == DescriptorUpdateResult::COUNT) {
+            DIVIDE_UNEXPECTED_CALL();
         }
-        {
-            ShaderBufferBinding bufferBinding;
-            bufferBinding._binding = ShaderBufferLocation::BONE_TRANSFORMS_PREV;
-            bufferBinding._buffer = data._boneBuffer;
-            bufferBinding._elementRange = data._prevBoneBufferRange;
-            set._buffers.add(bufferBinding);
+
+        bufferBinding._resourceSlot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS_PREV);
+        bufferBinding._data._range = data._prevBoneBufferRange;
+        if (UpdateBinding(set, bufferBinding) == DescriptorUpdateResult::COUNT) {
+            DIVIDE_UNEXPECTED_CALL();
         }
     }
 

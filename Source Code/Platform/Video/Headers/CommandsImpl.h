@@ -273,6 +273,9 @@ DEFINE_COMMAND_BEGIN(DrawTextCommand, CommandType::DRAW_TEXT);
 DEFINE_COMMAND_END(DrawTextCommand);
 
 DEFINE_COMMAND_BEGIN(DrawIMGUICommand, CommandType::DRAW_IMGUI);
+    DrawIMGUICommand() noexcept = default;
+    DrawIMGUICommand(ImDrawData* data, I64 windowGUID) noexcept : _data(data), _windowGUID(windowGUID) {}
+
     ImDrawData* _data = nullptr;
     I64 _windowGUID = 0;
 DEFINE_COMMAND_END(DrawIMGUICommand);

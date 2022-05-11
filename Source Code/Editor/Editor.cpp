@@ -249,7 +249,7 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     }
 
     _mainWindow = &_context.app().windowManager().getWindow(0u);
-
+    _render2DSnapshot = Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->snapshot();
     _editorCamera = Camera::CreateCamera<FreeFlyCamera>("Editor Camera");
     _editorCamera->fromCamera(*Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT));
     _editorCamera->setFixedYawAxis(true);
@@ -1115,7 +1115,18 @@ Rect<I32> Editor::scenePreviewRect(const bool globalCoords) const noexcept {
 void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, GFX::CommandBuffer& bufferInOut) const
 {
     static GFX::BeginDebugScopeCommand s_beginDebugScope{ "Render IMGUI" };
-
+    static GFX::SendPushConstantsCommand s_pushConstants{};
+    static bool s_init = false;
+    if (!s_init) {
+        // These are the same for all passes so might as well cache them here
+        PushConstants& pushConstants = s_pushConstants._constants;
+        pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, vec4<I32>(1, 1, 1, 1));
+        pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::INT, 0);
+        pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, vec2<F32>(0.0f, 1.0f));
+        pushConstants.set(_ID("flip"), GFX::PushConstantType::INT, 0);
+        pushConstants.set(_ID("layer"), GFX::PushConstantType::UINT, 0u);
+        s_init = true;
+    }
     if (windowGUID == -1) {
         windowGUID = _mainWindow->getGUID();
     }
@@ -1134,16 +1145,11 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
 
     GFX::EnqueueCommand(bufferInOut, s_beginDebugScope);
 
-    GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _editorPipeline;
+    GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut, { _editorPipeline });
 
-    PushConstants& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants;
-    pushConstants.set(_ID("toggleChannel"), GFX::PushConstantType::IVEC4, vec4<I32>(1, 1, 1, 1));
-    pushConstants.set(_ID("depthTexture"), GFX::PushConstantType::INT, 0);
-    pushConstants.set(_ID("depthRange"), GFX::PushConstantType::VEC2, vec2<F32>(0.0f, 1.0f));
-    pushConstants.set(_ID("flip"), GFX::PushConstantType::INT, 0);
-    pushConstants.set(_ID("layer"), GFX::PushConstantType::UINT, 0u);
+    GFX::EnqueueCommand(bufferInOut, s_pushConstants);
 
-    GFX::EnqueueCommand(bufferInOut, GFX::SetViewportCommand{ targetViewport });
+    GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut, { targetViewport });
 
     const F32 L = pDrawData->DisplayPos.x;
     const F32 R = pDrawData->DisplayPos.x + pDrawData->DisplaySize.x;
@@ -1151,21 +1157,16 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     const F32 B = pDrawData->DisplayPos.y + pDrawData->DisplaySize.y;
     const F32 ortho_projection[4][4] =
     {
-        { 2.0f / (R - L),    0.0f,               0.0f,   0.0f },
-        { 0.0f,              2.0f / (T - B),     0.0f,   0.0f },
-        { 0.0f,              0.0f,              -1.0f,   0.0f },
-        { (R + L) / (L - R), (T + B) / (B - T),  0.0f,   1.0f },
+        { 2.f / (R - L),     0.f,                0.f,   0.f },
+        { 0.f,               2.f / (T - B),      0.f,   0.f },
+        { 0.f,               0.f,               -1.f,   0.f },
+        { (R + L) / (L - R), (T + B) / (B - T),  0.f,   1.f },
     };
+    
+    F32* projection = GFX::EnqueueCommand<GFX::SetCameraCommand>(bufferInOut, { _render2DSnapshot })->_cameraSnapshot._projectionMatrix.mat;
+    memcpy(projection, ortho_projection, sizeof(F32) * 16);
 
-    GFX::SetCameraCommand cameraCmd{};
-    cameraCmd._cameraSnapshot = Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->snapshot();
-    memcpy(cameraCmd._cameraSnapshot._projectionMatrix.m, ortho_projection, sizeof(F32) * 16);
-    GFX::EnqueueCommand(bufferInOut, cameraCmd);
-
-    GFX::DrawIMGUICommand drawIMGUI = {};
-    drawIMGUI._data = pDrawData;
-    drawIMGUI._windowGUID = windowGUID;
-    GFX::EnqueueCommand(bufferInOut, drawIMGUI);
+    GFX::EnqueueCommand<GFX::DrawIMGUICommand>(bufferInOut, { pDrawData , windowGUID });
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
@@ -1585,6 +1586,8 @@ void Editor::onSizeChange(const SizeChangeParams& params) {
         const U16 h = params.height;
         _editorRTHandle._rt->resize(w, h);
     }
+
+    _render2DSnapshot = Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->snapshot();
 }
 
 bool Editor::saveSceneChanges(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride) const {
@@ -1681,25 +1684,22 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
                 textureType = 1u;
 
                 DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(buffer)->_set;
+                set._usage = DescriptorSetUsage::PER_DRAW_SET;
+                auto& binding = set._bindings.emplace_back();
+                binding._resourceSlot = to_U8(TextureUsage::UNIT1);
                 if (isTextureCube) {
-
-                    TextureViewEntry entry = {};
-                    entry._binding = to_U8(TextureUsage::UNIT1);
+                    binding._type = DescriptorSetBindingType::IMAGE_VIEW;
+                    TextureViewEntry& entry = binding._data._imageView;
                     entry._view._textureData = data._texture->data();
                     entry._descriptor = data._texture->descriptor();
                     entry._view._targetType = TextureType::TEXTURE_2D_ARRAY;
                     entry._view._samplerHash = texSampler;
                     entry._view._mipLevels.set(0u, data._texture->mipCount());
                     entry._view._layerRange.set(0u, data._texture->numLayers() * 6u);
-
-                    set._textureViews.add(entry);
                 } else {
-                    TextureEntry entry = {};
-                    entry._binding = to_U8(TextureUsage::UNIT1);
-                    entry._data = data._texture->data(),
-                    entry._sampler = texSampler;
-                    set._textureData.add(entry);
-                
+                    binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                    binding._data._combinedImageSampler._image = data._texture->data();
+                    binding._data._combinedImageSampler._samplerHash = texSampler;
                 }
             }
         }

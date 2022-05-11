@@ -226,10 +226,15 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
         GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurPipeline });
-
-        TextureData texData = shadowAtt.texture()->data();
-        descriptorSetCmd._set._textureData.add(TextureEntry{ texData, shadowAtt.samplerHash(), TextureUsage::UNIT0 });
-        EnqueueCommand(bufferInOut, descriptorSetCmd);
+        {
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._data._combinedImageSampler._image = shadowAtt.texture()->data();
+            binding._data._combinedImageSampler._samplerHash = shadowAtt.samplerHash();
+        }
 
         _shaderConstants.set(_ID("layered"), GFX::PushConstantType::BOOL, true);
         _shaderConstants.set(_ID("verticalBlur"), GFX::PushConstantType::BOOL, false);
@@ -243,9 +248,15 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
 
         // Blur vertically
         const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::Colour, 0);
-        texData = blurAtt.texture()->data();
-        descriptorSetCmd._set._textureData.add(TextureEntry{ texData, blurAtt.samplerHash(),TextureUsage::UNIT0 });
-        GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
+        {
+            DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+            set._usage = DescriptorSetUsage::PER_DRAW_SET;
+            auto& binding = set._bindings.emplace_back();
+            binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._data._combinedImageSampler._image = blurAtt.texture()->data();
+            binding._data._combinedImageSampler._samplerHash = blurAtt.samplerHash();
+        }
 
         beginRenderPassCmd._target = handle._targetID;
         beginRenderPassCmd._descriptor = {};

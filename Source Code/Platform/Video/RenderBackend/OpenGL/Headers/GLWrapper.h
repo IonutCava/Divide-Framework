@@ -123,8 +123,9 @@ protected:
     /// Reset as much of the GL default state as possible within the limitations given
     void clearStates(const DisplayWindow& window, GLStateTracker* stateTracker, bool global) const;
 
-    [[nodiscard]] GLStateTracker::BindResult makeTexturesResidentInternal(TextureDataContainer& textureData, U8 offset = 0u, U8 count = U8_MAX) const;
-    [[nodiscard]] GLStateTracker::BindResult makeTextureViewsResidentInternal(const TextureViews& textureViews, U8 offset = 0u, U8 count = U8_MAX) const;
+    //[[nodiscard]] GLStateTracker::BindResult makeTexturesResidentInternal(TextureDataContainer& textureData, U8 offset = 0u, U8 count = U8_MAX) const;
+    [[nodiscard]] GLStateTracker::BindResult makeTextureViewResidentInternal(const TextureViewEntry& textureView, U8 bindingSlot) const;
+    //[[nodiscard]] GLStateTracker::BindResult makeTextureViewsResidentInternal(const TextureViews& textureViews, U8 offset = 0u, U8 count = U8_MAX) const;
 
     bool setViewport(const Rect<I32>& viewport) override;
     ShaderResult bindPipeline(const Pipeline& pipeline) const;
@@ -176,7 +177,7 @@ private:
 
     /// /*sampler hash value*/ /*sampler object*/
     using SamplerObjectMap = hashMap<size_t, GLuint, NoHash<size_t>>;
-    using IMPrimitivePool = MemoryPool<glIMPrimitive, 2048>;
+    using IMPrimitivePool = MemoryPool<glIMPrimitive, 1 << 15>;
     using BufferLockQueue = eastl::fixed_vector<BufferLockEntry, 64, true, eastl::dvd_allocator>;
 
 private:

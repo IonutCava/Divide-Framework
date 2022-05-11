@@ -49,6 +49,7 @@ class glLockManager : public GUIDWrapper {
    public:
     using BufferLockPool = eastl::fixed_vector<SyncObject_uptr, 1024, true>;
 
+    static void CleanExpiredSyncObjects(U32 frameID);
     static [[nodiscard]] SyncObject* CreateSyncObject(bool isRetry = false);
     static void Clear();
 

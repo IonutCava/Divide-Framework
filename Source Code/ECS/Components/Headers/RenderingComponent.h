@@ -182,33 +182,33 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     [[nodiscard]] U8 getLoDLevel(RenderStage renderStage) const noexcept;
     [[nodiscard]] U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
-    [[nodiscard]] bool canDraw(RenderStagePass renderStagePass);
+    [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
 
     void setLoDIndexOffset(U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept;
 
-    DescriptorSet& getDescriptorSet(RenderStagePass renderStagePass);
-    PushConstants& getPushConstants(RenderStagePass renderStagePass);
-    void addAdditionalCommands(const RenderStagePass renderStagePass, GFX::CommandBuffer* cmdBuffer);
-    size_t getPipelineHash(const RenderStagePass renderStagePass);
+    DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
+    PushConstants& getPushConstants(const RenderStagePass& renderStagePass);
+    void addAdditionalCommands(const RenderStagePass& renderStagePass, GFX::CommandBuffer* cmdBuffer);
+    size_t getPipelineHash(const RenderStagePass& renderStagePass);
 
   protected:
-    [[nodiscard]] RenderPackage& getDrawPackage(RenderStagePass renderStagePass);
+    [[nodiscard]] RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass);
     [[nodiscard]] U8 getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
     void toggleBoundsDraw(bool showAABB, bool showBS, bool showOBB, bool recursive);
 
-    void retrieveDrawCommands(RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut);
+    void retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut);
     [[nodiscard]] bool hasDrawCommands() noexcept;
                   void onRenderOptionChanged(RenderOptions option, bool state);
 
     /// Called after the parent node was rendered
     void postRender(const SceneRenderState& sceneRenderState,
-                    RenderStagePass renderStagePass,
+                    const RenderStagePass& renderStagePass,
                     GFX::CommandBuffer& bufferInOut);
 
     bool prepareDrawPackage(const CameraSnapshot& cameraSnapshot,
                             const SceneRenderState& sceneRenderState,
-                            RenderStagePass renderStagePass,
+                            const RenderStagePass& renderStagePass,
                             bool refreshData);
 
     // This returns false if the node is not reflective, otherwise it generates a new reflection cube map

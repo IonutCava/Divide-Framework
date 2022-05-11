@@ -147,11 +147,15 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
     const TextureData screenTex = screenAtt.texture()->data();
-    
-    GFX::BindDescriptorSetsCommand descriptorSetCmd{};
-    descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(),TextureUsage::UNIT0 });
-    GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
-
+    {
+        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._data._combinedImageSampler._image = screenTex;
+        binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+    }
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline });
     GFX::EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _bloomCalcConstants });
 
@@ -188,9 +192,22 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::Colour, 0); 
     const TextureData bloomTex = bloomAtt.texture()->data();
 
-    descriptorSetCmd._set._textureData.add(TextureEntry{ screenTex, screenAtt.samplerHash(), TextureUsage::UNIT0 });
-    descriptorSetCmd._set._textureData.add(TextureEntry{ bloomTex, bloomAtt.samplerHash(),TextureUsage::UNIT1 });
-    GFX::EnqueueCommand(bufferInOut, descriptorSetCmd);
+    DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+    set._usage = DescriptorSetUsage::PER_DRAW_SET;
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._data._combinedImageSampler._image = screenTex;
+        binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+    }
+    {
+        auto& binding = set._bindings.emplace_back();
+        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+        binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+        binding._data._combinedImageSampler._image = bloomTex;
+        binding._data._combinedImageSampler._samplerHash = bloomAtt.samplerHash();
+    }
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomApplyPipeline });
     GFX::EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _bloomApplyConstants });

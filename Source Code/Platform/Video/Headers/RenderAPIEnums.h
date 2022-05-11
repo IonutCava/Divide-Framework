@@ -290,24 +290,35 @@ enum class ShaderBufferLocation : U8 {
     TREE_DATA,
     CMD_BUFFER,
     LUMINANCE_HISTOGRAM,
-    COUNT,
-    UNIFORM_BLOCK = COUNT,
-
-    ATOMIC_COUNTER_0 = 0,
-    ATOMIC_COUNTER_1 = 1,
-    ATOMIC_COUNTER_2 = 2,
-    ATOMIC_COUNTER_3 = 3,
-    ATOMIC_COUNTER_4 = 4,
+    UNIFORM_BLOCK,
+    COUNT
 };
 
 namespace Names {
     static const char* shaderBufferLocation[] = {
-        "CAM_BLOCK", "GPU_COMMANDS", "LIGHT_NORMAL",
-        "LIGHT_SCENE", "LIGHT_SHADOW", "LIGHT_INDICES", "LIGHT_GRID",
-        "LIGHT_INDEX_COUNT", "LIGHT_CLUSTER_AABBS", "NODE_TRANSFORM_DATA", "NODE_MATERIAL_DATA",
-        "NODE_TEXTURE_DATA", "NODE_INDIRECTION_DATA", "BONE_TRANSFORMS", "BONE_TRANSFORMS_PREV",
-        "SCENE_DATA", "PROBE_DATA", "GRASS_DATA", "TREE_DATA"
-        "CMD_BUFFER", "LUMINANCE_HISTOGRAM", "UNIFORM_BLOCK", "NONE"
+        "CAM_BLOCK",
+        "GPU_COMMANDS",
+        "LIGHT_NORMAL",
+        "LIGHT_SCENE",
+        "LIGHT_SHADOW",
+        "LIGHT_INDICES",
+        "LIGHT_GRID",
+        "LIGHT_INDEX_COUNT",
+        "LIGHT_CLUSTER_AABBS",
+        "NODE_TRANSFORM_DATA",
+        "NODE_MATERIAL_DATA",
+        "NODE_TEXTURE_DATA",
+        "NODE_INDIRECTION_DATA",
+        "BONE_TRANSFORMS",
+        "BONE_TRANSFORMS_PREV",
+        "SCENE_DATA",
+        "PROBE_DATA",
+        "GRASS_DATA",
+        "TREE_DATA",
+        "CMD_BUFFER",
+        "LUMINANCE_HISTOGRAM",
+        "UNIFORM_BLOCK",
+        "NONE"
     };
 };
 
@@ -704,7 +715,6 @@ namespace Names {
 };
 
 static_assert(std::size(Names::GFXDataFormat) == to_base(GFXDataFormat::COUNT) + 1);
-
 
 enum class MemoryBarrierType : U32 {
     BUFFER_UPDATE = toBit(1),

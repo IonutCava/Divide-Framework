@@ -111,7 +111,6 @@ bool SceneManager::init(PlatformContext& platformContext, ResourceCache* cache) 
         _sceneGraphCullTimers[to_U32(RenderStage::REFRACTION)] = &Time::ADD_TIMER(Util::StringFormat("SceneGraph cull timer: Refraction").c_str());
         _sceneGraphCullTimers[to_U32(RenderStage::SHADOW)] = &Time::ADD_TIMER(Util::StringFormat("SceneGraph cull timer: Shadow").c_str());
 
-        _sceneData = MemoryManager_NEW SceneShaderData(platformContext.gfx());
         _renderPassCuller = MemoryManager_NEW RenderPassCuller();
         _init = true;
     } else {
@@ -123,7 +122,6 @@ bool SceneManager::init(PlatformContext& platformContext, ResourceCache* cache) 
 void SceneManager::destroy() {
     if (_init) {
         Vegetation::destroyStaticData();
-        MemoryManager::SAFE_DELETE(_sceneData);
         Console::printfn(Locale::Get(_ID("STOP_SCENE_MANAGER")));
         // Console::printfn(Locale::Get("SCENE_MANAGER_DELETE"));
         Console::printfn(Locale::Get(_ID("SCENE_MANAGER_REMOVE_SCENES")));
@@ -497,10 +495,6 @@ vector<SceneGraphNode*> SceneManager::getNodesInScreenRect(const Rect<I32>& scre
     return ret;
 }
 
-GFX::MemoryBarrierCommand SceneManager::bindSceneDescriptorSet(GFX::CommandBuffer& bufferInOut) const {
-    return _sceneData->bindSceneDescriptorSet(bufferInOut);
-}
-
 bool SceneManager::frameStarted(const FrameEvent& evt) {
     return Attorney::SceneManager::frameStarted(getActiveScene());
 }
@@ -524,7 +518,8 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
                                             ? dayNightData._sunLight->getDiffuseColour()
                                             : DefaultColours::WHITE;
 
-    _sceneData->sunDetails(activeScene.getSunPosition(), sunColour);
+    SceneShaderData* sceneData = parent().platformContext().gfx().sceneData();
+    sceneData->sunDetails(activeScene.getSunPosition(), sunColour);
     //_sceneData->skyColour(horizonColour, zenithColour);
 
     FogDetails fog = activeScene.state()->renderState().fogDetails();
@@ -533,13 +528,13 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
     if (!_platformContext->config().rendering.enableFog) {
         fog._colourAndDensity.a = 0.f;
     }
-    _sceneData->fogDetails(fog);
+    sceneData->fogDetails(fog);
 
     const auto& activeSceneState = activeScene.state();
-    _sceneData->windDetails(activeSceneState->windDirX(),
-                            0.0f,
-                            activeSceneState->windDirZ(),
-                            activeSceneState->windSpeed());
+    sceneData->windDetails(activeSceneState->windDirX(),
+                           0.0f,
+                           activeSceneState->windDirZ(),
+                           activeSceneState->windSpeed());
 
     Attorney::GFXDeviceSceneManager::shadowingSettings(_parent.platformContext().gfx(), activeSceneState->lightBleedBias(), activeSceneState->minShadowVariance());
 
@@ -549,7 +544,7 @@ void SceneManager::updateSceneState(const U64 deltaTimeUS) {
 
     const auto& waterBodies = activeSceneState->waterBodies()._data;
     for (const auto& body : waterBodies) {
-        _sceneData->waterDetails(index++, body);
+        sceneData->waterDetails(index++, body);
     }
     _saveTimer += deltaTimeUS;
 

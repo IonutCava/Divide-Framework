@@ -101,37 +101,8 @@ void CommandBuffer::batch() {
         OPTICK_EVENT("TRY_MERGE_LOOP");
 
         bool tryMerge = true;
-        // Try and merge ONLY descriptor sets as these don't care about commands between them (they only set global state)
         while (tryMerge) {
-            OPTICK_EVENT("TRY_MERGE_LOOP_STEP_1");
-
-            tryMerge = false;
-            prevCommand = nullptr;
-            for (CommandEntry& entry : _commandOrder) {
-                if (entry._data != PolyContainerEntry::INVALID_ENTRY_ID && !ShouldSkipType(entry._typeIndex)) {
-                    const CommandType cmdType = static_cast<CommandType>(entry._typeIndex);
-                    if (cmdType == CommandType::BIND_DESCRIPTOR_SETS) {
-                        CommandBase* crtCommand = get<CommandBase>(entry);
-
-                        bool skip = false;
-                        if (entry._typeIndex == to_base(CommandType::BIND_PIPELINE)) {
-                            skip = reinterpret_cast<BindDescriptorSetsCommand*>(crtCommand)->_set._textureData.hasBindlessTextures();
-                        }
-                        if (prevCommand != nullptr && !skip && tryMergeCommands(cmdType, prevCommand, crtCommand)) {
-                            --_commandCount[entry._typeIndex];
-                            entry._data = PolyContainerEntry::INVALID_ENTRY_ID;
-                            tryMerge = true;
-                        } else {
-                            prevCommand = crtCommand;
-                        }
-                    }
-                }
-            }
-        }
-
-        tryMerge = true;
-        while (tryMerge) {
-            OPTICK_EVENT("TRY_MERGE_LOOP_STEP_2");
+            OPTICK_EVENT("TRY_MERGE_LOOP_STEP");
 
             tryMerge = false;
             prevCommand = nullptr;
@@ -280,7 +251,11 @@ void CommandBuffer::clean() {
             case CommandType::BIND_DESCRIPTOR_SETS: {
                 OPTICK_EVENT("Clean Descriptor Sets");
 
-                const DescriptorSet& set = get<BindDescriptorSetsCommand>(cmd)->_set;
+                DescriptorSet& set = get<BindDescriptorSetsCommand>(cmd)->_set;
+                dvd_erase_if(set._bindings, [](const DescriptorSetBinding& it) {
+                    return it._type == DescriptorSetBindingType::COUNT;
+                });
+
                 if (prevDescriptorSet == nullptr || IsEmpty(set) || *prevDescriptorSet != set) {
                     prevDescriptorSet = &set;
                 } else {
