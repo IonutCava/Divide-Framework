@@ -98,6 +98,7 @@ struct RenderCbkParams {
     const SceneGraphNode* _sgn = nullptr;
     const SceneRenderState& _sceneRenderState;
     const RenderTargetID& _renderTarget;
+
     Camera* _camera;
     U16 _passIndex;
     U8  _passVariant;
@@ -115,6 +116,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     friend class Attorney::RenderingComponentSGN;
 
    public:
+       static constexpr U8 MAX_LOD_LEVEL = 4u;
+
        enum class RenderOptions : U16 {
            RENDER_GEOMETRY = toBit(1),
            RENDER_WIREFRAME = toBit(2),
@@ -132,6 +135,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
            Processed,
            COUNT
        };
+
        struct DrawCommands {
            vector_fast<GFX::DrawCommand> _data;
            SharedMutex _dataLock;
@@ -141,65 +145,74 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     explicit RenderingComponent(SceneGraphNode* parentSGN, PlatformContext& context);
     ~RenderingComponent();
 
-
-    void toggleRenderOption(RenderOptions option, bool state, bool recursive = true);
     /// Returns true if the specified render option is enabled
     [[nodiscard]] bool renderOptionEnabled(RenderOptions option) const noexcept;
     /// Returns true if ALL of the options in the mask are enabled
     [[nodiscard]] bool renderOptionsEnabledALL(U32 mask) const noexcept;
     /// Returns true if ANY of the options in the mask are enabled
     [[nodiscard]] bool renderOptionsEnabledANY(U32 mask) const noexcept;
-    void setMinRenderRange(F32 minRange) noexcept;
-    void setMaxRenderRange(F32 maxRange) noexcept;
-    void setRenderRange(const F32 minRange, const F32 maxRange) noexcept { setMinRenderRange(minRange); setMaxRenderRange(maxRange); }
-    [[nodiscard]] const vec2<F32>& renderRange() const noexcept { return _renderRange; }
+                  void toggleRenderOption(RenderOptions option, bool state, bool recursive = true);
 
-    void lockLoD(U8 level) { _lodLockLevels.fill({ true, level }); }
-    void unlockLoD() { _lodLockLevels.fill({ false, to_U8(0u) }); }
-    void lockLoD(const RenderStage stage, U8 level) noexcept { _lodLockLevels[to_base(stage)] = { true, level }; }
-    void unlockLoD(const RenderStage stage) noexcept { _lodLockLevels[to_base(stage)] = { false, to_U8(0u) }; }
-    void instantiateMaterial(const Material_ptr& material);
+                         void             setMinRenderRange(F32 minRange)                        noexcept;
+                         void             setMaxRenderRange(F32 maxRange)                        noexcept;
+                  inline void             setRenderRange(const F32 minRange, const F32 maxRange) noexcept { setMinRenderRange(minRange); setMaxRenderRange(maxRange); }
+    [[nodiscard]] inline const vec2<F32>& renderRange()                                    const noexcept { return _renderRange; }
 
-    [[nodiscard]] bool lodLocked(const RenderStage stage) const noexcept { return _lodLockLevels[to_base(stage)].first; }
+    [[nodiscard]] inline bool lodLocked(const RenderStage stage)   const noexcept { return _lodLockLevels[to_base(stage)].first; }
+                  inline void lockLoD(const U8 level)                             { _lodLockLevels.fill({ true, level }); }
+                  inline void unlockLoD()                                         { _lodLockLevels.fill({ false, to_U8(0u) }); }
+                  inline void lockLoD(const RenderStage stage, U8 level) noexcept { _lodLockLevels[to_base(stage)] = { true, level }; }
+                  inline void unlockLoD(const RenderStage stage)         noexcept { _lodLockLevels[to_base(stage)] = { false, to_U8(0u) }; }
+    [[nodiscard]]          U8 getLoDLevel(RenderStage renderStage) const noexcept;
+    [[nodiscard]]          U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
+                         void setLoDIndexOffset(U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept;
 
     void getMaterialData(NodeMaterialData& dataOut) const;
     void getMaterialTextures(NodeMaterialTextures& texturesOut, SamplerAddress defaultTexAddress) const;
 
-    [[nodiscard]] const Material_ptr& getMaterialInstance() const noexcept { return _materialInstance; }
-
-    [[nodiscard]] DrawCommands& drawCommands() noexcept { return _drawCommands; }
-
     void rebuildMaterial();
 
-    void setReflectionCallback(const RenderCallback& cbk, const ReflectorType reflectType) { _reflectionCallback = cbk; _reflectorType = reflectType; }
-    void setRefractionCallback(const RenderCallback& cbk, const RefractorType refractType) { _refractionCallback = cbk; _refractorType = refractType; }
+                         void                instantiateMaterial(const Material_ptr& material);
+    [[nodiscard]] inline const Material_ptr& getMaterialInstance() const noexcept { return _materialInstance; }
+
+    [[nodiscard]] inline DrawCommands& drawCommands() noexcept { return _drawCommands; }
+
+    inline void setReflectionCallback(const RenderCallback& cbk, const ReflectorType reflectType) { _reflectionCallback = cbk; _reflectorType = reflectType; }
+    inline void setRefractionCallback(const RenderCallback& cbk, const RefractorType refractType) { _refractionCallback = cbk; _refractorType = refractType; }
+
+    [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
+
+    [[nodiscard]] DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
+    [[nodiscard]] PushConstants& getPushConstants(const RenderStagePass& renderStagePass);
+    [[nodiscard]] size_t         getPipelineHash(const RenderStagePass& renderStagePass);
+
+    void addAdditionalCommands(const RenderStagePass& renderStagePass, GFX::CommandBuffer* cmdBuffer);
 
     void drawDebugAxis();
     void drawSelectionGizmo();
     void drawSkeleton();
     void drawBounds(bool AABB, bool OBB, bool Sphere);
 
-    [[nodiscard]] U8 getLoDLevel(RenderStage renderStage) const noexcept;
-    [[nodiscard]] U8 getLoDLevel(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
-
-    [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
-
-    void setLoDIndexOffset(U8 lodIndex, size_t indexOffset, size_t indexCount) noexcept;
-
-    DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
-    PushConstants& getPushConstants(const RenderStagePass& renderStagePass);
-    void addAdditionalCommands(const RenderStagePass& renderStagePass, GFX::CommandBuffer* cmdBuffer);
-    size_t getPipelineHash(const RenderStagePass& renderStagePass);
+    PROPERTY_R(bool, showAxis, false);
+    PROPERTY_R(bool, receiveShadows, false);
+    PROPERTY_R(bool, castsShadows, false);
+    PROPERTY_RW(bool, occlusionCull, true);
+    PROPERTY_RW(F32, dataFlag, 1.0f);
+    PROPERTY_R_IW(bool, isInstanced, false);
+    PROPERTY_RW(PackageUpdateState, packageUpdateState, PackageUpdateState::COUNT);
+    PROPERTY_R_IW(bool, rebuildDrawCommands, false);
 
   protected:
+                  void           getCommandBuffer(RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut);
     [[nodiscard]] RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass);
-    [[nodiscard]] U8 getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
+    [[nodiscard]] U8             getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, const vec4<U16>& lodThresholds);
 
     void toggleBoundsDraw(bool showAABB, bool showBS, bool showOBB, bool recursive);
+    void onRenderOptionChanged(RenderOptions option, bool state);
+    void clearDrawPackages();
 
-    void retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut);
     [[nodiscard]] bool hasDrawCommands() noexcept;
-                  void onRenderOptionChanged(RenderOptions option, bool state);
+                  void retrieveDrawCommands(const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut);
 
     /// Called after the parent node was rendered
     void postRender(const SceneRenderState& sceneRenderState,
@@ -229,78 +242,52 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     void updateNearestProbes(const vec3<F32>& position);
  
-    void getCommandBuffer(RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut);
-
-    PROPERTY_R(bool, showAxis, false);
-    PROPERTY_R(bool, receiveShadows, false);
-    PROPERTY_R(bool, castsShadows, false);
-    PROPERTY_RW(bool, occlusionCull, true);
-    PROPERTY_RW(F32, dataFlag, 1.0f);
-    PROPERTY_R_IW(bool, isInstanced, false);
-    PROPERTY_RW(PackageUpdateState, packageUpdateState, PackageUpdateState::COUNT);
-    PROPERTY_R_IW(bool, rebuildDrawCommands, false);
-
-   protected:
-
-    void clearDrawPackages();
     void onParentUsageChanged(NodeUsageContext context) const;
-
     void OnData(const ECS::CustomEvent& data) override;
 
    protected:
-    struct PackageEntry {
-        RenderPackage _package;
-        U16 _index = 0u;
-    };
+    GFXDevice& _context;
+    const Configuration& _config;
+
+    struct PackageEntry { RenderPackage _package; U16 _index{0u}; };
     using PackagesPerIndex = vector_fast<PackageEntry>;
     using PackagesPerPassIndex = std::array<PackagesPerIndex, to_base(RenderStagePass::PassIndex::COUNT)>;
     using PackagesPerVariant = std::array<PackagesPerPassIndex, to_base(RenderStagePass::VariantType::COUNT)>;
     using PackagesPerPassType = std::array<PackagesPerVariant, to_base(RenderPassType::COUNT)>;
-    std::array<PackagesPerPassType, to_base(RenderStage::COUNT)> _renderPackages{};
-    SharedMutex _renderPackagesLock;
 
-    RenderCallback _reflectionCallback{};
-    RenderCallback _refractionCallback{};
-
-    enum class DataType : U8 {
-        REFLECT = 0,
-        REFRACT,
-        COUNT
-    };
-
-    U16 _reflectionProbeIndex = 0u; 
-  
     vector<EnvironmentProbeComponent*> _envProbes{};
 
-    Material_ptr _materialInstance = nullptr;
-    GFXDevice& _context;
-    const Configuration& _config;
-
-    vec2<F32> _renderRange;
+    Material_ptr _materialInstance{ nullptr };
+    RenderCallback _reflectionCallback{};
+    RenderCallback _refractionCallback{};
 
     IMPrimitive::LineDescriptor _axisGizmoLinesDescriptor;
     IMPrimitive::LineDescriptor _skeletonLinesDescriptor;
     IMPrimitive::OBBDescriptor _selectionGizmoDescriptor;
 
-    U32 _renderMask = 0u;
-    bool _selectionGizmoDirty = true;
-    bool _drawAABB = false;
-    bool _drawOBB = false;
-    bool _drawBS = false;
-
-    std::array<U8, to_base(RenderStage::COUNT)> _lodLevels{};
-    ReflectorType _reflectorType = ReflectorType::CUBE;
-    RefractorType _refractorType = RefractorType::PLANAR;
-
-
-    std::array<std::pair<bool, U8>, to_base(RenderStage::COUNT)> _lodLockLevels{};
-    U32 _indirectionBufferEntry = U32_MAX;
-
-    std::array<std::pair<size_t, size_t>, 4> _lodIndexOffsets{};
+    SharedMutex _renderPackagesLock;
 
     DrawCommands _drawCommands;
 
-    static hashMap<U32, DebugView*> s_debugViews[2];
+    std::array<U8, to_base(RenderStage::COUNT)> _lodLevels{};
+    std::array<std::pair<size_t, size_t>, MAX_LOD_LEVEL> _lodIndexOffsets{};
+    std::array<std::pair<bool, U8>, to_base(RenderStage::COUNT)> _lodLockLevels{};
+    std::array<PackagesPerPassType, to_base(RenderStage::COUNT)> _renderPackages{};
+
+    vec2<F32> _renderRange;
+
+    U32 _indirectionBufferEntry{ U32_MAX };
+    U32 _renderMask{ 0u };
+    U16 _reflectionProbeIndex{ 0u };
+
+    ReflectorType _reflectorType{ ReflectorType::CUBE };
+    RefractorType _refractorType{ RefractorType::PLANAR };
+
+    bool _selectionGizmoDirty{ true };
+    bool _drawAABB{ false };
+    bool _drawOBB{ false };
+    bool _drawBS{ false };
+
 END_COMPONENT(Rendering);
 
 namespace Attorney {
@@ -315,42 +302,43 @@ class RenderingCompRenderPass {
                                                const SceneRenderState& renderState,
                                                GFX::CommandBuffer& bufferInOut,
                                                GFX::MemoryBarrierCommand& memCmdInOut)
-        {
-            return renderable.updateReflection(reflectionIndex, inBudget, camera, renderState, bufferInOut, memCmdInOut);
-        }
+    {
+        return renderable.updateReflection(reflectionIndex, inBudget, camera, renderState, bufferInOut, memCmdInOut);
+    }
 
-        /// Return true if we executed an external render pass (e.g. water planar refraction)
-        /// Return false for no or non-expensive updates (e.g. selected the nearest probe)
-        [[nodiscard]] static bool updateRefraction(RenderingComponent& renderable,
-                                                   const U16 refractionIndex,
-                                                   const bool inBudget,
-                                                   Camera* camera,
-                                                   const SceneRenderState& renderState,
-                                                   GFX::CommandBuffer& bufferInOut,
-                                                   GFX::MemoryBarrierCommand& memCmdInOut)
-        {
-            return renderable.updateRefraction(refractionIndex, inBudget, camera, renderState, bufferInOut, memCmdInOut);
-        }
+    /// Return true if we executed an external render pass (e.g. water planar refraction)
+    /// Return false for no or non-expensive updates (e.g. selected the nearest probe)
+    [[nodiscard]] static bool updateRefraction(RenderingComponent& renderable,
+                                                const U16 refractionIndex,
+                                                const bool inBudget,
+                                                Camera* camera,
+                                                const SceneRenderState& renderState,
+                                                GFX::CommandBuffer& bufferInOut,
+                                                GFX::MemoryBarrierCommand& memCmdInOut)
+    {
+        return renderable.updateRefraction(refractionIndex, inBudget, camera, renderState, bufferInOut, memCmdInOut);
+    }
 
-        static bool prepareDrawPackage(RenderingComponent& renderable,
-                                       const CameraSnapshot& cameraSnapshot,
-                                       const SceneRenderState& sceneRenderState,
-                                       RenderStagePass renderStagePass,
-                                       const bool refreshData) {
-            return renderable.prepareDrawPackage(cameraSnapshot, sceneRenderState, renderStagePass, refreshData);
-        }
+    [[nodiscard]] static bool prepareDrawPackage(RenderingComponent& renderable,
+                                                    const CameraSnapshot& cameraSnapshot,
+                                                    const SceneRenderState& sceneRenderState,
+                                                    RenderStagePass renderStagePass,
+                                                    const bool refreshData)
+    {
+        return renderable.prepareDrawPackage(cameraSnapshot, sceneRenderState, renderStagePass, refreshData);
+    }
 
-        [[nodiscard]] static bool hasDrawCommands(RenderingComponent& renderable) noexcept {
-            return renderable.hasDrawCommands();
-        }
+    [[nodiscard]] static bool hasDrawCommands(RenderingComponent& renderable) noexcept {
+        return renderable.hasDrawCommands();
+    }
 
-        static void retrieveDrawCommands(RenderingComponent& renderable, const RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
-            renderable.retrieveDrawCommands(stagePass, cmdOffset, cmdsInOut);
-        }
+    static void retrieveDrawCommands(RenderingComponent& renderable, const RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut) {
+        renderable.retrieveDrawCommands(stagePass, cmdOffset, cmdsInOut);
+    }
 
-        friend class Divide::RenderPass;
-        friend class Divide::RenderQueue;
-        friend class Divide::RenderPassExecutor;
+    friend class Divide::RenderPass;
+    friend class Divide::RenderQueue;
+    friend class Divide::RenderPassExecutor;
 };
 
 class RenderingCompRenderBin {
@@ -361,7 +349,7 @@ class RenderingCompRenderBin {
         renderable->postRender(sceneRenderState, renderStagePass, bufferInOut);
     }
 
-    static RenderPackage& getDrawPackage(RenderingComponent* renderable, const RenderStagePass renderStagePass) {
+    [[nodiscard]] static RenderPackage& getDrawPackage(RenderingComponent* renderable, const RenderStagePass renderStagePass) {
         return renderable->getDrawPackage(renderStagePass);
     }
 
@@ -375,7 +363,7 @@ class RenderingCompRenderPassExecutor {
         renderable->_indirectionBufferEntry = indirectionBufferEntry;
     }
 
-    static U32 getIndirectionBufferEntry(RenderingComponent* renderable) noexcept {
+    [[nodiscard]] static U32 getIndirectionBufferEntry(RenderingComponent* const renderable) noexcept {
         return renderable->_indirectionBufferEntry;
     }
 
@@ -390,6 +378,7 @@ class RenderingComponentSGN {
     static void onParentUsageChanged(const RenderingComponent& comp, const NodeUsageContext context) {
         comp.onParentUsageChanged(context);
     }
+
     friend class Divide::SceneGraphNode;
 };
 }  // namespace Attorney

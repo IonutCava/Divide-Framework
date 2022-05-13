@@ -1,6 +1,37 @@
+/*
+   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2009 Ionut Cava
+
+   This file is part of DIVIDE Framework.
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software
+   and associated documentation files (the "Software"), to deal in the Software
+   without restriction,
+   including without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense,
+   and/or sell copies of the Software, and to permit persons to whom the
+   Software is furnished to do so,
+   subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED,
+   INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+   PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+   DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+   IN CONNECTION WITH THE SOFTWARE
+   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+ */
+
 #pragma once
-#ifndef _PRE_RenderStage_H_
-#define _PRE_RenderStage_H_
+#ifndef _PRE_RENDER_BATCH_H_
+#define _PRE_RENDER_BATCH_H_
 
 #include "PreRenderOperator.h"
 
@@ -26,15 +57,15 @@ struct ToneMapParams
         COUNT
     };
 
-    U16 _width = 1u;
-    U16 _height = 1u;
-    F32 _minLogLuminance = -4.f;
-    F32 _maxLogLuminance = 3.f;
-    F32 _tau = 1.1f;
+    U16 _width{ 1u };
+    U16 _height{ 1u };
+    F32 _minLogLuminance{ -4.f };
+    F32 _maxLogLuminance{ 3.f };
+    F32 _tau{ 1.1f };
 
-    F32 _manualExposureFactor = 1.f;
+    F32 _manualExposureFactor{ 1.f };
 
-    MapFunctions _function = MapFunctions::UNCHARTED_2;
+    MapFunctions _function{ MapFunctions::UNCHARTED_2 };
 };
 
 namespace Names {
@@ -44,12 +75,31 @@ namespace Names {
 }
 
 namespace TypeUtil {
-    const char* ToneMapFunctionsToString(ToneMapParams::MapFunctions stop) noexcept;
-    ToneMapParams::MapFunctions StringToToneMapFunctions(const string& name);
+    [[nodiscard]] const char* ToneMapFunctionsToString(ToneMapParams::MapFunctions stop) noexcept;
+    [[nodiscard]] ToneMapParams::MapFunctions StringToToneMapFunctions(const string& name);
 };
 
 class ResourceCache;
 class PreRenderBatch {
+   private:
+    struct HDRTargets {
+        RenderTargetHandle _screenRef;
+        RenderTargetHandle _screenCopy;
+    };
+
+    struct LDRTargets {
+        RenderTargetHandle _temp[2];
+    };
+
+    struct ScreenTargets {
+        HDRTargets _hdr;
+        LDRTargets _ldr;
+        bool _swappedHDR{ false };
+        bool _swappedLDR{ false };
+    };
+
+    using OperatorBatch = vector<eastl::unique_ptr<PreRenderOperator>>;
+
    public:
        // Ordered by cost
        enum class EdgeDetectionMethod : U8 {
@@ -58,6 +108,7 @@ class PreRenderBatch {
            Colour,
            COUNT
        };
+
    public:
     PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache* cache);
     ~PreRenderBatch();
@@ -79,64 +130,31 @@ class PreRenderBatch {
     [[nodiscard]] RenderTargetHandle edgesRT() const noexcept;
     [[nodiscard]] Texture_ptr luminanceTex() const noexcept;
 
-    [[nodiscard]] PreRenderOperator* getOperator(FilterType type) {
-        const FilterSpace fSpace = GetOperatorSpace(type);
-        if (fSpace == FilterSpace::COUNT) {
-            return nullptr;
-        }
+    [[nodiscard]] PreRenderOperator* getOperator(FilterType type) const;
 
-        const OperatorBatch& batch = _operators[to_U32(fSpace)];
-        const auto* const it = std::find_if(std::cbegin(batch), std::cend(batch), [type](const eastl::unique_ptr<PreRenderOperator>& op) noexcept {
-                                    return op->operatorType() == type;
-                              });
+    void toneMapParams(ToneMapParams params) noexcept;
 
-        assert(it != std::cend(batch));
-        return (*it).get();
-    }
+    void adaptiveExposureControl(bool state) noexcept;
+    [[nodiscard]] F32  adaptiveExposureValue() const;
 
-    [[nodiscard]] const PreRenderOperator* getOperator(FilterType type) const {
-        const FilterSpace fSpace = GetOperatorSpace(type);
-        if (fSpace == FilterSpace::COUNT) {
-            return nullptr;
-        }
-
-        const OperatorBatch& batch = _operators[to_U32(GetOperatorSpace(type))];
-        const auto* const it = std::find_if(std::cbegin(batch), std::cend(batch), [type](const eastl::unique_ptr<PreRenderOperator>& op) noexcept {
-                                    return op->operatorType() == type;
-                              });
-        assert(it != std::cend(batch));
-        return (*it).get();
-    }
+    [[nodiscard]] RenderTargetHandle getLinearDepthRT() const noexcept;
 
     PROPERTY_R(bool, adaptiveExposureControl, true);
     PROPERTY_R(ToneMapParams, toneMapParams, {});
     PROPERTY_RW(F32, edgeDetectionThreshold, 0.1f);
     PROPERTY_RW(EdgeDetectionMethod, edgeDetectionMethod, EdgeDetectionMethod::Luma);
 
-    void adaptiveExposureControl(bool state) noexcept;
-    [[nodiscard]] F32  adaptiveExposureValue() const;
-
-    void toneMapParams(ToneMapParams params) noexcept;
-
-    [[nodiscard]] RenderTargetHandle getLinearDepthRT() const noexcept;
-
    private:
 
-    [[nodiscard]] static FilterSpace GetOperatorSpace(const FilterType type) noexcept {
+    [[nodiscard]] inline static FilterSpace GetOperatorSpace(const FilterType type) noexcept {
         // ToDo: Always keep this up-to-date with every filter we add
         switch(type) {
-            case FilterType::FILTER_SS_ANTIALIASING :
-                return FilterSpace::FILTER_SPACE_LDR;
-
+            case FilterType::FILTER_SS_ANTIALIASING :     return FilterSpace::FILTER_SPACE_LDR;
             case FilterType::FILTER_SS_AMBIENT_OCCLUSION:
-            case FilterType::FILTER_SS_REFLECTIONS:
-                return FilterSpace::FILTER_SPACE_HDR;
-
+            case FilterType::FILTER_SS_REFLECTIONS:       return FilterSpace::FILTER_SPACE_HDR;
             case FilterType::FILTER_DEPTH_OF_FIELD:
             case FilterType::FILTER_BLOOM:
-            case FilterType::FILTER_MOTION_BLUR:
-                return FilterSpace::FILTER_SPACE_HDR_POST_SS;
-
+            case FilterType::FILTER_MOTION_BLUR:          return FilterSpace::FILTER_SPACE_HDR_POST_SS;
             case FilterType::FILTER_LUT_CORECTION:
             case FilterType::FILTER_COUNT:
             case FilterType::FILTER_UNDERWATER: 
@@ -152,52 +170,35 @@ class PreRenderBatch {
     [[nodiscard]] RenderTargetHandle getTarget(bool hdr, bool swapped) const noexcept;
 
   private:
-    using OperatorBatch = vector<eastl::unique_ptr<PreRenderOperator>>;
-    std::array<OperatorBatch, to_base(FilterSpace::COUNT)> _operators;
-
     GFXDevice& _context;
     PostFX&    _parent;
-    ResourceCache* _resCache = nullptr;
 
-    ShaderBuffer_uptr _histogramBuffer = nullptr;
+    std::array<OperatorBatch, to_base(FilterSpace::COUNT)> _operators;
+    std::array<ShaderProgram_ptr, to_base(EdgeDetectionMethod::COUNT)> _edgeDetection{};
+    std::array<Pipeline*, to_base(EdgeDetectionMethod::COUNT)> _edgeDetectionPipelines{};
 
-    RenderTargetHandle _sceneEdges;
+    GFX::SendPushConstantsCommand _toneMapConstantsCmd{};
 
-    struct HDRTargets {
-        RenderTargetHandle _screenRef;
-        RenderTargetHandle _screenCopy;
-    };
-    struct LDRTargets {
-        RenderTargetHandle _temp[2];
-    };
+    ScreenTargets _screenRTs{};
+    ShaderBuffer_uptr _histogramBuffer{ nullptr };
+    Texture_ptr _currentLuminance{ nullptr };
+    ShaderProgram_ptr _toneMap{ nullptr };
+    ShaderProgram_ptr _toneMapAdaptive{ nullptr };
+    ShaderProgram_ptr _createHistogram{ nullptr };
+    ShaderProgram_ptr _averageHistogram{ nullptr };
+    ShaderProgram_ptr _lineariseDepthBuffer{ nullptr };
+    ResourceCache* _resCache{ nullptr };
+    Pipeline* _pipelineLumCalcHistogram{ nullptr };
+    Pipeline* _pipelineLumCalcAverage{ nullptr };
+    Pipeline* _pipelineToneMap{ nullptr };
+    Pipeline* _pipelineToneMapAdaptive{ nullptr };
+    U64 _lastDeltaTimeUS{ 0u };
 
-    struct ScreenTargets {
-        HDRTargets _hdr;
-        LDRTargets _ldr;
-        bool _swappedHDR = false;
-        bool _swappedLDR = false;
-    };
-
-    ScreenTargets _screenRTs;
-
-
-    Texture_ptr _currentLuminance;
-    ShaderProgram_ptr _toneMap = nullptr;
-    ShaderProgram_ptr _toneMapAdaptive = nullptr;
-    ShaderProgram_ptr _createHistogram = nullptr;
-    ShaderProgram_ptr _averageHistogram = nullptr;
-    ShaderProgram_ptr _lineariseDepthBuffer = nullptr;
-    std::array<ShaderProgram_ptr, to_base(EdgeDetectionMethod::COUNT)> _edgeDetection = {};
-    std::array<Pipeline*, to_base(EdgeDetectionMethod::COUNT)> _edgeDetectionPipelines = {};
-    GFX::SendPushConstantsCommand _toneMapConstantsCmd;
-    Pipeline* _pipelineLumCalcHistogram = nullptr;
-    Pipeline* _pipelineLumCalcAverage = nullptr;
-    Pipeline* _pipelineToneMap = nullptr;
-    Pipeline* _pipelineToneMapAdaptive = nullptr;
-    U64 _lastDeltaTimeUS = 0u;
-
+    RenderTargetHandle _sceneEdges{};
     RenderTargetHandle _linearDepthRT{};
 };
 
 }  // namespace Divide
-#endif
+#endif //_PRE_RENDER_BATCH_H_
+
+#include "PreRenderBatch.inl"

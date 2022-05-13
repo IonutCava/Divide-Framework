@@ -201,64 +201,55 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN);
-        binding._data._combinedImageSampler._image = prbAtt.texture()->data();
-        binding._data._combinedImageSampler._samplerHash = prbAtt.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { prbAtt.texture()->data(), prbAtt.samplerHash() };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH);
-        binding._data._combinedImageSampler._image = depthAtt.texture()->data();
-        binding._data._combinedImageSampler._samplerHash = samplerHash;
+        binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt.texture()->data(), samplerHash };
     }   
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH);
-        binding._data._combinedImageSampler._image = linDepthDataAtt.texture()->data();
-        binding._data._combinedImageSampler._samplerHash = samplerHash;
+        binding._data.As<DescriptorCombinedImageSampler>() = { linDepthDataAtt.texture()->data(), samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR);
-        binding._data._combinedImageSampler._image = ssrDataAtt.texture()->data();
-        binding._data._combinedImageSampler._samplerHash = samplerHash;
+        binding._data.As<DescriptorCombinedImageSampler>() = { ssrDataAtt.texture()->data(), samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA);
-        binding._data._combinedImageSampler._image = sceneDataAtt.texture()->data();
-        binding._data._combinedImageSampler._samplerHash = samplerHash;
+        binding._data.As<DescriptorCombinedImageSampler>() = { sceneDataAtt.texture()->data(), samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY);
-        binding._data._combinedImageSampler._image = velocityAtt.texture()->data();
-        binding._data._combinedImageSampler._samplerHash = samplerHash;
+        binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt.texture()->data(), samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_UNDERWATER);
-        binding._data._combinedImageSampler._image = _underwaterTexture->data();
-        binding._data._combinedImageSampler._samplerHash = samplerHash;
+        binding._data.As<DescriptorCombinedImageSampler>() = { _underwaterTexture->data(), samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_NOISE);
-        binding._data._combinedImageSampler._image = _noise->data();
-        binding._data._combinedImageSampler._samplerHash = samplerHash;
+        binding._data.As<DescriptorCombinedImageSampler>() = { _noise->data(), samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_BORDER);
-        binding._data._combinedImageSampler._image = _screenBorder->data();
-        binding._data._combinedImageSampler._samplerHash = samplerHash;
+        binding._data.As<DescriptorCombinedImageSampler>() = { _screenBorder->data(), samplerHash };
     }
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);

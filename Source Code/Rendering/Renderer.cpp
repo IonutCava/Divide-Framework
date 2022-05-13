@@ -195,22 +195,19 @@ void Renderer::prepareLighting(const RenderStage stage,
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_INDICES);
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                binding._data._buffer = data._lightIndexBuffer.get();
-                binding._data._range = { 0u, data._lightIndexBuffer->getPrimitiveCount() };
+                binding._data.As<ShaderBufferEntry>() = { data._lightIndexBuffer.get(), { 0u, data._lightIndexBuffer->getPrimitiveCount() } };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                binding._data._buffer = data._lightClusterAABBsBuffer.get();
-                binding._data._range = { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() };
+                binding._data.As<ShaderBufferEntry>() = { data._lightClusterAABBsBuffer.get(), { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_GRID);
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                binding._data._buffer = data._lightGridBuffer.get();
-                binding._data._range = { 0u, data._lightGridBuffer->getPrimitiveCount() };
+                binding._data.As<ShaderBufferEntry>() = { data._lightGridBuffer.get(), { 0u, data._lightGridBuffer->getPrimitiveCount() } };
             }
         }
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
@@ -219,8 +216,7 @@ void Renderer::prepareLighting(const RenderStage stage,
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
             binding._resourceSlot = to_U8(ShaderBufferLocation::LIGHT_INDEX_COUNT);
-            binding._data._buffer = data._globalIndexCountBuffer.get();
-            binding._data._range = { 0u, data._globalIndexCountBuffer->getPrimitiveCount() };
+            binding._data.As<ShaderBufferEntry>() = { data._globalIndexCountBuffer.get(), { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
         }
 
         if (data._previousProjMatrix != cameraSnapshot._projectionMatrix)  {

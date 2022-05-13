@@ -85,8 +85,7 @@ void GUISplash::render(GFXDevice& context) const {
     auto& binding = set._bindings.emplace_back();
     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
     binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-    binding._data._combinedImageSampler._image = _splashImage->data();
-    binding._data._combinedImageSampler._samplerHash = splashSampler.getHash();
+    binding._data.As<DescriptorCombinedImageSampler>() = { _splashImage->data(), splashSampler.getHash() };
 
     GFX::EnqueueCommand<GFX::DrawCommand>(buffer);
 

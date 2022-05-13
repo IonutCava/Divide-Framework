@@ -62,11 +62,11 @@ enum class FileUpdateEvent : U8;
 FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 namespace TypeUtil {
-    const char* DescriptorSetUsageToString(DescriptorSetUsage setUsage) noexcept;
-    DescriptorSetUsage StringToDescriptorSetUsage(const string& name);
+    [[nodiscard]] const char* DescriptorSetUsageToString(DescriptorSetUsage setUsage) noexcept;
+    [[nodiscard]] DescriptorSetUsage StringToDescriptorSetUsage(const string& name);
 
-    const char* ShaderBufferLocationToString(ShaderBufferLocation bufferLocation) noexcept;
-    ShaderBufferLocation StringToShaderBufferLocation(const string& name);
+    [[nodiscard]] const char* ShaderBufferLocationToString(ShaderBufferLocation bufferLocation) noexcept;
+    [[nodiscard]] ShaderBufferLocation StringToShaderBufferLocation(const string& name);
 };
 
 struct ModuleDefine {

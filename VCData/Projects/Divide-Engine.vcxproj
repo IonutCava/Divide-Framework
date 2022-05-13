@@ -912,6 +912,7 @@
     <None Include="..\..\Source Code\ECS\Components\Headers\SGNComponent.inl" />
     <None Include="..\..\Source Code\ECS\Systems\Headers\ECSSystem.inl" />
     <None Include="..\..\Source Code\Graphs\Headers\SceneGraphNode.inl" />
+    <None Include="..\..\Source Code\Rendering\PostFX\Headers\PreRenderBatch.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

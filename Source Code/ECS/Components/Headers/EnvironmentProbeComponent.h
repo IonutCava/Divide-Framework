@@ -130,8 +130,8 @@ private:
 END_COMPONENT(EnvironmentProbe);
 
 namespace TypeUtil {
-    const char* EnvProveUpdateTypeToString(EnvironmentProbeComponent::UpdateType type) noexcept;
-    EnvironmentProbeComponent::UpdateType StringToEnvProveUpdateType(const char* name) noexcept;
+    [[nodiscard]] const char* EnvProveUpdateTypeToString(EnvironmentProbeComponent::UpdateType type) noexcept;
+    [[nodiscard]] EnvironmentProbeComponent::UpdateType StringToEnvProveUpdateType(const char* name) noexcept;
 }
 
 } //namespace Divide

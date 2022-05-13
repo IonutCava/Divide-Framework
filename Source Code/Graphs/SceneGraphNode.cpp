@@ -567,16 +567,15 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp,
 
         DescriptorSetBinding bufferBinding{};
         bufferBinding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-        bufferBinding._data._buffer = data._boneBuffer;
 
         bufferBinding._resourceSlot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS);
-        bufferBinding._data._range = data._boneBufferRange;
+        bufferBinding._data.As<ShaderBufferEntry>() = { data._boneBuffer, data._boneBufferRange };
         if (UpdateBinding(set, bufferBinding) == DescriptorUpdateResult::COUNT) {
             DIVIDE_UNEXPECTED_CALL();
         }
 
         bufferBinding._resourceSlot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS_PREV);
-        bufferBinding._data._range = data._prevBoneBufferRange;
+        bufferBinding._data.As<ShaderBufferEntry>() = { data._boneBuffer, data._prevBoneBufferRange };
         if (UpdateBinding(set, bufferBinding) == DescriptorUpdateResult::COUNT) {
             DIVIDE_UNEXPECTED_CALL();
         }

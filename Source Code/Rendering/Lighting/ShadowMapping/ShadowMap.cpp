@@ -265,8 +265,7 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = bindSlot;
-        binding._data._combinedImageSampler._image = shadowTexture.texture()->data();
-        binding._data._combinedImageSampler._samplerHash = shadowTexture.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { shadowTexture.texture()->data(), shadowTexture.samplerHash() };
     }
 }
 

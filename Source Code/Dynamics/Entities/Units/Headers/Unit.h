@@ -60,8 +60,8 @@ namespace Names {
 }
 
 namespace TypeUtil {
-    const char* UnitTypeToString(UnitType unitType) noexcept;
-    UnitType StringToUnitType(const string& name);
+    [[nodiscard]] const char* UnitTypeToString(UnitType unitType) noexcept;
+    [[nodiscard]] UnitType StringToUnitType(const string& name);
 }
 
 /// Unit interface

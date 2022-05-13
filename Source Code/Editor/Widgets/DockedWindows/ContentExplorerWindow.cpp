@@ -101,7 +101,7 @@ namespace Divide {
             if (!_textureLoadQueue.empty()) {
                 const auto [path, name] = _textureLoadQueue.top();
                 _textureLoadQueue.pop();
-                _loadedTextures[_ID((path + "/" + name).c_str())] = getTextureForPath(ResourcePath(path), ResourcePath(name));
+                _loadedTextures[_ID((path + "/" + name._path).c_str())] = getTextureForPath(ResourcePath(path), ResourcePath(name._path));
             }
         }
 
@@ -117,7 +117,8 @@ namespace Divide {
             for (auto&& x : std::filesystem::directory_iterator(p)) {
                 if (is_regular_file(x.path())) {
                     if (IsValidFile(x.path().generic_string().c_str())) {
-                        directoryOut._files.push_back({ directoryOut._path, x.path().filename().generic_string() });
+                        const auto& filename = x.path().filename().generic_string();
+                        directoryOut._files.push_back({ directoryOut._path, {filename, getExtension(filename.c_str())}});
 
                     }
                 } else if (is_directory(x.path())) {
@@ -158,32 +159,32 @@ namespace Divide {
         static Texture_ptr previewTexture = nullptr;
         static Mesh_ptr spawnMesh = nullptr;
 
-        const auto isSoundFile = [](const Str64& fileName) {
-            const string extension = getExtension(fileName.c_str());
+        const auto isSoundFile = [](const char* extension) {
             for (const char* ext : g_soundExtensions) {
-                if (Util::CompareIgnoreCase(extension.substr(1).c_str(), ext)) {
+                if (Util::CompareIgnoreCase(extension, ext)) {
                     return true;
                 }
             }
+
             return false;
         }; 
         
-        const auto isShaderFile = [](const Str64& fileName) {
-            const string extension = getExtension(fileName.c_str());
+        const auto isShaderFile = [](const char* extension) {
             for (const char* ext : g_shaderExtensions) {
-                if (Util::CompareIgnoreCase(extension.substr(1).c_str(), ext)) {
+                if (Util::CompareIgnoreCase(extension, ext)) {
                     return true;
                 }
             }
+
             return false;
         };
         
-        const auto openFileInEditor = [&](const std::pair<Str256, Str64>& file) {
+        const auto openFileInEditor = [&](const std::pair<Str256, File>& file) {
             const string& textEditor = Attorney::EditorGeneralWidget::externalTextEditorPath(_parent);
             if (textEditor.empty()) {
                 Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: No text editor specified!", Time::SecondsToMilliseconds<F32>(3), true);
             } else {
-                if (openFile(textEditor.c_str(), file.first.c_str(), file.second.c_str()) != FileError::NONE) {
+                if (openFile(textEditor.c_str(), file.first.c_str(), file.second._path.c_str()) != FileError::NONE) {
                     Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't open specified source file!", Time::SecondsToMilliseconds<F32>(3), true);
                 }
             }
@@ -224,10 +225,9 @@ namespace Divide {
                 for (const auto& file : _selectedDir->_files) {
                     Texture_ptr tex = nullptr;
                     { // Textures
-                        const string imageExtension = getExtension(file.second.c_str()).substr(1);
                         for (const char* extension : g_imageExtensions) {
-                            if (Util::CompareIgnoreCase(imageExtension.c_str(), extension)) {
-                                const auto it = _loadedTextures.find(_ID((file.first + "/" + file.second).c_str()));
+                            if (Util::CompareIgnoreCase(file.second._extension.c_str(), extension)) {
+                                const auto it = _loadedTextures.find(_ID((file.first + "/" + file.second._path).c_str()));
                                 if (it == std::cend(_loadedTextures) || it->second == nullptr) {
                                     if (!_textureLoadQueueLocked) {
                                         _textureLoadQueue.push(file);
@@ -240,9 +240,9 @@ namespace Divide {
                             }
                         }
                     }
-                    ImGui::PushID(file.second.c_str());
+                    ImGui::PushID(file.second._path.c_str());
 
-                    const GeometryFormat format = tex != nullptr ? GeometryFormat::COUNT : GetGeometryFormatForExtension(getExtension(file.second.c_str()).c_str());
+                    const GeometryFormat format = tex != nullptr ? GeometryFormat::COUNT : GetGeometryFormatForExtension(file.second._extension.c_str());
 
                     bool hasTooltip = false;
                     if (tex != nullptr) {
@@ -261,13 +261,13 @@ namespace Divide {
 
                         const ImVec4 bgColour(imguiContext.IO.KeyShift ? 1.f : 0.f, 0.f, 0.f, imguiContext.IO.KeyShift ? 1.f : 0.f);
                         if (ImGui::ImageButton((void*)(intptr_t)icon->data()._textureHandle, ImVec2(64, 64 / aspect), ImVec2(0,0), ImVec2(1,1), 2, bgColour, ImVec4(1,1,1,1))) {
-                            spawnMesh = getModelForPath(ResourcePath(file.first), ResourcePath(file.second));
+                            spawnMesh = getModelForPath(ResourcePath(file.first), ResourcePath(file.second._path));
                         }
                         hasTooltip = true;
                         if (ImGui::IsItemHovered()) {
                             ImGui::SetTooltip("Hold down [Shift] to spawn directly at the camera position");
                         }
-                    } else if (isSoundFile(file.second)) {
+                    } else if (isSoundFile(file.second._extension.c_str())) {
                         const U16 w = _soundIcon->width();
                         const U16 h = _soundIcon->height();
                          const F32 aspect = w / to_F32(h);
@@ -275,7 +275,7 @@ namespace Divide {
                         if (ImGui::ImageButton((void*)(intptr_t)_soundIcon->data()._textureHandle, ImVec2(64, 64 / aspect))) {
                             //ToDo: Play sound file -Ionut
                         }
-                    } else if (isShaderFile(file.second)) {
+                    } else if (isShaderFile(file.second._extension.c_str())) {
                         const U16 w = _shaderIcon->width();
                         const U16 h = _shaderIcon->height();
                         const F32 aspect = w / to_F32(h);
@@ -293,9 +293,9 @@ namespace Divide {
                         }
                     }
                     if (!hasTooltip && ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(file.second.c_str());
+                        ImGui::SetTooltip(file.second._path.c_str());
                     }
-                    ImGui::Text(file.second.c_str());
+                    ImGui::Text(file.second._path.c_str());
 
                     ImGui::PopID();
                     ImGui::NextColumn();

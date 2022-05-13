@@ -381,16 +381,17 @@ void IMPrimitive::texture(const Texture& texture, const size_t samplerHash) {
         _descriptorSet._bindings.emplace_back();
     } else {
         auto& existingBinding = _descriptorSet._bindings.front();
+        const auto& imageSampler = existingBinding._data.As<DescriptorCombinedImageSampler>();
+
         existingEntry._binding = existingBinding._resourceSlot;
-        existingEntry._data = existingBinding._data._combinedImageSampler._image;
-        existingEntry._sampler = existingBinding._data._combinedImageSampler._samplerHash;
+        existingEntry._data = imageSampler._image;
+        existingEntry._sampler = imageSampler._samplerHash;
     }
 
      if (existingEntry != tempEntry) {
          auto& existingBinding = _descriptorSet._bindings.front();
          existingBinding._resourceSlot = tempEntry._binding;
-         existingBinding._data._combinedImageSampler._image = tempEntry._data;
-         existingBinding._data._combinedImageSampler._samplerHash = tempEntry._sampler;
+         existingBinding._data.As<DescriptorCombinedImageSampler>() = { tempEntry._data, tempEntry._sampler };
         _cmdBufferDirty = true;
     }
 }

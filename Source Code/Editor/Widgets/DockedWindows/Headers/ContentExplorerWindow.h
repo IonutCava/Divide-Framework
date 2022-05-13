@@ -40,10 +40,15 @@ namespace Divide {
     FWD_DECLARE_MANAGED_CLASS(Texture);
     FWD_DECLARE_MANAGED_CLASS(Mesh);
 
+    struct File {
+        Str64 _path;
+        Str32 _extension;
+    };
+
     struct Directory {
         string _path;
         string _name;
-        vector_fast<std::pair<Str256, Str64>> _files;
+        vector_fast<std::pair<Str256, File>> _files;
         vector_fast<eastl::unique_ptr<Directory>> _children;
     };
 
@@ -73,7 +78,7 @@ namespace Divide {
         hashMap<size_t, Texture_ptr> _loadedTextures;
 
         bool _textureLoadQueueLocked = false;
-        std::stack<std::pair<Str256, Str64>> _textureLoadQueue;
+        std::stack<std::pair<Str256, File>> _textureLoadQueue;
     };
 } //namespace Divide
 

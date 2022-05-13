@@ -937,9 +937,11 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                 switch (binding._type) {
                     case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
                         if (bindingSlot != INVALID_TEXTURE_BINDING) {
-                            const TextureData& texData = data._combinedImageSampler._image;
+                            const auto& imageSampler = data.As<DescriptorCombinedImageSampler>();
+
+                            const TextureData& texData = imageSampler._image;
                             const GLuint handle = texData._textureHandle;
-                            const GLuint sampler = GetSamplerHandle(data._combinedImageSampler._samplerHash);
+                            const GLuint sampler = GetSamplerHandle(imageSampler._samplerHash);
                             if (GetStateTracker()->bindTextures(bindingSlot, 1, texData._textureType, &handle, &sampler) == GLStateTracker::BindResult::FAILED) {
                                 DIVIDE_UNEXPECTED_CALL();
                             }
@@ -947,7 +949,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                     } break;
                     case DescriptorSetBindingType::IMAGE_VIEW: {
                         if (bindingSlot != INVALID_TEXTURE_BINDING) {
-                            const TextureViewEntry& texData = data._imageView;
+                            const auto& texData = data.As<ImageViewEntry>();
                             if (makeTextureViewResidentInternal(texData, bindingSlot) == GLStateTracker::BindResult::FAILED) {
                                 DIVIDE_UNEXPECTED_CALL();
                             }
@@ -1052,7 +1054,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                 const TextureDescriptor& descriptor = crtCmd->_texture->descriptor();
                 const GLenum glInternalFormat = GLUtil::internalFormat(descriptor.baseFormat(), descriptor.dataType(), descriptor.srgb(), descriptor.normalized());
 
-                TextureView view = {};
+                ImageView view = {};
                 view._textureData = crtCmd->_texture->data();
                 view._layerRange.set(crtCmd->_layerRange);
                 view._targetType = view._textureData._textureType;
@@ -1476,9 +1478,9 @@ void GL_API::clearStates(const DisplayWindow& window, GLStateTracker* stateTrack
     return result;
 }*/
 
-GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const TextureViewEntry& textureView, const U8 bindingSlot) const {
+GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const ImageViewEntry& textureView, const U8 bindingSlot) const {
     const size_t viewHash = textureView.getHash();
-    TextureView view = textureView._view;
+    ImageView view = textureView._view;
     if (view._targetType == TextureType::COUNT) {
         view._targetType = view._textureData._textureType;
     }
@@ -1514,22 +1516,7 @@ GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const Texture
     const GLuint samplerHandle = GetSamplerHandle(textureView._view._samplerHash);
     return GL_API::GetStateTracker()->bindTextures(static_cast<GLushort>(bindingSlot), 1, view._targetType, &textureID, &samplerHandle);
 }
-/*
-GLStateTracker::BindResult GL_API::makeTextureViewsResidentInternal(const TextureViews& textureViews, const U8 offset, U8 count) const {
-    count = std::min(count, to_U8(textureViews.count()));
 
-    GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
-    for (U8 i = offset; i < count + offset; ++i) {
-        const auto& it = textureViews._entries[i];
-        result = makeTextureViewResidentInternal(it, offset);
-        if (result == GLStateTracker::BindResult::FAILED) {
-            return result;
-        }
-    }
-
-    return result;
-}
-*/
 bool GL_API::setViewport(const Rect<I32>& viewport) {
     return GetStateTracker()->setViewport(viewport);
 }

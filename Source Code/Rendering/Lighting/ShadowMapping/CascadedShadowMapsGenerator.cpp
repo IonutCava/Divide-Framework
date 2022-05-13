@@ -415,8 +415,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-            binding._data._combinedImageSampler._image = shadowAtt.texture()->data();
-            binding._data._combinedImageSampler._samplerHash = shadowAtt.samplerHash();
+            binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt.texture()->data(), shadowAtt.samplerHash() };
         }
         _shaderConstantsCmd._constants.set(_ID("verticalBlur"),     GFX::PushConstantType::BOOL, false);
         _shaderConstantsCmd._constants.set(_ID("layerOffsetRead"),  GFX::PushConstantType::INT,  layerOffset);
@@ -436,8 +435,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-            binding._data._combinedImageSampler._image = blurAtt.texture()->data();
-            binding._data._combinedImageSampler._samplerHash = blurAtt.samplerHash();
+            binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt.texture()->data(), blurAtt.samplerHash() };
         }
 
         GFX::EnqueueCommand(bufferInOut, beginRenderPassVerticalCmd);

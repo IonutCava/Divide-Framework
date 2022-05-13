@@ -153,8 +153,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-        binding._data._combinedImageSampler._image = screenTex;
-        binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
     }
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline });
     GFX::EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _bloomCalcConstants });
@@ -198,15 +197,13 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-        binding._data._combinedImageSampler._image = screenTex;
-        binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT1);
-        binding._data._combinedImageSampler._image = bloomTex;
-        binding._data._combinedImageSampler._samplerHash = bloomAtt.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { bloomTex, bloomAtt.samplerHash() };
     }
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomApplyPipeline });

@@ -364,13 +364,11 @@ string getExtension(const ResourcePath& filePath) {
 }
 
 string getExtension(const char* filePath) {
-    const std::filesystem::path pathIn(filePath);
-    return pathIn.extension().string();
+    return std::filesystem::path{filePath}.extension().string();
 }
 
 string getTopLevelFolderName(const char* filePath) {
-    const std::filesystem::path pathIn(filePath);
-    return pathIn.parent_path().filename().generic_string();
+    return std::filesystem::path{ filePath }.parent_path().filename().generic_string();
 }
 
 string getTopLevelFolderName(const ResourcePath& filePath) {
@@ -378,8 +376,7 @@ string getTopLevelFolderName(const ResourcePath& filePath) {
 }
 
 ResourcePath stripExtension(const char* filePath) noexcept {
-    const std::filesystem::path pathIn(filePath);
-    return ResourcePath{ pathIn.stem().string() };
+    return ResourcePath{ std::filesystem::path{ filePath }.stem().string() };
 }
 
 ResourcePath stripExtension(const ResourcePath& filePath) noexcept {

@@ -93,8 +93,8 @@ namespace Divide {
 
     static_assert(ArrayCount(Names::componentType) == to_base(ComponentType::COUNT) + 1u, "ComponentType name array out of sync!");
     namespace TypeUtil {
-        const char* ComponentTypeToString(const ComponentType compType) noexcept;
-        ComponentType StringToComponentType(const string & name);
+        [[nodiscard]] const char* ComponentTypeToString(const ComponentType compType) noexcept;
+        [[nodiscard]] ComponentType StringToComponentType(const string & name);
     };
 
     enum class EditorComponentFieldType : U8 {

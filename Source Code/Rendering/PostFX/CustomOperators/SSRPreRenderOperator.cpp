@@ -145,22 +145,19 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-        binding._data._combinedImageSampler._image = screenTex;
-        binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT1);
-        binding._data._combinedImageSampler._image = depthTex;
-        binding._data._combinedImageSampler._samplerHash = depthAtt.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { depthTex, depthAtt.samplerHash() };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
-        binding._data._combinedImageSampler._image = normalsTex;
-        binding._data._combinedImageSampler._samplerHash = normalsAtt.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { normalsTex, normalsAtt.samplerHash() };
     }
 
     GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);

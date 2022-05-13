@@ -105,13 +105,13 @@ namespace Attorney {
 };
 
 namespace TypeUtil {
-    const char* GraphicResourceTypeToName(GraphicsResource::Type type) noexcept;
+    [[nodiscard]] const char* GraphicResourceTypeToName(GraphicsResource::Type type) noexcept;
 
-    const char* RenderStageToString(RenderStage stage) noexcept;
-    RenderStage StringToRenderStage(const char* stage) noexcept;
+    [[nodiscard]] const char* RenderStageToString(RenderStage stage) noexcept;
+    [[nodiscard]] RenderStage StringToRenderStage(const char* stage) noexcept;
 
-    const char* RenderPassTypeToString(RenderPassType pass) noexcept;
-    RenderPassType StringToRenderPassType(const char* pass) noexcept;
+    [[nodiscard]] const char* RenderPassTypeToString(RenderPassType pass) noexcept;
+    [[nodiscard]] RenderPassType StringToRenderPassType(const char* pass) noexcept;
 };
 
 struct DebugView final : GUIDWrapper {

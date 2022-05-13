@@ -39,15 +39,15 @@
 namespace Divide {
 
 namespace TypeUtil {
-    const char* ComparisonFunctionToString(ComparisonFunction func) noexcept;
-    const char* StencilOperationToString(StencilOperation op) noexcept;
-    const char* FillModeToString(FillMode mode) noexcept;
-    const char* CullModeToString(CullMode mode) noexcept;
+    [[nodiscard]] const char* ComparisonFunctionToString(ComparisonFunction func) noexcept;
+    [[nodiscard]] const char* StencilOperationToString(StencilOperation op) noexcept;
+    [[nodiscard]] const char* FillModeToString(FillMode mode) noexcept;
+    [[nodiscard]] const char* CullModeToString(CullMode mode) noexcept;
 
-    ComparisonFunction StringToComparisonFunction(const char* name) noexcept;
-    StencilOperation StringToStencilOperation(const char* name) noexcept;
-    FillMode StringToFillMode(const char* name) noexcept;
-    CullMode StringToCullMode(const char* name) noexcept;
+    [[nodiscard]] ComparisonFunction StringToComparisonFunction(const char* name) noexcept;
+    [[nodiscard]] StencilOperation StringToStencilOperation(const char* name) noexcept;
+    [[nodiscard]] FillMode StringToFillMode(const char* name) noexcept;
+    [[nodiscard]] CullMode StringToCullMode(const char* name) noexcept;
 };
 
 class RenderStateBlock final : public GUIDWrapper, public Hashable {

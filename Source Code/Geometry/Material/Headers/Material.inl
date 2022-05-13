@@ -69,11 +69,11 @@ inline bool Material::hasTransparency() const noexcept {
            properties().overrides().transparencyEnabled();
 }
 
-inline bool Material::reflective() const noexcept {
+inline bool Material::isReflective() const noexcept {
     return properties().metallic() > 0.05f && properties().roughness() < 0.99f;
 }
 
-inline bool Material::refractive() const noexcept {
+inline bool Material::isRefractive() const noexcept {
     return hasTransparency() && properties().isRefractive();
 }
 

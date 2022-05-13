@@ -883,7 +883,7 @@ void Material::getTextures(const RenderingComponent& parentComp, NodeMaterialTex
     }
 }
 
-DescriptorSet& Material::getTextureData(const RenderStagePass& renderStagePass) {
+DescriptorSet& Material::getDescriptorSet(const RenderStagePass& renderStagePass) {
     OPTICK_EVENT();
 
     const bool isPrePass = (renderStagePass._passType == RenderPassType::PRE_PASS);
@@ -898,8 +898,7 @@ DescriptorSet& Material::getTextureData(const RenderStagePass& renderStagePass) 
                     auto& texBinding = set._bindings.emplace_back();
                     texBinding._resourceSlot = slot;
                     texBinding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-                    texBinding._data._combinedImageSampler._image = crtTexture->data();
-                    texBinding._data._combinedImageSampler._samplerHash = _textures[slot]._sampler;
+                    texBinding._data.As<DescriptorCombinedImageSampler>() = { crtTexture->data(), _textures[slot]._sampler };
                 }
             };
 
@@ -1095,6 +1094,7 @@ void Material::saveTextureDataToXML(const string& entryName, boost::property_tre
 void Material::loadTextureDataFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
     hashMap<U32, size_t> previousHashValues;
 
+    ScopedLock<SharedMutex> w_lock(_textureLock);
     for (const TextureUsage usage : g_materialTextures) {
         if (pt.get_child_optional(entryName + ".texture." + TypeUtil::TextureUsageToString(usage) + ".name")) {
             const string textureNode = entryName + ".texture." + TypeUtil::TextureUsageToString(usage);
@@ -1126,14 +1126,11 @@ void Material::loadTextureDataFromXML(const string& entryName, const boost::prop
                 TextureOperation& op = _textures[to_base(usage)]._operation;
                 op = TypeUtil::StringToTextureOperation(pt.get<string>(textureNode + ".usage", TypeUtil::TextureOperationToString(op)));
 
-                {
-                    ScopedLock<SharedMutex> w_lock(_textureLock);
-                    const Texture_ptr& crtTex = _textures[to_base(usage)]._ptr;
-                    if (crtTex == nullptr) {
-                        op = TextureOperation::NONE;
-                    } else if (crtTex->assetLocation() + crtTex->assetName() == texPath + texName) {
-                        continue;
-                    }
+                const Texture_ptr& crtTex = _textures[to_base(usage)]._ptr;
+                if (crtTex == nullptr) {
+                    op = TextureOperation::NONE;
+                } else if (crtTex->assetLocation() + crtTex->assetName() == texPath + texName) {
+                    continue;
                 }
 
                 TextureDescriptor texDesc(TextureType::TEXTURE_2D_ARRAY);

@@ -693,8 +693,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-            binding._data._combinedImageSampler._image = hizTexture->data();
-            binding._data._combinedImageSampler._samplerHash = hizAttachment.samplerHash();
+            binding._data.As<DescriptorCombinedImageSampler>() = { hizTexture->data(), hizAttachment.samplerHash() };
         }
         if (s_grassData || s_treeData) {
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
@@ -703,16 +702,14 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_base(ShaderBufferLocation::GRASS_DATA);
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                binding._data._buffer = s_grassData.get();
-                binding._data._range = { 0u, s_grassData->getPrimitiveCount() };
+                binding._data.As<ShaderBufferEntry>() = { s_grassData.get(), { 0u, s_grassData->getPrimitiveCount() } };
             }
 
             if (s_treeData) {
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_base(ShaderBufferLocation::TREE_DATA);
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                binding._data._buffer = s_treeData.get();
-                binding._data._range = { 0u, s_treeData->getPrimitiveCount() };
+                binding._data.As<ShaderBufferEntry>() = { s_treeData.get(), { 0u, s_treeData->getPrimitiveCount() } };
             }
         }
 

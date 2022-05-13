@@ -302,7 +302,7 @@ bool ImageData::loadFromFile(const bool srgb, const U16 refWidth, const U16 refH
                     nvtt::Surface image;
                     bool hasAlpha = false;
                     if (image.load(fullPath.c_str(), &hasAlpha)) {
-                        const bool isGreyScale = false;
+                        constexpr bool isGreyScale = false;
                         const nvtt::Format outputFormat = nvttHelpers::getNVTTFormat(options._outputFormat, options._isNormalMap, hasAlpha, isGreyScale);
 
                         // Setup compression options.

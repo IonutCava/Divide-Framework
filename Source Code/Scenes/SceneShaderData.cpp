@@ -41,8 +41,7 @@ GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::Command
              auto& binding = set._bindings.emplace_back();
             binding._resourceSlot = to_base(ShaderBufferLocation::SCENE_DATA);
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._data._buffer = _sceneShaderData.get();
-            binding._data._range = { 0u, 1u };
+            binding._data.As<ShaderBufferEntry>() = { _sceneShaderData.get(), { 0u, 1u } };
 
             _sceneDataDirty = false;
         }
@@ -54,8 +53,7 @@ GFX::MemoryBarrierCommand SceneShaderData::updateSceneDescriptorSet(GFX::Command
             auto& binding = set._bindings.emplace_back();
             binding._resourceSlot = to_base(ShaderBufferLocation::PROBE_DATA);
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-            binding._data._buffer = _probeShaderData.get();
-            binding._data._range = { 0u, GLOBAL_PROBE_COUNT };
+            binding._data.As<ShaderBufferEntry>() = { _probeShaderData.get(), { 0u, GLOBAL_PROBE_COUNT } };
 
             _probeDataDirty = false;
         }

@@ -1517,8 +1517,7 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-        binding._data._combinedImageSampler._image = inputAttachment.texture()->data();
-        binding._data._combinedImageSampler._samplerHash = inputAttachment.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { inputAttachment.texture()->data(), inputAttachment.samplerHash() };
 
         pushConstantsCmd._constants.set(_ID("verticalBlur"), GFX::PushConstantType::INT, false);
         if (gaussian) {
@@ -1563,8 +1562,7 @@ void GFXDevice::blurTarget(RenderTargetHandle& blurSource,
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-        binding._data._combinedImageSampler._image = bufferAttachment.texture()->data();
-        binding._data._combinedImageSampler._samplerHash = bufferAttachment.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { bufferAttachment.texture()->data(), bufferAttachment.samplerHash() };
 
         GFX::EnqueueCommand(bufferInOut, pushConstantsCmd);
 
@@ -1772,8 +1770,7 @@ bool GFXDevice::uploadGPUBlock() {
         _gpuBlock._camNeedsUpload = false;
 
         DescriptorSetBindingData camData{};
-        camData._buffer = _gfxBuffers.crtBuffers()._camDataBuffer.get();
-        camData._range = { 0, 1 };
+        camData.As<ShaderBufferEntry>() = { _gfxBuffers.crtBuffers()._camDataBuffer.get(), { 0, 1 } };
         updateDescriptorSet(DescriptorSetUsage::PER_BATCH_SET, to_U8(ShaderBufferLocation::CAM_BLOCK), camData);
         return true;
     }
@@ -1978,25 +1975,33 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
 
             switch (binding._type) {
                 case DescriptorSetBindingType::IMAGE: {
-                    DIVIDE_ASSERT(data._image._texture != nullptr);
-                    data._image._texture->bindLayer(bindingSlot,
-                                                    data._image._level,
-                                                    data._image._layer,
-                                                    data._image._layered,
-                                                    data._image._flag);
+                    if (allowEmpty && data.Has<Image>()) {
+                        continue;
+                    }
+                    const auto& image = data.As<Image>();
+                    DIVIDE_ASSERT(image._texture != nullptr);
+                    image._texture->bindLayer(bindingSlot,
+                                              image._level,
+                                              image._layer,
+                                              image._layered,
+                                              image._flag);
                 } break;
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                 case DescriptorSetBindingType::ATOMIC_BUFFER: {
-                    if (allowEmpty && (data._buffer == nullptr || data._range._length == 0u)) {
-                        // e.g.: Scene data may become invalid when switchin scenes or starting the application
-                        continue;
+                    if (allowEmpty &&
+                        (!data.Has<ShaderBufferEntry>() ||
+                          data.As<ShaderBufferEntry>()._buffer == nullptr ||
+                          data.As<ShaderBufferEntry>()._range._length == 0u))
+                    {
+                            continue;
                     }
 
-                    DIVIDE_ASSERT(data._buffer != nullptr);
-                    Attorney::ShaderBufferBind::bindRange(*data._buffer,
+                    const auto& bufferEntry = data.As<ShaderBufferEntry>();
+                    DIVIDE_ASSERT(bufferEntry._buffer != nullptr);
+                    Attorney::ShaderBufferBind::bindRange(*bufferEntry._buffer,
                                                           bindingSlot,
-                                                          data._range);
+                                                          bufferEntry._range);
                 } break;
                 default: break;
             }
@@ -2258,8 +2263,7 @@ std::pair<const Texture_ptr&, size_t> GFXDevice::constructHIZ(RenderTargetID dep
     auto& binding = set._bindings.emplace_back();
     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
     binding._resourceSlot = to_base(TextureUsage::DEPTH);
-    binding._data._combinedImageSampler._image = hizData;
-    binding._data._combinedImageSampler._samplerHash = att.samplerHash();
+    binding._data.As<DescriptorCombinedImageSampler>() = { hizData, att.samplerHash() };
 
     // We skip the first level as that's our full resolution image
     U16 twidth = width;
@@ -2328,8 +2332,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_base(TextureUsage::UNIT0);
-        binding._data._combinedImageSampler._image = depthBuffer->data();
-        binding._data._combinedImageSampler._samplerHash = samplerHash;
+        binding._data.As<DescriptorCombinedImageSampler>() = { depthBuffer->data(), samplerHash };
     }
     {
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
@@ -2337,8 +2340,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = 0u;
         binding._type = DescriptorSetBindingType::ATOMIC_BUFFER;
-        binding._data._buffer = cullBuffer;
-        binding._data._range = { 0u, 1u };
+        binding._data.As<ShaderBufferEntry>() = { cullBuffer, { 0u, 1u } };
     }
     mat4<F32> viewProjectionMatrix;
     mat4<F32>::Multiply(cameraSnapshot._viewMatrix, cameraSnapshot._projectionMatrix, viewProjectionMatrix);
@@ -2415,8 +2417,7 @@ void GFXDevice::drawTextureInViewport(const TextureData data, const size_t sampl
     auto& binding = set._bindings.emplace_back();
     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
     binding._resourceSlot = to_base(TextureUsage::UNIT0);
-    binding._data._combinedImageSampler._image = data;
-    binding._data._combinedImageSampler._samplerHash = samplerHash;
+    binding._data.As<DescriptorCombinedImageSampler>() = { data, samplerHash };
 
     GFX::EnqueueCommand(bufferInOut, GFX::PushViewportCommand{ viewport });
 
@@ -2669,8 +2670,7 @@ void GFXDevice::renderDebugViews(const Rect<I32> targetViewport, const I32 paddi
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = view->_textureBindSlot;
-        binding._data._combinedImageSampler._image = view->_texture->data();
-        binding._data._combinedImageSampler._samplerHash = view->_samplerHash;
+        binding._data.As<DescriptorCombinedImageSampler>() = { view->_texture->data(), view->_samplerHash };
 
          GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
 

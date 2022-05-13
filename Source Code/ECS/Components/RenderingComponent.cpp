@@ -31,8 +31,6 @@
 namespace Divide {
 
 namespace {
-    constexpr U8 MAX_LOD_LEVEL = 4u;
-
     constexpr I16 g_renderRangeLimit = I16_MAX;
 }
 
@@ -340,8 +338,13 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
 
     if (refreshData) {
         U8 drawCmdOptions = 0u;
-        ToggleBit(drawCmdOptions, CmdRenderOptions::RENDER_GEOMETRY, (renderOptionEnabled(RenderOptions::RENDER_GEOMETRY) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY)));
-        ToggleBit(drawCmdOptions, CmdRenderOptions::RENDER_WIREFRAME, (renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME)));
+        ToggleBit(drawCmdOptions,
+                  CmdRenderOptions::RENDER_GEOMETRY,
+                  (renderOptionEnabled(RenderOptions::RENDER_GEOMETRY) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY)));
+
+        ToggleBit(drawCmdOptions,
+                  CmdRenderOptions::RENDER_WIREFRAME,
+                  (renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) || sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME)));
 
         if (!hasCommands) {
             ScopedLock<SharedMutex> w_lock(_drawCommands._dataLock);
@@ -393,7 +396,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
             if (_materialInstance != nullptr) {
                 pipelineDescriptor._stateHash = _materialInstance->getOrCreateRenderStateBlock(renderStagePass);
                 pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramHandle(renderStagePass);
-                pkg.descriptorSetCmd()._set = _materialInstance->getTextureData(renderStagePass);
+                pkg.descriptorSetCmd()._set = _materialInstance->getDescriptorSet(renderStagePass);
             } else {
                 pipelineDescriptor._stateHash = _context.getDefaultStateBlock(false);
                 pipelineDescriptor._shaderProgramHandle = _context.defaultIMShaderWorld()->handle();

@@ -79,8 +79,8 @@ FORCE_INLINE [[nodiscard]] constexpr PrimitiveTopology GetGeometryBufferType(con
 }
 
 namespace TypeUtil {
-    const char* ObjectTypeToString(const ObjectType objectType) noexcept;
-    ObjectType StringToObjectType(const string& name);
+    [[nodiscard]] const char* ObjectTypeToString(const ObjectType objectType) noexcept;
+    [[nodiscard]] ObjectType StringToObjectType(const string& name);
 };
 
 class Object3D : public SceneNode {

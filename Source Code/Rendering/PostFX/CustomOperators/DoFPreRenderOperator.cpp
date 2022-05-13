@@ -115,15 +115,13 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-        binding._data._combinedImageSampler._image = screenTex;
-        binding._data._combinedImageSampler._samplerHash = screenAtt.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::DEPTH);
-        binding._data._combinedImageSampler._image = extraTex;
-        binding._data._combinedImageSampler._samplerHash = extraAtt.samplerHash();
+        binding._data.As<DescriptorCombinedImageSampler>() = { extraTex, extraAtt.samplerHash() };
     }
 
     GFX::BeginRenderPassCommand beginRenderPassCmd{};

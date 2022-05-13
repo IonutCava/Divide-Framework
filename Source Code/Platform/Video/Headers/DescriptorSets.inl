@@ -34,7 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _DESCRIPTOR_SETS_INL_
 
 namespace Divide {
-    FORCE_INLINE bool operator==(const TextureView& lhs, const TextureView &rhs) noexcept {
+    FORCE_INLINE bool operator==(const ImageView& lhs, const ImageView&rhs) noexcept {
         return lhs._samplerHash == rhs._samplerHash &&
                lhs._targetType == rhs._targetType &&
                lhs._mipLevels == rhs._mipLevels &&
@@ -42,7 +42,7 @@ namespace Divide {
                lhs._textureData == rhs._textureData;
     }
 
-    FORCE_INLINE bool operator!=(const TextureView& lhs, const TextureView &rhs) noexcept {
+    FORCE_INLINE bool operator!=(const ImageView& lhs, const ImageView&rhs) noexcept {
         return lhs._samplerHash != rhs._samplerHash ||
                lhs._targetType != rhs._targetType ||
                lhs._mipLevels != rhs._mipLevels ||
@@ -50,12 +50,12 @@ namespace Divide {
                lhs._textureData != rhs._textureData;
     }
 
-    inline bool operator==(const TextureViewEntry& lhs, const TextureViewEntry &rhs) noexcept {
+    inline bool operator==(const ImageViewEntry& lhs, const ImageViewEntry&rhs) noexcept {
         return lhs._view == rhs._view &&
                lhs._descriptor == rhs._descriptor;
     }
 
-    inline bool operator!=(const TextureViewEntry& lhs, const TextureViewEntry &rhs) noexcept {
+    inline bool operator!=(const ImageViewEntry& lhs, const ImageViewEntry&rhs) noexcept {
         return lhs._view != rhs._view ||
                lhs._descriptor != rhs._descriptor;
     }

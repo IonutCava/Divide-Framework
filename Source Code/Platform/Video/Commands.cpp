@@ -224,11 +224,12 @@ string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
                 ret.append("    ");
             }
             const auto& data = binding._data;
+            const auto& bufferEntry = data.As<ShaderBufferEntry>();
             ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] ]\n",
                        binding._resourceSlot,
-                       data._buffer->getGUID(),
-                       data._range._startOffset,
-                       data._range._length));
+                       bufferEntry._buffer->getGUID(),
+                       bufferEntry._range._startOffset,
+                       bufferEntry._range._length));
         }
     }
     for (const auto& binding : set._bindings) {
@@ -247,22 +248,22 @@ string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
             if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER) {
                 ret.append(Util::StringFormat("Texture [ %d - %d - %zu ]\n",
                            binding._resourceSlot,
-                           binding._data._combinedImageSampler._image._textureHandle,
-                           binding._data._combinedImageSampler._samplerHash));
+                           binding._data.As<DescriptorCombinedImageSampler>()._image._textureHandle,
+                           binding._data.As<DescriptorCombinedImageSampler>()._samplerHash));
             } else if (binding._type == DescriptorSetBindingType::IMAGE_VIEW) {
                 ret.append(Util::StringFormat("Texture layers [ %d - [%d - %d ]]\n",
                            binding._resourceSlot,
-                           binding._data._imageView._view._layerRange.min,
-                           binding._data._imageView._view._layerRange.max));
+                           binding._data.As<ImageViewEntry>()._view._layerRange.min,
+                           binding._data.As<ImageViewEntry>()._view._layerRange.max));
             } else {
                 ret.append(Util::StringFormat("Image binds: [ %d - [%d - %d - %s]",
                            binding._resourceSlot,
-                           binding._data._image._layer,
-                           binding._data._image._level,
-                           binding._data._image._flag == Image::Flag::READ
-                                                       ? "READ" 
-                                                       : binding._data._image._flag == Image::Flag::WRITE
-                                                                                     ? "WRITE" : "READ_WRITE"));
+                           binding._data.As<Image>()._layer,
+                           binding._data.As<Image>()._level,
+                           binding._data.As<Image>()._flag == Image::Flag::READ
+                                                            ? "READ" 
+                                                            : binding._data.As<Image>()._flag == Image::Flag::WRITE
+                                                                                               ? "WRITE" : "READ_WRITE"));
             }
         }
     }

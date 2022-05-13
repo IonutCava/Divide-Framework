@@ -68,8 +68,8 @@ static constexpr std::array<F32, to_base(FStops::COUNT)> g_FStopValues = {
 };
 
 namespace TypeUtil {
-    const char* FStopsToString(FStops stop) noexcept;
-    FStops StringToFStops(const string& name);
+    [[nodiscard]] const char* FStopsToString(FStops stop) noexcept;
+    [[nodiscard]] FStops StringToFStops(const string& name);
 };
 
 class GFXDevice;

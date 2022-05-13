@@ -1099,5 +1099,8 @@
     <None Include="..\..\Source Code\ECS\Systems\Headers\ECSSystem.inl">
       <Filter>ECS\Systems\Headers</Filter>
     </None>
+    <None Include="..\..\Source Code\Rendering\PostFX\Headers\PreRenderBatch.inl">
+      <Filter>Rendering\PostFX\Headers</Filter>
+    </None>
   </ItemGroup>
 </Project>

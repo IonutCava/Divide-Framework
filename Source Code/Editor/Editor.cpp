@@ -1689,7 +1689,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
                 binding._resourceSlot = to_U8(TextureUsage::UNIT1);
                 if (isTextureCube) {
                     binding._type = DescriptorSetBindingType::IMAGE_VIEW;
-                    TextureViewEntry& entry = binding._data._imageView;
+                    ImageViewEntry& entry = binding._data.As<ImageViewEntry>();
                     entry._view._textureData = data._texture->data();
                     entry._descriptor = data._texture->descriptor();
                     entry._view._targetType = TextureType::TEXTURE_2D_ARRAY;
@@ -1698,8 +1698,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
                     entry._view._layerRange.set(0u, data._texture->numLayers() * 6u);
                 } else {
                     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
-                    binding._data._combinedImageSampler._image = data._texture->data();
-                    binding._data._combinedImageSampler._samplerHash = texSampler;
+                    binding._data.As<DescriptorCombinedImageSampler>() = { data._texture->data(), texSampler };
                 }
             }
         }

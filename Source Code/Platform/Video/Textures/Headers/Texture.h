@@ -50,11 +50,11 @@ namespace Attorney {
 };
 
 namespace TypeUtil {
-    const char* WrapModeToString(TextureWrap wrapMode) noexcept;
-    TextureWrap StringToWrapMode(const string& wrapMode);
+    [[nodiscard]] const char* WrapModeToString(TextureWrap wrapMode) noexcept;
+    [[nodiscard]] TextureWrap StringToWrapMode(const string& wrapMode);
 
-    const char* TextureFilterToString(TextureFilter filter) noexcept;
-    TextureFilter StringToTextureFilter(const string& filter);
+    [[nodiscard]] const char* TextureFilterToString(TextureFilter filter) noexcept;
+    [[nodiscard]] TextureFilter StringToTextureFilter(const string& filter);
 };
 
  TYPEDEF_SMART_POINTERS_FOR_TYPE(Texture);

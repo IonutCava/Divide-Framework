@@ -7,37 +7,13 @@
 
 namespace Divide {
 
-    bool ShaderBufferBinding::set(const ShaderBufferBinding& other) noexcept {
-        return set(other._binding, other._buffer, other._elementRange);
-    }
-
-    bool ShaderBufferBinding::set(const ShaderBufferLocation binding,
-                                  ShaderBuffer* buffer,
-                                  const BufferRange& elementRange) noexcept {
-        bool ret = false;
-        if (_binding != binding) {
-            _binding = binding;
-            ret = true;
-        }
-        if (_buffer != buffer) {
-            _buffer = buffer;
-            ret = true;
-        }
-        if (_elementRange != elementRange) {
-            _elementRange = elementRange;
-            ret = true;
-        }
-
-        return ret;
-    }
-
-    size_t TextureView::getHash() const {
+    size_t ImageView::getHash() const {
         _hash = GetHash(_textureData);
         Util::Hash_combine(_hash, _targetType, _mipLevels.x, _mipLevels.y, _layerRange.x, _layerRange.y);
         return _hash;
     }
 
-    size_t TextureViewEntry::getHash() const {
+    size_t ImageViewEntry::getHash() const {
         _hash = _view.getHash();
         Util::Hash_combine(_hash, _descriptor.getHash());
         return _hash;
@@ -48,8 +24,9 @@ namespace Divide {
             for (const auto& binding : set._bindings) {
                 switch (binding._type) {
                     case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
-                        if (binding._data._combinedImageSampler._image._textureType != TextureType::COUNT &&
-                            binding._data._combinedImageSampler._image._textureHandle != 0u)
+                        const auto& imageSampler = binding._data.As<DescriptorCombinedImageSampler>();
+                        if (imageSampler._image._textureType != TextureType::COUNT &&
+                            imageSampler._image._textureHandle != 0u)
                         {
                             // We have a valid image
                             return false;
@@ -58,20 +35,20 @@ namespace Divide {
                     case DescriptorSetBindingType::UNIFORM_BUFFER:
                     case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                     case DescriptorSetBindingType::ATOMIC_BUFFER: {
-                        if (binding._data._buffer != nullptr)
+                        if (binding._data.As<ShaderBufferEntry>()._buffer != nullptr)
                         {
                             // We have a buffer
                             return false;
                         }
                     } break;
                     case DescriptorSetBindingType::IMAGE: {
-                        if (binding._data._image._texture != nullptr) {
+                        if (binding._data.As<Image>()._texture != nullptr) {
                             // We have an image
                             return false;
                         }
                     } break;
                     case DescriptorSetBindingType::IMAGE_VIEW: {
-                        if (binding._data._imageView.isValid()) {
+                        if (binding._data.As<ImageViewEntry>().isValid()) {
                             // We have a valid image view
                             return false;
                         }
@@ -99,18 +76,6 @@ namespace Divide {
         return DescriptorUpdateResult::NEW_ENTRY_ADDED;
     }
 
-    bool operator==(const ShaderBufferBinding& lhs, const ShaderBufferBinding &rhs) noexcept {
-        return lhs._binding == rhs._binding &&
-               lhs._elementRange == rhs._elementRange &&
-               Compare(lhs._buffer, rhs._buffer);
-    }
-
-    bool operator!=(const ShaderBufferBinding& lhs, const ShaderBufferBinding &rhs) noexcept {
-        return lhs._binding != rhs._binding ||
-               lhs._elementRange != rhs._elementRange ||
-               !Compare(lhs._buffer, rhs._buffer);
-    }
-
     bool operator==(const Image& lhs, const Image& rhs) noexcept {
         return lhs._flag == rhs._flag &&
                lhs._layered == rhs._layered &&
@@ -128,18 +93,20 @@ namespace Divide {
     }
 
     bool operator==(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept {
-        return lhs._range == rhs._range &&
-               lhs._combinedImageSampler == rhs._combinedImageSampler &&
-               lhs._image == rhs._image &&
-               lhs._imageView == rhs._imageView &&
-               Compare(lhs._buffer, rhs._buffer);
+        return lhs._resource == rhs._resource;
     }
 
     bool operator!=(const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept {
+        return lhs._resource != rhs._resource;
+    }
+
+    bool operator==(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept {
+        return lhs._range == rhs._range &&
+               Compare(lhs._buffer, rhs._buffer);
+    }
+
+    bool operator!=(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept {
         return lhs._range != rhs._range ||
-               lhs._combinedImageSampler != rhs._combinedImageSampler ||
-               lhs._image != rhs._image ||
-               lhs._imageView != rhs._imageView ||
                !Compare(lhs._buffer, rhs._buffer);
     }
 }; //namespace Divide
