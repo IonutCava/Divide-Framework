@@ -47,19 +47,25 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
                                        public RingBuffer {
    public:
      struct IndexBuffer {
-         size_t count = 0u;
-         size_t offsetCount = 0u;
-         bufferPtr data = nullptr;
-         bool smallIndices = false;
-         bool indicesNeedCast = false;
-         bool dynamic = false;
+         bufferPtr data{ nullptr };
+         size_t count{ 0u };
+         size_t offsetCount{ 0u };
+         bool smallIndices{ false };
+         bool indicesNeedCast{ false };
+         bool dynamic{ false };
      };
 
+
      struct SetBufferParams {
-         BufferParams _bufferParams;
-         U32 _buffer = 0u;
-         bool _useRingBuffer = false;
-         bool _useAutoSyncObjects = true;
+         struct BufferBindConfig {
+             U32 _bufferIdx{ 0u };
+             U32 _bindIdx{ 0u };
+         };
+
+         BufferParams _bufferParams{};
+         BufferBindConfig _bindConfig{};
+         bool _useRingBuffer{ false };
+         bool _useAutoSyncObjects{ true };
      };
 
    public:

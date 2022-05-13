@@ -195,6 +195,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     PROPERTY_R(bool, showAxis, false);
     PROPERTY_R(bool, receiveShadows, false);
+    PROPERTY_RW(bool, primitiveRestartRequired, false);
     PROPERTY_R(bool, castsShadows, false);
     PROPERTY_RW(bool, occlusionCull, true);
     PROPERTY_RW(F32, dataFlag, 1.0f);

@@ -72,7 +72,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
             GenericVertexData& buffer = getDataBuffer(static_cast<RenderStage>(j), i);
 
             GenericVertexData::SetBufferParams params = {};
-            params._buffer = g_particleGeometryBuffer;
+            params._bindConfig = { g_particleGeometryBuffer, g_particleGeometryBuffer };
             params._bufferParams._elementCount = to_U32(geometry.size());
             params._bufferParams._elementSize = sizeof(vec3<F32>);
             params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
@@ -193,7 +193,7 @@ bool ParticleEmitter::updateData() {
             GenericVertexData& buffer = getDataBuffer(static_cast<RenderStage>(j), i);
 
             GenericVertexData::SetBufferParams params = {};
-            params._buffer = g_particlePositionBuffer;
+            params._bindConfig = { g_particlePositionBuffer, g_particlePositionBuffer };
             params._useRingBuffer = true;
 
             params._bufferParams._elementCount = particleCount;
@@ -204,7 +204,7 @@ bool ParticleEmitter::updateData() {
 
             buffer.setBuffer(params);
 
-            params._buffer = g_particleColourBuffer;
+            params._bindConfig = { g_particleColourBuffer, g_particleColourBuffer };
             params._bufferParams._elementCount = particleCount;
             params._bufferParams._elementSize = sizeof(UColour4);
 
@@ -273,7 +273,6 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
             GenericDrawCommand& cmd = cmds._data.front()._drawCommands.front();
             cmd._cmd.primCount = to_U32(_particles->_renderingPositions.size());
             cmd._sourceBuffer = getDataBuffer(renderStagePass._stage, 0).handle();
-            cmd._bufferIndex = 0u;
         }
         if (renderStagePass._passType == RenderPassType::PRE_PASS) {
             const vec3<F32>& eyePos = cameraSnapshot._eye;

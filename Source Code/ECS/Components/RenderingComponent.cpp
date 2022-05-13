@@ -392,6 +392,7 @@ bool RenderingComponent::prepareDrawPackage(const CameraSnapshot& cameraSnapshot
                 }
             }
             PipelineDescriptor pipelineDescriptor = {};
+            pipelineDescriptor._primitiveRestartEnabled = primitiveRestartRequired();
 
             if (_materialInstance != nullptr) {
                 pipelineDescriptor._stateHash = _materialInstance->getOrCreateRenderStateBlock(renderStagePass);
@@ -488,9 +489,6 @@ void RenderingComponent::getCommandBuffer(RenderPackage* const pkg, GFX::Command
             GFX::DrawCommand* cmd = bufferInOut.add(drawCmd);
             for (GenericDrawCommand& gCmd : cmd->_drawCommands) {
                 gCmd._commandOffset = startOffset++;
-                if (gCmd._bufferIndex == GenericDrawCommand::INVALID_BUFFER_INDEX) {
-                    gCmd._bufferIndex = 0u;
-                }
             }
         }
     }

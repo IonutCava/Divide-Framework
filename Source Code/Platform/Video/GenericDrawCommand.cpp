@@ -10,8 +10,7 @@ namespace GenericDrawCommandResults {
 };
 
 bool Compatible(const GenericDrawCommand& lhs, const GenericDrawCommand& rhs) noexcept {
-    return lhs._bufferIndex == rhs._bufferIndex &&
-           lhs._sourceBuffer == rhs._sourceBuffer;
+    return lhs._sourceBuffer == rhs._sourceBuffer;
 }
 
 }; //namespace Divide

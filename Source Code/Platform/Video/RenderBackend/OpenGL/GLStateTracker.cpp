@@ -127,7 +127,7 @@ bool GLStateTracker::getOrCreateVAO(const size_t attributeHash, GLuint& vaoOut) 
     return false;
 }
 
-void GLStateTracker::setVertexFormat(const PrimitiveTopology topology, const AttributeMap& attributes, const size_t attributeHash) {
+void GLStateTracker::setVertexFormat(const PrimitiveTopology topology, const bool primitiveRestartEnabled, const AttributeMap& attributes, const size_t attributeHash) {
     _activeTopology = topology;
 
     GLuint vao = GLUtil::k_invalidObjectID;
@@ -139,6 +139,8 @@ void GLStateTracker::setVertexFormat(const PrimitiveTopology topology, const Att
     if (setActiveVAO(vao) == BindResult::FAILED) {
         DIVIDE_UNEXPECTED_CALL();
     }
+
+    togglePrimitiveRestart(primitiveRestartEnabled);
 }
 
 GLStateTracker::BindResult GLStateTracker::setStateBlock(size_t stateBlockHash) {
@@ -231,8 +233,7 @@ bool GLStateTracker::setPixelUnpackAlignment(const GLint unpackAlignment,
     return changed;
 }
 
-/// Enable or disable primitive restart and ensure that the correct index size
-/// is used
+/// Enable or disable primitive restart and ensure that the correct index size is used
 void GLStateTracker::togglePrimitiveRestart(const bool state) {
     // Toggle primitive restart on or off
     if (_primitiveRestartEnabled != state) {

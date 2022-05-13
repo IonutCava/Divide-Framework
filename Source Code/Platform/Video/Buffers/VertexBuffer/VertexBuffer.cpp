@@ -368,7 +368,7 @@ void VertexBuffer::computeTangents() {
 
 void VertexBuffer::reset() {
     _staticBuffer = false;
-    primitiveRestartEnabled(false);
+    primitiveRestartRequired(false);
     _partitions.clear();
     _data.clear();
     _indices.clear();
@@ -379,7 +379,7 @@ void VertexBuffer::fromBuffer(const VertexBuffer& other) {
     reset();
     staticBuffer(other.staticBuffer());
     useLargeIndices(other.useLargeIndices());
-    primitiveRestartEnabled(other.primitiveRestartEnabled());
+    primitiveRestartRequired(other.primitiveRestartRequired());
     unchecked_copy(_indices, other._indices);
     unchecked_copy(_data, other._data);
     _partitions = other._partitions;
@@ -408,7 +408,7 @@ bool VertexBuffer::deserialize(ByteBuffer& dataIn) {
             dataIn >> _data;
             dataIn >> _useAttribute;
             dataIn >> _useLargeIndices;
-            dataIn >> _primitiveRestartEnabled;
+            dataIn >> _primitiveRestartRequired;
 
             return true;
         }
@@ -428,7 +428,7 @@ bool VertexBuffer::serialize(ByteBuffer& dataOut) const {
         dataOut << _data;
         dataOut << _useAttribute;
         dataOut << _useLargeIndices;
-        dataOut << _primitiveRestartEnabled;
+        dataOut << _primitiveRestartRequired;
 
         return true;
     }

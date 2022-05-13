@@ -7,7 +7,7 @@ namespace Divide {
 VertexDataInterface::VDIPool VertexDataInterface::s_VDIPool;
 
 VertexDataInterface::VertexDataInterface(GFXDevice& context)
-  : GraphicsResource(context, Type::VERTEX_BUFFER, getGUID(), 0u)
+  : GraphicsResource(context, Type::BUFFER, getGUID(), 0u)
 {
     _handle = s_VDIPool.registerExisting(*this);
 }

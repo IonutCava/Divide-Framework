@@ -25,9 +25,6 @@
 namespace Divide {
 
 namespace {
-    // If true, terrain will be rendered in a single drawcall.
-    constexpr bool USE_BASE_VERTEX_OFFSETS = true;
-
     vector_fast<U16> CreateTileQuadListIB()
     {
         vector_fast<U16> indices(TessellationParams::QUAD_LIST_INDEX_COUNT, 0u);
@@ -233,28 +230,18 @@ void Terrain::postBuild() {
 
             _terrainBuffer = _context.newGVD(1);
             _terrainBuffer->setIndexBuffer(idxBuff);
-            if_constexpr(USE_BASE_VERTEX_OFFSETS) {
-                vector<TileRing::InstanceData> vbData;
-                vbData.reserve(TessellationParams::QUAD_LIST_INDEX_COUNT * ringCount);
 
-                for (size_t i = 0u; i < ringCount; ++i) {
-                    vector<TileRing::InstanceData> ringData = _tileRings[i]->createInstanceDataVB(to_I32(i));
-                    vbData.insert(cend(vbData), cbegin(ringData), cend(ringData));
-                    params._bufferParams._elementCount += to_U32(ringData.size());
-                }
-                params._buffer = 0u;
-                params._bufferParams._initialData = { (Byte*)vbData.data(), vbData.size() * sizeof(TileRing::InstanceData) };
-                _terrainBuffer->setBuffer(params);
-            } else {
+            vector<TileRing::InstanceData> vbData;
+            vbData.reserve(TessellationParams::QUAD_LIST_INDEX_COUNT * ringCount);
 
-                for (size_t i = 0; i < ringCount; ++i) {
-                    vector<TileRing::InstanceData> ringData = _tileRings[i]->createInstanceDataVB(to_I32(i));
-                    params._buffer = to_U32(i);
-                    params._bufferParams._initialData = { (Byte*)ringData.data(), ringData.size() * sizeof(TileRing::InstanceData) };
-                    params._bufferParams._elementCount = to_U32(ringData.size());
-                    _terrainBuffer->setBuffer(params);
-                }
+            for (size_t i = 0u; i < ringCount; ++i) {
+                vector<TileRing::InstanceData> ringData = _tileRings[i]->createInstanceDataVB(to_I32(i));
+                vbData.insert(cend(vbData), cbegin(ringData), cend(ringData));
+                params._bufferParams._elementCount += to_U32(ringData.size());
             }
+            params._bindConfig = { 0u, 0u };
+            params._bufferParams._initialData = { (Byte*)vbData.data(), vbData.size() * sizeof(TileRing::InstanceData) };
+            _terrainBuffer->setBuffer(params);
         }
     }
 }
@@ -324,20 +311,11 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawComman
     GenericDrawCommand cmd = {};
     cmd._sourceBuffer = _terrainBuffer->handle();
     cmd._cmd.indexCount = to_U32(TessellationParams::QUAD_LIST_INDEX_COUNT);
-    cmd._bufferIndex = 0u;
-    if_constexpr(USE_BASE_VERTEX_OFFSETS) {
-        for (const auto& tileRing : _tileRings) {
-            cmd._cmd.primCount += tileRing->tileCount();
-        }
-        cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
-    } else {
-        for (const auto& tileRing : _tileRings) {
-            cmd._cmd.primCount = tileRing->tileCount();
-            cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
-            ++cmd._bufferIndex;
-        }
+    for (const auto& tileRing : _tileRings) {
+        cmd._cmd.primCount += tileRing->tileCount();
     }
-    
+
+    cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
     Object3D::buildDrawCommands(sgn, cmdsOut);
 }

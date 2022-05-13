@@ -2992,7 +2992,7 @@ GenericVertexData* GFXDevice::getOrCreateIMGUIBuffer(const I64 windowGUID, const
     ret->renderIndirect(false);
 
     GenericVertexData::SetBufferParams params = {};
-    params._buffer = 0;
+    params._bindConfig = { 0u, 0u };
     params._useRingBuffer = true;
     params._useAutoSyncObjects = false; // we manually call sync after all draw commands are submitted
 

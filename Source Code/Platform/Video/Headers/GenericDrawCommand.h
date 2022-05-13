@@ -70,13 +70,11 @@ enum class CmdRenderOptions : U16 {
 
 #pragma pack(push, 1)
 struct GenericDrawCommand {
-    static constexpr U8 INVALID_BUFFER_INDEX = U8_MAX;
     IndirectDrawCommand _cmd {};                                          // 32 bytes
     PoolHandle _sourceBuffer {};                                          // 12 bytes
-    U24 _commandOffset = 0u;                                              // 8  bytes
-    U16 _drawCount = 1u;                                                  // 5  bytes
-    U16 _renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY);      // 3  bytes
-    U8  _bufferIndex  = INVALID_BUFFER_INDEX;                             // 1  bytes
+    U32 _commandOffset = 0u;                                              // 8  bytes
+    U16 _drawCount = 1u;                                                  // 4  bytes
+    U16 _renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY);      // 2  bytes
 };
 #pragma pack(pop)
 

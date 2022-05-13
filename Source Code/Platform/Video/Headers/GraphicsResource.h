@@ -41,7 +41,7 @@ public:
     enum class Type : U8 {
         RENDER_TARGET,
         SHADER_BUFFER,
-        VERTEX_BUFFER,
+        BUFFER,
         SHADER,
         SHADER_PROGRAM,
         TEXTURE,
@@ -67,7 +67,7 @@ private:
 
 namespace Names {
     static const char* resourceTypes[] = {
-        "RENDER_TARGET", "SHADER_BUFFER", "VERTEX_BUFFER", "SHADER", "SHADER_PROGRAM", "TEXTURE", "UNKNOWN"
+        "RENDER_TARGET", "SHADER_BUFFER", "BUFFER", "SHADER", "SHADER_PROGRAM", "TEXTURE", "UNKNOWN"
     };
 };
 

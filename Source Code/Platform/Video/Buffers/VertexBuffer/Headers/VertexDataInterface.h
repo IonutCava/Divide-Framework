@@ -123,6 +123,7 @@ public:
 class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsResource {
    public:
     using Handle = PoolHandle;
+    static constexpr Handle INVALID_VDI_HANDLE{U16_MAX, 0u};
 
     explicit VertexDataInterface(GFXDevice& context);
     virtual ~VertexDataInterface();
@@ -130,7 +131,7 @@ class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsReso
     virtual void draw(const GenericDrawCommand& command) = 0;
 
     PROPERTY_R(Handle, handle);
-    PROPERTY_RW(bool, primitiveRestartEnabled, false);
+    PROPERTY_RW(bool, primitiveRestartRequired, false);
 
     using VDIPool = ObjectPool<VertexDataInterface, 4096>;
     // We only need this pool in order to get a valid handle to pass around to command buffers instead of using raw pointers

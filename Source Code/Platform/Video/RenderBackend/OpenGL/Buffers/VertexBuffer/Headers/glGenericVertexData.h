@@ -94,7 +94,7 @@ class glGenericVertexData final : public GenericVertexData {
     void draw(const GenericDrawCommand& command) override;
 
    protected:
-    void bindBufferInternal(U32 buffer, U32 location);
+    void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig);
 
     void lockBuffersInternal(bool force);
 
@@ -110,23 +110,25 @@ class glGenericVertexData final : public GenericVertexData {
         genericBufferImpl(genericBufferImpl&& other) 
             : _buffer(MOV(other._buffer)),
               _ringSizeFactor(other._ringSizeFactor),
-              _writtenRange(other._writtenRange)
+              _writtenRange(other._writtenRange),
+              _bindConfig(other._bindConfig)
         {
         }
 
-        glBufferImpl_uptr _buffer = nullptr;
-        size_t _ringSizeFactor = 1u;
+        glBufferImpl_uptr _buffer{ nullptr };
+        size_t _ringSizeFactor{ 1u };
         BufferRange _writtenRange{};
-        bool _usedAfterWrite = false;
-        bool _useAutoSyncObjects = true;
+        SetBufferParams::BufferBindConfig _bindConfig{};
+        bool _usedAfterWrite{ false };
+        bool _useAutoSyncObjects{ true };
     };
     glVertexDataIndexContainer _indexInfo;
     vector<genericBufferImpl> _bufferObjects;
-    GLuint _indexBufferHandle = GLUtil::k_invalidObjectID;
-    GLuint _indexBufferSize = 0u;
-    GLuint _lastDrawCount = 0u;
-    GLuint _lastIndexCount = 0u;
-    GLuint _lastFirstIndex = 0u;
+    GLuint _indexBufferHandle{ GLUtil::k_invalidObjectID };
+    GLuint _indexBufferSize{ 0u };
+    GLuint _lastDrawCount{ 0u };
+    GLuint _lastIndexCount{ 0u };
+    GLuint _lastFirstIndex{ 0u };
 };
 
 };  // namespace Divide

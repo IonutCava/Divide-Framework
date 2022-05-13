@@ -183,7 +183,7 @@ class VertexBuffer final : public VertexDataInterface {
     }
 
     void addRestartIndex() {
-        primitiveRestartEnabled(true);
+        primitiveRestartRequired(true);
         addIndex(useLargeIndices() ? PRIMITIVE_RESTART_INDEX_L : PRIMITIVE_RESTART_INDEX_S);
      }
 

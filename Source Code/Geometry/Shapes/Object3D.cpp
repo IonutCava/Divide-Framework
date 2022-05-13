@@ -105,7 +105,6 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawComma
             const U16 partitionID = _geometryPartitionIDs[0];
             GenericDrawCommand cmd;
             cmd._sourceBuffer = geometryBuffer()->handle();
-            cmd._bufferIndex = GenericDrawCommand::INVALID_BUFFER_INDEX;
             cmd._cmd.indexCount = to_U32(geometryBuffer()->getPartitionIndexCount(partitionID));
             cmd._cmd.firstIndex = to_U32(geometryBuffer()->getPartitionOffset(partitionID));
             cmd._cmd.primCount = sgn->instanceCount();

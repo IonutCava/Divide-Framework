@@ -527,6 +527,7 @@ void Vegetation::uploadVegetationData(vector<Byte>& grassDataOut, vector<Byte> t
 
 void Vegetation::prepareDraw(SceneGraphNode* sgn) {
     if (_instanceCountGrass > 0u || _instanceCountTrees > 0u) {
+        sgn->get<RenderingComponent>()->primitiveRestartRequired(true);
         sgn->get<RenderingComponent>()->instantiateMaterial(s_vegetationMaterial);
         sgn->get<RenderingComponent>()->occlusionCull(false); //< We handle our own culling
 
@@ -793,7 +794,6 @@ void Vegetation::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCom
     cmd._cmd.primCount = _instanceCountGrass;
     cmd._cmd.indexCount = to_U32(s_buffer->getPartitionIndexCount(partitionID));
     cmd._cmd.firstIndex = to_U32(s_buffer->getPartitionOffset(partitionID));
-    cmd._bufferIndex = 0u;
     cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
     RenderingComponent* rComp = sgn->get<RenderingComponent>();

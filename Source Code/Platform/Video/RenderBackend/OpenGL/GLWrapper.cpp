@@ -852,7 +852,7 @@ bool GL_API::draw(const GenericDrawCommand& cmd) const {
         glDrawArrays(GLUtil::glPrimitiveTypeTable[to_base(GL_API::GetStateTracker()->_activeTopology)], cmd._cmd.firstIndex, indexCount);
     } else {
         // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-        static VertexDataInterface::Handle s_lastID = { U16_MAX, 0u };
+        static VertexDataInterface::Handle s_lastID = VertexDataInterface::INVALID_VDI_HANDLE;
         static VertexDataInterface* s_lastBuffer = nullptr;
 
         if (s_lastID != cmd._sourceBuffer) {
@@ -1557,6 +1557,7 @@ ShaderResult GL_API::bindPipeline(const Pipeline& pipeline) const {
         {
             OPTICK_EVENT("Set Vertex Format");
             stateTracker->setVertexFormat(program->descriptor()._primitiveTopology,
+                                          pipelineDescriptor._primitiveRestartEnabled,
                                           program->descriptor()._vertexFormat,
                                           program->vertexFormatHash());
         }

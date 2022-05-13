@@ -44,6 +44,7 @@ struct PipelineDescriptor {
     size_t _stateHash = 0;
     ShaderProgram::Handle _shaderProgramHandle = ShaderProgram::INVALID_HANDLE;
     U8 _multiSampleCount = 0u;
+    bool _primitiveRestartEnabled = false;
 }; //struct PipelineDescriptor
 
 size_t GetHash(const PipelineDescriptor& descriptor);
