@@ -461,18 +461,21 @@ void LightPool::uploadLightData(const RenderStage stage, GFX::CommandBuffer& buf
     {
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_NORMAL);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
         binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
         binding._data.As<ShaderBufferEntry>() = { _lightBuffer.get(), { bufferOffset * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount } };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_SCENE);
-        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
+        binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
         binding._data.As<ShaderBufferEntry>() = { _sceneBuffer.get(), { bufferOffset, 1u } };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_SHADOW);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
         binding._data.As<ShaderBufferEntry>() = { _shadowBuffer.get(), { 0u, 1u } };
     }
@@ -535,8 +538,7 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
     if (s_debugSamplerHash == 0u) {
         SamplerDescriptor iconSampler = {};
         iconSampler.wrapUVW(TextureWrap::REPEAT);
-        iconSampler.minFilter(TextureFilter::LINEAR);
-        iconSampler.magFilter(TextureFilter::LINEAR);
+        iconSampler.mipSampling(TextureMipSampling::NONE);
         iconSampler.anisotropyLevel(0);
         s_debugSamplerHash = iconSampler.getHash();
     }
@@ -554,6 +556,7 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._data.As<DescriptorCombinedImageSampler>() = { _lightIconsTexture->data(), s_debugSamplerHash };
         }
         {
@@ -562,6 +565,7 @@ void LightPool::drawLightImpostors(GFX::CommandBuffer& bufferInOut) const {
             auto& binding = set._bindings.emplace_back();
             binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_NORMAL);
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
             binding._data.As<ShaderBufferEntry>() = { _lightBuffer.get(), { to_size(LightBufferIndex(RenderStage::DISPLAY)) * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount } };
         }
 

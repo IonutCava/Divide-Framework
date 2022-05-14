@@ -33,7 +33,7 @@
 #ifndef _VK_SWAP_CHAIN_H_
 #define _VK_SWAP_CHAIN_H_
 
-#include "VKCommon.h"
+#include "vkResources.h"
 
 namespace Divide {
     class DisplayWindow;

@@ -643,8 +643,6 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     _dockedWindows[to_base(WindowType::SceneView)] = MemoryManager_NEW SceneViewWindow(*this, descriptor);
 
     SamplerDescriptor editorSampler = {};
-    editorSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
-    editorSampler.magFilter(TextureFilter::LINEAR);
     editorSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
     editorSampler.anisotropyLevel(0);
 
@@ -1687,6 +1685,8 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
                 set._usage = DescriptorSetUsage::PER_DRAW_SET;
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+
                 if (isTextureCube) {
                     binding._type = DescriptorSetBindingType::IMAGE_VIEW;
                     ImageViewEntry& entry = binding._data.As<ImageViewEntry>();

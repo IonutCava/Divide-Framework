@@ -46,12 +46,6 @@
     <Filter Include="glsw\Headers">
       <UniqueIdentifier>{eb2651e4-0115-4dda-bb81-fdf449bfe717}</UniqueIdentifier>
     </Filter>
-    <Filter Include="fontstash">
-      <UniqueIdentifier>{3ebce056-8e4a-4f71-919c-eb61a5752e56}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="fontstash\Headers">
-      <UniqueIdentifier>{b1409af1-b903-4433-bc32-62ca0de9a8cb}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Optik">
       <UniqueIdentifier>{3eac6feb-106a-442f-b1fa-cbad773e55cc}</UniqueIdentifier>
     </Filter>
@@ -159,12 +153,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Text\Headers\fontstash.h">
-      <Filter>fontstash\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Text\Headers\glfontstash.h">
-      <Filter>fontstash\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\3rdParty\ArenaAllocator\arena_allocator.h">
       <Filter>ArenaAllocator</Filter>
     </ClInclude>

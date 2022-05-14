@@ -20,8 +20,7 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
 {
     SamplerDescriptor screenSampler = {};
     screenSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-    screenSampler.minFilter(TextureFilter::LINEAR);
-    screenSampler.magFilter(TextureFilter::LINEAR);
+    screenSampler.mipSampling(TextureMipSampling::NONE);
     screenSampler.anisotropyLevel(0);
 
     ShaderModuleDescriptor vertModule{ ShaderType::VERTEX, "baseVertexShaders.glsl", "FullScreenQuad" };
@@ -145,18 +144,21 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { depthTex, depthAtt.samplerHash() };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { normalsTex, normalsAtt.samplerHash() };
     }
 

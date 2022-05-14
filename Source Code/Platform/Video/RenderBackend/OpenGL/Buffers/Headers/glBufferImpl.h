@@ -30,8 +30,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef _GL_BUFFER_IMPL_H_
-#define _GL_BUFFER_IMPL_H_
+#ifndef GL_BUFFER_IMPL_H_
+#define GL_BUFFER_IMPL_H_
 
 #include "glMemoryManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
@@ -99,4 +99,4 @@ FWD_DECLARE_MANAGED_CLASS(glBufferImpl);
 
 }; //namespace Divide
 
-#endif //_GL_BUFFER_IMPL_H_
+#endif //GL_BUFFER_IMPL_H_

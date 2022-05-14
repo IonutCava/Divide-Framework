@@ -66,8 +66,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
     SamplerDescriptor screenSampler = {};
     screenSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-    screenSampler.minFilter(TextureFilter::LINEAR);
-    screenSampler.magFilter(TextureFilter::LINEAR);
+    screenSampler.mipSampling(TextureMipSampling::NONE);
     screenSampler.anisotropyLevel(0);
 
     RenderTargetDescriptor desc = {};
@@ -125,6 +124,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         defaultSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
         defaultSampler.minFilter(TextureFilter::NEAREST);
         defaultSampler.magFilter(TextureFilter::NEAREST);
+        defaultSampler.mipSampling(TextureMipSampling::NONE);
         defaultSampler.anisotropyLevel(0);
         const size_t samplerHash = defaultSampler.getHash();
 
@@ -494,6 +494,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt.texture()->data(), depthAtt.samplerHash() };
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
@@ -527,12 +528,14 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_base(TextureUsage::SSR_SAMPLE);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { ssrDataAtt.texture()->data(), ssrDataAtt.samplerHash() };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_base(TextureUsage::SSAO_SAMPLE);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { ssaoDataAtt.texture()->data(), ssaoDataAtt.samplerHash() };
     }
 }
@@ -565,12 +568,14 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
                 binding._resourceSlot = to_U8(ShaderBufferLocation::LUMINANCE_HISTOGRAM);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
                 binding._data.As<ShaderBufferEntry>() = { _histogramBuffer.get(), {0u, _histogramBuffer->getPrimitiveCount()}};
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::IMAGE;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
                 binding._data.As<Image>()._texture = screenColour.get();
                 binding._data.As<Image>()._flag = Image::Flag::READ;
             }
@@ -604,12 +609,14 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
                 binding._resourceSlot = to_U8(ShaderBufferLocation::LUMINANCE_HISTOGRAM);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
                 binding._data.As<ShaderBufferEntry>() = { _histogramBuffer.get(), { 0u, _histogramBuffer->getPrimitiveCount() } };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::IMAGE;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
                 binding._data.As<Image>()._texture = _currentLuminance.get();
                 binding._data.As<Image>()._flag = Image::Flag::READ_WRITE;
             }
@@ -677,6 +684,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             lumaSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
             lumaSampler.minFilter(TextureFilter::NEAREST);
             lumaSampler.magFilter(TextureFilter::NEAREST);
+            lumaSampler.mipSampling(TextureMipSampling::NONE);
             lumaSampler.anisotropyLevel(0);
             lumaSamplerHash = lumaSampler.getHash();
         }
@@ -692,18 +700,21 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt.texture()->data(), screenAtt.samplerHash() };
         }
         {
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._data.As<DescriptorCombinedImageSampler>() = { _currentLuminance->data(), lumaSamplerHash };
         }
         {
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._data.As<DescriptorCombinedImageSampler>() = { screenDepthAtt.texture()->data(), screenDepthAtt.samplerHash() };
         }
 
@@ -739,6 +750,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._data.As<DescriptorCombinedImageSampler>() = { screenAtt.texture()->data(), screenAtt.samplerHash() };
         }
 

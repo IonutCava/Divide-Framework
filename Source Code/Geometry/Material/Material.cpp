@@ -605,7 +605,6 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
     switch (_topology) {
         case PrimitiveTopology::POINTS:                   shaderDescriptor._globalDefines.emplace_back("GEOMETRY_POINTS", true);    break;
         case PrimitiveTopology::LINES:                                                                                              break;
-        case PrimitiveTopology::LINE_LOOP:                                                                                          break;
         case PrimitiveTopology::LINE_STRIP:                                                                                         break;
         case PrimitiveTopology::LINES_ADJANCENCY:                                                                                   break;
         case PrimitiveTopology::LINE_STRIP_ADJACENCY:     shaderDescriptor._globalDefines.emplace_back("GEOMETRY_LINES", true);     break;
@@ -614,9 +613,6 @@ void Material::computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDesc
         case PrimitiveTopology::TRIANGLE_FAN:                                                                                       break;
         case PrimitiveTopology::TRIANGLES_ADJACENCY:                                                                                break;
         case PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY: shaderDescriptor._globalDefines.emplace_back("GEOMETRY_TRIANGLES", true); break;
-        case PrimitiveTopology::QUADS:                                                                                              break;
-        case PrimitiveTopology::QUAD_STRIP:               shaderDescriptor._globalDefines.emplace_back("GEOMETRY_QUADS", true);     break;
-        case PrimitiveTopology::POLYGON:                  shaderDescriptor._globalDefines.emplace_back("GEOMETRY_POLYGON", true);   break;
         case PrimitiveTopology::PATCH:                    shaderDescriptor._globalDefines.emplace_back("GEOMETRY_PATCH", true);     break;
         default: DIVIDE_UNEXPECTED_CALL();
     }
@@ -897,6 +893,8 @@ DescriptorSet& Material::getDescriptorSet(const RenderStagePass& renderStagePass
                 if (crtTexture != nullptr) {
                     auto& texBinding = set._bindings.emplace_back();
                     texBinding._resourceSlot = slot;
+                    STUBBED("Add a per-texture switch for shader-stage visibility - Ionut");
+                    texBinding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL;
                     texBinding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                     texBinding._data.As<DescriptorCombinedImageSampler>() = { crtTexture->data(), _textures[slot]._sampler };
                 }

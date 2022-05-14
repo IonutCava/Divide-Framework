@@ -75,10 +75,9 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
 
     _shaderConstantsCmd._constants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSizes);
 
-    SamplerDescriptor sampler = {};
+    SamplerDescriptor sampler{};
     sampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-    sampler.minFilter(TextureFilter::LINEAR);
-    sampler.magFilter(TextureFilter::LINEAR);
+    sampler.mipSampling(TextureMipSampling::NONE);
 
     sampler.anisotropyLevel(0);
     const size_t samplerHash = sampler.getHash();
@@ -415,6 +414,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt.texture()->data(), shadowAtt.samplerHash() };
         }
         _shaderConstantsCmd._constants.set(_ID("verticalBlur"),     GFX::PushConstantType::BOOL, false);
@@ -434,6 +434,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
             set._usage = DescriptorSetUsage::PER_DRAW_SET;
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
             binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt.texture()->data(), blurAtt.samplerHash() };
         }

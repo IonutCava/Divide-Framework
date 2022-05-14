@@ -55,6 +55,9 @@ namespace TypeUtil {
 
     [[nodiscard]] const char* TextureFilterToString(TextureFilter filter) noexcept;
     [[nodiscard]] TextureFilter StringToTextureFilter(const string& filter);
+
+    [[nodiscard]] const char* TextureMipSamplingToString(TextureMipSampling sampling) noexcept;
+    [[nodiscard]] TextureMipSampling StringToTextureMipSampling(const string& sampling);
 };
 
  TYPEDEF_SMART_POINTERS_FOR_TYPE(Texture);

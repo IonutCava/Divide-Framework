@@ -26,38 +26,38 @@ namespace {
 };
 
 GeometryFormat GetGeometryFormatForExtension(const char* extension) noexcept {
-    if (Util::CompareIgnoreCase(extension, ".3ds")) {
+    if (Util::CompareIgnoreCase(extension, "3ds")) {
         return GeometryFormat::_3DS;
     }
-    if (Util::CompareIgnoreCase(extension, ".ase")) {
+    if (Util::CompareIgnoreCase(extension, "ase")) {
         return GeometryFormat::ASE;
     }
-    if (Util::CompareIgnoreCase(extension, ".fbx")) {
+    if (Util::CompareIgnoreCase(extension, "fbx")) {
         return GeometryFormat::FBX;
     }
-    if (Util::CompareIgnoreCase(extension, ".md2")) {
+    if (Util::CompareIgnoreCase(extension, "md2")) {
         return GeometryFormat::MD2;
     }
-    if (Util::CompareIgnoreCase(extension, ".md5mesh")) {
+    if (Util::CompareIgnoreCase(extension, "md5mesh")) {
         return GeometryFormat::MD5;
     }
-    if (Util::CompareIgnoreCase(extension, ".obj")) {
+    if (Util::CompareIgnoreCase(extension, "obj")) {
         return GeometryFormat::OBJ;
     }
-    if (Util::CompareIgnoreCase(extension, ".x")) {
+    if (Util::CompareIgnoreCase(extension, "x")) {
         return GeometryFormat::X;
     }
-    if (Util::CompareIgnoreCase(extension, ".dae")) {
+    if (Util::CompareIgnoreCase(extension, "dae")) {
         return GeometryFormat::DAE;
     }
-    if (Util::CompareIgnoreCase(extension, ".gltf") ||
-        Util::CompareIgnoreCase(extension, ".glb")) {
+    if (Util::CompareIgnoreCase(extension, "gltf") ||
+        Util::CompareIgnoreCase(extension, "glb")) {
         return GeometryFormat::GLTF;
     }
-    if (Util::CompareIgnoreCase(extension, (string(".") + g_parsedAssetAnimationExt).c_str())) {
+    if (Util::CompareIgnoreCase(extension, g_parsedAssetAnimationExt)) {
         return GeometryFormat::DVD_ANIM;
     }
-    if (Util::CompareIgnoreCase(extension, (string(".") + g_parsedAssetGeometryExt).c_str())) {
+    if (Util::CompareIgnoreCase(extension, g_parsedAssetGeometryExt)) {
         return GeometryFormat::DVD_GEOM;
     }
     return GeometryFormat::COUNT;

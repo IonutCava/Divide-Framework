@@ -36,6 +36,7 @@
 #include "VKPlaceholderObjects.h"
 #include "VKDevice.h"
 #include "VKSwapChain.h"
+#include "vkIMPrimitive.h"
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
@@ -63,10 +64,16 @@ struct VKStateTracker {
 };
 
 class VK_API final : public RenderAPIWrapper {
+   private:
+    using IMPrimitivePool = MemoryPool<vkIMPrimitive, 1 << 15>;
+
   public:
     VK_API(GFXDevice& context) noexcept;
 
     [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const;
+
+    static [[nodiscard]] IMPrimitive* NewIMP(Mutex& lock, GFXDevice& parent);
+    static [[nodiscard]] bool DestroyIMP(Mutex& lock, IMPrimitive*& primitive);
 
   protected:
       void idle(bool fast) noexcept override;
@@ -135,6 +142,7 @@ private:
 private:
     static eastl::unique_ptr<VKStateTracker> s_stateTracker;
     static bool s_hasDebugMarkerSupport;
+    static IMPrimitivePool s_IMPrimitivePool;
 };
 
 };  // namespace Divide

@@ -46,12 +46,12 @@ GUISplash::GUISplash(ResourceCache* cache,
 }
 
 void GUISplash::render(GFXDevice& context) const {
-    
 
     SamplerDescriptor splashSampler = {};
-    splashSampler.wrapUVW(TextureWrap::CLAMP);
+    splashSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
     splashSampler.minFilter(TextureFilter::NEAREST);
     splashSampler.magFilter(TextureFilter::NEAREST);
+    splashSampler.mipSampling(TextureMipSampling::NONE);
     splashSampler.anisotropyLevel(0);
 
     _splashShader->waitForReady();
@@ -84,6 +84,7 @@ void GUISplash::render(GFXDevice& context) const {
     set._usage = DescriptorSetUsage::PER_DRAW_SET;
     auto& binding = set._bindings.emplace_back();
     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
     binding._resourceSlot = to_U8(TextureUsage::UNIT0);
     binding._data.As<DescriptorCombinedImageSampler>() = { _splashImage->data(), splashSampler.getHash() };
 

@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GL_IM_EMULATION_H_
-#define _GL_IM_EMULATION_H_
+#ifndef GL_IM_EMULATION_H
+#define GL_IM_EMULATION_H
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
@@ -86,4 +86,5 @@ class glIMPrimitive final : public IMPrimitive {
 };
 
 };  // namespace Divide
-#endif
+
+#endif //GL_IM_EMULATION_H

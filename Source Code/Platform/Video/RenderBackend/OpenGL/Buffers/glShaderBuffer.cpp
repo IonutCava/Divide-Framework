@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-#include "Headers/glUniformBuffer.h"
+#include "Headers/glShaderBuffer.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h"
@@ -13,7 +13,7 @@
 
 namespace Divide {
 
-glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor)
+glShaderBuffer::glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor)
     : ShaderBuffer(context, descriptor)
 {
     _maxSize = _usage == Usage::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._UBOMaxSizeBytes : GFXDevice::GetDeviceInformation()._SSBOMaxSizeBytes;
@@ -21,10 +21,10 @@ glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescripto
     const size_t targetElementSize = Util::GetAlignmentCorrected(_params._elementSize, AlignmentRequirement(_usage));
     if (targetElementSize > _params._elementSize) {
         DIVIDE_ASSERT((_params._elementSize * _params._elementCount) % AlignmentRequirement(_usage) == 0u,
-            "ERROR: glUniformBuffer - element size and count combo is less than the minimum alignment requirement for current hardware! Pad the element size and or count a bit");
+            "ERROR: glShaderBuffer - element size and count combo is less than the minimum alignment requirement for current hardware! Pad the element size and or count a bit");
     } else {
         DIVIDE_ASSERT(_params._elementSize == targetElementSize,
-                        "ERROR: glUniformBuffer - element size is less than the minimum alignment requirement for current hardware! Pad the element size a bit");
+                        "ERROR: glShaderBuffer - element size is less than the minimum alignment requirement for current hardware! Pad the element size a bit");
     }
     _alignedBufferSize = _params._elementCount * _params._elementSize;
     _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset(_alignedBufferSize, AlignmentRequirement(_usage)));
@@ -51,12 +51,12 @@ glUniformBuffer::glUniformBuffer(GFXDevice& context, const ShaderBufferDescripto
     }
 }
 
-BufferLock glUniformBuffer::clearBytes(BufferRange range) {
+BufferLock glShaderBuffer::clearBytes(BufferRange range) {
     DIVIDE_ASSERT(range._length > 0);
     OPTICK_EVENT();
 
     DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected((range._startOffset), AlignmentRequirement(_usage)));
-    assert(range._startOffset + range._length <= _alignedBufferSize && "glUniformBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
+    assert(range._startOffset + range._length <= _alignedBufferSize && "glShaderBuffer::UpdateData error: was called with an invalid range (buffer overflow)!");
 
     range._startOffset += queueWriteIndex() * _alignedBufferSize;
 
@@ -64,7 +64,7 @@ BufferLock glUniformBuffer::clearBytes(BufferRange range) {
     return { this, range };
 }
 
-void glUniformBuffer::readBytes(BufferRange range, bufferPtr result) const {
+void glShaderBuffer::readBytes(BufferRange range, bufferPtr result) const {
     if (range._length > 0) {
         OPTICK_EVENT();
         
@@ -75,7 +75,7 @@ void glUniformBuffer::readBytes(BufferRange range, bufferPtr result) const {
     }
 }
 
-BufferLock glUniformBuffer::writeBytes(BufferRange range, bufferPtr data) {
+BufferLock glShaderBuffer::writeBytes(BufferRange range, bufferPtr data) {
     DIVIDE_ASSERT(range._length > 0);
     OPTICK_EVENT();
 
@@ -86,13 +86,13 @@ BufferLock glUniformBuffer::writeBytes(BufferRange range, bufferPtr data) {
     return { this, range };
 }
 
-bool glUniformBuffer::lockByteRange(const BufferRange range, SyncObject* sync) const {
+bool glShaderBuffer::lockByteRange(const BufferRange range, SyncObject* sync) const {
     DIVIDE_ASSERT(sync != nullptr);
     DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
     return bufferImpl()->lockByteRange(range._startOffset, range._length, sync);
 }
 
-bool glUniformBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
+bool glShaderBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
     OPTICK_EVENT();
 
     GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
@@ -100,7 +100,7 @@ bool glUniformBuffer::bindByteRange(const U8 bindIndex, BufferRange range) {
         result = GL_API::GetStateTracker()->setActiveBuffer(GL_DRAW_INDIRECT_BUFFER,
                                                             bufferImpl()->memoryBlock()._bufferHandle);
     } else if (range._length > 0) {
-        DIVIDE_ASSERT(to_size(range._length) <= _maxSize && "glUniformBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
+        DIVIDE_ASSERT(to_size(range._length) <= _maxSize && "glShaderBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform");
         DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
 
         const size_t offset = bufferImpl()->memoryBlock()._offset + range._startOffset + (queueReadIndex() * _alignedBufferSize);

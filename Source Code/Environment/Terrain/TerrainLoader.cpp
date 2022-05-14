@@ -61,8 +61,6 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     // Noise texture
     SamplerDescriptor noiseMediumSampler = {};
     noiseMediumSampler.wrapUVW(TextureWrap::REPEAT);
-    noiseMediumSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
-    noiseMediumSampler.magFilter(TextureFilter::LINEAR);
     noiseMediumSampler.anisotropyLevel(16);
     const size_t noiseHash = noiseMediumSampler.getHash();
     
@@ -171,23 +169,18 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     SamplerDescriptor heightMapSampler = {};
     heightMapSampler.wrapUVW(TextureWrap::CLAMP_TO_BORDER);
-    heightMapSampler.minFilter(TextureFilter::LINEAR);
-    heightMapSampler.magFilter(TextureFilter::LINEAR);
+    heightMapSampler.mipSampling(TextureMipSampling::NONE);
     heightMapSampler.borderColour(DefaultColours::BLACK);
     heightMapSampler.anisotropyLevel(16);
     const size_t heightSamplerHash = heightMapSampler.getHash();
 
     SamplerDescriptor blendMapSampler = {};
     blendMapSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-    blendMapSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
-    blendMapSampler.magFilter(TextureFilter::LINEAR);
     blendMapSampler.anisotropyLevel(16);
     const size_t blendMapHash = blendMapSampler.getHash();
 
     SamplerDescriptor albedoSampler = {};
     albedoSampler.wrapUVW(TextureWrap::REPEAT);
-    albedoSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
-    albedoSampler.magFilter(TextureFilter::LINEAR);
     albedoSampler.anisotropyLevel(16);
     const size_t albedoHash = albedoSampler.getHash();
 

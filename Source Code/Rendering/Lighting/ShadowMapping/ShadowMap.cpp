@@ -88,13 +88,12 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
 
     SamplerDescriptor shadowMapSampler = {};
     shadowMapSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-    shadowMapSampler.magFilter(TextureFilter::LINEAR);
-    shadowMapSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
 
     SamplerDescriptor shadowMapSamplerCache = {};
     shadowMapSamplerCache.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
     shadowMapSamplerCache.magFilter(TextureFilter::NEAREST);
     shadowMapSamplerCache.minFilter(TextureFilter::NEAREST);
+    shadowMapSamplerCache.mipSampling(TextureMipSampling::NONE);
     shadowMapSamplerCache.anisotropyLevel(0u);
 
     for (U8 i = 0; i < to_U8(ShadowType::COUNT); ++i) {
@@ -160,7 +159,7 @@ void ShadowMap::initShadowMaps(GFXDevice& context) {
                 TextureDescriptor colourMapDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
                 colourMapDescriptor.layerCount(Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS);
                 colourMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
-                shadowMapSampler.minFilter(TextureFilter::LINEAR);
+                shadowMapSampler.mipSampling(TextureMipSampling::NONE);
                 shadowMapSampler.anisotropyLevel(0);
                 const size_t samplerHash = shadowMapSampler.getHash();
 
@@ -265,6 +264,7 @@ void ShadowMap::bindShadowMaps(GFX::CommandBuffer& bufferInOut) {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = bindSlot;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { shadowTexture.texture()->data(), shadowTexture.samplerHash() };
     }
 }

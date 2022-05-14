@@ -72,18 +72,19 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     nearestSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
     nearestSampler.minFilter(TextureFilter::NEAREST);
     nearestSampler.magFilter(TextureFilter::NEAREST);
+    nearestSampler.mipSampling(TextureMipSampling::NONE);
     nearestSampler.anisotropyLevel(0);
 
     SamplerDescriptor screenSampler = {};
     screenSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-    screenSampler.minFilter(TextureFilter::LINEAR);
-    screenSampler.magFilter(TextureFilter::LINEAR);
+    screenSampler.mipSampling(TextureMipSampling::NONE);
     screenSampler.anisotropyLevel(0);
 
     SamplerDescriptor noiseSampler = {};
     noiseSampler.wrapUVW(TextureWrap::REPEAT);
     noiseSampler.minFilter(TextureFilter::NEAREST);
     noiseSampler.magFilter(TextureFilter::NEAREST);
+    noiseSampler.mipSampling(TextureMipSampling::NONE);
     noiseSampler.anisotropyLevel(0);
     _noiseSampler = noiseSampler.getHash();
 
@@ -521,12 +522,14 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt.texture()->data(), depthAtt.samplerHash() };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt.texture()->data(), normalsAtt.samplerHash() };
             }
 
@@ -550,12 +553,14 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { _noiseTexture->data(), _noiseSampler };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash() };
             }
 
@@ -571,8 +576,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
             SamplerDescriptor linearSampler = {};
             linearSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-            linearSampler.minFilter(TextureFilter::LINEAR);
-            linearSampler.magFilter(TextureFilter::LINEAR);
+            linearSampler.mipSampling(TextureMipSampling::NONE);
             linearSampler.anisotropyLevel(0);
 
             const auto& halfResAOAtt = _ssaoHalfResOutput._rt->getAttachment(RTAttachmentType::Colour, 0);
@@ -584,24 +588,28 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { halfResAOAtt.texture()->data(), linearSampler.getHash() };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { halfResAOAtt.texture()->data(), halfResAOAtt.samplerHash() };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::NORMALMAP);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { halfDepthAtt.texture()->data(), halfDepthAtt.samplerHash() };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt.texture()->data(), depthAtt.samplerHash() };
             }
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -621,18 +629,21 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { _noiseTexture->data(), _noiseSampler };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt.texture()->data(), normalsAtt.samplerHash() };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt.texture()->data(), depthAtt.samplerHash() };
             }
 
@@ -666,18 +677,21 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                     auto& binding = set._bindings.emplace_back();
                     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                     binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                     binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt.texture()->data(), depthAtt.samplerHash() };
                 }
                 {
                     auto& binding = set._bindings.emplace_back();
                     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                     binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
+                    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                     binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt.texture()->data(), normalsAtt.samplerHash() };
                 }
                 {
                     auto& binding = set._bindings.emplace_back();
                     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                     binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                     binding._data.As<DescriptorCombinedImageSampler>() = { ssaoAtt.texture()->data(), ssaoAtt.samplerHash() };
                 }
 
@@ -700,18 +714,21 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                     auto& binding = set._bindings.emplace_back();
                     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                     binding._resourceSlot = to_U8(TextureUsage::DEPTH);
+                    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                     binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt.texture()->data(), depthAtt.samplerHash() };
                 }
                 {
                     auto& binding = set._bindings.emplace_back();
                     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                     binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
+                    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                     binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt.texture()->data(), normalsAtt.samplerHash() };
                 }
                 {
                     auto& binding = set._bindings.emplace_back();
                     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                     binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                    binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                     binding._data.As<DescriptorCombinedImageSampler>() = { horizBlur.texture()->data(), ssaoAtt.samplerHash() };
                 }
 
@@ -731,6 +748,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { ssaoAtt.texture()->data(), ssaoAtt.samplerHash() };
             }
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);

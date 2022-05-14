@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GL_TEXTURE_H_
-#define _GL_TEXTURE_H_
+#ifndef GL_TEXTURE_H
+#define GL_TEXTURE_H
 
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -97,4 +97,4 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(glTexture);
 
 };  // namespace Divide
 
-#endif
+#endif //GL_TEXTURE_H

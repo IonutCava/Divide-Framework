@@ -37,7 +37,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Headers/Hashable.h"
 #include "Platform/Video/Textures/Headers/TextureDescriptor.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
-#include <variant>
 
 namespace Divide {
     class Texture;
@@ -136,8 +135,27 @@ namespace Divide {
     };
 
     struct DescriptorSetBinding {
+        enum class ShaderStageVisibility : U16 {
+            NONE = 0,
+            VERTEX = toBit(1),
+            GEOMETRY = toBit(2),
+            TESS_CONTROL = toBit(3),
+            TESS_EVAL = toBit(4),
+            FRAGMENT = toBit(5),
+            COMPUTE = toBit(6),
+            MESH = toBit(7),
+            TASK = toBit(8),
+            ALL_GEOMETRY = MESH | TASK | VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
+            ALL_DRAW = ALL_GEOMETRY | FRAGMENT,
+            COMPUTE_AND_DRAW = FRAGMENT | COMPUTE,
+            COMPUTE_AND_GEOMETRY = ALL_GEOMETRY | COMPUTE,
+            ALL = ALL_DRAW | COMPUTE,
+            COUNT = 10
+        };
+
         DescriptorSetBindingData _data{};
         U8 _resourceSlot{ 0u };
+        ShaderStageVisibility _shaderStageVisibility{ ShaderStageVisibility::COUNT };
         DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
     };
 

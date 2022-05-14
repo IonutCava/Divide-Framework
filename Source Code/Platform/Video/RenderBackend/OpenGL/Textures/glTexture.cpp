@@ -192,12 +192,14 @@ void glTexture::prepareTextureData(const U16 width, const U16 height) {
 
     _type = GLUtil::glTextureTypeTable[to_U32(_loadingData._textureType)];
 
+    GLuint newHandle = GLUtil::k_invalidObjectID;
+    glCreateTextures(GLUtil::glTextureTypeTable[to_base(_descriptor.texType())], 1, &newHandle);
+    
     if (_loadingData._textureHandle > 0u) {
         // Immutable storage requires us to create a new texture object 
         glDeleteTextures(1, &_loadingData._textureHandle);
     }
-
-    glCreateTextures(GLUtil::glTextureTypeTable[to_base(_descriptor.texType())], 1, &_loadingData._textureHandle);
+    _loadingData._textureHandle = newHandle;
 
     assert(_loadingData._textureHandle != 0 && "glTexture error: failed to generate new texture handle!");
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {

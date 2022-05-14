@@ -55,12 +55,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\VertexBuffer\Headers\VertexBuffer.h">
       <Filter>Video\Buffers\VertexBuffer\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\ShaderBuffer\Headers\glUniformBuffer.h">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\ShaderBuffer\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers\glGenericVertexData.h">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Textures\Headers\glSamplerObject.h">
       <Filter>Video\RenderBackend\OpenGL\Textures\Headers</Filter>
     </ClInclude>
@@ -126,9 +120,6 @@
     </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\RenderTarget\Headers\RenderTarget.h">
       <Filter>Video\Buffers\RenderTarget\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\RenderTarget\Headers\glFramebuffer.h">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\RenderTarget\Headers</Filter>
     </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\RenderTarget\Headers\RTAttachment.h">
       <Filter>Video\Buffers\RenderTarget\Headers</Filter>
@@ -331,7 +322,46 @@
     <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKSwapChain.h">
       <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\VKCommon.h">
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkResources.h">
+      <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShader.h">
+      <Filter>Video\RenderBackend\Vulkan\Shaders\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\Headers\vkShaderProgram.h">
+      <Filter>Video\RenderBackend\Vulkan\Shaders\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\Headers\vkTexture.h">
+      <Filter>Video\RenderBackend\Vulkan\Textures\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkBufferImpl.h">
+      <Filter>Video\RenderBackend\Vulkan\Buffers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glGenericVertexData.h">
+      <Filter>Video\RenderBackend\OpenGL\Buffers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glShaderBuffer.h">
+      <Filter>Video\RenderBackend\OpenGL\Buffers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\Headers\glFramebuffer.h">
+      <Filter>Video\RenderBackend\OpenGL\Buffers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\fontstash.h">
+      <Filter>Video\RenderBackend\OpenGL\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Headers\glfontstash.h">
+      <Filter>Video\RenderBackend\OpenGL\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkGenericVertexData.h">
+      <Filter>Video\RenderBackend\Vulkan\Buffers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkShaderBuffer.h">
+      <Filter>Video\RenderBackend\Vulkan\Buffers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\Headers\vkFramebuffer.h">
+      <Filter>Video\RenderBackend\Vulkan\Buffers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Headers\vkIMPrimitive.h">
       <Filter>Video\RenderBackend\Vulkan\Headers</Filter>
     </ClInclude>
   </ItemGroup>
@@ -368,12 +398,6 @@
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\GLWrapper.cpp">
       <Filter>Video\RenderBackend\OpenGL</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\ShaderBuffer\glUniformBuffer.cpp">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\ShaderBuffer</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\VertexBuffer\glGenericVertexData.cpp">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\VertexBuffer</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Textures\glSamplerOject.cpp">
       <Filter>Video\RenderBackend\OpenGL\Textures</Filter>
@@ -427,9 +451,6 @@
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\Buffers\RenderTarget\RenderTarget.cpp">
       <Filter>Video\Buffers\RenderTarget</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Buffers\RenderTarget\glFramebuffer.cpp">
-      <Filter>Video\RenderBackend\OpenGL\Buffers\RenderTarget</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\Buffers\RenderTarget\RTAttachment.cpp">
       <Filter>Video\Buffers\RenderTarget</Filter>
@@ -575,9 +596,6 @@
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src\Texture_.cpp">
       <Filter>Video\RenderBackend\OpenGL\CEGUIOpenGLRenderer\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Shaders\glShaderProgramInit.cpp">
-      <Filter>Video\RenderBackend\OpenGL\Shaders</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\ConditionalWait.cpp" />
     <ClCompile Include="..\..\Source Code\Platform\Video\BlendingProperties.cpp">
       <Filter>Video</Filter>
@@ -598,6 +616,39 @@
       <Filter>Video\RenderBackend\Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\ImGUITestCode.cpp">
+      <Filter>Video\RenderBackend\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShaderProgram.cpp">
+      <Filter>Video\RenderBackend\Vulkan\Shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Shaders\vkShader.cpp">
+      <Filter>Video\RenderBackend\Vulkan\Shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Textures\vkTexture.cpp">
+      <Filter>Video\RenderBackend\Vulkan\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkBufferImpl.cpp">
+      <Filter>Video\RenderBackend\Vulkan\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\glFramebuffer.cpp">
+      <Filter>Video\RenderBackend\OpenGL\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\glGenericVertexData.cpp">
+      <Filter>Video\RenderBackend\OpenGL\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Buffers\glShaderBuffer.cpp">
+      <Filter>Video\RenderBackend\OpenGL\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkGenericVertexData.cpp">
+      <Filter>Video\RenderBackend\Vulkan\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkShaderBuffer.cpp">
+      <Filter>Video\RenderBackend\Vulkan\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\Buffers\vkFramebuffer.cpp">
+      <Filter>Video\RenderBackend\Vulkan\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source Code\Platform\Video\RenderBackend\Vulkan\vkResources.cpp">
       <Filter>Video\RenderBackend\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>
@@ -728,24 +779,6 @@
     <Filter Include="Video\RenderBackend\OpenGL\Buffers\Headers">
       <UniqueIdentifier>{db2775a7-106d-4722-8b8b-e508340d902b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\Buffers\ShaderBuffer">
-      <UniqueIdentifier>{2b7979ac-71c9-4fed-a3e9-abebbcc8bac8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\Buffers\ShaderBuffer\Headers">
-      <UniqueIdentifier>{5ad3317a-aea0-4552-9619-f33ffe6c9bfc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\Buffers\VertexBuffer">
-      <UniqueIdentifier>{76d02133-bd8b-49e8-889c-22730d537829}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\Buffers\VertexBuffer\Headers">
-      <UniqueIdentifier>{731cefe4-f157-47de-97e4-ad109d8cd630}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\Buffers\RenderTarget">
-      <UniqueIdentifier>{28db011d-b2d8-435a-86f5-81265f8161d2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Video\RenderBackend\OpenGL\Buffers\RenderTarget\Headers">
-      <UniqueIdentifier>{c90d75a5-ea71-4bcc-9126-3bdf4b6d824f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Video\RenderBackend\OpenGL\Textures">
       <UniqueIdentifier>{3f75a451-cffa-4aab-91b1-0af813aab76f}</UniqueIdentifier>
     </Filter>
@@ -787,6 +820,24 @@
     </Filter>
     <Filter Include="Video\ShaderSource\SPIRV">
       <UniqueIdentifier>{29c35389-f894-4287-a3ee-acf12af7afbb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Video\RenderBackend\Vulkan\Shaders">
+      <UniqueIdentifier>{7f53e941-b85c-4e2f-80db-b86bc62403dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Video\RenderBackend\Vulkan\Shaders\Headers">
+      <UniqueIdentifier>{fde41f02-c92b-49fe-b7c0-d8f09786f52e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Video\RenderBackend\Vulkan\Buffers">
+      <UniqueIdentifier>{0641c502-2eb5-418c-a75d-dc0ad303a7cf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Video\RenderBackend\Vulkan\Buffers\Headers">
+      <UniqueIdentifier>{b8891d74-9c1e-47ec-b28e-e0737eb5aa46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Video\RenderBackend\Vulkan\Textures">
+      <UniqueIdentifier>{6889e56b-4815-4ad8-b332-2e9d0190c6d1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Video\RenderBackend\Vulkan\Textures\Headers">
+      <UniqueIdentifier>{b42eae90-4d10-4845-880e-dfebee4da634}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -858,9 +909,6 @@
     </None>
     <None Include="../../assets\shaders\GLSL\vertexAtoms\vertexDefault.vert">
       <Filter>Video\ShaderSource\GLSL\vertexAtoms</Filter>
-    </None>
-    <None Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Shaders\Headers\glShaderProgram.inl">
-      <Filter>Video\RenderBackend\OpenGL\Shaders\Headers</Filter>
     </None>
     <None Include="../../Source Code/Platform\Video\RenderBackend\OpenGL\Headers\glResources.inl">
       <Filter>Video\RenderBackend\OpenGL\Headers</Filter>

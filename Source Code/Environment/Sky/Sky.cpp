@@ -489,19 +489,18 @@ bool Sky::load() {
     }
     stbi_image_free(worlNoise);
     
-        SamplerDescriptor skyboxSampler = {};
-        skyboxSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-        skyboxSampler.minFilter(TextureFilter::LINEAR);
-        skyboxSampler.magFilter(TextureFilter::LINEAR);
-        skyboxSampler.anisotropyLevel(0);
-        _skyboxSampler = skyboxSampler.getHash();
+    SamplerDescriptor skyboxSampler = {};
+    skyboxSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
+    skyboxSampler.mipSampling(TextureMipSampling::NONE);
+    skyboxSampler.anisotropyLevel(0);
+    _skyboxSampler = skyboxSampler.getHash();
 
-        skyboxSampler.wrapUVW(TextureWrap::REPEAT);
-        const size_t noiseSamplerLinear = skyboxSampler.getHash();
+    skyboxSampler.wrapUVW(TextureWrap::REPEAT);
+    const size_t noiseSamplerLinear = skyboxSampler.getHash();
 
-        skyboxSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
-        skyboxSampler.anisotropyLevel(8);
-        const size_t noiseSamplerMipMap = skyboxSampler.getHash();
+    skyboxSampler.mipSampling(TextureMipSampling::LINEAR);
+    skyboxSampler.anisotropyLevel(8);
+    const size_t noiseSamplerMipMap = skyboxSampler.getHash();
     
     {
         TextureDescriptor textureDescriptor(TextureType::TEXTURE_3D);

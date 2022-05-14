@@ -33,7 +33,7 @@
 #ifndef _VK_DEVICE_H_
 #define _VK_DEVICE_H_
 
-#include "VKCommon.h"
+#include "vkResources.h"
 
 namespace Divide {
     class VKDevice final : NonCopyable, NonMovable {

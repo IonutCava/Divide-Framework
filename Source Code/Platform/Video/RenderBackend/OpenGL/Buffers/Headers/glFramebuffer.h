@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GL_FRAME_BUFFER_OBJECT_H_
-#define _GL_FRAME_BUFFER_OBJECT_H_
+#ifndef GL_FRAME_BUFFER_H
+#define GL_FRAME_BUFFER_H
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RTAttachment.h"
@@ -145,4 +145,4 @@ namespace Attorney {
 };  // namespace Attorney
 };  // namespace Divide
 
-#endif
+#endif //GL_FRAME_BUFFER_H

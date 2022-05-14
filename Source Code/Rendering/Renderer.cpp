@@ -195,18 +195,21 @@ void Renderer::prepareLighting(const RenderStage stage,
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_INDICES);
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
                 binding._data.As<ShaderBufferEntry>() = { data._lightIndexBuffer.get(), { 0u, data._lightIndexBuffer->getPrimitiveCount() } };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_CLUSTER_AABBS);
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
                 binding._data.As<ShaderBufferEntry>() = { data._lightClusterAABBsBuffer.get(), { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_base(ShaderBufferLocation::LIGHT_GRID);
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_DRAW;
                 binding._data.As<ShaderBufferEntry>() = { data._lightGridBuffer.get(), { 0u, data._lightGridBuffer->getPrimitiveCount() } };
             }
         }
@@ -216,6 +219,7 @@ void Renderer::prepareLighting(const RenderStage stage,
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
             binding._resourceSlot = to_U8(ShaderBufferLocation::LIGHT_INDEX_COUNT);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
             binding._data.As<ShaderBufferEntry>() = { data._globalIndexCountBuffer.get(), { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } };
         }
 

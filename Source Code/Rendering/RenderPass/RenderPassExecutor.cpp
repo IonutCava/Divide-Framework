@@ -779,36 +779,42 @@ U16 RenderPassExecutor::buildDrawCommands(const RenderPassParams& params, const 
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = to_base(ShaderBufferLocation::CMD_BUFFER);
         binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::NONE;
         binding._data.As<ShaderBufferEntry>() = { cmdBuffer,  { 0u, cmdBuffer->getPrimitiveCount() } };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = to_base(ShaderBufferLocation::GPU_COMMANDS);
         binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
         binding._data.As<ShaderBufferEntry>() = { cmdBuffer, { 0u, cmdBuffer->getPrimitiveCount() } };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = to_base(ShaderBufferLocation::NODE_MATERIAL_DATA);
         binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<ShaderBufferEntry>() = { _materialBuffer._gpuBuffer.get(), { 0u, _materialBuffer._highWaterMark } };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = to_base(ShaderBufferLocation::NODE_TRANSFORM_DATA);
         binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL_GEOMETRY;
         binding._data.As<ShaderBufferEntry>() = { _transformBuffer._gpuBuffer.get(), { 0u, _transformBuffer._highWaterMark } };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = to_base(ShaderBufferLocation::NODE_INDIRECTION_DATA);
         binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::VERTEX;
         binding._data.As<ShaderBufferEntry>() = { _indirectionBuffer._gpuBuffer.get(), { 0u, _indirectionBuffer._highWaterMark } };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = to_base(ShaderBufferLocation::NODE_TEXTURE_DATA);
         binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::ALL_DRAW;
         binding._data.As<ShaderBufferEntry>() = { _texturesBuffer._gpuBuffer.get(), { 0u, _texturesBuffer._highWaterMark } };
 
     }
@@ -1073,18 +1079,21 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_base(TextureUsage::DEPTH);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._data.As<DescriptorCombinedImageSampler>() = { hizAtt.texture()->data(), hizAtt.samplerHash() };
         } else if (prePassExecuted) {
             const RTAttachment& depthAtt = target.getAttachment(RTAttachmentType::Depth, 0);
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_base(TextureUsage::DEPTH);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt.texture()->data(), depthAtt.samplerHash() };
         }
 
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_base(TextureUsage::SCENE_NORMALS);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt.texture()->data(), normalsAtt.samplerHash() };
 
         prepareRenderQueues(params, nodes, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut);
@@ -1131,6 +1140,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_base(TextureUsage::TRANSMITANCE);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { colourAtt.texture()->data(), colourAtt.samplerHash() };
     }
 
@@ -1167,12 +1177,14 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { accumAtt.texture()->data(), accumAtt.samplerHash() };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
         binding._data.As<DescriptorCombinedImageSampler>() = { revAtt.texture()->data(), revAtt.samplerHash() };
     }
 
@@ -1265,12 +1277,14 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt.texture()->data(), velocityAtt.samplerHash() };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT1);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
                 binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt.texture()->data(), normalsAtt.samplerHash() };
             }
 

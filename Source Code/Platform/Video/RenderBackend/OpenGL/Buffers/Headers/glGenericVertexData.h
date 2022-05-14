@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GL_GENERIC_VERTEX_DATA_H
-#define _GL_GENERIC_VERTEX_DATA_H
+#ifndef GL_GENERIC_VERTEX_DATA_H
+#define GL_GENERIC_VERTEX_DATA_H
 
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
@@ -132,4 +132,4 @@ class glGenericVertexData final : public GenericVertexData {
 };
 
 };  // namespace Divide
-#endif
+#endif //GL_GENERIC_VERTEX_DATA_H

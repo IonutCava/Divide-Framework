@@ -12,6 +12,14 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
 
+#include "Buffers/Headers/vkFramebuffer.h"
+#include "Buffers/Headers/vkShaderBuffer.h"
+#include "Buffers/Headers/vkGenericVertexData.h"
+
+#include "Shaders/Headers/vkShaderProgram.h"
+
+#include "Textures/Headers/vkTexture.h"
+
 #include <sdl/include/SDL_vulkan.h>
 
 #define VMA_HEAVY_ASSERT(expr) DIVIDE_ASSERT(expr)
@@ -49,14 +57,6 @@
 #ifdef _MSVC_LANG
 #pragma warning(pop)
 #endif
-
-namespace Debug {
-    PFN_vkDebugMarkerSetObjectTagEXT vkDebugMarkerSetObjectTag = VK_NULL_HANDLE;
-    PFN_vkDebugMarkerSetObjectNameEXT vkDebugMarkerSetObjectName = VK_NULL_HANDLE;
-    PFN_vkCmdDebugMarkerBeginEXT vkCmdDebugMarkerBegin = VK_NULL_HANDLE;
-    PFN_vkCmdDebugMarkerEndEXT vkCmdDebugMarkerEnd = VK_NULL_HANDLE;
-    PFN_vkCmdDebugMarkerInsertEXT vkCmdDebugMarkerInsert = VK_NULL_HANDLE;
-};
 
 // ref (mostly everything): https://vkguide.dev/
 namespace vkInit{
@@ -200,19 +200,8 @@ namespace {
     }
 }
 
-namespace VKUtil {
-    void fillEnumTables(VkDevice device) {
-        // The debug marker extension is not part of the core, so function pointers need to be loaded manually
-        Debug::vkDebugMarkerSetObjectTag = (PFN_vkDebugMarkerSetObjectTagEXT)vkGetDeviceProcAddr(device, "vkDebugMarkerSetObjectTagEXT");
-        Debug::vkDebugMarkerSetObjectName = (PFN_vkDebugMarkerSetObjectNameEXT)vkGetDeviceProcAddr(device, "vkDebugMarkerSetObjectNameEXT");
-        Debug::vkCmdDebugMarkerBegin = (PFN_vkCmdDebugMarkerBeginEXT)vkGetDeviceProcAddr(device, "vkCmdDebugMarkerBeginEXT");
-        Debug::vkCmdDebugMarkerEnd = (PFN_vkCmdDebugMarkerEndEXT)vkGetDeviceProcAddr(device, "vkCmdDebugMarkerEndEXT");
-        Debug::vkCmdDebugMarkerInsert = (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr(device, "vkCmdDebugMarkerInsertEXT");
-    };
-};
-
 namespace Divide {
-
+    VK_API::IMPrimitivePool VK_API::s_IMPrimitivePool{};
     bool VK_API::s_hasDebugMarkerSupport = false;
     eastl::unique_ptr<VKStateTracker> VK_API::s_stateTracker = nullptr;
 
@@ -962,4 +951,21 @@ namespace Divide {
 
         GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = "";
     }
+
+    IMPrimitive* VK_API::NewIMP(Mutex& lock, GFXDevice& parent) {
+        ScopedLock<Mutex> w_lock(lock);
+        return s_IMPrimitivePool.newElement(parent);
+    }
+
+    bool VK_API::DestroyIMP(Mutex& lock, IMPrimitive*& primitive) {
+        if (primitive != nullptr) {
+            ScopedLock<Mutex> w_lock(lock);
+            s_IMPrimitivePool.deleteElement(static_cast<vkIMPrimitive*>(primitive));
+            primitive = nullptr;
+            return true;
+        }
+
+        return false;
+    }
+
 }; //namespace Divide

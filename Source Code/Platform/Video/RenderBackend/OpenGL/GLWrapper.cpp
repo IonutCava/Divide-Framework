@@ -25,16 +25,16 @@
 #include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glSamplerObject.h"
 
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/RenderTarget/Headers/glFramebuffer.h"
-#include "Platform/Video/RenderBackend/OpenGL/Buffers/VertexBuffer/Headers/glGenericVertexData.h"
+#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glFramebuffer.h"
+#include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glGenericVertexData.h"
 
 #include "Platform/Video/GLIM/glim.h"
 
 #ifndef GLFONTSTASH_IMPLEMENTATION
 #define GLFONTSTASH_IMPLEMENTATION
 #define FONTSTASH_IMPLEMENTATION
-#include "Text/Headers/fontstash.h"
-#include "Text/Headers/glfontstash.h"
+#include "Headers/fontstash.h"
+#include "Headers/glfontstash.h"
 #endif
 
 #include <glbinding-aux/Meta.h>
@@ -932,6 +932,8 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             const DescriptorSet& set = cmd->As<GFX::BindDescriptorSetsCommand>()->_set;
             for (auto& binding : set._bindings) {
                 const U8 bindingSlot = binding._resourceSlot;
+                DIVIDE_ASSERT(binding._shaderStageVisibility != DescriptorSetBinding::ShaderStageVisibility::COUNT);
+
                 const DescriptorSetBindingData& data = binding._data;
 
                 switch (binding._type) {

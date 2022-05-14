@@ -90,8 +90,7 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
     // Reflection Targets
     SamplerDescriptor reflectionSampler = {};
     reflectionSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-    reflectionSampler.magFilter(TextureFilter::LINEAR);
-    reflectionSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
+    reflectionSampler.mipSampling(TextureMipSampling::LINEAR);
     reflectionSampler.anisotropyLevel(context.context().config().rendering.maxAnisotropicFilteringLevel);
     const size_t samplerHash = reflectionSampler.getHash();
 
@@ -323,6 +322,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         auto& binding = set._bindings.emplace_back();
         binding._resourceSlot = to_base(TextureUsage::UNIT0);
         binding._type = DescriptorSetBindingType::IMAGE;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
         binding._data.As<Image>()._texture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::Colour, 0).texture().get();
         binding._data.As<Image>()._flag = Image::Flag::WRITE;
 
@@ -345,18 +345,21 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         {
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._resourceSlot = to_base(TextureUsage::REFLECTION_PREFILTERED);
             binding._data.As<DescriptorCombinedImageSampler>() = { prefiltered.texture()->data(), prefiltered.samplerHash() };
         }
         {
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._resourceSlot = to_base(TextureUsage::IRRADIANCE);
             binding._data.As<DescriptorCombinedImageSampler>() = { irradiance.texture()->data(), irradiance.samplerHash() };
         }
         {
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._resourceSlot = to_base(TextureUsage::BRDF_LUT);
             binding._data.As<DescriptorCombinedImageSampler>() = { brdfLut.texture()->data(), brdfLut.samplerHash() };
         }
@@ -488,6 +491,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
         binding._data.As<DescriptorCombinedImageSampler>() = { sourceTex->data(), sourceAtt.samplerHash() };
     }
     {
@@ -517,6 +521,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(GFXDevice& context, const U16 la
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::IMAGE;
         binding._resourceSlot = 1u;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
         binding._data.As<Image>() = destinationImage;
 
         // Dispatch enough groups to cover the entire _mipped_ face
@@ -555,12 +560,14 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap(GFXDevice& context, const U
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
         binding._data.As<DescriptorCombinedImageSampler>() = { sourceAtt.texture()->data(), sourceAtt.samplerHash() };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::IMAGE;
         binding._resourceSlot = 1u;
+        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
         binding._data.As<Image>() = destinationImage;
     }
     const U32 groupsX = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));

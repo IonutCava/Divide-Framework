@@ -82,8 +82,6 @@ void NavMeshDebugDraw::begin(const duDebugDrawPrimitives prim, F32 size) {
         case DU_DRAW_LINES:
             _primType = PrimitiveTopology::LINES;
             break;
-        case DU_DRAW_QUADS: 
-            _primType = PrimitiveTopology::QUADS;
     }
 
     _primitive->attribute4f(to_base(AttribLocation::COLOR), FColour4(1.0f, 1.0f, 1.0f, 0.5f));

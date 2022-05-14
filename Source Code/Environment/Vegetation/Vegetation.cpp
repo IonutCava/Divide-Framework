@@ -694,6 +694,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
             binding._data.As<DescriptorCombinedImageSampler>() = { hizTexture->data(), hizAttachment.samplerHash() };
         }
         if (s_grassData || s_treeData) {
@@ -702,6 +703,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             if (s_grassData) {
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_base(ShaderBufferLocation::GRASS_DATA);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_GEOMETRY;
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
                 binding._data.As<ShaderBufferEntry>() = { s_grassData.get(), { 0u, s_grassData->getPrimitiveCount() } };
             }
@@ -709,6 +711,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             if (s_treeData) {
                 auto& binding = set._bindings.emplace_back();
                 binding._resourceSlot = to_base(ShaderBufferLocation::TREE_DATA);
+                binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE_AND_GEOMETRY;
                 binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
                 binding._data.As<ShaderBufferEntry>() = { s_treeData.get(), { 0u, s_treeData->getPrimitiveCount() } };
             }

@@ -40,8 +40,6 @@ bool InfinitePlane::load() {
 
     SamplerDescriptor albedoSampler = {};
     albedoSampler.wrapUVW(TextureWrap::REPEAT);
-    albedoSampler.minFilter(TextureFilter::LINEAR);
-    albedoSampler.magFilter(TextureFilter::LINEAR);
     albedoSampler.anisotropyLevel(8);
 
     TextureDescriptor miscTexDescriptor(TextureType::TEXTURE_2D_ARRAY);

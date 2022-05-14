@@ -51,8 +51,10 @@ struct SamplerDescriptor final : Hashable {
     void wrapUVW(const TextureWrap wrap) noexcept { wrapU(wrap); wrapV(wrap); wrapW(wrap); }
 
     /// Texture filtering mode
-    PROPERTY_RW(TextureFilter, minFilter, TextureFilter::LINEAR_MIPMAP_LINEAR);
+    PROPERTY_RW(TextureFilter, minFilter, TextureFilter::LINEAR);
     PROPERTY_RW(TextureFilter, magFilter, TextureFilter::LINEAR);
+    PROPERTY_RW(TextureMipSampling, mipSampling, TextureMipSampling::LINEAR);
+
     /// Texture wrap mode (Or S-R-T)
     PROPERTY_RW(TextureWrap, wrapU, TextureWrap::REPEAT);
     PROPERTY_RW(TextureWrap, wrapV, TextureWrap::REPEAT);

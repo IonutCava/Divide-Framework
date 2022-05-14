@@ -1,4 +1,5 @@
-/* Copyright (c) 2018 DIVIDE-Studio
+/*
+   Copyright (c) 2018 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -28,12 +29,27 @@
 
  */
 
-#ifndef _PLATFORM_VIDEO_OPENGLS_PROGRAM_INL_
-#define _PLATFORM_VIDEO_OPENGLS_PROGRAM_INL_
+#pragma once
+#ifndef VK_FRAME_BUFFER_H
+#define VK_FRAME_BUFFER_H
 
+#include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
 namespace Divide {
 
-}; //namespace Divide
+    class GFXDevice;
+    class vkRenderTarget final : public RenderTarget {
+    public:
+        vkRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
 
-#endif //_PLATFORM_VIDEO_OPENGLS_PROGRAM_INL_
+        void clear(const RTClearDescriptor& descriptor) noexcept override;
+
+        void setDefaultState(const RTDrawDescriptor& drawPolicy) noexcept override;
+
+        void readData(const vec4<U16>& rect, GFXImageFormat imageFormat, GFXDataFormat dataType, std::pair<bufferPtr, size_t> outData) const noexcept override;
+
+        void blitFrom(const RTBlitParams& params) noexcept override;
+    };
+} //namespace Divide
+
+#endif //VK_FRAME_BUFFER_H

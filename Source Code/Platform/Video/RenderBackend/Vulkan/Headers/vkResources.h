@@ -30,12 +30,27 @@
  */
 
 #pragma once
-#ifndef _VK_COMMON_H_
-#define _VK_COMMON_H_
+#ifndef VK_RESOURCES_H
+#define VK_RESOURCES_H
+
+#include "Platform/Headers/PlatformDefines.h"
+#include "Platform/Video/Headers/RenderAPIWrapper.h"
 
 #include <vk-bootstrap/src/VkBootstrap.h>
 
+namespace NS_GLIM {
+    enum class GLIM_ENUM : int;
+}; //namespace NS_GLIM
+
 namespace Divide {
+
+namespace Debug {
+    extern PFN_vkDebugMarkerSetObjectTagEXT vkDebugMarkerSetObjectTag;
+    extern PFN_vkDebugMarkerSetObjectNameEXT vkDebugMarkerSetObjectName;
+    extern PFN_vkCmdDebugMarkerBeginEXT vkCmdDebugMarkerBegin;
+    extern PFN_vkCmdDebugMarkerEndEXT vkCmdDebugMarkerEnd;
+    extern PFN_vkCmdDebugMarkerInsertEXT vkCmdDebugMarkerInsert;
+};
 
 //ref:  SaschaWillems / Vulkan / VulkanTools
 inline std::string VKErrorString(VkResult errorCode)
@@ -83,6 +98,23 @@ inline std::string VKErrorString(VkResult errorCode)
         }                                                                                 \
     } while (0)
 #endif //VK_CHECK
+
+    extern std::array<VkBlendFactor, to_base(BlendProperty::COUNT)> vkBlendTable;
+    extern std::array<VkBlendOp, to_base(BlendOperation::COUNT)> vkBlendOpTable;
+    extern std::array<VkCompareOp, to_base(ComparisonFunction::COUNT)> vkCompareFuncTable;
+    extern std::array<VkStencilOp, to_base(StencilOperation::COUNT)> vkStencilOpTable;
+    extern std::array<VkCullModeFlags, to_base(CullMode::COUNT)> vkCullModeTable;
+    extern std::array<VkPolygonMode, to_base(FillMode::COUNT)> vkFillModeTable;
+    extern std::array<VkImageType, to_base(TextureType::COUNT)> vkTextureTypeTable;
+    extern std::array<VkPrimitiveTopology, to_base(PrimitiveTopology::COUNT)> vkPrimitiveTypeTable;
+    extern std::array<VkSamplerAddressMode, to_base(TextureWrap::COUNT)> vkWrapTable;
+    extern std::array<NS_GLIM::GLIM_ENUM, to_base(PrimitiveTopology::COUNT)> glimPrimitiveType;
+    extern std::array<VkShaderStageFlagBits, to_base(ShaderType::COUNT)> vkShaderStageTable;
+
+namespace VKUtil {
+    void fillEnumTables(VkDevice device);
+
+}; //namespace VKUtil
 }; //namespace Divide
 
-#endif //_VK_COMMON_H_
+#endif //VK_RESOURCES_H

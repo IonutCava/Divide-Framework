@@ -194,6 +194,12 @@ void Kernel::onLoop() {
         // Restore GPU to default state: clear buffers and set default render state
         _platformContext.beginFrame();
         {
+
+            for (const auto& params : _queuedSizeChangeParams) {
+                onSizeChangeInternal(params);
+            }
+            _queuedSizeChangeParams.resize(0);
+
             Time::ScopedTimer timer3(_frameTimer);
             // Launch the FRAME_STARTED event
             if (!frameListenerMgr().createAndProcessEvent(Time::Game::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_STARTED, evt)) {
@@ -221,7 +227,7 @@ void Kernel::onLoop() {
         if (_platformContext.app().ShutdownRequested()) {
             keepAlive(false);
         }
-    
+
         const ErrorCode err = _platformContext.app().errorCode();
 
         if (err != ErrorCode::NO_ERR) {
@@ -252,7 +258,7 @@ void Kernel::onLoop() {
 
     if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
         if (GFXDevice::FrameCount() % 6 == 0u) {
-        
+
             DisplayWindow& window = _platformContext.mainWindow();
             static string originalTitle;
             if (originalTitle.empty()) {
@@ -270,16 +276,17 @@ void Kernel::onLoop() {
 
     // Cap FPS
     const I16 frameLimit = _platformContext.config().runtime.frameRateLimit;
-    const F32 deltaMilliseconds = Time::MicrosecondsToMilliseconds<F32>(_timingData.currentTimeDeltaUS());
-    const F32 targetFrameTime = 1000.0f / frameLimit;
+    if (frameLimit > 0) {
+        const F32 deltaMilliseconds = Time::MicrosecondsToMilliseconds<F32>(_timingData.currentTimeDeltaUS());
+        const F32 targetFrameTime = 1000.0f / frameLimit;
 
-    if (deltaMilliseconds < targetFrameTime) {
-        {
-            Time::ScopedTimer timer2(_appIdleTimer);
-            idle(true);
-        }
+        if (deltaMilliseconds < targetFrameTime) {
+            {
+                Time::ScopedTimer timer2(_appIdleTimer);
+                idle(true);
+            }
 
-        if (frameLimit > 0) {
+
             //Sleep the remaining frame time 
             std::this_thread::sleep_for(std::chrono::milliseconds(to_I32(std::floorf(targetFrameTime - deltaMilliseconds))));
         }
@@ -834,10 +841,18 @@ void Kernel::shutdown() {
     Console::printfn(Locale::Get(_ID("STOP_ENGINE_OK")));
 }
 
-bool Kernel::onSizeChange(const SizeChangeParams& params) {
+void Kernel::onSizeChange(const SizeChangeParams& params) {
+    if (params.isWindowResize) {
+        _queuedSizeChangeParams.push_back(params);
+    } else {
+        onSizeChangeInternal(params);
+    }
+}
 
-    const bool ret = Attorney::GFXDeviceKernel::onSizeChange(_platformContext.gfx(), params);
-
+void Kernel::onSizeChangeInternal(const SizeChangeParams & params) {
+    if (params.winGUID == _platformContext.app().windowManager().mainWindow()->getGUID()) {
+        Attorney::GFXDeviceKernel::onSizeChange(_platformContext.gfx(), params);
+    }
     if (!_splashScreenUpdating) {
         _platformContext.gui().onSizeChange(params);
     }
@@ -849,8 +864,6 @@ bool Kernel::onSizeChange(const SizeChangeParams& params) {
     if (!params.isWindowResize) {
         _sceneManager->onSizeChange(params);
     }
-
-    return ret;
 }
 
 #pragma region Input Management

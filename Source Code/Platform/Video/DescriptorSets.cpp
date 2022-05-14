@@ -65,7 +65,10 @@ namespace Divide {
     DescriptorUpdateResult UpdateBinding(DescriptorSet& set, const DescriptorSetBinding& binding) {
         for (auto& crtBinding : set._bindings) {
             if (crtBinding._resourceSlot == binding._resourceSlot) {
-                if (crtBinding._type != binding._type || crtBinding._data != binding._data) {
+                if (crtBinding._type != binding._type ||
+                    crtBinding._data != binding._data ||
+                    crtBinding._shaderStageVisibility != binding._shaderStageVisibility)
+                {
                     crtBinding = binding;
                     return DescriptorUpdateResult::OVERWRITTEN_EXISTING;
                 }

@@ -225,7 +225,8 @@ string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
             }
             const auto& data = binding._data;
             const auto& bufferEntry = data.As<ShaderBufferEntry>();
-            ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] ]\n",
+            ret.append(Util::StringFormat("Stage mask [ %d ] Buffer [ %d - %d ] Range [%zu - %zu] ]\n",
+                       to_U32(binding._shaderStageVisibility),
                        binding._resourceSlot,
                        bufferEntry._buffer->getGUID(),
                        bufferEntry._range._startOffset,
@@ -246,17 +247,20 @@ string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
                 ret.append("    ");
             }
             if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER) {
-                ret.append(Util::StringFormat("Texture [ %d - %d - %zu ]\n",
+                ret.append(Util::StringFormat("Stage mask [ %d ] Texture [ %d - %d - %zu ]\n",
+                           to_U32(binding._shaderStageVisibility),
                            binding._resourceSlot,
                            binding._data.As<DescriptorCombinedImageSampler>()._image._textureHandle,
                            binding._data.As<DescriptorCombinedImageSampler>()._samplerHash));
             } else if (binding._type == DescriptorSetBindingType::IMAGE_VIEW) {
-                ret.append(Util::StringFormat("Texture layers [ %d - [%d - %d ]]\n",
+                ret.append(Util::StringFormat("Stage mask [ %d ] Texture layers [ %d - [%d - %d ]]\n",
+                           to_U32(binding._shaderStageVisibility),
                            binding._resourceSlot,
                            binding._data.As<ImageViewEntry>()._view._layerRange.min,
                            binding._data.As<ImageViewEntry>()._view._layerRange.max));
             } else {
-                ret.append(Util::StringFormat("Image binds: [ %d - [%d - %d - %s]",
+                ret.append(Util::StringFormat("Stage mask [ %d ] Image binds: [ %d - [%d - %d - %s]",
+                           to_U32(binding._shaderStageVisibility),
                            binding._resourceSlot,
                            binding._data.As<Image>()._layer,
                            binding._data.As<Image>()._level,

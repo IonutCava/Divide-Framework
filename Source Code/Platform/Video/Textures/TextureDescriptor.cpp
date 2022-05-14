@@ -32,6 +32,20 @@ namespace Divide {
 
             return TextureFilter::COUNT;
         }
+
+        const char* TextureMipSamplingToString(TextureMipSampling sampling) noexcept {
+            return Names::textureMipSampling[to_base(sampling)];
+        }
+
+        TextureMipSampling StringToTextureMipSampling(const string& sampling) {
+            for (U8 i = 0; i < to_U8(TextureMipSampling::COUNT); ++i) {
+                if (strcmp(sampling.c_str(), Names::textureMipSampling[i]) == 0) {
+                    return static_cast<TextureMipSampling>(i);
+                }
+            }
+
+            return TextureMipSampling::COUNT;
+        }
     };
 
     SamplerDescriptor::SamplerDescriptorMap SamplerDescriptor::s_samplerDescriptorMap;
@@ -55,6 +69,7 @@ namespace Divide {
                                      to_U32(_wrapW),
                                      to_U32(_minFilter),
                                      to_U32(_magFilter),
+                                     to_U32(_mipSampling),
                                      _minLOD,
                                      _maxLOD,
                                      _biasLOD,
@@ -158,6 +173,7 @@ namespace Divide {
         void saveToXML(const SamplerDescriptor& sampler, const string& entryName, boost::property_tree::ptree& pt) {
             pt.put(entryName + ".Sampler.Filter.<xmlattr>.min", TypeUtil::TextureFilterToString(sampler.minFilter()));
             pt.put(entryName + ".Sampler.Filter.<xmlattr>.mag", TypeUtil::TextureFilterToString(sampler.magFilter()));
+            pt.put(entryName + ".Sampler.Filter.<xmlattr>.sampling", TypeUtil::TextureMipSamplingToString(sampler.mipSampling()));
             pt.put(entryName + ".Sampler.Map.<xmlattr>.U", TypeUtil::WrapModeToString(sampler.wrapU()));
             pt.put(entryName + ".Sampler.Map.<xmlattr>.V", TypeUtil::WrapModeToString(sampler.wrapV()));
             pt.put(entryName + ".Sampler.Map.<xmlattr>.W", TypeUtil::WrapModeToString(sampler.wrapW()));
@@ -177,6 +193,7 @@ namespace Divide {
             SamplerDescriptor sampler = {};
             sampler.minFilter(TypeUtil::StringToTextureFilter(pt.get<string>(entryName + ".Sampler.Filter.<xmlattr>.min", TypeUtil::TextureFilterToString(TextureFilter::LINEAR))));
             sampler.magFilter(TypeUtil::StringToTextureFilter(pt.get<string>(entryName + ".Sampler.Filter.<xmlattr>.mag", TypeUtil::TextureFilterToString(TextureFilter::LINEAR))));
+            sampler.mipSampling(TypeUtil::StringToTextureMipSampling(pt.get<string>(entryName + ".Sampler.Filter.<xmlattr>.sampling", TypeUtil::TextureMipSamplingToString(TextureMipSampling::LINEAR))));
             sampler.wrapU(TypeUtil::StringToWrapMode(pt.get<string>(entryName + ".Sampler.Map.<xmlattr>.U", TypeUtil::WrapModeToString(TextureWrap::REPEAT))));
             sampler.wrapV(TypeUtil::StringToWrapMode(pt.get<string>(entryName + ".Sampler.Map.<xmlattr>.V", TypeUtil::WrapModeToString(TextureWrap::REPEAT))));
             sampler.wrapW(TypeUtil::StringToWrapMode(pt.get<string>(entryName + ".Sampler.Map.<xmlattr>.W", TypeUtil::WrapModeToString(TextureWrap::REPEAT))));

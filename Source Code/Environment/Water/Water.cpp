@@ -166,8 +166,6 @@ bool WaterPlane::load() {
 
     SamplerDescriptor defaultSampler = {};
     defaultSampler.wrapUVW(TextureWrap::REPEAT);
-    defaultSampler.minFilter(TextureFilter::LINEAR_MIPMAP_LINEAR);
-    defaultSampler.magFilter(TextureFilter::LINEAR);
     defaultSampler.anisotropyLevel(4);
 
     TextureDescriptor texDescriptor(TextureType::TEXTURE_2D_ARRAY);

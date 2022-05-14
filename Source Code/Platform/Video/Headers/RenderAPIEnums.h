@@ -374,14 +374,14 @@ static_assert(std::size(Names::pbType) == to_base(PBType::COUNT) + 1);
 enum class PrimitiveTopology : U8 {
     POINTS = 0,
     LINES,
-    LINE_LOOP,
+    //LINE_LOOP, No Vulkan support
     LINE_STRIP,
     TRIANGLES,
     TRIANGLE_STRIP,
     TRIANGLE_FAN,
-    QUADS, //Deprecated?
-    QUAD_STRIP,
-    POLYGON,
+    //QUADS, //Deprecated and No Vulkan support
+    //QUAD_STRIP, //No Vulkan support
+    //POLYGON,//No Vulkan support
     LINES_ADJANCENCY,
     LINE_STRIP_ADJACENCY,
     TRIANGLES_ADJACENCY,
@@ -392,9 +392,9 @@ enum class PrimitiveTopology : U8 {
 
 namespace Names {
     static const char* primitiveType[] = {
-        "POINTS", "LINES", "LINE_LOOP", "LINE_STRIP", "TRIANGLES", "TRIANGLE_STRIP",
-        "TRIANGLE_FAN", "QUADS", "QUAD_STRIP", "POLYGON", "LINES_ADJANCENCY",
-        "LINE_STRIP_ADJACENCY", "TRIANGLES_ADJACENCY", "TRIANGLE_STRIP_ADJACENCY", "PATCH", "NONE"
+        "POINTS", "LINES", "LINE_STRIP", "TRIANGLES", "TRIANGLE_STRIP",
+        "TRIANGLE_FAN", "LINES_ADJANCENCY", "LINE_STRIP_ADJACENCY",
+        "TRIANGLES_ADJACENCY", "TRIANGLE_STRIP_ADJACENCY", "PATCH", "NONE"
     };
 };
 
@@ -493,12 +493,10 @@ static_assert(std::size(Names::compFunctionNames) == to_base(ComparisonFunction:
 /// Specifies whether front- or back-facing facets are candidates for culling.
 enum class CullMode : U8 {
     NONE = 0,
-    /// Cull Back facing polygons
-    CW,
-    BACK = CW,
-    /// Cull Front facing polygons
-    CCW,
-    FRONT = CCW,
+    /// Cull Back facing polygons (aka CW)
+    BACK,
+    /// Cull Front facing polygons (aka CCW)
+    FRONT,
     /// Cull All polygons
     ALL,
     /// Place all properties above this.
@@ -507,7 +505,7 @@ enum class CullMode : U8 {
 
 namespace Names {
     static const char* cullModes[] = {
-        "None", "CW/BACK", "CCW/FRONT", "ALL", "ERROR!"
+        "None", "BACK", "FRONT", "ALL", "ERROR!"
     };
 };
 
@@ -609,38 +607,47 @@ namespace Names {
 static_assert(std::size(Names::textureType) == to_base(TextureType::COUNT) + 1);
 
 enum class TextureFilter : U8 {
-    LINEAR = 0x0000,
-    NEAREST = 0x0001,
-    NEAREST_MIPMAP_NEAREST = 0x0002,
-    LINEAR_MIPMAP_NEAREST = 0x0003,
-    NEAREST_MIPMAP_LINEAR = 0x0004,
-    LINEAR_MIPMAP_LINEAR = 0x0005,
+    LINEAR = 0,
+    NEAREST,
     COUNT
 };
 
 namespace Names {
     static const char* textureFilter[] = {
-        "LINEAR", "NEAREST", "NEAREST_MIPMAP_NEAREST", "LINEAR_MIPMAP_NEAREST", "NEAREST_MIPMAP_LINEAR", "LINEAR_MIPMAP_LINEAR", "NONE"
+        "LINEAR", "NEAREST", "NONE"
     };
 };
 
 static_assert(std::size(Names::textureFilter) == to_base(TextureFilter::COUNT) + 1);
 
+enum class TextureMipSampling : U8 {
+    LINEAR = 0,
+    NEAREST,
+    NONE,
+    COUNT
+};
+
+
+namespace Names {
+    static const char* textureMipSampling[] = {
+        "LINEAR", "NEAREST", "NONE", "ERROR"
+    };
+};
+
+static_assert(std::size(Names::textureMipSampling) == to_base(TextureMipSampling::COUNT) + 1);
+
 enum class TextureWrap : U8 {
-    // Texture coordinates outside [0...1] are clamped to the nearest valid value.
-    CLAMP = 0x0,
-    CLAMP_TO_EDGE = 0x1,
-    CLAMP_TO_BORDER = 0x2,
-    // If the texture coordinates for a pixel are outside [0...1] the texture is not applied to that pixel
-    DECAL = 0x3,
-    REPEAT = 0x4,
-    MIRROR_REPEAT = 0x5,
+    CLAMP_TO_EDGE = 0,
+    CLAMP_TO_BORDER,
+    REPEAT,
+    MIRROR_REPEAT,
+    MIRROR_CLAMP_TO_EDGE,
     COUNT
 };
 
 namespace Names {
     static const char* textureWrap[] = {
-        "CLAMP", "CLAMP_TO_EDGE", "CLAMP_TO_BORDER", "DECAL", "REPEAT", "MIRROR_REPEAT", "NONE"
+        "CLAMP_TO_EDGE", "CLAMP_TO_BORDER", "REPEAT", "MIRROR_REPEAT", "MIRROR_CLAMP_TO_EDGE", "NONE"
     };
 };
 

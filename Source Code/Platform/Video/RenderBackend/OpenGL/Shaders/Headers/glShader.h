@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _GL_SHADER_H_
-#define _GL_SHADER_H_
+#ifndef GL_SHADER_H
+#define GL_SHADER_H
 
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -105,4 +105,4 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
 };  // namespace Divide
 
-#endif //_GL_SHADER_H_
+#endif //GL_SHADER_H

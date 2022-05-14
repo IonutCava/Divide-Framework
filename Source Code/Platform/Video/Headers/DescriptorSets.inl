@@ -72,12 +72,14 @@ namespace Divide {
 
     inline bool operator==(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept {
         return lhs._resourceSlot == rhs._resourceSlot &&
+               lhs._shaderStageVisibility == rhs._shaderStageVisibility &&
                lhs._type == rhs._type &&
                lhs._data == rhs._data;
     }
 
     inline bool operator!=(const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs) noexcept {
         return lhs._resourceSlot != rhs._resourceSlot ||
+               lhs._shaderStageVisibility != rhs._shaderStageVisibility ||
                lhs._type != rhs._type ||
                lhs._data != rhs._data;
     }

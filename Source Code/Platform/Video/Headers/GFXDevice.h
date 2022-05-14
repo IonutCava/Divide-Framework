@@ -419,7 +419,7 @@ public:
     struct GFXDescriptorSet {
         PROPERTY_RW(DescriptorSet, set);
         PROPERTY_RW(bool, dirty, true);
-        void update(U8 resourceSlot, const DescriptorSetBindingData& data);
+        void update(DescriptorSetBinding& newBinding);
     };
 
     struct GFXDescriptorSets {
@@ -435,7 +435,7 @@ public:
 
 protected:
 
-    void updateDescriptorSet(DescriptorSetUsage usage, U8 resourceSlot, const DescriptorSetBindingData& data);
+    void updateDescriptorSet(DescriptorSetUsage usage, DescriptorSetBinding& newBinding);
 
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
 
@@ -448,7 +448,7 @@ protected:
     // returns true if the window and the viewport have different aspect ratios
     bool fitViewportInWindow(U16 w, U16 h);
 
-    bool onSizeChange(const SizeChangeParams& params);
+    void onSizeChange(const SizeChangeParams& params);
 
     void initDebugViews();
     void renderDebugViews(Rect<I32> targetViewport, I32 padding, GFX::CommandBuffer& bufferInOut);
@@ -644,8 +644,8 @@ namespace Attorney {
     };
 
     class GFXDeviceKernel {
-        static bool onSizeChange(GFXDevice& device, const SizeChangeParams& params) {
-            return device.onSizeChange(params);
+        static void onSizeChange(GFXDevice& device, const SizeChangeParams& params) {
+            device.onSizeChange(params);
         }
         
         static void update(GFXDevice& device, const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {

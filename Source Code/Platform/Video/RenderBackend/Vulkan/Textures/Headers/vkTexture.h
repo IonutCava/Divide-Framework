@@ -30,37 +30,36 @@
  */
 
 #pragma once
-#ifndef GL_UNIFORM_BUFFER_OBJECT_H_
-#define GL_UNIFORM_BUFFER_OBJECT_H_
+#ifndef VK_TEXTURE_H
+#define VK_TEXTURE_H
 
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
-#include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
+#include "Platform/Video/Textures/Headers/Texture.h"
 
 namespace Divide {
-
-FWD_DECLARE_MANAGED_CLASS(glBufferImpl);
-
-/// Base class for shader uniform blocks
-class glUniformBuffer final : public ShaderBuffer {
+    class vkTexture final : public Texture {
     public:
-        glUniformBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
-        ~glUniformBuffer() = default;
+        vkTexture(GFXDevice& context,
+                  const size_t descriptorHash,
+                  const Str256& name,
+                  const ResourcePath& assetNames,
+                  const ResourcePath& assetLocations,
+                  const TextureDescriptor& texDescriptor,
+                  ResourceCache& parentCache);
 
-        BufferLock clearBytes(BufferRange range) override;
-        void readBytes(BufferRange range, bufferPtr result) const override;
-        BufferLock writeBytes(BufferRange range, bufferPtr data) override;
+        [[nodiscard]] SamplerAddress getGPUAddress(size_t samplerHash) noexcept override;
 
-        [[nodiscard]] bool lockByteRange(BufferRange range, SyncObject* sync) const override;
-        [[nodiscard]] bool bindByteRange(U8 bindIndex, BufferRange range) override;
+        void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rw_flag) noexcept override;
 
-        [[nodiscard]] inline glBufferImpl* bufferImpl() const { return _bufferImpl.get(); }
+        void loadData(const ImageTools::ImageData& imageLayers) noexcept override;
 
-        PROPERTY_R(size_t, alignedBufferSize, 0u);
+        void loadData(const Byte* data, const size_t dataSize, const vec2<U16>& dimensions) noexcept override;
 
-    private:
-        glBufferImpl_uptr _bufferImpl = nullptr;
-};
+        void clearData(const UColour4& clearColour, U8 level) const noexcept override;
 
-};  // namespace Divide
+        void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const noexcept override;
 
-#endif
+        TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const noexcept override;
+    };
+} //namespace Divide
+
+#endif //VK_TEXTURE_H

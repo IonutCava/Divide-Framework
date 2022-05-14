@@ -127,11 +127,11 @@ void RenderStateBlock::reset() {
 
 void RenderStateBlock::flipCullMode()  noexcept {
     switch (cullMode()) {
-        case CullMode::NONE: _cullMode = CullMode::ALL;  break;
-        case CullMode::ALL:  _cullMode = CullMode::NONE; break;
-        case CullMode::CW:   _cullMode = CullMode::CCW;  break;
-        case CullMode::CCW:  _cullMode = CullMode::CW;   break;
-        case CullMode::COUNT: DIVIDE_UNEXPECTED_CALL();  break;
+        case CullMode::NONE:  _cullMode = CullMode::ALL;   break;
+        case CullMode::ALL:   _cullMode = CullMode::NONE;  break;
+        case CullMode::BACK:  _cullMode = CullMode::FRONT; break;
+        case CullMode::FRONT: _cullMode = CullMode::BACK;  break;
+        case CullMode::COUNT: DIVIDE_UNEXPECTED_CALL();    break;
     }
     _dirty = true;
 }

@@ -567,6 +567,7 @@ void SceneGraphNode::prepareRender(RenderingComponent& rComp,
 
         DescriptorSetBinding bufferBinding{};
         bufferBinding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
+        bufferBinding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::VERTEX;
 
         bufferBinding._resourceSlot = to_U8(ShaderBufferLocation::BONE_TRANSFORMS);
         bufferBinding._data.As<ShaderBufferEntry>() = { data._boneBuffer, data._boneBufferRange };

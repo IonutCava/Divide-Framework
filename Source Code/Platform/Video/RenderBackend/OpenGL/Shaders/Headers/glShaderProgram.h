@@ -30,8 +30,8 @@
  */
 
 #pragma once
-#ifndef _PLATFORM_VIDEO_OPENGLS_PROGRAM_H_
-#define _PLATFORM_VIDEO_OPENGLS_PROGRAM_H_
+#ifndef GL_SHADER_PROGRAM_H
+#define GL_SHADER_PROGRAM_H
 
 #include "glShaderProgram.h"
 #include "AI/ActionInterface/Headers/AIProcessor.h"
@@ -118,6 +118,5 @@ namespace Attorney {
 };  // namespace Attorney
 };  // namespace Divide
 
-#endif  //_PLATFORM_VIDEO_OPENGLS_PROGRAM_H_
+#endif  //GL_SHADER_PROGRAM_H
 
-#include "glShaderProgram.inl"

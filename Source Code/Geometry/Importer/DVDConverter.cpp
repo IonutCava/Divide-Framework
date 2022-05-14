@@ -76,10 +76,10 @@ namespace DVDConverter {
 namespace detail {
     hashMap<U32, TextureWrap> fillTextureWrapMap() {
         hashMap<U32, TextureWrap> wrapMap;
-        wrapMap[aiTextureMapMode_Wrap] = TextureWrap::CLAMP;
+        wrapMap[aiTextureMapMode_Wrap] = TextureWrap::REPEAT;
         wrapMap[aiTextureMapMode_Clamp] = TextureWrap::CLAMP_TO_EDGE;
-        wrapMap[aiTextureMapMode_Mirror] = TextureWrap::REPEAT;
-        wrapMap[aiTextureMapMode_Decal] = TextureWrap::DECAL;
+        wrapMap[aiTextureMapMode_Mirror] = TextureWrap::MIRROR_REPEAT;
+        wrapMap[aiTextureMapMode_Decal] = TextureWrap::CLAMP_TO_EDGE; //With transparent border!
         return wrapMap;
     }
 

@@ -187,18 +187,20 @@ void IMPrimitive::fromBoxes(const BoxDescriptor* boxes, const size_t count) {
             // Set it's colour
             attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(colour));
             // Draw the bottom loop
-            begin(PrimitiveTopology::LINE_LOOP);
+            begin(PrimitiveTopology::LINE_STRIP);
                 vertex(min.x, min.y, min.z);
                 vertex(max.x, min.y, min.z);
                 vertex(max.x, min.y, max.z);
                 vertex(min.x, min.y, max.z);
+                vertex(min.x, min.y, min.z);
             end();
             // Draw the top loop
-            begin(PrimitiveTopology::LINE_LOOP);
+            begin(PrimitiveTopology::LINE_STRIP);
                 vertex(min.x, max.y, min.z);
                 vertex(max.x, max.y, min.z);
                 vertex(max.x, max.y, max.z);
                 vertex(min.x, max.y, max.z);
+                vertex(min.x, max.y, min.z);
             end();
             // Connect the top to the bottom
             begin(PrimitiveTopology::LINES);
@@ -236,7 +238,8 @@ void IMPrimitive::fromSpheres(const SphereDescriptor* spheres, const size_t coun
         F32 t = 1.f;
         // Create the object
             attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(sphere.colour));
-            begin(PrimitiveTopology::LINE_LOOP);
+            begin(PrimitiveTopology::LINE_STRIP);
+                vec3<F32> startVert{};
                 for (U32 i = 0u; i < sphere.stacks; i++) {
                     const F32 rho = i * drho;
                     const F32 srho = std::sin(rho);
@@ -253,9 +256,12 @@ void IMPrimitive::fromSpheres(const SphereDescriptor* spheres, const size_t coun
                         F32 x = stheta * srho;
                         F32 y = ctheta * srho;
                         F32 z = crho;
-                        vertex(x * sphere.radius + sphere.center.x,
-                               y * sphere.radius + sphere.center.y,
-                               z * sphere.radius + sphere.center.z);
+                        const vec3<F32> vert1{
+                            x * sphere.radius + sphere.center.x,
+                            y * sphere.radius + sphere.center.y,
+                            z * sphere.radius + sphere.center.z
+                        };
+                        vertex(vert1);
                         x = stheta * srhodrho;
                         y = ctheta * srhodrho;
                         z = crhodrho;
@@ -263,9 +269,14 @@ void IMPrimitive::fromSpheres(const SphereDescriptor* spheres, const size_t coun
                         vertex(x * sphere.radius + sphere.center.x,
                                y * sphere.radius + sphere.center.y,
                                z * sphere.radius + sphere.center.z);
+
+                        if (i == 0 && j == 0) {
+                            startVert = vert1;
+                        }
                     }
                     t -= dt;
                 }
+                vertex(startVert.x, startVert.y, startVert.z);
             end();
     }
     endBatch();
@@ -391,6 +402,7 @@ void IMPrimitive::texture(const Texture& texture, const size_t samplerHash) {
      if (existingEntry != tempEntry) {
          auto& existingBinding = _descriptorSet._bindings.front();
          existingBinding._resourceSlot = tempEntry._binding;
+         existingBinding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
          existingBinding._data.As<DescriptorCombinedImageSampler>() = { tempEntry._data, tempEntry._sampler };
         _cmdBufferDirty = true;
     }

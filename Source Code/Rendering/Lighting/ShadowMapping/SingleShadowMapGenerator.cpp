@@ -83,8 +83,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
     _shaderConstants.set(_ID("blurSizes"), GFX::PushConstantType::VEC2, blurSizes);
     SamplerDescriptor sampler = {};
     sampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
-    sampler.minFilter(TextureFilter::LINEAR);
-    sampler.magFilter(TextureFilter::LINEAR);
+    sampler.mipSampling(TextureMipSampling::NONE);
     sampler.anisotropyLevel(0);
     const size_t samplerHash = sampler.getHash();
 
@@ -232,6 +231,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt.texture()->data(), shadowAtt.samplerHash() };
         }
 
@@ -253,6 +253,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
+            binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt.texture()->data(), blurAtt.samplerHash() };
         }
 

@@ -620,8 +620,6 @@
     <ClInclude Include="..\..\3rdParty\TileableVolumeNoise\TileableVolumeNoise.h" />
     <ClInclude Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrap.h" />
     <ClInclude Include="..\..\3rdParty\vk-bootstrap\src\VkBootstrapDispatch.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Text\Headers\fontstash.h" />
-    <ClInclude Include="..\..\Source Code\Platform\Video\RenderBackend\OpenGL\Text\Headers\glfontstash.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\glsw\Headers\bstrlib.h" />
     <ClInclude Include="..\..\Source Code\Platform\Video\Shaders\glsw\Headers\glsw.h" />
   </ItemGroup>
