@@ -181,7 +181,6 @@ void glTexture::validateDescriptor() {
 
 void glTexture::prepareTextureData(const U16 width, const U16 height) {
     _loadingData = _data;
-    _data = {};
 
     _width = width;
     _height = height;
@@ -192,15 +191,8 @@ void glTexture::prepareTextureData(const U16 width, const U16 height) {
 
     _type = GLUtil::glTextureTypeTable[to_U32(_loadingData._textureType)];
 
-    GLuint newHandle = GLUtil::k_invalidObjectID;
-    glCreateTextures(GLUtil::glTextureTypeTable[to_base(_descriptor.texType())], 1, &newHandle);
+    glCreateTextures(GLUtil::glTextureTypeTable[to_base(_descriptor.texType())], 1, &_loadingData._textureHandle);
     
-    if (_loadingData._textureHandle > 0u) {
-        // Immutable storage requires us to create a new texture object 
-        glDeleteTextures(1, &_loadingData._textureHandle);
-    }
-    _loadingData._textureHandle = newHandle;
-
     assert(_loadingData._textureHandle != 0 && "glTexture error: failed to generate new texture handle!");
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glObjectLabel(GL_TEXTURE, _loadingData._textureHandle, -1, resourceName().c_str());
@@ -213,6 +205,11 @@ void glTexture::submitTextureData() {
 
     if (_descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
         glGenerateTextureMipmap(_loadingData._textureHandle);
+    }
+
+    if (_data._textureHandle > 0u) {
+        // Immutable storage requires us to create a new texture object 
+        glDeleteTextures(1, &_data._textureHandle);
     }
 
     ScopedLock<Mutex> w_lock(_gpuAddressesLock);
@@ -238,7 +235,7 @@ void glTexture::loadData(const Byte* data, const size_t dataSize, const vec2<U16
         ImageTools::ImageData imgData = {};
         if (imgData.loadFromMemory(data, dataSize, _width, _height, 1, GetSizeFactor(_descriptor.dataType()) * NumChannels(_descriptor.baseFormat()))) {
             loadDataUncompressed(imgData);
-                assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
+            assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
         }
     }
     submitTextureData();

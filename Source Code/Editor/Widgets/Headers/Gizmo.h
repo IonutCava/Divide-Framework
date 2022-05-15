@@ -46,8 +46,6 @@ namespace Divide {
     class DisplayWindow;
     class SceneGraphNode;
 
-    struct SizeChangeParams;
-
     namespace Attorney {
         class GizmoEditor;
     }

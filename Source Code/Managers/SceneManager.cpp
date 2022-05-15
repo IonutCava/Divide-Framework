@@ -266,19 +266,10 @@ void SceneManager::initPostLoadState() noexcept {
     }
 }
 
-void SceneManager::onSizeChange(const SizeChangeParams& params) {
-    if (params.isWindowResize) {
-        return;
-    }
-    const U16 w = params.width;
-    const U16 h = params.height;
-
-    const F32 aspectRatio = to_F32(w) / h;
-
+void SceneManager::onResolutionChange(const SizeChangeParams& params) {
     if (_init) {
-        
-        const F32 hFoV = _platformContext->config().runtime.horizontalFOV;
-        const F32 vFoV = Angle::to_VerticalFoV(hFoV, to_D64(aspectRatio));
+        const F32 aspectRatio = to_F32(params.width) / params.height;
+        const F32 vFoV = Angle::to_VerticalFoV(_platformContext->config().runtime.horizontalFOV, to_D64(aspectRatio));
         const vec2<F32> zPlanes(Camera::s_minNearZ, _platformContext->config().runtime.cameraViewDistance);
 
         for (const UnitComponent* player : _players) {
@@ -286,8 +277,6 @@ void SceneManager::onSizeChange(const SizeChangeParams& params) {
                 player->getUnit<Player>()->camera()->setProjection(aspectRatio, vFoV, zPlanes);
             }
         }
-
-        Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setProjection(aspectRatio, vFoV, zPlanes);
     }
 }
 

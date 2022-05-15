@@ -1564,27 +1564,42 @@ bool Editor::onUTF8(const Input::UTF8Event& arg) {
     return wantsCapture;
 }
 
-void Editor::onSizeChange(const SizeChangeParams& params) {
+void Editor::onWindowSizeChange(const SizeChangeParams& params) {
     if (!isInit()) {
         return;
     }
 
-    if (_mainWindow != nullptr && params.winGUID == _mainWindow->getGUID() && params.isWindowResize) {
-        const vec2<U16> displaySize = _mainWindow->getDrawableSize();
+    const U16 w = params.width;
+    const U16 h = params.height;
 
-        for (U8 i = 0u; i < to_U8(ImGuiContextType::COUNT); ++i) {
-            ImGuiIO& io = _imguiContexts[i]->IO;
-            io.DisplaySize.x = to_F32(params.width);
-            io.DisplaySize.y = to_F32(params.height);
-            io.DisplayFramebufferScale = ImVec2(params.width > 0u ? to_F32(displaySize.width) / params.width : 0.f,
-                                                params.height > 0u ? to_F32(displaySize.height) / params.height : 0.f);
-        }
-
-        const U16 w = params.width;
-        const U16 h = params.height;
-        _editorRTHandle._rt->resize(w, h);
+    if (w < 1 || h < 1 || !params.isMainWindow) {
+        return;
     }
 
+    const vec2<U16> displaySize = _mainWindow->getDrawableSize();
+
+    for (U8 i = 0u; i < to_U8(ImGuiContextType::COUNT); ++i) {
+        ImGuiIO& io = _imguiContexts[i]->IO;
+        io.DisplaySize.x = to_F32(params.width);
+        io.DisplaySize.y = to_F32(params.height);
+        io.DisplayFramebufferScale = ImVec2(params.width > 0u ? to_F32(displaySize.width) / params.width : 0.f,
+                                            params.height > 0u ? to_F32(displaySize.height) / params.height : 0.f);
+    }
+}
+
+void Editor::onResolutionChange(const SizeChangeParams& params) {
+    if (!isInit()) {
+        return;
+    }
+
+    const U16 w = params.width;
+    const U16 h = params.height;
+
+    // Avoid resolution change on minimize so we don't thrash render targets
+    if (w < 1 || h < 1 || _editorRTHandle._rt->getResolution() == vec2<U16>(w, h)) {
+        return;
+    }
+    _editorRTHandle._rt->resize(w, h);
     _render2DSnapshot = Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->snapshot();
 }
 

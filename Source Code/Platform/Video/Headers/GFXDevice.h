@@ -81,7 +81,6 @@ class SceneRenderState;
 class ShaderComputeQueue;
 
 struct SizeChangeParams;
-struct SizeChangeParams;
 struct ShaderBufferDescriptor;
 
 enum class ShadowType : U8;
@@ -448,7 +447,8 @@ protected:
     // returns true if the window and the viewport have different aspect ratios
     bool fitViewportInWindow(U16 w, U16 h);
 
-    void onSizeChange(const SizeChangeParams& params);
+    void onWindowSizeChange(const SizeChangeParams& params);
+    void onResolutionChange(const SizeChangeParams& params);
 
     void initDebugViews();
     void renderDebugViews(Rect<I32> targetViewport, I32 padding, GFX::CommandBuffer& bufferInOut);
@@ -644,8 +644,12 @@ namespace Attorney {
     };
 
     class GFXDeviceKernel {
-        static void onSizeChange(GFXDevice& device, const SizeChangeParams& params) {
-            device.onSizeChange(params);
+        static void onWindowSizeChange(GFXDevice& device, const SizeChangeParams& params) {
+            device.onWindowSizeChange(params);
+        }
+
+        static void onResolutionChange(GFXDevice& device, const SizeChangeParams& params) {
+            device.onResolutionChange(params);
         }
         
         static void update(GFXDevice& device, const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {

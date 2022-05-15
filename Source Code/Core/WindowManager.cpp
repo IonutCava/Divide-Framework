@@ -280,16 +280,15 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
  
     windowIndex = to_U32(_windows.size());
     _windows.emplace_back(window);
-    window->addEventListener(WindowEvent::SIZE_CHANGED, [ctx = _context](const DisplayWindow::WindowEventArgs& args) {
-        SizeChangeParams params;
+    window->addEventListener(WindowEvent::SIZE_CHANGED, [&](const DisplayWindow::WindowEventArgs& args) {
+        SizeChangeParams params{};
         params.width = to_U16(args.x);
         params.height = to_U16(args.y);
-        params.isWindowResize = true;
         params.isFullScreen = args._flag;
         params.winGUID = args._windowGUID;
-
+        params.isMainWindow = args._windowGUID == _mainWindow->getGUID();
         // Only if rendering window
-        return ctx->app().onSizeChange(params);
+        return _context->app().onWindowSizeChange(params);
     });
 
     if (!descriptor.externalClose) {

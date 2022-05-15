@@ -315,18 +315,12 @@ void GUI::showDebugCursor(const bool state) {
     }
 }
 
-void GUI::onSizeChange(const SizeChangeParams& params) {
-    if (params.winGUID != _context->parent().platformContext().mainWindow().getGUID() ||
-        !parent().platformContext().config().gui.cegui.enabled)
-    {
-        return;
-    }
-    if (params.isWindowResize) {
+void GUI::onResolutionChange(const SizeChangeParams& params) {
+    if (!params.isMainWindow) {
         return;
     }
 
-    const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
-    if (guiConfig.cegui.enabled) {
+    if (parent().platformContext().config().gui.cegui.enabled) {
         const CEGUI::Sizef windowSize(params.width, params.height);
         CEGUI::System::getSingleton().notifyDisplaySizeChanged(windowSize);
         if (_ceguiRenderTextureTarget) {
@@ -337,12 +331,11 @@ void GUI::onSizeChange(const SizeChangeParams& params) {
         if (_rootSheet) {
             const Rect<I32>& renderViewport = { 0, 0, params.width, params.height };
             _rootSheet->setSize(CEGUI::USize(CEGUI::UDim(0.0f, to_F32(renderViewport.z)),
-                                             CEGUI::UDim(0.0f, to_F32(renderViewport.w))));
+                CEGUI::UDim(0.0f, to_F32(renderViewport.w))));
             _rootSheet->setPosition(CEGUI::UVector2(CEGUI::UDim(0.0f, to_F32(renderViewport.x)),
-                                                    CEGUI::UDim(0.0f, to_F32(renderViewport.y))));
+                CEGUI::UDim(0.0f, to_F32(renderViewport.y))));
         }
     }
-
 }
 
 void GUI::setCursorPosition(const I32 x, const I32 y) {

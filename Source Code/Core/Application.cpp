@@ -147,11 +147,15 @@ bool Application::onSDLEvent(const SDL_Event event) noexcept {
     return false;
 }
 
-bool Application::onSizeChange(const SizeChangeParams& params) const {
-    Attorney::KernelApplication::onSizeChange(_kernel, params);
+bool Application::onWindowSizeChange(const SizeChangeParams& params) const {
+    Attorney::KernelApplication::onWindowSizeChange(_kernel, params);
     return true;
 }
 
+bool Application::onResolutionChange(const SizeChangeParams& params) const {
+    Attorney::KernelApplication::onResolutionChange(_kernel, params);
+    return true;
+}
 void Application::mainThreadTask(const DELEGATE<void>& task, const bool wait) {
     std::atomic_bool done = false;
     if (wait) {

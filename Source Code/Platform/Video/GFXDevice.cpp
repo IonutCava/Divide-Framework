@@ -1162,13 +1162,12 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     WAIT_FOR_CONDITION(loadTasks.load() == 0);
     const DisplayWindow* mainWindow = context().app().windowManager().mainWindow();
 
-    SizeChangeParams params = {};
+    SizeChangeParams params{};
     params.width = _rtPool->getRenderTarget(RenderTargetNames::SCREEN)->getWidth();
     params.height = _rtPool->getRenderTarget(RenderTargetNames::SCREEN)->getHeight();
-    params.isWindowResize = false;
     params.winGUID = mainWindow->getGUID();
-
-    if (context().app().onSizeChange(params)) {
+    params.isMainWindow = true;
+    if (context().app().onResolutionChange(params)) {
         NOP();
     }
 
@@ -1291,14 +1290,14 @@ void GFXDevice::beginFrame(DisplayWindow& window, const bool global) {
         }
     }
     if (global && _resolutionChangeQueued.second) {
-        SizeChangeParams params;
-        params.isWindowResize = false;
+        SizeChangeParams params{};
         params.isFullScreen = window.fullscreen();
         params.width = _resolutionChangeQueued.first.width;
         params.height = _resolutionChangeQueued.first.height;
         params.winGUID = context().mainWindow().getGUID();
+        params.isMainWindow = global;
 
-        if (context().app().onSizeChange(params)) {
+        if (context().app().onResolutionChange(params)) {
             NOP();
         }
         _resolutionChangeQueued.second = false;
@@ -1714,41 +1713,56 @@ void GFXDevice::setShadowMSAASampleCountInternal(const ShadowType type, U8 sampl
 }
 
 /// The main entry point for any resolution change request
-void GFXDevice::onSizeChange(const SizeChangeParams& params) {
+void GFXDevice::onWindowSizeChange(const SizeChangeParams& params) {
+    if (params.isMainWindow) {
+        fitViewportInWindow(params.width, params.height);
+    }
+}
+
+void GFXDevice::onResolutionChange(const SizeChangeParams& params) {
+    if (!params.isMainWindow) {
+        return;
+    }
+
     const U16 w = params.width;
     const U16 h = params.height;
 
-    if (!params.isWindowResize) {
-        // Update resolution only if it's different from the current one.
-        // Avoid resolution change on minimize so we don't thrash render targets
-        if (w < 1 || h < 1 || _renderingResolution == vec2<U16>(w, h)) {
-            return;
-        }
-
-        _renderingResolution.set(w, h);
-
-        // Update the 2D camera so it matches our new rendering viewport
-        if (Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->setProjection(vec4<F32>(0, to_F32(w), 0, to_F32(h)), vec2<F32>(-1, 1))) {
-            Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->updateFrustum();
-        }
-
-        if (Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->setProjection(vec4<F32>(0, to_F32(w), to_F32(h), 0), vec2<F32>(-1, 1))) {
-            Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->updateFrustum();
-        }
-
-        // Update render targets with the new resolution
-        _rtPool->getRenderTarget(RenderTargetNames::SCREEN)->resize(w, h);
-        _rtPool->getRenderTarget(RenderTargetNames::SCREEN_PREV)->resize(w, h);
-        _rtPool->getRenderTarget(RenderTargetNames::SCREEN_MS)->resize(w, h);
-        _rtPool->getRenderTarget(RenderTargetNames::SSAO_RESULT)->resize(w, h);
-        _rtPool->getRenderTarget(RenderTargetNames::SSR_RESULT)->resize(w, h);
-        _rtPool->getRenderTarget(RenderTargetNames::HI_Z)->resize(w, h);
-        _rtPool->getRenderTarget(RenderTargetNames::OIT)->resize(w, h);
-        _rtPool->getRenderTarget(RenderTargetNames::OIT_MS)->resize(w, h);
-
-        // Update post-processing render targets and buffers
-        _renderer->updateResolution(w, h);
+    // Update resolution only if it's different from the current one.
+    // Avoid resolution change on minimize so we don't thrash render targets
+    if (w < 1 || h < 1 || _renderingResolution == vec2<U16>(w, h)) {
+        return;
     }
+
+    Configuration& config = _parent.platformContext().config();
+
+    const F32 aspectRatio = to_F32(w) / h;
+    const F32 vFoV = Angle::to_VerticalFoV(config.runtime.horizontalFOV, to_D64(aspectRatio));
+    const vec2<F32> zPlanes(Camera::s_minNearZ, config.runtime.cameraViewDistance);
+
+    // Update the 2D camera so it matches our new rendering viewport
+    if (Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->setProjection(vec4<F32>(0, to_F32(w), 0, to_F32(h)), vec2<F32>(-1, 1))) {
+        Camera::GetUtilityCamera(Camera::UtilityCamera::_2D)->updateFrustum();
+    }
+    if (Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->setProjection(vec4<F32>(0, to_F32(w), to_F32(h), 0), vec2<F32>(-1, 1))) {
+        Camera::GetUtilityCamera(Camera::UtilityCamera::_2D_FLIP_Y)->updateFrustum();
+    }
+    if (Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setProjection(aspectRatio, vFoV, zPlanes)) {
+        Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->updateFrustum();
+    }
+
+    // Update render targets with the new resolution
+    _rtPool->getRenderTarget(RenderTargetNames::SCREEN)->resize(w, h);
+    _rtPool->getRenderTarget(RenderTargetNames::SCREEN_PREV)->resize(w, h);
+    _rtPool->getRenderTarget(RenderTargetNames::SCREEN_MS)->resize(w, h);
+    _rtPool->getRenderTarget(RenderTargetNames::SSAO_RESULT)->resize(w, h);
+    _rtPool->getRenderTarget(RenderTargetNames::SSR_RESULT)->resize(w, h);
+    _rtPool->getRenderTarget(RenderTargetNames::HI_Z)->resize(w, h);
+    _rtPool->getRenderTarget(RenderTargetNames::OIT)->resize(w, h);
+    _rtPool->getRenderTarget(RenderTargetNames::OIT_MS)->resize(w, h);
+
+    // Update post-processing render targets and buffers
+    _renderer->updateResolution(w, h);
+    _renderingResolution.set(w, h);
 
     fitViewportInWindow(w, h);
 }

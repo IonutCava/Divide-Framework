@@ -145,7 +145,7 @@ public:
     /// Update animations, network data, sounds, triggers etc.
     void updateSceneState(U64 deltaTimeUS);
 
-    void onSizeChange(const SizeChangeParams& params);
+    void onResolutionChange(const SizeChangeParams& params);
 
     [[nodiscard]] U8 playerPass() const noexcept { return _currentPlayerPass; }
 

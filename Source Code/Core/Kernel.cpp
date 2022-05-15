@@ -194,12 +194,6 @@ void Kernel::onLoop() {
         // Restore GPU to default state: clear buffers and set default render state
         _platformContext.beginFrame();
         {
-
-            for (const auto& params : _queuedSizeChangeParams) {
-                onSizeChangeInternal(params);
-            }
-            _queuedSizeChangeParams.resize(0);
-
             Time::ScopedTimer timer3(_frameTimer);
             // Launch the FRAME_STARTED event
             if (!frameListenerMgr().createAndProcessEvent(Time::Game::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_STARTED, evt)) {
@@ -841,28 +835,25 @@ void Kernel::shutdown() {
     Console::printfn(Locale::Get(_ID("STOP_ENGINE_OK")));
 }
 
-void Kernel::onSizeChange(const SizeChangeParams& params) {
-    if (params.isWindowResize) {
-        _queuedSizeChangeParams.push_back(params);
-    } else {
-        onSizeChangeInternal(params);
+void Kernel::onWindowSizeChange(const SizeChangeParams & params) {
+    Attorney::GFXDeviceKernel::onWindowSizeChange(_platformContext.gfx(), params);
+
+    if_constexpr (Config::Build::ENABLE_EDITOR) {
+        _platformContext.editor().onWindowSizeChange(params);
     }
 }
 
-void Kernel::onSizeChangeInternal(const SizeChangeParams & params) {
-    if (params.winGUID == _platformContext.app().windowManager().mainWindow()->getGUID()) {
-        Attorney::GFXDeviceKernel::onSizeChange(_platformContext.gfx(), params);
-    }
+void Kernel::onResolutionChange(const SizeChangeParams& params) {
+    _sceneManager->onResolutionChange(params);
+
+    Attorney::GFXDeviceKernel::onResolutionChange(_platformContext.gfx(), params);
+
     if (!_splashScreenUpdating) {
-        _platformContext.gui().onSizeChange(params);
+        _platformContext.gui().onResolutionChange(params);
     }
 
-    if_constexpr (Config::Build::ENABLE_EDITOR) {
-        _platformContext.editor().onSizeChange(params);
-    }
-
-    if (!params.isWindowResize) {
-        _sceneManager->onSizeChange(params);
+    if_constexpr(Config::Build::ENABLE_EDITOR) {
+        _platformContext.editor().onResolutionChange(params);
     }
 }
 

@@ -50,15 +50,14 @@ namespace Attorney {
 };
 
 struct SizeChangeParams {
-    /// The new width and height
-    U16 width = 0u;
-    U16 height = 0u;
-    /// Is it a window size change or a rendering resolution change?
-    bool isWindowResize = false;
-    /// Is the window that fired the event fullscreen?
-    bool isFullScreen = false;
     /// Window GUID
-    I64 winGUID = -1;
+    I64 winGUID{ -1 };
+    /// The new width and height
+    U16 width{ 0u };
+    U16 height{ 0u };
+    /// Is the window that fired the event fullscreen?
+    bool isFullScreen{ false };
+    bool isMainWindow{ false };
 };
 
 /// Lightweight singleton class that manages our application's kernel and window
@@ -99,10 +98,8 @@ class Application : public SDLEventListener {
     inline bool mainLoopPaused() const noexcept;
     inline void mainLoopPaused(bool state) noexcept;
 
-    // Whenever the host window or the rendering resolution is changed, call this
-    // Use "window" to determine if the window changed size or if the resolution did
-    // returns true if the window aspect ration and the draw aspect ratio don't match anymore
-    bool onSizeChange(const SizeChangeParams& params) const;
+    bool onWindowSizeChange(const SizeChangeParams& params) const;
+    bool onResolutionChange(const SizeChangeParams& params) const;
 
     inline void throwError(ErrorCode err) noexcept;
     inline ErrorCode errorCode() const noexcept;

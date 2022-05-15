@@ -80,7 +80,7 @@ public:
 
     void draw(GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut);
 
-    void onSizeChange(const SizeChangeParams& params);
+    void onResolutionChange(const SizeChangeParams& params);
     void onChangeScene(Scene* newScene);
     void onUnloadScene(Scene* scene);
 

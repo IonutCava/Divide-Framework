@@ -204,9 +204,10 @@ class Kernel final : public Input::InputAggregatorInterface,
     void stopSplashScreen();
     bool mainLoopScene(FrameEvent& evt);
     bool presentToScreen(FrameEvent& evt);
-    /// Update all engine components that depend on the current screen size. Returns true if the rendering viewport and the window viewport have differnt aspect ratios
-    void onSizeChange(const SizeChangeParams& params);
-    void onSizeChangeInternal(const SizeChangeParams& params);
+
+    void onWindowSizeChange(const SizeChangeParams& params);
+    void onResolutionChange(const SizeChangeParams& params);
+
     vec2<I32> remapMouseCoords(const vec2<I32>& absPositionIn, bool& remappedOut) const noexcept;
 
    private:
@@ -245,8 +246,6 @@ class Kernel final : public Input::InputAggregatorInterface,
 
     Rect<I32> _prevViewport = { -1, -1, -1, -1 };
     U8 _prevPlayerCount = 0u;
-
-    eastl::fixed_vector<SizeChangeParams, 4, false> _queuedSizeChangeParams;
 };
 
 namespace Attorney {
@@ -259,8 +258,12 @@ namespace Attorney {
             kernel->shutdown();
         }
 
-        static void onSizeChange(Kernel* kernel, const SizeChangeParams& params) {
-            kernel->onSizeChange(params);
+        static void onWindowSizeChange(Kernel* kernel, const SizeChangeParams& params) {
+            kernel->onWindowSizeChange(params);
+        }
+
+        static void onResolutionChange(Kernel* kernel, const SizeChangeParams& params) {
+            kernel->onResolutionChange(params);
         }
 
         static void warmup(Kernel* kernel) {

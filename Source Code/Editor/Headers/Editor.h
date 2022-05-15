@@ -152,7 +152,8 @@ class Editor final : public PlatformContextComponent,
     void drawScreenOverlay(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut) const;
 
     void toggle(bool state);
-    void onSizeChange(const SizeChangeParams& params);
+    void onWindowSizeChange(const SizeChangeParams& params);
+    void onResolutionChange(const SizeChangeParams& params);
     void selectionChangeCallback(PlayerIndex idx, const vector<SceneGraphNode*>& nodes) const;
     void onChangeScene(Scene* newScene);
 
