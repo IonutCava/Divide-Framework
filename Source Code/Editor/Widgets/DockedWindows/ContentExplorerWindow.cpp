@@ -262,6 +262,9 @@ namespace Divide {
                         const ImVec4 bgColour(imguiContext.IO.KeyShift ? 1.f : 0.f, 0.f, 0.f, imguiContext.IO.KeyShift ? 1.f : 0.f);
                         if (ImGui::ImageButton((void*)(intptr_t)icon->data()._textureHandle, ImVec2(64, 64 / aspect), ImVec2(0,0), ImVec2(1,1), 2, bgColour, ImVec4(1,1,1,1))) {
                             spawnMesh = getModelForPath(ResourcePath(file.first), ResourcePath(file.second._path));
+                            if (spawnMesh == nullptr) {
+                                Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't load specified mesh!", Time::SecondsToMilliseconds<F32>(3), true);
+                            }
                         }
                         hasTooltip = true;
                         if (ImGui::IsItemHovered()) {

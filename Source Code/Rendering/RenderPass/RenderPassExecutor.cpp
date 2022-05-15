@@ -1066,7 +1066,7 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
         }
 
         const RenderTarget* screenTarget = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
-        const RTAttachment& normalsAtt = screenTarget->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
+        RTAttachment* normalsAtt = screenTarget->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
 
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._usage = DescriptorSetUsage::PER_PASS_SET;
@@ -1074,27 +1074,27 @@ void RenderPassExecutor::mainPass(const VisibleNodeList<>& nodes, const RenderPa
         Texture_ptr hizTex = nullptr;
         if (hasHiZ) {
             const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget(params._targetHIZ);
-            const RTAttachment& hizAtt = hizTarget->getAttachment(RTAttachmentType::Depth, 0);
+            RTAttachment* hizAtt = hizTarget->getAttachment(RTAttachmentType::Depth_Stencil, 0);
 
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_base(TextureUsage::DEPTH);
             binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-            binding._data.As<DescriptorCombinedImageSampler>() = { hizAtt.texture()->data(), hizAtt.samplerHash() };
+            binding._data.As<DescriptorCombinedImageSampler>() = { hizAtt->texture()->data(), hizAtt->descriptor()._samplerHash };
         } else if (prePassExecuted) {
-            const RTAttachment& depthAtt = target.getAttachment(RTAttachmentType::Depth, 0);
+            RTAttachment* depthAtt = target.getAttachment(RTAttachmentType::Depth_Stencil, 0);
             auto& binding = set._bindings.emplace_back();
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_base(TextureUsage::DEPTH);
             binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-            binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt.texture()->data(), depthAtt.samplerHash() };
+            binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->data(), depthAtt->descriptor()._samplerHash };
         }
 
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_base(TextureUsage::SCENE_NORMALS);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt.texture()->data(), normalsAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->data(), normalsAtt->descriptor()._samplerHash };
 
         prepareRenderQueues(params, nodes, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut);
 
@@ -1129,7 +1129,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
     GFX::BeginRenderPassCommand* beginRenderPassOitCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     beginRenderPassOitCmd->_name = "DO_OIT_PASS_1";
     beginRenderPassOitCmd->_target = params._targetOIT;
-    SetEnabled(beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
+    SetEnabled(beginRenderPassOitCmd->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
     //beginRenderPassOitCmd->_descriptor._alphaToCoverage = true;
     {
         const RenderTarget* nonMSTarget = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
@@ -1141,7 +1141,7 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_base(TextureUsage::TRANSMITANCE);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { colourAtt.texture()->data(), colourAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { colourAtt->texture()->data(), colourAtt->descriptor()._samplerHash };
     }
 
     prepareRenderQueues(params, nodes, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut);
@@ -1178,14 +1178,14 @@ void RenderPassExecutor::woitPass(const VisibleNodeList<>& nodes, const RenderPa
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { accumAtt.texture()->data(), accumAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { accumAtt->texture()->data(), accumAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT1);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { revAtt.texture()->data(), revAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { revAtt->texture()->data(), revAtt->descriptor()._samplerHash };
     }
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -1212,7 +1212,7 @@ void RenderPassExecutor::transparencyPass(const VisibleNodeList<>& nodes, const 
     GFX::BeginRenderPassCommand* beginRenderPassTransparentCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     beginRenderPassTransparentCmd->_name = "DO_TRANSPARENCY_PASS";
     beginRenderPassTransparentCmd->_target = params._target;
-    SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
+    SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
 
     if (layeredRendering) {
         GFX::EnqueueCommand<GFX::BeginRenderSubPassCommand>(bufferInOut)->_writeLayers.push_back(params._layerParams);
@@ -1262,14 +1262,14 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
             GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             beginRenderPassCommand->_target = RenderTargetNames::SCREEN;
             SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO), false);
-            SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
+            SetEnabled(beginRenderPassCommand->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
             beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_ResolveGBufferPipeline });
 
             const RenderTarget* MSSource = _context.renderTargetPool().getRenderTarget(params._target);
-            const RTAttachment& velocityAtt = MSSource->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY));
-            const RTAttachment& normalsAtt = MSSource->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
+            RTAttachment* velocityAtt = MSSource->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::VELOCITY));
+            RTAttachment* normalsAtt = MSSource->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
             set._usage = DescriptorSetUsage::PER_DRAW_SET;
@@ -1278,14 +1278,14 @@ void RenderPassExecutor::resolveMainScreenTarget(const RenderPassParams& params,
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT0);
                 binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-                binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt.texture()->data(), velocityAtt.samplerHash() };
+                binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->data(), velocityAtt->descriptor()._samplerHash };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT1);
                 binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-                binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt.texture()->data(), normalsAtt.samplerHash() };
+                binding._data.As<DescriptorCombinedImageSampler>() = { normalsAtt->texture()->data(), normalsAtt->descriptor()._samplerHash };
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
@@ -1366,7 +1366,7 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
     // PrePass requires a depth buffer
     const bool doPrePass = _stage != RenderStage::SHADOW &&
                            params._target != INVALID_RENDER_TARGET_ID &&
-                           target->usesAttachment(RTAttachmentType::Depth, 0);
+                           target->usesAttachment(RTAttachmentType::Depth_Stencil, 0);
     const bool doOITPass = params._targetOIT != INVALID_RENDER_TARGET_ID;
     const bool doOcclusionPass = doPrePass && params._targetHIZ != INVALID_RENDER_TARGET_ID;
 
@@ -1459,7 +1459,7 @@ void RenderPassExecutor::doCustomPass(const PlayerIndex playerIdx, Camera* camer
         beginRenderPassTransparentCmd->_target = params._target;
         SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 1, false);
         SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Colour, 2, false);
-        SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth, 0, false);
+        SetEnabled(beginRenderPassTransparentCmd->_descriptor._drawMask, RTAttachmentType::Depth_Stencil, 0, false);
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Debug Draw Pass";
         Attorney::SceneManagerRenderPass::debugDraw(_parent.parent().sceneManager(), bufferInOut);

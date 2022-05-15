@@ -189,7 +189,7 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
     const auto& ssrDataAtt = rtPool.getRenderTarget(RenderTargetNames::SSR_RESULT)->getAttachment(RTAttachmentType::Colour, 0);
     const auto& sceneDataAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::NORMALS));
     const auto& velocityAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::VELOCITY));
-    const auto& depthAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Depth, 0);
+    const auto& depthAtt = rtPool.getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::Depth_Stencil, 0);
 
     SamplerDescriptor defaultSampler = {};
     defaultSampler.wrapUVW(TextureWrap::REPEAT);
@@ -202,42 +202,42 @@ void PostFX::apply(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, 
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCREEN);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { prbAtt.texture()->data(), prbAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { prbAtt->texture()->data(), prbAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_DEPTH);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt.texture()->data(), samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { depthAtt->texture()->data(), samplerHash };
     }   
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_LINDEPTH);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { linDepthDataAtt.texture()->data(), samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { linDepthDataAtt->texture()->data(), samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SSR);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { ssrDataAtt.texture()->data(), samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { ssrDataAtt->texture()->data(), samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_DATA);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { sceneDataAtt.texture()->data(), samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { sceneDataAtt->texture()->data(), samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TexOperatorBindPoint::TEX_BIND_POINT_SCENE_VELOCITY);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt.texture()->data(), samplerHash };
+        binding._data.As<DescriptorCombinedImageSampler>() = { velocityAtt->texture()->data(), samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();

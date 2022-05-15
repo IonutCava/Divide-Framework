@@ -201,6 +201,41 @@ namespace Divide {
     } THREADNAME_INFO;
 #pragma pack(pop)
 
+    void SetThreadPriorityInternal(HANDLE thread, const ThreadPriority priority) {
+        if (priority == ThreadPriority::COUNT) {
+            return;
+        }
+
+        switch (priority) {
+            case ThreadPriority::IDLE: {
+                ::SetThreadPriority(thread, THREAD_PRIORITY_IDLE);
+            } break;
+            case ThreadPriority::BELOW_NORMAL: {
+                ::SetThreadPriority(thread, THREAD_PRIORITY_BELOW_NORMAL);
+            } break;
+            case ThreadPriority::NORMAL: {
+                ::SetThreadPriority(thread, THREAD_PRIORITY_NORMAL);
+            } break;
+            case ThreadPriority::ABOVE_NORMAL: {
+                ::SetThreadPriority(thread, THREAD_PRIORITY_ABOVE_NORMAL);
+            } break;
+            case ThreadPriority::HIGHEST: {
+                ::SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+            } break;
+            case ThreadPriority::TIME_CRITICAL: {
+                ::SetThreadPriority(thread, THREAD_PRIORITY_TIME_CRITICAL);
+            } break;
+        }
+    }
+
+    void SetThreadPriority(const ThreadPriority priority) {
+        SetThreadPriorityInternal(GetCurrentThread(), priority);
+    }
+
+    extern void SetThreadPriority(std::thread* thread, ThreadPriority priority) {
+        SetThreadPriorityInternal(static_cast<HANDLE>(thread->native_handle()), priority);
+    }
+
     void SetThreadName(const U32 threadID, const char* threadName) noexcept {
         // DWORD dwThreadID = ::GetThreadId( static_cast<HANDLE>( t.native_handle() ) );
 

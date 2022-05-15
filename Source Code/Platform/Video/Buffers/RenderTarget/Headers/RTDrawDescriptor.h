@@ -47,7 +47,6 @@ struct RTDrawMask {
     };
 
     bool _disabledDepth = false;
-    bool _disabledStencil = false;
 };
 
 

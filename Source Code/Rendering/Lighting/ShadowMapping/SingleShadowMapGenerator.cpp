@@ -88,7 +88,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
     const size_t samplerHash = sampler.getHash();
 
     const RenderTarget* rt = ShadowMap::getShadowMap(_type)._rt;
-    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::Colour, 0).texture()->descriptor();
+    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::Colour, 0)->texture()->descriptor();
 
     //Draw FBO
     {
@@ -103,9 +103,9 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         depthDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        RTAttachmentDescriptors att = {
-            { colourDescriptor, samplerHash, RTAttachmentType::Colour },
-            { depthDescriptor, samplerHash, RTAttachmentType::Depth }
+        InternalRTAttachmentDescriptors att {
+            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::Colour },
+            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil }
         };
 
         desc._name = "Single_ShadowMap_Draw";
@@ -122,8 +122,8 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         blurMapDescriptor.layerCount(1u);
         blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        RTAttachmentDescriptors att = {
-            { blurMapDescriptor, samplerHash, RTAttachmentType::Colour }
+        InternalRTAttachmentDescriptors att {
+            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::Colour }
         };
 
         RenderTargetDescriptor desc = {};
@@ -232,7 +232,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
             binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-            binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt.texture()->data(), shadowAtt.samplerHash() };
+            binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt->texture()->data(), shadowAtt->descriptor()._samplerHash };
         }
 
         _shaderConstants.set(_ID("layered"), GFX::PushConstantType::BOOL, true);
@@ -254,7 +254,7 @@ void SingleShadowMapGenerator::postRender(const SpotLightComponent& light, GFX::
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
             binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-            binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt.texture()->data(), blurAtt.samplerHash() };
+            binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt->texture()->data(), blurAtt->descriptor()._samplerHash };
         }
 
         beginRenderPassCmd._target = handle._targetID;

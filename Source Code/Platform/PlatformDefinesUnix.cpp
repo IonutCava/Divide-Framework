@@ -67,6 +67,48 @@ namespace Divide {
         handleOut._handle = wmInfo.info.x11.window;
     }
 
+    void SetThreadPriorityInternal(pthread_t thread, const ThreadPriority priority) {
+        if (priority == ThreadPriority::COUNT) {
+            return;
+        }
+        sched_param sch_params;
+        int policy;
+        pthread_getschedparam(thread, &policy, &sch_params);
+
+        switch (priority) {
+            case ThreadPriority::IDLE: {
+                sch_params.sched_priority = 10;
+            } break;
+            case ThreadPriority::BELOW_NORMAL: {
+                sch_params.sched_priority = 25;
+            } break;
+            case ThreadPriority::NORMAL: {
+                sch_params.sched_priority = 50;
+            } break;
+            case ThreadPriority::ABOVE_NORMAL: {
+                sch_params.sched_priority = 75;
+            } break;
+            case ThreadPriority::HIGHEST: {
+                sch_params.sched_priority = 85;
+            } break;
+            case ThreadPriority::TIME_CRITICAL: {
+                sch_params.sched_priority = 99;
+            } break;
+        }
+
+        if (!pthread_setschedparam(thread, SCHED_FIFO, &sch_params)) {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    }
+
+    void SetThreadPriority(const ThreadPriority priority) {
+        SetThreadPriorityInternal(pthread_self(), priority);
+    }
+
+    extern void SetThreadPriority(std::thread* thread, ThreadPriority priority) {
+        SetThreadPriorityInternal(static_cast<pthread_t>(thread->native_handle()), priority);
+    }
+
     void SetThreadName(std::thread* thread, const char* threadName) noexcept {
         auto handle = thread->native_handle();
         pthread_setname_np(handle, threadName);

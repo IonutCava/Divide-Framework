@@ -37,13 +37,11 @@ namespace Divide {
 
 inline bool operator==(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept {
     return lhs._disabledDepth   == rhs._disabledDepth &&
-           lhs._disabledStencil == rhs._disabledStencil &&
            lhs._disabledColours == rhs._disabledColours;
 }
 
 inline bool operator!=(const RTDrawMask& lhs, const RTDrawMask& rhs) noexcept {
     return lhs._disabledDepth   != rhs._disabledDepth ||
-           lhs._disabledStencil != rhs._disabledStencil ||
            lhs._disabledColours != rhs._disabledColours;
 }
 

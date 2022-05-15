@@ -83,13 +83,13 @@ class glFramebuffer final : public RenderTarget,
     bool create() override;
 
     BindingState getAttachmentState(GLenum binding) const;
-    void toggleAttachment(const RTAttachment& attachment, AttachmentState state, bool layeredRendering);
+    void toggleAttachment(const RTAttachment_uptr& attachment, AttachmentState state, bool layeredRendering);
 
 protected:
     void queueCheckStatus() noexcept;
     bool checkStatus();
 
-    void prepareBuffers(const RTDrawDescriptor& drawPolicy, const RTAttachmentPool::PoolEntry& activeAttachments);
+    void prepareBuffers(const RTDrawDescriptor& drawPolicy);
 
     void initAttachment(RTAttachmentType type, U8 index);
 
@@ -104,13 +104,16 @@ protected:
 
     void toggleAttachments();
 
-   protected:
-
-    void clear(const RTClearDescriptor& drawPolicy, const RTAttachmentPool::PoolEntry& activeAttachments) const;
     void begin(const RTDrawDescriptor& drawPolicy);
     void end(bool needsUnbind) const;
+
+   protected:
+    bool setMipLevelInternal(const RTAttachment_uptr& attachment, U16 writeLevel);
+
     void queueMipMapRecomputation() const;
-    static void QueueMipMapsRecomputation(const RTAttachment& attachment);
+    void toggleAttachmentInternal(const RTAttachment_uptr& attachment);
+
+    static void QueueMipMapsRecomputation(const RTAttachment_uptr& attachment);
 
    protected:
     RTDrawDescriptor _previousPolicy;

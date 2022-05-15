@@ -661,8 +661,8 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
                                                                         : RenderTargetNames::HI_Z;
 
         const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget(hiZSourceTarget);
-        const RTAttachment& hizAttachment = hizTarget->getAttachment(RTAttachmentType::Depth, 0u);
-        const Texture_ptr& hizTexture = hizAttachment.texture();
+        RTAttachment* hizAttachment = hizTarget->getAttachment(RTAttachmentType::Depth_Stencil, 0u);
+        const Texture_ptr& hizTexture = hizAttachment->texture();
 
         const PlayerIndex currentPlayerPass = _context.context().kernel().sceneManager()->playerPass();
         const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(currentPlayerPass);
@@ -695,7 +695,7 @@ void Vegetation::prepareRender(SceneGraphNode* sgn,
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
             binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
-            binding._data.As<DescriptorCombinedImageSampler>() = { hizTexture->data(), hizAttachment.samplerHash() };
+            binding._data.As<DescriptorCombinedImageSampler>() = { hizTexture->data(), hizAttachment->descriptor()._samplerHash };
         }
         if (s_grassData || s_treeData) {
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;

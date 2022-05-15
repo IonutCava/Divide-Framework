@@ -40,44 +40,67 @@ namespace Divide {
 FWD_DECLARE_MANAGED_CLASS(Texture);
 FWD_DECLARE_MANAGED_CLASS(RTAttachment);
 
+
 /// This enum is used when creating render targets to define the channel that the texture will attach to
 enum class RTAttachmentType : U8 {
     Colour = 0,
-    Depth = 1,
-    Stencil = 2,
+    Depth_Stencil,
     COUNT
 };
 
-// External attachments get added last and OVERRIDE any normal attachments found at the same type+index location
-struct ExternalRTAttachmentDescriptor {
-    RTAttachment_ptr _attachment;
-    RTAttachmentType _type = RTAttachmentType::COUNT;
-    U8 _index = 0;
-    FColour4 _clearColour = DefaultColours::WHITE;
-};
-
 struct RTAttachmentDescriptor {
-    TextureDescriptor _texDescriptor;
-    size_t _samplerHash = 0;
-    RTAttachmentType _type = RTAttachmentType::COUNT;
-    U8 _index = 0;
-    FColour4 _clearColour = DefaultColours::WHITE;
+    explicit RTAttachmentDescriptor(const size_t samplerHash, const RTAttachmentType type, const U8 index, const FColour4& clearColour)
+        : _samplerHash(samplerHash)
+        , _type(type)
+        , _index(index)
+        , _clearColour(clearColour)
+    {
+    }
+
+    FColour4 _clearColour{ DefaultColours::WHITE };
+    size_t _samplerHash{ 0 };
+    RTAttachmentType _type{ RTAttachmentType::COUNT };
+    U8 _index{ 0 };
 };
 
-using RTAttachmentDescriptors = vector<RTAttachmentDescriptor>;
+// External attachments get added last and OVERRIDE any normal attachments found at the same type+index location
+struct ExternalRTAttachmentDescriptor final : public RTAttachmentDescriptor {
+    explicit ExternalRTAttachmentDescriptor(RTAttachment* attachment,
+                                            const size_t samplerHash,
+                                            const RTAttachmentType type,
+                                            const U8 index = 0u,
+                                            const FColour4& clearColour = DefaultColours::WHITE)
+        : RTAttachmentDescriptor(samplerHash, type, index, clearColour)
+        , _attachment(attachment)
+    {
+    }
 
-class RTAttachmentPool;
+    RTAttachment* _attachment{nullptr};
+};
+
+struct InternalRTAttachmentDescriptor final : public RTAttachmentDescriptor {
+    explicit InternalRTAttachmentDescriptor(TextureDescriptor& descriptor,
+                                            const size_t samplerHash,
+                                            const RTAttachmentType type,
+                                            const U8 index = 0u,
+                                            const FColour4& clearColour = DefaultColours::WHITE)
+        : RTAttachmentDescriptor(samplerHash, type, index, clearColour)
+        , _texDescriptor(descriptor)
+    {
+    }
+
+    TextureDescriptor _texDescriptor;
+};
+
+using InternalRTAttachmentDescriptors = vector<InternalRTAttachmentDescriptor>;
+using ExternalRTAttachmentDescriptors = vector<ExternalRTAttachmentDescriptor>;
+
+class RenderTarget;
 class RTAttachment final {
     public:
-        explicit RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor) noexcept;
-        explicit RTAttachment(RTAttachmentPool& parent, const RTAttachmentDescriptor& descriptor, RTAttachment_ptr externalAtt) noexcept;
+        explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
 
         [[nodiscard]] bool used() const noexcept;
-        
-        [[nodiscard]] bool isExternal() const noexcept;
-
-        [[nodiscard]] bool changed() const noexcept;
-        void clearChanged() noexcept;
 
         void clearColour(const FColour4& clearColour) noexcept;
         [[nodiscard]] const FColour4& clearColour() const noexcept;
@@ -86,30 +109,28 @@ class RTAttachment final {
         [[nodiscard]] U16  mipWriteLevel() const noexcept;
 
         bool writeLayer(U16 layer);
-        [[nodiscard]] U16  writeLayer() const noexcept;
+        [[nodiscard]] U16 writeLayer() const noexcept;
 
-        [[nodiscard]] const Texture_ptr& texture(bool autoResolve = true) const;
-        void setTexture(const Texture_ptr& tex) noexcept;
+        [[nodiscard]] const Texture_ptr& texture() const;
+        void setTexture(const Texture_ptr& tex, const bool isExternal) noexcept;
 
         [[nodiscard]] U16 numLayers() const;
 
         [[nodiscard]] const RTAttachmentDescriptor& descriptor() const noexcept;
 
-        RTAttachmentPool& parent() noexcept;
-        [[nodiscard]] const RTAttachmentPool& parent() const noexcept;
+        RenderTarget& parent() noexcept;
+        [[nodiscard]] const RenderTarget& parent() const noexcept;
 
-        [[nodiscard]] const RTAttachment_ptr& getExternal() const noexcept;
-
-        PROPERTY_RW(size_t, samplerHash, 0);
         PROPERTY_RW(U32, binding, 0u);
+        PROPERTY_RW(bool, changed, false);
+        PROPERTY_R_IW(bool, isExternal, false);
+
     protected:
+        RenderTarget& _parent;
         RTAttachmentDescriptor _descriptor;
         Texture_ptr _texture = nullptr;
-        RTAttachment_ptr _externalAttachment = nullptr;
-        RTAttachmentPool& _parent;
         U16  _mipWriteLevel = 0u;
         U16  _writeLayer = 0u;
-        bool _changed = false;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RTAttachment);

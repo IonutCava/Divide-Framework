@@ -1,75 +1,138 @@
 #include "stdafx.h"
 
 #include "Headers/RenderTarget.h"
+
+#include "Core/Headers/Kernel.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+
 #include "Platform/Video/Headers/GFXDevice.h"
 
+#include "Utility/Headers/Localization.h"
 
 namespace Divide {
+namespace {
+    const char* getAttachmentName(const RTAttachmentType type) noexcept {
+        switch (type) {
+            case RTAttachmentType::Colour:         return "Colour";
+            case RTAttachmentType::Depth_Stencil:  return "Depth_Stencil";
+            default: break;
+        };
+
+        return "ERROR";
+    };
+};
 
 RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor)
     : GraphicsResource(context, Type::RENDER_TARGET, getGUID(), _ID(descriptor._name.c_str())),
      _descriptor(descriptor)
 {
-    for (U8 i = 0; i < descriptor._attachmentCount; ++i) {
-        if (descriptor._attachments[i]._type == RTAttachmentType::Colour) {
-            ++_colourAttachmentCount;
-        }
-    }
-    for (U8 i = 0; i < descriptor._externalAttachmentCount; ++i) {
-        if (descriptor._externalAttachments[i]._type == RTAttachmentType::Colour) {
-            ++_colourAttachmentCount;
-        }
-    }
-    assert(_colourAttachmentCount < RT_MAX_COLOUR_ATTACHMENTS);
 }
 
 RenderTarget::~RenderTarget()
 {
-    destroy();
 }
 
 bool RenderTarget::create() {
-    if (_attachmentPool != nullptr) {
-        return false;
-    }
-    _attachmentPool = eastl::make_unique<RTAttachmentPool>(*this, _colourAttachmentCount);
+    const auto updateAttachment = [&](const RTAttachmentDescriptor& attDesc) {
+        bool printWarning = false;
 
-    for (U8 i = 0; i < _descriptor._attachmentCount; ++i) {
-        _attachmentPool->update(_descriptor._attachments[i]);
+        RTAttachment* att = nullptr;
+        switch (attDesc._type) {
+            case RTAttachmentType::Depth_Stencil: {
+                assert(attDesc._index == 0u);
+                printWarning = _depthAttachment != nullptr;
+                _depthAttachment = eastl::make_unique<RTAttachment>(*this, attDesc);
+                att = _depthAttachment.get();
+            } break;
+            case RTAttachmentType::Colour: {
+                assert(attDesc._index < RT_MAX_COLOUR_ATTACHMENTS);
+                printWarning = _attachments[attDesc._index] != nullptr;
+                _attachments[attDesc._index] = eastl::make_unique<RTAttachment>(*this, attDesc);
+                att = _attachments[attDesc._index].get();
+            } break;
+            default: DIVIDE_UNEXPECTED_CALL(); break;
+        };
+
+        if (printWarning) {
+            Console::d_printfn(Locale::Get(_ID("WARNING_REPLACING_RT_ATTACHMENT")), getGUID(), getAttachmentName(attDesc._type), attDesc._index);
+        }
+
+        return att;
+    };
+
+    const auto updateInternalAttachment = [&](const InternalRTAttachmentDescriptor& attDesc) {
+        RTAttachment* att = updateAttachment(attDesc);
+
+        const Str64 texName = Util::StringFormat("RT_%s_Att_%s_%d_%d",
+                                                 name().c_str(),
+                                                 getAttachmentName(attDesc._type),
+                                                 attDesc._index,
+                                                 getGUID()).c_str();
+
+        ResourceDescriptor textureAttachment(texName);
+        textureAttachment.assetName(ResourcePath(texName));
+        textureAttachment.waitForReady(true);
+        textureAttachment.propertyDescriptor(attDesc._texDescriptor);
+
+        ResourceCache* parentCache = context().parent().resourceCache();
+        Texture_ptr tex = CreateResource<Texture>(parentCache, textureAttachment);
+        assert(tex);
+
+        tex->loadData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()));
+        att->setTexture(tex , false);
+    };
+
+    const auto updateExternalAttachment = [&](const ExternalRTAttachmentDescriptor& attDesc) {
+        RTAttachment* att = updateAttachment(attDesc);
+        att->setTexture(attDesc._attachment->texture(), true);
+    };
+
+    for (U8 i = 0u; i < _descriptor._attachmentCount; ++i) {
+        updateInternalAttachment(_descriptor._attachments[i]);
     }
-    for (U8 i = 0; i < _descriptor._externalAttachmentCount; ++i) {
-        _attachmentPool->update(_descriptor._externalAttachments[i]);
+
+    for (U8 i = 0u; i < _descriptor._externalAttachmentCount; ++i) {
+        updateExternalAttachment(_descriptor._externalAttachments[i]);
     }
 
     return true;
 }
 
-void RenderTarget::destroy()noexcept {
-    _attachmentPool.reset();
-}
-
 bool RenderTarget::hasAttachment(const RTAttachmentType type, const U8 index) const {
-    return _attachmentPool->exists(type, index);
+    return getAttachment(type, index) != nullptr;
 }
 
 bool RenderTarget::usesAttachment(const RTAttachmentType type, const U8 index) const {
-    return _attachmentPool->uses(type, index);
+    RTAttachment* const att = getAttachment(type, index);
+    return att != nullptr && att->used();
 }
 
-const RTAttachment_ptr& RenderTarget::getAttachmentPtr(const RTAttachmentType type, const U8 index) const {
-    return _attachmentPool->get(type, index);
-}
+RTAttachment* RenderTarget::getAttachment(const RTAttachmentType type, const U8 index) const {
+    switch (type) {
+        case RTAttachmentType::Depth_Stencil:  DIVIDE_ASSERT(index == 0u); return _depthAttachment.get();
+        case RTAttachmentType::Colour: DIVIDE_ASSERT(index < RT_MAX_COLOUR_ATTACHMENTS); return _attachments[index].get();
+    }
 
-const RTAttachment& RenderTarget::getAttachment(const RTAttachmentType type, const U8 index) const {
-    return *_attachmentPool->get(type, index);
-}
-
-RTAttachment& RenderTarget::getAttachment(const RTAttachmentType type, const U8 index) {
-    return *_attachmentPool->get(type, index);
+    DIVIDE_UNEXPECTED_CALL();
+    return nullptr;
 }
 
 U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept {
-    return _attachmentPool->attachmentCount(type);
+    switch (type) {
+        case RTAttachmentType::Depth_Stencil: return _depthAttachment == nullptr ? 0u : 1;
+        case RTAttachmentType::Colour: {
+            U8 count = 0u;
+            for (const auto& rt : _attachments) {
+                if (rt != nullptr) {
+                    ++count;
+                }
+            }
+            return count;
+        }
+    }
+
+    DIVIDE_UNEXPECTED_CALL();
+    return 0u;
 }
 
 void RenderTarget::readData(const GFXImageFormat imageFormat, const GFXDataFormat dataType, const std::pair<bufferPtr, size_t> outData) const {
@@ -119,4 +182,5 @@ bool RenderTarget::updateSampleCount(U8 newSampleCount) {
 
     return false;
 }
-};
+
+}; //namespace Divide

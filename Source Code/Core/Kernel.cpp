@@ -47,7 +47,8 @@ namespace {
 
 Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
     : _platformContext(PlatformContext(parentApp, *this)),
-      _appLoopTimer(Time::ADD_TIMER("Main Loop Timer")),
+      _appLoopTimerMain(Time::ADD_TIMER("Main Loop Timer")),
+      _appLoopTimerInternal(Time::ADD_TIMER("Internal Main Loop Timer")),
       _frameTimer(Time::ADD_TIMER("Total Frame Timer")),
       _appIdleTimer(Time::ADD_TIMER("Loop Idle Timer")),
       _appScenePass(Time::ADD_TIMER("Loop Scene Pass Timer")),
@@ -65,8 +66,9 @@ Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
     InitConditionalWait(_platformContext);
 
     std::atomic_init(&_splashScreenUpdating, false);
-    _appLoopTimer.addChildTimer(_appIdleTimer);
-    _appLoopTimer.addChildTimer(_frameTimer);
+    _appLoopTimerMain.addChildTimer(_appLoopTimerInternal);
+    _appLoopTimerInternal.addChildTimer(_appIdleTimer);
+    _appLoopTimerInternal.addChildTimer(_frameTimer);
     _frameTimer.addChildTimer(_appScenePass);
     _appScenePass.addChildTimer(_cameraMgrTimer);
     _appScenePass.addChildTimer(_physicsUpdateTimer);
@@ -167,122 +169,126 @@ void Kernel::idle(const bool fast) {
 void Kernel::onLoop() {
     OPTICK_EVENT();
 
-    if (!keepAlive()) {
-        // exiting the rendering loop will return us to the last control point
-        _platformContext.app().mainLoopActive(false);
-        if (!sceneManager()->saveActiveScene(true, false)) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-        return;
-    }
-
-    if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
-        // Check for any file changes (shaders, scripts, etc)
-        FileWatcherManager::update();
-    }
-
-    // Update internal timer
-    _platformContext.app().timer().update();
     {
-        Time::ScopedTimer timer(_appLoopTimer);
+        Time::ScopedTimer timer(_appLoopTimerMain);
 
-        keepAlive(true);
-        // Update time at every render loop
-        _timingData.update(Time::Game::ElapsedMicroseconds());
-        FrameEvent evt = {};
+        if (!keepAlive()) {
+            // exiting the rendering loop will return us to the last control point
+            _platformContext.app().mainLoopActive(false);
+            if (!sceneManager()->saveActiveScene(true, false)) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+            return;
+        }
 
-        // Restore GPU to default state: clear buffers and set default render state
-        _platformContext.beginFrame();
+        if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+            // Check for any file changes (shaders, scripts, etc)
+            FileWatcherManager::update();
+        }
+
+        // Update internal timer
+        _platformContext.app().timer().update();
         {
-            Time::ScopedTimer timer3(_frameTimer);
-            // Launch the FRAME_STARTED event
-            if (!frameListenerMgr().createAndProcessEvent(Time::Game::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_STARTED, evt)) {
+            keepAlive(true);
+            // Update time at every render loop
+            _timingData.update(Time::Game::ElapsedMicroseconds());
+            FrameEvent evt = {};
+
+            // Restore GPU to default state: clear buffers and set default render state
+            _platformContext.beginFrame();
+            {
+                Time::ScopedTimer timer3(_frameTimer);
+                // Launch the FRAME_STARTED event
+                if (!frameListenerMgr().createAndProcessEvent(Time::Game::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_STARTED, evt)) {
+                    keepAlive(false);
+                }
+
+                // Process the current frame
+                if (!mainLoopScene(evt)) {
+                    keepAlive(false);
+                }
+
+                // Launch the FRAME_PROCESS event (a.k.a. the frame processing has ended event)
+                if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_PROCESS, evt)) {
+                    keepAlive(false);
+                }
+            }
+            _platformContext.endFrame();
+
+            // Launch the FRAME_ENDED event (buffers have been swapped)
+
+            if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_ENDED, evt)) {
                 keepAlive(false);
             }
 
-            // Process the current frame
-            if (!mainLoopScene(evt)) {
+            if (_platformContext.app().ShutdownRequested()) {
                 keepAlive(false);
             }
 
-            // Launch the FRAME_PROCESS event (a.k.a. the frame processing has ended event)
-            if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_PROCESS, evt)) {
+            const ErrorCode err = _platformContext.app().errorCode();
+
+            if (err != ErrorCode::NO_ERR) {
+                Console::errorfn("Error detected: [ %s ]", getErrorCodeName(err));
                 keepAlive(false);
             }
         }
-        _platformContext.endFrame();
 
-        // Launch the FRAME_ENDED event (buffers have been swapped)
+        if (platformContext().debug().enabled()) {
+            static bool statsEnabled = false;
+            // Turn on perf metric measuring 2 seconds before perf dump
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(8)) == 0) {
+                statsEnabled = platformContext().gfx().queryPerformanceStats();
+                platformContext().gfx().queryPerformanceStats(true);
+            }
+            // Our stats should be up to date now
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(10)) == 0) {
+                Console::printfn(platformContext().debug().output().c_str());
+                if (!statsEnabled) {
+                    platformContext().gfx().queryPerformanceStats(false);
+                }
+            }
 
-        if (!frameListenerMgr().createAndProcessEvent(Time::App::ElapsedMicroseconds(), FrameEventType::FRAME_EVENT_ENDED, evt)) {
-            keepAlive(false);
-        }
-
-        if (_platformContext.app().ShutdownRequested()) {
-            keepAlive(false);
-        }
-
-        const ErrorCode err = _platformContext.app().errorCode();
-
-        if (err != ErrorCode::NO_ERR) {
-            Console::errorfn("Error detected: [ %s ]", getErrorCodeName(err));
-            keepAlive(false);
-        }
-    }
-
-    if (platformContext().debug().enabled()) {
-        static bool statsEnabled = false;
-        // Turn on perf metric measuring 2 seconds before perf dump
-        if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(8)) == 0) {
-            statsEnabled = platformContext().gfx().queryPerformanceStats();
-            platformContext().gfx().queryPerformanceStats(true);
-        }
-        // Our stats should be up to date now
-        if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(10)) == 0) {
-            Console::printfn(platformContext().debug().output().c_str());
-            if (!statsEnabled) {
-                platformContext().gfx().queryPerformanceStats(false);
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 8) == 0u) {
+                _platformContext.gui().modifyText("ProfileData", platformContext().debug().output(), true);
             }
         }
 
-        if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 8) == 0u) {
-            _platformContext.gui().modifyText("ProfileData", platformContext().debug().output(), true);
-        }
-    }
+        if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+            if (GFXDevice::FrameCount() % 6 == 0u) {
 
-    if_constexpr(!Config::Build::IS_SHIPPING_BUILD) {
-        if (GFXDevice::FrameCount() % 6 == 0u) {
+                DisplayWindow& window = _platformContext.mainWindow();
+                static string originalTitle;
+                if (originalTitle.empty()) {
+                    originalTitle = window.title();
+                }
 
-            DisplayWindow& window = _platformContext.mainWindow();
-            static string originalTitle;
-            if (originalTitle.empty()) {
-                originalTitle = window.title();
+                F32 fps = 0.f, frameTime = 0.f;
+                _platformContext.app().timer().getFrameRateAndTime(fps, frameTime);
+                const Str256& activeSceneName = _sceneManager->getActiveScene().resourceName();
+                constexpr const char* buildType = Config::Build::IS_DEBUG_BUILD ? "DEBUG" : Config::Build::IS_PROFILE_BUILD ? "PROFILE" : "RELEASE";
+                constexpr const char* titleString = "[%s] - %s - %s - %5.2f FPS - %3.2f ms - FrameIndex: %d - Update Calls : %d - Alpha : %1.2f";
+                window.title(titleString, buildType, originalTitle.c_str(), activeSceneName.c_str(), fps, frameTime, GFXDevice::FrameCount(), _timingData.updateLoops(), _timingData.alpha());
             }
+        }
 
-            F32 fps = 0.f, frameTime = 0.f;
-            _platformContext.app().timer().getFrameRateAndTime(fps, frameTime);
-            const Str256& activeSceneName = _sceneManager->getActiveScene().resourceName();
-            constexpr const char* buildType = Config::Build::IS_DEBUG_BUILD ? "DEBUG" : Config::Build::IS_PROFILE_BUILD ? "PROFILE" : "RELEASE";
-            constexpr const char* titleString = "[%s] - %s - %s - %5.2f FPS - %3.2f ms - FrameIndex: %d - Update Calls : %d - Alpha : %1.2f";
-            window.title(titleString, buildType, originalTitle.c_str(), activeSceneName.c_str(), fps, frameTime, GFXDevice::FrameCount(), _timingData.updateLoops(), _timingData.alpha());
+        {
+            Time::ScopedTimer timer2(_appIdleTimer);
+            idle(true);
         }
     }
 
     // Cap FPS
     const I16 frameLimit = _platformContext.config().runtime.frameRateLimit;
     if (frameLimit > 0) {
-        const F32 deltaMilliseconds = Time::MicrosecondsToMilliseconds<F32>(_timingData.currentTimeDeltaUS());
+        const F32 elapsedMS = Time::MicrosecondsToMilliseconds<F32>(_appLoopTimerMain.get());
+        const F32 deltaMilliseconds = std::floorf(elapsedMS - (elapsedMS * 0.015f));
         const F32 targetFrameTime = 1000.0f / frameLimit;
 
         if (deltaMilliseconds < targetFrameTime) {
-            {
-                Time::ScopedTimer timer2(_appIdleTimer);
-                idle(true);
-            }
-
-
             //Sleep the remaining frame time 
-            std::this_thread::sleep_for(std::chrono::milliseconds(to_I32(std::floorf(targetFrameTime - deltaMilliseconds))));
+            SetThreadPriority(ThreadPriority::ABOVE_NORMAL);
+            std::this_thread::sleep_for(std::chrono::milliseconds(to_I32(targetFrameTime - deltaMilliseconds)));
+            SetThreadPriority(ThreadPriority::NORMAL);
         }
     }
 }

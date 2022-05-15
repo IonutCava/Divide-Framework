@@ -145,9 +145,6 @@
     <ClInclude Include="../../Source Code/Platform\Video\Headers\GFXShaderData.h">
       <Filter>Video\Headers</Filter>
     </ClInclude>
-    <ClInclude Include="../../Source Code/Platform\Video\Buffers\RenderTarget\Headers\RTAttachmentPool.h">
-      <Filter>Video\Buffers\RenderTarget\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="../../Source Code/Platform\Headers\PlatformDataTypes.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -475,9 +472,6 @@
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\Video\GFXShaderData.cpp">
       <Filter>Video</Filter>
-    </ClCompile>
-    <ClCompile Include="../../Source Code/Platform\Video\Buffers\RenderTarget\RTAttachmentPool.cpp">
-      <Filter>Video\Buffers\RenderTarget</Filter>
     </ClCompile>
     <ClCompile Include="../../Source Code/Platform\File\FileManagementPaths.cpp">
       <Filter>File</Filter>

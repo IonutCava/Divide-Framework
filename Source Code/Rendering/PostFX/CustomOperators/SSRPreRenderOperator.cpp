@@ -115,14 +115,14 @@ void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::
 bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
     assert(_enabled);
 
-    const RTAttachment& screenAtt  = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const RTAttachment& normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
-    const RTAttachment& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth, 0);
+    RTAttachment* screenAtt  = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
+    RTAttachment* normalsAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::NORMALS));
+    RTAttachment* depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::Depth_Stencil, 0);
 
-    const TextureData screenTex = screenAtt.texture()->data();
-    const TextureData normalsTex = normalsAtt.texture()->data();
-    const TextureData depthTex = depthAtt.texture()->data();
-    U16 screenMipCount = screenAtt.texture()->mipCount();
+    const TextureData screenTex = screenAtt->texture()->data();
+    const TextureData normalsTex = normalsAtt->texture()->data();
+    const TextureData depthTex = depthAtt->texture()->data();
+    U16 screenMipCount = screenAtt->texture()->mipCount();
     if (screenMipCount > 2u) {
         screenMipCount -= 2u;
     }
@@ -134,7 +134,7 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
     _constantsCmd._constants.set(_ID("projectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
     _constantsCmd._constants.set(_ID("invProjectionMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
     _constantsCmd._constants.set(_ID("invViewMatrix"), GFX::PushConstantType::MAT4, cameraSnapshot._invViewMatrix);
-    _constantsCmd._constants.set(_ID("screenDimensions"), GFX::PushConstantType::VEC2, vec2<F32>(screenAtt.texture()->width(), screenAtt.texture()->height()));
+    _constantsCmd._constants.set(_ID("screenDimensions"), GFX::PushConstantType::VEC2, vec2<F32>(screenAtt->texture()->width(), screenAtt->texture()->height()));
     _constantsCmd._constants.set(_ID("maxScreenMips"), GFX::PushConstantType::UINT, screenMipCount);
     _constantsCmd._constants.set(_ID("_zPlanes"), GFX::PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
@@ -145,21 +145,21 @@ bool SSRPreRenderOperator::execute(const PlayerIndex idx, const CameraSnapshot& 
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT1);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { depthTex, depthAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { depthTex, depthAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::SCENE_NORMALS);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { normalsTex, normalsAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { normalsTex, normalsAtt->descriptor()._samplerHash };
     }
 
     GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);

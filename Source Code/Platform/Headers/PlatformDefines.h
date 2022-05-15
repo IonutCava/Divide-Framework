@@ -198,6 +198,19 @@ extern [[nodiscard]] F32 PlatformDefaultDPI() noexcept;
 struct WindowHandle;
 extern void GetWindowHandle(void* window, WindowHandle& handleOut) noexcept;
 
+enum class ThreadPriority : U8 {
+    IDLE = 0,
+    BELOW_NORMAL,
+    NORMAL,
+    ABOVE_NORMAL,
+    HIGHEST,
+    TIME_CRITICAL,
+    COUNT
+};
+
+extern void SetThreadPriority(std::thread* thread, ThreadPriority priority);
+extern void SetThreadPriority(ThreadPriority priority);
+
 extern void SetThreadName(std::thread* thread, const char* threadName);
 extern void SetThreadName(const char* threadName) noexcept;
 

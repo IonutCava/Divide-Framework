@@ -111,7 +111,7 @@ public:
             }
         }
         if (descriptor.waitForReady()) {
-            WAIT_FOR_CONDITION_CALLBACK(ptr->getState() == ResourceState::RES_LOADED, ResourceLoadLock::notifyTaskPool, _context);
+            WAIT_FOR_CONDITION_CALLBACK(ptr->getState() == ResourceState::RES_LOADED || ptr->getState() == ResourceState::RES_UNKNOWN, ResourceLoadLock::notifyTaskPool, _context);
         }
 
         // Print load times
@@ -119,6 +119,11 @@ public:
             Console::printfn(Locale::Get(_ID("RESOURCE_CACHE_RETRIEVE")), descriptor.resourceName().c_str());
         } else {
             Console::printfn(Locale::Get(_ID("RESOURCE_CACHE_LOAD")), descriptor.resourceName().c_str(), timeInMS);
+        }
+
+        if (ptr->getState() == ResourceState::RES_UNKNOWN) {
+            Console::printfn(Locale::Get(_ID("ERROR_RESOURCE_CACHE_LOAD_RES_NAME")), descriptor.resourceName().c_str());
+            return nullptr;
         }
 
         return ptr;

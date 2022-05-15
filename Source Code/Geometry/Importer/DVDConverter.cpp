@@ -227,7 +227,7 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
                                           0.f,          0.f,          0.f,          1.f);
     }
 
-    const GeometryFormat format = GetGeometryFormatForExtension(getExtension(fileName).c_str());
+    const GeometryFormat format = GetGeometryFormatForExtension(getExtension(fileName).substr(1).c_str());
 
     if (format == GeometryFormat::COUNT) {
         // unsupported

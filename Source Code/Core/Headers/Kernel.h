@@ -226,7 +226,8 @@ class Kernel final : public Input::InputAggregatorInterface,
     std::atomic_bool _splashScreenUpdating{};
     Task* _splashTask = nullptr;
 
-    Time::ProfileTimer& _appLoopTimer;
+    Time::ProfileTimer& _appLoopTimerMain;
+    Time::ProfileTimer& _appLoopTimerInternal;
     Time::ProfileTimer& _frameTimer;
     Time::ProfileTimer& _appIdleTimer;
     Time::ProfileTimer& _appScenePass;

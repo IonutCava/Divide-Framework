@@ -643,8 +643,8 @@ void MenuBar::drawToolsMenu([[maybe_unused]] const bool modifierPressed) {
                         const U8 count = rt->getAttachmentCount(type);
 
                         for (U8 k = 0; k < count; ++k) {
-                            const RTAttachment& attachment = rt->getAttachment(type, k);
-                            const Texture_ptr& tex = attachment.texture();
+                            RTAttachment* attachment = rt->getAttachment(type, k);
+                            const Texture_ptr& tex = attachment->texture();
                             if (tex == nullptr) {
                                 continue;
                             }

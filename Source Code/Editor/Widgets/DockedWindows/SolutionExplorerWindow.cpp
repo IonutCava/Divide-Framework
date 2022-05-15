@@ -6,6 +6,7 @@
 #include "Editor/Headers/Editor.h"
 
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Managers/Headers/RenderPassManager.h"
@@ -332,6 +333,22 @@ namespace Divide {
         static bool performanceStatsWereEnabled = false;
         static U32 s_maxLocksInFlight = 0u;
         if (ImGui::CollapsingHeader(ICON_FK_TACHOMETER" Performance Stats")) {
+            I32 fpsLimit = to_I32(context().config().runtime.frameRateLimit);
+            bool limit = fpsLimit > 0;
+            if (ImGui::Checkbox("Limit FPS", &limit)) {
+                context().config().runtime.frameRateLimit = limit ? 120 : 0;
+                context().config().changed(true);
+            }
+            if (!limit) {
+                PushReadOnly();
+            }
+            if (ImGui::SliderInt("FPS limit", &fpsLimit, 10, 320)) {
+                context().config().runtime.frameRateLimit = fpsLimit;
+                context().config().changed(true);
+            }
+            if (!limit) {
+                PopReadOnly();
+            }
             OPTICK_EVENT("Get/Print Performance Stats");
             performanceStatsWereEnabled = context().gfx().queryPerformanceStats();
             context().gfx().queryPerformanceStats(true);

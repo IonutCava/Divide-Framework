@@ -76,13 +76,13 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     }
 
     const auto& screenAtt = parent.screenRT()._rt->getAttachment(RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO));
-    TextureDescriptor screenDescriptor = screenAtt.texture()->descriptor();
+    TextureDescriptor screenDescriptor = screenAtt->texture()->descriptor();
     screenDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-    RTAttachmentDescriptors att = {
-        {
+    InternalRTAttachmentDescriptors att{
+        InternalRTAttachmentDescriptor{
             screenDescriptor,
-            screenAtt.samplerHash(),
+            screenAtt->descriptor()._samplerHash,
             RTAttachmentType::Colour,
             0,
             DefaultColours::BLACK
@@ -146,7 +146,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
     assert(input._targetID != output._targetID);
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const TextureData screenTex = screenAtt.texture()->data();
+    const TextureData screenTex = screenAtt->texture()->data();
     {
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._usage = DescriptorSetUsage::PER_DRAW_SET;
@@ -154,7 +154,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
     }
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline });
     GFX::EnqueueCommand(bufferInOut, GFX::SendPushConstantsCommand{ _bloomCalcConstants });
@@ -190,7 +190,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
 
     // Step 3: apply bloom
     const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::Colour, 0); 
-    const TextureData bloomTex = bloomAtt.texture()->data();
+    const TextureData bloomTex = bloomAtt->texture()->data();
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._usage = DescriptorSetUsage::PER_DRAW_SET;
@@ -199,14 +199,14 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, con
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT1);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { bloomTex, bloomAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { bloomTex, bloomAtt->descriptor()._samplerHash };
     }
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _bloomApplyPipeline });

@@ -650,8 +650,8 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     editorDescriptor.layerCount(1u);
     editorDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-    RTAttachmentDescriptors attachments = {
-        { editorDescriptor, editorSampler.getHash(), RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO), DefaultColours::DIVIDE_BLUE }
+    InternalRTAttachmentDescriptors attachments {
+        InternalRTAttachmentDescriptor{ editorDescriptor, editorSampler.getHash(), RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO), DefaultColours::DIVIDE_BLUE }
     };
 
     RenderTargetDescriptor editorDesc = {};

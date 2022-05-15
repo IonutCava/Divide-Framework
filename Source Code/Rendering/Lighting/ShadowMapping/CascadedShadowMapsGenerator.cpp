@@ -82,7 +82,7 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
     sampler.anisotropyLevel(0);
     const size_t samplerHash = sampler.getHash();
 
-    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::Colour, 0).texture()->descriptor();
+    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::Colour, 0)->texture()->descriptor();
     // Draw FBO
     {
         // MSAA rendering is supported
@@ -96,9 +96,9 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         depthDescriptor.msaaSamples(g_shadowSettings.csm.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        RTAttachmentDescriptors att = {
-            { colourDescriptor, samplerHash, RTAttachmentType::Colour },
-            { depthDescriptor, samplerHash, RTAttachmentType::Depth }
+        InternalRTAttachmentDescriptors att {
+            InternalRTAttachmentDescriptor{ colourDescriptor, samplerHash, RTAttachmentType::Colour },
+            InternalRTAttachmentDescriptor{ depthDescriptor, samplerHash, RTAttachmentType::Depth_Stencil }
         };
 
         RenderTargetDescriptor desc = {};
@@ -117,8 +117,8 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
         blurMapDescriptor.layerCount(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT);
         blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        RTAttachmentDescriptors att = {
-            { blurMapDescriptor, samplerHash, RTAttachmentType::Colour }
+        InternalRTAttachmentDescriptors att = {
+            InternalRTAttachmentDescriptor{ blurMapDescriptor, samplerHash, RTAttachmentType::Colour }
         };
 
         RenderTargetDescriptor desc = {};
@@ -415,7 +415,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
             binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-            binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt.texture()->data(), shadowAtt.samplerHash() };
+            binding._data.As<DescriptorCombinedImageSampler>() = { shadowAtt->texture()->data(), shadowAtt->descriptor()._samplerHash };
         }
         _shaderConstantsCmd._constants.set(_ID("verticalBlur"),     GFX::PushConstantType::BOOL, false);
         _shaderConstantsCmd._constants.set(_ID("layerOffsetRead"),  GFX::PushConstantType::INT,  layerOffset);
@@ -436,7 +436,7 @@ void CascadedShadowMapsGenerator::postRender(const DirectionalLightComponent& li
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
-            binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt.texture()->data(), blurAtt.samplerHash() };
+            binding._data.As<DescriptorCombinedImageSampler>() = { blurAtt->texture()->data(), blurAtt->descriptor()._samplerHash };
         }
 
         GFX::EnqueueCommand(bufferInOut, beginRenderPassVerticalCmd);

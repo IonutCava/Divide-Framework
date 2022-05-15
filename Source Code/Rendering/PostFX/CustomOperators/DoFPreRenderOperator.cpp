@@ -106,8 +106,8 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
     
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
     const auto& extraAtt = _parent.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::Colour, 0u);
-    const TextureData screenTex = screenAtt.texture()->data();
-    const TextureData extraTex = extraAtt.texture()->data();
+    const TextureData screenTex = screenAtt->texture()->data();
+    const TextureData extraTex = extraAtt->texture()->data();
 
     DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
     set._usage = DescriptorSetUsage::PER_DRAW_SET;
@@ -116,14 +116,14 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::UNIT0);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
     }
     {
         auto& binding = set._bindings.emplace_back();
         binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
         binding._resourceSlot = to_U8(TextureUsage::DEPTH);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-        binding._data.As<DescriptorCombinedImageSampler>() = { extraTex, extraAtt.samplerHash() };
+        binding._data.As<DescriptorCombinedImageSampler>() = { extraTex, extraAtt->descriptor()._samplerHash };
     }
 
     GFX::BeginRenderPassCommand beginRenderPassCmd{};

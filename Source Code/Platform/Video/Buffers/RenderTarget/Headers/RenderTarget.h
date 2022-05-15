@@ -34,7 +34,7 @@
 #define _RENDER_TARGET_H_
 
 #include "RTDrawDescriptor.h"
-#include "RTAttachmentPool.h"
+#include "RTAttachment.h"
 #include "Platform/Video/Headers/GraphicsResource.h"
 
 namespace Divide {
@@ -98,7 +98,7 @@ struct RenderTargetHandle {
 
 struct RenderTargetDescriptor {
     Str64 _name = "";
-    RTAttachmentDescriptor* _attachments = nullptr;
+    InternalRTAttachmentDescriptor* _attachments = nullptr;
     ExternalRTAttachmentDescriptor* _externalAttachments = nullptr;
     vec2<F32> _depthRange = vec2<F32>(0.f, 1.f);
     vec2<U16>  _resolution = vec2<U16>(1u);
@@ -117,10 +117,10 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     };
 
     struct DrawLayerParams {
-        RTAttachmentType _type = RTAttachmentType::COUNT;
-        U8 _index = 0;
-        U16 _layer = 0;
-        bool _includeDepth = true;
+        RTAttachmentType _type{ RTAttachmentType::COUNT };
+        U8 _index{ 0u };
+        U16 _layer{ 0 };
+        bool _includeDepth{ true };
     };
 
     struct RTBlitParams {
@@ -145,14 +145,11 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
 
     /// Init all attachments. Returns false if already called
     [[nodiscard]] virtual bool create();
-                  void destroy() noexcept;
 
-    [[nodiscard]] virtual bool hasAttachment(RTAttachmentType type, U8 index) const;
-    [[nodiscard]] virtual bool usesAttachment(RTAttachmentType type, U8 index) const;
-    [[nodiscard]] virtual const RTAttachment_ptr& getAttachmentPtr(RTAttachmentType type, U8 index) const;
-    [[nodiscard]] virtual const RTAttachment& getAttachment(RTAttachmentType type, U8 index) const;
-    [[nodiscard]] virtual RTAttachment& getAttachment(RTAttachmentType type, U8 index);
-    [[nodiscard]] virtual U8 getAttachmentCount(RTAttachmentType type) const noexcept;
+    [[nodiscard]] bool hasAttachment(RTAttachmentType type, U8 index) const;
+    [[nodiscard]] bool usesAttachment(RTAttachmentType type, U8 index) const;
+    [[nodiscard]] RTAttachment* getAttachment(RTAttachmentType type, U8 index) const;
+    [[nodiscard]] U8 getAttachmentCount(RTAttachmentType type) const noexcept;
 
     virtual void clear(const RTClearDescriptor& descriptor) = 0;
     virtual void setDefaultState(const RTDrawDescriptor& drawPolicy) = 0;
@@ -177,9 +174,10 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
     PROPERTY_RW(bool, enableAttachmentChangeValidation, true);
 
    protected:
-    U8 _colourAttachmentCount = 0;
     RenderTargetDescriptor _descriptor;
-    eastl::unique_ptr<RTAttachmentPool> _attachmentPool;
+
+    std::array<RTAttachment_uptr, RT_MAX_COLOUR_ATTACHMENTS> _attachments{};
+    RTAttachment_uptr _depthAttachment{ nullptr };
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderTarget);

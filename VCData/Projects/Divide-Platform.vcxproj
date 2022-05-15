@@ -53,7 +53,6 @@
     <ClInclude Include="../../Source Code/Platform\Threading\Headers\ThreadPool.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\RenderTarget\Headers\RenderTarget.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\RenderTarget\Headers\RTAttachment.h" />
-    <ClInclude Include="../../Source Code/Platform\Video\Buffers\RenderTarget\Headers\RTAttachmentPool.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\RenderTarget\Headers\RTDrawDescriptor.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\ShaderBuffer\Headers\ShaderBuffer.h" />
     <ClInclude Include="../../Source Code/Platform\Video\Buffers\VertexBuffer\GenericBuffer\Headers\GenericVertexData.h" />
@@ -168,7 +167,6 @@
     <ClCompile Include="../../Source Code/Platform\Threading\Task.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\Buffers\RenderTarget\RenderTarget.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\Buffers\RenderTarget\RTAttachment.cpp" />
-    <ClCompile Include="../../Source Code/Platform\Video\Buffers\RenderTarget\RTAttachmentPool.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\Buffers\RenderTarget\RTDrawDescriptor.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\Buffers\ShaderBuffer\ShaderBuffer.cpp" />
     <ClCompile Include="../../Source Code/Platform\Video\Buffers\VertexBuffer\GenericBuffer\GenericVertexData.cpp" />

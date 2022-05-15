@@ -560,11 +560,11 @@ bool RenderingComponent::updateReflection(const U16 reflectionIndex,
         RenderCbkParams params{ _context, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8(_reflectorType), camera };
         _reflectionCallback(passManager, params, bufferInOut, memCmdInOut);
 
-        const RTAttachment& targetAtt = _context.renderTargetPool().getRenderTarget(reflectRTID)->getAttachment(RTAttachmentType::Colour, 0u);
+        RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget(reflectRTID)->getAttachment(RTAttachmentType::Colour, 0u);
         _materialInstance->setTexture(
             _reflectorType == ReflectorType::PLANAR ? TextureUsage::REFLECTION_PLANAR : TextureUsage::REFLECTION_CUBE,
-            targetAtt.texture(),
-            targetAtt.samplerHash(),
+            targetAtt->texture(),
+            targetAtt->descriptor()._samplerHash,
             TextureOperation::REPLACE,
             TexturePrePassUsage::AUTO
         );
@@ -596,11 +596,11 @@ bool RenderingComponent::updateRefraction(const U16 refractionIndex,
         RenderCbkParams params{ _context, _parentSGN, renderState, refractRTID, refractionIndex, 0u, camera };
         _refractionCallback(passManager, params, bufferInOut, memCmdInOut);
 
-        const RTAttachment& targetAtt = _context.renderTargetPool().getRenderTarget(refractRTID)->getAttachment(RTAttachmentType::Colour, 0u);
+        RTAttachment* targetAtt = _context.renderTargetPool().getRenderTarget(refractRTID)->getAttachment(RTAttachmentType::Colour, 0u);
         _materialInstance->setTexture(
             TextureUsage::REFRACTION_PLANAR,
-            targetAtt.texture(),
-            targetAtt.samplerHash(),
+            targetAtt->texture(),
+            targetAtt->descriptor()._samplerHash,
             TextureOperation::REPLACE,
             TexturePrePassUsage::AUTO
         );

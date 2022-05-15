@@ -17,6 +17,11 @@ void DebugCallback(const GLenum source,
                    const GLchar* message,
                    const void* userParam) {
 
+    if (type == GL_DEBUG_TYPE_OTHER && severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
+        // Really don't care about these
+        return;
+    }
+
     // Translate message source
     const char* gl_source = "Unknown Source";
     if (source == GL_DEBUG_SOURCE_API) {

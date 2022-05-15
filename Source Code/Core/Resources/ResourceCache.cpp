@@ -58,10 +58,12 @@ void ResourceLoadLock::notifyTaskPool(PlatformContext& context) {
 
 void DeleteResource::operator()(CachedResource* res) const
 {
-    WAIT_FOR_CONDITION(res->getState() == ResourceState::RES_LOADED, false);
+    WAIT_FOR_CONDITION(res->getState() == ResourceState::RES_LOADED || res->getState() == ResourceState::RES_UNKNOWN, false);
+    if (res->getState() != ResourceState::RES_UNKNOWN) {
+        _context->remove(res);
+    }
 
-    _context->remove(res);
-     MemoryManager::SAFE_DELETE(res);
+    MemoryManager::SAFE_DELETE(res);
 }
 
 ResourceCache::ResourceCache(PlatformContext& context)
@@ -131,7 +133,6 @@ CachedResource_ptr ResourceCache::find(const size_t descriptorHash, bool& entryI
 }
 
 void ResourceCache::remove(CachedResource* resource) {
-    WAIT_FOR_CONDITION(resource->getState() != ResourceState::RES_LOADING);
     resource->setState(ResourceState::RES_UNLOADING);
 
     const size_t resourceHash = resource->descriptorHash();

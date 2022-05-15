@@ -31,8 +31,8 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         TextureDescriptor weightsDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
         weightsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        RTAttachmentDescriptors att = {
-            { weightsDescriptor, sampler.getHash(), RTAttachmentType::Colour }
+        InternalRTAttachmentDescriptors att{
+            InternalRTAttachmentDescriptor{ weightsDescriptor, sampler.getHash(), RTAttachmentType::Colour }
         };
 
         desc._name = "SMAAWeights";
@@ -169,7 +169,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
     }
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::Colour, to_U8(GFXDevice::ScreenTargets::ALBEDO));
-    const TextureData screenTex = screenAtt.texture()->data();
+    const TextureData screenTex = screenAtt->texture()->data();
 
     if (useSMAA()) {
         { //Step 1: Compute weights
@@ -188,7 +188,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::Colour, 0);
-            const TextureData edgesTex = att.texture()->data();
+            const TextureData edgesTex = att->texture()->data();
             const TextureData areaTex = _areaTexture->data();
             const TextureData searchTex = _searchTexture->data();
 
@@ -201,7 +201,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT0);
                 binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-                binding._data.As<DescriptorCombinedImageSampler>() = { edgesTex, att.samplerHash() };
+                binding._data.As<DescriptorCombinedImageSampler>() = { edgesTex, att->descriptor()._samplerHash };
             }
             samplerDescriptor.mipSampling(TextureMipSampling::NONE);
             {
@@ -235,7 +235,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _smaaWeights._rt->getAttachment(RTAttachmentType::Colour, 0);
-            const TextureData blendTex = att.texture()->data();
+            const TextureData blendTex = att->texture()->data();
 
             DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
             set._usage = DescriptorSetUsage::PER_DRAW_SET;
@@ -244,14 +244,14 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT0);
                 binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-                binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
+                binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
             }
             {
                 auto& binding = set._bindings.emplace_back();
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 binding._resourceSlot = to_U8(TextureUsage::UNIT1);
                 binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-                binding._data.As<DescriptorCombinedImageSampler>() = { blendTex, screenAtt.samplerHash() };
+                binding._data.As<DescriptorCombinedImageSampler>() = { blendTex, screenAtt->descriptor()._samplerHash };
             }
 
             GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaBlendPipeline });
@@ -278,7 +278,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, co
             binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
             binding._resourceSlot = to_U8(TextureUsage::UNIT0);
             binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
-            binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt.samplerHash() };
+            binding._data.As<DescriptorCombinedImageSampler>() = { screenTex, screenAtt->descriptor()._samplerHash };
         }
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
