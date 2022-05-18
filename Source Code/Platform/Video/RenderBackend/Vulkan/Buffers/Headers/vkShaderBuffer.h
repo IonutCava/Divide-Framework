@@ -45,7 +45,7 @@ namespace Divide {
 
         BufferLock writeBytes(BufferRange range, [[maybe_unused]] bufferPtr data) noexcept override;
 
-        void readBytes(BufferRange range, [[maybe_unused]] bufferPtr result) const noexcept override;
+        void readBytes(BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override;
 
         bool bindByteRange(U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept override;
 

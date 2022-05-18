@@ -15,7 +15,7 @@ namespace Divide {
         return {};
     }
 
-    void vkShaderBuffer::readBytes([[maybe_unused]] BufferRange range, [[maybe_unused]] bufferPtr result) const noexcept {
+    void vkShaderBuffer::readBytes([[maybe_unused]] BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept {
     }
 
     bool vkShaderBuffer::bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept {

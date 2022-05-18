@@ -47,7 +47,7 @@ class glShaderBuffer final : public ShaderBuffer {
         ~glShaderBuffer() = default;
 
         BufferLock clearBytes(BufferRange range) override;
-        void readBytes(BufferRange range, bufferPtr result) const override;
+        void readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const override;
         BufferLock writeBytes(BufferRange range, bufferPtr data) override;
 
         [[nodiscard]] bool lockByteRange(BufferRange range, SyncObject* sync) const override;

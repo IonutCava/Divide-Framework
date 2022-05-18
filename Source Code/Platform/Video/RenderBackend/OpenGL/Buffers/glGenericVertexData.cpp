@@ -128,7 +128,7 @@ void glGenericVertexData::setBuffer(const SetBufferParams& params) {
 
     if (params._bufferParams._initialData.second > 0u) {
         for (U32 i = 1u; i < ringSizeFactor; ++i) {
-            bufferObject._buffer->writeOrClearBytes(i * bufferSizeInBytes, params._bufferParams._initialData.second, params._bufferParams._initialData.first, false);
+            bufferObject._buffer->writeOrClearBytes(i * bufferSizeInBytes, params._bufferParams._initialData.second, params._bufferParams._initialData.first, false, true);
         }
     }
 

@@ -7,7 +7,7 @@ layout(location = ATTRIB_FREE_START + 1) out flat vec2 texCoordOffset;
 
 void main()
 {
-    const Light light = dvd_LightSource[gl_VertexID];
+    const Light light = dvd_LightSource[dvd_VertexIndex];
 
     switch (light._TYPE) {
         case LIGHT_DIRECTIONAL:     texCoordOffset = vec2(0.f, 0.f); break;

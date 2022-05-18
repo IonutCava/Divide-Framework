@@ -373,8 +373,6 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     const auto AppendResourceBindingSlots = [&AppendToShaderHeader]([[maybe_unused]] const bool targetOpenGL) {
         STUBBED("Find a way to map slots differentely between Vulkan and OpenGL. -Ionut");
 
-        AppendToShaderHeader(ShaderType::COUNT, "#define BUFFER_ATOMIC_COUNTER 0");
-
         for (U8 i = 0u; i < to_base(ShaderBufferLocation::COUNT); ++i) {
             AppendToShaderHeader(ShaderType::COUNT, Util::StringFormat("#define BUFFER_%s %d", TypeUtil::ShaderBufferLocationToString(static_cast<ShaderBufferLocation>(i)), i).c_str());
         }
@@ -469,9 +467,13 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
         //AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_gpu_shader5 : require");
         AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET)");
         AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_OPENGL");
+        AppendToShaderHeader(ShaderType::COUNT, "#define dvd_VertexIndex gl_VertexID");
+        AppendToShaderHeader(ShaderType::COUNT, "#define dvd_InstanceIndex gl_InstanceID");
     } else {
-        AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET) set = SET");
+        AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET) set = SET,");
         AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_VULKAN");
+        AppendToShaderHeader(ShaderType::COUNT, "#define dvd_VertexIndex gl_VertexIndex");
+        AppendToShaderHeader(ShaderType::COUNT, "#define dvd_InstanceIndex gl_InstanceIndex");
     }
 
     AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(SPECIFY_SET(SET) binding = BINDING)");
@@ -1317,7 +1319,9 @@ bool ShaderProgram::reloadShaders(hashMap<U64, PerFileShaderData>& fileData, boo
             const ShaderType type = data._moduleType;
             assert(type != ShaderType::COUNT);
 
-            ShaderProgram::LoadData& stageData = loadDataPerFile._loadData.emplace_back();
+            ShaderProgram::LoadData& stageData = loadDataPerFile._loadData[to_base(data._moduleType)];
+            assert(stageData._type == ShaderType::COUNT);
+
             stageData._type = data._moduleType;
             stageData._sourceFile = data._sourceFile;
             stageData._name = Str256(data._sourceFile.substr(0, data._sourceFile.find_first_of(".")));
@@ -1384,7 +1388,7 @@ bool ShaderProgram::loadSourceCode(const ModuleDefines& defines, bool reloadExis
     eastl::set<U64> atomIDs;
     const auto ParseAndSaveSource = [&]() {
         loadAndParseGLSL(defines, reloadExisting, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs);
-        if (!GLSLToSPIRV(loadDataInOut, false, atomIDs)) {
+        if (!GLSLToSPIRV(loadDataInOut, _context.renderAPI() == RenderAPI::Vulkan, atomIDs)) {
             NOP();
         }
     };

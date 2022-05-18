@@ -290,6 +290,13 @@ void CommandBuffer::clean() {
                     erase = true;
                 }
             } break;
+            case CommandType::READ_BUFFER_DATA: {
+                auto readCmd = get<ReadBufferDataCommand>(cmd);
+                erase = readCmd->_buffer == nullptr ||
+                        readCmd->_target.first == nullptr ||
+                        readCmd->_elementCount == 0u ||
+                        readCmd->_target.second == 0u;
+            } break;
             case CommandType::SET_VIEWPORT: {
                 OPTICK_EVENT("Clean Viewport");
 

@@ -71,15 +71,15 @@ public:
         return waitByteRange(range._startOffset, range._length, blockClient);
     }
 
-    void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool zeroMem);
-    void readBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data);
+    void writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, bufferPtr data, bool zeroMem, bool firstWrite = false);
+    void readBytes(size_t offsetInBytes, size_t rangeInBytes, std::pair<bufferPtr, size_t> outData);
 
-    inline void writeOrClearBytes(const BufferRange range, bufferPtr data, bool zeroMem) {
-        writeOrClearBytes(range._startOffset, range._length, data, zeroMem);
+    inline void writeOrClearBytes(const BufferRange range, bufferPtr data, bool zeroMem, bool firstWrite = false) {
+        writeOrClearBytes(range._startOffset, range._length, data, zeroMem, firstWrite);
     }
 
-    inline void readBytes(const BufferRange range, bufferPtr data) {
-        readBytes(range._startOffset, range._length, data);
+    inline void readBytes(const BufferRange range, std::pair<bufferPtr, size_t> outData) {
+        readBytes(range._startOffset, range._length, outData);
     }
 
 public:

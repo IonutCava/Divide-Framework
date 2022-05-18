@@ -181,28 +181,25 @@ namespace {
     bool s_useUpperLeftOrigin = false;
 
     //ref: https://github.com/nvpro-pipeline/pipeline/blob/master/dp/sg/io/IL/Loader/ILTexLoader.cpp
-    static I32 determineFace(const I32 i, const bool isDDS, const bool isCube) {
-        I32 image = i;
-        if (isDDS) {
-            if (isCube) {
-                if (4 == image) {
-                    image = 5;
-                } else if (5 == image) {
-                    image = 4;
-                }
+    FORCE_INLINE I32 determineFace(const I32 i, const bool isDDS, const bool isCube) noexcept {
+        if (isDDS && isCube) {
+            if (i == 4) {
+                return 5;
+            } else if (i == 5) {
+                return 4;
             }
         }
 
-        return(image);
+        return i;
     }
 
-    const auto checkError = []() noexcept {
+    inline void checkError() noexcept {
         ILenum error = ilGetError();
         while (error != IL_NO_ERROR) {
             DebugBreak();
             error = ilGetError();
         }
-    };
+    }
 };
 
 void OnStartup(const bool upperLeftOrigin) {

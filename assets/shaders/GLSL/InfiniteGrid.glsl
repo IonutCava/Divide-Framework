@@ -18,7 +18,7 @@ void main()
     nearPoint = UnprojectPoint(inVertexData.x, inVertexData.y, 0.f);
     farPoint = UnprojectPoint(inVertexData.x, inVertexData.y, 1.f);
     gl_Position = vec4(inVertexData, 1.f);
-};
+}
 
 -- Fragment
 
@@ -65,4 +65,4 @@ void main()
     outColour.a *= fade_factor;
     gl_FragDepth = computeDepth(dvd_ViewMatrix * vec4(fragPos3D, 1.f), DEPTH_RANGE);
     writeScreenColour(outColour);
-};
+}

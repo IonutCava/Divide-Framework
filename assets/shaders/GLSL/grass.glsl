@@ -33,7 +33,7 @@ void largetScaleMotion(inout vec4 vertexW, in vec4 vertex, in float heightExtent
 }
 
 void main() {
-    VegetationData data = GrassData(gl_InstanceID);
+    VegetationData data = GrassData(dvd_InstanceIndex);
     if (data.data.z < 0.f) {
         //gl_CullDistance[0] = -1.0f;
         gl_Position = vec4(2.f, 2.f, 2.f, 1.f);
@@ -41,7 +41,7 @@ void main() {
     }
 
     const NodeTransformData nodeData = fetchInputData();
-    _instanceID = gl_InstanceID;
+    _instanceID = dvd_InstanceIndex;
     float scale = data.positionAndScale.w * Saturate(data.data.z);
 
     _alphaFactor = Saturate(data.data.z);

@@ -69,6 +69,12 @@ namespace TypeUtil {
     [[nodiscard]] ShaderBufferLocation StringToShaderBufferLocation(const string& name);
 };
 
+enum class ShaderResult : U8 {
+    Failed = 0,
+    OK,
+    COUNT
+};
+
 struct ModuleDefine {
     ModuleDefine() = default;
     ModuleDefine(const char* define, const bool addPrefix = true) : ModuleDefine(string{ define }, addPrefix) {}
@@ -152,7 +158,7 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
         bool _compiled = false;
     };
 
-    using ShaderLoadData = vector<LoadData>;
+    using ShaderLoadData = std::array<LoadData, to_base(ShaderType::COUNT)>;
 
     using Handle = PoolHandle;
     static constexpr Handle INVALID_HANDLE{ U16_MAX, U8_MAX };

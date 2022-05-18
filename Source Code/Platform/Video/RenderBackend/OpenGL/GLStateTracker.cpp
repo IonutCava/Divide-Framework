@@ -282,11 +282,68 @@ GLStateTracker::BindResult GLStateTracker::bindSamplers(const GLushort unitOffse
     return BindResult::FAILED;
 }
 
+bool GLStateTracker::unbindTexture(const TextureType type, const GLuint handle) {
+    auto& boundMap = _textureBoundMap[to_base(type)];
+    for (GLushort idx = 0u; idx < boundMap.size(); ++idx) {
+        if (boundMap[idx] == handle) {
+            boundMap[idx] = 0u;
+            glBindTextureUnit(idx, 0u);
+            if (bindSamplers(idx, 1, nullptr) == BindResult::FAILED) {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool GLStateTracker::unbindTextures() {
+    for (auto& map : _textureBoundMap) {
+        std::memset(map.data(), 0u, map.size() * sizeof(GLuint));
+    }
+    std::memset(_samplerBoundMap.data(), 0u, _samplerBoundMap.size() * sizeof(GLuint));
+
+    glBindTextures(0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr);
+    glBindSamplers(0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr);
+
+    return true;
+}
+
 /// Bind a texture specified by a GL handle and GL type to the specified unit using the sampler object defined by hash value
-GLStateTracker::BindResult GLStateTracker::bindTexture(const GLushort unit, const TextureType type, GLuint handle, GLuint samplerHandle) {
+GLStateTracker::BindResult GLStateTracker::bindTexture(const GLushort unit, TextureType type, const GLuint handle, const GLuint samplerHandle) {
     // Fail if we specified an invalid unit. Assert instead of returning false because this might be related to a bad algorithm
     DIVIDE_ASSERT(unit < GFXDevice::GetDeviceInformation()._maxTextureUnits, "GLStates error: invalid texture unit specified as a texture binding slot!");
-    return bindTextures(unit, 1, type, &handle, &samplerHandle);
+    for (U8 typeIt = 0u; type == TextureType::COUNT && typeIt < to_base(TextureType::COUNT); ++typeIt) {
+        auto& map = _textureBoundMap[typeIt];
+        for (const GLuint it : map) {
+            if (it == handle) {
+                type = static_cast<TextureType>(typeIt);
+                break;
+            }
+        }
+    }
+
+    BindResult result = BindResult::FAILED;
+
+    DIVIDE_ASSERT(type != TextureType::COUNT);
+    GLuint& crtEntry = _textureBoundMap[to_base(type)][unit];
+    if (crtEntry == handle) {
+        result = BindResult::ALREADY_BOUND;
+    } else {
+        crtEntry = handle;
+        glBindTextureUnit(unit, handle);
+        result = BindResult::JUST_BOUND;
+    }
+
+    GLuint& crtSampler = _samplerBoundMap[unit];
+    if (crtSampler != samplerHandle) {
+        crtSampler = samplerHandle;
+        glBindSampler(unit, samplerHandle);
+        result = BindResult::JUST_BOUND;
+    }
+
+    return result;
 }
 
 GLStateTracker::BindResult GLStateTracker::bindTextures(const GLushort unitOffset,

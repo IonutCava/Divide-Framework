@@ -59,7 +59,6 @@ class NOINITVTABLE ShaderBuffer : public LockableDataRangeBuffer,
            CONSTANT_BUFFER = 0,
            UNBOUND_BUFFER,
            COMMAND_BUFFER,
-           ATOMIC_COUNTER,
            COUNT
        };
 
@@ -72,13 +71,13 @@ class NOINITVTABLE ShaderBuffer : public LockableDataRangeBuffer,
 
     virtual BufferLock writeData(BufferRange range, bufferPtr data);
 
-    virtual void readData(BufferRange range, bufferPtr result) const;
+    virtual void readData(BufferRange range, std::pair<bufferPtr, size_t> outData) const;
 
     virtual BufferLock clearBytes(BufferRange range) = 0;
 
     virtual BufferLock writeBytes(BufferRange range, bufferPtr data) = 0;
 
-    virtual void readBytes(BufferRange range, bufferPtr result) const = 0;
+    virtual void readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const = 0;
 
     [[nodiscard]] FORCE_INLINE U32    getPrimitiveCount() const noexcept { return _params._elementCount; }
     [[nodiscard]] FORCE_INLINE size_t getPrimitiveSize()  const noexcept { return _params._elementSize; }

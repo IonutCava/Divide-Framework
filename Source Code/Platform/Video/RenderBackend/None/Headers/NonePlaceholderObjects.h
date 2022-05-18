@@ -156,7 +156,7 @@ namespace Divide {
             return {};
         }
 
-        void readBytes([[maybe_unused]] BufferRange range, [[maybe_unused]] bufferPtr result) const noexcept override {
+        void readBytes([[maybe_unused]] BufferRange range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) const noexcept override {
         }
 
         bool bindByteRange([[maybe_unused]] U8 bindIndex, [[maybe_unused]] BufferRange range) noexcept override {

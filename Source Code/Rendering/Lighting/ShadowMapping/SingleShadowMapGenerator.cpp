@@ -176,7 +176,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     clearDescriptor._clearColours = true;
     clearDescriptor._resetToDefault = true;
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str()));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
     GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
     GFX::ClearRenderTargetCommand clearMainTarget = {};

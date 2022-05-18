@@ -45,9 +45,21 @@ namespace Divide {
             const ResourcePath& assetLocation,
             const ShaderProgramDescriptor& descriptor,
             ResourceCache& parentCache);
+        ~vkShaderProgram();
+    protected:
+        ShaderResult validatePreBind(bool rebind = true);
+        /// Make sure this program is ready for deletion
+        bool unload() override;
+        bool recompile(bool& skipped) override;
+        void threadedLoad(bool reloadExisting) override;
+        /// Returns true if at least one shader linked successfully
+        bool reloadShaders(hashMap<U64, PerFileShaderData>& fileData, bool reloadExisting) override;
 
     private:
-        std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
+       bool _validationQueued = false;
+       bool _stagesBound = false;
+       vector<VkShaderModule> _shaderStage;
+       std::vector<VkPipelineShaderStageCreateInfo> _shaderStagesCreateInfo;
     };
 
 

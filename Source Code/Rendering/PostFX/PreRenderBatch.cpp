@@ -783,7 +783,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     // Execute all LDR based operators
     for (auto& op : ldrBatch) {
         if (BitCompare(filterStack, 1u << to_U32(op->operatorType()))) {
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute LDR operator [ %s ]", PostFX::FilterName(op->operatorType())).c_str() });
+            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute LDR operator [ %s ]", PostFX::FilterName(op->operatorType())).c_str(), to_U32(op->operatorType()) });
             if (op->execute(idx, cameraSnapshot, getInput(false), getOutput(false), bufferInOut)) {
                 _screenRTs._swappedLDR = !_screenRTs._swappedLDR;
             }

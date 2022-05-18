@@ -46,7 +46,6 @@ namespace Divide {
         COMBINED_IMAGE_SAMPLER,
         UNIFORM_BUFFER,
         SHADER_STORAGE_BUFFER,
-        ATOMIC_BUFFER,
         IMAGE,
         IMAGE_VIEW,
         COUNT

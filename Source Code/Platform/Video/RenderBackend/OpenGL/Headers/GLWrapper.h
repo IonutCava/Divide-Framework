@@ -143,7 +143,7 @@ public:
 
     static void QueueFlush() noexcept;
 
-    static void PushDebugMessage(const char* message);
+    static void PushDebugMessage(const char* message, U32 id = std::numeric_limits<U32>::max());
     static void PopDebugMessage();
 
     static [[nodiscard]] bool DeleteShaderPrograms(GLuint count, GLuint * programs);

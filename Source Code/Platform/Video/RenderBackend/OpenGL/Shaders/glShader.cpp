@@ -120,6 +120,10 @@ ShaderResult glShader::uploadToGPU(const GLuint parentProgramHandle) {
 
         bool shouldLink = false;
         for (ShaderProgram::LoadData& data : _loadData) {
+            if (data._type == ShaderType::COUNT) {
+                // stage not specified from the current file. Skip.
+                continue;
+            }
             assert(!data._compiled);
 
             if_constexpr(Config::ENABLE_GPU_VALIDATION) {

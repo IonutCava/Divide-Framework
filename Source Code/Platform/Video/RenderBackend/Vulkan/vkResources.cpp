@@ -112,6 +112,13 @@ namespace VKUtil {
         glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLES)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLES;
         glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_STRIP;
         glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_FAN)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_FAN;
+
+        vkShaderStageTable[to_base(ShaderType::VERTEX)] = VK_SHADER_STAGE_VERTEX_BIT;
+        vkShaderStageTable[to_base(ShaderType::FRAGMENT)] = VK_SHADER_STAGE_FRAGMENT_BIT;
+        vkShaderStageTable[to_base(ShaderType::GEOMETRY)] = VK_SHADER_STAGE_GEOMETRY_BIT;
+        vkShaderStageTable[to_base(ShaderType::TESSELLATION_CTRL)] = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        vkShaderStageTable[to_base(ShaderType::TESSELLATION_EVAL)] = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        vkShaderStageTable[to_base(ShaderType::COMPUTE)] = VK_SHADER_STAGE_COMPUTE_BIT;
     };
 };
 

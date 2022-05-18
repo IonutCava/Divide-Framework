@@ -107,6 +107,8 @@ protected:
     void begin(const RTDrawDescriptor& drawPolicy);
     void end(bool needsUnbind) const;
 
+    PROPERTY_R_IW(GLuint, framebufferHandle, GLUtil::k_invalidObjectID);
+
    protected:
     bool setMipLevelInternal(const RTAttachment_uptr& attachment, U16 writeLevel);
 
@@ -124,7 +126,6 @@ protected:
 
     Rect<I32> _prevViewport;
     Str128 _debugMessage;
-    GLuint _framebufferHandle = GLUtil::k_invalidObjectID;
 
     bool _isLayeredDepth = false;
     bool _statusCheckQueued = false;

@@ -33,8 +33,7 @@ namespace Divide {
                         }
                     } break;
                     case DescriptorSetBindingType::UNIFORM_BUFFER:
-                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
-                    case DescriptorSetBindingType::ATOMIC_BUFFER: {
+                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
                         if (binding._data.As<ShaderBufferEntry>()._buffer != nullptr)
                         {
                             // We have a buffer

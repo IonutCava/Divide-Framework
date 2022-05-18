@@ -343,7 +343,7 @@ namespace Divide {
                 PushReadOnly();
             }
             if (ImGui::SliderInt("FPS limit", &fpsLimit, 10, 320)) {
-                context().config().runtime.frameRateLimit = fpsLimit;
+                context().config().runtime.frameRateLimit = to_I16(fpsLimit);
                 context().config().changed(true);
             }
             if (!limit) {
@@ -374,7 +374,7 @@ namespace Divide {
             ImGui::Separator();
 
             ImGui::Text(ICON_FK_PENCIL); if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Draw Calls"); } ImGui::NextColumn();
-            for (U8 i = 0; i < 4; ++i) {
+            for (U8 i = 0u; i < 4u; ++i) {
                 if (crtDrawCallCount[i] == prevDrawCallCount[i]) {
                     ImGui::Text("%d", crtDrawCallCount[i]); ImGui::NextColumn();
                 } else {
@@ -392,8 +392,10 @@ namespace Divide {
 
             const PerformanceMetrics perfMetrics = context().gfx().getPerformanceMetrics();
 
+            const vec4<U32>& cullCount = context().gfx().lastCullCount();
+
             ImGui::NewLine();
-            ImGui::Text("HiZ Cull Count: %d", context().gfx().lastCullCount());
+            ImGui::Text("HiZ Cull Counts: %d | %d | %d | %d", cullCount.x, cullCount.y, cullCount.z, cullCount.w);
             ImGui::NewLine();
             ImGui::Text("GPU Frame Time: %5.2f ms", perfMetrics._gpuTimeInMS);
             ImGui::NewLine();

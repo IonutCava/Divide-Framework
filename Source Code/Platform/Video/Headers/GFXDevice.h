@@ -412,7 +412,7 @@ public:
     PROPERTY_RW(bool, queryPerformanceStats, false);
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
-    PROPERTY_R_IW(U32, lastCullCount, 0u);
+    PROPERTY_R_IW(vec4<U32>, lastCullCount, VECTOR4_ZERO);
 
 
     struct GFXDescriptorSet {

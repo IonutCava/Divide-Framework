@@ -969,7 +969,7 @@ void RenderPassExecutor::prepareRenderQueues(const RenderPassParams& params,
     }
 
     if (params._stagePass._passType != RenderPassType::PRE_PASS) {
-        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = Util::StringFormat("Post Render pass for stage [ %s ]", TypeUtil::RenderStageToString(stagePass._stage));
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = Util::StringFormat("Post Render pass for stage [ %s ]", TypeUtil::RenderStageToString(stagePass._stage), to_U32(stagePass._stage));
 
         _renderQueue.postRender(Attorney::SceneManagerRenderPass::renderState(_parent.parent().sceneManager()),
                                 params._stagePass,

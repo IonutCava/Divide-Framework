@@ -99,6 +99,9 @@ namespace Divide {
         [[nodiscard]] BindResult setActiveProgram(GLuint programHandle);
         /// Change the currently active shader pipeline. Returns false if the pipeline was already bound
         [[nodiscard]] BindResult setActiveShaderPipeline(GLuint pipelineHandle);
+        /// Returns true if the texture was bound. If the texture was not bound, no state is changed.
+        [[nodiscard]] bool      unbindTexture(TextureType type, GLuint handle);
+        [[nodiscard]] bool      unbindTextures();
         /// Bind a texture specified by a GL handle and GL type to the specified unit
         /// using the sampler object defined by handle value
         [[nodiscard]] BindResult bindTexture(GLushort unit, TextureType type, GLuint handle, GLuint samplerHandle = 0u);
@@ -152,7 +155,7 @@ namespace Divide {
 
         RenderStateBlock _activeState{};
 
-        std::array<Str64, 32> _debugScope;
+        std::array<std::pair<Str64, U32>, 32> _debugScope;
         U8 _debugScopeDepth = 0u;
 
         Pipeline const* _activePipeline = nullptr;

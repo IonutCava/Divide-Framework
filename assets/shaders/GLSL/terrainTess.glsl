@@ -17,8 +17,8 @@ void main(void)
     ComputeIndirectionData();
 
     // Calculate texture coordinates (u,v) relative to entire terrain
-    const float iv = floor(gl_VertexID * INV_CONTROL_VTX_PER_TILE_EDGE);
-    const float iu = gl_VertexID - iv * CONTROL_VTX_PER_TILE_EDGE;
+    const float iv = floor(dvd_VertexIndex * INV_CONTROL_VTX_PER_TILE_EDGE);
+    const float iu = dvd_VertexIndex - iv * CONTROL_VTX_PER_TILE_EDGE;
     const float u = iu / (CONTROL_VTX_PER_TILE_EDGE - 1.0f);
     const float v = iv / (CONTROL_VTX_PER_TILE_EDGE - 1.0f);
 

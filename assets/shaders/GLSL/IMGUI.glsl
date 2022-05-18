@@ -15,7 +15,7 @@ void main()
     Frag_UV = inTexCoordData;
     Frag_Color = inColourData;
     gl_Position = dvd_ViewProjectionMatrix * vec4(inGenericData,0,1);
-};
+}
 
 -- Fragment
 
@@ -65,4 +65,4 @@ void main()
     }
 
     Out_Color *= texColor;
-};
+}

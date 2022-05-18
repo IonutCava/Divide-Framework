@@ -250,18 +250,27 @@ DEFINE_COMMAND_END(SetTexturesResidencyCommand);
 
 DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);
     BeginDebugScopeCommand() noexcept = default;
-    BeginDebugScopeCommand(const char* scopeName) noexcept : _scopeName(scopeName) {}
+    BeginDebugScopeCommand(const char* scopeName, const U32 scopeId = std::numeric_limits<U32>::max()) noexcept 
+        : _scopeName(scopeName)
+        , _scopeId(scopeId)
+    {}
 
     Str64 _scopeName;
+    U32 _scopeId = std::numeric_limits<U32>::max();
 DEFINE_COMMAND_END(BeginDebugScopeCommand);
 
 DEFINE_COMMAND(EndDebugScopeCommand, CommandType::END_DEBUG_SCOPE);
 
 DEFINE_COMMAND_BEGIN(AddDebugMessageCommand, CommandType::ADD_DEBUG_MESSAGE);
     AddDebugMessageCommand() noexcept = default;
-    AddDebugMessageCommand(const char* msg) noexcept : _msg(msg) {}
+    AddDebugMessageCommand(const char* msg, const U32 msgId = std::numeric_limits<U32>::max()) noexcept
+        : _msg(msg)
+        , _msgId(msgId)
+    {
+    }
 
     Str64 _msg;
+    U32 _msgId = std::numeric_limits<U32>::max();
 DEFINE_COMMAND_END(AddDebugMessageCommand);
 
 DEFINE_COMMAND_BEGIN(DrawTextCommand, CommandType::DRAW_TEXT);
@@ -298,7 +307,7 @@ DEFINE_COMMAND_END(MemoryBarrierCommand);
 
 DEFINE_COMMAND_BEGIN(ReadBufferDataCommand, CommandType::READ_BUFFER_DATA);
     ShaderBuffer* _buffer = nullptr;
-    bufferPtr     _target = nullptr;
+    std::pair<bufferPtr, size_t> _target = { nullptr, 0u };
     U32           _offsetElementCount = 0;
     U32           _elementCount = 0;
 DEFINE_COMMAND_END(ReadBufferDataCommand);

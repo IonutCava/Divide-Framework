@@ -452,6 +452,7 @@ namespace Divide {
         _computeQueue = _device->getQueue(vkb::QueueType::compute);
         _transferQueue = _device->getQueue(vkb::QueueType::transfer);
         _swapChain = eastl::make_unique<VKSwapChain>(*_device, window);
+        VK_API::s_stateTracker->_device = _device.get();
 
         recreateSwapChain(window);
 
@@ -917,7 +918,7 @@ namespace Divide {
         return s_stateTracker.get();
     }
 
-    void VK_API::InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message) {
+    void VK_API::InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, [[maybe_unused]] const U32 id) {
         if (s_hasDebugMarkerSupport) {
             static F32 color[4] = { 0.0f, 1.0f, 0.0f, 1.f };
 
@@ -929,7 +930,7 @@ namespace Divide {
         }
     }
 
-    void VK_API::PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message) {
+    void VK_API::PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message, const U32 id) {
         if (s_hasDebugMarkerSupport) {
             static F32 color[4] = {0.5f, 0.5f, 0.5f, 1.f};
 
@@ -941,7 +942,7 @@ namespace Divide {
         }
         
         assert(GetStateTracker()->_debugScopeDepth < GetStateTracker()->_debugScope.size());
-        GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth++] = message;
+        GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth++] = { message, id };
     }
 
     void VK_API::PopDebugMessage(VkCommandBuffer cmdBuffer) {
@@ -949,7 +950,7 @@ namespace Divide {
             Debug::vkCmdDebugMarkerEnd(cmdBuffer);
         }
 
-        GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = "";
+        GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = { "", std::numeric_limits<U32>::max() };
     }
 
     IMPrimitive* VK_API::NewIMP(Mutex& lock, GFXDevice& parent) {

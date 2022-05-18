@@ -203,8 +203,7 @@ string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
     U8 imageCount = 0u;
     const DescriptorSet& set = cmd._set;
     for (const auto& binding : set._bindings) {
-        if (binding._type == DescriptorSetBindingType::ATOMIC_BUFFER ||
-            binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER ||
+        if (binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER ||
             binding._type == DescriptorSetBindingType::UNIFORM_BUFFER) {
             ++bufferCount;
         } else if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER ||
@@ -215,8 +214,7 @@ string ToString(const BindDescriptorSetsCommand& cmd, const U16 indent) {
     string ret = Util::StringFormat(" [ Buffers: %d, Images: %d ]\n", bufferCount, imageCount);
 
     for (const auto& binding : set._bindings) {
-        if (binding._type == DescriptorSetBindingType::ATOMIC_BUFFER ||
-            binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER ||
+        if (binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER ||
             binding._type == DescriptorSetBindingType::UNIFORM_BUFFER)
         {
             ret.append("    ");

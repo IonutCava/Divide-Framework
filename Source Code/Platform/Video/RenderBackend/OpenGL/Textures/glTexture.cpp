@@ -76,6 +76,9 @@ SamplerAddress glTexture::getGPUAddress(const size_t samplerHash) {
 
 bool glTexture::unload() {
     if (_data._textureHandle > 0u) {
+        if (GL_API::GetStateTracker()->unbindTexture(_data._textureType, _data._textureHandle)) {
+            NOP();
+        }
         glDeleteTextures(1, &_data._textureHandle);
         _data._textureHandle = 0u;
     }

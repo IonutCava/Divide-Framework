@@ -7,7 +7,10 @@
 uniform uint numEntities;
 uniform uint countCulledItems;
 
-DESCRIPTOR_SET_RESOURCE_OFFSET(PER_PASS_SET, BUFFER_ATOMIC_COUNTER + 0, 0) uniform atomic_uint culledCount;
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW_SET, BUFFER_ATOMIC_COUNTER, std430) coherent ACCESS_W buffer culledCountBuffer
+{
+    uint culledCount[];
+};
 
 //ref: http://malideveloper.arm.com/resources/sample-code/occlusion-culling-hierarchical-z/
 
@@ -36,7 +39,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH_SET, BUFFER_GPU_COMMANDS, std430) coher
 
 void CullItem(in uint idx) {
     if (countCulledItems == 1u) {
-        atomicCounterIncrement(culledCount);
+        atomicAdd(culledCount[0], 1);
     }
     dvd_drawCommands[idx].instanceCount = 0u;
 }
@@ -51,6 +54,7 @@ void main()
     const uint ident = gl_GlobalInvocationID.x;
 
     if (ident >= numEntities) {
+        atomicAdd(culledCount[1], 1);
         CullItem(ident);
         return;
     }
@@ -60,6 +64,7 @@ void main()
     // Usually this is just terrain, vegetation and the skybox. So not that bad all in all since those have
     // their own culling routines
     if (BASE_INSTANCE == 0u) {
+        atomicAdd(culledCount[2], 1);
         return;
     }
 
@@ -67,6 +72,7 @@ void main()
     const NodeTransformData transformData = dvd_Transforms[transformIdx];
     // Skip occlusion cull if the flag is set
     if (!dvd_CullNode(transformData)) {
+        atomicAdd(culledCount[3], 1);
         return;
     }
 

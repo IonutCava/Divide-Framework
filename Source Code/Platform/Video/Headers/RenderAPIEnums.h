@@ -290,6 +290,7 @@ enum class ShaderBufferLocation : U8 {
     TREE_DATA,
     CMD_BUFFER,
     LUMINANCE_HISTOGRAM,
+    ATOMIC_COUNTER,
     UNIFORM_BLOCK,
     COUNT
 };
@@ -317,6 +318,7 @@ namespace Names {
         "TREE_DATA",
         "CMD_BUFFER",
         "LUMINANCE_HISTOGRAM",
+        "ATOMIC_COUNTER",
         "UNIFORM_BLOCK",
         "NONE"
     };

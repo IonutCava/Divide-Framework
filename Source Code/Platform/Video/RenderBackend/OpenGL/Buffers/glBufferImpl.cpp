@@ -22,36 +22,32 @@ glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
     // Create all buffers with zero mem and then write the actual data that we have (If we want to initialise all memory)
     if (_params._bufferParams._updateUsage == BufferUpdateUsage::GPU_R_GPU_W || _params._bufferParams._updateFrequency == BufferUpdateFrequency::ONCE) {
         GLenum usage = GL_NONE;
-        if (_params._target == GL_ATOMIC_COUNTER_BUFFER) {
-            usage = GL_STREAM_COPY;
-        } else {
-            switch (_params._bufferParams._updateFrequency) {
-                case BufferUpdateFrequency::ONCE:
-                    switch (_params._bufferParams._updateUsage) {
-                        case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_STATIC_DRAW; break;
-                        case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_STATIC_READ; break;
-                        case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_STATIC_COPY; break;
-                        default: break;
-                    }
-                    break;
-                case BufferUpdateFrequency::OCASSIONAL:
-                    switch (_params._bufferParams._updateUsage) {
-                        case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_DYNAMIC_DRAW; break;
-                        case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_DYNAMIC_READ; break;
-                        case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_DYNAMIC_COPY; break;
-                        default: break;
-                    }
-                    break;
-                case BufferUpdateFrequency::OFTEN:
-                    switch (_params._bufferParams._updateUsage) {
-                        case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_STREAM_DRAW; break;
-                        case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_STREAM_READ; break;
-                        case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_STREAM_COPY; break;
-                        default: break;
-                    }
-                    break;
-                default: break;
-            }
+        switch (_params._bufferParams._updateFrequency) {
+            case BufferUpdateFrequency::ONCE:
+                switch (_params._bufferParams._updateUsage) {
+                    case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_STATIC_DRAW; break;
+                    case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_STATIC_READ; break;
+                    case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_STATIC_COPY; break;
+                    default: break;
+                }
+                break;
+            case BufferUpdateFrequency::OCASSIONAL:
+                switch (_params._bufferParams._updateUsage) {
+                    case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_DYNAMIC_DRAW; break;
+                    case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_DYNAMIC_READ; break;
+                    case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_DYNAMIC_COPY; break;
+                    default: break;
+                }
+                break;
+            case BufferUpdateFrequency::OFTEN:
+                switch (_params._bufferParams._updateUsage) {
+                    case BufferUpdateUsage::CPU_W_GPU_R: usage = GL_STREAM_DRAW; break;
+                    case BufferUpdateUsage::CPU_R_GPU_W: usage = GL_STREAM_READ; break;
+                    case BufferUpdateUsage::GPU_R_GPU_W: usage = GL_STREAM_COPY; break;
+                    default: break;
+                }
+                break;
+            default: break;
         }
 
         DIVIDE_ASSERT(usage != GL_NONE);
@@ -125,7 +121,7 @@ bool glBufferImpl::waitByteRange(const size_t offsetInBytes, const size_t rangeI
     return lhs._offset < (rhs._offset + rhs._range) && rhs._offset < (lhs._offset + lhs._range);
 }
 
-void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data, const bool zeroMem) {
+void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data, const bool zeroMem, const bool firstWrite) {
 
     assert(rangeInBytes > 0u && offsetInBytes + rangeInBytes <= _memoryBlock._size);
 
@@ -145,7 +141,7 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
             memcpy(&_memoryBlock._ptr[offsetInBytes], data, rangeInBytes);
         }
     } else {
-        DIVIDE_ASSERT(zeroMem, "glBufferImpl: trying to write to a buffer create with BufferUpdateFrequency::ONCE");
+        DIVIDE_ASSERT(zeroMem || firstWrite, "glBufferImpl: trying to write to a buffer create with BufferUpdateFrequency::ONCE");
 
         Byte* ptr = (Byte*)glMapNamedBufferRange(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
         memset(ptr, 0, rangeInBytes);
@@ -153,17 +149,14 @@ void glBufferImpl::writeOrClearBytes(const size_t offsetInBytes, const size_t ra
     }
 }
 
-void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInBytes, bufferPtr data) {
+void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInBytes, std::pair<bufferPtr, size_t> outData) {
 
     if (!waitByteRange(offsetInBytes, rangeInBytes, true)) {
         DIVIDE_UNEXPECTED_CALL();
     }
 
     if (_memoryBlock._ptr != nullptr) {
-        if (_params._target != GL_ATOMIC_COUNTER_BUFFER) {
-            glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
-        }
-        memcpy(data, _memoryBlock._ptr + offsetInBytes, rangeInBytes);
+        memcpy(outData.first, _memoryBlock._ptr + offsetInBytes, std::min(rangeInBytes, outData.second));
     } else {
         if (_copyBufferTarget == GLUtil::k_invalidObjectID || _copyBufferSize < rangeInBytes) {
             GLUtil::freeBuffer(_copyBufferTarget);
@@ -180,7 +173,7 @@ void glBufferImpl::readBytes(const size_t offsetInBytes, const size_t rangeInByt
 
         const Byte* bufferData = (Byte*)glMapNamedBufferRange(_copyBufferTarget, 0u, rangeInBytes, MapBufferAccessMask::GL_MAP_READ_BIT);
         assert(bufferData != nullptr);
-        memcpy(data, bufferData, rangeInBytes);
+        memcpy(outData.first, bufferData, std::min(rangeInBytes, outData.second));
         glUnmapNamedBuffer(_copyBufferTarget);
     }
 }

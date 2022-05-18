@@ -88,12 +88,17 @@ namespace Divide {
             ImVec4(0.0f, 0.0f, 1.0f, 1.0f)
         };
 
-        const size_t start = g_writeIndex.load();
+        size_t readIndex = g_writeIndex.load();
+        if (readIndex == 0u) {
+            readIndex = g_maxLogEntries - 1u;
+        } else {
+            readIndex -= 1u;
+        }
 
         bool typePushed = false;
         Console::EntryType previousType = Console::EntryType::INFO;
         for (U16 i = 0u; i < g_maxLogEntries;  ++i) {
-            const size_t index = (start + 1 + i) % g_maxLogEntries;
+            const size_t index = (readIndex + i) % g_maxLogEntries;
             const Console::OutputEntry& message = g_log[index];
             const char* textStart = message._text.c_str();
             const char* textEnd = textStart + message._text.length();

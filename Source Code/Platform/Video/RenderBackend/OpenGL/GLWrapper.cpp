@@ -893,7 +893,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             glFramebuffer* rt = static_cast<glFramebuffer*>(_context.renderTargetPool().getRenderTarget(crtCmd->_target));
             Attorney::GLAPIRenderTarget::begin(*rt, crtCmd->_descriptor);
             GetStateTracker()->_activeRenderTarget = rt;
-            PushDebugMessage(crtCmd->_name.c_str());
+            PushDebugMessage(crtCmd->_name.c_str(), rt->framebufferHandle());
         }break;
         case GFX::CommandType::END_RENDER_PASS: {
             OPTICK_EVENT("END_RENDER_PASS");
@@ -929,42 +929,53 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
             OPTICK_EVENT("BIND_DESCRIPTOR_SETS");
 
+            struct ImageSamplerBinding {
+                U8 _bindingSlot;
+                TextureType _type;
+                GLuint _handle;
+                GLuint _samplerHandle;
+            };
+            static ImageSamplerBinding samplerBindings[to_base(TextureType::COUNT)];
+
             const DescriptorSet& set = cmd->As<GFX::BindDescriptorSetsCommand>()->_set;
+
+            U8 imageSamplerCount = 0u;
+            for (auto& binding : set._bindings) {
+                if (binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER &&
+                    binding._resourceSlot != INVALID_TEXTURE_BINDING) 
+                {
+                    const auto& imageSampler = binding._data.As<DescriptorCombinedImageSampler>();
+                    const TextureData& texData = imageSampler._image;
+
+                    auto& samplerBinding = samplerBindings[imageSamplerCount++];
+                    samplerBinding._bindingSlot = binding._resourceSlot;
+                    samplerBinding._type = texData._textureType;
+                    samplerBinding._handle = texData._textureHandle;
+                    samplerBinding._samplerHandle = GetSamplerHandle(imageSampler._samplerHash);
+                };
+            }
+
+            for (U8 i = 0u; i < imageSamplerCount; ++i) {
+                ImageSamplerBinding& binding = samplerBindings[i];
+                if (GetStateTracker()->bindTexture(binding._bindingSlot, binding._type, binding._handle, binding._samplerHandle) == GLStateTracker::BindResult::FAILED) {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+            }
+
             for (auto& binding : set._bindings) {
                 const U8 bindingSlot = binding._resourceSlot;
                 DIVIDE_ASSERT(binding._shaderStageVisibility != DescriptorSetBinding::ShaderStageVisibility::COUNT);
 
                 const DescriptorSetBindingData& data = binding._data;
 
-                switch (binding._type) {
-                    case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: {
-                        if (bindingSlot != INVALID_TEXTURE_BINDING) {
-                            const auto& imageSampler = data.As<DescriptorCombinedImageSampler>();
-
-                            const TextureData& texData = imageSampler._image;
-                            const GLuint handle = texData._textureHandle;
-                            const GLuint sampler = GetSamplerHandle(imageSampler._samplerHash);
-                            if (GetStateTracker()->bindTextures(bindingSlot, 1, texData._textureType, &handle, &sampler) == GLStateTracker::BindResult::FAILED) {
-                                DIVIDE_UNEXPECTED_CALL();
-                            }
-                        }
-                    } break;
-                    case DescriptorSetBindingType::IMAGE_VIEW: {
-                        if (bindingSlot != INVALID_TEXTURE_BINDING) {
-                            const auto& texData = data.As<ImageViewEntry>();
-                            if (makeTextureViewResidentInternal(texData, bindingSlot) == GLStateTracker::BindResult::FAILED) {
-                                DIVIDE_UNEXPECTED_CALL();
-                            }
-                        }
-                    } break;
-                    default:
-                    case DescriptorSetBindingType::IMAGE:
-                    case DescriptorSetBindingType::UNIFORM_BUFFER:
-                    case DescriptorSetBindingType::ATOMIC_BUFFER:
-                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
-                        //Should be handled by GFXDevice
-                    } break;
-                };
+                if (binding._type == DescriptorSetBindingType::IMAGE_VIEW &&
+                    bindingSlot != INVALID_TEXTURE_BINDING)
+                {
+                    const auto& texData = data.As<ImageViewEntry>();
+                    if (makeTextureViewResidentInternal(texData, bindingSlot) == GLStateTracker::BindResult::FAILED) {
+                        DIVIDE_UNEXPECTED_CALL();
+                    }
+                }
             }
         }break;
         case GFX::CommandType::BIND_PIPELINE: {
@@ -1031,7 +1042,8 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         }break;
         case GFX::CommandType::BEGIN_DEBUG_SCOPE: {
             OPTICK_EVENT("BEGIN_DEBUG_SCOPE");
-            PushDebugMessage(cmd->As<GFX::BeginDebugScopeCommand>()->_scopeName.c_str());
+            const auto& crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
+            PushDebugMessage(crtCmd->_scopeName.c_str(), crtCmd->_scopeId);
         } break;
         case GFX::CommandType::END_DEBUG_SCOPE: {
             OPTICK_EVENT("END_DEBUG_SCOPE");
@@ -1039,7 +1051,8 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
         } break;
         case GFX::CommandType::ADD_DEBUG_MESSAGE: {
             OPTICK_EVENT("ADD_DEBUG_MESSAGE");
-            PushDebugMessage(cmd->As<GFX::AddDebugMessageCommand>()->_msg.c_str());
+            const auto& crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
+            PushDebugMessage(crtCmd->_msg.c_str(), crtCmd->_msgId);
             PopDebugMessage();
         }break;
         case GFX::CommandType::COMPUTE_MIPMAPS: {
@@ -1339,7 +1352,7 @@ I32 GL_API::getFont(const Str64& fontName) {
 /// Reset as much of the GL default state as possible within the limitations given
 void GL_API::clearStates(const DisplayWindow& window, GLStateTracker* stateTracker, const bool global) const {
     if (global) {
-        if (stateTracker->bindTextures(0, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, TextureType::COUNT, nullptr, nullptr) == GLStateTracker::BindResult::FAILED) {
+        if (!stateTracker->unbindTextures()) {
             DIVIDE_UNEXPECTED_CALL();
         }
         stateTracker->setPixelPackUnpackAlignment();
@@ -1516,7 +1529,7 @@ GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const ImageVi
     // Self delete after 3 frames unless we use it again
     s_textureViewCache.deallocate(textureID, 3u);
     const GLuint samplerHandle = GetSamplerHandle(textureView._view._samplerHash);
-    return GL_API::GetStateTracker()->bindTextures(static_cast<GLushort>(bindingSlot), 1, view._targetType, &textureID, &samplerHandle);
+    return GL_API::GetStateTracker()->bindTexture(static_cast<GLushort>(bindingSlot), view._targetType, textureID, samplerHandle);
 }
 
 bool GL_API::setViewport(const Rect<I32>& viewport) {
@@ -1672,14 +1685,14 @@ void GL_API::QueueFlush() noexcept {
     s_glFlushQueued.store(true);
 }
 
-void GL_API::PushDebugMessage(const char* message) {
+void GL_API::PushDebugMessage(const char* message, const U32 id) {
     OPTICK_EVENT();
 
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
-        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, static_cast<GLuint>(_ID(message)), -1, message);
+        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, id, -1, message);
     }
     assert(GetStateTracker()->_debugScopeDepth < GetStateTracker()->_debugScope.size());
-    GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth++] = message;
+    GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth++] = { message, id };
 }
 
 void GL_API::PopDebugMessage() {
@@ -1688,7 +1701,7 @@ void GL_API::PopDebugMessage() {
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
         glPopDebugGroup();
     }
-    GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = "";
+    GetStateTracker()->_debugScope[GetStateTracker()->_debugScopeDepth--] = { "", std::numeric_limits<U32>::max() };
 }
 
 bool GL_API::DeleteShaderPrograms(const GLuint count, GLuint* programs) {

@@ -51,11 +51,6 @@ struct ValidationEntry
     UseProgramStageMask _stageMask{ UseProgramStageMask::GL_NONE_BIT };
 };
 
-enum class ShaderResult : U8 {
-    Failed = 0,
-    OK,
-    COUNT
-};
 
 namespace Attorney {
     class GLAPIShaderProgram;
@@ -87,8 +82,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     void processValidation();
     
     bool recompile(bool& skipped) override;
-    /// This should be called in the loading thread, but some issues are still
-    /// present, and it's not recommended (yet)
     void threadedLoad(bool reloadExisting) override;
 
     /// Returns true if at least one shader linked successfully

@@ -35,7 +35,7 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
     std::array<Camera*, 6> cameras = {};
     std::copy_n(std::begin(shadowCameras), std::min(cameras.size(),shadowCameras.size()), std::begin(cameras));
 
-    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Cube Shadow Pass Light: [ %d ]", lightIndex).c_str()));
+    EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Cube Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
     GFX::EnqueueCommand<GFX::SetClippingStateCommand>(bufferInOut)->_negativeOneToOneDepth = false;
 
     RenderPassParams params = {};

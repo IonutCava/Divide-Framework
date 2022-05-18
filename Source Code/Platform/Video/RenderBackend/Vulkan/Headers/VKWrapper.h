@@ -59,7 +59,9 @@ public:
 };
 
 struct VKStateTracker {
-    std::array<Str64, 32> _debugScope;
+    VKDevice* _device = nullptr;
+
+    std::array < std::pair<Str64, U32>, 32 > _debugScope;
     U8 _debugScopeDepth = 0u;
 };
 
@@ -107,8 +109,8 @@ public:
     static VKStateTracker* GetStateTracker() noexcept;
 
 private:
-    static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message);
-    static void PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message);
+    static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
+    static void PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = std::numeric_limits<U32>::max());
     static void PopDebugMessage(VkCommandBuffer cmdBuffer);
 
 private:

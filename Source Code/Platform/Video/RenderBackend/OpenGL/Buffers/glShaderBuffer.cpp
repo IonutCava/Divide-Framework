@@ -33,12 +33,11 @@ glShaderBuffer::glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor&
     implParams._bufferParams = _params;
     implParams._target = (_usage == Usage::UNBOUND_BUFFER || _usage == Usage::COMMAND_BUFFER)
                                  ? GL_SHADER_STORAGE_BUFFER
-                                 : _usage == Usage::CONSTANT_BUFFER
-                                           ? GL_UNIFORM_BUFFER
-                                           : GL_ATOMIC_COUNTER_BUFFER;
+                                 : GL_UNIFORM_BUFFER;
+
     implParams._dataSize = _alignedBufferSize * queueLength();
     implParams._name = _name.empty() ? nullptr : _name.c_str();
-    implParams._useChunkAllocation = _usage != Usage::COMMAND_BUFFER && _usage != Usage::ATOMIC_COUNTER;
+    implParams._useChunkAllocation = _usage != Usage::COMMAND_BUFFER;
 
     _bufferImpl = eastl::make_unique<glBufferImpl>(context, implParams);
 
@@ -46,7 +45,7 @@ glShaderBuffer::glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor&
     // This is quite fast so far so worth it for now.
     if (descriptor._separateReadWrite && descriptor._bufferParams._initialData.second > 0) {
         for (U32 i = 1u; i < descriptor._ringBufferLength; ++i) {
-            bufferImpl()->writeOrClearBytes(_alignedBufferSize * i, descriptor._bufferParams._initialData.second, descriptor._bufferParams._initialData.first, false);
+            bufferImpl()->writeOrClearBytes(_alignedBufferSize * i, descriptor._bufferParams._initialData.second, descriptor._bufferParams._initialData.first, false, true);
         }
     }
 }
@@ -64,14 +63,14 @@ BufferLock glShaderBuffer::clearBytes(BufferRange range) {
     return { this, range };
 }
 
-void glShaderBuffer::readBytes(BufferRange range, bufferPtr result) const {
+void glShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) const {
     if (range._length > 0) {
         OPTICK_EVENT();
         
         DIVIDE_ASSERT(range._startOffset == Util::GetAlignmentCorrected(range._startOffset, AlignmentRequirement(_usage)));
         range._startOffset += queueReadIndex() * _alignedBufferSize;
 
-        bufferImpl()->readBytes(range._startOffset, range._length, result);
+        bufferImpl()->readBytes(range._startOffset, range._length, outData);
     }
 }
 

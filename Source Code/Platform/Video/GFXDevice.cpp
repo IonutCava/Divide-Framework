@@ -222,8 +222,8 @@ void GFXDevice::GFXDescriptorSets::init() {
         }
         {
             auto& binding = passSet._bindings.emplace_back();
-            binding._type = DescriptorSetBindingType::ATOMIC_BUFFER;
-            binding._resourceSlot = 0u;
+            binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+            binding._resourceSlot = to_U8(ShaderBufferLocation::ATOMIC_COUNTER);
             binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
         }
         {
@@ -488,14 +488,14 @@ void GFXDevice::resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCount
         // Atomic counter for occlusion culling
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._usage = ShaderBuffer::Usage::ATOMIC_COUNTER;
+        bufferDescriptor._usage = ShaderBuffer::Usage::UNBOUND_BUFFER;
         bufferDescriptor._ringBufferLength = to_U32(targetSizeCullCounter);
         bufferDescriptor._name = "CULL_COUNTER";
-        bufferDescriptor._bufferParams._elementSize = sizeof(U32);
+        bufferDescriptor._bufferParams._elementSize = 4 * sizeof(U32);
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
         bufferDescriptor._bufferParams._updateUsage = BufferUpdateUsage::GPU_W_CPU_R;
         bufferDescriptor._separateReadWrite = true;
-        bufferDescriptor._bufferParams._initialData = {};
+        bufferDescriptor._bufferParams._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof(U32) };
         for (U8 i = 0u; i < GFXBuffers::PerFrameBufferCount; ++i) {
             _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB(bufferDescriptor);
         }
@@ -2050,8 +2050,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                                               image._flag);
                 } break;
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
-                case DescriptorSetBindingType::ATOMIC_BUFFER: {
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: {
                     if (allowEmpty &&
                         (!data.Has<ShaderBufferEntry>() ||
                           data.As<ShaderBufferEntry>()._buffer == nullptr ||
@@ -2154,9 +2153,7 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 OPTICK_EVENT("READ_BUFFER_DATA");
 
                 const GFX::ReadBufferDataCommand& crtCmd = *commandBuffer.get<GFX::ReadBufferDataCommand>(cmd);
-                if (crtCmd._buffer != nullptr && crtCmd._target != nullptr) {
-                    crtCmd._buffer->readData({ crtCmd._offsetElementCount, crtCmd._elementCount }, crtCmd._target);
-                }
+                crtCmd._buffer->readData({ crtCmd._offsetElementCount, crtCmd._elementCount }, crtCmd._target);
             } break;
             case GFX::CommandType::CLEAR_BUFFER_DATA: {
                 OPTICK_EVENT("CLEAR_BUFFER_DATA");
@@ -2403,9 +2400,9 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
         DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
         set._usage = DescriptorSetUsage::PER_PASS_SET;
         auto& binding = set._bindings.emplace_back();
-        binding._resourceSlot = 0u;
+        binding._resourceSlot = to_base(ShaderBufferLocation::ATOMIC_COUNTER);
         binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::COMPUTE;
-        binding._type = DescriptorSetBindingType::ATOMIC_BUFFER;
+        binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
         binding._data.As<ShaderBufferEntry>() = { cullBuffer, { 0u, 1u } };
     }
     mat4<F32> viewProjectionMatrix;
@@ -2436,7 +2433,7 @@ void GFXDevice::occlusionCull(const RenderPass::BufferData& bufferData,
     if (queryPerformanceStats() && countCulledNodes) {
         GFX::ReadBufferDataCommand readAtomicCounter;
         readAtomicCounter._buffer = cullBuffer;
-        readAtomicCounter._target = &_lastCullCount;
+        readAtomicCounter._target = { &_lastCullCount, 4 * sizeof(U32) };
         readAtomicCounter._offsetElementCount = 0;
         readAtomicCounter._elementCount = 1;
         EnqueueCommand(bufferInOut, readAtomicCounter);
@@ -3113,7 +3110,6 @@ IMPrimitive* GFXDevice::newIMP() {
             return GL_API::NewIMP(_imprimitiveMutex , *this);
         };
         case RenderAPI::Vulkan: {
-            ScopedLock<Mutex> w_lock(_imprimitiveMutex);
             return VK_API::NewIMP(_imprimitiveMutex, *this);
         }
         case RenderAPI::None: {

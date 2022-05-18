@@ -176,7 +176,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
         rtLayerIndex(SceneEnvironmentProbePool::AllocateSlice(false));
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("EnvironmentProbePass Id: [ %d ]", rtLayerIndex()).c_str()));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("EnvironmentProbePass Id: [ %d ]", rtLayerIndex()).c_str(), to_U32(rtLayerIndex())));
 
     vector<Camera*>& probeCameras = SceneEnvironmentProbePool::ProbeCameras();
 

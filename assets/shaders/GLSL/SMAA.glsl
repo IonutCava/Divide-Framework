@@ -21,8 +21,8 @@ void main(void)
     vPixCoord = VAR._texCoord * RT_METRICS.zw;
 
     vec2 uv = vec2(0, 0);
-    if ((gl_VertexID & 1) != 0)uv.x = 1;
-    if ((gl_VertexID & 2) != 0)uv.y = 1;
+    if ((dvd_VertexIndex & 1) != 0)uv.x = 1;
+    if ((dvd_VertexIndex & 2) != 0)uv.y = 1;
 
     VAR._texCoord = uv * 2;
 
@@ -52,8 +52,8 @@ void main(void)
     vec4 RT_METRICS = vec4(1.0 / dvd_ViewPort.z, 1.0 / dvd_ViewPort.w, dvd_ViewPort.z, dvd_ViewPort.w);
 
     vec2 uv = vec2(0, 0);
-    if ((gl_VertexID & 1) != 0)uv.x = 1;
-    if ((gl_VertexID & 2) != 0)uv.y = 1;
+    if ((dvd_VertexIndex & 1) != 0)uv.x = 1;
+    if ((dvd_VertexIndex & 2) != 0)uv.y = 1;
 
     VAR._texCoord = uv * 2;
 

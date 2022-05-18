@@ -27,7 +27,7 @@ void main(void){
 
     const NodeTransformData nodeData = fetchInputData();
 
-    const VegetationData data = TreeData(gl_InstanceID);
+    const VegetationData data = TreeData(dvd_InstanceIndex);
 
     float scale = data.positionAndScale.w;
     VAR._LoDLevel = data.data.z;

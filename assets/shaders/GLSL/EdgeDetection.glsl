@@ -13,8 +13,8 @@ void main(void)
     vec4 RT_METRICS = vec4(1.0f / resolution.x, 1.0f / resolution.y, resolution.x, resolution.y);
 
     vec2 uv = vec2(0, 0);
-    if ((gl_VertexID & 1) != 0)uv.x = 1;
-    if ((gl_VertexID & 2) != 0)uv.y = 1;
+    if ((dvd_VertexIndex & 1) != 0)uv.x = 1;
+    if ((dvd_VertexIndex & 2) != 0)uv.y = 1;
 
     VAR._texCoord = uv * 2;
 

@@ -45,13 +45,13 @@ BufferLock ShaderBuffer::writeData(const BufferRange range, const bufferPtr data
                data);
 }
 
-void ShaderBuffer::readData(const BufferRange range, const bufferPtr result) const {
+void ShaderBuffer::readData(const BufferRange range, const std::pair<bufferPtr, size_t> outData) const {
     readBytes(
         {
             range._startOffset * _params._elementSize,
             range._length * _params._elementSize
         },
-        result);
+        outData);
 }
 
 bool ShaderBuffer::bindRange(const U8 bindIndex,
