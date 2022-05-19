@@ -125,13 +125,6 @@ private:
 
     VkSurfaceKHR _surface{ VK_NULL_HANDLE }; // Vulkan window surface
 
-    VKDevice::Queue _graphicsQueue{};
-    VKDevice::Queue _computeQueue{};
-    VKDevice::Queue _transferQueue{};
-
-    U32 _graphicsQueueFamily{0u};
-
-    VkCommandPool _commandPool{ VK_NULL_HANDLE };
     vector<VkCommandBuffer> _commandBuffers{};
     U8 _currentFrameIndex{ 0u };
 

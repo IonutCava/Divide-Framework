@@ -120,6 +120,118 @@ namespace VKUtil {
         vkShaderStageTable[to_base(ShaderType::TESSELLATION_EVAL)] = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
         vkShaderStageTable[to_base(ShaderType::COMPUTE)] = VK_SHADER_STAGE_COMPUTE_BIT;
     };
+
+    VkFormat internalFormat(const GFXImageFormat baseFormat, const GFXDataFormat dataType, const bool srgb, const bool normalized) noexcept {
+        switch (baseFormat) {
+            case GFXImageFormat::RED:{
+                assert(!srgb);
+                switch (dataType) {
+                case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_R8_SRGB : VK_FORMAT_R8_UNORM) : VK_FORMAT_R8_UINT;
+                    case GFXDataFormat::UNSIGNED_SHORT: return normalized ? VK_FORMAT_R16_UNORM : VK_FORMAT_R16_UINT;
+                    case GFXDataFormat::UNSIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32_UINT; }
+                    case GFXDataFormat::SIGNED_BYTE: return normalized ? VK_FORMAT_R8_SNORM: VK_FORMAT_R8_SINT;
+                    case GFXDataFormat::SIGNED_SHORT: return normalized ? VK_FORMAT_R16_SNORM : VK_FORMAT_R16_SINT;
+                    case GFXDataFormat::SIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32_SINT; }
+                    case GFXDataFormat::FLOAT_16: return VK_FORMAT_R16_SFLOAT;
+                    case GFXDataFormat::FLOAT_32: return VK_FORMAT_R32_SFLOAT;
+                };
+            }break;
+            case GFXImageFormat::RG: {
+                assert(!srgb);
+                switch (dataType) {
+                    case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_R8G8_SRGB : VK_FORMAT_R8G8_UNORM) : VK_FORMAT_R8G8_UINT;
+                    case GFXDataFormat::UNSIGNED_SHORT: return normalized ? VK_FORMAT_R16G16_UNORM : VK_FORMAT_R16G16_UINT;
+                    case GFXDataFormat::UNSIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32G32_UINT; }
+                    case GFXDataFormat::SIGNED_BYTE: return normalized ? VK_FORMAT_R8G8_SNORM : VK_FORMAT_R8G8_SINT;
+                    case GFXDataFormat::SIGNED_SHORT: return normalized ? VK_FORMAT_R16G16_SNORM : VK_FORMAT_R16G16_SINT;
+                    case GFXDataFormat::SIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32G32_SINT; }
+                    case GFXDataFormat::FLOAT_16: return VK_FORMAT_R16G16_SFLOAT;
+                    case GFXDataFormat::FLOAT_32: return VK_FORMAT_R32G32_SFLOAT;
+                };
+            }break;
+            case GFXImageFormat::BGR:
+            {
+                assert(!srgb || srgb == (dataType == GFXDataFormat::UNSIGNED_BYTE && normalized));
+                switch (dataType) {
+                    case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_B8G8R8_SRGB : VK_FORMAT_B8G8R8_UNORM) : VK_FORMAT_B8G8R8_UINT;
+                    case GFXDataFormat::SIGNED_BYTE: return normalized ? VK_FORMAT_B8G8R8_SNORM : VK_FORMAT_B8G8R8_SINT;
+                };
+            }break;
+            case GFXImageFormat::RGB:
+            {
+                assert(!srgb || srgb == (dataType == GFXDataFormat::UNSIGNED_BYTE && normalized));
+                switch (dataType) {
+                    case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_R8G8B8_SRGB : VK_FORMAT_R8G8B8_UNORM) : VK_FORMAT_R8G8B8_UINT;
+                    case GFXDataFormat::UNSIGNED_SHORT: return normalized ? VK_FORMAT_R16G16B16_UNORM : VK_FORMAT_R16G16B16_UINT;
+                    case GFXDataFormat::UNSIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32G32B32_UINT; }
+                    case GFXDataFormat::SIGNED_BYTE: return normalized ? VK_FORMAT_R8G8B8_SNORM : VK_FORMAT_R8G8B8_SINT;
+                    case GFXDataFormat::SIGNED_SHORT: return normalized ? VK_FORMAT_R16G16B16_SNORM : VK_FORMAT_R16G16B16_SINT;
+                    case GFXDataFormat::SIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32G32B32_SINT; }
+                    case GFXDataFormat::FLOAT_16: return VK_FORMAT_R16G16B16_SFLOAT;
+                    case GFXDataFormat::FLOAT_32: return VK_FORMAT_R32G32B32_SFLOAT;
+                };
+            }break;
+            case GFXImageFormat::BGRA: {
+                assert(!srgb || srgb == (dataType == GFXDataFormat::UNSIGNED_BYTE && normalized));
+                switch (dataType) {
+                    case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_B8G8R8A8_SRGB : VK_FORMAT_B8G8R8A8_UNORM) : VK_FORMAT_B8G8R8A8_UINT;
+                    case GFXDataFormat::SIGNED_BYTE: return normalized ? VK_FORMAT_B8G8R8A8_SNORM : VK_FORMAT_B8G8R8A8_SINT;
+                };
+            } break;
+            case GFXImageFormat::RGBA:
+            {
+                assert(!srgb || srgb == (dataType == GFXDataFormat::UNSIGNED_BYTE && normalized));
+                switch (dataType) {
+                    case GFXDataFormat::UNSIGNED_BYTE: return normalized ? (srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM) : VK_FORMAT_R8G8B8A8_UINT;
+                    case GFXDataFormat::UNSIGNED_SHORT: return normalized ? VK_FORMAT_R16G16B16A16_UNORM : VK_FORMAT_R16G16B16A16_UINT;
+                    case GFXDataFormat::UNSIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32G32B32A32_UINT; }
+                    case GFXDataFormat::SIGNED_BYTE: return normalized ? VK_FORMAT_R8G8B8A8_SNORM : VK_FORMAT_R8G8B8A8_SINT;
+                    case GFXDataFormat::SIGNED_SHORT: return normalized ? VK_FORMAT_R16G16B16A16_SNORM : VK_FORMAT_R16G16B16A16_SINT;
+                    case GFXDataFormat::SIGNED_INT: { assert(!normalized && "Format not supported"); return VK_FORMAT_R32G32B32A32_SINT; }
+                    case GFXDataFormat::FLOAT_16: return VK_FORMAT_R16G16B16A16_SFLOAT;
+                    case GFXDataFormat::FLOAT_32: return VK_FORMAT_R32G32B32A32_SFLOAT;
+                };
+            }break;
+            case GFXImageFormat::DEPTH_COMPONENT:
+            {
+                switch (dataType) {
+                    case GFXDataFormat::SIGNED_BYTE:
+                    case GFXDataFormat::UNSIGNED_BYTE:
+                    case GFXDataFormat::SIGNED_SHORT:
+                    case GFXDataFormat::UNSIGNED_SHORT: return VK_FORMAT_D16_UNORM;
+                    case GFXDataFormat::SIGNED_INT:
+                    case GFXDataFormat::UNSIGNED_INT: return VK_FORMAT_D24_UNORM_S8_UINT;
+                    case GFXDataFormat::FLOAT_16:
+                    case GFXDataFormat::FLOAT_32: return VK_FORMAT_D32_SFLOAT;
+                };
+            }break;
+            // compressed formats
+            case GFXImageFormat::DXT1_RGB: return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
+            case GFXImageFormat::DXT1_RGB_SRGB: return VK_FORMAT_BC1_RGB_SRGB_BLOCK;
+
+            case GFXImageFormat::DXT1_RGBA: return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+            case GFXImageFormat::DXT1_RGBA_SRGB: return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+
+            case GFXImageFormat::DXT3_RGBA: return VK_FORMAT_BC2_UNORM_BLOCK;
+            case GFXImageFormat::DXT3_RGBA_SRGB: return VK_FORMAT_BC2_SRGB_BLOCK;
+
+            case GFXImageFormat::DXT5_RGBA:
+            case GFXImageFormat::DXT5_RGBA_SRGB:
+            case GFXImageFormat::BC3n: return VK_FORMAT_BC3_UNORM_BLOCK;
+
+            case GFXImageFormat::BC4s: return VK_FORMAT_BC4_SNORM_BLOCK;
+            case GFXImageFormat::BC4u: return VK_FORMAT_BC4_UNORM_BLOCK;
+            case GFXImageFormat::BC5s: return VK_FORMAT_BC5_SNORM_BLOCK;
+            case GFXImageFormat::BC5u: return VK_FORMAT_BC5_UNORM_BLOCK;
+            case GFXImageFormat::BC6s: return VK_FORMAT_BC6H_SFLOAT_BLOCK;
+            case GFXImageFormat::BC6u: return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+            case GFXImageFormat::BC7: return VK_FORMAT_BC7_UNORM_BLOCK;
+            case GFXImageFormat::BC7_SRGB: return VK_FORMAT_BC7_SRGB_BLOCK;
+        }
+
+        DIVIDE_UNEXPECTED_CALL();
+        return VK_FORMAT_MAX_ENUM;
+    }
 };
 
 }; //namespace Divide

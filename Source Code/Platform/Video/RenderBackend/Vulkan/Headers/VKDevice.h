@@ -40,7 +40,7 @@ namespace Divide {
     public:
         struct Queue {
             VkQueue _queue{};
-            U32 _queueFamily{ 0u };
+            U32 _queueIndex{ 0u };
         };
     public:
         VKDevice(vkb::Instance& instance, VkSurfaceKHR targetSurface);
@@ -55,6 +55,17 @@ namespace Divide {
 
         [[nodiscard]] const vkb::Device& getDevice() const noexcept;
         [[nodiscard]] const vkb::PhysicalDevice& getPhysicalDevice() const noexcept;
+
+        [[nodiscard]] VkCommandPool   createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+        [[nodiscard]] VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level, VkCommandPool pool, bool begin = false);
+        [[nodiscard]] VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level, bool begin = false);
+                      void            flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, VkCommandPool pool, bool free = true);
+                      void            flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free = true);
+
+        PROPERTY_R_IW(VkCommandPool, graphicsCommandPool, VK_NULL_HANDLE);
+        PROPERTY_R_IW(VKDevice::Queue, graphicsQueue);
+        PROPERTY_R_IW(VKDevice::Queue, computeQueue);
+        PROPERTY_R_IW(VKDevice::Queue, transferQueue);
     private:
         vkb::Device _device{}; // Vulkan device for commands
         vkb::PhysicalDevice _physicalDevice{}; // GPU chosen as the default device

@@ -156,6 +156,7 @@ void fillEnumTables() {
     glImageFormatTable[to_base(GFXImageFormat::RGBA)] = GL_RGBA;
     glImageFormatTable[to_base(GFXImageFormat::DEPTH_COMPONENT)] = GL_DEPTH_COMPONENT;
 
+    glImageFormatTable[to_base(GFXImageFormat::BC3n)] = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
     glImageFormatTable[to_base(GFXImageFormat::BC4s)] = GL_COMPRESSED_SIGNED_RED_RGTC1_EXT;
     glImageFormatTable[to_base(GFXImageFormat::BC4u)] = GL_COMPRESSED_RED_RGTC1_EXT;
     glImageFormatTable[to_base(GFXImageFormat::BC5s)] = GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT;
@@ -217,7 +218,7 @@ void fillEnumTables() {
     glShaderStageTable[to_base(ShaderType::COMPUTE)] = GL_COMPUTE_SHADER;
 }
 
-GLenum internalFormat(const GFXImageFormat baseFormat, const GFXDataFormat dataType, const bool srgb, const bool normalized) {
+GLenum internalFormat(const GFXImageFormat baseFormat, const GFXDataFormat dataType, const bool srgb, const bool normalized)  noexcept {
     switch (baseFormat) {
         case GFXImageFormat::RED:{
             assert(!srgb);
@@ -283,9 +284,9 @@ GLenum internalFormat(const GFXImageFormat baseFormat, const GFXDataFormat dataT
         {
             switch (dataType) {
                 case GFXDataFormat::SIGNED_BYTE:
-                case GFXDataFormat::UNSIGNED_BYTE: return GL_DEPTH_COMPONENT16;
+                case GFXDataFormat::UNSIGNED_BYTE:
                 case GFXDataFormat::SIGNED_SHORT:
-                case GFXDataFormat::UNSIGNED_SHORT: return GL_DEPTH_COMPONENT24;
+                case GFXDataFormat::UNSIGNED_SHORT: return GL_DEPTH_COMPONENT16;
                 case GFXDataFormat::SIGNED_INT:
                 case GFXDataFormat::UNSIGNED_INT: return GL_DEPTH_COMPONENT32;
                 case GFXDataFormat::FLOAT_16:

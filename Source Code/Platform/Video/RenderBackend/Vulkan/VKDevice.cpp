@@ -29,10 +29,19 @@ namespace Divide {
                 _device = vkbDevice.value();
             }
         }
+
+        _graphicsQueue = getQueue(vkb::QueueType::graphics);
+        _computeQueue = getQueue(vkb::QueueType::compute);
+        _transferQueue = getQueue(vkb::QueueType::transfer);
+
+        _graphicsCommandPool = createCommandPool(_graphicsQueue._queueIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
     }
 
     VKDevice::~VKDevice()
     {
+        if (_graphicsCommandPool != VK_NULL_HANDLE) {
+            vkDestroyCommandPool(getVKDevice(), _graphicsCommandPool, nullptr);
+        }
         vkb::destroy_device(_device);
     }
 
@@ -72,4 +81,90 @@ namespace Divide {
     const vkb::PhysicalDevice& VKDevice::getPhysicalDevice() const noexcept {
         return _physicalDevice;
     }
+
+    VkCommandPool VKDevice::createCommandPool(const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags createFlags) {
+        VkCommandPoolCreateInfo cmdPoolInfo = {};
+        cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
+        cmdPoolInfo.flags = createFlags;
+        VkCommandPool cmdPool;
+        VK_CHECK(vkCreateCommandPool(getVKDevice(), &cmdPoolInfo, nullptr, &cmdPool));
+        return cmdPool;
+    }
+
+    /**
+    * Allocate a command buffer from the command pool
+    *
+    * @param level Level of the new command buffer (primary or secondary)
+    * @param pool Command pool from which the command buffer will be allocated
+    * @param (Optional) begin If true, recording on the new command buffer will be started (vkBeginCommandBuffer) (Defaults to false)
+    *
+    * @return A handle to the allocated command buffer
+    */
+    VkCommandBuffer VKDevice::createCommandBuffer(const VkCommandBufferLevel level, const VkCommandPool pool, const bool begin) {
+        VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
+        cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cmdBufAllocateInfo.commandPool = pool;
+        cmdBufAllocateInfo.level = level;
+        cmdBufAllocateInfo.commandBufferCount = 1;
+
+        VkCommandBuffer cmdBuffer;
+        VK_CHECK(vkAllocateCommandBuffers(getVKDevice(), &cmdBufAllocateInfo, &cmdBuffer));
+        // If requested, also start recording for the new command buffer
+        if (begin) {
+            VkCommandBufferBeginInfo cmdBufferBeginInfo{};
+            cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            VK_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo));
+        }
+        return cmdBuffer;
+    }
+
+    VkCommandBuffer VKDevice::createCommandBuffer(const VkCommandBufferLevel level, const bool begin) {
+        return createCommandBuffer(level, _graphicsCommandPool, begin);
+    }
+
+    /**
+    * Finish command buffer recording and submit it to a queue
+    *
+    * @param commandBuffer Command buffer to flush
+    * @param queue Queue to submit the command buffer to
+    * @param pool Command pool on which the command buffer has been created
+    * @param free (Optional) Free the command buffer once it has been submitted (Defaults to true)
+    *
+    * @note The queue that the command buffer is submitted to must be from the same family index as the pool it was allocated from
+    * @note Uses a fence to ensure command buffer has finished executing
+    */
+    void VKDevice::flushCommandBuffer(const VkCommandBuffer commandBuffer, const VkQueue queue, const VkCommandPool pool, const bool free) {
+        if (commandBuffer == VK_NULL_HANDLE) {
+            return;
+        }
+
+        VK_CHECK(vkEndCommandBuffer(commandBuffer));
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        // Create fence to ensure that the command buffer has finished executing
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FLAGS_NONE;
+
+        VkFence fence;
+        VK_CHECK(vkCreateFence(getVKDevice(), &fenceInfo, nullptr, &fence));
+        // Submit to the queue
+        VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence));
+        // Wait for the fence to signal that command buffer has finished executing
+        VK_CHECK(vkWaitForFences(getVKDevice(), 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
+        vkDestroyFence(getVKDevice(), fence, nullptr);
+        if (free) {
+            vkFreeCommandBuffers(getVKDevice(), pool, 1, &commandBuffer);
+        }
+    }
+
+    void VKDevice::flushCommandBuffer(const VkCommandBuffer commandBuffer, const VkQueue queue, const bool free) {
+        return flushCommandBuffer(commandBuffer, queue, _graphicsCommandPool, free);
+    }
+
 }; //namespace Divide

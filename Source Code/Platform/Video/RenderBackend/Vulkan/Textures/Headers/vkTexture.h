@@ -46,19 +46,40 @@ namespace Divide {
                   const TextureDescriptor& texDescriptor,
                   ResourceCache& parentCache);
 
+        ~vkTexture();
+
+        bool unload() override;
+
         [[nodiscard]] SamplerAddress getGPUAddress(size_t samplerHash) noexcept override;
 
         void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rw_flag) noexcept override;
-
-        void loadData(const ImageTools::ImageData& imageLayers) noexcept override;
-
-        void loadData(const Byte* data, const size_t dataSize, const vec2<U16>& dimensions) noexcept override;
 
         void clearData(const UColour4& clearColour, U8 level) const noexcept override;
 
         void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const noexcept override;
 
         TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const noexcept override;
+
+        void updateDescriptor();
+
+        PROPERTY_R_IW(VkImage ,image, VK_NULL_HANDLE);
+        PROPERTY_R_IW(VkDeviceMemory, deviceMemory, VK_NULL_HANDLE);
+        PROPERTY_R_IW(VkImageView, view, VK_NULL_HANDLE);
+        PROPERTY_R_IW(VkSampler, sampler, VK_NULL_HANDLE);
+        PROPERTY_R_IW(VkImageType, type, VK_IMAGE_TYPE_MAX_ENUM);
+        PROPERTY_R_IW(VkImageLayout, imageLayout, VK_IMAGE_LAYOUT_MAX_ENUM);
+        PROPERTY_R_IW(VkDescriptorImageInfo, vkDescriptor);
+
+    private:
+        void reserveStorage(bool fromFile);
+
+        void loadDataCompressed(const ImageTools::ImageData& imageData);
+
+        void loadDataUncompressed(const ImageTools::ImageData& imageData) const;
+        void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
+
+        void prepareTextureData(U16 width, U16 height);
+        void submitTextureData();
     };
 } //namespace Divide
 

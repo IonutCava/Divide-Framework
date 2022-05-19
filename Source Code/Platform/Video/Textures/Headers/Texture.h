@@ -91,6 +91,7 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     static ResourcePath GetCachePath(ResourcePath originalPath) noexcept;
     static [[nodiscard]] bool UseTextureDDSCache() noexcept;
     static [[nodiscard]] const Texture_ptr& DefaultTexture() noexcept;
+    static [[nodiscard]] U8 GetSizeFactor(const GFXDataFormat format) noexcept;
 
     // Returns the GPU address of the texture
     virtual SamplerAddress getGPUAddress(size_t samplerHash) = 0;
@@ -99,8 +100,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     virtual void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rw_flag) = 0;
 
     /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
-    virtual void loadData(const ImageTools::ImageData& imageData) = 0;
-    virtual void loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions) = 0;
+    void loadData(const ImageTools::ImageData& imageData);
+    void loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions);
 
     /// Change the number of MSAA samples for this current texture
     void setSampleCount(U8 newSampleCount);
@@ -136,10 +137,19 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource {
     bool load() override;
     virtual void threadedLoad();
 
+    void validateDescriptor();
+
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Texture"; }
+
+    virtual void reserveStorage(bool fromFile) = 0;
+    virtual void loadDataCompressed(const ImageTools::ImageData& imageData) = 0;
+    virtual void loadDataUncompressed(const ImageTools::ImageData& imageData) const = 0;
+    virtual void prepareTextureData(U16 width, U16 height) = 0;
+    virtual void submitTextureData() = 0;
 
   protected:
     ResourceCache& _parentCache;
+    TextureData _loadingData;
 
   protected:
     static bool s_useDDSCache;

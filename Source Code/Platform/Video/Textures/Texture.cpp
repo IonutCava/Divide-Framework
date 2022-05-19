@@ -73,6 +73,23 @@ ResourcePath Texture::GetCachePath(ResourcePath originalPath) noexcept {
     return cachePath;
 }
 
+U8 Texture::GetSizeFactor(const GFXDataFormat format) noexcept {
+    switch (format) {
+    case GFXDataFormat::UNSIGNED_BYTE:
+    case GFXDataFormat::SIGNED_BYTE: return 1u;
+
+    case GFXDataFormat::UNSIGNED_SHORT:
+    case GFXDataFormat::SIGNED_SHORT:
+    case GFXDataFormat::FLOAT_16: return 2u;
+
+    case GFXDataFormat::UNSIGNED_INT:
+    case GFXDataFormat::SIGNED_INT:
+    case GFXDataFormat::FLOAT_32: return 4u;
+    };
+
+    return 1u;
+}
+
 Texture::Texture(GFXDevice& context,
                  const size_t descriptorHash,
                  const Str256& name,
@@ -85,7 +102,8 @@ Texture::Texture(GFXDevice& context,
       _descriptor(texDescriptor),
       _data{0u, TextureType::COUNT},
       _numLayers(texDescriptor.layerCount()),
-      _parentCache(parentCache)
+      _parentCache(parentCache),
+      _loadingData(_data)
 {
 }
 
@@ -234,6 +252,40 @@ bool Texture::loadFile(const ResourcePath& path, const ResourcePath& name, Image
     return true;
 }
 
+void Texture::loadData(const Byte* data, const size_t dataSize, const vec2<U16>& dimensions) {
+    prepareTextureData(dimensions.width, dimensions.height);
+
+    // This should never be called for compressed textures
+    assert(!IsCompressed(_descriptor.baseFormat()));
+
+    reserveStorage(false);
+    if (!IsMultisampledTexture(_loadingData._textureType)) {
+        ImageTools::ImageData imgData = {};
+        if (imgData.loadFromMemory(data, dataSize, _width, _height, 1, GetSizeFactor(_descriptor.dataType()) * NumChannels(_descriptor.baseFormat()))) {
+            loadDataUncompressed(imgData);
+            assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
+        }
+    }
+    submitTextureData();
+}
+
+void Texture::loadData(const ImageTools::ImageData& imageData) {
+
+    prepareTextureData(imageData.dimensions(0u, 0u).width, imageData.dimensions(0u, 0u).height);
+    reserveStorage(true);
+
+    if (IsCompressed(_descriptor.baseFormat())) {
+        if (_descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
+            _descriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
+        }
+        loadDataCompressed(imageData);
+    } else {
+        loadDataUncompressed(imageData);
+    }
+
+    submitTextureData();
+}
+
 bool Texture::checkTransparency(const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData) {
 
     if (fileData.ignoreAlphaChannelTransparency() || fileData.hasDummyAlphaChannel()) {
@@ -331,4 +383,33 @@ void Texture::setSampleCount(U8 newSampleCount) {
     }
 }
 
+void Texture::validateDescriptor() {
+    // Select the proper colour space internal format
+    if (_descriptor.baseFormat() == GFXImageFormat::RED ||
+        _descriptor.baseFormat() == GFXImageFormat::RG ||
+        _descriptor.baseFormat() == GFXImageFormat::DEPTH_COMPONENT)
+    {
+        // We only support 8 bit per pixel - 3 & 4 channel textures
+        assert(!_descriptor.srgb());
+    }
+
+    // Cap upper mip count limit
+    if (_width > 0 && _height > 0) {
+        //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
+        if (descriptor().mipMappingState() != TextureDescriptor::MipMappingState::OFF) {
+            _mipCount = to_U16(std::floorf(std::log2f(std::fmaxf(to_F32(_width), to_F32(_height))))) + 1;
+        } else {
+            _mipCount = 1u;
+        }
+    }
+
+    if (_descriptor.msaaSamples() == 0u) {
+        if (_descriptor.texType() == TextureType::TEXTURE_2D_MS) {
+            _descriptor.texType(TextureType::TEXTURE_2D);
+        }
+        else if (_descriptor.texType() == TextureType::TEXTURE_2D_ARRAY_MS) {
+            _descriptor.texType(TextureType::TEXTURE_2D_ARRAY);
+        }
+    }
+}
 };

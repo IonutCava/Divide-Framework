@@ -112,12 +112,6 @@ namespace Divide {
         void bindLayer([[maybe_unused]] U8 slot, [[maybe_unused]] U8 level, [[maybe_unused]] U8 layer, [[maybe_unused]] bool layered, [[maybe_unused]] Image::Flag rw_flag) noexcept override {
         }
 
-        void loadData([[maybe_unused]] const ImageTools::ImageData& imageLayers) noexcept override {
-        }
-
-        void loadData([[maybe_unused]] const Byte* data, [[maybe_unused]] const size_t dataSize, [[maybe_unused]] const vec2<U16>& dimensions) noexcept override {
-        }
-
         void clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const noexcept override {
         }
 
@@ -127,6 +121,21 @@ namespace Divide {
         TextureReadbackData readData([[maybe_unused]] U16 mipLevel, [[maybe_unused]] GFXDataFormat desiredFormat) const noexcept override {
             TextureReadbackData data{};
             return MOV(data);
+        }
+
+        void reserveStorage([[maybe_unused]] bool fromFile) {
+        }
+
+        void loadDataCompressed([[maybe_unused]] const ImageTools::ImageData& imageData) {
+        }
+
+        void loadDataUncompressed([[maybe_unused]] const ImageTools::ImageData& imageData) const {
+        }
+
+        void prepareTextureData([[maybe_unused]] U16 width, [[maybe_unused]] U16 height) {
+        }
+
+        void submitTextureData() {
         }
     };
 

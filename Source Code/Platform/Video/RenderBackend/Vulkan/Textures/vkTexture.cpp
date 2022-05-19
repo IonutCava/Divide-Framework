@@ -2,6 +2,8 @@
 
 #include "Headers/vkTexture.h"
 
+#include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
+
 namespace Divide {
     vkTexture::vkTexture(GFXDevice& context,
                          const size_t descriptorHash,
@@ -17,17 +19,86 @@ namespace Divide {
         _data._textureHandle = s_textureHandle.fetch_add(1u);
     }
 
+    vkTexture::~vkTexture()
+    {
+        unload();
+    }
+
+    void vkTexture::updateDescriptor() {
+        _vkDescriptor.sampler = _sampler;
+        _vkDescriptor.imageView = _view;
+        _vkDescriptor.imageLayout = _imageLayout;
+    }
+
     [[nodiscard]] SamplerAddress vkTexture::getGPUAddress([[maybe_unused]] size_t samplerHash) noexcept {
         return 0u;
+    }
+
+    bool vkTexture::unload() {
+        auto device = VK_API::GetStateTracker()->_device->getVKDevice();
+
+        vkDestroyImageView(device, _view, nullptr);
+        vkDestroyImage(device, _image, nullptr);
+        if (_sampler) {
+            vkDestroySampler(device, _sampler, nullptr);
+        }
+        vkFreeMemory(device, _deviceMemory, nullptr);
+
+        return true;
+    }
+
+    void vkTexture::reserveStorage(const bool fromFile) {
+        constexpr bool useStaging = true;
+
+        auto physicalDevice = VK_API::GetStateTracker()->_device->getPhysicalDevice();
+        const VkFormat vkInternalFormat = VKUtil::internalFormat(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.srgb(), _descriptor.normalized());
+        //const U8 msaaSamples = _descriptor.msaaSamples();
+
+        assert(
+            !(_loadingData._textureType == TextureType::TEXTURE_CUBE_MAP && _width != _height) &&
+            "vkTexture::reserverStorage error: width and height for cube map texture do not match!");
+        // Get device properties for the requested texture format
+        VkFormatProperties formatProperties;
+        vkGetPhysicalDeviceFormatProperties(physicalDevice, vkInternalFormat, &formatProperties);
+
+        VkMemoryAllocateInfo memAllocInfo{};
+        memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+
+        //VkMemoryRequirements memReqs;
+        // Use a separate command buffer for texture loading
+        //VkCommandBuffer copyCmd = VK_API::GetStateTracker()->_device->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+        if_constexpr(useStaging)
+        {
+        } else {
+        }
+
+        updateDescriptor();
     }
 
     void vkTexture::bindLayer([[maybe_unused]] U8 slot, [[maybe_unused]] U8 level, [[maybe_unused]] U8 layer, [[maybe_unused]] bool layered, [[maybe_unused]] Image::Flag rw_flag) noexcept {
     }
 
-    void vkTexture::loadData([[maybe_unused]] const ImageTools::ImageData& imageLayers) noexcept {
+    void vkTexture::submitTextureData() {
     }
 
-    void vkTexture::loadData([[maybe_unused]] const Byte* data, [[maybe_unused]] const size_t dataSize, [[maybe_unused]] const vec2<U16>& dimensions) noexcept {
+    void vkTexture::prepareTextureData(const U16 width, const U16 height) {
+        _loadingData = _data;
+
+        _width = width;
+        _height = height;
+        assert(_width > 0 && _height > 0 && "glTexture error: Invalid texture dimensions!");
+
+        validateDescriptor();
+        _loadingData._textureType = _descriptor.texType();
+
+        _type = vkTextureTypeTable[to_U32(_loadingData._textureType)];
+
+    }
+
+    void vkTexture::loadDataCompressed([[maybe_unused]] const ImageTools::ImageData& imageData) {
+    }
+
+    void vkTexture::loadDataUncompressed([[maybe_unused]] const ImageTools::ImageData& imageData) const {
     }
 
     void vkTexture::clearData([[maybe_unused]] const UColour4& clearColour, [[maybe_unused]] U8 level) const noexcept {

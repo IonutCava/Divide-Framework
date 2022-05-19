@@ -373,7 +373,7 @@ namespace Divide {
         //finalize the command buffer (we can no longer add commands, but it can now be executed)
         VK_CHECK(vkEndCommandBuffer(cmd));
 
-        const VkResult result = _swapChain->endFrame(_graphicsQueue._queue, cmd);
+        const VkResult result = _swapChain->endFrame(_device->graphicsQueue()._queue, cmd);
         
         if (result != VK_SUCCESS) {
             if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
@@ -445,33 +445,21 @@ namespace Divide {
         }
         VKUtil::fillEnumTables(_device->getVKDevice());
 
-        _graphicsQueue = _device->getQueue(vkb::QueueType::graphics);
-        if (_graphicsQueue._queue == nullptr) {
+        if (_device->graphicsQueue()._queue == nullptr) {
             return ErrorCode::VK_NO_GRAHPICS_QUEUE;
         }
 
-        _computeQueue = _device->getQueue(vkb::QueueType::compute);
-        _transferQueue = _device->getQueue(vkb::QueueType::transfer);
         _swapChain = eastl::make_unique<VKSwapChain>(*_device, window);
         VK_API::s_stateTracker->_device = _device.get();
 
         recreateSwapChain(window);
-
-        //create a command pool for commands submitted to the graphics queue.
-        //we also want the pool to allow for resetting of individual command buffers
-        VkCommandPoolCreateInfo commandPoolInfo = {};
-        commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        commandPoolInfo.queueFamilyIndex = _graphicsQueueFamily;
-        commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-        VK_CHECK(vkCreateCommandPool(_device->getVKDevice(), &commandPoolInfo, nullptr, &_commandPool));
 
         _commandBuffers.resize(VKSwapChain::MAX_FRAMES_IN_FLIGHT);
 
         //allocate the default command buffer that we will use for rendering
         VkCommandBufferAllocateInfo cmdAllocInfo = {};
         cmdAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cmdAllocInfo.commandPool = _commandPool;
+        cmdAllocInfo.commandPool = _device->graphicsCommandPool();
         cmdAllocInfo.commandBufferCount = VKSwapChain::MAX_FRAMES_IN_FLIGHT;
         cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
@@ -584,9 +572,6 @@ namespace Divide {
 
         if (_device != nullptr) {
             destroyPipelines();
-            if (_commandPool != VK_NULL_HANDLE) {
-                vkDestroyCommandPool(_device->getVKDevice(), _commandPool, nullptr);
-            }
             _commandBuffers.clear();
             _swapChain.reset();
             _device.reset();

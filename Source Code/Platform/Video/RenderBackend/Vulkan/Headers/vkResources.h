@@ -42,6 +42,12 @@ namespace NS_GLIM {
     enum class GLIM_ENUM : int;
 }; //namespace NS_GLIM
 
+// Custom define for better code readability
+#define VK_FLAGS_NONE 0
+
+// Default fence timeout in nanoseconds
+#define DEFAULT_FENCE_TIMEOUT 100000000000
+
 namespace Divide {
 
 namespace Debug {
@@ -113,6 +119,8 @@ inline std::string VKErrorString(VkResult errorCode)
 
 namespace VKUtil {
     void fillEnumTables(VkDevice device);
+
+    [[nodiscard]] VkFormat internalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, bool srgb, bool normalized) noexcept;
 
 }; //namespace VKUtil
 }; //namespace Divide

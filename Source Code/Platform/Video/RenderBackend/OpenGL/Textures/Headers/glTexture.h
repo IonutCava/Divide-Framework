@@ -56,10 +56,7 @@ class glTexture final : public Texture {
 
     void bindLayer(U8 slot, U8 level, U8 layer, bool layered, Image::Flag rwFlag) override;
 
-    void loadData(const ImageTools::ImageData& imageLayers) override;
-    void loadData(const Byte* data, size_t dataSize, const vec2<U16>& dimensions) override;
-
-    void clearData(const UColour4& clearColour, U8 level) const override;
+     void clearData(const UColour4& clearColour, U8 level) const override;
     void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const override;
 
     static void copy(const TextureData& source, const TextureData& destination, const CopyTexParams& params);
@@ -68,27 +65,23 @@ class glTexture final : public Texture {
 
    protected:
     void reserveStorage(bool fromFile);
-
     void loadDataCompressed(const ImageTools::ImageData& imageData);
-
     void loadDataUncompressed(const ImageTools::ImageData& imageData) const;
-    void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
-
     void prepareTextureData(U16 width, U16 height);
     void submitTextureData();
 
-    void validateDescriptor();
+    void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
+
 
    private:
-    GLenum _type = GL_NONE;
+    GLenum _type{GL_NONE};
     struct SamplerAddressCache {
-        SamplerAddress _address = 0u;
-        GLuint _sampler = 0u;
+        SamplerAddress _address{ 0u };
+        GLuint _sampler{ 0u };
     };
 
     SamplerAddressCache _cachedAddressForSampler{};
-    SamplerAddress _baseTexAddress = 0u;
-    TextureData _loadingData;
+    SamplerAddress _baseTexAddress{ 0u };
     Mutex _gpuAddressesLock;
 };
 
