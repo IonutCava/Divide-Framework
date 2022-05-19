@@ -18,13 +18,6 @@ namespace {
     SharedMutex      g_deletionSetLock;
     std::set<GLuint> g_deletionSet;
 }
-void glShaderProgram::InitStaticData() {
-    glShader::InitStaticData();
-}
-
-void glShaderProgram::DestroyStaticData() {
-    glShader::DestroyStaticData();
-}
 
 void glShaderProgram::Idle(PlatformContext& platformContext) {
     OPTICK_EVENT();
@@ -92,8 +85,7 @@ glShaderProgram::glShaderProgram(GFXDevice& context,
                                  const ResourcePath& assetLocation,
                                  const ShaderProgramDescriptor& descriptor,
                                  ResourceCache& parentCache)
-    : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, parentCache),
-      glObject(glObjectType::TYPE_SHADER_PROGRAM, context)
+    : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, parentCache)
 {
 }
 
@@ -123,7 +115,7 @@ bool glShaderProgram::unload() {
     eastl::for_each(begin(_shaderStage),
                     end(_shaderStage),
                     [](glShader* shader) {
-                        glShader::RemoveShader(shader);
+                        ShaderModule::RemoveShader(shader);
                     });
     _shaderStage.clear();
 

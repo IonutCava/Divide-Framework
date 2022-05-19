@@ -130,6 +130,48 @@ inline bool operator!=(const ShaderProgramMapEntry& lhs, const ShaderProgramMapE
            lhs._program != rhs._program;
 }
 
+class ShaderModule : public GUIDWrapper, public GraphicsResource {
+protected:
+    using ShaderMap = ska::bytell_hash_map<U64, ShaderModule*>;
+
+public:
+    explicit ShaderModule(GFXDevice& context, const Str256& name);
+    virtual ~ShaderModule();
+
+    void AddRef() noexcept { _refCount.fetch_add(1); }
+    /// Returns true if ref count reached 0
+    size_t SubRef() noexcept { return _refCount.fetch_sub(1); }
+
+    [[nodiscard]] size_t GetRef() const noexcept { return _refCount.load(); }
+
+    PROPERTY_R(Str256, name);
+    PROPERTY_R(bool, valid, false);
+
+public:
+    // ======================= static data ========================= //
+    /// Remove a shader from the cache
+    static void RemoveShader(ShaderModule* s, bool force = false);
+    /// Returns a reference to an already loaded shader, null otherwise
+    static ShaderModule* GetShader(const Str256& name);
+
+    static void InitStaticData();
+    static void DestroyStaticData();
+
+protected:
+    static ShaderModule* GetShaderLocked(const Str256& name);
+    static void RemoveShaderLocked(ShaderModule* s, bool force = false);
+
+protected:
+    std::atomic_size_t _refCount;
+    /// A list of preprocessor defines (if the bool in the pair is true, #define is automatically added
+    vector<ModuleDefine> _definesList;
+
+protected:
+    /// Shader cache
+    static ShaderMap s_shaderNameMap;
+    static SharedMutex s_shaderNameLock;
+};
+
 class NOINITVTABLE ShaderProgram : public CachedResource,
                                    public GraphicsResource {
    public:
@@ -198,6 +240,9 @@ class NOINITVTABLE ShaderProgram : public CachedResource,
 
     //==================== static methods ===============================//
     static void Idle(PlatformContext& platformContext);
+    static void InitStaticData();
+    static void DestroyStaticData();
+
     [[nodiscard]] static ErrorCode OnStartup(ResourceCache* parentCache);
     [[nodiscard]] static bool OnShutdown();
     [[nodiscard]] static bool OnThreadCreated(const GFXDevice& gfx, const std::thread::id& threadID);

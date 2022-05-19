@@ -31,6 +31,10 @@ RenderTargetHandle GFXRTPool::allocateRT(const RenderTargetDescriptor& descripto
 }
 
 bool GFXRTPool::deallocateRT(RenderTargetHandle& handle) {
+    if (handle._rt == nullptr) {
+        return true;
+    }
+
     const RenderTargetID id = handle._targetID;
     if (id != INVALID_RENDER_TARGET_ID) {
         ScopedLock<SharedMutex> w_lock(_renderTargetLock);

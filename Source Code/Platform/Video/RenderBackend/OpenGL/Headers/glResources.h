@@ -118,26 +118,6 @@ private:
     U32 _maxBindings = 0u;
 };
 
-enum class glObjectType : U8 {
-    TYPE_BUFFER = 0,
-    TYPE_TEXTURE,
-    TYPE_SHADER,
-    TYPE_SHADER_PROGRAM,
-    TYPE_FRAMEBUFFER,
-    TYPE_QUERY,
-    COUNT
-};
-
-class glObject  {
-public:
-    explicit glObject(glObjectType type, GFXDevice& context) noexcept;
-
-    [[nodiscard]] glObjectType type() const noexcept { return _type;  }
-
-private:
-   const glObjectType _type;
-};
-
 namespace GLUtil {
 
 // Not thread-safe!

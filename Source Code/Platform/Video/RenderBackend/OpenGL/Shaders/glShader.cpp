@@ -45,25 +45,9 @@ namespace {
     }
 }
 
-SharedMutex glShader::s_shaderNameLock;
-glShader::ShaderMap glShader::s_shaderNameMap;
-
-void glShader::InitStaticData() {
-    NOP();
-}
-
-void glShader::DestroyStaticData() {
-    ScopedLock<SharedMutex> w_lock(s_shaderNameLock);
-    s_shaderNameMap.clear();
-}
-
 glShader::glShader(GFXDevice& context, const Str256& name)
-    : GUIDWrapper(),
-      GraphicsResource(context, Type::SHADER, getGUID(), _ID(name.c_str())),
-      glObject(glObjectType::TYPE_SHADER, context),
-      _name(name)
+    : ShaderModule(context, name)
 {
-    std::atomic_init(&_refCount, 0u);
 }
 
 glShader::~glShader() {
@@ -285,59 +269,28 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
     return true;
 }
 
-// ============================ static data =========================== //
-/// Remove a shader entity. The shader is deleted only if it isn't referenced by a program
-void glShader::RemoveShader(glShader*& s, const bool force) {
-    assert(s != nullptr);
-
-    // Try to find it
-    const U64 nameHash = s->nameHash();
-    ScopedLock<SharedMutex> w_lock(s_shaderNameLock);
-    const ShaderMap::iterator it = s_shaderNameMap.find(nameHash);
-    if (it != std::end(s_shaderNameMap)) {
-        // Subtract one reference from it.
-        const size_t newRefCount = s->SubRef();
-        if (force || newRefCount == 0) {
-            // If the new reference count is 0, delete the shader (as in leave it in the object arena)
-            s_shaderNameMap.erase(nameHash);
-            MemoryManager::DELETE(s);
-        }
-    }
-}
-
-/// Return a new shader reference
-glShader* glShader::GetShader(const Str256& name) {
-    // Try to find the shader
-    SharedLock<SharedMutex> r_lock(s_shaderNameLock);
-    const ShaderMap::iterator it = s_shaderNameMap.find(_ID(name.c_str()));
-    if (it != std::end(s_shaderNameMap)) {
-        return it->second;
-    }
-
-    return nullptr;
-}
-
 /// Load a shader by name, source code and stage
 glShader* glShader::LoadShader(GFXDevice& context,
                                const Str256& name,
                                const bool overwriteExisting,
                                ShaderProgram::ShaderLoadData& data) {
+    ScopedLock<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
+
     // See if we have the shader already loaded
-    glShader* shader = GetShader(name);
+    ShaderModule* shader = GetShaderLocked(name);
     if (overwriteExisting && shader != nullptr) {
-        RemoveShader(shader, true);
+        RemoveShaderLocked(shader, true);
+        shader = nullptr;
     }
 
     // If we do, and don't need a recompile, just return it
     if (shader == nullptr) {
         shader = MemoryManager_NEW glShader(context, name);
-
         // If we loaded the source code successfully,  register it
-        ScopedLock<SharedMutex> w_lock(s_shaderNameLock);
         s_shaderNameMap.insert({ shader->nameHash(), shader });
 
         // At this stage, we have a valid Shader object, so load the source code
-        if (!shader->load(data)) {
+        if (!static_cast<glShader*>(shader)->load(data)) {
             DIVIDE_UNEXPECTED_CALL();
         }
     } else {
@@ -345,7 +298,7 @@ glShader* glShader::LoadShader(GFXDevice& context,
         Console::d_printfn(Locale::Get(_ID("SHADER_MANAGER_GET_INC")), shader->name().c_str(), shader->GetRef());
     }
 
-    return shader;
+    return static_cast<glShader*>(shader);
 }
 
 void glShader::onParentValidation() {

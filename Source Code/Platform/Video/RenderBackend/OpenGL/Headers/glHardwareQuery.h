@@ -40,9 +40,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-class glHardwareQuery : public glObject {
+class glHardwareQuery {
 public:
-    explicit glHardwareQuery(GFXDevice& context) noexcept;
+    explicit glHardwareQuery() noexcept;
 
     void create(GLenum queryType);
     void destroy();

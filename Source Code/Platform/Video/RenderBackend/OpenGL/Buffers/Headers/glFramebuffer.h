@@ -45,8 +45,7 @@ namespace Attorney {
     class GLAPIRenderTarget;
 };
 
-class glFramebuffer final : public RenderTarget,
-                            public glObject {
+class glFramebuffer final : public RenderTarget {
 
     friend class Attorney::GLAPIRenderTarget;
 

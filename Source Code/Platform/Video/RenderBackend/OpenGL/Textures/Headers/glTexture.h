@@ -38,8 +38,7 @@
 
 namespace Divide {
 
-class glTexture final : public Texture,
-                        public glObject {
+class glTexture final : public Texture {
    public:
     explicit glTexture(GFXDevice& context,
                        size_t descriptorHash,

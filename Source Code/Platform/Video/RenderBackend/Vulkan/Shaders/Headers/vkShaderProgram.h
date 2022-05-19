@@ -36,6 +36,30 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
+    class vkShader final : public ShaderModule {
+    public:
+        explicit vkShader(GFXDevice& context, const Str256& name);
+        ~vkShader();
+
+        [[nodiscard]] bool load(const ShaderProgram::LoadData& data);
+
+        /// Add or refresh a shader from the cache
+        [[nodiscard]] static vkShader* LoadShader(GFXDevice& context,
+                                                  const Str256& name,
+                                                  bool overwriteExisting,
+                                                  ShaderProgram::LoadData& data);
+
+        PROPERTY_R_IW(VkShaderStageFlagBits, stageMask, VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
+        PROPERTY_R_IW(VkShaderModule, handle, VK_NULL_HANDLE);
+
+    private:
+        void reset();
+
+    private:
+        VkPipelineShaderStageCreateInfo _createInfo{};
+        ShaderProgram::LoadData _loadData;
+    };
+
     class vkShaderProgram final : public ShaderProgram {
     public:
         vkShaderProgram(GFXDevice& context,
@@ -46,6 +70,9 @@ namespace Divide {
             const ShaderProgramDescriptor& descriptor,
             ResourceCache& parentCache);
         ~vkShaderProgram();
+
+        static void Idle(PlatformContext& platformContext);
+
     protected:
         ShaderResult validatePreBind(bool rebind = true);
         /// Make sure this program is ready for deletion
@@ -58,8 +85,7 @@ namespace Divide {
     private:
        bool _validationQueued = false;
        bool _stagesBound = false;
-       vector<VkShaderModule> _shaderStage;
-       std::vector<VkPipelineShaderStageCreateInfo> _shaderStagesCreateInfo;
+       vector<vkShader*> _shaderStage;
     };
 
 

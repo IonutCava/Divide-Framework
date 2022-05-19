@@ -507,6 +507,7 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     ResourceCache* cache = parent().resourceCache();
     const Configuration& config = _parent.platformContext().config();
 
+    ShaderProgram::InitStaticData();
     Texture::OnStartup(*this);
     RenderPassExecutor::OnStartup(*this);
     GFX::InitPools();
@@ -1230,6 +1231,7 @@ void GFXDevice::closeRenderingAPI() {
 
     RenderPassExecutor::OnShutdown(*this);
     Texture::OnShutdown();
+    ShaderProgram::DestroyStaticData();
     assert(ShaderProgram::ShaderProgramCount() == 0);
     // Close the rendering API
     _api->closeRenderingAPI();
@@ -1821,7 +1823,7 @@ bool GFXDevice::uploadGPUBlock() {
             //We've wrapped around this buffer inside of a single frame so sync performance will degrade unless we increase our buffer size
             _gfxBuffers._needsResizeCam = true;
             //Because we are now overwriting existing data, we need to make sure that any fences that could possibly protect us have been flushed
-            DIVIDE_ASSERT(frameBuffers._writeMemCmd._bufferLocks.empty());
+            DIVIDE_ASSERT(IsEmpty(frameBuffers._writeMemCmd._bufferLocks));
         }
         frameBuffers._writeMemCmd._bufferLocks.push_back(frameBuffers._camDataBuffer->writeData(&_gpuBlock._camData));
         _gpuBlock._camNeedsUpload = false;
@@ -2246,9 +2248,9 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
     _api->postFlushCommandBuffer(commandBuffer);
 
     GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
-    if (!frameBuffers._writeMemCmd._bufferLocks.empty()) {
+    if (!IsEmpty(frameBuffers._writeMemCmd._bufferLocks)) {
         _api->flushCommand(&frameBuffers._writeMemCmd);
-        frameBuffers._writeMemCmd._bufferLocks.resize(0);
+        frameBuffers._writeMemCmd._bufferLocks.clear();
     }
 
     // Descriptor sets are only valid per command buffer they are submitted in. If we finish the command buffer submission,

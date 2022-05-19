@@ -265,7 +265,7 @@ void CommandBuffer::clean() {
             case CommandType::MEMORY_BARRIER: {
                 auto memCmd = get<MemoryBarrierCommand>(cmd);
 
-                erase = memCmd->_barrierMask == 0u && memCmd->_bufferLocks.empty();
+                erase = memCmd->_barrierMask == 0u && IsEmpty(memCmd->_bufferLocks);
             } break;
             case CommandType::DRAW_TEXT: {
                 OPTICK_EVENT("Clean Draw Text");
@@ -334,7 +334,7 @@ void CommandBuffer::clean() {
         }
     }
     {
-        OPTICK_EVENT("Remove invalid draw commands");
+        OPTICK_EVENT("Remove invalid commands");
         erase_if(_commandOrder, [](const CommandEntry& entry) noexcept { return entry._data == PolyContainerEntry::INVALID_ENTRY_ID; });
     }
 }

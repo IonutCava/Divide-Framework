@@ -55,7 +55,6 @@ bool operator!=(const glFramebuffer::BindingState& lhs, const glFramebuffer::Bin
 
 glFramebuffer::glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& descriptor)
     : RenderTarget(context, descriptor),
-      glObject(glObjectType::TYPE_FRAMEBUFFER, context),
       _activeColourBuffers{},
       _prevViewport(-1),
       _debugMessage("Render Target: [ " + name() + " ]")

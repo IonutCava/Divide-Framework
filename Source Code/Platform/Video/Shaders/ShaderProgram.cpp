@@ -404,14 +404,6 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
         "#define float4x4 mat4\n"
         "#define lerp mix";
 
-    if (renderingAPI == RenderAPI::OpenGL) {
-
-    } else if (renderingAPI == RenderAPI::Vulkan) {
-
-    } else {
-        DIVIDE_UNEXPECTED_CALL();
-    }
-
     const auto getPassData = [&](const ShaderType type) -> string {
         string baseString = "     _out.%s = _in[index].%s;";
         if (type == ShaderType::TESSELLATION_CTRL) {
@@ -469,11 +461,18 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
         AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_OPENGL");
         AppendToShaderHeader(ShaderType::COUNT, "#define dvd_VertexIndex gl_VertexID");
         AppendToShaderHeader(ShaderType::COUNT, "#define dvd_InstanceIndex gl_InstanceID");
+        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_INSTANCE gl_BaseInstance");
+        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_VERTEX gl_BaseVertex");
+        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_DRAW_ID gl_DrawID");
     } else {
+        AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_shader_draw_parameters : require");
         AppendToShaderHeader(ShaderType::COUNT, "#define SPECIFY_SET(SET) set = SET,");
         AppendToShaderHeader(ShaderType::COUNT, "#define TARGET_VULKAN");
         AppendToShaderHeader(ShaderType::COUNT, "#define dvd_VertexIndex gl_VertexIndex");
         AppendToShaderHeader(ShaderType::COUNT, "#define dvd_InstanceIndex gl_InstanceIndex");
+        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_INSTANCE gl_BaseInstanceARB");
+        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_VERTEX gl_BaseVertexARB");
+        AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_DRAW_ID gl_DrawIDARB");
     }
 
     AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(SPECIFY_SET(SET) binding = BINDING)");
@@ -481,9 +480,7 @@ bool InitGLSW(const RenderAPI renderingAPI, const DeviceInformation& deviceInfo,
     AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_LAYOUT(SET, BINDING, LAYOUT) layout(SPECIFY_SET(SET) binding = BINDING, LAYOUT)");
     AppendToShaderHeader(ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET_LAYOUT(SET, BINDING, OFFSET, LAYOUT) layout(SPECIFY_SET(SET) binding = BINDING, offset = OFFSET, LAYOUT)");
 
-    AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_DRAW_ID gl_DrawID");
-    AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_VERTEX gl_BaseVertex");
-    AppendToShaderHeader(ShaderType::COUNT, "#define DVD_GL_BASE_INSTANCE gl_BaseInstance");
+   
     AppendToShaderHeader(ShaderType::COUNT, crossTypeGLSLHLSL);
 
     // Add current build environment information to the shaders
@@ -720,6 +717,69 @@ size_t ShaderProgramDescriptor::getHash() const {
     return _hash;
 }
 
+SharedMutex ShaderModule::s_shaderNameLock;
+ShaderModule::ShaderMap ShaderModule::s_shaderNameMap;
+
+
+void ShaderModule::InitStaticData() {
+    NOP();
+}
+
+void ShaderModule::DestroyStaticData() {
+    ScopedLock<SharedMutex> w_lock(s_shaderNameLock);
+    DIVIDE_ASSERT(s_shaderNameMap.empty());
+}
+
+/// Remove a shader entity. The shader is deleted only if it isn't referenced by a program
+void ShaderModule::RemoveShader(ShaderModule* s, const bool force) {
+    ScopedLock<SharedMutex> w_lock(s_shaderNameLock);
+    RemoveShaderLocked(s, force);
+}
+
+void ShaderModule::RemoveShaderLocked(ShaderModule* s, const bool force) {
+    assert(s != nullptr);
+
+    // Try to find it
+    const U64 nameHash = s->nameHash();
+    const ShaderMap::iterator it = s_shaderNameMap.find(nameHash);
+    if (it != std::end(s_shaderNameMap)) {
+        // Subtract one reference from it.
+        if (force || s->SubRef() == 0) {
+            // If the new reference count is 0, delete the shader (as in leave it in the object arena)
+            s_shaderNameMap.erase(nameHash);
+            MemoryManager::DELETE(s);
+        }
+    }
+}
+
+ShaderModule* ShaderModule::GetShader(const Str256& name) {
+    SharedLock<SharedMutex> r_lock(s_shaderNameLock);
+    return GetShaderLocked(name);
+}
+
+ShaderModule* ShaderModule::GetShaderLocked(const Str256& name) {
+    // Try to find the shader
+    const ShaderMap::iterator it = s_shaderNameMap.find(_ID(name.c_str()));
+    if (it != std::end(s_shaderNameMap)) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+ShaderModule::ShaderModule(GFXDevice& context, const Str256& name)
+    : GUIDWrapper(),
+      GraphicsResource(context, Type::SHADER, getGUID(), _ID(name.c_str())),
+      _name(name)
+{
+    std::atomic_init(&_refCount, 0u);
+}
+
+ShaderModule::~ShaderModule()
+{
+
+}
+
 ShaderProgram::ShaderProgram(GFXDevice& context, 
                              const size_t descriptorHash,
                              const Str256& shaderName,
@@ -791,6 +851,14 @@ void ShaderProgram::Idle(PlatformContext& platformContext) {
         }
         s_recompileQueue.pop();
     }
+}
+
+void ShaderProgram::InitStaticData() {
+    ShaderModule::InitStaticData();
+}
+
+void ShaderProgram::DestroyStaticData() {
+    ShaderModule::DestroyStaticData();
 }
 
 /// Calling this will force a recompilation of all shader stages for the program that matches the name specified

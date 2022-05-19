@@ -54,7 +54,7 @@ struct BufferMapRange
     size_t _range = 0;
 };
 
-class glBufferImpl final : public glObject, public GUIDWrapper {
+class glBufferImpl final : public GUIDWrapper {
 public:
     explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params);
     virtual ~glBufferImpl();

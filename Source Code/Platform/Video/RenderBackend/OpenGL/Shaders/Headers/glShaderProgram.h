@@ -56,7 +56,7 @@ namespace Attorney {
     class GLAPIShaderProgram;
 };
 /// OpenGL implementation of the ShaderProgram entity
-class glShaderProgram final : public ShaderProgram, public glObject {
+class glShaderProgram final : public ShaderProgram {
     friend class Attorney::GLAPIShaderProgram;
 
    public:
@@ -71,8 +71,6 @@ class glShaderProgram final : public ShaderProgram, public glObject {
     ~glShaderProgram();
 
     static void Idle(PlatformContext& platformContext);
-    static void InitStaticData();
-    static void DestroyStaticData();
 
     /// Make sure this program is ready for deletion
     bool unload() override;

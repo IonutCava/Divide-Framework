@@ -115,6 +115,20 @@ struct BufferLock {
 
 using BufferLocks = eastl::fixed_vector<BufferLock, 3, true, eastl::dvd_allocator>;
 
+inline [[nodiscard]] bool IsEmpty(const BufferLocks& locks) noexcept {
+    if (locks.empty()) {
+        return true;
+    }
+
+    for (auto& it : locks) {
+        if (it._targetBuffer != nullptr) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 class LockableDataRangeBuffer : public GUIDWrapper {
 public:
     [[nodiscard]] virtual bool lockByteRange(BufferRange range, SyncObject* sync) const = 0;

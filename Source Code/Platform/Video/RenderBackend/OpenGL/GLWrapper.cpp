@@ -401,8 +401,6 @@ ErrorCode GL_API::initRenderingAPI([[maybe_unused]] GLint argc, [[maybe_unused]]
 
     s_textureViewCache.init(256);
 
-    glShaderProgram::InitStaticData();
-
     // FontStash library initialization
     // 512x512 atlas with bottom-left origin
     _fonsContext = glfonsCreate(512, 512, FONS_ZERO_BOTTOMLEFT);
@@ -881,7 +879,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
 
     const auto lockPushConstants = [&]() {
         flushCommand(&pushConstantsMemCommand);
-        pushConstantsMemCommand._bufferLocks.resize(0);
+        pushConstantsMemCommand._bufferLocks.clear();
     };
 
     switch (cmd->Type()) {

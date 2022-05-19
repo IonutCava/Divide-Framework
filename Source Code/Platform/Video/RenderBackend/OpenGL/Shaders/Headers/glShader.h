@@ -42,11 +42,7 @@ enum class ShaderResult : U8;
 
 /// glShader represents one of a program's rendering stages (vertex, geometry, fragment, etc)
 /// It can be used simultaneously in multiple programs/pipelines
-class glShader final : public GUIDWrapper, public GraphicsResource, public glObject {
-   public:
-    using ShaderMap = ska::bytell_hash_map<U64, glShader*>;
-
-
+class glShader final : public ShaderModule {
    public:
     /// The shader's name is the period-separated list of properties, type is
     /// the render stage this shader is used for
@@ -55,33 +51,14 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
     [[nodiscard]] bool load(const ShaderProgram::ShaderLoadData& data);
 
-    void AddRef() noexcept { _refCount.fetch_add(1); }
-    /// Returns true if ref count reached 0
-    size_t SubRef() noexcept { return _refCount.fetch_sub(1); }
+    /// Add or refresh a shader from the cache
+    [[nodiscard]] static glShader* LoadShader(GFXDevice& context,
+                                              const Str256& name,
+                                              bool overwriteExisting,
+                                              ShaderProgram::ShaderLoadData& data);
 
-    [[nodiscard]] size_t GetRef() const noexcept { return _refCount.load(); }
-
-    PROPERTY_R(Str256, name);
-    PROPERTY_R(bool, valid, false);
     PROPERTY_R_IW(UseProgramStageMask, stageMask, UseProgramStageMask::GL_NONE_BIT);
     PROPERTY_R_IW(GLuint, handle, GLUtil::k_invalidObjectID);
-
-   public:
-    // ======================= static data ========================= //
-    /// Remove a shader from the cache
-    static void RemoveShader(glShader*& s, bool force = false);
-    /// Return a new shader reference
-    static glShader* GetShader(const Str256& name);
-
-    /// Add or refresh a shader from the cache
-    static glShader* LoadShader(GFXDevice& context,
-                                const Str256& name,
-                                bool overwriteExisting,
-                                ShaderProgram::ShaderLoadData& data);
-
-
-    static void InitStaticData();
-    static void DestroyStaticData();
 
    private:
     friend class glShaderProgram;
@@ -91,16 +68,8 @@ class glShader final : public GUIDWrapper, public GraphicsResource, public glObj
 
   private:
     ShaderProgram::ShaderLoadData _loadData;
-    /// A list of preprocessor defines (if the bool in the pair is true, #define is automatically added
-    vector<ModuleDefine> _definesList;
-    std::atomic_size_t _refCount;
     vector<GLuint> _shaderIDs;
     bool _linked = false;
-
-   private:
-    /// Shader cache
-    static ShaderMap s_shaderNameMap;
-    static SharedMutex s_shaderNameLock;
 };
 
 };  // namespace Divide

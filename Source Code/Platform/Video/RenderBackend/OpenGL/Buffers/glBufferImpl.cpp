@@ -12,8 +12,7 @@
 namespace Divide {
 
 glBufferImpl::glBufferImpl(GFXDevice& context, const BufferImplParams& params)
-    : glObject(glObjectType::TYPE_BUFFER, context),
-      GUIDWrapper(),
+    : GUIDWrapper(),
       _params(params),
       _context(context)
 {

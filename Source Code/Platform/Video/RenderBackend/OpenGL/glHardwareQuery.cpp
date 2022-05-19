@@ -5,9 +5,8 @@
 
 namespace Divide {
 
-glHardwareQuery::glHardwareQuery(GFXDevice& context) noexcept
-    : glObject(glObjectType::TYPE_QUERY, context),
-      _enabled(false)
+glHardwareQuery::glHardwareQuery() noexcept
+    : _enabled(false)
 {
 }
 
@@ -80,8 +79,7 @@ void glHardwareQueryRing::resize(const U32 queueLength) {
         const size_t countToAdd = queueLength - crtCount;
 
         for (size_t i = 0; i < countToAdd; ++i) {
-            _queries.emplace_back(_context);
-            _queries.back().create(_queryType);
+            _queries.emplace_back().create(_queryType);
 
             //Prime the query
             glBeginQuery(_queryType, _queries.back().getID());

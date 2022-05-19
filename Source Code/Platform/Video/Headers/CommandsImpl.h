@@ -301,7 +301,7 @@ DEFINE_COMMAND_BEGIN(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);
     MemoryBarrierCommand() noexcept = default;
     MemoryBarrierCommand(const U32 mask) noexcept : _barrierMask(mask) {}
 
-    U32 _barrierMask = 0u;
+    U32 _barrierMask{ 0u };
     BufferLocks _bufferLocks;
 DEFINE_COMMAND_END(MemoryBarrierCommand);
 

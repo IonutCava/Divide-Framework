@@ -9,11 +9,6 @@
 
 namespace Divide {
 
-glObject::glObject(const glObjectType type, [[maybe_unused]] GFXDevice& context) noexcept
-    : _type(type)
-{
-}
-
 void VAOBindings::init(const U32 maxBindings) noexcept {
     _maxBindings = maxBindings;
 }

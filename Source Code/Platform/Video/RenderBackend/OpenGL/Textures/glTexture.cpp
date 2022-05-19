@@ -43,7 +43,6 @@ glTexture::glTexture(GFXDevice& context,
                      ResourceCache& parentCache)
 
     : Texture(context, descriptorHash, name, resourceName, resourceLocation, texDescriptor, parentCache),
-      glObject(glObjectType::TYPE_TEXTURE, context),
      _type(GL_NONE),
      _loadingData(_data)
 {

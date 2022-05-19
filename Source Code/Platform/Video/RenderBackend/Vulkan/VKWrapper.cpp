@@ -285,6 +285,7 @@ namespace Divide {
     }
 
     void VK_API::idle([[maybe_unused]] const bool fast) noexcept {
+        vkShaderProgram::Idle(_context.context());
     }
 
     bool VK_API::beginFrame(DisplayWindow& window, [[maybe_unused]] bool global) noexcept {
@@ -576,6 +577,9 @@ namespace Divide {
     }
 
     void VK_API::closeRenderingAPI() {
+
+        vkShaderProgram::DestroyStaticData();
+
         s_stateTracker.reset();
 
         if (_device != nullptr) {
