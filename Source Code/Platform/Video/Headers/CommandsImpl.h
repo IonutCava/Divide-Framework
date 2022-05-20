@@ -76,7 +76,6 @@ enum class CommandType : U8 {
     SEND_PUSH_CONSTANTS,
     DRAW_COMMANDS,
     DRAW_TEXT,
-    DRAW_IMGUI,
     DISPATCH_COMPUTE,
     MEMORY_BARRIER,
     READ_BUFFER_DATA,
@@ -97,7 +96,7 @@ namespace Names {
         "END_RENDER_SUB_PASS", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT", "SET_SCISSOR", "CLEAR_RT",
         "RESET_RT", "RESET_AND_CLEAR_RT", "BLIT_RT", "COPY_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS", "SET_CAMERA",
         "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_DESCRIPTOR_SETS", "SEND_PUSH_CONSTANTS",
-        "DRAW_COMMANDS", "DRAW_TEXT", "DRAW_IMGUI", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
+        "DRAW_COMMANDS", "DRAW_TEXT", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
         "SET_TEXTURE_RESIDENCY", "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "SWITCH_WINDOW", "SET_CLIPING_STATE", "EXTERNAL", "UNKNOWN"
     };
 };
@@ -191,6 +190,8 @@ DEFINE_COMMAND_END(ResetAndClearRenderTargetCommand);
 DEFINE_COMMAND_BEGIN(CopyTextureCommand, CommandType::COPY_TEXTURE);
     TextureData _source;
     TextureData _destination;
+    U8 _sourceMSAASamples{ 0u };
+    U8 _destinationMSAASamples{ 0u };
     CopyTexParams _params;
 DEFINE_COMMAND_END(CopyTextureCommand);
 
@@ -281,14 +282,6 @@ DEFINE_COMMAND_BEGIN(DrawTextCommand, CommandType::DRAW_TEXT);
     TextElementBatch _batch;
 DEFINE_COMMAND_END(DrawTextCommand);
 
-DEFINE_COMMAND_BEGIN(DrawIMGUICommand, CommandType::DRAW_IMGUI);
-    DrawIMGUICommand() noexcept = default;
-    DrawIMGUICommand(ImDrawData* data, I64 windowGUID) noexcept : _data(data), _windowGUID(windowGUID) {}
-
-    ImDrawData* _data = nullptr;
-    I64 _windowGUID = 0;
-DEFINE_COMMAND_END(DrawIMGUICommand);
-
 DEFINE_COMMAND_BEGIN(DispatchComputeCommand, CommandType::DISPATCH_COMPUTE);
     DispatchComputeCommand() noexcept = default;
     DispatchComputeCommand(const U32 xGroupSize, const U32 yGroupSize, const U32 zGroupSize) noexcept : _computeGroupSize(xGroupSize, yGroupSize, zGroupSize) {}
@@ -303,6 +296,7 @@ DEFINE_COMMAND_BEGIN(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);
 
     U32 _barrierMask{ 0u };
     BufferLocks _bufferLocks;
+    FenceLocks  _fenceLocks;
 DEFINE_COMMAND_END(MemoryBarrierCommand);
 
 DEFINE_COMMAND_BEGIN(ReadBufferDataCommand, CommandType::READ_BUFFER_DATA);

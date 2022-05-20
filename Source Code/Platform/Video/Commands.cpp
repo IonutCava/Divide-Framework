@@ -3,6 +3,7 @@
 
 #include "Headers/Pipeline.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
+#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
 namespace Divide {
 namespace GFX {
@@ -35,7 +36,6 @@ IMPLEMENT_COMMAND(BeginDebugScopeCommand);
 IMPLEMENT_COMMAND(EndDebugScopeCommand);
 IMPLEMENT_COMMAND(AddDebugMessageCommand);
 IMPLEMENT_COMMAND(DrawTextCommand);
-IMPLEMENT_COMMAND(DrawIMGUICommand);
 IMPLEMENT_COMMAND(DispatchComputeCommand);
 IMPLEMENT_COMMAND(MemoryBarrierCommand);
 IMPLEMENT_COMMAND(ReadBufferDataCommand);
@@ -322,7 +322,7 @@ string ToString(const DispatchComputeCommand& cmd, U16 indent) {
 }
 
 string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
-    string ret = Util::StringFormat(" [ Mask: %d ] [ Buffer locks: %zu ]", cmd._barrierMask, cmd._bufferLocks.size());
+    string ret = Util::StringFormat(" [ Mask: %d ] [ Buffer locks: %zu ] [ Fence locks: %zu ]", cmd._barrierMask, cmd._bufferLocks.size(), cmd._fenceLocks.size());
  
     for (auto it : cmd._bufferLocks) {
         ret.append("    ");
@@ -331,7 +331,13 @@ string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
         }
         ret.append(Util::StringFormat("Buffer lock: [ %d - [%zu - %zu] ]", it._targetBuffer->getGUID(), it._range._startOffset, it._range._length));
     }
-
+    for (auto it : cmd._fenceLocks) {
+        ret.append("    ");
+        for (U16 j = 0; j < indent; ++j) {
+            ret.append("    ");
+        }
+        ret.append(Util::StringFormat("Fence lock: [ %d ]", it->getGUID()));
+    }
     return ret;
 }
 

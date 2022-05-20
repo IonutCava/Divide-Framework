@@ -59,16 +59,16 @@ class glTexture final : public Texture {
      void clearData(const UColour4& clearColour, U8 level) const override;
     void clearSubData(const UColour4& clearColour, U8 level, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const override;
 
-    static void copy(const TextureData& source, const TextureData& destination, const CopyTexParams& params);
+    static void copy(const TextureData& source, U8 sourceSamples, const TextureData& destination, U8 destinationSamples, const CopyTexParams& params);
 
     TextureReadbackData readData(U16 mipLevel, GFXDataFormat desiredFormat) const override;
 
    protected:
-    void reserveStorage(bool fromFile);
-    void loadDataCompressed(const ImageTools::ImageData& imageData);
-    void loadDataUncompressed(const ImageTools::ImageData& imageData) const;
-    void prepareTextureData(U16 width, U16 height);
-    void submitTextureData();
+    void reserveStorage(bool fromFile) override;
+    void loadDataCompressed(const ImageTools::ImageData& imageData) override;
+    void loadDataUncompressed(const ImageTools::ImageData& imageData) const override;
+    void prepareTextureData(U16 width, U16 height) override;
+    void submitTextureData() override;
 
     void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
 

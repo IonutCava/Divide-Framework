@@ -85,33 +85,25 @@ void glTexture::reserveStorage(const bool fromFile) {
                 _width);
 
         } break;
+        case TextureType::TEXTURE_1D_ARRAY:
         case TextureType::TEXTURE_CUBE_MAP:
         case TextureType::TEXTURE_2D: {
-            glTextureStorage2D(
-                handle,
-                mipCount(),
-                glInternalFormat,
-                _width,
-                _height);
-        } break;
-        case TextureType::TEXTURE_2D_MS: {
-            glTextureStorage2DMultisample(
-                handle,
-                msaaSamples,
-                glInternalFormat,
-                _width,
-                _height,
-                GL_TRUE);
-        } break;
-        case TextureType::TEXTURE_2D_ARRAY_MS: {
-            glTextureStorage3DMultisample(
-                handle,
-                msaaSamples,
-                glInternalFormat,
-                _width,
-                _height,
-                _numLayers,
-                GL_TRUE);
+            if (msaaSamples == 0u) {
+                glTextureStorage2D(
+                    handle,
+                    mipCount(),
+                    glInternalFormat,
+                    _width,
+                    _loadingData._textureType == TextureType::TEXTURE_1D_ARRAY ? _numLayers : _height);
+            } else {
+                glTextureStorage2DMultisample(
+                    handle,
+                    msaaSamples,
+                    glInternalFormat,
+                    _width,
+                    _loadingData._textureType == TextureType::TEXTURE_1D_ARRAY ? _numLayers : _height,
+                    GL_TRUE);
+            }
         } break;
         case TextureType::TEXTURE_3D:
         case TextureType::TEXTURE_2D_ARRAY:
@@ -120,13 +112,24 @@ void glTexture::reserveStorage(const bool fromFile) {
             if (_loadingData._textureType == TextureType::TEXTURE_CUBE_ARRAY && !fromFile) {
                 numFaces = 6;
             }
-            glTextureStorage3D(
-                handle,
-                mipCount(),
-                glInternalFormat,
-                _width,
-                _height,
-                _numLayers * numFaces);
+            if (msaaSamples == 0u) {
+                glTextureStorage3D(
+                    handle,
+                    mipCount(),
+                    glInternalFormat,
+                    _width,
+                    _height,
+                    _numLayers * numFaces);
+            } else {
+                glTextureStorage3DMultisample(
+                    handle,
+                    msaaSamples,
+                    glInternalFormat,
+                    _width,
+                    _height,
+                    _numLayers * numFaces,
+                    GL_TRUE);
+            }
         } break;
         default: break;
     }
@@ -142,9 +145,9 @@ void glTexture::prepareTextureData(const U16 width, const U16 height) {
     validateDescriptor();
     _loadingData._textureType = _descriptor.texType();
 
-    _type = GLUtil::glTextureTypeTable[to_U32(_loadingData._textureType)];
+    _type = GLUtil::internalTextureType(_loadingData._textureType, _descriptor.msaaSamples());
 
-    glCreateTextures(GLUtil::glTextureTypeTable[to_base(_descriptor.texType())], 1, &_loadingData._textureHandle);
+    glCreateTextures(_type, 1, &_loadingData._textureHandle);
     
     assert(_loadingData._textureHandle != 0 && "glTexture error: failed to generate new texture handle!");
     if_constexpr(Config::ENABLE_GPU_VALIDATION) {
@@ -220,7 +223,6 @@ void glTexture::loadDataCompressed(const ImageTools::ImageData& imageData) {
 
                 case TextureType::TEXTURE_3D:
                 case TextureType::TEXTURE_2D_ARRAY:
-                case TextureType::TEXTURE_2D_ARRAY_MS:
                 case TextureType::TEXTURE_CUBE_ARRAY: {
                     glCompressedTextureSubImage3D(
                         _loadingData._textureHandle,
@@ -252,6 +254,7 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) con
     const GLenum glType = GLUtil::glDataFormat[to_U32(_descriptor.dataType())];
     const U32 numLayers = imageData.layerCount();
     const U8 numMips = imageData.mipCount();
+    const U8 msaaSamples = _descriptor.msaaSamples();
 
     GL_API::GetStateTracker()->setPixelPackUnpackAlignment();
 
@@ -275,24 +278,23 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) con
                         mip->data()
                     );
                 } break;
-                case TextureType::TEXTURE_2D:
-                case TextureType::TEXTURE_2D_MS: {
+                case TextureType::TEXTURE_1D_ARRAY:
+                case TextureType::TEXTURE_2D:{
                     assert(numLayers == 1);
                     glTextureSubImage2D(
                         _loadingData._textureHandle,
                         m,
                         0,
-                        0,
+                        _loadingData._textureType == TextureType::TEXTURE_1D_ARRAY ? l : 0,
                         mip->_dimensions.width,
                         mip->_dimensions.height,
                         glFormat,
                         glType,
-                        IsMultisampledTexture(_loadingData._textureType) ? nullptr : mip->data()
+                        msaaSamples > 0u ? nullptr : mip->data()
                     );
                 } break;
                 case TextureType::TEXTURE_3D:
                 case TextureType::TEXTURE_2D_ARRAY:
-                case TextureType::TEXTURE_2D_ARRAY_MS:
                 case TextureType::TEXTURE_CUBE_MAP:
                 case TextureType::TEXTURE_CUBE_ARRAY: {
                     glTextureSubImage3D(
@@ -306,7 +308,7 @@ void glTexture::loadDataUncompressed(const ImageTools::ImageData& imageData) con
                         mip->_dimensions.depth,
                         glFormat,
                         glType,
-                        IsMultisampledTexture(_loadingData._textureType) ? nullptr : mip->data()
+                        msaaSamples > 0u ? nullptr : mip->data()
                     );
                 } break;
                 default: break;
@@ -394,8 +396,12 @@ void glTexture::bindLayer(const U8 slot, const U8 level, const U8 layer, const b
 }
 
 
-/*static*/ void glTexture::copy(const TextureData& source, const TextureData& destination, const CopyTexParams& params) {
+/*static*/ void glTexture::copy(const TextureData& source, const U8 sourceSamples, const TextureData& destination, const U8 destinationSamples, const CopyTexParams& params) {
     OPTICK_EVENT();
+
+    // We could handle this with a custom shader pass and temp render targets, so leaving the option i
+    DIVIDE_ASSERT(sourceSamples == destinationSamples == 0u, "glTexcture::copy Multisampled textures is not supported yet");
+
     assert(source._textureType != TextureType::COUNT && destination._textureType != TextureType::COUNT);
     const TextureType srcType = source._textureType;
     const TextureType dstType = destination._textureType;
@@ -408,14 +414,14 @@ void glTexture::bindLayer(const U8 slot, const U8 level, const U8 layer, const b
         glCopyImageSubData(
             //Source
             source._textureHandle,
-            GLUtil::glTextureTypeTable[to_U32(srcType)],
+            GLUtil::internalTextureType(srcType, sourceSamples),
             params._sourceMipLevel,
             params._sourceCoords.x,
             params._sourceCoords.y,
             params._sourceCoords.z,
             //Destination
             destination._textureHandle,
-            GLUtil::glTextureTypeTable[to_U32(dstType)],
+            GLUtil::internalTextureType(dstType, destinationSamples),
             params._targetMipLevel,
             params._targetCoords.x,
             params._targetCoords.y,

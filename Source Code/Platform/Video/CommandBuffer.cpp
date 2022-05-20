@@ -3,6 +3,7 @@
 #include "Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/Pipeline.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
 namespace Divide {
@@ -164,7 +165,6 @@ void CommandBuffer::batch() {
             case CommandType::MEMORY_BARRIER:
             case CommandType::DRAW_TEXT:
             case CommandType::DRAW_COMMANDS:
-            case CommandType::DRAW_IMGUI:
             case CommandType::BIND_DESCRIPTOR_SETS:
             case CommandType::BLIT_RT:
             case CommandType::RESET_RT:
@@ -265,7 +265,9 @@ void CommandBuffer::clean() {
             case CommandType::MEMORY_BARRIER: {
                 auto memCmd = get<MemoryBarrierCommand>(cmd);
 
-                erase = memCmd->_barrierMask == 0u && IsEmpty(memCmd->_bufferLocks);
+                erase = memCmd->_barrierMask == 0u &&
+                        IsEmpty(memCmd->_bufferLocks) &&
+                        IsEmpty(memCmd->_fenceLocks);
             } break;
             case CommandType::DRAW_TEXT: {
                 OPTICK_EVENT("Clean Draw Text");
@@ -402,7 +404,6 @@ std::pair<ErrorType, size_t> CommandBuffer::validate() const {
                 } break;
                 case CommandType::DISPATCH_COMPUTE: 
                 case CommandType::DRAW_TEXT:
-                case CommandType::DRAW_IMGUI:
                 case CommandType::DRAW_COMMANDS: {
                     if (!hasPipeline) {
                         return { ErrorType::MISSING_VALID_PIPELINE, cmdIndex };
@@ -554,6 +555,19 @@ bool Merge(GFX::MemoryBarrierCommand* lhs, GFX::MemoryBarrierCommand* rhs) {
         }
         if (!found) {
             lhs->_bufferLocks.push_back(otherLock);
+        }
+    }
+
+    for (GenericVertexData* otherLock : rhs->_fenceLocks) {
+        bool found = false;
+        for (GenericVertexData* ourLock : lhs->_fenceLocks) {
+            if (ourLock->getGUID() == otherLock->getGUID()) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            lhs->_fenceLocks.push_back(otherLock);
         }
     }
 

@@ -143,10 +143,9 @@ void fillEnumTables() {
     glTextureTypeTable[to_base(TextureType::TEXTURE_2D)] = GL_TEXTURE_2D;
     glTextureTypeTable[to_base(TextureType::TEXTURE_3D)] = GL_TEXTURE_3D;
     glTextureTypeTable[to_base(TextureType::TEXTURE_CUBE_MAP)] = GL_TEXTURE_CUBE_MAP;
+    glTextureTypeTable[to_base(TextureType::TEXTURE_1D_ARRAY)] = GL_TEXTURE_1D_ARRAY;
     glTextureTypeTable[to_base(TextureType::TEXTURE_2D_ARRAY)] = GL_TEXTURE_2D_ARRAY;
     glTextureTypeTable[to_base(TextureType::TEXTURE_CUBE_ARRAY)] = GL_TEXTURE_CUBE_MAP_ARRAY;
-    glTextureTypeTable[to_base(TextureType::TEXTURE_2D_MS)] = GL_TEXTURE_2D_MULTISAMPLE;
-    glTextureTypeTable[to_base(TextureType::TEXTURE_2D_ARRAY_MS)] = GL_TEXTURE_2D_MULTISAMPLE_ARRAY;
 
     glImageFormatTable[to_base(GFXImageFormat::RED)] = GL_RED;
     glImageFormatTable[to_base(GFXImageFormat::RG)] = GL_RG;
@@ -319,6 +318,17 @@ GLenum internalFormat(const GFXImageFormat baseFormat, const GFXDataFormat dataT
     }
 
     return GL_NONE;
+}
+
+GLenum internalTextureType(const TextureType type, const U8 msaaSamples) {
+    if (msaaSamples > 0u) {
+        switch (type) {
+        case TextureType::TEXTURE_2D: return GL_TEXTURE_2D_MULTISAMPLE;
+        case TextureType::TEXTURE_2D_ARRAY: return GL_TEXTURE_2D_MULTISAMPLE_ARRAY;
+        }
+    }
+
+    return GLUtil::glTextureTypeTable[to_base(type)];
 }
 
 namespace {

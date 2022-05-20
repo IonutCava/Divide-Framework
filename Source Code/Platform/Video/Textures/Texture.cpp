@@ -192,8 +192,8 @@ void Texture::threadedLoad() {
                 }
             }
 
-            if (_descriptor.texType() == TextureType::TEXTURE_2D_ARRAY ||
-                _descriptor.texType() == TextureType::TEXTURE_2D_ARRAY_MS) {
+            if (_descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ||
+                _descriptor.texType() == TextureType::TEXTURE_2D_ARRAY) {
                 if (dataStorage.layerCount() != _numLayers) {
                     Console::errorfn(
                         Locale::Get(_ID("ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT")),
@@ -259,7 +259,7 @@ void Texture::loadData(const Byte* data, const size_t dataSize, const vec2<U16>&
     assert(!IsCompressed(_descriptor.baseFormat()));
 
     reserveStorage(false);
-    if (!IsMultisampledTexture(_loadingData._textureType)) {
+    if (_descriptor.msaaSamples() == 0u) {
         ImageTools::ImageData imgData = {};
         if (imgData.loadFromMemory(data, dataSize, _width, _height, 1, GetSizeFactor(_descriptor.dataType()) * NumChannels(_descriptor.baseFormat()))) {
             loadDataUncompressed(imgData);
@@ -400,15 +400,6 @@ void Texture::validateDescriptor() {
             _mipCount = to_U16(std::floorf(std::log2f(std::fmaxf(to_F32(_width), to_F32(_height))))) + 1;
         } else {
             _mipCount = 1u;
-        }
-    }
-
-    if (_descriptor.msaaSamples() == 0u) {
-        if (_descriptor.texType() == TextureType::TEXTURE_2D_MS) {
-            _descriptor.texType(TextureType::TEXTURE_2D);
-        }
-        else if (_descriptor.texType() == TextureType::TEXTURE_2D_ARRAY_MS) {
-            _descriptor.texType(TextureType::TEXTURE_2D_ARRAY);
         }
     }
 }

@@ -95,11 +95,11 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         RenderTargetDescriptor desc = {};
         desc._resolution = rt->getResolution();
 
-        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D_MS, texDescriptor.baseFormat(), texDescriptor.dataType());
+        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D, texDescriptor.baseFormat(), texDescriptor.dataType());
         colourDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         colourDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
+        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
         depthDescriptor.msaaSamples(g_shadowSettings.spot.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 

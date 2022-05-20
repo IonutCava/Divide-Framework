@@ -67,19 +67,18 @@ namespace Divide {
         PROPERTY_R_IW(VkImageView, view, VK_NULL_HANDLE);
         PROPERTY_R_IW(VkSampler, sampler, VK_NULL_HANDLE);
         PROPERTY_R_IW(VkImageType, type, VK_IMAGE_TYPE_MAX_ENUM);
+        PROPERTY_R_IW(VkImageViewType, viewType, VK_IMAGE_VIEW_TYPE_MAX_ENUM);
         PROPERTY_R_IW(VkImageLayout, imageLayout, VK_IMAGE_LAYOUT_MAX_ENUM);
         PROPERTY_R_IW(VkDescriptorImageInfo, vkDescriptor);
 
     private:
-        void reserveStorage(bool fromFile);
+        void reserveStorage(bool fromFile) override;
+        void loadDataCompressed(const ImageTools::ImageData& imageData) override;
+        void loadDataUncompressed(const ImageTools::ImageData& imageData) const override;
+        void prepareTextureData(U16 width, U16 height) override;
+        void submitTextureData() override;
 
-        void loadDataCompressed(const ImageTools::ImageData& imageData);
-
-        void loadDataUncompressed(const ImageTools::ImageData& imageData) const;
         void clearDataInternal(const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, const vec2<I32>& depthRange) const;
-
-        void prepareTextureData(U16 width, U16 height);
-        void submitTextureData();
     };
 } //namespace Divide
 

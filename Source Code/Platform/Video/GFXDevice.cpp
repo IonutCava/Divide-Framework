@@ -554,18 +554,18 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
     const size_t samplerHashMips = defaultSamplerMips.getHash();
 
     //PrePass
-    TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::FLOAT_32);
-    TextureDescriptor velocityDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGB, GFXDataFormat::FLOAT_16);
+    TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::FLOAT_32);
+    TextureDescriptor velocityDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::FLOAT_16);
     //RG - packed normal, B - roughness
-    TextureDescriptor normalsDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGB, GFXDataFormat::FLOAT_16);
+    TextureDescriptor normalsDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::FLOAT_16);
     depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
     velocityDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
     normalsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     //MainPass
-    TextureDescriptor screenDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
+    TextureDescriptor screenDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
     screenDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
-    TextureDescriptor materialDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
+    TextureDescriptor materialDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RG, GFXDataFormat::FLOAT_16);
     materialDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     // Normal, Previous and MSAA
@@ -723,11 +723,11 @@ ErrorCode GFXDevice::postInitRenderingAPI(const vec2<U16> & renderResolution) {
         accumulationSampler.mipSampling(TextureMipSampling::NONE);
         const size_t accumulationSamplerHash = accumulationSampler.getHash();
 
-        TextureDescriptor accumulationDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
+        TextureDescriptor accumulationDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGBA, GFXDataFormat::FLOAT_16);
         accumulationDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         //R = revealage
-        TextureDescriptor revealageDescriptor(TextureType::TEXTURE_2D_MS, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
+        TextureDescriptor revealageDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RED, GFXDataFormat::FLOAT_16);
         revealageDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
         InternalRTAttachmentDescriptors oitAttachments {
@@ -2235,7 +2235,6 @@ void GFXDevice::flushCommandBuffer(GFX::CommandBuffer& commandBuffer, const bool
                 setDepthRange(depthRange);
             } [[fallthrough]];
             case GFX::CommandType::DRAW_TEXT:
-            case GFX::CommandType::DRAW_IMGUI:
             case GFX::CommandType::DRAW_COMMANDS:
             case GFX::CommandType::DISPATCH_COMPUTE: {
                 validateAndUploadDescriptorSets();

@@ -86,12 +86,12 @@ CascadedShadowMapsGenerator::CascadedShadowMapsGenerator(GFXDevice& context)
     // Draw FBO
     {
         // MSAA rendering is supported
-        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D_ARRAY_MS, texDescriptor.baseFormat(), texDescriptor.dataType());
+        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D_ARRAY, texDescriptor.baseFormat(), texDescriptor.dataType());
         colourDescriptor.layerCount(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT);
         colourDescriptor.msaaSamples(g_shadowSettings.csm.MSAASamples);
         colourDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
-        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_ARRAY_MS, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
+        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXImageFormat::DEPTH_COMPONENT, GFXDataFormat::UNSIGNED_INT);
         depthDescriptor.layerCount(Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT);
         depthDescriptor.msaaSamples(g_shadowSettings.csm.MSAASamples);
         depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);

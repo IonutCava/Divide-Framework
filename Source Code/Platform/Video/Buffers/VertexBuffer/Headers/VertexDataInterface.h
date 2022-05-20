@@ -113,7 +113,10 @@ struct BufferLock {
     BufferRange _range{};
 };
 
+class GenericVertexData;
+
 using BufferLocks = eastl::fixed_vector<BufferLock, 3, true, eastl::dvd_allocator>;
+using FenceLocks = eastl::fixed_vector<GenericVertexData*, 3, true, eastl::dvd_allocator>;
 
 inline [[nodiscard]] bool IsEmpty(const BufferLocks& locks) noexcept {
     if (locks.empty()) {
@@ -122,6 +125,20 @@ inline [[nodiscard]] bool IsEmpty(const BufferLocks& locks) noexcept {
 
     for (auto& it : locks) {
         if (it._targetBuffer != nullptr) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+inline [[nodiscard]] bool IsEmpty(const FenceLocks& locks) noexcept {
+    if (locks.empty()) {
+        return true;
+    }
+
+    for (auto& it : locks) {
+        if (it != nullptr) {
             return false;
         }
     }

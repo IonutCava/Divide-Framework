@@ -734,107 +734,6 @@ void GL_API::drawText(const TextElementBatch& batch) {
     }
 }
 
-void GL_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
-    static I32 s_maxCommandCount = 8u;
-
-    constexpr U32 MaxVertices = (1 << 16);
-    constexpr U32 MaxIndices = MaxVertices * 3u;
-    static ImDrawVert vertices[MaxVertices];
-    static ImDrawIdx indices[MaxIndices];
-
-    OPTICK_EVENT();
-
-    assert(data != nullptr);
-    if (!data->Valid) {
-        return;
-    }
-
-    s_maxCommandCount = std::max(s_maxCommandCount, data->CmdListsCount);
-    GenericVertexData* buffer = _context.getOrCreateIMGUIBuffer(windowGUID, s_maxCommandCount, MaxVertices);
-    assert(buffer != nullptr);
-    buffer->incQueue();
-
-    //ref: https://gist.github.com/floooh/10388a0afbe08fce9e617d8aefa7d302
-    I32 numVertices = 0, numIndices = 0;
-    for (I32 n = 0; n < data->CmdListsCount; ++n) {
-        const ImDrawList* cl = data->CmdLists[n];
-        const I32 clNumVertices = cl->VtxBuffer.size();
-        const int clNumIndices  = cl->IdxBuffer.size();
-
-        if ((numVertices + clNumVertices) > MaxVertices ||
-            (numIndices  + clNumIndices)  > MaxIndices)
-        {
-            break;
-        }
-
-        memcpy(&vertices[numVertices], cl->VtxBuffer.Data, clNumVertices * sizeof(ImDrawVert));
-        memcpy(&indices[numIndices],   cl->IdxBuffer.Data, clNumIndices  * sizeof(ImDrawIdx));
-
-        numVertices += clNumVertices;
-        numIndices  += clNumIndices;
-    }
-
-    buffer->updateBuffer(0u, 0u, numVertices, vertices);
-
-    GenericVertexData::IndexBuffer idxBuffer{};
-    idxBuffer.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
-    idxBuffer.dynamic = true;
-    idxBuffer.count = numIndices;
-    idxBuffer.data = indices;
-    buffer->setIndexBuffer(idxBuffer);
-
-    GLStateTracker* stateTracker = GetStateTracker();
-
-    U32 baseVertex = 0u;
-    U32 indexOffset = 0u;
-    for (I32 n = 0; n < data->CmdListsCount; ++n) {
-        const ImDrawList* cmd_list = data->CmdLists[n];
-        for (const ImDrawCmd& pcmd : cmd_list->CmdBuffer) {
-
-            if (pcmd.UserCallback) {
-                // User callback (registered via ImDrawList::AddCallback)
-                pcmd.UserCallback(cmd_list, &pcmd);
-            } else {
-                Rect<I32> clipRect{
-                    pcmd.ClipRect.x - data->DisplayPos.x,
-                    pcmd.ClipRect.y - data->DisplayPos.y,
-                    pcmd.ClipRect.z - data->DisplayPos.x,
-                    pcmd.ClipRect.w - data->DisplayPos.y
-                };
-
-                const Rect<I32>& viewport = stateTracker->_activeViewport;
-                if (clipRect.x < viewport.z &&
-                    clipRect.y < viewport.w &&
-                    clipRect.z >= 0 &&
-                    clipRect.w >= 0)
-                {
-                    const I32 tempW = clipRect.w;
-                    clipRect.z -= clipRect.x;
-                    clipRect.w -= clipRect.y;
-                    clipRect.y  = viewport.w - tempW;
-
-                    stateTracker->setScissor(clipRect);
-                    if (stateTracker->bindTexture(to_U8(TextureUsage::UNIT0),
-                                                    TextureType::TEXTURE_2D,
-                                                    static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd.TextureId))) == GLStateTracker::BindResult::FAILED) {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
-
-                    GenericDrawCommand cmd{};
-                    cmd._cmd.indexCount = pcmd.ElemCount;
-                    cmd._cmd.firstIndex = indexOffset + pcmd.IdxOffset;
-                    cmd._cmd.baseVertex = baseVertex + pcmd.VtxOffset;
-                    buffer->draw(cmd);
-                }
-            }
-        }
-        indexOffset += cmd_list->IdxBuffer.size();
-        baseVertex += cmd_list->VtxBuffer.size();
-    }
-
-    buffer->insertFencesIfNeeded();
-}
-
 bool GL_API::draw(const GenericDrawCommand& cmd) const {
     OPTICK_EVENT();
 
@@ -922,7 +821,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
             OPTICK_EVENT("COPY_TEXTURE");
 
             const GFX::CopyTextureCommand* crtCmd = cmd->As<GFX::CopyTextureCommand>();
-            glTexture::copy(crtCmd->_source, crtCmd->_destination, crtCmd->_params);
+            glTexture::copy(crtCmd->_source, crtCmd->_sourceMSAASamples, crtCmd->_destination, crtCmd->_destinationMSAASamples, crtCmd->_params);
         }break;
         case GFX::CommandType::BIND_DESCRIPTOR_SETS: {
             OPTICK_EVENT("BIND_DESCRIPTOR_SETS");
@@ -1081,11 +980,11 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
 
                 if (IsArrayTexture(view._targetType) && view._layerRange.max == 1) {
                     switch (view._targetType) {
+                        case TextureType::TEXTURE_1D_ARRAY:
+                            view._targetType = TextureType::TEXTURE_1D;
+                            break;
                         case TextureType::TEXTURE_2D_ARRAY:
                             view._targetType = TextureType::TEXTURE_2D;
-                            break;
-                        case TextureType::TEXTURE_2D_ARRAY_MS:
-                            view._targetType = TextureType::TEXTURE_2D_MS;
                             break;
                         case TextureType::TEXTURE_CUBE_ARRAY:
                             view._targetType = TextureType::TEXTURE_CUBE_MAP;
@@ -1104,7 +1003,7 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                 {
                     OPTICK_EVENT("GL: cache miss  - Image");
                     glTextureView(handle,
-                                  GLUtil::glTextureTypeTable[to_base(view._targetType)],
+                                  GLUtil::internalTextureType(view._targetType, descriptor.msaaSamples()),
                                   view._textureData._textureHandle,
                                   glInternalFormat,
                                   static_cast<GLuint>(view._mipLevels.x),
@@ -1124,14 +1023,6 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
 
             if (GetStateTracker()->_activePipeline != nullptr) {
                 drawText(cmd->As<GFX::DrawTextCommand>()->_batch);
-            }
-        }break;
-        case GFX::CommandType::DRAW_IMGUI: {
-            OPTICK_EVENT("DRAW_IMGUI");
-
-            if (GetStateTracker()->_activePipeline != nullptr) {
-                const GFX::DrawIMGUICommand* crtCmd = cmd->As<GFX::DrawIMGUICommand>();
-                drawIMGUI(crtCmd->_data, crtCmd->_windowGUID);
             }
         }break;
         case GFX::CommandType::DRAW_COMMANDS : {
@@ -1245,6 +1136,10 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
                         }
                     }
                 }
+
+                for (auto it : crtCmd->_fenceLocks) {
+                    it->insertFencesIfNeeded();
+                }
             }
         } break;
         default: break;
@@ -1253,7 +1148,6 @@ void GL_API::flushCommand(GFX::CommandBase* cmd) {
     switch (cmd->Type()) {
         case GFX::CommandType::EXTERNAL:
         case GFX::CommandType::DISPATCH_COMPUTE:
-        case GFX::CommandType::DRAW_IMGUI:
         case GFX::CommandType::DRAW_TEXT:
         case GFX::CommandType::DRAW_COMMANDS: {
             if (pushConstantsNeedLock) {
@@ -1515,7 +1409,7 @@ GLStateTracker::BindResult GL_API::makeTextureViewResidentInternal(const ImageVi
         }
 
         glTextureView(textureID,
-            GLUtil::glTextureTypeTable[to_base(view._targetType)],
+            GLUtil::internalTextureType(view._targetType, textureView._descriptor.msaaSamples()),
             data._textureHandle,
             glInternalFormat,
             static_cast<GLuint>(textureView._view._mipLevels.x),

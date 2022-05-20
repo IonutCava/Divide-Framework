@@ -128,11 +128,12 @@ void glFramebuffer::initAttachment(const RTAttachmentType type, const U8 index) 
         attachment->binding(to_U32(GL_DEPTH_ATTACHMENT));
 
         const TextureType texType = tex->data()._textureType;
-        _isLayeredDepth = texType == TextureType::TEXTURE_2D_ARRAY ||
-            texType == TextureType::TEXTURE_2D_ARRAY_MS ||
-            texType == TextureType::TEXTURE_CUBE_MAP ||
-            texType == TextureType::TEXTURE_CUBE_ARRAY ||
-            texType == TextureType::TEXTURE_3D;
+        // Most of these aren't even valid, but hey, doesn't hurt to check
+        _isLayeredDepth = texType == TextureType::TEXTURE_1D_ARRAY ||
+                          texType == TextureType::TEXTURE_2D_ARRAY ||
+                          texType == TextureType::TEXTURE_CUBE_MAP ||
+                          texType == TextureType::TEXTURE_CUBE_ARRAY ||
+                          texType == TextureType::TEXTURE_3D;
     } else {
         attachment->binding(to_U32(GL_COLOR_ATTACHMENT0) + index);
     }
@@ -626,7 +627,7 @@ void glFramebuffer::drawToLayer(const DrawLayerParams& params) {
 
     const RTAttachment_uptr& att = params._type == RTAttachmentType::Colour ? _attachments[params._index] : _depthAttachment;
 
-    const GLenum textureType = GLUtil::glTextureTypeTable[to_U32(att->texture()->data()._textureType)];
+    const GLenum textureType = GLUtil::internalTextureType(att->texture()->data()._textureType, att->texture()->descriptor().msaaSamples());
     // only for array textures (it's better to simply ignore the command if the format isn't supported (debugging reasons)
     if (textureType != GL_TEXTURE_2D_ARRAY &&
         textureType != GL_TEXTURE_CUBE_MAP_ARRAY &&

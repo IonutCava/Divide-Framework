@@ -250,7 +250,7 @@ namespace Divide {
                         const U16 h = tex->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)(intptr_t)tex->data()._textureHandle, ImVec2(64, 64 / aspect))) {
+                        if (ImGui::ImageButton((void*)tex.get(), ImVec2(64, 64 / aspect))) {
                             previewTexture = tex;
                         }
                     } else if (format != GeometryFormat::COUNT) {
@@ -260,7 +260,7 @@ namespace Divide {
                         const F32 aspect = w / to_F32(h);
 
                         const ImVec4 bgColour(imguiContext.IO.KeyShift ? 1.f : 0.f, 0.f, 0.f, imguiContext.IO.KeyShift ? 1.f : 0.f);
-                        if (ImGui::ImageButton((void*)(intptr_t)icon->data()._textureHandle, ImVec2(64, 64 / aspect), ImVec2(0,0), ImVec2(1,1), 2, bgColour, ImVec4(1,1,1,1))) {
+                        if (ImGui::ImageButton((void*)icon.get(), ImVec2(64, 64 / aspect), ImVec2(0, 0), ImVec2(1, 1), 2, bgColour, ImVec4(1, 1, 1, 1))) {
                             spawnMesh = getModelForPath(ResourcePath(file.first), ResourcePath(file.second._path));
                             if (spawnMesh == nullptr) {
                                 Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't load specified mesh!", Time::SecondsToMilliseconds<F32>(3), true);
@@ -275,7 +275,7 @@ namespace Divide {
                         const U16 h = _soundIcon->height();
                          const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)(intptr_t)_soundIcon->data()._textureHandle, ImVec2(64, 64 / aspect))) {
+                        if (ImGui::ImageButton((void*)_soundIcon.get(), ImVec2(64, 64 / aspect))) {
                             //ToDo: Play sound file -Ionut
                         }
                     } else if (isShaderFile(file.second._extension.c_str())) {
@@ -283,7 +283,7 @@ namespace Divide {
                         const U16 h = _shaderIcon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)(intptr_t)_shaderIcon->data()._textureHandle, ImVec2(64, 64 / aspect))) {
+                        if (ImGui::ImageButton((void*)_shaderIcon.get(), ImVec2(64, 64 / aspect))) {
                             openFileInEditor(file);
                         }
                     } else {
@@ -291,7 +291,7 @@ namespace Divide {
                         const U16 h = _fileIcon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton((void*)(intptr_t)_fileIcon->data()._textureHandle, ImVec2(64, 64 / aspect))) {
+                        if (ImGui::ImageButton((void*)_fileIcon.get(), ImVec2(64, 64 / aspect))) {
                             openFileInEditor(file);
                         }
                     }

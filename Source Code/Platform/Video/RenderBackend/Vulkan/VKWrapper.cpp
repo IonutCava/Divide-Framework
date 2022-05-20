@@ -661,75 +661,6 @@ namespace Divide {
         }
     }
 
-    void VK_API::drawIMGUI(const ImDrawData* data, I64 windowGUID) {
-        static I32 s_maxCommandCount = 8u;
-
-        OPTICK_EVENT();
-
-        assert(data != nullptr);
-        if (data->Valid) {
-            s_maxCommandCount = std::max(s_maxCommandCount, data->CmdListsCount);
-
-            GenericVertexData::IndexBuffer idxBuffer;
-            idxBuffer.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
-            idxBuffer.dynamic = true;
-
-            GenericDrawCommand cmd = {};
-
-            GenericVertexData* buffer = _context.getOrCreateIMGUIBuffer(windowGUID, s_maxCommandCount, 1 << 16);
-            assert(buffer != nullptr);
-            for (I32 n = 0; n < data->CmdListsCount; ++n) {
-
-                const ImDrawList* cmd_list = data->CmdLists[n];
-
-                idxBuffer.count = to_U32(cmd_list->IdxBuffer.Size);
-                idxBuffer.data = cmd_list->IdxBuffer.Data;
-
-                buffer->incQueue();
-                buffer->updateBuffer(0u, 0u, to_U32(cmd_list->VtxBuffer.size()), cmd_list->VtxBuffer.Data);
-                buffer->setIndexBuffer(idxBuffer);
-
-                for (const ImDrawCmd& pcmd : cmd_list->CmdBuffer) {
-
-                    if (pcmd.UserCallback) {
-                        // User callback (registered via ImDrawList::AddCallback)
-                        pcmd.UserCallback(cmd_list, &pcmd);
-                    } else {
-                        Rect<I32> clip_rect = {
-                            pcmd.ClipRect.x - data->DisplayPos.x,
-                            pcmd.ClipRect.y - data->DisplayPos.y,
-                            pcmd.ClipRect.z - data->DisplayPos.x,
-                            pcmd.ClipRect.w - data->DisplayPos.y
-                        };
-
-                        /*const Rect<I32>& viewport = stateTracker->_activeViewport;
-                        if (clip_rect.x < viewport.z &&
-                            clip_rect.y < viewport.w &&
-                            clip_rect.z >= 0 &&
-                            clip_rect.w >= 0)
-                        {
-                            const I32 tempW = clip_rect.w;
-                            clip_rect.z -= clip_rect.x;
-                            clip_rect.w -= clip_rect.y;
-                            clip_rect.y  = viewport.w - tempW;
-
-                            stateTracker->setScissor(clip_rect);
-                            if (stateTracker->bindTexture(to_U8(TextureUsage::UNIT0),
-                                                          TextureType::TEXTURE_2D,
-                                                          static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd.TextureId))) == GLStateTracker::BindResult::FAILED) {
-                                DIVIDE_UNEXPECTED_CALL();
-                            }
-
-                            cmd._cmd.indexCount = pcmd.ElemCount;
-                            cmd._cmd.firstIndex = pcmd.IdxOffset;
-                            buffer->draw(cmd);
-                         }*/
-                    }
-                }
-            }
-        }
-    }
-
     bool VK_API::draw(const GenericDrawCommand& cmd) const {
         OPTICK_EVENT();
 
@@ -837,11 +768,6 @@ namespace Divide {
                 OPTICK_EVENT("DRAW_TEXT");
                 const GFX::DrawTextCommand* crtCmd = cmd->As<GFX::DrawTextCommand>();
                 drawText(crtCmd->_batch);
-            }break;
-            case GFX::CommandType::DRAW_IMGUI: {
-                OPTICK_EVENT("DRAW_IMGUI");
-                const GFX::DrawIMGUICommand* crtCmd = cmd->As<GFX::DrawIMGUICommand>();
-                drawIMGUI(crtCmd->_data, crtCmd->_windowGUID);
             }break;
             case GFX::CommandType::DRAW_COMMANDS : {
                 OPTICK_EVENT("DRAW_COMMANDS");

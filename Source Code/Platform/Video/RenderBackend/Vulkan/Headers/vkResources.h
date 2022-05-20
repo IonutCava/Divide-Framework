@@ -112,6 +112,7 @@ inline std::string VKErrorString(VkResult errorCode)
     extern std::array<VkCullModeFlags, to_base(CullMode::COUNT)> vkCullModeTable;
     extern std::array<VkPolygonMode, to_base(FillMode::COUNT)> vkFillModeTable;
     extern std::array<VkImageType, to_base(TextureType::COUNT)> vkTextureTypeTable;
+    extern std::array<VkImageViewType, to_base(TextureType::COUNT)> vkTextureViewTypeTable;
     extern std::array<VkPrimitiveTopology, to_base(PrimitiveTopology::COUNT)> vkPrimitiveTypeTable;
     extern std::array<VkSamplerAddressMode, to_base(TextureWrap::COUNT)> vkWrapTable;
     extern std::array<NS_GLIM::GLIM_ENUM, to_base(PrimitiveTopology::COUNT)> glimPrimitiveType;

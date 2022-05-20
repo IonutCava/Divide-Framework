@@ -161,14 +161,9 @@ inline bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rh
 }
 
 [[nodiscard]] inline bool IsArrayTexture(const TextureType texType) noexcept {
-    return texType == TextureType::TEXTURE_2D_ARRAY ||
-           texType == TextureType::TEXTURE_2D_ARRAY_MS ||
+    return texType == TextureType::TEXTURE_1D_ARRAY ||
+           texType == TextureType::TEXTURE_2D_ARRAY ||
            texType == TextureType::TEXTURE_CUBE_ARRAY;
-}
-
-[[nodiscard]] inline bool IsMultisampledTexture(const TextureType texType) noexcept {
-    return texType == TextureType::TEXTURE_2D_MS ||
-           texType == TextureType::TEXTURE_2D_ARRAY_MS;
 }
 
 [[nodiscard]] inline U8 NumChannels(const GFXImageFormat format) noexcept {

@@ -190,6 +190,7 @@ void SubmitRenderCommand(const GenericDrawCommand& drawCommand,
 void fillEnumTables();
 
 GLenum internalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, bool srgb, bool normalized) noexcept;
+GLenum internalTextureType(TextureType type, U8 msaaSamples);
 
 extern std::array<GLenum, to_base(BlendProperty::COUNT)> glBlendTable;
 extern std::array<GLenum, to_base(BlendOperation::COUNT)> glBlendOpTable;

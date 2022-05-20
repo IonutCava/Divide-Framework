@@ -98,8 +98,6 @@ protected:
     /// with his OpenGL frontend adapted for core context profiles
     void drawText(const TextElementBatch& batch);
 
-    void drawIMGUI(const ImDrawData* data, I64 windowGUID);
-
     bool draw(const GenericDrawCommand& cmd) const;
 
     void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;

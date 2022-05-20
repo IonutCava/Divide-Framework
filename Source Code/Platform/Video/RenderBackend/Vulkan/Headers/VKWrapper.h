@@ -99,7 +99,6 @@ private:
 
     void recreateSwapChain(const DisplayWindow& window);
     void drawText(const TextElementBatch& batch);
-    void drawIMGUI(const ImDrawData* data, I64 windowGUID);
     bool draw(const GenericDrawCommand& cmd) const;
 
     //loads a shader module from a spir-v file. Returns false if it errors

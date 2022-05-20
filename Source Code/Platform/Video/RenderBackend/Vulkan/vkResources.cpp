@@ -12,6 +12,7 @@ std::array<VkStencilOp, to_base(StencilOperation::COUNT)> vkStencilOpTable;
 std::array<VkCullModeFlags, to_base(CullMode::COUNT)> vkCullModeTable;
 std::array<VkPolygonMode, to_base(FillMode::COUNT)> vkFillModeTable;
 std::array<VkImageType, to_base(TextureType::COUNT)> vkTextureTypeTable;
+std::array<VkImageViewType, to_base(TextureType::COUNT)> vkTextureViewTypeTable;
 std::array<VkPrimitiveTopology, to_base(PrimitiveTopology::COUNT)> vkPrimitiveTypeTable;
 std::array<VkSamplerAddressMode, to_base(TextureWrap::COUNT)> vkWrapTable;
 std::array<NS_GLIM::GLIM_ENUM, to_base(PrimitiveTopology::COUNT)> glimPrimitiveType;
@@ -83,10 +84,17 @@ namespace VKUtil {
         vkTextureTypeTable[to_base(TextureType::TEXTURE_2D)] = VK_IMAGE_TYPE_2D;
         vkTextureTypeTable[to_base(TextureType::TEXTURE_3D)] = VK_IMAGE_TYPE_3D;
         vkTextureTypeTable[to_base(TextureType::TEXTURE_CUBE_MAP)] = VK_IMAGE_TYPE_3D;
+        vkTextureTypeTable[to_base(TextureType::TEXTURE_1D_ARRAY)] = VK_IMAGE_TYPE_1D;
         vkTextureTypeTable[to_base(TextureType::TEXTURE_2D_ARRAY)] = VK_IMAGE_TYPE_2D;
         vkTextureTypeTable[to_base(TextureType::TEXTURE_CUBE_ARRAY)] = VK_IMAGE_TYPE_3D;
-        vkTextureTypeTable[to_base(TextureType::TEXTURE_2D_MS)] = VK_IMAGE_TYPE_2D;
-        vkTextureTypeTable[to_base(TextureType::TEXTURE_2D_ARRAY_MS)] = VK_IMAGE_TYPE_2D;
+
+        vkTextureViewTypeTable[to_base(TextureType::TEXTURE_1D)] = VK_IMAGE_VIEW_TYPE_1D;
+        vkTextureViewTypeTable[to_base(TextureType::TEXTURE_2D)] = VK_IMAGE_VIEW_TYPE_2D;
+        vkTextureViewTypeTable[to_base(TextureType::TEXTURE_3D)] = VK_IMAGE_VIEW_TYPE_3D;
+        vkTextureViewTypeTable[to_base(TextureType::TEXTURE_CUBE_MAP)] = VK_IMAGE_VIEW_TYPE_CUBE;
+        vkTextureViewTypeTable[to_base(TextureType::TEXTURE_1D_ARRAY)] = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+        vkTextureViewTypeTable[to_base(TextureType::TEXTURE_2D_ARRAY)] = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        vkTextureViewTypeTable[to_base(TextureType::TEXTURE_CUBE_ARRAY)] = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
 
         vkPrimitiveTypeTable[to_base(PrimitiveTopology::POINTS)] = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
         vkPrimitiveTypeTable[to_base(PrimitiveTopology::LINES)] = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;

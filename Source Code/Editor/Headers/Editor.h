@@ -254,7 +254,7 @@ class Editor final : public PlatformContextComponent,
     [[nodiscard]] bool switchScene(const char* scenePath);
 
     /// Returns true if the window was closed
-    [[nodiscard]] bool modalTextureView(const char* modalName, const Texture* tex, const vec2<F32>& dimensions, bool preserveAspect, bool useModal) const;
+    [[nodiscard]] bool modalTextureView(const char* modalName, Texture* tex, const vec2<F32>& dimensions, bool preserveAspect, bool useModal) const;
     /// Returns true if the modal window was closed
     [[nodiscard]] bool modalModelSpawn(const char* modalName, const Mesh_ptr& mesh) const;
     /// Return true if the model was spawned as a scene node
@@ -308,6 +308,7 @@ class Editor final : public PlatformContextComponent,
     string                       _externalTextEditorPath = "";
 
     I64            _lastOpenSceneGUID = -1;
+    size_t         _editorSamplerHash = 0u;
     U32            _stepQueue = 1u;
     bool           _simulationPaused = true;
     ImGuiStyleEnum _currentTheme = ImGuiStyle_Count;
@@ -543,7 +544,7 @@ namespace Attorney {
             editor._memoryEditorData = data;
         }
 
-        [[nodiscard]] static bool modalTextureView(const Editor& editor, const char* modalName, const Texture* tex, const vec2<F32>& dimensions, const bool preserveAspect, const bool useModal) {
+        [[nodiscard]] static bool modalTextureView(const Editor& editor, const char* modalName, Texture* tex, const vec2<F32>& dimensions, const bool preserveAspect, const bool useModal) {
             return editor.modalTextureView(modalName, tex, dimensions, preserveAspect, useModal);
         }
 

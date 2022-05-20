@@ -593,16 +593,22 @@ enum class TextureType : U8 {
     TEXTURE_2D,
     TEXTURE_3D,
     TEXTURE_CUBE_MAP,
+    TEXTURE_1D_ARRAY,
     TEXTURE_2D_ARRAY,
     TEXTURE_CUBE_ARRAY,
-    TEXTURE_2D_MS,
-    TEXTURE_2D_ARRAY_MS,
     COUNT
 };
 
 namespace Names {
     static const char* textureType[] = {
-        "TEXTURE_1D", "TEXTURE_2D", "TEXTURE_3D", "TEXTURE_CUBE_MAP", "TEXTURE_2D_ARRAY", "TEXTURE_CUBE_ARRAY", "TEXTURE_2D_MS", "TEXTURE_2D_ARRAY_MS", "NONE"
+        "TEXTURE_1D",
+        "TEXTURE_2D",
+        "TEXTURE_3D",
+        "TEXTURE_CUBE_MAP",
+        "TEXTURE_1D_ARRAY",
+        "TEXTURE_2D_ARRAY",
+        "TEXTURE_CUBE_ARRAY",
+        "NONE"
     };
 };
 

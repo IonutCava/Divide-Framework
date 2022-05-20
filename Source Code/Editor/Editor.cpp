@@ -28,6 +28,7 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
 #include "Rendering/Camera/Headers/FreeFlyCamera.h"
 
@@ -235,7 +236,7 @@ void Editor::createFontTexture(const F32 DPIScaleFactor) {
     io.Fonts->GetTexDataAsRGBA32(&pPixels, &iWidth, &iHeight);
     _fontTexture->loadData((Byte*)pPixels, iWidth * iHeight * 4u, vec2<U16>(iWidth, iHeight));
     // Store our identifier as reloding data may change the handle!
-    io.Fonts->TexID = (void*)(intptr_t)_fontTexture->data()._textureHandle;
+    io.Fonts->SetTexID((void*)_fontTexture.get());
 }
 
 bool Editor::init(const vec2<U16>& renderResolution) {
@@ -645,13 +646,14 @@ bool Editor::init(const vec2<U16>& renderResolution) {
     SamplerDescriptor editorSampler = {};
     editorSampler.wrapUVW(TextureWrap::CLAMP_TO_EDGE);
     editorSampler.anisotropyLevel(0);
+    _editorSamplerHash = editorSampler.getHash();
 
     TextureDescriptor editorDescriptor(TextureType::TEXTURE_2D, GFXImageFormat::RGB, GFXDataFormat::UNSIGNED_BYTE);
     editorDescriptor.layerCount(1u);
     editorDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
 
     InternalRTAttachmentDescriptors attachments {
-        InternalRTAttachmentDescriptor{ editorDescriptor, editorSampler.getHash(), RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO), DefaultColours::DIVIDE_BLUE }
+        InternalRTAttachmentDescriptor{ editorDescriptor, _editorSamplerHash, RTAttachmentType::Colour, to_base(GFXDevice::ScreenTargets::ALBEDO), DefaultColours::DIVIDE_BLUE }
     };
 
     RenderTargetDescriptor editorDesc = {};
@@ -1112,6 +1114,13 @@ Rect<I32> Editor::scenePreviewRect(const bool globalCoords) const noexcept {
 // Needs to be rendered immediately. *IM*GUI. IMGUI::NewFrame invalidates this data
 void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewport, I64 windowGUID, GFX::CommandBuffer& bufferInOut) const
 {
+    static I32 s_maxCommandCount = 16u;
+
+    constexpr U32 MaxVertices = (1 << 16);
+    constexpr U32 MaxIndices = MaxVertices * 3u;
+    static ImDrawVert vertices[MaxVertices];
+    static ImDrawIdx indices[MaxIndices];
+
     static GFX::BeginDebugScopeCommand s_beginDebugScope{ "Render IMGUI" };
     static GFX::SendPushConstantsCommand s_pushConstants{};
     static bool s_init = false;
@@ -1141,6 +1150,40 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
         return;
     }
 
+    s_maxCommandCount = std::max(s_maxCommandCount, pDrawData->CmdListsCount);
+    GenericVertexData* buffer = _context.gfx().getOrCreateIMGUIBuffer(windowGUID, s_maxCommandCount, MaxVertices);
+    assert(buffer != nullptr);
+    buffer->incQueue();
+
+    //ref: https://gist.github.com/floooh/10388a0afbe08fce9e617d8aefa7d302
+    I32 numVertices = 0, numIndices = 0;
+    for (I32 n = 0; n < pDrawData->CmdListsCount; ++n) {
+        const ImDrawList* cl = pDrawData->CmdLists[n];
+        const I32 clNumVertices = cl->VtxBuffer.size();
+        const I32 clNumIndices = cl->IdxBuffer.size();
+
+        if ((numVertices + clNumVertices) > MaxVertices ||
+            (numIndices + clNumIndices) > MaxIndices)
+        {
+            break;
+        }
+
+        memcpy(&vertices[numVertices], cl->VtxBuffer.Data, clNumVertices * sizeof(ImDrawVert));
+        memcpy(&indices[numIndices], cl->IdxBuffer.Data, clNumIndices * sizeof(ImDrawIdx));
+
+        numVertices += clNumVertices;
+        numIndices += clNumIndices;
+    }
+
+    buffer->updateBuffer(0u, 0u, numVertices, vertices);
+
+    GenericVertexData::IndexBuffer idxBuffer{};
+    idxBuffer.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
+    idxBuffer.dynamic = true;
+    idxBuffer.count = numIndices;
+    idxBuffer.data = indices;
+    buffer->setIndexBuffer(idxBuffer);
+
     GFX::EnqueueCommand(bufferInOut, s_beginDebugScope);
 
     GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut, { _editorPipeline });
@@ -1164,7 +1207,63 @@ void Editor::renderDrawList(ImDrawData* pDrawData, const Rect<I32>& targetViewpo
     F32* projection = GFX::EnqueueCommand<GFX::SetCameraCommand>(bufferInOut, { _render2DSnapshot })->_cameraSnapshot._projectionMatrix.mat;
     memcpy(projection, ortho_projection, sizeof(F32) * 16);
 
-    GFX::EnqueueCommand<GFX::DrawIMGUICommand>(bufferInOut, { pDrawData , windowGUID });
+    const Rect<I32>& viewport = _context.gfx().getViewport();
+
+    GenericDrawCommand cmd{};
+    cmd._sourceBuffer = buffer->handle();
+
+    U32 baseVertex = 0u;
+    U32 indexOffset = 0u;
+    for (I32 n = 0; n < pDrawData->CmdListsCount; ++n) {
+        const ImDrawList* cmd_list = pDrawData->CmdLists[n];
+        for (const ImDrawCmd& pcmd : cmd_list->CmdBuffer) {
+
+            if (pcmd.UserCallback) {
+                // User callback (registered via ImDrawList::AddCallback)
+                pcmd.UserCallback(cmd_list, &pcmd);
+            } else {
+                Rect<I32> clipRect{
+                    pcmd.ClipRect.x - pDrawData->DisplayPos.x,
+                    pcmd.ClipRect.y - pDrawData->DisplayPos.y,
+                    pcmd.ClipRect.z - pDrawData->DisplayPos.x,
+                    pcmd.ClipRect.w - pDrawData->DisplayPos.y
+                };
+
+                if (clipRect.x < viewport.z &&
+                    clipRect.y < viewport.w &&
+                    clipRect.z >= 0 &&
+                    clipRect.w >= 0)
+                {
+                    const I32 tempW = clipRect.w;
+                    clipRect.z -= clipRect.x;
+                    clipRect.w -= clipRect.y;
+                    clipRect.y = viewport.w - tempW;
+
+                    GFX::EnqueueCommand<GFX::SetScissorCommand>(bufferInOut)->_rect.set(clipRect);
+
+                    Texture* tex = (Texture*)(pcmd.GetTexID());
+                    if (tex != nullptr) {
+                        DescriptorSet& set = GFX::EnqueueCommand<GFX::BindDescriptorSetsCommand>(bufferInOut)->_set;
+                        set._usage = DescriptorSetUsage::PER_DRAW_SET;
+                        auto& binding = set._bindings.emplace_back();
+                        binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                        binding._resourceSlot = to_base(TextureUsage::UNIT0);
+                        binding._shaderStageVisibility = DescriptorSetBinding::ShaderStageVisibility::FRAGMENT;
+                        binding._data.As<DescriptorCombinedImageSampler>() = { tex->data(), _editorSamplerHash };
+                    }
+
+                    cmd._cmd.indexCount = pcmd.ElemCount;
+                    cmd._cmd.firstIndex = indexOffset + pcmd.IdxOffset;
+                    cmd._cmd.baseVertex = baseVertex + pcmd.VtxOffset;
+                    GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ cmd });
+                }
+            }
+        }
+        indexOffset += cmd_list->IdxBuffer.size();
+        baseVertex += cmd_list->VtxBuffer.size();
+    }
+
+    GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_fenceLocks.push_back(buffer);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
@@ -1669,7 +1768,7 @@ bool Editor::isDefaultScene() const noexcept {
     return activeScene.getGUID() == Scene::DEFAULT_SCENE_GUID;
 }
 
-bool Editor::modalTextureView(const char* modalName, const Texture* tex, const vec2<F32>& dimensions, const bool preserveAspect, const bool useModal) const {
+bool Editor::modalTextureView(const char* modalName, Texture* tex, const vec2<F32>& dimensions, const bool preserveAspect, const bool useModal) const {
 
     if (tex == nullptr) {
         return false;
@@ -1819,7 +1918,7 @@ bool Editor::modalTextureView(const char* modalName, const Texture* tex, const v
 
         static F32 zoom = 1.0f;
         static ImVec2 zoomCenter(0.5f, 0.5f);
-        ImGui::ImageZoomAndPan((ImTextureID)(intptr_t)tex->data()._textureHandle, ImVec2(dimensions.width, dimensions.height / aspect), aspect, zoom, zoomCenter, 2, 3);
+        ImGui::ImageZoomAndPan((void*)tex, ImVec2(dimensions.width, dimensions.height / aspect), aspect, zoom, zoomCenter, 2, 3);
 
         if (nonDefaultColours) {
             // Reset draw data
